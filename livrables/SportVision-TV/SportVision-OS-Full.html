@@ -1434,6 +1434,14 @@ function modalDetailPrestation(idx){
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Heure début</label>
+          <input id="pd-hdeb" type="time" class="l-inp" value="${p.heure_debut?p.heure_debut.slice(0,5):''}" style="height:38px">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Heure fin</label>
+          <input id="pd-hfin" type="time" class="l-inp" value="${p.heure_fin?p.heure_fin.slice(0,5):''}" style="height:38px">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant HT (€)</label>
           <input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0" oninput="const ttc=document.getElementById('pd-ttc');if(ttc&&this.value)ttc.value=Math.round(Number(this.value)*1.2*100)/100">
         </div>
@@ -1465,6 +1473,8 @@ async function modifierPrestation(id){
       statut_financier:document.getElementById('pd-sfin').value,
       date_prestation:document.getElementById('pd-date').value||null,
       lieu:document.getElementById('pd-lieu').value||null,
+      heure_debut:document.getElementById('pd-hdeb')?.value||null,
+      heure_fin:document.getElementById('pd-hfin')?.value||null,
       montant_ttc:document.getElementById('pd-ttc').value?Number(document.getElementById('pd-ttc').value):null,
       montant_ht:document.getElementById('pd-ht').value?Number(document.getElementById('pd-ht').value):null,
       notes_internes:document.getElementById('pd-notes').value||null,
@@ -2677,19 +2687,31 @@ async function loadPipeline(){
     const s5=document.getElementById('com-kpi-pr');if(s5)s5.textContent=list.filter(c=>c.statut==='prospect').length;
     const s6=document.getElementById('com-kpi-q');if(s6)s6.textContent=list.filter(c=>c.statut==='qualifié').length;
     const s7=document.getElementById('com-kpi-cl');if(s7)s7.textContent=list.filter(c=>c.statut==='client').length;
+    const _nextSt={prospect:'qualifié',qualifié:'client'};
+    const _nextLb={prospect:'Qualifier',qualifié:'Convertir en client'};
     el.innerHTML='<div class="pip">'+COLS.map(col=>{
       const cards=list.filter(c=>col.st.includes(c.statut));
       return `<div class="pip-col">
         <div class="pip-h" style="border-top:2px solid ${col.clr}"><span class="pip-ht">${col.lb}</span><span class="kb-cnt">${cards.length}</span></div>
-        <div class="pip-b">${cards.length?cards.map(c=>{const i=list.indexOf(c);return`<div class="pip-card" style="cursor:pointer" onclick="modalModifierClient(${i})">
+        <div class="pip-b">${cards.length?cards.map(c=>{const i=list.indexOf(c);const nxt=_nextSt[c.statut];return`<div class="pip-card" onclick="modalModifierClient(${i})">
           <div class="pip-cn">${c.nom}</div>
           <div class="pip-det">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div>
           ${c.email?`<div style="font-size:10px;color:var(--t3);margin-top:3px">${c.email}</div>`:''}
           ${c.telephone?`<div style="font-size:10px;color:var(--t3)">${c.telephone}</div>`:''}
+          ${nxt?`<div style="margin-top:8px" onclick="event.stopPropagation();avancerPipeline('${c.id}','${nxt}')"><span style="font-size:10px;font-weight:600;color:var(--acc);cursor:pointer;padding:3px 8px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp)">${_nextLb[c.statut]} →</span></div>`:''}
         </div>`;}).join(''):'<div style="padding:12px;text-align:center;color:var(--t3);font-size:11px;opacity:.5">—</div>'}</div>
       </div>`;
     }).join('')+'</div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function avancerPipeline(id,statut){
+  try{
+    await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
+    toast('Statut avancé : '+statut+'.','ok');
+    loadPipeline();
+    updateNavBadges(S.role);
+  }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
 // ── Messagerie équipe (prod.msg) ─────────────────────────────────────────────
@@ -3402,7 +3424,7 @@ async function loadKanban(){
 
 async function modalDetailById(id){
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,montant_ht,montant_ttc,notes_internes,clients(nom)&id=eq.'+id);
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,lieu,montant_ht,montant_ttc,notes_internes,clients(nom)&id=eq.'+id);
     if(!data||!data[0])return;
     _prestationsCache=[data[0]];
     modalDetailPrestation(0);
@@ -3659,6 +3681,8 @@ function goApp(role){
     </button>`).join('')+`</div>`;
   show('app');
   renderContent();
+  const _wp=localStorage.getItem('sv_prenom');
+  setTimeout(()=>toast('Bonjour'+(_wp?' '+_wp:'')+'.',  'ok'),500);
   // Charge le vrai profil et met à jour les badges
   const uid=localStorage.getItem('sv_uid');
   if(uid){
