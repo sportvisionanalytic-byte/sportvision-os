@@ -469,9 +469,15 @@ function finBars(id,h){
 // ── VIEW RENDERERS ────────────────────────
 const VIEWS={
   'admin.dash':()=>`
-    <div id="dash-welcome" style="margin-bottom:18px">
-      <div style="font-size:22px;font-weight:700;color:var(--t1)" id="dash-bonjour">Bonjour</div>
-      <div style="font-size:13px;color:var(--t3);margin-top:2px" id="dash-subtitle">Voici ce qui mérite votre attention aujourd'hui.</div>
+    <div id="dash-welcome" style="margin-bottom:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-size:22px;font-weight:700;color:var(--t1)" id="dash-bonjour">Bonjour</div>
+        <div style="font-size:13px;color:var(--t3);margin-top:2px" id="dash-subtitle">Voici ce qui mérite votre attention aujourd'hui.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0;padding-top:4px">
+        <button class="btn bg2 bs" onclick="modalNouveauClient()">+ Client</button>
+        <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
+      </div>
     </div>
     <div class="kpi-g" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Prestations du jour</div><div class="kpi-v" id="kpi-jour">—</div><span class="kpi-d dnt" id="kpi-jour-s">aujourd'hui</span></div>
@@ -520,6 +526,10 @@ const VIEWS={
     <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.dash':()=>`
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="modalNouveauClient()">+ Client</button>
+      <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
+    </div>
     <div class="kpi-g">
       <div class="kpi" style="--kl:#00B8D4"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="sec-kpi-clients">—</div><span class="kpi-d dnt">total</span></div>
       <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations en cours</div><div class="kpi-v" id="sec-kpi-pre">—</div><span class="kpi-d dnt">actives</span></div>
@@ -1513,6 +1523,7 @@ const SC={'confirmée':'ba','planifiée':'ba','prête':'ba','prête_à_livrer':'
 
 let _prestationsCache=[];
 let _preFiltre='';
+let _preDateFiltre='';
 async function loadPrestations(){
   const el=document.getElementById('pre-real');
   if(!el)return;
@@ -1528,24 +1539,30 @@ function renderPreTable(){
   const el=document.getElementById('pre-real');
   if(!el)return;
   const q=(_preFiltre||'').toLowerCase();
-  const list=q?_prestationsCache.filter(p=>
+  const today=new Date().toISOString().slice(0,10);
+  const in7=new Date();in7.setDate(in7.getDate()+7);const in7s=in7.toISOString().slice(0,10);
+  let list=q?_prestationsCache.filter(p=>
     (p.reference||'').toLowerCase().includes(q)||
     (p.clients?.nom||'').toLowerCase().includes(q)||
     (SL[p.statut]||'').toLowerCase().includes(q)||
     (p.type_prestation||'').toLowerCase().includes(q)
   ):_prestationsCache;
+  if(_preDateFiltre==='today')list=list.filter(p=>p.date_prestation===today);
+  else if(_preDateFiltre==='week')list=list.filter(p=>p.date_prestation&&p.date_prestation>=today&&p.date_prestation<=in7s);
   const SF_CLS={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl','non_facturée':'bn'};
   const SF_LBL={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard','non_facturée':'—','en_préparation':'En prép.'};
+  const dfBtn=(v,lb)=>`<button onclick="_preDateFiltre='${v}';renderPreTable()" style="padding:4px 10px;font-size:11px;border-radius:var(--rp);background:${_preDateFiltre===v?'var(--acc)':'rgba(255,255,255,.06)'};border:1px solid ${_preDateFiltre===v?'var(--acc)':'rgba(255,255,255,.1)'};color:${_preDateFiltre===v?'#fff':'var(--t2)'};cursor:pointer;white-space:nowrap">${lb}</button>`;
   el.innerHTML=`
-    <div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px">
-      <input id="pre-search" type="text" class="l-inp" placeholder="Rechercher ref, client, statut…" value="${_preFiltre}" oninput="_preFiltre=this.value;renderPreTable()" style="height:34px;flex:1;max-width:320px">
-      <select class="l-inp" style="height:34px;max-width:180px" onchange="_preFiltre=this.value;document.getElementById('pre-search').value=this.value;renderPreTable()">
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px;flex-wrap:wrap">
+      <input id="pre-search" type="text" class="l-inp" placeholder="Rechercher ref, client, statut…" value="${_preFiltre}" oninput="_preFiltre=this.value;renderPreTable()" style="height:34px;flex:1;max-width:280px">
+      <select class="l-inp" style="height:34px;max-width:160px" onchange="_preFiltre=this.value;document.getElementById('pre-search').value=this.value;renderPreTable()">
         <option value="">Tous les statuts</option>
         <optgroup label="En cours">${['confirmée','planifiée','équipe_affectée','prête'].map(s=>`<option value="${s}">${SL[s]}</option>`).join('')}</optgroup>
         <optgroup label="Production">${['production_démarrée','production_terminée','montage_en_cours','prêt_validation'].map(s=>`<option value="${s}">${SL[s]}</option>`).join('')}</optgroup>
         <optgroup label="Livraison">${['prête_à_livrer','livrée','facturée','payée'].map(s=>`<option value="${s}">${SL[s]}</option>`).join('')}</optgroup>
         <optgroup label="Annulé">${['annulée','refusée','clôturée'].map(s=>`<option value="${s}">${SL[s]}</option>`).join('')}</optgroup>
       </select>
+      <div style="display:flex;gap:4px">${dfBtn('','Tout')}${dfBtn('today','Auj.')}${dfBtn('week','7j')}</div>
       <span style="font-size:11px;color:var(--t3);white-space:nowrap">${list.length} / ${_prestationsCache.length}</span>
     </div>
     ${list.length?'<div class="tw" style="overflow-x:auto"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant</th><th>Statut</th><th>Facturation</th><th></th></tr></thead><tbody>'+
@@ -1644,6 +1661,10 @@ function modalDetailPrestation(idx){
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Notes internes</label>
         <textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none" placeholder="Informations internes…">${p.notes_internes||''}</textarea>
       </div>
+      <div id="pd-equipe-block" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
+        <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Équipe affectée</div>
+        <div id="pd-equipe-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
+      </div>
       <div id="pd-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:2px">
         <button onclick="supprimerPrestation('${p.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>
@@ -1654,6 +1675,7 @@ function modalDetailPrestation(idx){
         </div>
       </div>
     </div>`);
+  chargerEquipeModal(p.id);
 }
 
 async function modifierPrestation(id){
@@ -1846,6 +1868,33 @@ function supprimerClient(id){
       updateNavBadges(S.role);
     }catch(e){toast('Erreur lors de la suppression.');}
   });
+}
+
+async function chargerEquipeModal(prestationId){
+  const el=document.getElementById('pd-equipe-list');
+  if(!el)return;
+  try{
+    const data=await sbFetch('prestations_equipe?select=collaborateur_id,fonction,est_responsable,statut,profiles(prenom,nom)&prestation_id=eq.'+prestationId);
+    if(!data||!data.length){
+      const pid=prestationId.replace(/'/g,"\\'");
+      el.innerHTML=`<span style="color:var(--t3)">Aucun membre assigné.</span><button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${pid}',''),150)" style="margin-left:8px;font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Assigner →</button>`;
+      return;
+    }
+    const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
+    const iLb={'invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
+    el.innerHTML='<div style="display:flex;flex-direction:column;gap:5px">'+data.map(m=>{
+      const name=[m.profiles?.prenom,m.profiles?.nom].filter(Boolean).join(' ')||'?';
+      const ini=name.slice(0,2).toUpperCase();
+      return`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--s2);border-radius:6px">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${ini}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:500;color:var(--t1)">${name}${m.est_responsable?' <span style="font-size:9px;color:var(--acc)"> · Resp.</span>':''}</div>
+          <div style="font-size:11px;color:var(--t3)">${m.fonction||'—'}</div>
+        </div>
+        <span class="bd ${iSt[m.statut]||'bw'}" style="font-size:9.5px"><span class="bd-d"></span>${iLb[m.statut]||m.statut}</span>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){el.innerHTML='<span style="color:var(--t3)">Impossible de charger.</span>';}
 }
 
 async function chargerPresByClient(clientId){
@@ -3012,9 +3061,14 @@ async function loadPipeline(){
     {id:'inactif',lb:'Inactif / Bloqué',clr:'rgba(255,255,255,.1)',st:['inactif','bloqué']},
   ];
   try{
-    const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect&order=created_at.desc&limit=200');
+    const [data,recentPres]=await Promise.all([
+      sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect&order=created_at.desc&limit=200'),
+      sbFetch('prestations?select=client_id,date_prestation&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500'),
+    ]);
     const list=data||[];
     _clientsCache=list;
+    const lastPre={};
+    (recentPres||[]).forEach(p=>{if(p.client_id&&!lastPre[p.client_id])lastPre[p.client_id]=p.date_prestation;});
     const s1=document.getElementById('pip-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
     const s2=document.getElementById('pip-kpi-q');if(s2)s2.textContent=list.filter(c=>c.statut==='qualifié').length;
     const s3=document.getElementById('pip-kpi-cl');if(s3)s3.textContent=list.filter(c=>c.statut==='client').length;
@@ -3028,11 +3082,12 @@ async function loadPipeline(){
       const cards=list.filter(c=>col.st.includes(c.statut));
       return `<div class="pip-col">
         <div class="pip-h" style="border-top:2px solid ${col.clr}"><span class="pip-ht">${col.lb}</span><span class="kb-cnt">${cards.length}</span></div>
-        <div class="pip-b">${cards.length?cards.map(c=>{const i=list.indexOf(c);const nxt=_nextSt[c.statut];return`<div class="pip-card" onclick="modalModifierClient(${i})">
+        <div class="pip-b">${cards.length?cards.map(c=>{const i=list.indexOf(c);const nxt=_nextSt[c.statut];const lp=lastPre[c.id];return`<div class="pip-card" onclick="modalModifierClient(${i})">
           <div class="pip-cn">${c.nom}</div>
           <div class="pip-det">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div>
           ${c.email?`<div style="font-size:10px;color:var(--t3);margin-top:3px">${c.email}</div>`:''}
           ${c.telephone?`<div style="font-size:10px;color:var(--t3)">${c.telephone}</div>`:''}
+          ${lp?`<div style="font-size:10px;color:var(--t3);margin-top:3px">Dernière presta : ${new Date(lp).toLocaleDateString('fr-FR')}</div>`:''}
           ${nxt?`<div style="margin-top:8px" onclick="event.stopPropagation();avancerPipeline('${c.id}','${nxt}')"><span style="font-size:10px;font-weight:600;color:var(--acc);cursor:pointer;padding:3px 8px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp)">${_nextLb[c.statut]} →</span></div>`:''}
         </div>`;}).join(''):'<div style="padding:12px;text-align:center;color:var(--t3);font-size:11px;opacity:.5">—</div>'}</div>
       </div>`;
@@ -4143,20 +4198,40 @@ async function runSearch(q){
   if(!el)return;
   el.innerHTML='<div style="color:var(--t3);font-size:12px;padding:8px">Recherche…</div>';
   const hasPre=['admin','sec','prod'].includes(S.role);
+  const hasPhoto=['photo','cm'].includes(S.role);
   const hasCRM=['admin','sec'].includes(S.role);
   const hasPipeline=S.role==='com';
   try{
     const qEnc=encodeURIComponent(q);
+    const uid=localStorage.getItem('sv_uid');
     const fetches=[];
-    if(hasPre)fetches.push(sbFetch('prestations?select=id,reference,statut,date_prestation,clients(nom)&or=(reference.ilike.*'+qEnc+'*,lieu.ilike.*'+qEnc+'*)&limit=8'));
-    else fetches.push(Promise.resolve([]));
+    if(hasPre){
+      fetches.push(sbFetch('prestations?select=id,reference,statut,date_prestation,clients(nom)&or=(reference.ilike.*'+qEnc+'*,lieu.ilike.*'+qEnc+'*)&limit=8'));
+    }else if(hasPhoto){
+      const q2=q.toLowerCase();
+      fetches.push(
+        sbFetch('prestations_equipe?select=prestations(id,reference,statut,date_prestation,clients(nom))&collaborateur_id=eq.'+uid)
+        .then(data=>(data||[]).filter(r=>r.prestations&&((r.prestations.reference||'').toLowerCase().includes(q2)||(r.prestations.clients?.nom||'').toLowerCase().includes(q2))).slice(0,8).map(r=>r.prestations))
+      );
+    }else{
+      fetches.push(Promise.resolve([]));
+    }
     if(hasCRM||hasPipeline)fetches.push(sbFetch('clients?select=id,nom,statut,ville,sport&or=(nom.ilike.*'+qEnc+'*,ville.ilike.*'+qEnc+'*,email.ilike.*'+qEnc+'*)&limit=8'));
     else fetches.push(Promise.resolve([]));
     const [pre,cli]=await Promise.all(fetches);
     const rows=[];
     (pre||[]).forEach(p=>rows.push({icon:'📋',title:p.reference||'—',sub:(p.clients?.nom||'')+(p.date_prestation?' · '+new Date(p.date_prestation).toLocaleDateString('fr-FR'):''),action:`closeModal();modalDetailById('${p.id}')`}));
     (cli||[]).forEach(c=>{const nm=c.nom.replace(/'/g,"\\'");const dest=hasPipeline?'pipeline':'crm';rows.push({icon:'👥',title:c.nom||'—',sub:[c.ville,c.sport].filter(Boolean).join(' · ')||c.statut,action:`closeModal();_crmFiltre='${nm}';_crmStFiltre='';switchView('${dest}')`});});
-    if(!rows.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px">Aucun résultat pour "'+q+'".</div>';return;}
+    if(!rows.length){
+      const canCreatePre=['admin','sec','prod'].includes(S.role);
+      const canCreateCli=['admin','sec'].includes(S.role);
+      el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px 0">Aucun résultat pour "'+q+'".</div>'
+        +(canCreatePre||canCreateCli?'<div style="display:flex;gap:8px;margin-top:8px">'
+          +(canCreateCli?'<button class="btn bg2 bs" onclick="closeModal();modalNouveauClient()">+ Nouveau client</button>':'')
+          +(canCreatePre?'<button class="btn bp bs" onclick="closeModal();modalNouvellePrestation()">+ Nouvelle prestation</button>':'')
+        +'</div>':'');
+      return;
+    }
     el.innerHTML=rows.map(r=>`<div onclick="${r.action}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;background:transparent;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='transparent'">
       <span style="font-size:18px">${r.icon}</span>
       <div><div style="font-size:13px;font-weight:500;color:var(--t1)">${r.title}</div><div style="font-size:11px;color:var(--t3)">${r.sub}</div></div>
