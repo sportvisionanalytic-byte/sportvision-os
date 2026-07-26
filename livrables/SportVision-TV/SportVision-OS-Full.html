@@ -1084,9 +1084,8 @@ async function creerPrestation(){
     };
     await sbFetch('prestations',{method:'POST',body});
     closeModal();
-    if(document.getElementById('planning-real')) loadPlanning();
-    else if(document.getElementById('kanban-real')) loadKanban();
-    else { switchView('pre'); return; }
+    toast('Prestation créée.','ok');
+    loadViewData(S.role,S.view);
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de la création.';}
 }
@@ -1171,7 +1170,9 @@ async function creerClient(){
       created_by:localStorage.getItem('sv_uid')
     }});
     closeModal();
-    switchView(S.view);
+    toast('Client créé.','ok');
+    loadViewData(S.role,S.view);
+    updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de la création.';}
 }
 
@@ -1225,6 +1226,7 @@ async function creerKit(){
       statut:'disponible'
     }});
     closeModal();
+    toast('Kit ajouté.','ok');
     loadKits();
   }catch(e){err.textContent='Erreur lors de la création.';}
 }
@@ -1288,6 +1290,7 @@ async function creerCollaborateur(){
     if(d.error||d.error_description){err.textContent=d.error_description||d.error||'Erreur.';return;}
     if(!d.id&&!d.user?.id){err.textContent='Compte non créé. Vérifie que l\'email n\'est pas déjà utilisé.';return;}
     closeModal();
+    toast('Collaborateur invité.','ok');
     loadCollaborateurs();
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur réseau.';}
@@ -1432,9 +1435,9 @@ function modalDetailPrestation(idx){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant HT (€)</label>
-          <input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0">
+          <input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0" oninput="const ttc=document.getElementById('pd-ttc');if(ttc&&this.value)ttc.value=Math.round(Number(this.value)*1.2*100)/100">
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant TTC (€)</label>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant TTC (€) <span style="font-size:9px;opacity:.5">auto TVA 20%</span></label>
           <input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0">
         </div>
       </div>
@@ -1468,9 +1471,8 @@ async function modifierPrestation(id){
     };
     await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body});
     closeModal();
-    if(document.getElementById('kanban-real')) loadKanban();
-    else if(document.getElementById('planning-real')) loadPlanning();
-    else if(document.getElementById('pre-real')) loadPrestations();
+    toast('Prestation mise à jour.','ok');
+    loadViewData(S.role,S.view);
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de la modification.';}
 }
@@ -1566,6 +1568,7 @@ async function modifierClient(id){
       ville:document.getElementById('fce-ville').value||null,
     }});
     closeModal();
+    toast('Client mis à jour.','ok');
     loadClients();
   }catch(e){err.textContent='Erreur lors de la modification.';}
 }
@@ -1974,7 +1977,7 @@ async function creerTache(){
     await sbFetch('notifications',{method:'POST',body:{
       type:'tache',titre,message:msg||null,lue:false,destinataire_id:uid
     }});
-    closeModal();loadTaches();
+    closeModal();toast('Tâche créée.','ok');loadTaches();
   }catch(e){if(err)err.textContent='Erreur lors de la création.';}
 }
 
@@ -2020,6 +2023,7 @@ async function sauvegarderProfil(uid){
       nom:document.getElementById('set-nom').value.trim()||null,
       telephone:document.getElementById('set-tel').value.trim()||null,
     }});
+    toast('Profil mis à jour.','ok');
     if(err)err.style.color='var(--ok)',err.textContent='Profil mis à jour.';
     // Mettre à jour la sidebar
     const prenom=document.getElementById('set-prenom').value.trim();
@@ -2209,6 +2213,7 @@ async function modifierKit(id){
       valeur:document.getElementById('fke-val').value?Number(document.getElementById('fke-val').value):null,
     }});
     closeModal();
+    toast('Kit mis à jour.','ok');
     loadKits();
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de la modification.';}
@@ -2294,7 +2299,7 @@ async function creerDevis(){
       validite_jours:validite,
       created_by:localStorage.getItem('sv_uid'),
     }});
-    closeModal();loadDevis();
+    closeModal();toast('Devis créé.','ok');loadDevis();
   }catch(e){if(err)err.textContent='Erreur lors de la création.';}
 }
 
@@ -2327,7 +2332,7 @@ async function sauvegarderDevis(id){
       total_ttc:parseFloat(document.getElementById('dv-ttc2')?.value||0),
       date_envoi:document.getElementById('dv-env2')?.value||null,
     }});
-    closeModal();loadDevis();
+    closeModal();toast('Devis mis à jour.','ok');loadDevis();
   }catch(e){if(err)err.textContent='Erreur lors de la sauvegarde.';}
 }
 
@@ -2645,6 +2650,7 @@ async function signalerIncident(){
       prestation_id:pid,
     }});
     closeModal();
+    toast('Incident signalé.','ok');
     loadIncidents();
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de l\'envoi.';}
@@ -3294,14 +3300,33 @@ async function loadJourJ(){
         </div>
       </div>`;
     }).join('');
-    el.innerHTML=html+`<div class="cd" style="margin-top:4px"><div class="cd-h"><div class="cd-t">Checklist mission</div></div><div class="cd-b">
-      ${['Kits vérifiés et chargés','Plan terrain consulté','Contact client confirmé','Rushs uploadés','Livrables validés','Kits retournés au stock'].map(t=>`
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035)">
-          <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid var(--b2);background:transparent;flex-shrink:0"></div>
-          <span style="font-size:13px;color:var(--t1)">${t}</span>
+    const CHECKS=['Kits vérifiés et chargés','Plan terrain consulté','Contact client confirmé','Rushs uploadés','Livrables validés','Kits retournés au stock'];
+    const uid=localStorage.getItem('sv_uid')||'x';
+    const ck=CHECKS.map((_,i)=>localStorage.getItem('sv_ck_'+uid+'_'+i)==='1');
+    const allDone=ck.every(Boolean);
+    el.innerHTML=html+`<div class="cd" style="margin-top:4px"><div class="cd-h"><div class="cd-t">Checklist mission</div>${allDone?'<span style="font-size:11px;color:var(--ok);font-weight:600">Tout bon ✓</span>':'<button class="btn bg2 bs" onclick="resetChecklist()">Réinitialiser</button>'}</div><div class="cd-b" id="jourj-cl">
+      ${CHECKS.map((t,i)=>`
+        <div id="ck-${i}" onclick="toggleCheck(${i})" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;${ck[i]?'opacity:.55':''}">
+          <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid ${ck[i]?'var(--ok)':'var(--b2)'};background:${ck[i]?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${ck[i]?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2.2" stroke-linecap="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}
+          </div>
+          <span style="font-size:13px;color:var(--t1);${ck[i]?'text-decoration:line-through':''}">${t}</span>
         </div>`).join('')}
     </div></div>`;
+    window._ckUid=uid;window._ckItems=CHECKS;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function toggleCheck(i){
+  const uid=window._ckUid||localStorage.getItem('sv_uid')||'x';
+  const was=localStorage.getItem('sv_ck_'+uid+'_'+i)==='1';
+  localStorage.setItem('sv_ck_'+uid+'_'+i,was?'0':'1');
+  loadJourJ();
+}
+function resetChecklist(){
+  const uid=window._ckUid||localStorage.getItem('sv_uid')||'x';
+  for(let i=0;i<6;i++)localStorage.removeItem('sv_ck_'+uid+'_'+i);
+  loadJourJ();
 }
 
 // ── Comptabilité — factures ───────────────────────────────────────────────────
@@ -3540,6 +3565,7 @@ async function modifierCollaborateur(id){
       role:document.getElementById('fco-role').value,
     }});
     closeModal();
+    toast('Collaborateur mis à jour.','ok');
     loadCollaborateurs();
   }catch(e){err.textContent='Erreur lors de la modification.';}
 }
