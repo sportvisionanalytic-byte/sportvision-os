@@ -520,28 +520,20 @@ const VIEWS={
     <div id="jourj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.cal':()=>`
-    <div class="g4" style="grid-template-columns:repeat(4,1fr)">
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Contenus programmés</div><div class="kpi-v">5</div><span class="kpi-d dnt">cette semaine</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Publiés ce mois</div><div class="kpi-v">23</div><span class="kpi-d dup">+5 vs juin</span></div>
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Reach total</div><div class="kpi-v">12.4k</div><span class="kpi-d dup">+18%</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Taux engagement</div><div class="kpi-v">4.2<small style="font-size:16px;color:var(--t2)">%</small></div><span class="kpi-d dup">+0.8pp</span></div>
+    <div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="calPrev()">‹</button>
+        <div class="sh-t" id="cal-title">Calendrier</div>
+        <button class="btn bg2 bs" onclick="calNext()">›</button>
+      </div>
+      <button class="btn bp bs" onclick="modalNouveauContenu()">+ Contenu</button>
     </div>
-    <div class="sh"><div class="sh-t">Semaine du 28 juin au 4 juillet</div><button class="btn bp bs">+ Contenu</button></div>
-    <div class="cal-g">
-      <div class="cal-cell" style="background:var(--s2)"></div>
-      ${['Lun 28','Mar 29','Mer 30','Jeu 1','Ven 2','Sam 3','Dim 4'].map((d,i)=>`<div class="cal-day-head${i===2?' today':''}">${d}</div>`).join('')}
-      ${[
-        {p:'Instagram',posts:[{d:1,t:'Recap Brunoy FC',pub:true},{d:2,t:'Highlight U18',pub:false},{d:4,t:'Story terrain',pub:false}]},
-        {p:'Facebook',posts:[{d:0,t:'Article Tournoi Elite',pub:true},{d:3,t:'Post match AS Milly',pub:false}]},
-        {p:'YouTube',posts:[{d:2,t:'Résumé Tournoi U18',pub:false},{d:6,t:'Interview J. Foubet',pub:false}]},
-      ].map(pl=>`
-        <div class="cal-plat">${pl.p}</div>
-        ${[0,1,2,3,4,5,6].map(di=>{
-          const post=pl.posts.find(p=>p.d===di);
-          return`<div class="cal-cell">${post?`<div class="cal-post ${post.pub?'pub':'sched'}">${post.t}</div>`:''}</div>`;
-        }).join('')}
-      `).join('')}
-    </div>`,
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Prestations cette semaine</div><div class="fs-v" id="cal-kpi-pre" style="color:var(--ac)">—</div></div>
+      <div class="fs"><div class="fs-l">Contenus programmés</div><div class="fs-v" id="cal-kpi-prog">—</div></div>
+      <div class="fs"><div class="fs-l">Publiés ce mois</div><div class="fs-v" id="cal-kpi-pub" style="color:var(--ok)">—</div></div>
+    </div>
+    <div id="cal-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.factures':()=>`
     <div class="g3">
@@ -676,20 +668,13 @@ const VIEWS={
 
   'prod.msg':()=>`
     <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
-    <div class="cd"><div class="cd-b">
-      ${[
-        {f:'AD',fn:'Antoine Dubreuil',msg:'12 rushs uploadés pour SV-2026-0142. Tout est là.',ts:'Il y a 10 min',unread:true},
-        {f:'YB',fn:'Yanis Belkacem',msg:'Est-ce que le Kit Lumière 01 est dispo mardi 5 ?',ts:'Il y a 1h',unread:true},
-        {f:'LM',fn:'Léa Martin',msg:'3 stories Brunoy FC publiées, bonne visibilité.',ts:'Il y a 2h',unread:true},
-        {f:'CR',fn:'Camille Rivière',msg:'Contrat AS Milly envoyé pour signature.',ts:'Il y a 3h',unread:false},
-        {f:'FK',fn:'Fouka',msg:'RDV brief SV-2026-0144 jeudi 14h. On confirme ?',ts:'Il y a 5h',unread:false},
-      ].map(m=>`<div style="display:flex;gap:12px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.035);${m.unread?'background:rgba(54,107,255,.04)':''}">
-        <div class="av" style="background:${AVC[m.f]||'var(--gr)'};width:36px;height:36px;font-size:12px;flex-shrink:0">${m.f}</div>
-        <div style="flex:1"><div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;font-weight:600;color:var(--t1)">${m.fn}</span><span style="font-size:10.5px;color:var(--t3)">${m.ts}</span></div>
-        <div style="font-size:12.5px;color:var(--t2);margin-top:3px">${m.msg}</div></div>
-        ${m.unread?`<div style="width:7px;height:7px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:6px"></div>`:''}
-      </div>`).join('')}
-    </div></div>`,
+    <div id="msg-real">
+      <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
+      <div class="cd"><div style="display:flex;gap:10px;padding:14px 18px">
+        <input type="text" id="msg-input" class="fi" style="flex:1" placeholder="Écrire un message à l'équipe…" onkeydown="if(event.key==='Enter')envoyerMessage()">
+        <button class="btn bp" onclick="envoyerMessage()">Envoyer</button>
+      </div></div>
+    </div>`,
 
   // ── PHOTOGRAPHE ─────────────────────────
   'photo.dash':()=>`
@@ -706,19 +691,13 @@ const VIEWS={
     </div>`,
 
   'photo.medias':()=>`
-    <div class="sh"><div class="sh-t">Mes médias</div><button class="btn bp bs">↑ Uploader</button></div>
+    <div class="sh"><div class="sh-t">Mes missions</div></div>
     <div class="g3" style="margin-bottom:13px">
-      <div class="fs"><div class="fs-l">Rushs uploadés</div><div class="fs-v">24</div></div>
-      <div class="fs"><div class="fs-l">Livrables validés</div><div class="fs-v" style="color:var(--ok)">8</div></div>
-      <div class="fs"><div class="fs-l">Stockage utilisé</div><div class="fs-v">38 <span style="font-size:13px;color:var(--t2)">GB</span></div></div>
+      <div class="fs"><div class="fs-l">Missions assignées</div><div class="fs-v" id="med-nb">—</div></div>
+      <div class="fs"><div class="fs-l">Rushs transférés</div><div class="fs-v" id="med-done" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="med-att" style="color:var(--wa)">—</div></div>
     </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Rushs récents — SV-2026-0142</div><span class="bd ba">12 fichiers · 24 GB</span></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;padding:14px 18px">
-        ${Array.from({length:12},(_,i)=>`<div style="aspect-ratio:16/9;background:linear-gradient(135deg,var(--s3),var(--s1));border-radius:8px;border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='rgba(54,107,255,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.07)'">
-          <span style="font-size:11px;color:var(--t3)">${String(i+1).padStart(4,'0')}.mp4</span>
-        </div>`).join('')}
-      </div>
-    </div>`,
+    <div id="medias-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'photo.revenus':()=>`
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
@@ -732,22 +711,7 @@ const VIEWS={
 
   'photo.form':()=>`
     <div class="sh"><div class="sh-t">Formation</div></div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      ${[
-        {ti:'Captation vidéo sportive',prog:100,dt:'Terminé',clr:'var(--ok)'},
-        {ti:'Photographie terrain & action',prog:100,dt:'Terminé',clr:'var(--ok)'},
-        {ti:'Montage et post-production',prog:85,dt:'En cours',clr:'var(--acc)'},
-        {ti:'Drone — certification A1/A3',prog:40,dt:'En cours',clr:'var(--wa)'},
-        {ti:'Identité visuelle & motion design',prog:0,dt:'À débuter',clr:'var(--t3)'},
-      ].map(m=>`<div class="cd" style="margin-bottom:0"><div style="padding:16px 18px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-size:13px;font-weight:600;color:var(--t1)">${m.ti}</div>
-          <span style="font-size:11px;font-weight:600;color:${m.clr}">${m.dt}</span>
-        </div>
-        <div class="pg"><div class="pg-f" style="width:${m.prog}%;background:${m.clr};"></div></div>
-        <div style="font-size:10.5px;color:var(--t3);margin-top:5px">${m.prog}% complété</div>
-      </div></div>`).join('')}
-    </div>`,
+    <div id="form-real" style="display:flex;flex-direction:column;gap:12px"></div>`,
 
   // ── COMMUNITY MANAGER ───────────────────
   'cm.dash':()=>`
@@ -767,34 +731,29 @@ const VIEWS={
     </div>`,
 
   'cm.contenus':()=>`
-    <div class="sh"><div class="sh-t">Contenus</div><button class="btn bp bs">+ Nouveau</button></div>
-    <div class="cd"><div class="tw"><table><thead><tr><th>Titre</th><th>Plateforme</th><th>Club</th><th>Type</th><th>Statut</th><th>Programmé</th></tr></thead><tbody>
-      ${[
-        {ti:'Résumé Tournoi U18',pl:'Instagram',cl:'Brunoy FC',ty:'Vidéo',st:'bw',dt:'30 juin 18h'},
-        {ti:'Highlights U18 — best moments',pl:'YouTube',cl:'Brunoy FC',ty:'Vidéo',st:'bw',dt:'30 juin 20h'},
-        {ti:'Story terrain Tournoi',pl:'Instagram',cl:'Brunoy FC',ty:'Story',st:'ba',dt:'Publié'},
-        {ti:'Article match D3 AS Milly',pl:'Facebook',cl:'AS Milly',ty:'Article',st:'bb',dt:'En rédaction'},
-        {ti:'Portrait coach J. Foubet',pl:'Instagram',cl:'Club Nemours',ty:'Photo',st:'bb',dt:'En rédaction'},
-        {ti:'Teaser Inside Club AS Évry',pl:'YouTube',cl:'AS Évry',ty:'Vidéo',st:'bn',dt:'Non planifié'},
-      ].map(c=>`<tr><td class="tp">${c.ti}</td><td>${c.pl}</td><td>${c.cl}</td><td>${c.ty}</td><td><span class="bd ${c.st}"><span class="bd-d"></span>${c.st==='bw'?'Programmé':c.st==='ba'?'Publié':c.st==='bb'?'Brouillon':'Non planifié'}</span></td><td>${c.dt}</td></tr>`).join('')}
-    </tbody></table></div></div>`,
+    <div class="sh"><div class="sh-t">Contenus</div><button class="btn bp bs" onclick="modalNouveauContenu()">+ Nouveau</button></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Brouillons</div><div class="fs-v" id="cnt-kpi-draft">—</div></div>
+      <div class="fs"><div class="fs-l">Programmés</div><div class="fs-v" id="cnt-kpi-prog" style="color:var(--ac)">—</div></div>
+      <div class="fs"><div class="fs-l">Publiés</div><div class="fs-v" id="cnt-kpi-pub" style="color:var(--ok)">—</div></div>
+    </div>
+    <div id="contenus-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.analytics':()=>`
+    <div class="sh"><div class="sh-t">Analytics</div><button class="btn bg2 bs" onclick="modalSaisirStats()">Saisir stats</button></div>
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#E1306C"><div class="kpi-ey">Instagram · Reach</div><div class="kpi-v">8.2k</div><span class="kpi-d dup">+22%</span></div>
-      <div class="kpi" style="--kl:#1877F2"><div class="kpi-ey">Facebook · Portée</div><div class="kpi-v">2.8k</div><span class="kpi-d dup">+9%</span></div>
-      <div class="kpi" style="--kl:#FF0000"><div class="kpi-ey">YouTube · Vues</div><div class="kpi-v">1.4k</div><span class="kpi-d dup">+41%</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Engagement moyen</div><div class="kpi-v">4.2<small style="font-size:14px;color:var(--t2)">%</small></div><span class="kpi-d dup">+0.8pp</span></div>
+      <div class="kpi" style="--kl:#E1306C"><div class="kpi-ey">Instagram · Reach</div><div class="kpi-v" id="an-ig-reach">—</div><span class="kpi-d dnt" id="an-ig-s">ce mois</span></div>
+      <div class="kpi" style="--kl:#1877F2"><div class="kpi-ey">Facebook · Portée</div><div class="kpi-v" id="an-fb-reach">—</div><span class="kpi-d dnt" id="an-fb-s">ce mois</span></div>
+      <div class="kpi" style="--kl:#FF0000"><div class="kpi-ey">YouTube · Vues</div><div class="kpi-v" id="an-yt-views">—</div><span class="kpi-d dnt" id="an-yt-s">ce mois</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Contenus publiés</div><div class="kpi-v" id="an-pub">—</div><span class="kpi-d dnt">via l'OS</span></div>
     </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Meilleures publications ce mois</div></div>
-      <div class="tw"><table><thead><tr><th>Publication</th><th>Plateforme</th><th>Club</th><th>Vues</th><th>Likes</th><th>Engagement</th></tr></thead><tbody>
-        ${[
-          {t:'Résumé match FC Fontainebleau',pl:'Instagram',cl:'FC Fontainebleau',v:'2 341',l:'187',e:'8.0%'},
-          {t:'Highlights Brunoy FC U18',pl:'YouTube',cl:'Brunoy FC',v:'1 204',l:'93',e:'7.7%'},
-          {t:'Portrait joueur Brunoy FC',pl:'Instagram',cl:'Brunoy FC',v:'1 089',l:'142',e:'13.0%'},
-          {t:'Article tournoi saison 26',pl:'Facebook',cl:'AS Évry',v:'987',l:'54',e:'5.5%'},
-        ].map(p=>`<tr><td class="tp">${p.t}</td><td>${p.pl}</td><td>${p.cl}</td><td class="tm" style="color:var(--t1)">${p.v}</td><td class="tm">${p.l}</td><td style="color:var(--ok);font-weight:600">${p.e}</td></tr>`).join('')}
-      </tbody></table></div>
+    <div class="g2">
+      <div class="cd"><div class="cd-h"><div class="cd-t">Contenus par plateforme</div></div>
+        <div id="an-by-plat"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
+      </div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Prestations couvertes ce mois</div></div>
+        <div id="an-pre-mois"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
+      </div>
     </div>`,
 
   // ── COMPTABLE ───────────────────────────
@@ -868,18 +827,8 @@ const VIEWS={
     <div id="devis-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.publications':()=>`
-    <div class="sh"><div class="sh-t">Publications</div></div>
-    <div class="cd"><div class="tw"><table><thead><tr><th>Publication</th><th>Plateforme</th><th>Club</th><th>Vues</th><th>Likes</th><th>Publiée le</th></tr></thead><tbody>
-      ${[
-        {t:'Résumé match FC Fontainebleau',pl:'Instagram',cl:'FC Fontainebleau',v:'2 341',l:'187',dt:'22 juin'},
-        {t:'Highlights Brunoy FC U18',pl:'YouTube',cl:'Brunoy FC',v:'1 204',l:'93',dt:'21 juin'},
-        {t:'Portrait joueur Brunoy FC',pl:'Instagram',cl:'Brunoy FC',v:'1 089',l:'142',dt:'20 juin'},
-        {t:'Article résultats D3 — AS Milly',pl:'Facebook',cl:'AS Milly',v:'987',l:'54',dt:'19 juin'},
-        {t:'Story coulisses SV-0142',pl:'Instagram',cl:'Brunoy FC',v:'844',l:'67',dt:'18 juin'},
-        {t:'Interview coach Club Nemours',pl:'YouTube',cl:'Club Nemours',v:'632',l:'41',dt:'17 juin'},
-        {t:'Teaser Inside Club AS Évry',pl:'Instagram',cl:'AS Évry',v:'511',l:'38',dt:'16 juin'},
-      ].map(p=>`<tr><td class="tp">${p.t}</td><td>${p.pl}</td><td>${p.cl}</td><td class="tm" style="color:var(--t1)">${p.v}</td><td class="tm">${p.l}</td><td>${p.dt}</td></tr>`).join('')}
-    </tbody></table></div></div>`,
+    <div class="sh"><div class="sh-t">Publications</div><button class="btn bp bs" onclick="modalNouveauContenu('publié')">+ Publication</button></div>
+    <div id="pub-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.rapprochement':()=>`
     <div class="sh"><div class="sh-t">Suivi des paiements</div></div>
@@ -1333,6 +1282,13 @@ async function loadViewData(role,view){
   if(role==='com'&&view==='objectifs') await loadObjectifs();
   if((role==='com'||role==='admin')&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
+  if(role==='cm'&&view==='cal') await loadCmCal();
+  if(role==='cm'&&view==='contenus') await loadCmContenus();
+  if(role==='cm'&&view==='analytics') await loadCmAnalytics();
+  if(role==='cm'&&view==='publications') await loadCmPublications();
+  if(role==='photo'&&view==='medias') await loadMedias();
+  if(role==='photo'&&view==='form') loadForm();
+  if(role==='prod'&&view==='msg') await loadMsg();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
   if(role==='sec'&&view==='docs') await loadDocs();
@@ -2663,6 +2619,440 @@ async function loadPipeline(){
       </div>`;
     }).join('')+'</div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Messagerie équipe (prod.msg) ─────────────────────────────────────────────
+let _msgInterval=null;
+async function loadMsg(){
+  const el=document.getElementById('msg-list');
+  if(!el)return;
+  if(_msgInterval)clearInterval(_msgInterval);
+  const renderMessages=async()=>{
+    const msgEl=document.getElementById('msg-list');
+    if(!msgEl)return;
+    try{
+      const [msgs,profiles]=await Promise.all([
+        sbFetch('notifications?select=id,titre,message,created_at&type=eq.message&order=created_at.asc&limit=80'),
+        sbFetch('profiles?select=id,prenom,nom'),
+      ]);
+      const pmap={};(profiles||[]).forEach(p=>{pmap[p.id]={n:(p.prenom||'')+' '+(p.nom||'').trim(),ini:((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase()||'?'};});
+      const uid=localStorage.getItem('sv_uid');
+      if(!msgs||!msgs.length){msgEl.innerHTML='<div class="cd"><div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun message. Soyez le premier à écrire.</div></div>';return;}
+      msgEl.innerHTML='<div class="cd"><div style="padding:6px 0">'+msgs.map(m=>{
+        const isMe=m.titre===uid;
+        const who=pmap[m.titre];
+        const when=new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+        const ini=who?.ini||'?';
+        const name=who?.n||'Membre';
+        return`<div style="display:flex;gap:10px;padding:10px 18px;align-items:flex-start;${isMe?'flex-direction:row-reverse':''}">
+          <div style="width:32px;height:32px;border-radius:50%;background:${isMe?'var(--ac)':'rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${ini}</div>
+          <div style="max-width:70%;${isMe?'align-items:flex-end;':''}display:flex;flex-direction:column;gap:3px">
+            ${!isMe?`<div style="font-size:10.5px;color:var(--t3)">${name}</div>`:''}
+            <div style="background:${isMe?'var(--ac)':'rgba(255,255,255,.07)'};padding:8px 12px;border-radius:${isMe?'12px 12px 2px 12px':'12px 12px 12px 2px'};font-size:13px;color:var(--t1)">${m.message}</div>
+            <div style="font-size:10px;color:var(--t3)">${when}</div>
+          </div>
+        </div>`;
+      }).join('')+'</div></div>';
+      msgEl.scrollTop=msgEl.scrollHeight;
+    }catch(e){}
+  };
+  await renderMessages();
+  _msgInterval=setInterval(renderMessages,15000);
+}
+
+async function envoyerMessage(){
+  const inp=document.getElementById('msg-input');
+  const txt=(inp?.value||'').trim();
+  if(!txt)return;
+  const uid=localStorage.getItem('sv_uid');
+  inp.value='';
+  try{
+    await sbFetch('notifications',{method:'POST',body:{type:'message',titre:uid,message:txt,destinataire_id:uid,lue:false}});
+    await loadMsg();
+  }catch(e){}
+}
+
+// ── Médias / missions photo ───────────────────────────────────────────────────
+async function loadMedias(){
+  const el=document.getElementById('medias-real');
+  if(!el)return;
+  const uid=localStorage.getItem('sv_uid');
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  try{
+    const data=await sbFetch('prestations_equipe?select=id,statut,fonction,prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=50');
+    const list=data||[];
+    set('med-nb',list.length);
+    const done=list.filter(e=>['médias_à_transférer','médias_complets','à_monter','montage_en_cours','prêt_validation','à_valider_client','prête_à_livrer','livrée','clôturée'].includes(e.prestations?.statut)).length;
+    set('med-done',done);
+    set('med-att',list.length-done);
+    if(!list.length){
+      el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune mission assignée.</div></div>';return;
+    }
+    const sc={disponible:'bn',production_terminée:'bw',médias_à_transférer:'bl',médias_complets:'ba',livrée:'ba',clôturée:'ba',annulée:'bb'};
+    el.innerHTML=list.map(e=>{
+      const p=e.prestations||{};
+      const dt=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—';
+      const rushDone=['médias_complets','à_monter','montage_en_cours','prêt_validation','à_valider_client','prête_à_livrer','livrée','clôturée'].includes(p.statut);
+      return`<div class="cd" style="margin-bottom:10px;padding:16px 18px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+              <span class="bd ${sc[p.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+              <span style="font-size:10px;font-family:monospace;color:var(--t3)">${p.reference||''}</span>
+            </div>
+            <div style="font-size:14px;font-weight:600;color:var(--t1)">${p.clients?.nom||'—'}</div>
+            <div style="font-size:12px;color:var(--t3);margin-top:3px">${dt} · ${e.fonction||'Photographe'}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+            <div style="width:40px;height:40px;border-radius:10px;border:1.5px solid ${rushDone?'var(--ok)':'var(--b2)'};background:${rushDone?'rgba(46,204,138,.12)':'transparent'};display:flex;align-items:center;justify-content:center">
+              ${rushDone?'<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#2ECC8A" stroke-width="2" stroke-linecap="round"><path d="M4 9l3.5 3.5 6.5-7"/></svg>':'<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--t3)" stroke-width="1.5"><path d="M8 3v5l3 3"/><circle cx="8" cy="8" r="6"/></svg>'}
+            </div>
+            <div style="font-size:9px;color:var(--t3);text-align:center">${rushDone?'Rushs OK':'En attente'}</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Formation photo (localStorage) ───────────────────────────────────────────
+const FORM_MODULES=[
+  {id:'video',ti:'Captation vidéo sportive',desc:'Angles, tracking, cadrage sportif'},
+  {id:'photo',ti:'Photographie terrain & action',desc:'Mise au point, déclenchement, lumière'},
+  {id:'montage',ti:'Montage et post-production',desc:'DaVinci, Premiere, export livraison'},
+  {id:'drone',ti:'Drone — certification A1/A3',desc:'Réglementation, pilotage, cadrage aérien'},
+  {id:'motion',ti:'Identité visuelle & motion',desc:'Motion design, templates, charte graphique'},
+];
+function loadForm(){
+  const el=document.getElementById('form-real');
+  if(!el)return;
+  const uid=localStorage.getItem('sv_uid')||'x';
+  el.innerHTML=FORM_MODULES.map(m=>{
+    const k='sv_form_'+uid+'_'+m.id;
+    const prog=parseInt(localStorage.getItem(k)||'0');
+    const clr=prog===100?'var(--ok)':prog>=50?'var(--acc)':prog>0?'var(--wa)':'var(--t3)';
+    const lbl=prog===100?'Terminé':prog>0?'En cours':'À débuter';
+    return`<div class="cd" style="margin-bottom:0"><div style="padding:16px 18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">${m.ti}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${m.desc}</div>
+        </div>
+        <span style="font-size:11px;font-weight:600;color:${clr}">${lbl}</span>
+      </div>
+      <div class="pg" style="cursor:pointer" onclick="setFormProg('${m.id}',${Math.min(prog+25,100)})">
+        <div class="pg-f" style="width:${prog}%;background:${clr};transition:width .4s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">
+        <div style="font-size:10.5px;color:var(--t3)">${prog}% complété — cliquer la barre pour avancer</div>
+        ${prog>0?`<button onclick="setFormProg('${m.id}',0)" style="background:transparent;border:none;font-size:10px;color:var(--t3);cursor:pointer">Réinitialiser</button>`:''}
+      </div>
+    </div></div>`;
+  }).join('');
+}
+function setFormProg(id,val){
+  const uid=localStorage.getItem('sv_uid')||'x';
+  localStorage.setItem('sv_form_'+uid+'_'+id,String(val));
+  loadForm();
+}
+
+// ── CM — Calendrier éditorial ─────────────────────────────────────────────────
+let _calWeekOffset=0;
+let _contenuCache=[];
+
+function calPrev(){_calWeekOffset--;loadCmCal();}
+function calNext(){_calWeekOffset++;loadCmCal();}
+
+function getWeekDates(offset){
+  const now=new Date();
+  const dow=now.getDay();
+  const monday=new Date(now);
+  monday.setDate(now.getDate()-(dow===0?6:dow-1)+offset*7);
+  return Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d;});
+}
+
+async function loadCmCal(){
+  const el=document.getElementById('cal-real');
+  const titleEl=document.getElementById('cal-title');
+  if(!el)return;
+  const days=getWeekDates(_calWeekOffset);
+  const start=days[0].toISOString().slice(0,10);
+  const end=days[6].toISOString().slice(0,10);
+  const mStart=new Date().toISOString().slice(0,7)+'-01';
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  if(titleEl){const ds=days[0].toLocaleDateString('fr-FR',{day:'numeric',month:'short'});const de=days[6].toLocaleDateString('fr-FR',{day:'numeric',month:'short'});titleEl.textContent='Semaine du '+ds+' au '+de;}
+  try{
+    const [pre,contenus,pubMois]=await Promise.all([
+      sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&date_prestation=gte.'+start+'&date_prestation=lte.'+end+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc'),
+      sbFetch('notifications?select=id,titre,message,lue&type=eq.contenu&order=created_at.desc&limit=200'),
+      sbFetch('notifications?select=id&type=eq.contenu&lue=eq.true&created_at=gte.'+mStart+'T00:00:00'),
+    ]);
+    _contenuCache=contenus||[];
+    const preWeek=(pre||[]).length;
+    const prog=(_contenuCache||[]).filter(c=>!c.lue&&(()=>{try{return JSON.parse(c.message).date>=start&&JSON.parse(c.message).date<=end;}catch(e){return false;}})()).length;
+    set('cal-kpi-pre',preWeek);set('cal-kpi-prog',prog);set('cal-kpi-pub',(pubMois||[]).length);
+    const JOURS=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+    const today=new Date().toISOString().slice(0,10);
+    el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+      ${days.map((d,i)=>{
+        const ds=d.toISOString().slice(0,10);
+        const isToday=ds===today;
+        const dayPre=(pre||[]).filter(p=>p.date_prestation===ds);
+        const dayCont=_contenuCache.filter(c=>{try{return JSON.parse(c.message).date===ds;}catch(e){return false;}});
+        return`<div style="background:${isToday?'rgba(54,107,255,.08)':'var(--s1)'};border:1px solid ${isToday?'rgba(54,107,255,.3)':'var(--bd)'};border-radius:10px;padding:10px;min-height:120px">
+          <div style="font-size:11px;font-weight:700;color:${isToday?'var(--ac)':'var(--t2)'};margin-bottom:8px">${JOURS[i]} ${d.getDate()}</div>
+          ${dayPre.map(p=>`<div style="background:rgba(54,107,255,.15);border-left:2px solid var(--ac);padding:4px 6px;border-radius:4px;margin-bottom:4px;font-size:10px;color:var(--ac);cursor:pointer" onclick="modalDetailById('${p.id}')" title="${p.clients?.nom||''}">${(p.clients?.nom||'').slice(0,14)||p.reference}</div>`).join('')}
+          ${dayCont.map((c,ci)=>{let info={};try{info=JSON.parse(c.message);}catch(e){}return`<div style="background:${c.lue?'rgba(46,204,138,.12)':'rgba(245,165,36,.1)'};border-left:2px solid ${c.lue?'var(--ok)':'var(--wa)'};padding:4px 6px;border-radius:4px;margin-bottom:4px;font-size:10px;color:${c.lue?'var(--ok)':'var(--wa)'};cursor:pointer" onclick="modalEditContenu('${c.id}')" title="${c.titre}">${c.titre.slice(0,14)} · ${info.plateforme||'?'}</div>`;}).join('')}
+          <button onclick="modalNouveauContenu(null,'${ds}')" style="width:100%;margin-top:4px;padding:3px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:5px;color:var(--t3);font-size:10px;cursor:pointer">+</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+}
+
+// ── CM — Contenus ─────────────────────────────────────────────────────────────
+async function loadCmContenus(){
+  const el=document.getElementById('contenus-real');
+  if(!el)return;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  try{
+    const data=await sbFetch('notifications?select=id,titre,message,lue,created_at&type=eq.contenu&order=lue.asc,created_at.desc&limit=100');
+    _contenuCache=data||[];
+    const draft=_contenuCache.filter(c=>{try{return JSON.parse(c.message).statut==='brouillon';}catch(e){return true;}}).length;
+    const prog=_contenuCache.filter(c=>{try{return JSON.parse(c.message).statut==='programmé';}catch(e){return false;}}).length;
+    const pub=_contenuCache.filter(c=>c.lue).length;
+    set('cnt-kpi-draft',draft);set('cnt-kpi-prog',prog);set('cnt-kpi-pub',pub);
+    if(!_contenuCache.length){
+      el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucun contenu. Créez le premier.</div></div>';return;
+    }
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Titre</th><th>Plateforme</th><th>Club</th><th>Type</th><th>Date prévue</th><th>Statut</th><th></th></tr></thead><tbody>'+
+      _contenuCache.map(c=>{
+        let info={};try{info=JSON.parse(c.message);}catch(e){}
+        const published=c.lue;
+        const st_cls=published?'ba':info.statut==='programmé'?'bw':'bn';
+        const st_lbl=published?'Publié':info.statut==='programmé'?'Programmé':'Brouillon';
+        return`<tr>
+          <td class="tp">${c.titre}</td>
+          <td>${info.plateforme||'—'}</td>
+          <td>${info.club||'—'}</td>
+          <td>${info.type||'—'}</td>
+          <td>${info.date?new Date(info.date).toLocaleDateString('fr-FR'):'—'}</td>
+          <td><span class="bd ${st_cls}"><span class="bd-d"></span>${st_lbl}</span></td>
+          <td style="display:flex;gap:4px">
+            ${!published?`<button class="btn bg2 bs" onclick="publierContenu('${c.id}')">Publier</button>`:''}
+            <button class="btn bg2 bs" onclick="modalEditContenu('${c.id}')">Modifier</button>
+          </td>
+        </tr>`;
+      }).join('')+'</tbody></table></div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+}
+
+function modalNouveauContenu(statutInit,dateInit){
+  const s=statutInit||'brouillon';
+  const d=dateInit||'';
+  openModal(`<div class="mh"><div class="mt">Nouveau contenu</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Titre</label><input type="text" id="ct-ti" class="fi" placeholder="Ex: Résumé match Brunoy FC" autofocus></div>
+      <div class="g2">
+        <div class="fg"><label class="fl">Plateforme</label>
+          <select id="ct-pl" class="fi"><option>Instagram</option><option>YouTube</option><option>Facebook</option><option>TikTok</option><option>Twitter/X</option></select></div>
+        <div class="fg"><label class="fl">Type</label>
+          <select id="ct-ty" class="fi"><option>Vidéo</option><option>Photo</option><option>Story</option><option>Reel</option><option>Article</option><option>Post</option></select></div>
+      </div>
+      <div class="g2">
+        <div class="fg"><label class="fl">Club / Client</label><input type="text" id="ct-cl" class="fi" placeholder="Ex: Brunoy FC"></div>
+        <div class="fg"><label class="fl">Date prévue</label><input type="date" id="ct-dt" class="fi" value="${d}"></div>
+      </div>
+      <div class="fg"><label class="fl">Statut</label>
+        <select id="ct-st" class="fi">
+          <option value="brouillon"${s==='brouillon'?' selected':''}>Brouillon</option>
+          <option value="programmé"${s==='programmé'?' selected':''}>Programmé</option>
+          <option value="publié"${s==='publié'?' selected':''}>Publié</option>
+        </select></div>
+      <div id="ct-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerContenu()">Créer</button></div>`);
+  setTimeout(()=>document.getElementById('ct-ti')?.focus(),50);
+}
+
+async function creerContenu(){
+  const ti=(document.getElementById('ct-ti')?.value||'').trim();
+  const pl=document.getElementById('ct-pl')?.value||'';
+  const ty=document.getElementById('ct-ty')?.value||'';
+  const cl=(document.getElementById('ct-cl')?.value||'').trim();
+  const dt=document.getElementById('ct-dt')?.value||'';
+  const st=document.getElementById('ct-st')?.value||'brouillon';
+  const err=document.getElementById('ct-err');
+  if(!ti){if(err)err.textContent='Donnez un titre au contenu.';return;}
+  const uid=localStorage.getItem('sv_uid');
+  const pub=st==='publié';
+  try{
+    await sbFetch('notifications',{method:'POST',body:{
+      type:'contenu',titre:ti,
+      message:JSON.stringify({plateforme:pl,type:ty,club:cl,date:dt,statut:st}),
+      lue:pub,destinataire_id:uid
+    }});
+    closeModal();
+    if(document.getElementById('contenus-real')) loadCmContenus();
+    else if(document.getElementById('cal-real')) loadCmCal();
+    else if(document.getElementById('pub-real')) loadCmPublications();
+  }catch(e){if(err)err.textContent='Erreur lors de la création.';}
+}
+
+async function modalEditContenu(id){
+  const c=_contenuCache.find(x=>x.id===id);
+  if(!c)return;
+  let info={};try{info=JSON.parse(c.message);}catch(e){}
+  const plats=['Instagram','YouTube','Facebook','TikTok','Twitter/X'];
+  const types=['Vidéo','Photo','Story','Reel','Article','Post'];
+  const stOpts=[['brouillon','Brouillon'],['programmé','Programmé'],['publié','Publié']];
+  openModal(`<div class="mh"><div class="mt">Modifier contenu</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Titre</label><input type="text" id="cte-ti" class="fi" value="${c.titre}"></div>
+      <div class="g2">
+        <div class="fg"><label class="fl">Plateforme</label><select id="cte-pl" class="fi">${plats.map(p=>`<option${p===info.plateforme?' selected':''}>${p}</option>`).join('')}</select></div>
+        <div class="fg"><label class="fl">Type</label><select id="cte-ty" class="fi">${types.map(t=>`<option${t===info.type?' selected':''}>${t}</option>`).join('')}</select></div>
+      </div>
+      <div class="g2">
+        <div class="fg"><label class="fl">Club</label><input type="text" id="cte-cl" class="fi" value="${info.club||''}"></div>
+        <div class="fg"><label class="fl">Date</label><input type="date" id="cte-dt" class="fi" value="${info.date||''}"></div>
+      </div>
+      <div class="fg"><label class="fl">Statut</label><select id="cte-st" class="fi">${stOpts.map(([v,l])=>`<option value="${v}"${info.statut===v?' selected':''}>${l}</option>`).join('')}</select></div>
+    </div>
+    <div class="mf">
+      <button class="btn bb" onclick="supprimerContenu('${id}')">Supprimer</button>
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="sauvegarderContenu('${id}')">Sauvegarder</button>
+    </div>`);
+}
+
+async function sauvegarderContenu(id){
+  const ti=(document.getElementById('cte-ti')?.value||'').trim();
+  const pl=document.getElementById('cte-pl')?.value||'';
+  const ty=document.getElementById('cte-ty')?.value||'';
+  const cl=(document.getElementById('cte-cl')?.value||'').trim();
+  const dt=document.getElementById('cte-dt')?.value||'';
+  const st=document.getElementById('cte-st')?.value||'brouillon';
+  try{
+    await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{titre:ti,message:JSON.stringify({plateforme:pl,type:ty,club:cl,date:dt,statut:st}),lue:st==='publié'}});
+    closeModal();
+    if(document.getElementById('contenus-real')) loadCmContenus();
+    else if(document.getElementById('cal-real')) loadCmCal();
+    else if(document.getElementById('pub-real')) loadCmPublications();
+  }catch(e){}
+}
+
+async function publierContenu(id){
+  try{
+    await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:true}});
+    const c=_contenuCache.find(x=>x.id===id);
+    if(c){let info={};try{info=JSON.parse(c.message);}catch(e){}info.statut='publié';await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{message:JSON.stringify(info)}});}
+    if(document.getElementById('contenus-real')) loadCmContenus();
+    else if(document.getElementById('pub-real')) loadCmPublications();
+  }catch(e){}
+}
+
+async function supprimerContenu(id){
+  if(!confirm('Supprimer ce contenu ?'))return;
+  try{
+    await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
+    closeModal();
+    if(document.getElementById('contenus-real')) loadCmContenus();
+    else if(document.getElementById('cal-real')) loadCmCal();
+    else if(document.getElementById('pub-real')) loadCmPublications();
+  }catch(e){}
+}
+
+// ── CM — Publications ─────────────────────────────────────────────────────────
+async function loadCmPublications(){
+  const el=document.getElementById('pub-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('notifications?select=id,titre,message,created_at&type=eq.contenu&lue=eq.true&order=created_at.desc&limit=50');
+    _contenuCache=(_contenuCache||[]);
+    if(!data||!data.length){
+      el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune publication enregistrée. Marquez vos contenus comme publiés depuis l\'onglet Contenus.</div></div>';return;
+    }
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Titre</th><th>Plateforme</th><th>Club</th><th>Type</th><th>Date</th><th></th></tr></thead><tbody>'+
+      data.map(c=>{
+        let info={};try{info=JSON.parse(c.message);}catch(e){}
+        return`<tr>
+          <td class="tp">${c.titre}</td>
+          <td>${info.plateforme||'—'}</td>
+          <td>${info.club||'—'}</td>
+          <td>${info.type||'—'}</td>
+          <td>${new Date(c.created_at).toLocaleDateString('fr-FR')}</td>
+          <td><button class="btn bg2 bs" onclick="modalEditContenu('${c.id}')">Détail</button></td>
+        </tr>`;
+      }).join('')+'</tbody></table></div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+}
+
+// ── CM — Analytics ────────────────────────────────────────────────────────────
+async function loadCmAnalytics(){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const mStart=new Date().toISOString().slice(0,7)+'-01';
+  try{
+    const [cli,preMois,pubTotal,byPlat]=await Promise.all([
+      sbFetch('clients?select=id&statut=eq.client'),
+      sbFetch('prestations?select=id&date_prestation=gte.'+mStart+'&statut=not.in.(annulée,refusée)'),
+      sbFetch('notifications?select=id,message&type=eq.contenu&lue=eq.true'),
+      sbFetch('notifications?select=message&type=eq.contenu&lue=eq.true&limit=200'),
+    ]);
+    set('an-pub',(pubTotal||[]).length);
+    // Social stats from localStorage (manual input)
+    const statsKey='sv_an_stats';
+    const stats=JSON.parse(localStorage.getItem(statsKey)||'{}');
+    set('an-ig-reach',stats.ig_reach?Number(stats.ig_reach).toLocaleString('fr-FR'):'—');
+    set('an-fb-reach',stats.fb_reach?Number(stats.fb_reach).toLocaleString('fr-FR'):'—');
+    set('an-yt-views',stats.yt_views?Number(stats.yt_views).toLocaleString('fr-FR'):'—');
+    // By platform breakdown
+    const platMap={};
+    (byPlat||[]).forEach(c=>{let info={};try{info=JSON.parse(c.message);}catch(e){}const pl=info.plateforme||'Autre';platMap[pl]=(platMap[pl]||0)+1;});
+    const elPlat=document.getElementById('an-by-plat');
+    if(elPlat){
+      if(!Object.keys(platMap).length){elPlat.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune publication enregistrée dans l\'OS.</div>';}
+      else{
+        const total=Object.values(platMap).reduce((s,n)=>s+n,0);
+        elPlat.innerHTML='<div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px">'+
+          Object.entries(platMap).sort((a,b)=>b[1]-a[1]).map(([pl,n])=>{
+            const pct=Math.round((n/total)*100);
+            const col={Instagram:'#E1306C',YouTube:'#FF0000',Facebook:'#1877F2',TikTok:'#010101',Twitter:'#1DA1F2'}[pl]||'var(--ac)';
+            return`<div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;color:var(--t1)">${pl}</span><span style="font-size:12px;color:var(--t2);font-variant-numeric:tabular-nums">${n} pub. · ${pct}%</span></div>
+              <div class="pg"><div class="pg-f" style="width:${pct}%;background:${col}"></div></div></div>`;
+          }).join('')+'</div>';
+      }
+    }
+    // Prestations ce mois
+    const elPre=document.getElementById('an-pre-mois');
+    if(elPre){
+      const data=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&date_prestation=gte.'+mStart+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=20');
+      if(!data||!data.length){elPre.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation ce mois.</div>';}
+      else{elPre.innerHTML=data.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bd)">
+        <div><div style="font-size:13px;color:var(--t1)">${p.clients?.nom||'—'}</div><div style="font-size:11px;color:var(--t3)">${new Date(p.date_prestation).toLocaleDateString('fr-FR')}</div></div>
+        <span style="font-size:10px;font-family:monospace;color:var(--t3)">${p.reference}</span>
+      </div>`).join('');}
+    }
+  }catch(e){}
+}
+
+function modalSaisirStats(){
+  const k='sv_an_stats';
+  const s=JSON.parse(localStorage.getItem(k)||'{}');
+  openModal(`<div class="mh"><div class="mt">Saisir statistiques sociales</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Ces stats sont stockées localement. Renseignez-les depuis vos dashboards Instagram, Facebook et YouTube.</div>
+      <div class="fg"><label class="fl">Instagram — Reach ce mois</label><input type="number" id="st-ig" class="fi" value="${s.ig_reach||''}" placeholder="Ex: 8200"></div>
+      <div class="fg"><label class="fl">Facebook — Portée ce mois</label><input type="number" id="st-fb" class="fi" value="${s.fb_reach||''}" placeholder="Ex: 2800"></div>
+      <div class="fg"><label class="fl">YouTube — Vues ce mois</label><input type="number" id="st-yt" class="fi" value="${s.yt_views||''}" placeholder="Ex: 1400"></div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="sauvegarderStats()">Sauvegarder</button></div>`);
+}
+
+function sauvegarderStats(){
+  const s={ig_reach:document.getElementById('st-ig')?.value,fb_reach:document.getElementById('st-fb')?.value,yt_views:document.getElementById('st-yt')?.value};
+  localStorage.setItem('sv_an_stats',JSON.stringify(s));
+  closeModal();loadCmAnalytics();
 }
 
 // ── Dashboard commercial ──────────────────────────────────────────────────────
