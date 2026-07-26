@@ -1004,6 +1004,14 @@ function closeModal(){
   document.getElementById('sv-modal').style.display='none';
   document.getElementById('sv-modal-ct').innerHTML='';
 }
+function toast(msg,type='error'){
+  const t=document.createElement('div');
+  const bg=type==='ok'?'rgba(46,204,138,.96)':type==='warn'?'rgba(245,165,36,.96)':'rgba(240,68,94,.96)';
+  t.style.cssText=`position:fixed;bottom:24px;right:24px;z-index:9999;padding:11px 18px;border-radius:8px;background:${bg};color:#fff;font-size:13px;font-weight:500;box-shadow:0 4px 24px rgba(0,0,0,.45);max-width:320px;transition:opacity .3s;pointer-events:none`;
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),320);},3200);
+}
 
 // ── FORMULAIRE NOUVELLE PRESTATION ───────
 function modalNouvellePrestation(){
@@ -1474,7 +1482,7 @@ async function supprimerPrestation(id){
     closeModal();
     loadPrestations();
     updateNavBadges(S.role);
-  }catch(e){alert('Erreur lors de la suppression.');}
+  }catch(e){toast('Erreur lors de la suppression.');}
 }
 
 let _clientsCache=[];
@@ -1568,7 +1576,7 @@ async function supprimerClient(id){
     await sbFetch('clients?id=eq.'+id,{method:'DELETE'});
     closeModal();
     loadClients();
-  }catch(e){alert('Erreur lors de la suppression.');}
+  }catch(e){toast('Erreur lors de la suppression.');}
 }
 
 async function loadAdminDash(){
@@ -1886,14 +1894,15 @@ async function loadDocs(){
   if(!el)return;
   try{
     const [devisData,preData]=await Promise.all([
-      sbFetch('devis?select=numero,statut,notes,date_envoi,clients(nom)&order=created_at.desc&limit=50'),
+      sbFetch('devis?select=id,numero,statut,total_ttc,notes,date_envoi,date_expiration,clients(id,nom)&order=created_at.desc&limit=50'),
       sbFetch('prestations?select=reference,statut,statut_financier,contrat_signe,date_prestation,clients(nom)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=50'),
     ]);
+    _devisCache=devisData||[];
     const rows=[];
-    (devisData||[]).forEach(d=>{
+    _devisCache.forEach((d,i)=>{
       const s_cls={brouillon:'bn',envoyé:'bw',en_attente:'bw',accepté:'ba',refusé:'bb',expiré:'bb'};
       const s_lbl={brouillon:'Brouillon',envoyé:'Envoyé',en_attente:'En attente',accepté:'Accepté',refusé:'Refusé',expiré:'Expiré'};
-      rows.push({ref:d.numero,client:d.clients?.nom||'—',type:'Devis',st_cls:s_cls[d.statut]||'bw',st_lbl:s_lbl[d.statut]||d.statut,date:d.date_envoi?new Date(d.date_envoi).toLocaleDateString('fr-FR'):'—',onclick:`modalModifierDevis(${_devisCache?.findIndex?.(dv=>dv.numero===d.numero)??-1})`});
+      rows.push({ref:d.numero,client:d.clients?.nom||'—',type:'Devis',st_cls:s_cls[d.statut]||'bw',st_lbl:s_lbl[d.statut]||d.statut,date:d.date_envoi?new Date(d.date_envoi).toLocaleDateString('fr-FR'):'—',onclick:`modalModifierDevis(${i})`});
     });
     (preData||[]).forEach(p=>{
       const sf_cls={'facturée':'bw','partiellement_payée':'bl','payée':'ba','en_retard':'bb'};
@@ -2115,7 +2124,7 @@ async function retirerMembreEquipe(equipeId,prestationId,ref){
   try{
     await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'DELETE'});
     await chargerEquipe(prestationId,ref);
-  }catch(e){alert('Erreur lors du retrait.');}
+  }catch(e){toast('Erreur lors du retrait.');}
 }
 
 // ── MODIFIER COLLABORATEUR ────────────────
@@ -2211,7 +2220,7 @@ async function supprimerKit(id){
     await sbFetch('kits?id=eq.'+id,{method:'DELETE'});
     loadKits();
     updateNavBadges(S.role);
-  }catch(e){alert('Erreur lors de la suppression.');}
+  }catch(e){toast('Erreur lors de la suppression.');}
 }
 
 // ── Devis ────────────────────────────────────────────────────────────────────
@@ -2325,7 +2334,7 @@ async function sauvegarderDevis(id){
 async function supprimerDevis(id){
   if(!confirm('Supprimer ce devis ?'))return;
   try{await sbFetch('devis?id=eq.'+id,{method:'DELETE'});closeModal();loadDevis();}
-  catch(e){alert('Erreur lors de la suppression.');}
+  catch(e){toast('Erreur lors de la suppression.');}
 }
 
 // ── Objectifs commerciaux ────────────────────────────────────────────────────
@@ -2537,7 +2546,7 @@ async function exportCSV(type){
       (data||[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.heure_debut||'',p.heure_fin||'',p.lieu||'',p.montant_ht||'',p.montant_ttc||'',p.statut||'',p.statut_financier||'',p.notes_internes||'']));
       downloadCSV(rows,'SportVision-Prestations-'+new Date().toISOString().slice(0,10)+'.csv');
     }
-  }catch(e){alert('Erreur lors de l\'export : '+e.message);}
+  }catch(e){toast('Erreur export : '+(e.message||'inconnue'));}
 }
 
 // ── Incidents production ─────────────────────────────────────────────────────
@@ -2582,7 +2591,7 @@ async function cloreIncident(id){
     await sbFetch('incidents?id=eq.'+id,{method:'PATCH',body:{cloture:true,cloture_at:new Date().toISOString(),cloture_par:S.uid}});
     loadIncidents();
     updateNavBadges(S.role);
-  }catch(e){alert('Erreur.');}
+  }catch(e){toast('Erreur.');}
 }
 
 function modalSignalerIncident(){
@@ -2654,6 +2663,7 @@ async function loadPipeline(){
   try{
     const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone&order=created_at.desc&limit=200');
     const list=data||[];
+    _clientsCache=list;
     const s1=document.getElementById('pip-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
     const s2=document.getElementById('pip-kpi-q');if(s2)s2.textContent=list.filter(c=>c.statut==='qualifié').length;
     const s3=document.getElementById('pip-kpi-cl');if(s3)s3.textContent=list.filter(c=>c.statut==='client').length;
@@ -2665,11 +2675,12 @@ async function loadPipeline(){
       const cards=list.filter(c=>col.st.includes(c.statut));
       return `<div class="pip-col">
         <div class="pip-h" style="border-top:2px solid ${col.clr}"><span class="pip-ht">${col.lb}</span><span class="kb-cnt">${cards.length}</span></div>
-        <div class="pip-b">${cards.length?cards.map(c=>`<div class="pip-card" style="cursor:pointer" onclick="alert('${c.nom.replace(/'/g,'\\\'')}'+'\\n'+'${(c.sport||'').replace(/'/g,'\\\'')} · ${(c.ville||'').replace(/'/g,'\\\'')}')">
+        <div class="pip-b">${cards.length?cards.map(c=>{const i=list.indexOf(c);return`<div class="pip-card" style="cursor:pointer" onclick="modalModifierClient(${i})">
           <div class="pip-cn">${c.nom}</div>
           <div class="pip-det">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div>
           ${c.email?`<div style="font-size:10px;color:var(--t3);margin-top:3px">${c.email}</div>`:''}
-        </div>`).join(''):'<div style="padding:12px;text-align:center;color:var(--t3);font-size:11px;opacity:.5">—</div>'}</div>
+          ${c.telephone?`<div style="font-size:10px;color:var(--t3)">${c.telephone}</div>`:''}
+        </div>`;}).join(''):'<div style="padding:12px;text-align:center;color:var(--t3);font-size:11px;opacity:.5">—</div>'}</div>
       </div>`;
     }).join('')+'</div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
@@ -3370,7 +3381,7 @@ async function modalDetailById(id){
     if(!data||!data[0])return;
     _prestationsCache=[data[0]];
     modalDetailPrestation(0);
-  }catch(e){alert('Erreur de chargement.');}
+  }catch(e){toast('Erreur de chargement.');}
 }
 
 // ── Planning secrétaire ──────────────────────────────────────────────────────
@@ -3448,10 +3459,10 @@ async function loadFinances(){
     const s2=document.getElementById('fin-ca-total');if(s2)s2.innerHTML=fmt(total);
     const s3=document.getElementById('fin-en-attente');if(s3)s3.innerHTML=fmt(att);
     if(list.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">💶</div><div>Aucune prestation avec montant renseigné.</div></div>';return;}
-    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut financier</th></tr></thead><tbody>'+
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut financier</th><th></th></tr></thead><tbody>'+
       list.map(p=>{
         const sf=p.statut_financier||'non_facturée';
-        const sc={'payée':'ba','partiellement_payée':'bw','facturée':'bw','non_facturée':'bb','en_préparation':'bl'}[sf]||'bw';
+        const sc={'payée':'ba','partiellement_payée':'bw','facturée':'bw','non_facturée':'bb','en_préparation':'bl','en_retard':'bb'}[sf]||'bw';
         const sl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','non_facturée':'Non facturée','en_préparation':'En préparation','en_retard':'En retard','annulée':'Annulée'}[sf]||sf;
         return `<tr>
           <td class="tm">${p.reference||'—'}</td>
@@ -3460,6 +3471,7 @@ async function loadFinances(){
           <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
           <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
           <td><span class="bd ${sc}"><span class="bd-d"></span>${sl}</span></td>
+          <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
         </tr>`;
       }).join('')+
     '</tbody></table></div>';

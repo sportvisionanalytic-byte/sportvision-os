@@ -322,6 +322,14 @@ create policy "notifs_acces" on notifications for all using (
   or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
 
+-- Les messages d'équipe (type='message') sont visibles par tout utilisateur authentifié
+-- Cette policy permissive s'additionne à notifs_acces (OR logique)
+create policy "notifs_messages_broadcast" on notifications
+  for select using (
+    type = 'message'
+    and exists (select 1 from profiles where id = auth.uid())
+  );
+
 create policy "historique_acces" on historique for select using (
   exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod'))
 );
