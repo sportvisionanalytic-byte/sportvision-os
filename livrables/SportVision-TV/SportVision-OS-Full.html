@@ -370,6 +370,8 @@ const NAV={
     {id:'col',lb:'Collaborateurs',ic:'col'},
     {id:'kits',lb:'Kits',ic:'kits'},
     {id:'fin',lb:'Finances',ic:'fin'},
+    {id:'incidents',lb:'Incidents',ic:'alert'},
+    {id:'pipeline',lb:'Pipeline',ic:'pipe'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   sec:[
@@ -444,11 +446,11 @@ const VIEWS={
       <div style="font-size:13px;color:var(--t3);margin-top:2px" id="dash-subtitle">Voici ce qui mérite votre attention aujourd'hui.</div>
     </div>
     <div class="kpi-g" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations du jour</div><div class="kpi-v" id="kpi-jour">—</div><span class="kpi-d dnt" id="kpi-jour-s">aujourd'hui</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA du mois</div><div class="kpi-v" id="kpi-ca-m" style="font-size:18px">—</div><span class="kpi-d dnt">facturé</span></div>
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">À encaisser</div><div class="kpi-v" id="kpi-enc" style="font-size:18px">—</div><span class="kpi-d dnt" id="kpi-enc-s">factures</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="kpi-cli-v">—</div><span class="kpi-d dnt">partenaires</span></div>
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="kpi-inc-v">—</div><span class="kpi-d dnt">à traiter</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Prestations du jour</div><div class="kpi-v" id="kpi-jour">—</div><span class="kpi-d dnt" id="kpi-jour-s">aujourd'hui</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('fin')"><div class="kpi-ey">CA du mois</div><div class="kpi-v" id="kpi-ca-m" style="font-size:18px">—</div><span class="kpi-d dnt">facturé</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('fin')"><div class="kpi-ey">À encaisser</div><div class="kpi-v" id="kpi-enc" style="font-size:18px">—</div><span class="kpi-d dnt" id="kpi-enc-s">factures</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('crm')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="kpi-cli-v">—</div><span class="kpi-d dnt">partenaires</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('incidents')"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="kpi-inc-v">—</div><span class="kpi-d dnt">à traiter</span></div>
     </div>
     <div class="g32">
       <div style="display:flex;flex-direction:column;gap:13px">
@@ -561,6 +563,16 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Pipeline</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Prospect</button></div>
     <div id="pipeline-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  'admin.pipeline':()=>`
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="pip-kpi-pr">—</div><span class="kpi-d dnt">à qualifier</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="pip-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="pip-kpi-cl">—</div><span class="kpi-d dnt">signés</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Total pipeline</div><div class="kpi-v" id="pip-kpi-tot">—</div><span class="kpi-d dnt">contacts</span></div>
+    </div>
+    <div class="sh"><div class="sh-t">Pipeline commercial</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Prospect</button></div>
+    <div id="pipeline-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   // ── ADMIN ──────────────────────────────
   'admin.pre':()=>`
     <div class="sh"><div class="sh-t">Prestations</div><button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle prestation</button></div>
@@ -670,6 +682,10 @@ const VIEWS={
     <div id="equipes-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'prod.incidents':()=>`
+    <div class="sh"><div class="sh-t">Incidents</div><button class="btn bp bs" onclick="modalSignalerIncident()">+ Signaler</button></div>
+    <div id="incidents-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'admin.incidents':()=>`
     <div class="sh"><div class="sh-t">Incidents</div><button class="btn bp bs" onclick="modalSignalerIncident()">+ Signaler</button></div>
     <div id="incidents-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1329,7 +1345,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='fin') await loadFinances();
   if(role==='compta'&&view==='factures') await loadComptaFactures();
   if(role==='compta'&&view==='dash') await loadComptaDash();
-  if(role==='prod'&&view==='incidents') await loadIncidents();
+  if((role==='prod'||role==='admin')&&view==='incidents') await loadIncidents();
   if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
   if(role==='com'&&view==='dash') await loadComDash();
   if(role==='photo'&&view==='revenus') await loadPhotoRevenus();
