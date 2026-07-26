@@ -1050,6 +1050,12 @@ function closeModal(){
   document.getElementById('sv-modal').style.display='none';
   document.getElementById('sv-modal-ct').innerHTML='';
 }
+function copier(txt){
+  if(!txt)return;
+  navigator.clipboard.writeText(txt).then(()=>toast('Copié : '+txt,'ok')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Copié.','ok');
+  });
+}
 let _pendingConfirm=null;
 function confirmerAction(msg,onConfirm){
   _pendingConfirm=onConfirm;
@@ -1565,15 +1571,18 @@ async function loadClients(){
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun client. Créez le premier prospect.</div></div>';return;}
     _clientsCache=data;
     const sc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
-    el.innerHTML='<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Email / Tél.</th><th>Statut</th><th></th></tr></thead><tbody>'+
       data.map((c,i)=>{
-        const ct=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||c.email||c.telephone||'—';
+        const ct=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'—';
+        const emailBtn=c.email?`<span onclick="copier('${c.email.replace(/'/g,"\\'")}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${c.email}</span>`:'—';
+        const telBtn=c.telephone?`<span onclick="copier('${c.telephone.replace(/'/g,"\\'")}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${c.telephone}</span>`:'';
         return`<tr>
-          <td class="tp">${c.nom}</td>
+          <td class="tp" style="cursor:pointer" onclick="modalModifierClient(${i})">${c.nom}</td>
           <td>${c.type_client||'—'}</td>
           <td>${c.sport||'—'}</td>
           <td>${c.ville||'—'}</td>
           <td>${ct}</td>
+          <td style="font-size:12px">${emailBtn}${telBtn}</td>
           <td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${c.statut}</span></td>
           <td><button onclick="modalModifierClient(${i})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button></td>
         </tr>`;}).join('')+
@@ -3790,6 +3799,9 @@ function goApp(role){
         const ini=((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase();
         if(name)document.getElementById('u-nm').textContent=name;
         if(ini){document.getElementById('u-av').textContent=ini;}
+        if(p.prenom)localStorage.setItem('sv_prenom',p.prenom);
+        const bj=document.getElementById('dash-bonjour');
+        if(bj&&p.prenom)bj.textContent='Bonjour '+p.prenom;
       }
     }).catch(()=>{});
   }
