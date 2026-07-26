@@ -764,7 +764,10 @@ const VIEWS={
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
       <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Mes prestations</div><div class="kpi-v" id="photo-kpi-pre">—</div><span class="kpi-d dnt">assignées</span></div>
       <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">À venir</div><div class="kpi-v" id="photo-kpi-next">—</div><span class="kpi-d dnt">prochaines</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Terminées</div><div class="kpi-v" id="photo-kpi-done">—</div><span class="kpi-d dnt">ce mois</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Invitations</div><div class="kpi-v" id="photo-kpi-inv">—</div><span class="kpi-d dnt">en attente</span></div>
+    </div>
+    <div class="cd" id="photo-invitations-card" style="margin-bottom:13px;display:none;border-left:3px solid var(--wa)"><div class="cd-h"><div class="cd-t" style="color:var(--wa)">Invitations en attente</div></div>
+      <div id="photo-invitations"></div>
     </div>
     <div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">Prochaine prestation</div></div>
       <div id="photo-next"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
@@ -2022,9 +2025,12 @@ async function loadEquipes(){
           const t=m.collaborateur||{};
           const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||'?';
           const name=[t.prenom,t.nom].filter(Boolean).join(' ')||'—';
-          return`<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--s2);border-radius:var(--rb)">
+          const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'bb','remplacée':'bn','annulée':'bn'};
+          const iLb={'invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
+          return`<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--s2);border-radius:var(--rb);position:relative">
             <div class="av" style="background:${rc[t.role]||'#366BFF'};width:32px;height:32px;font-size:12px">${ini}</div>
             <div><div style="font-size:12.5px;font-weight:600;color:var(--t1)">${name}</div><div style="font-size:11px;color:var(--t3)">${m.fonction||t.role||'—'}</div></div>
+            <span class="bd ${iSt[m.statut]||'bw'}" style="font-size:9.5px;margin-left:4px"><span class="bd-d"></span>${iLb[m.statut]||m.statut}</span>
           </div>`;
         }).join(''):'<span style="font-size:12px;color:var(--t3);padding:4px">Aucun collaborateur affecté</span>'}
       </div></div>`;
@@ -2039,14 +2045,38 @@ async function loadPhotoDash(){
   const elNext=document.getElementById('photo-next');
   if(!uid)return;
   try{
-    const data=await sbFetch('prestations_equipe?select=prestation:prestations(id,reference,statut,type_prestation,date_prestation,lieu,clients(nom))&collaborateur_id=eq.'+uid+'&order=prestation.date_prestation.asc');
-    const prestations=(data||[]).map(d=>d.prestation).filter(Boolean);
+    const data=await sbFetch('prestations_equipe?select=id,statut,prestation:prestations(id,reference,statut,type_prestation,date_prestation,lieu,clients(nom))&collaborateur_id=eq.'+uid+'&order=prestation.date_prestation.asc');
+    const invitations=(data||[]).filter(d=>d.statut==='invitation_envoyée'&&d.prestation);
+    const acceptees=(data||[]).filter(d=>d.statut!=='invitation_envoyée'&&d.statut!=='refusée');
+    const prestations=acceptees.map(d=>d.prestation).filter(Boolean);
     const now=new Date();now.setHours(0,0,0,0);
     const futures=prestations.filter(p=>p.date_prestation&&new Date(p.date_prestation)>=now);
     const done=prestations.filter(p=>['livrée','clôturée'].includes(p.statut));
     set('photo-kpi-pre',prestations.length);
     set('photo-kpi-next',futures.length);
-    set('photo-kpi-done',done.length);
+    set('photo-kpi-inv',invitations.length);
+    // Invitations en attente
+    const elInvCard=document.getElementById('photo-invitations-card');
+    const elInv=document.getElementById('photo-invitations');
+    if(elInvCard&&elInv){
+      if(invitations.length){
+        elInvCard.style.display='';
+        elInv.innerHTML=invitations.map(row=>{
+          const p=row.prestation;
+          const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—';
+          return`<div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.04)">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
+              <div style="font-size:11px;color:var(--t3)">${p.reference||'—'} · ${d} · ${p.lieu||'Lieu TBD'}</div>
+            </div>
+            <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:5px 12px;font-size:11.5px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600">Accepter</button>
+            <button onclick="repondreInvitation('${row.id}','refusée')" style="padding:5px 12px;font-size:11.5px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Refuser</button>
+          </div>`;
+        }).join('');
+      } else {
+        elInvCard.style.display='none';
+      }
+    }
     // Next prestation
     if(elNext){
       const next=futures[0];
@@ -2080,6 +2110,15 @@ async function loadPhotoDash(){
     if(elPre)elPre.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';
     if(elNext)elNext.innerHTML='';
   }
+}
+
+async function repondreInvitation(equipeId,statut){
+  try{
+    await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body:{statut,date_reponse:new Date().toISOString()}});
+    toast(statut==='acceptée'?'Mission acceptée !':'Mission refusée.', statut==='acceptée'?'ok':'warn');
+    loadPhotoDash();
+    updateNavBadges(S.role);
+  }catch(e){toast('Erreur lors de la réponse.');}
 }
 
 // ── PARAMÈTRES / PROFIL ──────────────────
@@ -3976,6 +4015,10 @@ async function updateNavBadges(role){
     if(role==='compta'){
       const retard=await sbFetch('prestations?select=id&statut_financier=eq.en_retard');
       setBadge('rapprochement',(retard||[]).length,'nb-r');
+    }
+    if(role==='photo'){
+      const inv=await sbFetch('prestations_equipe?select=id&collaborateur_id=eq.'+uid+'&statut=eq.invitation_envoyée');
+      setBadge('dash',(inv||[]).length,'nb-r');
     }
   }catch(e){}
 }
