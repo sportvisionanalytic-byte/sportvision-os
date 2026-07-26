@@ -3118,6 +3118,7 @@ async function loadMedias(){
       const p=e.prestations||{};
       const dt=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—';
       const rushDone=['médias_complets','à_monter','montage_en_cours','prêt_validation','à_valider_client','prête_à_livrer','livrée','clôturée'].includes(p.statut);
+      const canTransfer=['production_terminée','médias_à_transférer'].includes(p.statut);
       return`<div class="cd" style="margin-bottom:10px;padding:16px 18px">
         <div style="display:flex;align-items:center;gap:14px">
           <div style="flex:1">
@@ -3127,6 +3128,7 @@ async function loadMedias(){
             </div>
             <div style="font-size:14px;font-weight:600;color:var(--t1)">${p.clients?.nom||'—'}</div>
             <div style="font-size:12px;color:var(--t3);margin-top:3px">${dt} · ${e.fonction||'Photographe'}</div>
+            ${canTransfer?`<button onclick="avanJourJ('${p.id}','médias_complets')" style="margin-top:8px;padding:6px 14px;font-size:11.5px;font-weight:700;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer">📤 Médias envoyés</button>`:''}
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
             <div style="width:40px;height:40px;border-radius:10px;border:1.5px solid ${rushDone?'var(--ok)':'var(--b2)'};background:${rushDone?'rgba(46,204,138,.12)':'transparent'};display:flex;align-items:center;justify-content:center">
@@ -3699,7 +3701,7 @@ async function avanJourJ(id,newStatut){
   try{
     await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:newStatut}});
     toast(SL[newStatut]||newStatut,'ok');
-    loadJourJ();
+    loadViewData(S.role,S.view);
     updateNavBadges(S.role);
   }catch(e){toast('Erreur de mise à jour du statut.');}
 }
