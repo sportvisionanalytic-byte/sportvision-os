@@ -307,8 +307,8 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
     <header class="tb">
       <h1 id="pt">Tableau de bord</h1>
       <div class="tb-act">
-        <div class="ib"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg></div>
-        <div class="ib"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.5 1.5a5 5 0 015 5v3l1 2h-12l1-2v-3a5 5 0 015-5z"/><path d="M6 12.5a1.5 1.5 0 003 0"/></svg><span class="ndot"></span></div>
+        <div class="ib" onclick="openSearch()" title="Recherche globale"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg></div>
+        <div class="ib" onclick="openNotifPanel()" title="Notifications"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.5 1.5a5 5 0 015 5v3l1 2h-12l1-2v-3a5 5 0 015-5z"/><path d="M6 12.5a1.5 1.5 0 003 0"/></svg><span class="ndot" style="display:none"></span></div>
         <button class="btn bp bs" id="cta-btn" onclick="ctaAction()">+ Nouvelle prestation</button>
         <div class="ib" onclick="doLogout()" title="Se déconnecter"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3l4 4-4 4M14 7H5M8 1H2a1 1 0 00-1 1v11a1 1 0 001 1h6"/></svg></div>
       </div>
@@ -3582,28 +3582,123 @@ async function updateNavBadges(role){
   function setBadge(id,n,cls){
     const el=document.getElementById('nb-'+id);
     if(!el)return;
-    if(n>0){el.textContent=n;el.className='nb '+(cls||'nb-o');el.style.display='';}
+    if(n>0){el.textContent=n>99?'99+':n;el.className='nb '+(cls||'nb-o');el.style.display='';}
     else el.style.display='none';
   }
+  // Update notification dot on bell
+  function setDot(n){const d=document.querySelector('.ndot');if(d){d.style.display=n>0?'':'none';}}
   try{
+    const uid=localStorage.getItem('sv_uid');
+    // All roles: notification bell dot
+    if(uid){
+      const notifs=await sbFetch('notifications?select=id&destinataire_id=eq.'+uid+'&lue=eq.false&type=not.in.(tache,contenu,message)');
+      setDot((notifs||[]).length);
+    }
     if(['admin','sec','prod'].includes(role)){
       const pre=await sbFetch('prestations?select=id,statut');
       const n=(pre||[]).filter(p=>!['clôturée','annulée','refusée','livrée'].includes(p.statut)).length;
       setBadge('pre',n,'nb-o');
-      if(role==='sec')setBadge('crm',(await sbFetch('clients?select=id')||[]).length,'nb-b');
+    }
+    if(role==='sec'){
+      setBadge('crm',(await sbFetch('clients?select=id')||[]).length,'nb-b');
+      const taches=await sbFetch('notifications?select=id&type=eq.tache&lue=eq.false&destinataire_id=eq.'+uid);
+      setBadge('taches',(taches||[]).length,'nb-r');
     }
     if(['admin','prod'].includes(role)){
       const kits=await sbFetch('kits?select=id,statut');
       setBadge('kits',(kits||[]).filter(k=>k.statut!=='disponible').length,'nb-r');
     }
-    if(role==='prod'){
+    if(['admin','prod'].includes(role)){
       const inc=await sbFetch('incidents?select=id&cloture=eq.false');
       setBadge('incidents',(inc||[]).length,'nb-r');
+      if(role==='admin')setBadge('pipeline',(await sbFetch('clients?select=id&statut=in.(prospect,qualifié)')||[]).length,'nb-o');
+    }
+    if(role==='cm'){
+      const prog=await sbFetch('notifications?select=id&type=eq.contenu&lue=eq.false');
+      setBadge('contenus',(prog||[]).length,'nb-o');
+    }
+    if(role==='com'){
+      const prospects=await sbFetch('clients?select=id&statut=in.(prospect,qualifié)');
+      setBadge('pipeline',(prospects||[]).length,'nb-o');
+      const devisAtt=await sbFetch('devis?select=id&statut=in.(envoyé,en_attente)');
+      setBadge('devis',(devisAtt||[]).length,'nb-o');
+    }
+    if(role==='compta'){
+      const retard=await sbFetch('prestations?select=id&statut_financier=eq.en_retard');
+      setBadge('rapprochement',(retard||[]).length,'nb-r');
     }
   }catch(e){}
 }
 
+// ── Recherche globale ─────────────────────────────────────────────────────────
+let _searchTimer=null;
+function openSearch(){
+  openModal(`<div class="mh"><div class="mt">Recherche</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" style="min-height:200px">
+      <input type="text" id="gsq" class="fi" placeholder="Client, prestation, référence…" autofocus oninput="debounceSearch(this.value)">
+      <div id="gs-res" style="margin-top:12px"></div>
+    </div>`);
+  setTimeout(()=>document.getElementById('gsq')?.focus(),80);
+}
+function debounceSearch(q){
+  if(_searchTimer)clearTimeout(_searchTimer);
+  if(q.trim().length<2){document.getElementById('gs-res').innerHTML='';return;}
+  _searchTimer=setTimeout(()=>runSearch(q.trim()),280);
+}
+async function runSearch(q){
+  const el=document.getElementById('gs-res');
+  if(!el)return;
+  el.innerHTML='<div style="color:var(--t3);font-size:12px;padding:8px">Recherche…</div>';
+  try{
+    const qEnc=encodeURIComponent(q);
+    const [pre,cli]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,date_prestation,clients(nom)&or=(reference.ilike.*'+qEnc+'*,lieu.ilike.*'+qEnc+'*)&limit=8'),
+      sbFetch('clients?select=id,nom,statut,ville,sport&or=(nom.ilike.*'+qEnc+'*,ville.ilike.*'+qEnc+'*,email.ilike.*'+qEnc+'*)&limit=8'),
+    ]);
+    const rows=[];
+    (pre||[]).forEach(p=>rows.push({icon:'📋',title:p.reference||'—',sub:(p.clients?.nom||'')+(p.date_prestation?' · '+new Date(p.date_prestation).toLocaleDateString('fr-FR'):''),action:`closeModal();modalDetailById('${p.id}')`}));
+    (cli||[]).forEach(c=>rows.push({icon:'👥',title:c.nom||'—',sub:[c.ville,c.sport].filter(Boolean).join(' · ')||c.statut,action:`closeModal();switchView('crm')`}));
+    if(!rows.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px">Aucun résultat pour "'+q+'".</div>';return;}
+    el.innerHTML=rows.map(r=>`<div onclick="${r.action}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;background:transparent;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='transparent'">
+      <span style="font-size:18px">${r.icon}</span>
+      <div><div style="font-size:13px;font-weight:500;color:var(--t1)">${r.title}</div><div style="font-size:11px;color:var(--t3)">${r.sub}</div></div>
+    </div>`).join('');
+  }catch(e){el.innerHTML='<div style="color:var(--er);font-size:12px;padding:8px">Erreur de recherche.</div>';}
+}
+
+// ── Panneau notifications ─────────────────────────────────────────────────────
+async function openNotifPanel(){
+  const uid=localStorage.getItem('sv_uid');
+  openModal(`<div class="mh"><div class="mt">Notifications</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" id="notif-panel-body"><div style="text-align:center;padding:30px;color:var(--t3);font-size:13px">Chargement…</div></div>`);
+  try{
+    const data=await sbFetch('notifications?select=id,type,titre,message,lue,created_at&destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)&order=created_at.desc&limit=20');
+    const el=document.getElementById('notif-panel-body');
+    if(!el)return;
+    if(!data||!data.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--t3);font-size:13px">Aucune notification.</div>';return;}
+    const unread=data.filter(n=>!n.lue);
+    el.innerHTML=(unread.length?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bg2 bs" onclick="marquerToutLu('${uid}')">Tout marquer lu</button></div>`:'')
+      +data.map(n=>`<div style="display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd);${!n.lue?'background:rgba(54,107,255,.04)':''};cursor:pointer" onclick="marquerNotifLu('${n.id}')">
+        <div style="width:8px;height:8px;border-radius:50%;background:${!n.lue?'var(--ac)':'transparent'};flex-shrink:0;margin-top:4px"></div>
+        <div>
+          <div style="font-size:13px;color:var(--t1);font-weight:${!n.lue?'600':'400'}">${n.titre}</div>
+          ${n.message?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${n.message}</div>`:''}
+          <div style="font-size:10px;color:var(--t3);margin-top:3px">${new Date(n.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      </div>`).join('');
+    // Update dot
+    document.querySelector('.ndot').style.display=unread.length>0?'':'none';
+  }catch(e){}
+}
+async function marquerNotifLu(id){
+  try{await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:true}});openNotifPanel();}catch(e){}
+}
+async function marquerToutLu(uid){
+  try{await sbFetch('notifications?destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)',{method:'PATCH',body:{lue:true}});openNotifPanel();}catch(e){}
+}
+
 function switchView(id){
+  if(_msgInterval){clearInterval(_msgInterval);_msgInterval=null;}
   S.view=id;
   document.querySelectorAll('.ni[data-id]').forEach(n=>n.classList.toggle('on',n.dataset.id===id));
   const cfg=NAV[S.role].find(n=>n.id===id);
