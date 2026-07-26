@@ -278,6 +278,14 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
   <div class="erw" id="er-c"></div>
 </div>
 
+<!-- MODAL -->
+<div id="sv-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:28px;width:540px;max-height:85vh;overflow-y:auto;position:relative">
+    <button onclick="closeModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1">✕</button>
+    <div id="sv-modal-ct"></div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="s-app" class="scr">
   <aside class="sb" id="app-sb">
@@ -301,7 +309,7 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
       <div class="tb-act">
         <div class="ib"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg></div>
         <div class="ib"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.5 1.5a5 5 0 015 5v3l1 2h-12l1-2v-3a5 5 0 015-5z"/><path d="M6 12.5a1.5 1.5 0 003 0"/></svg><span class="ndot"></span></div>
-        <button class="btn bp bs" id="cta-btn">+ Nouvelle prestation</button>
+        <button class="btn bp bs" id="cta-btn" onclick="ctaAction()">+ Nouvelle prestation</button>
         <div class="ib" onclick="doLogout()" title="Se déconnecter"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3l4 4-4 4M14 7H5M8 1H2a1 1 0 00-1 1v11a1 1 0 001 1h6"/></svg></div>
       </div>
     </header>
@@ -622,20 +630,8 @@ const VIEWS={
 
   // ── ADMIN ──────────────────────────────
   'admin.pre':()=>`
-    <div class="g4" style="grid-template-columns:repeat(4,1fr)">
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">En cours</div><div class="kpi-v">2</div></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">À venir</div><div class="kpi-v">1</div></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Livrées ce mois</div><div class="kpi-v">2</div></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Total 2026</div><div class="kpi-v">5</div></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="position:relative"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t3)">${IC.task}</span><input id="s-q" class="l-inp" placeholder="Rechercher…" style="height:34px;padding:0 12px 0 32px;width:220px;font-size:12.5px" oninput="filterPre()"></div>
-      <select id="s-st" class="l-inp" style="height:34px;padding:0 28px 0 10px;appearance:none;font-size:12.5px;cursor:pointer;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 fill=%22none%22 stroke=%22%23555E73%22 stroke-width=%221.5%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M2 4l4 4 4-4%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 8px center;background-color:var(--s1)" onchange="filterPre()"><option value="">Tous statuts</option><option value="en cours">En cours</option><option value="à venir">À venir</option><option value="livré">Livré</option></select>
-      <button class="btn bp bs" style="margin-left:auto">+ Nouvelle prestation</button>
-    </div>
-    <div class="cd"><div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Titre</th><th>Type</th><th>Équipe</th><th>Statut</th><th>Date</th></tr></thead><tbody id="pre-tb">
-      ${PS.map(p=>`<tr data-st="${p.st}"><td class="tm">${p.r}</td><td class="tp">${p.cl}</td><td>${p.ti}</td><td>${p.ty}</td><td>${avStack(p.eq)}</td><td>${stBadge(p.st)}</td><td>${p.dt}</td></tr>`).join('')}
-    </tbody></table></div></div>`,
+    <div class="sh"><div class="sh-t">Prestations</div><button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle prestation</button></div>
+    <div id="pre-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'admin.col':()=>`
     <div class="sh"><div class="sh-t">Collaborateurs</div><button class="btn bp bs">+ Inviter</button></div>
@@ -705,18 +701,8 @@ const VIEWS={
 
   // ── SECRÉTAIRE ──────────────────────────
   'sec.crm':()=>`
-    <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs">+ Nouveau client</button></div>
-    <div class="cd"><div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Sport</th><th>Contact</th><th>Dernière presta</th><th>CA total</th><th>Statut</th></tr></thead><tbody>
-      ${[
-        {n:'Brunoy FC',v:'Brunoy (91)',s:'Football',c:'M. Lefevre',r:'SV-2026-0142',ca:'3 400 €',st:'ba',sl:'Actif'},
-        {n:'AS Milly',v:'Milly-la-Forêt (91)',s:'Football',c:'J. Dupont',r:'SV-2026-0141',ca:'1 600 €',st:'bw',sl:'À confirmer'},
-        {n:'FC Fontainebleau',v:'Fontainebleau (77)',s:'Football',c:'P. Martin',r:'SV-2026-0140',ca:'2 100 €',st:'ba',sl:'Actif'},
-        {n:'Club Nemours',v:'Nemours (77)',s:'Football',c:'A. Bernard',r:'SV-2026-0139',ca:'650 €',st:'bn',sl:'En pause'},
-        {n:'AS Évry',v:'Évry (91)',s:'Football',c:'R. Petit',r:'SV-2026-0138',ca:'1 200 €',st:'ba',sl:'Actif'},
-        {n:'US Courcouronnes',v:'Courcouronnes (91)',s:'Football',c:'T. Simon',r:'—',ca:'0 €',st:'bb',sl:'Prospect'},
-        {n:'Viry FC',v:'Viry-Châtillon (91)',s:'Football',c:'C. David',r:'SV-2026-0143',ca:'800 €',st:'ba',sl:'Actif'},
-      ].map(c=>`<tr><td class="tp">${c.n}</td><td>${c.v}</td><td>${c.s}</td><td>${c.c}</td><td class="tm">${c.r}</td><td class="tm" style="color:var(--t1)">${c.ca}</td><td><span class="bd ${c.st}"><span class="bd-d"></span>${c.sl}</span></td></tr>`).join('')}
-    </tbody></table></div></div>`,
+    <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
+    <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.planning':()=>`
     <div class="sh"><div class="sh-t">Planning — Juillet 2026</div><button class="btn bp bs">+ Prestation</button></div>
@@ -1234,6 +1220,237 @@ async function checkSession(){
   }catch(e){/* réseau HS, on reste sur login */}
 }
 
+// ── API HELPER ───────────────────────────
+async function sbFetch(path,opts={}){
+  const tok=localStorage.getItem('sv_tok')||'';
+  const res=await fetch(SB_URL+'/rest/v1/'+path,{
+    method:opts.method||'GET',
+    headers:{
+      'apikey':SB_KEY,
+      'Authorization':'Bearer '+tok,
+      'Content-Type':'application/json',
+      ...(opts.method==='POST'||opts.method==='PATCH'?{'Prefer':'return=representation'}:{}),
+      ...opts.headers
+    },
+    body:opts.body?JSON.stringify(opts.body):undefined
+  });
+  const txt=await res.text();
+  return txt?JSON.parse(txt):null;
+}
+
+// ── MODAL ────────────────────────────────
+function openModal(html){
+  document.getElementById('sv-modal-ct').innerHTML=html;
+  document.getElementById('sv-modal').style.display='flex';
+}
+function closeModal(){
+  document.getElementById('sv-modal').style.display='none';
+  document.getElementById('sv-modal-ct').innerHTML='';
+}
+
+// ── FORMULAIRE NOUVELLE PRESTATION ───────
+function modalNouvellePrestation(){
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouvelle prestation</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Client *</label>
+        <select id="f-client" class="l-inp" style="height:38px"><option value="">— Choisir ou créer —</option></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type *</label>
+          <select id="f-type" class="l-inp" style="height:38px">
+            <option value="match">Match</option>
+            <option value="tournoi">Tournoi</option>
+            <option value="entraînement">Entraînement</option>
+            <option value="portrait">Portrait / Interview</option>
+            <option value="événement">Événement</option>
+            <option value="réseaux_sociaux">Réseaux sociaux</option>
+            <option value="streaming">Streaming</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Date *</label>
+          <input id="f-date" type="date" class="l-inp" style="height:38px">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Heure début</label>
+          <input id="f-hdeb" type="time" class="l-inp" style="height:38px">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Heure fin</label>
+          <input id="f-hfin" type="time" class="l-inp" style="height:38px">
+        </div>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Lieu</label>
+        <input id="f-lieu" type="text" class="l-inp" placeholder="Stade, salle..." style="height:38px">
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Besoin client</label>
+        <textarea id="f-besoin" class="l-inp" placeholder="Photos match + highlights..." style="height:70px;padding-top:10px;resize:none"></textarea>
+      </div>
+      <div id="f-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="creerPrestation()">Créer la prestation</button>
+      </div>
+    </div>`);
+  // Charger les clients dans le select
+  sbFetch('clients?select=id,nom,statut&order=nom').then(cs=>{
+    const sel=document.getElementById('f-client');
+    if(sel&&cs)cs.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nom+(c.statut==='prospect'?' (prospect)':'');sel.appendChild(o);});
+  });
+}
+
+async function creerPrestation(){
+  const err=document.getElementById('f-err');
+  const clientId=document.getElementById('f-client').value;
+  const date=document.getElementById('f-date').value;
+  if(!date){err.textContent='La date est obligatoire.';return;}
+  err.textContent='Création...';
+  try{
+    const body={
+      client_id:clientId||null,
+      type_prestation:document.getElementById('f-type').value,
+      date_prestation:date,
+      heure_debut:document.getElementById('f-hdeb').value||null,
+      heure_fin:document.getElementById('f-hfin').value||null,
+      lieu:document.getElementById('f-lieu').value||null,
+      description_besoin:document.getElementById('f-besoin').value||null,
+      created_by:localStorage.getItem('sv_uid')
+    };
+    await sbFetch('prestations',{method:'POST',body});
+    closeModal();
+    switchView('pre');
+  }catch(e){err.textContent='Erreur lors de la création.';}
+}
+
+// ── FORMULAIRE NOUVEAU CLIENT ─────────────
+function modalNouveauClient(){
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouveau client / prospect</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom du club / client *</label>
+          <input id="fc-nom" type="text" class="l-inp" placeholder="Brunoy FC" style="height:38px">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type</label>
+          <select id="fc-type" class="l-inp" style="height:38px">
+            <option value="club">Club</option>
+            <option value="association">Association</option>
+            <option value="entreprise">Entreprise</option>
+            <option value="particulier">Particulier</option>
+            <option value="fédération">Fédération</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Prénom contact</label>
+          <input id="fc-prenom" type="text" class="l-inp" style="height:38px">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom contact</label>
+          <input id="fc-nomct" type="text" class="l-inp" style="height:38px">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Email</label>
+          <input id="fc-email" type="email" class="l-inp" style="height:38px">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Téléphone</label>
+          <input id="fc-tel" type="tel" class="l-inp" style="height:38px">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Sport</label>
+          <input id="fc-sport" type="text" class="l-inp" placeholder="Football" style="height:38px">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Ville</label>
+          <input id="fc-ville" type="text" class="l-inp" style="height:38px">
+        </div>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Origine du prospect</label>
+        <select id="fc-origine" class="l-inp" style="height:38px">
+          <option value="">—</option>
+          <option value="bouche_à_oreille">Bouche à oreille</option>
+          <option value="réseaux_sociaux">Réseaux sociaux</option>
+          <option value="prospection">Prospection directe</option>
+          <option value="site_web">Site web</option>
+          <option value="partenaire">Partenaire</option>
+        </select>
+      </div>
+      <div id="fc-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="creerClient()">Créer le client</button>
+      </div>
+    </div>`);
+}
+
+async function creerClient(){
+  const err=document.getElementById('fc-err');
+  const nom=document.getElementById('fc-nom').value.trim();
+  if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  err.textContent='Création...';
+  try{
+    await sbFetch('clients',{method:'POST',body:{
+      nom,
+      type_client:document.getElementById('fc-type').value,
+      prenom_contact:document.getElementById('fc-prenom').value||null,
+      nom_contact:document.getElementById('fc-nomct').value||null,
+      email:document.getElementById('fc-email').value||null,
+      telephone:document.getElementById('fc-tel').value||null,
+      sport:document.getElementById('fc-sport').value||null,
+      ville:document.getElementById('fc-ville').value||null,
+      origine_prospect:document.getElementById('fc-origine').value||null,
+      created_by:localStorage.getItem('sv_uid')
+    }});
+    closeModal();
+    switchView(S.view);
+  }catch(e){err.textContent='Erreur lors de la création.';}
+}
+
+// ── CHARGEMENT DONNÉES RÉELLES ────────────
+async function loadViewData(role,view){
+  if((role==='admin'||role==='sec'||role==='prod')&&view==='pre') await loadPrestations();
+  if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
+}
+
+async function loadPrestations(){
+  const el=document.getElementById('pre-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,clients(nom)&order=created_at.desc&limit=50');
+    if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div>Aucune prestation. Créez la première.</div></div>';return;}
+    const statusLabel={
+      'demande_reçue':'Demande reçue','confirmée':'Confirmée','planifiée':'Planifiée',
+      'prête':'Prête','production_démarrée':'En prod.','livrée':'Livrée','clôturée':'Clôturée',
+      'annulée':'Annulée','à_valider_production':'À valider prod.'
+    };
+    const statusClass={'confirmée':'ba','planifiée':'ba','prête':'ba','clôturée':'bn','annulée':'bb','production_démarrée':'bl'};
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Lieu</th><th>Statut</th></tr></thead><tbody>'+
+      data.map(p=>`<tr style="cursor:pointer">
+        <td class="tm">${p.reference||'—'}</td>
+        <td class="tp">${p.clients?.nom||'—'}</td>
+        <td>${p.type_prestation||'—'}</td>
+        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td>${p.lieu||'—'}</td>
+        <td><span class="bd ${statusClass[p.statut]||'bw'}"><span class="bd-d"></span>${statusLabel[p.statut]||p.statut}</span></td>
+      </tr>`).join('')+
+    '</tbody></table></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function loadClients(){
+  const el=document.getElementById('crm-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone&order=created_at.desc&limit=100');
+    if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun client. Créez le premier prospect.</div></div>';return;}
+    const sc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Statut</th></tr></thead><tbody>'+
+      data.map(c=>`<tr><td class="tp">${c.nom}</td><td>${c.type_client||'—'}</td><td>${c.sport||'—'}</td><td>${c.ville||'—'}</td><td>${c.email||c.telephone||'—'}</td><td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${c.statut}</span></td></tr>`).join('')+
+    '</tbody></table></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
 // ── STATE ────────────────────────────────
 let S={screen:'login',role:null,view:null,obStep:1,obRole:null};
 checkSession();
@@ -1334,9 +1551,16 @@ function renderContent(){
   const key=`${S.role}.${S.view}`;
   const ct=document.getElementById('app-ct');
   ct.innerHTML=(VIEWS[key]||(()=>fallbackView(S.role,S.view)))();
-  // Post-render hooks
   if(document.getElementById('mc'))finBars('mc',80);
   if(document.getElementById('fc'))finBars('fc',140);
+  loadViewData(S.role,S.view);
+}
+
+function ctaAction(){
+  const role=S.role;
+  if(role==='admin'||role==='prod'||role==='sec') modalNouvellePrestation();
+  else if(role==='com') modalNouveauClient();
+  else if(role==='cm') switchView('cal');
 }
 
 // ── ERRORS ───────────────────────────────
