@@ -867,27 +867,8 @@ const VIEWS={
     </div>`,
 
   'com.objectifs':()=>`
-    <div class="sh"><div class="sh-t">Objectifs & commissions</div></div>
-    <div class="g2" style="margin-bottom:13px">
-      ${[
-        {lb:'Contrats signés',val:1,obj:4,unit:'',prog:25},
-        {lb:'CA signé',val:'1 800',obj:'5 000',unit:'€',prog:36},
-        {lb:'Devis envoyés',val:3,obj:10,unit:'',prog:30},
-        {lb:'Nouveaux prospects',val:2,obj:8,unit:'',prog:25},
-      ].map(o=>`<div class="cd" style="margin-bottom:0"><div class="cd-b">
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:10px">${o.lb}</div>
-        <div style="font-size:24px;font-weight:700;color:var(--t1);margin-bottom:2px">${o.val} <span style="font-size:14px;color:var(--t2)">/ ${o.obj} ${o.unit}</span></div>
-        <div class="pg"><div class="pg-f" style="width:${o.prog}%"></div></div>
-        <div style="font-size:10.5px;color:var(--t3);margin-top:4px">${o.prog}% de l'objectif</div>
-      </div></div>`).join('')}
-    </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Commissions du mois</div></div><div class="cd-b">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07)">
-        <div><div style="font-size:13px;color:var(--t2)">Commission sur 1 800 € signés</div><div style="font-size:11px;color:var(--t3)">Taux : 8%</div></div>
-        <div style="font-size:22px;font-weight:700;color:var(--ok)">144 €</div>
-      </div>
-      <div style="font-size:12px;color:var(--t3);padding-top:12px">Versement prévu le 15 juillet 2026 avec la paie.</div>
-    </div></div>`,
+    <div class="sh"><div class="sh-t">Objectifs commerciaux</div></div>
+    <div id="obj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 };
 
 // ── HELPERS NON GLOBAUX ───────────────────
@@ -1093,7 +1074,10 @@ async function creerPrestation(){
     };
     await sbFetch('prestations',{method:'POST',body});
     closeModal();
-    switchView('pre');
+    if(document.getElementById('planning-real')) loadPlanning();
+    else if(document.getElementById('kanban-real')) loadKanban();
+    else { switchView('pre'); return; }
+    updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de la création.';}
 }
 
@@ -1320,6 +1304,7 @@ async function loadViewData(role,view){
   if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
   if(role==='com'&&view==='dash') await loadComDash();
   if(role==='photo'&&view==='revenus') await loadPhotoRevenus();
+  if(role==='com'&&view==='objectifs') await loadObjectifs();
   if(role==='cm'&&view==='dash') await loadCmDash();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(view==='set') await loadSettings();
@@ -1345,26 +1330,54 @@ const SC={'confirmée':'ba','planifiée':'ba','prête':'ba','prête_à_livrer':'
   'livrée':'bn','facturée':'bw','partiellement_payée':'bw'};
 
 let _prestationsCache=[];
+let _preFiltre='';
 async function loadPrestations(){
   const el=document.getElementById('pre-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,montant_ttc,clients(nom)&order=created_at.desc&limit=50');
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,lieu,montant_ttc,clients(nom)&order=date_prestation.desc&limit=200');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div>Aucune prestation. Créez la première.</div></div>';return;}
     _prestationsCache=data;
-    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Lieu</th><th>Montant</th><th>Statut</th><th></th></tr></thead><tbody>'+
-      data.map((p,i)=>`<tr>
+    renderPreTable();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function renderPreTable(){
+  const el=document.getElementById('pre-real');
+  if(!el)return;
+  const q=(_preFiltre||'').toLowerCase();
+  const list=q?_prestationsCache.filter(p=>
+    (p.reference||'').toLowerCase().includes(q)||
+    (p.clients?.nom||'').toLowerCase().includes(q)||
+    (SL[p.statut]||'').toLowerCase().includes(q)||
+    (p.type_prestation||'').toLowerCase().includes(q)
+  ):_prestationsCache;
+  const SF_CLS={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl','non_facturée':'bn'};
+  const SF_LBL={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard','non_facturée':'—','en_préparation':'En prép.'};
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px">
+      <input id="pre-search" type="text" class="l-inp" placeholder="Rechercher ref, client, statut…" value="${_preFiltre}" oninput="_preFiltre=this.value;renderPreTable()" style="height:34px;flex:1;max-width:320px">
+      <select class="l-inp" style="height:34px;max-width:180px" onchange="_preFiltre=this.value;document.getElementById('pre-search').value=this.value;renderPreTable()">
+        <option value="">Tous les statuts</option>
+        <optgroup label="En cours">${['confirmée','planifiée','équipe_affectée','prête'].map(s=>`<option value="${s}">${SL[s]}</option>`).join('')}</optgroup>
+        <optgroup label="Production">${['production_démarrée','production_terminée','montage_en_cours','prêt_validation'].map(s=>`<option value="${s}">${SL[s]}</option>`).join('')}</optgroup>
+        <optgroup label="Livraison">${['prête_à_livrer','livrée','facturée','payée'].map(s=>`<option value="${s}">${SL[s]}</option>`).join('')}</optgroup>
+        <optgroup label="Annulé">${['annulée','refusée','clôturée'].map(s=>`<option value="${s}">${SL[s]}</option>`).join('')}</optgroup>
+      </select>
+      <span style="font-size:11px;color:var(--t3);white-space:nowrap">${list.length} / ${_prestationsCache.length}</span>
+    </div>
+    ${list.length?'<div class="tw" style="overflow-x:auto"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant</th><th>Statut</th><th>Facturation</th><th></th></tr></thead><tbody>'+
+      list.map((p,i)=>{const ri=_prestationsCache.indexOf(p);return`<tr>
         <td class="tm">${p.reference||'—'}</td>
         <td class="tp">${p.clients?.nom||'—'}</td>
         <td>${p.type_prestation||'—'}</td>
         <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
-        <td>${p.lieu||'—'}</td>
         <td class="tm">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
-        <td><button onclick="modalDetailPrestation(${i})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer;white-space:nowrap">Ouvrir</button></td>
-      </tr>`).join('')+
-    '</tbody></table></div>';
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+        <td><span class="bd ${SF_CLS[p.statut_financier]||'bn'}" style="font-size:10px"><span class="bd-d"></span>${SF_LBL[p.statut_financier]||'—'}</span></td>
+        <td><button onclick="modalDetailPrestation(${ri})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer;white-space:nowrap">Ouvrir</button></td>
+      </tr>`}).join('')+
+    '</tbody></table></div>':'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat pour « '+q+' ».</div>'}`;
 }
 
 function modalDetailPrestation(idx){
@@ -1780,6 +1793,12 @@ async function modalEquipePrestation(prestationId,ref){
         <div><select id="eq-col" class="l-inp" style="height:36px"><option value="">— Choisir —</option></select></div>
         <div><input id="eq-fonc" type="text" class="l-inp" placeholder="Fonction (ex: photo)" style="height:36px"></div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Rémunération (€)</label>
+          <input id="eq-rem" type="number" class="l-inp" placeholder="0" style="height:36px"></div>
+        <div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Heure RDV</label>
+          <input id="eq-rdv" type="time" class="l-inp" style="height:36px"></div>
+      </div>
       <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="ajouterMembreEquipe('${prestationId}','${ref}')">+ Ajouter</button></div>
     </div>
     <div id="eq-err" style="font-size:12px;color:var(--er);margin-top:8px;min-height:14px"></div>
@@ -1815,9 +1834,13 @@ async function ajouterMembreEquipe(prestationId,ref){
   const fonc=document.getElementById('eq-fonc').value.trim();
   if(!colId){err.textContent='Sélectionne un collaborateur.';return;}
   try{
-    await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée'}});
+    const rem=document.getElementById('eq-rem').value;
+    const rdv=document.getElementById('eq-rdv').value;
+    await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
     document.getElementById('eq-col').value='';
     document.getElementById('eq-fonc').value='';
+    document.getElementById('eq-rem').value='';
+    document.getElementById('eq-rdv').value='';
     err.textContent='';
     await chargerEquipe(prestationId,ref);
   }catch(e){err.textContent='Erreur lors de l\'ajout.';}
@@ -1924,6 +1947,66 @@ async function supprimerKit(id){
     loadKits();
     updateNavBadges(S.role);
   }catch(e){alert('Erreur lors de la suppression.');}
+}
+
+// ── Objectifs commerciaux ────────────────────────────────────────────────────
+async function loadObjectifs(){
+  const el=document.getElementById('obj-real');
+  if(!el)return;
+  try{
+    const now=new Date();
+    const yr=now.getFullYear();
+    const m0=new Date(yr,now.getMonth(),1).toISOString().slice(0,10);
+    const m1=new Date(yr,now.getMonth()+1,0).toISOString().slice(0,10);
+    const [clients,preAll,preMois]=await Promise.all([
+      sbFetch('clients?select=id,statut&limit=500'),
+      sbFetch('prestations?select=id,statut,montant_ttc,created_at&statut=not.in.(annulée,refusée)&limit=500'),
+      sbFetch(`prestations?select=id,reference,statut,montant_ttc,date_prestation,clients(nom)&date_prestation=gte.${m0}&date_prestation=lte.${m1}&statut=not.in.(annulée,refusée)&order=date_prestation.asc`),
+    ]);
+    const cl=clients||[];const pa=preAll||[];const pm=preMois||[];
+    const nbClients=cl.filter(c=>c.statut==='client').length;
+    const nbProspects=cl.filter(c=>c.statut==='prospect'||c.statut==='qualifié').length;
+    const caMois=pm.filter(p=>['payée','facturée','partiellement_payée'].includes(p.statut)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const caTotal=pa.filter(p=>['payée','facturée','partiellement_payée'].includes(p.statut)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
+    const pct=(v,t)=>t?Math.min(100,Math.round(v/t*100)):0;
+    const obj_clients=5;const obj_ca=5000;const obj_pre=10;
+    const nbPreMois=pm.length;
+    const items=[
+      {lb:'Clubs partenaires',v:nbClients,obj:obj_clients,unit:'clubs',clr:'var(--acc)'},
+      {lb:'CA ce mois',v:caMois,obj:obj_ca,unit:'€',clr:'var(--ok)',fmt:true},
+      {lb:'Prestations ce mois',v:nbPreMois,obj:obj_pre,unit:'',clr:'var(--wa)'},
+      {lb:'Pipeline prospects',v:nbProspects,obj:8,unit:'contacts',clr:'#7C4DFF'},
+    ];
+    el.innerHTML=`
+      <div class="g2" style="margin-bottom:13px">
+        ${items.map(o=>{
+          const pr=pct(o.v,o.obj);
+          const vfmt=o.fmt?fmt(o.v):o.v;
+          const ofmt=o.fmt?fmt(o.obj):o.obj+' '+o.unit;
+          return`<div class="cd" style="margin-bottom:0"><div style="padding:16px 18px">
+            <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:10px">${o.lb}</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px">
+              <span style="font-size:26px;font-weight:700;color:var(--t1)">${vfmt}</span>
+              <span style="font-size:12px;color:var(--t3)">/ ${ofmt}</span>
+            </div>
+            <div class="pg" style="height:6px"><div class="pg-f" style="width:${pr}%;background:${o.clr};transition:width .5s"></div></div>
+            <div style="font-size:10.5px;color:${pr>=100?'var(--ok)':'var(--t3)'};margin-top:5px;font-weight:${pr>=100?700:400}">${pr>=100?'Objectif atteint !':pr+'% de l\'objectif'}</div>
+          </div></div>`;
+        }).join('')}
+      </div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Prestations ce mois</div></div>
+        ${pm.length?'<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Date</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+
+          pm.map(p=>`<tr>
+            <td class="tm">${p.reference||'—'}</td>
+            <td class="tp">${p.clients?.nom||'—'}</td>
+            <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+            <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+            <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+          </tr>`).join('')+'</tbody></table></div>':
+          '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation ce mois.</div>'}
+      </div>`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── Revenus photographe ───────────────────────────────────────────────────────
