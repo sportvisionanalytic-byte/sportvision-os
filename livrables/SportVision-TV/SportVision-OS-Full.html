@@ -464,32 +464,18 @@ const VIEWS={
 
   'sec.dash':()=>`
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#00B8D4"><div class="kpi-ey">Clients actifs</div><div class="kpi-v">12</div><span class="kpi-d dup">+2 ce mois</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations en cours</div><div class="kpi-v">3</div><span class="kpi-d dnt">2 cette semaine</span></div>
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Tâches aujourd'hui</div><div class="kpi-v">4</div><span class="kpi-d ddn">2 urgentes</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Docs en attente</div><div class="kpi-v">2</div><span class="kpi-d dnt">à signer</span></div>
+      <div class="kpi" style="--kl:#00B8D4"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="sec-kpi-clients">—</div><span class="kpi-d dnt">total</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations en cours</div><div class="kpi-v" id="sec-kpi-pre">—</div><span class="kpi-d dnt">actives</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Prochaines (7j)</div><div class="kpi-v" id="sec-kpi-soon">—</div><span class="kpi-d dnt">à venir</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="sec-kpi-prospects">—</div><span class="kpi-d dnt">à traiter</span></div>
     </div>
     <div class="g32">
-      <div class="cd"><div class="cd-h"><div class="cd-t">Clients récents</div><button class="btn bg2 bs">Voir CRM</button></div>
-        <div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Sport</th><th>Dernière presta</th><th>Statut</th></tr></thead><tbody>
-          <tr><td class="tp">Brunoy FC</td><td>Brunoy (91)</td><td>Football</td><td class="tm">SV-2026-0142</td><td><span class="bd ba"><span class="bd-d"></span>Actif</span></td></tr>
-          <tr><td class="tp">AS Milly</td><td>Milly-la-Forêt (91)</td><td>Football</td><td class="tm">SV-2026-0141</td><td><span class="bd bw"><span class="bd-d"></span>À confirmer</span></td></tr>
-          <tr><td class="tp">FC Fontainebleau</td><td>Fontainebleau (77)</td><td>Football</td><td class="tm">SV-2026-0140</td><td><span class="bd ba"><span class="bd-d"></span>Actif</span></td></tr>
-          <tr><td class="tp">Club Nemours</td><td>Nemours (77)</td><td>Football</td><td class="tm">SV-2026-0139</td><td><span class="bd bn"><span class="bd-d"></span>En pause</span></td></tr>
-          <tr><td class="tp">AS Évry</td><td>Évry (91)</td><td>Football</td><td class="tm">SV-2026-0138</td><td><span class="bd ba"><span class="bd-d"></span>Actif</span></td></tr>
-        </tbody></table></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Prochaines prestations</div><button class="btn bg2 bs" onclick="switchView('pre')">Toutes</button></div>
+        <div id="sec-dash-pre"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Tâches du jour</div><button class="btn bg2 bs">Toutes</button></div><div class="cd-b">
-        ${[
-          {t:'Envoyer devis SV-2026-0144 à Brunoy FC',p:'Urgente',done:false},
-          {t:'Rappel — signature contrat AS Milly',p:'Urgente',done:false},
-          {t:'Planifier prépa kit SV-2026-0141',p:'Normale',done:false},
-          {t:'Archiver dossier SV-2026-0137',p:'Basse',done:true},
-        ].map(t=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.035)">
-          <div style="width:18px;height:18px;border-radius:5px;border:1.5px solid ${t.done?'var(--ok)':'var(--b2)'};background:${t.done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${t.done?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2" stroke-linecap="round"><path d="M2 5l2.5 2.5L8 2.5"/></svg>':''}</div>
-          <div style="flex:1"><div style="font-size:12.5px;color:${t.done?'var(--t3)':'var(--t1)'};text-decoration:${t.done?'line-through':''}">${t.t}</div><div style="font-size:10.5px;color:${t.p==='Urgente'?'var(--er)':t.p==='Normale'?'var(--wa)':'var(--t3)'};margin-top:2px">${t.p}</div></div>
-        </div>`).join('')}
-      </div></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Clients récents</div><button class="btn bg2 bs" onclick="switchView('crm')">CRM</button></div>
+        <div id="sec-dash-clients"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      </div>
     </div>`,
 
   'prod.kanban':()=>`
@@ -502,34 +488,7 @@ const VIEWS={
     <div id="kanban-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'photo.jourj':()=>`
-    <div class="jj-hero">
-      <div class="jj-info">
-        <h2>Tournoi Elite U18 · Brunoy FC</h2>
-        <p>Stade Jean-Gabin · Brunoy (91) · Départ 08h30</p>
-        <div class="jj-badge"><span class="jj-dot"></span>PRESTATION EN COURS · SV-2026-0142</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:32px;font-weight:800;color:rgba(255,255,255,.9)">30</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.07em">juin 2026</div>
-      </div>
-    </div>
-    <div class="jj-grid">
-      <div class="jj-tile"><div class="jj-tile-ico">📷</div><div class="jj-tile-t">Kit Photo 01</div><div class="jj-tile-s">Canon EOS R5 assigné</div></div>
-      <div class="jj-tile"><div class="jj-tile-ico">🎥</div><div class="jj-tile-t">Kit Vidéo 01</div><div class="jj-tile-s">Sony FX6 assigné</div></div>
-      <div class="jj-tile"><div class="jj-tile-ico">🗺️</div><div class="jj-tile-t">Plan terrain</div><div class="jj-tile-s">Positions caméras</div></div>
-      <div class="jj-tile"><div class="jj-tile-ico">📤</div><div class="jj-tile-t">Upload rushs</div><div class="jj-tile-s">12 fichiers · 24 GB</div></div>
-      <div class="jj-tile" style="border-color:rgba(240,68,94,.3)"><div class="jj-tile-ico">⚠️</div><div class="jj-tile-t">Signaler incident</div><div class="jj-tile-s">Matériel, météo…</div></div>
-      <div class="jj-tile"><div class="jj-tile-ico">✅</div><div class="jj-tile-t">Valider livraison</div><div class="jj-tile-s">Checklist finale</div></div>
-    </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Checklist Jour J</div></div><div class="cd-b">
-      ${[
-        {t:'Kits vérifiés et chargés',done:true},{t:'Plan terrain consulté',done:true},{t:'Contact Brunoy FC confirmé',done:true},
-        {t:'Rushs uploadés (avant 20h)',done:false},{t:'Livrables validés',done:false},{t:'Kits retournés au stock',done:false},
-      ].map(item=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035)">
-        <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid ${item.done?'var(--ok)':'var(--b2)'};background:${item.done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${item.done?'<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#2ECC8A" stroke-width="2" stroke-linecap="round"><path d="M2 5.5l2.5 2.5 4.5-5"/></svg>':''}</div>
-        <span style="font-size:13px;color:${item.done?'var(--t3)':'var(--t1)'};text-decoration:${item.done?'line-through':''}">${item.t}</span>
-      </div>`).join('')}
-    </div></div>`,
+    <div id="jourj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.cal':()=>`
     <div class="g4" style="grid-template-columns:repeat(4,1fr)">
@@ -557,18 +516,12 @@ const VIEWS={
 
   'compta.factures':()=>`
     <div class="g3">
-      <div class="fs"><div class="fs-l">CA juin 2026</div><div class="fs-v">4 850 <span style="font-size:13px;color:var(--t2)">€</span></div></div>
-      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" style="color:var(--wa)">2 400 <span style="font-size:13px;color:var(--wa)">€</span></div></div>
-      <div class="fs"><div class="fs-l">Commissions dues</div><div class="fs-v" style="color:var(--acc)">420 <span style="font-size:13px;color:var(--acc)">€</span></div></div>
+      <div class="fs"><div class="fs-l">CA encaissé</div><div class="fs-v" id="cpt-enc">—</div></div>
+      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="cpt-att" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">CA total facturé</div><div class="fs-v" id="cpt-total">—</div></div>
     </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Factures</div><button class="btn bp bs">+ Facture</button></div>
-      <div class="tw"><table><thead><tr><th>N° Facture</th><th>Client</th><th>Prestation</th><th>Montant</th><th>Statut</th><th>Émise le</th><th>Échéance</th></tr></thead><tbody>
-        <tr><td class="tm">FAC-2026-042</td><td class="tp">Brunoy FC</td><td class="tm">SV-2026-0142</td><td class="tm" style="color:var(--t1)">1 800 €</td><td><span class="bd bw"><span class="bd-d"></span>En attente</span></td><td>28 juin</td><td style="color:var(--wa)">12 juil.</td></tr>
-        <tr><td class="tm">FAC-2026-041</td><td class="tp">AS Évry</td><td class="tm">SV-2026-0138</td><td class="tm" style="color:var(--t1)">1 200 €</td><td><span class="bd bw"><span class="bd-d"></span>En attente</span></td><td>25 juin</td><td style="color:var(--wa)">9 juil.</td></tr>
-        <tr><td class="tm">FAC-2026-040</td><td class="tp">FC Fontainebleau</td><td class="tm">SV-2026-0140</td><td class="tm" style="color:var(--t1)">950 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>22 juin</td><td>6 juil.</td></tr>
-        <tr><td class="tm">FAC-2026-039</td><td class="tp">Club Nemours</td><td class="tm">SV-2026-0139</td><td class="tm" style="color:var(--t1)">650 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>20 juin</td><td>4 juil.</td></tr>
-        <tr><td class="tm">FAC-2026-038</td><td class="tp">AS Milly</td><td class="tm">SV-2026-0136</td><td class="tm" style="color:var(--t1)">800 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>10 juin</td><td>24 juin</td></tr>
-      </tbody></table></div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Prestations facturées</div></div>
+      <div id="compta-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
   'com.pipeline':()=>`
@@ -1424,8 +1377,11 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='equipes') await loadEquipes();
   if(role==='prod'&&view==='kanban') await loadKanban();
   if(role==='photo'&&view==='dash') await loadPhotoDash();
+  if(role==='photo'&&view==='jourj') await loadJourJ();
+  if(role==='sec'&&view==='dash') await loadSecDash();
   if(role==='sec'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='admin'&&view==='fin') await loadFinances();
+  if(role==='compta'&&view==='factures') await loadComptaFactures();
   if(view==='set') await loadSettings();
 }
 
@@ -1492,7 +1448,7 @@ function modalDetailPrestation(idx){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant HT (€)</label>
-          <input id="pd-ht" type="number" class="l-inp" style="height:38px" placeholder="0">
+          <input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0">
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant TTC (€)</label>
           <input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0">
@@ -1527,7 +1483,9 @@ async function modifierPrestation(id){
     };
     await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body});
     closeModal();
-    loadPrestations();
+    if(document.getElementById('kanban-real')) loadKanban();
+    else if(document.getElementById('planning-real')) loadPlanning();
+    else if(document.getElementById('pre-real')) loadPrestations();
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de la modification.';}
 }
@@ -2016,6 +1974,137 @@ async function supprimerKit(id){
     loadKits();
     updateNavBadges(S.role);
   }catch(e){alert('Erreur lors de la suppression.');}
+}
+
+// ── Dashboard secrétaire ─────────────────────────────────────────────────────
+async function loadSecDash(){
+  try{
+    const [clients,pres]=await Promise.all([
+      sbFetch('clients?select=id,statut&limit=500'),
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,clôturée,payée)&order=date_prestation.asc&limit=50'),
+    ]);
+    const now=new Date();const in7=new Date(now);in7.setDate(in7.getDate()+7);
+    const actifs=(clients||[]).filter(c=>c.statut==='client').length;
+    const prospects=(clients||[]).filter(c=>c.statut==='prospect'||c.statut==='qualifié').length;
+    const encours=(pres||[]).filter(p=>!['demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse','devis_accepté','en_attente_signature','en_attente_acompte'].includes(p.statut)).length;
+    const soon=(pres||[]).filter(p=>{if(!p.date_prestation)return false;const d=new Date(p.date_prestation);return d>=now&&d<=in7;}).length;
+    const s1=document.getElementById('sec-kpi-clients');if(s1)s1.textContent=actifs;
+    const s2=document.getElementById('sec-kpi-pre');if(s2)s2.textContent=encours;
+    const s3=document.getElementById('sec-kpi-soon');if(s3)s3.textContent=soon;
+    const s4=document.getElementById('sec-kpi-prospects');if(s4)s4.textContent=prospects;
+    const ep=document.getElementById('sec-dash-pre');
+    if(ep){
+      const prochaines=(pres||[]).filter(p=>p.date_prestation).slice(0,6);
+      ep.innerHTML=prochaines.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+
+        prochaines.map(p=>`<tr>
+          <td class="tm">${p.reference||'—'}</td>
+          <td class="tp">${p.clients?.nom||'—'}</td>
+          <td>${p.type_prestation||'—'}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+        </tr>`).join('')+'</tbody></table></div>':
+        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation à venir.</div>';
+    }
+    const ec=document.getElementById('sec-dash-clients');
+    if(ec){
+      const recents=await sbFetch('clients?select=id,nom,statut,ville,sport&order=created_at.desc&limit=5');
+      const scc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'bb'};
+      const scl={'prospect':'Prospect','qualifié':'Qualifié','client':'Client','inactif':'Inactif','bloqué':'Bloqué'};
+      ec.innerHTML=(recents||[]).length?'<div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Sport</th><th>Statut</th></tr></thead><tbody>'+
+        (recents||[]).map(c=>`<tr>
+          <td class="tp">${c.nom}</td>
+          <td>${c.ville||'—'}</td>
+          <td>${c.sport||'—'}</td>
+          <td><span class="bd ${scc[c.statut]||'bw'}"><span class="bd-d"></span>${scl[c.statut]||c.statut}</span></td>
+        </tr>`).join('')+'</tbody></table></div>':
+        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client pour l\'instant.</div>';
+    }
+  }catch(e){console.error('loadSecDash',e);}
+}
+
+// ── Jour J photographe ───────────────────────────────────────────────────────
+async function loadJourJ(){
+  const el=document.getElementById('jourj-real');
+  if(!el)return;
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const in14=new Date();in14.setDate(in14.getDate()+14);
+    const data=await sbFetch(`prestations_equipe?select=prestation_id,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_rdv,lieu,clients(nom))&collaborateur_id=eq.${S.uid}&prestations.date_prestation=gte.${today}&order=prestations.date_prestation.asc&limit=5`);
+    const missions=(data||[]).filter(r=>r.prestations&&!['annulée','refusée','clôturée','payée'].includes(r.prestations.statut));
+    if(!missions.length){
+      el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--t3)">
+        <div style="font-size:48px;opacity:.15">📷</div>
+        <div style="font-size:14px">Aucune mission prévue prochainement.</div>
+        <div style="font-size:12px;opacity:.6">Contacte le responsable de production pour tes affectations.</div>
+      </div>`;
+      return;
+    }
+    const now=new Date();
+    const html=missions.map(row=>{
+      const p=row.prestations;
+      const isToday=p.date_prestation===today;
+      const dDate=new Date(p.date_prestation);
+      const diff=Math.ceil((dDate-now)/(1000*60*60*24));
+      const diffTxt=isToday?'AUJOURD\'HUI':diff===1?'DEMAIN':`Dans ${diff} jours`;
+      const heroClr=isToday?'linear-gradient(135deg,rgba(240,68,94,.25),rgba(124,77,255,.2))':'linear-gradient(135deg,rgba(54,107,255,.18),rgba(124,77,255,.12))';
+      return `<div style="background:${heroClr};border:1px solid ${isToday?'rgba(240,68,94,.3)':'rgba(54,107,255,.2)'};border-radius:var(--rc);padding:20px 24px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:${isToday?'var(--er)':'var(--acc)'};margin-bottom:6px">${diffTxt} · ${p.reference||'—'}</div>
+            <div style="font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px">${p.type_prestation||'—'} · ${p.clients?.nom||'—'}</div>
+            <div style="font-size:13px;color:var(--t2)">${p.lieu||'Lieu à confirmer'}${p.heure_rdv?' · RDV '+p.heure_rdv.slice(0,5):p.heure_debut?' · '+p.heure_debut.slice(0,5):''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:20px">
+            <div style="font-size:28px;font-weight:800;color:var(--t1)">${dDate.getDate()}</div>
+            <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">${['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'][dDate.getMonth()]} ${dDate.getFullYear()}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <span class="bd ${SC[p.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+        </div>
+      </div>`;
+    }).join('');
+    el.innerHTML=html+`<div class="cd" style="margin-top:4px"><div class="cd-h"><div class="cd-t">Checklist mission</div></div><div class="cd-b">
+      ${['Kits vérifiés et chargés','Plan terrain consulté','Contact client confirmé','Rushs uploadés','Livrables validés','Kits retournés au stock'].map(t=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid var(--b2);background:transparent;flex-shrink:0"></div>
+          <span style="font-size:13px;color:var(--t1)">${t}</span>
+        </div>`).join('')}
+    </div></div>`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Comptabilité — factures ───────────────────────────────────────────────────
+async function loadComptaFactures(){
+  const el=document.getElementById('compta-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=100');
+    const list=data||[];
+    let enc=0,att=0,total=0;
+    list.forEach(p=>{
+      const m=p.montant_ttc||0;
+      if(p.statut_financier==='payée')enc+=m;
+      if(['facturée','partiellement_payée'].includes(p.statut_financier))att+=m;
+      if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))total+=m;
+    });
+    const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
+    const s1=document.getElementById('cpt-enc');if(s1)s1.textContent=fmt(enc);
+    const s2=document.getElementById('cpt-att');if(s2)s2.textContent=fmt(att);
+    const s3=document.getElementById('cpt-total');if(s3)s3.textContent=fmt(total);
+    if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune facturation enregistrée.</div>';return;}
+    const sf_cls={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl','annulée':'bb','en_préparation':'bn'};
+    const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard','annulée':'Annulée','en_préparation':'En préparation'};
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut facture</th></tr></thead><tbody>'+
+      list.map(p=>`<tr>
+        <td class="tm">${p.reference||'—'}</td>
+        <td class="tp">${p.clients?.nom||'—'}</td>
+        <td>${p.type_prestation||'—'}</td>
+        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+        <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
+      </tr>`).join('')+'</tbody></table></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── Kanban production ────────────────────────────────────────────────────────
