@@ -920,6 +920,9 @@ const VIEWS={
       <div class="cd"><div class="cd-h"><div class="cd-t">Derniers clients signés</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
         <div id="com-dash-cl"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
+    </div>
+    <div class="cd" style="margin-top:13px"><div class="cd-h"><div class="cd-t">Devis en attente de réponse</div><button class="btn bg2 bs" onclick="switchView('devis')">Tous les devis</button></div>
+      <div id="com-dash-dev"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
   'com.devis':()=>`
@@ -3692,6 +3695,27 @@ async function loadComDash(){
           <span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Client</span>
         </div>`;}).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client signé pour l\'instant.</div>';
+    }
+    const ed=document.getElementById('com-dash-dev');
+    if(ed){
+      try{
+        const devs=await sbFetch('devis?select=id,numero,statut,total_ttc,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&order=date_expiration.asc&limit=5');
+        _devisCache=devs||[];
+        const s_lbl={envoyé:'Envoyé',en_attente:'En attente'};
+        const s_cls={envoyé:'bw',en_attente:'bl'};
+        const today=new Date().toISOString().slice(0,10);
+        ed.innerHTML=devs&&devs.length?'<div class="cd-b">'+devs.map((d,i)=>{
+          const exp=d.date_expiration;
+          const expFmt=exp?new Date(exp).toLocaleDateString('fr-FR'):'—';
+          const isExp=exp&&exp<today;
+          return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierDevis(${i})">
+            <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${d.numero||'—'} · ${d.clients?.nom||'—'}</div>
+              <div style="font-size:11px;color:${isExp?'var(--er)':'var(--t3)'}">Expire : ${expFmt}${d.total_ttc?' · '+d.total_ttc.toLocaleString('fr-FR')+' €':''}</div>
+            </div>
+            <span class="bd ${s_cls[d.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${s_lbl[d.statut]||d.statut}</span>
+          </div>`;}).join('')+'</div>':
+          '<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun devis en attente.</div>';
+      }catch(e){ed.innerHTML='';}
     }
   }catch(e){console.error('loadComDash',e);}
 }
