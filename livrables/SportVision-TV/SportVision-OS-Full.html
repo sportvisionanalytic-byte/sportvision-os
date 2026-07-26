@@ -780,7 +780,7 @@ const VIEWS={
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
       <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('medias')"><div class="kpi-ey">Mes prestations</div><div class="kpi-v" id="photo-kpi-pre">—</div><span class="kpi-d dnt">assignées</span></div>
       <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('jourj')"><div class="kpi-ey">À venir</div><div class="kpi-v" id="photo-kpi-next">—</div><span class="kpi-d dnt">prochaines</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Invitations</div><div class="kpi-v" id="photo-kpi-inv">—</div><span class="kpi-d dnt">en attente</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="const c=document.getElementById('photo-invitations-card');if(c&&c.style.display!=='none')c.scrollIntoView({behavior:'smooth',block:'start'})"><div class="kpi-ey">Invitations</div><div class="kpi-v" id="photo-kpi-inv">—</div><span class="kpi-d dnt">en attente</span></div>
     </div>
     <div class="cd" id="photo-invitations-card" style="margin-bottom:13px;display:none;border-left:3px solid var(--wa)"><div class="cd-h"><div class="cd-t" style="color:var(--wa)">Invitations en attente</div></div>
       <div id="photo-invitations"></div>
@@ -2324,14 +2324,20 @@ async function loadRapprochement(){
     const sf_cls={'payée':'ba','partiellement_payée':'bl','facturée':'bw','en_retard':'bb'};
     const sf_lbl={'payée':'Payé','partiellement_payée':'Part. payé','facturée':'Facturé — en attente','en_retard':'En retard'};
     el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Montant TTC</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
-      list.map(p=>`<tr>
-        <td class="tm">${p.reference||'—'}</td>
-        <td class="tp">${p.clients?.nom||'—'}</td>
-        <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
-        <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
-        <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
-      </tr>`).join('')+'</tbody></table></div></div>';
+      list.map(p=>{
+        const canPayer=['facturée','partiellement_payée','en_retard'].includes(p.statut_financier);
+        return`<tr>
+          <td class="tm">${p.reference||'—'}</td>
+          <td class="tp">${p.clients?.nom||'—'}</td>
+          <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
+          <td><div style="display:flex;gap:4px;justify-content:flex-end">
+            ${canPayer?`<button onclick="majStatutFinancier('${p.id}','payée')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">Payée ✓</button>`:''}
+            <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
+          </div></td>
+        </tr>`;
+      }).join('')+'</tbody></table></div></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
@@ -2718,7 +2724,7 @@ async function loadDevis(){
         <td><span class="bd ${s_cls[d.statut]||'bw'}"><span class="bd-d"></span>${s_lbl[d.statut]||d.statut}</span></td>
         <td style="color:var(--t3)">${d.date_envoi?new Date(d.date_envoi).toLocaleDateString('fr-FR'):'—'}</td>
         <td style="color:${expExpired?'var(--er)':expAlert?'var(--wa)':'var(--t3)'};font-weight:${expAlert?600:400}">${expFmt}${expAlert?' ⚠':''}</td>
-        <td><button class="btn bg2 bs" onclick="modalModifierDevis(${i})">Modifier</button></td>
+        <td><div style="display:flex;gap:4px;justify-content:flex-end">${d.statut==='brouillon'?`<button onclick="envoyerDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap" title="Marquer comme envoyé">→ Envoyer</button>`:''}<button class="btn bg2 bs" onclick="modalModifierDevis(${i})">Modifier</button></div></td>
       </tr>`;}).join('')+'</tbody></table></div></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
@@ -2816,15 +2822,30 @@ async function modalModifierDevis(idx){
 
 async function sauvegarderDevis(id){
   const err=document.getElementById('dv-err2');
+  const newStatut=document.getElementById('dv-st')?.value;
   try{
     await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{
-      statut:document.getElementById('dv-st')?.value,
+      statut:newStatut,
       notes:document.getElementById('dv-no')?.value||null,
       total_ht:parseFloat(document.getElementById('dv-ht2')?.value||0),
       total_ttc:parseFloat(document.getElementById('dv-ttc2')?.value||0),
       date_envoi:document.getElementById('dv-env2')?.value||null,
     }});
     closeModal();toast('Devis mis à jour.','ok');loadDevis();
+    // Sync prestation: si le devis est accepté et lié à une prestation encore en attente, l'avancer
+    if(newStatut==='accepté'){
+      const dv=(_devisCache||[]).find(d=>d.id===id);
+      if(dv?.prestation_id){
+        try{
+          const pre=await sbFetch('prestations?select=id,statut&id=eq.'+dv.prestation_id);
+          if(pre&&pre[0]&&pre[0].statut==='en_attente_réponse'){
+            await sbFetch('prestations?id=eq.'+dv.prestation_id,{method:'PATCH',body:{statut:'devis_accepté'}});
+            toast('Prestation avancée → Devis accepté.','ok');
+            updateNavBadges(S.role);
+          }
+        }catch(e){}
+      }
+    }
   }catch(e){if(err)err.textContent='Erreur lors de la sauvegarde.';}
 }
 
@@ -2837,6 +2858,14 @@ function supprimerDevis(id){
       loadDevis();
     }catch(e){toast('Erreur lors de la suppression.');}
   });
+}
+
+async function envoyerDevis(id){
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:today}});
+    toast('Devis marqué comme envoyé.','ok');loadDevis();updateNavBadges(S.role);
+  }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
 // ── Objectifs commerciaux ────────────────────────────────────────────────────
@@ -3934,15 +3963,21 @@ async function loadComptaFactures(){
     const sf_cls={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl','annulée':'bb','en_préparation':'bn'};
     const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard','annulée':'Annulée','en_préparation':'En préparation'};
     el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut facture</th><th></th></tr></thead><tbody>'+
-      list.map(p=>`<tr>
-        <td class="tm">${p.reference||'—'}</td>
-        <td class="tp">${p.clients?.nom||'—'}</td>
-        <td>${p.type_prestation||'—'}</td>
-        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
-        <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-        <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
-        <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
-      </tr>`).join('')+'</tbody></table></div>';
+      list.map(p=>{
+        const canPayer=['facturée','partiellement_payée','en_retard'].includes(p.statut_financier);
+        return`<tr>
+          <td class="tm">${p.reference||'—'}</td>
+          <td class="tp">${p.clients?.nom||'—'}</td>
+          <td>${p.type_prestation||'—'}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+          <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
+          <td><div style="display:flex;gap:4px;justify-content:flex-end">
+            ${canPayer?`<button onclick="majStatutFinancier('${p.id}','payée')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">Payée ✓</button>`:''}
+            <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
+          </div></td>
+        </tr>`;
+      }).join('')+'</tbody></table></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
@@ -4076,6 +4111,8 @@ async function loadFinances(){
         const sf=p.statut_financier||'non_facturée';
         const sc={'payée':'ba','partiellement_payée':'bw','facturée':'bw','non_facturée':'bb','en_préparation':'bl','en_retard':'bb'}[sf]||'bw';
         const sl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','non_facturée':'Non facturée','en_préparation':'En préparation','en_retard':'En retard','annulée':'Annulée'}[sf]||sf;
+        const canFacturer=['non_facturée','en_préparation'].includes(sf);
+        const canPayer=['facturée','partiellement_payée','en_retard'].includes(sf);
         return `<tr>
           <td class="tm">${p.reference||'—'}</td>
           <td class="tp">${p.clients?.nom||'—'}</td>
@@ -4083,11 +4120,27 @@ async function loadFinances(){
           <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
           <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
           <td><span class="bd ${sc}"><span class="bd-d"></span>${sl}</span></td>
-          <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
+          <td><div style="display:flex;gap:4px;justify-content:flex-end">
+            ${canFacturer?`<button onclick="majStatutFinancier('${p.id}','facturée')" style="padding:4px 8px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);color:var(--wa);cursor:pointer;white-space:nowrap" title="Marquer comme facturée">Facturer</button>`:''}
+            ${canPayer?`<button onclick="majStatutFinancier('${p.id}','payée')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap" title="Marquer comme payée">Payée ✓</button>`:''}
+            <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
+          </div></td>
         </tr>`;
       }).join('')+
     '</tbody></table></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function majStatutFinancier(id,statut){
+  try{
+    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut_financier:statut}});
+    const lbl={facturée:'Prestation facturée.',payée:'Paiement enregistré.'}[statut]||'Mis à jour.';
+    toast(lbl,'ok');
+    if(S.view==='fin')loadFinances();
+    else if(S.view==='rapprochement')loadRapprochement();
+    else if(S.view==='factures')loadComptaFactures();
+    updateNavBadges(S.role);
+  }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
 async function loadCollaborateurs(){
