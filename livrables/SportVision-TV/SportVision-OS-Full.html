@@ -3856,6 +3856,9 @@ function goApp(role){
     }).catch(()=>{});
   }
   updateNavBadges(role);
+  // Rafraîchir les badges toutes les 60 secondes
+  if(window._badgeTimer)clearInterval(window._badgeTimer);
+  window._badgeTimer=setInterval(()=>{if(S.screen==='app')updateNavBadges(S.role);},60000);
 }
 
 async function updateNavBadges(role){
