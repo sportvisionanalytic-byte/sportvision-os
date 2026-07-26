@@ -277,6 +277,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
       <div id="l-err" style="font-size:12px;color:var(--er);min-height:16px;text-align:center"></div>
       <button id="l-btn" class="btn bp" style="width:100%;justify-content:center;height:42px;font-size:14px" onclick="doLogin()">Se connecter</button>
     </div>
+    <div style="text-align:center"><button onclick="document.getElementById('demo-btns').style.display=document.getElementById('demo-btns').style.display==='none'?'grid':'none'" style="background:transparent;border:none;color:var(--t3);font-size:11px;cursor:pointer;padding:4px 8px;border-radius:4px">Mode démo</button></div>
     <div class="demo-grid" id="demo-btns" style="display:none"></div>
   </div>
 </div>
@@ -1094,7 +1095,7 @@ function toast(msg,type='error'){
 }
 
 // ── FORMULAIRE NOUVELLE PRESTATION ───────
-function modalNouvellePrestation(presetClientId,presetClientNom){
+function modalNouvellePrestation(presetClientId){
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouvelle prestation</div>
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -1691,7 +1692,7 @@ function modalModifierClient(idx){
         <button onclick="supprimerClient('${c.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>
         <div style="display:flex;gap:10px">
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
-          <button class="btn bg2" onclick="closeModal();modalNouvellePrestation('${c.id}','${c.nom.replace(/'/g,"\\'")}')" title="Créer une prestation pour ce client">+ Prestation</button>
+          <button class="btn bg2" onclick="closeModal();modalNouvellePrestation('${c.id}')" title="Créer une prestation pour ce client">+ Prestation</button>
           <button class="btn bp" onclick="modifierClient('${c.id}')">Enregistrer</button>
         </div>
       </div>
@@ -3928,15 +3929,20 @@ async function runSearch(q){
   const el=document.getElementById('gs-res');
   if(!el)return;
   el.innerHTML='<div style="color:var(--t3);font-size:12px;padding:8px">Recherche…</div>';
+  const hasPre=['admin','sec','prod'].includes(S.role);
+  const hasCRM=['admin','sec'].includes(S.role);
+  const hasPipeline=S.role==='com';
   try{
     const qEnc=encodeURIComponent(q);
-    const [pre,cli]=await Promise.all([
-      sbFetch('prestations?select=id,reference,statut,date_prestation,clients(nom)&or=(reference.ilike.*'+qEnc+'*,lieu.ilike.*'+qEnc+'*)&limit=8'),
-      sbFetch('clients?select=id,nom,statut,ville,sport&or=(nom.ilike.*'+qEnc+'*,ville.ilike.*'+qEnc+'*,email.ilike.*'+qEnc+'*)&limit=8'),
-    ]);
+    const fetches=[];
+    if(hasPre)fetches.push(sbFetch('prestations?select=id,reference,statut,date_prestation,clients(nom)&or=(reference.ilike.*'+qEnc+'*,lieu.ilike.*'+qEnc+'*)&limit=8'));
+    else fetches.push(Promise.resolve([]));
+    if(hasCRM||hasPipeline)fetches.push(sbFetch('clients?select=id,nom,statut,ville,sport&or=(nom.ilike.*'+qEnc+'*,ville.ilike.*'+qEnc+'*,email.ilike.*'+qEnc+'*)&limit=8'));
+    else fetches.push(Promise.resolve([]));
+    const [pre,cli]=await Promise.all(fetches);
     const rows=[];
     (pre||[]).forEach(p=>rows.push({icon:'📋',title:p.reference||'—',sub:(p.clients?.nom||'')+(p.date_prestation?' · '+new Date(p.date_prestation).toLocaleDateString('fr-FR'):''),action:`closeModal();modalDetailById('${p.id}')`}));
-    (cli||[]).forEach(c=>rows.push({icon:'👥',title:c.nom||'—',sub:[c.ville,c.sport].filter(Boolean).join(' · ')||c.statut,action:`closeModal();switchView('crm')`}));
+    (cli||[]).forEach(c=>{const nm=c.nom.replace(/'/g,"\\'");const dest=hasPipeline?'pipeline':'crm';rows.push({icon:'👥',title:c.nom||'—',sub:[c.ville,c.sport].filter(Boolean).join(' · ')||c.statut,action:`closeModal();_crmFiltre='${nm}';_crmStFiltre='';switchView('${dest}')`});});
     if(!rows.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px">Aucun résultat pour "'+q+'".</div>';return;}
     el.innerHTML=rows.map(r=>`<div onclick="${r.action}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;background:transparent;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='transparent'">
       <span style="font-size:18px">${r.icon}</span>
