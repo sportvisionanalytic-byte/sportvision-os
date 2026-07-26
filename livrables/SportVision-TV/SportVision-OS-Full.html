@@ -310,7 +310,6 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ── ICONS ────────────────────────────────
 const IC={
@@ -1163,8 +1162,6 @@ function fallbackView(role,view){
 // ── SUPABASE ─────────────────────────────
 const SB_URL='https://lulgezzpvrlbftbykzrc.supabase.co';
 const SB_KEY='sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
-let sb=null;
-try{sb=window.supabase.createClient(SB_URL,SB_KEY);}catch(e){console.warn('Supabase non chargé',e);}
 
 async function doLogin(){
   const email=(document.getElementById('l-email').value||'').trim();
@@ -1172,14 +1169,21 @@ async function doLogin(){
   const errEl=document.getElementById('l-err');
   const btn=document.getElementById('l-btn');
   if(!email||!pass){errEl.textContent='Remplissez email et mot de passe.';return;}
-  if(!sb){errEl.textContent='Erreur : service non disponible. Rechargez la page.';return;}
   errEl.textContent='';btn.textContent='Connexion…';btn.disabled=true;
   try{
-    const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
-    if(error)throw error;
-    const {data:prof,error:perr}=await sb.from('profiles').select('role').eq('id',data.user.id).single();
-    if(perr||!prof)throw new Error('Profil introuvable');
-    goOnboard(prof.role);
+    const r1=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pass})
+    });
+    const d1=await r1.json();
+    if(!d1.access_token)throw new Error('Email ou mot de passe incorrect.');
+    const r2=await fetch(SB_URL+'/rest/v1/profiles?id=eq.'+d1.user.id+'&select=role',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+d1.access_token}
+    });
+    const profs=await r2.json();
+    if(!profs||!profs[0])throw new Error('Profil introuvable. Contactez l\'administrateur.');
+    goOnboard(profs[0].role);
   }catch(e){
     errEl.textContent=e.message||'Erreur de connexion.';
     btn.textContent='Se connecter';btn.disabled=false;
