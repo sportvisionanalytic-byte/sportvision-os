@@ -630,15 +630,8 @@ const VIEWS={
     <div id="planning-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.taches':()=>`
-    <div class="sh"><div class="sh-t">Tâches</div><button class="btn bp bs">+ Tâche</button></div>
-    <div class="g2">
-      <div class="cd"><div class="cd-h"><div class="cd-t">Urgentes</div><span class="bd bn" style="background:rgba(240,68,94,.1);color:var(--er)">2</span></div><div class="cd-b">
-        ${[{t:'Envoyer devis SV-2026-0144 à Brunoy FC',dt:'Aujourd\'hui',done:false},{t:'Rappel signature contrat AS Milly',dt:'Aujourd\'hui',done:false}].map(t=>taskRow(t,false)).join('')}
-      </div></div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Cette semaine</div><span class="bd bn">4</span></div><div class="cd-b">
-        ${[{t:'Planifier prépa kit SV-2026-0141',dt:'Mer 2 juil.',done:false},{t:'Envoyer bilan mensuel juin',dt:'Ven 4 juil.',done:false},{t:'Mettre à jour fiche Viry FC',dt:'Jeu 3 juil.',done:false},{t:'Archiver dossier SV-2026-0137',dt:'Ven 4 juil.',done:true}].map(t=>taskRow(t,true)).join('')}
-      </div></div>
-    </div>`,
+    <div class="sh"><div class="sh-t">Tâches</div><button class="btn bp bs" onclick="modalNouvelleTache()">+ Tâche</button></div>
+    <div id="taches-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.docs':()=>`
     <div class="sh"><div class="sh-t">Documents</div><button class="btn bp bs">+ Document</button></div>
@@ -1363,6 +1356,7 @@ async function loadViewData(role,view){
   if((role==='com'||role==='admin')&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
   if(role==='compta'&&view==='paiements') await loadPaiements();
+  if(role==='sec'&&view==='taches') await loadTaches();
   if(view==='set') await loadSettings();
 }
 
@@ -1894,6 +1888,73 @@ async function loadPhotoDash(){
 }
 
 // ── PARAMÈTRES / PROFIL ──────────────────
+// ── Tâches (secrétaire) ──────────────────────────────────────────────────────
+async function loadTaches(){
+  const el=document.getElementById('taches-real');
+  if(!el)return;
+  const uid=localStorage.getItem('sv_uid');
+  try{
+    const data=await sbFetch('notifications?select=id,titre,message,lue,created_at&type=eq.tache&destinataire_id=eq.'+uid+'&order=lue.asc,created_at.desc&limit=100');
+    const tasks=data||[];
+    if(!tasks.length){
+      el.innerHTML=`<div class="cd"><div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:10px;color:var(--t3)"><div style="font-size:40px;opacity:.15">✅</div><div style="font-size:13px">Aucune tâche en cours. Créez-en une.</div></div></div>`;
+      return;
+    }
+    const open=tasks.filter(t=>!t.lue);
+    const done=tasks.filter(t=>t.lue);
+    const renderTask=(t)=>`<div style="display:flex;align-items:flex-start;gap:12px;padding:11px 18px;border-bottom:1px solid var(--bd);cursor:pointer;${t.lue?'opacity:.5':''}">
+      <div onclick="toggleTache('${t.id}',${t.lue})" style="width:20px;height:20px;border-radius:6px;border:1.5px solid ${t.lue?'var(--ok)':'var(--b2)'};background:${t.lue?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;cursor:pointer">
+        ${t.lue?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2" stroke-linecap="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}
+      </div>
+      <div style="flex:1">
+        <div style="font-size:13px;color:${t.lue?'var(--t3)':'var(--t1)'};text-decoration:${t.lue?'line-through':''}">${t.titre}</div>
+        ${t.message?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${t.message}</div>`:''}
+      </div>
+      <button onclick="supprimerTache('${t.id}')" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;opacity:.5;hover:opacity:1">✕</button>
+    </div>`;
+    el.innerHTML=`
+      ${open.length?`<div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">À faire</div><span class="bd bn">${open.length}</span></div>${open.map(renderTask).join('')}</div>`:''}
+      ${done.length?`<div class="cd"><div class="cd-h"><div class="cd-t">Terminées</div><span class="bd ba" style="font-size:10px">${done.length}</span></div>${done.map(renderTask).join('')}</div>`:''}`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function modalNouvelleTache(){
+  const uid=localStorage.getItem('sv_uid');
+  if(!uid)return;
+  openModal(`<div class="mh"><div class="mt">Nouvelle tâche</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Tâche</label><input type="text" id="ta-titre" class="fi" placeholder="Ex: Envoyer devis Brunoy FC" autofocus></div>
+      <div class="fg"><label class="fl">Détail / Date limite</label><input type="text" id="ta-msg" class="fi" placeholder="Ex: Avant vendredi 18h"></div>
+      <div id="ta-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerTache()">Ajouter</button></div>`);
+  setTimeout(()=>document.getElementById('ta-titre')?.focus(),50);
+}
+
+async function creerTache(){
+  const titre=(document.getElementById('ta-titre')?.value||'').trim();
+  const msg=(document.getElementById('ta-msg')?.value||'').trim();
+  const err=document.getElementById('ta-err');
+  if(!titre){if(err)err.textContent='Donnez un nom à la tâche.';return;}
+  const uid=localStorage.getItem('sv_uid');
+  try{
+    await sbFetch('notifications',{method:'POST',body:{
+      type:'tache',titre,message:msg||null,lue:false,destinataire_id:uid
+    }});
+    closeModal();loadTaches();
+  }catch(e){if(err)err.textContent='Erreur lors de la création.';}
+}
+
+async function toggleTache(id,estFaite){
+  try{await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:!estFaite}});loadTaches();}
+  catch(e){}
+}
+
+async function supprimerTache(id){
+  try{await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});loadTaches();}
+  catch(e){}
+}
+
 async function loadSettings(){
   const el=document.getElementById('set-profile');
   if(!el)return;
