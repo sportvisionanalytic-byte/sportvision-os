@@ -1517,7 +1517,7 @@ async function loadPrestations(){
   const el=document.getElementById('pre-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,lieu,montant_ttc,clients(nom)&order=date_prestation.desc&limit=200');
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,clients(nom)&order=date_prestation.desc&limit=200');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div>Aucune prestation. Créez la première.</div></div>';return;}
     _prestationsCache=data;
     renderPreTable();
@@ -1611,12 +1611,26 @@ function modalDetailPrestation(idx){
           <input id="pd-lieu" type="text" class="l-inp" value="${p.lieu||''}" style="height:38px">
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Heure RDV équipe</label>
+          <input id="pd-hrdv" type="time" class="l-inp" value="${p.heure_rdv?p.heure_rdv.slice(0,5):''}" style="height:38px">
+        </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Heure début</label>
           <input id="pd-hdeb" type="time" class="l-inp" value="${p.heure_debut?p.heure_debut.slice(0,5):''}" style="height:38px">
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Heure fin</label>
           <input id="pd-hfin" type="time" class="l-inp" value="${p.heure_fin?p.heure_fin.slice(0,5):''}" style="height:38px">
+        </div>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Adresse complète</label>
+        <input id="pd-adr" type="text" class="l-inp" value="${p.adresse_complete||''}" style="height:38px" placeholder="Rue, code postal, ville…">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Contact sur place</label>
+          <input id="pd-csp" type="text" class="l-inp" value="${p.contact_sur_place||''}" style="height:38px" placeholder="Nom du contact">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Tél. sur place</label>
+          <input id="pd-tsp" type="tel" class="l-inp" value="${p.telephone_sur_place||''}" style="height:38px" placeholder="06 …">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -1651,8 +1665,12 @@ async function modifierPrestation(id){
       statut_financier:document.getElementById('pd-sfin').value,
       date_prestation:document.getElementById('pd-date').value||null,
       lieu:document.getElementById('pd-lieu').value||null,
+      heure_rdv:document.getElementById('pd-hrdv')?.value||null,
       heure_debut:document.getElementById('pd-hdeb')?.value||null,
       heure_fin:document.getElementById('pd-hfin')?.value||null,
+      adresse_complete:document.getElementById('pd-adr')?.value||null,
+      contact_sur_place:document.getElementById('pd-csp')?.value||null,
+      telephone_sur_place:document.getElementById('pd-tsp')?.value||null,
       montant_ttc:document.getElementById('pd-ttc').value?Number(document.getElementById('pd-ttc').value):null,
       montant_ht:document.getElementById('pd-ht').value?Number(document.getElementById('pd-ht').value):null,
       notes_internes:document.getElementById('pd-notes').value||null,
@@ -3601,7 +3619,7 @@ async function loadJourJ(){
   try{
     const today=new Date().toISOString().slice(0,10);
     const in14=new Date();in14.setDate(in14.getDate()+14);
-    const data=await sbFetch(`prestations_equipe?select=prestation_id,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_rdv,lieu,clients(nom))&collaborateur_id=eq.${localStorage.getItem('sv_uid')}&prestations.date_prestation=gte.${today}&order=prestations.date_prestation.asc&limit=5`);
+    const data=await sbFetch(`prestations_equipe?select=prestation_id,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.${localStorage.getItem('sv_uid')}&prestations.date_prestation=gte.${today}&order=prestations.date_prestation.asc&limit=5`);
     const missions=(data||[]).filter(r=>r.prestations&&!['annulée','refusée','clôturée','payée'].includes(r.prestations.statut));
     if(!missions.length){
       el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--t3)">
@@ -3634,6 +3652,8 @@ async function loadJourJ(){
             <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:${isToday?'var(--er)':'var(--acc)'};margin-bottom:6px">${diffTxt} · ${p.reference||'—'}</div>
             <div style="font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px">${p.type_prestation||'—'} · ${p.clients?.nom||'—'}</div>
             <div style="font-size:13px;color:var(--t2)">${p.lieu||'Lieu à confirmer'}${p.heure_rdv?' · RDV '+p.heure_rdv.slice(0,5):p.heure_debut?' · '+p.heure_debut.slice(0,5):''}</div>
+            ${p.adresse_complete?`<div style="font-size:12px;color:var(--t3);margin-top:2px">${p.adresse_complete}</div>`:''}
+            ${p.contact_sur_place?`<div style="font-size:12px;color:var(--t3);margin-top:2px">Contact : ${p.contact_sur_place}${p.telephone_sur_place?' · '+p.telephone_sur_place:''}</div>`:''}
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:20px">
             <div style="font-size:28px;font-weight:800;color:var(--t1)">${dDate.getDate()}</div>
@@ -3758,7 +3778,7 @@ async function loadKanban(){
 
 async function modalDetailById(id){
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,lieu,montant_ht,montant_ttc,notes_internes,clients(nom)&id=eq.'+id);
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,clients(nom)&id=eq.'+id);
     if(!data||!data[0])return;
     const saved=_prestationsCache;
     _prestationsCache=[data[0]];
