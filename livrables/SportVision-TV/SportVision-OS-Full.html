@@ -694,16 +694,12 @@ const VIEWS={
 
   'photo.revenus':()=>`
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Revenus juin</div><div class="kpi-v">1 650<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dup">+15% vs mai</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Cumulé 2026</div><div class="kpi-v">8 200<small style="font-size:14px;color:var(--t2)"> €</small></div></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations facturées</div><div class="kpi-v">3</div><span class="kpi-d dnt">ce mois</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Missions assignées</div><div class="kpi-v" id="rev-nb">—</div><span class="kpi-d dnt">total</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Rémunération prévue</div><div class="kpi-v" id="rev-total">—</div><span class="kpi-d dnt">cumulé</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Terminées</div><div class="kpi-v" id="rev-done">—</div><span class="kpi-d dnt">ce mois</span></div>
     </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Détail des paiements</div></div>
-      <div class="tw"><table><thead><tr><th>Prestation</th><th>Client</th><th>Montant</th><th>Statut</th><th>Payé le</th></tr></thead><tbody>
-        <tr><td class="tm">SV-2026-0142</td><td class="tp">Brunoy FC</td><td class="tm" style="color:var(--t1)">650 €</td><td><span class="bd bw"><span class="bd-d"></span>En attente</span></td><td>—</td></tr>
-        <tr><td class="tm">SV-2026-0140</td><td class="tp">FC Fontainebleau</td><td class="tm" style="color:var(--t1)">580 €</td><td><span class="bd ba"><span class="bd-d"></span>Payé</span></td><td>24 juin</td></tr>
-        <tr><td class="tm">SV-2026-0138</td><td class="tp">AS Évry</td><td class="tm" style="color:var(--t1)">420 €</td><td><span class="bd ba"><span class="bd-d"></span>Payé</span></td><td>20 juin</td></tr>
-      </tbody></table></div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Mes missions</div></div>
+      <div id="rev-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
   'photo.form':()=>`
@@ -728,29 +724,18 @@ const VIEWS={
   // ── COMMUNITY MANAGER ───────────────────
   'cm.dash':()=>`
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">À publier</div><div class="kpi-v">5</div><span class="kpi-d dnt">cette semaine</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Publiés ce mois</div><div class="kpi-v">23</div><span class="kpi-d dup">+5 vs mai</span></div>
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Reach total</div><div class="kpi-v">12.4k</div><span class="kpi-d dup">+18%</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Engagement</div><div class="kpi-v">4.2<small style="font-size:14px;color:var(--t2)">%</small></div><span class="kpi-d dup">+0.8pp</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="cm-kpi-cl">—</div><span class="kpi-d dnt">clubs à couvrir</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Prestations ce mois</div><div class="kpi-v" id="cm-kpi-pre">—</div><span class="kpi-d dnt">contenu potentiel</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">À venir (14j)</div><div class="kpi-v" id="cm-kpi-soon">—</div><span class="kpi-d dnt">à préparer</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="cm-kpi-pr">—</div><span class="kpi-d dnt">pipeline</span></div>
     </div>
     <div class="g2">
-      <div class="cd"><div class="cd-h"><div class="cd-t">Prochains contenus</div><button class="btn bp bs">+ Contenu</button></div>
-        ${[
-          {pl:'Instagram',ti:'Résumé Tournoi U18 · Brunoy FC',dt:'Mer 30 juin · 18h00',st:'bw'},
-          {pl:'YouTube',ti:'Vidéo complète Tournoi Elite U18',dt:'Mer 30 juin · 20h00',st:'bw'},
-          {pl:'Instagram',ti:'Story terrain — match AS Milly',dt:'Sam 5 juil. · 15h00',st:'bb'},
-          {pl:'Facebook',ti:'Article résultats Championnat D3',dt:'Sam 5 juil. · 17h00',st:'bb'},
-        ].map(c=>`<div style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
-          <div style="width:8px;height:8px;border-radius:50%;background:${c.pl==='Instagram'?'#E1306C':c.pl==='YouTube'?'#FF0000':'#1877F2'};flex-shrink:0"></div>
-          <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${c.ti}</div><div style="font-size:11px;color:var(--t3)">${c.pl} · ${c.dt}</div></div>
-          <span class="bd ${c.st}"><span class="bd-d"></span>${c.st==='bw'?'Programmé':'Brouillon'}</span>
-        </div>`).join('')}
+      <div class="cd"><div class="cd-h"><div class="cd-t">Prochaines prestations à couvrir</div></div>
+        <div id="cm-dash-pre"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Activité récente</div></div><div class="cd-b"><div class="al">
-        <div class="ai"><div class="ai-ic" style="background:rgba(225,48,108,.12)">📱</div><div><div class="ai-t">Post Instagram <strong>FC Fontainebleau</strong> : 847 vues, 4.8% eng.</div><div class="ai-ts">Il y a 2h</div></div></div>
-        <div class="ai"><div class="ai-ic" style="background:rgba(24,119,242,.12)">💻</div><div><div class="ai-t">Article Facebook <strong>Brunoy FC</strong> partagé 12 fois</div><div class="ai-ts">Il y a 4h</div></div></div>
-        <div class="ai"><div class="ai-ic" style="background:rgba(255,0,0,.12)">▶️</div><div><div class="ai-t">Vidéo YouTube <strong>AS Milly</strong> : 312 vues en 24h</div><div class="ai-ts">Hier</div></div></div>
-      </div></div></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Clubs actifs</div></div>
+        <div id="cm-dash-cl"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      </div>
     </div>`,
 
   'cm.contenus':()=>`
@@ -795,14 +780,8 @@ const VIEWS={
     <div id="cptd-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.paiements':()=>`
-    <div class="sh"><div class="sh-t">Paiements collaborateurs — Juin 2026</div><button class="btn bp bs">Exporter</button></div>
-    <div class="cd"><div class="tw"><table><thead><tr><th>Collaborateur</th><th>Rôle</th><th>Prestations</th><th>Taux journalier</th><th>Montant</th><th>Statut</th></tr></thead><tbody>
-      ${TEAM.filter(t=>t.i!=='CR'&&t.i!=='SN').map(t=>{
-        const mt=t.i==='AD'?'650 €':t.i==='RA'?'580 €':t.i==='YB'?'420 €':t.i==='LM'?'380 €':'540 €';
-        const td=t.i==='AD'?'220 €/j':t.i==='RA'?'200 €/j':t.i==='YB'?'180 €/j':t.i==='LM'?'160 €/j':'240 €/j';
-        return`<tr><td class="tp"><div style="display:flex;align-items:center;gap:8px"><div class="av-xs" style="background:${t.c}">${t.i}</div>${t.n}</div></td><td>${t.r}</td><td>2</td><td class="tm">${td}</td><td class="tm" style="color:var(--t1)">${mt}</td><td><span class="bd ba"><span class="bd-d"></span>Payé</span></td></tr>`;
-      }).join('')}
-    </tbody></table></div></div>`,
+    <div class="sh"><div class="sh-t">Paiements collaborateurs</div></div>
+    <div id="paiements-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.export':()=>`
     <div class="sh"><div class="sh-t">Export comptable</div></div>
@@ -1340,6 +1319,9 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='incidents') await loadIncidents();
   if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
   if(role==='com'&&view==='dash') await loadComDash();
+  if(role==='photo'&&view==='revenus') await loadPhotoRevenus();
+  if(role==='cm'&&view==='dash') await loadCmDash();
+  if(role==='compta'&&view==='paiements') await loadPaiements();
   if(view==='set') await loadSettings();
 }
 
@@ -1389,12 +1371,21 @@ function modalDetailPrestation(idx){
   const p=_prestationsCache[idx];
   if(!p)return;
   const statutOptions=Object.keys(SL).map(s=>`<option value="${s}"${p.statut===s?' selected':''}>${SL[s]}</option>`).join('');
+  const SF_OPTS=[
+    ['non_facturée','Non facturée'],['en_préparation','En préparation'],['facturée','Facturée'],
+    ['partiellement_payée','Part. payée'],['payée','Payée'],['en_retard','En retard'],['annulée','Annulée'],
+  ].map(([v,l])=>`<option value="${v}"${(p.statut_financier||'non_facturée')===v?' selected':''}>${l}</option>`).join('');
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">${p.reference||'Prestation'}</div>
-    <div style="font-size:12px;color:var(--t3);margin-bottom:20px">${p.clients?.nom||'Sans client'} · ${p.type_prestation||'—'}</div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut</label>
-        <select id="pd-statut" class="l-inp" style="height:38px">${statutOptions}</select>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${p.clients?.nom||'Sans client'} · ${p.type_prestation||'—'}</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut prestation</label>
+          <select id="pd-statut" class="l-inp" style="height:38px">${statutOptions}</select>
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut financier</label>
+          <select id="pd-sfin" class="l-inp" style="height:38px">${SF_OPTS}</select>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Date</label>
@@ -1413,10 +1404,10 @@ function modalDetailPrestation(idx){
         </div>
       </div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Notes internes</label>
-        <textarea id="pd-notes" class="l-inp" style="height:70px;padding-top:10px;resize:none" placeholder="Informations internes…"></textarea>
+        <textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none" placeholder="Informations internes…">${p.notes_internes||''}</textarea>
       </div>
       <div id="pd-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
-      <div style="display:flex;gap:10px;justify-content:space-between;margin-top:4px">
+      <div style="display:flex;gap:10px;justify-content:space-between;margin-top:2px">
         <button onclick="supprimerPrestation('${p.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>
         <div style="display:flex;gap:10px">
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
@@ -1433,6 +1424,7 @@ async function modifierPrestation(id){
   try{
     const body={
       statut:document.getElementById('pd-statut').value,
+      statut_financier:document.getElementById('pd-sfin').value,
       date_prestation:document.getElementById('pd-date').value||null,
       lieu:document.getElementById('pd-lieu').value||null,
       montant_ttc:document.getElementById('pd-ttc').value?Number(document.getElementById('pd-ttc').value):null,
@@ -1932,6 +1924,112 @@ async function supprimerKit(id){
     loadKits();
     updateNavBadges(S.role);
   }catch(e){alert('Erreur lors de la suppression.');}
+}
+
+// ── Revenus photographe ───────────────────────────────────────────────────────
+async function loadPhotoRevenus(){
+  const el=document.getElementById('rev-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch(`prestations_equipe?select=id,remuneration,statut,prestations(id,reference,statut,type_prestation,date_prestation,clients(nom))&collaborateur_id=eq.${S.uid}&order=prestations.date_prestation.desc&limit=100`);
+    const list=(data||[]).filter(r=>r.prestations);
+    const now=new Date();const m0=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const total=list.reduce((s,r)=>s+(r.remuneration||0),0);
+    const done=list.filter(r=>{
+      const d=r.prestations?.date_prestation;
+      return d&&d>=m0&&['livrée','payée','facturée','partiellement_payée','clôturée'].includes(r.prestations?.statut);
+    }).length;
+    const s1=document.getElementById('rev-nb');if(s1)s1.textContent=list.length;
+    const s2=document.getElementById('rev-total');if(s2)s2.textContent=total?total.toLocaleString('fr-FR')+' €':'—';
+    const s3=document.getElementById('rev-done');if(s3)s3.textContent=done;
+    if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune mission assignée pour l\'instant.</div>';return;}
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Rémunération</th><th>Statut</th></tr></thead><tbody>'+
+      list.map(r=>{
+        const p=r.prestations;
+        return `<tr>
+          <td class="tm">${p.reference||'—'}</td>
+          <td class="tp">${p.clients?.nom||'—'}</td>
+          <td>${p.type_prestation||'—'}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td class="tm" style="color:var(--t1);font-weight:600">${r.remuneration?r.remuneration.toLocaleString('fr-FR')+' €':'—'}</td>
+          <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+        </tr>`;
+      }).join('')+'</tbody></table></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Dashboard CM ──────────────────────────────────────────────────────────────
+async function loadCmDash(){
+  try{
+    const now=new Date();
+    const m0=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const in14=new Date(now);in14.setDate(in14.getDate()+14);
+    const [clients,preMois,preSoon]=await Promise.all([
+      sbFetch('clients?select=id,nom,statut,sport,ville,type_client&order=nom.asc&limit=100'),
+      sbFetch(`prestations?select=id&created_at=gte.${m0}&statut=not.in.(annulée,refusée)`),
+      sbFetch(`prestations?select=id,reference,type_prestation,date_prestation,clients(nom)&date_prestation=gte.${now.toISOString().slice(0,10)}&date_prestation=lte.${in14.toISOString().slice(0,10)}&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=10`),
+    ]);
+    const list=clients||[];
+    const actifs=list.filter(c=>c.statut==='client').length;
+    const prospects=list.filter(c=>c.statut==='prospect'||c.statut==='qualifié').length;
+    const s1=document.getElementById('cm-kpi-cl');if(s1)s1.textContent=actifs;
+    const s2=document.getElementById('cm-kpi-pre');if(s2)s2.textContent=(preMois||[]).length;
+    const s3=document.getElementById('cm-kpi-soon');if(s3)s3.textContent=(preSoon||[]).length;
+    const s4=document.getElementById('cm-kpi-pr');if(s4)s4.textContent=prospects;
+    const ep=document.getElementById('cm-dash-pre');
+    if(ep){
+      ep.innerHTML=(preSoon||[]).length?'<div class="cd-b">'+(preSoon||[]).map(p=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--acc);flex-shrink:0"></div>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${p.clients?.nom||'—'} · ${p.type_prestation||'—'}</div>
+            <div style="font-size:11px;color:var(--t3)">${p.reference} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</div>
+          </div>
+        </div>`).join('')+'</div>':
+        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation dans les 14 prochains jours.</div>';
+    }
+    const ec=document.getElementById('cm-dash-cl');
+    if(ec){
+      const cl_actifs=list.filter(c=>c.statut==='client').slice(0,6);
+      ec.innerHTML=cl_actifs.length?'<div class="cd-b">'+cl_actifs.map(c=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${c.nom}</div>
+            <div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div>
+          </div>
+          <span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Client</span>
+        </div>`).join('')+'</div>':
+        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client actif.</div>';
+    }
+  }catch(e){console.error('loadCmDash',e);}
+}
+
+// ── Paiements collaborateurs ──────────────────────────────────────────────────
+async function loadPaiements(){
+  const el=document.getElementById('paiements-real');
+  if(!el)return;
+  try{
+    const [profiles,equipes]=await Promise.all([
+      sbFetch('profiles?select=id,prenom,nom,role&order=role.asc,nom.asc'),
+      sbFetch('prestations_equipe?select=collaborateur_id,remuneration,prestations(statut)'),
+    ]);
+    const colls=(profiles||[]).filter(p=>p.role!=='admin');
+    if(!colls.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3)">Aucun collaborateur.</div>';return;}
+    const ROLE_LBL={sec:'Secrétaire',prod:'Resp. Production',photo:'Photographe',cm:'Community Manager',compta:'Comptable',com:'Commercial'};
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Collaborateur</th><th>Rôle</th><th>Missions</th><th>Rém. prévue</th></tr></thead><tbody>'+
+      colls.map(p=>{
+        const missions=(equipes||[]).filter(e=>e.collaborateur_id===p.id);
+        const remTotal=missions.reduce((s,e)=>s+(e.remuneration||0),0);
+        const initials=((p.prenom?p.prenom[0]:'')+( p.nom?p.nom[0]:'')).toUpperCase()||'?';
+        return `<tr>
+          <td class="tp"><div style="display:flex;align-items:center;gap:8px">
+            <div class="av-xs" style="background:var(--gr)">${initials}</div>
+            ${p.prenom||''} ${p.nom||''}
+          </div></td>
+          <td>${ROLE_LBL[p.role]||p.role}</td>
+          <td class="tm">${missions.length}</td>
+          <td class="tm" style="color:${remTotal?'var(--ok)':'var(--t3)'};font-weight:600">${remTotal?remTotal.toLocaleString('fr-FR')+' €':'—'}</td>
+        </tr>`;
+      }).join('')+'</tbody></table></div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── Incidents production ─────────────────────────────────────────────────────
