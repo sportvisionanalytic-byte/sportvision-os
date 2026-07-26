@@ -2847,11 +2847,12 @@ async function loadCmDash(){
     const ep=document.getElementById('cm-dash-pre');
     if(ep){
       ep.innerHTML=(preSoon||[]).length?'<div class="cd-b">'+(preSoon||[]).map(p=>`
-        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalDetailById('${p.id}')">
           <div style="width:8px;height:8px;border-radius:50%;background:var(--acc);flex-shrink:0"></div>
           <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${p.clients?.nom||'—'} · ${p.type_prestation||'—'}</div>
             <div style="font-size:11px;color:var(--t3)">${p.reference} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</div>
           </div>
+          <span style="font-size:11px;color:var(--acc)">›</span>
         </div>`).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation dans les 14 prochains jours.</div>';
     }
@@ -3550,6 +3551,7 @@ async function loadComDash(){
       sbFetch(`prestations?select=id&created_at=gte.${m0}`),
     ]);
     const list=clients||[];
+    _clientsCache=list;
     const s1=document.getElementById('com-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
     const s2=document.getElementById('com-kpi-q');if(s2)s2.textContent=list.filter(c=>c.statut==='qualifié').length;
     const s3=document.getElementById('com-kpi-cl');if(s3)s3.textContent=list.filter(c=>c.statut==='client').length;
@@ -3559,21 +3561,21 @@ async function loadComDash(){
       const prox=list.filter(c=>c.statut==='prospect'||c.statut==='qualifié').slice(0,5);
       const scc={'prospect':'bw','qualifié':'bb'};
       const scl={'prospect':'Prospect','qualifié':'Qualifié'};
-      ep.innerHTML=prox.length?'<div class="cd-b">'+prox.map(c=>`
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+      ep.innerHTML=prox.length?'<div class="cd-b">'+prox.map(c=>{const i=list.indexOf(c);return`
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
           <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${c.nom}</div><div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
           <span class="bd ${scc[c.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${scl[c.statut]||c.statut}</span>
-        </div>`).join('')+'</div>':
+        </div>`;}).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun prospect. Ajoutez des contacts via le Pipeline.</div>';
     }
     const ec=document.getElementById('com-dash-cl');
     if(ec){
       const clients_signes=list.filter(c=>c.statut==='client').slice(0,5);
-      ec.innerHTML=clients_signes.length?'<div class="cd-b">'+clients_signes.map(c=>`
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+      ec.innerHTML=clients_signes.length?'<div class="cd-b">'+clients_signes.map(c=>{const i=list.indexOf(c);return`
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
           <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${c.nom}</div><div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
           <span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Client</span>
-        </div>`).join('')+'</div>':
+        </div>`;}).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client signé pour l\'instant.</div>';
     }
   }catch(e){console.error('loadComDash',e);}
