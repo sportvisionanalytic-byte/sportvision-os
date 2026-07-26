@@ -828,19 +828,32 @@ const VIEWS={
 
   'compta.export':()=>`
     <div class="sh"><div class="sh-t">Export comptable</div></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px">
-      ${[
-        {ico:'📊',ti:'Export CA mensuel',desc:'Chiffre d\'affaires par mois 2026',btn:'Télécharger CSV'},
-        {ico:'📄',ti:'Export factures',desc:'Toutes les factures émises',btn:'Télécharger CSV'},
-        {ico:'💳',ti:'Export paiements',desc:'Paiements collaborateurs',btn:'Télécharger CSV'},
-        {ico:'🧾',ti:'Déclaration TVA',desc:'Récap TVA collectée Q2 2026',btn:'Générer PDF'},
-        {ico:'📈',ti:'Bilan trimestriel',desc:'Bilan Q2 — Avril à Juin 2026',btn:'Générer PDF'},
-        {ico:'📦',ti:'Export complet',desc:'Toutes les données comptables',btn:'Exporter ZIP'},
-      ].map(e=>`<div class="cd" style="margin-bottom:0;padding:20px;gap:12px;flex-direction:column">
-        <div style="font-size:28px">${e.ico}</div>
-        <div><div style="font-size:13px;font-weight:650;color:var(--t1)">${e.ti}</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">${e.desc}</div></div>
-        <button class="btn bp bs" style="align-self:flex-start">${e.btn}</button>
-      </div>`).join('')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:13px">
+      <div class="cd" style="margin-bottom:0;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:28px">📄</div>
+        <div><div style="font-size:13px;font-weight:650;color:var(--t1)">Export factures</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">Toutes les prestations facturées avec montants</div></div>
+        <button class="btn bp bs" style="align-self:flex-start" onclick="exportCSV('factures')">Télécharger CSV</button>
+      </div>
+      <div class="cd" style="margin-bottom:0;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:28px">📊</div>
+        <div><div style="font-size:13px;font-weight:650;color:var(--t1)">Export CA mensuel</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">Chiffre d'affaires agrégé par mois</div></div>
+        <button class="btn bp bs" style="align-self:flex-start" onclick="exportCSV('ca-mensuel')">Télécharger CSV</button>
+      </div>
+      <div class="cd" style="margin-bottom:0;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:28px">💳</div>
+        <div><div style="font-size:13px;font-weight:650;color:var(--t1)">Export rémunérations</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">Paiements collaborateurs par prestation</div></div>
+        <button class="btn bp bs" style="align-self:flex-start" onclick="exportCSV('remunerations')">Télécharger CSV</button>
+      </div>
+      <div class="cd" style="margin-bottom:0;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:28px">👥</div>
+        <div><div style="font-size:13px;font-weight:650;color:var(--t1)">Export clients</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">Base clients complète avec statuts</div></div>
+        <button class="btn bp bs" style="align-self:flex-start" onclick="exportCSV('clients')">Télécharger CSV</button>
+      </div>
+      <div class="cd" style="margin-bottom:0;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:28px">📦</div>
+        <div><div style="font-size:13px;font-weight:650;color:var(--t1)">Export prestations complet</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">Toutes les prestations avec tous les champs</div></div>
+        <button class="btn bp bs" style="align-self:flex-start" onclick="exportCSV('prestations')">Télécharger CSV</button>
+      </div>
     </div>`,
 
   // ── COMMERCIAL ──────────────────────────
@@ -861,16 +874,13 @@ const VIEWS={
     </div>`,
 
   'com.devis':()=>`
-    <div class="sh"><div class="sh-t">Devis</div><button class="btn bp bs">+ Nouveau devis</button></div>
-    <div class="cd"><div class="tw"><table><thead><tr><th>N° Devis</th><th>Client</th><th>Contenu</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody>
-      ${[
-        {ref:'DEV-2026-018',cl:'Brunoy FC',ct:'Pack saison complète 26/27',mt:'3 200 €',st:'bw',sl:'En attente',dt:'30 juin'},
-        {ref:'DEV-2026-017',cl:'AS Bondoufle',ct:'2 matchs + highlights',mt:'1 800 €',st:'bw',sl:'En attente',dt:'28 juin'},
-        {ref:'DEV-2026-016',cl:'RC Savigny',ct:'1 match + interview',mt:'1 400 €',st:'bw',sl:'Relance',dt:'25 juin'},
-        {ref:'DEV-2026-015',cl:'AS Milly',ct:'Match Championnat D3',mt:'800 €',st:'ba',sl:'Signé',dt:'20 juin'},
-        {ref:'DEV-2026-014',cl:'Draveil Athletic',ct:'Visite terrain + offre',mt:'1 200 €',st:'bb',sl:'En rédaction',dt:'—'},
-      ].map(d=>`<tr><td class="tm">${d.ref}</td><td class="tp">${d.cl}</td><td>${d.ct}</td><td class="tm" style="color:var(--t1)">${d.mt}</td><td><span class="bd ${d.st}"><span class="bd-d"></span>${d.sl}</span></td><td>${d.dt}</td></tr>`).join('')}
-    </tbody></table></div></div>`,
+    <div class="sh"><div class="sh-t">Devis</div><button class="btn bp bs" onclick="modalNouveauDevis()">+ Nouveau devis</button></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="dev-kpi-att" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Acceptés</div><div class="fs-v" id="dev-kpi-acc" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Refusés</div><div class="fs-v" id="dev-kpi-ref" style="color:var(--er)">—</div></div>
+    </div>
+    <div id="devis-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.publications':()=>`
     <div class="sh"><div class="sh-t">Publications</div></div>
@@ -1350,6 +1360,7 @@ async function loadViewData(role,view){
   if(role==='com'&&view==='dash') await loadComDash();
   if(role==='photo'&&view==='revenus') await loadPhotoRevenus();
   if(role==='com'&&view==='objectifs') await loadObjectifs();
+  if((role==='com'||role==='admin')&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(view==='set') await loadSettings();
@@ -2092,6 +2103,120 @@ async function supprimerKit(id){
   }catch(e){alert('Erreur lors de la suppression.');}
 }
 
+// ── Devis ────────────────────────────────────────────────────────────────────
+let _devisCache=[];
+async function loadDevis(){
+  const el=document.getElementById('devis-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('devis?select=id,numero,statut,total_ttc,notes,date_envoi,date_expiration,clients(id,nom)&order=created_at.desc&limit=100');
+    _devisCache=data||[];
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    const att=_devisCache.filter(d=>['envoyé','en_attente'].includes(d.statut)).length;
+    const acc=_devisCache.filter(d=>d.statut==='accepté').length;
+    const ref=_devisCache.filter(d=>['refusé','expiré'].includes(d.statut)).length;
+    set('dev-kpi-att',att);set('dev-kpi-acc',acc);set('dev-kpi-ref',ref);
+    if(!_devisCache.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:10px;color:var(--t3)"><div style="font-size:40px;opacity:.15">📋</div><div style="font-size:13px">Aucun devis enregistré. Créez le premier.</div></div>';
+      return;
+    }
+    const s_cls={brouillon:'bn',envoyé:'bw',en_attente:'bl',accepté:'ba',refusé:'bb',expiré:'bb',annulé:'bb'};
+    const s_lbl={brouillon:'Brouillon',envoyé:'Envoyé',en_attente:'En attente',accepté:'Accepté',refusé:'Refusé',expiré:'Expiré',annulé:'Annulé'};
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>N° Devis</th><th>Client</th><th>Notes</th><th>Total TTC</th><th>Statut</th><th>Date envoi</th><th></th></tr></thead><tbody>'+
+      _devisCache.map((d,i)=>`<tr>
+        <td class="tm">${d.numero||'—'}</td>
+        <td class="tp">${d.clients?.nom||'—'}</td>
+        <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t3)">${d.notes||'—'}</td>
+        <td class="tm" style="color:var(--t1);font-weight:600">${d.total_ttc?d.total_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+        <td><span class="bd ${s_cls[d.statut]||'bw'}"><span class="bd-d"></span>${s_lbl[d.statut]||d.statut}</span></td>
+        <td>${d.date_envoi?new Date(d.date_envoi).toLocaleDateString('fr-FR'):'—'}</td>
+        <td><button class="btn bg2 bs" onclick="modalModifierDevis(${i})">Modifier</button></td>
+      </tr>`).join('')+'</tbody></table></div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function modalNouveauDevis(){
+  sbFetch('clients?select=id,nom&order=nom.asc').then(clients=>{
+    const opts=(clients||[]).map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+    openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()">✕</button></div>
+      <div class="mb">
+        <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi"><option value="">-- Sélectionner --</option>${opts}</select></div>
+        <div class="fg"><label class="fl">Notes / Description</label><textarea id="dv-notes" class="fi" rows="3" placeholder="Contenu du devis, prestations incluses…"></textarea></div>
+        <div class="g2"><div class="fg"><label class="fl">Montant HT (€)</label><input type="number" id="dv-ht" class="fi" placeholder="0.00" step="0.01"></div>
+        <div class="fg"><label class="fl">TVA (%)</label><input type="number" id="dv-tva" class="fi" value="20" step="1"></div></div>
+        <div class="g2"><div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-envoi" class="fi"></div>
+        <div class="fg"><label class="fl">Validité (jours)</label><input type="number" id="dv-validite" class="fi" value="30"></div></div>
+        <div id="dv-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+      </div>
+      <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
+  }).catch(()=>{openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb"><p style="color:var(--er)">Impossible de charger les clients.</p></div>`);});
+}
+
+async function creerDevis(){
+  const cli=document.getElementById('dv-cli')?.value;
+  const notes=document.getElementById('dv-notes')?.value?.trim();
+  const ht=parseFloat(document.getElementById('dv-ht')?.value||0);
+  const tva=parseFloat(document.getElementById('dv-tva')?.value||20);
+  const envoi=document.getElementById('dv-envoi')?.value;
+  const validite=parseInt(document.getElementById('dv-validite')?.value||30);
+  const err=document.getElementById('dv-err');
+  if(!cli){if(err)err.textContent='Sélectionnez un client.';return;}
+  const ttc=Math.round(ht*(1+tva/100)*100)/100;
+  const expiration=envoi?new Date(new Date(envoi).getTime()+validite*86400000).toISOString().slice(0,10):null;
+  try{
+    await sbFetch('devis',{method:'POST',body:{
+      client_id:cli,notes:notes||null,
+      total_ht:ht,tva_pct:tva,total_ttc:ttc,
+      sous_total:ht,
+      statut:'brouillon',
+      date_envoi:envoi||null,
+      date_expiration:expiration,
+      validite_jours:validite,
+      created_by:localStorage.getItem('sv_uid'),
+    }});
+    closeModal();loadDevis();
+  }catch(e){if(err)err.textContent='Erreur lors de la création.';}
+}
+
+async function modalModifierDevis(idx){
+  const d=_devisCache[idx];
+  if(!d)return;
+  const statuts=['brouillon','envoyé','en_attente','accepté','refusé','expiré','annulé'];
+  const opts=statuts.map(s=>`<option value="${s}"${d.statut===s?' selected':''}>${{brouillon:'Brouillon',envoyé:'Envoyé',en_attente:'En attente',accepté:'Accepté',refusé:'Refusé',expiré:'Expiré',annulé:'Annulé'}[s]}</option>`).join('');
+  openModal(`<div class="mh"><div class="mt">${d.numero||'Devis'}</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Statut</label><select id="dv-st" class="fi">${opts}</select></div>
+      <div class="fg"><label class="fl">Notes</label><textarea id="dv-no" class="fi" rows="3">${d.notes||''}</textarea></div>
+      <div class="g2">
+        <div class="fg"><label class="fl">Total HT (€)</label><input type="number" id="dv-ht2" class="fi" value="${d.total_ht||''}" step="0.01"></div>
+        <div class="fg"><label class="fl">Total TTC (€)</label><input type="number" id="dv-ttc2" class="fi" value="${d.total_ttc||''}" step="0.01"></div>
+      </div>
+      <div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-env2" class="fi" value="${d.date_envoi||''}"></div>
+      <div id="dv-err2" style="color:var(--er);font-size:12px;min-height:16px"></div>
+    </div>
+    <div class="mf"><button class="btn bb" onclick="supprimerDevis('${d.id}')">Supprimer</button><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="sauvegarderDevis('${d.id}')">Sauvegarder</button></div>`);
+}
+
+async function sauvegarderDevis(id){
+  const err=document.getElementById('dv-err2');
+  try{
+    await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{
+      statut:document.getElementById('dv-st')?.value,
+      notes:document.getElementById('dv-no')?.value||null,
+      total_ht:parseFloat(document.getElementById('dv-ht2')?.value||0),
+      total_ttc:parseFloat(document.getElementById('dv-ttc2')?.value||0),
+      date_envoi:document.getElementById('dv-env2')?.value||null,
+    }});
+    closeModal();loadDevis();
+  }catch(e){if(err)err.textContent='Erreur lors de la sauvegarde.';}
+}
+
+async function supprimerDevis(id){
+  if(!confirm('Supprimer ce devis ?'))return;
+  try{await sbFetch('devis?id=eq.'+id,{method:'DELETE'});closeModal();loadDevis();}
+  catch(e){alert('Erreur lors de la suppression.');}
+}
+
 // ── Objectifs commerciaux ────────────────────────────────────────────────────
 async function loadObjectifs(){
   const el=document.getElementById('obj-real');
@@ -2256,6 +2381,52 @@ async function loadPaiements(){
         </tr>`;
       }).join('')+'</tbody></table></div></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Export CSV ───────────────────────────────────────────────────────────────
+function downloadCSV(rows,filename){
+  const BOM='﻿';
+  const csv=BOM+rows.map(r=>r.map(v=>'"'+(String(v||'').replace(/"/g,'""'))+'"').join(';')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=filename;a.click();URL.revokeObjectURL(a.href);
+}
+
+async function exportCSV(type){
+  try{
+    if(type==='factures'){
+      const data=await sbFetch('prestations?select=reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,tva_pct,clients(nom)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=500');
+      const rows=[['Référence','Client','Type','Date','Montant HT','TVA %','Montant TTC','Statut facture']];
+      (data||[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.montant_ht||'',p.tva_pct||'20',p.montant_ttc||'',p.statut_financier||'']));
+      downloadCSV(rows,'SportVision-Factures-'+new Date().toISOString().slice(0,10)+'.csv');
+    }
+    else if(type==='ca-mensuel'){
+      const data=await sbFetch('prestations?select=date_prestation,montant_ttc,statut_financier&statut_financier=in.(payée,partiellement_payée)&order=date_prestation.asc&limit=500');
+      const byMonth={};
+      (data||[]).forEach(p=>{if(!p.date_prestation)return;const m=p.date_prestation.slice(0,7);if(!byMonth[m])byMonth[m]={count:0,total:0};byMonth[m].count++;byMonth[m].total+=p.montant_ttc||0;});
+      const rows=[['Mois','Nombre prestations','CA TTC (€)']];
+      Object.keys(byMonth).sort().forEach(m=>rows.push([m,byMonth[m].count,byMonth[m].total.toFixed(2)]));
+      downloadCSV(rows,'SportVision-CA-Mensuel-'+new Date().toISOString().slice(0,10)+'.csv');
+    }
+    else if(type==='remunerations'){
+      const data=await sbFetch('prestations_equipe?select=remuneration,heure_rdv,statut,fonction,prestations(reference,date_prestation),profiles!collaborateur_id(prenom,nom,role)&order=created_at.desc&limit=500');
+      const rows=[['Collaborateur','Rôle','Prestation','Date','Fonction','Rémunération (€)','Statut']];
+      (data||[]).forEach(e=>rows.push([(e.profiles?.prenom||'')+' '+(e.profiles?.nom||''),e.profiles?.role||'',e.prestations?.reference||'',e.prestations?.date_prestation||'',e.fonction||'',e.remuneration||'0',e.statut||'']));
+      downloadCSV(rows,'SportVision-Remunerations-'+new Date().toISOString().slice(0,10)+'.csv');
+    }
+    else if(type==='clients'){
+      const data=await sbFetch('clients?select=nom,statut,type_client,nom_contact,prenom_contact,email,telephone,ville,sport,created_at&order=nom.asc&limit=500');
+      const rows=[['Nom','Statut','Type','Contact','Email','Téléphone','Ville','Sport','Créé le']];
+      (data||[]).forEach(c=>rows.push([c.nom||'',c.statut||'',c.type_client||'',(c.prenom_contact||'')+' '+(c.nom_contact||''),c.email||'',c.telephone||'',c.ville||'',c.sport||'',c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR'):'']));
+      downloadCSV(rows,'SportVision-Clients-'+new Date().toISOString().slice(0,10)+'.csv');
+    }
+    else if(type==='prestations'){
+      const data=await sbFetch('prestations?select=reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,lieu,montant_ht,montant_ttc,notes_internes,clients(nom)&order=date_prestation.desc&limit=500');
+      const rows=[['Référence','Client','Type','Date','Heure début','Heure fin','Lieu','Montant HT','Montant TTC','Statut','Statut financier','Notes']];
+      (data||[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.heure_debut||'',p.heure_fin||'',p.lieu||'',p.montant_ht||'',p.montant_ttc||'',p.statut||'',p.statut_financier||'',p.notes_internes||'']));
+      downloadCSV(rows,'SportVision-Prestations-'+new Date().toISOString().slice(0,10)+'.csv');
+    }
+  }catch(e){alert('Erreur lors de l\'export : '+e.message);}
 }
 
 // ── Incidents production ─────────────────────────────────────────────────────
