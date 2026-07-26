@@ -1,0 +1,7 @@
+[build]
+  publish = "livrables/SportVision-TV"
+
+[[redirects]]
+  from = "/"
+  to = "/SportVision-OS-Full.html"
+  status = 200
