@@ -302,7 +302,7 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
         <div class="ib"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg></div>
         <div class="ib"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.5 1.5a5 5 0 015 5v3l1 2h-12l1-2v-3a5 5 0 015-5z"/><path d="M6 12.5a1.5 1.5 0 003 0"/></svg><span class="ndot"></span></div>
         <button class="btn bp bs" id="cta-btn">+ Nouvelle prestation</button>
-        <div class="ib" onclick="goLogin()" title="Changer de rôle"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3l4 4-4 4M14 7H5M8 1H2a1 1 0 00-1 1v11a1 1 0 001 1h6"/></svg></div>
+        <div class="ib" onclick="doLogout()" title="Se déconnecter"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3l4 4-4 4M14 7H5M8 1H2a1 1 0 00-1 1v11a1 1 0 001 1h6"/></svg></div>
       </div>
     </header>
     <div class="ct" id="app-ct"></div>
@@ -1162,6 +1162,16 @@ function fallbackView(role,view){
 const SB_URL='https://lulgezzpvrlbftbykzrc.supabase.co';
 const SB_KEY='sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
 
+function svSave(token,refresh,uid,role){
+  localStorage.setItem('sv_tok',token);
+  localStorage.setItem('sv_ref',refresh);
+  localStorage.setItem('sv_uid',uid);
+  localStorage.setItem('sv_role',role);
+}
+function svClear(){
+  ['sv_tok','sv_ref','sv_uid','sv_role'].forEach(k=>localStorage.removeItem(k));
+}
+
 async function doLogin(){
   const email=(document.getElementById('l-email').value||'').trim();
   const pass=document.getElementById('l-pass').value||'';
@@ -1182,15 +1192,51 @@ async function doLogin(){
     });
     const profs=await r2.json();
     if(!profs||!profs[0])throw new Error('Profil introuvable. Contactez l\'administrateur.');
-    goOnboard(profs[0].role);
+    svSave(d1.access_token,d1.refresh_token,d1.user.id,profs[0].role);
+    goApp(profs[0].role);
   }catch(e){
     errEl.textContent=e.message||'Erreur de connexion.';
     btn.textContent='Se connecter';btn.disabled=false;
   }
 }
 
+async function doLogout(){
+  await fetch(SB_URL+'/auth/v1/logout',{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')}
+  }).catch(()=>{});
+  svClear();
+  goLogin();
+}
+
+async function checkSession(){
+  const tok=localStorage.getItem('sv_tok');
+  const role=localStorage.getItem('sv_role');
+  if(!tok||!role)return;
+  try{
+    const r=await fetch(SB_URL+'/auth/v1/user',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok}
+    });
+    if(r.ok){goApp(role);return;}
+    // Token expiré, on tente le refresh
+    const ref=localStorage.getItem('sv_ref');
+    if(!ref){svClear();return;}
+    const r2=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({refresh_token:ref})
+    });
+    const d=await r2.json();
+    if(d.access_token){
+      svSave(d.access_token,d.refresh_token,localStorage.getItem('sv_uid'),role);
+      goApp(role);
+    }else{svClear();}
+  }catch(e){/* réseau HS, on reste sur login */}
+}
+
 // ── STATE ────────────────────────────────
 let S={screen:'login',role:null,view:null,obStep:1,obRole:null};
+checkSession();
 
 function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.getElementById('s-'+id).classList.add('on')}
 
