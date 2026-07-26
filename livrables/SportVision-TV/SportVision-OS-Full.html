@@ -1673,30 +1673,97 @@ async function loadPhotoDash(){
   }
 }
 
+let _kitsCache=[];
 async function loadKits(){
   const el=document.getElementById('kits-real');
   if(!el)return;
   try{
-    const data=await sbFetch('kits?select=id,nom,type_kit,description,statut&order=type_kit.asc,nom.asc');
+    const data=await sbFetch('kits?select=id,nom,type_kit,description,statut,valeur&order=type_kit.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📦</div><div>Aucun kit. Ajoutez le premier.</div></div>';return;}
+    _kitsCache=data;
     const dispo=data.filter(k=>k.statut==='disponible').length;
     const enCours=data.filter(k=>['sorti','en_prestation','pré_réservé','réservé','à_récupérer'].includes(k.statut)).length;
     const maint=data.filter(k=>['en_maintenance','endommagé','indisponible'].includes(k.statut)).length;
-    const dispEl=document.getElementById('kits-dispo');
-    const enEl=document.getElementById('kits-encours');
-    const mainEl=document.getElementById('kits-maint');
-    if(dispEl)dispEl.textContent=dispo;
-    if(enEl)enEl.textContent=enCours;
-    if(mainEl)mainEl.textContent=maint;
+    const dispEl=document.getElementById('kits-dispo');const enEl=document.getElementById('kits-encours');const mainEl=document.getElementById('kits-maint');
+    if(dispEl)dispEl.textContent=dispo;if(enEl)enEl.textContent=enCours;if(mainEl)mainEl.textContent=maint;
     const tIco={'photo':'📷','vidéo':'🎥','drone':'🚁','audio':'🎙️','streaming':'📡','son':'🎙️','lumière':'💡','réalisation':'🎬','réseaux':'📱'};
     const stCls={'disponible':'ba','en_prestation':'bl','sorti':'bl','pré_réservé':'bw','réservé':'bw','en_maintenance':'bn','endommagé':'br','indisponible':'br','à_récupérer':'bw','retourné':'bn','en_contrôle':'bn','à_retourner':'bw'};
     const stLbl={'disponible':'Disponible','en_prestation':'En prestation','sorti':'Sorti','pré_réservé':'Pré-réservé','réservé':'Réservé','en_maintenance':'Maintenance','endommagé':'Endommagé','indisponible':'Indisponible','à_récupérer':'À récupérer','retourné':'Retourné','en_contrôle':'En contrôle','à_retourner':'À retourner'};
-    el.innerHTML='<div class="cd">'+data.map(k=>`<div style="display:flex;align-items:center;gap:13px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.025)'" onmouseout="this.style.background=''">
+    el.innerHTML='<div class="cd">'+data.map((k,i)=>`<div style="display:flex;align-items:center;gap:13px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035);transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.025)'" onmouseout="this.style.background=''">
       <div style="width:36px;height:36px;border-radius:9px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${tIco[k.type_kit]||'📦'}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${k.nom}</div><div style="font-size:11px;color:var(--t3)">${k.description||k.type_kit}</div></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${k.nom}</div><div style="font-size:11px;color:var(--t3)">${k.description||k.type_kit}${k.valeur?' · '+k.valeur.toLocaleString('fr-FR')+' €':''}</div></div>
       <span class="bd ${stCls[k.statut]||'bw'}"><span class="bd-d"></span>${stLbl[k.statut]||k.statut}</span>
+      <div style="display:flex;gap:6px;margin-left:8px">
+        <button onclick="modalModifierKit(${i})" style="padding:5px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">Modifier</button>
+        <button onclick="supprimerKit('${k.id}')" style="padding:5px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer" onmouseover="this.style.background='rgba(240,68,94,.2)'" onmouseout="this.style.background='rgba(240,68,94,.1)'">Supprimer</button>
+      </div>
     </div>`).join('')+'</div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function modalModifierKit(idx){
+  const k=_kitsCache[idx];
+  if(!k)return;
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Modifier le kit</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom *</label>
+          <input id="fke-nom" type="text" class="l-inp" value="${k.nom}" style="height:38px">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type</label>
+          <select id="fke-type" class="l-inp" style="height:38px">
+            ${['photo','vidéo','drone','audio','streaming','son','lumière','réalisation','réseaux'].map(t=>`<option value="${t}"${k.type_kit===t?' selected':''}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description / contenu</label>
+        <input id="fke-desc" type="text" class="l-inp" value="${k.description||''}" style="height:38px">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut</label>
+          <select id="fke-statut" class="l-inp" style="height:38px">
+            ${['disponible','pré_réservé','réservé','sorti','en_prestation','à_retourner','retourné','en_contrôle','en_maintenance','endommagé','indisponible'].map(s=>`<option value="${s}"${k.statut===s?' selected':''}>${s.replace(/_/g,' ')}</option>`).join('')}
+          </select>
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Valeur (€)</label>
+          <input id="fke-val" type="number" class="l-inp" value="${k.valeur||''}" style="height:38px">
+        </div>
+      </div>
+      <div id="fke-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="modifierKit('${k.id}')">Enregistrer</button>
+      </div>
+    </div>`);
+}
+
+async function modifierKit(id){
+  const err=document.getElementById('fke-err');
+  const nom=document.getElementById('fke-nom').value.trim();
+  if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  err.textContent='Enregistrement…';
+  try{
+    await sbFetch('kits?id=eq.'+id,{method:'PATCH',body:{
+      nom,
+      type_kit:document.getElementById('fke-type').value,
+      description:document.getElementById('fke-desc').value||null,
+      statut:document.getElementById('fke-statut').value,
+      valeur:document.getElementById('fke-val').value?Number(document.getElementById('fke-val').value):null,
+    }});
+    closeModal();
+    loadKits();
+    updateNavBadges(S.role);
+  }catch(e){err.textContent='Erreur lors de la modification.';}
+}
+
+async function supprimerKit(id){
+  if(!confirm('Supprimer ce kit ? Cette action est irréversible.'))return;
+  try{
+    await sbFetch('kits?id=eq.'+id,{method:'DELETE'});
+    loadKits();
+    updateNavBadges(S.role);
+  }catch(e){alert('Erreur lors de la suppression.');}
 }
 
 async function loadCollaborateurs(){
