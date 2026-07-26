@@ -644,14 +644,16 @@ const VIEWS={
     </div>`,
 
   'admin.set':()=>`
-    <div class="sh"><div class="sh-t">Paramètres système</div></div>
-    ${[
-      {sec:'Organisation',items:[['Nom de l\'entreprise','Elkana Group / SportVision'],['Email administrateur','elkanagroup0@gmail.com'],['Fuseau horaire','Europe/Paris (UTC+2)']]},
-      {sec:'Rôles & accès',items:[['Administrateur','Accès complet'],['Secrétaire','Clients, Prestations, Planning'],['Resp. Production','Kanban, Kits, Équipes'],['Collaborateur','Ses prestations uniquement']]},
-      {sec:'Intégrations',items:[['Supabase Auth','Non configuré'],['Stockage S3','Non configuré'],['Notifications email','Non configuré']]},
-    ].map(sec=>`<div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">${sec.sec}</div><button class="btn bg2 bs">Modifier</button></div>
-      ${sec.items.map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035)"><span style="font-size:13px;color:var(--t2)">${k}</span><span style="font-size:12.5px;font-weight:500;color:var(--t1)">${v}</span></div>`).join('')}
-    </div>`).join('')}`,
+    <div class="sh"><div class="sh-t">Paramètres</div></div>
+    <div id="set-profile"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Rôles disponibles</div></div>
+      ${[['admin','Administrateur','Accès complet'],['sec','Secrétaire','Clients, Prestations, Planning, Documents'],['prod','Resp. Production','Kanban, Kits, Équipes, Incidents'],['photo','Photographe / Vidéaste','Ses prestations, Médias, Revenus'],['cm','Community Manager','Calendrier, Contenus, Publications'],['compta','Comptable','Factures, Paiements, Export'],['com','Commercial','Pipeline, Devis, Objectifs']].map(([r,n,d])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div><div style="font-size:13px;color:var(--t1);font-weight:500">${n}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${d}</div></div>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2);font-family:monospace">${r}</span>
+        </div>`).join('')}
+    </div>`,
 
   // ── SECRÉTAIRE ──────────────────────────
   'sec.crm':()=>`
@@ -1451,6 +1453,7 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='dash') await loadProdDash();
   if(role==='prod'&&view==='equipes') await loadEquipes();
   if(role==='photo'&&view==='dash') await loadPhotoDash();
+  if(view==='set') await loadSettings();
 }
 
 const SL={
@@ -1530,6 +1533,7 @@ function modalDetailPrestation(idx){
         <button onclick="supprimerPrestation('${p.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>
         <div style="display:flex;gap:10px">
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
+          <button class="btn bg2" onclick="closeModal();modalEquipePrestation('${p.id}','${p.reference||''}')">Équipe →</button>
           <button class="btn bp" onclick="modifierPrestation('${p.id}')">Enregistrer</button>
         </div>
       </div>
@@ -1841,6 +1845,113 @@ async function loadPhotoDash(){
   }
 }
 
+// ── PARAMÈTRES / PROFIL ──────────────────
+async function loadSettings(){
+  const el=document.getElementById('set-profile');
+  if(!el)return;
+  const uid=localStorage.getItem('sv_uid');
+  if(!uid){el.innerHTML='';return;}
+  try{
+    const data=await sbFetch('profiles?select=prenom,nom,telephone,role&id=eq.'+uid);
+    const p=data?.[0]||{};
+    const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+    el.innerHTML=`<div class="cd" style="margin-bottom:13px">
+      <div class="cd-h"><div class="cd-t">Mon profil</div><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2);font-family:monospace">${p.role||''}</span></div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label style="${lbl}">Prénom</label><input id="set-prenom" class="l-inp" value="${p.prenom||''}" style="height:38px"></div>
+          <div><label style="${lbl}">Nom</label><input id="set-nom" class="l-inp" value="${p.nom||''}" style="height:38px"></div>
+        </div>
+        <div><label style="${lbl}">Téléphone</label><input id="set-tel" type="tel" class="l-inp" value="${p.telephone||''}" placeholder="+33 6 00 00 00 00" style="height:38px"></div>
+        <div id="set-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn bp" onclick="sauvegarderProfil('${uid}')">Enregistrer le profil</button></div>
+      </div>
+    </div>`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+async function sauvegarderProfil(uid){
+  const err=document.getElementById('set-err');
+  if(err)err.textContent='Enregistrement…';
+  try{
+    await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{
+      prenom:document.getElementById('set-prenom').value.trim()||null,
+      nom:document.getElementById('set-nom').value.trim()||null,
+      telephone:document.getElementById('set-tel').value.trim()||null,
+    }});
+    if(err)err.style.color='var(--ok)',err.textContent='Profil mis à jour.';
+    // Mettre à jour la sidebar
+    const prenom=document.getElementById('set-prenom').value.trim();
+    const nom=document.getElementById('set-nom').value.trim();
+    const name=[prenom,nom].filter(Boolean).join(' ');
+    const ini=((prenom[0]||'')+(nom[0]||'')).toUpperCase();
+    if(name){const nm=document.getElementById('u-nm');if(nm)nm.textContent=name;}
+    if(ini){const av=document.getElementById('u-av');if(av)av.textContent=ini;}
+  }catch(e){if(err)err.style.color='var(--er)',err.textContent='Erreur lors de la sauvegarde.';}
+}
+
+// ── ÉQUIPE PRESTATION ─────────────────────
+async function modalEquipePrestation(prestationId,ref){
+  openModal(`<div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Équipe — ${ref}</div>
+    <div id="eq-liste" style="min-height:60px;margin-bottom:16px"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div style="background:var(--s2);border-radius:var(--rb);padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">Ajouter un collaborateur</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><select id="eq-col" class="l-inp" style="height:36px"><option value="">— Choisir —</option></select></div>
+        <div><input id="eq-fonc" type="text" class="l-inp" placeholder="Fonction (ex: photo)" style="height:36px"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="ajouterMembreEquipe('${prestationId}','${ref}')">+ Ajouter</button></div>
+    </div>
+    <div id="eq-err" style="font-size:12px;color:var(--er);margin-top:8px;min-height:14px"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+  await chargerEquipe(prestationId,ref);
+  sbFetch('profiles?select=id,prenom,nom,role&order=nom.asc').then(data=>{
+    const sel=document.getElementById('eq-col');
+    if(sel&&data)data.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=[p.prenom,p.nom].filter(Boolean).join(' ')||p.role;sel.appendChild(o);});
+  });
+}
+async function chargerEquipe(prestationId,ref){
+  const el=document.getElementById('eq-liste');
+  if(!el)return;
+  const rc={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
+  try{
+    const data=await sbFetch('prestations_equipe?select=id,statut,fonction,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId);
+    if(!data||!data.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px 0">Aucun collaborateur affecté.</div>';return;}
+    el.innerHTML=data.map(m=>{
+      const t=m.collaborateur||{};
+      const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||'?';
+      const name=[t.prenom,t.nom].filter(Boolean).join(' ')||'—';
+      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <div class="av" style="background:${rc[t.role]||'#366BFF'};width:30px;height:30px;font-size:11px;flex-shrink:0">${ini}</div>
+        <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${name}</div><div style="font-size:11px;color:var(--t3)">${m.fonction||t.role||'—'}</div></div>
+        <button onclick="retirerMembreEquipe('${m.id}','${prestationId}','${ref}')" style="padding:4px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Retirer</button>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';}
+}
+async function ajouterMembreEquipe(prestationId,ref){
+  const err=document.getElementById('eq-err');
+  const colId=document.getElementById('eq-col').value;
+  const fonc=document.getElementById('eq-fonc').value.trim();
+  if(!colId){err.textContent='Sélectionne un collaborateur.';return;}
+  try{
+    await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée'}});
+    document.getElementById('eq-col').value='';
+    document.getElementById('eq-fonc').value='';
+    err.textContent='';
+    await chargerEquipe(prestationId,ref);
+  }catch(e){err.textContent='Erreur lors de l\'ajout.';}
+}
+async function retirerMembreEquipe(equipeId,prestationId,ref){
+  if(!confirm('Retirer ce collaborateur de la prestation ?'))return;
+  try{
+    await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'DELETE'});
+    await chargerEquipe(prestationId,ref);
+  }catch(e){alert('Erreur lors du retrait.');}
+}
+
+// ── MODIFIER COLLABORATEUR ────────────────
+let _colsCache=[];
+
 let _kitsCache=[];
 async function loadKits(){
   const el=document.getElementById('kits-real');
@@ -1940,21 +2051,64 @@ async function loadCollaborateurs(){
   try{
     const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
+    _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
     const rLabels={'admin':'Administrateur','sec':'Secrétaire','prod':'Resp. Production','photo':'Photographe','cm':'Community Manager','compta':'Comptable','com':'Commercial'};
     el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:13px">'+
-      data.map(t=>{
+      data.map((t,i)=>{
         const ini=((t.prenom?t.prenom[0]:'')+(t.nom?t.nom[0]:'')).toUpperCase()||t.role.substring(0,2).toUpperCase();
         const name=[t.prenom,t.nom].filter(Boolean).join(' ')||t.role;
         const col=rColors[t.role]||'#366BFF';
-        return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;cursor:pointer;transition:border-color .15s,transform .15s" onmouseover="this.style.borderColor='rgba(54,107,255,.3)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,.07)';this.style.transform=''">
+        return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
           <div class="av" style="width:50px;height:50px;font-size:17px;font-weight:700;background:${col}">${ini}</div>
           <div style="font-size:13px;font-weight:650;color:var(--t1)">${name}</div>
           <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2)">${rLabels[t.role]||t.role}</span>
           ${t.telephone?`<div style="font-size:11px;color:var(--t3)">${t.telephone}</div>`:''}
+          <button onclick="modalModifierCollaborateur(${i})" style="padding:5px 14px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer;width:100%">Modifier</button>
         </div>`;
       }).join('')+'</div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function modalModifierCollaborateur(idx){
+  const t=_colsCache[idx];
+  if(!t)return;
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const rLabels={'admin':'Administrateur','sec':'Secrétaire','prod':'Resp. Production','photo':'Photographe','cm':'Community Manager','compta':'Comptable','com':'Commercial'};
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Modifier le collaborateur</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:20px">${rLabels[t.role]||t.role}</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Prénom</label><input id="fco-prenom" class="l-inp" value="${t.prenom||''}" style="height:38px"></div>
+        <div><label style="${lbl}">Nom</label><input id="fco-nom" class="l-inp" value="${t.nom||''}" style="height:38px"></div>
+      </div>
+      <div><label style="${lbl}">Téléphone</label><input id="fco-tel" type="tel" class="l-inp" value="${t.telephone||''}" style="height:38px"></div>
+      <div><label style="${lbl}">Rôle</label>
+        <select id="fco-role" class="l-inp" style="height:38px">
+          ${['admin','sec','prod','photo','cm','compta','com'].map(r=>`<option value="${r}"${t.role===r?' selected':''}>${rLabels[r]||r}</option>`).join('')}
+        </select>
+      </div>
+      <div id="fco-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="modifierCollaborateur('${t.id}')">Enregistrer</button>
+      </div>
+    </div>`);
+}
+async function modifierCollaborateur(id){
+  const err=document.getElementById('fco-err');
+  err.textContent='Enregistrement…';
+  try{
+    await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{
+      prenom:document.getElementById('fco-prenom').value.trim()||null,
+      nom:document.getElementById('fco-nom').value.trim()||null,
+      telephone:document.getElementById('fco-tel').value.trim()||null,
+      role:document.getElementById('fco-role').value,
+    }});
+    closeModal();
+    loadCollaborateurs();
+  }catch(e){err.textContent='Erreur lors de la modification.';}
 }
 
 // ── STATE ────────────────────────────────
