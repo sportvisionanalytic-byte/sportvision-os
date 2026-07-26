@@ -531,10 +531,10 @@ const VIEWS={
       <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
     </div>
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#00B8D4"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="sec-kpi-clients">—</div><span class="kpi-d dnt">total</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations en cours</div><div class="kpi-v" id="sec-kpi-pre">—</div><span class="kpi-d dnt">actives</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Prochaines (7j)</div><div class="kpi-v" id="sec-kpi-soon">—</div><span class="kpi-d dnt">à venir</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="sec-kpi-prospects">—</div><span class="kpi-d dnt">à traiter</span></div>
+      <div class="kpi" style="--kl:#00B8D4;cursor:pointer" onclick="switchView('crm')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="sec-kpi-clients">—</div><span class="kpi-d dnt">total</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Prestations en cours</div><div class="kpi-v" id="sec-kpi-pre">—</div><span class="kpi-d dnt">actives</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Prochaines (7j)</div><div class="kpi-v" id="sec-kpi-soon">—</div><span class="kpi-d dnt">à venir</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('crm')"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="sec-kpi-prospects">—</div><span class="kpi-d dnt">à traiter</span></div>
     </div>
     <div class="g32">
       <div class="cd"><div class="cd-h"><div class="cd-t">Prochaines prestations</div><button class="btn bg2 bs" onclick="switchView('pre')">Toutes</button></div>
@@ -689,9 +689,9 @@ const VIEWS={
   // ── PRODUCTION ──────────────────────────
   'prod.dash':()=>`
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prestations actives</div><div class="kpi-v" id="prod-kpi-pre">—</div><span class="kpi-d dnt">en cours</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Kits déployés</div><div class="kpi-v" id="prod-kpi-kits">—</div><span class="kpi-d dnt">sur l'inventaire</span></div>
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="prod-kpi-inc">—</div><span class="kpi-d dnt">à traiter</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Prestations actives</div><div class="kpi-v" id="prod-kpi-pre">—</div><span class="kpi-d dnt">en cours</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Kits déployés</div><div class="kpi-v" id="prod-kpi-kits">—</div><span class="kpi-d dnt">sur l'inventaire</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('incidents')"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="prod-kpi-inc">—</div><span class="kpi-d dnt">à traiter</span></div>
     </div>
     <div class="g32">
       <div class="cd"><div class="cd-h"><div class="cd-t">Prestations en cours</div><button class="btn bg2 bs" onclick="switchView('pre')">Voir tout</button></div>
@@ -859,10 +859,10 @@ const VIEWS={
   // ── COMPTABLE ───────────────────────────
   'compta.dash':()=>`
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA encaissé</div><div class="kpi-v" id="cptd-enc">—</div><span class="kpi-d dnt">payé</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">En attente</div><div class="kpi-v" id="cptd-att">—</div><span class="kpi-d dnt">facturé</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Prestations facturées</div><div class="kpi-v" id="cptd-nb">—</div><span class="kpi-d dnt">au total</span></div>
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">CA total</div><div class="kpi-v" id="cptd-total">—</div><span class="kpi-d dnt">cumulé</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('factures')"><div class="kpi-ey">CA encaissé</div><div class="kpi-v" id="cptd-enc">—</div><span class="kpi-d dnt">payé</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('rapprochement')"><div class="kpi-ey">En attente</div><div class="kpi-v" id="cptd-att">—</div><span class="kpi-d dnt">facturé</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('factures')"><div class="kpi-ey">Prestations facturées</div><div class="kpi-v" id="cptd-nb">—</div><span class="kpi-d dnt">au total</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('export')"><div class="kpi-ey">CA total</div><div class="kpi-v" id="cptd-total">—</div><span class="kpi-d dnt">cumulé</span></div>
     </div>
     <div id="cptd-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1672,9 +1672,10 @@ function modalDetailPrestation(idx){
       <div id="pd-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:2px">
         ${['admin','sec'].includes(S.role)?`<button onclick="supprimerPrestation('${p.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>`:'<div></div>'}
-        <div style="display:flex;gap:10px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
           ${['admin','sec','prod'].includes(S.role)?`<button class="btn bg2" onclick="closeModal();modalEquipePrestation('${p.id}','${p.reference||''}')">Équipe →</button>`:''}
+          ${['admin','sec','com'].includes(S.role)?`<button class="btn bg2" onclick="closeModal();modalNouveauDevisFromPrestation('${p.id}','${p.clients?.nom||''}',${p.montant_ht||''})">Devis →</button>`:''}
           <button class="btn bp" onclick="modifierPrestation('${p.id}')">Enregistrer</button>
         </div>
       </div>
@@ -2650,7 +2651,7 @@ async function loadDevis(){
   const el=document.getElementById('devis-real');
   if(!el)return;
   try{
-    const data=await sbFetch('devis?select=id,numero,statut,total_ttc,notes,date_envoi,date_expiration,clients(id,nom)&order=created_at.desc&limit=100');
+    const data=await sbFetch('devis?select=id,numero,statut,total_ttc,notes,date_envoi,date_expiration,prestation_id,clients(id,nom),prestation:prestations(id,reference)&order=created_at.desc&limit=100');
     _devisCache=data||[];
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     const att=_devisCache.filter(d=>['envoyé','en_attente'].includes(d.statut)).length;
@@ -2666,16 +2667,19 @@ async function loadDevis(){
     const today7=new Date();today7.setDate(today7.getDate()+7);
     const t7s=today7.toISOString().slice(0,10);
     const tds=new Date().toISOString().slice(0,10);
-    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>N° Devis</th><th>Client</th><th>Total TTC</th><th>Statut</th><th>Envoi</th><th>Expiration</th><th></th></tr></thead><tbody>'+
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>N° Devis</th><th>Client</th><th>Prestation</th><th>Total TTC</th><th>Statut</th><th>Envoi</th><th>Expiration</th><th></th></tr></thead><tbody>'+
       _devisCache.map((d,i)=>{
         const isActive=['envoyé','en_attente'].includes(d.statut);
         const exp=d.date_expiration;
         const expFmt=exp?new Date(exp).toLocaleDateString('fr-FR'):'—';
         const expAlert=isActive&&exp&&exp<=t7s;
         const expExpired=isActive&&exp&&exp<tds;
+        const preRef=d.prestation?.reference;
+        const preId=d.prestation?.id||d.prestation_id;
         return`<tr>
         <td class="tm">${d.numero||'—'}</td>
         <td class="tp">${d.clients?.nom||'—'}</td>
+        <td class="tm">${preRef?`<span style="cursor:pointer;color:var(--acc);text-decoration:underline" onclick="modalDetailById('${preId}')">${preRef}</span>`:'—'}</td>
         <td class="tm" style="color:var(--t1);font-weight:600">${d.total_ttc?d.total_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td><span class="bd ${s_cls[d.statut]||'bw'}"><span class="bd-d"></span>${s_lbl[d.statut]||d.statut}</span></td>
         <td style="color:var(--t3)">${d.date_envoi?new Date(d.date_envoi).toLocaleDateString('fr-FR'):'—'}</td>
@@ -2709,6 +2713,7 @@ async function creerDevis(){
   const tva=parseFloat(document.getElementById('dv-tva')?.value||20);
   const envoi=document.getElementById('dv-envoi')?.value;
   const validite=parseInt(document.getElementById('dv-validite')?.value||30);
+  const preId=document.getElementById('dv-pre-id')?.value||null;
   const err=document.getElementById('dv-err');
   if(!cli){if(err)err.textContent='Sélectionnez un client.';return;}
   const ttc=Math.round(ht*(1+tva/100)*100)/100;
@@ -2722,10 +2727,31 @@ async function creerDevis(){
       date_envoi:envoi||null,
       date_expiration:expiration,
       validite_jours:validite,
+      prestation_id:preId||undefined,
       created_by:localStorage.getItem('sv_uid'),
     }});
-    closeModal();toast('Devis créé.','ok');loadDevis();
+    closeModal();toast('Devis créé.','ok');
+    if(S.view==='devis')loadDevis();else{switchView('devis');}
   }catch(e){if(err)err.textContent='Erreur lors de la création.';}
+}
+
+async function modalNouveauDevisFromPrestation(prestId,clientNom,montantHT){
+  const clients=await sbFetch('clients?select=id,nom&order=nom.asc').catch(()=>[]);
+  const opts=(clients||[]).map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+  const matchedId=(clients||[]).find(c=>c.nom===clientNom)?.id||'';
+  openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="dv-pre-id" value="${prestId}">
+      <div style="font-size:11px;color:var(--t3);padding:4px 0 8px">Lié à la prestation</div>
+      <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi"><option value="">-- Sélectionner --</option>${opts.replace(`value="${matchedId}"`,`value="${matchedId}" selected`)}</select></div>
+      <div class="fg"><label class="fl">Notes / Description</label><textarea id="dv-notes" class="fi" rows="3" placeholder="Contenu du devis, prestations incluses…"></textarea></div>
+      <div class="g2"><div class="fg"><label class="fl">Montant HT (€)</label><input type="number" id="dv-ht" class="fi" value="${montantHT||''}" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label class="fl">TVA (%)</label><input type="number" id="dv-tva" class="fi" value="20" step="1"></div></div>
+      <div class="g2"><div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-envoi" class="fi"></div>
+      <div class="fg"><label class="fl">Validité (jours)</label><input type="number" id="dv-validite" class="fi" value="30"></div></div>
+      <div id="dv-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
 }
 
 async function modalModifierDevis(idx){
