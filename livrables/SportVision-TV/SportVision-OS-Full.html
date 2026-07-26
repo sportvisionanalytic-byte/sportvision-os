@@ -352,30 +352,30 @@ const FD=[];
 
 // ── ROLES CONFIG ─────────────────────────
 const ROLES={
-  admin:{n:'Fouka',r:'Administrateur',i:'FK',c:'var(--gr)',cta:'Nouvelle prestation'},
-  sec:{n:'Camille Rivière',r:'Secrétaire',i:'CR',c:'#00B8D4',cta:'Nouveau client'},
-  prod:{n:'Rachid Amrani',r:'Resp. Production',i:'RA',c:'#2ECC8A',cta:'Signaler incident'},
-  photo:{n:'Antoine Dubreuil',r:'Photographe/Vidéaste',i:'AD',c:'#7C4DFF',cta:'Uploader rushs'},
-  cm:{n:'Léa Martin',r:'Community Manager',i:'LM',c:'#366BFF',cta:'Nouveau contenu'},
-  compta:{n:'Sabrina Nadia',r:'Comptable',i:'SN',c:'#FF6B35',cta:'Nouvelle facture'},
-  com:{n:'Mikael Dos Santos',r:'Commercial',i:'MD',c:'#F0445E',cta:'Nouveau prospect'},
+  admin:{r:'Administrateur',i:'?',c:'var(--gr)',cta:'Nouvelle prestation'},
+  sec:{r:'Secrétaire',i:'?',c:'#00B8D4',cta:'Nouveau client'},
+  prod:{r:'Resp. Production',i:'?',c:'#2ECC8A',cta:'Signaler incident'},
+  photo:{r:'Photographe / Vidéaste',i:'?',c:'#7C4DFF',cta:'Uploader rushs'},
+  cm:{r:'Community Manager',i:'?',c:'#366BFF',cta:'Nouveau contenu'},
+  compta:{r:'Comptable',i:'?',c:'#FF6B35',cta:'Nouvelle facture'},
+  com:{r:'Commercial',i:'?',c:'#F0445E',cta:'Nouveau prospect'},
 };
 
 const NAV={
   admin:[
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
-    {id:'pre',lb:'Prestations',ic:'pre',nb:'3',nc:'nb-o'},
+    {id:'pre',lb:'Prestations',ic:'pre'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
-    {id:'kits',lb:'Kits',ic:'kits',nb:'1',nc:'nb-r'},
+    {id:'kits',lb:'Kits',ic:'kits'},
     {id:'fin',lb:'Finances',ic:'fin'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   sec:[
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
-    {id:'crm',lb:'CRM Clients',ic:'cli',nb:'2',nc:'nb-b'},
+    {id:'crm',lb:'CRM Clients',ic:'cli'},
     {id:'pre',lb:'Prestations',ic:'pre'},
     {id:'planning',lb:'Planning',ic:'cal'},
-    {id:'taches',lb:'Tâches',ic:'task',nb:'4',nc:'nb-o'},
+    {id:'taches',lb:'Tâches',ic:'task'},
     {id:'docs',lb:'Documents',ic:'doc'},
   ],
   prod:[
@@ -383,8 +383,8 @@ const NAV={
     {id:'kanban',lb:'Kanban',ic:'kan'},
     {id:'kits',lb:'Kits',ic:'kits'},
     {id:'equipes',lb:'Équipes',ic:'col'},
-    {id:'incidents',lb:'Incidents',ic:'alert',nb:'1',nc:'nb-r'},
-    {id:'msg',lb:'Messagerie',ic:'msg',nb:'3',nc:'nb-b'},
+    {id:'incidents',lb:'Incidents',ic:'alert'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
   ],
   photo:[
     {id:'dash',lb:'Mes prestations',ic:'pre'},
@@ -396,13 +396,13 @@ const NAV={
   cm:[
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
     {id:'cal',lb:'Calendrier éditorial',ic:'cal'},
-    {id:'contenus',lb:'Contenus',ic:'pre',nb:'5',nc:'nb-o'},
+    {id:'contenus',lb:'Contenus',ic:'pre'},
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
   ],
   compta:[
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
-    {id:'factures',lb:'Factures',ic:'doc',nb:'2',nc:'nb-o'},
+    {id:'factures',lb:'Factures',ic:'doc'},
     {id:'paiements',lb:'Paiements',ic:'fin'},
     {id:'rapprochement',lb:'Rapprochement',ic:'check'},
     {id:'export',lb:'Export',ic:'export'},
@@ -410,7 +410,7 @@ const NAV={
   com:[
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
     {id:'pipeline',lb:'Pipeline',ic:'pipe'},
-    {id:'devis',lb:'Devis',ic:'doc',nb:'1',nc:'nb-b'},
+    {id:'devis',lb:'Devis',ic:'doc'},
     {id:'objectifs',lb:'Objectifs',ic:'target'},
   ],
 };
@@ -1323,6 +1323,124 @@ async function creerClient(){
   }catch(e){err.textContent='Erreur lors de la création.';}
 }
 
+// ── MODALE NOUVEAU KIT ───────────────────
+function modalNouveauKit(){
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouveau kit</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom du kit *</label>
+          <input id="fk-nom" type="text" class="l-inp" placeholder="Kit Vidéo 03" style="height:38px">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type *</label>
+          <select id="fk-type" class="l-inp" style="height:38px">
+            <option value="photo">Photo</option>
+            <option value="vidéo">Vidéo</option>
+            <option value="drone">Drone</option>
+            <option value="audio">Audio</option>
+            <option value="streaming">Streaming</option>
+            <option value="son">Son</option>
+            <option value="lumière">Lumière</option>
+            <option value="réalisation">Réalisation</option>
+            <option value="réseaux">Réseaux sociaux</option>
+          </select>
+        </div>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description / contenu</label>
+        <input id="fk-desc" type="text" class="l-inp" placeholder="Corps d'appareil + objectifs + accessoires…" style="height:38px">
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Valeur estimée (€)</label>
+        <input id="fk-val" type="number" class="l-inp" placeholder="0" style="height:38px">
+      </div>
+      <div id="fk-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="creerKit()">Créer le kit</button>
+      </div>
+    </div>`);
+}
+async function creerKit(){
+  const err=document.getElementById('fk-err');
+  const nom=document.getElementById('fk-nom').value.trim();
+  if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  err.textContent='Création…';
+  try{
+    await sbFetch('kits',{method:'POST',body:{
+      nom,
+      type_kit:document.getElementById('fk-type').value,
+      description:document.getElementById('fk-desc').value||null,
+      valeur:document.getElementById('fk-val').value?Number(document.getElementById('fk-val').value):null,
+      statut:'disponible'
+    }});
+    closeModal();
+    loadKits();
+  }catch(e){err.textContent='Erreur lors de la création.';}
+}
+
+// ── MODALE INVITER COLLABORATEUR ─────────
+function modalInviterCollaborateur(){
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Créer un compte collaborateur</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Prénom *</label>
+          <input id="fi-prenom" type="text" class="l-inp" style="height:38px">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom *</label>
+          <input id="fi-nom" type="text" class="l-inp" style="height:38px">
+        </div>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Email *</label>
+        <input id="fi-email" type="email" class="l-inp" style="height:38px">
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Rôle *</label>
+        <select id="fi-role" class="l-inp" style="height:38px">
+          <option value="sec">Secrétaire</option>
+          <option value="prod">Resp. Production</option>
+          <option value="photo">Photographe / Vidéaste</option>
+          <option value="cm">Community Manager</option>
+          <option value="compta">Comptable</option>
+          <option value="com">Commercial</option>
+        </select>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Mot de passe provisoire *</label>
+        <input id="fi-pass" type="text" class="l-inp" placeholder="Min. 8 caractères" style="height:38px" value="SportVision2026!">
+      </div>
+      <div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rb);padding:10px 14px;font-size:11.5px;color:var(--t2)">
+        Le collaborateur devra se connecter avec cet email et ce mot de passe. Pense à le lui communiquer.
+      </div>
+      <div id="fi-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="creerCollaborateur()">Créer le compte</button>
+      </div>
+    </div>`);
+}
+async function creerCollaborateur(){
+  const err=document.getElementById('fi-err');
+  const prenom=document.getElementById('fi-prenom').value.trim();
+  const nom=document.getElementById('fi-nom').value.trim();
+  const email=document.getElementById('fi-email').value.trim();
+  const role=document.getElementById('fi-role').value;
+  const pass=document.getElementById('fi-pass').value;
+  if(!prenom||!nom||!email||!pass){err.textContent='Tous les champs sont obligatoires.';return;}
+  if(pass.length<8){err.textContent='Le mot de passe doit faire au moins 8 caractères.';return;}
+  err.textContent='Création du compte…';
+  try{
+    const r=await fetch(SB_URL+'/auth/v1/signup',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pass,data:{role,prenom,nom}})
+    });
+    const d=await r.json();
+    if(d.error||d.error_description){err.textContent=d.error_description||d.error||'Erreur.';return;}
+    if(!d.id&&!d.user?.id){err.textContent='Compte non créé. Vérifie que l\'email n\'est pas déjà utilisé.';return;}
+    closeModal();
+    loadCollaborateurs();
+    updateNavBadges(S.role);
+  }catch(e){err.textContent='Erreur réseau.';}
+}
+
 // ── CHARGEMENT DONNÉES RÉELLES ────────────
 async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='prod')&&view==='pre') await loadPrestations();
@@ -1675,21 +1793,58 @@ function goApp(role){
   const cfg=ROLES[role];
   const nav=NAV[role];
   S.view=nav[0].id;
-  // User meta
   document.getElementById('u-av').textContent=cfg.i;
   document.getElementById('u-av').style.background=cfg.c;
-  document.getElementById('u-nm').textContent=cfg.n;
+  document.getElementById('u-nm').textContent=cfg.r;
   document.getElementById('u-rl').textContent=cfg.r;
   document.getElementById('cta-btn').textContent=cfg.cta;
-  // Build sidebar nav
   document.getElementById('sb-nav').innerHTML=`<div class="nav">`+
     nav.map(item=>`<button class="ni${item.id===S.view?' on':''}" data-id="${item.id}" onclick="switchView('${item.id}')">
       <span class="ni-ic">${IC[item.ic]||''}</span>
       <span class="ni-lb">${item.lb}</span>
-      ${item.nb?`<span class="nb ${item.nc}">${item.nb}</span>`:''}
+      <span class="nb" id="nb-${item.id}" style="display:none"></span>
     </button>`).join('')+`</div>`;
   show('app');
   renderContent();
+  // Charge le vrai profil et met à jour les badges
+  const uid=localStorage.getItem('sv_uid');
+  if(uid){
+    sbFetch('profiles?select=prenom,nom&id=eq.'+uid).then(data=>{
+      if(data&&data[0]){
+        const p=data[0];
+        const name=[p.prenom,p.nom].filter(Boolean).join(' ');
+        const ini=((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase();
+        if(name)document.getElementById('u-nm').textContent=name;
+        if(ini){document.getElementById('u-av').textContent=ini;}
+      }
+    }).catch(()=>{});
+  }
+  updateNavBadges(role);
+}
+
+async function updateNavBadges(role){
+  function setBadge(id,n,cls){
+    const el=document.getElementById('nb-'+id);
+    if(!el)return;
+    if(n>0){el.textContent=n;el.className='nb '+(cls||'nb-o');el.style.display='';}
+    else el.style.display='none';
+  }
+  try{
+    if(['admin','sec','prod'].includes(role)){
+      const pre=await sbFetch('prestations?select=id,statut');
+      const n=(pre||[]).filter(p=>!['clôturée','annulée','refusée','livrée'].includes(p.statut)).length;
+      setBadge('pre',n,'nb-o');
+      if(role==='sec')setBadge('crm',(await sbFetch('clients?select=id')||[]).length,'nb-b');
+    }
+    if(['admin','prod'].includes(role)){
+      const kits=await sbFetch('kits?select=id,statut');
+      setBadge('kits',(kits||[]).filter(k=>k.statut!=='disponible').length,'nb-r');
+    }
+    if(role==='prod'){
+      const inc=await sbFetch('incidents?select=id&cloture=eq.false');
+      setBadge('incidents',(inc||[]).length,'nb-r');
+    }
+  }catch(e){}
 }
 
 function switchView(id){
