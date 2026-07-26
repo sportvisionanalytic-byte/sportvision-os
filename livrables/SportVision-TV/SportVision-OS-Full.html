@@ -438,33 +438,26 @@ function finBars(id,h){
 const VIEWS={
   'admin.dash':()=>`
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations actives</div><div class="kpi-v">3</div><span class="kpi-d dup">↑ 1 cette semaine</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Collaborateurs</div><div class="kpi-v">7</div><span class="kpi-d dnt">5 disponibles</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">CA juin 2026</div><div class="kpi-v">4 850<small style="font-size:16px;color:var(--t2)"> €</small></div><span class="kpi-d dup">↑ 27% vs mai</span></div>
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Kits disponibles</div><div class="kpi-v">7<small style="font-size:14px;color:var(--t2)">/11</small></div><span class="kpi-d ddn">1 maintenance</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations actives</div><div class="kpi-v" id="kpi-pre-v">—</div><span class="kpi-d dnt" id="kpi-pre-s">chargement</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Collaborateurs</div><div class="kpi-v" id="kpi-col-v">—</div><span class="kpi-d dnt">dans l'équipe</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Clients</div><div class="kpi-v" id="kpi-cli-v">—</div><span class="kpi-d dnt">au total</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Kits disponibles</div><div class="kpi-v" id="kpi-kit-v">—</div><span class="kpi-d dnt" id="kpi-kit-s">sur l'inventaire</span></div>
     </div>
     <div class="g32">
-      <div class="cd"><div class="cd-h"><div><div class="cd-t">Prestations récentes</div><div class="cd-s">5 dernières</div></div><button class="btn bg2 bs">Voir tout</button></div>
-        <div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Équipe</th><th>Statut</th><th>Date</th></tr></thead><tbody>
-          ${PS.map(p=>`<tr><td class="tm">${p.r}</td><td class="tp">${p.cl}</td><td>${p.ty}</td><td>${avStack(p.eq)}</td><td>${stBadge(p.st)}</td><td>${p.dt}</td></tr>`).join('')}
-        </tbody></table></div>
+      <div class="cd"><div class="cd-h"><div><div class="cd-t">Prestations récentes</div><div class="cd-s">5 dernières</div></div><button class="btn bg2 bs" onclick="switchView('pre')">Voir tout</button></div>
+        <div id="dash-pre"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
       <div class="cd"><div class="cd-h"><div class="cd-t">Équipe</div></div><div class="cd-b">
-        <div class="tl">${TEAM.map(t=>`<div class="ti"><div class="av" style="background:${t.c};width:26px;height:26px;font-size:10px">${t.i}</div><div class="ti-m"><div class="ti-n">${t.n}</div><div class="ti-k">${t.task||t.r}</div></div><span class="bd ${t.st}"><span class="bd-d"></span>${t.sl}</span></div>`).join('')}
-        </div>
+        <div id="dash-team" class="tl"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
       </div></div>
     </div>
     <div class="g2">
-      <div class="cd"><div class="cd-h"><div class="cd-t">Activité récente</div></div><div class="cd-b"><div class="al">
-        <div class="ai"><div class="ai-ic" style="background:rgba(54,107,255,.12)">📤</div><div><div class="ai-t"><strong>Antoine Dubreuil</strong> a téléversé 12 rushs · <strong>SV-2026-0142</strong></div><div class="ai-ts">Il y a 23 min</div></div></div>
-        <div class="ai"><div class="ai-ic" style="background:rgba(46,204,138,.12)">✅</div><div><div class="ai-t"><strong>Camille Rivière</strong> a créé la prestation <strong>SV-2026-0141</strong></div><div class="ai-ts">Il y a 1h</div></div></div>
-        <div class="ai"><div class="ai-ic" style="background:rgba(124,77,255,.12)">📦</div><div><div class="ai-t"><strong>Rachid Amrani</strong> a mis à jour le <strong>Kit Vidéo 01</strong></div><div class="ai-ts">Il y a 2h</div></div></div>
-        <div class="ai"><div class="ai-ic" style="background:rgba(245,165,36,.12)">📄</div><div><div class="ai-t">Devis envoyé à <strong>Brunoy FC</strong> pour SV-2026-0144</div><div class="ai-ts">Il y a 3h</div></div></div>
-        <div class="ai"><div class="ai-ic" style="background:rgba(0,184,212,.12)">📱</div><div><div class="ai-t"><strong>Léa Martin</strong> a publié 3 contenus Instagram · FC Fontainebleau</div><div class="ai-ts">Il y a 4h</div></div></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Activité récente</div></div><div class="cd-b"><div class="al" id="dash-hist">
+        <div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div>
       </div></div></div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">CA cumulé 2026</div></div><div class="cd-b">
-        <div style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:3px">19 100 <span style="font-size:14px;color:var(--t2);font-weight:600">€</span></div>
-        <div style="font-size:11px;color:var(--t3);margin-bottom:14px">Janv. → Juin 2026</div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">CA facturé</div></div><div class="cd-b">
+        <div style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:3px" id="dash-ca">—&thinsp;<span style="font-size:14px;color:var(--t2);font-weight:600">€</span></div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:14px">Prestations payées</div>
         <div class="fb" id="mc" style="height:80px"></div>
       </div></div>
     </div>`,
@@ -708,63 +701,31 @@ const VIEWS={
   // ── PRODUCTION ──────────────────────────
   'prod.dash':()=>`
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prestations actives</div><div class="kpi-v">3</div><span class="kpi-d dnt">dont 1 live</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Kits déployés</div><div class="kpi-v">3</div><span class="kpi-d dnt">sur 11</span></div>
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v">1</div><span class="kpi-d ddn">Kit Drone 02</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prestations actives</div><div class="kpi-v" id="prod-kpi-pre">—</div><span class="kpi-d dnt">en cours</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Kits déployés</div><div class="kpi-v" id="prod-kpi-kits">—</div><span class="kpi-d dnt">sur l'inventaire</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="prod-kpi-inc">—</div><span class="kpi-d dnt">à traiter</span></div>
     </div>
     <div class="g32">
-      <div class="cd"><div class="cd-h"><div class="cd-t">Prestations en cours</div></div>
-        <div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Équipe</th><th>Statut</th></tr></thead><tbody>
-          ${PS.filter(p=>p.st!=='livré').map(p=>`<tr><td class="tm">${p.r}</td><td class="tp">${p.cl}</td><td>${p.ty}</td><td>${avStack(p.eq)}</td><td>${stBadge(p.st)}</td></tr>`).join('')}
-        </tbody></table></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Prestations en cours</div><button class="btn bg2 bs" onclick="switchView('pre')">Voir tout</button></div>
+        <div id="prod-dash-pre"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Messages récents</div><span class="bd bb" style="font-size:10px">3 non lus</span></div><div class="cd-b">
-        ${[
-          {f:'AD',fn:'Antoine Dubreuil',msg:'Rushs SV-0142 uploadés, checklist OK',ts:'10 min'},
-          {f:'YB',fn:'Yanis Belkacem',msg:'Besoin du Kit Lumière 01 pour mardi',ts:'1h'},
-          {f:'LM',fn:'Léa Martin',msg:'Stories Brunoy FC publiées',ts:'2h'},
-        ].map(m=>`<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.035)">
-          <div class="av" style="background:${AVC[m.f]||'#366BFF'};width:28px;height:28px;font-size:10px;flex-shrink:0">${m.f}</div>
-          <div><div style="font-size:12px;font-weight:600;color:var(--t1)">${m.fn}</div><div style="font-size:12px;color:var(--t2)">${m.msg}</div><div style="font-size:10.5px;color:var(--t3);margin-top:2px">Il y a ${m.ts}</div></div>
-        </div>`).join('')}
+      <div class="cd"><div class="cd-h"><div class="cd-t">Équipe</div><button class="btn bg2 bs" onclick="switchView('equipes')">Détail</button></div><div class="cd-b">
+        <div id="prod-dash-team" class="tl"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
       </div></div>
     </div>`,
 
   'prod.kits':()=>`
     <div class="sh"><div class="sh-t">État des kits</div></div>
     <div class="g3" style="margin-bottom:13px">
-      <div class="fs"><div class="fs-l">Disponibles</div><div class="fs-v" style="color:var(--ok)">7</div></div>
-      <div class="fs"><div class="fs-l">Déployés</div><div class="fs-v" style="color:var(--wa)">3</div></div>
-      <div class="fs"><div class="fs-l">Maintenance</div><div class="fs-v" style="color:var(--er)">1</div></div>
+      <div class="fs"><div class="fs-l">Disponibles</div><div class="fs-v" id="kits-dispo" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Déployés</div><div class="fs-v" id="kits-encours" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Maintenance</div><div class="fs-v" id="kits-maint" style="color:var(--er)">—</div></div>
     </div>
-    <div class="cd">${[
-      {e:'📷',n:'Kit Photo 01',d:'Canon EOS R5',st:'bl',sl:'SV-2026-0142',ai:'AD'},
-      {e:'🎥',n:'Kit Vidéo 01',d:'Sony FX6',st:'bl',sl:'SV-2026-0142',ai:'AD'},
-      {e:'🎥',n:'Kit Vidéo 03',d:'Sony A7S III',st:'bl',sl:'SV-2026-0138',ai:'RA'},
-      {e:'🚁',n:'Kit Drone 02',d:'DJI Mavic 3 Pro',st:'bn',sl:'Maintenance'},
-      {e:'📷',n:'Kit Photo 04',d:'Canon EOS R6',st:'ba',sl:'Disponible'},
-      {e:'📷',n:'Kit Photo 05',d:'Canon EOS R3',st:'ba',sl:'Disponible'},
-      {e:'🎥',n:'Kit Vidéo 05',d:'Sony FX3',st:'ba',sl:'Disponible'},
-      {e:'📱',n:'Kit Réseaux 01',d:'iPhone 15 Pro',st:'ba',sl:'Disponible'},
-      {e:'🎙️',n:'Kit Son 01',d:'Rode + Zoom',st:'ba',sl:'Disponible'},
-    ].map(k=>`<div style="display:flex;align-items:center;gap:13px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
-      <div style="width:36px;height:36px;border-radius:9px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:15px">${k.e}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${k.n}</div><div style="font-size:11px;color:var(--t3)">${k.d}</div></div>
-      ${k.ai?`<div style="display:flex;align-items:center;gap:5px"><div class="av-xs" style="background:${AVC[k.ai]}">${k.ai}</div><span style="font-size:11.5px;color:var(--t2)">${k.sl}</span></div>`:``}
-      <span class="bd ${k.st}"><span class="bd-d"></span>${k.ai?'En prestation':k.sl}</span>
-    </div>`).join('')}</div>`,
+    <div id="kits-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'prod.equipes':()=>`
     <div class="sh"><div class="sh-t">Équipes par prestation</div></div>
-    ${PS.filter(p=>p.st!=='livré').map(p=>`<div class="cd" style="margin-bottom:13px"><div class="cd-h">
-      <div><div class="cd-t">${p.cl} — ${p.ti}</div><div class="cd-s" style="font-family:monospace;font-size:10.5px">${p.r}</div></div>
-      ${stBadge(p.st)}
-    </div><div class="cd-b" style="display:flex;gap:16px;flex-wrap:wrap">
-      ${p.eq.map(i=>{const t=TEAM.find(x=>x.i===i)||{n:i,r:'',c:'#366BFF'};return`<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--s2);border-radius:var(--rb)">
-        <div class="av" style="background:${t.c};width:32px;height:32px;font-size:12px">${i}</div>
-        <div><div style="font-size:12.5px;font-weight:600;color:var(--t1)">${t.n}</div><div style="font-size:11px;color:var(--t3)">${t.r}</div></div>
-      </div>`;}).join('')}
-    </div></div>`).join('')}`,
+    <div id="equipes-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'prod.incidents':()=>`
     <div class="sh"><div class="sh-t">Incidents</div><button class="btn bp bs">+ Signaler</button></div>
@@ -795,22 +756,16 @@ const VIEWS={
 
   // ── PHOTOGRAPHE ─────────────────────────
   'photo.dash':()=>`
-    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Mes prestations</div><div class="kpi-v">3</div><span class="kpi-d dnt">dont 1 live</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Rushs uploadés</div><div class="kpi-v">24</div><span class="kpi-d dup">aujourd'hui</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Revenus juin</div><div class="kpi-v">1 650<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dup">+15%</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Formation</div><div class="kpi-v">78<small style="font-size:16px;color:var(--t2)">%</small></div><span class="kpi-d dnt">4 modules</span></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Mes prestations</div><div class="kpi-v" id="photo-kpi-pre">—</div><span class="kpi-d dnt">assignées</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">À venir</div><div class="kpi-v" id="photo-kpi-next">—</div><span class="kpi-d dnt">prochaines</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Terminées</div><div class="kpi-v" id="photo-kpi-done">—</div><span class="kpi-d dnt">ce mois</span></div>
     </div>
-    <div class="cd" style="margin-bottom:13px"><div class="cd-h"><div><div class="cd-t">Prochaine prestation</div><div class="cd-s">Dans 5 jours</div></div><button class="btn bp bs">Mode Jour J</button></div>
-      <div style="display:flex;gap:20px;padding:16px 18px;align-items:center">
-        <div style="width:50px;height:50px;border-radius:12px;background:var(--gr);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px;font-weight:800;color:#fff;line-height:1">5</span><span style="font-size:9px;color:rgba(255,255,255,.7);text-transform:uppercase">juil.</span></div>
-        <div><div style="font-size:15px;font-weight:650;color:var(--t1)">Match Championnat D3 — AS Milly</div><div style="font-size:12.5px;color:var(--t2);margin-top:3px">Stade Milly-la-Forêt · 14h00 → 17h00 · Kit Photo 05 assigné</div></div>
-      </div>
+    <div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">Prochaine prestation</div></div>
+      <div id="photo-next"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Mes prestations</div></div>
-      <div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Rushs</th><th>Statut</th><th>Date</th></tr></thead><tbody>
-        ${PS.filter(p=>p.eq.includes('AD')).map(p=>`<tr><td class="tm">${p.r}</td><td class="tp">${p.cl}</td><td>${p.ty}</td><td class="tm">${p.st==='en cours'?'12':'✓'}</td><td>${stBadge(p.st)}</td><td>${p.dt}</td></tr>`).join('')}
-      </tbody></table></div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Mes prestations assignées</div></div>
+      <div id="photo-dash-pre"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
   'photo.medias':()=>`
@@ -1374,6 +1329,10 @@ async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
   if(role==='admin'&&view==='col') await loadCollaborateurs();
   if((role==='admin'||role==='prod')&&view==='kits') await loadKits();
+  if(role==='admin'&&view==='dash') await loadAdminDash();
+  if(role==='prod'&&view==='dash') await loadProdDash();
+  if(role==='prod'&&view==='equipes') await loadEquipes();
+  if(role==='photo'&&view==='dash') await loadPhotoDash();
 }
 
 async function loadPrestations(){
@@ -1412,6 +1371,188 @@ async function loadClients(){
       data.map(c=>`<tr><td class="tp">${c.nom}</td><td>${c.type_client||'—'}</td><td>${c.sport||'—'}</td><td>${c.ville||'—'}</td><td>${c.email||c.telephone||'—'}</td><td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${c.statut}</span></td></tr>`).join('')+
     '</tbody></table></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function loadAdminDash(){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  try{
+    const [pre,col,cli,kits]=await Promise.all([
+      sbFetch('prestations?select=id,statut'),
+      sbFetch('profiles?select=id'),
+      sbFetch('clients?select=id'),
+      sbFetch('kits?select=id,statut'),
+    ]);
+    const actives=(pre||[]).filter(p=>!['clôturée','annulée','refusée'].includes(p.statut)).length;
+    const dispoK=(kits||[]).filter(k=>k.statut==='disponible').length;
+    set('kpi-pre-v',actives);set('kpi-pre-s',actives+' active'+(actives>1?'s':''));
+    set('kpi-col-v',(col||[]).length);
+    set('kpi-cli-v',(cli||[]).length);
+    set('kpi-kit-v',dispoK+'/'+(kits||[]).length);
+    const caData=await sbFetch('prestations?select=montant_ttc,statut_financier&statut_financier=in.(payée,partiellement_payée)');
+    const ca=(caData||[]).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    set('dash-ca',ca?ca.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0}):'0');
+  }catch(e){}
+  // Recent prestations
+  const elPre=document.getElementById('dash-pre');
+  if(elPre){try{
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&order=created_at.desc&limit=5');
+    if(!data||!data.length){elPre.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3)">Aucune prestation.</div>';}
+    else{
+      const sLb={'demande_reçue':'Demande','confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','livrée':'Livrée','clôturée':'Clôturée','annulée':'Annulée'};
+      const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','clôturée':'bn','annulée':'bb','production_démarrée':'bl'};
+      elPre.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+
+        data.map(p=>`<tr><td class="tm">${p.reference||'—'}</td><td class="tp">${p.clients?.nom||'—'}</td><td>${p.type_prestation||'—'}</td><td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td><td><span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></td></tr>`).join('')+
+      '</tbody></table></div>';
+    }
+  }catch(e){elPre.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}}
+  // Team mini-list
+  const elTeam=document.getElementById('dash-team');
+  if(elTeam){try{
+    const data=await sbFetch('profiles?select=id,role,prenom,nom&order=role.asc,nom.asc');
+    if(!data||!data.length){elTeam.innerHTML='<div style="padding:12px;color:var(--t3);font-size:13px">Aucun collaborateur.</div>';}
+    else{
+      const rc={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
+      const rl={'admin':'Administrateur','sec':'Secrétaire','prod':'Production','photo':'Photo/Vidéo','cm':'CM','compta':'Comptable','com':'Commercial'};
+      elTeam.innerHTML=data.map(t=>{
+        const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||t.role.slice(0,2).toUpperCase();
+        return`<div class="ti"><div class="av" style="background:${rc[t.role]||'#366BFF'};width:26px;height:26px;font-size:10px">${ini}</div><div class="ti-m"><div class="ti-n">${[t.prenom,t.nom].filter(Boolean).join(' ')||t.role}</div><div class="ti-k">${rl[t.role]||t.role}</div></div></div>`;
+      }).join('');
+    }
+  }catch(e){elTeam.innerHTML='';}}
+  // History
+  const elHist=document.getElementById('dash-hist');
+  if(elHist){try{
+    const data=await sbFetch('historique?select=action,table_cible,nouvelle_valeur,created_at,profil:profiles(prenom,nom)&order=created_at.desc&limit=8');
+    if(!data||!data.length){elHist.innerHTML='<div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Aucune activité enregistrée.</div>';}
+    else{
+      elHist.innerHTML=data.map(h=>{
+        const who=[h.profil?.prenom,h.profil?.nom].filter(Boolean).join(' ')||'Système';
+        const when=new Date(h.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+        return`<div class="ai"><div class="ai-ic" style="background:rgba(54,107,255,.12)">📝</div><div><div class="ai-t"><strong>${who}</strong> — ${h.action} (${h.table_cible})</div><div class="ai-ts">${when}</div></div></div>`;
+      }).join('');
+    }
+  }catch(e){elHist.innerHTML='<div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Aucune activité enregistrée.</div>';}}
+}
+
+async function loadProdDash(){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  try{
+    const [pre,kits,inc]=await Promise.all([
+      sbFetch('prestations?select=id,statut'),
+      sbFetch('kits?select=id,statut'),
+      sbFetch('incidents?select=id&cloture=eq.false'),
+    ]);
+    const actives=(pre||[]).filter(p=>!['clôturée','annulée','refusée','livrée'].includes(p.statut)).length;
+    const deploys=(kits||[]).filter(k=>['sorti','en_prestation','pré_réservé','réservé'].includes(k.statut)).length;
+    const total=(kits||[]).length;
+    set('prod-kpi-pre',actives);
+    set('prod-kpi-kits',deploys+'/'+total);
+    set('prod-kpi-inc',(inc||[]).length);
+  }catch(e){}
+  const elPre=document.getElementById('prod-dash-pre');
+  if(elPre){try{
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=not.in.(clôturée,annulée,refusée,livrée)&order=date_prestation.asc&limit=10');
+    if(!data||!data.length){elPre.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3)">Aucune prestation active.</div>';}
+    else{
+      const sLb={'demande_reçue':'Demande','confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','équipe_affectée':'Équipe OK'};
+      const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl','équipe_affectée':'bw'};
+      elPre.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+
+        data.map(p=>`<tr><td class="tm">${p.reference||'—'}</td><td class="tp">${p.clients?.nom||'—'}</td><td>${p.type_prestation||'—'}</td><td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td><td><span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></td></tr>`).join('')+
+      '</tbody></table></div>';
+    }
+  }catch(e){elPre.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}}
+  const elTeam=document.getElementById('prod-dash-team');
+  if(elTeam){try{
+    const data=await sbFetch('profiles?select=id,role,prenom,nom&order=role.asc,nom.asc');
+    if(!data||!data.length){elTeam.innerHTML='<div style="padding:12px;color:var(--t3);font-size:13px">Aucun collaborateur.</div>';}
+    else{
+      const rc={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
+      const rl={'admin':'Admin','sec':'Secrétaire','prod':'Production','photo':'Photo/Vidéo','cm':'CM','compta':'Comptable','com':'Commercial'};
+      elTeam.innerHTML=data.map(t=>{
+        const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||t.role.slice(0,2).toUpperCase();
+        return`<div class="ti"><div class="av" style="background:${rc[t.role]||'#366BFF'};width:26px;height:26px;font-size:10px">${ini}</div><div class="ti-m"><div class="ti-n">${[t.prenom,t.nom].filter(Boolean).join(' ')||t.role}</div><div class="ti-k">${rl[t.role]||t.role}</div></div></div>`;
+      }).join('');
+    }
+  }catch(e){elTeam.innerHTML='';}}
+}
+
+async function loadEquipes(){
+  const el=document.getElementById('equipes-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,clients(nom),prestations_equipe(statut,fonction,collaborateur:profiles(prenom,nom,role))&statut=not.in.(clôturée,annulée,refusée,livrée)&order=created_at.desc');
+    if(!data||!data.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucune prestation active avec équipe affectée.</div></div>';return;}
+    const rc={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
+    const sLb={'demande_reçue':'Demande','confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','équipe_affectée':'Équipe OK'};
+    const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl','équipe_affectée':'bw'};
+    el.innerHTML=data.map(p=>{
+      const equipe=p.prestations_equipe||[];
+      return`<div class="cd" style="margin-bottom:13px"><div class="cd-h">
+        <div><div class="cd-t">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div><div class="cd-s" style="font-family:monospace;font-size:10.5px">${p.reference||'—'}</div></div>
+        <span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span>
+      </div><div class="cd-b" style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 18px">
+        ${equipe.length?equipe.map(m=>{
+          const t=m.collaborateur||{};
+          const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||'?';
+          const name=[t.prenom,t.nom].filter(Boolean).join(' ')||'—';
+          return`<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--s2);border-radius:var(--rb)">
+            <div class="av" style="background:${rc[t.role]||'#366BFF'};width:32px;height:32px;font-size:12px">${ini}</div>
+            <div><div style="font-size:12.5px;font-weight:600;color:var(--t1)">${name}</div><div style="font-size:11px;color:var(--t3)">${m.fonction||t.role||'—'}</div></div>
+          </div>`;
+        }).join(''):'<span style="font-size:12px;color:var(--t3);padding:4px">Aucun collaborateur affecté</span>'}
+      </div></div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function loadPhotoDash(){
+  const uid=localStorage.getItem('sv_uid');
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const elPre=document.getElementById('photo-dash-pre');
+  const elNext=document.getElementById('photo-next');
+  if(!uid)return;
+  try{
+    const data=await sbFetch('prestations_equipe?select=prestation:prestations(id,reference,statut,type_prestation,date_prestation,lieu,clients(nom))&collaborateur_id=eq.'+uid+'&order=prestation.date_prestation.asc');
+    const prestations=(data||[]).map(d=>d.prestation).filter(Boolean);
+    const now=new Date();now.setHours(0,0,0,0);
+    const futures=prestations.filter(p=>p.date_prestation&&new Date(p.date_prestation)>=now);
+    const done=prestations.filter(p=>['livrée','clôturée'].includes(p.statut));
+    set('photo-kpi-pre',prestations.length);
+    set('photo-kpi-next',futures.length);
+    set('photo-kpi-done',done.length);
+    // Next prestation
+    if(elNext){
+      const next=futures[0];
+      if(next){
+        const d=new Date(next.date_prestation);
+        const day=d.getDate();
+        const mon=d.toLocaleDateString('fr-FR',{month:'short'});
+        const sLb={'confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.'};
+        const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl'};
+        elNext.innerHTML=`<div style="display:flex;gap:20px;padding:16px 18px;align-items:center">
+          <div style="width:50px;height:50px;border-radius:12px;background:var(--gr);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px;font-weight:800;color:#fff;line-height:1">${day}</span><span style="font-size:9px;color:rgba(255,255,255,.7);text-transform:uppercase">${mon}</span></div>
+          <div style="flex:1"><div style="font-size:15px;font-weight:650;color:var(--t1)">${next.clients?.nom||'—'} — ${next.type_prestation||'—'}</div><div style="font-size:12.5px;color:var(--t2);margin-top:3px">${next.lieu||'Lieu non défini'} · <span class="bd ${sCl[next.statut]||'bw'}" style="display:inline-flex"><span class="bd-d"></span>${sLb[next.statut]||next.statut}</span></div></div>
+        </div>`;
+      }else{
+        elNext.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune prochaine prestation planifiée.</div>';
+      }
+    }
+    // List
+    if(elPre){
+      if(!prestations.length){
+        elPre.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3)">Aucune prestation assignée.</div>';
+      }else{
+        const sLb={'demande_reçue':'Demande','confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','livrée':'Livrée','clôturée':'Clôturée'};
+        const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl','livrée':'bn','clôturée':'bn'};
+        elPre.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+
+          prestations.map(p=>`<tr><td class="tm">${p.reference||'—'}</td><td class="tp">${p.clients?.nom||'—'}</td><td>${p.type_prestation||'—'}</td><td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td><td><span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></td></tr>`).join('')+
+        '</tbody></table></div>';
+      }
+    }
+  }catch(e){
+    if(elPre)elPre.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';
+    if(elNext)elNext.innerHTML='';
+  }
 }
 
 async function loadKits(){
