@@ -1661,21 +1661,21 @@ function modalDetailPrestation(idx){
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Notes internes</label>
         <textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none" placeholder="Informations internes…">${p.notes_internes||''}</textarea>
       </div>
-      <div id="pd-equipe-block" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
+      ${['admin','sec','prod'].includes(S.role)?`<div id="pd-equipe-block" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
         <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Équipe affectée</div>
         <div id="pd-equipe-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
-      </div>
+      </div>`:''}
       <div id="pd-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:2px">
-        <button onclick="supprimerPrestation('${p.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>
+        ${['admin','sec'].includes(S.role)?`<button onclick="supprimerPrestation('${p.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>`:'<div></div>'}
         <div style="display:flex;gap:10px">
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
-          <button class="btn bg2" onclick="closeModal();modalEquipePrestation('${p.id}','${p.reference||''}')">Équipe →</button>
+          ${['admin','sec','prod'].includes(S.role)?`<button class="btn bg2" onclick="closeModal();modalEquipePrestation('${p.id}','${p.reference||''}')">Équipe →</button>`:''}
           <button class="btn bp" onclick="modifierPrestation('${p.id}')">Enregistrer</button>
         </div>
       </div>
     </div>`);
-  chargerEquipeModal(p.id);
+  if(['admin','sec','prod'].includes(S.role))chargerEquipeModal(p.id);
 }
 
 async function modifierPrestation(id){
@@ -2250,7 +2250,7 @@ async function loadRapprochement(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
   try{
-    const data=await sbFetch('prestations?select=reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=not.in.(non_facturée,en_préparation,annulée)&order=date_prestation.desc&limit=200');
+    const data=await sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=not.in.(non_facturée,en_préparation,annulée)&order=date_prestation.desc&limit=200');
     const list=data||[];
     const enc=list.filter(p=>p.statut_financier==='payée').reduce((s,p)=>s+(p.montant_ttc||0),0);
     const att=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
@@ -3614,12 +3614,13 @@ async function loadComptaDash(){
         </div>`).join('')}
       </div>`:'<div class="cd" style="margin-bottom:13px"><div style="padding:32px;text-align:center;color:var(--t3)">Aucune facture en attente.</div></div>'}
       <div class="cd"><div class="cd-h"><div class="cd-t">Tout l\'historique</div><button class="btn bg2 bs" onclick="switchView('factures')">Voir tout</button></div>
-        <div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Montant TTC</th><th>Statut</th></tr></thead><tbody>
+        <div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Montant TTC</th><th>Statut</th><th></th></tr></thead><tbody>
           ${list.slice(0,8).map(p=>`<tr>
             <td class="tm">${p.reference||'—'}</td>
             <td class="tp">${p.clients?.nom||'—'}</td>
             <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
             <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
+            <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
           </tr>`).join('')}
         </tbody></table></div>
       </div>`;
@@ -3645,13 +3646,14 @@ async function loadSecDash(){
     const ep=document.getElementById('sec-dash-pre');
     if(ep){
       const prochaines=(pres||[]).filter(p=>p.date_prestation).slice(0,6);
-      ep.innerHTML=prochaines.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+
+      ep.innerHTML=prochaines.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
         prochaines.map(p=>`<tr>
           <td class="tm">${p.reference||'—'}</td>
           <td class="tp">${p.clients?.nom||'—'}</td>
           <td>${p.type_prestation||'—'}</td>
           <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
           <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+          <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
         </tr>`).join('')+'</tbody></table></div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation à venir.</div>';
     }
