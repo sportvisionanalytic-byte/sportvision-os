@@ -726,7 +726,7 @@ const VIEWS={
         <div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.035);align-items:flex-start">
           <div style="width:44px;flex-shrink:0;text-align:center">
             <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">${d}</div>
-            <div style="font-size:22px;font-weight:700;color:${[2,3].includes(i)?'var(--acc)':'var(--t2)';line-height:1.2}">${i+1}</div>
+            <div style="font-size:22px;font-weight:700;color:${[2,3].includes(i)?'var(--acc)':'var(--t2)'};line-height:1.2">${i+1}</div>
           </div>
           <div style="flex:1;display:flex;flex-direction:column;gap:6px">
             ${i===1?`<div style="background:rgba(54,107,255,.1);border-left:3px solid var(--acc);border-radius:0 6px 6px 0;padding:7px 10px"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">SV-2026-0142 · Brunoy FC</div><div style="font-size:11px;color:var(--t2)">Tournoi Elite U18 · 08h00 → 18h00</div></div>`:''}
@@ -1288,7 +1288,7 @@ function switchView(id){
 function renderContent(){
   const key=`${S.role}.${S.view}`;
   const ct=document.getElementById('app-ct');
-  ct.innerHTML=(VIEWS[key]||()=>fallbackView(S.role,S.view))();
+  ct.innerHTML=(VIEWS[key]||(()=>fallbackView(S.role,S.view)))();
   // Post-render hooks
   if(document.getElementById('mc'))finBars('mc',80);
   if(document.getElementById('fc'))finBars('fc',140);
