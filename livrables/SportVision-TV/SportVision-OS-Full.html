@@ -400,6 +400,7 @@ const NAV={
     {id:'planning',lb:'Planning',ic:'cal'},
     {id:'taches',lb:'Tâches',ic:'task'},
     {id:'docs',lb:'Documents',ic:'doc'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   prod:[
@@ -416,6 +417,7 @@ const NAV={
     {id:'jourj',lb:'Mode Jour J',ic:'live'},
     {id:'medias',lb:'Mes médias',ic:'med'},
     {id:'revenus',lb:'Mes revenus',ic:'fin'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'form',lb:'Formation',ic:'form'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -425,6 +427,7 @@ const NAV={
     {id:'contenus',lb:'Contenus',ic:'pre'},
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   compta:[
@@ -726,6 +729,36 @@ const VIEWS={
       </div></div>
     </div>`,
 
+  'sec.msg':()=>`
+    <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
+    <div id="msg-real">
+      <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
+      <div class="cd"><div style="display:flex;gap:10px;padding:14px 18px">
+        <input type="text" id="msg-input" class="fi" style="flex:1" placeholder="Écrire un message à l'équipe…" onkeydown="if(event.key==='Enter')envoyerMessage()">
+        <button class="btn bp" onclick="envoyerMessage()">Envoyer</button>
+      </div></div>
+    </div>`,
+
+  'photo.msg':()=>`
+    <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
+    <div id="msg-real">
+      <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
+      <div class="cd"><div style="display:flex;gap:10px;padding:14px 18px">
+        <input type="text" id="msg-input" class="fi" style="flex:1" placeholder="Écrire un message à l'équipe…" onkeydown="if(event.key==='Enter')envoyerMessage()">
+        <button class="btn bp" onclick="envoyerMessage()">Envoyer</button>
+      </div></div>
+    </div>`,
+
+  'cm.msg':()=>`
+    <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
+    <div id="msg-real">
+      <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
+      <div class="cd"><div style="display:flex;gap:10px;padding:14px 18px">
+        <input type="text" id="msg-input" class="fi" style="flex:1" placeholder="Écrire un message à l'équipe…" onkeydown="if(event.key==='Enter')envoyerMessage()">
+        <button class="btn bp" onclick="envoyerMessage()">Envoyer</button>
+      </div></div>
+    </div>`,
+
   // ── PHOTOGRAPHE ─────────────────────────
   'photo.dash':()=>`
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
@@ -862,7 +895,7 @@ const VIEWS={
       <div class="cd"><div class="cd-h"><div class="cd-t">Prospects à traiter</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
         <div id="com-dash-pr"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Derniers clients signés</div><button class="btn bg2 bs" onclick="switchView('crm')">CRM</button></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Derniers clients signés</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
         <div id="com-dash-cl"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
     </div>`,
@@ -1099,8 +1132,15 @@ function modalNouvellePrestation(presetClientId){
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouvelle prestation</div>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Client *</label>
-        <select id="f-client" class="l-inp" style="height:38px"><option value="">— Choisir ou créer —</option></select>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Client</label>
+        <div style="position:relative">
+          <input id="f-client-search" class="l-inp" type="text" placeholder="Rechercher un client…" style="height:38px" autocomplete="off"
+            oninput="filtrerClientsSelect(this.value)"
+            onfocus="filtrerClientsSelect(this.value)"
+            onblur="setTimeout(()=>{const d=document.getElementById('f-client-dropdown');if(d)d.style.display='none'},180)">
+          <input id="f-client" type="hidden" value="">
+          <div id="f-client-dropdown" style="display:none;position:absolute;top:40px;left:0;right:0;background:var(--s3);border:1px solid var(--b1);border-radius:6px;z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.35)"></div>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type *</label>
@@ -1139,12 +1179,17 @@ function modalNouvellePrestation(presetClientId){
         <button class="btn bp" onclick="creerPrestation()">Créer la prestation</button>
       </div>
     </div>`);
-  // Charger les clients dans le select
   sbFetch('clients?select=id,nom,statut&order=nom').then(cs=>{
-    const sel=document.getElementById('f-client');
-    if(sel&&cs){
-      cs.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nom+(c.statut==='prospect'?' (prospect)':'');sel.appendChild(o);});
-      if(presetClientId)sel.value=presetClientId;
+    if(!cs)return;
+    _clientsNP=cs;
+    if(presetClientId){
+      const found=cs.find(c=>c.id===presetClientId);
+      if(found){
+        const h=document.getElementById('f-client');
+        if(h)h.value=presetClientId;
+        const inp=document.getElementById('f-client-search');
+        if(inp)inp.value=found.nom;
+      }
     }
   });
 }
@@ -1172,6 +1217,27 @@ async function creerPrestation(){
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de la création.';}
+}
+function filtrerClientsSelect(q){
+  const dd=document.getElementById('f-client-dropdown');
+  if(!dd)return;
+  const lq=(q||'').toLowerCase();
+  const list=lq?_clientsNP.filter(c=>(c.nom||'').toLowerCase().includes(lq)):_clientsNP.slice(0,25);
+  if(!list.length){dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--t3)">Aucun résultat</div>';dd.style.display='block';return;}
+  dd.style.display='block';
+  const stC={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
+  dd.innerHTML=list.map(c=>{
+    const safId=c.id.replace(/'/g,"\\'");
+    const safNom=(c.nom||'').replace(/</g,'&lt;').replace(/'/g,"\\'");
+    const nomHtml=(c.nom||'').replace(/</g,'&lt;');
+    const badge=c.statut&&c.statut!=='client'?`<span class="bd ${stC[c.statut]||'bn'}" style="font-size:10px;margin-left:4px"><span class="bd-d"></span>${c.statut}</span>`:'';
+    return`<div onmousedown="selectClientNP('${safId}','${safNom}')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--t1);border-bottom:1px solid var(--b1)" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">${nomHtml}${badge}</div>`;
+  }).join('');
+}
+function selectClientNP(id,nom){
+  const h=document.getElementById('f-client');if(h)h.value=id;
+  const inp=document.getElementById('f-client-search');if(inp)inp.value=nom;
+  const dd=document.getElementById('f-client-dropdown');if(dd)dd.style.display='none';
 }
 
 // ── FORMULAIRE NOUVEAU CLIENT ─────────────
@@ -1411,7 +1477,7 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='publications') await loadCmPublications();
   if(role==='photo'&&view==='medias') await loadMedias();
   if(role==='photo'&&view==='form') loadForm();
-  if((role==='prod'||role==='admin')&&view==='msg') await loadMsg();
+  if(['prod','admin','sec','photo','cm'].includes(role)&&view==='msg') await loadMsg();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
   if(role==='sec'&&view==='docs') await loadDocs();
@@ -1588,6 +1654,7 @@ function supprimerPrestation(id){
 }
 
 let _clientsCache=[];
+let _clientsNP=[];
 let _crmFiltre='';
 let _crmStFiltre='';
 async function loadClients(){
@@ -3420,7 +3487,7 @@ async function loadSecDash(){
     const ec=document.getElementById('sec-dash-clients');
     if(ec){
       const recents=await sbFetch('clients?select=id,nom,statut,ville,sport&order=created_at.desc&limit=5');
-      const scc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'bb'};
+      const scc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
       const scl={'prospect':'Prospect','qualifié':'Qualifié','client':'Client','inactif':'Inactif','bloqué':'Bloqué'};
       ec.innerHTML=(recents||[]).length?'<div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Sport</th><th>Statut</th></tr></thead><tbody>'+
         (recents||[]).map(c=>`<tr>
