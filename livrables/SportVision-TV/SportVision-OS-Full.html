@@ -261,8 +261,7 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
       <div id="l-err" style="font-size:12px;color:var(--er);min-height:16px;text-align:center"></div>
       <button id="l-btn" class="btn bp" style="width:100%;justify-content:center;height:42px;font-size:14px" onclick="doLogin()">Se connecter</button>
     </div>
-    <div class="l-sep">Accéder en démo</div>
-    <div class="demo-grid" id="demo-btns"></div>
+    <div class="demo-grid" id="demo-btns" style="display:none"></div>
   </div>
 </div>
 
@@ -1313,9 +1312,4 @@ function goError(type){
   show('error');
 }
 
-// Expose errors on login screen
-document.querySelector('.lw').insertAdjacentHTML('beforeend',`
-  <div style="display:flex;gap:8px;justify-content:center;margin-top:4px">
-    ${['403','404','500'].map(c=>`<button class="btn bg2 bs" onclick="goError('${c}')" style="font-size:11px;padding:4px 10px">Voir erreur ${c}</button>`).join('')}
-  </div>`);
 </script>
