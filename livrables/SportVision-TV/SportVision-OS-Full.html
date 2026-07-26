@@ -390,6 +390,7 @@ const NAV={
     {id:'fin',lb:'Finances',ic:'fin'},
     {id:'incidents',lb:'Incidents',ic:'alert'},
     {id:'pipeline',lb:'Pipeline',ic:'pipe'},
+    {id:'devis',lb:'Devis',ic:'doc'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -400,6 +401,7 @@ const NAV={
     {id:'planning',lb:'Planning',ic:'cal'},
     {id:'taches',lb:'Tâches',ic:'task'},
     {id:'docs',lb:'Documents',ic:'doc'},
+    {id:'devis',lb:'Devis',ic:'doc'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -921,6 +923,22 @@ const VIEWS={
     </div>`,
 
   'com.devis':()=>`
+    <div class="sh"><div class="sh-t">Devis</div><button class="btn bp bs" onclick="modalNouveauDevis()">+ Nouveau devis</button></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="dev-kpi-att" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Acceptés</div><div class="fs-v" id="dev-kpi-acc" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Refusés</div><div class="fs-v" id="dev-kpi-ref" style="color:var(--er)">—</div></div>
+    </div>
+    <div id="devis-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+  'admin.devis':()=>`
+    <div class="sh"><div class="sh-t">Devis</div><button class="btn bp bs" onclick="modalNouveauDevis()">+ Nouveau devis</button></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="dev-kpi-att" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Acceptés</div><div class="fs-v" id="dev-kpi-acc" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Refusés</div><div class="fs-v" id="dev-kpi-ref" style="color:var(--er)">—</div></div>
+    </div>
+    <div id="devis-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+  'sec.devis':()=>`
     <div class="sh"><div class="sh-t">Devis</div><button class="btn bp bs" onclick="modalNouveauDevis()">+ Nouveau devis</button></div>
     <div class="g3" style="margin-bottom:13px">
       <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="dev-kpi-att" style="color:var(--wa)">—</div></div>
@@ -1489,7 +1507,7 @@ async function loadViewData(role,view){
   if(role==='com'&&view==='dash') await loadComDash();
   if(role==='photo'&&view==='revenus') await loadPhotoRevenus();
   if(role==='com'&&view==='objectifs') await loadObjectifs();
-  if((role==='com'||role==='admin')&&view==='devis') await loadDevis();
+  if(['com','admin','sec'].includes(role)&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
   if(role==='cm'&&view==='cal') await loadCmCal();
   if(role==='cm'&&view==='contenus') await loadCmContenus();
@@ -1578,7 +1596,10 @@ function renderPreTable(){
         <td class="tm">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
         <td><span class="bd ${SF_CLS[p.statut_financier]||'bn'}" style="font-size:10px"><span class="bd-d"></span>${SF_LBL[p.statut_financier]||'—'}</span></td>
-        <td><button onclick="modalDetailPrestation(${ri})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer;white-space:nowrap">Ouvrir</button></td>
+        <td style="display:flex;gap:4px;flex-wrap:wrap">
+          <button onclick="modalDetailPrestation(${ri})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer;white-space:nowrap">Ouvrir</button>
+          ${['admin','sec','prod'].includes(S.role)&&_NEXT_ST[p.statut]?`<button onclick="avancerStatutPrestation('${p.id}','${p.statut}')" title="→ ${SL[_NEXT_ST[p.statut]]||_NEXT_ST[p.statut]}" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">→</button>`:''}
+        </td>
       </tr>`}).join('')+
     '</tbody></table></div>':'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat pour « '+q+' ».</div>'}`;
 }
@@ -1601,6 +1622,16 @@ const _NEXT_ST={
   'partiellement_payée':'payée','payée':'clôturée'
 };
 function pdAvancer(){const sel=document.getElementById('pd-statut');if(!sel)return;const next=_NEXT_ST[sel.value];if(next){sel.value=next;}}
+async function avancerStatutPrestation(id,statut){
+  const next=_NEXT_ST[statut];
+  if(!next)return;
+  try{
+    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:next}});
+    toast('→ '+(SL[next]||next),'ok');
+    loadViewData(S.role,S.view);
+    updateNavBadges(S.role);
+  }catch(e){toast('Erreur lors de la mise à jour.');}
+}
 
 function modalDetailPrestation(idx){
   const p=_prestationsCache[idx];
@@ -2759,8 +2790,15 @@ async function modalModifierDevis(idx){
   if(!d)return;
   const statuts=['brouillon','envoyé','en_attente','accepté','refusé','expiré','annulé'];
   const opts=statuts.map(s=>`<option value="${s}"${d.statut===s?' selected':''}>${{brouillon:'Brouillon',envoyé:'Envoyé',en_attente:'En attente',accepté:'Accepté',refusé:'Refusé',expiré:'Expiré',annulé:'Annulé'}[s]}</option>`).join('');
+  const preRef=d.prestation?.reference;
+  const preId=d.prestation?.id||d.prestation_id;
   openModal(`<div class="mh"><div class="mt">${d.numero||'Devis'}</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:12px;color:var(--t3)">Client :</span>
+        <span style="font-size:12.5px;font-weight:600;color:var(--t1)">${d.clients?.nom||'—'}</span>
+        ${preRef?`<span style="font-size:10px;color:var(--t3)">·</span><span style="font-size:11px;font-family:monospace;color:var(--acc);cursor:pointer;text-decoration:underline" onclick="closeModal();setTimeout(()=>modalDetailById('${preId}'),150)">${preRef} ›</span>`:''}
+      </div>
       <div class="fg"><label class="fl">Statut</label><select id="dv-st" class="fi">${opts}</select></div>
       <div class="fg"><label class="fl">Notes</label><textarea id="dv-no" class="fi" rows="3">${d.notes||''}</textarea></div>
       <div class="g2">
