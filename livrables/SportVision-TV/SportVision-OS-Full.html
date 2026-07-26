@@ -1561,20 +1561,22 @@ async function loadClients(){
   const el=document.getElementById('crm-real');
   if(!el)return;
   try{
-    const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone&order=created_at.desc&limit=100');
+    const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect&order=created_at.desc&limit=100');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun client. Créez le premier prospect.</div></div>';return;}
     _clientsCache=data;
     const sc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
     el.innerHTML='<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Statut</th><th></th></tr></thead><tbody>'+
-      data.map((c,i)=>`<tr>
-        <td class="tp">${c.nom}</td>
-        <td>${c.type_client||'—'}</td>
-        <td>${c.sport||'—'}</td>
-        <td>${c.ville||'—'}</td>
-        <td>${c.email||c.telephone||'—'}</td>
-        <td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${c.statut}</span></td>
-        <td><button onclick="modalModifierClient(${i})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button></td>
-      </tr>`).join('')+
+      data.map((c,i)=>{
+        const ct=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||c.email||c.telephone||'—';
+        return`<tr>
+          <td class="tp">${c.nom}</td>
+          <td>${c.type_client||'—'}</td>
+          <td>${c.sport||'—'}</td>
+          <td>${c.ville||'—'}</td>
+          <td>${ct}</td>
+          <td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${c.statut}</span></td>
+          <td><button onclick="modalModifierClient(${i})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button></td>
+        </tr>`;}).join('')+
     '</tbody></table></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
@@ -1582,34 +1584,52 @@ async function loadClients(){
 function modalModifierClient(idx){
   const c=_clientsCache[idx];
   if(!c)return;
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   openModal(`
-    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Modifier le client</div>
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Modifier le client</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${c.nom}</div>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom *</label>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Nom *</label>
           <input id="fce-nom" type="text" class="l-inp" value="${c.nom}" style="height:38px">
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut</label>
+        <div><label style="${lbl}">Type</label>
+          <select id="fce-type" class="l-inp" style="height:38px">
+            ${['club','association','entreprise','particulier','fédération'].map(s=>`<option value="${s}"${(c.type_client||'club')===s?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+        <div><label style="${lbl}">Statut</label>
           <select id="fce-statut" class="l-inp" style="height:38px">
             ${['prospect','qualifié','client','inactif','bloqué'].map(s=>`<option value="${s}"${c.statut===s?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
           </select>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Email</label>
+        <div><label style="${lbl}">Prénom contact</label>
+          <input id="fce-prenom" type="text" class="l-inp" value="${c.prenom_contact||''}" style="height:38px">
+        </div>
+        <div><label style="${lbl}">Nom contact</label>
+          <input id="fce-nomct" type="text" class="l-inp" value="${c.nom_contact||''}" style="height:38px">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Email</label>
           <input id="fce-email" type="email" class="l-inp" value="${c.email||''}" style="height:38px">
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Téléphone</label>
+        <div><label style="${lbl}">Téléphone</label>
           <input id="fce-tel" type="tel" class="l-inp" value="${c.telephone||''}" style="height:38px">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Sport</label>
+        <div><label style="${lbl}">Sport</label>
           <input id="fce-sport" type="text" class="l-inp" value="${c.sport||''}" style="height:38px">
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Ville</label>
+        <div><label style="${lbl}">Ville</label>
           <input id="fce-ville" type="text" class="l-inp" value="${c.ville||''}" style="height:38px">
         </div>
+      </div>
+      <div><label style="${lbl}">Notes internes</label>
+        <textarea id="fce-notes" class="l-inp" style="height:72px;resize:vertical;padding-top:8px">${c.notes||''}</textarea>
       </div>
       <div id="fce-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:4px">
@@ -1630,11 +1650,15 @@ async function modifierClient(id){
   try{
     await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{
       nom,
+      type_client:document.getElementById('fce-type').value||null,
       statut:document.getElementById('fce-statut').value,
+      prenom_contact:document.getElementById('fce-prenom').value.trim()||null,
+      nom_contact:document.getElementById('fce-nomct').value.trim()||null,
       email:document.getElementById('fce-email').value||null,
       telephone:document.getElementById('fce-tel').value||null,
       sport:document.getElementById('fce-sport').value||null,
       ville:document.getElementById('fce-ville').value||null,
+      notes:document.getElementById('fce-notes').value.trim()||null,
     }});
     closeModal();
     toast('Client mis à jour.','ok');
@@ -2488,7 +2512,7 @@ async function loadPhotoRevenus(){
   const el=document.getElementById('rev-real');
   if(!el)return;
   try{
-    const data=await sbFetch(`prestations_equipe?select=id,remuneration,statut,prestations(id,reference,statut,type_prestation,date_prestation,clients(nom))&collaborateur_id=eq.${S.uid}&order=prestations.date_prestation.desc&limit=100`);
+    const data=await sbFetch(`prestations_equipe?select=id,remuneration,statut,prestations(id,reference,statut,type_prestation,date_prestation,clients(nom))&collaborateur_id=eq.${localStorage.getItem('sv_uid')}&order=prestations.date_prestation.desc&limit=100`);
     const list=(data||[]).filter(r=>r.prestations);
     const now=new Date();const m0=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
     const total=list.reduce((s,r)=>s+(r.remuneration||0),0);
@@ -2729,7 +2753,7 @@ async function signalerIncident(){
       type_incident:type,
       niveau:document.getElementById('inc-niv').value,
       description:desc,
-      declare_par:S.uid,
+      declare_par:localStorage.getItem('sv_uid'),
       prestation_id:pid,
     }});
     closeModal();
@@ -2750,7 +2774,7 @@ async function loadPipeline(){
     {id:'inactif',lb:'Inactif / Bloqué',clr:'rgba(255,255,255,.1)',st:['inactif','bloqué']},
   ];
   try{
-    const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone&order=created_at.desc&limit=200');
+    const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect&order=created_at.desc&limit=200');
     const list=data||[];
     _clientsCache=list;
     const s1=document.getElementById('pip-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
@@ -3360,7 +3384,7 @@ async function loadJourJ(){
   try{
     const today=new Date().toISOString().slice(0,10);
     const in14=new Date();in14.setDate(in14.getDate()+14);
-    const data=await sbFetch(`prestations_equipe?select=prestation_id,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_rdv,lieu,clients(nom))&collaborateur_id=eq.${S.uid}&prestations.date_prestation=gte.${today}&order=prestations.date_prestation.asc&limit=5`);
+    const data=await sbFetch(`prestations_equipe?select=prestation_id,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_rdv,lieu,clients(nom))&collaborateur_id=eq.${localStorage.getItem('sv_uid')}&prestations.date_prestation=gte.${today}&order=prestations.date_prestation.asc&limit=5`);
     const missions=(data||[]).filter(r=>r.prestations&&!['annulée','refusée','clôturée','payée'].includes(r.prestations.statut));
     if(!missions.length){
       el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--t3)">
