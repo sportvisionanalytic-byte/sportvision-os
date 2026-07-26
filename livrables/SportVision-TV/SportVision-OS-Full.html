@@ -2088,7 +2088,10 @@ async function loadEquipes(){
       const equipe=p.prestations_equipe||[];
       return`<div class="cd" style="margin-bottom:13px"><div class="cd-h">
         <div><div class="cd-t">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div><div class="cd-s" style="font-family:monospace;font-size:10.5px">${p.reference||'—'}</div></div>
-        <span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span>
+          <button class="btn bg2 bs" onclick="modalEquipePrestation('${p.id}','${(p.reference||'').replace(/'/g,"\\'")}')">Gérer</button>
+        </div>
       </div><div class="cd-b" style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 18px">
         ${equipe.length?equipe.map(m=>{
           const t=m.collaborateur||{};
