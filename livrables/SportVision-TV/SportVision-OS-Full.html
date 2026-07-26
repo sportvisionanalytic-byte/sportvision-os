@@ -776,14 +776,14 @@ const VIEWS={
   // ── PHOTOGRAPHE ─────────────────────────
   'photo.dash':()=>`
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Mes prestations</div><div class="kpi-v" id="photo-kpi-pre">—</div><span class="kpi-d dnt">assignées</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">À venir</div><div class="kpi-v" id="photo-kpi-next">—</div><span class="kpi-d dnt">prochaines</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('medias')"><div class="kpi-ey">Mes prestations</div><div class="kpi-v" id="photo-kpi-pre">—</div><span class="kpi-d dnt">assignées</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('jourj')"><div class="kpi-ey">À venir</div><div class="kpi-v" id="photo-kpi-next">—</div><span class="kpi-d dnt">prochaines</span></div>
       <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Invitations</div><div class="kpi-v" id="photo-kpi-inv">—</div><span class="kpi-d dnt">en attente</span></div>
     </div>
     <div class="cd" id="photo-invitations-card" style="margin-bottom:13px;display:none;border-left:3px solid var(--wa)"><div class="cd-h"><div class="cd-t" style="color:var(--wa)">Invitations en attente</div></div>
       <div id="photo-invitations"></div>
     </div>
-    <div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">Prochaine prestation</div></div>
+    <div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">Prochaine prestation</div><button class="btn bg2 bs" onclick="switchView('jourj')">Mode Jour J</button></div>
       <div id="photo-next"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>
     <div class="cd"><div class="cd-h"><div class="cd-t">Mes prestations assignées</div></div>
@@ -816,10 +816,10 @@ const VIEWS={
   // ── COMMUNITY MANAGER ───────────────────
   'cm.dash':()=>`
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="cm-kpi-cl">—</div><span class="kpi-d dnt">clubs à couvrir</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Prestations ce mois</div><div class="kpi-v" id="cm-kpi-pre">—</div><span class="kpi-d dnt">contenu potentiel</span></div>
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">À venir (14j)</div><div class="kpi-v" id="cm-kpi-soon">—</div><span class="kpi-d dnt">à préparer</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="cm-kpi-pr">—</div><span class="kpi-d dnt">pipeline</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('contenus')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="cm-kpi-cl">—</div><span class="kpi-d dnt">clubs à couvrir</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('cal')"><div class="kpi-ey">Prestations ce mois</div><div class="kpi-v" id="cm-kpi-pre">—</div><span class="kpi-d dnt">contenu potentiel</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('cal')"><div class="kpi-ey">À venir (14j)</div><div class="kpi-v" id="cm-kpi-soon">—</div><span class="kpi-d dnt">à préparer</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('analytics')"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="cm-kpi-pr">—</div><span class="kpi-d dnt">pipeline</span></div>
     </div>
     <div class="g2">
       <div class="cd"><div class="cd-h"><div class="cd-t">Prochaines prestations à couvrir</div></div>
@@ -906,10 +906,10 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="modalNouveauClient()">+ Prospect</button>
     </div>
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="com-kpi-pr">—</div><span class="kpi-d dnt">à travailler</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="com-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="com-kpi-cl">—</div><span class="kpi-d dnt">signés</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Prestations ce mois</div><div class="kpi-v" id="com-kpi-pre">—</div><span class="kpi-d dnt">ce mois</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="com-kpi-pr">—</div><span class="kpi-d dnt">à travailler</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="com-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="com-kpi-cl">—</div><span class="kpi-d dnt">signés</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('objectifs')"><div class="kpi-ey">Prestations ce mois</div><div class="kpi-v" id="com-kpi-pre">—</div><span class="kpi-d dnt">ce mois</span></div>
     </div>
     <div class="g2">
       <div class="cd"><div class="cd-h"><div class="cd-t">Prospects à traiter</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
@@ -2235,9 +2235,10 @@ async function loadPhotoDash(){
         const mon=d.toLocaleDateString('fr-FR',{month:'short'});
         const sLb={'confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.'};
         const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl'};
-        elNext.innerHTML=`<div style="display:flex;gap:20px;padding:16px 18px;align-items:center">
+        elNext.innerHTML=`<div style="display:flex;gap:20px;padding:16px 18px;align-items:center;cursor:pointer" onclick="modalDetailById('${next.id}')">
           <div style="width:50px;height:50px;border-radius:12px;background:var(--gr);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px;font-weight:800;color:#fff;line-height:1">${day}</span><span style="font-size:9px;color:rgba(255,255,255,.7);text-transform:uppercase">${mon}</span></div>
           <div style="flex:1"><div style="font-size:15px;font-weight:650;color:var(--t1)">${next.clients?.nom||'—'} — ${next.type_prestation||'—'}</div><div style="font-size:12.5px;color:var(--t2);margin-top:3px">${next.lieu||'Lieu non défini'} · <span class="bd ${sCl[next.statut]||'bw'}" style="display:inline-flex"><span class="bd-d"></span>${sLb[next.statut]||next.statut}</span></div></div>
+          <span style="font-size:13px;color:var(--acc)">›</span>
         </div>`;
       }else{
         elNext.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune prochaine prestation planifiée.</div>';
@@ -2899,11 +2900,11 @@ async function loadCmDash(){
     if(ec){
       const cl_actifs=list.filter(c=>c.statut==='client').slice(0,6);
       ec.innerHTML=cl_actifs.length?'<div class="cd-b">'+cl_actifs.map(c=>`
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClientById('${c.id}')">
           <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${c.nom}</div>
             <div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div>
           </div>
-          <span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Client</span>
+          <span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Client ›</span>
         </div>`).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client actif.</div>';
     }
