@@ -1548,6 +1548,7 @@ function renderPreTable(){
     (p.reference||'').toLowerCase().includes(q)||
     (p.clients?.nom||'').toLowerCase().includes(q)||
     (SL[p.statut]||'').toLowerCase().includes(q)||
+    (p.statut||'').toLowerCase().includes(q)||
     (p.type_prestation||'').toLowerCase().includes(q)
   ):_prestationsCache;
   if(_preDateFiltre==='today')list=list.filter(p=>p.date_prestation===today);
@@ -2022,7 +2023,8 @@ async function loadAdminDash(){
     ];
     elProd.innerHTML=stages.map(s=>{
       const n=allPre.filter(p=>s.sts.includes(p.statut)).length;
-      return`<div style="background:var(--c2);border-radius:8px;padding:10px 12px;text-align:center;border-top:2px solid ${s.col}">
+      const firstSt=s.sts[0];
+      return`<div style="background:var(--c2);border-radius:8px;padding:10px 12px;text-align:center;border-top:2px solid ${s.col};cursor:${n>0?'pointer':'default'}" onclick="${n>0?`_preFiltre='${firstSt}';document.getElementById('pre-search')&&(document.getElementById('pre-search').value='${firstSt}');switchView('pre')`:''}">
         <div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:${n>0?s.col:'var(--t3)'}">${n}</div>
         <div style="font-size:10px;color:var(--t3);margin-top:3px;white-space:nowrap">${s.lb}</div>
       </div>`;
@@ -2211,8 +2213,8 @@ async function loadPhotoDash(){
         elInv.innerHTML=invitations.map(row=>{
           const p=row.prestation;
           const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—';
-          return`<div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.04)">
-            <div style="flex:1">
+          return`<div style="display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.04)">
+            <div style="flex:1;cursor:pointer" onclick="modalDetailById('${p.id}')">
               <div style="font-size:13px;font-weight:600;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
               <div style="font-size:11px;color:var(--t3)">${p.reference||'—'} · ${d} · ${p.lieu||'Lieu TBD'}</div>
             </div>
@@ -3653,14 +3655,16 @@ async function loadComptaDash(){
     const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard'};
     el.innerHTML=`
       ${att_list.length?`<div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t" style="color:var(--wa)">En attente de paiement (${att_list.length})</div></div>
-        ${att_list.map(p=>`<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.03)">
+        ${att_list.map(p=>`<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalDetailById('${p.id}')">
           <div style="width:38px;height:38px;border-radius:10px;background:rgba(245,165,36,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">📄</div>
           <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1)">${p.reference||'—'} · ${p.clients?.nom||'—'}</div>
             <div style="font-size:11px;color:var(--t3)">${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</div>
           </div>
-          <div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--t1)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</div>
-            <span class="bd ${sf_cls[p.statut_financier]||'bw'}" style="font-size:10px;margin-top:4px"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span>
+          <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <div style="font-size:14px;font-weight:700;color:var(--t1)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</div>
+            <span class="bd ${sf_cls[p.statut_financier]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span>
           </div>
+          <span style="font-size:13px;color:var(--acc);opacity:.6">›</span>
         </div>`).join('')}
       </div>`:'<div class="cd" style="margin-bottom:13px"><div style="padding:32px;text-align:center;color:var(--t3)">Aucune facture en attente.</div></div>'}
       <div class="cd"><div class="cd-h"><div class="cd-t">Tout l\'historique</div><button class="btn bg2 bs" onclick="switchView('factures')">Voir tout</button></div>
