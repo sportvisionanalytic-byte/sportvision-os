@@ -525,24 +525,14 @@ const VIEWS={
     </div>`,
 
   'com.pipeline':()=>`
-    <div class="g4" style="grid-template-columns:repeat(4,1fr)">
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects actifs</div><div class="kpi-v">8</div><span class="kpi-d dnt">3 chauds</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Devis en cours</div><div class="kpi-v">3</div><span class="kpi-d dnt">5 400 €</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Signé ce mois</div><div class="kpi-v">1 800<small style="font-size:15px;color:var(--t2)"> €</small></div><span class="kpi-d dup">+1 contrat</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Objectif mensuel</div><div class="kpi-v">68<small style="font-size:16px;color:var(--t2)">%</small></div><span class="kpi-d dnt">3 400 / 5 000 €</span></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="pip-kpi-pr">—</div><span class="kpi-d dnt">à qualifier</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="pip-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="pip-kpi-cl">—</div><span class="kpi-d dnt">signés</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Total pipeline</div><div class="kpi-v" id="pip-kpi-tot">—</div><span class="kpi-d dnt">contacts</span></div>
     </div>
-    <div class="sh"><div class="sh-t">Pipeline de prospection</div><button class="btn bp bs">+ Prospect</button></div>
-    <div class="pip">
-      ${[
-        {col:'Prospect',clr:'rgba(54,107,255,.3)',cards:[{n:'US Courcouronnes',d:'Football D4 · Essonne',v:'1 200 €'},{n:'Viry FC',d:'Football U19 · Essonne',v:'800 €'}]},
-        {col:'Contacté',clr:'rgba(245,165,36,.3)',cards:[{n:'Draveil Athletic',d:'Football · 91',v:'1 500 €'},{n:'Corbeil Foot',d:'Football D3 · 91',v:'2 200 €'},{n:'CSM Épinay',d:'Basketball · 91',v:'900 €'}]},
-        {col:'Devis envoyé',clr:'rgba(124,77,255,.3)',cards:[{n:'AS Bondoufle',d:'Football D2 · 91',v:'1 800 €'},{n:'RC Savigny',d:'Football · Essonne',v:'1 400 €'}]},
-        {col:'Signé',clr:'rgba(46,204,138,.3)',cards:[{n:'AS Milly',d:'Football · 91',v:'800 €'}]},
-      ].map(col=>`<div class="pip-col">
-        <div class="pip-h" style="border-top:2px solid ${col.clr}"><span class="pip-ht">${col.col}</span><span class="kb-cnt">${col.cards.length}</span></div>
-        <div class="pip-b">${col.cards.map(c=>`<div class="pip-card"><div class="pip-cn">${c.n}</div><div class="pip-det">${c.d}</div><div class="pip-val">${c.v}</div></div>`).join('')}</div>
-      </div>`).join('')}
-    </div>`,
+    <div class="sh"><div class="sh-t">Pipeline</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Prospect</button></div>
+    <div id="pipeline-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── ADMIN ──────────────────────────────
   'admin.pre':()=>`
@@ -653,14 +643,8 @@ const VIEWS={
     <div id="equipes-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'prod.incidents':()=>`
-    <div class="sh"><div class="sh-t">Incidents</div><button class="btn bp bs">+ Signaler</button></div>
-    <div class="cd"><div class="tw"><table><thead><tr><th>Incident</th><th>Kit / Prestation</th><th>Signalé par</th><th>Priorité</th><th>Statut</th><th>Date</th></tr></thead><tbody>
-      <tr><td class="tp">Drone en panne — moteur gauche</td><td>Kit Drone 02</td><td>Rachid Amrani</td><td><span style="font-size:10.5px;font-weight:700;color:var(--er)">Critique</span></td><td><span class="bd bl"><span class="bd-d"></span>Ouvert</span></td><td>29 juin</td></tr>
-    </tbody></table></div>
-    <div style="display:flex;flex-direction:column;align-items:center;padding:32px;color:var(--t3);gap:8px">
-      <div style="font-size:32px;opacity:.2">✅</div>
-      <div style="font-size:13px">Aucun autre incident actif</div>
-    </div></div>`,
+    <div class="sh"><div class="sh-t">Incidents</div><button class="btn bp bs" onclick="modalSignalerIncident()">+ Signaler</button></div>
+    <div id="incidents-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'prod.msg':()=>`
     <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
@@ -803,30 +787,12 @@ const VIEWS={
   // ── COMPTABLE ───────────────────────────
   'compta.dash':()=>`
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA encaissé juin</div><div class="kpi-v">2 450<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dup">51%</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">En attente</div><div class="kpi-v">2 400<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d ddn">2 factures</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Commissions à verser</div><div class="kpi-v">420<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dnt">3 collab.</span></div>
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">CA cumulé 2026</div><div class="kpi-v">19 100<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dup">+27%</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA encaissé</div><div class="kpi-v" id="cptd-enc">—</div><span class="kpi-d dnt">payé</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">En attente</div><div class="kpi-v" id="cptd-att">—</div><span class="kpi-d dnt">facturé</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Prestations facturées</div><div class="kpi-v" id="cptd-nb">—</div><span class="kpi-d dnt">au total</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">CA total</div><div class="kpi-v" id="cptd-total">—</div><span class="kpi-d dnt">cumulé</span></div>
     </div>
-    <div class="g2">
-      <div class="cd"><div class="cd-h"><div class="cd-t">Factures urgentes</div></div>
-        ${[
-          {ref:'FAC-2026-042',cl:'Brunoy FC',mt:'1 800 €',ech:'12 juil.',j:12},
-          {ref:'FAC-2026-041',cl:'AS Évry',mt:'1 200 €',ech:'9 juil.',j:9},
-        ].map(f=>`<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
-          <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,165,36,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">📄</div>
-          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1)">${f.ref} · ${f.cl}</div><div style="font-size:11px;color:var(--t3)">Échéance : ${f.ech}</div></div>
-          <div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--t1)">${f.mt}</div><span class="bd bw" style="margin-top:4px"><span class="bd-d"></span>À relancer</span></div>
-        </div>`).join('')}
-      </div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Commissions dues</div></div><div class="cd-b">
-        ${[{i:'AD',n:'Antoine Dubreuil',mt:'180 €'},{i:'RA',n:'Rachid Amrani',mt:'150 €'},{i:'YB',n:'Yanis Belkacem',mt:'90 €'}].map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035)">
-          <div class="av" style="background:${AVC[c.i]};width:28px;height:28px;font-size:10px">${c.i}</div>
-          <div style="flex:1;font-size:12.5px;color:var(--t1)">${c.n}</div>
-          <div style="font-size:13px;font-weight:700;color:var(--ok)">${c.mt}</div>
-        </div>`).join('')}
-      </div></div>
-    </div>`,
+    <div id="cptd-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.paiements':()=>`
     <div class="sh"><div class="sh-t">Paiements collaborateurs — Juin 2026</div><button class="btn bp bs">Exporter</button></div>
@@ -858,30 +824,18 @@ const VIEWS={
   // ── COMMERCIAL ──────────────────────────
   'com.dash':()=>`
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects actifs</div><div class="kpi-v">8</div><span class="kpi-d dnt">3 chauds</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Devis en cours</div><div class="kpi-v">3</div><span class="kpi-d dnt">5 400 €</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Signé ce mois</div><div class="kpi-v">1 800<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dup">+1</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Objectif</div><div class="kpi-v">68<small style="font-size:14px;color:var(--t2)">%</small></div><span class="kpi-d dnt">3 400 / 5 000 €</span></div>
-    </div>
-    <div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">Objectif mensuel</div></div>
-      <div style="padding:16px 18px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px;color:var(--t2)">Progression vers 5 000 €</span><span style="font-size:13px;font-weight:700;color:var(--t1)">3 400 €</span></div>
-        <div class="pg" style="height:8px"><div class="pg-f" style="width:68%;background:var(--gr)"></div></div>
-        <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:10.5px;color:var(--t3)">Signé</span><span style="font-size:10.5px;color:var(--t3)">68%</span></div>
-      </div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="com-kpi-pr">—</div><span class="kpi-d dnt">à travailler</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="com-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="com-kpi-cl">—</div><span class="kpi-d dnt">signés</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Prestations ce mois</div><div class="kpi-v" id="com-kpi-pre">—</div><span class="kpi-d dnt">ce mois</span></div>
     </div>
     <div class="g2">
-      <div class="cd"><div class="cd-h"><div class="cd-t">Activités du jour</div></div><div class="cd-b"><div class="al">
-        <div class="ai"><div class="ai-ic" style="background:rgba(54,107,255,.12)">📞</div><div><div class="ai-t">Appel de suivi <strong>Draveil Athletic</strong></div><div class="ai-ts">14h00</div></div></div>
-        <div class="ai"><div class="ai-ic" style="background:rgba(245,165,36,.12)">📄</div><div><div class="ai-t">Finaliser devis <strong>AS Bondoufle</strong></div><div class="ai-ts">Aujourd'hui</div></div></div>
-        <div class="ai"><div class="ai-ic" style="background:rgba(46,204,138,.12)">✅</div><div><div class="ai-t">Relance <strong>RC Savigny</strong> — devis envoyé il y a 5j</div><div class="ai-ts">Aujourd'hui</div></div></div>
-      </div></div></div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Clubs à contacter</div></div><div class="cd-b">
-        ${[{n:'US Courcouronnes',d:'Football D4',pr:'Chaud'},{n:'Viry FC',d:'Football U19',pr:'Tiède'},{n:'CSM Épinay',d:'Basketball',pr:'Froid'}].map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035)">
-          <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${c.n}</div><div style="font-size:11px;color:var(--t3)">${c.d}</div></div>
-          <span style="font-size:10px;font-weight:700;color:${c.pr==='Chaud'?'var(--er)':c.pr==='Tiède'?'var(--wa)':'var(--t3)'}">${c.pr}</span>
-        </div>`).join('')}
-      </div></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Prospects à traiter</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
+        <div id="com-dash-pr"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      </div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Derniers clients signés</div><button class="btn bg2 bs" onclick="switchView('crm')">CRM</button></div>
+        <div id="com-dash-cl"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      </div>
     </div>`,
 
   'com.devis':()=>`
@@ -1382,6 +1336,10 @@ async function loadViewData(role,view){
   if(role==='sec'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='admin'&&view==='fin') await loadFinances();
   if(role==='compta'&&view==='factures') await loadComptaFactures();
+  if(role==='compta'&&view==='dash') await loadComptaDash();
+  if(role==='prod'&&view==='incidents') await loadIncidents();
+  if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
+  if(role==='com'&&view==='dash') await loadComDash();
   if(view==='set') await loadSettings();
 }
 
@@ -1974,6 +1932,227 @@ async function supprimerKit(id){
     loadKits();
     updateNavBadges(S.role);
   }catch(e){alert('Erreur lors de la suppression.');}
+}
+
+// ── Incidents production ─────────────────────────────────────────────────────
+let _incidentsCache=[];
+async function loadIncidents(){
+  const el=document.getElementById('incidents-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('incidents?select=id,type_incident,niveau,description,cloture,date_incident,prestation_id,prestations(reference),profiles!declare_par(prenom,nom)&order=date_incident.desc&limit=100');
+    _incidentsCache=data||[];
+    const niv_cls={mineur:'bw',important:'bl',critique:'bb'};
+    const niv_lbl={mineur:'Mineur',important:'Important',critique:'Critique'};
+    if(!_incidentsCache.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:10px;color:var(--t3)"><div style="font-size:40px;opacity:.15">✅</div><div style="font-size:13px">Aucun incident enregistré.</div></div>';
+      return;
+    }
+    const ouverts=_incidentsCache.filter(i=>!i.cloture);
+    const clos=_incidentsCache.filter(i=>i.cloture);
+    const renderList=(items)=>items.map((inc,i)=>`
+      <div style="display:flex;gap:14px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.03);align-items:flex-start">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span class="bd ${niv_cls[inc.niveau]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${niv_lbl[inc.niveau]||inc.niveau}</span>
+            ${inc.cloture?'<span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Clôturé</span>':'<span class="bd bl" style="font-size:10px"><span class="bd-d"></span>Ouvert</span>'}
+            ${inc.prestations?.reference?`<span style="font-size:10px;color:var(--t3);font-family:monospace">${inc.prestations.reference}</span>`:''}
+          </div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">${inc.type_incident}</div>
+          <div style="font-size:12px;color:var(--t2)">${inc.description}</div>
+          <div style="font-size:10.5px;color:var(--t3);margin-top:5px">Signalé par ${inc.profiles?.prenom||''} ${inc.profiles?.nom||'—'} · ${new Date(inc.date_incident).toLocaleDateString('fr-FR')}</div>
+        </div>
+        ${!inc.cloture?`<button onclick="cloreIncident('${inc.id}')" style="padding:5px 12px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap;flex-shrink:0">Clôturer</button>`:''}
+      </div>`).join('');
+    el.innerHTML=`
+      ${ouverts.length?`<div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t" style="color:var(--er)">Incidents ouverts (${ouverts.length})</div></div>${renderList(ouverts)}</div>`:''}
+      ${clos.length?`<div class="cd"><div class="cd-h"><div class="cd-t">Clôturés (${clos.length})</div></div>${renderList(clos)}</div>`:''}`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function cloreIncident(id){
+  if(!confirm('Clôturer cet incident ?'))return;
+  try{
+    await sbFetch('incidents?id=eq.'+id,{method:'PATCH',body:{cloture:true,cloture_at:new Date().toISOString(),cloture_par:S.uid}});
+    loadIncidents();
+    updateNavBadges(S.role);
+  }catch(e){alert('Erreur.');}
+}
+
+function modalSignalerIncident(){
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:16px">Signaler un incident</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type d'incident</label>
+        <input id="inc-type" class="l-inp" placeholder="Ex: Kit endommagé, Matériel manquant…" style="height:38px">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Niveau</label>
+          <select id="inc-niv" class="l-inp" style="height:38px">
+            <option value="mineur">Mineur</option>
+            <option value="important">Important</option>
+            <option value="critique">Critique</option>
+          </select>
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Prestation (réf.)</label>
+          <input id="inc-pre" class="l-inp" placeholder="SV-2026-…" style="height:38px">
+        </div>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description</label>
+        <textarea id="inc-desc" class="l-inp" style="height:80px;padding-top:10px;resize:none" placeholder="Décrivez l'incident en détail…"></textarea>
+      </div>
+      <div id="inc-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="signalerIncident()">Signaler</button>
+      </div>
+    </div>`);
+}
+
+async function signalerIncident(){
+  const err=document.getElementById('inc-err');
+  const type=document.getElementById('inc-type').value.trim();
+  const desc=document.getElementById('inc-desc').value.trim();
+  if(!type||!desc){err.textContent='Type et description requis.';return;}
+  err.textContent='Envoi…';
+  try{
+    const preRef=document.getElementById('inc-pre').value.trim();
+    let pid=null;
+    if(preRef){
+      const pr=await sbFetch('prestations?select=id&reference=eq.'+encodeURIComponent(preRef));
+      if(pr&&pr[0])pid=pr[0].id;
+    }
+    await sbFetch('incidents',{method:'POST',body:{
+      type_incident:type,
+      niveau:document.getElementById('inc-niv').value,
+      description:desc,
+      declare_par:S.uid,
+      prestation_id:pid,
+    }});
+    closeModal();
+    loadIncidents();
+    updateNavBadges(S.role);
+  }catch(e){err.textContent='Erreur lors de l\'envoi.';}
+}
+
+// ── Pipeline commercial ───────────────────────────────────────────────────────
+async function loadPipeline(){
+  const el=document.getElementById('pipeline-real');
+  if(!el)return;
+  const COLS=[
+    {id:'prospect',lb:'Prospect',clr:'rgba(54,107,255,.3)',st:['prospect']},
+    {id:'qualifie',lb:'Qualifié',clr:'rgba(245,165,36,.3)',st:['qualifié']},
+    {id:'client',lb:'Client',clr:'rgba(46,204,138,.3)',st:['client']},
+    {id:'inactif',lb:'Inactif / Bloqué',clr:'rgba(255,255,255,.1)',st:['inactif','bloqué']},
+  ];
+  try{
+    const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone&order=created_at.desc&limit=200');
+    const list=data||[];
+    const s1=document.getElementById('pip-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
+    const s2=document.getElementById('pip-kpi-q');if(s2)s2.textContent=list.filter(c=>c.statut==='qualifié').length;
+    const s3=document.getElementById('pip-kpi-cl');if(s3)s3.textContent=list.filter(c=>c.statut==='client').length;
+    const s4=document.getElementById('pip-kpi-tot');if(s4)s4.textContent=list.length;
+    const s5=document.getElementById('com-kpi-pr');if(s5)s5.textContent=list.filter(c=>c.statut==='prospect').length;
+    const s6=document.getElementById('com-kpi-q');if(s6)s6.textContent=list.filter(c=>c.statut==='qualifié').length;
+    const s7=document.getElementById('com-kpi-cl');if(s7)s7.textContent=list.filter(c=>c.statut==='client').length;
+    el.innerHTML='<div class="pip">'+COLS.map(col=>{
+      const cards=list.filter(c=>col.st.includes(c.statut));
+      return `<div class="pip-col">
+        <div class="pip-h" style="border-top:2px solid ${col.clr}"><span class="pip-ht">${col.lb}</span><span class="kb-cnt">${cards.length}</span></div>
+        <div class="pip-b">${cards.length?cards.map(c=>`<div class="pip-card" style="cursor:pointer" onclick="alert('${c.nom.replace(/'/g,'\\\'')}'+'\\n'+'${(c.sport||'').replace(/'/g,'\\\'')} · ${(c.ville||'').replace(/'/g,'\\\'')}')">
+          <div class="pip-cn">${c.nom}</div>
+          <div class="pip-det">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div>
+          ${c.email?`<div style="font-size:10px;color:var(--t3);margin-top:3px">${c.email}</div>`:''}
+        </div>`).join(''):'<div style="padding:12px;text-align:center;color:var(--t3);font-size:11px;opacity:.5">—</div>'}</div>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Dashboard commercial ──────────────────────────────────────────────────────
+async function loadComDash(){
+  try{
+    const now=new Date();
+    const m0=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const [clients,preMois]=await Promise.all([
+      sbFetch('clients?select=id,nom,statut,type_client,sport,ville,created_at&order=created_at.desc&limit=100'),
+      sbFetch(`prestations?select=id&created_at=gte.${m0}`),
+    ]);
+    const list=clients||[];
+    const s1=document.getElementById('com-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
+    const s2=document.getElementById('com-kpi-q');if(s2)s2.textContent=list.filter(c=>c.statut==='qualifié').length;
+    const s3=document.getElementById('com-kpi-cl');if(s3)s3.textContent=list.filter(c=>c.statut==='client').length;
+    const s4=document.getElementById('com-kpi-pre');if(s4)s4.textContent=(preMois||[]).length;
+    const ep=document.getElementById('com-dash-pr');
+    if(ep){
+      const prox=list.filter(c=>c.statut==='prospect'||c.statut==='qualifié').slice(0,5);
+      const scc={'prospect':'bw','qualifié':'bb'};
+      const scl={'prospect':'Prospect','qualifié':'Qualifié'};
+      ep.innerHTML=prox.length?'<div class="cd-b">'+prox.map(c=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${c.nom}</div><div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
+          <span class="bd ${scc[c.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${scl[c.statut]||c.statut}</span>
+        </div>`).join('')+'</div>':
+        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun prospect. Ajoutez des contacts via le Pipeline.</div>';
+    }
+    const ec=document.getElementById('com-dash-cl');
+    if(ec){
+      const clients_signes=list.filter(c=>c.statut==='client').slice(0,5);
+      ec.innerHTML=clients_signes.length?'<div class="cd-b">'+clients_signes.map(c=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${c.nom}</div><div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
+          <span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Client</span>
+        </div>`).join('')+'</div>':
+        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client signé pour l\'instant.</div>';
+    }
+  }catch(e){console.error('loadComDash',e);}
+}
+
+// ── Dashboard comptable ───────────────────────────────────────────────────────
+async function loadComptaDash(){
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=100');
+    const list=data||[];
+    let enc=0,att=0,total=0;
+    list.forEach(p=>{
+      const m=p.montant_ttc||0;
+      if(p.statut_financier==='payée')enc+=m;
+      if(['facturée','partiellement_payée'].includes(p.statut_financier))att+=m;
+      if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))total+=m;
+    });
+    const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
+    const s1=document.getElementById('cptd-enc');if(s1)s1.innerHTML=fmt(enc);
+    const s2=document.getElementById('cptd-att');if(s2)s2.innerHTML=fmt(att);
+    const s3=document.getElementById('cptd-nb');if(s3)s3.textContent=list.length;
+    const s4=document.getElementById('cptd-total');if(s4)s4.innerHTML=fmt(total);
+    const el=document.getElementById('cptd-real');
+    if(!el)return;
+    const att_list=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier));
+    const sf_cls={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl'};
+    const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard'};
+    el.innerHTML=`
+      ${att_list.length?`<div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t" style="color:var(--wa)">En attente de paiement (${att_list.length})</div></div>
+        ${att_list.map(p=>`<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.03)">
+          <div style="width:38px;height:38px;border-radius:10px;background:rgba(245,165,36,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">📄</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1)">${p.reference||'—'} · ${p.clients?.nom||'—'}</div>
+            <div style="font-size:11px;color:var(--t3)">${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</div>
+          </div>
+          <div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--t1)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</div>
+            <span class="bd ${sf_cls[p.statut_financier]||'bw'}" style="font-size:10px;margin-top:4px"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span>
+          </div>
+        </div>`).join('')}
+      </div>`:'<div class="cd" style="margin-bottom:13px"><div style="padding:32px;text-align:center;color:var(--t3)">Aucune facture en attente.</div></div>'}
+      <div class="cd"><div class="cd-h"><div class="cd-t">Tout l\'historique</div><button class="btn bg2 bs" onclick="switchView('factures')">Voir tout</button></div>
+        <div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Montant TTC</th><th>Statut</th></tr></thead><tbody>
+          ${list.slice(0,8).map(p=>`<tr>
+            <td class="tm">${p.reference||'—'}</td>
+            <td class="tp">${p.clients?.nom||'—'}</td>
+            <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+            <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
+          </tr>`).join('')}
+        </tbody></table></div>
+      </div>`;
+  }catch(e){console.error('loadComptaDash',e);}
 }
 
 // ── Dashboard secrétaire ─────────────────────────────────────────────────────
