@@ -297,9 +297,10 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
     </div>
     <div id="sb-nav"></div>
     <div class="sb-foot">
-      <div class="u-row">
+      <div class="u-row" onclick="switchView('set')" title="Paramètres du compte">
         <div class="av" id="u-av" style="background:var(--gr)"></div>
         <div class="u-meta"><div class="u-n" id="u-nm"></div><div class="u-r" id="u-rl"></div></div>
+        <svg width="13" height="13" viewBox="0 0 15 15" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round" style="flex-shrink:0"><circle cx="7.5" cy="7.5" r="2"/><path d="M7.5 1v1M7.5 13v1M1 7.5h1M13 7.5h1M2.93 2.93l.71.71M11.36 11.36l.71.71M2.93 12.07l.71-.71M11.36 3.64l.71-.71"/></svg>
       </div>
     </div>
   </aside>
@@ -372,6 +373,7 @@ const NAV={
     {id:'fin',lb:'Finances',ic:'fin'},
     {id:'incidents',lb:'Incidents',ic:'alert'},
     {id:'pipeline',lb:'Pipeline',ic:'pipe'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   sec:[
@@ -381,6 +383,7 @@ const NAV={
     {id:'planning',lb:'Planning',ic:'cal'},
     {id:'taches',lb:'Tâches',ic:'task'},
     {id:'docs',lb:'Documents',ic:'doc'},
+    {id:'set',lb:'Paramètres',ic:'set'},
   ],
   prod:[
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
@@ -389,6 +392,7 @@ const NAV={
     {id:'equipes',lb:'Équipes',ic:'col'},
     {id:'incidents',lb:'Incidents',ic:'alert'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
+    {id:'set',lb:'Paramètres',ic:'set'},
   ],
   photo:[
     {id:'dash',lb:'Mes prestations',ic:'pre'},
@@ -396,6 +400,7 @@ const NAV={
     {id:'medias',lb:'Mes médias',ic:'med'},
     {id:'revenus',lb:'Mes revenus',ic:'fin'},
     {id:'form',lb:'Formation',ic:'form'},
+    {id:'set',lb:'Paramètres',ic:'set'},
   ],
   cm:[
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
@@ -403,6 +408,7 @@ const NAV={
     {id:'contenus',lb:'Contenus',ic:'pre'},
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
+    {id:'set',lb:'Paramètres',ic:'set'},
   ],
   compta:[
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
@@ -410,12 +416,14 @@ const NAV={
     {id:'paiements',lb:'Paiements',ic:'fin'},
     {id:'rapprochement',lb:'Rapprochement',ic:'check'},
     {id:'export',lb:'Export',ic:'export'},
+    {id:'set',lb:'Paramètres',ic:'set'},
   ],
   com:[
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
     {id:'pipeline',lb:'Pipeline',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'objectifs',lb:'Objectifs',ic:'target'},
+    {id:'set',lb:'Paramètres',ic:'set'},
   ],
 };
 
@@ -617,6 +625,10 @@ const VIEWS={
     </div>`,
 
   // ── SECRÉTAIRE ──────────────────────────
+  'sec.pre':()=>`
+    <div class="sh"><div class="sh-t">Prestations</div><button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle prestation</button></div>
+    <div id="pre-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   'sec.crm':()=>`
     <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
     <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
@@ -678,6 +690,16 @@ const VIEWS={
     <div id="incidents-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'prod.msg':()=>`
+    <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
+    <div id="msg-real">
+      <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
+      <div class="cd"><div style="display:flex;gap:10px;padding:14px 18px">
+        <input type="text" id="msg-input" class="fi" style="flex:1" placeholder="Écrire un message à l'équipe…" onkeydown="if(event.key==='Enter')envoyerMessage()">
+        <button class="btn bp" onclick="envoyerMessage()">Envoyer</button>
+      </div></div>
+    </div>`,
+
+  'admin.msg':()=>`
     <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
     <div id="msg-real">
       <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
@@ -853,7 +875,31 @@ const VIEWS={
   'com.objectifs':()=>`
     <div class="sh"><div class="sh-t">Objectifs commerciaux</div></div>
     <div id="obj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PARAMÈTRES (tous rôles non-admin) ───
+  'sec.set':()=>_settingsView(),
+  'prod.set':()=>_settingsView(),
+  'photo.set':()=>_settingsView(),
+  'cm.set':()=>_settingsView(),
+  'compta.set':()=>_settingsView(),
+  'com.set':()=>_settingsView(),
 };
+
+function _settingsView(){
+  return`<div class="sh"><div class="sh-t">Paramètres</div></div>
+    <div id="set-profile"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Changer le mot de passe</div></div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau mot de passe</label><input id="set-mdp1" type="password" class="l-inp" placeholder="••••••••" style="height:38px"></div>
+          <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Confirmer</label><input id="set-mdp2" type="password" class="l-inp" placeholder="••••••••" style="height:38px"></div>
+        </div>
+        <div id="set-mdp-err" style="font-size:12px;min-height:14px"></div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn bp" onclick="sauvegarderMdp()">Changer le mot de passe</button></div>
+      </div>
+    </div>`;
+}
 
 // ── HELPERS NON GLOBAUX ───────────────────
 function taskRow(t,hasDate){
@@ -1003,6 +1049,18 @@ function openModal(html){
 function closeModal(){
   document.getElementById('sv-modal').style.display='none';
   document.getElementById('sv-modal-ct').innerHTML='';
+}
+let _pendingConfirm=null;
+function confirmerAction(msg,onConfirm){
+  _pendingConfirm=onConfirm;
+  openModal(`<div class="mh"><div class="mt">Confirmation</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div style="font-size:13.5px;color:var(--t1);margin-bottom:20px">${msg}</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn" style="background:var(--er)" onclick="closeModal();if(_pendingConfirm){const cb=_pendingConfirm;_pendingConfirm=null;cb();}">Confirmer</button>
+      </div>
+    </div>`);
 }
 function toast(msg,type='error'){
   const t=document.createElement('div');
@@ -1327,7 +1385,7 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='publications') await loadCmPublications();
   if(role==='photo'&&view==='medias') await loadMedias();
   if(role==='photo'&&view==='form') loadForm();
-  if(role==='prod'&&view==='msg') await loadMsg();
+  if((role==='prod'||role==='admin')&&view==='msg') await loadMsg();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
   if(role==='sec'&&view==='docs') await loadDocs();
@@ -1487,14 +1545,15 @@ async function modifierPrestation(id){
   }catch(e){err.textContent='Erreur lors de la modification.';}
 }
 
-async function supprimerPrestation(id){
-  if(!confirm('Supprimer cette prestation ? Cette action est irréversible.'))return;
-  try{
-    await sbFetch('prestations?id=eq.'+id,{method:'DELETE'});
-    closeModal();
-    loadPrestations();
-    updateNavBadges(S.role);
-  }catch(e){toast('Erreur lors de la suppression.');}
+function supprimerPrestation(id){
+  confirmerAction('Supprimer cette prestation ? Cette action est irréversible.',async()=>{
+    try{
+      await sbFetch('prestations?id=eq.'+id,{method:'DELETE'});
+      toast('Prestation supprimée.','ok');
+      loadViewData(S.role,S.view);
+      updateNavBadges(S.role);
+    }catch(e){toast('Erreur lors de la suppression.');}
+  });
 }
 
 let _clientsCache=[];
@@ -1579,17 +1638,20 @@ async function modifierClient(id){
     }});
     closeModal();
     toast('Client mis à jour.','ok');
-    loadClients();
+    loadViewData(S.role,S.view);
+    updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de la modification.';}
 }
 
-async function supprimerClient(id){
-  if(!confirm('Supprimer ce client ? Cette action est irréversible.'))return;
-  try{
-    await sbFetch('clients?id=eq.'+id,{method:'DELETE'});
-    closeModal();
-    loadClients();
-  }catch(e){toast('Erreur lors de la suppression.');}
+function supprimerClient(id){
+  confirmerAction('Supprimer ce client ? Cette action est irréversible.',async()=>{
+    try{
+      await sbFetch('clients?id=eq.'+id,{method:'DELETE'});
+      toast('Client supprimé.','ok');
+      loadViewData(S.role,S.view);
+      updateNavBadges(S.role);
+    }catch(e){toast('Erreur lors de la suppression.');}
+  });
 }
 
 async function loadAdminDash(){
@@ -2133,12 +2195,14 @@ async function ajouterMembreEquipe(prestationId,ref){
     await chargerEquipe(prestationId,ref);
   }catch(e){err.textContent='Erreur lors de l\'ajout.';}
 }
-async function retirerMembreEquipe(equipeId,prestationId,ref){
-  if(!confirm('Retirer ce collaborateur de la prestation ?'))return;
-  try{
-    await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'DELETE'});
-    await chargerEquipe(prestationId,ref);
-  }catch(e){toast('Erreur lors du retrait.');}
+function retirerMembreEquipe(equipeId,prestationId,ref){
+  confirmerAction('Retirer ce collaborateur de la prestation ?',async()=>{
+    try{
+      await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'DELETE'});
+      toast('Collaborateur retiré.','ok');
+      await chargerEquipe(prestationId,ref);
+    }catch(e){toast('Erreur lors du retrait.');}
+  });
 }
 
 // ── MODIFIER COLLABORATEUR ────────────────
@@ -2229,13 +2293,15 @@ async function modifierKit(id){
   }catch(e){err.textContent='Erreur lors de la modification.';}
 }
 
-async function supprimerKit(id){
-  if(!confirm('Supprimer ce kit ? Cette action est irréversible.'))return;
-  try{
-    await sbFetch('kits?id=eq.'+id,{method:'DELETE'});
-    loadKits();
-    updateNavBadges(S.role);
-  }catch(e){toast('Erreur lors de la suppression.');}
+function supprimerKit(id){
+  confirmerAction('Supprimer ce kit ? Cette action est irréversible.',async()=>{
+    try{
+      await sbFetch('kits?id=eq.'+id,{method:'DELETE'});
+      toast('Kit supprimé.','ok');
+      loadKits();
+      updateNavBadges(S.role);
+    }catch(e){toast('Erreur lors de la suppression.');}
+  });
 }
 
 // ── Devis ────────────────────────────────────────────────────────────────────
@@ -2346,10 +2412,15 @@ async function sauvegarderDevis(id){
   }catch(e){if(err)err.textContent='Erreur lors de la sauvegarde.';}
 }
 
-async function supprimerDevis(id){
-  if(!confirm('Supprimer ce devis ?'))return;
-  try{await sbFetch('devis?id=eq.'+id,{method:'DELETE'});closeModal();loadDevis();}
-  catch(e){toast('Erreur lors de la suppression.');}
+function supprimerDevis(id){
+  confirmerAction('Supprimer ce devis ?',async()=>{
+    try{
+      await sbFetch('devis?id=eq.'+id,{method:'DELETE'});
+      closeModal();
+      toast('Devis supprimé.','ok');
+      loadDevis();
+    }catch(e){toast('Erreur lors de la suppression.');}
+  });
 }
 
 // ── Objectifs commerciaux ────────────────────────────────────────────────────
@@ -2600,13 +2671,15 @@ async function loadIncidents(){
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
-async function cloreIncident(id){
-  if(!confirm('Clôturer cet incident ?'))return;
-  try{
-    await sbFetch('incidents?id=eq.'+id,{method:'PATCH',body:{cloture:true,cloture_at:new Date().toISOString(),cloture_par:S.uid}});
-    loadIncidents();
-    updateNavBadges(S.role);
-  }catch(e){toast('Erreur.');}
+function cloreIncident(id){
+  confirmerAction('Clôturer cet incident ?',async()=>{
+    try{
+      await sbFetch('incidents?id=eq.'+id,{method:'PATCH',body:{cloture:true,cloture_at:new Date().toISOString(),cloture_par:localStorage.getItem('sv_uid')}});
+      toast('Incident clôturé.','ok');
+      loadIncidents();
+      updateNavBadges(S.role);
+    }catch(e){toast('Erreur.');}
+  });
 }
 
 function modalSignalerIncident(){
@@ -3045,15 +3118,15 @@ async function publierContenu(id){
   }catch(e){}
 }
 
-async function supprimerContenu(id){
-  if(!confirm('Supprimer ce contenu ?'))return;
-  try{
-    await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
-    closeModal();
-    if(document.getElementById('contenus-real')) loadCmContenus();
-    else if(document.getElementById('cal-real')) loadCmCal();
-    else if(document.getElementById('pub-real')) loadCmPublications();
-  }catch(e){}
+function supprimerContenu(id){
+  confirmerAction('Supprimer ce contenu ?',async()=>{
+    try{
+      await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
+      closeModal();
+      toast('Contenu supprimé.','ok');
+      loadViewData(S.role,S.view);
+    }catch(e){toast('Erreur lors de la suppression.');}
+  });
 }
 
 // ── CM — Publications ─────────────────────────────────────────────────────────
