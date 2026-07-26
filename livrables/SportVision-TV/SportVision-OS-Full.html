@@ -2404,6 +2404,8 @@ async function chargerEquipe(prestationId,ref){
   try{
     const data=await sbFetch('prestations_equipe?select=id,statut,fonction,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId);
     if(!data||!data.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px 0">Aucun collaborateur affecté.</div>';return;}
+    const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
+    const iLb={'invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
     el.innerHTML=data.map(m=>{
       const t=m.collaborateur||{};
       const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||'?';
@@ -2411,6 +2413,7 @@ async function chargerEquipe(prestationId,ref){
       return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
         <div class="av" style="background:${rc[t.role]||'#366BFF'};width:30px;height:30px;font-size:11px;flex-shrink:0">${ini}</div>
         <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${name}</div><div style="font-size:11px;color:var(--t3)">${m.fonction||t.role||'—'}</div></div>
+        <span class="bd ${iSt[m.statut]||'bw'}" style="font-size:9.5px"><span class="bd-d"></span>${iLb[m.statut]||m.statut}</span>
         <button onclick="retirerMembreEquipe('${m.id}','${prestationId}','${ref}')" style="padding:4px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Retirer</button>
       </div>`;
     }).join('');
@@ -3616,6 +3619,15 @@ async function loadJourJ(){
       const diff=Math.ceil((dDate-now)/(1000*60*60*24));
       const diffTxt=isToday?'AUJOURD\'HUI':diff===1?'DEMAIN':`Dans ${diff} jours`;
       const heroClr=isToday?'linear-gradient(135deg,rgba(240,68,94,.25),rgba(124,77,255,.2))':'linear-gradient(135deg,rgba(54,107,255,.18),rgba(124,77,255,.12))';
+      const JOURJ_BTNS={
+        'prête':{lb:'🚗 En route',ns:'équipe_en_route',clr:'rgba(54,107,255,.15)',brd:'rgba(54,107,255,.3)',tc:'var(--acc)'},
+        'équipe_en_route':{lb:'📍 Arrivée',ns:'arrivée_sur_place',clr:'rgba(245,165,36,.15)',brd:'rgba(245,165,36,.35)',tc:'var(--wa)'},
+        'arrivée_sur_place':{lb:'▶ Démarrer',ns:'production_démarrée',clr:'rgba(240,68,94,.15)',brd:'rgba(240,68,94,.3)',tc:'var(--er)'},
+        'production_démarrée':{lb:'⏹ Terminer',ns:'production_terminée',clr:'rgba(46,204,138,.12)',brd:'rgba(46,204,138,.3)',tc:'var(--ok)'},
+        'production_terminée':{lb:'📤 Transférer',ns:'médias_à_transférer',clr:'rgba(124,77,255,.12)',brd:'rgba(124,77,255,.3)',tc:'#9C6FFF'},
+        'médias_à_transférer':{lb:'✓ Médias OK',ns:'médias_complets',clr:'rgba(46,204,138,.12)',brd:'rgba(46,204,138,.3)',tc:'var(--ok)'},
+      };
+      const btn=isToday&&JOURJ_BTNS[p.statut]?JOURJ_BTNS[p.statut]:null;
       return `<div style="background:${heroClr};border:1px solid ${isToday?'rgba(240,68,94,.3)':'rgba(54,107,255,.2)'};border-radius:var(--rc);padding:20px 24px;margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
@@ -3628,8 +3640,9 @@ async function loadJourJ(){
             <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">${['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'][dDate.getMonth()]} ${dDate.getFullYear()}</div>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap">
           <span class="bd ${SC[p.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+          ${btn?`<button onclick="avanJourJ('${p.id}','${btn.ns}')" style="padding:7px 16px;font-size:12px;font-weight:700;background:${btn.clr};border:1px solid ${btn.brd};border-radius:var(--rp);color:${btn.tc};cursor:pointer;letter-spacing:.02em">${btn.lb}</button>`:''}
         </div>
       </div>`;
     }).join('');
@@ -3662,6 +3675,15 @@ function resetChecklist(){
   loadJourJ();
 }
 
+async function avanJourJ(id,newStatut){
+  try{
+    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:newStatut}});
+    toast(SL[newStatut]||newStatut,'ok');
+    loadJourJ();
+    updateNavBadges(S.role);
+  }catch(e){toast('Erreur de mise à jour du statut.');}
+}
+
 // ── Comptabilité — factures ───────────────────────────────────────────────────
 async function loadComptaFactures(){
   const el=document.getElementById('compta-real');
@@ -3683,7 +3705,7 @@ async function loadComptaFactures(){
     if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune facturation enregistrée.</div>';return;}
     const sf_cls={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl','annulée':'bb','en_préparation':'bn'};
     const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard','annulée':'Annulée','en_préparation':'En préparation'};
-    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut facture</th></tr></thead><tbody>'+
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut facture</th><th></th></tr></thead><tbody>'+
       list.map(p=>`<tr>
         <td class="tm">${p.reference||'—'}</td>
         <td class="tp">${p.clients?.nom||'—'}</td>
@@ -3691,6 +3713,7 @@ async function loadComptaFactures(){
         <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
         <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
+        <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
       </tr>`).join('')+'</tbody></table></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
