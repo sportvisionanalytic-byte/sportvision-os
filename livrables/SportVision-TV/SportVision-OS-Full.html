@@ -139,6 +139,7 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
 .bw{background:rgba(245,165,36,.1);color:var(--wa)}.bw .bd-d{background:var(--wa)}
 .bn{background:rgba(255,255,255,.06);color:var(--t3)}.bn .bd-d{background:var(--t3)}
 .bb{background:rgba(54,107,255,.1);color:var(--acc)}.bb .bd-d{background:var(--acc)}
+.br{background:rgba(240,68,94,.1);color:var(--er)}.br .bd-d{background:var(--er)}
 @keyframes bdot{0%,100%{opacity:1}50%{opacity:.35}}
 .rl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:var(--rp)}
 .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
@@ -219,6 +220,21 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
 .fs-v{font-size:21px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+
+/* ── MODAL HELPERS ─────────────────────── */
+.mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.mt{font-size:15px;font-weight:700;color:var(--t1)}
+.mc{background:transparent;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1;padding:2px 4px;border-radius:4px}
+.mc:hover{color:var(--t1)}
+.mb{display:flex;flex-direction:column;gap:12px}
+.mf{display:flex;gap:10px;justify-content:flex-end;margin-top:6px;padding-top:10px;border-top:1px solid var(--b1)}
+.fg{display:flex;flex-direction:column;gap:6px}
+.fl{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)}
+.fi{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);padding:0 12px;height:38px;color:var(--t1);font-size:13px;font-family:var(--ff);outline:none;transition:border-color .15s}
+.fi:focus{border-color:rgba(54,107,255,.45)}
+.fi::placeholder{color:var(--t3)}
+textarea.fi{height:auto;padding:9px 12px;resize:vertical}
+select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555E73' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
 
 /* ── TEAM LIST ─────────────────────────── */
 .tl{display:flex;flex-direction:column}
@@ -1078,7 +1094,7 @@ function toast(msg,type='error'){
 }
 
 // ── FORMULAIRE NOUVELLE PRESTATION ───────
-function modalNouvellePrestation(){
+function modalNouvellePrestation(presetClientId,presetClientNom){
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouvelle prestation</div>
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -1125,7 +1141,10 @@ function modalNouvellePrestation(){
   // Charger les clients dans le select
   sbFetch('clients?select=id,nom,statut&order=nom').then(cs=>{
     const sel=document.getElementById('f-client');
-    if(sel&&cs)cs.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nom+(c.statut==='prospect'?' (prospect)':'');sel.appendChild(o);});
+    if(sel&&cs){
+      cs.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nom+(c.statut==='prospect'?' (prospect)':'');sel.appendChild(o);});
+      if(presetClientId)sel.value=presetClientId;
+    }
   });
 }
 
@@ -1469,6 +1488,9 @@ function renderPreTable(){
     '</tbody></table></div>':'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat pour « '+q+' ».</div>'}`;
 }
 
+const _NEXT_ST={'demande_reçue':'à_qualifier','à_qualifier':'offre_en_préparation','offre_en_préparation':'devis_envoyé','devis_envoyé':'en_attente_réponse','en_attente_réponse':'devis_accepté','devis_accepté':'en_attente_signature','en_attente_signature':'en_attente_acompte','en_attente_acompte':'documents_complets','documents_complets':'confirmée','confirmée':'planifiée','planifiée':'équipe_affectée','équipe_affectée':'prête','prête':'production_démarrée','production_démarrée':'production_terminée','production_terminée':'médias_complets','médias_complets':'à_monter','à_monter':'montage_en_cours','montage_en_cours':'prêt_validation','prêt_validation':'prête_à_livrer','prête_à_livrer':'livrée','livrée':'facturée','facturée':'payée','payée':'clôturée'};
+function pdAvancer(){const sel=document.getElementById('pd-statut');if(!sel)return;const next=_NEXT_ST[sel.value];if(next){sel.value=next;}}
+
 function modalDetailPrestation(idx){
   const p=_prestationsCache[idx];
   if(!p)return;
@@ -1477,9 +1499,11 @@ function modalDetailPrestation(idx){
     ['non_facturée','Non facturée'],['en_préparation','En préparation'],['facturée','Facturée'],
     ['partiellement_payée','Part. payée'],['payée','Payée'],['en_retard','En retard'],['annulée','Annulée'],
   ].map(([v,l])=>`<option value="${v}"${(p.statut_financier||'non_facturée')===v?' selected':''}>${l}</option>`).join('');
+  const nextSt=_NEXT_ST[p.statut];
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">${p.reference||'Prestation'}</div>
-    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${p.clients?.nom||'Sans client'} · ${p.type_prestation||'—'}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:10px">${p.clients?.nom||'Sans client'} · ${p.type_prestation||'—'}</div>
+    ${nextSt?`<div style="margin-bottom:12px"><button onclick="pdAvancer()" style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;background:rgba(54,107,255,.12);border:1px solid rgba(54,107,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-size:12px;font-weight:600"><span style="opacity:.7">→</span> Étape suivante : ${SL[nextSt]||nextSt}</button></div>`:'<div style="margin-bottom:12px"><span style="font-size:12px;color:var(--ok);font-weight:600">✓ Prestation terminée / clôturée</span></div>'}
     <div style="display:flex;flex-direction:column;gap:11px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut prestation</label>
@@ -1563,6 +1587,8 @@ function supprimerPrestation(id){
 }
 
 let _clientsCache=[];
+let _crmFiltre='';
+let _crmStFiltre='';
 async function loadClients(){
   const el=document.getElementById('crm-real');
   if(!el)return;
@@ -1570,24 +1596,44 @@ async function loadClients(){
     const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect&order=created_at.desc&limit=100');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun client. Créez le premier prospect.</div></div>';return;}
     _clientsCache=data;
-    const sc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
-    el.innerHTML='<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Email / Tél.</th><th>Statut</th><th></th></tr></thead><tbody>'+
-      data.map((c,i)=>{
-        const ct=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'—';
-        const emailBtn=c.email?`<span onclick="copier('${c.email.replace(/'/g,"\\'")}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${c.email}</span>`:'—';
-        const telBtn=c.telephone?`<span onclick="copier('${c.telephone.replace(/'/g,"\\'")}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${c.telephone}</span>`:'';
-        return`<tr>
-          <td class="tp" style="cursor:pointer" onclick="modalModifierClient(${i})">${c.nom}</td>
-          <td>${c.type_client||'—'}</td>
-          <td>${c.sport||'—'}</td>
-          <td>${c.ville||'—'}</td>
-          <td>${ct}</td>
-          <td style="font-size:12px">${emailBtn}${telBtn}</td>
-          <td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${c.statut}</span></td>
-          <td><button onclick="modalModifierClient(${i})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button></td>
-        </tr>`;}).join('')+
-    '</tbody></table></div>';
+    renderClientsTable();
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function renderClientsTable(){
+  const el=document.getElementById('crm-real');
+  if(!el)return;
+  const q=(_crmFiltre||'').toLowerCase();
+  const sf=_crmStFiltre||'';
+  const list=_clientsCache.filter(c=>{
+    const matchQ=!q||[c.nom,c.ville,c.sport,c.email,c.telephone,c.prenom_contact,c.nom_contact].some(v=>(v||'').toLowerCase().includes(q));
+    const matchSt=!sf||c.statut===sf;
+    return matchQ&&matchSt;
+  });
+  const sc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px">
+    <input id="crm-search" type="text" class="l-inp" placeholder="Rechercher nom, ville, sport, email…" value="${_crmFiltre}" oninput="_crmFiltre=this.value;renderClientsTable()" style="height:34px;flex:1;max-width:320px">
+    <select id="crm-st-filter" class="l-inp" style="height:34px;max-width:180px" onchange="_crmStFiltre=this.value;renderClientsTable()">
+      <option value="">Tous les statuts</option>
+      ${['prospect','qualifié','client','inactif','bloqué'].map(s=>`<option value="${s}"${sf===s?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+    </select>
+    <span style="font-size:11px;color:var(--t3);white-space:nowrap">${list.length} / ${_clientsCache.length}</span>
+  </div>
+  ${list.length?'<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Email / Tél.</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    list.map(c=>{const i=_clientsCache.indexOf(c);
+      const ct=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'—';
+      const emailBtn=c.email?`<span onclick="copier('${c.email.replace(/'/g,"\\'")}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${c.email}</span>`:'—';
+      const telBtn=c.telephone?`<span onclick="copier('${c.telephone.replace(/'/g,"\\'")}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${c.telephone}</span>`:'';
+      return`<tr>
+        <td class="tp" style="cursor:pointer" onclick="modalModifierClient(${i})">${c.nom}</td>
+        <td>${c.type_client||'—'}</td>
+        <td>${c.sport||'—'}</td>
+        <td>${c.ville||'—'}</td>
+        <td>${ct}</td>
+        <td style="font-size:12px">${emailBtn}${telBtn}</td>
+        <td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${c.statut}</span></td>
+        <td><button onclick="modalModifierClient(${i})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button></td>
+      </tr>`;}).join('')+
+  '</tbody></table></div>':'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat.</div>'}`;
 }
 
 function modalModifierClient(idx){
@@ -1645,6 +1691,7 @@ function modalModifierClient(idx){
         <button onclick="supprimerClient('${c.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>
         <div style="display:flex;gap:10px">
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
+          <button class="btn bg2" onclick="closeModal();modalNouvellePrestation('${c.id}','${c.nom.replace(/'/g,"\\'")}')" title="Créer une prestation pour ce client">+ Prestation</button>
           <button class="btn bp" onclick="modifierClient('${c.id}')">Enregistrer</button>
         </div>
       </div>
@@ -3532,8 +3579,10 @@ async function modalDetailById(id){
   try{
     const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,lieu,montant_ht,montant_ttc,notes_internes,clients(nom)&id=eq.'+id);
     if(!data||!data[0])return;
+    const saved=_prestationsCache;
     _prestationsCache=[data[0]];
     modalDetailPrestation(0);
+    _prestationsCache=saved;
   }catch(e){toast('Erreur de chargement.');}
 }
 
