@@ -2994,7 +2994,7 @@ function cloreIncident(id){
   });
 }
 
-function modalSignalerIncident(){
+async function modalSignalerIncident(){
   openModal(`
     <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:16px">Signaler un incident</div>
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -3009,8 +3009,8 @@ function modalSignalerIncident(){
             <option value="critique">Critique</option>
           </select>
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Prestation (réf.)</label>
-          <input id="inc-pre" class="l-inp" placeholder="SV-2026-…" style="height:38px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Prestation liée</label>
+          <select id="inc-pre" class="l-inp" style="height:38px"><option value="">Chargement…</option></select>
         </div>
       </div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description</label>
@@ -3022,6 +3022,22 @@ function modalSignalerIncident(){
         <button class="btn bp" onclick="signalerIncident()">Signaler</button>
       </div>
     </div>`);
+  // Charge les prestations récentes selon le rôle
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    let pres;
+    if(['photo','cm'].includes(S.role)){
+      const data=await sbFetch('prestations_equipe?select=prestations(id,reference,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=20');
+      pres=(data||[]).filter(r=>r.prestations).map(r=>r.prestations);
+    } else {
+      pres=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,clôturée,payée)&order=date_prestation.desc&limit=30');
+    }
+    const sel=document.getElementById('inc-pre');
+    if(sel){
+      sel.innerHTML='<option value="">Aucune (incident général)</option>'+
+        (pres||[]).map(p=>`<option value="${p.id}">${p.reference||'?'} · ${p.clients?.nom||'—'} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</option>`).join('');
+    }
+  }catch(e){}
 }
 
 async function signalerIncident(){
@@ -3031,22 +3047,17 @@ async function signalerIncident(){
   if(!type||!desc){err.textContent='Type et description requis.';return;}
   err.textContent='Envoi…';
   try{
-    const preRef=document.getElementById('inc-pre').value.trim();
-    let pid=null;
-    if(preRef){
-      const pr=await sbFetch('prestations?select=id&reference=eq.'+encodeURIComponent(preRef));
-      if(pr&&pr[0])pid=pr[0].id;
-    }
+    const pid=document.getElementById('inc-pre').value||null;
     await sbFetch('incidents',{method:'POST',body:{
       type_incident:type,
       niveau:document.getElementById('inc-niv').value,
       description:desc,
       declare_par:localStorage.getItem('sv_uid'),
-      prestation_id:pid,
+      prestation_id:pid||null,
     }});
     closeModal();
     toast('Incident signalé.','ok');
-    loadIncidents();
+    if(S.view==='incidents')loadIncidents();
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de l\'envoi.';}
 }
