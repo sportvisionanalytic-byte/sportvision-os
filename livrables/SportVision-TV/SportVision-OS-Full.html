@@ -1135,7 +1135,7 @@ function toast(msg,type='error'){
 }
 
 // ── FORMULAIRE NOUVELLE PRESTATION ───────
-function modalNouvellePrestation(presetClientId){
+function modalNouvellePrestation(presetClientId,presetDate){
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouvelle prestation</div>
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -1163,7 +1163,7 @@ function modalNouvellePrestation(presetClientId){
           </select>
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Date *</label>
-          <input id="f-date" type="date" class="l-inp" style="height:38px">
+          <input id="f-date" type="date" class="l-inp" style="height:38px" value="${presetDate||''}">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -3838,6 +3838,7 @@ async function loadPlanning(){
             </div>`;
           }).join('')}
           ${pres.length===0?'<div style="font-size:11px;color:var(--t3);padding:2px 0">—</div>':''}
+          <button onclick="modalNouvellePrestation(null,'${`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}')" style="margin-top:4px;padding:2px 8px;font-size:10px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:var(--rp);color:var(--t3);cursor:pointer;display:block;width:100%">+</button>
         </div>
       </div>`;
     }
