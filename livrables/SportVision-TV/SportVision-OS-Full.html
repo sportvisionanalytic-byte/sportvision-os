@@ -364,7 +364,9 @@ const ROLES={
 const NAV={
   admin:[
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    {id:'planning',lb:'Planning',ic:'cal'},
     {id:'pre',lb:'Prestations',ic:'pre'},
+    {id:'crm',lb:'Clients & CRM',ic:'cli'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
     {id:'kits',lb:'Kits',ic:'kits'},
     {id:'fin',lb:'Finances',ic:'fin'},
@@ -437,30 +439,55 @@ function finBars(id,h){
 // ── VIEW RENDERERS ────────────────────────
 const VIEWS={
   'admin.dash':()=>`
-    <div class="kpi-g">
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations actives</div><div class="kpi-v" id="kpi-pre-v">—</div><span class="kpi-d dnt" id="kpi-pre-s">chargement</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Collaborateurs</div><div class="kpi-v" id="kpi-col-v">—</div><span class="kpi-d dnt">dans l'équipe</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Clients</div><div class="kpi-v" id="kpi-cli-v">—</div><span class="kpi-d dnt">au total</span></div>
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Kits disponibles</div><div class="kpi-v" id="kpi-kit-v">—</div><span class="kpi-d dnt" id="kpi-kit-s">sur l'inventaire</span></div>
+    <div id="dash-welcome" style="margin-bottom:18px">
+      <div style="font-size:22px;font-weight:700;color:var(--t1)" id="dash-bonjour">Bonjour</div>
+      <div style="font-size:13px;color:var(--t3);margin-top:2px" id="dash-subtitle">Voici ce qui mérite votre attention aujourd'hui.</div>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations du jour</div><div class="kpi-v" id="kpi-jour">—</div><span class="kpi-d dnt" id="kpi-jour-s">aujourd'hui</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA du mois</div><div class="kpi-v" id="kpi-ca-m" style="font-size:18px">—</div><span class="kpi-d dnt">facturé</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">À encaisser</div><div class="kpi-v" id="kpi-enc" style="font-size:18px">—</div><span class="kpi-d dnt" id="kpi-enc-s">factures</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="kpi-cli-v">—</div><span class="kpi-d dnt">partenaires</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="kpi-inc-v">—</div><span class="kpi-d dnt">à traiter</span></div>
     </div>
     <div class="g32">
-      <div class="cd"><div class="cd-h"><div><div class="cd-t">Prestations récentes</div><div class="cd-s">5 dernières</div></div><button class="btn bg2 bs" onclick="switchView('pre')">Voir tout</button></div>
-        <div id="dash-pre"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div class="cd"><div class="cd-h"><div class="cd-t">Planning du jour</div><button class="btn bg2 bs" onclick="switchView('planning')">Voir tout</button></div>
+          <div id="dash-today"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        </div>
+        <div class="cd"><div class="cd-h"><div class="cd-t">À traiter</div><span id="dash-traiter-nb" class="bd bn">—</span></div>
+          <div id="dash-traiter"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        </div>
       </div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Équipe</div></div><div class="cd-b">
-        <div id="dash-team" class="tl"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
-      </div></div>
-    </div>
-    <div class="g2">
-      <div class="cd"><div class="cd-h"><div class="cd-t">Activité récente</div></div><div class="cd-b"><div class="al" id="dash-hist">
-        <div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div>
-      </div></div></div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">CA facturé</div></div><div class="cd-b">
-        <div style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:3px" id="dash-ca">—&thinsp;<span style="font-size:14px;color:var(--t2);font-weight:600">€</span></div>
-        <div style="font-size:11px;color:var(--t3);margin-bottom:14px">Prestations payées</div>
-        <div class="fb" id="mc" style="height:80px"></div>
-      </div></div>
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div class="cd"><div class="cd-h"><div class="cd-t">Suivi de production</div><button class="btn bg2 bs" onclick="switchView('pre')">Pipeline</button></div>
+          <div id="dash-prod" style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
+        </div>
+        <div class="cd"><div class="cd-h"><div class="cd-t">Kits utilisés</div><button class="btn bg2 bs" onclick="switchView('kits')">Inventaire</button></div>
+          <div id="dash-kits-live"><div style="padding:16px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
+        </div>
+        <div class="cd"><div class="cd-h"><div class="cd-t">CA facturé</div></div><div class="cd-b">
+          <div style="font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:3px" id="dash-ca">—&thinsp;<span style="font-size:13px;color:var(--t2);font-weight:600">€</span></div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:12px">Prestations payées</div>
+          <div class="fb" id="mc" style="height:70px"></div>
+        </div></div>
+      </div>
     </div>`,
+
+  'admin.planning':()=>`
+    <div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="planningPrev()">‹</button>
+        <div class="sh-t" id="planning-title">Planning</div>
+        <button class="btn bg2 bs" onclick="planningNext()">›</button>
+      </div>
+      <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
+    </div>
+    <div id="planning-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'admin.crm':()=>`
+    <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
+    <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.dash':()=>`
     <div class="kpi-g">
@@ -910,7 +937,7 @@ function svSave(token,refresh,uid,role){
   localStorage.setItem('sv_role',role);
 }
 function svClear(){
-  ['sv_tok','sv_ref','sv_uid','sv_role'].forEach(k=>localStorage.removeItem(k));
+  ['sv_tok','sv_ref','sv_uid','sv_role','sv_prenom'].forEach(k=>localStorage.removeItem(k));
 }
 
 async function doLogin(){
@@ -928,12 +955,13 @@ async function doLogin(){
     });
     const d1=await r1.json();
     if(!d1.access_token)throw new Error('Email ou mot de passe incorrect.');
-    const r2=await fetch(SB_URL+'/rest/v1/profiles?id=eq.'+d1.user.id+'&select=role',{
+    const r2=await fetch(SB_URL+'/rest/v1/profiles?id=eq.'+d1.user.id+'&select=role,prenom',{
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+d1.access_token}
     });
     const profs=await r2.json();
     if(!profs||!profs[0])throw new Error('Profil introuvable. Contactez l\'administrateur.');
     svSave(d1.access_token,d1.refresh_token,d1.user.id,profs[0].role);
+    if(profs[0].prenom)localStorage.setItem('sv_prenom',profs[0].prenom);
     goApp(profs[0].role);
   }catch(e){
     errEl.textContent=e.message||'Erreur de connexion.';
@@ -1290,6 +1318,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='col') await loadCollaborateurs();
   if((role==='admin'||role==='prod')&&view==='kits') await loadKits();
   if(role==='admin'&&view==='dash') await loadAdminDash();
+  if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='prod'&&view==='dash') await loadProdDash();
   if(role==='prod'&&view==='equipes') await loadEquipes();
   if(role==='prod'&&view==='kanban') await loadKanban();
@@ -1559,63 +1588,161 @@ async function supprimerClient(id){
 
 async function loadAdminDash(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const today=new Date().toISOString().slice(0,10);
+  const mStart=today.slice(0,7)+'-01';
+
+  // Bonjour header
+  const bj=document.getElementById('dash-bonjour');
+  if(bj){
+    const prenom=localStorage.getItem('sv_prenom');
+    bj.textContent='Bonjour'+(prenom?' '+prenom:'');
+  }
+
+  // Fetch all data in parallel
+  let allPre=[],allCli=[],allKits=[],allInc=[],todayPre=[];
   try{
-    const [pre,col,cli,kits]=await Promise.all([
-      sbFetch('prestations?select=id,statut'),
-      sbFetch('profiles?select=id'),
-      sbFetch('clients?select=id'),
-      sbFetch('kits?select=id,statut'),
+    [allPre,allCli,allKits,allInc,todayPre]=await Promise.all([
+      sbFetch('prestations?select=id,statut,statut_financier,montant_ttc,date_prestation,heure_debut,heure_fin,reference,type_prestation,clients(nom)&order=date_prestation.asc&limit=500'),
+      sbFetch('clients?select=id,statut'),
+      sbFetch('kits?select=id,nom,statut&order=nom.asc'),
+      sbFetch('incidents?select=id&cloture=eq.false'),
+      sbFetch('prestations?select=id,reference,heure_debut,heure_fin,lieu,type_prestation,statut,clients(nom)&date_prestation=eq.'+today+'&order=heure_debut.asc'),
     ]);
-    const actives=(pre||[]).filter(p=>!['clôturée','annulée','refusée'].includes(p.statut)).length;
-    const dispoK=(kits||[]).filter(k=>k.statut==='disponible').length;
-    set('kpi-pre-v',actives);set('kpi-pre-s',actives+' active'+(actives>1?'s':''));
-    set('kpi-col-v',(col||[]).length);
-    set('kpi-cli-v',(cli||[]).length);
-    set('kpi-kit-v',dispoK+'/'+(kits||[]).length);
-    const caData=await sbFetch('prestations?select=montant_ttc,statut_financier&statut_financier=in.(payée,partiellement_payée)');
-    const ca=(caData||[]).reduce((s,p)=>s+(p.montant_ttc||0),0);
-    set('dash-ca',ca?ca.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0}):'0');
   }catch(e){}
-  // Recent prestations
-  const elPre=document.getElementById('dash-pre');
-  if(elPre){try{
-    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&order=created_at.desc&limit=5');
-    if(!data||!data.length){elPre.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3)">Aucune prestation.</div>';}
-    else{
-      const sLb={'demande_reçue':'Demande','confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','livrée':'Livrée','clôturée':'Clôturée','annulée':'Annulée'};
-      const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','clôturée':'bn','annulée':'bb','production_démarrée':'bl'};
-      elPre.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+
-        data.map(p=>`<tr><td class="tm">${p.reference||'—'}</td><td class="tp">${p.clients?.nom||'—'}</td><td>${p.type_prestation||'—'}</td><td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td><td><span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></td></tr>`).join('')+
-      '</tbody></table></div>';
+
+  // KPIs
+  const prestJour=(todayPre||[]).length;
+  const cliActifs=(allCli||[]).filter(c=>c.statut==='client').length;
+  const incOuverts=(allInc||[]).length;
+  set('kpi-jour',prestJour);
+  set('kpi-jour-s',prestJour>1?'prestations':'prestation');
+  set('kpi-cli-v',cliActifs);
+  set('kpi-inc-v',incOuverts);
+
+  // CA du mois (prestations payées/partiellement payées ce mois)
+  const caM=(allPre||[]).filter(p=>p.date_prestation&&p.date_prestation>=mStart&&['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+  set('kpi-ca-m',caM.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €');
+
+  // À encaisser (facturées + partiellement payées + en retard)
+  const aEnc=(allPre||[]).filter(p=>['facturée','partiellement_payée','en_retard'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+  set('kpi-enc',aEnc.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €');
+  const nbEnc=(allPre||[]).filter(p=>['facturée','partiellement_payée','en_retard'].includes(p.statut_financier)).length;
+  set('kpi-enc-s',nbEnc+' facture'+(nbEnc>1?'s':''));
+
+  // CA facturé total (pour le graphique)
+  const caTotal=(allPre||[]).filter(p=>['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+  set('dash-ca',caTotal.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0}));
+
+  // Planning du jour
+  const elToday=document.getElementById('dash-today');
+  if(elToday){
+    if(!todayPre||!todayPre.length){
+      elToday.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation planifiée aujourd\'hui.</div>';
+    } else {
+      const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl','livrée':'bg','annulée':'bb'};
+      elToday.innerHTML='<div style="padding:0 0 4px">'+todayPre.map(p=>{
+        const h=p.heure_debut?p.heure_debut.slice(0,5):'--:--';
+        const hf=p.heure_fin?p.heure_fin.slice(0,5):'';
+        return`<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--bd)">
+          <div style="min-width:52px;font-size:12px;font-weight:600;color:var(--ac);font-variant-numeric:tabular-nums">${h}${hf?' - '+hf:''}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'}</div>
+            <div style="font-size:11px;color:var(--t3)">${p.type_prestation||''}</div>
+          </div>
+          <span class="bd ${sCl[p.statut]||'bw'}" style="white-space:nowrap"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+          <button class="btn bg2" style="padding:3px 8px;font-size:11px" onclick="modalDetailById('${p.id}')">Ouvrir</button>
+        </div>`;
+      }).join('')+'</div>';
     }
-  }catch(e){elPre.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}}
-  // Team mini-list
-  const elTeam=document.getElementById('dash-team');
-  if(elTeam){try{
-    const data=await sbFetch('profiles?select=id,role,prenom,nom&order=role.asc,nom.asc');
-    if(!data||!data.length){elTeam.innerHTML='<div style="padding:12px;color:var(--t3);font-size:13px">Aucun collaborateur.</div>';}
-    else{
-      const rc={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
-      const rl={'admin':'Administrateur','sec':'Secrétaire','prod':'Production','photo':'Photo/Vidéo','cm':'CM','compta':'Comptable','com':'Commercial'};
-      elTeam.innerHTML=data.map(t=>{
-        const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||t.role.slice(0,2).toUpperCase();
-        return`<div class="ti"><div class="av" style="background:${rc[t.role]||'#366BFF'};width:26px;height:26px;font-size:10px">${ini}</div><div class="ti-m"><div class="ti-n">${[t.prenom,t.nom].filter(Boolean).join(' ')||t.role}</div><div class="ti-k">${rl[t.role]||t.role}</div></div></div>`;
-      }).join('');
+  }
+
+  // Suivi de production
+  const elProd=document.getElementById('dash-prod');
+  if(elProd&&allPre){
+    const stages=[
+      {lb:'À tourner',col:'#366BFF',sts:['confirmée','planifiée','équipe_affectée','prête','équipe_en_route','arrivée_sur_place','production_démarrée']},
+      {lb:'En tri',col:'#00B8D4',sts:['production_terminée','médias_à_transférer','médias_complets']},
+      {lb:'En retouche',col:'#F5A524',sts:['à_monter']},
+      {lb:'En montage',col:'#7C4DFF',sts:['montage_en_cours']},
+      {lb:'À valider',col:'#FF6B35',sts:['prêt_validation','à_valider_client']},
+      {lb:'À livrer',col:'#2ECC8A',sts:['prête_à_livrer']},
+    ];
+    elProd.innerHTML=stages.map(s=>{
+      const n=allPre.filter(p=>s.sts.includes(p.statut)).length;
+      return`<div style="background:var(--c2);border-radius:8px;padding:10px 12px;text-align:center;border-top:2px solid ${s.col}">
+        <div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:${n>0?s.col:'var(--t3)'}">${n}</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:3px;white-space:nowrap">${s.lb}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // À traiter
+  const elTraiter=document.getElementById('dash-traiter');
+  const elNb=document.getElementById('dash-traiter-nb');
+  if(elTraiter){
+    const items=[];
+    // Factures en retard
+    const enRetard=(allPre||[]).filter(p=>p.statut_financier==='en_retard');
+    enRetard.forEach(p=>items.push({ic:'🔴',txt:`Facture en retard — ${p.clients?.nom||p.reference||'?'}`,act:`modalDetailById('${p.id}')`}));
+    // Incidents ouverts
+    if(incOuverts>0) items.push({ic:'⚠️',txt:`${incOuverts} incident${incOuverts>1?'s':''} ouvert${incOuverts>1?'s':''}`,act:`switchView('incidents')`});
+    // Prestations confirmées sans équipe
+    try{
+      const sansEquipe=await sbFetch('prestations?select=id,reference,clients(nom)&statut=in.(confirmée,planifiée)&order=date_prestation.asc&limit=20');
+      if(sansEquipe&&sansEquipe.length){
+        // On vérifie lesquelles n'ont vraiment pas d'équipe
+        const equipeIds=await sbFetch('prestations_equipe?select=prestation_id');
+        const withTeam=new Set((equipeIds||[]).map(e=>e.prestation_id));
+        sansEquipe.filter(p=>!withTeam.has(p.id)).slice(0,3).forEach(p=>{
+          items.push({ic:'👥',txt:`Sans équipe — ${p.clients?.nom||p.reference||'?'}`,act:`modalDetailById('${p.id}')`});
+        });
+      }
+    }catch(e){}
+    if(elNb) elNb.textContent=items.length||'0';
+    if(!items.length){
+      elTraiter.innerHTML='<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Rien à traiter pour l\'instant.</div>';
+    } else {
+      elTraiter.innerHTML=items.map(it=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="${it.act}">
+        <span style="font-size:16px">${it.ic}</span>
+        <div style="flex:1;font-size:13px">${it.txt}</div>
+        <span style="font-size:11px;color:var(--ac)">›</span>
+      </div>`).join('');
     }
-  }catch(e){elTeam.innerHTML='';}}
-  // History
-  const elHist=document.getElementById('dash-hist');
-  if(elHist){try{
-    const data=await sbFetch('historique?select=action,table_cible,nouvelle_valeur,created_at,profil:profiles(prenom,nom)&order=created_at.desc&limit=8');
-    if(!data||!data.length){elHist.innerHTML='<div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Aucune activité enregistrée.</div>';}
-    else{
-      elHist.innerHTML=data.map(h=>{
-        const who=[h.profil?.prenom,h.profil?.nom].filter(Boolean).join(' ')||'Système';
-        const when=new Date(h.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-        return`<div class="ai"><div class="ai-ic" style="background:rgba(54,107,255,.12)">📝</div><div><div class="ai-t"><strong>${who}</strong> — ${h.action} (${h.table_cible})</div><div class="ai-ts">${when}</div></div></div>`;
-      }).join('');
+  }
+
+  // Kits utilisés
+  const elKits=document.getElementById('dash-kits-live');
+  if(elKits){
+    const kitsUses=(allKits||[]).filter(k=>k.statut!=='disponible');
+    if(!kitsUses.length){
+      elKits.innerHTML='<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Tous les kits sont disponibles.</div>';
+    } else {
+      const sc={'sorti':'#F5A524','en_prestation':'#F0445E','pré_réservé':'#366BFF','réservé':'#7C4DFF','en_maintenance':'#FF6B35','endommagé':'#F0445E','indisponible':'#888'};
+      elKits.innerHTML=kitsUses.map(k=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--bd)">
+        <div style="width:8px;height:8px;border-radius:50%;background:${sc[k.statut]||'#888'};flex-shrink:0"></div>
+        <div style="flex:1;font-size:13px">${k.nom}</div>
+        <span style="font-size:11px;color:var(--t3)">${k.statut}</span>
+      </div>`).join('');
     }
-  }catch(e){elHist.innerHTML='<div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Aucune activité enregistrée.</div>';}}
+  }
+
+  // Mini bar chart CA (6 derniers mois)
+  const mc=document.getElementById('mc');
+  if(mc&&allPre){
+    const months=[];
+    for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
+    const vals=months.map(m=>(allPre||[]).filter(p=>p.date_prestation&&p.date_prestation.slice(0,7)===m&&['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0));
+    const mx=Math.max(...vals,1);
+    mc.style.cssText='display:flex;align-items:flex-end;gap:4px;height:70px';
+    mc.innerHTML=vals.map((v,i)=>{
+      const pct=Math.round((v/mx)*100);
+      const isCur=i===5;
+      return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+        <div style="width:100%;background:${isCur?'var(--ac)':'rgba(54,107,255,.3)'};border-radius:3px 3px 0 0;height:${pct}%;min-height:2px;transition:height .3s"></div>
+        <div style="font-size:9px;color:var(--t3)">${months[i].slice(5)}</div>
+      </div>`;
+    }).join('');
+  }
 }
 
 async function loadProdDash(){
