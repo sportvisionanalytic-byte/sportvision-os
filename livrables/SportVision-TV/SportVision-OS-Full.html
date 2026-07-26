@@ -634,16 +634,8 @@ const VIEWS={
     <div id="taches-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.docs':()=>`
-    <div class="sh"><div class="sh-t">Documents</div><button class="btn bp bs">+ Document</button></div>
-    <div class="cd"><div class="tw"><table><thead><tr><th>Document</th><th>Client</th><th>Type</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead><tbody>
-      ${[
-        {n:'Contrat prestation SV-2026-0142',cl:'Brunoy FC',ty:'Contrat',st:'ba',sl:'Signé',dt:'28 juin'},
-        {n:'Devis SV-2026-0144',cl:'Brunoy FC',ty:'Devis',st:'bw',sl:'En attente',dt:'30 juin'},
-        {n:'Contrat AS Milly saison 26/27',cl:'AS Milly',ty:'Contrat',st:'bl',sl:'À signer',dt:'29 juin'},
-        {n:'Facture FAC-2026-042',cl:'Brunoy FC',ty:'Facture',st:'bw',sl:'En attente',dt:'28 juin'},
-        {n:'Contrat FC Fontainebleau',cl:'FC Fontainebleau',ty:'Contrat',st:'ba',sl:'Signé',dt:'10 juin'},
-      ].map(d=>`<tr><td class="tp">${d.n}</td><td>${d.cl}</td><td>${d.ty}</td><td><span class="bd ${d.st}"><span class="bd-d"></span>${d.sl}</span></td><td>${d.dt}</td><td><button class="btn bg2 bs">Voir</button></td></tr>`).join('')}
-    </tbody></table></div></div>`,
+    <div class="sh"><div class="sh-t">Documents</div></div>
+    <div id="docs-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── PRODUCTION ──────────────────────────
   'prod.dash':()=>`
@@ -890,27 +882,13 @@ const VIEWS={
     </tbody></table></div></div>`,
 
   'compta.rapprochement':()=>`
-    <div class="sh"><div class="sh-t">Rapprochement bancaire — Juin 2026</div><button class="btn bp bs">Importer relevé</button></div>
+    <div class="sh"><div class="sh-t">Suivi des paiements</div></div>
     <div class="g3" style="margin-bottom:13px">
-      <div class="fs"><div class="fs-l">Opérations rapprochées</div><div class="fs-v" style="color:var(--ok)">8</div></div>
-      <div class="fs"><div class="fs-l">Écarts détectés</div><div class="fs-v" style="color:var(--er)">0</div></div>
-      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" style="color:var(--wa)">2</div></div>
+      <div class="fs"><div class="fs-l">Encaissé</div><div class="fs-v" id="rap-enc" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="rap-att" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">En retard</div><div class="fs-v" id="rap-ret" style="color:var(--er)">—</div></div>
     </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Mouvements du mois</div></div>
-      <div class="tw"><table><thead><tr><th>Date</th><th>Libellé</th><th>Référence</th><th>Montant</th><th>Rapproché</th></tr></thead><tbody>
-        ${[
-          {dt:'28 juin',lb:'Paiement Brunoy FC',ref:'FAC-2026-040',mt:'+950 €',ok:true},
-          {dt:'24 juin',lb:'Paiement FC Fontainebleau',ref:'FAC-2026-039',mt:'+650 €',ok:true},
-          {dt:'20 juin',lb:'Virement Antoine Dubreuil',ref:'COM-AD-06',mt:'-650 €',ok:true},
-          {dt:'20 juin',lb:'Virement Rachid Amrani',ref:'COM-RA-06',mt:'-580 €',ok:true},
-          {dt:'18 juin',lb:'Virement Yanis Belkacem',ref:'COM-YB-06',mt:'-420 €',ok:true},
-          {dt:'15 juin',lb:'Abonnement logiciels',ref:'—',mt:'-89 €',ok:true},
-          {dt:'10 juin',lb:'Assurance matériel',ref:'—',mt:'-210 €',ok:true},
-          {dt:'30 juin',lb:'FAC-2026-042 Brunoy FC',ref:'FAC-2026-042',mt:'+1 800 €',ok:false},
-          {dt:'30 juin',lb:'FAC-2026-041 AS Évry',ref:'FAC-2026-041',mt:'+1 200 €',ok:false},
-        ].map(m=>`<tr><td>${m.dt}</td><td class="tp">${m.lb}</td><td class="tm">${m.ref}</td><td class="tm" style="color:${m.mt.startsWith('+')?'var(--ok)':'var(--er)'};font-weight:600">${m.mt}</td><td>${m.ok?'<span class="bd ba"><span class="bd-d"></span>✓ Rapproché</span>':'<span class="bd bw"><span class="bd-d"></span>En attente</span>'}</td></tr>`).join('')}
-      </tbody></table></div>
-    </div>`,
+    <div id="rap-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'com.objectifs':()=>`
     <div class="sh"><div class="sh-t">Objectifs commerciaux</div></div>
@@ -1357,6 +1335,8 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='dash') await loadCmDash();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
+  if(role==='sec'&&view==='docs') await loadDocs();
+  if(role==='compta'&&view==='rapprochement') await loadRapprochement();
   if(view==='set') await loadSettings();
 }
 
@@ -1888,6 +1868,66 @@ async function loadPhotoDash(){
 }
 
 // ── PARAMÈTRES / PROFIL ──────────────────
+// ── Rapprochement (comptabilité) ─────────────────────────────────────────────
+async function loadRapprochement(){
+  const el=document.getElementById('rap-real');
+  if(!el)return;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
+  try{
+    const data=await sbFetch('prestations?select=reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=not.in.(non_facturée,en_préparation,annulée)&order=date_prestation.desc&limit=200');
+    const list=data||[];
+    const enc=list.filter(p=>p.statut_financier==='payée').reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const att=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const ret=list.filter(p=>p.statut_financier==='en_retard').reduce((s,p)=>s+(p.montant_ttc||0),0);
+    set('rap-enc',fmt(enc));set('rap-att',fmt(att));set('rap-ret',fmt(ret));
+    if(!list.length){el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune facturation enregistrée.</div></div>';return;}
+    const sf_cls={'payée':'ba','partiellement_payée':'bl','facturée':'bw','en_retard':'bb'};
+    const sf_lbl={'payée':'Payé','partiellement_payée':'Part. payé','facturée':'Facturé — en attente','en_retard':'En retard'};
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Montant TTC</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
+      list.map(p=>`<tr>
+        <td class="tm">${p.reference||'—'}</td>
+        <td class="tp">${p.clients?.nom||'—'}</td>
+        <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
+        <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
+      </tr>`).join('')+'</tbody></table></div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Documents (secrétaire) ───────────────────────────────────────────────────
+async function loadDocs(){
+  const el=document.getElementById('docs-real');
+  if(!el)return;
+  try{
+    const [devisData,preData]=await Promise.all([
+      sbFetch('devis?select=numero,statut,notes,date_envoi,clients(nom)&order=created_at.desc&limit=50'),
+      sbFetch('prestations?select=reference,statut,statut_financier,contrat_signe,date_prestation,clients(nom)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=50'),
+    ]);
+    const rows=[];
+    (devisData||[]).forEach(d=>{
+      const s_cls={brouillon:'bn',envoyé:'bw',en_attente:'bw',accepté:'ba',refusé:'bb',expiré:'bb'};
+      const s_lbl={brouillon:'Brouillon',envoyé:'Envoyé',en_attente:'En attente',accepté:'Accepté',refusé:'Refusé',expiré:'Expiré'};
+      rows.push({ref:d.numero,client:d.clients?.nom||'—',type:'Devis',st_cls:s_cls[d.statut]||'bw',st_lbl:s_lbl[d.statut]||d.statut,date:d.date_envoi?new Date(d.date_envoi).toLocaleDateString('fr-FR'):'—',onclick:`modalModifierDevis(${_devisCache?.findIndex?.(dv=>dv.numero===d.numero)??-1})`});
+    });
+    (preData||[]).forEach(p=>{
+      const sf_cls={'facturée':'bw','partiellement_payée':'bl','payée':'ba','en_retard':'bb'};
+      const sf_lbl={'facturée':'Facturée','partiellement_payée':'Part. payée','payée':'Payée','en_retard':'En retard'};
+      const ct_cls=p.contrat_signe?'ba':'bw';
+      const ct_lbl=p.contrat_signe?'Signé':'À signer';
+      rows.push({ref:p.reference,client:p.clients?.nom||'—',type:p.contrat_signe?'Contrat signé':'Contrat',st_cls:ct_cls,st_lbl:ct_lbl,date:p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—',onclick:`modalDetailById('${p.id}')`});
+    });
+    if(!rows.length){
+      el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucun document. Les devis et contrats apparaîtront ici.</div></div>';
+      return;
+    }
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Statut</th><th>Date</th><th></th></tr></thead><tbody>'+
+      rows.map(r=>`<tr><td class="tm">${r.ref}</td><td class="tp">${r.client}</td><td>${r.type}</td><td><span class="bd ${r.st_cls}"><span class="bd-d"></span>${r.st_lbl}</span></td><td>${r.date}</td><td><button class="btn bg2 bs" onclick="${r.onclick}">Ouvrir</button></td></tr>`).join('')+
+    '</tbody></table></div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
 // ── Tâches (secrétaire) ──────────────────────────────────────────────────────
 async function loadTaches(){
   const el=document.getElementById('taches-real');
