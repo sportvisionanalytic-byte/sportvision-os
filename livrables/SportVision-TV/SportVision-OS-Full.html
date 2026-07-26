@@ -1562,7 +1562,23 @@ function renderPreTable(){
     '</tbody></table></div>':'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat pour « '+q+' ».</div>'}`;
 }
 
-const _NEXT_ST={'demande_reçue':'à_qualifier','à_qualifier':'offre_en_préparation','offre_en_préparation':'devis_envoyé','devis_envoyé':'en_attente_réponse','en_attente_réponse':'devis_accepté','devis_accepté':'en_attente_signature','en_attente_signature':'en_attente_acompte','en_attente_acompte':'documents_complets','documents_complets':'confirmée','confirmée':'planifiée','planifiée':'équipe_affectée','équipe_affectée':'prête','prête':'production_démarrée','production_démarrée':'production_terminée','production_terminée':'médias_complets','médias_complets':'à_monter','à_monter':'montage_en_cours','montage_en_cours':'prêt_validation','prêt_validation':'prête_à_livrer','prête_à_livrer':'livrée','livrée':'facturée','facturée':'payée','payée':'clôturée'};
+const _NEXT_ST={
+  'demande_reçue':'à_qualifier','à_qualifier':'offre_en_préparation',
+  'offre_en_préparation':'devis_envoyé','devis_envoyé':'en_attente_réponse',
+  'en_attente_réponse':'devis_accepté','devis_accepté':'en_attente_signature',
+  'en_attente_signature':'en_attente_acompte','en_attente_acompte':'documents_complets',
+  'documents_complets':'confirmée','à_valider_production':'confirmée',
+  'confirmée':'à_planifier','à_planifier':'planifiée',
+  'planifiée':'équipe_affectée','équipe_affectée':'prête',
+  'prête':'équipe_en_route','équipe_en_route':'arrivée_sur_place',
+  'arrivée_sur_place':'production_démarrée','production_démarrée':'production_terminée',
+  'production_terminée':'médias_à_transférer','médias_à_transférer':'médias_complets',
+  'médias_complets':'à_monter','à_monter':'montage_en_cours',
+  'montage_en_cours':'prêt_validation','prêt_validation':'à_valider_client',
+  'à_valider_client':'prête_à_livrer','prête_à_livrer':'livrée',
+  'livrée':'facturée','facturée':'partiellement_payée',
+  'partiellement_payée':'payée','payée':'clôturée'
+};
 function pdAvancer(){const sel=document.getElementById('pd-statut');if(!sel)return;const next=_NEXT_ST[sel.value];if(next){sel.value=next;}}
 
 function modalDetailPrestation(idx){
@@ -1762,7 +1778,11 @@ function modalModifierClient(idx){
         <textarea id="fce-notes" class="l-inp" style="height:72px;resize:vertical;padding-top:8px">${c.notes||''}</textarea>
       </div>
       <div id="fce-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
-      <div style="display:flex;gap:10px;justify-content:space-between;margin-top:4px">
+      <div id="fce-hist" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
+        <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Prestations</div>
+        <div style="font-size:12px;color:var(--t3)">Chargement…</div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:space-between;margin-top:12px">
         <button onclick="supprimerClient('${c.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>
         <div style="display:flex;gap:10px">
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
@@ -1771,6 +1791,7 @@ function modalModifierClient(idx){
         </div>
       </div>
     </div>`);
+  chargerPresByClient(c.id);
 }
 
 async function modifierClient(id){
@@ -1807,6 +1828,32 @@ function supprimerClient(id){
       updateNavBadges(S.role);
     }catch(e){toast('Erreur lors de la suppression.');}
   });
+}
+
+async function chargerPresByClient(clientId){
+  const el=document.getElementById('fce-hist');
+  if(!el)return;
+  const pres=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation&client_id=eq.'+clientId+'&order=date_prestation.desc&limit=15');
+  if(!pres||!pres.length){
+    el.innerHTML='<div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Prestations</div><div style="font-size:12px;color:var(--t3)">Aucune prestation pour ce client.</div>';
+    return;
+  }
+  const stC={'demande_reçue':'bw','à_qualifier':'bw','offre_en_préparation':'bb','devis_envoyé':'bb','en_attente_réponse':'bb','devis_accepté':'ba','confirmée':'ba','planifiée':'ba','équipe_affectée':'ba','prête':'ba','production_démarrée':'bl','production_terminée':'bb','livrée':'ba','facturée':'bb','payée':'ba','clôturée':'bn','annulée':'br','refusée':'br'};
+  el.innerHTML=`<div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Prestations (${pres.length})</div>`+
+  `<div style="display:flex;flex-direction:column;gap:4px">`+
+  pres.map(p=>{
+    const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+    const st=p.statut||'';
+    const stLb=st.replace(/_/g,' ');
+    const cls=stC[st]||'bn';
+    const type=(p.type_prestation||'').replace(/_/g,' ');
+    return`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--s2);border-radius:6px;font-size:12px;gap:8px;cursor:pointer" onclick="closeModal();setTimeout(()=>modalDetailById('${p.id}'),150)">
+      <span style="font-weight:600;color:var(--t1);min-width:90px">${p.reference||'—'}</span>
+      <span style="color:var(--t3);flex:1">${type}</span>
+      <span style="color:var(--t3);white-space:nowrap">${d}</span>
+      <span class="bd ${cls}"><span class="bd-d"></span>${stLb}</span>
+    </div>`;
+  }).join('')+`</div>`;
 }
 
 async function loadAdminDash(){
