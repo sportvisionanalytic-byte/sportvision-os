@@ -345,24 +345,10 @@ const IC={
 };
 
 // ── SHARED DATA ──────────────────────────
-const AVC={AD:'#7C4DFF',RA:'#2ECC8A',YB:'#F5A524',LM:'#366BFF',CR:'#00B8D4',SN:'#FF6B35',MD:'#F0445E',FK:'linear-gradient(135deg,#366BFF,#7C4DFF)'};
-const PS=[
-  {r:'SV-2026-0142',cl:'Brunoy FC',ti:'Tournoi Elite U18',ty:'Tournoi',eq:['AD','RA'],st:'en cours',dt:'30 juin'},
-  {r:'SV-2026-0141',cl:'AS Milly',ti:'Match Championnat D3',ty:'Match',eq:['YB'],st:'à venir',dt:'5 juil.'},
-  {r:'SV-2026-0140',cl:'FC Fontainebleau',ti:'Highlights saison 25/26',ty:'Highlights',eq:['AD'],st:'livré',dt:'22 juin'},
-  {r:'SV-2026-0139',cl:'Club Nemours',ti:'Interview coach — J. Foubet',ty:'Interview',eq:['LM','YB'],st:'livré',dt:'18 juin'},
-  {r:'SV-2026-0138',cl:'AS Évry',ti:'Inside Club saison 26',ty:'Inside Club',eq:['RA','LM'],st:'en cours',dt:'15 juin'},
-];
-const TEAM=[
-  {i:'LM',n:'Léa Martin',r:'Community Manager',c:'#366BFF',st:'ba',sl:'Disponible',task:''},
-  {i:'AD',n:'Antoine Dubreuil',r:'Photographe/Vidéaste',c:'#7C4DFF',st:'bl',sl:'En prestation',task:'SV-2026-0142'},
-  {i:'RA',n:'Rachid Amrani',r:'Resp. Production',c:'#2ECC8A',st:'ba',sl:'En prestation',task:'SV-2026-0138'},
-  {i:'YB',n:'Yanis Belkacem',r:'Photographe/Vidéaste',c:'#F5A524',st:'ba',sl:'Disponible',task:''},
-  {i:'CR',n:'Camille Rivière',r:'Secrétaire',c:'#00B8D4',st:'ba',sl:'En ligne',task:''},
-  {i:'SN',n:'Sabrina Nadia',r:'Comptable',c:'#FF6B35',st:'ba',sl:'En ligne',task:''},
-  {i:'MD',n:'Mikael Dos Santos',r:'Commercial',c:'#F0445E',st:'bw',sl:'En déplacement',task:''},
-];
-const FD=[{m:'Jan',v:2400},{m:'Fév',v:3100},{m:'Mar',v:2750},{m:'Avr',v:4200},{m:'Mai',v:3800},{m:'Juin',v:4850,c:true}];
+const AVC={};
+const PS=[];
+const TEAM=[];
+const FD=[];
 
 // ── ROLES CONFIG ─────────────────────────
 const ROLES={
@@ -634,42 +620,17 @@ const VIEWS={
     <div id="pre-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'admin.col':()=>`
-    <div class="sh"><div class="sh-t">Collaborateurs</div><button class="btn bp bs">+ Inviter</button></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:13px">
-      ${TEAM.map(t=>`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;cursor:pointer;transition:border-color .15s,transform .15s" onmouseover="this.style.borderColor='rgba(54,107,255,.3)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,.07)';this.style.transform=''">
-        <div class="av" style="width:50px;height:50px;font-size:17px;font-weight:700;background:${t.c}">${t.i}</div>
-        <div style="font-size:13px;font-weight:650;color:var(--t1)">${t.n}</div>
-        <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2)">${t.r}</span>
-        <span class="bd ${t.st}"><span class="bd-d"></span>${t.sl}</span>
-        ${t.task?`<div style="font-size:11px;color:var(--t3)">${t.task}</div>`:''}
-      </div>`).join('')}
-    </div>`,
+    <div class="sh"><div class="sh-t">Collaborateurs</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Inviter</button></div>
+    <div id="col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'admin.kits':()=>`
-    <div class="sh"><div class="sh-t">Inventaire des kits</div><button class="btn bp bs">+ Ajouter</button></div>
+    <div class="sh"><div class="sh-t">Inventaire des kits</div><button class="btn bp bs" onclick="modalNouveauKit()">+ Ajouter</button></div>
     <div class="g3" style="margin-bottom:14px">
-      <div class="fs"><div class="fs-l">Disponibles</div><div class="fs-v" style="color:var(--ok)">7</div></div>
-      <div class="fs"><div class="fs-l">En prestation</div><div class="fs-v" style="color:var(--wa)">3</div></div>
-      <div class="fs"><div class="fs-l">Maintenance</div><div class="fs-v" style="color:var(--er)">1</div></div>
+      <div class="fs"><div class="fs-l">Disponibles</div><div class="fs-v" id="kits-dispo" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">En prestation</div><div class="fs-v" id="kits-encours" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Maintenance</div><div class="fs-v" id="kits-maint" style="color:var(--er)">—</div></div>
     </div>
-    <div class="cd">${[
-      {e:'📷',n:'Kit Photo 01',d:'Canon EOS R5 + 2 optiques',st:'bl',sl:'En prestation',as:'Antoine Dubreuil',ai:'AD',tk:'SV-2026-0142'},
-      {e:'🎥',n:'Kit Vidéo 01',d:'Sony FX6 + rig complet',st:'bl',sl:'En prestation',as:'Antoine Dubreuil',ai:'AD',tk:'SV-2026-0142'},
-      {e:'🎥',n:'Kit Vidéo 03',d:'Sony A7S III + trépied',st:'bl',sl:'En prestation',as:'Rachid Amrani',ai:'RA',tk:'SV-2026-0138'},
-      {e:'🚁',n:'Kit Drone 02',d:'DJI Mavic 3 Pro',st:'bn',sl:'Maintenance',as:null},
-      {e:'📷',n:'Kit Photo 04',d:'Canon EOS R6 + flash',st:'ba',sl:'Disponible',as:null},
-      {e:'📷',n:'Kit Photo 05',d:'Canon EOS R3 + 70-200mm',st:'ba',sl:'Disponible',as:null},
-      {e:'🎥',n:'Kit Vidéo 05',d:'Sony FX3 + micro',st:'ba',sl:'Disponible',as:null},
-      {e:'📱',n:'Kit Réseaux 01',d:'iPhone 15 Pro + stabilisateur',st:'ba',sl:'Disponible',as:null},
-      {e:'🎙️',n:'Kit Son 01',d:'Rode + enregistreur Zoom',st:'ba',sl:'Disponible',as:null},
-      {e:'💡',n:'Kit Lumière 01',d:'Aputure 300X + softbox',st:'ba',sl:'Disponible',as:null},
-      {e:'🎬',n:'Kit Réalisation 01',d:'Moniteur champ + clap',st:'ba',sl:'Disponible',as:null},
-    ].map(k=>`<div style="display:flex;align-items:center;gap:13px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.025)'" onmouseout="this.style.background=''">
-      <div style="width:36px;height:36px;border-radius:9px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${k.e}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${k.n}</div><div style="font-size:11px;color:var(--t3)">${k.d}</div></div>
-      ${k.as?`<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2)"><div class="av-xs" style="background:${AVC[k.ai]||'#366BFF'}">${k.ai}</div>${k.as} · ${k.tk}</div>`:''}
-      <span class="bd ${k.st}"><span class="bd-d"></span>${k.sl}</span>
-    </div>`).join('')}</div>`,
+    <div id="kits-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'admin.fin':()=>`
     <div class="g3">
@@ -1411,6 +1372,8 @@ async function creerClient(){
 async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='prod')&&view==='pre') await loadPrestations();
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
+  if(role==='admin'&&view==='col') await loadCollaborateurs();
+  if((role==='admin'||role==='prod')&&view==='kits') await loadKits();
 }
 
 async function loadPrestations(){
@@ -1448,6 +1411,55 @@ async function loadClients(){
     el.innerHTML='<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Statut</th></tr></thead><tbody>'+
       data.map(c=>`<tr><td class="tp">${c.nom}</td><td>${c.type_client||'—'}</td><td>${c.sport||'—'}</td><td>${c.ville||'—'}</td><td>${c.email||c.telephone||'—'}</td><td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${c.statut}</span></td></tr>`).join('')+
     '</tbody></table></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function loadKits(){
+  const el=document.getElementById('kits-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('kits?select=id,nom,type_kit,description,statut&order=type_kit.asc,nom.asc');
+    if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📦</div><div>Aucun kit. Ajoutez le premier.</div></div>';return;}
+    const dispo=data.filter(k=>k.statut==='disponible').length;
+    const enCours=data.filter(k=>['sorti','en_prestation','pré_réservé','réservé','à_récupérer'].includes(k.statut)).length;
+    const maint=data.filter(k=>['en_maintenance','endommagé','indisponible'].includes(k.statut)).length;
+    const dispEl=document.getElementById('kits-dispo');
+    const enEl=document.getElementById('kits-encours');
+    const mainEl=document.getElementById('kits-maint');
+    if(dispEl)dispEl.textContent=dispo;
+    if(enEl)enEl.textContent=enCours;
+    if(mainEl)mainEl.textContent=maint;
+    const tIco={'photo':'📷','vidéo':'🎥','drone':'🚁','audio':'🎙️','streaming':'📡','son':'🎙️','lumière':'💡','réalisation':'🎬','réseaux':'📱'};
+    const stCls={'disponible':'ba','en_prestation':'bl','sorti':'bl','pré_réservé':'bw','réservé':'bw','en_maintenance':'bn','endommagé':'br','indisponible':'br','à_récupérer':'bw','retourné':'bn','en_contrôle':'bn','à_retourner':'bw'};
+    const stLbl={'disponible':'Disponible','en_prestation':'En prestation','sorti':'Sorti','pré_réservé':'Pré-réservé','réservé':'Réservé','en_maintenance':'Maintenance','endommagé':'Endommagé','indisponible':'Indisponible','à_récupérer':'À récupérer','retourné':'Retourné','en_contrôle':'En contrôle','à_retourner':'À retourner'};
+    el.innerHTML='<div class="cd">'+data.map(k=>`<div style="display:flex;align-items:center;gap:13px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.025)'" onmouseout="this.style.background=''">
+      <div style="width:36px;height:36px;border-radius:9px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${tIco[k.type_kit]||'📦'}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${k.nom}</div><div style="font-size:11px;color:var(--t3)">${k.description||k.type_kit}</div></div>
+      <span class="bd ${stCls[k.statut]||'bw'}"><span class="bd-d"></span>${stLbl[k.statut]||k.statut}</span>
+    </div>`).join('')+'</div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function loadCollaborateurs(){
+  const el=document.getElementById('col-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone&order=role.asc,nom.asc');
+    if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
+    const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
+    const rLabels={'admin':'Administrateur','sec':'Secrétaire','prod':'Resp. Production','photo':'Photographe','cm':'Community Manager','compta':'Comptable','com':'Commercial'};
+    el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:13px">'+
+      data.map(t=>{
+        const ini=((t.prenom?t.prenom[0]:'')+(t.nom?t.nom[0]:'')).toUpperCase()||t.role.substring(0,2).toUpperCase();
+        const name=[t.prenom,t.nom].filter(Boolean).join(' ')||t.role;
+        const col=rColors[t.role]||'#366BFF';
+        return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;cursor:pointer;transition:border-color .15s,transform .15s" onmouseover="this.style.borderColor='rgba(54,107,255,.3)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,.07)';this.style.transform=''">
+          <div class="av" style="width:50px;height:50px;font-size:17px;font-weight:700;background:${col}">${ini}</div>
+          <div style="font-size:13px;font-weight:650;color:var(--t1)">${name}</div>
+          <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2)">${rLabels[t.role]||t.role}</span>
+          ${t.telephone?`<div style="font-size:11px;color:var(--t3)">${t.telephone}</div>`:''}
+        </div>`;
+      }).join('')+'</div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
