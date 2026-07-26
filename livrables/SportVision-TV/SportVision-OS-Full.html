@@ -597,6 +597,17 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Paramètres</div></div>
     <div id="set-profile"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
     <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Changer le mot de passe</div></div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau mot de passe</label><input id="set-mdp1" type="password" class="l-inp" placeholder="••••••••" style="height:38px"></div>
+          <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Confirmer</label><input id="set-mdp2" type="password" class="l-inp" placeholder="••••••••" style="height:38px"></div>
+        </div>
+        <div id="set-mdp-err" style="font-size:12px;min-height:14px"></div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn bp" onclick="sauvegarderMdp()">Changer le mot de passe</button></div>
+      </div>
+    </div>
+    <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Rôles disponibles</div></div>
       ${[['admin','Administrateur','Accès complet'],['sec','Secrétaire','Clients, Prestations, Planning, Documents'],['prod','Resp. Production','Kanban, Kits, Équipes, Incidents'],['photo','Photographe / Vidéaste','Ses prestations, Médias, Revenus'],['cm','Community Manager','Calendrier, Contenus, Publications'],['compta','Comptable','Factures, Paiements, Export'],['com','Commercial','Pipeline, Devis, Objectifs']].map(([r,n,d])=>`
         <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
@@ -951,8 +962,7 @@ async function checkSession(){
 
 // ── API HELPER ───────────────────────────
 async function sbFetch(path,opts={}){
-  const tok=localStorage.getItem('sv_tok')||'';
-  const res=await fetch(SB_URL+'/rest/v1/'+path,{
+  const _do=async(tok)=>fetch(SB_URL+'/rest/v1/'+path,{
     method:opts.method||'GET',
     headers:{
       'apikey':SB_KEY,
@@ -963,6 +973,24 @@ async function sbFetch(path,opts={}){
     },
     body:opts.body?JSON.stringify(opts.body):undefined
   });
+  let tok=localStorage.getItem('sv_tok')||'';
+  let res=await _do(tok);
+  if(res.status===401){
+    const ref=localStorage.getItem('sv_ref');
+    if(ref){
+      try{
+        const r2=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
+          method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+          body:JSON.stringify({refresh_token:ref})
+        });
+        const d=await r2.json();
+        if(d.access_token){
+          svSave(d.access_token,d.refresh_token,localStorage.getItem('sv_uid'),localStorage.getItem('sv_role'));
+          tok=d.access_token;res=await _do(tok);
+        }else{svClear();goLogin();return null;}
+      }catch(e2){svClear();goLogin();return null;}
+    }else{svClear();goLogin();return null;}
+  }
   const txt=await res.text();
   return txt?JSON.parse(txt):null;
 }
@@ -1992,6 +2020,32 @@ async function sauvegarderProfil(uid){
     if(name){const nm=document.getElementById('u-nm');if(nm)nm.textContent=name;}
     if(ini){const av=document.getElementById('u-av');if(av)av.textContent=ini;}
   }catch(e){if(err)err.style.color='var(--er)',err.textContent='Erreur lors de la sauvegarde.';}
+}
+
+async function sauvegarderMdp(){
+  const err=document.getElementById('set-mdp-err');
+  const p1=(document.getElementById('set-mdp1')?.value)||'';
+  const p2=(document.getElementById('set-mdp2')?.value)||'';
+  if(!p1){if(err){err.style.color='var(--er)';err.textContent='Entrez un nouveau mot de passe.';}return;}
+  if(p1!==p2){if(err){err.style.color='var(--er)';err.textContent='Les mots de passe ne correspondent pas.';}return;}
+  if(p1.length<6){if(err){err.style.color='var(--er)';err.textContent='Minimum 6 caractères requis.';}return;}
+  if(err)err.textContent='Enregistrement…';
+  try{
+    const tok=localStorage.getItem('sv_tok');
+    const r=await fetch(SB_URL+'/auth/v1/user',{
+      method:'PUT',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+      body:JSON.stringify({password:p1})
+    });
+    if(r.ok){
+      if(err){err.style.color='var(--ok)';err.textContent='Mot de passe mis à jour.';}
+      document.getElementById('set-mdp1').value='';
+      document.getElementById('set-mdp2').value='';
+    }else{
+      const d=await r.json();
+      if(err){err.style.color='var(--er)';err.textContent=d.message||d.msg||'Erreur lors du changement.';}
+    }
+  }catch(e){if(err){err.style.color='var(--er)';err.textContent='Erreur réseau.';}}
 }
 
 // ── ÉQUIPE PRESTATION ─────────────────────
@@ -3481,6 +3535,11 @@ async function modifierCollaborateur(id){
 // ── STATE ────────────────────────────────
 let S={screen:'login',role:null,view:null,obStep:1,obRole:null};
 checkSession();
+
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();if(S.screen==='app')openSearch();}
+  if(e.key==='Escape'){closeModal();}
+});
 
 function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.getElementById('s-'+id).classList.add('on')}
 
