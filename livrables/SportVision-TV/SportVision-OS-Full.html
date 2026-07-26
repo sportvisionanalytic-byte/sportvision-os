@@ -494,28 +494,12 @@ const VIEWS={
 
   'prod.kanban':()=>`
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prestations actives</div><div class="kpi-v">3</div><span class="kpi-d dnt">dont 1 live</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Kits déployés</div><div class="kpi-v">3</div><span class="kpi-d dnt">sur 11</span></div>
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v">1</div><span class="kpi-d ddn">Kit Drone 02</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prestations actives</div><div class="kpi-v" id="kbn-pre">—</div><span class="kpi-d dnt">en cours</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">À venir (7j)</div><div class="kpi-v" id="kbn-soon">—</div><span class="kpi-d dnt">prochains jours</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Terminées</div><div class="kpi-v" id="kbn-done">—</div><span class="kpi-d dnt">ce mois</span></div>
     </div>
-    <div class="sh"><div class="sh-t">Kanban prestations</div><button class="btn bp bs">+ Ajouter</button></div>
-    <div class="kb">
-      ${[
-        {col:'Briefing',clr:'rgba(54,107,255,.3)',cards:[{r:'SV-2026-0143',cl:'Viry FC',ty:'Match',eq:['YB']}]},
-        {col:'Préparation',clr:'rgba(245,165,36,.3)',cards:[{r:'SV-2026-0141',cl:'AS Milly',ty:'Match',eq:['YB']}]},
-        {col:'En cours',clr:'rgba(240,68,94,.3)',cards:[{r:'SV-2026-0142',cl:'Brunoy FC',ty:'Tournoi',eq:['AD','RA']},{r:'SV-2026-0138',cl:'AS Évry',ty:'Inside Club',eq:['RA','LM']}]},
-        {col:'Livraison',clr:'rgba(124,77,255,.3)',cards:[{r:'SV-2026-0140',cl:'FC Fontainebleau',ty:'Highlights',eq:['AD']}]},
-        {col:'Terminé',clr:'rgba(46,204,138,.3)',cards:[{r:'SV-2026-0139',cl:'Club Nemours',ty:'Interview',eq:['LM','YB']},{r:'SV-2026-0137',cl:'US Vaux',ty:'Match',eq:['AD']}]},
-      ].map(col=>`<div class="kb-col">
-        <div class="kb-head" style="border-top:2px solid ${col.clr}"><span class="kb-ht">${col.col}</span><span class="kb-cnt">${col.cards.length}</span></div>
-        <div class="kb-body">${col.cards.map(c=>`<div class="kb-card">
-          <div class="kb-ref">${c.r}</div>
-          <div class="kb-cn">${c.cl}</div>
-          <div class="kb-ty">${c.ty}</div>
-          <div class="kb-av">${c.eq.map(i=>`<div class="av-xs" style="background:${AVC[i]||'#366BFF'};margin-right:-4px;border:2px solid var(--s1)">${i}</div>`).join('')}</div>
-        </div>`).join('')}</div>
-      </div>`).join('')}
-    </div>`,
+    <div class="sh"><div class="sh-t">Kanban prestations</div><button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle</button></div>
+    <div id="kanban-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'photo.jourj':()=>`
     <div class="jj-hero">
@@ -627,20 +611,12 @@ const VIEWS={
 
   'admin.fin':()=>`
     <div class="g3">
-      <div class="fs"><div class="fs-l">CA juin 2026</div><div class="fs-v">4 850 <span style="font-size:13px;color:var(--t2)">€</span></div></div>
-      <div class="fs"><div class="fs-l">CA cumulé 2026</div><div class="fs-v">19 100 <span style="font-size:13px;color:var(--t2)">€</span></div></div>
-      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" style="color:var(--wa)">2 400 <span style="font-size:13px;color:var(--wa)">€</span></div></div>
+      <div class="fs"><div class="fs-l">CA encaissé (année)</div><div class="fs-v" id="fin-ca-enc">—</div></div>
+      <div class="fs"><div class="fs-l">CA total facturé</div><div class="fs-v" id="fin-ca-total">—</div></div>
+      <div class="fs"><div class="fs-l">En attente paiement</div><div class="fs-v" id="fin-en-attente" style="color:var(--wa)">—</div></div>
     </div>
-    <div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">Évolution CA</div><div class="cd-s">Janv. → Juin 2026</div></div>
-      <div class="cd-b"><div class="fb" id="fc" style="height:130px"></div></div>
-    </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Factures</div><button class="btn bp bs">+ Facture</button></div>
-      <div class="tw"><table><thead><tr><th>N° Facture</th><th>Client</th><th>Prestation</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody>
-        <tr><td class="tm">FAC-2026-042</td><td class="tp">Brunoy FC</td><td class="tm">SV-2026-0142</td><td class="tm" style="color:var(--t1)">1 800 €</td><td><span class="bd bw"><span class="bd-d"></span>En attente</span></td><td>28 juin</td></tr>
-        <tr><td class="tm">FAC-2026-041</td><td class="tp">AS Évry</td><td class="tm">SV-2026-0138</td><td class="tm" style="color:var(--t1)">1 200 €</td><td><span class="bd bw"><span class="bd-d"></span>En attente</span></td><td>25 juin</td></tr>
-        <tr><td class="tm">FAC-2026-040</td><td class="tp">FC Fontainebleau</td><td class="tm">SV-2026-0140</td><td class="tm" style="color:var(--t1)">950 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>22 juin</td></tr>
-        <tr><td class="tm">FAC-2026-039</td><td class="tp">Club Nemours</td><td class="tm">SV-2026-0139</td><td class="tm" style="color:var(--t1)">650 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>20 juin</td></tr>
-      </tbody></table></div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Prestations avec montant</div></div>
+      <div id="fin-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
   'admin.set':()=>`
@@ -661,21 +637,15 @@ const VIEWS={
     <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.planning':()=>`
-    <div class="sh"><div class="sh-t">Planning — Juillet 2026</div><button class="btn bp bs">+ Prestation</button></div>
-    <div class="cd"><div class="cd-b">
-      ${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map((d,i)=>`
-        <div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.035);align-items:flex-start">
-          <div style="width:44px;flex-shrink:0;text-align:center">
-            <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">${d}</div>
-            <div style="font-size:22px;font-weight:700;color:${[2,3].includes(i)?'var(--acc)':'var(--t2)'};line-height:1.2">${i+1}</div>
-          </div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-            ${i===1?`<div style="background:rgba(54,107,255,.1);border-left:3px solid var(--acc);border-radius:0 6px 6px 0;padding:7px 10px"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">SV-2026-0142 · Brunoy FC</div><div style="font-size:11px;color:var(--t2)">Tournoi Elite U18 · 08h00 → 18h00</div></div>`:''}
-            ${i===3?`<div style="background:rgba(245,165,36,.1);border-left:3px solid var(--wa);border-radius:0 6px 6px 0;padding:7px 10px"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">SV-2026-0141 · AS Milly</div><div style="font-size:11px;color:var(--t2)">Match D3 · 14h00 → 17h00</div></div>`:''}
-            ${i===5?`<div style="background:rgba(46,204,138,.1);border-left:3px solid var(--ok);border-radius:0 6px 6px 0;padding:7px 10px"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">SV-2026-0138 · AS Évry</div><div style="font-size:11px;color:var(--t2)">Inside Club · 10h00 → 13h00</div></div>`:''}
-          </div>
-        </div>`).join('')}
-    </div></div>`,
+    <div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="planningPrev()">‹</button>
+        <div class="sh-t" id="planning-title">Planning</div>
+        <button class="btn bg2 bs" onclick="planningNext()">›</button>
+      </div>
+      <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
+    </div>
+    <div id="planning-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.taches':()=>`
     <div class="sh"><div class="sh-t">Tâches</div><button class="btn bp bs">+ Tâche</button></div>
@@ -1452,7 +1422,10 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='dash') await loadAdminDash();
   if(role==='prod'&&view==='dash') await loadProdDash();
   if(role==='prod'&&view==='equipes') await loadEquipes();
+  if(role==='prod'&&view==='kanban') await loadKanban();
   if(role==='photo'&&view==='dash') await loadPhotoDash();
+  if(role==='sec'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
+  if(role==='admin'&&view==='fin') await loadFinances();
   if(view==='set') await loadSettings();
 }
 
@@ -2043,6 +2016,146 @@ async function supprimerKit(id){
     loadKits();
     updateNavBadges(S.role);
   }catch(e){alert('Erreur lors de la suppression.');}
+}
+
+// ── Kanban production ────────────────────────────────────────────────────────
+let _kanbanCache=[];
+async function loadKanban(){
+  const el=document.getElementById('kanban-real');
+  if(!el)return;
+  const COLS=[
+    {id:'briefing',lb:'Briefing',clr:'rgba(54,107,255,.35)',st:['demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse','devis_accepté','en_attente_signature','en_attente_acompte','documents_complets','à_valider_production']},
+    {id:'prep',lb:'Préparation',clr:'rgba(245,165,36,.35)',st:['confirmée','à_planifier','planifiée','équipe_affectée','prête']},
+    {id:'encours',lb:'En cours',clr:'rgba(240,68,94,.45)',st:['équipe_en_route','arrivée_sur_place','production_démarrée']},
+    {id:'postprod',lb:'Post-prod',clr:'rgba(124,77,255,.35)',st:['production_terminée','médias_à_transférer','médias_complets','à_monter','montage_en_cours','prêt_validation','à_valider_client','prête_à_livrer']},
+    {id:'done',lb:'Terminé',clr:'rgba(46,204,138,.35)',st:['livrée','facturée','partiellement_payée','payée','clôturée']},
+  ];
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=100');
+    _kanbanCache=data||[];
+    const now=new Date();const in7=new Date(now);in7.setDate(in7.getDate()+7);
+    const active=_kanbanCache.filter(p=>!['clôturée','payée','livrée','facturée','partiellement_payée'].includes(p.statut)).length;
+    const soon=_kanbanCache.filter(p=>{if(!p.date_prestation)return false;const d=new Date(p.date_prestation);return d>=now&&d<=in7;}).length;
+    const done=_kanbanCache.filter(p=>['livrée','payée','facturée','partiellement_payée','clôturée'].includes(p.statut)).length;
+    const s1=document.getElementById('kbn-pre');if(s1)s1.textContent=active;
+    const s2=document.getElementById('kbn-soon');if(s2)s2.textContent=soon;
+    const s3=document.getElementById('kbn-done');if(s3)s3.textContent=done;
+    el.innerHTML='<div class="kb">'+COLS.map(col=>{
+      const cards=_kanbanCache.filter(p=>col.st.includes(p.statut));
+      const rows=cards.length?cards.map((c,i)=>{
+        const idx=_kanbanCache.indexOf(c);
+        return `<div class="kb-card" onclick="modalDetailById('${c.id}')" style="cursor:pointer">
+          <div class="kb-ref">${c.reference||'—'}</div>
+          <div class="kb-cn">${c.clients?.nom||'—'}</div>
+          <div class="kb-ty">${c.type_prestation||'—'}</div>
+          ${c.date_prestation?`<div style="font-size:10px;color:var(--t3);margin-top:4px">${new Date(c.date_prestation).toLocaleDateString('fr-FR')}</div>`:''}
+        </div>`;
+      }).join(''):`<div style="padding:16px;text-align:center;color:var(--t3);font-size:11px;opacity:.5">—</div>`;
+      return `<div class="kb-col"><div class="kb-head" style="border-top:2px solid ${col.clr}"><span class="kb-ht">${col.lb}</span><span class="kb-cnt">${cards.length}</span></div><div class="kb-body">${rows}</div></div>`;
+    }).join('')+'</div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function modalDetailById(id){
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,montant_ht,montant_ttc,notes_internes,clients(nom)&id=eq.'+id);
+    if(!data||!data[0])return;
+    _prestationsCache=[data[0]];
+    modalDetailPrestation(0);
+  }catch(e){alert('Erreur de chargement.');}
+}
+
+// ── Planning secrétaire ──────────────────────────────────────────────────────
+let _planningDate=new Date();
+async function loadPlanning(){
+  const el=document.getElementById('planning-real');
+  const title=document.getElementById('planning-title');
+  if(!el)return;
+  const yr=_planningDate.getFullYear();
+  const mo=_planningDate.getMonth();
+  const mois=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const jours=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  if(title)title.textContent=`Planning — ${mois[mo]} ${yr}`;
+  const debut=new Date(yr,mo,1).toISOString().slice(0,10);
+  const fin=new Date(yr,mo+1,0).toISOString().slice(0,10);
+  try{
+    const data=await sbFetch(`prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,clients(nom)&date_prestation=gte.${debut}&date_prestation=lte.${fin}&statut=not.in.(annulée,refusée)&order=date_prestation.asc`);
+    const byDay={};
+    (data||[]).forEach(p=>{if(p.date_prestation){const k=p.date_prestation.slice(0,10);if(!byDay[k])byDay[k]=[];byDay[k].push(p);}});
+    const today=new Date().toISOString().slice(0,10);
+    const nbDays=new Date(yr,mo+1,0).getDate();
+    const firstDow=new Date(yr,mo,1).getDay();
+    let rows='<div class="cd"><div class="cd-b">';
+    for(let d=1;d<=nbDays;d++){
+      const date=new Date(yr,mo,d);
+      const key=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dow=date.getDay();
+      const isToday=key===today;
+      const isWE=dow===0||dow===6;
+      const pres=byDay[key]||[];
+      rows+=`<div style="display:flex;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);align-items:flex-start${pres.length===0&&!isToday?';opacity:.5':''}">
+        <div style="width:48px;flex-shrink:0;text-align:center">
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">${jours[dow]}</div>
+          <div style="font-size:20px;font-weight:700;color:${isToday?'var(--acc)':isWE?'var(--t2)':'var(--t1)'};line-height:1.2;${isToday?'text-shadow:0 0 16px rgba(54,107,255,.5)':''}">${d}</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:5px;padding-top:4px">
+          ${pres.map(p=>{
+            const sc=SC[p.statut]||'bw';
+            const clr=sc==='ba'?'rgba(46,204,138,.1)':sc==='bl'?'rgba(240,68,94,.1)':'rgba(54,107,255,.08)';
+            const brd=sc==='ba'?'var(--ok)':sc==='bl'?'var(--er)':'var(--acc)';
+            const h=p.heure_debut?p.heure_debut.slice(0,5):'';
+            const hf=p.heure_fin?'→'+p.heure_fin.slice(0,5):'';
+            return `<div style="background:${clr};border-left:3px solid ${brd};border-radius:0 6px 6px 0;padding:6px 10px;cursor:pointer" onclick="modalDetailById('${p.id}')">
+              <div style="font-size:12px;font-weight:600;color:var(--t1)">${p.reference||'—'} · ${p.clients?.nom||'—'}</div>
+              <div style="font-size:11px;color:var(--t2)">${p.type_prestation||''}${h?' · '+h+' '+hf:''}</div>
+            </div>`;
+          }).join('')}
+          ${pres.length===0?'<div style="font-size:11px;color:var(--t3);padding:2px 0">—</div>':''}
+        </div>
+      </div>`;
+    }
+    rows+='</div></div>';
+    el.innerHTML=rows;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+function planningPrev(){_planningDate=new Date(_planningDate.getFullYear(),_planningDate.getMonth()-1,1);loadPlanning();}
+function planningNext(){_planningDate=new Date(_planningDate.getFullYear(),_planningDate.getMonth()+1,1);loadPlanning();}
+
+// ── Finances admin ───────────────────────────────────────────────────────────
+async function loadFinances(){
+  const el=document.getElementById('fin-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom)&montant_ttc=not.is.null&order=date_prestation.desc&limit=100');
+    const list=data||[];
+    let enc=0,total=0,att=0;
+    list.forEach(p=>{
+      const m=p.montant_ttc||0;
+      if(['payée'].includes(p.statut_financier))enc+=m;
+      if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))total+=m;
+      if(['facturée','partiellement_payée'].includes(p.statut_financier))att+=m;
+    });
+    const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+    const s1=document.getElementById('fin-ca-enc');if(s1)s1.innerHTML=fmt(enc);
+    const s2=document.getElementById('fin-ca-total');if(s2)s2.innerHTML=fmt(total);
+    const s3=document.getElementById('fin-en-attente');if(s3)s3.innerHTML=fmt(att);
+    if(list.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">💶</div><div>Aucune prestation avec montant renseigné.</div></div>';return;}
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut financier</th></tr></thead><tbody>'+
+      list.map(p=>{
+        const sf=p.statut_financier||'non_facturée';
+        const sc={'payée':'ba','partiellement_payée':'bw','facturée':'bw','non_facturée':'bb','en_préparation':'bl'}[sf]||'bw';
+        const sl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','non_facturée':'Non facturée','en_préparation':'En préparation','en_retard':'En retard','annulée':'Annulée'}[sf]||sf;
+        return `<tr>
+          <td class="tm">${p.reference||'—'}</td>
+          <td class="tp">${p.clients?.nom||'—'}</td>
+          <td>${p.type_prestation||'—'}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+          <td><span class="bd ${sc}"><span class="bd-d"></span>${sl}</span></td>
+        </tr>`;
+      }).join('')+
+    '</tbody></table></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 async function loadCollaborateurs(){
