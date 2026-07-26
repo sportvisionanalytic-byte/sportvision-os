@@ -902,6 +902,9 @@ const VIEWS={
 
   // ── COMMERCIAL ──────────────────────────
   'com.dash':()=>`
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="modalNouveauClient()">+ Prospect</button>
+    </div>
     <div class="kpi-g">
       <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="com-kpi-pr">—</div><span class="kpi-d dnt">à travailler</span></div>
       <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="com-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
@@ -1923,6 +1926,19 @@ async function chargerPresByClient(clientId){
   }).join('')+`</div>`;
 }
 
+async function modalModifierClientById(id){
+  let idx=_clientsCache.findIndex(c=>c.id===id);
+  if(idx===-1){
+    try{
+      const data=await sbFetch('clients?id=eq.'+id+'&select=id,nom,statut,type_client,sport,ville,ligue,division,email,telephone,prenom_contact,nom_contact,adresse,code_postal,origine_prospect,notes');
+      if(!data||!data[0])return;
+      _clientsCache.push(data[0]);
+      idx=_clientsCache.length-1;
+    }catch(e){return;}
+  }
+  modalModifierClient(idx);
+}
+
 async function loadAdminDash(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const today=new Date().toISOString().slice(0,10);
@@ -2023,6 +2039,16 @@ async function loadAdminDash(){
     enRetard.forEach(p=>items.push({ic:'🔴',txt:`Facture en retard — ${p.clients?.nom||p.reference||'?'}`,act:`modalDetailById('${p.id}')`}));
     // Incidents ouverts
     if(incOuverts>0) items.push({ic:'⚠️',txt:`${incOuverts} incident${incOuverts>1?'s':''} ouvert${incOuverts>1?'s':''}`,act:`switchView('incidents')`});
+    // Devis arrivant à expiration
+    try{
+      const in7=new Date(today);in7.setDate(in7.getDate()+7);const in7s=in7.toISOString().slice(0,10);
+      const devisExp=await sbFetch(`devis?select=id,numero,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&date_expiration=lte.${in7s}&order=date_expiration.asc&limit=5`);
+      (devisExp||[]).forEach(d=>{
+        const exp=d.date_expiration?new Date(d.date_expiration).toLocaleDateString('fr-FR'):'?';
+        const isExpired=d.date_expiration&&d.date_expiration<today;
+        items.push({ic:'📋',txt:`Devis ${isExpired?'expiré':'expire le '+exp} — ${d.clients?.nom||d.numero||'?'}`,act:`switchView('devis')`});
+      });
+    }catch(e){}
     // Prestations confirmées sans équipe
     try{
       const sansEquipe=await sbFetch('prestations?select=id,reference,clients(nom)&statut=in.(confirmée,planifiée)&order=date_prestation.asc&limit=20');
@@ -2104,8 +2130,8 @@ async function loadProdDash(){
     else{
       const sLb={'demande_reçue':'Demande','confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','équipe_affectée':'Équipe OK'};
       const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl','équipe_affectée':'bw'};
-      elPre.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+
-        data.map(p=>`<tr><td class="tm">${p.reference||'—'}</td><td class="tp">${p.clients?.nom||'—'}</td><td>${p.type_prestation||'—'}</td><td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td><td><span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></td></tr>`).join('')+
+      elPre.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
+        data.map(p=>`<tr><td class="tm">${p.reference||'—'}</td><td class="tp">${p.clients?.nom||'—'}</td><td>${p.type_prestation||'—'}</td><td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td><td><span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></td><td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td></tr>`).join('')+
       '</tbody></table></div>';
     }
   }catch(e){elPre.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}}
@@ -2222,8 +2248,8 @@ async function loadPhotoDash(){
       }else{
         const sLb={'demande_reçue':'Demande','confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','livrée':'Livrée','clôturée':'Clôturée'};
         const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl','livrée':'bn','clôturée':'bn'};
-        elPre.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+
-          prestations.map(p=>`<tr><td class="tm">${p.reference||'—'}</td><td class="tp">${p.clients?.nom||'—'}</td><td>${p.type_prestation||'—'}</td><td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td><td><span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></td></tr>`).join('')+
+        elPre.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
+          prestations.map(p=>`<tr><td class="tm">${p.reference||'—'}</td><td class="tp">${p.clients?.nom||'—'}</td><td>${p.type_prestation||'—'}</td><td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td><td><span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></td><td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td></tr>`).join('')+
         '</tbody></table></div>';
       }
     }
@@ -2634,16 +2660,25 @@ async function loadDevis(){
     }
     const s_cls={brouillon:'bn',envoyé:'bw',en_attente:'bl',accepté:'ba',refusé:'bb',expiré:'bb',annulé:'bb'};
     const s_lbl={brouillon:'Brouillon',envoyé:'Envoyé',en_attente:'En attente',accepté:'Accepté',refusé:'Refusé',expiré:'Expiré',annulé:'Annulé'};
-    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>N° Devis</th><th>Client</th><th>Notes</th><th>Total TTC</th><th>Statut</th><th>Date envoi</th><th></th></tr></thead><tbody>'+
-      _devisCache.map((d,i)=>`<tr>
+    const today7=new Date();today7.setDate(today7.getDate()+7);
+    const t7s=today7.toISOString().slice(0,10);
+    const tds=new Date().toISOString().slice(0,10);
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>N° Devis</th><th>Client</th><th>Total TTC</th><th>Statut</th><th>Envoi</th><th>Expiration</th><th></th></tr></thead><tbody>'+
+      _devisCache.map((d,i)=>{
+        const isActive=['envoyé','en_attente'].includes(d.statut);
+        const exp=d.date_expiration;
+        const expFmt=exp?new Date(exp).toLocaleDateString('fr-FR'):'—';
+        const expAlert=isActive&&exp&&exp<=t7s;
+        const expExpired=isActive&&exp&&exp<tds;
+        return`<tr>
         <td class="tm">${d.numero||'—'}</td>
         <td class="tp">${d.clients?.nom||'—'}</td>
-        <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t3)">${d.notes||'—'}</td>
         <td class="tm" style="color:var(--t1);font-weight:600">${d.total_ttc?d.total_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td><span class="bd ${s_cls[d.statut]||'bw'}"><span class="bd-d"></span>${s_lbl[d.statut]||d.statut}</span></td>
-        <td>${d.date_envoi?new Date(d.date_envoi).toLocaleDateString('fr-FR'):'—'}</td>
+        <td style="color:var(--t3)">${d.date_envoi?new Date(d.date_envoi).toLocaleDateString('fr-FR'):'—'}</td>
+        <td style="color:${expExpired?'var(--er)':expAlert?'var(--wa)':'var(--t3)'};font-weight:${expAlert?600:400}">${expFmt}${expAlert?' ⚠':''}</td>
         <td><button class="btn bg2 bs" onclick="modalModifierDevis(${i})">Modifier</button></td>
-      </tr>`).join('')+'</tbody></table></div></div>';
+      </tr>`;}).join('')+'</tbody></table></div></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
@@ -2781,13 +2816,14 @@ async function loadObjectifs(){
         }).join('')}
       </div>
       <div class="cd"><div class="cd-h"><div class="cd-t">Prestations ce mois</div></div>
-        ${pm.length?'<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Date</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+
+        ${pm.length?'<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Date</th><th>Montant</th><th>Statut</th><th></th></tr></thead><tbody>'+
           pm.map(p=>`<tr>
             <td class="tm">${p.reference||'—'}</td>
             <td class="tp">${p.clients?.nom||'—'}</td>
             <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
             <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
             <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+            <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
           </tr>`).join('')+'</tbody></table></div>':
           '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation ce mois.</div>'}
       </div>`;
@@ -2811,7 +2847,7 @@ async function loadPhotoRevenus(){
     const s2=document.getElementById('rev-total');if(s2)s2.textContent=total?total.toLocaleString('fr-FR')+' €':'—';
     const s3=document.getElementById('rev-done');if(s3)s3.textContent=done;
     if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune mission assignée pour l\'instant.</div>';return;}
-    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Rémunération</th><th>Statut</th></tr></thead><tbody>'+
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Rémunération</th><th>Statut</th><th></th></tr></thead><tbody>'+
       list.map(r=>{
         const p=r.prestations;
         return `<tr>
@@ -2821,6 +2857,7 @@ async function loadPhotoRevenus(){
           <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
           <td class="tm" style="color:var(--t1);font-weight:600">${r.remuneration?r.remuneration.toLocaleString('fr-FR')+' €':'—'}</td>
           <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+          <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
         </tr>`;
       }).join('')+'</tbody></table></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
@@ -2966,10 +3003,10 @@ async function loadIncidents(){
     const renderList=(items)=>items.map((inc,i)=>`
       <div style="display:flex;gap:14px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.03);align-items:flex-start">
         <div style="flex:1">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
             <span class="bd ${niv_cls[inc.niveau]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${niv_lbl[inc.niveau]||inc.niveau}</span>
             ${inc.cloture?'<span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Clôturé</span>':'<span class="bd bl" style="font-size:10px"><span class="bd-d"></span>Ouvert</span>'}
-            ${inc.prestations?.reference?`<span style="font-size:10px;color:var(--t3);font-family:monospace">${inc.prestations.reference}</span>`:''}
+            ${inc.prestations?.reference?`<span style="font-size:10px;color:var(--acc);font-family:monospace;cursor:pointer;text-decoration:underline" onclick="modalDetailById('${inc.prestation_id}')">${inc.prestations.reference}</span>`:''}
           </div>
           <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">${inc.type_incident}</div>
           <div style="font-size:12px;color:var(--t2)">${inc.description}</div>
@@ -3525,9 +3562,9 @@ async function loadCmAnalytics(){
     if(elPre){
       const data=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&date_prestation=gte.'+mStart+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=20');
       if(!data||!data.length){elPre.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation ce mois.</div>';}
-      else{elPre.innerHTML=data.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bd)">
+      else{elPre.innerHTML=data.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="modalDetailById('${p.id}')">
         <div><div style="font-size:13px;color:var(--t1)">${p.clients?.nom||'—'}</div><div style="font-size:11px;color:var(--t3)">${new Date(p.date_prestation).toLocaleDateString('fr-FR')}</div></div>
-        <span style="font-size:10px;font-family:monospace;color:var(--t3)">${p.reference}</span>
+        <span style="font-size:10px;font-family:monospace;color:var(--acc)">${p.reference} ›</span>
       </div>`).join('');}
     }
   }catch(e){}
@@ -3675,12 +3712,13 @@ async function loadSecDash(){
       const recents=await sbFetch('clients?select=id,nom,statut,ville,sport&order=created_at.desc&limit=5');
       const scc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
       const scl={'prospect':'Prospect','qualifié':'Qualifié','client':'Client','inactif':'Inactif','bloqué':'Bloqué'};
-      ec.innerHTML=(recents||[]).length?'<div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Sport</th><th>Statut</th></tr></thead><tbody>'+
+      ec.innerHTML=(recents||[]).length?'<div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Sport</th><th>Statut</th><th></th></tr></thead><tbody>'+
         (recents||[]).map(c=>`<tr>
           <td class="tp">${c.nom}</td>
           <td>${c.ville||'—'}</td>
           <td>${c.sport||'—'}</td>
           <td><span class="bd ${scc[c.statut]||'bw'}"><span class="bd-d"></span>${scl[c.statut]||c.statut}</span></td>
+          <td><button class="btn bg2 bs" onclick="modalModifierClientById('${c.id}')">Ouvrir</button></td>
         </tr>`).join('')+'</tbody></table></div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client pour l\'instant.</div>';
     }
