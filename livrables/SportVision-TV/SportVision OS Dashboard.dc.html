@@ -1,0 +1,607 @@
+<title>SportVision OS</title>
+<style>
+:root {
+  --bg: #080A0F; --surf: #181C25; --surf2: #11141B; --surf3: #1E2330;
+  --bdr: rgba(255,255,255,0.07); --bdr2: rgba(255,255,255,0.12);
+  --acc: #366BFF; --acc2: #7C4DFF;
+  --grad: linear-gradient(135deg,#366BFF 0%,#7C4DFF 100%);
+  --ok: #2ECC8A; --warn: #F5A524; --err: #F0445E;
+  --t1: #F0F2F7; --t2: #8891A8; --t3: #555E73;
+  --sw: 228px; --rc: 16px; --rb: 9px; --rp: 999px;
+  --f: 'Inter',system-ui,-apple-system,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--f);background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;height:100vh;display:flex;overflow:hidden;-webkit-font-smoothing:antialiased}
+
+/* SIDEBAR */
+.sb{width:var(--sw);min-width:var(--sw);height:100vh;background:var(--surf2);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex-shrink:0;scrollbar-width:none}
+.sb::-webkit-scrollbar{display:none}
+.sb-logo{padding:18px 16px 16px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+.logo-lock{display:flex;align-items:center;gap:10px}
+.logo-ico{width:30px;height:30px;background:var(--grad);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-txt{display:flex;flex-direction:column;line-height:1}
+.logo-p{font-size:13px;font-weight:700;color:var(--t1);letter-spacing:-0.01em}
+.logo-s{font-size:9.5px;font-weight:500;color:var(--t3);letter-spacing:0.08em;text-transform:uppercase;margin-top:2px}
+.nav-sec{padding:12px 10px 6px;flex-shrink:0}
+.nav-lbl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--t3);padding:0 8px;margin-bottom:4px;display:block}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rb);cursor:pointer;color:var(--t2);font-size:13px;font-weight:500;transition:background .12s,color .12s;margin-bottom:1px;border:none;background:transparent;width:100%;text-align:left;font-family:var(--f)}
+.ni:hover{background:rgba(255,255,255,.05);color:var(--t1)}
+.ni.on{background:rgba(54,107,255,.11);color:var(--acc)}
+.ni-ic{width:16px;height:16px;opacity:.55;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ni.on .ni-ic,.ni:hover .ni-ic{opacity:1}
+.ni-lbl{flex:1}
+.nb{font-size:10px;font-weight:700;padding:1px 7px;border-radius:var(--rp)}
+.nb-b{background:rgba(54,107,255,.18);color:var(--acc)}
+.nb-r{background:rgba(240,68,94,.15);color:var(--err)}
+.nb-o{background:rgba(245,165,36,.15);color:var(--warn)}
+.sb-div{height:1px;background:var(--bdr);margin:8px 10px;flex-shrink:0}
+.sb-foot{margin-top:auto;border-top:1px solid var(--bdr);padding:12px 10px;flex-shrink:0}
+.u-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--rb);cursor:pointer;transition:background .12s}
+.u-row:hover{background:rgba(255,255,255,.05)}
+.av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;background:var(--grad)}
+.u-meta{flex:1;min-width:0}
+.u-name{font-size:12px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-role{font-size:10px;color:var(--t3)}
+
+/* MAIN */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.tb{height:56px;min-height:56px;background:var(--surf2);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0}
+.tb-ttl{flex:1}
+.tb-ttl h1{font-size:15px;font-weight:650;color:var(--t1)}
+.tb-ttl span{font-size:11px;color:var(--t3)}
+.tb-act{display:flex;align-items:center;gap:8px}
+.ib{width:34px;height:34px;border-radius:var(--rb);background:var(--surf);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);transition:background .12s,color .12s;position:relative;flex-shrink:0}
+.ib:hover{background:rgba(255,255,255,.07);color:var(--t1)}
+.ndot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--err);border:1.5px solid var(--surf2)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--rb);font-size:12.5px;font-weight:600;cursor:pointer;border:none;font-family:var(--f);transition:opacity .12s,transform .1s;white-space:nowrap}
+.btn:hover{opacity:.88}
+.btn:active{transform:scale(.97)}
+.bp{background:var(--grad);color:#fff}
+.bg{background:transparent;color:var(--t2);border:1px solid var(--bdr)}
+.bg:hover{color:var(--t1);background:rgba(255,255,255,.05)}
+.bs{padding:5px 10px;font-size:11.5px}
+
+/* CONTENT */
+.ct{flex:1;overflow-y:auto;padding:24px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent}
+.ct::-webkit-scrollbar{width:5px}
+.ct::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+
+/* VIEWS */
+.vw{display:none}
+.vw.on{display:block}
+
+/* KPI */
+.kpi-g{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi-c{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rc);padding:18px 20px;position:relative;overflow:hidden}
+.kpi-c::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--kl,var(--acc));opacity:.45}
+.kpi-ey{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:10px}
+.kpi-v{font-size:30px;font-weight:700;color:var(--t1);line-height:1;font-variant-numeric:tabular-nums;margin-bottom:10px}
+.kpi-u{font-size:16px;font-weight:600;color:var(--t2);margin-left:2px}
+.kpi-d{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:var(--rp)}
+.dup{background:rgba(46,204,138,.1);color:var(--ok)}
+.ddn{background:rgba(240,68,94,.1);color:var(--err)}
+.dnt{background:rgba(255,255,255,.06);color:var(--t2)}
+
+/* GRIDS */
+.g32{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+
+/* CARD */
+.cd{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rc);overflow:hidden;display:flex;flex-direction:column}
+.cd-h{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+.cd-hl{display:flex;flex-direction:column;gap:2px}
+.cd-t{font-size:13px;font-weight:650;color:var(--t1)}
+.cd-s{font-size:11px;color:var(--t3)}
+.cd-b{padding:16px 20px;flex:1}
+.cd-b0{flex:1}
+
+/* TABLE */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{padding:9px 14px;text-align:left;font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);border-bottom:1px solid var(--bdr);white-space:nowrap}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.025)}
+tbody td{padding:11px 14px;color:var(--t2);vertical-align:middle}
+.tp{color:var(--t1);font-weight:500}
+.tm{font-variant-numeric:tabular-nums;font-family:'SF Mono',Consolas,monospace;font-size:11.5px;color:var(--t3)}
+
+/* BADGE */
+.bd{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:var(--rp);font-size:10.5px;font-weight:600;white-space:nowrap}
+.bd-d{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.bl{background:rgba(240,68,94,.12);color:var(--err)}
+.bl .bd-d{background:var(--err);animation:bdot 1.4s ease-in-out infinite}
+.ba{background:rgba(46,204,138,.1);color:var(--ok)}
+.ba .bd-d{background:var(--ok)}
+.bp2{background:rgba(245,165,36,.1);color:var(--warn)}
+.bp2 .bd-d{background:var(--warn)}
+.bdn{background:rgba(255,255,255,.06);color:var(--t3)}
+.bdn .bd-d{background:var(--t3)}
+.bac{background:rgba(54,107,255,.1);color:var(--acc)}
+.bac .bd-d{background:var(--acc)}
+@keyframes bdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+
+/* ROLE */
+.rl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:var(--rp)}
+.ra{background:rgba(54,107,255,.15);color:var(--acc)}
+.rs{background:rgba(46,204,138,.12);color:var(--ok)}
+.rp{background:rgba(245,165,36,.12);color:var(--warn)}
+.rph{background:rgba(124,77,255,.15);color:var(--acc2)}
+.rcm{background:rgba(0,184,212,.12);color:#00B8D4}
+.rco{background:rgba(255,107,53,.12);color:#FF6B35}
+.rcm2{background:rgba(240,68,94,.12);color:var(--err)}
+
+/* ACTIVITY */
+.al{display:flex;flex-direction:column}
+.ai{display:flex;align-items:flex-start;gap:11px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.035)}
+.ai:last-child{border-bottom:none}
+.ai-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.ai-b{flex:1;min-width:0}
+.ai-t{font-size:12.5px;color:var(--t2);line-height:1.4}
+.ai-t strong{color:var(--t1);font-weight:600}
+.ai-ts{font-size:10.5px;color:var(--t3);margin-top:2px}
+
+/* TEAM */
+.tl{display:flex;flex-direction:column}
+.ti{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;transition:opacity .12s}
+.ti:last-child{border-bottom:none}
+.ti:hover{opacity:.8}
+.ti-m{flex:1;min-width:0}
+.ti-n{font-size:12.5px;font-weight:500;color:var(--t1)}
+.ti-k{font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* COLLAB CARDS */
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.cc{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;cursor:pointer;transition:border-color .15s,transform .15s}
+.cc:hover{border-color:rgba(54,107,255,.3);transform:translateY(-2px)}
+.av-lg{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0}
+.cc-n{font-size:13px;font-weight:650;color:var(--t1)}
+.cc-tk{font-size:11px;color:var(--t3);margin-top:2px}
+
+/* KIT LIST */
+.kl{display:flex;flex-direction:column}
+.ki{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;transition:background .1s}
+.ki:last-child{border-bottom:none}
+.ki:hover{background:rgba(255,255,255,.025)}
+.ki-ic{width:36px;height:36px;border-radius:9px;background:var(--surf3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+.ki-m{flex:1;min-width:0}
+.ki-n{font-size:13px;font-weight:500;color:var(--t1)}
+.ki-d{font-size:11px;color:var(--t3)}
+.ki-as{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2)}
+
+/* FIN BARS */
+.fb-w{display:flex;align-items:flex-end;gap:6px;padding-top:8px}
+.fb-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end}
+.fb-col > div:first-child{width:100%;border-radius:4px 4px 0 0;min-height:4px;cursor:pointer;transition:opacity .12s}
+.fb-col > div:first-child:hover{opacity:.75}
+.fb-lbl{font-size:9.5px;color:var(--t3);font-weight:500;white-space:nowrap}
+
+/* FIN STAT */
+.fs{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:16px 18px}
+.fs-l{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px}
+.fs-v{font-size:22px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums}
+.fs-u{font-size:13px;color:var(--t2);font-weight:600}
+
+/* FILTER */
+.fr{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.sw-w{position:relative}
+.sw-ic{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none;display:flex}
+.inp{height:34px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rb);color:var(--t1);font-size:12.5px;font-family:var(--f);outline:none;transition:border-color .12s}
+.inp:focus{border-color:rgba(54,107,255,.5)}
+.inp::placeholder{color:var(--t3)}
+.inp-s{padding:0 12px 0 32px;width:240px}
+.inp-sl{padding:0 28px 0 10px;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23555E73' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-color:var(--surf)}
+
+/* PLACEHOLDER */
+.ph{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:12px;color:var(--t3);text-align:center}
+.ph-i{font-size:48px;opacity:.2;margin-bottom:8px}
+.ph-t{font-size:15px;font-weight:650;color:var(--t2)}
+.ph-s{font-size:13px}
+
+/* SEC HEAD */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sh-t{font-size:14px;font-weight:650;color:var(--t1)}
+
+/* RESPONSIVE */
+@media(max-width:1100px){
+  :root{--sw:56px}
+  .logo-txt,.ni-lbl,.nav-lbl,.nb,.u-meta{display:none}
+  .ni{justify-content:center;padding:9px}
+  .sb-foot{padding:8px}
+  .u-row{justify-content:center}
+  .kpi-g{grid-template-columns:repeat(2,1fr)}
+  .g32,.g2{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  :root{--sw:0px}
+  .sb{display:none}
+  .kpi-g{grid-template-columns:1fr 1fr}
+  .ct{padding:16px}
+  .cg{grid-template-columns:1fr 1fr}
+}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+
+<!-- SIDEBAR -->
+<aside class="sb">
+  <div class="sb-logo">
+    <div class="logo-lock">
+      <div class="logo-ico">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5l2 4h4l-3.2 2.8 1.2 4L8 10.2 4 12.3l1.2-4L2 5.5h4L8 1.5z" fill="white"/></svg>
+      </div>
+      <div class="logo-txt">
+        <span class="logo-p">SportVision OS</span>
+        <span class="logo-s">Elkana Group · v2.1</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-sec">
+    <span class="nav-lbl">Vue générale</span>
+    <button class="ni on" data-v="v-dash" data-tt="Tableau de bord" data-ts="Vue générale de l'activité">
+      <span class="ni-ic" id="i-dash"></span><span class="ni-lbl">Tableau de bord</span>
+    </button>
+  </div>
+
+  <div class="nav-sec">
+    <span class="nav-lbl">Opérations</span>
+    <button class="ni" data-v="v-cli" data-tt="Clients" data-ts="Base clients SportVision">
+      <span class="ni-ic" id="i-cli"></span><span class="ni-lbl">Clients</span>
+      <span class="nb nb-b">12</span>
+    </button>
+    <button class="ni" data-v="v-pre" data-tt="Prestations" data-ts="Toutes les prestations">
+      <span class="ni-ic" id="i-pre"></span><span class="ni-lbl">Prestations</span>
+      <span class="nb nb-o">3</span>
+    </button>
+    <button class="ni" data-v="v-prod" data-tt="Production" data-ts="Kanban de production">
+      <span class="ni-ic" id="i-prod"></span><span class="ni-lbl">Production</span>
+    </button>
+    <button class="ni" data-v="v-kits" data-tt="Kits" data-ts="Inventaire et disponibilité">
+      <span class="ni-ic" id="i-kits"></span><span class="ni-lbl">Kits</span>
+      <span class="nb nb-r">1</span>
+    </button>
+    <button class="ni" data-v="v-med" data-tt="Médias" data-ts="Rushs et livrables">
+      <span class="ni-ic" id="i-med"></span><span class="ni-lbl">Médias</span>
+    </button>
+  </div>
+
+  <div class="sb-div"></div>
+
+  <div class="nav-sec">
+    <span class="nav-lbl">Gestion</span>
+    <button class="ni" data-v="v-fin" data-tt="Finances" data-ts="Facturation et trésorerie">
+      <span class="ni-ic" id="i-fin"></span><span class="ni-lbl">Finances</span>
+    </button>
+    <button class="ni" data-v="v-col" data-tt="Collaborateurs" data-ts="Équipe et disponibilités">
+      <span class="ni-ic" id="i-col"></span><span class="ni-lbl">Collaborateurs</span>
+    </button>
+    <button class="ni" data-v="v-form" data-tt="Formation" data-ts="Modules et progression">
+      <span class="ni-ic" id="i-form"></span><span class="ni-lbl">Formation</span>
+    </button>
+  </div>
+
+  <div class="sb-div"></div>
+
+  <div class="nav-sec">
+    <button class="ni" data-v="v-set" data-tt="Paramètres" data-ts="Configuration du système">
+      <span class="ni-ic" id="i-set"></span><span class="ni-lbl">Paramètres</span>
+    </button>
+  </div>
+
+  <div class="sb-foot">
+    <div class="u-row">
+      <div class="av">FK</div>
+      <div class="u-meta">
+        <div class="u-name">Fouka</div>
+        <div class="u-role">Administrateur</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="tb">
+    <div class="tb-ttl">
+      <h1 id="pt">Tableau de bord</h1>
+      <span id="ps">Vue générale de l'activité</span>
+    </div>
+    <div class="tb-act">
+      <div class="ib" title="Recherche">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg>
+      </div>
+      <div class="ib" title="Notifications">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.5 1.5a5 5 0 015 5v3l1 2h-12l1-2v-3a5 5 0 015-5z"/><path d="M6 12.5a1.5 1.5 0 003 0"/></svg>
+        <span class="ndot"></span>
+      </div>
+      <button class="btn bp bs" id="cta">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/></svg>
+        <span id="cta-l">Nouvelle prestation</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="ct">
+
+    <!-- DASHBOARD -->
+    <div class="vw on" id="v-dash">
+      <div class="kpi-g">
+        <div class="kpi-c" style="--kl:#F5A524">
+          <div class="kpi-ey">Prestations actives</div>
+          <div class="kpi-v">3</div>
+          <span class="kpi-d dup">↑ 1 cette semaine</span>
+        </div>
+        <div class="kpi-c" style="--kl:#2ECC8A">
+          <div class="kpi-ey">Collaborateurs</div>
+          <div class="kpi-v">7</div>
+          <span class="kpi-d dnt">5 disponibles</span>
+        </div>
+        <div class="kpi-c" style="--kl:#366BFF">
+          <div class="kpi-ey">CA juin 2026</div>
+          <div class="kpi-v">4 850<span class="kpi-u">€</span></div>
+          <span class="kpi-d dup">↑ 27% vs mai</span>
+        </div>
+        <div class="kpi-c" style="--kl:#7C4DFF">
+          <div class="kpi-ey">Kits disponibles</div>
+          <div class="kpi-v">7<span class="kpi-u" style="font-size:14px">/11</span></div>
+          <span class="kpi-d ddn">1 en maintenance</span>
+        </div>
+      </div>
+
+      <div class="g32">
+        <div class="cd">
+          <div class="cd-h">
+            <div class="cd-hl"><div class="cd-t">Prestations récentes</div><div class="cd-s">5 dernières</div></div>
+            <button class="btn bg bs">Voir tout</button>
+          </div>
+          <div class="cd-b0">
+            <div class="tw"><table>
+              <thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Statut</th><th>Date</th></tr></thead>
+              <tbody>
+                <tr><td class="tm">SV-2026-0142</td><td class="tp">Brunoy FC</td><td>Tournoi</td><td><span class="bd bl"><span class="bd-d"></span>En cours</span></td><td>30 juin</td></tr>
+                <tr><td class="tm">SV-2026-0141</td><td class="tp">AS Milly</td><td>Match</td><td><span class="bd bp2"><span class="bd-d"></span>À venir</span></td><td>5 juil.</td></tr>
+                <tr><td class="tm">SV-2026-0140</td><td class="tp">FC Fontainebleau</td><td>Highlights</td><td><span class="bd bdn"><span class="bd-d"></span>Livré</span></td><td>22 juin</td></tr>
+                <tr><td class="tm">SV-2026-0139</td><td class="tp">Club Nemours</td><td>Interview</td><td><span class="bd bdn"><span class="bd-d"></span>Livré</span></td><td>18 juin</td></tr>
+                <tr><td class="tm">SV-2026-0138</td><td class="tp">AS Évry</td><td>Inside Club</td><td><span class="bd ba"><span class="bd-d"></span>En cours</span></td><td>15 juin</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <div class="cd">
+          <div class="cd-h"><div class="cd-hl"><div class="cd-t">Équipe</div><div class="cd-s">7 collaborateurs</div></div></div>
+          <div class="cd-b">
+            <div class="tl">
+              <div class="ti"><div class="av" style="background:#366BFF;width:26px;height:26px;font-size:10px">LM</div><div class="ti-m"><div class="ti-n">Léa Martin</div><div class="ti-k">Community Manager</div></div><span class="bd ba"><span class="bd-d"></span>Dispo</span></div>
+              <div class="ti"><div class="av" style="background:#7C4DFF;width:26px;height:26px;font-size:10px">AD</div><div class="ti-m"><div class="ti-n">Antoine Dubreuil</div><div class="ti-k">SV-2026-0142</div></div><span class="bd bl"><span class="bd-d"></span>En presta</span></div>
+              <div class="ti"><div class="av" style="background:#2ECC8A;width:26px;height:26px;font-size:10px">RA</div><div class="ti-m"><div class="ti-n">Rachid Amrani</div><div class="ti-k">SV-2026-0138</div></div><span class="bd ba"><span class="bd-d"></span>En presta</span></div>
+              <div class="ti"><div class="av" style="background:#F5A524;width:26px;height:26px;font-size:10px">YB</div><div class="ti-m"><div class="ti-n">Yanis Belkacem</div><div class="ti-k">Photographe/Vidéaste</div></div><span class="bd ba"><span class="bd-d"></span>Dispo</span></div>
+              <div class="ti"><div class="av" style="background:#00B8D4;width:26px;height:26px;font-size:10px">CR</div><div class="ti-m"><div class="ti-n">Camille Rivière</div><div class="ti-k">Secrétaire</div></div><span class="bd ba"><span class="bd-d"></span>En ligne</span></div>
+              <div class="ti"><div class="av" style="background:#FF6B35;width:26px;height:26px;font-size:10px">SN</div><div class="ti-m"><div class="ti-n">Sabrina Nadia</div><div class="ti-k">Comptable</div></div><span class="bd ba"><span class="bd-d"></span>En ligne</span></div>
+              <div class="ti"><div class="av" style="background:#F0445E;width:26px;height:26px;font-size:10px">MD</div><div class="ti-m"><div class="ti-n">Mikael Dos Santos</div><div class="ti-k">Commercial</div></div><span class="bd bp2"><span class="bd-d"></span>En dépl.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="cd">
+          <div class="cd-h"><div class="cd-hl"><div class="cd-t">Activité récente</div></div></div>
+          <div class="cd-b">
+            <div class="al">
+              <div class="ai"><div class="ai-ic" style="background:rgba(54,107,255,.12)">📤</div><div class="ai-b"><div class="ai-t"><strong>Antoine Dubreuil</strong> a téléversé 12 rushs pour <strong>SV-2026-0142</strong></div><div class="ai-ts">Il y a 23 min</div></div></div>
+              <div class="ai"><div class="ai-ic" style="background:rgba(46,204,138,.12)">✅</div><div class="ai-b"><div class="ai-t"><strong>Camille Rivière</strong> a créé la prestation <strong>SV-2026-0141</strong></div><div class="ai-ts">Il y a 1h</div></div></div>
+              <div class="ai"><div class="ai-ic" style="background:rgba(124,77,255,.12)">📦</div><div class="ai-b"><div class="ai-t"><strong>Rachid Amrani</strong> a mis à jour le statut du <strong>Kit Vidéo 01</strong></div><div class="ai-ts">Il y a 2h</div></div></div>
+              <div class="ai"><div class="ai-ic" style="background:rgba(245,165,36,.12)">📄</div><div class="ai-b"><div class="ai-t">Devis envoyé à <strong>Brunoy FC</strong> pour <strong>SV-2026-0144</strong></div><div class="ai-ts">Il y a 3h</div></div></div>
+              <div class="ai"><div class="ai-ic" style="background:rgba(0,184,212,.12)">📱</div><div class="ai-b"><div class="ai-t"><strong>Léa Martin</strong> a publié 3 contenus Instagram · <strong>FC Fontainebleau</strong></div><div class="ai-ts">Il y a 4h</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cd">
+          <div class="cd-h">
+            <div class="cd-hl"><div class="cd-t">Chiffre d'affaires</div><div class="cd-s">6 derniers mois</div></div>
+            <span class="bd bac" style="font-size:11px">+27% ce mois</span>
+          </div>
+          <div class="cd-b">
+            <div style="font-size:26px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums;margin-bottom:3px">19 100 <span style="font-size:14px;color:var(--t2);font-weight:600">€</span></div>
+            <div style="font-size:11px;color:var(--t3);margin-bottom:16px">Cumulé janv.–juin 2026</div>
+            <div class="fb-w" id="mc" style="height:80px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRESTATIONS -->
+    <div class="vw" id="v-pre">
+      <div class="g4" style="margin-bottom:16px">
+        <div class="fs"><div class="fs-l">En cours</div><div class="fs-v" style="color:var(--err)">2</div></div>
+        <div class="fs"><div class="fs-l">À venir</div><div class="fs-v" style="color:var(--warn)">1</div></div>
+        <div class="fs"><div class="fs-l">Livrées ce mois</div><div class="fs-v" style="color:var(--ok)">2</div></div>
+        <div class="fs"><div class="fs-l">Total 2026</div><div class="fs-v">5</div></div>
+      </div>
+      <div class="fr">
+        <div class="sw-w">
+          <span class="sw-ic"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="5.5" cy="5.5" r="4"/><path d="M9 9L12 12"/></svg></span>
+          <input class="inp inp-s" type="search" placeholder="Rechercher…" id="ps-inp">
+        </div>
+        <select class="inp inp-sl" id="ps-st"><option value="">Tous les statuts</option><option value="en cours">En cours</option><option value="à venir">À venir</option><option value="livré">Livré</option></select>
+        <select class="inp inp-sl"><option value="">Tous les types</option><option>Tournoi</option><option>Match</option><option>Highlights</option><option>Interview</option><option>Inside Club</option></select>
+        <button class="btn bp bs" style="margin-left:auto">+ Nouvelle prestation</button>
+      </div>
+      <div class="cd"><div class="tw"><table>
+        <thead><tr><th>Référence</th><th>Client</th><th>Titre</th><th>Type</th><th>Équipe</th><th>Statut</th><th>Date</th></tr></thead>
+        <tbody id="pt-b"></tbody>
+      </table></div></div>
+    </div>
+
+    <!-- COLLABORATEURS -->
+    <div class="vw" id="v-col">
+      <div class="sh"><div class="sh-t">Collaborateurs</div><button class="btn bp bs">+ Inviter</button></div>
+      <div class="cg" id="cg"></div>
+    </div>
+
+    <!-- KITS -->
+    <div class="vw" id="v-kits">
+      <div class="sh"><div class="sh-t">Inventaire des kits</div><button class="btn bp bs">+ Ajouter</button></div>
+      <div class="g3" style="margin-bottom:16px">
+        <div class="fs"><div class="fs-l">Disponibles</div><div class="fs-v" style="color:var(--ok)">7</div></div>
+        <div class="fs"><div class="fs-l">En prestation</div><div class="fs-v" style="color:var(--warn)">3</div></div>
+        <div class="fs"><div class="fs-l">En maintenance</div><div class="fs-v" style="color:var(--err)">1</div></div>
+      </div>
+      <div class="cd"><div class="kl" id="kl"></div></div>
+    </div>
+
+    <!-- FINANCES -->
+    <div class="vw" id="v-fin">
+      <div class="g3" style="margin-bottom:16px">
+        <div class="fs"><div class="fs-l">CA juin 2026</div><div class="fs-v">4 850 <span class="fs-u">€</span></div></div>
+        <div class="fs"><div class="fs-l">CA cumulé 2026</div><div class="fs-v">19 100 <span class="fs-u">€</span></div></div>
+        <div class="fs"><div class="fs-l">Factures en attente</div><div class="fs-v" style="color:var(--warn)">2 400 <span class="fs-u" style="color:var(--warn)">€</span></div></div>
+      </div>
+      <div class="cd" style="margin-bottom:14px">
+        <div class="cd-h"><div class="cd-hl"><div class="cd-t">Évolution du chiffre d'affaires</div><div class="cd-s">Janv. → Juin 2026</div></div></div>
+        <div class="cd-b"><div class="fb-w" id="fc" style="height:140px"></div></div>
+      </div>
+      <div class="cd"><div class="tw"><table>
+        <thead><tr><th>N° Facture</th><th>Client</th><th>Prestation</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead>
+        <tbody>
+          <tr><td class="tm">FAC-2026-042</td><td class="tp">Brunoy FC</td><td class="tm">SV-2026-0142</td><td class="tm" style="color:var(--t1)">1 800 €</td><td><span class="bd bp2"><span class="bd-d"></span>En attente</span></td><td>28 juin</td></tr>
+          <tr><td class="tm">FAC-2026-041</td><td class="tp">AS Évry</td><td class="tm">SV-2026-0138</td><td class="tm" style="color:var(--t1)">1 200 €</td><td><span class="bd bp2"><span class="bd-d"></span>En attente</span></td><td>25 juin</td></tr>
+          <tr><td class="tm">FAC-2026-040</td><td class="tp">FC Fontainebleau</td><td class="tm">SV-2026-0140</td><td class="tm" style="color:var(--t1)">950 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>22 juin</td></tr>
+          <tr><td class="tm">FAC-2026-039</td><td class="tp">Club Nemours</td><td class="tm">SV-2026-0139</td><td class="tm" style="color:var(--t1)">650 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>20 juin</td></tr>
+        </tbody>
+      </table></div></div>
+    </div>
+
+    <!-- PLACEHOLDERS -->
+    <div class="vw" id="v-cli"><div class="ph"><div class="ph-i">🏢</div><div class="ph-t">Clients</div><div class="ph-s">12 clients actifs — module en cours de construction</div><button class="btn bp" style="margin-top:8px">+ Nouveau client</button></div></div>
+    <div class="vw" id="v-prod"><div class="ph"><div class="ph-i">🎬</div><div class="ph-t">Production</div><div class="ph-s">Kanban prestations, kits, équipes et incidents</div></div></div>
+    <div class="vw" id="v-med"><div class="ph"><div class="ph-i">🎞️</div><div class="ph-t">Médias</div><div class="ph-s">Rushs et livrables par prestation</div></div></div>
+    <div class="vw" id="v-form"><div class="ph"><div class="ph-i">📚</div><div class="ph-t">Formation</div><div class="ph-s">Modules et suivi de progression par collaborateur</div></div></div>
+    <div class="vw" id="v-set"><div class="ph"><div class="ph-i">⚙️</div><div class="ph-t">Paramètres</div><div class="ph-s">Configuration de SportVision OS</div></div></div>
+
+  </div>
+</div>
+
+<script>
+const IC = {
+  dash:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.5"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.5"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.5"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.5"/></svg>`,
+  cli:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 13v-1a4 4 0 014-4h4a4 4 0 014 4v1"/><circle cx="8" cy="5" r="3"/></svg>`,
+  pre:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="10" height="12" rx="2"/><path d="M5.5 6h5M5.5 8.5h5M5.5 11h3"/></svg>`,
+  prod:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="4" width="13" height="9" rx="2"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/><path d="M10.5 8.5L7 10.5V6.5l3.5 2z" fill="currentColor" stroke="none"/></svg>`,
+  kits:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="5" width="13" height="9" rx="2"/><path d="M5 5V3.5A1.5 1.5 0 016.5 2h3A1.5 1.5 0 0111 3.5V5"/><circle cx="8" cy="9.5" r="1.5"/></svg>`,
+  med:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.5 5.5l5 2.5-5 2.5V5.5z" fill="currentColor" stroke="none"/></svg>`,
+  fin:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 11.5l4-4 3 3 5-5.5"/><path d="M8 4h5.5v5.5"/></svg>`,
+  col:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 13v-1a3 3 0 013-3h4a3 3 0 013 3v1"/><circle cx="6" cy="5" r="2.5"/><path d="M12 6.5a2 2 0 010 4M14.5 13a3 3 0 00-2.5-2.5" stroke-opacity=".5"/></svg>`,
+  form:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 6h6M5 9h4"/></svg>`,
+  set:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M3.2 12.8l1.4-1.4M11.4 4.6l1.4-1.4"/></svg>`
+};
+Object.keys(IC).forEach(k=>{const el=document.getElementById('i-'+k);if(el)el.innerHTML=IC[k]});
+
+// NAV
+const views=document.querySelectorAll('.vw');
+const nis=document.querySelectorAll('.ni[data-v]');
+const CTA={
+  'v-dash':'Nouvelle prestation','v-pre':'Nouvelle prestation',
+  'v-col':'Inviter','v-kits':'Ajouter un kit',
+  'v-fin':'Nouvelle facture','v-cli':'Nouveau client'
+};
+nis.forEach(n=>n.addEventListener('click',()=>{
+  nis.forEach(x=>x.classList.remove('on'));
+  n.classList.add('on');
+  document.getElementById('pt').textContent=n.dataset.tt;
+  document.getElementById('ps').textContent=n.dataset.ts;
+  document.getElementById('cta-l').textContent=CTA[n.dataset.v]||'Ajouter';
+  views.forEach(v=>v.classList.remove('on'));
+  const t=document.getElementById(n.dataset.v);
+  if(t){t.classList.add('on');document.querySelector('.ct').scrollTop=0}
+}));
+
+// FIN BARS
+const FD=[{m:'Jan',v:2400},{m:'Fév',v:3100},{m:'Mar',v:2750},{m:'Avr',v:4200},{m:'Mai',v:3800},{m:'Juin',v:4850,c:true}];
+function drawBars(id,h){
+  const el=document.getElementById(id);if(!el)return;
+  const mx=Math.max(...FD.map(d=>d.v));
+  el.style.height=h+'px';
+  FD.forEach(d=>{
+    const pct=Math.round((d.v/mx)*(h-20));
+    const col=document.createElement('div');col.className='fb-col';
+    const bar=document.createElement('div');
+    bar.style.height=pct+'px';
+    bar.style.background=d.c?'linear-gradient(180deg,#366BFF 0%,#7C4DFF 100%)':'rgba(54,107,255,.2)';
+    const lbl=document.createElement('div');lbl.className='fb-lbl';lbl.textContent=d.m;
+    col.appendChild(bar);col.appendChild(lbl);
+    el.appendChild(col);
+  });
+}
+drawBars('mc',80);drawBars('fc',140);
+
+// PRESTATIONS DATA
+const AVC={'AD':'#7C4DFF','RA':'#2ECC8A','YB':'#F5A524','LM':'#366BFF','CR':'#00B8D4','SN':'#FF6B35','MD':'#F0445E'};
+const PS=[
+  {r:'SV-2026-0142',cl:'Brunoy FC',ti:'Tournoi Elite U18',ty:'Tournoi',eq:['AD','RA'],st:'en cours',dt:'30 juin 2026'},
+  {r:'SV-2026-0141',cl:'AS Milly',ti:'Match Championnat D3',ty:'Match',eq:['YB'],st:'à venir',dt:'5 juil. 2026'},
+  {r:'SV-2026-0140',cl:'FC Fontainebleau',ti:'Highlights saison 2025/26',ty:'Highlights',eq:['AD'],st:'livré',dt:'22 juin 2026'},
+  {r:'SV-2026-0139',cl:'Club Nemours',ti:'Interview coach — J. Foubet',ty:'Interview',eq:['LM','YB'],st:'livré',dt:'18 juin 2026'},
+  {r:'SV-2026-0138',cl:'AS Évry',ti:'Inside Club — Saison 26',ty:'Inside Club',eq:['RA','LM'],st:'en cours',dt:'15 juin 2026'},
+];
+function stBadge(s){
+  if(s==='en cours')return`<span class="bd bl"><span class="bd-d"></span>En cours</span>`;
+  if(s==='à venir')return`<span class="bd bp2"><span class="bd-d"></span>À venir</span>`;
+  return`<span class="bd bdn"><span class="bd-d"></span>Livré</span>`;
+}
+function avStack(eq){
+  return'<div style="display:flex;align-items:center">'+eq.map(i=>`<div style="width:22px;height:22px;border-radius:50%;background:${AVC[i]||'#366BFF'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;margin-right:-6px;border:2px solid var(--surf);flex-shrink:0">${i}</div>`).join('')+'</div>';
+}
+function renderPre(data){
+  document.getElementById('pt-b').innerHTML=data.map(p=>`<tr><td class="tm">${p.r}</td><td class="tp">${p.cl}</td><td>${p.ti}</td><td>${p.ty}</td><td>${avStack(p.eq)}</td><td>${stBadge(p.st)}</td><td>${p.dt}</td></tr>`).join('');
+}
+renderPre(PS);
+function filterPre(){
+  const q=document.getElementById('ps-inp').value.toLowerCase();
+  const f=document.getElementById('ps-st').value.toLowerCase();
+  renderPre(PS.filter(p=>(!q||p.r.toLowerCase().includes(q)||p.cl.toLowerCase().includes(q)||p.ti.toLowerCase().includes(q))&&(!f||p.st===f)));
+}
+document.getElementById('ps-inp').addEventListener('input',filterPre);
+document.getElementById('ps-st').addEventListener('change',filterPre);
+
+// COLLABS
+const CO=[
+  {i:'LM',n:'Léa Martin',r:'Community Manager',rc:'rcm',c:'#366BFF',st:'ba',sl:'Disponible',tk:null},
+  {i:'AD',n:'Antoine Dubreuil',r:'Photographe / Vidéaste',rc:'rph',c:'#7C4DFF',st:'bl',sl:'En prestation',tk:'SV-2026-0142'},
+  {i:'RA',n:'Rachid Amrani',r:'Resp. Production',rc:'rp',c:'#2ECC8A',st:'ba',sl:'En prestation',tk:'SV-2026-0138'},
+  {i:'YB',n:'Yanis Belkacem',r:'Photographe / Vidéaste',rc:'rph',c:'#F5A524',st:'ba',sl:'Disponible',tk:null},
+  {i:'CR',n:'Camille Rivière',r:'Secrétaire',rc:'rs',c:'#00B8D4',st:'ba',sl:'En ligne',tk:null},
+  {i:'SN',n:'Sabrina Nadia',r:'Comptable',rc:'rco',c:'#FF6B35',st:'ba',sl:'En ligne',tk:null},
+  {i:'MD',n:'Mikael Dos Santos',r:'Commercial',rc:'rcm2',c:'#F0445E',st:'bp2',sl:'En déplacement',tk:null},
+];
+const cg=document.getElementById('cg');
+CO.forEach(c=>{
+  cg.innerHTML+=`<div class="cc"><div class="av-lg" style="background:${c.c}">${c.i}</div><div class="cc-n">${c.n}</div><span class="rl ${c.rc}">${c.r}</span><span class="bd ${c.st}"><span class="bd-d"></span>${c.sl}</span>${c.tk?`<div class="cc-tk">${c.tk}</div>`:''}</div>`;
+});
+
+// KITS
+const KS=[
+  {e:'📷',n:'Kit Photo 01',d:'Canon EOS R5 + 2 optiques',st:'bl',sl:'En prestation',as:'Antoine Dubreuil',ai:'AD',tk:'SV-2026-0142'},
+  {e:'🎥',n:'Kit Vidéo 01',d:'Sony FX6 + rig complet',st:'bl',sl:'En prestation',as:'Antoine Dubreuil',ai:'AD',tk:'SV-2026-0142'},
+  {e:'🎥',n:'Kit Vidéo 03',d:'Sony A7S III + trépied',st:'bl',sl:'En prestation',as:'Rachid Amrani',ai:'RA',tk:'SV-2026-0138'},
+  {e:'🚁',n:'Kit Drone 02',d:'DJI Mavic 3 Pro',st:'bdn',sl:'Maintenance',as:null,ai:null,tk:null},
+  {e:'📷',n:'Kit Photo 04',d:'Canon EOS R6 + flash',st:'ba',sl:'Disponible',as:null,ai:null,tk:null},
+  {e:'📷',n:'Kit Photo 05',d:'Canon EOS R3 + 70-200mm',st:'ba',sl:'Disponible',as:null,ai:null,tk:null},
+  {e:'🎥',n:'Kit Vidéo 05',d:'Sony FX3 + micro',st:'ba',sl:'Disponible',as:null,ai:null,tk:null},
+  {e:'📱',n:'Kit Réseaux 01',d:'iPhone 15 Pro + stabilisateur',st:'ba',sl:'Disponible',as:null,ai:null,tk:null},
+  {e:'🎙️',n:'Kit Son 01',d:'Rode + enregistreur Zoom',st:'ba',sl:'Disponible',as:null,ai:null,tk:null},
+  {e:'💡',n:'Kit Lumière 01',d:'Aputure 300X + softbox',st:'ba',sl:'Disponible',as:null,ai:null,tk:null},
+  {e:'🎬',n:'Kit Réalisation 01',d:'Moniteur champ + clap + câbles',st:'ba',sl:'Disponible',as:null,ai:null,tk:null},
+];
+const kl=document.getElementById('kl');
+KS.forEach(k=>{
+  const asHtml=k.as?`<div class="ki-as"><div style="width:20px;height:20px;border-radius:50%;background:${AVC[k.ai]||'#366BFF'};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">${k.ai}</div>${k.as} · ${k.tk}</div>`:'';
+  kl.innerHTML+=`<div class="ki"><div class="ki-ic">${k.e}</div><div class="ki-m"><div class="ki-n">${k.n}</div><div class="ki-d">${k.d}</div></div>${asHtml}<span class="bd ${k.st}"><span class="bd-d"></span>${k.sl}</span></div>`;
+});
+</script>

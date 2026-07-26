@@ -1,0 +1,1289 @@
+<title>SportVision OS</title>
+<style>
+:root{
+  --bg:#080A0F;--s1:#181C25;--s2:#11141B;--s3:#1E2330;
+  --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.12);
+  --acc:#366BFF;--acc2:#7C4DFF;--gr:linear-gradient(135deg,#366BFF,#7C4DFF);
+  --ok:#2ECC8A;--wa:#F5A524;--er:#F0445E;
+  --t1:#F0F2F7;--t2:#8891A8;--t3:#555E73;
+  --sw:228px;--rc:16px;--rb:9px;--rp:999px;
+  --ff:'Inter',system-ui,-apple-system,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--ff);background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* SCREENS */
+.scr{display:none;height:100vh}
+.scr.on{display:flex}
+
+/* ── LOGIN ──────────────────────────────── */
+#s-login{align-items:center;justify-content:center;background:var(--bg)}
+.lw{width:400px;display:flex;flex-direction:column;gap:28px}
+.l-logo{display:flex;align-items:center;gap:12px}
+.l-ico{width:36px;height:36px;background:var(--gr);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.l-name{font-size:18px;font-weight:700;color:var(--t1)}
+.l-tag{font-size:11px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase}
+.l-form{display:flex;flex-direction:column;gap:14px}
+.l-form label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:5px;display:block}
+.l-inp{width:100%;height:42px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rb);padding:0 14px;color:var(--t1);font-size:13.5px;font-family:var(--ff);outline:none;transition:border-color .15s}
+.l-inp:focus{border-color:rgba(54,107,255,.5)}
+.l-inp::placeholder{color:var(--t3)}
+.l-sep{display:flex;align-items:center;gap:12px;color:var(--t3);font-size:12px}
+.l-sep::before,.l-sep::after{content:'';flex:1;height:1px;background:var(--b1)}
+.demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.demo-btn{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;font-family:var(--ff);color:var(--t2);font-size:12px;font-weight:500;transition:border-color .15s,color .15s,background .15s}
+.demo-btn:hover{background:var(--s3);color:var(--t1);border-color:var(--b2)}
+.demo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── ONBOARDING ─────────────────────────── */
+#s-onboard{align-items:center;justify-content:center;background:var(--bg)}
+.obw{width:480px;display:flex;flex-direction:column;gap:32px}
+.ob-steps{display:flex;align-items:center;gap:0}
+.ob-step{flex:1;height:3px;background:var(--b1);border-radius:var(--rp);transition:background .3s}
+.ob-step.done{background:var(--gr)}
+.ob-step+.ob-step{margin-left:4px}
+.ob-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:32px;display:flex;flex-direction:column;gap:20px}
+.ob-ico{width:52px;height:52px;border-radius:14px;background:var(--gr);display:flex;align-items:center;justify-content:center;font-size:22px}
+.ob-title{font-size:20px;font-weight:700;color:var(--t1)}
+.ob-sub{font-size:13.5px;color:var(--t2);line-height:1.6}
+.ob-fields{display:flex;flex-direction:column;gap:12px}
+.ob-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ob-actions{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+
+/* ── ERROR ──────────────────────────────── */
+#s-error{align-items:center;justify-content:center;background:var(--bg)}
+.erw{display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center;max-width:380px}
+.er-code{font-size:96px;font-weight:800;line-height:1;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.er-title{font-size:22px;font-weight:700;color:var(--t1)}
+.er-sub{font-size:13.5px;color:var(--t2);line-height:1.6}
+
+/* ── APP SHELL ──────────────────────────── */
+#s-app{overflow:hidden}
+.sb{width:var(--sw);min-width:var(--sw);height:100vh;background:var(--s2);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex-shrink:0;scrollbar-width:none}
+.sb::-webkit-scrollbar{display:none}
+.sb-top{padding:17px 15px 15px;border-bottom:1px solid var(--b1);flex-shrink:0}
+.sb-logo{display:flex;align-items:center;gap:10px}
+.sb-ico{width:30px;height:30px;background:var(--gr);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-txt{display:flex;flex-direction:column;line-height:1}
+.sb-n{font-size:13px;font-weight:700;letter-spacing:-.01em}
+.sb-s{font-size:9.5px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.nav{padding:10px 10px 4px;flex-shrink:0}
+.nl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:0 7px;margin-bottom:4px;display:block}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rb);cursor:pointer;color:var(--t2);font-size:13px;font-weight:500;transition:background .12s,color .12s;margin-bottom:1px;border:none;background:transparent;width:100%;text-align:left;font-family:var(--ff)}
+.ni:hover{background:rgba(255,255,255,.05);color:var(--t1)}
+.ni.on{background:rgba(54,107,255,.11);color:var(--acc)}
+.ni-ic{width:16px;height:16px;opacity:.55;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ni.on .ni-ic,.ni:hover .ni-ic{opacity:1}
+.ni-lb{flex:1}
+.nb{font-size:10px;font-weight:700;padding:1px 7px;border-radius:var(--rp)}
+.nb-b{background:rgba(54,107,255,.18);color:var(--acc)}
+.nb-r{background:rgba(240,68,94,.15);color:var(--er)}
+.nb-o{background:rgba(245,165,36,.15);color:var(--wa)}
+.sb-div{height:1px;background:var(--b1);margin:7px 10px;flex-shrink:0}
+.sb-foot{margin-top:auto;border-top:1px solid var(--b1);padding:11px 10px;flex-shrink:0}
+.u-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--rb);cursor:pointer;transition:background .12s}
+.u-row:hover{background:rgba(255,255,255,.05)}
+.av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.u-meta{flex:1;min-width:0}
+.u-n{font-size:12px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-r{font-size:10px;color:var(--t3)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.tb{height:55px;min-height:55px;background:var(--s2);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0}
+.tb h1{font-size:15px;font-weight:650;color:var(--t1);flex:1}
+.tb span{font-size:11px;color:var(--t3)}
+.tb-act{display:flex;align-items:center;gap:8px;margin-left:auto}
+.ib{width:34px;height:34px;border-radius:var(--rb);background:var(--s1);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);transition:background .12s,color .12s;position:relative;flex-shrink:0}
+.ib:hover{background:rgba(255,255,255,.07);color:var(--t1)}
+.ndot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--er);border:1.5px solid var(--s2)}
+.ct{flex:1;overflow-y:auto;padding:22px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent}
+.ct::-webkit-scrollbar{width:5px}
+.ct::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+
+/* ── SHARED COMPONENTS ──────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--rb);font-size:12.5px;font-weight:600;cursor:pointer;border:none;font-family:var(--ff);transition:opacity .12s,transform .1s;white-space:nowrap}
+.btn:hover{opacity:.88}.btn:active{transform:scale(.97)}
+.bp{background:var(--gr);color:#fff}
+.bg2{background:transparent;color:var(--t2);border:1px solid var(--b1)}
+.bg2:hover{color:var(--t1);background:rgba(255,255,255,.05)}
+.bs{padding:5px 11px;font-size:11.5px}
+.kpi-g{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px}
+.kpi{background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:17px 19px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--kl,var(--acc));opacity:.45}
+.kpi-ey{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:9px}
+.kpi-v{font-size:28px;font-weight:700;color:var(--t1);line-height:1;font-variant-numeric:tabular-nums;margin-bottom:9px}
+.kpi-d{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:var(--rp)}
+.dup{background:rgba(46,204,138,.1);color:var(--ok)}
+.ddn{background:rgba(240,68,94,.1);color:var(--er)}
+.dnt{background:rgba(255,255,255,.06);color:var(--t2)}
+.cd{background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);overflow:hidden;display:flex;flex-direction:column;margin-bottom:13px}
+.cd-h{display:flex;align-items:center;justify-content:space-between;padding:14px 19px;border-bottom:1px solid var(--b1)}
+.cd-t{font-size:13px;font-weight:650;color:var(--t1)}
+.cd-s{font-size:11px;color:var(--t3);margin-top:1px}
+.cd-b{padding:15px 19px;flex:1}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}
+.g32{display:grid;grid-template-columns:1.5fr 1fr;gap:13px;margin-bottom:13px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{padding:9px 13px;text-align:left;font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);border-bottom:1px solid var(--b1);white-space:nowrap}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.025)}
+tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
+.tp{color:var(--t1);font-weight:500}
+.tm{font-variant-numeric:tabular-nums;font-family:'SF Mono',Consolas,monospace;font-size:11px;color:var(--t3)}
+.bd{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:var(--rp);font-size:10.5px;font-weight:600;white-space:nowrap}
+.bd-d{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.bl{background:rgba(240,68,94,.12);color:var(--er)}.bl .bd-d{background:var(--er);animation:bdot 1.4s ease-in-out infinite}
+.ba{background:rgba(46,204,138,.1);color:var(--ok)}.ba .bd-d{background:var(--ok)}
+.bw{background:rgba(245,165,36,.1);color:var(--wa)}.bw .bd-d{background:var(--wa)}
+.bn{background:rgba(255,255,255,.06);color:var(--t3)}.bn .bd-d{background:var(--t3)}
+.bb{background:rgba(54,107,255,.1);color:var(--acc)}.bb .bd-d{background:var(--acc)}
+@keyframes bdot{0%,100%{opacity:1}50%{opacity:.35}}
+.rl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:var(--rp)}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.sh-t{font-size:14px;font-weight:650;color:var(--t1)}
+.al{display:flex;flex-direction:column}
+.ai{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.035)}
+.ai:last-child{border-bottom:none}
+.ai-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.ai-t{font-size:12.5px;color:var(--t2);line-height:1.4}
+.ai-t strong{color:var(--t1);font-weight:600}
+.ai-ts{font-size:10.5px;color:var(--t3);margin-top:2px}
+
+/* ── KANBAN ─────────────────────────────── */
+.kb{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;min-height:300px}
+.kb::-webkit-scrollbar{height:4px}
+.kb::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+.kb-col{min-width:210px;max-width:210px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rc);display:flex;flex-direction:column;gap:0}
+.kb-head{padding:12px 14px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
+.kb-ht{font-size:11.5px;font-weight:650;color:var(--t1)}
+.kb-cnt{font-size:10px;font-weight:700;background:rgba(255,255,255,.07);color:var(--t2);padding:1px 7px;border-radius:var(--rp)}
+.kb-body{padding:10px;display:flex;flex-direction:column;gap:8px;flex:1}
+.kb-card{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:12px;cursor:pointer;transition:border-color .15s,transform .15s}
+.kb-card:hover{border-color:rgba(54,107,255,.3);transform:translateY(-1px)}
+.kb-ref{font-size:10px;font-weight:600;color:var(--t3);font-family:monospace;margin-bottom:5px}
+.kb-cn{font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:3px}
+.kb-ty{font-size:11px;color:var(--t2);margin-bottom:8px}
+.kb-av{display:flex;align-items:center;gap:4px}
+.av-xs{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* ── CALENDRIER ÉDITORIAL ─────────────────── */
+.cal-g{display:grid;grid-template-columns:80px repeat(7,1fr);gap:0;border:1px solid var(--b1);border-radius:var(--rc);overflow:hidden;margin-bottom:13px}
+.cal-cell{padding:9px 10px;border-right:1px solid var(--b1);border-bottom:1px solid var(--b1);min-height:50px}
+.cal-cell:last-child{border-right:none}
+.cal-day-head{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);text-align:center;padding:8px 4px;background:var(--s2);border-right:1px solid var(--b1);border-bottom:1px solid var(--b1)}
+.cal-day-head.today{color:var(--acc)}
+.cal-plat{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);display:flex;align-items:center;padding:9px 10px;background:var(--s2);border-right:1px solid var(--b1);border-bottom:1px solid var(--b1)}
+.cal-post{background:var(--s3);border-radius:5px;padding:4px 7px;font-size:10.5px;color:var(--t1);margin:3px 0;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-post.sched{border-left:2px solid var(--acc)}
+.cal-post.pub{border-left:2px solid var(--ok);opacity:.65}
+
+/* ── MODE JOUR J ───────────────────────── */
+.jj-hero{background:var(--gr);border-radius:var(--rc);padding:24px;margin-bottom:13px;display:flex;align-items:center;justify-content:space-between}
+.jj-info h2{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px}
+.jj-info p{font-size:13px;color:rgba(255,255,255,.7)}
+.jj-badge{background:rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:var(--rp);margin-top:10px;display:inline-flex;align-items:center;gap:5px}
+.jj-dot{width:6px;height:6px;border-radius:50%;background:#fff;animation:bdot 1.2s ease-in-out infinite}
+.jj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:13px}
+.jj-tile{background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:16px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:border-color .15s}
+.jj-tile:hover{border-color:rgba(54,107,255,.3)}
+.jj-tile-ico{font-size:22px}
+.jj-tile-t{font-size:13px;font-weight:650;color:var(--t1)}
+.jj-tile-s{font-size:11px;color:var(--t3)}
+
+/* ── PIPELINE ──────────────────────────── */
+.pip{display:flex;gap:11px;overflow-x:auto;padding-bottom:8px}
+.pip-col{min-width:200px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rc);display:flex;flex-direction:column}
+.pip-h{padding:11px 13px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
+.pip-ht{font-size:11.5px;font-weight:650;color:var(--t1)}
+.pip-b{padding:9px;display:flex;flex-direction:column;gap:7px;flex:1}
+.pip-card{background:var(--s1);border:1px solid var(--b1);border-radius:9px;padding:11px;cursor:pointer;transition:border-color .15s}
+.pip-card:hover{border-color:rgba(54,107,255,.3)}
+.pip-cn{font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:3px}
+.pip-det{font-size:11px;color:var(--t2)}
+.pip-val{font-size:11.5px;font-weight:700;color:var(--ok);margin-top:6px;font-variant-numeric:tabular-nums}
+
+/* ── PROGRESS ──────────────────────────── */
+.pg{height:4px;background:rgba(255,255,255,.07);border-radius:var(--rp);overflow:hidden;margin-top:6px}
+.pg-f{height:100%;border-radius:var(--rp);background:var(--gr)}
+
+/* ── FIN BARS ──────────────────────────── */
+.fb{display:flex;align-items:flex-end;gap:6px;padding-top:8px}
+.fb-c{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end}
+.fb-b{width:100%;border-radius:4px 4px 0 0;min-height:4px;cursor:pointer;transition:opacity .12s}
+.fb-b:hover{opacity:.75}
+.fb-l{font-size:9.5px;color:var(--t3);font-weight:500}
+.fs{background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:15px 17px}
+.fs-l{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:7px}
+.fs-v{font-size:21px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+
+/* ── TEAM LIST ─────────────────────────── */
+.tl{display:flex;flex-direction:column}
+.ti{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035)}
+.ti:last-child{border-bottom:none}
+.ti-m{flex:1;min-width:0}
+.ti-n{font-size:12.5px;font-weight:500;color:var(--t1)}
+.ti-k{font-size:11px;color:var(--t3)}
+
+/* ── RESPONSIVE ────────────────────────── */
+@media(max-width:1100px){
+  :root{--sw:55px}
+  .sb-txt,.ni-lb,.nl,.nb,.u-meta{display:none}
+  .ni{justify-content:center;padding:9px}
+  .sb-foot{padding:8px}
+  .u-row{justify-content:center}
+  .kpi-g{grid-template-columns:repeat(2,1fr)}
+  .g32{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  :root{--sw:0px}
+  .sb{display:none}
+  .kpi-g{grid-template-columns:1fr 1fr}
+  .ct{padding:14px}
+}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+
+<!-- LOGIN -->
+<div id="s-login" class="scr on">
+  <div class="lw">
+    <div class="l-logo">
+      <div class="l-ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5l2 4h4l-3.2 2.8 1.2 4L8 10.2 4 12.3l1.2-4L2 5.5h4L8 1.5z" fill="white"/></svg></div>
+      <div><div class="l-name">SportVision OS</div><div class="l-tag">Elkana Group · v2.1</div></div>
+    </div>
+    <div class="l-form">
+      <div><label>Adresse email</label><input class="l-inp" type="email" placeholder="nom@sportvision.fr"></div>
+      <div><label>Mot de passe</label><input class="l-inp" type="password" placeholder="••••••••"></div>
+      <button class="btn bp" style="width:100%;justify-content:center;height:42px;font-size:14px" onclick="goOnboard()">Se connecter</button>
+    </div>
+    <div class="l-sep">Accéder en démo</div>
+    <div class="demo-grid" id="demo-btns"></div>
+  </div>
+</div>
+
+<!-- ONBOARDING -->
+<div id="s-onboard" class="scr" style="flex-direction:column">
+  <div class="obw">
+    <div class="ob-steps" id="ob-steps"></div>
+    <div class="ob-card" id="ob-content"></div>
+  </div>
+</div>
+
+<!-- ERROR -->
+<div id="s-error" class="scr">
+  <div class="erw" id="er-c"></div>
+</div>
+
+<!-- APP -->
+<div id="s-app" class="scr">
+  <aside class="sb" id="app-sb">
+    <div class="sb-top">
+      <div class="sb-logo">
+        <div class="sb-ico"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1.5l2 4h4l-3.2 2.8 1.2 4L8 10.2 4 12.3l1.2-4L2 5.5h4L8 1.5z" fill="white"/></svg></div>
+        <div class="sb-txt"><span class="sb-n">SportVision OS</span><span class="sb-s">Elkana Group</span></div>
+      </div>
+    </div>
+    <div id="sb-nav"></div>
+    <div class="sb-foot">
+      <div class="u-row">
+        <div class="av" id="u-av" style="background:var(--gr)"></div>
+        <div class="u-meta"><div class="u-n" id="u-nm"></div><div class="u-r" id="u-rl"></div></div>
+      </div>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="tb">
+      <h1 id="pt">Tableau de bord</h1>
+      <div class="tb-act">
+        <div class="ib"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5L13.5 13.5"/></svg></div>
+        <div class="ib"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.5 1.5a5 5 0 015 5v3l1 2h-12l1-2v-3a5 5 0 015-5z"/><path d="M6 12.5a1.5 1.5 0 003 0"/></svg><span class="ndot"></span></div>
+        <button class="btn bp bs" id="cta-btn">+ Nouvelle prestation</button>
+        <div class="ib" onclick="goLogin()" title="Changer de rôle"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3l4 4-4 4M14 7H5M8 1H2a1 1 0 00-1 1v11a1 1 0 001 1h6"/></svg></div>
+      </div>
+    </header>
+    <div class="ct" id="app-ct"></div>
+  </div>
+</div>
+
+<script>
+// ── ICONS ────────────────────────────────
+const IC={
+  dash:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.5"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.5"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.5"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.5"/></svg>`,
+  pre:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="10" height="12" rx="2"/><path d="M5.5 6h5M5.5 8.5h5M5.5 11h3"/></svg>`,
+  cli:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 13v-1a4 4 0 014-4h4a4 4 0 014 4v1"/><circle cx="8" cy="5" r="3"/></svg>`,
+  col:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 13v-1a3 3 0 013-3h4a3 3 0 013 3v1"/><circle cx="6" cy="5" r="2.5"/><path d="M12 6.5a2 2 0 010 4M14.5 13a3 3 0 00-2.5-2.5" stroke-opacity=".5"/></svg>`,
+  kits:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="5" width="13" height="9" rx="2"/><path d="M5 5V3.5A1.5 1.5 0 016.5 2h3A1.5 1.5 0 0111 3.5V5"/><circle cx="8" cy="9.5" r="1.5"/></svg>`,
+  fin:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 11.5l4-4 3 3 5-5.5"/><path d="M8 4h5.5v5.5"/></svg>`,
+  set:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M3.2 12.8l1.4-1.4M11.4 4.6l1.4-1.4"/></svg>`,
+  cal:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 1.5v3M11 1.5v3M2 7h12"/></svg>`,
+  doc:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2H4a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2V7"/><path d="M9 2l5 5H9V2z"/></svg>`,
+  med:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.5 5.5l5 2.5-5 2.5V5.5z" fill="currentColor" stroke="none"/></svg>`,
+  task:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5h2l1.5 7L8 6l2 4 1.5-5H14"/></svg>`,
+  alert:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2L1.5 13h13L8 2z"/><path d="M8 6v3M8 11v.5"/></svg>`,
+  msg:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 10a2 2 0 01-2 2H5l-3 3V4a2 2 0 012-2h8a2 2 0 012 2v6z"/></svg>`,
+  kan:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="2" width="3.5" height="12" rx="1.5"/><rect x="6.5" y="2" width="3.5" height="9" rx="1.5"/><rect x="11.5" y="2" width="3.5" height="7" rx="1.5"/></svg>`,
+  live:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M3 8a5 5 0 005-5M3 8a5 5 0 005 5M13 8a5 5 0 01-5 5M13 8a5 5 0 00-5-5"/></svg>`,
+  form:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 6h6M5 9h4"/></svg>`,
+  pipe:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/><path d="M4.5 8h2M9.5 8h2"/></svg>`,
+  target:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r="1"/></svg>`,
+  pub:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1v9M4 6l4 4 4-4M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>`,
+  check:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8l4 4 8-8"/></svg>`,
+  export:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1v9M5 7l3 3 3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>`,
+  prod:`<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="4" width="13" height="9" rx="2"/><path d="M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/><path d="M10.5 8.5L7 10.5V6.5l3.5 2z" fill="currentColor" stroke="none"/></svg>`,
+};
+
+// ── SHARED DATA ──────────────────────────
+const AVC={AD:'#7C4DFF',RA:'#2ECC8A',YB:'#F5A524',LM:'#366BFF',CR:'#00B8D4',SN:'#FF6B35',MD:'#F0445E',FK:'linear-gradient(135deg,#366BFF,#7C4DFF)'};
+const PS=[
+  {r:'SV-2026-0142',cl:'Brunoy FC',ti:'Tournoi Elite U18',ty:'Tournoi',eq:['AD','RA'],st:'en cours',dt:'30 juin'},
+  {r:'SV-2026-0141',cl:'AS Milly',ti:'Match Championnat D3',ty:'Match',eq:['YB'],st:'à venir',dt:'5 juil.'},
+  {r:'SV-2026-0140',cl:'FC Fontainebleau',ti:'Highlights saison 25/26',ty:'Highlights',eq:['AD'],st:'livré',dt:'22 juin'},
+  {r:'SV-2026-0139',cl:'Club Nemours',ti:'Interview coach — J. Foubet',ty:'Interview',eq:['LM','YB'],st:'livré',dt:'18 juin'},
+  {r:'SV-2026-0138',cl:'AS Évry',ti:'Inside Club saison 26',ty:'Inside Club',eq:['RA','LM'],st:'en cours',dt:'15 juin'},
+];
+const TEAM=[
+  {i:'LM',n:'Léa Martin',r:'Community Manager',c:'#366BFF',st:'ba',sl:'Disponible',task:''},
+  {i:'AD',n:'Antoine Dubreuil',r:'Photographe/Vidéaste',c:'#7C4DFF',st:'bl',sl:'En prestation',task:'SV-2026-0142'},
+  {i:'RA',n:'Rachid Amrani',r:'Resp. Production',c:'#2ECC8A',st:'ba',sl:'En prestation',task:'SV-2026-0138'},
+  {i:'YB',n:'Yanis Belkacem',r:'Photographe/Vidéaste',c:'#F5A524',st:'ba',sl:'Disponible',task:''},
+  {i:'CR',n:'Camille Rivière',r:'Secrétaire',c:'#00B8D4',st:'ba',sl:'En ligne',task:''},
+  {i:'SN',n:'Sabrina Nadia',r:'Comptable',c:'#FF6B35',st:'ba',sl:'En ligne',task:''},
+  {i:'MD',n:'Mikael Dos Santos',r:'Commercial',c:'#F0445E',st:'bw',sl:'En déplacement',task:''},
+];
+const FD=[{m:'Jan',v:2400},{m:'Fév',v:3100},{m:'Mar',v:2750},{m:'Avr',v:4200},{m:'Mai',v:3800},{m:'Juin',v:4850,c:true}];
+
+// ── ROLES CONFIG ─────────────────────────
+const ROLES={
+  admin:{n:'Fouka',r:'Administrateur',i:'FK',c:'var(--gr)',cta:'Nouvelle prestation'},
+  sec:{n:'Camille Rivière',r:'Secrétaire',i:'CR',c:'#00B8D4',cta:'Nouveau client'},
+  prod:{n:'Rachid Amrani',r:'Resp. Production',i:'RA',c:'#2ECC8A',cta:'Signaler incident'},
+  photo:{n:'Antoine Dubreuil',r:'Photographe/Vidéaste',i:'AD',c:'#7C4DFF',cta:'Uploader rushs'},
+  cm:{n:'Léa Martin',r:'Community Manager',i:'LM',c:'#366BFF',cta:'Nouveau contenu'},
+  compta:{n:'Sabrina Nadia',r:'Comptable',i:'SN',c:'#FF6B35',cta:'Nouvelle facture'},
+  com:{n:'Mikael Dos Santos',r:'Commercial',i:'MD',c:'#F0445E',cta:'Nouveau prospect'},
+};
+
+const NAV={
+  admin:[
+    {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    {id:'pre',lb:'Prestations',ic:'pre',nb:'3',nc:'nb-o'},
+    {id:'col',lb:'Collaborateurs',ic:'col'},
+    {id:'kits',lb:'Kits',ic:'kits',nb:'1',nc:'nb-r'},
+    {id:'fin',lb:'Finances',ic:'fin'},
+    {id:'set',lb:'Paramètres',ic:'set'},
+  ],
+  sec:[
+    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
+    {id:'crm',lb:'CRM Clients',ic:'cli',nb:'2',nc:'nb-b'},
+    {id:'pre',lb:'Prestations',ic:'pre'},
+    {id:'planning',lb:'Planning',ic:'cal'},
+    {id:'taches',lb:'Tâches',ic:'task',nb:'4',nc:'nb-o'},
+    {id:'docs',lb:'Documents',ic:'doc'},
+  ],
+  prod:[
+    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
+    {id:'kanban',lb:'Kanban',ic:'kan'},
+    {id:'kits',lb:'Kits',ic:'kits'},
+    {id:'equipes',lb:'Équipes',ic:'col'},
+    {id:'incidents',lb:'Incidents',ic:'alert',nb:'1',nc:'nb-r'},
+    {id:'msg',lb:'Messagerie',ic:'msg',nb:'3',nc:'nb-b'},
+  ],
+  photo:[
+    {id:'dash',lb:'Mes prestations',ic:'pre'},
+    {id:'jourj',lb:'Mode Jour J',ic:'live'},
+    {id:'medias',lb:'Mes médias',ic:'med'},
+    {id:'revenus',lb:'Mes revenus',ic:'fin'},
+    {id:'form',lb:'Formation',ic:'form'},
+  ],
+  cm:[
+    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
+    {id:'cal',lb:'Calendrier éditorial',ic:'cal'},
+    {id:'contenus',lb:'Contenus',ic:'pre',nb:'5',nc:'nb-o'},
+    {id:'publications',lb:'Publications',ic:'pub'},
+    {id:'analytics',lb:'Analytics',ic:'fin'},
+  ],
+  compta:[
+    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
+    {id:'factures',lb:'Factures',ic:'doc',nb:'2',nc:'nb-o'},
+    {id:'paiements',lb:'Paiements',ic:'fin'},
+    {id:'rapprochement',lb:'Rapprochement',ic:'check'},
+    {id:'export',lb:'Export',ic:'export'},
+  ],
+  com:[
+    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
+    {id:'pipeline',lb:'Pipeline',ic:'pipe'},
+    {id:'devis',lb:'Devis',ic:'doc',nb:'1',nc:'nb-b'},
+    {id:'objectifs',lb:'Objectifs',ic:'target'},
+  ],
+};
+
+// ── HELPERS ──────────────────────────────
+function stBadge(s){
+  if(s==='en cours')return`<span class="bd bl"><span class="bd-d"></span>En cours</span>`;
+  if(s==='à venir')return`<span class="bd bw"><span class="bd-d"></span>À venir</span>`;
+  return`<span class="bd bn"><span class="bd-d"></span>Livré</span>`;
+}
+function avStack(eq){
+  return'<div style="display:flex;align-items:center">'+eq.map(i=>`<div class="av-xs" style="background:${AVC[i]||'#366BFF'};margin-right:-5px;border:2px solid var(--s1)">${i}</div>`).join('')+'</div>';
+}
+function finBars(id,h){
+  const el=document.getElementById(id);if(!el)return;
+  const mx=Math.max(...FD.map(d=>d.v));
+  el.style.height=h+'px';
+  FD.forEach(d=>{
+    const pct=Math.round((d.v/mx)*(h-20));
+    el.innerHTML+=`<div class="fb-c"><div class="fb-b" style="height:${pct}px;background:${d.c?'var(--gr)':'rgba(54,107,255,.2)'}"></div><div class="fb-l">${d.m}</div></div>`;
+  });
+}
+
+// ── VIEW RENDERERS ────────────────────────
+const VIEWS={
+  'admin.dash':()=>`
+    <div class="kpi-g">
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations actives</div><div class="kpi-v">3</div><span class="kpi-d dup">↑ 1 cette semaine</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Collaborateurs</div><div class="kpi-v">7</div><span class="kpi-d dnt">5 disponibles</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">CA juin 2026</div><div class="kpi-v">4 850<small style="font-size:16px;color:var(--t2)"> €</small></div><span class="kpi-d dup">↑ 27% vs mai</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Kits disponibles</div><div class="kpi-v">7<small style="font-size:14px;color:var(--t2)">/11</small></div><span class="kpi-d ddn">1 maintenance</span></div>
+    </div>
+    <div class="g32">
+      <div class="cd"><div class="cd-h"><div><div class="cd-t">Prestations récentes</div><div class="cd-s">5 dernières</div></div><button class="btn bg2 bs">Voir tout</button></div>
+        <div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Équipe</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+          ${PS.map(p=>`<tr><td class="tm">${p.r}</td><td class="tp">${p.cl}</td><td>${p.ty}</td><td>${avStack(p.eq)}</td><td>${stBadge(p.st)}</td><td>${p.dt}</td></tr>`).join('')}
+        </tbody></table></div>
+      </div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Équipe</div></div><div class="cd-b">
+        <div class="tl">${TEAM.map(t=>`<div class="ti"><div class="av" style="background:${t.c};width:26px;height:26px;font-size:10px">${t.i}</div><div class="ti-m"><div class="ti-n">${t.n}</div><div class="ti-k">${t.task||t.r}</div></div><span class="bd ${t.st}"><span class="bd-d"></span>${t.sl}</span></div>`).join('')}
+        </div>
+      </div></div>
+    </div>
+    <div class="g2">
+      <div class="cd"><div class="cd-h"><div class="cd-t">Activité récente</div></div><div class="cd-b"><div class="al">
+        <div class="ai"><div class="ai-ic" style="background:rgba(54,107,255,.12)">📤</div><div><div class="ai-t"><strong>Antoine Dubreuil</strong> a téléversé 12 rushs · <strong>SV-2026-0142</strong></div><div class="ai-ts">Il y a 23 min</div></div></div>
+        <div class="ai"><div class="ai-ic" style="background:rgba(46,204,138,.12)">✅</div><div><div class="ai-t"><strong>Camille Rivière</strong> a créé la prestation <strong>SV-2026-0141</strong></div><div class="ai-ts">Il y a 1h</div></div></div>
+        <div class="ai"><div class="ai-ic" style="background:rgba(124,77,255,.12)">📦</div><div><div class="ai-t"><strong>Rachid Amrani</strong> a mis à jour le <strong>Kit Vidéo 01</strong></div><div class="ai-ts">Il y a 2h</div></div></div>
+        <div class="ai"><div class="ai-ic" style="background:rgba(245,165,36,.12)">📄</div><div><div class="ai-t">Devis envoyé à <strong>Brunoy FC</strong> pour SV-2026-0144</div><div class="ai-ts">Il y a 3h</div></div></div>
+        <div class="ai"><div class="ai-ic" style="background:rgba(0,184,212,.12)">📱</div><div><div class="ai-t"><strong>Léa Martin</strong> a publié 3 contenus Instagram · FC Fontainebleau</div><div class="ai-ts">Il y a 4h</div></div></div>
+      </div></div></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">CA cumulé 2026</div></div><div class="cd-b">
+        <div style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:3px">19 100 <span style="font-size:14px;color:var(--t2);font-weight:600">€</span></div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:14px">Janv. → Juin 2026</div>
+        <div class="fb" id="mc" style="height:80px"></div>
+      </div></div>
+    </div>`,
+
+  'sec.dash':()=>`
+    <div class="kpi-g">
+      <div class="kpi" style="--kl:#00B8D4"><div class="kpi-ey">Clients actifs</div><div class="kpi-v">12</div><span class="kpi-d dup">+2 ce mois</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations en cours</div><div class="kpi-v">3</div><span class="kpi-d dnt">2 cette semaine</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Tâches aujourd'hui</div><div class="kpi-v">4</div><span class="kpi-d ddn">2 urgentes</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Docs en attente</div><div class="kpi-v">2</div><span class="kpi-d dnt">à signer</span></div>
+    </div>
+    <div class="g32">
+      <div class="cd"><div class="cd-h"><div class="cd-t">Clients récents</div><button class="btn bg2 bs">Voir CRM</button></div>
+        <div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Sport</th><th>Dernière presta</th><th>Statut</th></tr></thead><tbody>
+          <tr><td class="tp">Brunoy FC</td><td>Brunoy (91)</td><td>Football</td><td class="tm">SV-2026-0142</td><td><span class="bd ba"><span class="bd-d"></span>Actif</span></td></tr>
+          <tr><td class="tp">AS Milly</td><td>Milly-la-Forêt (91)</td><td>Football</td><td class="tm">SV-2026-0141</td><td><span class="bd bw"><span class="bd-d"></span>À confirmer</span></td></tr>
+          <tr><td class="tp">FC Fontainebleau</td><td>Fontainebleau (77)</td><td>Football</td><td class="tm">SV-2026-0140</td><td><span class="bd ba"><span class="bd-d"></span>Actif</span></td></tr>
+          <tr><td class="tp">Club Nemours</td><td>Nemours (77)</td><td>Football</td><td class="tm">SV-2026-0139</td><td><span class="bd bn"><span class="bd-d"></span>En pause</span></td></tr>
+          <tr><td class="tp">AS Évry</td><td>Évry (91)</td><td>Football</td><td class="tm">SV-2026-0138</td><td><span class="bd ba"><span class="bd-d"></span>Actif</span></td></tr>
+        </tbody></table></div>
+      </div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Tâches du jour</div><button class="btn bg2 bs">Toutes</button></div><div class="cd-b">
+        ${[
+          {t:'Envoyer devis SV-2026-0144 à Brunoy FC',p:'Urgente',done:false},
+          {t:'Rappel — signature contrat AS Milly',p:'Urgente',done:false},
+          {t:'Planifier prépa kit SV-2026-0141',p:'Normale',done:false},
+          {t:'Archiver dossier SV-2026-0137',p:'Basse',done:true},
+        ].map(t=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div style="width:18px;height:18px;border-radius:5px;border:1.5px solid ${t.done?'var(--ok)':'var(--b2)'};background:${t.done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${t.done?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2" stroke-linecap="round"><path d="M2 5l2.5 2.5L8 2.5"/></svg>':''}</div>
+          <div style="flex:1"><div style="font-size:12.5px;color:${t.done?'var(--t3)':'var(--t1)'};text-decoration:${t.done?'line-through':''}">${t.t}</div><div style="font-size:10.5px;color:${t.p==='Urgente'?'var(--er)':t.p==='Normale'?'var(--wa)':'var(--t3)'};margin-top:2px">${t.p}</div></div>
+        </div>`).join('')}
+      </div></div>
+    </div>`,
+
+  'prod.kanban':()=>`
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prestations actives</div><div class="kpi-v">3</div><span class="kpi-d dnt">dont 1 live</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Kits déployés</div><div class="kpi-v">3</div><span class="kpi-d dnt">sur 11</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v">1</div><span class="kpi-d ddn">Kit Drone 02</span></div>
+    </div>
+    <div class="sh"><div class="sh-t">Kanban prestations</div><button class="btn bp bs">+ Ajouter</button></div>
+    <div class="kb">
+      ${[
+        {col:'Briefing',clr:'rgba(54,107,255,.3)',cards:[{r:'SV-2026-0143',cl:'Viry FC',ty:'Match',eq:['YB']}]},
+        {col:'Préparation',clr:'rgba(245,165,36,.3)',cards:[{r:'SV-2026-0141',cl:'AS Milly',ty:'Match',eq:['YB']}]},
+        {col:'En cours',clr:'rgba(240,68,94,.3)',cards:[{r:'SV-2026-0142',cl:'Brunoy FC',ty:'Tournoi',eq:['AD','RA']},{r:'SV-2026-0138',cl:'AS Évry',ty:'Inside Club',eq:['RA','LM']}]},
+        {col:'Livraison',clr:'rgba(124,77,255,.3)',cards:[{r:'SV-2026-0140',cl:'FC Fontainebleau',ty:'Highlights',eq:['AD']}]},
+        {col:'Terminé',clr:'rgba(46,204,138,.3)',cards:[{r:'SV-2026-0139',cl:'Club Nemours',ty:'Interview',eq:['LM','YB']},{r:'SV-2026-0137',cl:'US Vaux',ty:'Match',eq:['AD']}]},
+      ].map(col=>`<div class="kb-col">
+        <div class="kb-head" style="border-top:2px solid ${col.clr}"><span class="kb-ht">${col.col}</span><span class="kb-cnt">${col.cards.length}</span></div>
+        <div class="kb-body">${col.cards.map(c=>`<div class="kb-card">
+          <div class="kb-ref">${c.r}</div>
+          <div class="kb-cn">${c.cl}</div>
+          <div class="kb-ty">${c.ty}</div>
+          <div class="kb-av">${c.eq.map(i=>`<div class="av-xs" style="background:${AVC[i]||'#366BFF'};margin-right:-4px;border:2px solid var(--s1)">${i}</div>`).join('')}</div>
+        </div>`).join('')}</div>
+      </div>`).join('')}
+    </div>`,
+
+  'photo.jourj':()=>`
+    <div class="jj-hero">
+      <div class="jj-info">
+        <h2>Tournoi Elite U18 · Brunoy FC</h2>
+        <p>Stade Jean-Gabin · Brunoy (91) · Départ 08h30</p>
+        <div class="jj-badge"><span class="jj-dot"></span>PRESTATION EN COURS · SV-2026-0142</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:32px;font-weight:800;color:rgba(255,255,255,.9)">30</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.07em">juin 2026</div>
+      </div>
+    </div>
+    <div class="jj-grid">
+      <div class="jj-tile"><div class="jj-tile-ico">📷</div><div class="jj-tile-t">Kit Photo 01</div><div class="jj-tile-s">Canon EOS R5 assigné</div></div>
+      <div class="jj-tile"><div class="jj-tile-ico">🎥</div><div class="jj-tile-t">Kit Vidéo 01</div><div class="jj-tile-s">Sony FX6 assigné</div></div>
+      <div class="jj-tile"><div class="jj-tile-ico">🗺️</div><div class="jj-tile-t">Plan terrain</div><div class="jj-tile-s">Positions caméras</div></div>
+      <div class="jj-tile"><div class="jj-tile-ico">📤</div><div class="jj-tile-t">Upload rushs</div><div class="jj-tile-s">12 fichiers · 24 GB</div></div>
+      <div class="jj-tile" style="border-color:rgba(240,68,94,.3)"><div class="jj-tile-ico">⚠️</div><div class="jj-tile-t">Signaler incident</div><div class="jj-tile-s">Matériel, météo…</div></div>
+      <div class="jj-tile"><div class="jj-tile-ico">✅</div><div class="jj-tile-t">Valider livraison</div><div class="jj-tile-s">Checklist finale</div></div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Checklist Jour J</div></div><div class="cd-b">
+      ${[
+        {t:'Kits vérifiés et chargés',done:true},{t:'Plan terrain consulté',done:true},{t:'Contact Brunoy FC confirmé',done:true},
+        {t:'Rushs uploadés (avant 20h)',done:false},{t:'Livrables validés',done:false},{t:'Kits retournés au stock',done:false},
+      ].map(item=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035)">
+        <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid ${item.done?'var(--ok)':'var(--b2)'};background:${item.done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${item.done?'<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#2ECC8A" stroke-width="2" stroke-linecap="round"><path d="M2 5.5l2.5 2.5 4.5-5"/></svg>':''}</div>
+        <span style="font-size:13px;color:${item.done?'var(--t3)':'var(--t1)'};text-decoration:${item.done?'line-through':''}">${item.t}</span>
+      </div>`).join('')}
+    </div></div>`,
+
+  'cm.cal':()=>`
+    <div class="g4" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Contenus programmés</div><div class="kpi-v">5</div><span class="kpi-d dnt">cette semaine</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Publiés ce mois</div><div class="kpi-v">23</div><span class="kpi-d dup">+5 vs juin</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Reach total</div><div class="kpi-v">12.4k</div><span class="kpi-d dup">+18%</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Taux engagement</div><div class="kpi-v">4.2<small style="font-size:16px;color:var(--t2)">%</small></div><span class="kpi-d dup">+0.8pp</span></div>
+    </div>
+    <div class="sh"><div class="sh-t">Semaine du 28 juin au 4 juillet</div><button class="btn bp bs">+ Contenu</button></div>
+    <div class="cal-g">
+      <div class="cal-cell" style="background:var(--s2)"></div>
+      ${['Lun 28','Mar 29','Mer 30','Jeu 1','Ven 2','Sam 3','Dim 4'].map((d,i)=>`<div class="cal-day-head${i===2?' today':''}">${d}</div>`).join('')}
+      ${[
+        {p:'Instagram',posts:[{d:1,t:'Recap Brunoy FC',pub:true},{d:2,t:'Highlight U18',pub:false},{d:4,t:'Story terrain',pub:false}]},
+        {p:'Facebook',posts:[{d:0,t:'Article Tournoi Elite',pub:true},{d:3,t:'Post match AS Milly',pub:false}]},
+        {p:'YouTube',posts:[{d:2,t:'Résumé Tournoi U18',pub:false},{d:6,t:'Interview J. Foubet',pub:false}]},
+      ].map(pl=>`
+        <div class="cal-plat">${pl.p}</div>
+        ${[0,1,2,3,4,5,6].map(di=>{
+          const post=pl.posts.find(p=>p.d===di);
+          return`<div class="cal-cell">${post?`<div class="cal-post ${post.pub?'pub':'sched'}">${post.t}</div>`:''}</div>`;
+        }).join('')}
+      `).join('')}
+    </div>`,
+
+  'compta.factures':()=>`
+    <div class="g3">
+      <div class="fs"><div class="fs-l">CA juin 2026</div><div class="fs-v">4 850 <span style="font-size:13px;color:var(--t2)">€</span></div></div>
+      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" style="color:var(--wa)">2 400 <span style="font-size:13px;color:var(--wa)">€</span></div></div>
+      <div class="fs"><div class="fs-l">Commissions dues</div><div class="fs-v" style="color:var(--acc)">420 <span style="font-size:13px;color:var(--acc)">€</span></div></div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Factures</div><button class="btn bp bs">+ Facture</button></div>
+      <div class="tw"><table><thead><tr><th>N° Facture</th><th>Client</th><th>Prestation</th><th>Montant</th><th>Statut</th><th>Émise le</th><th>Échéance</th></tr></thead><tbody>
+        <tr><td class="tm">FAC-2026-042</td><td class="tp">Brunoy FC</td><td class="tm">SV-2026-0142</td><td class="tm" style="color:var(--t1)">1 800 €</td><td><span class="bd bw"><span class="bd-d"></span>En attente</span></td><td>28 juin</td><td style="color:var(--wa)">12 juil.</td></tr>
+        <tr><td class="tm">FAC-2026-041</td><td class="tp">AS Évry</td><td class="tm">SV-2026-0138</td><td class="tm" style="color:var(--t1)">1 200 €</td><td><span class="bd bw"><span class="bd-d"></span>En attente</span></td><td>25 juin</td><td style="color:var(--wa)">9 juil.</td></tr>
+        <tr><td class="tm">FAC-2026-040</td><td class="tp">FC Fontainebleau</td><td class="tm">SV-2026-0140</td><td class="tm" style="color:var(--t1)">950 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>22 juin</td><td>6 juil.</td></tr>
+        <tr><td class="tm">FAC-2026-039</td><td class="tp">Club Nemours</td><td class="tm">SV-2026-0139</td><td class="tm" style="color:var(--t1)">650 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>20 juin</td><td>4 juil.</td></tr>
+        <tr><td class="tm">FAC-2026-038</td><td class="tp">AS Milly</td><td class="tm">SV-2026-0136</td><td class="tm" style="color:var(--t1)">800 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>10 juin</td><td>24 juin</td></tr>
+      </tbody></table></div>
+    </div>`,
+
+  'com.pipeline':()=>`
+    <div class="g4" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects actifs</div><div class="kpi-v">8</div><span class="kpi-d dnt">3 chauds</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Devis en cours</div><div class="kpi-v">3</div><span class="kpi-d dnt">5 400 €</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Signé ce mois</div><div class="kpi-v">1 800<small style="font-size:15px;color:var(--t2)"> €</small></div><span class="kpi-d dup">+1 contrat</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Objectif mensuel</div><div class="kpi-v">68<small style="font-size:16px;color:var(--t2)">%</small></div><span class="kpi-d dnt">3 400 / 5 000 €</span></div>
+    </div>
+    <div class="sh"><div class="sh-t">Pipeline de prospection</div><button class="btn bp bs">+ Prospect</button></div>
+    <div class="pip">
+      ${[
+        {col:'Prospect',clr:'rgba(54,107,255,.3)',cards:[{n:'US Courcouronnes',d:'Football D4 · Essonne',v:'1 200 €'},{n:'Viry FC',d:'Football U19 · Essonne',v:'800 €'}]},
+        {col:'Contacté',clr:'rgba(245,165,36,.3)',cards:[{n:'Draveil Athletic',d:'Football · 91',v:'1 500 €'},{n:'Corbeil Foot',d:'Football D3 · 91',v:'2 200 €'},{n:'CSM Épinay',d:'Basketball · 91',v:'900 €'}]},
+        {col:'Devis envoyé',clr:'rgba(124,77,255,.3)',cards:[{n:'AS Bondoufle',d:'Football D2 · 91',v:'1 800 €'},{n:'RC Savigny',d:'Football · Essonne',v:'1 400 €'}]},
+        {col:'Signé',clr:'rgba(46,204,138,.3)',cards:[{n:'AS Milly',d:'Football · 91',v:'800 €'}]},
+      ].map(col=>`<div class="pip-col">
+        <div class="pip-h" style="border-top:2px solid ${col.clr}"><span class="pip-ht">${col.col}</span><span class="kb-cnt">${col.cards.length}</span></div>
+        <div class="pip-b">${col.cards.map(c=>`<div class="pip-card"><div class="pip-cn">${c.n}</div><div class="pip-det">${c.d}</div><div class="pip-val">${c.v}</div></div>`).join('')}</div>
+      </div>`).join('')}
+    </div>`,
+
+  // ── ADMIN ──────────────────────────────
+  'admin.pre':()=>`
+    <div class="g4" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">En cours</div><div class="kpi-v">2</div></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">À venir</div><div class="kpi-v">1</div></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Livrées ce mois</div><div class="kpi-v">2</div></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Total 2026</div><div class="kpi-v">5</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="position:relative"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t3)">${IC.task}</span><input id="s-q" class="l-inp" placeholder="Rechercher…" style="height:34px;padding:0 12px 0 32px;width:220px;font-size:12.5px" oninput="filterPre()"></div>
+      <select id="s-st" class="l-inp" style="height:34px;padding:0 28px 0 10px;appearance:none;font-size:12.5px;cursor:pointer;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 fill=%22none%22 stroke=%22%23555E73%22 stroke-width=%221.5%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M2 4l4 4 4-4%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 8px center;background-color:var(--s1)" onchange="filterPre()"><option value="">Tous statuts</option><option value="en cours">En cours</option><option value="à venir">À venir</option><option value="livré">Livré</option></select>
+      <button class="btn bp bs" style="margin-left:auto">+ Nouvelle prestation</button>
+    </div>
+    <div class="cd"><div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Titre</th><th>Type</th><th>Équipe</th><th>Statut</th><th>Date</th></tr></thead><tbody id="pre-tb">
+      ${PS.map(p=>`<tr data-st="${p.st}"><td class="tm">${p.r}</td><td class="tp">${p.cl}</td><td>${p.ti}</td><td>${p.ty}</td><td>${avStack(p.eq)}</td><td>${stBadge(p.st)}</td><td>${p.dt}</td></tr>`).join('')}
+    </tbody></table></div></div>`,
+
+  'admin.col':()=>`
+    <div class="sh"><div class="sh-t">Collaborateurs</div><button class="btn bp bs">+ Inviter</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:13px">
+      ${TEAM.map(t=>`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;cursor:pointer;transition:border-color .15s,transform .15s" onmouseover="this.style.borderColor='rgba(54,107,255,.3)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,.07)';this.style.transform=''">
+        <div class="av" style="width:50px;height:50px;font-size:17px;font-weight:700;background:${t.c}">${t.i}</div>
+        <div style="font-size:13px;font-weight:650;color:var(--t1)">${t.n}</div>
+        <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2)">${t.r}</span>
+        <span class="bd ${t.st}"><span class="bd-d"></span>${t.sl}</span>
+        ${t.task?`<div style="font-size:11px;color:var(--t3)">${t.task}</div>`:''}
+      </div>`).join('')}
+    </div>`,
+
+  'admin.kits':()=>`
+    <div class="sh"><div class="sh-t">Inventaire des kits</div><button class="btn bp bs">+ Ajouter</button></div>
+    <div class="g3" style="margin-bottom:14px">
+      <div class="fs"><div class="fs-l">Disponibles</div><div class="fs-v" style="color:var(--ok)">7</div></div>
+      <div class="fs"><div class="fs-l">En prestation</div><div class="fs-v" style="color:var(--wa)">3</div></div>
+      <div class="fs"><div class="fs-l">Maintenance</div><div class="fs-v" style="color:var(--er)">1</div></div>
+    </div>
+    <div class="cd">${[
+      {e:'📷',n:'Kit Photo 01',d:'Canon EOS R5 + 2 optiques',st:'bl',sl:'En prestation',as:'Antoine Dubreuil',ai:'AD',tk:'SV-2026-0142'},
+      {e:'🎥',n:'Kit Vidéo 01',d:'Sony FX6 + rig complet',st:'bl',sl:'En prestation',as:'Antoine Dubreuil',ai:'AD',tk:'SV-2026-0142'},
+      {e:'🎥',n:'Kit Vidéo 03',d:'Sony A7S III + trépied',st:'bl',sl:'En prestation',as:'Rachid Amrani',ai:'RA',tk:'SV-2026-0138'},
+      {e:'🚁',n:'Kit Drone 02',d:'DJI Mavic 3 Pro',st:'bn',sl:'Maintenance',as:null},
+      {e:'📷',n:'Kit Photo 04',d:'Canon EOS R6 + flash',st:'ba',sl:'Disponible',as:null},
+      {e:'📷',n:'Kit Photo 05',d:'Canon EOS R3 + 70-200mm',st:'ba',sl:'Disponible',as:null},
+      {e:'🎥',n:'Kit Vidéo 05',d:'Sony FX3 + micro',st:'ba',sl:'Disponible',as:null},
+      {e:'📱',n:'Kit Réseaux 01',d:'iPhone 15 Pro + stabilisateur',st:'ba',sl:'Disponible',as:null},
+      {e:'🎙️',n:'Kit Son 01',d:'Rode + enregistreur Zoom',st:'ba',sl:'Disponible',as:null},
+      {e:'💡',n:'Kit Lumière 01',d:'Aputure 300X + softbox',st:'ba',sl:'Disponible',as:null},
+      {e:'🎬',n:'Kit Réalisation 01',d:'Moniteur champ + clap',st:'ba',sl:'Disponible',as:null},
+    ].map(k=>`<div style="display:flex;align-items:center;gap:13px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.025)'" onmouseout="this.style.background=''">
+      <div style="width:36px;height:36px;border-radius:9px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${k.e}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${k.n}</div><div style="font-size:11px;color:var(--t3)">${k.d}</div></div>
+      ${k.as?`<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2)"><div class="av-xs" style="background:${AVC[k.ai]||'#366BFF'}">${k.ai}</div>${k.as} · ${k.tk}</div>`:''}
+      <span class="bd ${k.st}"><span class="bd-d"></span>${k.sl}</span>
+    </div>`).join('')}</div>`,
+
+  'admin.fin':()=>`
+    <div class="g3">
+      <div class="fs"><div class="fs-l">CA juin 2026</div><div class="fs-v">4 850 <span style="font-size:13px;color:var(--t2)">€</span></div></div>
+      <div class="fs"><div class="fs-l">CA cumulé 2026</div><div class="fs-v">19 100 <span style="font-size:13px;color:var(--t2)">€</span></div></div>
+      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" style="color:var(--wa)">2 400 <span style="font-size:13px;color:var(--wa)">€</span></div></div>
+    </div>
+    <div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">Évolution CA</div><div class="cd-s">Janv. → Juin 2026</div></div>
+      <div class="cd-b"><div class="fb" id="fc" style="height:130px"></div></div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Factures</div><button class="btn bp bs">+ Facture</button></div>
+      <div class="tw"><table><thead><tr><th>N° Facture</th><th>Client</th><th>Prestation</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+        <tr><td class="tm">FAC-2026-042</td><td class="tp">Brunoy FC</td><td class="tm">SV-2026-0142</td><td class="tm" style="color:var(--t1)">1 800 €</td><td><span class="bd bw"><span class="bd-d"></span>En attente</span></td><td>28 juin</td></tr>
+        <tr><td class="tm">FAC-2026-041</td><td class="tp">AS Évry</td><td class="tm">SV-2026-0138</td><td class="tm" style="color:var(--t1)">1 200 €</td><td><span class="bd bw"><span class="bd-d"></span>En attente</span></td><td>25 juin</td></tr>
+        <tr><td class="tm">FAC-2026-040</td><td class="tp">FC Fontainebleau</td><td class="tm">SV-2026-0140</td><td class="tm" style="color:var(--t1)">950 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>22 juin</td></tr>
+        <tr><td class="tm">FAC-2026-039</td><td class="tp">Club Nemours</td><td class="tm">SV-2026-0139</td><td class="tm" style="color:var(--t1)">650 €</td><td><span class="bd ba"><span class="bd-d"></span>Payée</span></td><td>20 juin</td></tr>
+      </tbody></table></div>
+    </div>`,
+
+  'admin.set':()=>`
+    <div class="sh"><div class="sh-t">Paramètres système</div></div>
+    ${[
+      {sec:'Organisation',items:[['Nom de l\'entreprise','Elkana Group / SportVision'],['Email administrateur','elkanagroup0@gmail.com'],['Fuseau horaire','Europe/Paris (UTC+2)']]},
+      {sec:'Rôles & accès',items:[['Administrateur','Accès complet'],['Secrétaire','Clients, Prestations, Planning'],['Resp. Production','Kanban, Kits, Équipes'],['Collaborateur','Ses prestations uniquement']]},
+      {sec:'Intégrations',items:[['Supabase Auth','Non configuré'],['Stockage S3','Non configuré'],['Notifications email','Non configuré']]},
+    ].map(sec=>`<div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">${sec.sec}</div><button class="btn bg2 bs">Modifier</button></div>
+      ${sec.items.map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035)"><span style="font-size:13px;color:var(--t2)">${k}</span><span style="font-size:12.5px;font-weight:500;color:var(--t1)">${v}</span></div>`).join('')}
+    </div>`).join('')}`,
+
+  // ── SECRÉTAIRE ──────────────────────────
+  'sec.crm':()=>`
+    <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs">+ Nouveau client</button></div>
+    <div class="cd"><div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Sport</th><th>Contact</th><th>Dernière presta</th><th>CA total</th><th>Statut</th></tr></thead><tbody>
+      ${[
+        {n:'Brunoy FC',v:'Brunoy (91)',s:'Football',c:'M. Lefevre',r:'SV-2026-0142',ca:'3 400 €',st:'ba',sl:'Actif'},
+        {n:'AS Milly',v:'Milly-la-Forêt (91)',s:'Football',c:'J. Dupont',r:'SV-2026-0141',ca:'1 600 €',st:'bw',sl:'À confirmer'},
+        {n:'FC Fontainebleau',v:'Fontainebleau (77)',s:'Football',c:'P. Martin',r:'SV-2026-0140',ca:'2 100 €',st:'ba',sl:'Actif'},
+        {n:'Club Nemours',v:'Nemours (77)',s:'Football',c:'A. Bernard',r:'SV-2026-0139',ca:'650 €',st:'bn',sl:'En pause'},
+        {n:'AS Évry',v:'Évry (91)',s:'Football',c:'R. Petit',r:'SV-2026-0138',ca:'1 200 €',st:'ba',sl:'Actif'},
+        {n:'US Courcouronnes',v:'Courcouronnes (91)',s:'Football',c:'T. Simon',r:'—',ca:'0 €',st:'bb',sl:'Prospect'},
+        {n:'Viry FC',v:'Viry-Châtillon (91)',s:'Football',c:'C. David',r:'SV-2026-0143',ca:'800 €',st:'ba',sl:'Actif'},
+      ].map(c=>`<tr><td class="tp">${c.n}</td><td>${c.v}</td><td>${c.s}</td><td>${c.c}</td><td class="tm">${c.r}</td><td class="tm" style="color:var(--t1)">${c.ca}</td><td><span class="bd ${c.st}"><span class="bd-d"></span>${c.sl}</span></td></tr>`).join('')}
+    </tbody></table></div></div>`,
+
+  'sec.planning':()=>`
+    <div class="sh"><div class="sh-t">Planning — Juillet 2026</div><button class="btn bp bs">+ Prestation</button></div>
+    <div class="cd"><div class="cd-b">
+      ${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map((d,i)=>`
+        <div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.035);align-items:flex-start">
+          <div style="width:44px;flex-shrink:0;text-align:center">
+            <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">${d}</div>
+            <div style="font-size:22px;font-weight:700;color:${[2,3].includes(i)?'var(--acc)':'var(--t2)';line-height:1.2}">${i+1}</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            ${i===1?`<div style="background:rgba(54,107,255,.1);border-left:3px solid var(--acc);border-radius:0 6px 6px 0;padding:7px 10px"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">SV-2026-0142 · Brunoy FC</div><div style="font-size:11px;color:var(--t2)">Tournoi Elite U18 · 08h00 → 18h00</div></div>`:''}
+            ${i===3?`<div style="background:rgba(245,165,36,.1);border-left:3px solid var(--wa);border-radius:0 6px 6px 0;padding:7px 10px"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">SV-2026-0141 · AS Milly</div><div style="font-size:11px;color:var(--t2)">Match D3 · 14h00 → 17h00</div></div>`:''}
+            ${i===5?`<div style="background:rgba(46,204,138,.1);border-left:3px solid var(--ok);border-radius:0 6px 6px 0;padding:7px 10px"><div style="font-size:12.5px;font-weight:600;color:var(--t1)">SV-2026-0138 · AS Évry</div><div style="font-size:11px;color:var(--t2)">Inside Club · 10h00 → 13h00</div></div>`:''}
+          </div>
+        </div>`).join('')}
+    </div></div>`,
+
+  'sec.taches':()=>`
+    <div class="sh"><div class="sh-t">Tâches</div><button class="btn bp bs">+ Tâche</button></div>
+    <div class="g2">
+      <div class="cd"><div class="cd-h"><div class="cd-t">Urgentes</div><span class="bd bn" style="background:rgba(240,68,94,.1);color:var(--er)">2</span></div><div class="cd-b">
+        ${[{t:'Envoyer devis SV-2026-0144 à Brunoy FC',dt:'Aujourd\'hui',done:false},{t:'Rappel signature contrat AS Milly',dt:'Aujourd\'hui',done:false}].map(t=>taskRow(t,false)).join('')}
+      </div></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Cette semaine</div><span class="bd bn">4</span></div><div class="cd-b">
+        ${[{t:'Planifier prépa kit SV-2026-0141',dt:'Mer 2 juil.',done:false},{t:'Envoyer bilan mensuel juin',dt:'Ven 4 juil.',done:false},{t:'Mettre à jour fiche Viry FC',dt:'Jeu 3 juil.',done:false},{t:'Archiver dossier SV-2026-0137',dt:'Ven 4 juil.',done:true}].map(t=>taskRow(t,true)).join('')}
+      </div></div>
+    </div>`,
+
+  'sec.docs':()=>`
+    <div class="sh"><div class="sh-t">Documents</div><button class="btn bp bs">+ Document</button></div>
+    <div class="cd"><div class="tw"><table><thead><tr><th>Document</th><th>Client</th><th>Type</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead><tbody>
+      ${[
+        {n:'Contrat prestation SV-2026-0142',cl:'Brunoy FC',ty:'Contrat',st:'ba',sl:'Signé',dt:'28 juin'},
+        {n:'Devis SV-2026-0144',cl:'Brunoy FC',ty:'Devis',st:'bw',sl:'En attente',dt:'30 juin'},
+        {n:'Contrat AS Milly saison 26/27',cl:'AS Milly',ty:'Contrat',st:'bl',sl:'À signer',dt:'29 juin'},
+        {n:'Facture FAC-2026-042',cl:'Brunoy FC',ty:'Facture',st:'bw',sl:'En attente',dt:'28 juin'},
+        {n:'Contrat FC Fontainebleau',cl:'FC Fontainebleau',ty:'Contrat',st:'ba',sl:'Signé',dt:'10 juin'},
+      ].map(d=>`<tr><td class="tp">${d.n}</td><td>${d.cl}</td><td>${d.ty}</td><td><span class="bd ${d.st}"><span class="bd-d"></span>${d.sl}</span></td><td>${d.dt}</td><td><button class="btn bg2 bs">Voir</button></td></tr>`).join('')}
+    </tbody></table></div></div>`,
+
+  // ── PRODUCTION ──────────────────────────
+  'prod.dash':()=>`
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prestations actives</div><div class="kpi-v">3</div><span class="kpi-d dnt">dont 1 live</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Kits déployés</div><div class="kpi-v">3</div><span class="kpi-d dnt">sur 11</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v">1</div><span class="kpi-d ddn">Kit Drone 02</span></div>
+    </div>
+    <div class="g32">
+      <div class="cd"><div class="cd-h"><div class="cd-t">Prestations en cours</div></div>
+        <div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Équipe</th><th>Statut</th></tr></thead><tbody>
+          ${PS.filter(p=>p.st!=='livré').map(p=>`<tr><td class="tm">${p.r}</td><td class="tp">${p.cl}</td><td>${p.ty}</td><td>${avStack(p.eq)}</td><td>${stBadge(p.st)}</td></tr>`).join('')}
+        </tbody></table></div>
+      </div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Messages récents</div><span class="bd bb" style="font-size:10px">3 non lus</span></div><div class="cd-b">
+        ${[
+          {f:'AD',fn:'Antoine Dubreuil',msg:'Rushs SV-0142 uploadés, checklist OK',ts:'10 min'},
+          {f:'YB',fn:'Yanis Belkacem',msg:'Besoin du Kit Lumière 01 pour mardi',ts:'1h'},
+          {f:'LM',fn:'Léa Martin',msg:'Stories Brunoy FC publiées',ts:'2h'},
+        ].map(m=>`<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div class="av" style="background:${AVC[m.f]||'#366BFF'};width:28px;height:28px;font-size:10px;flex-shrink:0">${m.f}</div>
+          <div><div style="font-size:12px;font-weight:600;color:var(--t1)">${m.fn}</div><div style="font-size:12px;color:var(--t2)">${m.msg}</div><div style="font-size:10.5px;color:var(--t3);margin-top:2px">Il y a ${m.ts}</div></div>
+        </div>`).join('')}
+      </div></div>
+    </div>`,
+
+  'prod.kits':()=>`
+    <div class="sh"><div class="sh-t">État des kits</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Disponibles</div><div class="fs-v" style="color:var(--ok)">7</div></div>
+      <div class="fs"><div class="fs-l">Déployés</div><div class="fs-v" style="color:var(--wa)">3</div></div>
+      <div class="fs"><div class="fs-l">Maintenance</div><div class="fs-v" style="color:var(--er)">1</div></div>
+    </div>
+    <div class="cd">${[
+      {e:'📷',n:'Kit Photo 01',d:'Canon EOS R5',st:'bl',sl:'SV-2026-0142',ai:'AD'},
+      {e:'🎥',n:'Kit Vidéo 01',d:'Sony FX6',st:'bl',sl:'SV-2026-0142',ai:'AD'},
+      {e:'🎥',n:'Kit Vidéo 03',d:'Sony A7S III',st:'bl',sl:'SV-2026-0138',ai:'RA'},
+      {e:'🚁',n:'Kit Drone 02',d:'DJI Mavic 3 Pro',st:'bn',sl:'Maintenance'},
+      {e:'📷',n:'Kit Photo 04',d:'Canon EOS R6',st:'ba',sl:'Disponible'},
+      {e:'📷',n:'Kit Photo 05',d:'Canon EOS R3',st:'ba',sl:'Disponible'},
+      {e:'🎥',n:'Kit Vidéo 05',d:'Sony FX3',st:'ba',sl:'Disponible'},
+      {e:'📱',n:'Kit Réseaux 01',d:'iPhone 15 Pro',st:'ba',sl:'Disponible'},
+      {e:'🎙️',n:'Kit Son 01',d:'Rode + Zoom',st:'ba',sl:'Disponible'},
+    ].map(k=>`<div style="display:flex;align-items:center;gap:13px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
+      <div style="width:36px;height:36px;border-radius:9px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:15px">${k.e}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${k.n}</div><div style="font-size:11px;color:var(--t3)">${k.d}</div></div>
+      ${k.ai?`<div style="display:flex;align-items:center;gap:5px"><div class="av-xs" style="background:${AVC[k.ai]}">${k.ai}</div><span style="font-size:11.5px;color:var(--t2)">${k.sl}</span></div>`:``}
+      <span class="bd ${k.st}"><span class="bd-d"></span>${k.ai?'En prestation':k.sl}</span>
+    </div>`).join('')}</div>`,
+
+  'prod.equipes':()=>`
+    <div class="sh"><div class="sh-t">Équipes par prestation</div></div>
+    ${PS.filter(p=>p.st!=='livré').map(p=>`<div class="cd" style="margin-bottom:13px"><div class="cd-h">
+      <div><div class="cd-t">${p.cl} — ${p.ti}</div><div class="cd-s" style="font-family:monospace;font-size:10.5px">${p.r}</div></div>
+      ${stBadge(p.st)}
+    </div><div class="cd-b" style="display:flex;gap:16px;flex-wrap:wrap">
+      ${p.eq.map(i=>{const t=TEAM.find(x=>x.i===i)||{n:i,r:'',c:'#366BFF'};return`<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--s2);border-radius:var(--rb)">
+        <div class="av" style="background:${t.c};width:32px;height:32px;font-size:12px">${i}</div>
+        <div><div style="font-size:12.5px;font-weight:600;color:var(--t1)">${t.n}</div><div style="font-size:11px;color:var(--t3)">${t.r}</div></div>
+      </div>`;}).join('')}
+    </div></div>`).join('')}`,
+
+  'prod.incidents':()=>`
+    <div class="sh"><div class="sh-t">Incidents</div><button class="btn bp bs">+ Signaler</button></div>
+    <div class="cd"><div class="tw"><table><thead><tr><th>Incident</th><th>Kit / Prestation</th><th>Signalé par</th><th>Priorité</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+      <tr><td class="tp">Drone en panne — moteur gauche</td><td>Kit Drone 02</td><td>Rachid Amrani</td><td><span style="font-size:10.5px;font-weight:700;color:var(--er)">Critique</span></td><td><span class="bd bl"><span class="bd-d"></span>Ouvert</span></td><td>29 juin</td></tr>
+    </tbody></table></div>
+    <div style="display:flex;flex-direction:column;align-items:center;padding:32px;color:var(--t3);gap:8px">
+      <div style="font-size:32px;opacity:.2">✅</div>
+      <div style="font-size:13px">Aucun autre incident actif</div>
+    </div></div>`,
+
+  'prod.msg':()=>`
+    <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
+    <div class="cd"><div class="cd-b">
+      ${[
+        {f:'AD',fn:'Antoine Dubreuil',msg:'12 rushs uploadés pour SV-2026-0142. Tout est là.',ts:'Il y a 10 min',unread:true},
+        {f:'YB',fn:'Yanis Belkacem',msg:'Est-ce que le Kit Lumière 01 est dispo mardi 5 ?',ts:'Il y a 1h',unread:true},
+        {f:'LM',fn:'Léa Martin',msg:'3 stories Brunoy FC publiées, bonne visibilité.',ts:'Il y a 2h',unread:true},
+        {f:'CR',fn:'Camille Rivière',msg:'Contrat AS Milly envoyé pour signature.',ts:'Il y a 3h',unread:false},
+        {f:'FK',fn:'Fouka',msg:'RDV brief SV-2026-0144 jeudi 14h. On confirme ?',ts:'Il y a 5h',unread:false},
+      ].map(m=>`<div style="display:flex;gap:12px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.035);${m.unread?'background:rgba(54,107,255,.04)':''}">
+        <div class="av" style="background:${AVC[m.f]||'var(--gr)'};width:36px;height:36px;font-size:12px;flex-shrink:0">${m.f}</div>
+        <div style="flex:1"><div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;font-weight:600;color:var(--t1)">${m.fn}</span><span style="font-size:10.5px;color:var(--t3)">${m.ts}</span></div>
+        <div style="font-size:12.5px;color:var(--t2);margin-top:3px">${m.msg}</div></div>
+        ${m.unread?`<div style="width:7px;height:7px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:6px"></div>`:''}
+      </div>`).join('')}
+    </div></div>`,
+
+  // ── PHOTOGRAPHE ─────────────────────────
+  'photo.dash':()=>`
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Mes prestations</div><div class="kpi-v">3</div><span class="kpi-d dnt">dont 1 live</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Rushs uploadés</div><div class="kpi-v">24</div><span class="kpi-d dup">aujourd'hui</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Revenus juin</div><div class="kpi-v">1 650<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dup">+15%</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Formation</div><div class="kpi-v">78<small style="font-size:16px;color:var(--t2)">%</small></div><span class="kpi-d dnt">4 modules</span></div>
+    </div>
+    <div class="cd" style="margin-bottom:13px"><div class="cd-h"><div><div class="cd-t">Prochaine prestation</div><div class="cd-s">Dans 5 jours</div></div><button class="btn bp bs">Mode Jour J</button></div>
+      <div style="display:flex;gap:20px;padding:16px 18px;align-items:center">
+        <div style="width:50px;height:50px;border-radius:12px;background:var(--gr);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:20px;font-weight:800;color:#fff;line-height:1">5</span><span style="font-size:9px;color:rgba(255,255,255,.7);text-transform:uppercase">juil.</span></div>
+        <div><div style="font-size:15px;font-weight:650;color:var(--t1)">Match Championnat D3 — AS Milly</div><div style="font-size:12.5px;color:var(--t2);margin-top:3px">Stade Milly-la-Forêt · 14h00 → 17h00 · Kit Photo 05 assigné</div></div>
+      </div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Mes prestations</div></div>
+      <div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Rushs</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+        ${PS.filter(p=>p.eq.includes('AD')).map(p=>`<tr><td class="tm">${p.r}</td><td class="tp">${p.cl}</td><td>${p.ty}</td><td class="tm">${p.st==='en cours'?'12':'✓'}</td><td>${stBadge(p.st)}</td><td>${p.dt}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>`,
+
+  'photo.medias':()=>`
+    <div class="sh"><div class="sh-t">Mes médias</div><button class="btn bp bs">↑ Uploader</button></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Rushs uploadés</div><div class="fs-v">24</div></div>
+      <div class="fs"><div class="fs-l">Livrables validés</div><div class="fs-v" style="color:var(--ok)">8</div></div>
+      <div class="fs"><div class="fs-l">Stockage utilisé</div><div class="fs-v">38 <span style="font-size:13px;color:var(--t2)">GB</span></div></div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Rushs récents — SV-2026-0142</div><span class="bd ba">12 fichiers · 24 GB</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;padding:14px 18px">
+        ${Array.from({length:12},(_,i)=>`<div style="aspect-ratio:16/9;background:linear-gradient(135deg,var(--s3),var(--s1));border-radius:8px;border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='rgba(54,107,255,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.07)'">
+          <span style="font-size:11px;color:var(--t3)">${String(i+1).padStart(4,'0')}.mp4</span>
+        </div>`).join('')}
+      </div>
+    </div>`,
+
+  'photo.revenus':()=>`
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Revenus juin</div><div class="kpi-v">1 650<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dup">+15% vs mai</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Cumulé 2026</div><div class="kpi-v">8 200<small style="font-size:14px;color:var(--t2)"> €</small></div></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations facturées</div><div class="kpi-v">3</div><span class="kpi-d dnt">ce mois</span></div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Détail des paiements</div></div>
+      <div class="tw"><table><thead><tr><th>Prestation</th><th>Client</th><th>Montant</th><th>Statut</th><th>Payé le</th></tr></thead><tbody>
+        <tr><td class="tm">SV-2026-0142</td><td class="tp">Brunoy FC</td><td class="tm" style="color:var(--t1)">650 €</td><td><span class="bd bw"><span class="bd-d"></span>En attente</span></td><td>—</td></tr>
+        <tr><td class="tm">SV-2026-0140</td><td class="tp">FC Fontainebleau</td><td class="tm" style="color:var(--t1)">580 €</td><td><span class="bd ba"><span class="bd-d"></span>Payé</span></td><td>24 juin</td></tr>
+        <tr><td class="tm">SV-2026-0138</td><td class="tp">AS Évry</td><td class="tm" style="color:var(--t1)">420 €</td><td><span class="bd ba"><span class="bd-d"></span>Payé</span></td><td>20 juin</td></tr>
+      </tbody></table></div>
+    </div>`,
+
+  'photo.form':()=>`
+    <div class="sh"><div class="sh-t">Formation</div></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      ${[
+        {ti:'Captation vidéo sportive',prog:100,dt:'Terminé',clr:'var(--ok)'},
+        {ti:'Photographie terrain & action',prog:100,dt:'Terminé',clr:'var(--ok)'},
+        {ti:'Montage et post-production',prog:85,dt:'En cours',clr:'var(--acc)'},
+        {ti:'Drone — certification A1/A3',prog:40,dt:'En cours',clr:'var(--wa)'},
+        {ti:'Identité visuelle & motion design',prog:0,dt:'À débuter',clr:'var(--t3)'},
+      ].map(m=>`<div class="cd" style="margin-bottom:0"><div style="padding:16px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">${m.ti}</div>
+          <span style="font-size:11px;font-weight:600;color:${m.clr}">${m.dt}</span>
+        </div>
+        <div class="pg"><div class="pg-f" style="width:${m.prog}%;background:${m.clr};"></div></div>
+        <div style="font-size:10.5px;color:var(--t3);margin-top:5px">${m.prog}% complété</div>
+      </div></div>`).join('')}
+    </div>`,
+
+  // ── COMMUNITY MANAGER ───────────────────
+  'cm.dash':()=>`
+    <div class="kpi-g">
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">À publier</div><div class="kpi-v">5</div><span class="kpi-d dnt">cette semaine</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Publiés ce mois</div><div class="kpi-v">23</div><span class="kpi-d dup">+5 vs mai</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Reach total</div><div class="kpi-v">12.4k</div><span class="kpi-d dup">+18%</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Engagement</div><div class="kpi-v">4.2<small style="font-size:14px;color:var(--t2)">%</small></div><span class="kpi-d dup">+0.8pp</span></div>
+    </div>
+    <div class="g2">
+      <div class="cd"><div class="cd-h"><div class="cd-t">Prochains contenus</div><button class="btn bp bs">+ Contenu</button></div>
+        ${[
+          {pl:'Instagram',ti:'Résumé Tournoi U18 · Brunoy FC',dt:'Mer 30 juin · 18h00',st:'bw'},
+          {pl:'YouTube',ti:'Vidéo complète Tournoi Elite U18',dt:'Mer 30 juin · 20h00',st:'bw'},
+          {pl:'Instagram',ti:'Story terrain — match AS Milly',dt:'Sam 5 juil. · 15h00',st:'bb'},
+          {pl:'Facebook',ti:'Article résultats Championnat D3',dt:'Sam 5 juil. · 17h00',st:'bb'},
+        ].map(c=>`<div style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div style="width:8px;height:8px;border-radius:50%;background:${c.pl==='Instagram'?'#E1306C':c.pl==='YouTube'?'#FF0000':'#1877F2'};flex-shrink:0"></div>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${c.ti}</div><div style="font-size:11px;color:var(--t3)">${c.pl} · ${c.dt}</div></div>
+          <span class="bd ${c.st}"><span class="bd-d"></span>${c.st==='bw'?'Programmé':'Brouillon'}</span>
+        </div>`).join('')}
+      </div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Activité récente</div></div><div class="cd-b"><div class="al">
+        <div class="ai"><div class="ai-ic" style="background:rgba(225,48,108,.12)">📱</div><div><div class="ai-t">Post Instagram <strong>FC Fontainebleau</strong> : 847 vues, 4.8% eng.</div><div class="ai-ts">Il y a 2h</div></div></div>
+        <div class="ai"><div class="ai-ic" style="background:rgba(24,119,242,.12)">💻</div><div><div class="ai-t">Article Facebook <strong>Brunoy FC</strong> partagé 12 fois</div><div class="ai-ts">Il y a 4h</div></div></div>
+        <div class="ai"><div class="ai-ic" style="background:rgba(255,0,0,.12)">▶️</div><div><div class="ai-t">Vidéo YouTube <strong>AS Milly</strong> : 312 vues en 24h</div><div class="ai-ts">Hier</div></div></div>
+      </div></div></div>
+    </div>`,
+
+  'cm.contenus':()=>`
+    <div class="sh"><div class="sh-t">Contenus</div><button class="btn bp bs">+ Nouveau</button></div>
+    <div class="cd"><div class="tw"><table><thead><tr><th>Titre</th><th>Plateforme</th><th>Club</th><th>Type</th><th>Statut</th><th>Programmé</th></tr></thead><tbody>
+      ${[
+        {ti:'Résumé Tournoi U18',pl:'Instagram',cl:'Brunoy FC',ty:'Vidéo',st:'bw',dt:'30 juin 18h'},
+        {ti:'Highlights U18 — best moments',pl:'YouTube',cl:'Brunoy FC',ty:'Vidéo',st:'bw',dt:'30 juin 20h'},
+        {ti:'Story terrain Tournoi',pl:'Instagram',cl:'Brunoy FC',ty:'Story',st:'ba',dt:'Publié'},
+        {ti:'Article match D3 AS Milly',pl:'Facebook',cl:'AS Milly',ty:'Article',st:'bb',dt:'En rédaction'},
+        {ti:'Portrait coach J. Foubet',pl:'Instagram',cl:'Club Nemours',ty:'Photo',st:'bb',dt:'En rédaction'},
+        {ti:'Teaser Inside Club AS Évry',pl:'YouTube',cl:'AS Évry',ty:'Vidéo',st:'bn',dt:'Non planifié'},
+      ].map(c=>`<tr><td class="tp">${c.ti}</td><td>${c.pl}</td><td>${c.cl}</td><td>${c.ty}</td><td><span class="bd ${c.st}"><span class="bd-d"></span>${c.st==='bw'?'Programmé':c.st==='ba'?'Publié':c.st==='bb'?'Brouillon':'Non planifié'}</span></td><td>${c.dt}</td></tr>`).join('')}
+    </tbody></table></div></div>`,
+
+  'cm.analytics':()=>`
+    <div class="kpi-g">
+      <div class="kpi" style="--kl:#E1306C"><div class="kpi-ey">Instagram · Reach</div><div class="kpi-v">8.2k</div><span class="kpi-d dup">+22%</span></div>
+      <div class="kpi" style="--kl:#1877F2"><div class="kpi-ey">Facebook · Portée</div><div class="kpi-v">2.8k</div><span class="kpi-d dup">+9%</span></div>
+      <div class="kpi" style="--kl:#FF0000"><div class="kpi-ey">YouTube · Vues</div><div class="kpi-v">1.4k</div><span class="kpi-d dup">+41%</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Engagement moyen</div><div class="kpi-v">4.2<small style="font-size:14px;color:var(--t2)">%</small></div><span class="kpi-d dup">+0.8pp</span></div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Meilleures publications ce mois</div></div>
+      <div class="tw"><table><thead><tr><th>Publication</th><th>Plateforme</th><th>Club</th><th>Vues</th><th>Likes</th><th>Engagement</th></tr></thead><tbody>
+        ${[
+          {t:'Résumé match FC Fontainebleau',pl:'Instagram',cl:'FC Fontainebleau',v:'2 341',l:'187',e:'8.0%'},
+          {t:'Highlights Brunoy FC U18',pl:'YouTube',cl:'Brunoy FC',v:'1 204',l:'93',e:'7.7%'},
+          {t:'Portrait joueur Brunoy FC',pl:'Instagram',cl:'Brunoy FC',v:'1 089',l:'142',e:'13.0%'},
+          {t:'Article tournoi saison 26',pl:'Facebook',cl:'AS Évry',v:'987',l:'54',e:'5.5%'},
+        ].map(p=>`<tr><td class="tp">${p.t}</td><td>${p.pl}</td><td>${p.cl}</td><td class="tm" style="color:var(--t1)">${p.v}</td><td class="tm">${p.l}</td><td style="color:var(--ok);font-weight:600">${p.e}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>`,
+
+  // ── COMPTABLE ───────────────────────────
+  'compta.dash':()=>`
+    <div class="kpi-g">
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA encaissé juin</div><div class="kpi-v">2 450<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dup">51%</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">En attente</div><div class="kpi-v">2 400<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d ddn">2 factures</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Commissions à verser</div><div class="kpi-v">420<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dnt">3 collab.</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">CA cumulé 2026</div><div class="kpi-v">19 100<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dup">+27%</span></div>
+    </div>
+    <div class="g2">
+      <div class="cd"><div class="cd-h"><div class="cd-t">Factures urgentes</div></div>
+        ${[
+          {ref:'FAC-2026-042',cl:'Brunoy FC',mt:'1 800 €',ech:'12 juil.',j:12},
+          {ref:'FAC-2026-041',cl:'AS Évry',mt:'1 200 €',ech:'9 juil.',j:9},
+        ].map(f=>`<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,165,36,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">📄</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1)">${f.ref} · ${f.cl}</div><div style="font-size:11px;color:var(--t3)">Échéance : ${f.ech}</div></div>
+          <div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--t1)">${f.mt}</div><span class="bd bw" style="margin-top:4px"><span class="bd-d"></span>À relancer</span></div>
+        </div>`).join('')}
+      </div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Commissions dues</div></div><div class="cd-b">
+        ${[{i:'AD',n:'Antoine Dubreuil',mt:'180 €'},{i:'RA',n:'Rachid Amrani',mt:'150 €'},{i:'YB',n:'Yanis Belkacem',mt:'90 €'}].map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div class="av" style="background:${AVC[c.i]};width:28px;height:28px;font-size:10px">${c.i}</div>
+          <div style="flex:1;font-size:12.5px;color:var(--t1)">${c.n}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--ok)">${c.mt}</div>
+        </div>`).join('')}
+      </div></div>
+    </div>`,
+
+  'compta.paiements':()=>`
+    <div class="sh"><div class="sh-t">Paiements collaborateurs — Juin 2026</div><button class="btn bp bs">Exporter</button></div>
+    <div class="cd"><div class="tw"><table><thead><tr><th>Collaborateur</th><th>Rôle</th><th>Prestations</th><th>Taux journalier</th><th>Montant</th><th>Statut</th></tr></thead><tbody>
+      ${TEAM.filter(t=>t.i!=='CR'&&t.i!=='SN').map(t=>{
+        const mt=t.i==='AD'?'650 €':t.i==='RA'?'580 €':t.i==='YB'?'420 €':t.i==='LM'?'380 €':'540 €';
+        const td=t.i==='AD'?'220 €/j':t.i==='RA'?'200 €/j':t.i==='YB'?'180 €/j':t.i==='LM'?'160 €/j':'240 €/j';
+        return`<tr><td class="tp"><div style="display:flex;align-items:center;gap:8px"><div class="av-xs" style="background:${t.c}">${t.i}</div>${t.n}</div></td><td>${t.r}</td><td>2</td><td class="tm">${td}</td><td class="tm" style="color:var(--t1)">${mt}</td><td><span class="bd ba"><span class="bd-d"></span>Payé</span></td></tr>`;
+      }).join('')}
+    </tbody></table></div></div>`,
+
+  'compta.export':()=>`
+    <div class="sh"><div class="sh-t">Export comptable</div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px">
+      ${[
+        {ico:'📊',ti:'Export CA mensuel',desc:'Chiffre d\'affaires par mois 2026',btn:'Télécharger CSV'},
+        {ico:'📄',ti:'Export factures',desc:'Toutes les factures émises',btn:'Télécharger CSV'},
+        {ico:'💳',ti:'Export paiements',desc:'Paiements collaborateurs',btn:'Télécharger CSV'},
+        {ico:'🧾',ti:'Déclaration TVA',desc:'Récap TVA collectée Q2 2026',btn:'Générer PDF'},
+        {ico:'📈',ti:'Bilan trimestriel',desc:'Bilan Q2 — Avril à Juin 2026',btn:'Générer PDF'},
+        {ico:'📦',ti:'Export complet',desc:'Toutes les données comptables',btn:'Exporter ZIP'},
+      ].map(e=>`<div class="cd" style="margin-bottom:0;padding:20px;gap:12px;flex-direction:column">
+        <div style="font-size:28px">${e.ico}</div>
+        <div><div style="font-size:13px;font-weight:650;color:var(--t1)">${e.ti}</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">${e.desc}</div></div>
+        <button class="btn bp bs" style="align-self:flex-start">${e.btn}</button>
+      </div>`).join('')}
+    </div>`,
+
+  // ── COMMERCIAL ──────────────────────────
+  'com.dash':()=>`
+    <div class="kpi-g">
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects actifs</div><div class="kpi-v">8</div><span class="kpi-d dnt">3 chauds</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Devis en cours</div><div class="kpi-v">3</div><span class="kpi-d dnt">5 400 €</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Signé ce mois</div><div class="kpi-v">1 800<small style="font-size:14px;color:var(--t2)"> €</small></div><span class="kpi-d dup">+1</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Objectif</div><div class="kpi-v">68<small style="font-size:14px;color:var(--t2)">%</small></div><span class="kpi-d dnt">3 400 / 5 000 €</span></div>
+    </div>
+    <div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">Objectif mensuel</div></div>
+      <div style="padding:16px 18px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px;color:var(--t2)">Progression vers 5 000 €</span><span style="font-size:13px;font-weight:700;color:var(--t1)">3 400 €</span></div>
+        <div class="pg" style="height:8px"><div class="pg-f" style="width:68%;background:var(--gr)"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:10.5px;color:var(--t3)">Signé</span><span style="font-size:10.5px;color:var(--t3)">68%</span></div>
+      </div>
+    </div>
+    <div class="g2">
+      <div class="cd"><div class="cd-h"><div class="cd-t">Activités du jour</div></div><div class="cd-b"><div class="al">
+        <div class="ai"><div class="ai-ic" style="background:rgba(54,107,255,.12)">📞</div><div><div class="ai-t">Appel de suivi <strong>Draveil Athletic</strong></div><div class="ai-ts">14h00</div></div></div>
+        <div class="ai"><div class="ai-ic" style="background:rgba(245,165,36,.12)">📄</div><div><div class="ai-t">Finaliser devis <strong>AS Bondoufle</strong></div><div class="ai-ts">Aujourd'hui</div></div></div>
+        <div class="ai"><div class="ai-ic" style="background:rgba(46,204,138,.12)">✅</div><div><div class="ai-t">Relance <strong>RC Savigny</strong> — devis envoyé il y a 5j</div><div class="ai-ts">Aujourd'hui</div></div></div>
+      </div></div></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Clubs à contacter</div></div><div class="cd-b">
+        ${[{n:'US Courcouronnes',d:'Football D4',pr:'Chaud'},{n:'Viry FC',d:'Football U19',pr:'Tiède'},{n:'CSM Épinay',d:'Basketball',pr:'Froid'}].map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035)">
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${c.n}</div><div style="font-size:11px;color:var(--t3)">${c.d}</div></div>
+          <span style="font-size:10px;font-weight:700;color:${c.pr==='Chaud'?'var(--er)':c.pr==='Tiède'?'var(--wa)':'var(--t3)'}">${c.pr}</span>
+        </div>`).join('')}
+      </div></div>
+    </div>`,
+
+  'com.devis':()=>`
+    <div class="sh"><div class="sh-t">Devis</div><button class="btn bp bs">+ Nouveau devis</button></div>
+    <div class="cd"><div class="tw"><table><thead><tr><th>N° Devis</th><th>Client</th><th>Contenu</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+      ${[
+        {ref:'DEV-2026-018',cl:'Brunoy FC',ct:'Pack saison complète 26/27',mt:'3 200 €',st:'bw',sl:'En attente',dt:'30 juin'},
+        {ref:'DEV-2026-017',cl:'AS Bondoufle',ct:'2 matchs + highlights',mt:'1 800 €',st:'bw',sl:'En attente',dt:'28 juin'},
+        {ref:'DEV-2026-016',cl:'RC Savigny',ct:'1 match + interview',mt:'1 400 €',st:'bw',sl:'Relance',dt:'25 juin'},
+        {ref:'DEV-2026-015',cl:'AS Milly',ct:'Match Championnat D3',mt:'800 €',st:'ba',sl:'Signé',dt:'20 juin'},
+        {ref:'DEV-2026-014',cl:'Draveil Athletic',ct:'Visite terrain + offre',mt:'1 200 €',st:'bb',sl:'En rédaction',dt:'—'},
+      ].map(d=>`<tr><td class="tm">${d.ref}</td><td class="tp">${d.cl}</td><td>${d.ct}</td><td class="tm" style="color:var(--t1)">${d.mt}</td><td><span class="bd ${d.st}"><span class="bd-d"></span>${d.sl}</span></td><td>${d.dt}</td></tr>`).join('')}
+    </tbody></table></div></div>`,
+
+  'cm.publications':()=>`
+    <div class="sh"><div class="sh-t">Publications</div></div>
+    <div class="cd"><div class="tw"><table><thead><tr><th>Publication</th><th>Plateforme</th><th>Club</th><th>Vues</th><th>Likes</th><th>Publiée le</th></tr></thead><tbody>
+      ${[
+        {t:'Résumé match FC Fontainebleau',pl:'Instagram',cl:'FC Fontainebleau',v:'2 341',l:'187',dt:'22 juin'},
+        {t:'Highlights Brunoy FC U18',pl:'YouTube',cl:'Brunoy FC',v:'1 204',l:'93',dt:'21 juin'},
+        {t:'Portrait joueur Brunoy FC',pl:'Instagram',cl:'Brunoy FC',v:'1 089',l:'142',dt:'20 juin'},
+        {t:'Article résultats D3 — AS Milly',pl:'Facebook',cl:'AS Milly',v:'987',l:'54',dt:'19 juin'},
+        {t:'Story coulisses SV-0142',pl:'Instagram',cl:'Brunoy FC',v:'844',l:'67',dt:'18 juin'},
+        {t:'Interview coach Club Nemours',pl:'YouTube',cl:'Club Nemours',v:'632',l:'41',dt:'17 juin'},
+        {t:'Teaser Inside Club AS Évry',pl:'Instagram',cl:'AS Évry',v:'511',l:'38',dt:'16 juin'},
+      ].map(p=>`<tr><td class="tp">${p.t}</td><td>${p.pl}</td><td>${p.cl}</td><td class="tm" style="color:var(--t1)">${p.v}</td><td class="tm">${p.l}</td><td>${p.dt}</td></tr>`).join('')}
+    </tbody></table></div></div>`,
+
+  'compta.rapprochement':()=>`
+    <div class="sh"><div class="sh-t">Rapprochement bancaire — Juin 2026</div><button class="btn bp bs">Importer relevé</button></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Opérations rapprochées</div><div class="fs-v" style="color:var(--ok)">8</div></div>
+      <div class="fs"><div class="fs-l">Écarts détectés</div><div class="fs-v" style="color:var(--er)">0</div></div>
+      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" style="color:var(--wa)">2</div></div>
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Mouvements du mois</div></div>
+      <div class="tw"><table><thead><tr><th>Date</th><th>Libellé</th><th>Référence</th><th>Montant</th><th>Rapproché</th></tr></thead><tbody>
+        ${[
+          {dt:'28 juin',lb:'Paiement Brunoy FC',ref:'FAC-2026-040',mt:'+950 €',ok:true},
+          {dt:'24 juin',lb:'Paiement FC Fontainebleau',ref:'FAC-2026-039',mt:'+650 €',ok:true},
+          {dt:'20 juin',lb:'Virement Antoine Dubreuil',ref:'COM-AD-06',mt:'-650 €',ok:true},
+          {dt:'20 juin',lb:'Virement Rachid Amrani',ref:'COM-RA-06',mt:'-580 €',ok:true},
+          {dt:'18 juin',lb:'Virement Yanis Belkacem',ref:'COM-YB-06',mt:'-420 €',ok:true},
+          {dt:'15 juin',lb:'Abonnement logiciels',ref:'—',mt:'-89 €',ok:true},
+          {dt:'10 juin',lb:'Assurance matériel',ref:'—',mt:'-210 €',ok:true},
+          {dt:'30 juin',lb:'FAC-2026-042 Brunoy FC',ref:'FAC-2026-042',mt:'+1 800 €',ok:false},
+          {dt:'30 juin',lb:'FAC-2026-041 AS Évry',ref:'FAC-2026-041',mt:'+1 200 €',ok:false},
+        ].map(m=>`<tr><td>${m.dt}</td><td class="tp">${m.lb}</td><td class="tm">${m.ref}</td><td class="tm" style="color:${m.mt.startsWith('+')?'var(--ok)':'var(--er)'};font-weight:600">${m.mt}</td><td>${m.ok?'<span class="bd ba"><span class="bd-d"></span>✓ Rapproché</span>':'<span class="bd bw"><span class="bd-d"></span>En attente</span>'}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>`,
+
+  'com.objectifs':()=>`
+    <div class="sh"><div class="sh-t">Objectifs & commissions</div></div>
+    <div class="g2" style="margin-bottom:13px">
+      ${[
+        {lb:'Contrats signés',val:1,obj:4,unit:'',prog:25},
+        {lb:'CA signé',val:'1 800',obj:'5 000',unit:'€',prog:36},
+        {lb:'Devis envoyés',val:3,obj:10,unit:'',prog:30},
+        {lb:'Nouveaux prospects',val:2,obj:8,unit:'',prog:25},
+      ].map(o=>`<div class="cd" style="margin-bottom:0"><div class="cd-b">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:10px">${o.lb}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--t1);margin-bottom:2px">${o.val} <span style="font-size:14px;color:var(--t2)">/ ${o.obj} ${o.unit}</span></div>
+        <div class="pg"><div class="pg-f" style="width:${o.prog}%"></div></div>
+        <div style="font-size:10.5px;color:var(--t3);margin-top:4px">${o.prog}% de l'objectif</div>
+      </div></div>`).join('')}
+    </div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Commissions du mois</div></div><div class="cd-b">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07)">
+        <div><div style="font-size:13px;color:var(--t2)">Commission sur 1 800 € signés</div><div style="font-size:11px;color:var(--t3)">Taux : 8%</div></div>
+        <div style="font-size:22px;font-weight:700;color:var(--ok)">144 €</div>
+      </div>
+      <div style="font-size:12px;color:var(--t3);padding-top:12px">Versement prévu le 15 juillet 2026 avec la paie.</div>
+    </div></div>`,
+};
+
+// ── HELPERS NON GLOBAUX ───────────────────
+function taskRow(t,hasDate){
+  return`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.035)">
+    <div style="width:18px;height:18px;border-radius:5px;border:1.5px solid ${t.done?'var(--ok)':'var(--b2)'};background:${t.done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${t.done?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2" stroke-linecap="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}</div>
+    <div style="flex:1"><div style="font-size:12.5px;color:${t.done?'var(--t3)':'var(--t1)'};text-decoration:${t.done?'line-through':''}">${t.t}</div>${hasDate?`<div style="font-size:10.5px;color:var(--t3);margin-top:2px">${t.dt}</div>`:''}</div>
+  </div>`;
+}
+
+function filterPre(){
+  const q=(document.getElementById('s-q')||{value:''}).value.toLowerCase();
+  const f=(document.getElementById('s-st')||{value:''}).value;
+  document.querySelectorAll('#pre-tb tr').forEach(tr=>{
+    const txt=tr.textContent.toLowerCase();
+    const st=tr.dataset.st||'';
+    tr.style.display=(!q||txt.includes(q))&&(!f||st===f)?'':'none';
+  });
+}
+
+// ── FALLBACK VIEW ────────────────────────
+function fallbackView(role,view){
+  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Analytics',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs'};
+  return`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:14px;color:var(--t3);text-align:center">
+    <div style="font-size:44px;opacity:.2">📋</div>
+    <div style="font-size:15px;font-weight:650;color:var(--t2)">${labels[view]||view}</div>
+    <div style="font-size:13px">Module en cours de construction</div>
+  </div>`;
+}
+
+// ── STATE ────────────────────────────────
+let S={screen:'login',role:null,view:null,obStep:1,obRole:null};
+
+function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.getElementById('s-'+id).classList.add('on')}
+
+// ── LOGIN ────────────────────────────────
+function goLogin(){show('login')}
+
+const demoRoles=[
+  {id:'admin',lb:'Administrateur',c:'#366BFF'},
+  {id:'sec',lb:'Secrétaire',c:'#00B8D4'},
+  {id:'prod',lb:'Resp. Production',c:'#2ECC8A'},
+  {id:'photo',lb:'Photographe/Vidéaste',c:'#7C4DFF'},
+  {id:'cm',lb:'Community Manager',c:'#F5A524'},
+  {id:'compta',lb:'Comptable',c:'#FF6B35'},
+  {id:'com',lb:'Commercial',c:'#F0445E'},
+];
+document.getElementById('demo-btns').innerHTML=demoRoles.map(r=>`
+  <button class="demo-btn" onclick="goOnboard('${r.id}')">
+    <span class="demo-dot" style="background:${r.c}"></span>
+    ${r.lb}
+  </button>`).join('');
+
+// ── ONBOARDING ───────────────────────────
+const OB_STEPS=[
+  {ico:'👋',title:'Bienvenue sur SportVision OS',sub:'Votre espace de gestion de prestations audiovisuelles est prêt. Quelques étapes pour personnaliser votre expérience.',fields:null},
+  {ico:'👤',title:'Votre profil',sub:'Ces informations sont utilisées dans les prestations et les notifications.',fields:[
+    [{lb:'Prénom',ph:'Votre prénom'},{lb:'Nom',ph:'Votre nom'}],
+    [{lb:'Téléphone',ph:'+33 6 00 00 00 00'},{lb:'Ville',ph:'Paris'}],
+  ]},
+  {ico:'🔔',title:'Préférences de notifications',sub:'Choisissez comment SportVision OS vous informe des événements importants.',fields:null,notifs:true},
+  {ico:'🚀',title:'Tout est prêt !',sub:'Votre espace est configuré. Vous pouvez maintenant accéder à votre tableau de bord.',done:true},
+];
+
+function goOnboard(role){
+  S.obRole=role||'admin';S.obStep=1;show('onboard');renderOb();
+}
+function renderOb(){
+  const steps=document.getElementById('ob-steps');
+  steps.innerHTML=OB_STEPS.map((_,i)=>`<div class="ob-step${i<S.obStep?' done':''}"></div>`).join('');
+  const step=OB_STEPS[S.obStep-1];
+  const isLast=S.obStep===OB_STEPS.length;
+  let inner='';
+  if(step.notifs){
+    inner=`<div style="display:flex;flex-direction:column;gap:10px">`+
+    [['Nouvelle prestation assignée','✅'],['Prestation modifiée','✅'],['Message de l\'équipe','✅'],['Rapport hebdomadaire','']].map(([lb,chk])=>`
+      <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer">
+        <div style="width:18px;height:18px;border-radius:5px;border:1.5px solid ${chk?'var(--acc)':'var(--b2)'};background:${chk?'rgba(54,107,255,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${chk?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--acc)" stroke-width="2" stroke-linecap="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}</div>
+        <span style="font-size:13px;color:var(--t1)">${lb}</span>
+      </label>`).join('')+'</div>';
+  } else if(step.fields){
+    inner='<div class="ob-fields">'+step.fields.map(row=>`<div class="ob-row">${row.map(f=>`<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">${f.lb}</label><input class="l-inp" placeholder="${f.ph}" style="width:100%;height:38px"></div>`).join('')}</div>`).join('')+'</div>';
+  }
+  document.getElementById('ob-content').innerHTML=`
+    <div class="ob-ico">${step.ico}</div>
+    <div class="ob-title">${step.title}</div>
+    <div class="ob-sub">${step.sub}</div>
+    ${inner}
+    <div class="ob-actions">
+      ${S.obStep>1?`<button class="btn bg2" onclick="S.obStep--;renderOb()">← Retour</button>`:`<div></div>`}
+      <button class="btn bp" onclick="${isLast?`goApp('${S.obRole}')`:'S.obStep++;renderOb()'}">${isLast?'Accéder à l\'espace →':'Continuer →'}</button>
+    </div>`;
+}
+
+// ── APP ──────────────────────────────────
+function goApp(role){
+  S.role=role;
+  const cfg=ROLES[role];
+  const nav=NAV[role];
+  S.view=nav[0].id;
+  // User meta
+  document.getElementById('u-av').textContent=cfg.i;
+  document.getElementById('u-av').style.background=cfg.c;
+  document.getElementById('u-nm').textContent=cfg.n;
+  document.getElementById('u-rl').textContent=cfg.r;
+  document.getElementById('cta-btn').textContent=cfg.cta;
+  // Build sidebar nav
+  document.getElementById('sb-nav').innerHTML=`<div class="nav">`+
+    nav.map(item=>`<button class="ni${item.id===S.view?' on':''}" data-id="${item.id}" onclick="switchView('${item.id}')">
+      <span class="ni-ic">${IC[item.ic]||''}</span>
+      <span class="ni-lb">${item.lb}</span>
+      ${item.nb?`<span class="nb ${item.nc}">${item.nb}</span>`:''}
+    </button>`).join('')+`</div>`;
+  show('app');
+  renderContent();
+}
+
+function switchView(id){
+  S.view=id;
+  document.querySelectorAll('.ni[data-id]').forEach(n=>n.classList.toggle('on',n.dataset.id===id));
+  const cfg=NAV[S.role].find(n=>n.id===id);
+  document.getElementById('pt').textContent=cfg?cfg.lb:'';
+  renderContent();
+}
+
+function renderContent(){
+  const key=`${S.role}.${S.view}`;
+  const ct=document.getElementById('app-ct');
+  ct.innerHTML=(VIEWS[key]||()=>fallbackView(S.role,S.view))();
+  // Post-render hooks
+  if(document.getElementById('mc'))finBars('mc',80);
+  if(document.getElementById('fc'))finBars('fc',140);
+}
+
+// ── ERRORS ───────────────────────────────
+function goError(type){
+  const ERR={
+    '403':{code:'403',title:'Accès refusé',sub:'Vous n\'avez pas les permissions nécessaires pour accéder à cette page. Contactez l\'administrateur.'},
+    '404':{code:'404',title:'Page introuvable',sub:'La page que vous cherchez n\'existe pas ou a été déplacée.'},
+    '500':{code:'500',title:'Erreur serveur',sub:'Une erreur interne s\'est produite. L\'équipe technique a été notifiée automatiquement.'},
+  };
+  const e=ERR[type]||ERR['404'];
+  document.getElementById('er-c').innerHTML=`
+    <div class="er-code">${e.code}</div>
+    <div class="er-title">${e.title}</div>
+    <div class="er-sub">${e.sub}</div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn bp" onclick="goLogin()">← Accueil</button>
+      ${type==='500'?`<button class="btn bg2" onclick="goLogin()">Réessayer</button>`:''}
+    </div>`;
+  show('error');
+}
+
+// Expose errors on login screen
+document.querySelector('.lw').insertAdjacentHTML('beforeend',`
+  <div style="display:flex;gap:8px;justify-content:center;margin-top:4px">
+    ${['403','404','500'].map(c=>`<button class="btn bg2 bs" onclick="goError('${c}')" style="font-size:11px;padding:4px 10px">Voir erreur ${c}</button>`).join('')}
+  </div>`);
+</script>
