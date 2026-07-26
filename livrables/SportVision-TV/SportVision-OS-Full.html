@@ -310,6 +310,7 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ── ICONS ────────────────────────────────
 const IC={
@@ -1162,13 +1163,7 @@ function fallbackView(role,view){
 // ── SUPABASE ─────────────────────────────
 const SB_URL='https://lulgezzpvrlbftbykzrc.supabase.co';
 const SB_KEY='sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
-let sb=null;
-(function initSB(){
-  const s=document.createElement('script');
-  s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-  s.onload=()=>{sb=supabase.createClient(SB_URL,SB_KEY);};
-  document.head.appendChild(s);
-})();
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
 
 async function doLogin(){
   const email=(document.getElementById('l-email').value||'').trim();
@@ -1176,14 +1171,17 @@ async function doLogin(){
   const errEl=document.getElementById('l-err');
   const btn=document.getElementById('l-btn');
   if(!email||!pass){errEl.textContent='Remplissez email et mot de passe.';return;}
-  if(!sb){errEl.textContent='Chargement en cours, réessayez.';return;}
   errEl.textContent='';btn.textContent='Connexion…';btn.disabled=true;
-  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
-  if(error){errEl.textContent='Email ou mot de passe incorrect.';btn.textContent='Se connecter';btn.disabled=false;return;}
-  const {data:prof}=await sb.from('profiles').select('role').eq('id',data.user.id).single();
-  btn.textContent='Se connecter';btn.disabled=false;
-  if(!prof){errEl.textContent='Profil introuvable. Contactez l\'administrateur.';return;}
-  goOnboard(prof.role);
+  try{
+    const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+    if(error)throw error;
+    const {data:prof,error:perr}=await sb.from('profiles').select('role').eq('id',data.user.id).single();
+    if(perr||!prof)throw new Error('Profil introuvable');
+    goOnboard(prof.role);
+  }catch(e){
+    errEl.textContent=e.message||'Erreur de connexion.';
+    btn.textContent='Se connecter';btn.disabled=false;
+  }
 }
 
 // ── STATE ────────────────────────────────
