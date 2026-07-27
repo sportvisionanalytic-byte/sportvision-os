@@ -7815,7 +7815,7 @@ function docsRenderTous(){
     rows.push({dt:new Date(d.created_at||0),type:'Devis',cl:'#366BFF',ref:d.numero||'—',client:d.clients?.nom||'—',
       montant:fmt(d.total_ttc),dateStr:fd(d.date_envoi||d.created_at),
       badge:_docsBadge(d.statut||'brouillon',DEVIS_STATUTS),
-      actions:`<button onclick="imprimerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:#366BFF;cursor:pointer">PDF</button><button class="btn bg2 bs" onclick="modalModifierDevis(${i})" style="font-size:11px;padding:3px 9px">Ouvrir</button>`});
+      actions:`<button onclick="imprimerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:#366BFF;cursor:pointer">PDF</button><button onclick="envoyerDevisParEmail('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);border-radius:var(--rp);color:var(--acc2);cursor:pointer" title="Envoyer par email">✉</button><button class="btn bg2 bs" onclick="modalModifierDevis(${i})" style="font-size:11px;padding:3px 9px">Ouvrir</button>`});
   });
   _docsCache.contrats.forEach(c=>{
     rows.push({dt:new Date(c.created_at||0),type:'Contrat',cl:'#7C4DFF',ref:CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—',
@@ -7867,6 +7867,7 @@ function docsRenderDevis(){
         ${(d.statut==='envoyé'||d.statut==='en_attente')&&(!d.signature_statut||d.signature_statut==='non_demandee')?`<button onclick="demanderSignatureDoc('devis','${d.id}','${d.numero||d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
         ${d.signature_statut==='demandee'?`<button onclick="confirmerSignatureDoc('devis','${d.id}','${d.numero||d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">✓</button>`:''}
         <button onclick="imprimerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">PDF</button>
+        <button onclick="envoyerDevisParEmail('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);border-radius:var(--rp);color:var(--acc2);cursor:pointer" title="Envoyer par email">✉</button>
         <button class="btn bg2 bs" onclick="modalModifierDevis(${i})" style="font-size:11px;padding:3px 9px">Modifier</button>
       </td>
     </tr>`).join('')}
@@ -8315,7 +8316,7 @@ async function loadDevis(){
         <td><span class="bd ${s_cls[d.statut]||'bw'}"><span class="bd-d"></span>${s_lbl[d.statut]||d.statut}</span></td>
         <td style="color:var(--t3)">${d.date_envoi?new Date(d.date_envoi).toLocaleDateString('fr-FR'):'—'}</td>
         <td style="color:${expExpired?'var(--er)':expAlert?'var(--wa)':'var(--t3)'};font-weight:${expAlert?600:400}">${expFmt}${expAlert?' ⚠':''}</td>
-        <td><div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap">${d.statut==='brouillon'?`<button onclick="envoyerDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap" title="Marquer comme envoyé">→ Envoyer</button>`:''}${d.statut==='accepté'?`<button onclick="modalContratFromDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap;font-weight:600">→ Contrat</button>`:''}<button onclick="imprimerDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap" title="Générer PDF">PDF</button><button class="btn bg2 bs" onclick="modalModifierDevis(${i})">Modifier</button></div></td>
+        <td><div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap">${d.statut==='brouillon'?`<button onclick="envoyerDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap" title="Marquer comme envoyé">→ Envoyer</button>`:''}${d.statut==='accepté'?`<button onclick="modalContratFromDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap;font-weight:600">→ Contrat</button>`:''}<button onclick="imprimerDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap" title="Générer PDF">PDF</button><button onclick="envoyerDevisParEmail('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);border-radius:var(--rp);color:var(--acc2);cursor:pointer;white-space:nowrap" title="Envoyer par email">✉</button><button class="btn bg2 bs" onclick="modalModifierDevis(${i})">Modifier</button></div></td>
       </tr>`;}).join('')+'</tbody></table></div></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
@@ -8597,6 +8598,74 @@ ${d.notes?`<div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;m
 </div></body></html>`);
     win.document.close();
   }catch(e){toast('Erreur lors de la génération du PDF.');}
+}
+
+// ── Email Devis ───────────────────────────────────────────────────────────────
+async function envoyerDevisParEmail(id){
+  try{
+    const dArr=await sbFetch(`devis?id=eq.${id}&select=id,numero,statut,total_ttc,validite_jours,clients(id,nom,email,prenom_contact,nom_contact)`);
+    const d=dArr?.[0];
+    if(!d){toast('Devis introuvable.');return;}
+    const c=d.clients||{};
+    const num=d.numero||'—';
+    const montant=(d.total_ttc||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    const contact=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||c.nom||'';
+    const validite=d.validite_jours||30;
+    const msgDefaut=`${contact?'Bonjour '+contact+',':'Bonjour,'}\n\nVeuillez trouver ci-dessous le devis ${num} d'un montant de ${montant} TTC.\n\nCe devis est valable ${validite} jours. Pour l'accepter, il vous suffit de répondre à cet email avec la mention "Bon pour accord".\n\nN'hésitez pas à me contacter pour toute question.\n\nBien cordialement,\nFouka\nSportVision`;
+    openModal(`<div class="mh"><div class="mt">Envoyer le devis par email</div><button class="mc" onclick="closeModal()">✕</button></div>
+      <div class="mb">
+        <div style="background:rgba(14,165,255,.07);border:1px solid rgba(14,165,255,.18);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:var(--t2);display:flex;gap:16px;flex-wrap:wrap">
+          <span><span style="color:var(--t3);font-size:11px">DEVIS</span><br><span style="font-weight:700;color:var(--acc)">${num}</span></span>
+          <span><span style="color:var(--t3);font-size:11px">CLIENT</span><br><span style="font-weight:600">${c.nom||'—'}</span></span>
+          <span><span style="color:var(--t3);font-size:11px">MONTANT TTC</span><br><span style="font-weight:700;color:var(--ok)">${montant}</span></span>
+        </div>
+        <div class="fg"><label class="fl">Destinataire *</label><input id="em-to" class="fi" type="email" value="${c.email||''}" placeholder="email@club.fr"></div>
+        <div class="fg"><label class="fl">Objet</label><input id="em-subj" class="fi" type="text" value="Devis ${num} — SportVision"></div>
+        <div class="fg"><label class="fl">Message</label><textarea id="em-msg" class="fi" rows="7" style="font-family:inherit;white-space:pre-wrap">${msgDefaut}</textarea></div>
+        ${d.statut==='brouillon'?`<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2);cursor:pointer;margin-top:2px"><input type="checkbox" id="em-markSent" checked style="width:15px;height:15px;accent-color:var(--acc2)"> Marquer comme "Envoyé" après l'envoi</label>`:''}
+        <div id="em-err" style="color:var(--er);font-size:12px;min-height:16px;margin-top:6px"></div>
+      </div>
+      <div class="mf">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="_sendDevisEmailConfirm('${id}','${d.statut||'brouillon'}')">✉ Envoyer</button>
+      </div>`);
+  }catch(e){toast('Erreur: '+e.message);}
+}
+
+async function _sendDevisEmailConfirm(id,statutActuel){
+  const to=(document.getElementById('em-to')?.value||'').trim();
+  const subj=(document.getElementById('em-subj')?.value||'').trim();
+  const msg=(document.getElementById('em-msg')?.value||'').trim();
+  const markSent=document.getElementById('em-markSent')?.checked;
+  const errEl=document.getElementById('em-err');
+  if(!to){if(errEl)errEl.textContent='Email destinataire requis.';return;}
+  if(!to.includes('@')||!to.includes('.')){if(errEl)errEl.textContent='Adresse email invalide.';return;}
+  if(errEl)errEl.textContent='';
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){btn.disabled=true;btn.textContent='Envoi en cours…';}
+  try{
+    const res=await fetch(SB_URL+'/functions/v1/send-devis-email',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY},
+      body:JSON.stringify({devis_id:id,to,subject:subj||('Devis — SportVision'),message:msg})
+    });
+    let json={};
+    try{json=await res.json();}catch(e2){}
+    if(!res.ok){
+      if(res.status===404)throw new Error('Edge Function non déployée. Voir instructions setup.');
+      throw new Error(json.error||json.message||('Erreur serveur ('+res.status+')'));
+    }
+    if(markSent&&statutActuel==='brouillon'){
+      await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:new Date().toISOString().slice(0,10)}}).catch(()=>{});
+    }
+    closeModal();
+    toast('Email envoyé avec succès !');
+    if(document.getElementById('devis-real'))loadDevis().catch(()=>{});
+    else if(typeof loadDocs==='function')loadDocs().catch(()=>{});
+  }catch(e){
+    if(errEl)errEl.textContent='Erreur : '+e.message;
+    if(btn){btn.disabled=false;btn.textContent='✉ Envoyer';}
+  }
 }
 
 // ── PDF Facture ───────────────────────────────────────────────────────────────
