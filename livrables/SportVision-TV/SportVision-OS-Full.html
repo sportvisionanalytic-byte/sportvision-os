@@ -1691,14 +1691,14 @@ const VIEWS={
     <div class="kpi-g">
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="com-kpi-pr">—</div><span class="kpi-d dnt">à travailler</span></div>
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="com-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
-      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="com-kpi-cl">—</div><span class="kpi-d dnt">signés</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('pipeline')"><div class="kpi-ey">Partenaires</div><div class="kpi-v" id="com-kpi-cl">—</div><span class="kpi-d dnt">contrats actifs</span></div>
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('objectifs')"><div class="kpi-ey">Prestations ce mois</div><div class="kpi-v" id="com-kpi-pre">—</div><span class="kpi-d dnt">ce mois</span></div>
     </div>
     <div class="g2">
-      <div class="cd"><div class="cd-h"><div class="cd-t">Prospects à traiter</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Pipeline prioritaire</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
         <div id="com-dash-pr"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Derniers clients signés</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
+      <div class="cd"><div class="cd-h"><div class="cd-t">Partenaires & Clients</div><button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button></div>
         <div id="com-dash-cl"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
     </div>
@@ -10916,13 +10916,13 @@ async function loadComDash(){
     _clientsCache=list;
     const s1=document.getElementById('com-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
     const s2=document.getElementById('com-kpi-q');if(s2)s2.textContent=list.filter(c=>c.statut==='qualifié').length;
-    const s3=document.getElementById('com-kpi-cl');if(s3)s3.textContent=list.filter(c=>c.statut==='client').length;
+    const s3=document.getElementById('com-kpi-cl');if(s3)s3.textContent=list.filter(c=>c.statut==='partenaire').length;
     const s4=document.getElementById('com-kpi-pre');if(s4)s4.textContent=(preMois||[]).length;
     const ep=document.getElementById('com-dash-pr');
     if(ep){
-      const prox=list.filter(c=>c.statut==='prospect'||c.statut==='qualifié').slice(0,5);
-      const scc={'prospect':'bw','qualifié':'bb'};
-      const scl={'prospect':'Prospect','qualifié':'Qualifié'};
+      const prox=list.filter(c=>['prospect','qualifié','devis_envoyé','négociation'].includes(c.statut)).sort((a,b)=>(b.score_priorite||0)-(a.score_priorite||0)).slice(0,5);
+      const scc={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw'};
+      const scl={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis envoyé','négociation':'Négociation'};
       ep.innerHTML=prox.length?'<div class="cd-b">'+prox.map(c=>{const i=list.indexOf(c);return`
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
           <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${c.nom}</div><div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
@@ -10932,11 +10932,11 @@ async function loadComDash(){
     }
     const ec=document.getElementById('com-dash-cl');
     if(ec){
-      const clients_signes=list.filter(c=>c.statut==='client').slice(0,5);
+      const clients_signes=list.filter(c=>['partenaire','client'].includes(c.statut)).slice(0,5);
       ec.innerHTML=clients_signes.length?'<div class="cd-b">'+clients_signes.map(c=>{const i=list.indexOf(c);return`
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
           <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${c.nom}</div><div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
-          <span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Client</span>
+          <span class="bd ${c.statut==='partenaire'?'bn':'ba'}" style="font-size:10px"><span class="bd-d"></span>${c.statut==='partenaire'?'Partenaire':'Client'}</span>
         </div>`;}).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client signé pour l\'instant.</div>';
     }
