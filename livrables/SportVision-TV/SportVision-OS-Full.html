@@ -1964,6 +1964,11 @@ const VIEWS={
     <div class="kpi" style="--kl:var(--wa)"><div class="kpi-ey">En cours</div><div class="kpi-v" id="af-kpi-enc" style="color:var(--wa)">—</div></div>
     <div class="kpi" style="--kl:#9C6FFF"><div class="kpi-ey">XP distribués</div><div class="kpi-v" id="af-kpi-xp" style="color:#9C6FFF">—</div></div>
   </div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button id="af-tab-stats" onclick="afTab('stats')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--acc);background:var(--acc);color:#fff">Statistiques</button>
+    <button id="af-tab-sessions" onclick="afTab('sessions')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Sessions</button>
+    <button id="af-tab-certifs" onclick="afTab('certifs')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Certifications</button>
+  </div>
   <div id="admin-form-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── GRADES & XP ──────────────────────────
@@ -7987,9 +7992,89 @@ const FORMATIONS_CATALOG=[
   {id:'cert-responsable',titre:'Responsable de prestation',categorie:'Management',icone:'⭐',niveau:'Expert',type:'hybride',duree:'8h',xp:300,formateur:'Fouka',obligatoire:false,description:'Formation pour diriger une prestation SportVision : organisation, management terrain, relation client, gestion d\'incidents.',modules:[{titre:'Lecture du briefing',lecons:['Déchiffrer une fiche prestation','Identifier les priorités','Briefer l\'équipe']},{titre:'Management terrain',lecons:['Répartition des rôles','Communication équipe','Gestion des retards','Prises de décision']},{titre:'Relation client Responsable',lecons:['Premier contact','Gestion des attentes','Clôture de prestation']},{titre:'Gestion d\'incidents',lecons:['Types d\'incidents','Procédure d\'urgence','Rapport post-prestation']},{titre:'Validation terrain',lecons:['Diriger une prestation complète']}],certification:{id:'cert-responsable',nom:'Certification Responsable de prestation',validite_mois:24,badge:'⭐'},statut:'publiée'},
 ];
 
+const FORMATION_QUIZ_CATALOG={
+  'sv-culture':[
+    {q:'Quelle est la mission principale de SportVision ?',opts:['Vendre des équipements sportifs','Capturer et valoriser les moments sportifs des clubs amateurs','Former des photographes professionnels','Gérer les calendriers des clubs'],rep:1},
+    {q:'Que signifie respecter les standards qualité chez SportVision ?',opts:['Avoir le matériel le plus récent','Respecter les délais, la qualité technique et la relation client','Publier les photos en moins de 24h','Travailler uniquement en haute résolution'],rep:1},
+    {q:'Comment se présenter à l\'arrivée chez un club partenaire ?',opts:['Installer directement son matériel','Se présenter par son prénom et son rôle, et demander les consignes','Rester discret et ne pas se faire remarquer','Envoyer un message à l\'admin'],rep:1},
+    {q:'Que faire si vous n\'êtes pas sûr d\'une zone d\'accès ?',opts:['Y aller rapidement si personne ne regarde','Demander l\'autorisation avant d\'y accéder','Attendre la fin de la prestation','Appeler le bureau'],rep:1},
+  ],
+  'sv-securite':[
+    {q:'Que vérifier en priorité avant de partir en prestation ?',opts:['Que votre tenue est propre','L\'état des batteries et des cartes mémoire','La météo de la journée','Le numéro du club'],rep:1},
+    {q:'Comment transporter un objectif photo correctement ?',opts:['Dans n\'importe quel sac','Dans sa pochette de protection avec les bouchons','Accroché à la bandoulière','Sans protection particulière'],rep:1},
+    {q:'Que faire des cartes mémoire après le transfert des fichiers ?',opts:['Les reformater immédiatement','Les conserver jusqu\'à confirmation que le transfert est complet','Les effacer sur le terrain dès la fin','Les laisser dans l\'appareil'],rep:1},
+    {q:'Après une prestation sous la pluie, quelle est la bonne pratique ?',opts:['Ranger le matériel dans le kit sans attendre','Laisser sécher le matériel avant de le ranger et signaler toute exposition à l\'humidité','Nettoyer les objectifs avec une lingette humide','Mettre les batteries en charge tout de suite'],rep:1},
+  ],
+  'sv-comportement':[
+    {q:'Une famille vous demande une photo de leur enfant juste après le match. Que faites-vous ?',opts:['Vous refusez systématiquement','Vous prenez la photo et l\'envoyez immédiatement','Vous indiquez que les photos seront disponibles via les canaux habituels et restez professionnel','Vous demandez une contrepartie'],rep:2},
+    {q:'Vous vous retrouvez dans une zone interdite signalée par le club. Que faites-vous ?',opts:['Vous continuez rapidement pour terminer le travail','Vous sortez immédiatement de la zone','Vous attendez la fin de la séquence','Vous appelez l\'administrateur'],rep:1},
+    {q:'Comment clôturer une prestation correctement ?',opts:['Partir dès que les dernières photos sont prises','Remercier le contact du club, ranger le matériel et confirmer les délais de livraison','Uploader les médias immédiatement sur le terrain','Envoyer la facture directement au club'],rep:1},
+  ],
+  'photo-bases':[
+    {q:'Quelle vitesse d\'obturation minimum pour figer une action rapide au football ?',opts:['1/60e','1/250e','1/500e ou plus rapide','1/30e'],rep:2},
+    {q:'Qu\'est-ce que le mode rafale (Burst) ?',opts:['Un mode vidéo haute définition','La prise de plusieurs photos en succession rapide en maintenant le déclencheur','Un mode de mise au point automatique','Un filtre de netteté'],rep:1},
+    {q:'La règle des tiers recommande de :',opts:['Placer le sujet toujours au centre','Diviser le cadre en 9 zones et placer les sujets importants aux intersections','Couper l\'image en deux horizontalement','Garder un tiers de ciel dans chaque photo'],rep:1},
+    {q:'Que faire quand l\'autofocus perd le sujet en action ?',opts:['Passer en mise au point manuelle','Réduire la vitesse d\'obturation','Recentrer le cadre sur le sujet et laisser l\'AF se verrouiller','Changer d\'objectif'],rep:2},
+  ],
+  'photo-sony-a7':[
+    {q:'À quoi servent les profils utilisateur sur le Sony A7 IV ?',opts:['Connecter l\'appareil au Wi-Fi','Sauvegarder des réglages complets pour les rappeler rapidement','Filtrer les photos par date','Réinitialiser les paramètres par défaut'],rep:1},
+    {q:'Que signifie IBIS ?',opts:['International Burst Imaging System','In-Body Image Stabilization — stabilisation optique intégrée au boîtier','Intelligent Burst Interval Speed','Aucune de ces réponses'],rep:1},
+    {q:'Quel mode AF utiliser pour suivre un joueur en mouvement ?',opts:['AF à un point fixe','AF Zone','Real-Time Tracking','AF Manuel'],rep:2},
+  ],
+  'photo-football':[
+    {q:'Quel est le meilleur placement pour photographier les phases de jeu ?',opts:['Toujours derrière un but','Au niveau du milieu de terrain, sur la ligne de touche','Dans les tribunes pour une vue d\'ensemble','Derrière le gardien'],rep:1},
+    {q:'Que photographier impérativement à la fin du match ?',opts:['Uniquement les joueurs de l\'équipe gagnante','Les célébrations, accolades, émotions et discours de groupe','Le terrain vide','Les voitures du parking'],rep:1},
+    {q:'Comment couvrir un match de football de manière complète ?',opts:['Rester toujours du même côté','Couvrir l\'échauffement, les deux mi-temps, et l\'après-match','Filmer uniquement les buts','Photographier uniquement en seconde mi-temps'],rep:1},
+  ],
+  'video-bases':[
+    {q:'Quel frame rate recommander pour les ralentis en sport ?',opts:['24fps','30fps','60fps ou 120fps','8fps'],rep:2},
+    {q:'Que préconise la règle du 180° (Shutter Angle) en vidéo ?',opts:['L\'angle d\'inclinaison de la caméra','La vitesse d\'obturation doit être le double du frame rate pour un flou de mouvement naturel','Le champ de vision de l\'objectif','L\'angle de la lumière sur le sujet'],rep:1},
+    {q:'Comment éviter le bruit de vent sur un micro en extérieur ?',opts:['Augmenter les aigus dans les réglages audio','Utiliser une bonnette (deadcat/windshield) sur le microphone','Enregistrer uniquement en intérieur','Monter le gain au maximum'],rep:1},
+  ],
+  'cert-drone':[
+    {q:'Pour voler en catégorie A1/A3, que faut-il obligatoirement ?',opts:['Un brevet de pilote d\'avion','Enregistrer l\'appareil sur Alphatango et réussir l\'attestation de formation en ligne','Une autorisation préfectorale systématique','Un équipement de couleur orange réglementaire'],rep:1},
+    {q:'Distance minimum des personnes non impliquées en catégorie A3 ?',opts:['30 mètres','100 mètres','150 mètres','50 mètres'],rep:1},
+    {q:'Que faire si la batterie descend en dessous de 20% en vol ?',opts:['Continuer jusqu\'à 10% minimum','Rentrer immédiatement ou activer le retour automatique','Augmenter la vitesse pour finir plus vite','Faire atterrir d\'urgence sur place'],rep:1},
+    {q:'Qu\'est-ce qu\'un POI (Point d\'intérêt) sur DJI Fly ?',opts:['Une zone interdite de vol','Une fonction qui fait orbiter la caméra autour d\'un objet ou lieu','Le point de décollage enregistré','Un waypoint de navigation'],rep:1},
+  ],
+  'cert-veo':[
+    {q:'Où positionner idéalement la caméra Veo pour un match de football ?',opts:['Au niveau du but','En hauteur dans les tribunes, centré sur la ligne médiane','Derrière les buts, au ras du sol','À 10m du terrain, à hauteur d\'homme'],rep:1},
+    {q:'Que vérifier après l\'upload des données Veo ?',opts:['Que le son est correctement capturé','Que la vidéo est accessible et partageable sur la plateforme Veo avant de partir','Que la batterie est rechargée','Que le fichier pèse moins de 1 Go'],rep:1},
+    {q:'Que faire si la connexion de la caméra Veo est instable ?',opts:['Éteindre et rallumer, vérifier l\'application, renouveler la connexion','Appeler le service client immédiatement','Continuer l\'enregistrement malgré l\'alerte','Remplacer la caméra'],rep:0},
+  ],
+  'montage-base':[
+    {q:'Quel logiciel de montage est recommandé chez SportVision ?',opts:['Adobe Premiere Pro','Final Cut Pro','DaVinci Resolve','iMovie'],rep:2},
+    {q:'Qu\'est-ce qu\'une LUT ?',opts:['Un format d\'export vidéo','Un tableau de correspondance colorimétrique pour l\'étalonnage','Un type de coupe au montage','Un plugin audio'],rep:1},
+    {q:'Quel format d\'export pour Instagram et TikTok ?',opts:['MOV 4K sans compression','MP4 H.264/H.265 adapté au format de la plateforme','AVI non compressé','MXF professionnel'],rep:1},
+  ],
+  'interview-sport':[
+    {q:'Comment placer idéalement le sujet pour une interview ?',opts:['Toujours en plein soleil pour la clarté','Dans un endroit calme avec fond propre, lumière maîtrisée et micro à 20-30cm de la bouche','En contre-jour pour un effet dramatique','Face caméra avec le stade entier en arrière-plan'],rep:1},
+    {q:'Comment mettre en confiance le sujet avant l\'interview ?',opts:['Plonger directement dans les questions difficiles','Expliquer le déroulement, commencer par des questions simples et maintenir un contact visuel chaleureux','Ne rien dire pour ne pas influencer les réponses','Filmer discrètement sans prévenir'],rep:1},
+    {q:'Que vérifier impérativement avant de lancer l\'enregistrement ?',opts:['Que le sujet est en tenue sportive','Le niveau audio, la mise au point et le cadrage','Que le sujet a signé un contrat','Que tous les membres de l\'équipe sont prêts'],rep:1},
+  ],
+  'cert-responsable':[
+    {q:'Qu\'est-ce qu\'un briefing de prestation ?',opts:['Un résumé des photos prises lors de la mission','Un partage structuré sur les objectifs, planning, rôles et consignes de la prestation','Le rapport envoyé au client après la prestation','La confirmation de présence de l\'équipe'],rep:1},
+    {q:'Un collaborateur est en retard le jour J. Que faites-vous ?',opts:['Annuler sa participation sans le prévenir','Tenter de le joindre, réorganiser les rôles si nécessaire et informer l\'admin','Attendre qu\'il arrive sans prévenir le client','Lui retirer son accès à l\'OS'],rep:1},
+    {q:'Comment clôturer une prestation en tant que responsable ?',opts:['Partir dès que les dernières photos sont prises','Remercier le client, confirmer les délais de livraison, vérifier le matériel et rédiger un rapport si incident','Uploader les médias immédiatement sur place','Envoyer la facture directement au club'],rep:1},
+    {q:'Qu\'est-ce qu\'un incident de prestation devant être déclaré ?',opts:['Un retard de moins de 5 minutes','Toute anomalie matérielle, comportement problématique, conflit, blessure ou situation non conforme au briefing','Un problème de réseau lors du transfert des données','Un changement de planning de dernière minute'],rep:1},
+  ],
+};
+
+const FORMATION_ROLE_MAP={
+  photo:['photo-bases','photo-sony-a7','photo-football','cert-drone','cert-veo','video-bases','montage-base'],
+  prod:['cert-responsable','video-bases','interview-sport','photo-football','montage-base'],
+  sec:['sv-comportement','cert-veo','montage-base'],
+  compta:[],
+  cm:['montage-base','interview-sport','video-bases'],
+  com:['montage-base','interview-sport'],
+  admin:['cert-responsable','photo-bases','video-bases'],
+};
+
 let _formTab='dashboard';
 let _formProgCache={};   // keyed by formation_id → {statut, lessons:{key:true}, xp_gagnes, enrolled_at, completed_at, _insId}
 let _formInscIds={};     // formation_id → inscription uuid
+let _certifCache=[];     // collaborateur_certifications depuis Supabase
+let _quizState=null;     // quiz en cours {id, qs, answers}
 
 function getFormProg(uid){return _formProgCache;}
 function saveFormProg(uid,data){_formProgCache=data;}
@@ -7997,7 +8082,7 @@ function saveFormProg(uid,data){_formProgCache=data;}
 async function loadFormProgFromDB(uid){
   try{
     const ins=await sbFetch(
-      'formation_inscriptions?select=id,formation_id,statut,xp_gagnes,enrolled_at,completed_at,progression_pct,formation_progression(lecon_key)&collaborateur_id=eq.'+uid
+      'formation_inscriptions?select=id,formation_id,statut,xp_gagnes,enrolled_at,completed_at,progression_pct,score_quiz,quiz_passe,formation_progression(lecon_key)&collaborateur_id=eq.'+uid
     ).catch(()=>[]);
     const prog={};
     (ins||[]).forEach(i=>{
@@ -8007,6 +8092,7 @@ async function loadFormProgFromDB(uid){
         statut:i.statut==='terminee'?'terminée':i.statut||'en_cours',
         lessons,xp_gagnes:i.xp_gagnes||0,
         enrolled_at:i.enrolled_at,completed_at:i.completed_at,_insId:i.id,
+        score_quiz:i.score_quiz,quiz_passe:i.quiz_passe,
       };
       _formInscIds[i.formation_id]=i.id;
     });
@@ -8016,6 +8102,20 @@ async function loadFormProgFromDB(uid){
     // fallback localStorage
     try{return JSON.parse(localStorage.getItem('sv_fp_'+uid)||'{}')}catch(e2){return{};}
   }
+}
+
+async function loadCertifFromDB(uid){
+  try{
+    const certs=await sbFetch('collaborateur_certifications?collaborateur_id=eq.'+uid+'&order=date_obtention.desc').catch(()=>[]);
+    const now=new Date();
+    _certifCache=(certs||[]).map(c=>{
+      const exp=c.date_expiration?new Date(c.date_expiration):null;
+      const statut=(c.statut==='active'&&exp&&exp<now)?'expiree':c.statut;
+      const daysLeft=exp?Math.ceil((exp-now)/86400000):null;
+      return{...c,statut,_daysLeft:daysLeft};
+    });
+    return _certifCache;
+  }catch(e){_certifCache=[];return[];}
 }
 
 function setFormTab(tab){
@@ -8047,8 +8147,9 @@ async function loadForm(){
     const missions=await sbFetch('prestations_equipe?select=est_responsable&collaborateur_id=eq.'+uid);
     if(Array.isArray(missions)){nbMissions=missions.length;missionXp=missions.reduce((s,m)=>s+100+(m.est_responsable?50:0),0);}
   }catch(e){}
-  // Charger la progression depuis Supabase (avec fallback localStorage)
+  // Charger la progression et les certifications depuis Supabase
   await loadFormProgFromDB(uid);
+  await loadCertifFromDB(uid);
   const prog=getFormProg(uid);
   const formXp=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée').reduce((s,f)=>s+f.xp,0);
   const totalXp=missionXp+formXp;
@@ -8088,7 +8189,10 @@ async function loadForm(){
 function renderFormDashboard(el,prog){
   const oblig=FORMATIONS_CATALOG.filter(f=>f.obligatoire&&prog[f.id]?.statut!=='terminée');
   const enCours=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='en_cours');
-  const reco=FORMATIONS_CATALOG.filter(f=>!prog[f.id]&&!f.obligatoire).slice(0,3);
+  const _role=localStorage.getItem('sv_role')||'';
+  const _roleIds=FORMATION_ROLE_MAP[_role]||[];
+  const reco=_roleIds.length?_roleIds.map(rid=>FORMATIONS_CATALOG.find(f=>f.id===rid)).filter(f=>f&&!prog[f.id]&&!f.obligatoire).slice(0,3):FORMATIONS_CATALOG.filter(f=>!prog[f.id]&&!f.obligatoire).slice(0,3);
+  const recoLbl=_role&&_roleIds.length?'Recommandées pour votre rôle':'Recommandées';
   let html='';
   if(oblig.length){
     html+=`<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--er);margin-bottom:10px">Formations obligatoires</div>
@@ -8113,7 +8217,7 @@ function renderFormDashboard(el,prog){
     }).join('')}</div>`;
   }
   if(reco.length){
-    html+=`<div><div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:10px">Recommandées</div>
+    html+=`<div><div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:10px">${recoLbl}</div>
     ${reco.map(f=>`<div onclick="modalFormDetail('${f.id}')" style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px">
       <div style="font-size:24px">${f.icone}</div>
       <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.titre}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${f.duree} · +${f.xp} XP · ${f.niveau}</div></div>
@@ -8196,18 +8300,34 @@ function renderFormMes(el,prog){
 
 function renderFormCerts(el,prog){
   const certForms=FORMATIONS_CATALOG.filter(f=>f.certification);
-  const earned=certForms.filter(f=>prog[f.id]?.statut==='terminée');
-  const upcoming=certForms.filter(f=>prog[f.id]?.statut!=='terminée');
+  const dbMap={};
+  _certifCache.forEach(c=>{dbMap[c.code_certification]=c;});
+  const now=new Date();
+  const earned=certForms.filter(f=>dbMap[f.certification?.id]||prog[f.id]?.statut==='terminée');
+  const upcoming=certForms.filter(f=>!dbMap[f.certification?.id]&&prog[f.id]?.statut!=='terminée');
   let html='';
   if(earned.length){
     html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ok);margin-bottom:12px">Certifications obtenues</div>`;
     earned.forEach(f=>{
-      const fp=prog[f.id];const cert=f.certification;const dt=fp.completed_at?new Date(fp.completed_at):null;
-      html+=`<div style="background:linear-gradient(135deg,rgba(124,77,255,.12),rgba(54,107,255,.08));border:1px solid rgba(124,77,255,.3);border-radius:14px;padding:18px;margin-bottom:10px">
+      const cert=f.certification;const fp=prog[f.id]||{};
+      const dbCert=dbMap[cert.id];
+      const dt=dbCert?.date_obtention?new Date(dbCert.date_obtention):fp.completed_at?new Date(fp.completed_at):null;
+      const expDate=dbCert?.date_expiration?new Date(dbCert.date_expiration):null;
+      const daysLeft=dbCert?._daysLeft??null;
+      const statut=dbCert?.statut||'active';
+      const isExp=statut==='expiree';
+      const isSoon=!isExp&&daysLeft!==null&&daysLeft<=60;
+      html+=`<div style="background:${isExp?'rgba(240,68,94,.08)':isSoon?'rgba(245,165,36,.08)':'linear-gradient(135deg,rgba(124,77,255,.12),rgba(54,107,255,.08))'};border:1px solid ${isExp?'rgba(240,68,94,.25)':isSoon?'rgba(245,165,36,.25)':'rgba(124,77,255,.3)'};border-radius:14px;padding:18px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:14px">
-          <div style="font-size:40px;filter:drop-shadow(0 0 8px rgba(124,77,255,.4))">${cert.badge}</div>
-          <div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--t1)">${cert.nom}</div><div style="font-size:11px;color:var(--t3);margin-top:3px">via ${f.titre}</div>${dt?`<div style="font-size:11px;color:var(--ok);margin-top:2px;font-weight:500">Obtenue le ${dt.toLocaleDateString('fr-FR')}</div>`:''}<div style="font-size:11px;color:var(--t3);margin-top:2px">Valide ${cert.validite_mois} mois</div></div>
-          <span style="padding:5px 12px;background:rgba(46,204,138,.15);border:1px solid rgba(46,204,138,.3);border-radius:20px;font-size:10px;font-weight:700;color:var(--ok)">Active</span>
+          <div style="font-size:40px;${isExp?'filter:grayscale(1)':'filter:drop-shadow(0 0 8px rgba(124,77,255,.4))'}">${cert.badge}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:15px;font-weight:700;color:var(--t1)">${cert.nom}</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:3px">via ${f.titre}</div>
+            ${dt?`<div style="font-size:11px;color:var(--ok);margin-top:2px;font-weight:500">Obtenue le ${dt.toLocaleDateString('fr-FR')}</div>`:''}
+            ${dbCert?.numero_certificat?`<div style="font-size:10px;color:var(--t3);margin-top:2px;font-family:monospace">${dbCert.numero_certificat}</div>`:''}
+            ${expDate?`<div style="font-size:11px;color:${isExp?'var(--er)':isSoon?'var(--wa)':'var(--t3)'};margin-top:2px">${isExp?'Expirée le':'Expire le'} ${expDate.toLocaleDateString('fr-FR')}${isSoon&&!isExp?' ('+daysLeft+' j)':''}</div>`:`<div style="font-size:11px;color:var(--t3);margin-top:2px">Valide ${cert.validite_mois} mois</div>`}
+          </div>
+          <span style="padding:5px 12px;background:${isExp?'rgba(240,68,94,.15)':isSoon?'rgba(245,165,36,.15)':'rgba(46,204,138,.15)'};border:1px solid ${isExp?'rgba(240,68,94,.3)':isSoon?'rgba(245,165,36,.3)':'rgba(46,204,138,.3)'};border-radius:20px;font-size:10px;font-weight:700;color:${isExp?'var(--er)':isSoon?'var(--wa)':'var(--ok)'}">${isExp?'Expirée':isSoon?'⚠ Bientôt':'Active'}</span>
         </div>
       </div>`;
     });
@@ -8283,6 +8403,16 @@ function modalFormDetail(id){
       }).join('')}
     </div>
     ${!fp.statut?`<button onclick="enrollForm('${id}')" style="width:100%;padding:14px;background:var(--acc);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Commencer cette formation</button>`:isTerminée?`<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:12px"><span style="font-size:18px">🎉</span><span style="font-size:14px;font-weight:700;color:var(--ok)">Formation terminée · +${f.xp} XP gagnés</span></div>`:`<button onclick="closeModal();setFormTab('mes-formations')" style="width:100%;padding:14px;background:var(--s2);border:1px solid var(--b1);border-radius:12px;color:var(--t1);font-size:14px;font-weight:600;cursor:pointer">Continuer (${pct}%)</button>`}
+    ${fp.statut&&FORMATION_QUIZ_CATALOG[id]?`<div style="margin-top:12px;padding:14px;background:var(--s1);border:1px solid var(--b1);border-radius:12px">
+      <div style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--t1)">Quiz de validation</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${FORMATION_QUIZ_CATALOG[id].length} questions · Score minimum 70%</div>
+          ${fp.score_quiz!=null?`<div style="font-size:11px;color:${fp.quiz_passe?'var(--ok)':'var(--wa)'};margin-top:2px;font-weight:600">${fp.quiz_passe?'✓ Réussi ('+fp.score_quiz+'%)':'Dernier score : '+fp.score_quiz+'%'}</div>`:`<div style="font-size:11px;color:var(--acc);margin-top:2px">+${Math.round(f.xp*0.3)} XP bonus</div>`}
+        </div>
+        <button onclick="lancerQuiz('${id}')" style="padding:8px 14px;background:${fp.quiz_passe?'rgba(46,204,138,.15)':'var(--acc)'};border:${fp.quiz_passe?'1px solid rgba(46,204,138,.3)':'none'};border-radius:8px;color:${fp.quiz_passe?'var(--ok)':'#fff'};font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">${fp.quiz_passe?'Repasser':'Passer le quiz'}</button>
+      </div>
+    </div>`:''}
   </div>`;
 }
 
@@ -8309,6 +8439,76 @@ async function enrollForm(id){
     }
     modalFormDetail(id);
   }catch(e){toast('Erreur lors de l\'inscription.','er');}
+}
+
+function lancerQuiz(id){
+  const qs=FORMATION_QUIZ_CATALOG[id];
+  if(!qs||!qs.length){toast('Aucune question disponible pour cette formation.','wa');return;}
+  const f=FORMATIONS_CATALOG.find(x=>x.id===id);
+  _quizState={id,qs,answers:{}};
+  const body=document.getElementById('modal-body');
+  if(!body)return;
+  body.innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button onclick="modalFormDetail('${id}')" style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:7px 12px;color:var(--t2);font-size:12px;cursor:pointer;flex-shrink:0">← Retour</button>
+      <div><div style="font-size:15px;font-weight:700;color:var(--t1)">Quiz de validation</div><div style="font-size:11px;color:var(--t3)">${f?.titre||id} · ${qs.length} question${qs.length>1?'s':''}</div></div>
+    </div>
+    ${qs.map((q,qi)=>`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:16px;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:12px"><span style="color:var(--acc)">${qi+1}. </span>${q.q}</div>
+      ${q.opts.map((opt,oi)=>`<label id="qol-${qi}-${oi}" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;margin-bottom:6px;border:1px solid var(--b1);background:var(--bg);transition:border-color .15s,background .15s">
+        <input type="radio" name="q${qi}" value="${oi}" onchange="_quizState.answers[${qi}]=${oi};[...document.querySelectorAll('[id^=\\'qol-${qi}-\\']')].forEach(l=>{l.style.borderColor='var(--b1)';l.style.background='var(--bg)'});this.closest('label').style.borderColor='var(--acc)';this.closest('label').style.background='rgba(14,165,255,.08)'" style="accent-color:var(--acc);flex-shrink:0">
+        <span style="font-size:12px;color:var(--t1)">${opt}</span>
+      </label>`).join('')}
+    </div>`).join('')}
+    <button onclick="soumettreQuiz('${id}')" style="width:100%;padding:14px;background:var(--acc);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px">Valider mes réponses →</button>
+  </div>`;
+}
+
+async function soumettreQuiz(id){
+  if(!_quizState||_quizState.id!==id)return;
+  const{qs,answers}=_quizState;
+  const tot=qs.length;
+  if(Object.keys(answers).length<tot){toast('Répondez à toutes les questions avant de valider.','wa');return;}
+  let correct=0;
+  qs.forEach((q,qi)=>{if(answers[qi]===q.rep)correct++;});
+  const score=Math.round(correct/tot*100);
+  const pass=score>=70;
+  const f=FORMATIONS_CATALOG.find(x=>x.id===id);
+  const uid=localStorage.getItem('sv_uid')||'x';
+  const insId=_formInscIds[id];
+  const bonusXp=pass?Math.round((f?.xp||0)*0.3):0;
+  const alreadyPassed=_formProgCache[id]?.quiz_passe;
+  if(insId){
+    await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{score_quiz:score,quiz_passe:pass}}).catch(()=>{});
+    if(pass&&bonusXp>0&&!alreadyPassed){
+      await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:uid,montant:bonusXp,type:'quiz',source_id:insId,source_type:'formation_inscriptions',description:'Quiz réussi : '+(f?.titre||id),attribue_par:uid}}).catch(()=>{});
+      try{const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');const cur=pr?.[0]?.xp||0;await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+bonusXp}});}catch(e){}
+    }
+  }
+  if(_formProgCache[id]){_formProgCache[id].score_quiz=score;_formProgCache[id].quiz_passe=pass;}
+  const body=document.getElementById('modal-body');
+  if(!body)return;
+  body.innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
+    <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid var(--b1);margin-bottom:20px">
+      <div style="font-size:52px;margin-bottom:10px">${pass?'🎉':'📖'}</div>
+      <div style="font-size:24px;font-weight:800;color:${pass?'var(--ok)':'var(--wa)'}">${score}%</div>
+      <div style="font-size:15px;font-weight:700;color:var(--t1);margin-top:4px">${pass?'Quiz réussi !':'Pas encore…'}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:4px">${correct}/${tot} bonne${correct>1?'s':''} réponse${correct>1?'s':''}</div>
+      ${pass&&bonusXp>0&&!alreadyPassed?`<div style="font-size:12px;color:var(--ok);font-weight:600;margin-top:6px">+${bonusXp} XP bonus débloqués</div>`:''}
+      ${!pass?`<div style="font-size:12px;color:var(--wa);margin-top:6px">Score minimum requis : 70% — Révisez et réessayez.</div>`:''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+      ${qs.map((q,qi)=>{const ok=answers[qi]===q.rep;return`<div style="padding:12px 14px;border-radius:10px;border:1px solid ${ok?'rgba(46,204,138,.3)':'rgba(240,68,94,.3)'};background:${ok?'rgba(46,204,138,.05)':'rgba(240,68,94,.05)'}">
+        <div style="font-size:10.5px;font-weight:700;color:${ok?'var(--ok)':'var(--er)'};margin-bottom:4px">${ok?'✓ Correct':'✗ Incorrect'}</div>
+        <div style="font-size:12px;color:var(--t2)${!ok?';margin-bottom:6px':''}">${q.q}</div>
+        ${!ok?`<div style="font-size:11px;color:var(--ok)">Bonne réponse : ${q.opts[q.rep]}</div>`:''}
+      </div>`;}).join('')}
+    </div>
+    <div style="display:flex;gap:8px">
+      ${!pass?`<button onclick="lancerQuiz('${id}')" style="flex:1;padding:12px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:13px;font-weight:600;cursor:pointer">Réessayer</button>`:''}
+      <button onclick="modalFormDetail('${id}')" style="flex:1;padding:12px;background:${pass?'var(--acc)':'var(--s2)'};border:${pass?'none':'1px solid var(--b1)'};border-radius:10px;color:${pass?'#fff':'var(--t1)'};font-size:13px;font-weight:700;cursor:pointer">Retour à la formation</button>
+    </div>
+  </div>`;
 }
 
 async function toggleFormLesson(id,mi,li){
@@ -8353,6 +8553,19 @@ async function toggleFormLesson(id,mi,li){
         const cur=pr?.[0]?.xp||0;
         await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+f.xp}});
       }catch(e){}
+      // Créer la certification en DB si la formation est certifiante
+      if(f.certification){
+        const expDate=new Date();
+        expDate.setMonth(expDate.getMonth()+f.certification.validite_mois);
+        const numCert='CERT-'+new Date().getFullYear()+'-'+Math.random().toString(36).substring(2,8).toUpperCase();
+        await sbFetch('collaborateur_certifications',{method:'POST',body:{
+          collaborateur_id:uid,code_certification:f.certification.id,nom:f.certification.nom,
+          badge:f.certification.badge,formation_id:id,inscription_id:insId,
+          date_obtention:new Date().toISOString(),date_expiration:expDate.toISOString(),
+          statut:'active',numero_certificat:numCert,
+        }}).catch(()=>{}); // unique constraint gère les doublons silencieusement
+        loadCertifFromDB(uid).catch(()=>{});
+      }
     }else{
       await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{statut:'en_cours',progression_pct:pct}}).catch(()=>{});
     }
@@ -8364,6 +8577,20 @@ async function toggleFormLesson(id,mi,li){
 }
 
 // ── Admin : Centre de formation ──────────────────────────────────────────────
+let _afTab='stats';
+function afTab(tab){
+  _afTab=tab;
+  ['stats','sessions','certifs'].forEach(t=>{
+    const b=document.getElementById('af-tab-'+t);
+    if(!b)return;
+    const on=t===tab;
+    b.style.background=on?'var(--acc)':'var(--s2)';b.style.color=on?'#fff':'var(--t2)';b.style.border='1px solid '+(on?'var(--acc)':'var(--b1)');
+  });
+  if(tab==='stats')loadAdminFormStats();
+  else if(tab==='sessions')loadAdminFormSessions();
+  else if(tab==='certifs')loadAdminFormCertifs();
+}
+
 async function loadAdminForm(){
   const el=document.getElementById('admin-form-real');
   if(!el)return;
@@ -8373,7 +8600,6 @@ async function loadAdminForm(){
       sbFetch('profiles?select=id,prenom,nom,role&order=nom.asc&limit=100').catch(()=>[]),
     ]);
     const insList=ins||[];const profList=profiles||[];
-    // KPIs
     const done=insList.filter(i=>i.statut==='terminee').length;
     const enc=insList.filter(i=>i.statut==='en_cours').length;
     const totalXp=insList.reduce((s,i)=>s+(i.xp_gagnes||0),0);
@@ -8382,81 +8608,272 @@ async function loadAdminForm(){
     if(g('af-kpi-done'))g('af-kpi-done').textContent=done;
     if(g('af-kpi-enc'))g('af-kpi-enc').textContent=enc;
     if(g('af-kpi-xp'))g('af-kpi-xp').textContent=totalXp.toLocaleString('fr-FR')+' XP';
-    // Stats par formation
-    const fStats={};
-    FORMATIONS_CATALOG.forEach(f=>{
-      const fi=insList.filter(i=>i.formation_id===f.id);
-      fStats[f.id]={inscrits:fi.length,terminees:fi.filter(i=>i.statut==='terminee').length,enc:fi.filter(i=>i.statut==='en_cours').length};
-    });
-    // Stats par collab
-    const cStats={};
-    profList.forEach(p=>{
-      const pi=insList.filter(i=>i.collaborateur_id===p.id);
-      cStats[p.id]={...p,
-        terminees:pi.filter(i=>i.statut==='terminee').length,
-        enc:pi.filter(i=>i.statut==='en_cours').length,
-        xp:pi.reduce((s,i)=>s+(i.xp_gagnes||0),0),
-        oblManq:FORMATIONS_CATALOG.filter(f=>f.obligatoire&&!pi.find(i=>i.formation_id===f.id&&i.statut==='terminee')).length,
-      };
-    });
-    const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+    window._afInsCache=insList;window._afProfCache=profList;
+    _afTab='stats';
+    afTab('stats');
+  }catch(e){
+    const el2=document.getElementById('admin-form-real');
+    if(el2)el2.innerHTML='<div class="cd"><div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div></div>';
+  }
+}
+
+function loadAdminFormStats(){
+  const el=document.getElementById('admin-form-real');
+  if(!el)return;
+  const insList=window._afInsCache||[];const profList=window._afProfCache||[];
+  const fStats={};
+  FORMATIONS_CATALOG.forEach(f=>{
+    const fi=insList.filter(i=>i.formation_id===f.id);
+    fStats[f.id]={inscrits:fi.length,terminees:fi.filter(i=>i.statut==='terminee').length};
+  });
+  const cStats={};
+  profList.forEach(p=>{
+    const pi=insList.filter(i=>i.collaborateur_id===p.id);
+    cStats[p.id]={...p,terminees:pi.filter(i=>i.statut==='terminee').length,enc:pi.filter(i=>i.statut==='en_cours').length,xp:pi.reduce((s,i)=>s+(i.xp_gagnes||0),0),oblManq:FORMATIONS_CATALOG.filter(f=>f.obligatoire&&!pi.find(i=>i.formation_id===f.id&&i.statut==='terminee')).length};
+  });
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+  el.innerHTML=`
+    <div class="cd" style="margin-bottom:12px">
+      <div class="cd-h"><div class="cd-t">Formations — Vue d'ensemble</div></div>
+      <div class="tw"><table><thead><tr><th>Formation</th><th>Catégorie</th><th>XP</th><th>Inscrits</th><th>Terminées</th><th>Taux</th><th>Obligatoire</th></tr></thead><tbody>
+        ${FORMATIONS_CATALOG.map(f=>{const st=fStats[f.id]||{inscrits:0,terminees:0};const taux=st.inscrits?Math.round(st.terminees/st.inscrits*100):0;return`<tr>
+          <td class="tm"><span style="margin-right:6px">${f.icone}</span>${f.titre}</td>
+          <td style="font-size:11.5px;color:var(--t3)">${f.categorie}</td>
+          <td style="color:var(--wa);font-weight:700">+${f.xp}</td>
+          <td class="tm">${st.inscrits}</td>
+          <td class="tm" style="color:var(--ok);font-weight:700">${st.terminees}</td>
+          <td><div style="display:flex;align-items:center;gap:8px"><div class="pg" style="width:50px;display:inline-flex"><div class="pg-f" style="width:${taux}%;background:${taux===100?'var(--ok)':taux>50?'var(--acc)':'var(--wa)'}"></div></div><span style="font-size:11.5px">${taux}%</span></div></td>
+          <td>${f.obligatoire?`<span style="font-size:10px;color:var(--er);font-weight:700;background:rgba(240,68,94,.1);padding:2px 8px;border-radius:20px">Oui</span>`:'—'}</td>
+        </tr>`;}).join('')}
+      </tbody></table></div>
+    </div>
+    <div class="cd" style="margin-bottom:12px">
+      <div class="cd-h"><div class="cd-t">Collaborateurs — Progression formations</div></div>
+      <div class="tw"><table><thead><tr><th>Collaborateur</th><th>Rôle</th><th>Terminées</th><th>En cours</th><th>XP formations</th><th>Oblig. manquantes</th></tr></thead><tbody>
+        ${profList.map(p=>{const cs=cStats[p.id]||{};return`<tr>
+          <td class="tm">${p.prenom||''} ${p.nom||''}</td>
+          <td style="font-size:11px;color:var(--t3)">${ROLE_LABELS[p.role]||p.role||'—'}</td>
+          <td class="tm" style="color:var(--ok);font-weight:${cs.terminees?'700':'400'}">${cs.terminees||0}</td>
+          <td class="tm">${cs.enc||0}</td>
+          <td class="tm" style="color:#9C6FFF">${(cs.xp||0).toLocaleString('fr-FR')} XP</td>
+          <td class="tm">${(cs.oblManq||0)>0?`<span style="color:var(--er);font-weight:700">${cs.oblManq}</span>`:'<span style="color:var(--ok)">✓</span>'}</td>
+        </tr>`;}).join('')}
+      </tbody></table></div>
+    </div>
+    <div class="cd">
+      <div class="cd-h"><div class="cd-t">Activité récente</div></div>
+      <div>
+        ${insList.slice(0,25).map(i=>{const f=FORMATIONS_CATALOG.find(x=>x.id===i.formation_id);return`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+          <div style="font-size:20px;flex-shrink:0">${f?.icone||'📚'}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${i.profiles?.prenom||''} ${i.profiles?.nom||''}</div>
+            <div style="font-size:11.5px;color:var(--t3)">${f?.titre||i.formation_id}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            ${i.statut==='terminee'?`<span style="font-size:10.5px;color:var(--ok);font-weight:700;background:rgba(46,204,138,.1);padding:2px 8px;border-radius:20px">✓ Terminée +${i.xp_gagnes||f?.xp||0} XP</span>`:i.statut==='en_cours'?`<span style="font-size:10.5px;color:var(--acc);font-weight:700;background:rgba(14,165,255,.1);padding:2px 8px;border-radius:20px">En cours</span>`:''}
+            <div style="font-size:10.5px;color:var(--t3);margin-top:2px">${fd(i.completed_at||i.enrolled_at)}</div>
+          </div>
+        </div>`;}).join('')}
+        ${!insList.length?`<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune inscription enregistrée.</div>`:''}
+      </div>
+    </div>`;
+}
+
+async function loadAdminFormSessions(){
+  const el=document.getElementById('admin-form-real');
+  if(!el)return;
+  el.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--t3)">Chargement des sessions…</div>`;
+  try{
+    const sessions=await sbFetch('formation_sessions?select=id,formation_id,titre,date_session,duree_minutes,lieu,lien_visio,capacite,statut,formateur_id,formateur_ext,profiles(prenom,nom)&order=date_session.desc&limit=100').catch(()=>[]);
+    const now=new Date();
+    const all=sessions||[];
+    const upcoming=all.filter(s=>new Date(s.date_session)>=now&&s.statut!=='annulee'&&s.statut!=='terminee');
+    const past=all.filter(s=>new Date(s.date_session)<now||s.statut==='terminee'||s.statut==='annulee');
+    const STLBL={planifiee:'Planifiée',confirmee:'Confirmée',en_cours:'En cours',terminee:'Terminée',annulee:'Annulée'};
+    const STCLR={planifiee:'var(--t3)',confirmee:'var(--acc)',en_cours:'var(--wa)',terminee:'var(--ok)',annulee:'var(--er)'};
     el.innerHTML=`
       <div class="cd" style="margin-bottom:12px">
-        <div class="cd-h"><div class="cd-t">Formations — Vue d'ensemble</div></div>
-        <div class="tw"><table><thead><tr><th>Formation</th><th>Catégorie</th><th>XP</th><th>Inscrits</th><th>Terminées</th><th>Taux</th><th>Obligatoire</th></tr></thead><tbody>
-          ${FORMATIONS_CATALOG.map(f=>{
-            const st=fStats[f.id]||{inscrits:0,terminees:0};
-            const taux=st.inscrits?Math.round(st.terminees/st.inscrits*100):0;
-            return`<tr>
-              <td class="tm"><span style="margin-right:6px">${f.icone}</span>${f.titre}</td>
-              <td style="font-size:11.5px;color:var(--t3)">${f.categorie}</td>
-              <td style="color:var(--wa);font-weight:700">+${f.xp}</td>
-              <td class="tm">${st.inscrits}</td>
-              <td class="tm" style="color:var(--ok);font-weight:700">${st.terminees}</td>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="pg" style="width:50px;display:inline-flex"><div class="pg-f" style="width:${taux}%;background:${taux===100?'var(--ok)':taux>50?'var(--acc)':'var(--wa)'}"></div></div><span style="font-size:11.5px">${taux}%</span></div></td>
-              <td>${f.obligatoire?`<span style="font-size:10px;color:var(--er);font-weight:700;background:rgba(240,68,94,.1);padding:2px 8px;border-radius:20px">Oui</span>`:'—'}</td>
-            </tr>`;
-          }).join('')}
-        </tbody></table></div>
-      </div>
-      <div class="cd" style="margin-bottom:12px">
-        <div class="cd-h"><div class="cd-t">Collaborateurs — Progression formations</div></div>
-        <div class="tw"><table><thead><tr><th>Collaborateur</th><th>Rôle</th><th>Terminées</th><th>En cours</th><th>XP formations</th><th>Oblig. manquantes</th></tr></thead><tbody>
-          ${profList.map(p=>{
-            const cs=cStats[p.id]||{};
-            return`<tr>
-              <td class="tm">${p.prenom||''} ${p.nom||''}</td>
-              <td style="font-size:11px;color:var(--t3)">${ROLE_LABELS[p.role]||p.role||'—'}</td>
-              <td class="tm" style="color:var(--ok);font-weight:${cs.terminees?'700':'400'}">${cs.terminees||0}</td>
-              <td class="tm">${cs.enc||0}</td>
-              <td class="tm" style="color:#9C6FFF">${(cs.xp||0).toLocaleString('fr-FR')} XP</td>
-              <td class="tm">${(cs.oblManq||0)>0?`<span style="color:var(--er);font-weight:700">${cs.oblManq}</span>`:'<span style="color:var(--ok)">✓</span>'}</td>
-            </tr>`;
-          }).join('')}
-        </tbody></table></div>
-      </div>
-      <div class="cd">
-        <div class="cd-h"><div class="cd-t">Activité récente</div></div>
-        <div>
-          ${insList.slice(0,25).map(i=>{
-            const f=FORMATIONS_CATALOG.find(x=>x.id===i.formation_id);
-            return`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-              <div style="font-size:20px;flex-shrink:0">${f?.icone||'📚'}</div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${i.profiles?.prenom||''} ${i.profiles?.nom||''}</div>
-                <div style="font-size:11.5px;color:var(--t3)">${f?.titre||i.formation_id}</div>
-              </div>
-              <div style="text-align:right;flex-shrink:0">
-                ${i.statut==='terminee'?`<span style="font-size:10.5px;color:var(--ok);font-weight:700;background:rgba(46,204,138,.1);padding:2px 8px;border-radius:20px">✓ Terminée +${i.xp_gagnes||f?.xp||0} XP</span>`:i.statut==='en_cours'?`<span style="font-size:10.5px;color:var(--acc);font-weight:700;background:rgba(14,165,255,.1);padding:2px 8px;border-radius:20px">En cours</span>`:''}
-                <div style="font-size:10.5px;color:var(--t3);margin-top:2px">${fd(i.completed_at||i.enrolled_at)}</div>
-              </div>
-            </div>`;
-          }).join('')}
-          ${!insList.length?`<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune inscription enregistrée.<div style="font-size:11px;margin-top:4px;opacity:.6">Les formations commenceront à apparaître dès que les collaborateurs s'inscriront.</div></div>`:''}
+        <div class="cd-h">
+          <div class="cd-t">Sessions à venir (${upcoming.length})</div>
+          <button onclick="modalCreerSession()" style="padding:7px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">+ Nouvelle session</button>
         </div>
+        ${upcoming.length?`<div class="tw"><table><thead><tr><th>Date</th><th>Formation</th><th>Lieu</th><th>Formateur</th><th>Capacité</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
+          ${upcoming.map(s=>{
+            const f=FORMATIONS_CATALOG.find(x=>x.id===s.formation_id);
+            const dt=new Date(s.date_session);
+            return`<tr>
+              <td class="tm"><div style="font-size:12.5px;font-weight:600">${dt.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div><div style="font-size:11px;color:var(--t3)">${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} · ${s.duree_minutes||120} min</div></td>
+              <td class="tm">${f?.icone||'📚'} ${f?.titre||s.formation_id||'—'}</td>
+              <td style="font-size:12px;color:var(--t2)">${s.lien_visio?`<a href="${s.lien_visio}" target="_blank" style="color:var(--acc);text-decoration:none">🎥 En ligne</a>`:s.lieu||'—'}</td>
+              <td style="font-size:12px">${s.profiles?.prenom||s.formateur_ext||'—'}</td>
+              <td class="tm">${s.capacite||20}</td>
+              <td><span style="font-size:10.5px;font-weight:700;color:${STCLR[s.statut]||'var(--t3)'};background:${(STCLR[s.statut]||'#888')}22;padding:2px 8px;border-radius:20px">${STLBL[s.statut]||s.statut}</span></td>
+              <td><button onclick="modalGererPresences('${s.id}')" style="padding:4px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:11px;cursor:pointer">Présences</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody></table></div>`:`<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune session planifiée.<br><span style="font-size:11px;opacity:.7">Créez-en une pour organiser une formation en présentiel ou en ligne.</span></div>`}
+      </div>
+      ${past.length?`<div class="cd">
+        <div class="cd-h"><div class="cd-t">Sessions passées (${past.length})</div></div>
+        <div class="tw"><table><thead><tr><th>Date</th><th>Formation</th><th>Formateur</th><th>Statut</th></tr></thead><tbody>
+          ${past.slice(0,20).map(s=>{const f=FORMATIONS_CATALOG.find(x=>x.id===s.formation_id);const dt=new Date(s.date_session);return`<tr>
+            <td class="tm" style="color:var(--t3)">${dt.toLocaleDateString('fr-FR')}</td>
+            <td class="tm">${f?.icone||'📚'} ${f?.titre||s.formation_id||'—'}</td>
+            <td style="font-size:12px">${s.profiles?.prenom||s.formateur_ext||'—'}</td>
+            <td><span style="font-size:10.5px;font-weight:700;color:${STCLR[s.statut]||'var(--t3)'};background:${(STCLR[s.statut]||'#888')}22;padding:2px 8px;border-radius:20px">${STLBL[s.statut]||s.statut}</span></td>
+          </tr>`;}).join('')}
+        </tbody></table></div>
+      </div>`:''}`;
+  }catch(e){el.innerHTML='<div class="cd"><div style="padding:32px;text-align:center;color:var(--er)">Erreur de chargement des sessions.</div></div>';}
+}
+
+async function loadAdminFormCertifs(){
+  const el=document.getElementById('admin-form-real');
+  if(!el)return;
+  el.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--t3)">Chargement…</div>`;
+  try{
+    const certs=await sbFetch('collaborateur_certifications?select=id,collaborateur_id,code_certification,nom,badge,formation_id,date_obtention,date_expiration,statut,numero_certificat,profiles(prenom,nom,role)&order=date_expiration.asc.nullslast&limit=200').catch(()=>[]);
+    const now=new Date();
+    const list=(certs||[]).map(c=>{
+      const exp=c.date_expiration?new Date(c.date_expiration):null;
+      const daysLeft=exp?Math.ceil((exp-now)/86400000):null;
+      const statut=(c.statut==='active'&&exp&&exp<now)?'expiree':c.statut;
+      return{...c,statut,daysLeft};
+    });
+    const expired=list.filter(c=>c.statut==='expiree');
+    const expiringSoon=list.filter(c=>c.statut==='active'&&c.daysLeft!==null&&c.daysLeft<=60);
+    const active=list.filter(c=>c.statut==='active'&&(c.daysLeft===null||c.daysLeft>60));
+    const renderRow=c=>{
+      const f=FORMATIONS_CATALOG.find(x=>x.id===c.formation_id);
+      const dt=c.date_obtention?new Date(c.date_obtention):null;
+      const exp=c.date_expiration?new Date(c.date_expiration):null;
+      return`<tr>
+        <td class="tm">${c.profiles?.prenom||''} ${c.profiles?.nom||''}<div style="font-size:10px;color:var(--t3)">${ROLE_LABELS[c.profiles?.role]||c.profiles?.role||''}</div></td>
+        <td class="tm">${c.badge||'🏅'} ${c.nom}</td>
+        <td style="font-size:11px;color:var(--t3)">${f?.titre||c.formation_id||'—'}</td>
+        <td style="font-size:11.5px">${dt?dt.toLocaleDateString('fr-FR'):'—'}</td>
+        <td style="font-size:11.5px;color:${c.statut==='expiree'?'var(--er)':c.daysLeft!==null&&c.daysLeft<=60?'var(--wa)':'var(--t2)'}">${exp?exp.toLocaleDateString('fr-FR')+(c.daysLeft!==null?' ('+c.daysLeft+'j)':''):'—'}</td>
+        <td><span style="font-size:10.5px;font-weight:700;color:${c.statut==='expiree'?'var(--er)':'var(--ok)'};background:${c.statut==='expiree'?'rgba(240,68,94,.1)':'rgba(46,204,138,.1)'};padding:2px 8px;border-radius:20px">${c.statut==='expiree'?'Expirée':'Active'}</span></td>
+      </tr>`;
+    };
+    el.innerHTML=`
+      ${expired.length||expiringSoon.length?`<div style="background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;color:var(--er);margin-bottom:4px">⚠ Alertes certifications</div>
+        ${expired.length?`<div style="font-size:12px;color:var(--er)">${expired.length} certification${expired.length>1?'s expirées':' expirée'}</div>`:''}
+        ${expiringSoon.length?`<div style="font-size:12px;color:var(--wa)">${expiringSoon.length} certification${expiringSoon.length>1?'s expirent':' expire'} dans moins de 60 jours</div>`:''}
+      </div>`:''}
+      ${expiringSoon.length?`<div class="cd" style="margin-bottom:12px">
+        <div class="cd-h"><div class="cd-t" style="color:var(--wa)">⚠ Expirent bientôt (${expiringSoon.length})</div></div>
+        <div class="tw"><table><thead><tr><th>Collaborateur</th><th>Certification</th><th>Formation</th><th>Obtenue le</th><th>Expire le</th><th>Statut</th></tr></thead><tbody>${expiringSoon.map(renderRow).join('')}</tbody></table></div>
+      </div>`:''}
+      ${expired.length?`<div class="cd" style="margin-bottom:12px">
+        <div class="cd-h"><div class="cd-t" style="color:var(--er)">✗ Expirées (${expired.length})</div></div>
+        <div class="tw"><table><thead><tr><th>Collaborateur</th><th>Certification</th><th>Formation</th><th>Obtenue le</th><th>Expirée le</th><th>Statut</th></tr></thead><tbody>${expired.map(renderRow).join('')}</tbody></table></div>
+      </div>`:''}
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">Toutes les certifications actives (${active.length})</div></div>
+        ${active.length?`<div class="tw"><table><thead><tr><th>Collaborateur</th><th>Certification</th><th>Formation</th><th>Obtenue le</th><th>Expire le</th><th>Statut</th></tr></thead><tbody>${active.map(renderRow).join('')}</tbody></table></div>`:`<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune certification active.<br><span style="font-size:11px;opacity:.7">Les certifications apparaissent automatiquement à la fin des formations certifiantes.</span></div>`}
       </div>`;
+  }catch(e){el.innerHTML='<div class="cd"><div style="padding:32px;text-align:center;color:var(--er)">Erreur de chargement des certifications.</div></div>';}
+}
+
+function modalCreerSession(){
+  const body=document.getElementById('modal-body');
+  const modal=document.getElementById('modal');
+  if(!body||!modal)return;
+  modal.style.display='flex';
+  const profs=(window._afProfCache||[]).filter(p=>['admin','prod'].includes(p.role));
+  body.innerHTML=`<div style="padding:24px 20px;max-width:500px;margin:auto">
+    <div style="font-size:17px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouvelle session de formation</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Formation</div>
+        <select id="ns-formation" style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px">
+          ${FORMATIONS_CATALOG.map(f=>`<option value="${f.id}">${f.icone} ${f.titre}</option>`).join('')}
+        </select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Date et heure</div>
+          <input id="ns-date" type="datetime-local" style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px;box-sizing:border-box"></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Durée (min)</div>
+          <input id="ns-duree" type="number" value="120" style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px;box-sizing:border-box"></div>
+      </div>
+      <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Lieu (laisser vide si en ligne)</div>
+        <input id="ns-lieu" type="text" placeholder="ex : Salle polyvalente Mairie" style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px;box-sizing:border-box"></div>
+      <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Lien visio (si en ligne)</div>
+        <input id="ns-visio" type="text" placeholder="https://meet.google.com/..." style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px;box-sizing:border-box"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Formateur</div>
+          <select id="ns-formateur" style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px">
+            <option value="">Sélectionner…</option>
+            ${profs.map(p=>`<option value="${p.id}">${p.prenom} ${p.nom}</option>`).join('')}
+          </select></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Capacité max</div>
+          <input id="ns-capacite" type="number" value="20" style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px;box-sizing:border-box"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button onclick="closeModal()" style="flex:1;padding:12px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:13px;cursor:pointer">Annuler</button>
+        <button onclick="sauvegarderSession()" style="flex:2;padding:12px;background:var(--acc);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Créer la session</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function sauvegarderSession(){
+  const g=id=>document.getElementById(id)?.value?.trim();
+  const formationId=g('ns-formation');const dateVal=g('ns-date');
+  if(!formationId||!dateVal){toast('Formation et date obligatoires.','wa');return;}
+  const uid=localStorage.getItem('sv_uid')||'x';
+  const formateurId=g('ns-formateur')||null;
+  try{
+    await sbFetch('formation_sessions',{method:'POST',body:{
+      formation_id:formationId,date_session:new Date(dateVal).toISOString(),
+      duree_minutes:parseInt(g('ns-duree'))||120,
+      lieu:g('ns-lieu')||null,lien_visio:g('ns-visio')||null,
+      formateur_id:formateurId,capacite:parseInt(g('ns-capacite'))||20,
+      statut:'planifiee',created_by:uid,
+    }});
+    toast('Session créée avec succès.','ok');
+    closeModal();
+    loadAdminFormSessions();
+  }catch(e){toast('Erreur lors de la création de la session.','er');}
+}
+
+async function modalGererPresences(sessionId){
+  const body=document.getElementById('modal-body');
+  const modal=document.getElementById('modal');
+  if(!body||!modal)return;
+  modal.style.display='flex';
+  body.innerHTML=`<div style="padding:24px;max-width:520px;margin:auto;text-align:center;color:var(--t3)">Chargement…</div>`;
+  try{
+    const [sessions,presences,profiles]=await Promise.all([
+      sbFetch('formation_sessions?id=eq.'+sessionId+'&select=*,profiles(prenom,nom)&limit=1').catch(()=>[]),
+      sbFetch('formation_presences?session_id=eq.'+sessionId+'&select=*,profiles(id,prenom,nom)').catch(()=>[]),
+      sbFetch('profiles?select=id,prenom,nom,role&order=nom.asc&limit=100').catch(()=>[]),
+    ]);
+    const s=sessions?.[0]||{};const presMap={};
+    (presences||[]).forEach(p=>{presMap[p.collaborateur_id]=p;});
+    const f=FORMATIONS_CATALOG.find(x=>x.id===s.formation_id);
+    const PSTLBL={inscrit:'Inscrit',present:'Présent',retard:'En retard',partiel:'Partiel',absent_justifie:'Absent justifié',absent:'Absent'};
+    body.innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
+      <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Présences — ${f?.titre||s.formation_id}</div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:18px">${s.date_session?new Date(s.date_session).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):''}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${(profiles||[]).map(p=>{const cur=presMap[p.id]?.statut||'absent';return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s1);border:1px solid var(--b1);border-radius:10px">
+          <div style="flex:1;font-size:13px;font-weight:500;color:var(--t1)">${p.prenom} ${p.nom}</div>
+          <select onchange="majPresence('${sessionId}','${p.id}',this.value)" style="padding:5px 8px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t1);font-size:11.5px;cursor:pointer">
+            ${Object.entries(PSTLBL).map(([v,lb])=>`<option value="${v}" ${cur===v?'selected':''}>${lb}</option>`).join('')}
+          </select>
+        </div>`;}).join('')}
+      </div>
+      <button onclick="closeModal()" style="width:100%;padding:12px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:13px;font-weight:600;cursor:pointer;margin-top:16px">Fermer</button>
+    </div>`;
+  }catch(e){body.innerHTML=`<div style="padding:24px;text-align:center;color:var(--er)">Erreur de chargement.</div>`;}
+}
+
+async function majPresence(sessionId,collabId,statut){
+  try{
+    await sbFetch('formation_presences',{method:'POST',body:{session_id:sessionId,collaborateur_id:collabId,statut}});
   }catch(e){
-    el.innerHTML='<div class="cd"><div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement des données de formation.</div></div>';
+    await sbFetch('formation_presences?session_id=eq.'+sessionId+'&collaborateur_id=eq.'+collabId,{method:'PATCH',body:{statut}}).catch(()=>{});
   }
 }
 
