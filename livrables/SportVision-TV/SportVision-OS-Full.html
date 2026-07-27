@@ -439,6 +439,7 @@ const NAV={
     {id:'contrats',lb:'Contrats',ic:'doc'},
     {id:'users',lb:'Utilisateurs & accès',ic:'col'},
     {id:'grades',lb:'Grades & XP',ic:'target'},
+    {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -463,9 +464,10 @@ const NAV={
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   photo:[
-    {id:'dash',lb:'Mes prestations',ic:'pre'},
+    {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    {id:'planning',lb:'Mon planning',ic:'cal'},
     {id:'jourj',lb:'Mode Jour J',ic:'live'},
-    {id:'medias',lb:'Mes médias',ic:'med'},
+    {id:'medias',lb:'Mes missions',ic:'pre'},
     {id:'revenus',lb:'Mes revenus',ic:'fin'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'form',lb:'Formation',ic:'form'},
@@ -603,6 +605,17 @@ const VIEWS={
     </div>
     <div class="sh"><div class="sh-t">Kanban prestations</div><button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle</button></div>
     <div id="kanban-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'photo.planning':()=>`
+    <div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="photoPlanPrev()">‹</button>
+        <div class="sh-t" id="photo-plan-title">Planning</div>
+        <button class="btn bg2 bs" onclick="photoPlanNext()">›</button>
+      </div>
+      <div style="font-size:12px;color:var(--t3)" id="photo-plan-kpi">—</div>
+    </div>
+    <div id="photo-plan-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'photo.jourj':()=>`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1014,6 +1027,28 @@ const VIEWS={
   'com.objectifs':()=>`
     <div class="sh"><div class="sh-t">Objectifs commerciaux</div></div>
     <div id="obj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── RAPPORT MENSUEL ──────────────────────
+  'admin.rapport':()=>`
+    <div class="sh">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn bg2 bs" onclick="rapportPrev()">‹</button>
+        <div class="sh-t" id="rapport-titre">Rapport mensuel</div>
+        <button class="btn bg2 bs" onclick="rapportNext()">›</button>
+      </div>
+      <button class="btn bp bs" onclick="exportRapportCSV()">Exporter CSV</button>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+      <div class="kpi" style="--kl:var(--ok)"><div class="kpi-ey">CA du mois</div><div class="kpi-v" id="rp-ca" style="font-size:18px">—</div><span class="kpi-d dnt">TTC payé</span></div>
+      <div class="kpi" style="--kl:var(--acc)"><div class="kpi-ey">Prestations</div><div class="kpi-v" id="rp-pre">—</div><span class="kpi-d dnt">réalisées</span></div>
+      <div class="kpi" style="--kl:var(--wa)"><div class="kpi-ey">En attente paiement</div><div class="kpi-v" id="rp-att" style="font-size:18px">—</div><span class="kpi-d dnt">TTC</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Nouveaux clients</div><div class="kpi-v" id="rp-cli">—</div><span class="kpi-d dnt">ce mois</span></div>
+    </div>
+    <div class="g2">
+      <div id="rp-clients-card" class="cd"><div class="cd-h"><div class="cd-t">Top clients du mois</div></div><div id="rp-clients">Chargement…</div></div>
+      <div id="rp-equipe-card" class="cd"><div class="cd-h"><div class="cd-t">Missions par collaborateur</div></div><div id="rp-equipe">Chargement…</div></div>
+    </div>
+    <div class="cd" style="margin-top:0"><div class="cd-h"><div class="cd-t">Détail des prestations du mois</div></div><div id="rp-detail">Chargement…</div></div>`,
 
   // ── CONTRATS & ABONNEMENTS ───────────────
   'admin.contrats':()=>`
@@ -1569,6 +1604,7 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='equipes') await loadEquipes();
   if(role==='prod'&&view==='kanban') await loadKanban();
   if(role==='photo'&&view==='dash') await loadPhotoDash();
+  if(role==='photo'&&view==='planning'){_photoPlanOffset=0;await loadPhotoPlan();}
   if(role==='photo'&&view==='jourj') await loadJourJ();
   if(role==='sec'&&view==='dash') await loadSecDash();
   if(role==='sec'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
@@ -1594,6 +1630,7 @@ async function loadViewData(role,view){
   if(role==='sec'&&view==='docs') await loadDocs();
   if(role==='compta'&&view==='rapprochement') await loadRapprochement();
   if(view==='set') await loadSettings();
+  if(role==='admin'&&view==='rapport'){_rapportOffset=0;await loadRapport();}
   if(role==='admin'&&view==='contrats') await loadContrats();
   if(role==='admin'&&view==='users') await loadUsers();
   if(role==='admin'&&view==='grades') await loadGrades();
@@ -3484,38 +3521,70 @@ async function avancerPipeline(id,statut){
 
 // ── Messagerie équipe (prod.msg) ─────────────────────────────────────────────
 let _msgInterval=null;
+const MSG_MIGRATION_KEY='sv_msg_migrated';
+
 async function loadMsg(){
   const el=document.getElementById('msg-list');
   if(!el)return;
   if(_msgInterval)clearInterval(_msgInterval);
+
+  // Bannière migration si jamais dismissée
+  const msgReal=document.getElementById('msg-real');
+  const migDone=localStorage.getItem(MSG_MIGRATION_KEY)==='1';
+  if(!migDone&&msgReal&&!document.getElementById('msg-migration-banner')){
+    const banner=document.createElement('div');
+    banner.id='msg-migration-banner';
+    banner.style.cssText='background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:12px;';
+    banner.innerHTML=`<div style="color:var(--wa);font-size:18px;flex-shrink:0">⚠</div>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600;color:var(--wa);margin-bottom:3px">Migration SQL requise pour la messagerie d'équipe</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:8px">Sans cette migration, chaque membre ne voit que ses propres messages.</div>
+        <div style="background:var(--bg);border:1px solid var(--b1);border-radius:6px;padding:8px 10px;font-family:monospace;font-size:10.5px;color:var(--t2);user-select:all;margin-bottom:8px">create policy "notifs_messages_broadcast" on notifications for select using (type = 'message' and exists (select 1 from profiles where id = auth.uid()));</div>
+        <div style="display:flex;gap:8px">
+          <button onclick="window.open('https://supabase.com/dashboard/project/lulgezzpvrlbftbykzrc/sql/new','_blank')" style="padding:5px 12px;font-size:11px;background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.3);border-radius:var(--rp);color:var(--wa);cursor:pointer">Ouvrir SQL Editor →</button>
+          <button onclick="localStorage.setItem('${MSG_MIGRATION_KEY}','1');document.getElementById('msg-migration-banner')?.remove();loadMsg()" style="padding:5px 12px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer">Migration faite ✓</button>
+        </div>
+      </div>`;
+    msgReal.insertBefore(banner,msgReal.firstChild);
+  }
+
   const renderMessages=async()=>{
     const msgEl=document.getElementById('msg-list');
     if(!msgEl)return;
     try{
       const [msgs,profiles]=await Promise.all([
-        sbFetch('notifications?select=id,titre,message,created_at&type=eq.message&order=created_at.asc&limit=80'),
+        sbFetch('notifications?select=id,titre,message,created_at&type=eq.message&order=created_at.asc&limit=100'),
         sbFetch('profiles?select=id,prenom,nom'),
       ]);
       const pmap={};(profiles||[]).forEach(p=>{pmap[p.id]={n:(p.prenom||'')+' '+(p.nom||'').trim(),ini:((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase()||'?'};});
       const uid=localStorage.getItem('sv_uid');
-      if(!msgs||!msgs.length){msgEl.innerHTML='<div class="cd"><div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun message. Soyez le premier à écrire.</div></div>';return;}
-      msgEl.innerHTML='<div class="cd"><div style="padding:6px 0">'+msgs.map(m=>{
+      if(!msgs||!msgs.length){
+        msgEl.innerHTML='<div style="padding:60px 20px;text-align:center;color:var(--t3);font-size:13px">Aucun message pour l\'instant. Envoyez le premier !</div>';
+        return;
+      }
+      let lastDay='';
+      const items=msgs.map(m=>{
         const isMe=m.titre===uid;
         const who=pmap[m.titre];
-        const when=new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+        const dt=new Date(m.created_at);
+        const dayKey=dt.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+        const when=dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
         const ini=who?.ini||'?';
         const name=who?.n||'Membre';
-        return`<div style="display:flex;gap:10px;padding:10px 18px;align-items:flex-start;${isMe?'flex-direction:row-reverse':''}">
-          <div style="width:32px;height:32px;border-radius:50%;background:${isMe?'var(--ac)':'rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${ini}</div>
-          <div style="max-width:70%;${isMe?'align-items:flex-end;':''}display:flex;flex-direction:column;gap:3px">
-            ${!isMe?`<div style="font-size:10.5px;color:var(--t3)">${name}</div>`:''}
-            <div style="background:${isMe?'var(--ac)':'rgba(255,255,255,.07)'};padding:8px 12px;border-radius:${isMe?'12px 12px 2px 12px':'12px 12px 12px 2px'};font-size:13px;color:var(--t1)">${m.message}</div>
-            <div style="font-size:10px;color:var(--t3)">${when}</div>
+        const sep=dayKey!==lastDay?`<div style="text-align:center;margin:12px 0"><span style="font-size:10px;color:var(--t3);background:var(--s1);padding:2px 10px;border-radius:20px;border:1px solid var(--b1)">${dayKey}</span></div>`:'';
+        lastDay=dayKey;
+        return sep+`<div style="display:flex;gap:10px;padding:6px 16px;align-items:flex-end;${isMe?'flex-direction:row-reverse':''}">
+          <div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':'rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px">${ini}</div>
+          <div style="max-width:72%;${isMe?'align-items:flex-end;':'align-items:flex-start;'}display:flex;flex-direction:column;gap:2px">
+            ${!isMe?`<div style="font-size:10px;color:var(--t3);margin-left:2px">${name}</div>`:''}
+            <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.08)'};padding:8px 12px;border-radius:${isMe?'14px 14px 3px 14px':'14px 14px 14px 3px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.4;word-break:break-word">${m.message}</div>
+            <div style="font-size:10px;color:var(--t3);margin-${isMe?'right':'left'}:2px">${when}</div>
           </div>
         </div>`;
-      }).join('')+'</div></div>';
-      msgEl.scrollTop=msgEl.scrollHeight;
-    }catch(e){}
+      }).join('');
+      msgEl.innerHTML=items;
+      setTimeout(()=>{msgEl.scrollTop=msgEl.scrollHeight;},50);
+    }catch(e){console.error('loadMsg',e);}
   };
   await renderMessages();
   _msgInterval=setInterval(renderMessages,15000);
@@ -4757,6 +4826,7 @@ const VIEW_CTA={
   'com.pipeline':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
   'com.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'cm.publications':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
+  'admin.rapport':{t:'Exporter CSV',fn:'exportRapportCSV'},
 };
 
 function updateCta(){
@@ -4791,6 +4861,181 @@ function goError(type){
       ${type==='500'?`<button class="btn bg2" onclick="goLogin()">Réessayer</button>`:''}
     </div>`;
   show('error');
+}
+
+// ── PLANNING PHOTO ───────────────────────────────────────────────────────────
+let _photoPlanOffset=0;
+function photoPlanPrev(){_photoPlanOffset--;loadPhotoPlan();}
+function photoPlanNext(){_photoPlanOffset++;loadPhotoPlan();}
+
+async function loadPhotoPlan(){
+  const el=document.getElementById('photo-plan-real');
+  const titleEl=document.getElementById('photo-plan-title');
+  const kpiEl=document.getElementById('photo-plan-kpi');
+  if(!el)return;
+  const uid=localStorage.getItem('sv_uid');
+  if(!uid)return;
+  // Calcul de la semaine affichée
+  const now=new Date();
+  const dow=now.getDay()||7;
+  const monday=new Date(now);monday.setDate(now.getDate()-dow+1+_photoPlanOffset*7);monday.setHours(0,0,0,0);
+  const sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
+  const start=monday.toISOString().slice(0,10);
+  const end=sunday.toISOString().slice(0,10);
+  const ds=monday.toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+  const de=sunday.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  if(titleEl)titleEl.textContent='Semaine du '+ds+' au '+de;
+  try{
+    const data=await sbFetch('prestations_equipe?select=id,statut,fonction,heure_rdv,remuneration,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.'+uid+'&order=prestations.date_prestation.asc');
+    const list=(data||[]).filter(r=>r.prestations&&r.prestations.date_prestation>=start&&r.prestations.date_prestation<=end);
+    const allWeek=(data||[]).filter(r=>r.prestations&&r.prestations.date_prestation>=start&&r.prestations.date_prestation<=end);
+    if(kpiEl)kpiEl.textContent=allWeek.length+' mission'+(allWeek.length>1?'s':'')+(allWeek.length?' cette semaine':'s cette semaine');
+    const today=new Date().toISOString().slice(0,10);
+    const JOURS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+    const days=Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d;});
+    const SC_C={confirmée:'var(--acc)',planifiée:'var(--acc)',prête:'var(--ok)',production_démarrée:'var(--er)',livrée:'var(--t3)',annulée:'var(--t3)'};
+    const SL_C={confirmée:'Confirmée',planifiée:'Planifiée',prête:'Prête','production_démarrée':'En prod.','équipe_en_route':'En route','arrivée_sur_place':'Sur place',livrée:'Livrée',annulée:'Annulée'};
+    el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+      ${days.map((d,i)=>{
+        const ds=d.toISOString().slice(0,10);
+        const isToday=ds===today;
+        const dayMissions=list.filter(r=>r.prestations?.date_prestation===ds);
+        return`<div style="background:${isToday?'rgba(54,107,255,.08)':'var(--s1)'};border:1px solid ${isToday?'rgba(54,107,255,.3)':'var(--b1)'};border-radius:12px;padding:12px;min-height:140px">
+          <div style="font-size:11px;font-weight:700;color:${isToday?'var(--acc)':'var(--t3)'};margin-bottom:10px">${JOURS[i].slice(0,3)} <span style="font-size:14px;color:${isToday?'var(--acc)':'var(--t1)'};font-weight:${isToday?800:600}">${d.getDate()}</span></div>
+          ${dayMissions.length===0?`<div style="font-size:10px;color:var(--t3);font-style:italic">Libre</div>`:
+          dayMissions.map(r=>{
+            const p=r.prestations;
+            const rdv=(r.heure_rdv||p.heure_rdv||p.heure_debut||'').slice(0,5);
+            const clr=SC_C[p.statut]||'var(--t3)';
+            return`<div onclick="modalDetailById('${p.id}')" style="background:${clr}15;border-left:2px solid ${clr};padding:6px 8px;border-radius:6px;margin-bottom:6px;cursor:pointer">
+              ${rdv?`<div style="font-size:9px;font-weight:700;color:${clr};letter-spacing:.06em">${rdv}</div>`:''}
+              <div style="font-size:11px;font-weight:600;color:var(--t1);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.clients?.nom||'—'}</div>
+              <div style="font-size:10px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.fonction||p.type_prestation||'—'}</div>
+              ${p.lieu?`<div style="font-size:10px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📍 ${p.lieu}</div>`:''}
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('')}
+    </div>
+    ${list.length===0?`<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;margin-top:8px">Aucune mission assignée cette semaine.</div>`:''}`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
+}
+
+// ── RAPPORT MENSUEL ──────────────────────────────────────────────────────────
+let _rapportOffset=0;
+function rapportPrev(){_rapportOffset--;loadRapport();}
+function rapportNext(){if(_rapportOffset<0){_rapportOffset++;loadRapport();}}
+
+async function loadRapport(){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const setH=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
+  const now=new Date();
+  const targetDate=new Date(now.getFullYear(),now.getMonth()+_rapportOffset,1);
+  const mStart=targetDate.toISOString().slice(0,7)+'-01';
+  const mEnd=new Date(targetDate.getFullYear(),targetDate.getMonth()+1,0).toISOString().slice(0,10);
+  const mLabel=targetDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const titleEl=document.getElementById('rapport-titre');
+  if(titleEl)titleEl.textContent='Rapport — '+mLabel.charAt(0).toUpperCase()+mLabel.slice(1);
+  try{
+    const [preMois,cliMois,equipe]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(id,nom)&date_prestation=gte.'+mStart+'&date_prestation=lte.'+mEnd+'&order=date_prestation.asc'),
+      sbFetch('clients?select=id,nom,created_at&created_at=gte.'+mStart+'T00:00:00&created_at=lte.'+mEnd+'T23:59:59&order=created_at.desc'),
+      sbFetch('prestations_equipe?select=collaborateur_id,statut,remuneration,prestation:prestations(date_prestation,statut)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lte.'+mEnd),
+    ]);
+    const list=Array.isArray(preMois)?preMois:[];
+    const newCli=Array.isArray(cliMois)?cliMois:[];
+    const eq=Array.isArray(equipe)?equipe:[];
+    const done=list.filter(p=>['payée','partiellement_payée','livrée','facturée','clôturée'].includes(p.statut_financier)||['livrée','clôturée'].includes(p.statut));
+    const ca=done.reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const att=list.filter(p=>['facturée','en_préparation'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    set('rp-ca',fmt(ca));
+    set('rp-pre',done.length);
+    set('rp-att',fmt(att));
+    set('rp-cli',newCli.length);
+    // Top clients
+    const byClient={};
+    done.forEach(p=>{if(!p.clients?.nom)return;const k=p.clients.nom;if(!byClient[k])byClient[k]={nom:k,nb:0,ca:0};byClient[k].nb++;byClient[k].ca+=(p.montant_ttc||0);});
+    const topCli=Object.values(byClient).sort((a,b)=>b.ca-a.ca).slice(0,5);
+    const maxCa=topCli[0]?.ca||1;
+    setH('rp-clients',topCli.length===0?'<div style="padding:24px;text-align:center;color:var(--t3);font-size:12px">Aucune prestation ce mois.</div>':
+      topCli.map((c,i)=>`<div style="padding:10px 0;${i<topCli.length-1?'border-bottom:1px solid var(--b1)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+          <span style="font-size:13px;font-weight:500;color:var(--t1)">${c.nom}</span>
+          <span style="font-size:12px;font-weight:600;color:var(--ok);font-variant-numeric:tabular-nums">${fmt(c.ca)}</span>
+        </div>
+        <div style="height:4px;border-radius:2px;background:var(--b1)"><div style="height:4px;border-radius:2px;width:${Math.round(c.ca/maxCa*100)}%;background:var(--gr)"></div></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:3px">${c.nb} prestation${c.nb>1?'s':''}</div>
+      </div>`).join(''));
+    // Équipe
+    const byCollab={};
+    eq.filter(r=>r.prestation).forEach(r=>{
+      const k=r.collaborateur_id;if(!k)return;
+      if(!byCollab[k])byCollab[k]={id:k,nb:0,rem:0};
+      byCollab[k].nb++;byCollab[k].rem+=(r.remuneration||0);
+    });
+    const profIds=Object.keys(byCollab);
+    let profNames={};
+    if(profIds.length){
+      const pp=await sbFetch('profiles?select=id,prenom,nom&id=in.('+profIds.join(',')+')');
+      (pp||[]).forEach(p=>profNames[p.id]=(p.prenom||'')+' '+(p.nom||''));
+    }
+    const topEq=Object.values(byCollab).sort((a,b)=>b.nb-a.nb);
+    setH('rp-equipe',topEq.length===0?'<div style="padding:24px;text-align:center;color:var(--t3);font-size:12px">Aucune affectation ce mois.</div>':
+      topEq.map((c,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;${i<topEq.length-1?'border-bottom:1px solid var(--b1)':''}">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--gr);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${(profNames[c.id]||'?')[0].toUpperCase()}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500;color:var(--t1)">${profNames[c.id]||c.id.slice(0,8)}</div>
+          <div style="font-size:11px;color:var(--t3)">${c.nb} mission${c.nb>1?'s':''}</div>
+        </div>
+        ${c.rem?`<div style="font-size:12px;font-weight:600;color:var(--ok);font-variant-numeric:tabular-nums">${fmt(c.rem)}</div>`:''}
+      </div>`).join(''));
+    // Détail prestations
+    setH('rp-detail',list.length===0?'<div style="padding:24px;text-align:center;color:var(--t3);font-size:12px">Aucune prestation ce mois.</div>':
+      `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:1px solid var(--b1)">${['Réf.','Date','Client','Type','Montant HT','Montant TTC','Statut'].map(h=>`<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--t3);font-weight:600;white-space:nowrap">${h}</th>`).join('')}</tr></thead>
+        <tbody>${list.map(p=>{
+          const SF={payée:'var(--ok)',livrée:'var(--ok)',facturée:'var(--acc)',en_préparation:'var(--wa)',non_facturée:'var(--t3)'};
+          return`<tr style="border-bottom:1px solid rgba(255,255,255,.03)" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background=''">
+            <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--t3)">${p.reference||'—'}</td>
+            <td style="padding:8px 12px;white-space:nowrap;color:var(--t2)">${p.date_prestation?fd(p.date_prestation):'—'}</td>
+            <td style="padding:8px 12px;font-weight:500;color:var(--t1)">${p.clients?.nom||'—'}</td>
+            <td style="padding:8px 12px;color:var(--t2)">${p.type_prestation||'—'}</td>
+            <td style="padding:8px 12px;font-variant-numeric:tabular-nums;color:var(--t2)">${p.montant_ht?fmt(p.montant_ht):'—'}</td>
+            <td style="padding:8px 12px;font-variant-numeric:tabular-nums;font-weight:600;color:var(--t1)">${p.montant_ttc?fmt(p.montant_ttc):'—'}</td>
+            <td style="padding:8px 12px"><span style="font-size:11px;color:${SF[p.statut_financier]||'var(--t3)'}">${p.statut_financier?.replace(/_/g,' ')||'—'}</span></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`);
+  }catch(e){document.querySelectorAll('#rp-clients,#rp-equipe,#rp-detail').forEach(el=>{if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:12px">Erreur de chargement.</div>';});}
+}
+
+async function exportRapportCSV(){
+  const titleEl=document.getElementById('rapport-titre');
+  const now=new Date();
+  const targetDate=new Date(now.getFullYear(),now.getMonth()+_rapportOffset,1);
+  const mStart=targetDate.toISOString().slice(0,7)+'-01';
+  const mEnd=new Date(targetDate.getFullYear(),targetDate.getMonth()+1,0).toISOString().slice(0,10);
+  const data=await sbFetch('prestations?select=reference,date_prestation,type_prestation,lieu,montant_ht,montant_ttc,tva_pct,statut_financier,clients(nom)&date_prestation=gte.'+mStart+'&date_prestation=lte.'+mEnd+'&order=date_prestation.asc');
+  const list=Array.isArray(data)?data:[];
+  if(!list.length){toast('Aucune donnée à exporter','warn');return;}
+  const headers=['Référence','Date','Client','Type','Montant HT','TVA %','Montant TTC','Statut financier'];
+  const rows=list.map(p=>[
+    p.reference||'',
+    p.date_prestation||'',
+    p.clients?.nom||'',
+    p.type_prestation||'',
+    p.montant_ht||'',
+    p.tva_pct||'',
+    p.montant_ttc||'',
+    p.statut_financier?.replace(/_/g,' ')||'',
+  ]);
+  const csv=[headers,...rows].map(r=>r.map(v=>'"'+(String(v).replace(/"/g,'""'))+'"').join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download='rapport-'+(targetDate.toISOString().slice(0,7))+'.csv';
+  a.click();URL.revokeObjectURL(url);
+  toast('Export CSV téléchargé','ok');
 }
 
 // ── CONTRATS & ABONNEMENTS ───────────────────────────────────────────────────
@@ -4893,7 +5138,7 @@ async function sauvegarderContrat(){
     montant_mensuel:parseFloat(document.getElementById('nc-montant').value)||null,frequence:document.getElementById('nc-freq').value,
     date_debut:document.getElementById('nc-debut').value||null,date_fin:document.getElementById('nc-fin').value||null,
     renouvellement_auto:document.getElementById('nc-auto').checked,notes:document.getElementById('nc-notes').value.trim()||null,created_by:S.uid};
-  const r=await sbFetch('contrats','POST',payload);
+  const r=await sbFetch('contrats',{method:'POST',body:payload});
   if(r.error){if(err){err.textContent='Erreur: '+(r.error.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}return;}
   closeModal();toast('Contrat créé','ok');await loadContrats();
 }
@@ -4960,13 +5205,13 @@ async function mettreAJourContrat(id){
     montant_mensuel:parseFloat(document.getElementById('ec-montant').value)||null,frequence:document.getElementById('ec-freq').value,
     date_debut:document.getElementById('ec-debut').value||null,date_fin:document.getElementById('ec-fin').value||null,
     renouvellement_auto:document.getElementById('ec-auto').checked,notes:document.getElementById('ec-notes').value.trim()||null};
-  const r=await sbFetch('contrats?id=eq.'+id,'PATCH',payload);
+  const r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payload});
   if(r.error){const e=document.getElementById('ecf-err');if(e){e.textContent='Erreur: '+(r.error.message||'Impossible de modifier.');e.style.display='block';}return;}
   closeModal();toast('Contrat mis à jour','ok');await loadContrats();
 }
 
 async function supprimerContrat(id){
-  const r=await sbFetch('contrats?id=eq.'+id,'DELETE');
+  const r=await sbFetch('contrats?id=eq.'+id,{method:'DELETE'});
   if(r.error){toast('Erreur suppression','er');return;}
   closeModal();toast('Contrat supprimé','ok');await loadContrats();
 }
@@ -5006,7 +5251,7 @@ async function loadUsers(){
 }
 
 async function changerRoleUser(id,role){
-  const r=await sbFetch('profiles?id=eq.'+id,'PATCH',{role});
+  const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{role}});
   if(r.error){toast('Erreur changement de rôle','er');return;}
   toast('Rôle mis à jour','ok');
 }
@@ -5024,7 +5269,7 @@ function confirmerSupprimerUser(id,prenom,nom){
 }
 
 async function supprimerUser(id){
-  const r=await sbFetch('profiles?id=eq.'+id,'DELETE');
+  const r=await sbFetch('profiles?id=eq.'+id,{method:'DELETE'});
   if(r.error){toast('Erreur suppression','er');return;}
   closeModal();toast('Utilisateur supprimé','ok');await loadUsers();
 }
