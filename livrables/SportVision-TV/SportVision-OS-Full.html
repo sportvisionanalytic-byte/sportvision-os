@@ -3084,7 +3084,7 @@ function modalModifierClient(idx){
         </div>
         <div><label style="${lbl}">Statut</label>
           <select id="fce-statut" class="l-inp" style="height:38px">
-            ${['prospect','qualifié','client','inactif','bloqué'].map(s=>`<option value="${s}"${c.statut===s?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+            ${[['prospect','Prospect'],['qualifié','Qualifié'],['devis_envoyé','Devis envoyé'],['négociation','Négociation'],['partenaire','Partenaire'],['client','Client'],['inactif','Inactif'],['bloqué','Bloqué'],['perdu','Perdu']].map(([v,l])=>`<option value="${v}"${c.statut===v?' selected':''}>${l}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -3339,12 +3339,22 @@ async function sauvegarderContact(clientId){
       next_action:next||null,
       next_action_date:nextDate||null,
     }});
-    if(next||nextDate){
-      await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{
-        prochaine_action:next||null,
-        date_prochaine_action:nextDate||null,
-      }}).catch(()=>{});
-    }
+    const patchCli={};
+    if(next||nextDate){patchCli.prochaine_action=next||null;patchCli.date_prochaine_action=nextDate||null;}
+    // Auto-calcul score_priorite
+    try{
+      const allCons=await sbFetch('client_contacts?select=id&client_id=eq.'+clientId);
+      const nbCons=Array.isArray(allCons)?allCons.length:1;
+      const res=document.getElementById('cc-resultat')?.value||'neutre';
+      let score=Math.min(nbCons*5,50);
+      if(res==='positif')score+=20;else if(res==='negatif')score=Math.max(0,score-10);
+      if(nextDate){
+        const dj=Math.ceil((new Date(nextDate)-new Date())/(864e5));
+        if(dj<=3)score+=40;else if(dj<=7)score+=25;else if(dj<=30)score+=10;else score+=5;
+      }else if(next)score+=5;
+      patchCli.score_priorite=Math.max(0,score);
+    }catch(e){}
+    if(Object.keys(patchCli).length)await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:patchCli}).catch(()=>{});
     closeModal();
     toast('Contact enregistré.','ok');
     setTimeout(()=>{
@@ -6197,7 +6207,7 @@ function renderPhotoPre(){
           </div>
           ${row.statut==='invitation_envoyée'?`<div style="display:flex;flex-direction:column;gap:5px" onclick="event.stopPropagation()">
             <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px">✓ Accepter</button>
-            <button onclick="repondreInvitation('${row.id}','refusée')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
+            <button onclick="modalRefuserInvitation('${row.id}','${(p.clients?.nom||'').replace(/'/g,"\\'")} — ${(p.type_prestation||'').replace(/'/g,"\\'")}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
           </div>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
         </div>
       </div>
@@ -8468,6 +8478,15 @@ async function sauvegarderDevis(id){
           }
         }catch(e){}
       }
+      // Avancer client pipeline → négociation
+      if(dv?.client_id){
+        try{
+          const cl=await sbFetch('clients?select=id,statut&id=eq.'+dv.client_id);
+          if(cl&&cl[0]&&['prospect','qualifié','devis_envoyé'].includes(cl[0].statut)){
+            await sbFetch('clients?id=eq.'+dv.client_id,{method:'PATCH',body:{statut:'négociation'}});
+          }
+        }catch(e){}
+      }
     }
   }catch(e){if(err)err.textContent='Erreur lors de la sauvegarde.';}
 }
@@ -8489,6 +8508,14 @@ async function envoyerDevis(id){
     await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:today}});
     toast('Devis marqué comme envoyé.','ok');loadDevis();updateNavBadges(S.role);
     creerTachesAuto('devis.envoye',{source_type:'devis',source_id:id}).catch(()=>{});
+    // Avancer automatiquement le client en pipeline → devis_envoyé
+    const dv=(_devisCache||[]).find(d=>d.id===id);
+    if(dv?.client_id){
+      const cl=await sbFetch('clients?select=id,statut&id=eq.'+dv.client_id).catch(()=>[]);
+      if(cl&&cl[0]&&['prospect','qualifié'].includes(cl[0].statut)){
+        await sbFetch('clients?id=eq.'+dv.client_id,{method:'PATCH',body:{statut:'devis_envoyé'}}).catch(()=>{});
+      }
+    }
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
