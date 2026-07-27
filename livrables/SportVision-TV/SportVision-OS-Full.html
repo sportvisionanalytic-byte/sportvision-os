@@ -558,14 +558,19 @@ const NAV={
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   photo:[
+    {type:'sep',lb:'Mes missions'},
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
     {id:'pre',lb:'Mes prestations',ic:'pre'},
     {id:'planning',lb:'Mon planning',ic:'cal'},
     {id:'jourj',lb:'Mode Jour J',ic:'live'},
+    {type:'sep',lb:'Production'},
     {id:'medias',lb:'Mes médias',ic:'img'},
+    {id:'kits',lb:'Mes kits',ic:'kits'},
+    {type:'sep',lb:'Revenus & Progression'},
     {id:'revenus',lb:'Mes revenus',ic:'fin'},
-    {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'form',lb:'Centre de formation',ic:'form'},
+    {type:'sep',lb:'Communication'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   cm:[
@@ -1252,6 +1257,15 @@ const VIEWS={
       <div class="fs" style="flex:1;min-width:0"><div class="fs-l">À transférer</div><div class="fs-v" id="med-att" style="color:var(--wa)">—</div></div>
     </div>
     <div id="medias-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'photo.kits':()=>`
+    <div class="sh"><div class="sh-t">Mes kits assignés</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Kits disponibles</div><div class="fs-v" id="phkit-dispo" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En mission</div><div class="fs-v" id="phkit-mission" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">À rendre</div><div class="fs-v" id="phkit-retour">—</div></div>
+    </div>
+    <div id="photo-kits-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'photo.revenus':()=>`
     <div class="sh">
@@ -2380,6 +2394,7 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
   if(role==='cm'&&view==='publications') await loadCmPublications();
   if(role==='photo'&&view==='medias') await loadMedias();
+  if(role==='photo'&&view==='kits') await loadPhotoKits();
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(['prod','admin','sec','photo','cm'].includes(role)&&view==='msg') await loadMsg();
   if(role==='compta'&&view==='paiements') await loadPaiements();
@@ -5255,6 +5270,31 @@ async function loadObjectifs(){
           '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation ce mois.</div>'}
       </div>`;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Kits photographe ─────────────────────────────────────────────────────────
+async function loadPhotoKits(){
+  const el=document.getElementById('photo-kits-real');if(!el)return;
+  const uid=localStorage.getItem('sv_uid');if(!uid)return;
+  try{
+    const data=await sbFetch('kit_reservations?select=id,statut,date_debut,date_fin,prestation_id,kit_id,kits(nom,type,reference)&collaborateur_id=eq.'+uid+'&order=date_debut.desc&limit=50');
+    const list=Array.isArray(data)?data:[];
+    const dispo=list.filter(k=>k.statut==='disponible'||k.statut==='réservé').length;
+    const mission=list.filter(k=>k.statut==='déployé'||k.statut==='en_mission').length;
+    const retour=list.filter(k=>k.statut==='à_retourner').length;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('phkit-dispo',dispo);set('phkit-mission',mission);set('phkit-retour',retour);
+    if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucun kit assigné en ce moment.</div>';return;}
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Kit</th><th>Type</th><th>Référence</th><th>Début</th><th>Fin</th><th>Statut</th></tr></thead><tbody>'+
+      list.map(k=>`<tr>
+        <td class="tp">${k.kits?.nom||'—'}</td>
+        <td>${k.kits?.type||'—'}</td>
+        <td class="tm">${k.kits?.reference||'—'}</td>
+        <td>${k.date_debut?new Date(k.date_debut).toLocaleDateString('fr-FR'):'—'}</td>
+        <td>${k.date_fin?new Date(k.date_fin).toLocaleDateString('fr-FR'):'—'}</td>
+        <td><span class="bd ${k.statut==='disponible'?'ba':k.statut==='déployé'||k.statut==='en_mission'?'bl':'bw'}"><span class="bd-d"></span>${k.statut||'—'}</span></td>
+      </tr>`).join('')+'</tbody></table></div>';
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Kits non disponibles (migration RLS requise).</div>';console.error(e);}
 }
 
 // ── Revenus photographe ───────────────────────────────────────────────────────
