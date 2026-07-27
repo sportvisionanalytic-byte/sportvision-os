@@ -3881,23 +3881,42 @@ async function loadProdBudget(){
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   if(!el)return;
   try{
-    const raw=await sbFetch('prestations?select=id,statut,type_prestation,date_prestation,clients(nom),devis(montant_ht)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=30');
-    const pre=Array.isArray(raw)?raw:[];
+    const now=new Date();
+    const mStart=now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-01';
+    const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
+    // Fetch this month's prestations (CA), + equipe rémunérations + frais in parallel
+    const [rawPre,rawRem,rawFrais]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,montant_ttc,clients(nom)&statut=not.in.(annulée,refusée)&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext+'&order=date_prestation.desc&limit=100'),
+      sbFetch('prestations_equipe?select=remuneration,prestations(date_prestation)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('frais?select=montant&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext).catch(()=>[]),
+    ]);
+    const pre=Array.isArray(rawPre)?rawPre:[];
     const active=pre.filter(p=>!['livrée','clôturée'].includes(p.statut));
-    s('bud-nb',active.length);
-    // Estimate CA from devis (sum of montant_ht where available)
-    const ca=pre.reduce((acc,p)=>{const m=p.devis?.montant_ht;return acc+(m?Number(m):0);},0);
-    s('bud-ca',ca?ca.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €':'—');
-    s('bud-couts','—'); s('bud-marge','—');
-    el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+pre.slice(0,10).map((p,i)=>{
+    s('bud-nb',active.length||pre.length);
+    const ca=pre.reduce((acc,p)=>acc+(Number(p.montant_ttc)||0),0);
+    const costsRem=(Array.isArray(rawRem)?rawRem:[]).reduce((acc,r)=>acc+(Number(r.remuneration)||0),0);
+    const costsFrais=(Array.isArray(rawFrais)?rawFrais:[]).reduce((acc,f)=>acc+(Number(f.montant)||0),0);
+    const couts=costsRem+costsFrais;
+    const marge=ca-couts;
+    const fmt=v=>v.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+    s('bud-ca',ca>0?fmt(ca):'—');
+    s('bud-couts',couts>0?fmt(couts):'—');
+    s('bud-marge',(ca>0||couts>0)?fmt(marge):'—');
+    if(!pre.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:10px;color:var(--t3)"><div style="font-size:40px;opacity:.15">📊</div><div style="font-size:13px">Aucune prestation ce mois-ci.</div></div>';
+      return;
+    }
+    el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+pre.slice(0,12).map((p,i)=>{
       const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
-      const ca=p.devis?.montant_ht?Number(p.devis.montant_ht).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €':'—';
-      return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:center;${i<Math.min(pre.length,10)-1?'border-bottom:1px solid var(--b1)':''};padding:12px 18px;cursor:pointer;gap:12px" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+      const ttc=p.montant_ttc?Number(p.montant_ttc).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €':'—';
+      const stClr=p.statut==='confirmée'?'var(--acc)':p.statut==='en_cours'?'var(--ok)':p.statut==='livrée'?'var(--wa)':'var(--t3)';
+      return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:center;${i<Math.min(pre.length,12)-1?'border-bottom:1px solid var(--b1)':''};padding:12px 18px;cursor:pointer;gap:12px" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+        <div style="width:6px;height:6px;border-radius:50%;background:${stClr};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px">${date}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · ${p.reference||'—'}</div>
         </div>
-        <div style="font-size:13px;font-weight:700;color:var(--ok);flex-shrink:0">${ca}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--ok);flex-shrink:0">${ttc}</div>
       </div>`;
     }).join('')+'</div>';
   }catch(e){
@@ -6976,7 +6995,40 @@ async function loadComptaImpayes(){
 
 async function loadComptaAvoirs(){
   const el=document.getElementById('compta-avoirs-real');if(!el)return;
-  el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Gestion des avoirs à venir (table avoirs non encore créée).</div>';
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  try{
+    // Avoirs = prestations partiellement payées ou annulées avec paiement partiel reçu
+    const [partial,annul]=await Promise.all([
+      sbFetch('prestations?select=id,reference,date_prestation,montant_ht,montant_ttc,statut,statut_financier,clients(nom)&statut_financier=eq.partiellement_payée&order=date_prestation.desc&limit=100'),
+      sbFetch('prestations?select=id,reference,date_prestation,montant_ht,montant_ttc,statut,statut_financier,clients(nom)&statut=eq.annulée&statut_financier=not.in.(non_facturée,brouillon)&order=date_prestation.desc&limit=50'),
+    ]);
+    const list=[...(Array.isArray(partial)?partial:[]),...(Array.isArray(annul)?annul:[])];
+    const now=new Date();const mStart=now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-01';
+    const mois=list.filter(p=>p.date_prestation>=mStart);
+    const tot=list.reduce((s,p)=>s+(Number(p.montant_ttc)||0),0);
+    set('av-kpi-mois',mois.length);
+    set('av-kpi-tot',tot>0?tot.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €':'0 €');
+    set('av-kpi-rem',(Array.isArray(partial)?partial:[]).length+' partiels');
+    if(!list.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.15">📝</div><div style="font-size:13px">Aucun avoir ou paiement partiel.</div><div style="font-size:11px;margin-top:4px;color:var(--t3);text-align:center">Les prestations partiellement payées ou annulées apparaissent ici.</div></div>';
+      return;
+    }
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Date</th><th>Montant TTC</th><th>Motif</th><th>Statut financier</th></tr></thead><tbody>'+
+      list.map(p=>{
+        const motif=p.statut==='annulée'?'Annulation':'Paiement partiel';
+        const mClr=p.statut==='annulée'?'bb':'bl';
+        return`<tr onclick="modalDetailById('${p.id}')" style="cursor:pointer">
+          <td class="tm">${p.reference||'—'}</td>
+          <td class="tp">${p.clients?.nom||'—'}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
+          <td style="font-weight:700;color:var(--wa)">${p.montant_ttc?Number(p.montant_ttc).toLocaleString('fr-FR')+' €':'—'}</td>
+          <td><span class="bd ${mClr}"><span class="bd-d"></span>${motif}</span></td>
+          <td><span class="bd bw"><span class="bd-d"></span>${p.statut_financier||'—'}</span></td>
+        </tr>`;
+      }).join('')+'</tbody></table></div>';
+  }catch(e){
+    el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
 }
 
 async function loadComptaDepenses(){
@@ -7351,7 +7403,7 @@ async function loadSecContrats(){
         <td>${c.date_debut?new Date(c.date_debut).toLocaleDateString('fr-FR'):'—'}</td>
         <td>${c.date_fin?new Date(c.date_fin).toLocaleDateString('fr-FR'):'—'}</td>
         <td><span class="bd ${SC2[c.statut]||'bw'}"><span class="bd-d"></span>${SL2[c.statut]||c.statut}</span></td>
-        <td><button class="btn bg2 bs" onclick="">Ouvrir</button></td>
+        <td><button class="btn bg2 bs" onclick="modalEditerContrat('${c.id}')">Ouvrir</button></td>
       </tr>`).join('')+'</tbody></table></div>':
       '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun contrat pour l\'instant.</div>';
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table contrats non disponible (migration requise).</div>';console.error(e);}
@@ -7419,20 +7471,33 @@ function renderSecLivraisons(){
     </tr>`).join('')+'</tbody></table></div>';
 }
 
-function exportSecRapport(type){
+async function exportSecRapport(type){
   const ts=new Date().toISOString().slice(0,10);
-  if(type==='prestations'){
-    const rows=[['Référence','Client','Type','Date','Statut','Montant TTC']];
-    rows.push(...(window._secDemData||[]).map(p=>[p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.statut||'',p.montant_ttc||'']));
-    dlCSV(`prestations-${ts}.csv`,rows);
-  } else if(type==='clients'){
-    const rows=[['Nom','Ville','Sport','Statut']];
-    toast('Export clients en cours…');
-    sbFetch('clients?select=nom,ville,sport,statut&limit=1000').then(d=>{
-      if(Array.isArray(d))rows.push(...d.map(c=>[c.nom||'',c.ville||'',c.sport||'',c.statut||'']));
+  toast('Export en cours…','ok');
+  try{
+    if(type==='prestations'){
+      const now=new Date();const mStart=now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-01';
+      const data=await sbFetch('prestations?select=reference,statut,type_prestation,date_prestation,montant_ht,montant_ttc,lieu,clients(nom)&date_prestation=gte.'+mStart+'&order=date_prestation.desc&limit=500');
+      const rows=[['Référence','Client','Type','Date','Lieu','Montant HT','Montant TTC','Statut']];
+      (Array.isArray(data)?data:[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.lieu||'',p.montant_ht||'',p.montant_ttc||'',p.statut||'']));
+      dlCSV(`prestations-${ts}.csv`,rows);
+    } else if(type==='clients'){
+      const data=await sbFetch('clients?select=nom,prenom_contact,nom_contact,email,telephone,ville,sport,statut,type_client,created_at&order=nom.asc&limit=1000');
+      const rows=[['Nom','Contact','Email','Téléphone','Ville','Sport','Statut','Type','Créé le']];
+      (Array.isArray(data)?data:[]).forEach(c=>rows.push([c.nom||'',[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'',c.email||'',c.telephone||'',c.ville||'',c.sport||'',c.statut||'',c.type_client||'',c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR'):'']));
       dlCSV(`clients-${ts}.csv`,rows);
-    });
-  } else toast('Export '+type+' — fonctionnalité à venir');
+    } else if(type==='devis'){
+      const data=await sbFetch('devis?select=reference,statut,montant_ht,montant_ttc,date_creation,date_expiration,clients(nom),prestations(reference)&order=date_creation.desc&limit=500');
+      const rows=[['Référence','Client','Prestation','Montant HT','Montant TTC','Date création','Date expiration','Statut']];
+      (Array.isArray(data)?data:[]).forEach(d=>rows.push([d.reference||'',d.clients?.nom||'',d.prestations?.reference||'',d.montant_ht||'',d.montant_ttc||'',d.date_creation||'',d.date_expiration||'',d.statut||'']));
+      dlCSV(`devis-${ts}.csv`,rows);
+    } else if(type==='relances'){
+      const data=await sbFetch('prestations?select=reference,statut,statut_financier,date_prestation,montant_ttc,clients(nom,email,telephone)&statut_financier=in.(acompte_demandé,partiellement_payée,facturée)&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=500');
+      const rows=[['Référence','Client','Email','Téléphone','Date','Montant TTC','Statut financier']];
+      (Array.isArray(data)?data:[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.clients?.email||'',p.clients?.telephone||'',p.date_prestation||'',p.montant_ttc||'',p.statut_financier||'']));
+      dlCSV(`relances-${ts}.csv`,rows);
+    }
+  }catch(e){toast('Erreur export : '+(e.message||'inconnue'),'er');}
 }
 function dlCSV(fname,rows){
   const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
