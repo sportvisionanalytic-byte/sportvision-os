@@ -1299,24 +1299,39 @@ const VIEWS={
   // ── PROD : MÉDIAS ──────────────────────────────────────────────────────────
   'prod.media':()=>`
     <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">Médias & transferts</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Suivi des transferts de rushs</div></div>
+      <div><div class="sh-t">Centre Médias</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Pilotage des liens — aucun fichier stocké ici</div></div>
+      <button class="btn bp bs" onclick="modalAjouterLien(null)">+ Ajouter un lien</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">À transférer</div><div class="fs-v" id="media-attente" style="color:var(--er)">—</div></div>
-      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En cours</div><div class="fs-v" id="media-encours" style="color:var(--wa)">—</div></div>
-      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Complets</div><div class="fs-v" id="media-ok" style="color:var(--ok)">—</div></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Liens en attente</div><div class="fs-v" id="ml-att" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À vérifier</div><div class="fs-v" id="ml-verif" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Expirants</div><div class="fs-v" id="ml-exp" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Validés</div><div class="fs-v" id="ml-ok" style="color:var(--ok)">—</div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+      <button onclick="setMediaTab('liens')" class="btn bp bs" id="mtab-liens" style="flex-shrink:0;font-size:11px">Tous les liens</button>
+      <button onclick="setMediaTab('prestations')" class="btn bg2 bs" id="mtab-prestations" style="flex-shrink:0;font-size:11px">Par prestation</button>
+      <button onclick="setMediaTab('expirants')" class="btn bg2 bs" id="mtab-expirants" style="flex-shrink:0;font-size:11px">⚠ Expirants</button>
+      <button onclick="setMediaTab('bibliotheque')" class="btn bg2 bs" id="mtab-bibliotheque" style="flex-shrink:0;font-size:11px">Bibliothèque</button>
     </div>
     <div id="prod-media-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── PROD : POSTPRODUCTION ─────────────────────────────────────────────────
   'prod.post':()=>`
     <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">Postproduction</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Suivi des montages et corrections</div></div>
+      <div><div class="sh-t">Postproduction</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Montages, versions et corrections</div></div>
+      <button class="btn bp bs" onclick="modalAttribuerPostprod(null)">+ Attribuer</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">À attribuer</div><div class="fs-v" id="pp-kpi-att" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(124,77,255,.25)"><div class="fs-l">En cours</div><div class="fs-v" id="pp-kpi-enc" style="color:#7C4DFF">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Corrections</div><div class="fs-v" id="pp-kpi-cor" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">À valider</div><div class="fs-v" id="pp-kpi-val" style="color:var(--ok)">—</div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
       <button onclick="filterProdPost('all')" class="btn bp bs" id="ppost-all" style="flex-shrink:0;font-size:11px">Tous</button>
-      <button onclick="filterProdPost('a_monter')" class="btn bg2 bs" id="ppost-am" style="flex-shrink:0;font-size:11px">À monter</button>
-      <button onclick="filterProdPost('en_cours')" class="btn bg2 bs" id="ppost-enc" style="flex-shrink:0;font-size:11px">En montage</button>
+      <button onclick="filterProdPost('a_attribuer')" class="btn bg2 bs" id="ppost-am" style="flex-shrink:0;font-size:11px">À attribuer</button>
+      <button onclick="filterProdPost('en_cours')" class="btn bg2 bs" id="ppost-enc" style="flex-shrink:0;font-size:11px">En cours</button>
       <button onclick="filterProdPost('corrections')" class="btn bg2 bs" id="ppost-cor" style="flex-shrink:0;font-size:11px">Corrections</button>
       <button onclick="filterProdPost('valider')" class="btn bg2 bs" id="ppost-val" style="flex-shrink:0;font-size:11px">À valider</button>
     </div>
@@ -1325,12 +1340,18 @@ const VIEWS={
   // ── PROD : LIVRABLES ──────────────────────────────────────────────────────
   'prod.livr':()=>`
     <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">Livrables & validations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Contrôle qualité avant livraison</div></div>
+      <div><div class="sh-t">Livrables & livraisons</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Validation et transmission aux clients</div></div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À valider</div><div class="fs-v" id="lv-kpi-val" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Prêts</div><div class="fs-v" id="lv-kpi-pret" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(54,107,255,.25)"><div class="fs-l">Livrés</div><div class="fs-v" id="lv-kpi-lv" style="color:var(--acc)">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Liens expirants</div><div class="fs-v" id="lv-kpi-exp" style="color:var(--er)">—</div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
       <button onclick="filterProdLivr('all')" class="btn bp bs" id="pliv-all" style="flex-shrink:0;font-size:11px">Tous</button>
-      <button onclick="filterProdLivr('valider')" class="btn bg2 bs" id="pliv-val" style="flex-shrink:0;font-size:11px">À valider</button>
-      <button onclick="filterProdLivr('valide')" class="btn bg2 bs" id="pliv-ok" style="flex-shrink:0;font-size:11px">Validés</button>
+      <button onclick="filterProdLivr('a_valider')" class="btn bg2 bs" id="pliv-val" style="flex-shrink:0;font-size:11px">À valider</button>
+      <button onclick="filterProdLivr('pret')" class="btn bg2 bs" id="pliv-ok" style="flex-shrink:0;font-size:11px">Prêts à livrer</button>
       <button onclick="filterProdLivr('livre')" class="btn bg2 bs" id="pliv-lv" style="flex-shrink:0;font-size:11px">Livrés</button>
     </div>
     <div id="prod-livr-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
@@ -1477,11 +1498,14 @@ const VIEWS={
     <div id="photo-pre-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'photo.medias':()=>`
-    <div class="sh"><div class="sh-t">Mes médias</div></div>
-    <div style="display:flex;gap:10px;margin-bottom:13px">
-      <div class="fs" style="flex:1;min-width:0"><div class="fs-l">Missions</div><div class="fs-v" id="med-nb">—</div></div>
-      <div class="fs" style="flex:1;min-width:0"><div class="fs-l">Rushs OK</div><div class="fs-v" id="med-done" style="color:var(--ok)">—</div></div>
-      <div class="fs" style="flex:1;min-width:0"><div class="fs-l">À transférer</div><div class="fs-v" id="med-att" style="color:var(--wa)">—</div></div>
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Mes médias</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Liens à transmettre après chaque mission</div></div>
+      <button class="btn bp bs" onclick="modalAjouterLien(null)">+ Ajouter un lien</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">À transmettre</div><div class="fs-v" id="med-att" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En vérification</div><div class="fs-v" id="med-verif" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Validés</div><div class="fs-v" id="med-done" style="color:var(--ok)">—</div></div>
     </div>
     <div id="medias-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -2636,8 +2660,8 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='rem') await loadProdRemunerations();
   if(role==='prod'&&view==='frais') await loadProdFrais();
   if(role==='prod'&&view==='brief') await loadProdBriefings();
-  if(role==='prod'&&view==='media') await loadProdMedias();
-  if(role==='prod'&&view==='post') await loadProdPost();
+  if(role==='prod'&&view==='media'){_mediaTab='liens';await loadProdMedias();}
+  if(role==='prod'&&view==='post') await loadProdPostprod();
   if(role==='prod'&&view==='livr') await loadProdLivrables();
   if(role==='prod'&&view==='kanban') await loadKanban();
   if(role==='prod'&&view==='budget') await loadProdBudget();
@@ -2676,7 +2700,7 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='contenus') await loadCmContenus();
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
   if(role==='cm'&&view==='publications') await loadCmPublications();
-  if(role==='photo'&&view==='medias') await loadMedias();
+  if(role==='photo'&&view==='medias') await loadPhotoMedias();
   if(role==='photo'&&view==='kits') await loadPhotoKits();
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='admin'&&view==='form') await loadAdminForm();
@@ -4165,17 +4189,1073 @@ function renderProdLivrList(){
   }).join('')+'</div>';
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── CENTRE MÉDIAS & POSTPRODUCTION ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
+const ML_CAT={depot:'Dépôt',rushs:'Rushs',travail:'Travail',previsualisation:'Prévisualisation',final:'Final',livraison:'Livraison',bibliotheque:'Bibliothèque'};
+const ML_TYPE={photo:'Photo',video:'Vidéo',audio:'Audio',drone:'Drone',veo:'Veo',graphisme:'Graphisme',canva:'Canva',document:'Document',mixte:'Mixte',autre:'Autre'};
+const ML_FOURNISSEUR={google_drive:'Google Drive',dropbox:'Dropbox',onedrive:'OneDrive',wetransfer:'WeTransfer',swisstransfer:'SwissTransfer',canva:'Canva',frame_io:'Frame.io',vimeo:'Vimeo',youtube:'YouTube',galerie:'Galerie photo',perso:'Lien personnel',autre:'Autre'};
+const ML_STATUT={a_verifier:'À vérifier',valide:'Valide',acces_limite:'Accès limité',autorisation_requise:'Auth. requise',mdp_requis:'Mot de passe',expirant:'Expirant',expire:'Expiré',inaccessible:'Inaccessible',remplace:'Remplacé',archive:'Archivé'};
+const ML_STATUT_CLR={a_verifier:'var(--t3)',valide:'var(--ok)',acces_limite:'var(--wa)',autorisation_requise:'var(--wa)',mdp_requis:'#7C4DFF',expirant:'var(--er)',expire:'var(--er)',inaccessible:'var(--er)',remplace:'var(--t3)',archive:'var(--t3)'};
+const PP_STATUT_LB={a_attribuer:'À attribuer',attribuee:'Attribuée',a_commencer:'À commencer',en_cours:'En cours',en_attente_elements:'En attente',premiere_version_prep:'Prép. V1',version_prete:'Version prête',a_valider_interne:'À valider',corrections_demandees:'Corrections',corrections_en_cours:'Corrections',prete_nouvelle_validation:'Nouvelle validation',validee_interne:'Validée',a_valider_client:'Valid. client',validee_client:'Validée client',prete_a_livrer:'Prête',livree:'Livrée',archivee:'Archivée',annulee:'Annulée'};
+const PP_STATUT_CLR={a_attribuer:'var(--er)',attribuee:'var(--wa)',a_commencer:'var(--wa)',en_cours:'#7C4DFF',en_attente_elements:'var(--t3)',premiere_version_prep:'#7C4DFF',version_prete:'var(--ok)',a_valider_interne:'var(--wa)',corrections_demandees:'var(--er)',corrections_en_cours:'var(--er)',prete_nouvelle_validation:'var(--wa)',validee_interne:'var(--ok)',a_valider_client:'var(--wa)',validee_client:'var(--ok)',prete_a_livrer:'var(--ok)',livree:'var(--ok)',archivee:'var(--t3)',annulee:'var(--t3)'};
+const LV_STATUT_LB={a_preparer:'À préparer',en_preparation:'En préparation',a_valider:'À valider',valide:'Validé',pret_a_livrer:'Prêt à livrer',livre:'Livré',consulte:'Consulté',lien_expirant:'Lien expirant',lien_expire:'Lien expiré',remplace:'Remplacé',archive:'Archivé'};
+const LV_STATUT_CLR={a_preparer:'var(--t3)',en_preparation:'#7C4DFF',a_valider:'var(--wa)',valide:'var(--ok)',pret_a_livrer:'var(--ok)',livre:'var(--ok)',consulte:'var(--ok)',lien_expirant:'var(--er)',lien_expire:'var(--er)',remplace:'var(--t3)',archive:'var(--t3)'};
+
+let _mediaTab='liens';
+let _mediaLiens=[];
+let _mediaPostprod=[];
+let _mediaLivrables=[];
+
+// ─── Onglets Centre Médias (prod) ─────────────────────────────────────────────
+function setMediaTab(tab){
+  _mediaTab=tab;
+  ['liens','prestations','expirants','bibliotheque'].forEach(t=>{
+    const b=document.getElementById('mtab-'+t);
+    if(b)b.className='btn '+(t===tab?'bp':'bg2')+' bs';
+    if(b)b.style.fontSize='11px';
+  });
+  loadProdMedias();
+}
+
+// ─── Chargement Centre Médias prod ────────────────────────────────────────────
+async function loadProdMedias(){
+  const el=document.getElementById('prod-media-real');
+  if(!el)return;
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const all=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,date_expiration,transfert_confirme,prestation_id,ajouteur:profiles!ajouteur_id(prenom,nom),prestations(reference,clients(nom))&order=created_at.desc&limit=200');
+    _mediaLiens=Array.isArray(all)?all:[];
+    const now=new Date();
+    const in7=new Date(now.getTime()+7*864e5);
+    const att=_mediaLiens.filter(l=>l.statut==='a_verifier'&&!l.transfert_confirme).length;
+    const verif=_mediaLiens.filter(l=>l.statut==='a_verifier').length;
+    const exp=_mediaLiens.filter(l=>l.date_expiration&&new Date(l.date_expiration)<in7&&!['expire','archive','remplace'].includes(l.statut)).length;
+    const ok=_mediaLiens.filter(l=>l.statut==='valide').length;
+    s('ml-att',att); s('ml-verif',verif); s('ml-exp',exp); s('ml-ok',ok);
+    if(_mediaTab==='liens') renderMediaLiensList(_mediaLiens);
+    else if(_mediaTab==='prestations') renderMediaParPrestation(_mediaLiens);
+    else if(_mediaTab==='expirants') renderMediaExpirants(_mediaLiens,in7);
+    else if(_mediaTab==='bibliotheque') loadMediaBibliotheque(el);
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function renderMediaLiensList(liens){
+  const el=document.getElementById('prod-media-real');
+  if(!el)return;
+  if(!liens.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🔗</div><div style="font-size:13px">Aucun lien enregistré. Ajoutez le premier lien.</div></div>';
+    return;
+  }
+  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+liens.map((l,i)=>{
+    const clr=ML_STATUT_CLR[l.statut]||'var(--t3)';
+    const lb=ML_STATUT[l.statut]||l.statut;
+    const pNom=l.prestations?.reference||'Sans prestation';
+    const cNom=l.prestations?.clients?.nom||'';
+    const typ=ML_TYPE[l.type_media]||l.type_media||'—';
+    const four=ML_FOURNISSEUR[l.fournisseur]||l.fournisseur||'—';
+    const exp=l.date_expiration?`<span style="font-size:10px;color:${new Date(l.date_expiration)<new Date()?'var(--er)':'var(--t3)'}">${new Date(l.date_expiration).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'})}</span>`:'';
+    return`<div style="display:flex;align-items:center;${i<liens.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer;padding:11px 14px;gap:10px" onclick="modalFicheLien('${l.id}')" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+      <div style="width:3px;height:40px;background:${clr};border-radius:2px;flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.nom}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${pNom}${cNom?' · '+cNom:''} · ${typ} · ${four}</div>
+      </div>
+      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
+        ${exp}
+      </div>
+      <div style="flex-shrink:0;display:flex;gap:5px">
+        <button onclick="event.stopPropagation();ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:5px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗</button>
+        <button onclick="event.stopPropagation();copierLien('${encodeURIComponent(l.url)}')" style="padding:5px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function renderMediaParPrestation(liens){
+  const el=document.getElementById('prod-media-real');
+  if(!el)return;
+  const grouped={};
+  liens.forEach(l=>{
+    const k=l.prestation_id||'_sans';
+    if(!grouped[k]) grouped[k]={ref:l.prestations?.reference||'Sans prestation',client:l.prestations?.clients?.nom||'',liens:[]};
+    grouped[k].liens.push(l);
+  });
+  if(!Object.keys(grouped).length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📂</div><div>Aucune prestation avec des liens.</div></div>';
+    return;
+  }
+  el.innerHTML=Object.entries(grouped).map(([pid,g])=>{
+    const nok=g.liens.filter(l=>l.statut==='valide').length;
+    const ntot=g.liens.length;
+    const clr=nok===ntot?'var(--ok)':ntot===0?'var(--t3)':'var(--wa)';
+    return`<div class="cd" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--t1)">${g.ref}${g.client?' — '+g.client:''}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${ntot} lien${ntot>1?'s':''} · <span style="color:${clr}">${nok} validé${nok>1?'s':''}</span></div>
+        </div>
+        <button onclick="modalAjouterLien('${pid==='_sans'?'null':pid}')" style="padding:5px 12px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">+ Lien</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+      ${g.liens.map(l=>{
+        const lclr=ML_STATUT_CLR[l.statut]||'var(--t3)';
+        const llb=ML_TYPE[l.type_media]||'—';
+        return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:6px;cursor:pointer" onclick="modalFicheLien('${l.id}')">
+          <span style="width:8px;height:8px;border-radius:50%;background:${lclr};flex-shrink:0"></span>
+          <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.nom}</div>
+          <div style="font-size:10px;color:var(--t3)">${llb} · ${ML_FOURNISSEUR[l.fournisseur]||l.fournisseur||'—'}</div></div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            <button onclick="event.stopPropagation();ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button>
+            ${l.statut==='a_verifier'?`<button onclick="event.stopPropagation();validerLienMedia('${l.id}')" style="padding:4px 8px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:10px;cursor:pointer">✓</button>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMediaExpirants(liens,in7){
+  const el=document.getElementById('prod-media-real');
+  if(!el)return;
+  const exp=liens.filter(l=>l.date_expiration&&new Date(l.date_expiration)<=in7&&!['expire','archive','remplace'].includes(l.statut));
+  if(!exp.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--ok)"><div style="font-size:36px;opacity:.4">✅</div><div style="font-size:13px">Aucun lien expirant dans les 7 prochains jours.</div></div>';
+    return;
+  }
+  const now=new Date();
+  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+exp.map((l,i)=>{
+    const expDate=new Date(l.date_expiration);
+    const daysLeft=Math.ceil((expDate-now)/864e5);
+    const clr=daysLeft<=1?'var(--er)':daysLeft<=3?'var(--wa)':'#F5A524';
+    const pNom=l.prestations?.reference||'—';
+    return`<div style="display:flex;align-items:center;${i<exp.length-1?'border-bottom:1px solid var(--b1)':''};padding:12px 14px;gap:10px;cursor:pointer" onclick="modalFicheLien('${l.id}')" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+      <div style="width:36px;height:36px;border-radius:8px;background:${clr}22;border:1px solid ${clr}55;display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-direction:column">
+        <div style="font-size:14px;font-weight:800;color:${clr};line-height:1">${daysLeft<=0?'EXP':daysLeft+'j'}</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${l.nom}</div>
+        <div style="font-size:11px;color:var(--t3)">${pNom} · expire le ${expDate.toLocaleDateString('fr-FR')}</div>
+      </div>
+      <button onclick="event.stopPropagation();ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:5px 10px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗ Ouvrir</button>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function loadMediaBibliotheque(el){
+  try{
+    const bib=await sbFetch('media_bibliotheque?select=id,nom,url,categorie,type_media,fournisseur,description,date_expiration&order=categorie,nom.asc&limit=100');
+    if(!bib||!bib.length){
+      el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📚</div><div style="font-size:13px">Bibliothèque vide.</div>
+      <button onclick="modalAjouterBibliotheque()" style="margin-top:8px;padding:8px 16px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer">+ Ajouter un lien partagé</button></div>`;
+      return;
+    }
+    const grouped={};
+    bib.forEach(b=>{
+      const k=b.categorie||'autre';
+      if(!grouped[k]) grouped[k]=[];
+      grouped[k].push(b);
+    });
+    el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button onclick="modalAjouterBibliotheque()" style="padding:6px 14px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer">+ Ajouter</button></div>`+
+    Object.entries(grouped).map(([cat,items])=>`<div class="cd" style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--acc);margin-bottom:10px">${cat.replace(/_/g,' ')}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+      ${items.map(b=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:6px">
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">${b.nom}</div>
+        ${b.description?`<div style="font-size:10px;color:var(--t3)">${b.description}</div>`:''}
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          <button onclick="ouvrirLien('${encodeURIComponent(b.url)}')" style="padding:4px 10px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗ Ouvrir</button>
+          <button onclick="copierLien('${encodeURIComponent(b.url)}')" style="padding:4px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>
+        </div>
+      </div>`).join('')}
+      </div>
+    </div>`).join('');
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur bibliothèque.</div>';}
+}
+
+// ─── Helpers liens ─────────────────────────────────────────────────────────────
+function ouvrirLien(encodedUrl){
+  const url=decodeURIComponent(encodedUrl);
+  window.open(url,'_blank','noopener,noreferrer');
+  toast('Ouverture dans un nouvel onglet','ok');
+}
+function copierLien(encodedUrl){
+  const url=decodeURIComponent(encodedUrl);
+  navigator.clipboard.writeText(url).then(()=>toast('Lien copié','ok')).catch(()=>toast('Impossible de copier','er'));
+}
+async function validerLienMedia(id){
+  try{
+    await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{statut:'valide',updated_at:new Date().toISOString()}});
+    toast('Lien validé','ok');
+    await logMediaHistory(null,S.uid,'Lien validé','lien',id,'a_verifier','valide');
+    loadProdMedias();
+  }catch(e){toast('Erreur validation','er');}
+}
+async function logMediaHistory(prestationId,auteurId,action,cibleType,cibleId,ancVal,nouvVal){
+  try{
+    await sbFetch('media_historique',{method:'POST',body:{prestation_id:prestationId||null,auteur_id:auteurId,action,cible_type:cibleType,cible_id:cibleId||null,ancienne_valeur:ancVal||null,nouvelle_valeur:nouvVal||null}});
+  }catch(e){}
+}
+
+// ─── Modal — Ajouter un lien ──────────────────────────────────────────────────
+async function modalAjouterLien(prestationId){
+  let presOptions='<option value="">— Sans prestation —</option>';
+  try{
+    const pres=await sbFetch('prestations?select=id,reference,clients(nom)&statut=not.in.(annulée,clôturée)&order=date_prestation.desc&limit=50');
+    if(pres&&pres.length) presOptions+=pres.map(p=>`<option value="${p.id}"${prestationId===p.id?' selected':''}>${p.reference} — ${p.clients?.nom||'—'}</option>`).join('');
+  }catch(e){}
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:14px">🔗 Ajouter un lien externe</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="${L}">Nom du lien *</label>
+        <input id="ml-nom" type="text" class="l-inp" style="height:38px" placeholder="ex: Rushs photo Brunoy FC U18"></div>
+      <div><label style="${L}">URL externe *</label>
+        <input id="ml-url" type="url" class="l-inp" style="height:38px" placeholder="https://drive.google.com/…"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Catégorie</label>
+          <select id="ml-cat" class="l-inp" style="height:38px">
+            ${Object.entries(ML_CAT).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+          </select></div>
+        <div><label style="${L}">Type de médias</label>
+          <select id="ml-type" class="l-inp" style="height:38px">
+            ${Object.entries(ML_TYPE).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+          </select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Fournisseur</label>
+          <select id="ml-four" class="l-inp" style="height:38px">
+            ${Object.entries(ML_FOURNISSEUR).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+          </select></div>
+        <div><label style="${L}">Prestation</label>
+          <select id="ml-pre" class="l-inp" style="height:38px">${presOptions}</select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Date d'expiration</label>
+          <input id="ml-exp" type="date" class="l-inp" style="height:38px"></div>
+        <div><label style="${L}">Nb. fichiers approx.</label>
+          <input id="ml-nbf" type="number" class="l-inp" style="height:38px" placeholder="0"></div>
+      </div>
+      <div><label style="${L}">Appareil / Caméra</label>
+        <input id="ml-app" type="text" class="l-inp" style="height:38px" placeholder="Sony A7 IV, DJI Mini 3…"></div>
+      <div><label style="${L}">Commentaire</label>
+        <textarea id="ml-com" class="l-inp" style="height:56px;padding-top:10px;resize:none" placeholder="Organisation du dossier, fichiers manquants…"></textarea></div>
+      <div style="background:rgba(46,204,138,.06);border:1px solid rgba(46,204,138,.2);border-radius:var(--rb);padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+        <input type="checkbox" id="ml-confirm" style="margin-top:2px;flex-shrink:0">
+        <label for="ml-confirm" style="font-size:12px;color:var(--t2);cursor:pointer">Je confirme que les fichiers indiqués ont été transférés sur ce lien et que le dossier contient les éléments déclarés.</label>
+      </div>
+      <div id="ml-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="sauvegarderLien()">Enregistrer</button>
+      </div>
+    </div>`);
+}
+
+async function sauvegarderLien(){
+  const err=document.getElementById('ml-err');
+  const nom=document.getElementById('ml-nom')?.value?.trim();
+  const url=document.getElementById('ml-url')?.value?.trim();
+  if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  if(!url||!url.startsWith('http')){err.textContent='URL invalide (doit commencer par https://).';return;}
+  err.textContent='Enregistrement…';
+  const body={
+    nom,url,
+    categorie:document.getElementById('ml-cat')?.value||'rushs',
+    type_media:document.getElementById('ml-type')?.value||'mixte',
+    fournisseur:document.getElementById('ml-four')?.value||'autre',
+    prestation_id:document.getElementById('ml-pre')?.value||null,
+    date_expiration:document.getElementById('ml-exp')?.value||null,
+    nombre_fichiers:document.getElementById('ml-nbf')?.value?Number(document.getElementById('ml-nbf').value):null,
+    appareil:document.getElementById('ml-app')?.value||null,
+    commentaire:document.getElementById('ml-com')?.value||null,
+    transfert_confirme:document.getElementById('ml-confirm')?.checked||false,
+    transfert_confirme_at:document.getElementById('ml-confirm')?.checked?new Date().toISOString():null,
+    ajouteur_id:S.uid,
+    statut:'a_verifier'
+  };
+  try{
+    const res=await sbFetch('media_liens',{method:'POST',body});
+    if(res&&res[0]){
+      await logMediaHistory(body.prestation_id,S.uid,'Lien ajouté','lien',res[0].id,null,nom);
+      closeModal();
+      toast('Lien enregistré','ok');
+      if(S.view==='media'||S.view==='medias') loadProdMedias();
+      if(S.view==='medias') loadPhotoMedias();
+    }else throw new Error();
+  }catch(e){err.textContent='Erreur lors de l\'enregistrement.';}
+}
+
+// ─── Modal — Fiche lien ────────────────────────────────────────────────────────
+async function modalFicheLien(id){
+  try{
+    const data=await sbFetch('media_liens?select=*,ajouteur:profiles!ajouteur_id(prenom,nom),responsable:profiles!responsable_id(prenom,nom),prestations(id,reference,clients(nom))&id=eq.'+id);
+    if(!data||!data[0]){toast('Lien introuvable','er');return;}
+    const l=data[0];
+    const clr=ML_STATUT_CLR[l.statut]||'var(--t3)';
+    const lblSt=ML_STATUT[l.statut]||l.statut;
+    const isProdAdmin=['admin','prod'].includes(S.role);
+    const ajouteur=[l.ajouteur?.prenom,l.ajouteur?.nom].filter(Boolean).join(' ')||'—';
+    const pNom=l.prestations?.reference||'Sans prestation';
+    const cNom=l.prestations?.clients?.nom||'';
+    const expDate=l.date_expiration?new Date(l.date_expiration):null;
+    const now=new Date();
+    const daysLeft=expDate?Math.ceil((expDate-now)/864e5):null;
+    const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:3px';
+    openModal(`
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:3px">${l.nom}</div>
+          <div style="font-size:12px;color:var(--t3)">${pNom}${cNom?' · '+cNom:''} · ${ML_TYPE[l.type_media]||'—'}</div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 10px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};flex-shrink:0;white-space:nowrap">${lblSt}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+        <button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:700;cursor:pointer">↗ Ouvrir</button>
+        <button onclick="copierLien('${encodeURIComponent(l.url)}')" style="padding:7px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer">⎘ Copier</button>
+        ${isProdAdmin&&l.statut==='a_verifier'?`<button onclick="validerLienMedia('${l.id}');closeModal()" style="padding:7px 14px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;cursor:pointer">✓ Valider</button>`:''}
+        ${isProdAdmin?`<button onclick="modalRemplacerLien('${l.id}')" style="padding:7px 14px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);color:var(--wa);font-size:12px;font-weight:600;cursor:pointer">↺ Remplacer</button>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="cd" style="margin-bottom:0;padding:12px 14px">
+          <div style="${L}">Catégorie</div><div style="font-size:13px;color:var(--t1)">${ML_CAT[l.categorie]||l.categorie||'—'}</div>
+        </div>
+        <div class="cd" style="margin-bottom:0;padding:12px 14px">
+          <div style="${L}">Fournisseur</div><div style="font-size:13px;color:var(--t1)">${ML_FOURNISSEUR[l.fournisseur]||l.fournisseur||'—'}</div>
+        </div>
+        <div class="cd" style="margin-bottom:0;padding:12px 14px">
+          <div style="${L}">Ajouté par</div><div style="font-size:13px;color:var(--t1)">${ajouteur}</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:2px">${new Date(l.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+        <div class="cd" style="margin-bottom:0;padding:12px 14px">
+          <div style="${L}">Expiration</div>
+          <div style="font-size:13px;color:${daysLeft!==null&&daysLeft<=7?'var(--er)':'var(--t1)'}">
+            ${expDate?expDate.toLocaleDateString('fr-FR'):'Non définie'}
+            ${daysLeft!==null?`<span style="font-size:10px;margin-left:4px">(${daysLeft<=0?'Expiré':daysLeft+'j restants'})</span>`:''}
+          </div>
+        </div>
+        ${l.nombre_fichiers?`<div class="cd" style="margin-bottom:0;padding:12px 14px"><div style="${L}">Nb. fichiers</div><div style="font-size:13px;color:var(--t1)">${l.nombre_fichiers}</div></div>`:''}
+        ${l.appareil?`<div class="cd" style="margin-bottom:0;padding:12px 14px"><div style="${L}">Appareil</div><div style="font-size:13px;color:var(--t1)">${l.appareil}</div></div>`:''}
+      </div>
+      ${l.commentaire?`<div class="cd" style="margin-bottom:12px;padding:12px 14px"><div style="${L}">Commentaire</div><div style="font-size:12px;color:var(--t2);margin-top:4px;white-space:pre-wrap">${l.commentaire}</div></div>`:''}
+      ${l.transfert_confirme?`<div style="padding:8px 12px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.2);border-radius:var(--rb);font-size:11px;color:var(--ok);margin-bottom:10px">✓ Transfert confirmé par l'expéditeur${l.transfert_confirme_at?' le '+new Date(l.transfert_confirme_at).toLocaleDateString('fr-FR'):''}</div>`:
+      `<div style="padding:8px 12px;background:rgba(245,165,36,.07);border:1px solid rgba(245,165,36,.2);border-radius:var(--rb);font-size:11px;color:var(--wa);margin-bottom:10px">⚠ Transfert non confirmé par l'expéditeur</div>`}
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Fermer</button>
+      </div>`);
+  }catch(e){toast('Erreur de chargement','er');}
+}
+
+async function modalRemplacerLien(ancienId){
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">↺ Remplacer le lien</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div style="padding:10px 12px;background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.2);border-radius:var(--rb);font-size:12px;color:var(--wa)">L'ancien lien sera marqué "Remplacé" et restera consultable dans l'historique.</div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau lien *</label>
+        <input id="rpl-url" type="url" class="l-inp" style="height:38px" placeholder="https://…"></div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Motif du remplacement</label>
+        <textarea id="rpl-motif" class="l-inp" style="height:56px;padding-top:10px;resize:none" placeholder="Lien expiré, mauvais dossier, réorganisation…"></textarea></div>
+      <div id="rpl-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="executerRemplacement('${ancienId}')">Confirmer</button>
+      </div>
+    </div>`);
+}
+
+async function executerRemplacement(ancienId){
+  const err=document.getElementById('rpl-err');
+  const nouvelUrl=document.getElementById('rpl-url')?.value?.trim();
+  const motif=document.getElementById('rpl-motif')?.value?.trim();
+  if(!nouvelUrl||!nouvelUrl.startsWith('http')){err.textContent='URL invalide.';return;}
+  err.textContent='En cours…';
+  try{
+    // Récupérer l'ancien lien pour copier ses métadonnées
+    const ancData=await sbFetch('media_liens?select=*&id=eq.'+ancienId);
+    if(!ancData||!ancData[0])throw new Error();
+    const anc=ancData[0];
+    // Créer le nouveau lien
+    const newRes=await sbFetch('media_liens',{method:'POST',body:{
+      nom:anc.nom,url:nouvelUrl,categorie:anc.categorie,type_media:anc.type_media,
+      fournisseur:anc.fournisseur,prestation_id:anc.prestation_id,
+      commentaire:motif?'Remplacement: '+motif:anc.commentaire,
+      ajouteur_id:S.uid,statut:'a_verifier'
+    }});
+    // Marquer l'ancien comme remplacé
+    await sbFetch('media_liens?id=eq.'+ancienId,{method:'PATCH',body:{statut:'remplace',remplace_par_id:newRes?.[0]?.id}});
+    await logMediaHistory(anc.prestation_id,S.uid,'Lien remplacé','lien',ancienId,anc.url,nouvelUrl);
+    closeModal();
+    toast('Lien remplacé','ok');
+    if(S.view==='media') loadProdMedias();
+  }catch(e){err.textContent='Erreur lors du remplacement.';}
+}
+
+// ─── Bibliothèque — ajout ─────────────────────────────────────────────────────
+function modalAjouterBibliotheque(){
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">📚 Ajouter à la bibliothèque</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom *</label>
+        <input id="bib-nom" type="text" class="l-inp" style="height:38px" placeholder="Logo SportVision 2024"></div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">URL *</label>
+        <input id="bib-url" type="url" class="l-inp" style="height:38px" placeholder="https://…"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Catégorie</label>
+          <select id="bib-cat" class="l-inp" style="height:38px">
+            ${[['logo','Logo'],['charte','Charte graphique'],['sponsor','Sponsor'],['musique','Musique'],['template_canva','Template Canva'],['archive','Archive'],['guide','Guide'],['autre','Autre']].map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+          </select></div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Fournisseur</label>
+          <select id="bib-four" class="l-inp" style="height:38px">
+            ${Object.entries(ML_FOURNISSEUR).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+          </select></div>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description</label>
+        <textarea id="bib-desc" class="l-inp" style="height:50px;padding-top:10px;resize:none" placeholder="Usage, notes…"></textarea></div>
+      <div id="bib-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="sauvegarderBibliotheque()">Ajouter</button>
+      </div>
+    </div>`);
+}
+
+async function sauvegarderBibliotheque(){
+  const err=document.getElementById('bib-err');
+  const nom=document.getElementById('bib-nom')?.value?.trim();
+  const url=document.getElementById('bib-url')?.value?.trim();
+  if(!nom){err.textContent='Nom obligatoire.';return;}
+  if(!url||!url.startsWith('http')){err.textContent='URL invalide.';return;}
+  err.textContent='Enregistrement…';
+  try{
+    await sbFetch('media_bibliotheque',{method:'POST',body:{
+      nom,url,
+      categorie:document.getElementById('bib-cat')?.value||'autre',
+      fournisseur:document.getElementById('bib-four')?.value||'autre',
+      description:document.getElementById('bib-desc')?.value||null,
+      ajouteur_id:S.uid
+    }});
+    closeModal();
+    toast('Lien ajouté à la bibliothèque','ok');
+    loadProdMedias();
+  }catch(e){err.textContent='Erreur.';}
+}
+
+// ─── Chargement photo.medias ──────────────────────────────────────────────────
+async function loadPhotoMedias(){
+  const el=document.getElementById('medias-real');
+  if(!el)return;
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const [pres,liens]=await Promise.all([
+      sbFetch('prestations_equipe?select=prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+S.uid+'&order=created_at.desc&limit=30'),
+      sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,transfert_confirme,prestation_id&ajouteur_id=eq.'+S.uid+'&order=created_at.desc&limit=100')
+    ]);
+    const mesPres=(pres||[]).map(e=>e.prestations).filter(Boolean);
+    const mesLiens=Array.isArray(liens)?liens:[];
+    const att=mesPres.filter(p=>['production_terminée','médias_à_transférer'].includes(p.statut)&&!mesLiens.find(l=>l.prestation_id===p.id&&l.transfert_confirme)).length;
+    const verif=mesLiens.filter(l=>l.statut==='a_verifier').length;
+    const ok=mesLiens.filter(l=>l.statut==='valide').length;
+    s('med-att',att); s('med-verif',verif); s('med-done',ok);
+    if(!mesPres.length&&!mesLiens.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📤</div><div style="font-size:13px">Aucun transfert en attente.</div></div>';
+      return;
+    }
+    const byPre={};
+    mesLiens.forEach(l=>{if(l.prestation_id){if(!byPre[l.prestation_id])byPre[l.prestation_id]=[];byPre[l.prestation_id].push(l);}});
+    el.innerHTML=mesPres.map(p=>{
+      const pLiens=byPre[p.id]||[];
+      const needsTransfer=['production_terminée','médias_à_transférer'].includes(p.statut)&&!pLiens.find(l=>l.transfert_confirme);
+      const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+      return`<div class="cd" style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:${pLiens.length?'10px':'0'}">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'}</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:2px">${p.reference} · ${date}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            ${needsTransfer?`<span style="font-size:10px;font-weight:700;padding:2px 8px;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.25);border-radius:20px;color:var(--er)">À transférer</span>`:''}
+            <button onclick="modalAjouterLien('${p.id}')" style="padding:5px 12px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">+ Lien</button>
+          </div>
+        </div>
+        ${pLiens.length?`<div style="display:flex;flex-direction:column;gap:5px">`+pLiens.map(l=>{
+          const lclr=ML_STATUT_CLR[l.statut]||'var(--t3)';
+          const llb=ML_STATUT[l.statut]||l.statut;
+          return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:6px">
+            <span style="width:7px;height:7px;border-radius:50%;background:${lclr};flex-shrink:0"></span>
+            <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.nom}</div>
+            <div style="font-size:10px;color:var(--t3)">${ML_TYPE[l.type_media]||'—'} · <span style="color:${lclr}">${llb}</span></div></div>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button>
+              <button onclick="copierLien('${encodeURIComponent(l.url)}')" style="padding:4px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:10px;cursor:pointer">⎘</button>
+            </div>
+          </div>`;
+        }).join('')+'</div>':`<div style="font-size:12px;color:var(--t3);font-style:italic">Aucun lien transmis pour cette prestation.</div>`}
+      </div>`;
+    }).join('')+(mesLiens.filter(l=>!l.prestation_id).length?`<div class="cd"><div style="font-size:12px;font-weight:600;color:var(--t3);margin-bottom:8px">Liens sans prestation associée</div><div style="display:flex;flex-direction:column;gap:5px">`+mesLiens.filter(l=>!l.prestation_id).map(l=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:6px"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1)">${l.nom}</div></div><button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button></div>`).join('')+'</div></div>':'');
+  }catch(e){if(el)el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ─── Postproduction ───────────────────────────────────────────────────────────
+let _prodPostprodData=[];
+let _postFilter='all';
+
+async function loadProdPostprod(){
+  const el=document.getElementById('prod-post-real');
+  if(!el)return;
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const raw=await sbFetch('media_postproductions?select=id,type_travail,statut,priorite,delai,validation_client_requise,created_at,prestations(id,reference,clients(nom)),responsable:profiles!responsable_id(prenom,nom)&statut=not.in.(archivee,annulee)&order=created_at.desc&limit=100');
+    _prodPostprodData=Array.isArray(raw)?raw:[];
+    s('pp-kpi-att',_prodPostprodData.filter(p=>p.statut==='a_attribuer').length);
+    s('pp-kpi-enc',_prodPostprodData.filter(p=>['en_cours','attribuee','a_commencer'].includes(p.statut)).length);
+    s('pp-kpi-cor',_prodPostprodData.filter(p=>['corrections_demandees','corrections_en_cours'].includes(p.statut)).length);
+    s('pp-kpi-val',_prodPostprodData.filter(p=>['version_prete','a_valider_interne','prete_nouvelle_validation'].includes(p.statut)).length);
+    _postFilter='all';
+    renderProdPostList();
+  }catch(e){if(el)el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function filterProdPost(f){
+  _postFilter=f;
+  ['all','a_attribuer','en_cours','corrections','valider'].forEach(id=>{
+    const btnId='ppost-'+id.replace('a_attribuer','am').replace('en_cours','enc').replace('corrections','cor').replace('valider','val');
+    const b=document.getElementById(btnId);
+    if(b){b.className='btn '+(f===id?'bp':'bg2')+' bs';b.style.fontSize='11px';}
+  });
+  renderProdPostList();
+}
+
+function renderProdPostList(){
+  const el=document.getElementById('prod-post-real');
+  if(!el)return;
+  let list=_prodPostprodData;
+  if(_postFilter==='a_attribuer') list=list.filter(p=>p.statut==='a_attribuer');
+  else if(_postFilter==='en_cours') list=list.filter(p=>['en_cours','attribuee','a_commencer','premiere_version_prep'].includes(p.statut));
+  else if(_postFilter==='corrections') list=list.filter(p=>['corrections_demandees','corrections_en_cours'].includes(p.statut));
+  else if(_postFilter==='valider') list=list.filter(p=>['version_prete','a_valider_interne','prete_nouvelle_validation'].includes(p.statut));
+  if(!list.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🎬</div><div style="font-size:13px">Aucune postproduction dans ce filtre.</div></div>';
+    return;
+  }
+  const TYPES={selection_photo:'Sélection photo',retouche_photo:'Retouche',montage_video:'Montage',highlight:'Highlight',aftermovie:'Aftermovie',interview:'Interview',tiktok:'TikTok',reel:'Reel',teaser:'Teaser',graphisme:'Graphisme',miniature:'Miniature',carrousel:'Carrousel',autre:'Autre'};
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+list.map(pp=>{
+    const clr=PP_STATUT_CLR[pp.statut]||'var(--t3)';
+    const lb=PP_STATUT_LB[pp.statut]||pp.statut;
+    const type=TYPES[pp.type_travail]||pp.type_travail||'—';
+    const resp=[pp.responsable?.prenom,pp.responsable?.nom].filter(Boolean).join(' ')||'Non attribué';
+    const delai=pp.delai?new Date(pp.delai).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—';
+    const prio={urgente:'🔴',haute:'🟠',normale:'🟡',basse:'⚪'}[pp.priorite]||'';
+    const isLate=pp.delai&&new Date(pp.delai)<new Date();
+    return`<div class="cd" style="cursor:pointer;margin-bottom:0" onclick="modalPostprodDetail('${pp.id}')" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--t1)">${pp.prestations?.reference||'—'} — ${type}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${pp.prestations?.clients?.nom||'—'}</div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 10px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:11px;color:var(--t3)">👤 ${resp}</span>
+        <span style="font-size:11px;color:${isLate?'var(--er)':'var(--t3)'}">${prio} Délai : ${delai}${isLate?' ⚠':''}</span>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function modalAttribuerPostprod(prestationId){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const TYPES_OPT=[['selection_photo','Sélection photo'],['retouche_photo','Retouche photo'],['montage_video','Montage vidéo'],['highlight','Highlight'],['aftermovie','Aftermovie'],['interview','Interview'],['tiktok','TikTok'],['reel','Reel'],['teaser','Teaser'],['graphisme','Graphisme'],['miniature','Miniature'],['carrousel','Carrousel'],['autre','Autre']];
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">🎬 Attribuer une postproduction</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="${L}">Prestation *</label>
+        <input id="pp-pre-search" type="text" class="l-inp" style="height:38px" placeholder="Référence prestation…"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Type de travail</label>
+          <select id="pp-type" class="l-inp" style="height:38px">${TYPES_OPT.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></div>
+        <div><label style="${L}">Priorité</label>
+          <select id="pp-prio" class="l-inp" style="height:38px">
+            <option value="normale">Normale</option><option value="haute">Haute</option>
+            <option value="urgente">Urgente</option><option value="basse">Basse</option>
+          </select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Délai</label>
+          <input id="pp-delai" type="date" class="l-inp" style="height:38px"></div>
+        <div><label style="${L}">Nb. versions max</label>
+          <input id="pp-nbv" type="number" class="l-inp" style="height:38px" value="3" min="1"></div>
+      </div>
+      <div><label style="${L}">Brief / Instructions</label>
+        <textarea id="pp-brief" class="l-inp" style="height:80px;padding-top:10px;resize:none" placeholder="Objectif, style, format attendu, musique, logos…"></textarea></div>
+      <div><label style="${L}">Format attendu</label>
+        <input id="pp-format" type="text" class="l-inp" style="height:38px" placeholder="MP4 1080p, JPG haute résolution…"></div>
+      <div style="display:flex;gap:8px;align-items:center;padding:10px 12px;background:var(--s2);border-radius:var(--rb)">
+        <input type="checkbox" id="pp-client" style="flex-shrink:0">
+        <label for="pp-client" style="font-size:12px;color:var(--t2);cursor:pointer">Validation client requise avant livraison</label>
+      </div>
+      <div id="pp-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="sauvegarderPostprod()">Créer</button>
+      </div>
+    </div>`);
+}
+
+async function sauvegarderPostprod(){
+  const err=document.getElementById('pp-err');
+  const preSearch=document.getElementById('pp-pre-search')?.value?.trim();
+  if(!preSearch){err.textContent='Prestation obligatoire.';return;}
+  err.textContent='Recherche prestation…';
+  try{
+    const pres=await sbFetch('prestations?select=id,reference&reference=ilike.%25'+encodeURIComponent(preSearch)+'%25&limit=1');
+    if(!pres||!pres[0]){err.textContent='Prestation non trouvée.';return;}
+    const body={
+      prestation_id:pres[0].id,
+      type_travail:document.getElementById('pp-type')?.value||'montage_video',
+      priorite:document.getElementById('pp-prio')?.value||'normale',
+      delai:document.getElementById('pp-delai')?.value||null,
+      nb_versions_autorisees:Number(document.getElementById('pp-nbv')?.value)||3,
+      brief:document.getElementById('pp-brief')?.value||null,
+      format_attendu:document.getElementById('pp-format')?.value||null,
+      validation_client_requise:document.getElementById('pp-client')?.checked||false,
+      statut:'a_attribuer',
+      created_by:S.uid
+    };
+    await sbFetch('media_postproductions',{method:'POST',body});
+    await logMediaHistory(pres[0].id,S.uid,'Postproduction créée','postproduction',null,null,body.type_travail);
+    closeModal();
+    toast('Postproduction créée','ok');
+    loadProdPostprod();
+  }catch(e){err.textContent='Erreur lors de la création.';}
+}
+
+async function modalPostprodDetail(id){
+  try{
+    const [ppData,versData,corrData]=await Promise.all([
+      sbFetch('media_postproductions?select=*,prestations(id,reference,clients(nom)),responsable:profiles!responsable_id(prenom,nom)&id=eq.'+id),
+      sbFetch('media_versions?select=*,lien:media_liens(nom,url,fournisseur),auteur:profiles!auteur_id(prenom,nom)&postproduction_id=eq.'+id+'&order=numero.asc'),
+      sbFetch('media_corrections?select=*,auteur:profiles!auteur_id(prenom,nom)&postproduction_id=eq.'+id+'&statut=not.in.(validee,annulee)&order=created_at.desc&limit=20')
+    ]);
+    if(!ppData||!ppData[0])return;
+    const pp=ppData[0];
+    const vers=Array.isArray(versData)?versData:[];
+    const corrs=Array.isArray(corrData)?corrData:[];
+    const clr=PP_STATUT_CLR[pp.statut]||'var(--t3)';
+    const lb=PP_STATUT_LB[pp.statut]||pp.statut;
+    const resp=[pp.responsable?.prenom,pp.responsable?.nom].filter(Boolean).join(' ')||'Non attribué';
+    const canAddVer=['en_cours','corrections_en_cours','attribuee','a_commencer'].includes(pp.statut)||['admin','prod'].includes(S.role);
+    const canValidate=['admin','prod'].includes(S.role)&&['version_prete','a_valider_interne','prete_nouvelle_validation'].includes(pp.statut);
+    const COR_PRIO={faible:'⚪',normale:'🟡',haute:'🟠',urgente:'🔴'};
+    openModal(`
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${pp.prestations?.reference||'—'}</div>
+          <div style="font-size:12px;color:var(--t3)">${pp.prestations?.clients?.nom||'—'} · Resp: ${resp}</div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 10px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
+      </div>
+      ${pp.brief?`<div style="font-size:12px;color:var(--t2);margin-bottom:12px;padding:10px 12px;background:var(--s2);border-radius:var(--rb)">📋 ${pp.brief}</div>`:''}
+      ${canValidate?`<div style="display:flex;gap:8px;margin-bottom:12px;padding:10px 12px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.2);border-radius:var(--rb)">
+        <div style="flex:1;font-size:12px;color:var(--ok);font-weight:600">Une version attend votre validation</div>
+        <button onclick="changerStatutPostprod('${id}','validee_interne')" style="padding:6px 14px;background:rgba(46,204,138,.15);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;cursor:pointer">✓ Valider</button>
+        <button onclick="changerStatutPostprod('${id}','corrections_demandees')" style="padding:6px 14px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);font-size:12px;font-weight:600;cursor:pointer">✕ Corrections</button>
+      </div>`:''}
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:8px">Versions (${vers.length}/${pp.nb_versions_autorisees})</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+        ${vers.length?vers.map(v=>{
+          const vclr={brouillon:'var(--t3)',soumise:'var(--acc)',a_valider:'var(--wa)',validee:'var(--ok)',corrections_demandees:'var(--er)',remplacee:'var(--t3)',finale:'var(--ok)',archivee:'var(--t3)'}[v.statut]||'var(--t3)';
+          const vlb={brouillon:'Brouillon',soumise:'Soumise',a_valider:'À valider',validee:'Validée',corrections_demandees:'Corrections',remplacee:'Remplacée',finale:'Finale',archivee:'Archivée'}[v.statut]||v.statut;
+          const auteur=[v.auteur?.prenom,v.auteur?.nom].filter(Boolean).join(' ')||'—';
+          return`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--s2);border-radius:8px">
+            <div style="width:28px;height:28px;border-radius:6px;background:${vclr}22;border:1px solid ${vclr}55;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:800;color:${vclr}">V${v.numero}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--t1)">${v.nom||'Version '+v.numero} <span style="font-size:10px;color:${vclr};font-weight:700">${vlb}</span></div>
+              <div style="font-size:10px;color:var(--t3)">${auteur} · ${new Date(v.created_at).toLocaleDateString('fr-FR')}</div>
+            </div>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              ${v.lien?.url?`<button onclick="ouvrirLien('${encodeURIComponent(v.lien.url)}')" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;cursor:pointer">↗</button>`:''}
+            </div>
+          </div>`;
+        }).join(''):
+        `<div style="font-size:12px;color:var(--t3);font-style:italic;padding:10px">Aucune version soumise.</div>`}
+        ${canAddVer?`<button onclick="modalAjouterVersion('${id}')" style="display:block;width:100%;padding:8px;background:rgba(14,165,255,.08);border:1px dashed rgba(14,165,255,.3);border-radius:8px;color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;text-align:center">+ Ajouter une version</button>`:''}
+      </div>
+      ${corrs.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--er);margin-bottom:8px">Corrections ouvertes (${corrs.length})</div>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px">
+        ${corrs.map(c=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:9px 11px;background:rgba(240,68,94,.05);border:1px solid rgba(240,68,94,.15);border-radius:7px">
+          <span style="font-size:13px;flex-shrink:0">${COR_PRIO[c.priorite]||'🟡'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;color:var(--t1)">${c.description}</div>
+            ${c.timecode?`<div style="font-size:10px;color:var(--acc);margin-top:2px">⏱ ${c.timecode}</div>`:''}
+            <div style="font-size:10px;color:var(--t3);margin-top:2px">${[c.auteur?.prenom,c.auteur?.nom].filter(Boolean).join(' ')||'—'} · ${new Date(c.created_at).toLocaleDateString('fr-FR')}</div>
+          </div>
+        </div>`).join('')}
+        <button onclick="modalAjouterCorrection('${id}')" style="display:block;width:100%;padding:7px;background:rgba(240,68,94,.06);border:1px dashed rgba(240,68,94,.25);border-radius:7px;color:var(--er);font-size:12px;font-weight:600;cursor:pointer;text-align:center">+ Ajouter une correction</button>
+      </div>`:`<button onclick="modalAjouterCorrection('${id}')" style="display:block;width:100%;padding:7px;background:rgba(240,68,94,.05);border:1px dashed rgba(240,68,94,.2);border-radius:7px;color:var(--er);font-size:12px;font-weight:600;cursor:pointer;text-align:center;margin-bottom:14px">+ Demander une correction</button>`}
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Fermer</button>
+        ${['admin','prod'].includes(S.role)?`<button class="btn bp" onclick="changerStatutPostprod('${id}','livree')">Marquer livrée</button>`:''}
+      </div>`);
+  }catch(e){toast('Erreur de chargement','er');}
+}
+
+function modalAjouterVersion(postprodId){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">🎞 Soumettre une version</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="${L}">Nom de la version</label>
+        <input id="ver-nom" type="text" class="l-inp" style="height:38px" placeholder="Version 1, Correction retour client…"></div>
+      <div><label style="${L}">Lien de prévisualisation *</label>
+        <input id="ver-url" type="url" class="l-inp" style="height:38px" placeholder="https://frame.io/…  https://vimeo.com/…"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Fournisseur</label>
+          <select id="ver-four" class="l-inp" style="height:38px">
+            ${Object.entries(ML_FOURNISSEUR).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+          </select></div>
+        <div><label style="${L}">Date limite validation</label>
+          <input id="ver-delai" type="date" class="l-inp" style="height:38px"></div>
+      </div>
+      <div><label style="${L}">Commentaire</label>
+        <textarea id="ver-com" class="l-inp" style="height:60px;padding-top:10px;resize:none" placeholder="Ce qui a changé par rapport à la version précédente…"></textarea></div>
+      <div id="ver-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="sauvegarderVersion('${postprodId}')">Soumettre</button>
+      </div>
+    </div>`);
+}
+
+async function sauvegarderVersion(postprodId){
+  const err=document.getElementById('ver-err');
+  const url=document.getElementById('ver-url')?.value?.trim();
+  if(!url||!url.startsWith('http')){err.textContent='URL de prévisualisation invalide.';return;}
+  err.textContent='Enregistrement…';
+  try{
+    const ppData=await sbFetch('media_postproductions?select=prestation_id,nb_versions_autorisees&id=eq.'+postprodId);
+    const pp=ppData?.[0];
+    if(!pp)throw new Error();
+    const existing=await sbFetch('media_versions?select=id&postproduction_id=eq.'+postprodId);
+    const numero=(existing?.length||0)+1;
+    // Créer le lien média
+    const lienRes=await sbFetch('media_liens',{method:'POST',body:{
+      nom:(document.getElementById('ver-nom')?.value?.trim()||'Version '+numero),
+      url,categorie:'previsualisation',type_media:'video',
+      fournisseur:document.getElementById('ver-four')?.value||'autre',
+      prestation_id:pp.prestation_id,ajouteur_id:S.uid,statut:'a_verifier'
+    }});
+    // Créer la version
+    await sbFetch('media_versions',{method:'POST',body:{
+      postproduction_id:postprodId,
+      prestation_id:pp.prestation_id,
+      numero,
+      nom:document.getElementById('ver-nom')?.value?.trim()||null,
+      lien_id:lienRes?.[0]?.id||null,
+      auteur_id:S.uid,
+      statut:'soumise',
+      date_limite_validation:document.getElementById('ver-delai')?.value||null,
+      commentaire:document.getElementById('ver-com')?.value||null
+    }});
+    // Mettre à jour le statut de la postprod
+    await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'version_prete'}});
+    await logMediaHistory(pp.prestation_id,S.uid,'Version soumise','version',null,'—','V'+numero);
+    closeModal();
+    toast('Version V'+numero+' soumise','ok');
+    loadProdPostprod();
+  }catch(e){err.textContent='Erreur lors de la soumission.';}
+}
+
+function modalAjouterCorrection(postprodId){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const TYPES=[['image','Image'],['cadrage','Cadrage'],['son','Son'],['texte','Texte'],['orthographe','Orthographe'],['logo','Logo'],['sponsor','Sponsor'],['couleur','Couleur'],['musique','Musique'],['duree','Durée'],['transition','Transition'],['sous_titre','Sous-titre'],['export','Export'],['autre','Autre']];
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">✏ Demander une correction</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Type</label>
+          <select id="cor-type" class="l-inp" style="height:38px">${TYPES.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></div>
+        <div><label style="${L}">Priorité</label>
+          <select id="cor-prio" class="l-inp" style="height:38px">
+            <option value="normale">Normale</option><option value="haute">Haute</option>
+            <option value="urgente">Urgente</option><option value="faible">Faible</option>
+          </select></div>
+      </div>
+      <div><label style="${L}">Description de la correction *</label>
+        <textarea id="cor-desc" class="l-inp" style="height:80px;padding-top:10px;resize:none" placeholder="Décrivez précisément ce qui doit être modifié…"></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Timecode (si vidéo)</label>
+          <input id="cor-tc" type="text" class="l-inp" style="height:38px" placeholder="00:18 — plan à remplacer"></div>
+        <div><label style="${L}">Date limite</label>
+          <input id="cor-delai" type="date" class="l-inp" style="height:38px"></div>
+      </div>
+      <div><label style="${L}">Lien capture / référence</label>
+        <input id="cor-lien" type="url" class="l-inp" style="height:38px" placeholder="https://…"></div>
+      <div id="cor-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="sauvegarderCorrection('${postprodId}')">Envoyer</button>
+      </div>
+    </div>`);
+}
+
+async function sauvegarderCorrection(postprodId){
+  const err=document.getElementById('cor-err');
+  const desc=document.getElementById('cor-desc')?.value?.trim();
+  if(!desc){err.textContent='Description obligatoire.';return;}
+  err.textContent='Envoi…';
+  try{
+    const ppData=await sbFetch('media_postproductions?select=prestation_id&id=eq.'+postprodId);
+    const pp=ppData?.[0];
+    await sbFetch('media_corrections',{method:'POST',body:{
+      postproduction_id:postprodId,
+      auteur_id:S.uid,
+      type_correction:document.getElementById('cor-type')?.value||'autre',
+      priorite:document.getElementById('cor-prio')?.value||'normale',
+      description:desc,
+      timecode:document.getElementById('cor-tc')?.value?.trim()||null,
+      date_limite:document.getElementById('cor-delai')?.value||null,
+      lien_capture:document.getElementById('cor-lien')?.value?.trim()||null,
+      statut:'nouvelle'
+    }});
+    await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'corrections_demandees'}});
+    if(pp) await logMediaHistory(pp.prestation_id,S.uid,'Correction demandée','correction',null,null,desc.slice(0,60));
+    closeModal();
+    toast('Correction enregistrée','ok');
+    loadProdPostprod();
+  }catch(e){err.textContent='Erreur lors de l\'envoi.';}
+}
+
+async function changerStatutPostprod(id,nouveauStatut){
+  try{
+    await sbFetch('media_postproductions?id=eq.'+id,{method:'PATCH',body:{statut:nouveauStatut}});
+    const ppData=await sbFetch('media_postproductions?select=prestation_id&id=eq.'+id);
+    if(ppData?.[0]) await logMediaHistory(ppData[0].prestation_id,S.uid,'Statut postproduction','postproduction',id,null,nouveauStatut);
+    toast('Statut mis à jour','ok');
+    closeModal();
+    loadProdPostprod();
+  }catch(e){toast('Erreur','er');}
+}
+
+// ─── Livrables ────────────────────────────────────────────────────────────────
+let _livrFilter='all';
+let _livrData=[];
+
+function filterProdLivr(f){
+  _livrFilter=f;
+  ['all','a_valider','pret','livre'].forEach(id=>{
+    const btnId='pliv-'+id.replace('a_valider','val').replace('pret','ok').replace('livre','lv');
+    const b=document.getElementById(btnId);
+    if(b){b.className='btn '+(f===id?'bp':'bg2')+' bs';b.style.fontSize='11px';}
+  });
+  renderLivrables();
+}
+
 async function loadProdLivrables(){
   const el=document.getElementById('prod-livr-real');
   if(!el)return;
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=in.(prête_validation,prêt_validation,prête,livrée)&order=date_prestation.asc&limit=50');
-    _prodLivrData=Array.isArray(raw)?raw:[];
-    _prodLivrFilter='all';
-    renderProdLivrList();
-  }catch(e){
-    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+    const raw=await sbFetch('media_livrables?select=*,lien:media_liens(nom,url,date_expiration,statut),prestations(reference,clients(nom,email))&statut=not.in.(archive)&order=created_at.desc&limit=100');
+    _livrData=Array.isArray(raw)?raw:[];
+    const now=new Date();
+    const in7=new Date(now.getTime()+7*864e5);
+    s('lv-kpi-val',_livrData.filter(l=>l.statut==='a_valider').length);
+    s('lv-kpi-pret',_livrData.filter(l=>l.statut==='pret_a_livrer').length);
+    s('lv-kpi-lv',_livrData.filter(l=>l.statut==='livre').length);
+    s('lv-kpi-exp',_livrData.filter(l=>l.date_expiration&&new Date(l.date_expiration)<in7&&l.statut!=='lien_expire').length);
+    _livrFilter='all';
+    renderLivrables();
+  }catch(e){if(el)el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function renderLivrables(){
+  const el=document.getElementById('prod-livr-real');
+  if(!el)return;
+  let list=_livrData;
+  if(_livrFilter==='a_valider') list=list.filter(l=>l.statut==='a_valider');
+  else if(_livrFilter==='pret') list=list.filter(l=>l.statut==='pret_a_livrer');
+  else if(_livrFilter==='livre') list=list.filter(l=>l.statut==='livre');
+  if(!list.length){
+    el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)">
+      <div style="font-size:36px;opacity:.2">✅</div>
+      <div style="font-size:13px">Aucun livrable dans ce filtre.</div>
+      <button onclick="modalCreerLivrable()" style="margin-top:8px;padding:8px 18px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer">+ Créer un livrable</button>
+    </div>`;
+    return;
   }
+  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button onclick="modalCreerLivrable()" style="padding:6px 14px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer">+ Créer un livrable</button></div>`+
+  '<div style="display:flex;flex-direction:column;gap:8px">'+list.map(lv=>{
+    const clr=LV_STATUT_CLR[lv.statut]||'var(--t3)';
+    const lb=LV_STATUT_LB[lv.statut]||lv.statut;
+    const pNom=lv.prestations?.reference||'—';
+    const cNom=lv.prestations?.clients?.nom||'—';
+    const expDate=lv.date_expiration?new Date(lv.date_expiration):null;
+    const now=new Date();
+    const daysLeft=expDate?Math.ceil((expDate-now)/864e5):null;
+    const canValidate=['admin','prod'].includes(S.role)&&lv.statut==='a_valider';
+    const canDeliver=['admin','prod','sec'].includes(S.role)&&lv.statut==='pret_a_livrer';
+    return`<div class="cd" style="margin-bottom:0">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--t1)">${lv.nom}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${pNom} — ${cNom}</div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 10px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        ${lv.lien?.url?`<button onclick="ouvrirLien('${encodeURIComponent(lv.lien.url)}')" style="padding:5px 10px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗ Ouvrir</button>
+        <button onclick="copierLien('${encodeURIComponent(lv.lien.url)}')" style="padding:5px 8px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>`:''}
+        ${canValidate?`<button onclick="validerLivrable('${lv.id}')" style="padding:5px 12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:700;cursor:pointer">✓ Valider</button>`:''}
+        ${canDeliver?`<button onclick="modalPrepLivraison('${lv.id}')" style="padding:5px 12px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:11px;font-weight:700;cursor:pointer">📤 Livrer</button>`:''}
+        ${daysLeft!==null?`<span style="font-size:10px;color:${daysLeft<=3?'var(--er)':'var(--t3)'}">Exp: ${expDate.toLocaleDateString('fr-FR')} ${daysLeft<=7?'('+daysLeft+'j)':''}</span>`:''}
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function validerLivrable(id){
+  try{
+    await sbFetch('media_livrables?id=eq.'+id,{method:'PATCH',body:{statut:'pret_a_livrer',date_validation:new Date().toISOString(),validateur_id:S.uid}});
+    const lvData=await sbFetch('media_livrables?select=prestation_id,nom&id=eq.'+id);
+    if(lvData?.[0]) await logMediaHistory(lvData[0].prestation_id,S.uid,'Livrable validé','livrable',id,'a_valider','pret_a_livrer');
+    toast('Livrable validé — prêt à livrer','ok');
+    loadProdLivrables();
+  }catch(e){toast('Erreur','er');}
+}
+
+function modalCreerLivrable(){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const TYPES=[['galerie_photo','Galerie photo'],['photos_finales','Photos finales'],['video_finale','Vidéo finale'],['highlight','Highlight'],['aftermovie','Aftermovie'],['interview','Interview'],['reels','Reels'],['tiktok','TikTok'],['story','Story'],['affiche','Affiche'],['carrousel','Carrousel'],['miniature','Miniature'],['dossier_complet','Dossier complet'],['autre','Autre']];
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">📦 Créer un livrable</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="${L}">Nom du livrable *</label>
+        <input id="lv-nom" type="text" class="l-inp" style="height:38px" placeholder="Photos finales Brunoy FC U18"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Type</label>
+          <select id="lv-type" class="l-inp" style="height:38px">${TYPES.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></div>
+        <div><label style="${L}">Prestation (ref.)</label>
+          <input id="lv-pre" type="text" class="l-inp" style="height:38px" placeholder="SPV-2024-001…"></div>
+      </div>
+      <div><label style="${L}">Lien final (URL) *</label>
+        <input id="lv-url" type="url" class="l-inp" style="height:38px" placeholder="https://…"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Fournisseur</label>
+          <select id="lv-four" class="l-inp" style="height:38px">${Object.entries(ML_FOURNISSEUR).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></div>
+        <div><label style="${L}">Expiration du lien</label>
+          <input id="lv-exp" type="date" class="l-inp" style="height:38px"></div>
+      </div>
+      <div><label style="${L}">Instructions de téléchargement</label>
+        <textarea id="lv-inst" class="l-inp" style="height:50px;padding-top:10px;resize:none" placeholder="Mot de passe, instructions d'accès…"></textarea></div>
+      <div id="lv-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="sauvegarderLivrable()">Créer</button>
+      </div>
+    </div>`);
+}
+
+async function sauvegarderLivrable(){
+  const err=document.getElementById('lv-err');
+  const nom=document.getElementById('lv-nom')?.value?.trim();
+  const url=document.getElementById('lv-url')?.value?.trim();
+  const preRef=document.getElementById('lv-pre')?.value?.trim();
+  if(!nom){err.textContent='Nom obligatoire.';return;}
+  if(!url||!url.startsWith('http')){err.textContent='URL invalide.';return;}
+  err.textContent='Enregistrement…';
+  try{
+    let presId=null;
+    if(preRef){
+      const pres=await sbFetch('prestations?select=id&reference=ilike.%25'+encodeURIComponent(preRef)+'%25&limit=1');
+      presId=pres?.[0]?.id||null;
+    }
+    const lienRes=await sbFetch('media_liens',{method:'POST',body:{
+      nom,url,categorie:'livraison',type_media:'mixte',
+      fournisseur:document.getElementById('lv-four')?.value||'autre',
+      prestation_id:presId,ajouteur_id:S.uid,
+      date_expiration:document.getElementById('lv-exp')?.value||null,
+      statut:'valide'
+    }});
+    await sbFetch('media_livrables',{method:'POST',body:{
+      nom,
+      type_livrable:document.getElementById('lv-type')?.value||'dossier_complet',
+      prestation_id:presId,
+      lien_id:lienRes?.[0]?.id||null,
+      date_expiration:document.getElementById('lv-exp')?.value||null,
+      instructions:document.getElementById('lv-inst')?.value||null,
+      statut:'a_valider'
+    }});
+    if(presId) await logMediaHistory(presId,S.uid,'Livrable créé','livrable',null,null,nom);
+    closeModal();
+    toast('Livrable créé — en attente de validation','ok');
+    loadProdLivrables();
+  }catch(e){err.textContent='Erreur lors de la création.';}
+}
+
+function modalPrepLivraison(livrableId){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">📤 Préparer la livraison</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Nom du destinataire</label>
+          <input id="liv-nom" type="text" class="l-inp" style="height:38px" placeholder="Prénom Nom"></div>
+        <div><label style="${L}">Email destinataire *</label>
+          <input id="liv-email" type="email" class="l-inp" style="height:38px" placeholder="contact@club.fr"></div>
+      </div>
+      <div><label style="${L}">Message personnalisé</label>
+        <textarea id="liv-msg" class="l-inp" style="height:80px;padding-top:10px;resize:none" placeholder="Bonjour,\nVeuillez trouver vos photos et vidéos de la prestation…\n\nMerci de confirmer la bonne réception."></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Moyen d'envoi</label>
+          <select id="liv-moyen" class="l-inp" style="height:38px">
+            <option value="email">E-mail</option><option value="messagerie">Messagerie</option>
+            <option value="manuel">Remise manuelle</option>
+          </select></div>
+        <div><label style="${L}">Date d'envoi</label>
+          <input id="liv-date" type="date" class="l-inp" style="height:38px" value="${new Date().toISOString().split('T')[0]}"></div>
+      </div>
+      <div id="liv-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="confirmerLivraison('${livrableId}')">Confirmer la livraison</button>
+      </div>
+    </div>`);
+}
+
+async function confirmerLivraison(livrableId){
+  const err=document.getElementById('liv-err');
+  const email=document.getElementById('liv-email')?.value?.trim();
+  if(!email){err.textContent='Email obligatoire.';return;}
+  err.textContent='Enregistrement…';
+  try{
+    const lvData=await sbFetch('media_livrables?select=prestation_id,nom&id=eq.'+livrableId);
+    const lv=lvData?.[0];
+    await sbFetch('media_livraisons',{method:'POST',body:{
+      prestation_id:lv?.prestation_id||null,
+      livrables_ids:[livrableId],
+      destinataire_nom:document.getElementById('liv-nom')?.value?.trim()||null,
+      destinataire_email:email,
+      message:document.getElementById('liv-msg')?.value?.trim()||null,
+      moyen_envoi:document.getElementById('liv-moyen')?.value||'email',
+      date_envoi:document.getElementById('liv-date')?.value||new Date().toISOString().split('T')[0],
+      expediteur_id:S.uid,
+      statut:'envoyee'
+    }});
+    await sbFetch('media_livrables?id=eq.'+livrableId,{method:'PATCH',body:{statut:'livre'}});
+    if(lv?.prestation_id) await logMediaHistory(lv.prestation_id,S.uid,'Livraison effectuée','livraison',null,null,email);
+    closeModal();
+    toast('Livraison enregistrée','ok');
+    loadProdLivrables();
+  }catch(e){err.textContent='Erreur lors de l\'enregistrement.';}
 }
 
 // ── PROD BUDGET ───────────────────────────────────────────────────────────────
