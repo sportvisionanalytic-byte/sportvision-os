@@ -858,21 +858,19 @@ const VIEWS={
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('crm')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="kpi-cli-v">—</div><span class="kpi-d dnt">partenaires</span></div>
       <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('incidents')"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="kpi-inc-v">—</div><span class="kpi-d dnt">à traiter</span></div>
     </div>
-    <div class="cd" style="margin-bottom:14px;padding:16px 20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div class="cd" style="margin-bottom:14px;padding:18px 20px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px">
         <div>
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3)">Objectif prioritaire</div>
-          <div style="font-size:15px;font-weight:700;color:var(--t1);margin-top:2px">5 clubs partenaires</div>
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3)">Objectif prioritaire</div>
+          <div style="font-size:16px;font-weight:700;color:var(--t1);margin-top:3px">5 clubs partenaires <span id="obj-clubs-count" style="font-size:16px;font-weight:800;color:var(--acc)">—</span><span style="font-size:12px;font-weight:500;color:var(--t3)">/5</span></div>
         </div>
-        <div style="text-align:right">
-          <div style="font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--acc)" id="obj-clubs-count">—</div>
-          <div style="font-size:11px;color:var(--t3)">/ 5 clubs</div>
-        </div>
+        <button onclick="switchView('pipeline')" style="padding:6px 12px;font-size:11px;font-weight:600;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap;flex-shrink:0">Pipeline →</button>
       </div>
-      <div style="height:8px;background:var(--s2);border-radius:4px;overflow:hidden;margin-bottom:8px">
-        <div id="obj-clubs-bar" style="height:100%;width:0%;background:var(--gr);border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1)"></div>
+      <div id="obj-clubs-slots" style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:12px"></div>
+      <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden;margin-bottom:10px">
+        <div id="obj-clubs-bar" style="height:100%;width:0%;background:var(--gr);border-radius:3px;transition:width .9s cubic-bezier(.4,0,.2,1)"></div>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap" id="obj-clubs-dots"></div>
+      <div id="obj-clubs-funnel" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
     </div>
     <div class="g32">
       <div style="display:flex;flex-direction:column;gap:13px">
@@ -3432,26 +3430,58 @@ async function loadAdminDash(){
     }
   }
 
-  // Tracker 5 clubs partenaires
+  // Tracker 5 clubs partenaires — objectif visuel
   try{
-    const clubs=await sbFetch('clients?select=id,nom,statut&statut=eq.client&limit=20');
-    const clubList=Array.isArray(clubs)?clubs:[];
-    const n=Math.min(clubList.length,5);
+    const pipRaw=await sbFetch('clients?select=id,nom,statut,sport,ville,score_priorite,prochaine_action,date_prochaine_action&statut=in.(client,partenaire,négociation,devis_envoyé,qualifié,prospect)&order=score_priorite.desc.nullslast,created_at.asc&limit=300');
+    const pip=Array.isArray(pipRaw)?pipRaw:[];
+    const partners=pip.filter(c=>['client','partenaire'].includes(c.statut));
+    const negoList=pip.filter(c=>c.statut==='négociation');
+    const n=partners.length;
     const objCount=document.getElementById('obj-clubs-count');
+    if(objCount)objCount.textContent=n;
     const objBar=document.getElementById('obj-clubs-bar');
-    const objDots=document.getElementById('obj-clubs-dots');
-    if(objCount)objCount.textContent=clubList.length+'/5';
     if(objBar)objBar.style.width=Math.min(100,Math.round((n/5)*100))+'%';
-    if(objDots){
-      const dots=Array.from({length:5},(_,i)=>{
-        const club=clubList[i];
-        return`<div style="display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:20px;background:${club?'rgba(54,107,255,.12)':'rgba(255,255,255,.05)'};border:1px solid ${club?'rgba(54,107,255,.3)':'rgba(255,255,255,.08)'}">
-          <div style="width:7px;height:7px;border-radius:50%;background:${club?'var(--acc)':'rgba(255,255,255,.15)'}"></div>
-          <span style="font-size:11px;font-weight:600;color:${club?'var(--acc)':'var(--t3)'}">${club?club.nom:'Club '+( i+1)}</span>
+    // 5 slots : signés en vert, prochains (négo) en amber, vides en gris
+    const objSlots=document.getElementById('obj-clubs-slots');
+    if(objSlots){
+      objSlots.innerHTML=Array.from({length:5},(_,i)=>{
+        const club=partners[i];
+        if(club)return`<div style="padding:7px 8px;border-radius:8px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.25);text-align:center" title="${club.nom}">
+          <div style="font-size:14px;margin-bottom:2px">✓</div>
+          <div style="font-size:9.5px;font-weight:700;color:var(--ok);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${club.nom}</div>
+          <div style="font-size:8.5px;color:var(--t3);margin-top:1px">${club.sport||club.ville||'Partenaire'}</div>
         </div>`;
-      });
-      objDots.innerHTML=dots.join('');
+        const near=negoList[i-n];
+        if(near)return`<div style="padding:7px 8px;border-radius:8px;background:rgba(240,68,94,.06);border:1px dashed rgba(240,68,94,.3);text-align:center" title="${near.nom} — en négociation">
+          <div style="font-size:14px;margin-bottom:2px">⟳</div>
+          <div style="font-size:9.5px;font-weight:600;color:var(--er);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${near.nom}</div>
+          <div style="font-size:8.5px;color:var(--t3);margin-top:1px">En négociation</div>
+        </div>`;
+        return`<div style="padding:7px 8px;border-radius:8px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.08);text-align:center">
+          <div style="font-size:14px;margin-bottom:2px;opacity:.2">○</div>
+          <div style="font-size:9.5px;color:var(--t3)">Club ${i+1}</div>
+          <div style="font-size:8.5px;color:rgba(255,255,255,.2);margin-top:1px">À signer</div>
+        </div>`;
+      }).join('');
     }
+    // Funnel miniature
+    const objFunnel=document.getElementById('obj-clubs-funnel');
+    if(objFunnel){
+      const stages=[
+        {lb:'Prospects',st:'prospect',clr:'#366BFF'},
+        {lb:'Qualifiés',st:'qualifié',clr:'#F5A524'},
+        {lb:'Devis',st:'devis_envoyé',clr:'#7C4DFF'},
+        {lb:'Négo',st:'négociation',clr:'#F0445E'},
+      ];
+      objFunnel.innerHTML=stages.map((s,i)=>{
+        const cnt=pip.filter(c=>c.statut===s.st).length;
+        return`${i>0?'<span style="color:var(--t3);font-size:11px">›</span>':''}
+          <span style="font-size:11px;font-weight:${cnt>0?700:400};color:${cnt>0?s.clr:'var(--t3)'}">${cnt} ${s.lb}</span>`;
+      }).join('');
+      if(n>=5)objFunnel.innerHTML='<span style="font-size:12px;font-weight:700;color:var(--ok)">Objectif atteint !</span>';
+    }
+    // Màj KPI clients actifs (inclure partenaire)
+    set('kpi-cli-v',n);
   }catch(e){}
 
   // Suivi de production
@@ -3558,37 +3588,46 @@ async function loadAdminDash(){
   if(elCC){
     try{
       const [prospects,presAll]=await Promise.all([
-        sbFetch('clients?select=id,nom,type_client,sport,ville,email,telephone,statut,notes,created_at&statut=in.(prospect,qualifié)&order=created_at.desc&limit=10'),
+        sbFetch('clients?select=id,nom,type_client,sport,ville,email,telephone,statut,prochaine_action,date_prochaine_action,score_priorite&statut=in.(prospect,qualifié,devis_envoyé,négociation)&order=score_priorite.desc.nullslast,created_at.desc&limit=8'),
         sbFetch('prestations?select=client_id,date_prestation&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=200'),
       ]);
       const list=Array.isArray(prospects)?prospects:[];
       const lastPre={};
       (Array.isArray(presAll)?presAll:[]).forEach(p=>{if(p.client_id&&!lastPre[p.client_id])lastPre[p.client_id]=p.date_prestation;});
+      const today=new Date().toISOString().slice(0,10);
       if(!list.length){
         elCC.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun prospect en cours. <button onclick="modalNouveauClient()" class="btn bp bs" style="margin-left:8px;font-size:11px">+ Ajouter un club</button></div>';
       } else {
-        const SCL={prospect:'Prospect',qualifié:'Qualifié'};
-        const SCC={prospect:'bw',qualifié:'bb'};
+        const SCL={prospect:'Prospect',qualifié:'Qualifié',devis_envoyé:'Devis envoyé',négociation:'Négociation'};
+        const SCC={prospect:'bw',qualifié:'bb',devis_envoyé:'bl',négociation:'br'};
         elCC.innerHTML='<div style="display:flex;flex-direction:column">'+list.map((c,i)=>{
           const lp=lastPre[c.id];
-          const lpStr=lp?new Date(lp).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'Jamais';
-          const meta=[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ');
-          const idx=list.indexOf(c);
-          return`<div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--b1)${i===list.length-1?';border-bottom:none':''}">
-            <div style="width:36px;height:36px;border-radius:10px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚽</div>
+          const lpStr=lp?new Date(lp).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'—';
+          const meta=[c.sport,c.ville].filter(Boolean).join(' · ');
+          let nextAct='';
+          if(c.prochaine_action){
+            let actClr='var(--t3)';let dateTxt='';
+            if(c.date_prochaine_action){
+              if(c.date_prochaine_action<today){actClr='var(--er)';dateTxt=' · RETARD';}
+              else if(c.date_prochaine_action===today){actClr='var(--wa)';dateTxt=' · Auj.';}
+              else{actClr='var(--acc)';const d=new Date(c.date_prochaine_action);dateTxt=' · '+d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});}
+            }
+            nextAct=`<div style="font-size:10px;color:${actClr};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">⚡ ${c.prochaine_action}${dateTxt}</div>`;
+          }
+          return`<div style="display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid var(--b1)${i===list.length-1?';border-bottom:none':''}">
             <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:var(--t1)">${c.nom}</div>
-              <div style="font-size:11px;color:var(--t3);margin-top:1px">${meta||'—'}</div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:13px;font-weight:600;color:var(--t1)">${c.nom}</span>
+                <span class="bd ${SCC[c.statut]||'bw'}" style="flex-shrink:0"><span class="bd-d"></span>${SCL[c.statut]||c.statut}</span>
+              </div>
+              <div style="font-size:10.5px;color:var(--t3);margin-top:1px">${meta||'—'}</div>
+              ${nextAct}
             </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-              <span class="bd ${SCC[c.statut]||'bw'}"><span class="bd-d"></span>${SCL[c.statut]||c.statut}</span>
-              <div style="font-size:10px;color:var(--t3)">Dernière presta : ${lpStr}</div>
-            </div>
-            <div style="display:flex;gap:6px;flex-shrink:0">
-              ${c.email?`<a href="mailto:${c.email}?subject=Partenariat SportVision&body=Bonjour,%0A%0AJe me permets de vous contacter concernant un partenariat SportVision pour ${c.nom}.%0A%0ACordialement" style="padding:5px 10px;font-size:11px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);text-decoration:none;white-space:nowrap">✉</a>`:''}
-              ${c.telephone?`<a href="tel:${c.telephone}" style="padding:5px 10px;font-size:11px;font-weight:600;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);text-decoration:none">📞</a>`:''}
-              <button onclick="modalCreerDevisRapide('${c.id}','${(c.nom||'').replace(/'/g,"\\'")}')" style="padding:5px 10px;font-size:11px;font-weight:600;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:var(--wa);cursor:pointer">Devis</button>
-              <button onclick="modalModifierClientById('${c.id}')" style="padding:5px 10px;font-size:11px;font-weight:600;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Fiche</button>
+            <div style="display:flex;gap:5px;flex-shrink:0">
+              ${c.email?`<a href="mailto:${c.email}?subject=Partenariat SportVision" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);text-decoration:none">✉</a>`:''}
+              ${c.telephone?`<a href="tel:${c.telephone}" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);text-decoration:none">📞</a>`:''}
+              <button onclick="modalCreerDevisRapide('${c.id}','${(c.nom||'').replace(/'/g,"\\'")}')" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:var(--wa);cursor:pointer">Devis</button>
+              <button onclick="modalAjouterContact('${c.id}')" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Contact</button>
             </div>
           </div>`;
         }).join('')+'</div>';
