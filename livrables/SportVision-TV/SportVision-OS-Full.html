@@ -882,6 +882,9 @@ const VIEWS={
       <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('revenus')"><div class="kpi-ey">Rémunération</div><div class="kpi-v" id="photo-kpi-rem" style="font-size:16px">—</div><span class="kpi-d dnt">cumulée</span></div>
       <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">XP</div><div class="kpi-v" id="photo-kpi-xp">—</div><span class="kpi-d dnt" id="photo-kpi-grade">—</span></div>
     </div>
+    <div class="cd" id="photo-kits-card" style="margin-bottom:13px;display:none;border-left:3px solid var(--acc)"><div class="cd-h"><div class="cd-t">🎒 Kits assignés</div><span style="font-size:11px;color:var(--t3)" id="photo-kits-nb"></span></div>
+      <div id="photo-kits-real"></div>
+    </div>
     <div class="cd" id="photo-invitations-card" style="margin-bottom:13px;display:none;border-left:3px solid var(--wa)"><div class="cd-h"><div class="cd-t" style="color:var(--wa)">Invitations en attente</div><span class="bd bn" id="photo-inv-nb"></span></div>
       <div id="photo-invitations"></div>
     </div>
@@ -2557,6 +2560,29 @@ async function loadPhotoDash(){
           <div style="font-size:12px">Tu seras notifié(e) dès qu'une mission te sera assignée.</div>
         </div></div>`;
       }
+    }
+    // Kits assignés
+    const preIds=actives.map(d=>d.prestations?.id).filter(Boolean);
+    const kitCard=document.getElementById('photo-kits-card');
+    const kitReal=document.getElementById('photo-kits-real');
+    if(kitCard&&kitReal&&preIds.length){
+      const KIT_IC={photo:'📷',vidéo:'🎬',drone:'🚁',audio:'🎙',streaming:'📡'};
+      const KIT_ST={'à_récupérer':{lb:'À récupérer',bg:'rgba(245,165,36,.15)',br:'rgba(245,165,36,.3)',tx:'var(--wa)'},'sorti':{lb:'Sorti',bg:'rgba(245,165,36,.12)',br:'rgba(245,165,36,.25)',tx:'var(--wa)'},'en_prestation':{lb:'En prestation',bg:'rgba(245,165,36,.12)',br:'rgba(245,165,36,.25)',tx:'var(--wa)'},'à_retourner':{lb:'À retourner',bg:'rgba(240,68,94,.12)',br:'rgba(240,68,94,.25)',tx:'var(--er)'},'pré_réservé':{lb:'Pré-réservé',bg:'rgba(54,107,255,.1)',br:'rgba(54,107,255,.25)',tx:'var(--acc)'},'réservé':{lb:'Réservé',bg:'rgba(54,107,255,.12)',br:'rgba(54,107,255,.3)',tx:'var(--acc)'}};
+      try{
+        const rawK=await sbFetch('kit_reservations?select=id,statut,prestation_id,kits(nom,type_kit),prestations(id,reference,date_prestation,clients(nom))&prestation_id=in.('+preIds.join(',')+')'+'&statut=not.in.(retourné,en_contrôle)');
+        const kArr=Array.isArray(rawK)?rawK:[];
+        if(kArr.length){
+          kitCard.style.display='';
+          const nbEl=document.getElementById('photo-kits-nb');
+          if(nbEl)nbEl.textContent=kArr.length+' kit'+(kArr.length>1?'s':'');
+          const byP={};
+          kArr.forEach(k=>{const pid=k.prestation_id;if(!byP[pid])byP[pid]={pre:k.prestations,kits:[]};byP[pid].kits.push(k);});
+          kitReal.innerHTML=Object.values(byP).map(({pre,kits})=>{
+            const ds=pre?.date_prestation?new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+            return`<div style="padding:10px 16px 14px"><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">${pre?.clients?.nom||pre?.reference||'—'} · ${ds}</div>${kits.map(k=>{const ic=KIT_IC[k.kits?.type_kit]||'📦';const st=KIT_ST[k.statut]||{lb:k.statut,bg:'rgba(136,145,168,.1)',br:'rgba(136,145,168,.2)',tx:'var(--t3)'};return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border:1px solid ${st.br};border-radius:10px;margin-bottom:4px"><span style="font-size:20px">${ic}</span><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${k.kits?.nom||'Kit'}</div><div style="font-size:11px;color:var(--t3);margin-top:1px">${k.kits?.type_kit||'—'}</div></div><span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:${st.bg};color:${st.tx};border:1px solid ${st.br};white-space:nowrap">${st.lb}</span></div>`;}).join('')}</div>`;
+          }).join('<div style="height:1px;background:rgba(255,255,255,.05);margin:0 16px"></div>');
+        }else{kitCard.style.display='none';}
+      }catch(e){kitCard.style.display='none';}
     }
     // Invitations
     const elInvCard=document.getElementById('photo-invitations-card');
@@ -5018,6 +5044,18 @@ async function loadJourJ(){
     const todayMissions=valid.filter(r=>r.prestations.date_prestation===today);
     const upcoming=valid.filter(r=>r.prestations.date_prestation>today&&r.prestations.date_prestation<=in7s)
       .sort((a,b)=>a.prestations.date_prestation.localeCompare(b.prestations.date_prestation));
+    // Kits des missions du jour
+    const todayPreIds=todayMissions.map(r=>r.prestations?.id).filter(Boolean);
+    const kitsMap={};
+    const KIT_IC_J={photo:'📷',vidéo:'🎬',drone:'🚁',audio:'🎙',streaming:'📡'};
+    const KIT_SL_J={'à_récupérer':'À récupérer','sorti':'Sorti','en_prestation':'En prestation','à_retourner':'À retourner','pré_réservé':'Pré-réservé','réservé':'Réservé'};
+    const KIT_SC_J={'à_récupérer':'var(--wa)','sorti':'var(--wa)','en_prestation':'var(--wa)','à_retourner':'var(--er)'};
+    if(todayPreIds.length){
+      try{
+        const rawK=await sbFetch('kit_reservations?select=id,statut,prestation_id,kits(nom,type_kit)&prestation_id=in.('+todayPreIds.join(',')+')'+'&statut=not.in.(retourné,en_contrôle)');
+        if(Array.isArray(rawK))rawK.forEach(k=>{if(!kitsMap[k.prestation_id])kitsMap[k.prestation_id]=[];kitsMap[k.prestation_id].push(k);});
+      }catch(e){}
+    }
     const JOURJ_BTNS={
       'prête':{lb:'🚗 Je suis en route',ns:'équipe_en_route',clr:'var(--acc)',tc:'#fff'},
       'équipe_en_route':{lb:'📍 Je suis arrivé',ns:'arrivée_sur_place',clr:'var(--wa)',tc:'#fff'},
@@ -5050,6 +5088,13 @@ async function loadJourJ(){
           const rdv=(row.heure_rdv||p.heure_rdv||p.heure_debut||'').slice(0,5);
           const countdown=rdv?calcCountdown(rdv,p.date_prestation):null;
           const btn=JOURJ_BTNS[p.statut];
+          const missionKits=kitsMap[p.id]||[];
+          let kitsSection='';
+          if(missionKits.length){
+            let kitsRows='';
+            missionKits.forEach(k=>{const ic=KIT_IC_J[k.kits?.type_kit]||'📦';const lb=KIT_SL_J[k.statut]||k.statut;const cl=KIT_SC_J[k.statut]||'var(--acc)';kitsRows+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)"><span style="font-size:16px">'+ic+'</span><span style="flex:1;font-size:13px;font-weight:600;color:var(--t1)">'+(k.kits?.nom||'Kit')+'</span><span style="font-size:11px;font-weight:700;color:'+cl+'">'+lb+'</span></div>';});
+            kitsSection='<div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:10px;padding:10px 12px;margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🎒 Kits assignés</div>'+kitsRows+'</div>';
+          }
           const addr=p.adresse_complete||p.lieu||'';
           const mapsUrl=addr?'https://maps.google.com/?q='+encodeURIComponent(addr):'';
           const telUrl=p.telephone_sur_place?'tel:'+p.telephone_sur_place.replace(/[\s\-\(\)]/g,''):'';
@@ -5087,7 +5132,7 @@ async function loadJourJ(){
                 ${telUrl?`<a href="${telUrl}" style="flex-shrink:0;padding:7px 14px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;text-decoration:none">📞 Appeler</a>`:''}
               </div>`:''}
             </div>
-            ${btn?`<button onclick="avanJourJ('${p.id}','${btn.ns}')" style="width:100%;padding:15px;font-size:15px;font-weight:700;background:${btn.clr};border:none;border-radius:12px;color:${btn.tc};cursor:pointer;letter-spacing:.02em">${btn.lb}</button>`:''}
+            ${kitsSection}${btn?`<button onclick="avanJourJ('${p.id}','${btn.ns}')" style="width:100%;padding:15px;font-size:15px;font-weight:700;background:${btn.clr};border:none;border-radius:12px;color:${btn.tc};cursor:pointer;letter-spacing:.02em">${btn.lb}</button>`:''}
           </div>`;
         });
         // Countdown auto-refresh
