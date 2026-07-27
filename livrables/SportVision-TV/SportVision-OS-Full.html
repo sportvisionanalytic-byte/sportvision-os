@@ -2667,7 +2667,7 @@ async function loadProdPlanning(){
     if(sub)sub.textContent=tab==='equipe'?'Vue équipe — semaine courante':'Vue kits — semaine courante';
   }
   try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(collaborateur_id,statut,collaborateur:profiles(prenom,nom,role,avatar_url)),kit_reservations(id,statut,kits(nom,type_kit))&date_prestation=gte.'+start+'&date_prestation=lte.'+end+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc');
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(collaborateur_id,statut,collaborateur:profiles(prenom,nom,role,avatar_url))&date_prestation=gte.'+start+'&date_prestation=lte.'+end+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc');
     if(!Array.isArray(raw))throw new Error('Erreur API');
     if(!raw.length){
       el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📅</div><div style="font-size:13px">Aucune prestation sur cette période.</div></div>';
@@ -2697,13 +2697,13 @@ async function loadProdPlanning(){
       pres.forEach((p,pi)=>{
         const isLast=pi===pres.length-1&&gi===days.length-1;
         const equipe=(p.prestations_equipe||[]).filter(e=>['acceptée','invitation_envoyée'].includes(e.statut));
-        const kitsP=(p.kit_reservations||[]).filter(k=>!['retourné','en_contrôle'].includes(k.statut));
+        const kitsP=[];
         const hDeb=(p.heure_debut||'').slice(0,5);
         const barClr=ST_BAR[p.statut]||'var(--acc)';
         const lb=ST_LB[p.statut]||p.statut;
         const [bdBg,bdBorder,bdColor]=ST_BADGE[p.statut]||['rgba(54,107,255,.1)','rgba(54,107,255,.2)','var(--acc)'];
         const teamNames=equipe.length?equipe.slice(0,2).map(e=>{const c=e.collaborateur||{};return[c.prenom,c.nom].filter(Boolean).join(' ');}).join(', ')+(equipe.length>2?` +${equipe.length-2}`:''):'';
-        const kitsStr=kitsP.length?(kitsP.slice(0,2).map(k=>(KIT_IC[k.kits?.type_kit]||'📦')+(k.kits?.nom||'')).join(', ')+(kitsP.length>2?` +${kitsP.length-2}`:'')):null;
+        const kitsStr=null;
         // For kit/equipe views, extra detail
         let extraInfo='';
         if(tab==='equipe'&&teamNames){extraInfo=`<div style="font-size:10.5px;color:var(--t3);margin-top:3px">👥 ${teamNames}</div>`;}
