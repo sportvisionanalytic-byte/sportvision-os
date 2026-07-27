@@ -2529,57 +2529,6 @@ function modalNouveauKit(){
   window._fkCount=0;
 }
 
-async function ajouterEquipement(){
-  const err=document.getElementById('fk-err');
-  if(!err)return;
-  const nom=document.getElementById('fk-nom')?.value.trim();
-  if(!nom){err.style.color='var(--er)';err.textContent='Le nom est obligatoire.';document.getElementById('fk-nom')?.focus();return;}
-  err.style.color='var(--t3)';err.textContent='Enregistrement…';
-  const marque=document.getElementById('fk-marque')?.value.trim()||'';
-  const serie=document.getElementById('fk-serie')?.value.trim()||'';
-  const etat=document.getElementById('fk-etat')?.value||'Bon état';
-  const notes=document.getElementById('fk-notes')?.value.trim()||'';
-  const val=document.getElementById('fk-val')?.value||'';
-  // Build description: État · Marque · N°série · Notes
-  const parts=[etat];
-  if(marque)parts.push(marque);
-  if(serie)parts.push('N°'+serie);
-  if(notes)parts.push(notes);
-  const desc=parts.join(' · ');
-  try{
-    await sbFetch('kits',{method:'POST',body:{
-      nom,
-      type_kit:'matériel',
-      description:desc||null,
-      valeur:val?Number(val):null,
-      statut:'disponible',
-    }});
-    // Show in running list
-    window._fkCount=(window._fkCount||0)+1;
-    const addedEl=document.getElementById('fk-added');
-    if(addedEl){
-      if(window._fkCount===1){
-        addedEl.innerHTML='<div style="margin-bottom:14px;padding:10px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb)"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:6px">Équipements ajoutés</div><div id="fk-items"></div></div>';
-      }
-      const listEl=document.getElementById('fk-items');
-      if(listEl){
-        const row=document.createElement('div');
-        row.style.cssText='display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px';
-        row.innerHTML=`<span style="color:var(--ok)">✓</span><span style="color:var(--t1);font-weight:600">${nom}</span>${marque?`<span style="color:var(--t3);font-size:11px">${marque}</span>`:''}${etat!=='Bon état'?`<span style="font-size:10px;color:var(--t3);background:var(--bg);padding:1px 6px;border-radius:10px;border:1px solid var(--b1)">${etat}</span>`:''}`;
-        listEl.appendChild(row);
-      }
-    }
-    // Clear form for next item
-    ['fk-nom','fk-marque','fk-serie','fk-notes','fk-val'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    const etatEl=document.getElementById('fk-etat');if(etatEl)etatEl.value='Bon état';
-    err.style.color='var(--ok)';
-    err.textContent='✓ Équipement ajouté — vous pouvez en saisir un autre.';
-    setTimeout(()=>{const e=document.getElementById('fk-err');if(e)e.textContent='';},3000);
-    document.getElementById('fk-nom')?.focus();
-    toast(nom+' ajouté à l\'inventaire.','ok');
-  }catch(e){err.style.color='var(--er)';err.textContent='Erreur lors de l\'ajout.';}
-}
-
 // ── MODALE INVITER COLLABORATEUR ─────────
 function modalInviterCollaborateur(){
   openModal(`
@@ -4282,93 +4231,9 @@ async function loadProdBriefings(){
   }
 }
 
-// ── PROD MÉDIAS ───────────────────────────────────────────────────────────────
-async function loadProdMedias(){
-  const el=document.getElementById('prod-media-real');
-  if(!el)return;
-  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom))&statut=not.in.(annulée,refusée,à_valider_production,demande_reçue)&order=date_prestation.desc&limit=50');
-    const pre=Array.isArray(raw)?raw:[];
-    const POST_STAT=['médias_à_transférer','production_terminée'];
-    const OK_STAT=['médias_complets','à_monter','montage_en_cours','prête_validation','prêt_validation','livrée','clôturée'];
-    const att=pre.filter(p=>POST_STAT.includes(p.statut));
-    const enc=pre.filter(p=>p.statut==='médias_à_transférer');
-    const ok=pre.filter(p=>OK_STAT.includes(p.statut));
-    s('media-attente',att.length); s('media-encours',enc.length); s('media-ok',ok.length);
-    const relevant=pre.filter(p=>POST_STAT.includes(p.statut)||OK_STAT.includes(p.statut));
-    if(!relevant.length){
-      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📁</div><div style="font-size:13px">Aucun transfert en cours ou en attente.</div></div>';
-      return;
-    }
-    const ST_LB={'médias_à_transférer':'À transférer','production_terminée':'Terminée','médias_complets':'Médias OK','à_monter':'À monter','montage_en_cours':'En montage','prête_validation':'À valider','prêt_validation':'À valider','livrée':'Livrée'};
-    const ST_CLR={'médias_à_transférer':'var(--er)','production_terminée':'var(--wa)','médias_complets':'var(--ok)','à_monter':'#7C4DFF','montage_en_cours':'#7C4DFF','prête_validation':'var(--wa)','prêt_validation':'var(--wa)','livrée':'var(--ok)'};
-    el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+relevant.map((p,i)=>{
-      const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
-      const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée');
-      const clr=ST_CLR[p.statut]||'var(--t3)';
-      const lb=ST_LB[p.statut]||p.statut;
-      return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<relevant.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
-        <div style="width:4px;background:${clr};flex-shrink:0"></div>
-        <div style="flex:1;min-width:0;padding:12px 14px">
-          <div style="font-size:13px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · ${equipe.length} collab.</div>
-        </div>
-        <div style="flex-shrink:0;padding:12px 14px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:6px">
-          <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
-          ${POST_STAT.includes(p.statut)?`<button onclick="event.stopPropagation();toast('Relance envoyée à l\'équipe','ok')" style="padding:4px 10px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">📢 Relancer</button>`:''}
-        </div>
-      </div>`;
-    }).join('')+'</div>';
-  }catch(e){
-    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
-  }
-}
-
 // ── PROD POSTPRODUCTION ───────────────────────────────────────────────────────
 let _prodPostData=[];
 let _prodPostFilter='all';
-
-function filterProdPost(f){
-  _prodPostFilter=f;
-  ['all','a_monter','en_cours','corrections','valider'].forEach(id=>{
-    const b=document.getElementById('ppost-'+id.replace('a_monter','am').replace('en_cours','enc').replace('corrections','cor').replace('valider','val'));
-    if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
-    if(b)b.style.fontSize='11px';
-  });
-  renderProdPostList();
-}
-
-function renderProdPostList(){
-  const el=document.getElementById('prod-post-real');
-  if(!el)return;
-  let list=_prodPostData;
-  if(_prodPostFilter==='a_monter') list=list.filter(p=>p.statut==='à_monter');
-  else if(_prodPostFilter==='en_cours') list=list.filter(p=>p.statut==='montage_en_cours');
-  else if(_prodPostFilter==='corrections') list=list.filter(p=>['prête_validation','prêt_validation'].includes(p.statut));
-  else if(_prodPostFilter==='valider') list=list.filter(p=>['prête_validation','prêt_validation'].includes(p.statut));
-  if(!list.length){
-    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🎬</div><div style="font-size:13px">Aucun contenu dans ce filtre.</div></div>';
-    return;
-  }
-  const ST_LB={'médias_complets':'Médias OK','à_monter':'À monter','montage_en_cours':'En montage','prête_validation':'À contrôler','prêt_validation':'À contrôler','livrée':'Livrée'};
-  const ST_CLR={'médias_complets':'var(--t3)','à_monter':'var(--wa)','montage_en_cours':'#7C4DFF','prête_validation':'var(--ok)','prêt_validation':'var(--ok)','livrée':'var(--ok)'};
-  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+list.map((p,i)=>{
-    const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
-    const clr=ST_CLR[p.statut]||'var(--t3)';
-    const lb=ST_LB[p.statut]||p.statut;
-    return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
-      <div style="width:4px;background:${clr};flex-shrink:0"></div>
-      <div style="flex:1;min-width:0;padding:12px 14px">
-        <div style="font-size:13px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
-        <div style="font-size:11px;color:var(--t3);margin-top:2px">${date}</div>
-      </div>
-      <div style="flex-shrink:0;padding:12px 14px;display:flex;align-items:center">
-        <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
-      </div>
-    </div>`;
-  }).join('')+'</div>';
-}
 
 async function loadProdPost(){
   const el=document.getElementById('prod-post-real');
@@ -4386,16 +4251,6 @@ async function loadProdPost(){
 // ── PROD LIVRABLES ────────────────────────────────────────────────────────────
 let _prodLivrData=[];
 let _prodLivrFilter='all';
-
-function filterProdLivr(f){
-  _prodLivrFilter=f;
-  ['all','valider','valide','livre'].forEach(id=>{
-    const b=document.getElementById('pliv-'+id.replace('valider','val').replace('valide','ok').replace('livre','lv'));
-    if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
-    if(b)b.style.fontSize='11px';
-  });
-  renderProdLivrList();
-}
 
 function renderProdLivrList(){
   const el=document.getElementById('prod-livr-real');
