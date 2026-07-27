@@ -1,4 +1,10 @@
 <title>SportVision OS</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080A0F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SportVision OS">
 <style>
 :root{
   --bg:#080A0F;--s1:#181C25;--s2:#11141B;--s3:#1E2330;
@@ -346,6 +352,124 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 @supports(padding-bottom:env(safe-area-inset-bottom)){
   .sb{padding-bottom:env(safe-area-inset-bottom)}
 }
+
+/* ══════════════════════════════════════════════════════════
+   SPORTVISION OS — MOBILE-FIRST LAYER (interface terrain)
+══════════════════════════════════════════════════════════ */
+@media(max-width:768px){
+  /* ── Carte mobile ── */
+  .mc{background:var(--s1);border:1px solid var(--b1);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;margin-bottom:11px}
+  .mc-top{padding:14px 16px}
+  .mc-act{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--b1);background:rgba(0,0,0,.15)}
+  /* ── Hero card ── */
+  .mhero{background:var(--gr);border-radius:14px;padding:20px;margin-bottom:13px;color:#fff}
+  .mhero-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;opacity:.7;margin-bottom:8px}
+  .mhero-title{font-size:20px;font-weight:800;line-height:1.2;margin-bottom:4px}
+  .mhero-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .mhero-btn{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:var(--rp);padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;flex:1;min-width:100px;text-align:center;font-family:var(--ff)}
+  .mhero-btn.primary{background:#fff;color:var(--acc)}
+  /* ── KPI strip ── */
+  .mkpi-strip{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:13px;scrollbar-width:none}
+  .mkpi-strip::-webkit-scrollbar{display:none}
+  .mkpi{min-width:115px;background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:14px;flex-shrink:0;position:relative;overflow:hidden}
+  .mkpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--mkl,var(--acc));opacity:.7}
+  .mkpi-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px}
+  .mkpi-val{font-size:22px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums;line-height:1}
+  .mkpi-sub{font-size:10px;color:var(--t3);margin-top:3px}
+  /* ── Section header ── */
+  .ms-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;margin-top:4px}
+  .ms-title{font-size:15px;font-weight:700;color:var(--t1)}
+  .ms-link{font-size:12px;color:var(--acc);font-weight:600;cursor:pointer;background:none;border:none;font-family:var(--ff)}
+  /* ── Action grid ── */
+  .mob-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px}
+  .mob-action-btn{flex:1;min-width:calc(50% - 4px);display:flex;align-items:center;gap:8px;padding:13px 14px;background:var(--s1);border:1px solid var(--b1);border-radius:12px;cursor:pointer;font-family:var(--ff)}
+  .mob-action-btn:active{background:var(--s2)}
+  .mob-action-btn-ic{font-size:20px;flex-shrink:0}
+  .mob-action-btn-t{font-size:13px;font-weight:600;color:var(--t1);text-align:left}
+  .mob-action-btn-s{font-size:10px;color:var(--t3);text-align:left}
+  /* ── FAB ── */
+  .mob-fab{position:fixed;bottom:calc(66px + env(safe-area-inset-bottom,0) + 12px);right:18px;z-index:150;width:56px;height:56px;border-radius:50%;background:var(--gr);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(54,107,255,.45),0 2px 8px rgba(0,0,0,.4);color:#fff;font-size:24px;font-family:var(--ff)}
+  .mob-fab:active{transform:scale(.94)}
+  /* ── Mode Jour J (overlay plein écran) ── */
+  #mob-jourj{position:fixed;inset:0;z-index:9999;background:#060810;display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
+  #mob-jourj.on{display:flex}
+  .jj-m-top{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .jj-m-back{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:var(--rp);padding:6px 14px;color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)}
+  .jj-m-ttl{flex:1;text-align:center;font-size:15px;font-weight:700;color:var(--t1)}
+  .jj-m-body{flex:1;overflow-y:auto;padding:16px;padding-bottom:calc(88px + env(safe-area-inset-bottom,0))}
+  .jj-m-status{background:var(--gr);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center}
+  .jj-m-step{background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:16px;margin-bottom:12px}
+  .jj-m-step-ttl{font-size:15px;font-weight:700;color:var(--t1);margin-bottom:12px}
+  .jj-m-check{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer}
+  .jj-m-check:last-child{border-bottom:none}
+  .jj-m-cb{width:22px;height:22px;border-radius:6px;border:2px solid var(--b2);background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+  .jj-m-cb.done{border-color:var(--ok);background:rgba(46,204,138,.15)}
+  .jj-m-cb-label{font-size:14px;color:var(--t1)}
+  .jj-m-cb-label.done{text-decoration:line-through;opacity:.5}
+  .jj-m-foot{position:fixed;bottom:0;left:0;right:0;padding:14px 16px;padding-bottom:calc(14px + env(safe-area-inset-bottom,0));background:rgba(6,8,16,.96);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.07)}
+  .jj-m-cta{width:100%;padding:16px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;border:none;font-family:var(--ff);background:var(--gr);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px}
+  .jj-m-cta.sec{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:var(--t1)}
+  /* ── Filter panel (slide up) ── */
+  #mob-filter-panel{position:fixed;bottom:0;left:0;right:0;z-index:500;background:var(--s1);border-radius:20px 20px 0 0;border-top:1px solid var(--b1);padding-bottom:env(safe-area-inset-bottom,0);transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+  #mob-filter-panel.open{transform:translateY(0)}
+  .mfp-handle{width:36px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin:12px auto 0}
+  .mfp-title{font-size:16px;font-weight:700;color:var(--t1);padding:14px 18px 10px}
+  .mfp-body{padding:0 18px 12px;max-height:55vh;overflow-y:auto}
+  .mfp-sec{margin-bottom:14px}
+  .mfp-sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px}
+  .mfp-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .mfp-chip{padding:7px 14px;border-radius:var(--rp);font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid var(--b2);color:var(--t2);font-family:var(--ff);background:transparent;transition:all .15s}
+  .mfp-chip.on{background:rgba(54,107,255,.15);border-color:rgba(54,107,255,.4);color:var(--acc)}
+  .mfp-foot{display:flex;gap:10px;padding:12px 18px;border-top:1px solid var(--b1)}
+  .mfp-apply{flex:1;padding:13px;border-radius:var(--rp);background:var(--gr);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;font-family:var(--ff)}
+  .mfp-clear{padding:13px 18px;border-radius:var(--rp);background:transparent;border:1px solid var(--b1);color:var(--t2);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--ff)}
+  /* ── Action sheet ── */
+  #mob-action-sheet{position:fixed;bottom:0;left:0;right:0;z-index:600;background:var(--s1);border-radius:20px 20px 0 0;border-top:1px solid var(--b1);padding-bottom:env(safe-area-inset-bottom,0);transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+  #mob-action-sheet.open{transform:translateY(0)}
+  #mob-as-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:590;opacity:0;transition:opacity .28s}
+  #mob-as-bg.on{display:block;opacity:1}
+  .mas-handle{width:36px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin:12px auto 8px}
+  .mas-ttl{font-size:16px;font-weight:700;color:var(--t1);padding:8px 18px 14px;border-bottom:1px solid var(--b1)}
+  .mas-items{padding:6px 0 4px}
+  .mas-item{display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;transition:background .1s}
+  .mas-item:active{background:rgba(255,255,255,.04)}
+  .mas-item-ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .mas-item-t{font-size:15px;font-weight:500;color:var(--t1)}
+  .mas-item-s{font-size:12px;color:var(--t3);margin-top:1px}
+  .mas-item.danger .mas-item-t{color:var(--er)}
+  .mas-cancel{display:block;width:calc(100% - 32px);margin:8px 16px 12px;padding:14px;border-radius:14px;background:rgba(255,255,255,.06);border:none;color:var(--t2);font-size:15px;font-weight:600;cursor:pointer;font-family:var(--ff)}
+  /* ── More menu (full overlay) ── */
+  #mob-more-overlay{position:fixed;inset:0;z-index:400;background:var(--bg);display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
+  #mob-more-overlay.on{display:flex}
+  .mmo-top{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--b1)}
+  .mmo-title{font-size:17px;font-weight:700;color:var(--t1)}
+  .mmo-close{background:rgba(255,255,255,.08);border:1px solid var(--b1);border-radius:var(--rp);padding:6px 14px;color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)}
+  .mmo-body{flex:1;overflow-y:auto;padding:16px}
+  .mmo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .mmo-item{background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;text-align:center;transition:border-color .15s}
+  .mmo-item:active{background:var(--s2)}
+  .mmo-item.on{border-color:rgba(54,107,255,.4)}
+  .mmo-item-ic{font-size:26px}
+  .mmo-item-t{font-size:12.5px;font-weight:600;color:var(--t1)}
+  .mmo-item-s{font-size:10.5px;color:var(--t3)}
+  .mmo-danger-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;background:var(--s1);border:1px solid var(--b1);cursor:pointer;margin-bottom:8px}
+  .mmo-danger-item:active{background:var(--s2)}
+  /* ── Search overlay ── */
+  #mob-search-overlay{position:fixed;inset:0;z-index:450;background:var(--bg);display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
+  #mob-search-overlay.on{display:flex}
+  .mso-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--b1)}
+  .mso-input{flex:1;height:44px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rp);padding:0 14px;color:var(--t1);font-size:16px;font-family:var(--ff);outline:none}
+  .mso-cancel{background:none;border:none;color:var(--acc);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--ff);flex-shrink:0;padding:8px}
+  .mso-results{flex:1;overflow-y:auto;padding:12px 16px}
+  .mso-sec-ttl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:8px;margin-top:14px}
+  .mso-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer}
+  .mso-row-ic{width:36px;height:36px;border-radius:9px;background:rgba(54,107,255,.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .mso-row-t{font-size:14px;font-weight:500;color:var(--t1)}
+  .mso-row-s{font-size:11px;color:var(--t3);margin-top:1px}
+  /* ── Offline banner ── */
+  #mob-offline-banner{display:none;position:fixed;top:env(safe-area-inset-top,0);left:0;right:0;z-index:800;background:var(--wa);padding:8px 16px;font-size:12.5px;font-weight:600;color:#000;text-align:center}
+  #mob-offline-banner.on{display:block}
+}
 </style>
 
 <!-- LOGIN -->
@@ -400,6 +524,27 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
     <div id="sv-modal-ct"></div>
   </div>
 </div>
+
+<!-- Offline -->
+<div id="mob-offline-banner">📶 Connexion perdue — mode hors-ligne</div>
+
+<!-- Mode Jour J (terrain plein écran) -->
+<div id="mob-jourj"></div>
+
+<!-- Backdrop action sheet / filter -->
+<div id="mob-as-bg" onclick="closeMobActionSheet();closeMobFilter()"></div>
+
+<!-- Filter panel slide-up -->
+<div id="mob-filter-panel"></div>
+
+<!-- Action sheet -->
+<div id="mob-action-sheet"></div>
+
+<!-- More menu overlay -->
+<div id="mob-more-overlay"></div>
+
+<!-- Search overlay -->
+<div id="mob-search-overlay"></div>
 
 <div id="mob-overlay" onclick="closeMobNav()"></div>
 <nav id="mob-bnav"></nav>
@@ -2429,6 +2574,8 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='contrats') await loadContrats();
   if(role==='admin'&&view==='users') await loadUsers();
   if(role==='admin'&&view==='grades') await loadGrades();
+  // Mobile dashboard override (remplace le contenu desktop sur petit écran)
+  if(isMobile()&&view==='dash') await loadMobileDash(role);
 }
 
 const SL={
@@ -8383,9 +8530,9 @@ function renderBottomNav(){
       <span class="mbn-lb">${item.lb.split(' ')[0]}</span>
     </button>`;
   }).join('')+
-  `<button class="mbn-i" onclick="toggleMobNav()" style="color:var(--t3)">
-    <span class="mbn-ic">${plusIc}</span>
-    <span class="mbn-lb">Menu</span>
+  `<button class="mbn-i" onclick="openMobMore()" style="color:var(--t3)">
+    <span class="mbn-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></span>
+    <span class="mbn-lb">Plus</span>
   </button>`;
 }
 
@@ -9007,6 +9154,750 @@ async function loadGrades(){
       ${c.nextGrade?`<div style="font-size:10px;color:var(--t3);margin-top:3px">${(c.nextGrade.xp-c.xp).toLocaleString('fr')} XP pour ${c.nextGrade.nom}</div>`:''}
     </div>`).join('')}</div>`}
   </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// SPORTVISION OS — MOBILE LAYER
+// Interface terrain native pour smartphone
+// ════════════════════════════════════════════════════════════════
+
+// Détection mobile
+const isMobile=()=>window.innerWidth<=768;
+
+// Offline
+window.addEventListener('online',()=>document.getElementById('mob-offline-banner')?.classList.remove('on'));
+window.addEventListener('offline',()=>document.getElementById('mob-offline-banner')?.classList.add('on'));
+
+// ── Action Sheet ──────────────────────────────────────────────────────────
+function showMobActionSheet(title,actions){
+  const el=document.getElementById('mob-action-sheet');
+  if(!el)return;
+  el.innerHTML=`<div class="mas-handle"></div>
+    ${title?`<div class="mas-ttl">${title}</div>`:''}
+    <div class="mas-items">
+      ${actions.map(a=>`<div class="mas-item${a.danger?' danger':''}" onclick="closeMobActionSheet();${a.fn}">
+        <div class="mas-item-ic" style="background:${a.bg||'rgba(255,255,255,.06)'}">${a.ic}</div>
+        <div><div class="mas-item-t">${a.label}</div>${a.sub?`<div class="mas-item-s">${a.sub}</div>`:''}</div>
+      </div>`).join('')}
+    </div>
+    <button class="mas-cancel" onclick="closeMobActionSheet()">Annuler</button>`;
+  el.classList.add('open');
+  document.getElementById('mob-as-bg').classList.add('on');
+}
+function closeMobActionSheet(){
+  document.getElementById('mob-action-sheet')?.classList.remove('open');
+  document.getElementById('mob-as-bg')?.classList.remove('on');
+}
+
+// ── Filter Panel ──────────────────────────────────────────────────────────
+let _mfpCallback=null,_mfpState={};
+function openMobFilter(sections,callback){
+  _mfpCallback=callback;_mfpState={};
+  const el=document.getElementById('mob-filter-panel');
+  if(!el)return;
+  el.innerHTML=`<div class="mfp-handle"></div>
+    <div class="mfp-title">Filtres</div>
+    <div class="mfp-body">
+      ${sections.map(s=>`<div class="mfp-sec">
+        <div class="mfp-sec-title">${s.label}</div>
+        <div class="mfp-chips">
+          ${s.options.map(o=>`<button class="mfp-chip${o.default?' on':''}" onclick="toggleMFPChip(this,'${s.key}','${o.value}')">${o.label}</button>`).join('')}
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="mfp-foot">
+      <button class="mfp-clear" onclick="closeMobFilter()">Effacer</button>
+      <button class="mfp-apply" onclick="applyMobFilter()">Appliquer</button>
+    </div>`;
+  document.getElementById('mob-as-bg').classList.add('on');
+  el.classList.add('open');
+}
+function toggleMFPChip(btn,key,val){
+  btn.classList.toggle('on');
+  if(!_mfpState[key])_mfpState[key]=[];
+  if(btn.classList.contains('on')){if(!_mfpState[key].includes(val))_mfpState[key].push(val);}
+  else _mfpState[key]=_mfpState[key].filter(v=>v!==val);
+}
+function applyMobFilter(){closeMobFilter();if(_mfpCallback)_mfpCallback(_mfpState);}
+function closeMobFilter(){
+  document.getElementById('mob-filter-panel')?.classList.remove('open');
+  document.getElementById('mob-as-bg')?.classList.remove('on');
+}
+
+// ── More Menu ─────────────────────────────────────────────────────────────
+const MOB_MORE_ITEMS={
+  admin:[{id:'crm',lb:'Clients',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipes',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'}],
+  sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'}],
+  prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
+  compta:[{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
+  photo:[{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression XP'},{id:'medias',lb:'Médias',ic:'🎬',sub:'Mes uploads'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+};
+function openMobMore(){
+  const el=document.getElementById('mob-more-overlay');
+  if(!el)return;
+  const role=S.role;
+  const items=MOB_MORE_ITEMS[role]||[];
+  el.innerHTML=`<div class="mmo-top">
+    <div class="mmo-title">Navigation</div>
+    <button class="mmo-close" onclick="closeMobMore()">Fermer</button>
+  </div>
+  <div class="mmo-body">
+    <div class="mmo-grid">
+      ${items.map(i=>`<div class="mmo-item${S.view===i.id?' on':''}" onclick="closeMobMore();switchView('${i.id}')">
+        <div class="mmo-item-ic">${i.ic}</div>
+        <div class="mmo-item-t">${i.lb}</div>
+        <div class="mmo-item-s">${i.sub}</div>
+      </div>`).join('')}
+    </div>
+    <div>
+      <div class="mmo-danger-item" onclick="closeMobMore();switchView('set')">
+        <div style="font-size:22px">👤</div>
+        <div><div style="font-size:14px;font-weight:600;color:var(--t1)">Mon profil & paramètres</div></div>
+      </div>
+      <div class="mmo-danger-item" onclick="closeMobMore();doLogout()">
+        <div style="font-size:22px">🚪</div>
+        <div><div style="font-size:14px;font-weight:600;color:var(--er)">Se déconnecter</div></div>
+      </div>
+    </div>
+  </div>`;
+  el.classList.add('on');
+}
+function closeMobMore(){document.getElementById('mob-more-overlay')?.classList.remove('on');}
+
+// ── Search Overlay ────────────────────────────────────────────────────────
+let _mobSearchTimer=null;
+function openMobSearch(){
+  const el=document.getElementById('mob-search-overlay');
+  if(!el)return;
+  el.innerHTML=`<div class="mso-bar">
+    <input type="search" class="mso-input" id="mob-srch-inp" placeholder="Rechercher…" oninput="mobSearch(this.value)" autocomplete="off">
+    <button class="mso-cancel" onclick="closeMobSearch()">Annuler</button>
+  </div>
+  <div class="mso-results" id="mob-srch-res"><div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Saisissez votre recherche…</div></div>`;
+  el.classList.add('on');
+  setTimeout(()=>document.getElementById('mob-srch-inp')?.focus(),80);
+}
+function closeMobSearch(){document.getElementById('mob-search-overlay')?.classList.remove('on');}
+async function mobSearch(q){
+  clearTimeout(_mobSearchTimer);
+  const res=document.getElementById('mob-srch-res');
+  if(!res)return;
+  if(q.length<2){res.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Minimum 2 caractères…</div>';return;}
+  _mobSearchTimer=setTimeout(async()=>{
+    res.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Recherche…</div>';
+    try{
+      const enc=encodeURIComponent(q);
+      const [pres,clients]=await Promise.all([
+        sbFetch('prestations?select=id,reference,type_prestation,date_prestation,clients(nom)&or=(reference.ilike.*'+enc+'*,type_prestation.ilike.*'+enc+'*)&limit=5').catch(()=>[]),
+        sbFetch('clients?select=id,nom,statut&nom=ilike.*'+enc+'*&limit=5').catch(()=>[]),
+      ]);
+      let html='';
+      if((clients||[]).length){
+        html+=`<div class="mso-sec-ttl">Clients</div>`;
+        html+=(clients).map(c=>`<div class="mso-row" onclick="closeMobSearch();modalModifierClientById('${c.id}')">
+          <div class="mso-row-ic">👥</div>
+          <div><div class="mso-row-t">${c.nom}</div><div class="mso-row-s">${c.statut||'—'}</div></div>
+        </div>`).join('');
+      }
+      if((pres||[]).length){
+        html+=`<div class="mso-sec-ttl">Prestations</div>`;
+        html+=(pres).map(p=>`<div class="mso-row" onclick="closeMobSearch();modalDetailById('${p.id}')">
+          <div class="mso-row-ic">📅</div>
+          <div><div class="mso-row-t">${p.clients?.nom||p.reference}</div><div class="mso-row-s">${p.reference||'—'} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</div></div>
+        </div>`).join('');
+      }
+      res.innerHTML=html||'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat.</div>';
+    }catch(e){res.innerHTML='<div style="padding:24px;color:var(--er);font-size:13px">Erreur lors de la recherche.</div>';}
+  },320);
+}
+
+// ── Mode Jour J (terrain) ─────────────────────────────────────────────────
+let _jjData=null;
+const JJ_STATUT_ACTION={
+  'confirmée':{label:'Je prends la route',next:'équipe_en_route',ic:'🚗'},
+  'équipe_affectée':{label:'Je prends la route',next:'équipe_en_route',ic:'🚗'},
+  'planifiée':{label:'Je prends la route',next:'équipe_en_route',ic:'🚗'},
+  'équipe_en_route':{label:'Je suis arrivé',next:'arrivée_sur_place',ic:'📍'},
+  'arrivée_sur_place':{label:'Démarrer la prestation',next:'production_démarrée',ic:'▶️'},
+  'prête':{label:'Démarrer la prestation',next:'production_démarrée',ic:'▶️'},
+  'production_démarrée':{label:'Terminer la prestation',next:'production_terminée',ic:'✅'},
+  'production_terminée':{label:'Médias prêts à transférer',next:'médias_à_transférer',ic:'📤'},
+  'médias_à_transférer':{label:'Médias transférés',next:'médias_complets',ic:'✓'},
+};
+async function enterJourJ(prestationId){
+  const el=document.getElementById('mob-jourj');
+  if(!el)return;
+  el.classList.add('on');
+  el.innerHTML=`<div class="jj-m-top"><button class="jj-m-back" onclick="exitJourJ()">← Retour</button><div class="jj-m-ttl">Mode Jour J</div><div style="width:72px"></div></div>
+    <div class="jj-m-body"><div style="text-align:center;padding:32px;color:var(--t3)">Chargement…</div></div>`;
+  try{
+    const d=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,description_besoin,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom))&id=eq.'+prestationId);
+    if(!d||!d[0]){exitJourJ();toast('Prestation introuvable.','er');return;}
+    _jjData=d[0];
+    renderJourJ();
+  }catch(e){exitJourJ();toast('Erreur de chargement.','er');}
+}
+function exitJourJ(){document.getElementById('mob-jourj')?.classList.remove('on');_jjData=null;}
+function renderJourJ(){
+  const p=_jjData;if(!p)return;
+  const el=document.getElementById('mob-jourj');
+  const dateStr=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'—';
+  const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée');
+  const act=JJ_STATUT_ACTION[p.statut];
+  const rdv=(p.heure_rdv||p.heure_debut||'').slice(0,5);
+  const CHECKLIST=[
+    {label:'Briefing consulté',done:['confirmée','planifiée','équipe_affectée','prête','production_démarrée','production_terminée','médias_à_transférer','médias_complets'].includes(p.statut)},
+    {label:'Kit récupéré',done:['arrivée_sur_place','production_démarrée','production_terminée','médias_à_transférer','médias_complets'].includes(p.statut)},
+    {label:'Contact sur place établi',done:['production_démarrée','production_terminée','médias_à_transférer','médias_complets'].includes(p.statut)},
+    {label:'Batterie vérifiée',done:false},{label:'Stockage suffisant',done:false},{label:'Caméra / matériel prêt',done:false},
+  ];
+  el.innerHTML=`<div class="jj-m-top">
+    <button class="jj-m-back" onclick="exitJourJ()">← Retour</button>
+    <div class="jj-m-ttl">Mode Jour J</div>
+    <div style="width:72px"></div>
+  </div>
+  <div class="jj-m-body">
+    <div class="jj-m-status">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.6);margin-bottom:6px">Prestation en cours</div>
+      <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:3px">${p.clients?.nom||'—'}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.8);margin-bottom:10px">${p.type_prestation||'—'} · ${dateStr}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px">
+        <span style="width:7px;height:7px;border-radius:50%;background:#fff;animation:bdot 1.2s ease-in-out infinite"></span>
+        <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.9)">${SL[p.statut]||p.statut}</span>
+      </div>
+    </div>
+    <div class="jj-m-step">
+      <div class="jj-m-step-ttl">📋 Infos terrain</div>
+      ${rdv?`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:20px">🕐</span><div><div style="font-size:11px;color:var(--t3)">RDV équipe</div><div style="font-size:18px;font-weight:700;color:var(--t1)">${rdv}</div></div></div>`:''}
+      ${p.lieu?`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:20px">📍</span><div><div style="font-size:11px;color:var(--t3)">Lieu</div><div style="font-size:15px;font-weight:600;color:var(--t1)">${p.lieu}</div></div></div>`:''}
+      ${p.contact_sur_place?`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px">👤</span><div><div style="font-size:11px;color:var(--t3)">Contact</div><div style="font-size:15px;font-weight:600;color:var(--t1)">${p.contact_sur_place}</div></div></div>
+        ${p.telephone_sur_place?`<a href="tel:${p.telephone_sur_place}" style="background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);padding:8px 14px;color:var(--ok);font-size:13px;font-weight:600;text-decoration:none">📞</a>`:''}
+      </div>`:''}
+      ${p.adresse_complete?`<a href="https://maps.google.com/?q=${encodeURIComponent(p.adresse_complete)}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:12px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:10px;color:var(--acc);font-size:13px;font-weight:600;text-decoration:none">🗺 Ouvrir l'itinéraire</a>`:''}
+    </div>
+    ${equipe.length?`<div class="jj-m-step">
+      <div class="jj-m-step-ttl">👥 Équipe (${equipe.length})</div>
+      ${equipe.map(e=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--gr);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">${((e.collaborateur?.prenom?.[0]||'')+(e.collaborateur?.nom?.[0]||'')).toUpperCase()}</div>
+        <div style="font-size:14px;font-weight:600;color:var(--t1)">${e.collaborateur?.prenom||''} ${e.collaborateur?.nom||''}</div>
+      </div>`).join('')}
+    </div>`:''}
+    <div class="jj-m-step">
+      <div class="jj-m-step-ttl">✅ Checklist</div>
+      ${CHECKLIST.map((item,i)=>`<div class="jj-m-check" onclick="toggleJJCheck(${i})">
+        <div class="jj-m-cb${item.done?' done':''}" id="jj-cb-${i}">${item.done?'<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#2ECC8A" stroke-width="2.5" stroke-linecap="round"><path d="M2 6l3 3 5-5"/></svg>':''}</div>
+        <span class="jj-m-cb-label${item.done?' done':''}" id="jj-cl-${i}">${item.label}</span>
+      </div>`).join('')}
+    </div>
+    ${p.description_besoin?`<div class="jj-m-step">
+      <div class="jj-m-step-ttl">📝 Brief</div>
+      <div style="font-size:14px;color:var(--t2);line-height:1.6">${p.description_besoin}</div>
+    </div>`:''}
+    <div class="jj-m-step">
+      <div class="jj-m-step-ttl">⚡ Actions rapides</div>
+      <button onclick="modalDeclarerFrais('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--ff);text-align:left;width:100%;margin-bottom:8px">🚗 <span>Déclarer des kilomètres</span></button>
+      <button onclick="modalSignalerIncidentJJ('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:10px;color:var(--er);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--ff);text-align:left;width:100%">⚠️ <span>Signaler un incident</span></button>
+    </div>
+  </div>
+  <div class="jj-m-foot">
+    ${act?`<button class="jj-m-cta" id="jj-cta-btn" onclick="jourJAction('${p.id}','${act.next}',this)">${act.ic} ${act.label}</button>`:
+    `<button class="jj-m-cta sec">✓ Prestation terminée</button>`}
+  </div>`;
+}
+function toggleJJCheck(i){
+  const cb=document.getElementById('jj-cb-'+i);
+  const lb=document.getElementById('jj-cl-'+i);
+  if(!cb||!lb)return;
+  const done=cb.classList.toggle('done');
+  lb.classList.toggle('done',done);
+  cb.innerHTML=done?'<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#2ECC8A" stroke-width="2.5" stroke-linecap="round"><path d="M2 6l3 3 5-5"/></svg>':'';
+}
+async function jourJAction(prestationId,newStatut,btn){
+  btn.disabled=true;btn.textContent='…';
+  try{
+    await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:newStatut}});
+    toast('Statut mis à jour.','ok');
+    await enterJourJ(prestationId);
+  }catch(e){toast('Erreur mise à jour.','er');btn.disabled=false;}
+}
+function modalSignalerIncidentJJ(prestationId){
+  openModal(`<div class="mh"><div class="mt">Signaler un incident</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Description</label><textarea id="jj-inc-desc" class="fi" style="height:80px" placeholder="Décrivez l'incident…"></textarea></div>
+      <div class="fg"><label class="fl">Niveau</label><select id="jj-inc-niv" class="fi"><option value="mineur">Mineur</option><option value="important">Important</option><option value="critique">Critique</option></select></div>
+      <div id="jj-inc-err" style="color:var(--er);font-size:12px;min-height:14px"></div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="submitIncidentJJ('${prestationId}')">Envoyer</button></div>`);
+}
+async function submitIncidentJJ(prestationId){
+  const desc=document.getElementById('jj-inc-desc')?.value?.trim();
+  const niv=document.getElementById('jj-inc-niv')?.value;
+  const err=document.getElementById('jj-inc-err');
+  if(!desc){if(err)err.textContent='Décrivez l\'incident.';return;}
+  const uid=localStorage.getItem('sv_uid');
+  try{
+    await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,description:desc,niveau:niv,declare_par:uid,cloture:false,date_incident:new Date().toISOString().slice(0,10)}});
+    closeModal();toast('Incident signalé.','ok');
+  }catch(e){if(err)err.textContent='Erreur lors de la déclaration.';}
+}
+
+// ── Mobile Dashboard Router ───────────────────────────────────────────────
+async function loadMobileDash(role){
+  const ct=document.getElementById('app-ct');
+  if(!ct)return;
+  if(role==='photo') await loadMobilePhotoDash(ct);
+  else if(role==='prod') await loadMobileProdDash(ct);
+  else if(role==='sec') await loadMobileSecDash(ct);
+  else if(role==='compta') await loadMobileComptaDash(ct);
+  else if(role==='cm') await loadMobileCmDash(ct);
+  else if(role==='com') await loadMobileComDash(ct);
+  else await loadMobileAdminDash(ct);
+}
+
+// ── Dashboard Photographe ─────────────────────────────────────────────────
+async function loadMobilePhotoDash(ct){
+  const uid=localStorage.getItem('sv_uid');
+  const prenom=localStorage.getItem('sv_prenom')||'';
+  ct.innerHTML=`<div style="padding:24px;text-align:center;color:var(--t3)">Chargement…</div>`;
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const [equipe,notifs]=await Promise.all([
+      sbFetch('prestations_equipe?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc&limit=100').catch(()=>[]),
+      sbFetch('notifications?select=id&destinataire_id=eq.'+uid+'&lue=eq.false&order=created_at.desc&limit=5').catch(()=>[]),
+    ]);
+    const data=(equipe||[]).filter(d=>d.prestations&&d.statut!=='annulée');
+    const invitations=data.filter(d=>d.statut==='invitation_envoyée');
+    const futures=data.filter(d=>d.prestations?.date_prestation&&d.prestations.date_prestation>=today&&!['refusée','annulée'].includes(d.statut));
+    const totalRem=data.filter(d=>d.statut!=='refusée').reduce((s,d)=>s+(d.remuneration||0),0);
+    const xp=data.reduce((s,m)=>s+100+(m.est_responsable?50:0),0);
+    const {grade}=calcGrade(xp);
+    const prochaine=futures[0];
+    let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div><div style="font-size:22px;font-weight:800;color:var(--t1)">Bonjour ${prenom} 👋</div>
+      <div style="font-size:13px;color:var(--t3);margin-top:2px">${grade.ic} ${grade.nom} · ${xp} XP</div></div>
+      <button onclick="openMobSearch()" style="width:40px;height:40px;border-radius:50%;background:var(--s1);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-family:var(--ff)">🔍</button>
+    </div>`;
+    if(invitations.length){
+      html+=`<div class="mc" style="border-color:rgba(54,107,255,.35);background:rgba(54,107,255,.06);margin-bottom:13px">
+        <div class="mc-top">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--acc);margin-bottom:8px">${invitations.length} INVITATION${invitations.length>1?'S':''} EN ATTENTE</div>
+          ${invitations.slice(0,2).map(inv=>{const p=inv.prestations;const date=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+            <div><div style="font-size:14px;font-weight:600;color:var(--t1)">${p.clients?.nom||'—'}</div><div style="font-size:12px;color:var(--t3)">${p.type_prestation||'—'} · ${date}</div></div>
+            <div style="display:flex;gap:6px">
+              <button onclick="repondreInvitation('${inv.id}','refusée')" style="padding:8px 12px;border-radius:var(--rp);background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);color:var(--er);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✗</button>
+              <button onclick="repondreInvitation('${inv.id}','acceptée')" style="padding:8px 12px;border-radius:var(--rp);background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓</button>
+            </div>
+          </div>`;}).join('')}
+        </div>
+      </div>`;
+    }
+    if(prochaine){
+      const p=prochaine.prestations;
+      const date=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'—';
+      const rdv=(prochaine.heure_rdv||p.heure_debut||'').slice(0,5);
+      html+=`<div class="mhero" style="margin-bottom:13px">
+        <div class="mhero-label">PROCHAINE PRESTATION</div>
+        <div class="mhero-title">${p.clients?.nom||'—'}</div>
+        <div style="font-size:14px;color:rgba(255,255,255,.85);margin-bottom:4px">${p.type_prestation||'—'}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.7)">${date}${rdv?' · RDV '+rdv:''}</div>
+        <div class="mhero-actions">
+          <button class="mhero-btn primary" onclick="enterJourJ('${p.id}')">🎯 Mode Jour J</button>
+          ${p.adresse_complete?`<button class="mhero-btn" onclick="window.open('https://maps.google.com/?q='+encodeURIComponent('${(p.adresse_complete||'').replace(/'/g,"\\'")}'),'_blank')">🗺 Itinéraire</button>`:''}
+        </div>
+      </div>`;
+    } else {
+      html+=`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:24px;text-align:center;margin-bottom:13px">
+        <div style="font-size:32px;margin-bottom:8px">📅</div>
+        <div style="font-size:15px;font-weight:600;color:var(--t1)">Aucune prestation à venir</div>
+        <div style="font-size:12px;color:var(--t3);margin-top:4px">Acceptez des invitations pour voir votre planning</div>
+      </div>`;
+    }
+    html+=`<div class="mkpi-strip">
+      <div class="mkpi" style="--mkl:var(--acc)"><div class="mkpi-label">Missions</div><div class="mkpi-val">${data.filter(d=>d.statut!=='refusée').length}</div><div class="mkpi-sub">total</div></div>
+      <div class="mkpi" style="--mkl:var(--ok)"><div class="mkpi-label">Rémunération</div><div class="mkpi-val">${totalRem.toLocaleString('fr-FR')} €</div><div class="mkpi-sub">cumulé</div></div>
+      <div class="mkpi" onclick="switchView('revenus')" style="--mkl:#7C4DFF;cursor:pointer"><div class="mkpi-label">XP total</div><div class="mkpi-val">${xp}</div><div class="mkpi-sub">${grade.nom}</div></div>
+    </div>`;
+    html+=`<div class="ms-head"><div class="ms-title">Mes missions à venir</div><button class="ms-link" onclick="switchView('pre')">Toutes →</button></div>`;
+    const liste=futures.slice(0,5);
+    if(liste.length){
+      html+=liste.map(row=>{const p=row.prestations;const date=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';const rdv=(row.heure_rdv||p.heure_debut||'').slice(0,5);
+        return`<div class="mc" style="cursor:pointer">
+          <div class="mc-top">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+              <div style="flex:1">
+                <div style="font-size:10px;font-weight:600;color:var(--acc);margin-bottom:4px;text-transform:uppercase;letter-spacing:.07em">${date}${rdv?' · '+rdv:''}</div>
+                <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:3px">${p.clients?.nom||'—'}</div>
+                <div style="font-size:13px;color:var(--t2)">${p.type_prestation||'—'}</div>
+                ${p.lieu?`<div style="font-size:12px;color:var(--t3);margin-top:4px">📍 ${p.lieu}</div>`:''}
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+                ${row.remuneration?`<div style="font-size:14px;font-weight:700;color:var(--ok);margin-top:6px">${row.remuneration.toLocaleString('fr-FR')} €</div>`:''}
+              </div>
+            </div>
+          </div>
+          <div class="mc-act">
+            <button onclick="enterJourJ('${p.id}')" class="btn bp" style="flex:1;justify-content:center">🎯 Mode Jour J</button>
+            <button onclick="modalDetailById('${p.id}')" class="btn bg2" style="flex:1;justify-content:center">Détail</button>
+          </div>
+        </div>`;}).join('');
+    } else html+=`<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune mission à venir.</div>`;
+    ct.innerHTML=html;
+  }catch(e){ct.innerHTML=`<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>`;}
+}
+
+// ── Dashboard Prod ────────────────────────────────────────────────────────
+async function loadMobileProdDash(ct){
+  const prenom=localStorage.getItem('sv_prenom')||'';
+  ct.innerHTML=`<div style="padding:24px;text-align:center;color:var(--t3)">Chargement…</div>`;
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const [pres,inc]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,clients(nom),prestations_equipe(statut)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=100').catch(()=>[]),
+      sbFetch('incidents?select=id&cloture=eq.false').catch(()=>[]),
+    ]);
+    const list=Array.isArray(pres)?pres:[];
+    const todayPre=list.filter(p=>p.date_prestation===today);
+    const urgentes=list.filter(p=>p.statut==='à_valider_production').length;
+    const aTransferer=list.filter(p=>['médias_à_transférer','production_terminée'].includes(p.statut)).length;
+    const enCours=list.filter(p=>['production_démarrée','arrivée_sur_place','équipe_en_route'].includes(p.statut)).length;
+    let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div><div style="font-size:20px;font-weight:800;color:var(--t1)">Production</div>
+      <div style="font-size:13px;color:var(--t3);margin-top:2px">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div></div>
+    </div>`;
+    if(urgentes>0){
+      html+=`<div class="mc" style="border-color:rgba(240,68,94,.35);background:rgba(240,68,94,.06);margin-bottom:13px;cursor:pointer" onclick="switchView('pre')">
+        <div class="mc-top">
+          <div style="font-size:12px;font-weight:700;color:var(--er);text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px">⚠ VALIDATION REQUISE</div>
+          <div style="font-size:18px;font-weight:700;color:var(--t1)">${urgentes} prestation${urgentes>1?'s':''} à valider</div>
+        </div>
+        <div class="mc-act"><button onclick="event.stopPropagation();switchView('pre')" class="btn bp" style="flex:1;justify-content:center">Valider maintenant</button></div>
+      </div>`;
+    }
+    html+=`<div class="mkpi-strip">
+      <div class="mkpi" style="--mkl:var(--er);cursor:pointer" onclick="switchView('pre')"><div class="mkpi-label">À valider</div><div class="mkpi-val" style="${urgentes>0?'color:var(--er)':''}">${urgentes}</div><div class="mkpi-sub">production</div></div>
+      <div class="mkpi" style="--mkl:var(--wa);cursor:pointer" onclick="switchView('media')"><div class="mkpi-label">Médias</div><div class="mkpi-val" style="${aTransferer>0?'color:var(--wa)':''}">${aTransferer}</div><div class="mkpi-sub">à transférer</div></div>
+      <div class="mkpi" style="--mkl:var(--ok)"><div class="mkpi-label">En cours</div><div class="mkpi-val" style="${enCours>0?'color:var(--ok)':''}">${enCours}</div><div class="mkpi-sub">live</div></div>
+      <div class="mkpi" style="--mkl:var(--er);cursor:pointer" onclick="switchView('incidents')"><div class="mkpi-label">Incidents</div><div class="mkpi-val" style="${(inc||[]).length>0?'color:var(--er)':''}">${(inc||[]).length}</div><div class="mkpi-sub">ouverts</div></div>
+    </div>`;
+    if(todayPre.length){
+      html+=`<div class="ms-head"><div class="ms-title">📅 Aujourd'hui (${todayPre.length})</div></div>`;
+      html+=todayPre.map(p=>{const h=p.heure_debut?.slice(0,5)||'--:--';const eq=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length;
+        return`<div class="mc" onclick="modalDetailById('${p.id}')" style="cursor:pointer">
+          <div class="mc-top">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:700;color:var(--acc);margin-bottom:3px">${h}</div>
+                <div style="font-size:16px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'}</div>
+                <div style="font-size:13px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'}</div>
+                <div style="display:flex;gap:10px;margin-top:5px">${p.lieu?`<span style="font-size:11px;color:var(--t3)">📍 ${p.lieu}</span>`:''}
+                <span style="font-size:11px;color:var(--t3)">👥 ${eq} conf.</span></div>
+              </div>
+              <span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+            </div>
+          </div>
+          <div class="mc-act">
+            <button onclick="event.stopPropagation();modalDetailById('${p.id}')" class="btn bg2 bs" style="flex:1;justify-content:center">Détail</button>
+            <button onclick="event.stopPropagation();modalEquipePrestation('${p.id}','${p.reference||''}')" class="btn bp bs" style="flex:1;justify-content:center">Équipe</button>
+          </div>
+        </div>`;}).join('');
+    }
+    const prochaines=list.filter(p=>p.date_prestation>today&&!['livrée','clôturée'].includes(p.statut)).slice(0,5);
+    if(prochaines.length){
+      html+=`<div class="ms-head"><div class="ms-title">À venir</div><button class="ms-link" onclick="switchView('pre')">Tout voir →</button></div>`;
+      html+=prochaines.map(p=>{const date=new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});const eq=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length;
+        return`<div class="mc" onclick="modalDetailById('${p.id}')" style="cursor:pointer">
+          <div class="mc-top" style="display:flex;align-items:center;gap:12px">
+            <div style="width:44px;height:44px;border-radius:10px;background:rgba(54,107,255,.1);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
+              <div style="font-size:16px;font-weight:700;color:var(--acc)">${new Date(p.date_prestation).getDate()}</div>
+              <div style="font-size:9px;text-transform:uppercase;color:var(--t3)">${new Date(p.date_prestation).toLocaleDateString('fr-FR',{month:'short'})}</div>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'}</div>
+              <div style="font-size:12px;color:var(--t2)">${p.type_prestation||'—'} · 👥 ${eq}</div>
+            </div>
+            <span class="bd ${SC[p.statut]||'bw'}" style="flex-shrink:0"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+          </div>
+        </div>`;}).join('');
+    }
+    ct.innerHTML=html;
+  }catch(e){ct.innerHTML=`<div style="padding:32px;color:var(--er);text-align:center;font-size:13px">Erreur de chargement.</div>`;}
+}
+
+// ── Dashboard Secrétaire ──────────────────────────────────────────────────
+async function loadMobileSecDash(ct){
+  const prenom=localStorage.getItem('sv_prenom')||'';
+  ct.innerHTML=`<div style="padding:24px;text-align:center;color:var(--t3)">Chargement…</div>`;
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    const [pres,devis,tachesRaw]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ttc,clients(nom)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200').catch(()=>[]),
+      sbFetch('devis?select=id,statut&limit=200').catch(()=>[]),
+      uid?sbFetch('notifications?select=id&type=eq.tache&lue=eq.false&destinataire_id=eq.'+uid).catch(()=>[]):[],
+    ]);
+    const demandes=(pres||[]).filter(p=>['demande_reçue','à_qualifier','offre_en_préparation'].includes(p.statut));
+    const acomptes=(pres||[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte');
+    const livraisons=(pres||[]).filter(p=>['prête_validation','livrée','prête_à_livrer'].includes(p.statut));
+    const devisEnvoi=(devis||[]).filter(d=>d.statut==='brouillon'||d.statut==='en_cours');
+    const taches=(tachesRaw||[]).length;
+    let html=`<div style="margin-bottom:16px">
+      <div style="font-size:20px;font-weight:800;color:var(--t1)">Secrétariat</div>
+      <div style="font-size:13px;color:var(--t3);margin-top:2px">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
+    </div>`;
+    const alerts=[
+      ...(demandes.length?[{cls:'er',label:`${demandes.length} demande${demandes.length>1?'s':''} à traiter`,view:'demandes'}]:[]),
+      ...(acomptes.length?[{cls:'wa',label:`${acomptes.length} acompte${acomptes.length>1?'s':''} à relancer`,view:'relances'}]:[]),
+      ...(livraisons.length?[{cls:'ok',label:`${livraisons.length} livraison${livraisons.length>1?'s':''} prête${livraisons.length>1?'s':''}`,view:'livraisons'}]:[]),
+      ...(devisEnvoi.length?[{cls:'bb',label:`${devisEnvoi.length} devis à envoyer`,view:'devis'}]:[]),
+    ];
+    if(alerts.length){
+      html+=`<div class="mc" style="margin-bottom:13px">
+        <div class="mc-top">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:8px">Actions prioritaires</div>
+          ${alerts.map(a=>`<div onclick="switchView('${a.view}')" style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--${a.cls});flex-shrink:0"></div>
+              <div style="font-size:14px;font-weight:500;color:var(--t1)">${a.label}</div>
+            </div>
+            <div style="font-size:18px;color:var(--t3)">›</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }
+    html+=`<div class="mkpi-strip">
+      <div class="mkpi" style="--mkl:var(--er);cursor:pointer" onclick="switchView('demandes')"><div class="mkpi-label">Demandes</div><div class="mkpi-val" style="${demandes.length>0?'color:var(--er)':''}">${demandes.length}</div><div class="mkpi-sub">à traiter</div></div>
+      <div class="mkpi" style="--mkl:var(--wa);cursor:pointer" onclick="switchView('relances')"><div class="mkpi-label">Relances</div><div class="mkpi-val" style="${acomptes.length>0?'color:var(--wa)':''}">${acomptes.length}</div><div class="mkpi-sub">acomptes</div></div>
+      <div class="mkpi" style="--mkl:var(--ok);cursor:pointer" onclick="switchView('livraisons')"><div class="mkpi-label">Livraisons</div><div class="mkpi-val" style="${livraisons.length>0?'color:var(--ok)':''}">${livraisons.length}</div><div class="mkpi-sub">prêtes</div></div>
+      <div class="mkpi" style="--mkl:#7C4DFF;cursor:pointer" onclick="switchView('taches')"><div class="mkpi-label">Tâches</div><div class="mkpi-val">${taches}</div><div class="mkpi-sub">ouvertes</div></div>
+    </div>`;
+    html+=`<div class="ms-head"><div class="ms-title">Actions rapides</div></div>
+    <div class="mob-actions">
+      <button class="mob-action-btn" onclick="modalNouvellePrestation()"><div class="mob-action-btn-ic">📋</div><div><div class="mob-action-btn-t">Nouvelle demande</div><div class="mob-action-btn-s">Enregistrer</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('crm')"><div class="mob-action-btn-ic">👤</div><div><div class="mob-action-btn-t">Clients</div><div class="mob-action-btn-s">CRM</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('devis')"><div class="mob-action-btn-ic">📄</div><div><div class="mob-action-btn-t">Devis</div><div class="mob-action-btn-s">Proposer</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('relances')"><div class="mob-action-btn-ic">🔔</div><div><div class="mob-action-btn-t">Relancer</div><div class="mob-action-btn-s">Acomptes</div></div></button>
+    </div>`;
+    if(demandes.length){
+      html+=`<div class="ms-head"><div class="ms-title">Dernières demandes</div><button class="ms-link" onclick="switchView('demandes')">Voir →</button></div>`;
+      html+=demandes.slice(0,3).map(p=>{const date=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+        return`<div class="mc" onclick="modalDetailById('${p.id}')" style="cursor:pointer">
+          <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'} · ${date}</div></div>
+            <span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+          </div>
+        </div>`;}).join('');
+    }
+    ct.innerHTML=html;
+  }catch(e){ct.innerHTML=`<div style="padding:32px;color:var(--er);text-align:center;font-size:13px">Erreur de chargement.</div>`;}
+}
+
+// ── Dashboard Comptable ───────────────────────────────────────────────────
+async function loadMobileComptaDash(ct){
+  ct.innerHTML=`<div style="padding:24px;text-align:center;color:var(--t3)">Chargement…</div>`;
+  try{
+    const now=new Date();
+    const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
+    const [pres,remAtt]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=300').catch(()=>[]),
+      sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
+    ]);
+    const list=Array.isArray(pres)?pres:[];
+    const mois=list.filter(p=>p.date_prestation>=mStart&&p.date_prestation<mNext);
+    const ca=mois.filter(p=>['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const enc=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const impayes=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier));
+    const acomptes=list.filter(p=>p.statut_financier==='acompte_demandé');
+    const remAtt2=(Array.isArray(remAtt)?remAtt:[]).reduce((s,r)=>s+(r.remuneration||0),0);
+    const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+    let html=`<div style="margin-bottom:16px">
+      <div style="font-size:20px;font-weight:800;color:var(--t1)">Comptabilité</div>
+      <div style="font-size:13px;color:var(--t3);margin-top:2px">${now.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}</div>
+    </div>
+    <div class="mhero" style="margin-bottom:13px">
+      <div class="mhero-label">CA ENCAISSÉ CE MOIS</div>
+      <div style="font-size:32px;font-weight:800;color:#fff;margin-bottom:8px;font-variant-numeric:tabular-nums">${fmt(ca)}</div>
+      <div style="display:flex;gap:16px">
+        <div><div style="font-size:11px;color:rgba(255,255,255,.6)">À encaisser</div><div style="font-size:16px;font-weight:700;color:rgba(255,255,255,.9)">${fmt(enc)}</div></div>
+        <div><div style="font-size:11px;color:rgba(255,255,255,.6)">Rém. att.</div><div style="font-size:16px;font-weight:700;color:rgba(255,255,255,.9)">${fmt(remAtt2)}</div></div>
+      </div>
+    </div>`;
+    if(impayes.length){
+      html+=`<div class="mc" onclick="switchView('impayes')" style="cursor:pointer;border-color:rgba(240,68,94,.25);margin-bottom:10px">
+        <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between">
+          <div><div style="font-size:12px;font-weight:700;color:var(--er);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Impayés</div>
+            <div style="font-size:18px;font-weight:700;color:var(--t1)">${impayes.length} facture${impayes.length>1?'s':''}</div>
+            <div style="font-size:13px;color:var(--t3);margin-top:2px">${fmt(enc)} à encaisser</div></div>
+          <div style="font-size:24px;color:var(--t3)">›</div>
+        </div>
+      </div>`;
+    }
+    if(acomptes.length){
+      html+=`<div class="mc" onclick="switchView('acomptes')" style="cursor:pointer;border-color:rgba(245,165,36,.25);margin-bottom:10px">
+        <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between">
+          <div><div style="font-size:12px;font-weight:700;color:var(--wa);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Acomptes</div>
+            <div style="font-size:18px;font-weight:700;color:var(--t1)">${acomptes.length} en attente</div></div>
+          <div style="font-size:24px;color:var(--t3)">›</div>
+        </div>
+      </div>`;
+    }
+    html+=`<div class="ms-head"><div class="ms-title">Navigation rapide</div></div>
+    <div class="mob-actions">
+      <button class="mob-action-btn" onclick="switchView('factures')"><div class="mob-action-btn-ic">📄</div><div><div class="mob-action-btn-t">Factures</div><div class="mob-action-btn-s">Toutes</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('acomptes')"><div class="mob-action-btn-ic">💰</div><div><div class="mob-action-btn-t">Acomptes</div><div class="mob-action-btn-s">Suivi</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('frais')"><div class="mob-action-btn-ic">🚗</div><div><div class="mob-action-btn-t">Frais</div><div class="mob-action-btn-s">Rembourser</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('rem')"><div class="mob-action-btn-ic">💸</div><div><div class="mob-action-btn-t">Rémunérations</div><div class="mob-action-btn-s">Contrôler</div></div></button>
+    </div>`;
+    ct.innerHTML=html;
+  }catch(e){ct.innerHTML=`<div style="padding:32px;color:var(--er);text-align:center;font-size:13px">Erreur de chargement.</div>`;}
+}
+
+// ── Dashboard Admin ───────────────────────────────────────────────────────
+async function loadMobileAdminDash(ct){
+  const prenom=localStorage.getItem('sv_prenom')||'';
+  ct.innerHTML=`<div style="padding:24px;text-align:center;color:var(--t3)">Chargement…</div>`;
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const mStart=today.slice(0,7)+'-01';
+    const [pres,cli,inc]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,date_prestation,heure_debut,type_prestation,clients(nom)&order=date_prestation.asc&limit=300').catch(()=>[]),
+      sbFetch('clients?select=id,statut&limit=500').catch(()=>[]),
+      sbFetch('incidents?select=id&cloture=eq.false').catch(()=>[]),
+    ]);
+    const list=Array.isArray(pres)?pres:[];
+    const todayPre=list.filter(p=>p.date_prestation===today);
+    const caM=list.filter(p=>p.date_prestation>=mStart&&['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const aEnc=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const cliActifs=(cli||[]).filter(c=>c.statut==='client').length;
+    const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+    let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div><div style="font-size:20px;font-weight:800;color:var(--t1)">Bonjour ${prenom} 👋</div>
+      <div style="font-size:13px;color:var(--t3);margin-top:2px">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div></div>
+      <button onclick="openMobSearch()" style="width:40px;height:40px;border-radius:50%;background:var(--s1);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-family:var(--ff)">🔍</button>
+    </div>
+    <div class="mhero" style="margin-bottom:13px">
+      <div class="mhero-label">CA ENCAISSÉ CE MOIS</div>
+      <div style="font-size:32px;font-weight:800;color:#fff;margin-bottom:8px;font-variant-numeric:tabular-nums">${fmt(caM)}</div>
+      <div style="display:flex;gap:16px">
+        <div><div style="font-size:11px;color:rgba(255,255,255,.6)">À encaisser</div><div style="font-size:16px;font-weight:700;color:rgba(255,255,255,.9)">${fmt(aEnc)}</div></div>
+        <div><div style="font-size:11px;color:rgba(255,255,255,.6)">Clients actifs</div><div style="font-size:16px;font-weight:700;color:rgba(255,255,255,.9)">${cliActifs}</div></div>
+        <div><div style="font-size:11px;color:rgba(255,255,255,.6)">Incidents</div><div style="font-size:16px;font-weight:700;color:${(inc||[]).length>0?'#F0445E':'rgba(255,255,255,.9)'}">${(inc||[]).length}</div></div>
+      </div>
+    </div>`;
+    if(todayPre.length){
+      html+=`<div class="ms-head"><div class="ms-title">📅 Aujourd'hui (${todayPre.length})</div></div>`;
+      html+=todayPre.map(p=>{const h=p.heure_debut?.slice(0,5)||'—';
+        return`<div class="mc" onclick="modalDetailById('${p.id}')" style="cursor:pointer">
+          <div class="mc-top" style="display:flex;align-items:center;gap:12px">
+            <div style="width:44px;text-align:center;flex-shrink:0"><div style="font-size:16px;font-weight:700;color:var(--acc)">${h}</div></div>
+            <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'}</div><div style="font-size:12px;color:var(--t2)">${p.type_prestation||'—'}</div></div>
+            <span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+          </div>
+        </div>`;}).join('');
+    } else {
+      html+=`<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px;background:var(--s1);border:1px solid var(--b1);border-radius:12px;margin-bottom:13px">Aucune prestation aujourd'hui.</div>`;
+    }
+    html+=`<div class="ms-head"><div class="ms-title">Navigation rapide</div></div>
+    <div class="mob-actions">
+      <button class="mob-action-btn" onclick="switchView('pre')"><div class="mob-action-btn-ic">📅</div><div><div class="mob-action-btn-t">Prestations</div><div class="mob-action-btn-s">${list.filter(p=>!['annulée','refusée','clôturée'].includes(p.statut)).length} actives</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('col')"><div class="mob-action-btn-ic">👥</div><div><div class="mob-action-btn-t">Équipe</div><div class="mob-action-btn-s">Collaborateurs</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('incidents')"><div class="mob-action-btn-ic">⚠️</div><div><div class="mob-action-btn-t">Incidents</div><div class="mob-action-btn-s">${(inc||[]).length} ouverts</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('fin')"><div class="mob-action-btn-ic">💰</div><div><div class="mob-action-btn-t">Finance</div><div class="mob-action-btn-s">Rapports</div></div></button>
+    </div>`;
+    ct.innerHTML=html;
+  }catch(e){ct.innerHTML=`<div style="padding:32px;color:var(--er);text-align:center;font-size:13px">Erreur de chargement.</div>`;}
+}
+
+// ── Dashboard CM ──────────────────────────────────────────────────────────
+async function loadMobileCmDash(ct){
+  ct.innerHTML=`<div style="padding:24px;text-align:center;color:var(--t3)">Chargement…</div>`;
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const in14=new Date();in14.setDate(in14.getDate()+14);
+    const [clients,preSoon]=await Promise.all([
+      sbFetch('clients?select=id,statut&limit=500').catch(()=>[]),
+      sbFetch('prestations?select=id,reference,type_prestation,date_prestation,clients(nom)&date_prestation=gte.'+today+'&date_prestation=lte.'+in14.toISOString().slice(0,10)+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=10').catch(()=>[]),
+    ]);
+    const actifs=(clients||[]).filter(c=>c.statut==='client').length;
+    const prospects=(clients||[]).filter(c=>c.statut==='prospect'||c.statut==='qualifié').length;
+    let html=`<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:800;color:var(--t1)">Community Manager</div></div>
+    <div class="mkpi-strip">
+      <div class="mkpi" style="--mkl:var(--acc)"><div class="mkpi-label">Clients</div><div class="mkpi-val">${actifs}</div><div class="mkpi-sub">actifs</div></div>
+      <div class="mkpi" style="--mkl:var(--wa)"><div class="mkpi-label">Prospects</div><div class="mkpi-val">${prospects}</div><div class="mkpi-sub">pipeline</div></div>
+      <div class="mkpi" style="--mkl:#7C4DFF"><div class="mkpi-label">14 prochains j.</div><div class="mkpi-val">${(preSoon||[]).length}</div><div class="mkpi-sub">prestations</div></div>
+    </div>
+    <div class="mob-actions">
+      <button class="mob-action-btn" onclick="switchView('contenus')"><div class="mob-action-btn-ic">✍️</div><div><div class="mob-action-btn-t">Contenus</div><div class="mob-action-btn-s">À créer</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('cal')"><div class="mob-action-btn-ic">📅</div><div><div class="mob-action-btn-t">Calendrier</div><div class="mob-action-btn-s">Éditorial</div></div></button>
+    </div>`;
+    if((preSoon||[]).length){
+      html+=`<div class="ms-head"><div class="ms-title">Prochaines prestations</div></div>`;
+      html+=(preSoon||[]).map(p=>{const date=new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+        return`<div class="mc" onclick="modalDetailById('${p.id}')" style="cursor:pointer">
+          <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div><div style="font-size:15px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'} · ${date}</div></div>
+            <div style="font-size:20px;color:var(--t3)">›</div>
+          </div>
+        </div>`;}).join('');
+    }
+    ct.innerHTML=html;
+  }catch(e){ct.innerHTML=`<div style="padding:32px;color:var(--er);text-align:center;font-size:13px">Erreur de chargement.</div>`;}
+}
+
+// ── Dashboard Commercial ──────────────────────────────────────────────────
+async function loadMobileComDash(ct){
+  ct.innerHTML=`<div style="padding:24px;text-align:center;color:var(--t3)">Chargement…</div>`;
+  try{
+    const [clients,devis]=await Promise.all([
+      sbFetch('clients?select=id,nom,statut,sport,ville,created_at&order=created_at.desc&limit=100').catch(()=>[]),
+      sbFetch('devis?select=id,statut&limit=200').catch(()=>[]),
+    ]);
+    const prospects=(clients||[]).filter(c=>c.statut==='prospect').length;
+    const qualifies=(clients||[]).filter(c=>c.statut==='qualifié').length;
+    const actifs=(clients||[]).filter(c=>c.statut==='client').length;
+    const devisEnv=(devis||[]).filter(d=>['envoyé','en_attente'].includes(d.statut)).length;
+    let html=`<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:800;color:var(--t1)">Commercial</div></div>
+    <div class="mkpi-strip">
+      <div class="mkpi" style="--mkl:var(--wa)"><div class="mkpi-label">Prospects</div><div class="mkpi-val">${prospects}</div><div class="mkpi-sub">pipeline</div></div>
+      <div class="mkpi" style="--mkl:#7C4DFF"><div class="mkpi-label">Qualifiés</div><div class="mkpi-val">${qualifies}</div><div class="mkpi-sub">à proposer</div></div>
+      <div class="mkpi" style="--mkl:var(--ok)"><div class="mkpi-label">Clients</div><div class="mkpi-val">${actifs}</div><div class="mkpi-sub">actifs</div></div>
+      <div class="mkpi" style="--mkl:var(--acc)"><div class="mkpi-label">Devis</div><div class="mkpi-val">${devisEnv}</div><div class="mkpi-sub">en attente</div></div>
+    </div>
+    <div class="mob-actions">
+      <button class="mob-action-btn" onclick="switchView('pipeline')"><div class="mob-action-btn-ic">🎯</div><div><div class="mob-action-btn-t">Pipeline</div><div class="mob-action-btn-s">Prospects</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('crm')"><div class="mob-action-btn-ic">➕</div><div><div class="mob-action-btn-t">Nouveau prospect</div><div class="mob-action-btn-s">CRM</div></div></button>
+    </div>`;
+    const recents=(clients||[]).slice(0,6);
+    html+=`<div class="ms-head"><div class="ms-title">Clients récents</div><button class="ms-link" onclick="switchView('crm')">Tous →</button></div>`;
+    html+=recents.map(c=>{const sc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn'};const sl={'prospect':'Prospect','qualifié':'Qualifié','client':'Client','inactif':'Inactif'};
+      return`<div class="mc" onclick="modalModifierClientById('${c.id}')" style="cursor:pointer">
+        <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nom}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${[c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
+          <span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${sl[c.statut]||c.statut}</span>
+        </div>
+      </div>`;}).join('');
+    ct.innerHTML=html;
+  }catch(e){ct.innerHTML=`<div style="padding:32px;color:var(--er);text-align:center;font-size:13px">Erreur de chargement.</div>`;}
+}
+
+// ── PWA — Service Worker inline ───────────────────────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    const swCode=`const C='sv-os-v1';
+self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['.']))));
+self.addEventListener('fetch',e=>{
+  if(e.request.method!=='GET')return;
+  e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
+    if(res.ok){const clone=res.clone();caches.open(C).then(c=>c.put(e.request,clone));}
+    return res;
+  }).catch(()=>caches.match('.'))));
+});`;
+    const blob=new Blob([swCode],{type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+  });
 }
 
 </script>
