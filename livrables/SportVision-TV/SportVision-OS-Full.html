@@ -1373,15 +1373,17 @@ const VIEWS={
 
   // ── PROD : FORMATION ──────────────────────────────────────────────────────
   'prod.form':()=>`
-    <div class="sh" style="margin-bottom:14px">
-      <div><div class="sh-t">Centre de formation</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Compétences, certifications et habilitations de l'équipe</div></div>
+    <div class="cd" style="margin-bottom:14px">
+      <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
     </div>
-    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Collaborateurs</div><div class="kpi-v" id="form-nb">—</div><span class="kpi-d dnt">formés</span></div>
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Certifs expirées</div><div class="kpi-v" id="form-exp">—</div><span class="kpi-d dnt">à renouveler</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Formations actives</div><div class="kpi-v" id="form-active">—</div><span class="kpi-d dnt">en cours</span></div>
+    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:2px">
+      <button data-tab="dashboard" onclick="setFormTab('dashboard')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--acc);background:var(--acc);color:#fff;flex-shrink:0">Tableau de bord</button>
+      <button data-tab="catalogue" onclick="setFormTab('catalogue')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Catalogue</button>
+      <button data-tab="mes-formations" onclick="setFormTab('mes-formations')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Mes formations</button>
+      <button data-tab="certifications" onclick="setFormTab('certifications')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Certifications</button>
+      <button data-tab="sessions" onclick="setFormTab('sessions')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Sessions</button>
     </div>
-    <div id="prod-form-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="form-real"></div>`,
 
   // ── PROD : RAPPORTS ───────────────────────────────────────────────────────
   'prod.rapports':()=>`
@@ -1528,6 +1530,7 @@ const VIEWS={
       <button data-tab="catalogue" onclick="setFormTab('catalogue')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Catalogue</button>
       <button data-tab="mes-formations" onclick="setFormTab('mes-formations')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Mes formations</button>
       <button data-tab="certifications" onclick="setFormTab('certifications')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Certifications</button>
+      <button data-tab="sessions" onclick="setFormTab('sessions')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Sessions</button>
     </div>
     <div id="form-real"></div>`,
 
@@ -2629,7 +2632,7 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='livr') await loadProdLivrables();
   if(role==='prod'&&view==='kanban') await loadKanban();
   if(role==='prod'&&view==='budget') await loadProdBudget();
-  if(role==='prod'&&view==='form') await loadProdFormation();
+  // prod.form uses loadForm() — see line below
   if(role==='prod'&&view==='rapports') await loadProdRapport('prestations');
   if(role==='photo'&&view==='dash') await loadPhotoDash();
   if(role==='photo'&&view==='pre') await loadPhotoMesPrestations();
@@ -8075,6 +8078,7 @@ let _formProgCache={};   // keyed by formation_id → {statut, lessons:{key:true
 let _formInscIds={};     // formation_id → inscription uuid
 let _certifCache=[];     // collaborateur_certifications depuis Supabase
 let _quizState=null;     // quiz en cours {id, qs, answers}
+let _formSessCache=[];   // sessions chargées (collab + admin) pour ICS
 
 function getFormProg(uid){return _formProgCache;}
 function saveFormProg(uid,data){_formProgCache=data;}
@@ -8134,6 +8138,7 @@ function setFormTab(tab){
     else if(tab==='catalogue')renderFormCatalogue(el,prog);
     else if(tab==='mes-formations')renderFormMes(el,prog);
     else if(tab==='certifications')renderFormCerts(el,prog);
+    else if(tab==='sessions')loadFormSessions(el);
   }
 }
 
@@ -8329,6 +8334,7 @@ function renderFormCerts(el,prog){
           </div>
           <span style="padding:5px 12px;background:${isExp?'rgba(240,68,94,.15)':isSoon?'rgba(245,165,36,.15)':'rgba(46,204,138,.15)'};border:1px solid ${isExp?'rgba(240,68,94,.3)':isSoon?'rgba(245,165,36,.3)':'rgba(46,204,138,.3)'};border-radius:20px;font-size:10px;font-weight:700;color:${isExp?'var(--er)':isSoon?'var(--wa)':'var(--ok)'}">${isExp?'Expirée':isSoon?'⚠ Bientôt':'Active'}</span>
         </div>
+        ${!isExp?`<div style="margin-top:12px;display:flex;justify-content:flex-end"><button onclick="genererAttestation('${f.id}')" style="padding:6px 14px;background:transparent;border:1px solid rgba(124,77,255,.3);border-radius:8px;color:#9C6FFF;font-size:11.5px;font-weight:600;cursor:pointer">📄 Attestation PDF</button></div>`:''}
       </div>`;
     });
   }
@@ -8689,6 +8695,7 @@ async function loadAdminFormSessions(){
     const all=sessions||[];
     const upcoming=all.filter(s=>new Date(s.date_session)>=now&&s.statut!=='annulee'&&s.statut!=='terminee');
     const past=all.filter(s=>new Date(s.date_session)<now||s.statut==='terminee'||s.statut==='annulee');
+    _formSessCache=all;
     const STLBL={planifiee:'Planifiée',confirmee:'Confirmée',en_cours:'En cours',terminee:'Terminée',annulee:'Annulée'};
     const STCLR={planifiee:'var(--t3)',confirmee:'var(--acc)',en_cours:'var(--wa)',terminee:'var(--ok)',annulee:'var(--er)'};
     el.innerHTML=`
@@ -8708,7 +8715,7 @@ async function loadAdminFormSessions(){
               <td style="font-size:12px">${s.profiles?.prenom||s.formateur_ext||'—'}</td>
               <td class="tm">${s.capacite||20}</td>
               <td><span style="font-size:10.5px;font-weight:700;color:${STCLR[s.statut]||'var(--t3)'};background:${(STCLR[s.statut]||'#888')}22;padding:2px 8px;border-radius:20px">${STLBL[s.statut]||s.statut}</span></td>
-              <td><button onclick="modalGererPresences('${s.id}')" style="padding:4px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:11px;cursor:pointer">Présences</button></td>
+              <td><div style="display:flex;gap:5px"><button onclick="modalGererPresences('${s.id}')" style="padding:4px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:11px;cursor:pointer">Présences</button><button onclick="telechargerICS('${s.id}')" style="padding:4px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:11px;cursor:pointer" title="Télécharger dans l'agenda">📅</button></div></td>
             </tr>`;
           }).join('')}
         </tbody></table></div>`:`<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune session planifiée.<br><span style="font-size:11px;opacity:.7">Créez-en une pour organiser une formation en présentiel ou en ligne.</span></div>`}
@@ -8857,11 +8864,12 @@ async function modalGererPresences(sessionId){
       <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Présences — ${f?.titre||s.formation_id}</div>
       <div style="font-size:12px;color:var(--t3);margin-bottom:18px">${s.date_session?new Date(s.date_session).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):''}</div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        ${(profiles||[]).map(p=>{const cur=presMap[p.id]?.statut||'absent';return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s1);border:1px solid var(--b1);border-radius:10px">
+        ${(profiles||[]).map(p=>{const cur=presMap[p.id]?.statut||'absent';const isSigne=presMap[p.id]?.signe;return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s1);border:1px solid var(--b1);border-radius:10px">
           <div style="flex:1;font-size:13px;font-weight:500;color:var(--t1)">${p.prenom} ${p.nom}</div>
           <select onchange="majPresence('${sessionId}','${p.id}',this.value)" style="padding:5px 8px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t1);font-size:11.5px;cursor:pointer">
             ${Object.entries(PSTLBL).map(([v,lb])=>`<option value="${v}" ${cur===v?'selected':''}>${lb}</option>`).join('')}
           </select>
+          ${['present','retard','partiel'].includes(cur)?`<button onclick="marquerSigne('${sessionId}','${p.id}',this)" style="padding:4px 9px;background:${isSigne?'rgba(46,204,138,.15)':'var(--s2)'};border:1px solid ${isSigne?'rgba(46,204,138,.3)':'var(--b1)'};border-radius:6px;color:${isSigne?'var(--ok)':'var(--t3)'};font-size:13px;cursor:pointer;flex-shrink:0" title="${isSigne?'Présence signée':'Signer la présence'}">${isSigne?'✓':'✍'}</button>`:'<div style="width:28px;flex-shrink:0"></div>'}
         </div>`;}).join('')}
       </div>
       <button onclick="closeModal()" style="width:100%;padding:12px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:13px;font-weight:600;cursor:pointer;margin-top:16px">Fermer</button>
@@ -8875,6 +8883,171 @@ async function majPresence(sessionId,collabId,statut){
   }catch(e){
     await sbFetch('formation_presences?session_id=eq.'+sessionId+'&collaborateur_id=eq.'+collabId,{method:'PATCH',body:{statut}}).catch(()=>{});
   }
+}
+
+async function marquerSigne(sessionId,collabId,btn){
+  try{
+    await sbFetch('formation_presences',{method:'POST',body:{session_id:sessionId,collaborateur_id:collabId,signe:true,signe_at:new Date().toISOString()}});
+  }catch(e){
+    await sbFetch('formation_presences?session_id=eq.'+sessionId+'&collaborateur_id=eq.'+collabId,{method:'PATCH',body:{signe:true,signe_at:new Date().toISOString()}}).catch(()=>{});
+  }
+  if(btn){btn.textContent='✓';btn.style.background='rgba(46,204,138,.15)';btn.style.border='1px solid rgba(46,204,138,.3)';btn.style.color='var(--ok)';}
+  toast('Présence signée','ok');
+}
+
+async function loadFormSessions(el){
+  if(!el)el=document.getElementById('form-real');
+  if(!el)return;
+  el.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--t3)">Chargement des sessions…</div>`;
+  try{
+    const sessions=await sbFetch('formation_sessions?select=id,formation_id,date_session,duree_minutes,lieu,lien_visio,capacite,statut,profiles(prenom,nom)&statut=neq.annulee&order=date_session.asc&limit=50').catch(()=>[]);
+    _formSessCache=sessions||[];
+    const now=new Date();
+    const upcoming=_formSessCache.filter(s=>new Date(s.date_session)>=now);
+    const past=_formSessCache.filter(s=>new Date(s.date_session)<now);
+    const STLBL={planifiee:'Planifiée',confirmee:'Confirmée',en_cours:'En cours',terminee:'Terminée'};
+    const STCLR={planifiee:'var(--t3)',confirmee:'var(--acc)',en_cours:'var(--wa)',terminee:'var(--ok)'};
+    const renderSess=s=>{
+      const f=FORMATIONS_CATALOG.find(x=>x.id===s.formation_id);
+      const dt=new Date(s.date_session);
+      const isUpcoming=dt>=now;
+      return`<div style="background:var(--s1);border:1px solid ${isUpcoming?'var(--b1)':'rgba(255,255,255,.04)'};border-radius:12px;padding:16px;margin-bottom:10px;${isUpcoming?'':'opacity:.6'}">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="text-align:center;background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:8px 12px;flex-shrink:0;min-width:52px">
+            <div style="font-size:18px;font-weight:800;color:${isUpcoming?'var(--acc)':'var(--t3)'};line-height:1">${dt.getDate()}</div>
+            <div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:600">${dt.toLocaleDateString('fr-FR',{month:'short'})}</div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:3px">${f?.icone||'📚'} ${f?.titre||s.formation_id}</div>
+            <div style="font-size:11px;color:var(--t3);margin-bottom:6px">${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} · ${s.duree_minutes||120} min${s.profiles?.prenom?' · '+s.profiles.prenom:''}</div>
+            ${s.lieu?`<div style="font-size:11px;color:var(--t2)">📍 ${s.lieu}</div>`:''}
+            ${s.lien_visio?`<a href="${s.lien_visio}" target="_blank" style="font-size:11px;color:var(--acc);text-decoration:none">🎥 Rejoindre en ligne</a>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:flex-end">
+            <span style="font-size:10px;font-weight:700;color:${STCLR[s.statut]||'var(--t3)'};background:${(STCLR[s.statut]||'#888')}22;padding:3px 9px;border-radius:20px">${STLBL[s.statut]||s.statut}</span>
+            ${isUpcoming?`<button onclick="telechargerICS('${s.id}')" style="padding:5px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:10.5px;cursor:pointer;font-weight:600">📅 Agenda</button>`:''}
+          </div>
+        </div>
+      </div>`;
+    };
+    let html='';
+    if(upcoming.length){
+      html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);margin-bottom:10px">Sessions à venir</div>`;
+      html+=upcoming.map(renderSess).join('');
+    }
+    if(past.length){
+      html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:10px;${upcoming.length?'margin-top:20px':''}">Sessions passées</div>`;
+      html+=past.slice(0,10).map(renderSess).join('');
+    }
+    if(!upcoming.length&&!past.length){
+      html=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.25">📅</div><div style="font-size:14px;font-weight:500">Aucune session planifiée</div><div style="font-size:12px;opacity:.7">Les sessions apparaîtront ici dès qu'un admin en créera.</div></div>`;
+    }
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement des sessions.</div>`;}
+}
+
+async function genererAttestation(formationId){
+  const f=FORMATIONS_CATALOG.find(x=>x.id===formationId);
+  if(!f?.certification){toast('Cette formation ne délivre pas de certification.','wa');return;}
+  const uid=localStorage.getItem('sv_uid')||'x';
+  const dbCert=_certifCache.find(c=>c.code_certification===f.certification.id);
+  const pr=await sbFetch('profiles?id=eq.'+uid+'&select=prenom,nom').catch(()=>[]);
+  const p=pr?.[0]||{};
+  const nom=((p.prenom||localStorage.getItem('sv_prenom')||'')+' '+(p.nom||'')).trim();
+  const dateObt=dbCert?.date_obtention?new Date(dbCert.date_obtention).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  const dateExp=dbCert?.date_expiration?new Date(dbCert.date_expiration).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
+  const numCert=dbCert?.numero_certificat||'';
+  const win=window.open('','_blank','width=840,height=1100');
+  if(!win){toast('Autorisez les pop-ups pour générer l\'attestation.','wa');return;}
+  win.document.write(`<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><title>Attestation — ${f.certification.nom}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8fafc;color:#111;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+.page{width:740px;max-width:100%}
+.top-bar{height:8px;background:linear-gradient(90deg,#8B2BFF,#2A56FF,#00C4FF);border-radius:4px 4px 0 0}
+.cert{border:2px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:52px 56px 44px;background:#fff}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:36px}
+.logo{font-size:22px;font-weight:900;color:#0EA5FF;letter-spacing:-1px}.logo span{color:#8B2BFF}
+.hright{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.12em;font-weight:500;text-align:right}
+.badge{text-align:center;font-size:72px;margin:8px 0 0;line-height:1}
+.cert-type{font-size:10.5px;color:#94a3b8;text-align:center;text-transform:uppercase;letter-spacing:.15em;margin:18px 0 6px}
+.cert-name{font-size:26px;font-weight:800;text-align:center;color:#0f172a;margin-bottom:28px;line-height:1.25}
+.bw{text-align:center;margin-bottom:30px}
+.certifie-label{font-size:11px;color:#64748b;text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em}
+.beneficiaire{font-size:24px;font-weight:700;color:#0EA5FF;border-bottom:2px solid #0EA5FF;display:inline-block;padding:0 4px 5px}
+.context{text-align:center;font-size:13.5px;color:#374151;line-height:1.75;margin-bottom:32px}
+.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:40px}
+.mi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:13px 16px}
+.ml{font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-weight:600}
+.mv{font-size:13.5px;font-weight:700;color:#0f172a}
+.footer{display:flex;justify-content:space-between;align-items:flex-end;padding-top:18px;border-top:1px solid #e2e8f0}
+.seal{width:58px;height:58px;border:2px solid #0EA5FF;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;background:#f0f9ff}
+.fsig .fn{font-size:13px;font-weight:700;color:#0f172a;text-align:right}.fsig .fd{font-size:10.5px;color:#94a3b8;margin-top:3px;text-align:right}
+@media print{
+  body{padding:0;background:#fff}
+  .top-bar{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{margin:0;size:A4}
+}
+</style></head>
+<body><div class="page">
+  <div class="top-bar"></div>
+  <div class="cert">
+    <div class="header">
+      <div class="logo">Sport<span>Vision</span></div>
+      <div class="hright">Attestation officielle<br>de certification</div>
+    </div>
+    <div class="badge">${f.certification.badge}</div>
+    <div class="cert-type">Certifie que</div>
+    <div class="bw"><div class="certifie-label">Le collaborateur(trice)</div><div class="beneficiaire">${nom||'—'}</div></div>
+    <div class="cert-name">${f.certification.nom}</div>
+    <div class="context">A complété avec succès la formation <strong>${f.titre}</strong><br>et satisfait à toutes les exigences requises pour cette certification.</div>
+    <div class="meta">
+      <div class="mi"><div class="ml">Date d'obtention</div><div class="mv">${dateObt}</div></div>
+      ${dateExp?`<div class="mi"><div class="ml">Valide jusqu'au</div><div class="mv">${dateExp}</div></div>`:`<div class="mi"><div class="ml">Validité</div><div class="mv">${f.certification.validite_mois} mois</div></div>`}
+      ${numCert?`<div class="mi" style="grid-column:1/-1"><div class="ml">Numéro de certificat</div><div class="mv" style="font-family:monospace;font-size:12px;letter-spacing:.04em">${numCert}</div></div>`:''}
+    </div>
+    <div class="footer">
+      <div class="seal">🎯</div>
+      <div class="fsig">
+        <div class="fn">SportVision — Centre de formation</div>
+        <div class="fd">Délivré le ${new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>window.onload=()=>setTimeout(()=>window.print(),400);<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+function telechargerICS(sessionId){
+  const s=_formSessCache.find(x=>x.id===sessionId);
+  if(!s){toast('Session introuvable.','wa');return;}
+  const f=FORMATIONS_CATALOG.find(x=>x.id===s.formation_id);
+  const dt=new Date(s.date_session);
+  const dtEnd=new Date(dt.getTime()+(s.duree_minutes||120)*60000);
+  const fmt=d=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+  const lines=[
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SportVision//OS//FR','CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    'UID:sv-session-'+s.id+'@sportvision',
+    'DTSTAMP:'+fmt(new Date()),
+    'DTSTART:'+fmt(dt),
+    'DTEND:'+fmt(dtEnd),
+    'SUMMARY:Formation — '+(f?.titre||s.formation_id||'SportVision'),
+    s.lieu?'LOCATION:'+s.lieu.replace(/[,;\n]/g,' '):'',
+    s.lien_visio?'URL:'+s.lien_visio:'',
+    'DESCRIPTION:Formation SportVision'+(f?.description?' — '+f.description.substring(0,150).replace(/\n/g,'\\n'):''),
+    'END:VEVENT','END:VCALENDAR',
+  ].filter(Boolean).join('\r\n');
+  const blob=new Blob([lines],{type:'text/calendar;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='formation-'+(f?.titre||'session').replace(/\s+/g,'-').toLowerCase()+'.ics';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  toast('Session ajoutée à votre agenda','ok');
 }
 
 // ── CM — Calendrier éditorial ─────────────────────────────────────────────────
@@ -9527,14 +9700,29 @@ function renderComptaRem(){
   if(_comptaRemFilter==='en_attente')list=list.filter(r=>r.statut_paiement!=='payé');
   else if(_comptaRemFilter==='paye')list=list.filter(r=>r.statut_paiement==='payé');
   if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune rémunération dans cette catégorie.</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Collaborateur</th><th>Prestation</th><th>Date</th><th>Rémunération</th><th>Paiement</th></tr></thead><tbody>'+
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Collaborateur</th><th>Prestation</th><th>Date</th><th>Rémunération</th><th>Paiement</th><th></th></tr></thead><tbody>'+
     list.slice(0,30).map(r=>`<tr>
       <td class="tp">${r.collaborateur?.prenom||''} ${r.collaborateur?.nom||''}</td>
       <td class="tm">${r.prestations?.reference||'—'}</td>
       <td>${r.prestations?.date_prestation?new Date(r.prestations.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
       <td class="tm" style="font-weight:600">${r.remuneration?r.remuneration.toLocaleString('fr-FR')+' €':'—'}</td>
       <td><span class="bd ${r.statut_paiement==='payé'?'ba':'bw'}"><span class="bd-d"></span>${r.statut_paiement||'En attente'}</span></td>
+      <td>${r.statut_paiement!=='payé'?`<button onclick="marquerPayeRem('${r.id}',this)" style="padding:4px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:11px;cursor:pointer">Payer</button>`:'<span style="font-size:11px;color:var(--ok)">✓</span>'}</td>
     </tr>`).join('')+'</tbody></table></div>';
+}
+
+async function marquerPayeRem(id,btn){
+  try{
+    await sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body:{statut_paiement:'payé',date_paiement:new Date().toISOString()}});
+    if(btn){btn.textContent='✓ Payé';btn.disabled=true;btn.style.background='rgba(46,204,138,.15)';btn.style.color='var(--ok)';btn.style.border='1px solid rgba(46,204,138,.3)';}
+    const item=_comptaRemData.find(r=>r.id===id);if(item)item.statut_paiement='payé';
+    const tot=_comptaRemData.reduce((s,r)=>s+(r.remuneration||0),0);
+    const pay=_comptaRemData.filter(r=>r.statut_paiement==='payé').reduce((s,r)=>s+(r.remuneration||0),0);
+    const fmt=n=>n.toLocaleString('fr-FR')+' €';
+    const set=(elId,v)=>{const e=document.getElementById(elId);if(e)e.textContent=v;};
+    set('crem-kpi-pay',fmt(pay));set('crem-kpi-att',fmt(tot-pay));
+    toast('Rémunération marquée comme payée','ok');
+  }catch(e){toast('Erreur lors du paiement.','er');}
 }
 
 async function loadComptaRentabilite(){
@@ -9819,7 +10007,10 @@ function renderSecRelances(){
       <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
       <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
       <td><span class="bd ${SC[p.statut_financier]||'bw'}"><span class="bd-d"></span>${SL[p.statut_financier]||p.statut_financier||'—'}</span></td>
-      <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
+      <td><div style="display:flex;gap:5px">
+        ${p.clients?.email?`<a href="mailto:${p.clients.email}?subject=Relance paiement — ${p.reference||'SportVision'}&body=Bonjour,%0A%0ANotre prestation ${p.reference||''} du ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):''} (${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);font-size:11px;cursor:pointer;text-decoration:none;white-space:nowrap">✉ Relancer</a>`:''}
+        <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
+      </div></td>
     </tr>`).join('')+'</tbody></table></div>';
 }
 
