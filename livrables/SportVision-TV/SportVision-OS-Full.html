@@ -680,9 +680,12 @@ const VIEWS={
     <div id="photo-plan-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'photo.jourj':()=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:13px;font-weight:600;color:var(--t2)">Mode Terrain</div>
-      <button onclick="modalSignalerIncident()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer;font-size:12px;font-weight:600">⚠ Incident</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--t1)">Mode Terrain</div>
+        <div style="font-size:12px;color:var(--t3);margin-top:2px" id="jourj-date">—</div>
+      </div>
+      <button onclick="modalSignalerIncident()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer;font-size:12px;font-weight:700">⚠ Incident</button>
     </div>
     <div id="jourj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -4650,73 +4653,173 @@ async function loadSecDash(){
 }
 
 // ── Jour J photographe ───────────────────────────────────────────────────────
+let _jourjTimer=null;
+
 async function loadJourJ(){
   const el=document.getElementById('jourj-real');
+  const dateEl=document.getElementById('jourj-date');
   if(!el)return;
+  if(_jourjTimer){clearInterval(_jourjTimer);_jourjTimer=null;}
+  const uid=localStorage.getItem('sv_uid');
+  if(!uid)return;
+  const now=new Date();
+  const today=now.toISOString().slice(0,10);
+  const in7=new Date(now);in7.setDate(now.getDate()+7);
+  const in7s=in7.toISOString().slice(0,10);
+  if(dateEl){const ds=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});dateEl.textContent=ds.charAt(0).toUpperCase()+ds.slice(1);}
   try{
-    const today=new Date().toISOString().slice(0,10);
-    const in14=new Date();in14.setDate(in14.getDate()+14);
-    const data=await sbFetch(`prestations_equipe?select=prestation_id,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.${localStorage.getItem('sv_uid')}&prestations.date_prestation=gte.${today}&order=prestations.date_prestation.asc&limit=5`);
-    const missions=(data||[]).filter(r=>r.prestations&&!['annulée','refusée','clôturée','payée'].includes(r.prestations.statut));
-    if(!missions.length){
-      el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--t3)">
-        <div style="font-size:48px;opacity:.15">📷</div>
-        <div style="font-size:14px">Aucune mission prévue prochainement.</div>
-        <div style="font-size:12px;opacity:.6">Contacte le responsable de production pour tes affectations.</div>
-      </div>`;
-      return;
+    const raw=await sbFetch('prestations_equipe?select=id,statut,fonction,heure_rdv,remuneration,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
+    if(!Array.isArray(raw))throw new Error(raw?.message||'Erreur API');
+    const valid=raw.filter(r=>r.prestations&&!['annulée','refusée','clôturée','payée'].includes(r.prestations.statut));
+    const todayMissions=valid.filter(r=>r.prestations.date_prestation===today);
+    const upcoming=valid.filter(r=>r.prestations.date_prestation>today&&r.prestations.date_prestation<=in7s)
+      .sort((a,b)=>a.prestations.date_prestation.localeCompare(b.prestations.date_prestation));
+    const JOURJ_BTNS={
+      'prête':{lb:'🚗 Je suis en route',ns:'équipe_en_route',clr:'var(--acc)',tc:'#fff'},
+      'équipe_en_route':{lb:'📍 Je suis arrivé',ns:'arrivée_sur_place',clr:'var(--wa)',tc:'#fff'},
+      'arrivée_sur_place':{lb:'▶ Démarrer la production',ns:'production_démarrée',clr:'var(--er)',tc:'#fff'},
+      'production_démarrée':{lb:'⏹ Production terminée',ns:'production_terminée',clr:'var(--ok)',tc:'#fff'},
+      'production_terminée':{lb:'📤 Médias transférés',ns:'médias_à_transférer',clr:'#7C4DFF',tc:'#fff'},
+      'médias_à_transférer':{lb:'✓ Médias complets',ns:'médias_complets',clr:'var(--ok)',tc:'#fff'},
+    };
+    function calcCountdown(rdvStr,dateStr){
+      if(!rdvStr||!dateStr)return null;
+      const rdvDt=new Date(dateStr+'T'+rdvStr.slice(0,5)+':00');
+      const diff=rdvDt-new Date();
+      if(diff<=0)return null;
+      const h=Math.floor(diff/3600000);
+      const m=Math.floor((diff%3600000)/60000);
+      return h>0?`dans ${h}h ${m}min`:`dans ${m} min`;
     }
-    const now=new Date();
-    const html=missions.map(row=>{
-      const p=row.prestations;
-      const isToday=p.date_prestation===today;
-      const dDate=new Date(p.date_prestation);
-      const diff=Math.ceil((dDate-now)/(1000*60*60*24));
-      const diffTxt=isToday?'AUJOURD\'HUI':diff===1?'DEMAIN':`Dans ${diff} jours`;
-      const heroClr=isToday?'linear-gradient(135deg,rgba(240,68,94,.25),rgba(124,77,255,.2))':'linear-gradient(135deg,rgba(54,107,255,.18),rgba(124,77,255,.12))';
-      const JOURJ_BTNS={
-        'prête':{lb:'🚗 En route',ns:'équipe_en_route',clr:'rgba(54,107,255,.15)',brd:'rgba(54,107,255,.3)',tc:'var(--acc)'},
-        'équipe_en_route':{lb:'📍 Arrivée',ns:'arrivée_sur_place',clr:'rgba(245,165,36,.15)',brd:'rgba(245,165,36,.35)',tc:'var(--wa)'},
-        'arrivée_sur_place':{lb:'▶ Démarrer',ns:'production_démarrée',clr:'rgba(240,68,94,.15)',brd:'rgba(240,68,94,.3)',tc:'var(--er)'},
-        'production_démarrée':{lb:'⏹ Terminer',ns:'production_terminée',clr:'rgba(46,204,138,.12)',brd:'rgba(46,204,138,.3)',tc:'var(--ok)'},
-        'production_terminée':{lb:'📤 Transférer',ns:'médias_à_transférer',clr:'rgba(124,77,255,.12)',brd:'rgba(124,77,255,.3)',tc:'#9C6FFF'},
-        'médias_à_transférer':{lb:'✓ Médias OK',ns:'médias_complets',clr:'rgba(46,204,138,.12)',brd:'rgba(46,204,138,.3)',tc:'var(--ok)'},
-      };
-      const btn=isToday&&JOURJ_BTNS[p.statut]?JOURJ_BTNS[p.statut]:null;
-      return `<div style="background:${heroClr};border:1px solid ${isToday?'rgba(240,68,94,.3)':'rgba(54,107,255,.2)'};border-radius:var(--rc);padding:20px 24px;margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>
-            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:${isToday?'var(--er)':'var(--acc)'};margin-bottom:6px">${diffTxt} · ${p.reference||'—'}</div>
-            <div style="font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px">${p.type_prestation||'—'} · ${p.clients?.nom||'—'}</div>
-            <div style="font-size:13px;color:var(--t2)">${p.lieu||'Lieu à confirmer'}${p.heure_rdv?' · RDV '+p.heure_rdv.slice(0,5):p.heure_debut?' · '+p.heure_debut.slice(0,5):''}</div>
-            ${p.adresse_complete?`<div style="font-size:12px;color:var(--t3);margin-top:2px">${p.adresse_complete}</div>`:''}
-            ${p.contact_sur_place?`<div style="font-size:12px;color:var(--t3);margin-top:2px">Contact : ${p.contact_sur_place}${p.telephone_sur_place?' · '+p.telephone_sur_place:''}</div>`:''}
-          </div>
-          <div style="text-align:right;flex-shrink:0;margin-left:20px">
-            <div style="font-size:28px;font-weight:800;color:var(--t1)">${dDate.getDate()}</div>
-            <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">${['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'][dDate.getMonth()]} ${dDate.getFullYear()}</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap">
-          <span class="bd ${SC[p.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
-          ${btn?`<button onclick="avanJourJ('${p.id}','${btn.ns}')" style="padding:7px 16px;font-size:12px;font-weight:700;background:${btn.clr};border:1px solid ${btn.brd};border-radius:var(--rp);color:${btn.tc};cursor:pointer;letter-spacing:.02em">${btn.lb}</button>`:''}
-        </div>
+    let html='';
+    if(!todayMissions.length&&!upcoming.length){
+      html=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--t3)">
+        <div style="font-size:48px;opacity:.15">📷</div>
+        <div style="font-size:14px;font-weight:500">Aucune mission prévue</div>
+        <div style="font-size:12px;opacity:.6">Profite de ta journée ou contacte le responsable prod.</div>
       </div>`;
-    }).join('');
-    const CHECKS=['Kits vérifiés et chargés','Plan terrain consulté','Contact client confirmé','Rushs uploadés','Livrables validés','Kits retournés au stock'];
-    const uid=localStorage.getItem('sv_uid')||'x';
-    const ck=CHECKS.map((_,i)=>localStorage.getItem('sv_ck_'+uid+'_'+i)==='1');
+    }else{
+      if(todayMissions.length){
+        html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--er);text-transform:uppercase;margin-bottom:10px">Aujourd'hui</div>`;
+        todayMissions.forEach(row=>{
+          const p=row.prestations;
+          const rdv=(row.heure_rdv||p.heure_rdv||p.heure_debut||'').slice(0,5);
+          const countdown=rdv?calcCountdown(rdv,p.date_prestation):null;
+          const btn=JOURJ_BTNS[p.statut];
+          const addr=p.adresse_complete||p.lieu||'';
+          const mapsUrl=addr?'https://maps.google.com/?q='+encodeURIComponent(addr):'';
+          const telUrl=p.telephone_sur_place?'tel:'+p.telephone_sur_place.replace(/[\s\-\(\)]/g,''):'';
+          html+=`<div style="background:linear-gradient(135deg,rgba(240,68,94,.15),rgba(124,77,255,.12));border:1px solid rgba(240,68,94,.35);border-radius:16px;padding:20px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--er);margin-bottom:5px">AUJOURD'HUI · ${p.reference||'—'}</div>
+                <div style="font-size:20px;font-weight:800;color:var(--t1);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.clients?.nom||'—'}</div>
+                <div style="font-size:13px;color:var(--t2);margin-top:3px">${p.type_prestation||'Mission'}</div>
+              </div>
+              <span class="bd ${SC[p.statut]||'bw'}" style="font-size:10px;white-space:nowrap;flex-shrink:0;margin-left:12px"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+            </div>
+            ${rdv?`<div style="background:rgba(255,255,255,.05);border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Heure RDV</div>
+                <div style="font-size:32px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums;line-height:1">${rdv}</div>
+              </div>
+              ${countdown?`<div style="text-align:right"><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Temps restant</div><div id="jourj-cd-${p.id}" style="font-size:18px;font-weight:700;color:var(--wa)">${countdown}</div></div>`:'<div style="font-size:12px;color:var(--t3)">Heure passée</div>'}
+            </div>`:''}
+            <div style="margin-bottom:14px">
+              ${p.lieu?`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                <span style="font-size:18px;flex-shrink:0">📍</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.lieu}</div>
+                  ${p.adresse_complete?`<div style="font-size:11px;color:var(--t3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.adresse_complete}</div>`:''}
+                </div>
+                ${mapsUrl?`<a href="${mapsUrl}" target="_blank" style="flex-shrink:0;padding:7px 14px;background:rgba(54,107,255,.15);border:1px solid rgba(54,107,255,.3);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:700;text-decoration:none">GPS</a>`:''}
+              </div>`:''}
+              ${p.contact_sur_place?`<div style="display:flex;align-items:center;gap:10px;padding:10px 0">
+                <span style="font-size:18px;flex-shrink:0">👤</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;color:var(--t1)">${p.contact_sur_place}</div>
+                  ${p.telephone_sur_place?`<div style="font-size:11px;color:var(--t3);margin-top:1px">${p.telephone_sur_place}</div>`:''}
+                </div>
+                ${telUrl?`<a href="${telUrl}" style="flex-shrink:0;padding:7px 14px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;text-decoration:none">📞 Appeler</a>`:''}
+              </div>`:''}
+            </div>
+            ${btn?`<button onclick="avanJourJ('${p.id}','${btn.ns}')" style="width:100%;padding:15px;font-size:15px;font-weight:700;background:${btn.clr};border:none;border-radius:12px;color:${btn.tc};cursor:pointer;letter-spacing:.02em">${btn.lb}</button>`:''}
+          </div>`;
+        });
+        // Countdown auto-refresh
+        if(todayMissions.some(r=>r.heure_rdv||r.prestations.heure_rdv||r.prestations.heure_debut)){
+          _jourjTimer=setInterval(()=>{
+            todayMissions.forEach(row=>{
+              const p=row.prestations;
+              const rdv=(row.heure_rdv||p.heure_rdv||p.heure_debut||'').slice(0,5);
+              if(!rdv)return;
+              const cdEl=document.getElementById('jourj-cd-'+p.id);
+              if(cdEl)cdEl.textContent=calcCountdown(rdv,p.date_prestation)||'Heure passée';
+            });
+          },30000);
+        }
+      }
+      if(upcoming.length){
+        html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--acc);text-transform:uppercase;margin:${todayMissions.length?'16px':'0'} 0 10px">À venir (7 jours)</div>`;
+        upcoming.forEach(row=>{
+          const p=row.prestations;
+          const dDate=new Date(p.date_prestation);
+          const diff=Math.ceil((dDate-now)/(1000*60*60*24));
+          const diffTxt=diff===1?'Demain':`Dans ${diff} jours`;
+          const rdv=(row.heure_rdv||p.heure_rdv||p.heure_debut||'').slice(0,5);
+          const MOIS=['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
+          html+=`<div onclick="modalDetailById('${p.id}')" style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:14px">
+            <div style="text-align:center;flex-shrink:0;width:42px">
+              <div style="font-size:22px;font-weight:800;color:var(--t1);line-height:1">${dDate.getDate()}</div>
+              <div style="font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;margin-top:1px">${MOIS[dDate.getMonth()]}</div>
+            </div>
+            <div style="width:1px;height:36px;background:var(--b1);flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.clients?.nom||'—'}</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:2px">${diffTxt}${rdv?' · RDV '+rdv:''}${p.lieu?' · '+p.lieu:''}</div>
+            </div>
+            <span class="bd ${SC[p.statut]||'bw'}" style="font-size:9px;flex-shrink:0"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+          </div>`;
+        });
+      }
+    }
+    // Checklist — clé inclut la date pour reset automatique chaque jour
+    const CHECKS=[
+      {ic:'🎒',txt:'Kits vérifiés et chargés'},
+      {ic:'📋',txt:'Plan terrain consulté'},
+      {ic:'📞',txt:'Contact client confirmé'},
+      {ic:'💾',txt:'Rushs transférés'},
+      {ic:'✅',txt:'Livrables validés'},
+      {ic:'📦',txt:'Kits retournés au stock'},
+    ];
+    const ckKey=uid+'_'+today;
+    const ck=CHECKS.map((_,i)=>localStorage.getItem('sv_ck_'+ckKey+'_'+i)==='1');
     const allDone=ck.every(Boolean);
-    el.innerHTML=html+`<div class="cd" style="margin-top:4px"><div class="cd-h"><div class="cd-t">Checklist mission</div>${allDone?'<span style="font-size:11px;color:var(--ok);font-weight:600">Tout bon ✓</span>':'<button class="btn bg2 bs" onclick="resetChecklist()">Réinitialiser</button>'}</div><div class="cd-b" id="jourj-cl">
-      ${CHECKS.map((t,i)=>`
-        <div id="ck-${i}" onclick="toggleCheck(${i})" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.035);cursor:pointer;${ck[i]?'opacity:.55':''}">
-          <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid ${ck[i]?'var(--ok)':'var(--b2)'};background:${ck[i]?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            ${ck[i]?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2.2" stroke-linecap="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}
+    const doneCount=ck.filter(Boolean).length;
+    el.innerHTML=html+`
+      <div class="cd" style="margin-top:8px">
+        <div class="cd-h">
+          <div class="cd-t">Checklist du jour</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:${allDone?'var(--ok)':'var(--t3)'};font-weight:600">${doneCount}/${CHECKS.length}</span>
+            ${allDone?'<span style="font-size:11px;color:var(--ok);font-weight:700">Tout bon ✓</span>':`<button class="btn bg2 bs" onclick="resetChecklist()">Réinit.</button>`}
           </div>
-          <span style="font-size:13px;color:var(--t1);${ck[i]?'text-decoration:line-through':''}">${t}</span>
-        </div>`).join('')}
-    </div></div>`;
-    window._ckUid=uid;window._ckItems=CHECKS;
+        </div>
+        ${allDone?`<div style="padding:20px;text-align:center;background:rgba(46,204,138,.07);border-top:1px solid rgba(46,204,138,.15)">
+          <div style="font-size:26px;margin-bottom:6px">🎉</div>
+          <div style="font-size:14px;font-weight:700;color:var(--ok)">Mission accomplie !</div>
+        </div>`:`<div class="cd-b">
+          ${CHECKS.map((t,i)=>`
+            <div onclick="toggleCheck(${i})" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;opacity:${ck[i]?.5:1}">
+              <div style="width:22px;height:22px;border-radius:7px;border:1.5px solid ${ck[i]?'var(--ok)':'var(--b2)'};background:${ck[i]?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                ${ck[i]?'<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#2ECC8A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5l2.5 2.5 5-5"/></svg>':''}
+              </div>
+              <span style="font-size:17px;flex-shrink:0">${t.ic}</span>
+              <span style="font-size:13px;color:var(--t1);${ck[i]?'text-decoration:line-through':''}">${t.txt}</span>
+            </div>`).join('')}
+        </div>`}
+      </div>`;
+    window._ckUid=ckKey;window._ckItems=CHECKS;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
@@ -5318,6 +5421,7 @@ function updateBottomNav(viewId){
 
 function switchView(id){
   if(_msgInterval){clearInterval(_msgInterval);_msgInterval=null;}
+  if(_jourjTimer){clearInterval(_jourjTimer);_jourjTimer=null;}
   S.view=id;
   closeMobNav();
   document.querySelectorAll('.ni[data-id]').forEach(n=>n.classList.toggle('on',n.dataset.id===id));
