@@ -3113,16 +3113,18 @@ async function loadProdDash(){
   const RC={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
   const RL={'admin':'Admin','sec':'Secrétaire','prod':'Production','photo':'Photo/Vidéo','cm':'CM','compta':'Comptable','com':'Commercial'};
   try{
-    const [preRaw,kitsRaw,incRaw,profRaw]=await Promise.all([
+    const [preRaw,kitsRaw,incRaw,profRaw,remRaw]=await Promise.all([
       sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,role))'),
       sbFetch('kits?select=id,statut,nom,type_kit'),
       sbFetch('incidents?select=id,type,description,gravite,statut,prestation_id,created_at,prestations(reference,clients(nom))&statut=not.in.(résolu,clôturé)&order=created_at.desc&limit=8'),
       sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=nom.asc'),
+      sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
     ]);
     const pre=Array.isArray(preRaw)?preRaw:[];
     const kits=Array.isArray(kitsRaw)?kitsRaw:[];
     const inc=Array.isArray(incRaw)?incRaw:[];
     const prof=Array.isArray(profRaw)?profRaw:[];
+    const remAtt=(Array.isArray(remRaw)?remRaw:[]).reduce((s,r)=>s+(r.remuneration||0),0);
     // KPIs
     const VALIDER_ST=['à_valider_production'];
     const aValider=pre.filter(p=>VALIDER_ST.includes(p.statut));
@@ -3151,7 +3153,7 @@ async function loadProdDash(){
     set('prod-kpi-kd',kitsDispo);
     set('prod-kpi-kr',kitsRes);
     set('prod-kpi-med',aTransferer.length||'0');
-    set('prod-kpi-rem','—');
+    set('prod-kpi-rem',remAtt>0?remAtt.toLocaleString('fr-FR')+' €':'0 €');
     set('prod-kpi-inc',inc.length);
     const nbInc=document.getElementById('prod-inc-nb');
     if(nbInc)nbInc.textContent=inc.length?inc.length+' alerte'+(inc.length>1?'s':''):'';
@@ -3749,7 +3751,7 @@ async function loadProdMedias(){
         </div>
         <div style="flex-shrink:0;padding:12px 14px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:6px">
           <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
-          ${POST_STAT.includes(p.statut)?`<button onclick="event.stopPropagation();alert('Relance envoyée')" style="padding:4px 10px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">📢 Relancer</button>`:''}
+          ${POST_STAT.includes(p.statut)?`<button onclick="event.stopPropagation();toast('Relance envoyée à l\'équipe','ok')" style="padding:4px 10px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">📢 Relancer</button>`:''}
         </div>
       </div>`;
     }).join('')+'</div>';
@@ -6851,13 +6853,19 @@ async function loadComptaDash(){
   try{
     const now=new Date();
     const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,montant_acompte,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500');
+    const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
+    const [data,remData,fraisData,remAttData]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,montant_acompte,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500'),
+      sbFetch('prestations_equipe?select=remuneration,prestations(date_prestation)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('frais?select=montant&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext).catch(()=>[]),
+      sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
+    ]);
     const list=data||[];
     const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','acompte_demandé':'bw','non_facturée':'bn','en_retard':'br'};
     const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','acompte_demandé':'Acompte att.','non_facturée':'Non facturée','en_retard':'En retard'};
     const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
 
-    let enc=0,imp=0,acomp=0,charges=0,remAtt=0,nbFact=0;
+    let enc=0,imp=0,acomp=0,nbFact=0;
     const mois=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart);
     mois.forEach(p=>{
       const m=p.montant_ttc||0;
@@ -6866,12 +6874,15 @@ async function loadComptaDash(){
       if(p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte')acomp+=p.montant_acompte||m*0.5;
       if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))nbFact++;
     });
+    const charges=(Array.isArray(remData)?remData:[]).reduce((s,r)=>s+(r.remuneration||0),0)
+      +(Array.isArray(fraisData)?fraisData:[]).reduce((s,f)=>s+(f.montant||0),0);
+    const remAtt=(Array.isArray(remAttData)?remAttData:[]).reduce((s,r)=>s+(r.remuneration||0),0);
+    const marge=enc-charges;
 
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
     set('cptd-enc',fmt(enc));set('cptd-imp',fmt(imp));set('cptd-acomp',fmt(acomp));
     set('cptd-charges',fmt(charges));set('cptd-nb',String(nbFact));
     set('cptd-att',fmt(imp));set('cptd-rem',fmt(remAtt));
-    const marge=enc-charges;
     set('cptd-marge',fmt(marge));
 
     // Bloc priorité
