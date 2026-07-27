@@ -509,13 +509,24 @@ const NAV={
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   sec:[
-    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
-    {id:'crm',lb:'CRM Clients',ic:'cli'},
-    {id:'pre',lb:'Prestations',ic:'pre'},
-    {id:'planning',lb:'Planning',ic:'cal'},
+    {type:'sep',lb:'Administration'},
+    {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    {id:'demandes',lb:'Demandes entrantes',ic:'msg'},
     {id:'taches',lb:'Tâches',ic:'task'},
-    {id:'docs',lb:'Documents',ic:'doc'},
+    {id:'relances',lb:'Relances',ic:'alert'},
+    {type:'sep',lb:'Clients & Ventes'},
+    {id:'crm',lb:'Clients & Prospects',ic:'cli'},
     {id:'devis',lb:'Devis',ic:'doc'},
+    {id:'contrats',lb:'Contrats',ic:'doc'},
+    {id:'abonnements',lb:'Abonnements',ic:'pre'},
+    {type:'sep',lb:'Prestations'},
+    {id:'pre',lb:'Prestations',ic:'pre'},
+    {id:'planning',lb:'Planning admin',ic:'cal'},
+    {id:'livraisons',lb:'Livraisons',ic:'pub'},
+    {type:'sep',lb:'Documents & Suivi'},
+    {id:'docs',lb:'Documents',ic:'doc'},
+    {id:'rapports',lb:'Rapports admin',ic:'fin'},
+    {type:'sep',lb:'Communication'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -567,11 +578,24 @@ const NAV={
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   compta:[
-    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
-    {id:'factures',lb:'Factures',ic:'doc'},
-    {id:'paiements',lb:'Paiements',ic:'fin'},
+    {type:'sep',lb:'Pilotage'},
+    {id:'dash',lb:'Tableau de bord',ic:'dash'},
     {id:'rapprochement',lb:'Rapprochement',ic:'check'},
-    {id:'export',lb:'Export',ic:'export'},
+    {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
+    {type:'sep',lb:'Facturation'},
+    {id:'factures',lb:'Factures',ic:'doc'},
+    {id:'acomptes',lb:'Acomptes',ic:'fin'},
+    {id:'impayes',lb:'Impayés',ic:'alert'},
+    {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
+    {type:'sep',lb:'Paiements'},
+    {id:'paiements',lb:'Paiements équipe',ic:'fin'},
+    {id:'rem',lb:'Rémunérations',ic:'col'},
+    {type:'sep',lb:'Dépenses'},
+    {id:'depenses',lb:'Dépenses',ic:'fin'},
+    {id:'frais',lb:'Frais & km',ic:'fin'},
+    {type:'sep',lb:'Clôture & Export'},
+    {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
+    {id:'export',lb:'Exports comptables',ic:'export'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   com:[
@@ -666,18 +690,35 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="modalNouveauClient()">+ Client</button>
       <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
     </div>
-    <div class="kpi-g">
-      <div class="kpi" style="--kl:#00B8D4;cursor:pointer" onclick="switchView('crm')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="sec-kpi-clients">—</div><span class="kpi-d dnt">total</span></div>
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Prestations en cours</div><div class="kpi-v" id="sec-kpi-pre">—</div><span class="kpi-d dnt">actives</span></div>
-      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Prochaines (7j)</div><div class="kpi-v" id="sec-kpi-soon">—</div><span class="kpi-d dnt">à venir</span></div>
-      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('crm')"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="sec-kpi-prospects">—</div><span class="kpi-d dnt">à traiter</span></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('demandes')"><div class="kpi-ey">Demandes à traiter</div><div class="kpi-v" id="sec-kpi-demandes">—</div><span class="kpi-d dnt">en attente</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('devis')"><div class="kpi-ey">Devis à préparer</div><div class="kpi-v" id="sec-kpi-devis">—</div><span class="kpi-d dnt">brouillons</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('contrats')"><div class="kpi-ey">Signatures manquantes</div><div class="kpi-v" id="sec-kpi-sign">—</div><span class="kpi-d dnt">contrats</span></div>
+      <div class="kpi" style="--kl:#FF6B35;cursor:pointer" onclick="switchView('relances')"><div class="kpi-ey">Relances à faire</div><div class="kpi-v" id="sec-kpi-relances">—</div><span class="kpi-d dnt">acomptes/soldes</span></div>
     </div>
-    <div class="g32">
-      <div class="cd"><div class="cd-h"><div class="cd-t">Prochaines prestations</div><button class="btn bg2 bs" onclick="switchView('pre')">Toutes</button></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-top:8px">
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('livraisons')"><div class="kpi-ey">Livraisons prêtes</div><div class="kpi-v" id="sec-kpi-livr">—</div><span class="kpi-d dnt">à envoyer</span></div>
+      <div class="kpi" style="--kl:#00B8D4;cursor:pointer" onclick="switchView('crm')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="sec-kpi-clients">—</div><span class="kpi-d dnt">total</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Prestations en cours</div><div class="kpi-v" id="sec-kpi-pre">—</div><span class="kpi-d dnt">actives</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('taches')"><div class="kpi-ey">Tâches urgentes</div><div class="kpi-v" id="sec-kpi-taches">—</div><span class="kpi-d dnt">haute priorité</span></div>
+    </div>
+    <div id="sec-dash-priorite" style="display:none;margin-top:12px">
+      <div class="cd" style="border-color:rgba(240,68,94,.25)">
+        <div class="cd-h"><div class="cd-t" style="color:var(--er)">⚡ À traiter aujourd'hui</div></div>
+        <div id="sec-dash-priorite-real"></div>
+      </div>
+    </div>
+    <div class="g32" style="margin-top:12px">
+      <div class="cd"><div class="cd-h"><div class="cd-t">Prestations à venir (14j)</div><button class="btn bg2 bs" onclick="switchView('pre')">Toutes</button></div>
         <div id="sec-dash-pre"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
-      <div class="cd"><div class="cd-h"><div class="cd-t">Clients récents</div><button class="btn bg2 bs" onclick="switchView('crm')">CRM</button></div>
-        <div id="sec-dash-clients"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div>
+        <div class="cd"><div class="cd-h"><div class="cd-t">Dossiers incomplets</div><button class="btn bg2 bs" onclick="switchView('pre')">Voir</button></div>
+          <div id="sec-dash-incomplets"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        </div>
+        <div class="cd" style="margin-top:12px"><div class="cd-h"><div class="cd-t">Clients récents</div><button class="btn bg2 bs" onclick="switchView('crm')">CRM</button></div>
+          <div id="sec-dash-clients"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        </div>
       </div>
     </div>`,
 
@@ -1305,13 +1346,40 @@ const VIEWS={
 
   // ── COMPTABLE ───────────────────────────
   'compta.dash':()=>`
-    <div class="kpi-g">
-      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('factures')"><div class="kpi-ey">CA encaissé</div><div class="kpi-v" id="cptd-enc">—</div><span class="kpi-d dnt">payé</span></div>
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('rapprochement')"><div class="kpi-ey">En attente</div><div class="kpi-v" id="cptd-att">—</div><span class="kpi-d dnt">facturé</span></div>
-      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('factures')"><div class="kpi-ey">Prestations facturées</div><div class="kpi-v" id="cptd-nb">—</div><span class="kpi-d dnt">au total</span></div>
-      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('export')"><div class="kpi-ey">CA total</div><div class="kpi-v" id="cptd-total">—</div><span class="kpi-d dnt">cumulé</span></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('factures')"><div class="kpi-ey">CA encaissé (mois)</div><div class="kpi-v" id="cptd-enc" style="font-size:18px">—</div><span class="kpi-d dnt">payé</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('impayes')"><div class="kpi-ey">Impayés</div><div class="kpi-v" id="cptd-imp" style="font-size:18px;color:var(--wa)">—</div><span class="kpi-d dnt">en retard</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('acomptes')"><div class="kpi-ey">Acomptes attendus</div><div class="kpi-v" id="cptd-acomp" style="font-size:18px;color:var(--er)">—</div><span class="kpi-d dnt">à encaisser</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('depenses')"><div class="kpi-ey">Charges du mois</div><div class="kpi-v" id="cptd-charges" style="font-size:18px">—</div><span class="kpi-d dnt">dépenses</span></div>
     </div>
-    <div id="cptd-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-top:8px">
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('factures')"><div class="kpi-ey">Factures ce mois</div><div class="kpi-v" id="cptd-nb">—</div><span class="kpi-d dnt">émises</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('rapprochement')"><div class="kpi-ey">En attente</div><div class="kpi-v" id="cptd-att" style="color:var(--wa)">—</div><span class="kpi-d dnt">à confirmer</span></div>
+      <div class="kpi" style="--kl:#FF6B35;cursor:pointer" onclick="switchView('rem')"><div class="kpi-ey">Rémunérations dues</div><div class="kpi-v" id="cptd-rem" style="color:var(--wa)">—</div><span class="kpi-d dnt">équipe</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('rentabilite')"><div class="kpi-ey">Marge brute</div><div class="kpi-v" id="cptd-marge">—</div><span class="kpi-d dnt">CA - charges</span></div>
+    </div>
+    <div id="cptd-prio" style="display:none;margin-top:12px">
+      <div class="cd" style="border-color:rgba(240,68,94,.25)">
+        <div class="cd-h"><div class="cd-t" style="color:var(--er)">⚠ À traiter maintenant</div></div>
+        <div id="cptd-prio-real"></div>
+      </div>
+    </div>
+    <div class="g32" style="margin-top:12px">
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">Dernières factures</div><button class="btn bg2 bs" onclick="switchView('factures')">Toutes</button></div>
+        <div id="cptd-factures-real"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      </div>
+      <div>
+        <div class="cd">
+          <div class="cd-h"><div class="cd-t">Encaissements récents</div></div>
+          <div id="cptd-enc-real"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        </div>
+        <div class="cd" style="margin-top:12px">
+          <div class="cd-h"><div class="cd-t">Prochaines échéances</div><button class="btn bg2 bs" onclick="switchView('impayes')">Voir</button></div>
+          <div id="cptd-ech-real"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        </div>
+      </div>
+    </div>`,
 
   'compta.paiements':()=>`
     <div class="sh"><div class="sh-t">Paiements collaborateurs</div></div>
@@ -1395,18 +1463,219 @@ const VIEWS={
     </div>
     <div id="devis-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  'sec.demandes':()=>`
+    <div class="sh"><div class="sh-t">Demandes entrantes</div><button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle prestation</button></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">À traiter</div><div class="fs-v" id="dem-kpi-att" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Devis en cours</div><div class="fs-v" id="dem-kpi-dev" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Confirmées</div><div class="fs-v" id="dem-kpi-conf" style="color:var(--ok)">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterSecDemandes('all')" id="dem-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterSecDemandes('nouveau')" id="dem-f-new">Nouvelles</button>
+      <button class="btn bg2 bs" onclick="filterSecDemandes('devis')" id="dem-f-dev">Devis envoyé</button>
+      <button class="btn bg2 bs" onclick="filterSecDemandes('confirmee')" id="dem-f-conf">Confirmées</button>
+    </div>
+    <div id="sec-demandes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'sec.relances':()=>`
+    <div class="sh"><div class="sh-t">Suivi des relances</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Acomptes en attente</div><div class="fs-v" id="rel-kpi-acomp" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Soldes à encaisser</div><div class="fs-v" id="rel-kpi-solde" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Relances envoyées</div><div class="fs-v" id="rel-kpi-sent">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterSecRelances('all')" id="rel-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterSecRelances('acompte')" id="rel-f-ac">Acomptes</button>
+      <button class="btn bg2 bs" onclick="filterSecRelances('solde')" id="rel-f-so">Soldes</button>
+      <button class="btn bg2 bs" onclick="filterSecRelances('retard')" id="rel-f-re">En retard</button>
+    </div>
+    <div id="sec-relances-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'sec.contrats':()=>`
+    <div class="sh"><div class="sh-t">Contrats & abonnements</div><button class="btn bp bs" onclick="switchView('abonnements')">Voir abonnements</button></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Contrats actifs</div><div class="fs-v" id="cnt-kpi-act" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À signer</div><div class="fs-v" id="cnt-kpi-sign" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Expirés</div><div class="fs-v" id="cnt-kpi-exp" style="color:var(--er)">—</div></div>
+    </div>
+    <div id="sec-contrats-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'sec.abonnements':()=>`
+    <div class="sh"><div class="sh-t">Abonnements clubs</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Actifs</div><div class="fs-v" id="abo-kpi-act" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Renouvellements (30j)</div><div class="fs-v" id="abo-kpi-ren" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">CA mensuel récurrent</div><div class="fs-v" id="abo-kpi-ca">—</div></div>
+    </div>
+    <div id="sec-abonnements-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'sec.livraisons':()=>`
+    <div class="sh"><div class="sh-t">Livraisons clients</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Prêtes à envoyer</div><div class="fs-v" id="liv-kpi-pret" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(54,107,255,.25)"><div class="fs-l">Envoyées ce mois</div><div class="fs-v" id="liv-kpi-env" style="color:var(--acc)">—</div></div>
+      <div class="fs"><div class="fs-l">En attente médias</div><div class="fs-v" id="liv-kpi-att">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterSecLivraisons('all')" id="liv-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterSecLivraisons('prete')" id="liv-f-pr">Prêtes</button>
+      <button class="btn bg2 bs" onclick="filterSecLivraisons('envoyee')" id="liv-f-en">Envoyées</button>
+      <button class="btn bg2 bs" onclick="filterSecLivraisons('attente')" id="liv-f-at">En attente</button>
+    </div>
+    <div id="sec-livraisons-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'sec.rapports':()=>`
+    <div class="sh"><div class="sh-t">Rapports administratifs</div></div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+      <div class="cd" style="cursor:pointer" onclick="exportSecRapport('prestations')">
+        <div style="padding:20px">
+          <div style="font-size:28px;margin-bottom:8px">📋</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Prestations du mois</div>
+          <div style="font-size:12px;color:var(--t3)">Export CSV avec statuts, clients, montants</div>
+          <button class="btn bp bs" style="margin-top:12px;font-size:12px">Exporter CSV</button>
+        </div>
+      </div>
+      <div class="cd" style="cursor:pointer" onclick="exportSecRapport('clients')">
+        <div style="padding:20px">
+          <div style="font-size:28px;margin-bottom:8px">👥</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Base clients</div>
+          <div style="font-size:12px;color:var(--t3)">Export CSV clients, contacts, abonnements</div>
+          <button class="btn bp bs" style="margin-top:12px;font-size:12px">Exporter CSV</button>
+        </div>
+      </div>
+      <div class="cd" style="cursor:pointer" onclick="exportSecRapport('devis')">
+        <div style="padding:20px">
+          <div style="font-size:28px;margin-bottom:8px">📄</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Suivi devis</div>
+          <div style="font-size:12px;color:var(--t3)">Taux de conversion, montants, statuts</div>
+          <button class="btn bp bs" style="margin-top:12px;font-size:12px">Exporter CSV</button>
+        </div>
+      </div>
+      <div class="cd" style="cursor:pointer" onclick="exportSecRapport('relances')">
+        <div style="padding:20px">
+          <div style="font-size:28px;margin-bottom:8px">🔔</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Relances & paiements</div>
+          <div style="font-size:12px;color:var(--t3)">Acomptes en attente, soldes, historique</div>
+          <button class="btn bp bs" style="margin-top:12px;font-size:12px">Exporter CSV</button>
+        </div>
+      </div>
+    </div>`,
+
   'cm.publications':()=>`
     <div class="sh"><div class="sh-t">Publications</div><button class="btn bp bs" onclick="modalNouveauContenu('publié')">+ Publication</button></div>
     <div id="pub-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.rapprochement':()=>`
-    <div class="sh"><div class="sh-t">Suivi des paiements</div></div>
-    <div class="g3" style="margin-bottom:13px">
-      <div class="fs"><div class="fs-l">Encaissé</div><div class="fs-v" id="rap-enc" style="color:var(--ok)">—</div></div>
-      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="rap-att" style="color:var(--wa)">—</div></div>
-      <div class="fs"><div class="fs-l">En retard</div><div class="fs-v" id="rap-ret" style="color:var(--er)">—</div></div>
+    <div class="sh"><div class="sh-t">Rapprochement bancaire</div></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Encaissé</div><div class="kpi-v" id="rap-enc" style="color:var(--ok)">—</div><span class="kpi-d dnt">ce mois</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">En attente</div><div class="kpi-v" id="rap-att" style="color:var(--wa)">—</div><span class="kpi-d dnt">à confirmer</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">En retard</div><div class="kpi-v" id="rap-ret" style="color:var(--er)">—</div><span class="kpi-d dnt">impayés</span></div>
     </div>
     <div id="rap-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'compta.acomptes':()=>`
+    <div class="sh"><div class="sh-t">Acomptes clients</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Acomptes demandés</div><div class="fs-v" id="ac-kpi-dem" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Encaissés</div><div class="fs-v" id="ac-kpi-enc" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Montant total attendu</div><div class="fs-v" id="ac-kpi-tot">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterComptaAcomptes('all')" id="ac-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
+      <button class="btn bg2 bs" onclick="filterComptaAcomptes('en_attente')" id="ac-f-att">En attente</button>
+      <button class="btn bg2 bs" onclick="filterComptaAcomptes('encaisse')" id="ac-f-enc">Encaissés</button>
+      <button class="btn bg2 bs" onclick="filterComptaAcomptes('retard')" id="ac-f-ret">En retard</button>
+    </div>
+    <div id="compta-acomptes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'compta.impayes':()=>`
+    <div class="sh"><div class="sh-t">Impayés</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Total impayés</div><div class="fs-v" id="imp-kpi-tot" style="color:var(--er)">—</div></div>
+      <div class="fs"><div class="fs-l">Nombre de dossiers</div><div class="fs-v" id="imp-kpi-nb">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Relances envoyées</div><div class="fs-v" id="imp-kpi-rel" style="color:var(--wa)">—</div></div>
+    </div>
+    <div id="compta-impayes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'compta.avoirs':()=>`
+    <div class="sh"><div class="sh-t">Avoirs & remises</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Avoirs émis (mois)</div><div class="fs-v" id="av-kpi-mois">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Montant total avoirs</div><div class="fs-v" id="av-kpi-tot" style="color:var(--er)">—</div></div>
+      <div class="fs"><div class="fs-l">Remises accordées</div><div class="fs-v" id="av-kpi-rem">—</div></div>
+    </div>
+    <div id="compta-avoirs-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'compta.depenses':()=>`
+    <div class="sh"><div class="sh-t">Dépenses</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Dépenses ce mois</div><div class="fs-v" id="dep-kpi-mois" style="color:var(--er)">—</div></div>
+      <div class="fs"><div class="fs-l">Budget annuel utilisé</div><div class="fs-v" id="dep-kpi-pct" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">À rembourser</div><div class="fs-v" id="dep-kpi-rem" style="color:var(--ok)">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('all')" id="dep-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('materiel')" id="dep-f-mat">Matériel</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('logistique')" id="dep-f-log">Logistique</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('marketing')" id="dep-f-mkt">Marketing</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('autres')" id="dep-f-aut">Autres</button>
+    </div>
+    <div id="compta-depenses-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'compta.frais':()=>`
+    <div class="sh"><div class="sh-t">Frais & remboursements km</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Frais soumis (mois)</div><div class="fs-v" id="fra-kpi-nb">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Montant à rembourser</div><div class="fs-v" id="fra-kpi-tot" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Remboursé ce mois</div><div class="fs-v" id="fra-kpi-rem" style="color:var(--ok)">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterComptaFrais('all')" id="fra-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
+      <button class="btn bg2 bs" onclick="filterComptaFrais('km')" id="fra-f-km">Kilométrage</button>
+      <button class="btn bg2 bs" onclick="filterComptaFrais('repas')" id="fra-f-rep">Repas</button>
+      <button class="btn bg2 bs" onclick="filterComptaFrais('materiel')" id="fra-f-mat">Matériel</button>
+      <button class="btn bg2 bs" onclick="filterComptaFrais('attente')" id="fra-f-att">En attente</button>
+    </div>
+    <div id="compta-frais-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'compta.rem':()=>`
+    <div class="sh"><div class="sh-t">Rémunérations collaborateurs</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Total à payer (mois)</div><div class="fs-v" id="crem-kpi-tot" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Payés</div><div class="fs-v" id="crem-kpi-pay" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">En attente</div><div class="fs-v" id="crem-kpi-att" style="color:var(--er)">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterComptaRem('all')" id="crem-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
+      <button class="btn bg2 bs" onclick="filterComptaRem('en_attente')" id="crem-f-att">En attente</button>
+      <button class="btn bg2 bs" onclick="filterComptaRem('paye')" id="crem-f-pay">Payés</button>
+    </div>
+    <div id="compta-rem-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'compta.rentabilite':()=>`
+    <div class="sh"><div class="sh-t">Analyse de rentabilité</div></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA ce mois</div><div class="kpi-v" id="rent-kpi-ca" style="font-size:18px">—</div><span class="kpi-d dnt">encaissé</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Charges</div><div class="kpi-v" id="rent-kpi-ch" style="font-size:18px">—</div><span class="kpi-d dnt">ce mois</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Marge brute</div><div class="kpi-v" id="rent-kpi-marge" style="font-size:18px">—</div><span class="kpi-d dnt">CA - charges</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Taux de marge</div><div class="kpi-v" id="rent-kpi-tx">—</div><span class="kpi-d dnt">%</span></div>
+    </div>
+    <div class="cd">
+      <div class="cd-h"><div class="cd-t">Rentabilité par prestation (top 10)</div></div>
+      <div id="compta-rent-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
+
+  'compta.clotures':()=>`
+    <div class="sh"><div class="sh-t">Clôtures mensuelles</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Mois clôturés</div><div class="fs-v" id="clo-kpi-clos" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En cours</div><div class="fs-v" id="clo-kpi-enc" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Mois courant</div><div class="fs-v" id="clo-kpi-cur" style="color:var(--acc)">—</div></div>
+    </div>
+    <div id="compta-clotures-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'com.objectifs':()=>`
     <div class="sh"><div class="sh-t">Objectifs commerciaux</div></div>
@@ -2082,10 +2351,23 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='planning'){_photoPlanOffset=0;await loadPhotoPlan();}
   if(role==='photo'&&view==='jourj') await loadJourJ();
   if(role==='sec'&&view==='dash') await loadSecDash();
+  if(role==='sec'&&view==='demandes') await loadSecDemandes();
+  if(role==='sec'&&view==='relances') await loadSecRelances();
+  if(role==='sec'&&view==='contrats') await loadSecContrats();
+  if(role==='sec'&&view==='abonnements') await loadSecAbonnements();
+  if(role==='sec'&&view==='livraisons') await loadSecLivraisons();
   if(role==='sec'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='admin'&&view==='fin') await loadFinances();
   if(role==='compta'&&view==='factures') await loadComptaFactures();
   if(role==='compta'&&view==='dash') await loadComptaDash();
+  if(role==='compta'&&view==='acomptes') await loadComptaAcomptes();
+  if(role==='compta'&&view==='impayes') await loadComptaImpayes();
+  if(role==='compta'&&view==='avoirs') await loadComptaAvoirs();
+  if(role==='compta'&&view==='depenses') await loadComptaDepenses();
+  if(role==='compta'&&view==='frais') await loadComptaFrais();
+  if(role==='compta'&&view==='rem') await loadComptaRem();
+  if(role==='compta'&&view==='rentabilite') await loadComptaRentabilite();
+  if(role==='compta'&&view==='clotures') await loadComptaClotures();
   if((role==='prod'||role==='admin')&&view==='incidents') await loadIncidents();
   if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
   if(role==='com'&&view==='dash') await loadComDash();
@@ -2233,6 +2515,14 @@ function modalDetailPrestation(idx){
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">${p.reference||'Prestation'}</div>
     <div style="font-size:12px;color:var(--t3);margin-bottom:10px">${p.clients?.nom||'Sans client'} · ${p.type_prestation||'—'}</div>
+    ${p.statut==='à_valider_production'&&S.role==='prod'?`<div style="display:flex;gap:8px;margin-bottom:14px;padding:12px 14px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.25);border-radius:var(--rb)">
+      <div style="flex:1"><div style="font-size:11px;font-weight:700;color:var(--er);margin-bottom:2px">VALIDATION PRODUCTION REQUISE</div>
+      <div style="font-size:12px;color:var(--t2)">Cette prestation attend votre validation avant planification.</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button onclick="validerPrestation('${p.id}','refusée')" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer">✕ Refuser</button>
+        <button onclick="validerPrestation('${p.id}','confirmée')" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer">✓ Valider</button>
+      </div>
+    </div>`:''}
     ${nextSt?`<div style="margin-bottom:12px"><button onclick="pdAvancer()" style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;background:rgba(54,107,255,.12);border:1px solid rgba(54,107,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-size:12px;font-weight:600"><span style="opacity:.7">→</span> Étape suivante : ${SL[nextSt]||nextSt}</button></div>`:'<div style="margin-bottom:12px"><span style="font-size:12px;color:var(--ok);font-weight:600">✓ Prestation terminée / clôturée</span></div>'}
     <div style="display:flex;flex-direction:column;gap:11px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -2309,6 +2599,18 @@ function modalDetailPrestation(idx){
       </div>
     </div>`);
   if(['admin','sec','prod'].includes(S.role))chargerEquipeModal(p.id);
+}
+
+async function validerPrestation(id,nouveauStatut){
+  try{
+    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:nouveauStatut}});
+    closeModal();
+    const lbl=nouveauStatut==='confirmée'?'Prestation validée et confirmée.':'Prestation refusée.';
+    const type=nouveauStatut==='confirmée'?'ok':'er';
+    toast(lbl,type);
+    loadViewData(S.role,S.view);
+    updateNavBadges(S.role);
+  }catch(e){toast('Erreur lors de la validation.','er');}
 }
 
 async function modifierPrestation(id){
@@ -6258,72 +6560,357 @@ async function loadComDash(){
 // ── Dashboard comptable ───────────────────────────────────────────────────────
 async function loadComptaDash(){
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=100');
+    const now=new Date();
+    const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,montant_acompte,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500');
     const list=data||[];
-    let enc=0,att=0,total=0;
-    list.forEach(p=>{
+    const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','acompte_demandé':'bw','non_facturée':'bn','en_retard':'br'};
+    const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','acompte_demandé':'Acompte att.','non_facturée':'Non facturée','en_retard':'En retard'};
+    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
+
+    let enc=0,imp=0,acomp=0,charges=0,remAtt=0,nbFact=0;
+    const mois=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart);
+    mois.forEach(p=>{
       const m=p.montant_ttc||0;
       if(p.statut_financier==='payée')enc+=m;
-      if(['facturée','partiellement_payée'].includes(p.statut_financier))att+=m;
-      if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))total+=m;
+      if(['facturée','partiellement_payée'].includes(p.statut_financier)&&p.date_prestation<now.toISOString().slice(0,10))imp+=m;
+      if(p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte')acomp+=p.montant_acompte||m*0.5;
+      if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))nbFact++;
     });
-    const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
-    const s1=document.getElementById('cptd-enc');if(s1)s1.innerHTML=fmt(enc);
-    const s2=document.getElementById('cptd-att');if(s2)s2.innerHTML=fmt(att);
-    const s3=document.getElementById('cptd-nb');if(s3)s3.textContent=list.length;
-    const s4=document.getElementById('cptd-total');if(s4)s4.innerHTML=fmt(total);
-    const el=document.getElementById('cptd-real');
-    if(!el)return;
-    const att_list=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier));
-    const sf_cls={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl'};
-    const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard'};
-    el.innerHTML=`
-      ${att_list.length?`<div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t" style="color:var(--wa)">En attente de paiement (${att_list.length})</div></div>
-        ${att_list.map(p=>`<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalDetailById('${p.id}')">
-          <div style="width:38px;height:38px;border-radius:10px;background:rgba(245,165,36,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">📄</div>
-          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--t1)">${p.reference||'—'} · ${p.clients?.nom||'—'}</div>
-            <div style="font-size:11px;color:var(--t3)">${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</div>
-          </div>
-          <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-            <div style="font-size:14px;font-weight:700;color:var(--t1)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</div>
-            <span class="bd ${sf_cls[p.statut_financier]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span>
-          </div>
-          <span style="font-size:13px;color:var(--acc);opacity:.6">›</span>
-        </div>`).join('')}
-      </div>`:'<div class="cd" style="margin-bottom:13px"><div style="padding:32px;text-align:center;color:var(--t3)">Aucune facture en attente.</div></div>'}
-      <div class="cd"><div class="cd-h"><div class="cd-t">Tout l\'historique</div><button class="btn bg2 bs" onclick="switchView('factures')">Voir tout</button></div>
-        <div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Montant TTC</th><th>Statut</th><th></th></tr></thead><tbody>
-          ${list.slice(0,8).map(p=>`<tr>
-            <td class="tm">${p.reference||'—'}</td>
-            <td class="tp">${p.clients?.nom||'—'}</td>
-            <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-            <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
-            <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
-          </tr>`).join('')}
-        </tbody></table></div>
-      </div>`;
+
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.innerHTML=v;};
+    set('cptd-enc',fmt(enc));set('cptd-imp',fmt(imp));set('cptd-acomp',fmt(acomp));
+    set('cptd-charges',fmt(charges));set('cptd-nb',String(nbFact));
+    set('cptd-att',fmt(imp));set('cptd-rem',fmt(remAtt));
+    const marge=enc-charges;
+    set('cptd-marge',fmt(marge));
+
+    // Bloc priorité
+    const prioEl=document.getElementById('cptd-prio');const prioReal=document.getElementById('cptd-prio-real');
+    if(prioEl&&prioReal){
+      const prioItems=[];
+      if(imp>0)prioItems.push({lbl:`${fmt(imp)} d'impayés à relancer`,cls:'er',view:'impayes'});
+      if(acomp>0)prioItems.push({lbl:`${fmt(acomp)} d'acomptes en attente`,cls:'wa',view:'acomptes'});
+      if(prioItems.length){
+        prioEl.style.display='';
+        prioReal.innerHTML=prioItems.map(it=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.04)">
+          <div style="font-size:13px;color:var(--${it.cls})">${it.lbl}</div>
+          <button class="btn bg2 bs" onclick="switchView('${it.view}')">Traiter</button>
+        </div>`).join('');
+      } else prioEl.style.display='none';
+    }
+
+    // Dernières factures
+    const efact=document.getElementById('cptd-factures-real');
+    if(efact){
+      const recentes=list.filter(p=>['facturée','partiellement_payée','payée'].includes(p.statut_financier)).slice(0,6);
+      efact.innerHTML=recentes.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Statut</th><th></th></tr></thead><tbody>'+
+        recentes.map(p=>`<tr>
+          <td class="tm">${p.reference||'—'}</td>
+          <td class="tp">${p.clients?.nom||'—'}</td>
+          <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+          <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
+          <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
+        </tr>`).join('')+'</tbody></table></div>':
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune facture ce mois.</div>';
+    }
+
+    // Encaissements récents
+    const eenc=document.getElementById('cptd-enc-real');
+    if(eenc){
+      const payees=list.filter(p=>p.statut_financier==='payée').slice(0,4);
+      eenc.innerHTML=payees.length?payees.map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
+        <div style="font-size:12px;color:var(--t2)">${p.reference||'—'} — ${p.clients?.nom||'—'}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--ok)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</div>
+      </div>`).join(''):
+      '<div style="padding:16px;text-align:center;color:var(--t3);font-size:12px">Aucun encaissement récent.</div>';
+    }
+
+    // Prochaines échéances (impayés)
+    const eech=document.getElementById('cptd-ech-real');
+    if(eech){
+      const impayes=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier)).slice(0,4);
+      eech.innerHTML=impayes.length?impayes.map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
+        <div style="font-size:12px;color:var(--t2)">${p.reference||'—'} — ${p.clients?.nom||'—'}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--wa)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</div>
+      </div>`).join(''):
+      '<div style="padding:16px;text-align:center;color:var(--t3);font-size:12px">Aucune échéance en attente.</div>';
+    }
   }catch(e){console.error('loadComptaDash',e);}
 }
 
+let _comptaAcData=[],_comptaAcFilter='all';
+let _comptaDepData=[],_comptaDepFilter='all';
+let _comptaFraData=[],_comptaFraFilter='all';
+let _comptaRemData=[],_comptaRemFilter='all';
+
+async function loadComptaAcomptes(){
+  const el=document.getElementById('compta-acomptes-real');if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,montant_acompte,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
+    _comptaAcData=(Array.isArray(data)?data:[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte'||p.statut_financier==='partiellement_payée');
+    const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+    const kdem=_comptaAcData.filter(p=>p.statut==='en_attente_acompte'||p.statut_financier==='acompte_demandé').length;
+    const kenc=_comptaAcData.filter(p=>p.statut_financier==='partiellement_payée').length;
+    const ktot=_comptaAcData.reduce((s,p)=>s+(p.montant_acompte||0),0);
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('ac-kpi-dem',kdem);set('ac-kpi-enc',kenc);set('ac-kpi-tot',fmt(ktot));
+    renderComptaAcomptes();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+}
+function filterComptaAcomptes(f){
+  _comptaAcFilter=f;
+  ['all','en_attente','encaisse','retard'].forEach(id=>{const b=document.getElementById('ac-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  renderComptaAcomptes();
+}
+function renderComptaAcomptes(){
+  const el=document.getElementById('compta-acomptes-real');if(!el)return;
+  let list=_comptaAcData;
+  if(_comptaAcFilter==='en_attente')list=list.filter(p=>p.statut==='en_attente_acompte'||p.statut_financier==='acompte_demandé');
+  else if(_comptaAcFilter==='encaisse')list=list.filter(p=>p.statut_financier==='partiellement_payée');
+  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun acompte dans cette catégorie.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant TTC</th><th>Acompte</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    list.slice(0,30).map(p=>`<tr>
+      <td class="tm">${p.reference||'—'}</td>
+      <td class="tp">${p.clients?.nom||'—'}</td>
+      <td class="tm">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+      <td class="tm" style="font-weight:600;color:var(--wa)">${p.montant_acompte?p.montant_acompte.toLocaleString('fr-FR')+' €':'—'}</td>
+      <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+      <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+      <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+
+async function loadComptaImpayes(){
+  const el=document.getElementById('compta-impayes-real');if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom,email,telephone)&statut_financier=in.(facturée,partiellement_payée)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
+    const list=Array.isArray(data)?data:[];
+    const tot=list.reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('imp-kpi-tot',tot.toLocaleString('fr-FR')+' €');set('imp-kpi-nb',list.length);set('imp-kpi-rel',0);
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date presta.</th><th>Statut fin.</th><th></th></tr></thead><tbody>'+
+      list.map(p=>`<tr>
+        <td class="tm">${p.reference||'—'}</td>
+        <td class="tp">${p.clients?.nom||'—'}</td>
+        <td class="tm" style="font-weight:700;color:var(--er)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td><span class="bd bw"><span class="bd-d"></span>${p.statut_financier}</span></td>
+        <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
+      </tr>`).join('')+'</tbody></table></div>':
+      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun impayé en ce moment.</div>';
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+}
+
+async function loadComptaAvoirs(){
+  const el=document.getElementById('compta-avoirs-real');if(!el)return;
+  el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Gestion des avoirs à venir (table avoirs non encore créée).</div>';
+}
+
+async function loadComptaDepenses(){
+  const el=document.getElementById('compta-depenses-real');if(!el)return;
+  try{
+    const data=await sbFetch('frais?select=id,type,montant,description,statut,date_frais,collaborateur_id,profiles(prenom,nom)&order=date_frais.desc&limit=200');
+    _comptaDepData=Array.isArray(data)?data:[];
+    const tot=_comptaDepData.reduce((s,f)=>s+(f.montant||0),0);
+    const arem=_comptaDepData.filter(f=>f.statut==='en_attente').reduce((s,f)=>s+(f.montant||0),0);
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('dep-kpi-mois',tot.toLocaleString('fr-FR')+' €');set('dep-kpi-pct','—');set('dep-kpi-rem',arem.toLocaleString('fr-FR')+' €');
+    renderComptaDepenses();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table frais non disponible.</div>';console.error(e);}
+}
+function filterComptaDepenses(f){
+  _comptaDepFilter=f;
+  ['all','materiel','logistique','marketing','autres'].forEach(id=>{const b=document.getElementById('dep-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  renderComptaDepenses();
+}
+function renderComptaDepenses(){
+  const el=document.getElementById('compta-depenses-real');if(!el)return;
+  let list=_comptaDepData;
+  if(_comptaDepFilter!=='all')list=list.filter(f=>f.type===_comptaDepFilter);
+  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune dépense dans cette catégorie.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+
+    list.slice(0,30).map(f=>`<tr>
+      <td>${f.date_frais?new Date(f.date_frais).toLocaleDateString('fr-FR'):'—'}</td>
+      <td>${f.type||'—'}</td>
+      <td class="tp">${f.description||'—'}</td>
+      <td class="tm" style="font-weight:600;color:var(--er)">${f.montant?f.montant.toLocaleString('fr-FR')+' €':'—'}</td>
+      <td><span class="bd ${f.statut==='remboursé'?'ba':'bw'}"><span class="bd-d"></span>${f.statut||'—'}</span></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+
+async function loadComptaFrais(){
+  const el=document.getElementById('compta-frais-real');if(!el)return;
+  try{
+    const data=await sbFetch('frais?select=id,type,montant,km,description,statut,date_frais,collaborateur_id,profiles(prenom,nom)&order=date_frais.desc&limit=200');
+    _comptaFraData=Array.isArray(data)?data:[];
+    const tot=_comptaFraData.reduce((s,f)=>s+(f.montant||0),0);
+    const att=_comptaFraData.filter(f=>f.statut==='en_attente').reduce((s,f)=>s+(f.montant||0),0);
+    const rem=_comptaFraData.filter(f=>f.statut==='remboursé').reduce((s,f)=>s+(f.montant||0),0);
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('fra-kpi-nb',_comptaFraData.length);set('fra-kpi-tot',att.toLocaleString('fr-FR')+' €');set('fra-kpi-rem',rem.toLocaleString('fr-FR')+' €');
+    renderComptaFrais();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table frais non disponible.</div>';console.error(e);}
+}
+function filterComptaFrais(f){
+  _comptaFraFilter=f;
+  ['all','km','repas','materiel','attente'].forEach(id=>{const b=document.getElementById('fra-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  renderComptaFrais();
+}
+function renderComptaFrais(){
+  const el=document.getElementById('compta-frais-real');if(!el)return;
+  let list=_comptaFraData;
+  if(_comptaFraFilter==='km')list=list.filter(f=>f.type==='km');
+  else if(_comptaFraFilter==='repas')list=list.filter(f=>f.type==='repas');
+  else if(_comptaFraFilter==='materiel')list=list.filter(f=>f.type==='materiel');
+  else if(_comptaFraFilter==='attente')list=list.filter(f=>f.statut==='en_attente');
+  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun frais dans cette catégorie.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Date</th><th>Collaborateur</th><th>Type</th><th>km</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+
+    list.slice(0,30).map(f=>`<tr>
+      <td>${f.date_frais?new Date(f.date_frais).toLocaleDateString('fr-FR'):'—'}</td>
+      <td class="tp">${f.profiles?.prenom||''} ${f.profiles?.nom||''}</td>
+      <td>${f.type||'—'}</td>
+      <td class="tm">${f.km||'—'}</td>
+      <td class="tm" style="font-weight:600">${f.montant?f.montant.toLocaleString('fr-FR')+' €':'—'}</td>
+      <td><span class="bd ${f.statut==='remboursé'?'ba':f.statut==='en_attente'?'bw':'bn'}"><span class="bd-d"></span>${f.statut||'—'}</span></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+
+async function loadComptaRem(){
+  const el=document.getElementById('compta-rem-real');if(!el)return;
+  try{
+    const data=await sbFetch('prestations_equipe?select=id,remuneration,statut_paiement,date_paiement,prestations(reference,date_prestation),collaborateur:profiles(id,prenom,nom,role)&order=created_at.desc&limit=200');
+    _comptaRemData=Array.isArray(data)?data:[];
+    const tot=_comptaRemData.reduce((s,r)=>s+(r.remuneration||0),0);
+    const pay=_comptaRemData.filter(r=>r.statut_paiement==='payé').reduce((s,r)=>s+(r.remuneration||0),0);
+    const att=tot-pay;
+    const fmt=n=>n.toLocaleString('fr-FR')+' €';
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('crem-kpi-tot',fmt(tot));set('crem-kpi-pay',fmt(pay));set('crem-kpi-att',fmt(att));
+    renderComptaRem();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+}
+function filterComptaRem(f){
+  _comptaRemFilter=f;
+  ['all','en_attente','paye'].forEach(id=>{const b=document.getElementById('crem-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  renderComptaRem();
+}
+function renderComptaRem(){
+  const el=document.getElementById('compta-rem-real');if(!el)return;
+  let list=_comptaRemData;
+  if(_comptaRemFilter==='en_attente')list=list.filter(r=>r.statut_paiement!=='payé');
+  else if(_comptaRemFilter==='paye')list=list.filter(r=>r.statut_paiement==='payé');
+  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune rémunération dans cette catégorie.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Collaborateur</th><th>Prestation</th><th>Date</th><th>Rémunération</th><th>Paiement</th></tr></thead><tbody>'+
+    list.slice(0,30).map(r=>`<tr>
+      <td class="tp">${r.collaborateur?.prenom||''} ${r.collaborateur?.nom||''}</td>
+      <td class="tm">${r.prestations?.reference||'—'}</td>
+      <td>${r.prestations?.date_prestation?new Date(r.prestations.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+      <td class="tm" style="font-weight:600">${r.remuneration?r.remuneration.toLocaleString('fr-FR')+' €':'—'}</td>
+      <td><span class="bd ${r.statut_paiement==='payé'?'ba':'bw'}"><span class="bd-d"></span>${r.statut_paiement||'En attente'}</span></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+
+async function loadComptaRentabilite(){
+  const el=document.getElementById('compta-rent-real');if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=in.(payée,partiellement_payée,facturée)&order=montant_ttc.desc&limit=20');
+    const list=Array.isArray(data)?data:[];
+    const now=new Date();
+    const enc=list.filter(p=>p.statut_financier==='payée').reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const charges=0;
+    const marge=enc-charges;
+    const tx=enc>0?Math.round((marge/enc)*100):0;
+    const fmt=n=>n.toLocaleString('fr-FR')+' €';
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
+    set('rent-kpi-ca',fmt(enc));set('rent-kpi-ch',fmt(charges));set('rent-kpi-marge',fmt(marge));set('rent-kpi-tx',tx+'%');
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant TTC</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+
+      list.map(p=>`<tr>
+        <td class="tm">${p.reference||'—'}</td>
+        <td class="tp">${p.clients?.nom||'—'}</td>
+        <td class="tm" style="font-weight:600;color:var(--ok)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td><span class="bd ${p.statut_financier==='payée'?'ba':'bw'}"><span class="bd-d"></span>${p.statut_financier}</span></td>
+      </tr>`).join('')+'</tbody></table></div>':
+      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune donnée de rentabilité disponible.</div>';
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+}
+
+async function loadComptaClotures(){
+  const el=document.getElementById('compta-clotures-real');if(!el)return;
+  const now=new Date();
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push({label:d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}),key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,current:i===0});
+  }
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  set('clo-kpi-clos','5');set('clo-kpi-enc','0');set('clo-kpi-cur',months[5].label);
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Mois</th><th>Statut</th><th>CA encaissé</th><th>Factures</th><th>Actions</th></tr></thead><tbody>'+
+    months.map(m=>`<tr>
+      <td style="font-weight:${m.current?700:400};color:${m.current?'var(--acc)':'var(--t1)'}">${m.label}</td>
+      <td><span class="bd ${m.current?'bb':'ba'}"><span class="bd-d"></span>${m.current?'En cours':'Clôturé'}</span></td>
+      <td class="tm">—</td>
+      <td class="tm">—</td>
+      <td>${m.current?'<button class="btn bg2 bs" onclick="">Clôturer</button>':'<button class="btn bg2 bs" onclick="exportCSV(\'ca-mensuel\')">Export</button>'}</td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+
 // ── Dashboard secrétaire ─────────────────────────────────────────────────────
+let _secDemData=[],_secDemFilter='all';
+let _secRelData=[],_secRelFilter='all';
+let _secLivrData=[],_secLivrFilter='all';
+
 async function loadSecDash(){
   try{
-    const [clients,pres]=await Promise.all([
+    const now=new Date();const in14=new Date(now);in14.setDate(in14.getDate()+14);
+    const [clients,pres,devis]=await Promise.all([
       sbFetch('clients?select=id,statut&limit=500'),
-      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,clôturée,payée)&order=date_prestation.asc&limit=50'),
+      sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ttc,clients(nom)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200'),
+      sbFetch('devis?select=id,statut&limit=200'),
     ]);
-    const now=new Date();const in7=new Date(now);in7.setDate(in7.getDate()+7);
     const actifs=(clients||[]).filter(c=>c.statut==='client').length;
-    const prospects=(clients||[]).filter(c=>c.statut==='prospect'||c.statut==='qualifié').length;
+    const demandes=(pres||[]).filter(p=>['demande_reçue','à_qualifier','offre_en_préparation'].includes(p.statut)).length;
+    const devisBrouillon=(devis||[]).filter(d=>d.statut==='brouillon'||d.statut==='en_cours').length;
+    const acomptes=(pres||[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
+    const livraisons=(pres||[]).filter(p=>['prête_validation','livrée','prête_à_livrer'].includes(p.statut)).length;
     const encours=(pres||[]).filter(p=>!['demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse','devis_accepté','en_attente_signature','en_attente_acompte'].includes(p.statut)).length;
-    const soon=(pres||[]).filter(p=>{if(!p.date_prestation)return false;const d=new Date(p.date_prestation);return d>=now&&d<=in7;}).length;
-    const s1=document.getElementById('sec-kpi-clients');if(s1)s1.textContent=actifs;
-    const s2=document.getElementById('sec-kpi-pre');if(s2)s2.textContent=encours;
-    const s3=document.getElementById('sec-kpi-soon');if(s3)s3.textContent=soon;
-    const s4=document.getElementById('sec-kpi-prospects');if(s4)s4.textContent=prospects;
+
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+    set('sec-kpi-demandes',demandes);
+    set('sec-kpi-devis',devisBrouillon);
+    set('sec-kpi-sign',0);
+    set('sec-kpi-relances',acomptes);
+    set('sec-kpi-livr',livraisons);
+    set('sec-kpi-clients',actifs);
+    set('sec-kpi-pre',encours);
+    set('sec-kpi-taches',0);
+
+    // Bloc priorité
+    const prioItems=[];
+    if(demandes>0)prioItems.push({lbl:`${demandes} demande${demandes>1?'s':''} en attente de traitement`,cls:'er',view:'demandes'});
+    if(acomptes>0)prioItems.push({lbl:`${acomptes} acompte${acomptes>1?'s':''} à relancer`,cls:'wa',view:'relances'});
+    if(livraisons>0)prioItems.push({lbl:`${livraisons} livraison${livraisons>1?'s':''} prête${livraisons>1?'s':''} à envoyer`,cls:'ok',view:'livraisons'});
+    const prioEl=document.getElementById('sec-dash-priorite');
+    const prioReal=document.getElementById('sec-dash-priorite-real');
+    if(prioEl&&prioReal){
+      if(prioItems.length>0){
+        prioEl.style.display='';
+        prioReal.innerHTML=prioItems.map(it=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.04)">
+          <div style="font-size:13px;color:var(--${it.cls})">${it.lbl}</div>
+          <button class="btn bg2 bs" onclick="switchView('${it.view}')">Traiter</button>
+        </div>`).join('');
+      } else prioEl.style.display='none';
+    }
+
+    // Prestations à venir 14j
     const ep=document.getElementById('sec-dash-pre');
     if(ep){
-      const prochaines=(pres||[]).filter(p=>p.date_prestation).slice(0,6);
+      const prochaines=(pres||[]).filter(p=>{
+        if(!p.date_prestation)return false;
+        const d=new Date(p.date_prestation);
+        return d>=now&&d<=in14;
+      }).slice(0,8);
       ep.innerHTML=prochaines.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
         prochaines.map(p=>`<tr>
           <td class="tm">${p.reference||'—'}</td>
@@ -6333,24 +6920,226 @@ async function loadSecDash(){
           <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
           <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
         </tr>`).join('')+'</tbody></table></div>':
-        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation à venir.</div>';
+        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation dans les 14 prochains jours.</div>';
     }
+
+    // Dossiers incomplets
+    const incompEl=document.getElementById('sec-dash-incomplets');
+    if(incompEl){
+      const incomplets=(pres||[]).filter(p=>['en_attente_signature','en_attente_acompte','en_attente_réponse'].includes(p.statut)).slice(0,4);
+      incompEl.innerHTML=incomplets.length?incomplets.map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
+        <div><div style="font-size:12px;font-weight:600;color:var(--t1)">${p.reference||'—'} — ${p.clients?.nom||'—'}</div>
+        <div style="font-size:11px;color:var(--wa);margin-top:2px">${SL[p.statut]||p.statut}</div></div>
+        <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
+      </div>`).join(''):
+      '<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun dossier incomplet.</div>';
+    }
+
     const ec=document.getElementById('sec-dash-clients');
     if(ec){
       const recents=await sbFetch('clients?select=id,nom,statut,ville,sport&order=created_at.desc&limit=5');
       const scc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
       const scl={'prospect':'Prospect','qualifié':'Qualifié','client':'Client','inactif':'Inactif','bloqué':'Bloqué'};
-      ec.innerHTML=(recents||[]).length?'<div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Sport</th><th>Statut</th><th></th></tr></thead><tbody>'+
+      ec.innerHTML=(recents||[]).length?'<div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Statut</th><th></th></tr></thead><tbody>'+
         (recents||[]).map(c=>`<tr>
           <td class="tp">${c.nom}</td>
           <td>${c.ville||'—'}</td>
-          <td>${c.sport||'—'}</td>
           <td><span class="bd ${scc[c.statut]||'bw'}"><span class="bd-d"></span>${scl[c.statut]||c.statut}</span></td>
           <td><button class="btn bg2 bs" onclick="modalModifierClientById('${c.id}')">Ouvrir</button></td>
         </tr>`).join('')+'</tbody></table></div>':
-        '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client pour l\'instant.</div>';
+        '<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun client pour l\'instant.</div>';
     }
   }catch(e){console.error('loadSecDash',e);}
+}
+
+async function loadSecDemandes(){
+  const el=document.getElementById('sec-demandes-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=in.(demande_reçue,à_qualifier,offre_en_préparation,devis_envoyé,en_attente_réponse,devis_accepté,confirmée)&order=date_prestation.asc&limit=100');
+    _secDemData=Array.isArray(data)?data:[];
+    const katt=_secDemData.filter(p=>['demande_reçue','à_qualifier'].includes(p.statut)).length;
+    const kdev=_secDemData.filter(p=>['offre_en_préparation','devis_envoyé','en_attente_réponse'].includes(p.statut)).length;
+    const kconf=_secDemData.filter(p=>['devis_accepté','confirmée'].includes(p.statut)).length;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('dem-kpi-att',katt);set('dem-kpi-dev',kdev);set('dem-kpi-conf',kconf);
+    renderSecDemandes();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+}
+function filterSecDemandes(f){
+  _secDemFilter=f;
+  ['all','nouveau','devis','confirmee'].forEach(id=>{const b=document.getElementById('dem-f-'+id);if(b)b.style.background=f===id?'rgba(54,107,255,.15)':'';b&&(b.style.color=f===id?'var(--acc)':'');});
+  renderSecDemandes();
+}
+function renderSecDemandes(){
+  const el=document.getElementById('sec-demandes-real');if(!el)return;
+  let list=_secDemData;
+  if(_secDemFilter==='nouveau')list=list.filter(p=>['demande_reçue','à_qualifier'].includes(p.statut));
+  else if(_secDemFilter==='devis')list=list.filter(p=>['offre_en_préparation','devis_envoyé','en_attente_réponse'].includes(p.statut));
+  else if(_secDemFilter==='confirmee')list=list.filter(p=>['devis_accepté','confirmée'].includes(p.statut));
+  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune demande dans cette catégorie.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    list.map(p=>`<tr>
+      <td class="tm">${p.reference||'—'}</td>
+      <td class="tp">${p.clients?.nom||'—'}</td>
+      <td>${p.type_prestation||'—'}</td>
+      <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+      <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+      <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+
+async function loadSecRelances(){
+  const el=document.getElementById('sec-relances-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,montant_acompte,date_prestation,clients(nom,email,telephone)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
+    _secRelData=Array.isArray(data)?data:[];
+    const acomptes=_secRelData.filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
+    const soldes=_secRelData.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payé').length;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('rel-kpi-acomp',acomptes);set('rel-kpi-solde',soldes);set('rel-kpi-sent',0);
+    renderSecRelances();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+}
+function filterSecRelances(f){
+  _secRelFilter=f;
+  ['all','acompte','solde','retard'].forEach(id=>{const b=document.getElementById('rel-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  renderSecRelances();
+}
+function renderSecRelances(){
+  const el=document.getElementById('sec-relances-real');if(!el)return;
+  let list=_secRelData;
+  if(_secRelFilter==='acompte')list=list.filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte');
+  else if(_secRelFilter==='solde')list=list.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payé');
+  else if(_secRelFilter==='retard'){
+    const now=new Date();
+    list=list.filter(p=>{
+      if(!p.date_prestation)return false;
+      const d=new Date(p.date_prestation);
+      return d<now&&p.statut_financier!=='payé'&&!['annulée','refusée','clôturée'].includes(p.statut);
+    });
+  }
+  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune relance pour ce filtre.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date</th><th>Statut financier</th><th></th></tr></thead><tbody>'+
+    list.slice(0,30).map(p=>`<tr>
+      <td class="tm">${p.reference||'—'}</td>
+      <td class="tp">${p.clients?.nom||'—'}</td>
+      <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+      <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+      <td><span class="bd ${SC[p.statut_financier]||'bw'}"><span class="bd-d"></span>${SL[p.statut_financier]||p.statut_financier||'—'}</span></td>
+      <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+
+async function loadSecContrats(){
+  const el=document.getElementById('sec-contrats-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('contrats?select=id,type_contrat,statut,montant_mensuel,date_debut,date_fin,renouvellement_auto,client_id,clients(nom)&order=created_at.desc&limit=100');
+    const list=Array.isArray(data)?data:[];
+    const kact=list.filter(c=>c.statut==='actif').length;
+    const ksign=list.filter(c=>c.statut==='brouillon').length;
+    const kexp=list.filter(c=>c.statut==='expiré'||c.statut==='résilié').length;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('cnt-kpi-act',kact);set('cnt-kpi-sign',ksign);set('cnt-kpi-exp',kexp);
+    const SC2={'actif':'ba','brouillon':'bw','suspendu':'bb','résilié':'br','expiré':'bn'};
+    const SL2={'actif':'Actif','brouillon':'Brouillon','suspendu':'Suspendu','résilié':'Résilié','expiré':'Expiré'};
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Type</th><th>Client</th><th>Mensuel</th><th>Début</th><th>Fin</th><th>Statut</th><th></th></tr></thead><tbody>'+
+      list.map(c=>`<tr>
+        <td>${c.type_contrat||'—'}</td>
+        <td class="tp">${c.clients?.nom||'—'}</td>
+        <td class="tm" style="font-weight:600">${c.montant_mensuel?c.montant_mensuel.toLocaleString('fr-FR')+' €/mois':'—'}</td>
+        <td>${c.date_debut?new Date(c.date_debut).toLocaleDateString('fr-FR'):'—'}</td>
+        <td>${c.date_fin?new Date(c.date_fin).toLocaleDateString('fr-FR'):'—'}</td>
+        <td><span class="bd ${SC2[c.statut]||'bw'}"><span class="bd-d"></span>${SL2[c.statut]||c.statut}</span></td>
+        <td><button class="btn bg2 bs" onclick="">Ouvrir</button></td>
+      </tr>`).join('')+'</tbody></table></div>':
+      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun contrat pour l\'instant.</div>';
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table contrats non disponible (migration requise).</div>';console.error(e);}
+}
+
+async function loadSecAbonnements(){
+  const el=document.getElementById('sec-abonnements-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('contrats?select=id,type_contrat,statut,montant_mensuel,frequence,date_fin,renouvellement_auto,clients(nom)&type_contrat=in.(abonnement_mensuel,abonnement_annuel,forfait_saison)&order=date_fin.asc&limit=100');
+    const list=Array.isArray(data)?data:[];
+    const now=new Date();const in30=new Date(now);in30.setDate(in30.getDate()+30);
+    const kact=list.filter(c=>c.statut==='actif').length;
+    const kren=list.filter(c=>c.statut==='actif'&&c.date_fin&&new Date(c.date_fin)<=in30).length;
+    const kca=list.filter(c=>c.statut==='actif').reduce((s,c)=>s+(c.montant_mensuel||0),0);
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('abo-kpi-act',kact);set('abo-kpi-ren',kren);set('abo-kpi-ca',kca.toLocaleString('fr-FR')+' €');
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Club / Client</th><th>Type</th><th>Mensuel</th><th>Fin</th><th>Renouvellement</th><th>Statut</th></tr></thead><tbody>'+
+      list.map(c=>`<tr>
+        <td class="tp">${c.clients?.nom||'—'}</td>
+        <td>${c.type_contrat?.replace('_',' ')||'—'}</td>
+        <td class="tm" style="font-weight:600">${c.montant_mensuel?c.montant_mensuel.toLocaleString('fr-FR')+' €':'—'}</td>
+        <td ${c.date_fin&&new Date(c.date_fin)<=in30?'style="color:var(--wa);font-weight:600"':''}>${c.date_fin?new Date(c.date_fin).toLocaleDateString('fr-FR'):'—'}</td>
+        <td>${c.renouvellement_auto?'<span style="color:var(--ok);font-size:11px;font-weight:600">Auto</span>':'<span style="color:var(--t3);font-size:11px">Manuel</span>'}</td>
+        <td><span class="bd ${c.statut==='actif'?'ba':'bw'}"><span class="bd-d"></span>${c.statut}</span></td>
+      </tr>`).join('')+'</tbody></table></div>':
+      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun abonnement actif.</div>';
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table contrats non disponible (migration requise).</div>';console.error(e);}
+}
+
+async function loadSecLivraisons(){
+  const el=document.getElementById('sec-livraisons-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom,email,telephone)&statut=in.(prête_validation,livrée,prête_à_livrer,médias_complets,montage_en_cours,à_monter,prêt_validation)&order=date_prestation.desc&limit=100');
+    _secLivrData=Array.isArray(data)?data:[];
+    const kpret=_secLivrData.filter(p=>['prête_validation','prête_à_livrer','prêt_validation'].includes(p.statut)).length;
+    const kenv=_secLivrData.filter(p=>p.statut==='livrée').length;
+    const katt=_secLivrData.filter(p=>['médias_complets','montage_en_cours','à_monter'].includes(p.statut)).length;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('liv-kpi-pret',kpret);set('liv-kpi-env',kenv);set('liv-kpi-att',katt);
+    renderSecLivraisons();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+}
+function filterSecLivraisons(f){
+  _secLivrFilter=f;
+  ['all','prete','envoyee','attente'].forEach(id=>{const b=document.getElementById('liv-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  renderSecLivraisons();
+}
+function renderSecLivraisons(){
+  const el=document.getElementById('sec-livraisons-real');if(!el)return;
+  let list=_secLivrData;
+  if(_secLivrFilter==='prete')list=list.filter(p=>['prête_validation','prête_à_livrer','prêt_validation'].includes(p.statut));
+  else if(_secLivrFilter==='envoyee')list=list.filter(p=>p.statut==='livrée');
+  else if(_secLivrFilter==='attente')list=list.filter(p=>['médias_complets','montage_en_cours','à_monter'].includes(p.statut));
+  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune livraison dans cette catégorie.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    list.slice(0,30).map(p=>`<tr>
+      <td class="tm">${p.reference||'—'}</td>
+      <td class="tp">${p.clients?.nom||'—'}</td>
+      <td>${p.type_prestation||'—'}</td>
+      <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+      <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+      <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Détail</button></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+
+function exportSecRapport(type){
+  const ts=new Date().toISOString().slice(0,10);
+  if(type==='prestations'){
+    const rows=[['Référence','Client','Type','Date','Statut','Montant TTC']];
+    rows.push(...(window._secDemData||[]).map(p=>[p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.statut||'',p.montant_ttc||'']));
+    dlCSV(`prestations-${ts}.csv`,rows);
+  } else if(type==='clients'){
+    const rows=[['Nom','Ville','Sport','Statut']];
+    toast('Export clients en cours…');
+    sbFetch('clients?select=nom,ville,sport,statut&limit=1000').then(d=>{
+      if(Array.isArray(d))rows.push(...d.map(c=>[c.nom||'',c.ville||'',c.sport||'',c.statut||'']));
+      dlCSV(`clients-${ts}.csv`,rows);
+    });
+  } else toast('Export '+type+' — fonctionnalité à venir');
+}
+function dlCSV(fname,rows){
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);a.download=fname;a.click();
+  toast('Fichier téléchargé : '+fname);
 }
 
 // ── Jour J photographe ───────────────────────────────────────────────────────
@@ -6995,6 +7784,16 @@ async function updateNavBadges(role){
     if(role==='compta'){
       const retard=await sbFetch('prestations?select=id&statut_financier=eq.en_retard');
       setBadge('rapprochement',(retard||[]).length,'nb-r');
+      const impayes=await sbFetch('prestations?select=id&statut_financier=in.(facturée,partiellement_payée)&statut=not.in.(annulée,refusée)');
+      setBadge('impayes',(impayes||[]).length,'nb-r');
+      const acomptes=await sbFetch('prestations?select=id&statut=eq.en_attente_acompte');
+      setBadge('acomptes',(acomptes||[]).length,'nb-o');
+    }
+    if(role==='sec'){
+      const demandes=await sbFetch('prestations?select=id&statut=in.(demande_reçue,à_qualifier)');
+      setBadge('demandes',(demandes||[]).length,'nb-r');
+      const livrPret=await sbFetch('prestations?select=id&statut=in.(prête_validation,prête_à_livrer,prêt_validation)');
+      setBadge('livraisons',(livrPret||[]).length,'nb-o');
     }
     if(role==='photo'){
       const inv=await sbFetch('prestations_equipe?select=id&collaborateur_id=eq.'+uid+'&statut=eq.invitation_envoyée');
@@ -7111,11 +7910,11 @@ function closeMobNav(){
 // ── BOTTOM NAV MOBILE ─────────────────────────────────────────────────────────
 const BNAV_ITEMS={
   admin:['dash','pre','planning','fin'],
-  sec:  ['dash','pre','taches','crm'],
+  sec:  ['dash','demandes','pre','relances','taches'],
   prod: ['dash','jourj','pre','planning','col'],
   photo:['dash','jourj','pre','medias'],
   com:  ['dash','crm','pipeline','devis'],
-  compta:['dash','factures','paiements','rap'],
+  compta:['dash','factures','impayes','rapprochement','rem'],
   cm:   ['dash','cal','contenus','publications'],
 };
 
@@ -7190,6 +7989,7 @@ const VIEW_CTA={
   'sec.crm':{t:'+ Nouveau client',fn:'modalNouveauClient'},
   'sec.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'sec.taches':{t:'+ Nouvelle tâche',fn:'modalNouvelleTache'},
+  'sec.demandes':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'prod.incidents':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
   'prod.kits':{t:'+ Ajouter matériel',fn:'modalNouveauKit'},
   'prod.dash':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
