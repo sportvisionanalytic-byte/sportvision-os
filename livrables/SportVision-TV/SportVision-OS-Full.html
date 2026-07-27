@@ -256,43 +256,86 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   .l-left{display:none}
   .l-right{width:100%;padding:40px 32px}
 }
+/* ── BOTTOM NAV (mobile only, hidden by default) ─── */
+#mob-bnav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--s2);border-top:1px solid var(--b1);padding:0 4px;padding-bottom:env(safe-area-inset-bottom,0);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.mbn-i{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex:1;height:54px;background:none;border:none;cursor:pointer;font-family:var(--ff);padding:6px 2px;border-radius:10px;transition:background .12s;color:var(--t3)}
+.mbn-i.on{color:var(--acc)}
+.mbn-i:active{background:rgba(255,255,255,.05)}
+.mbn-ic{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mbn-lb{font-size:9.5px;font-weight:600;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56px;text-align:center}
+/* ── LOGIN MOBILE LOGO ─── */
+.l-mob-logo{display:none;align-items:center;gap:12px;margin-bottom:28px}
+.l-mob-hero{display:none;font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:24px;text-align:center}
+
+@media(max-width:900px){
+  .l-left{display:none}
+  .l-right{width:100%;padding:40px 32px}
+  .l-mob-logo{display:flex}
+  .l-mob-hero{display:block}
+  .l-form-wrap{gap:20px}
+}
 @media(max-width:768px){
   :root{--sw:0px}
-  .sb{display:none;position:fixed;left:0;top:0;height:100dvh;z-index:300;width:232px;box-shadow:6px 0 32px rgba(0,0,0,.5)}
+  .sb{display:none;position:fixed;left:0;top:0;height:100dvh;z-index:300;width:260px;box-shadow:6px 0 40px rgba(0,0,0,.6)}
   .sb.mob-open{display:flex}
-  #mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:299}
+  #mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:299}
   #mob-overlay.on{display:block}
   .mob-ham{display:flex!important}
+  /* Bottom nav visible */
+  #mob-bnav{display:flex}
+  /* Main content: push up from bottom nav */
+  .ct{padding:14px;padding-bottom:calc(66px + env(safe-area-inset-bottom,0));overflow-x:hidden}
+  /* Topbar compact */
+  .tb{padding:0 14px}
+  .tb-bc-root,.tb-bc-sep{display:none}
+  #cta-btn{display:none}
+  /* Topbar logout hidden on mobile (accessible via menu) */
+  .tb-act .ib:last-child{display:none}
+  /* Login */
+  .l-right{padding:32px 20px;align-items:flex-start;padding-top:40px}
+  .l-form-wrap{max-width:100%}
+  /* Prevent iOS input zoom */
+  .l-inp,.fi{font-size:16px!important}
   /* Grids */
   .kpi-g{grid-template-columns:1fr 1fr!important}
-  .g32{grid-template-columns:1fr}
-  /* Layout */
-  .ct{padding:12px;overflow-x:hidden}
-  .l-right{padding:32px 20px}
+  .g2{grid-template-columns:1fr!important}
+  .g3{grid-template-columns:1fr 1fr!important}
+  .g32{grid-template-columns:1fr!important}
+  .g4{grid-template-columns:1fr 1fr!important}
   /* Tables */
   .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
   /* Section headers */
   .sh{flex-wrap:wrap;gap:10px}
   .cd-h{flex-wrap:wrap;gap:8px}
-  /* Topbar */
-  .tb-bc-root,.tb-bc-sep{display:none}
-  #cta-btn{font-size:11px;padding:7px 10px}
   /* Modal plein écran */
-  #sv-modal>div{width:calc(100vw - 24px)!important;max-width:100%!important;padding:18px!important;max-height:90dvh!important}
-  /* Collapse 2-col form grids inside modals */
+  #sv-modal>div{width:calc(100vw - 16px)!important;max-width:100%!important;padding:16px!important;max-height:92dvh!important;border-radius:16px!important}
+  /* Collapse 2-col grids universellement dans modals */
   #sv-modal [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}
   #sv-modal [style*="grid-template-columns:2fr 1fr"]{grid-template-columns:1fr!important}
   #sv-modal [style*="grid-template-columns:repeat(2"]{grid-template-columns:1fr!important}
-  /* Settings form grids */
+  #sv-modal [style*="grid-template-columns:repeat(3"]{grid-template-columns:1fr!important}
+  /* Settings */
   #set-profile [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}
   .cd [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}
-  /* Inline repeat(3+) grids */
+  /* Inline grids répétés */
   [style*="grid-template-columns:repeat(3,1fr)"]{grid-template-columns:1fr 1fr!important}
   [style*="grid-template-columns:repeat(4,1fr)"]{grid-template-columns:1fr 1fr!important}
   [style*="grid-template-columns:repeat(5,1fr)"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(6,1fr)"]{grid-template-columns:1fr 1fr!important}
+  /* KPI font size plus compact */
+  .kpi-v{font-size:22px!important}
+  /* Jour J grid */
+  .jj-grid{grid-template-columns:1fr 1fr!important}
+  .jj-hero{flex-direction:column;align-items:flex-start;gap:12px}
+  /* Kanban horizontal scroll */
+  .kb{-webkit-overflow-scrolling:touch}
 }
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* iOS safe area pour le contenu de l'app shell */
+@supports(padding-bottom:env(safe-area-inset-bottom)){
+  .sb{padding-bottom:env(safe-area-inset-bottom)}
+}
 </style>
 
 <!-- LOGIN -->
@@ -316,6 +359,11 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   </div>
   <div class="l-right">
     <div class="l-form-wrap">
+      <div class="l-mob-logo">
+        <div class="l-ico"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 1.5l2 4h4l-3.2 2.8 1.2 4L8 10.2 4 12.3l1.2-4L2 5.5h4L8 1.5z" fill="white"/></svg></div>
+        <div><div class="l-name">SportVision OS</div><div class="l-tag">Elkana Group · v2.1</div></div>
+      </div>
+      <div class="l-mob-hero">Gérez vos prestations, votre équipe et vos finances depuis une seule interface.</div>
       <div><div class="l-form-title">Connexion</div><div class="l-form-sub">Accédez à votre espace SportVision OS</div></div>
       <div class="l-form">
         <div><label>Adresse email</label><input id="l-email" class="l-inp" type="email" placeholder="nom@sportvision.fr" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('l-pass').focus()"></div>
@@ -344,6 +392,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 </div>
 
 <div id="mob-overlay" onclick="closeMobNav()"></div>
+<nav id="mob-bnav"></nav>
 
 <!-- APP -->
 <div id="s-app" class="scr">
@@ -4956,6 +5005,7 @@ function goApp(role){
       <span class="nb" id="nb-${item.id}" style="display:none"></span>
     </button>`).join('')+`</div>`;
   show('app');
+  renderBottomNav();
   updateCta();
   renderContent();
   const _wp=localStorage.getItem('sv_prenom');
@@ -5145,11 +5195,54 @@ function closeMobNav(){
   document.getElementById('mob-overlay').classList.remove('on');
 }
 
+// ── BOTTOM NAV MOBILE ─────────────────────────────────────────────────────────
+const BNAV_ITEMS={
+  admin:['dash','pre','planning','fin'],
+  sec:  ['dash','pre','taches','crm'],
+  prod: ['dash','pre','kanban','equipes'],
+  photo:['dash','pre','planning','jourj'],
+  com:  ['dash','crm','pipeline','devis'],
+  compta:['dash','factures','paiements','rap'],
+  cm:   ['dash','cal','contenus','publications'],
+};
+
+function renderBottomNav(){
+  const nav=document.getElementById('mob-bnav');
+  if(!nav)return;
+  const role=S.role;
+  const items=BNAV_ITEMS[role]||[];
+  const navItems=NAV[role]||[];
+  const getItem=id=>navItems.find(n=>n.id===id)||{id,lb:id,ic:'dash'};
+  const plusIc=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>`;
+  nav.innerHTML=items.slice(0,4).map(id=>{
+    const item=getItem(id);
+    const isOn=S.view===id;
+    return`<button class="mbn-i${isOn?' on':''}" data-bnav="${id}" onclick="switchView('${id}')">
+      <span class="mbn-ic" style="color:${isOn?'var(--acc)':'var(--t3)'}">${IC[item.ic]||IC.dash}</span>
+      <span class="mbn-lb">${item.lb.split(' ')[0]}</span>
+    </button>`;
+  }).join('')+
+  `<button class="mbn-i" onclick="toggleMobNav()" style="color:var(--t3)">
+    <span class="mbn-ic">${plusIc}</span>
+    <span class="mbn-lb">Menu</span>
+  </button>`;
+}
+
+function updateBottomNav(viewId){
+  document.querySelectorAll('.mbn-i[data-bnav]').forEach(b=>{
+    const on=b.dataset.bnav===viewId;
+    b.classList.toggle('on',on);
+    const ic=b.querySelector('.mbn-ic');
+    if(ic)ic.style.color=on?'var(--acc)':'var(--t3)';
+  });
+}
+
 function switchView(id){
   if(_msgInterval){clearInterval(_msgInterval);_msgInterval=null;}
   S.view=id;
   closeMobNav();
   document.querySelectorAll('.ni[data-id]').forEach(n=>n.classList.toggle('on',n.dataset.id===id));
+  updateBottomNav(id);
   const cfg=NAV[S.role].find(n=>n.id===id);
   document.getElementById('pt').textContent=cfg?cfg.lb:'';
   updateCta();
