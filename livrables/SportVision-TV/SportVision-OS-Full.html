@@ -2490,7 +2490,7 @@ async function loadProdDash(){
   const RL={'admin':'Admin','sec':'Secrétaire','prod':'Production','photo':'Photo/Vidéo','cm':'CM','compta':'Comptable','com':'Commercial'};
   try{
     const [preRaw,kitsRaw,incRaw,profRaw]=await Promise.all([
-      sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(collaborateur_id,statut,collaborateur:profiles(prenom,nom,role,avatar_url))'),
+      sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,role))'),
       sbFetch('kits?select=id,statut,nom,type_kit'),
       sbFetch('incidents?select=id,type,description,gravite,statut,prestation_id,created_at,prestations(reference,clients(nom))&statut=not.in.(résolu,clôturé)&order=created_at.desc&limit=8'),
       sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=nom.asc'),
@@ -2508,7 +2508,8 @@ async function loadProdDash(){
     const kitsRes=kits.filter(k=>['réservé','pré_réservé','sorti','en_prestation'].includes(k.statut)).length;
     const todayAssigned=new Set(
       pre.filter(p=>p.date_prestation===today&&!DONE_ST.includes(p.statut))
-         .flatMap(p=>(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').map(e=>e.collaborateur_id))
+         .flatMap(p=>(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').map(e=>e.collaborateur?.id))
+         .filter(Boolean)
     );
     const collabs=prof.filter(p=>['photo','prod','cm'].includes(p.role));
     const collabDispo=collabs.filter(p=>!todayAssigned.has(p.id)).length;
@@ -2667,8 +2668,8 @@ async function loadProdPlanning(){
     if(sub)sub.textContent=tab==='equipe'?'Vue équipe — semaine courante':'Vue kits — semaine courante';
   }
   try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(collaborateur_id,statut,collaborateur:profiles(prenom,nom,role,avatar_url))&date_prestation=gte.'+start+'&date_prestation=lte.'+end+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc');
-    if(!Array.isArray(raw))throw new Error('Erreur API');
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom,role))&date_prestation=gte.'+start+'&date_prestation=lte.'+end+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc');
+    if(!Array.isArray(raw))throw new Error(JSON.stringify(raw));
     if(!raw.length){
       el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📅</div><div style="font-size:13px">Aucune prestation sur cette période.</div></div>';
       return;
