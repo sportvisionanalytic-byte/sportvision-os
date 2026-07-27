@@ -6936,8 +6936,10 @@ function filterComptaAcomptes(f){
 function renderComptaAcomptes(){
   const el=document.getElementById('compta-acomptes-real');if(!el)return;
   let list=_comptaAcData;
+  const now=new Date().toISOString().slice(0,10);
   if(_comptaAcFilter==='en_attente')list=list.filter(p=>p.statut==='en_attente_acompte'||p.statut_financier==='acompte_demandé');
   else if(_comptaAcFilter==='encaisse')list=list.filter(p=>p.statut_financier==='partiellement_payée');
+  else if(_comptaAcFilter==='retard')list=list.filter(p=>p.date_prestation&&p.date_prestation<now&&p.statut_financier!=='payée'&&!['annulée','refusée'].includes(p.statut));
   if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun acompte dans cette catégorie.</div>';return;}
   el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant TTC</th><th>Acompte</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
     list.slice(0,30).map(p=>`<tr>
