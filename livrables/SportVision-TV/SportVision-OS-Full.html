@@ -292,11 +292,17 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   #msg-contacts-panel{width:100%!important;min-width:0!important;border-right:none!important}
   #msg-conv-panel{display:none!important}
   :root{--sw:0px}
-  .sb{display:none;position:fixed;left:0;top:0;height:100dvh;z-index:300;width:260px;box-shadow:6px 0 40px rgba(0,0,0,.6)}
-  .sb.mob-open{display:flex}
-  #mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:299}
+  .sb{display:flex;position:fixed;left:0;top:0;height:100dvh;z-index:300;width:280px;box-shadow:6px 0 40px rgba(0,0,0,.6);transform:translateX(-100%);transition:transform .22s cubic-bezier(.4,0,.2,1);visibility:hidden}
+  .sb.mob-open{transform:translateX(0);visibility:visible}
+  #mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:299;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
   #mob-overlay.on{display:block}
   .mob-ham{display:flex!important}
+  /* Sidebar ouverte : montrer labels + aligner à gauche */
+  .sb.mob-open .ni-lb{display:inline!important}
+  .sb.mob-open .sb-txt,.sb.mob-open .u-meta{display:flex!important;flex-direction:column}
+  .sb.mob-open .ni{justify-content:flex-start!important;padding:10px 14px!important}
+  .sb.mob-open .u-row{justify-content:flex-start!important}
+  .mob-sb-close{display:flex!important}
   /* Bottom nav visible */
   #mob-bnav{display:flex}
   /* Main content: push up from bottom nav */
@@ -575,9 +581,12 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 <div id="s-app" class="scr">
   <aside class="sb" id="app-sb">
     <div class="sb-top">
-      <div class="sb-logo">
+      <div class="sb-logo" style="position:relative">
         <div class="sb-ico"><svg width="26" height="26" viewBox="0 0 40 40" fill="none"><defs><linearGradient id="sg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8B2BFF"/><stop offset="50%" stop-color="#2A56FF"/><stop offset="100%" stop-color="#00C4FF"/></linearGradient></defs><path d="M30,8 C30,8 10,8 10,16 C10,20.5 20,21 20,21 C20,21 30,21.5 30,26 C30,35 10,35 10,35" stroke="url(#sg1)" stroke-width="5" stroke-linecap="round" fill="none"/><polygon points="17,17.5 17,24.5 25,21" fill="white" opacity=".95"/></svg></div>
         <div class="sb-txt"><span class="sb-n">SportVision OS</span><span class="sb-s">Elkana Group</span></div>
+        <button class="mob-sb-close" onclick="closeMobNav()" style="display:none;margin-left:auto;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--b1);cursor:pointer;color:var(--t2);align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1l12 12M13 1L1 13"/></svg>
+        </button>
       </div>
     </div>
     <div id="sb-nav"></div>
