@@ -672,6 +672,9 @@ const NAV={
     {id:'users',lb:'Utilisateurs & accès',ic:'col'},
     {id:'grades',lb:'Grades & XP',ic:'target'},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
+    {type:'sep',lb:'Équipe & Espace'},
+    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
+    {id:'integrations',lb:'Intégrations',ic:'set'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -694,6 +697,7 @@ const NAV={
     {id:'docs',lb:'Documents',ic:'doc'},
     {id:'rapports',lb:'Rapports admin',ic:'fin'},
     {type:'sep',lb:'Communication'},
+    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -721,6 +725,7 @@ const NAV={
     {id:'rapports',lb:'Rapports',ic:'doc'},
     {id:'form',lb:'Centre de formation',ic:'form'},
     {type:'sep',lb:'Communication'},
+    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -737,6 +742,7 @@ const NAV={
     {id:'revenus',lb:'Mes revenus',ic:'fin'},
     {id:'form',lb:'Centre de formation',ic:'form'},
     {type:'sep',lb:'Communication'},
+    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -746,6 +752,7 @@ const NAV={
     {id:'contenus',lb:'Contenus',ic:'pre'},
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
+    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -768,6 +775,9 @@ const NAV={
     {type:'sep',lb:'Clôture & Export'},
     {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
     {id:'export',lb:'Exports comptables',ic:'export'},
+    {type:'sep',lb:'Communication'},
+    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   com:[
@@ -775,6 +785,8 @@ const NAV={
     {id:'pipeline',lb:'Pipeline',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'objectifs',lb:'Objectifs',ic:'target'},
+    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
+    {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
 };
@@ -1928,6 +1940,18 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Grades & XP</div><div style="font-size:12px;color:var(--t3)">Système de progression de l'équipe</div></div>
     <div id="grades-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  // ── ANNUAIRE (tous rôles) ───────────────
+  'admin.annuaire':()=>_annuaireView(),
+  'sec.annuaire':()=>_annuaireView(),
+  'prod.annuaire':()=>_annuaireView(),
+  'photo.annuaire':()=>_annuaireView(),
+  'cm.annuaire':()=>_annuaireView(),
+  'compta.annuaire':()=>_annuaireView(),
+  'com.annuaire':()=>_annuaireView(),
+
+  // ── INTÉGRATIONS (admin) ────────────────
+  'admin.integrations':()=>_integrationsView(),
+
   // ── PARAMÈTRES (tous rôles non-admin) ───
   'sec.set':()=>_settingsView(),
   'prod.set':()=>_settingsView(),
@@ -2610,6 +2634,8 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='contrats') await loadContrats();
   if(role==='admin'&&view==='users') await loadUsers();
   if(role==='admin'&&view==='grades') await loadGrades();
+  if(view==='annuaire') await loadAnnuaire(role);
+  if(role==='admin'&&view==='integrations') await loadIntegrations();
   // Mobile dashboard override (remplace le contenu desktop sur petit écran)
   if(isMobile()&&view==='dash') await loadMobileDash(role);
 }
@@ -2721,6 +2747,9 @@ async function avancerStatutPrestation(id,statut){
     toast('→ '+(SL[next]||next),'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
+    // Moteur d'événements
+    const evMap={'confirmée':'prestation.confirmed','production_terminée':'prestation.completed','payée':'payment.confirmed'};
+    if(evMap[next])dispatchSVEvent(evMap[next],{prestation_id:id});
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
@@ -2831,6 +2860,7 @@ async function validerPrestation(id,nouveauStatut){
     toast(lbl,type);
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
+    if(nouveauStatut==='confirmée')dispatchSVEvent('prestation.confirmed',{prestation_id:id});
   }catch(e){toast('Erreur lors de la validation.','er');}
 }
 
@@ -2976,9 +3006,17 @@ function modalModifierClient(idx){
         <textarea id="fce-notes" class="l-inp" style="height:72px;resize:vertical;padding-top:8px">${c.notes||''}</textarea>
       </div>
       <div id="fce-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
-      <div id="fce-hist" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
-        <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Prestations</div>
-        <div style="font-size:12px;color:var(--t3)">Chargement…</div>
+      <div id="fce-tabs" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button id="fce-tab-pres" onclick="fceShowTab('pres')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Prestations</button>
+          <button id="fce-tab-tl" onclick="fceShowTab('tl')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Historique complet</button>
+        </div>
+        <div id="fce-panel-pres">
+          <div id="fce-hist"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+        </div>
+        <div id="fce-panel-tl" style="display:none">
+          <div id="client-timeline"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+        </div>
       </div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:12px">
         <button onclick="supprimerClient('${c.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>
@@ -2990,6 +3028,7 @@ function modalModifierClient(idx){
       </div>
     </div>`);
   chargerPresByClient(c.id);
+  window._fceClientId=c.id;
 }
 
 async function modifierClient(id){
@@ -3079,6 +3118,24 @@ async function chargerPresByClient(clientId){
       <span class="bd ${cls}"><span class="bd-d"></span>${stLb}</span>
     </div>`;
   }).join('')+`</div>`;
+}
+
+function fceShowTab(tab){
+  const pBtn=document.getElementById('fce-tab-pres');
+  const tBtn=document.getElementById('fce-tab-tl');
+  const pPanel=document.getElementById('fce-panel-pres');
+  const tPanel=document.getElementById('fce-panel-tl');
+  if(!pBtn)return;
+  const onStyle='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
+  const offStyle='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
+  if(tab==='pres'){
+    pBtn.style.cssText=onStyle;tBtn.style.cssText=offStyle;
+    if(pPanel)pPanel.style.display='';if(tPanel)tPanel.style.display='none';
+  } else {
+    tBtn.style.cssText=onStyle;pBtn.style.cssText=offStyle;
+    if(tPanel)tPanel.style.display='';if(pPanel)pPanel.style.display='none';
+    if(window._fceClientId)loadClientTimeline(window._fceClientId);
+  }
 }
 
 async function modalModifierClientById(id){
@@ -5489,6 +5546,7 @@ async function sauvegarderDevis(id){
     // Sync prestation: si le devis est accepté et lié à une prestation encore en attente, l'avancer
     if(newStatut==='accepté'){
       const dv=(_devisCache||[]).find(d=>d.id===id);
+      dispatchSVEvent('devis.accepted',{prestation_id:dv?.prestation_id,label:dv?.clients?.nom||''});
       if(dv?.prestation_id){
         try{
           const pre=await sbFetch('prestations?select=id,statut&id=eq.'+dv.prestation_id);
@@ -9190,6 +9248,481 @@ async function loadGrades(){
       ${c.nextGrade?`<div style="font-size:10px;color:var(--t3);margin-top:3px">${(c.nextGrade.xp-c.xp).toLocaleString('fr')} XP pour ${c.nextGrade.nom}</div>`:''}
     </div>`).join('')}</div>`}
   </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// SPORTVISION OS — ÉCOSYSTÈME CONNECTÉ
+// Annuaire · Intégrations · Moteur d'événements · Timeline client
+// ════════════════════════════════════════════════════════════════
+
+// ── Annuaire View Template ────────────────────────────────────────────────
+function _annuaireView(){
+  return`<div class="sh">
+    <div class="sh-t">Équipe SportVision</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="search" id="ann-q" placeholder="Rechercher un membre…" class="fi" style="width:200px;height:34px" oninput="filterAnnuaire()">
+      <select id="ann-role" class="fi" style="width:160px;height:34px" onchange="filterAnnuaire()">
+        <option value="">Tous les rôles</option>
+        <option value="admin">Administrateur</option>
+        <option value="prod">Responsable Production</option>
+        <option value="sec">Secrétaire</option>
+        <option value="compta">Comptable</option>
+        <option value="com">Commercial</option>
+        <option value="cm">Community Manager</option>
+        <option value="photo">Photographe/Vidéaste</option>
+      </select>
+      <select id="ann-dispo" class="fi" style="width:140px;height:34px" onchange="filterAnnuaire()">
+        <option value="">Toutes disponibilités</option>
+        <option value="libre">Disponible aujourd'hui</option>
+        <option value="occupe">En prestation</option>
+      </select>
+    </div>
+  </div>
+  <div id="ann-grid" class="g3" style="gap:12px;margin-top:4px">
+    <div style="padding:32px;text-align:center;color:var(--t3)">Chargement…</div>
+  </div>`;
+}
+
+// ── Integration Hub View Template ─────────────────────────────────────────
+function _integrationsView(){
+  return`<div class="sh">
+    <div class="sh-t">Intégrations & Connecteurs</div>
+    <div style="font-size:12px;color:var(--t3)">Architecture connecteur — SportVision OS v2</div>
+  </div>
+  <div id="int-grid" class="g3" style="gap:12px;margin-top:4px">
+    <div style="padding:32px;text-align:center;color:var(--t3)">Chargement…</div>
+  </div>`;
+}
+
+// ── RÔLES LABELS ─────────────────────────────────────────────────────────
+const ROLE_LABELS={admin:'Administrateur',prod:'Resp. Production',sec:'Secrétaire',compta:'Comptable',com:'Commercial',cm:'Community Manager',photo:'Photographe/Vidéaste'};
+// ROLE_COLORS already declared above (line ~6220)
+
+// ── Annuaire Load ─────────────────────────────────────────────────────────
+let _annuaireAll=[];
+let _annuaireTodayBusy=new Set();
+async function loadAnnuaire(role){
+  const grid=document.getElementById('ann-grid');
+  if(!grid)return;
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const [profiles,busyEquipe]=await Promise.all([
+      sbFetch('profiles?select=id,prenom,nom,role,email,avatar_url,ville,vehicule,permis,bio&order=nom.asc&limit=200'),
+      sbFetch('prestations_equipe?select=collaborateur_id,prestations(date_prestation)&prestations.date_prestation=eq.'+today+'&statut=in.(acceptée,invitation_envoyée)&limit=200').catch(()=>[]),
+    ]);
+    _annuaireTodayBusy=new Set((busyEquipe||[]).map(e=>e.collaborateur_id));
+    _annuaireAll=Array.isArray(profiles)?profiles:[];
+    renderAnnuaireGrid(role);
+  }catch(e){
+    grid.innerHTML='<div style="padding:32px;color:var(--er);text-align:center">Erreur de chargement.</div>';
+  }
+}
+function filterAnnuaire(){
+  const q=(document.getElementById('ann-q')?.value||'').toLowerCase();
+  const roleF=document.getElementById('ann-role')?.value||'';
+  const dispoF=document.getElementById('ann-dispo')?.value||'';
+  const grid=document.getElementById('ann-grid');
+  if(!grid)return;
+  let list=_annuaireAll.filter(p=>{
+    const name=((p.prenom||'')+' '+(p.nom||'')).toLowerCase();
+    if(q&&!name.includes(q)&&!(p.role||'').includes(q))return false;
+    if(roleF&&p.role!==roleF)return false;
+    if(dispoF==='libre'&&_annuaireTodayBusy.has(p.id))return false;
+    if(dispoF==='occupe'&&!_annuaireTodayBusy.has(p.id))return false;
+    return true;
+  });
+  if(!list.length){grid.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun membre trouvé.</div>';return;}
+  grid.innerHTML=list.map(p=>annuaireCard(p)).join('');
+}
+function renderAnnuaireGrid(role){
+  filterAnnuaire();
+}
+function annuaireCard(p){
+  const initials=((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase();
+  const color=ROLE_COLORS[p.role]||'var(--acc)';
+  const busy=_annuaireTodayBusy.has(p.id);
+  const dispoColor=busy?'var(--wa)':'var(--ok)';
+  const dispoLabel=busy?'En prestation':'Disponible';
+  const canSeePhone=['admin','prod','sec'].includes(S.role);
+  const canSeeDetails=['admin','compta'].includes(S.role);
+  return`<div class="cd" style="padding:0;overflow:hidden">
+    <div style="height:5px;background:${color}"></div>
+    <div style="padding:18px 18px 14px">
+      <div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:14px">
+        <div style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,${color},${color}88);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;position:relative">
+          ${p.avatar_url?`<img src="${p.avatar_url}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;position:absolute;inset:0">`:`<span>${initials||'?'}</span>`}
+          <div style="position:absolute;bottom:0;right:0;width:14px;height:14px;border-radius:50%;background:${dispoColor};border:2px solid var(--s1)"></div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.prenom||''} ${p.nom||''}</div>
+          <div style="font-size:11px;font-weight:600;color:${color};margin-top:2px;text-transform:uppercase;letter-spacing:.07em">${ROLE_LABELS[p.role]||p.role||'—'}</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:5px">
+            <div style="width:6px;height:6px;border-radius:50%;background:${dispoColor}"></div>
+            <div style="font-size:11px;color:var(--t3)">${dispoLabel}</div>
+          </div>
+        </div>
+      </div>
+      ${p.ville?`<div style="font-size:12px;color:var(--t3);margin-bottom:6px;display:flex;align-items:center;gap:5px"><span>📍</span>${p.ville}</div>`:''}
+      ${p.bio?`<div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:8px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p.bio}</div>`:''}
+      <div style="display:flex;gap:5px;margin-top:10px;flex-wrap:wrap">
+        ${p.vehicule?`<span style="font-size:10px;padding:3px 8px;border-radius:var(--rp);background:rgba(255,255,255,.06);color:var(--t3)">🚗 Véhicule</span>`:''}
+        ${p.permis?`<span style="font-size:10px;padding:3px 8px;border-radius:var(--rp);background:rgba(255,255,255,.06);color:var(--t3)">📋 Permis</span>`:''}
+      </div>
+    </div>
+    <div style="padding:10px 14px;border-top:1px solid var(--b1);display:flex;gap:8px">
+      <button onclick="ouvrirConvAvec('${p.id}','${(p.prenom||'').replace(/'/g,"\\'")} ${(p.nom||'').replace(/'/g,"\\'")}')" style="flex:1;padding:8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">💬 Message</button>
+      ${canSeePhone&&p.email?`<a href="mailto:${p.email}" style="flex:1;padding:8px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center">✉ Email</a>`:''}
+    </div>
+  </div>`;
+}
+
+// ── Ouvrir conversation depuis annuaire ───────────────────────────────────
+async function ouvrirConvAvec(userId, userName){
+  switchView('msg');
+  // Attendre que la vue msg soit rendue, puis sélectionner/créer la conv
+  setTimeout(async()=>{
+    try{
+      const myId=localStorage.getItem('sv_uid');
+      if(!myId||myId===userId)return;
+      // Chercher une conversation existante entre les deux
+      const convs=await sbFetch('notifications?select=conversation_id,expediteur_id,destinataire_id&type=eq.message&or=(and(expediteur_id.eq.'+myId+',destinataire_id.eq.'+userId+'),and(expediteur_id.eq.'+userId+',destinataire_id.eq.'+myId+'))&limit=1').catch(()=>[]);
+      if(convs&&convs[0]?.conversation_id){
+        selectConversation(convs[0].conversation_id,userName);
+      } else {
+        toast('Nouvelle conversation avec '+userName,'ok');
+      }
+    }catch(e){}
+  },400);
+}
+
+// ── Integration Hub Load ──────────────────────────────────────────────────
+const SV_INTEGRATIONS=[
+  {
+    id:'google-calendar',
+    name:'Google Calendar',
+    icon:'📅',
+    category:'Planning',
+    description:'Synchronisation bidirectionnelle du planning SportVision OS avec Google Calendar.',
+    enables:['Sync prestations → Calendar','Invitations automatiques','Rappels natifs','Vue agenda sur mobile'],
+    status:'not_configured',
+    docsUrl:'https://developers.google.com/calendar',
+    fields:[{label:'Client ID',key:'GCAL_CLIENT_ID'},{label:'Client Secret',key:'GCAL_CLIENT_SECRET'}],
+  },
+  {
+    id:'stripe',
+    name:'Stripe',
+    icon:'💳',
+    category:'Paiements',
+    description:'Traitement des paiements en ligne : acomptes, factures, abonnements récurrents.',
+    enables:['Liens de paiement','Acomptes en ligne','Factures payables','Webhooks automatiques','Abonnements clubs'],
+    status:'not_configured',
+    docsUrl:'https://stripe.com/docs/api',
+    fields:[{label:'Clé publique',key:'STRIPE_PK'},{label:'Clé secrète',key:'STRIPE_SK'},{label:'Webhook secret',key:'STRIPE_WH'}],
+  },
+  {
+    id:'qonto',
+    name:'Qonto',
+    icon:'🏦',
+    category:'Banque',
+    description:'Import des transactions bancaires et rapprochement automatique avec les factures.',
+    enables:['Import transactions','Rapprochement automatique','Détection paiements sans facture','Export comptable'],
+    status:'not_configured',
+    docsUrl:'https://api-doc.qonto.com',
+    fields:[{label:'Organisation slug',key:'QONTO_ORG'},{label:'Clé API',key:'QONTO_KEY'}],
+  },
+  {
+    id:'resend',
+    name:'Resend (Emails)',
+    icon:'✉️',
+    category:'Emails',
+    description:'Envoi professionnel des emails : devis, factures, confirmations, relances, livraisons.',
+    enables:['Envoi devis PDF','Envoi factures','Confirmations client','Relances automatiques','Tracking ouverture'],
+    status:'not_configured',
+    docsUrl:'https://resend.com/docs',
+    fields:[{label:'Clé API Resend',key:'RESEND_API_KEY'},{label:'Email expéditeur',key:'RESEND_FROM'}],
+  },
+  {
+    id:'yousign',
+    name:'Signature électronique',
+    icon:'✍️',
+    category:'Documents',
+    description:'Signature électronique des contrats, devis et documents officiels.',
+    enables:['Signature contrats','Signature devis','Suivi signature','Archivage légal','Historique signataires'],
+    status:'not_configured',
+    docsUrl:'https://developers.yousign.com',
+    fields:[{label:'Clé API',key:'SIGN_API_KEY'},{label:'Fournisseur',key:'SIGN_PROVIDER'}],
+  },
+  {
+    id:'google-maps',
+    name:'Google Maps',
+    icon:'🗺️',
+    category:'Terrain',
+    description:'Itinéraires terrain, calcul kilométrique automatique, adresses prestations.',
+    enables:['Itinéraires en un clic','Calcul km automatique','Carte planning','Distance prestation'],
+    status:'partial',
+    partialNote:'Liens Google Maps actifs. Intégration API pour calcul kilométrique automatique non configurée.',
+    docsUrl:'https://developers.google.com/maps',
+    fields:[{label:'Google Maps API Key',key:'GMAPS_KEY'}],
+  },
+  {
+    id:'supabase-storage',
+    name:'Stockage Cloud (Supabase)',
+    icon:'☁️',
+    category:'Documents',
+    description:'Stockage sécurisé des documents, médias, livrables et fichiers clients.',
+    enables:['Upload documents','Stockage médias','Partage sécurisé','Versionning fichiers','Accès rôle'],
+    status:'partial',
+    partialNote:'Supabase est connecté. Les buckets de stockage doivent être configurés dans le dashboard Supabase.',
+    docsUrl:'https://supabase.com/docs/guides/storage',
+    fields:[],
+  },
+  {
+    id:'telephony',
+    name:'Appels natifs (tel:)',
+    icon:'📞',
+    category:'Téléphonie',
+    description:'Appels directs depuis l\'application. Intégration VoIP avancée prévue.',
+    enables:['Appel client en un clic','Appel collaborateur','Ouverture app téléphone'],
+    status:'active',
+    activeNote:'Les liens tel: sont actifs sur mobile. Intégration VoIP (Twilio, Aircall) pour numéro professionnel non configurée.',
+    docsUrl:'',
+    fields:[{label:'Fournisseur VoIP',key:'VOIP_PROVIDER'},{label:'Clé API',key:'VOIP_KEY'}],
+  },
+  {
+    id:'accounting',
+    name:'Logiciel comptable',
+    icon:'📒',
+    category:'Finance',
+    description:'Export vers Sage, QuickBooks, Pennylane ou votre logiciel comptable.',
+    enables:['Export FEC','Format Sage','Synchronisation journaux','Envoi automatique','Rapprochement comptable'],
+    status:'not_configured',
+    docsUrl:'',
+    fields:[{label:'Logiciel cible',key:'ACCT_SOFTWARE'},{label:'Clé API',key:'ACCT_KEY'}],
+  },
+  {
+    id:'social-media',
+    name:'Réseaux sociaux',
+    icon:'📱',
+    category:'Communication',
+    description:'Publication automatique des contenus et suivi des statistiques depuis SportVision OS.',
+    enables:['Publication Instagram','Publication Facebook','Suivi statistiques','Calendrier éditorial sync'],
+    status:'not_configured',
+    docsUrl:'',
+    fields:[{label:'Instagram Token',key:'IG_TOKEN'},{label:'Facebook App ID',key:'FB_APP_ID'}],
+  },
+];
+const INT_STATUS_CONFIG={
+  active:{label:'Connecté',color:'var(--ok)',bg:'rgba(46,204,138,.1)',border:'rgba(46,204,138,.25)',dot:true},
+  partial:{label:'Partiellement actif',color:'var(--wa)',bg:'rgba(245,165,36,.08)',border:'rgba(245,165,36,.25)',dot:true},
+  not_configured:{label:'Non configuré',color:'var(--t3)',bg:'rgba(255,255,255,.03)',border:'var(--b1)',dot:false},
+};
+async function loadIntegrations(){
+  const grid=document.getElementById('int-grid');
+  if(!grid)return;
+  // Regrouper par catégorie
+  const cats=['Planning','Paiements','Banque','Emails','Documents','Terrain','Téléphonie','Finance','Communication'];
+  let html='';
+  for(const cat of cats){
+    const items=SV_INTEGRATIONS.filter(i=>i.category===cat);
+    if(!items.length)continue;
+    html+=`<div style="grid-column:1/-1;margin-top:8px;margin-bottom:-4px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3)">${cat}</div>
+    </div>`;
+    html+=items.map(intCard).join('');
+  }
+  grid.innerHTML=html;
+}
+function intCard(intg){
+  const cfg=INT_STATUS_CONFIG[intg.status]||INT_STATUS_CONFIG.not_configured;
+  return`<div class="cd" style="padding:0;overflow:hidden;border-color:${cfg.border};background:${cfg.bg}">
+    <div style="padding:18px 18px 14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${intg.icon}</div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--t1)">${intg.name}</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-top:2px">${intg.category}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--rp);background:rgba(255,255,255,.05);border:1px solid var(--b1);flex-shrink:0">
+          ${cfg.dot?`<div style="width:6px;height:6px;border-radius:50%;background:${cfg.color};animation:bdot 1.4s ease-in-out infinite"></div>`:''}
+          <div style="font-size:10.5px;font-weight:600;color:${cfg.color}">${cfg.label}</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.55;margin-bottom:12px">${intg.description}</div>
+      ${intg.partialNote||intg.activeNote?`<div style="font-size:11.5px;color:var(--wa);background:rgba(245,165,36,.06);border:1px solid rgba(245,165,36,.2);border-radius:8px;padding:8px 12px;margin-bottom:12px">${intg.partialNote||intg.activeNote}</div>`:''}
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px">Fonctionnalités activées</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
+        ${intg.enables.map(e=>`<span style="font-size:11px;padding:3px 8px;border-radius:var(--rp);background:rgba(255,255,255,.05);color:var(--t2)">✓ ${e}</span>`).join('')}
+      </div>
+    </div>
+    <div style="padding:10px 14px;border-top:1px solid var(--b1);display:flex;gap:8px;align-items:center">
+      ${intg.status==='not_configured'?`
+        <button onclick="openIntegrationSetup('${intg.id}')" style="flex:1;padding:9px 14px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">⚙ Configurer</button>
+        ${intg.docsUrl?`<a href="${intg.docsUrl}" target="_blank" style="padding:9px 14px;background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t3);font-size:12px;font-weight:500;cursor:pointer;text-decoration:none">Docs →</a>`:''}
+      `:`<button style="flex:1;padding:9px 14px;background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t3);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">⚙ Paramètres</button>`}
+    </div>
+  </div>`;
+}
+function openIntegrationSetup(id){
+  const intg=SV_INTEGRATIONS.find(i=>i.id===id);
+  if(!intg)return;
+  const fieldsHtml=intg.fields.map(f=>`
+    <div class="fg">
+      <label class="fl">${f.label}</label>
+      <input type="password" class="fi" id="int-f-${f.key}" placeholder="••••••••••••" autocomplete="off">
+    </div>`).join('');
+  openModal(`<div class="mh">
+    <div class="mt">${intg.icon} Configurer ${intg.name}</div>
+    <button class="mc" onclick="closeModal()">✕</button>
+  </div>
+  <div class="mb">
+    <div style="font-size:13px;color:var(--t2);margin-bottom:16px">${intg.description}</div>
+    ${intg.docsUrl?`<div style="margin-bottom:14px"><a href="${intg.docsUrl}" target="_blank" style="color:var(--acc);font-size:12px">📖 Documentation officielle →</a></div>`:''}
+    ${fieldsHtml}
+    <div style="background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.2);border-radius:8px;padding:12px;margin-top:12px">
+      <div style="font-size:12px;font-weight:600;color:var(--wa);margin-bottom:4px">⚠ Configuration requise côté serveur</div>
+      <div style="font-size:11.5px;color:var(--t3)">Les clés API doivent être stockées dans les variables d'environnement Supabase (Edge Functions) et non dans l'interface. Contactez l'administrateur technique.</div>
+    </div>
+  </div>
+  <div class="mf">
+    <button class="btn bg2" onclick="closeModal()">Fermer</button>
+    <button class="btn bp" onclick="closeModal();toast('Configuration enregistrée — déploiement Edge Functions requis','ok')">Enregistrer</button>
+  </div>`);
+}
+
+// ── Moteur d'événements SportVision ──────────────────────────────────────
+// dispatchSVEvent(type, data) — crée automatiquement les notifications
+// et déclenche les workflows selon le type d'événement.
+const SV_EVENT_WORKFLOWS={
+  'devis.accepted':[
+    {role:'sec',titre:'Devis accepté — à transformer',msg:'Un devis a été accepté. Créez la prestation et préparez l\'acompte.',priority:'high'},
+    {role:'compta',titre:'Acompte à demander',msg:'Devis accepté. L\'acompte peut être envoyé.',priority:'medium'},
+  ],
+  'prestation.confirmed':[
+    {role:'prod',titre:'Nouvelle prestation à valider',msg:'Une prestation a été confirmée et nécessite votre validation production.',priority:'high'},
+  ],
+  'prestation.completed':[
+    {role:'compta',titre:'Prestation terminée — rémunérations à contrôler',msg:'La prestation est terminée. Vérifiez les rémunérations et frais.',priority:'medium'},
+    {role:'sec',titre:'Livraison à préparer',msg:'La prestation est terminée. Le livrable est prêt à envoyer au client.',priority:'medium'},
+  ],
+  'media.ready':[
+    {role:'sec',titre:'Médias prêts — livraison à planifier',msg:'Les médias sont disponibles. Planifiez la livraison client.',priority:'medium'},
+  ],
+  'payment.confirmed':[
+    {role:'sec',titre:'Paiement reçu — dossier mis à jour',msg:'Le paiement a été confirmé. Le dossier est financièrement conforme.',priority:'low'},
+    {role:'prod',titre:'Paiement confirmé — prestation débloquée',msg:'L\'acompte est reçu. La prestation peut être planifiée.',priority:'medium'},
+  ],
+  'collaborator.assigned':[
+    {role:'photo',titre:'Invitation à une prestation',msg:'Vous avez été invité à participer à une prestation.',priority:'high'},
+  ],
+  'document.signed':[
+    {role:'sec',titre:'Contrat signé — archivage requis',msg:'Le contrat a été signé électroniquement. Archivez la version officielle.',priority:'medium'},
+    {role:'prod',titre:'Contrat signé — prestation confirmée',msg:'Le contrat client est signé. La prestation est officiellement confirmée.',priority:'medium'},
+  ],
+};
+
+async function dispatchSVEvent(type, data){
+  const workflows=SV_EVENT_WORKFLOWS[type];
+  if(!workflows||!workflows.length)return;
+  const uid=localStorage.getItem('sv_uid');
+  const notifs=[];
+  for(const w of workflows){
+    // Trouver les destinataires du rôle
+    let destinataires=[];
+    try{
+      const profiles=await sbFetch('profiles?select=id&role=eq.'+w.role+'&limit=10');
+      destinataires=(profiles||[]).map(p=>p.id);
+    }catch(e){continue;}
+    for(const dest of destinataires){
+      if(dest===uid)continue; // ne pas se notifier soi-même
+      notifs.push({
+        type:'systeme',
+        titre:w.titre+(data?.label?' — '+data.label:''),
+        message:w.msg,
+        destinataire_id:dest,
+        lue:false,
+        priorite:w.priority||'medium',
+        lien_prestation_id:data?.prestation_id||null,
+        lien_client_id:data?.client_id||null,
+        created_at:new Date().toISOString(),
+      });
+    }
+  }
+  // Insertion en batch
+  if(notifs.length){
+    try{
+      await sbFetch('notifications',{method:'POST',body:notifs});
+    }catch(e){console.warn('dispatchSVEvent error:',e);}
+  }
+}
+
+// ── Timeline client ───────────────────────────────────────────────────────
+async function loadClientTimeline(clientId){
+  const el=document.getElementById('client-timeline');
+  if(!el)return;
+  el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Chargement de l\'historique…</div>';
+  try{
+    const [pres,devis,notifs]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,montant_ttc,created_at&client_id=eq.'+clientId+'&order=date_prestation.desc&limit=50').catch(()=>[]),
+      sbFetch('devis?select=id,numero_devis,statut,montant_ttc,created_at&client_id=eq.'+clientId+'&order=created_at.desc&limit=20').catch(()=>[]),
+      sbFetch('notifications?select=id,titre,message,created_at,type&lien_client_id=eq.'+clientId+'&order=created_at.desc&limit=30').catch(()=>[]),
+    ]);
+    // Fusionner et trier chronologiquement
+    const events=[];
+    (pres||[]).forEach(p=>events.push({date:p.date_prestation||p.created_at,type:'prestation',data:p}));
+    (devis||[]).forEach(d=>events.push({date:d.created_at,type:'devis',data:d}));
+    (notifs||[]).forEach(n=>events.push({date:n.created_at,type:'notif',data:n}));
+    events.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    if(!events.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun historique disponible.</div>';return;}
+    el.innerHTML='<div style="display:flex;flex-direction:column;gap:0">'+events.map((ev,i)=>{
+      const date=ev.date?new Date(ev.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+      let ic='📌',label='',sub='',cls='ba';
+      if(ev.type==='prestation'){
+        ic='📅';label=ev.data.type_prestation||ev.data.reference||'Prestation';
+        sub=ev.data.statut?SL[ev.data.statut]||ev.data.statut:'';
+        cls=SC[ev.data.statut]||'bw';
+      } else if(ev.type==='devis'){
+        ic='📋';label='Devis '+(ev.data.numero_devis||ev.data.id?.slice(0,8));
+        sub=ev.data.statut||'';
+        const montant=ev.data.montant_ttc?ev.data.montant_ttc.toLocaleString('fr-FR')+' €':'';
+        if(montant)sub=(sub?sub+' · ':'')+montant;
+      } else if(ev.type==='notif'){
+        ic='🔔';label=ev.data.titre||'Notification';sub=ev.data.message||'';
+      }
+      return`<div style="display:flex;gap:14px;${i<events.length-1?'border-bottom:1px solid rgba(255,255,255,.04)':''}">
+        <div style="display:flex;flex-direction:column;align-items:center;padding-top:16px;width:20px;flex-shrink:0">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--acc);flex-shrink:0;border:2px solid var(--bg)"></div>
+          ${i<events.length-1?`<div style="flex:1;width:1px;background:var(--b1);margin-top:3px"></div>`:''}
+        </div>
+        <div style="flex:1;padding:14px 0">
+          <div style="font-size:10px;color:var(--t3);margin-bottom:4px;font-weight:500">${date}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:14px">${ic}</span>
+            <span style="font-size:14px;font-weight:600;color:var(--t1)">${label}</span>
+            ${sub?`<span class="bd ${cls}" style="font-size:10px"><span class="bd-d"></span>${sub}</span>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
+}
+
+// Ajouter un onglet Timeline dans la modale client
+function addClientTimelineTab(clientId){
+  const tabs=document.getElementById('client-modal-tabs');
+  if(!tabs||tabs.querySelector('[data-tab="timeline"]'))return;
+  const btn=document.createElement('button');
+  btn.className='tab-btn';btn.setAttribute('data-tab','timeline');
+  btn.textContent='Historique';
+  btn.onclick=()=>{
+    tabs.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    document.querySelectorAll('[data-tab-panel]').forEach(p=>p.style.display='none');
+    const panel=document.getElementById('client-timeline-panel');
+    if(panel){panel.style.display='block';loadClientTimeline(clientId);}
+  };
+  tabs.appendChild(btn);
 }
 
 // ════════════════════════════════════════════════════════════════
