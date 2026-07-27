@@ -258,16 +258,38 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 }
 @media(max-width:768px){
   :root{--sw:0px}
-  .sb{display:none;position:fixed;left:0;top:0;height:100dvh;z-index:300;width:220px;box-shadow:6px 0 32px rgba(0,0,0,.5)}
+  .sb{display:none;position:fixed;left:0;top:0;height:100dvh;z-index:300;width:232px;box-shadow:6px 0 32px rgba(0,0,0,.5)}
   .sb.mob-open{display:flex}
   #mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:299}
   #mob-overlay.on{display:block}
   .mob-ham{display:flex!important}
-  .kpi-g{grid-template-columns:1fr 1fr}
-  .ct{padding:14px}
-  .l-right{padding:32px 20px}
+  /* Grids */
+  .kpi-g{grid-template-columns:1fr 1fr!important}
   .g32{grid-template-columns:1fr}
-  .tw{overflow-x:auto}
+  /* Layout */
+  .ct{padding:12px;overflow-x:hidden}
+  .l-right{padding:32px 20px}
+  /* Tables */
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Section headers */
+  .sh{flex-wrap:wrap;gap:10px}
+  .cd-h{flex-wrap:wrap;gap:8px}
+  /* Topbar */
+  .tb-bc-root,.tb-bc-sep{display:none}
+  #cta-btn{font-size:11px;padding:7px 10px}
+  /* Modal plein écran */
+  #sv-modal>div{width:calc(100vw - 24px)!important;max-width:100%!important;padding:18px!important;max-height:90dvh!important}
+  /* Collapse 2-col form grids inside modals */
+  #sv-modal [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}
+  #sv-modal [style*="grid-template-columns:2fr 1fr"]{grid-template-columns:1fr!important}
+  #sv-modal [style*="grid-template-columns:repeat(2"]{grid-template-columns:1fr!important}
+  /* Settings form grids */
+  #set-profile [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}
+  .cd [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}
+  /* Inline repeat(3+) grids */
+  [style*="grid-template-columns:repeat(3,1fr)"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(4,1fr)"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(5,1fr)"]{grid-template-columns:1fr 1fr!important}
 }
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
@@ -315,7 +337,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 
 <!-- MODAL -->
 <div id="sv-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center">
-  <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:28px;width:540px;max-height:85vh;overflow-y:auto;position:relative">
+  <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:28px;width:min(540px,calc(100vw - 24px));max-height:90dvh;overflow-y:auto;position:relative">
     <button onclick="closeModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1">✕</button>
     <div id="sv-modal-ct"></div>
   </div>
@@ -3755,7 +3777,7 @@ async function loadCmCal(){
     set('cal-kpi-pre',preWeek);set('cal-kpi-prog',prog);set('cal-kpi-pub',(pubMois||[]).length);
     const JOURS=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
     const today=new Date().toISOString().slice(0,10);
-    el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+    el.innerHTML=`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div style="display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px;min-width:600px">
       ${days.map((d,i)=>{
         const ds=d.toISOString().slice(0,10);
         const isToday=ds===today;
@@ -3768,7 +3790,7 @@ async function loadCmCal(){
           <button onclick="modalNouveauContenu(null,'${ds}')" style="width:100%;margin-top:4px;padding:3px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:5px;color:var(--t3);font-size:10px;cursor:pointer">+</button>
         </div>`;
       }).join('')}
-    </div>`;
+    </div></div>`;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
 }
 
@@ -4917,7 +4939,7 @@ async function loadPhotoPlan(){
     const days=Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d;});
     const SC_C={confirmée:'var(--acc)',planifiée:'var(--acc)',prête:'var(--ok)',production_démarrée:'var(--er)',livrée:'var(--t3)',annulée:'var(--t3)'};
     const SL_C={confirmée:'Confirmée',planifiée:'Planifiée',prête:'Prête','production_démarrée':'En prod.','équipe_en_route':'En route','arrivée_sur_place':'Sur place',livrée:'Livrée',annulée:'Annulée'};
-    el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+    el.innerHTML=`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div style="display:grid;grid-template-columns:repeat(7,minmax(130px,1fr));gap:8px;min-width:700px">
       ${days.map((d,i)=>{
         const ds=d.toISOString().slice(0,10);
         const isToday=ds===today;
@@ -4941,7 +4963,7 @@ async function loadPhotoPlan(){
           }).join('')}
         </div>`;
       }).join('')}
-    </div>
+    </div></div>
     ${list.length===0?`<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;margin-top:8px">Aucune mission assignée cette semaine.</div>`:''}`;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
 }
