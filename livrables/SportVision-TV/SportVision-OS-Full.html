@@ -877,7 +877,13 @@ const VIEWS={
         <div class="sh-t" id="planning-title">Planning</div>
         <button class="btn bg2 bs" onclick="planningNext()">›</button>
       </div>
-      <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;border:1px solid var(--b1);border-radius:var(--rp);overflow:hidden">
+          <button id="plan-view-cal" onclick="setPlanningView('cal')" style="padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);background:var(--acc);border:none;color:#fff">Calendrier</button>
+          <button id="plan-view-list" onclick="setPlanningView('list')" style="padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);background:transparent;border:none;color:var(--t3)">Liste</button>
+        </div>
+        <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
+      </div>
     </div>
     <div id="planning-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1090,7 +1096,13 @@ const VIEWS={
         <div class="sh-t" id="planning-title">Planning</div>
         <button class="btn bg2 bs" onclick="planningNext()">›</button>
       </div>
-      <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;border:1px solid var(--b1);border-radius:var(--rp);overflow:hidden">
+          <button id="plan-view-cal" onclick="setPlanningView('cal')" style="padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);background:var(--acc);border:none;color:#fff">Calendrier</button>
+          <button id="plan-view-list" onclick="setPlanningView('list')" style="padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);background:transparent;border:none;color:var(--t3)">Liste</button>
+        </div>
+        <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
+      </div>
     </div>
     <div id="planning-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -8134,6 +8146,16 @@ async function modalDetailById(id){
 
 // ── Planning secrétaire ──────────────────────────────────────────────────────
 let _planningDate=new Date();
+let _planningViewMode='cal'; // 'cal' | 'list'
+function setPlanningView(mode){
+  _planningViewMode=mode;
+  const cBtn=document.getElementById('plan-view-cal');
+  const lBtn=document.getElementById('plan-view-list');
+  if(cBtn){cBtn.style.background=mode==='cal'?'var(--acc)':'transparent';cBtn.style.color=mode==='cal'?'#fff':'var(--t3)';}
+  if(lBtn){lBtn.style.background=mode==='list'?'var(--acc)':'transparent';lBtn.style.color=mode==='list'?'#fff':'var(--t3)';}
+  loadPlanning();
+}
+
 async function loadPlanning(){
   const el=document.getElementById('planning-real');
   const title=document.getElementById('planning-title');
@@ -8142,6 +8164,7 @@ async function loadPlanning(){
   const mo=_planningDate.getMonth();
   const mois=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   const jours=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const joursLong=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   if(title)title.textContent=`Planning — ${mois[mo]} ${yr}`;
   const debut=new Date(yr,mo,1).toISOString().slice(0,10);
   const fin=new Date(yr,mo+1,0).toISOString().slice(0,10);
@@ -8151,43 +8174,99 @@ async function loadPlanning(){
     (data||[]).forEach(p=>{if(p.date_prestation){const k=p.date_prestation.slice(0,10);if(!byDay[k])byDay[k]=[];byDay[k].push(p);}});
     const today=new Date().toISOString().slice(0,10);
     const nbDays=new Date(yr,mo+1,0).getDate();
-    const firstDow=new Date(yr,mo,1).getDay();
-    let rows='<div class="cd"><div class="cd-b">';
-    for(let d=1;d<=nbDays;d++){
-      const date=new Date(yr,mo,d);
-      const key=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const dow=date.getDay();
-      const isToday=key===today;
-      const isWE=dow===0||dow===6;
-      const pres=byDay[key]||[];
-      rows+=`<div style="display:flex;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);align-items:flex-start${pres.length===0&&!isToday?';opacity:.5':''}">
-        <div style="width:48px;flex-shrink:0;text-align:center">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">${jours[dow]}</div>
-          <div style="font-size:20px;font-weight:700;color:${isToday?'var(--acc)':isWE?'var(--t2)':'var(--t1)'};line-height:1.2;${isToday?'text-shadow:0 0 16px rgba(54,107,255,.5)':''}">${d}</div>
-        </div>
-        <div style="flex:1;display:flex;flex-direction:column;gap:5px;padding-top:4px">
-          ${pres.map(p=>{
-            const sc=SC[p.statut]||'bw';
-            const clr=sc==='ba'?'rgba(46,204,138,.1)':sc==='bl'?'rgba(240,68,94,.1)':'rgba(54,107,255,.08)';
-            const brd=sc==='ba'?'var(--ok)':sc==='bl'?'var(--er)':'var(--acc)';
-            const h=p.heure_debut?p.heure_debut.slice(0,5):'';
-            const hf=p.heure_fin?'→'+p.heure_fin.slice(0,5):'';
-            const gcT=(p.clients?.nom||p.type_prestation||'Prestation').replace(/'/g,"\\'");
-            return `<div style="background:${clr};border-left:3px solid ${brd};border-radius:0 6px 6px 0;padding:6px 10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px" onclick="modalDetailById('${p.id}')">
-              <div style="min-width:0">
-                <div style="font-size:12px;font-weight:600;color:var(--t1)">${p.reference||'—'} · ${p.clients?.nom||'—'}</div>
-                <div style="font-size:11px;color:var(--t2)">${p.type_prestation||''}${h?' · '+h+' '+hf:''}</div>
-              </div>
-              <div onclick="event.stopPropagation();addToGcal('${gcT}','${key}','${p.heure_debut||''}','${p.heure_fin||''}','','')" style="flex-shrink:0;font-size:10px;color:var(--t3);padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.06);cursor:pointer;white-space:nowrap" title="Ajouter à Google Agenda">📅</div>
-            </div>`;
-          }).join('')}
-          ${pres.length===0?'<div style="font-size:11px;color:var(--t3);padding:2px 0">—</div>':''}
-          <button onclick="modalNouvellePrestation(null,'${`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}')" style="margin-top:4px;padding:2px 8px;font-size:10px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:var(--rp);color:var(--t3);cursor:pointer;display:block;width:100%">+</button>
-        </div>
+    const firstDow=new Date(yr,mo,1).getDay(); // 0=dim
+
+    if(_planningViewMode==='cal'){
+      // ── Vue grille calendrier ──
+      const STATUS_COLOR={
+        'demande_reçue':'#6B7CFF','à_qualifier':'#8B7CFF','offre_en_préparation':'#0EA5FF',
+        'devis_envoyé':'#0EA5FF','en_attente_réponse':'#F5A524','devis_accepté':'#2ECC8A',
+        'confirmée':'#2ECC8A','planifiée':'#2ECC8A','équipe_affectée':'#2ECC8A','prête':'#2ECC8A',
+        'production_démarrée':'#8B2BFF','production_terminée':'#00C4FF',
+        'livrée':'#00C4FF','facturée':'#F5A524','payée':'#2ECC8A','clôturée':'#4E5870',
+      };
+      // Grille : on part du premier lundi (ou dim selon config)
+      const startPad=firstDow; // cases vides avant le 1
+      const totalCells=Math.ceil((nbDays+startPad)/7)*7;
+      let grid=`<style>
+        .plan-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--b1);border-radius:var(--rb);overflow:hidden}
+        .plan-cal-hd{background:var(--s1);padding:6px 0;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)}
+        .plan-cal-cell{background:var(--s1);min-height:90px;padding:6px;position:relative;cursor:pointer}
+        .plan-cal-cell:hover{background:var(--s2)}
+        .plan-cal-cell.today{background:rgba(14,165,255,.06);box-shadow:inset 0 0 0 2px rgba(14,165,255,.25)}
+        .plan-cal-cell.we{background:rgba(255,255,255,.015)}
+        .plan-cal-cell.empty{background:rgba(0,0,0,.3);cursor:default}
+        .plan-cal-dn{font-size:13px;font-weight:700;color:var(--t2);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+        .plan-cal-cell.today .plan-cal-dn{color:var(--acc)}
+        .plan-cal-ev{font-size:10px;padding:2px 5px;border-radius:3px;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+        .plan-cal-more{font-size:10px;color:var(--t3);margin-top:2px}
+      </style>
+      <div class="plan-cal">
+        ${joursLong.map(j=>`<div class="plan-cal-hd">${j}</div>`).join('')}
+        ${Array.from({length:totalCells},(_,i)=>{
+          const dayNum=i-startPad+1;
+          if(dayNum<1||dayNum>nbDays)return'<div class="plan-cal-cell empty"></div>';
+          const key=`${yr}-${String(mo+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+          const dow=(startPad+dayNum-1)%7;
+          const isWE=dow===0||dow===6;
+          const isToday=key===today;
+          const pres=byDay[key]||[];
+          const dayStr=key.replace(/'/g,"\\'");
+          const evs=pres.slice(0,3).map(p=>{
+            const clr=STATUS_COLOR[p.statut]||'#6B7CFF';
+            const lbl=(p.clients?.nom||p.type_prestation||'Prestation').slice(0,20);
+            return`<div class="plan-cal-ev" style="background:${clr}cc" onclick="event.stopPropagation();modalDetailById('${p.id}')" title="${p.reference||''} · ${p.clients?.nom||''}">${lbl}</div>`;
+          }).join('');
+          const more=pres.length>3?`<div class="plan-cal-more">+${pres.length-3} autres</div>`:'';
+          return`<div class="plan-cal-cell${isToday?' today':''}${isWE?' we':''}" onclick="modalNouvellePrestation(null,'${dayStr}')">
+            <div class="plan-cal-dn">
+              <span>${dayNum}</span>
+              ${pres.length>0?`<span style="font-size:9px;color:var(--t3)">${pres.length}</span>`:''}
+            </div>
+            ${evs}${more}
+          </div>`;
+        }).join('')}
       </div>`;
+      el.innerHTML=grid;
+    } else {
+      // ── Vue liste ──
+      let rows='<div class="cd"><div class="cd-b">';
+      for(let d=1;d<=nbDays;d++){
+        const date=new Date(yr,mo,d);
+        const key=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const dow=date.getDay();
+        const isToday=key===today;
+        const isWE=dow===0||dow===6;
+        const pres=byDay[key]||[];
+        rows+=`<div style="display:flex;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);align-items:flex-start${pres.length===0&&!isToday?';opacity:.35':''}">
+          <div style="width:48px;flex-shrink:0;text-align:center">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">${jours[dow]}</div>
+            <div style="font-size:20px;font-weight:700;color:${isToday?'var(--acc)':isWE?'var(--t2)':'var(--t1)'};line-height:1.2;${isToday?'text-shadow:0 0 16px rgba(54,107,255,.5)':''}">${d}</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px;padding-top:4px">
+            ${pres.map(p=>{
+              const sc=SC[p.statut]||'bw';
+              const clr=sc==='ba'?'rgba(46,204,138,.1)':sc==='bl'?'rgba(240,68,94,.1)':'rgba(54,107,255,.08)';
+              const brd=sc==='ba'?'var(--ok)':sc==='bl'?'var(--er)':'var(--acc)';
+              const h=p.heure_debut?p.heure_debut.slice(0,5):'';
+              const hf=p.heure_fin?'→'+p.heure_fin.slice(0,5):'';
+              const gcT=(p.clients?.nom||p.type_prestation||'Prestation').replace(/'/g,"\\'");
+              return `<div style="background:${clr};border-left:3px solid ${brd};border-radius:0 6px 6px 0;padding:6px 10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px" onclick="modalDetailById('${p.id}')">
+                <div style="min-width:0">
+                  <div style="font-size:12px;font-weight:600;color:var(--t1)">${p.reference||'—'} · ${p.clients?.nom||'—'}</div>
+                  <div style="font-size:11px;color:var(--t2)">${p.type_prestation||''}${h?' · '+h+' '+hf:''}</div>
+                </div>
+                <div onclick="event.stopPropagation();addToGcal('${gcT}','${key}','${p.heure_debut||''}','${p.heure_fin||''}','','')" style="flex-shrink:0;font-size:10px;color:var(--t3);padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.06);cursor:pointer;white-space:nowrap" title="Ajouter à Google Agenda">📅</div>
+              </div>`;
+            }).join('')}
+            ${pres.length===0?'<div style="font-size:11px;color:var(--t3);padding:2px 0">—</div>':''}
+            <button onclick="modalNouvellePrestation(null,'${`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}')" style="margin-top:4px;padding:2px 8px;font-size:10px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:var(--rp);color:var(--t3);cursor:pointer;display:block;width:100%">+</button>
+          </div>
+        </div>`;
+      }
+      rows+='</div></div>';
+      el.innerHTML=rows;
     }
-    rows+='</div></div>';
-    el.innerHTML=rows;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 function planningPrev(){_planningDate=new Date(_planningDate.getFullYear(),_planningDate.getMonth()-1,1);loadPlanning();}
