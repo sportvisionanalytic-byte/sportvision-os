@@ -2529,11 +2529,14 @@ async function loadPhotoDash(){
   if(bj)bj.textContent='Bonjour '+prenom+' 👋';
   try{
     const [rawEquipe,rawMissions]=await Promise.all([
-      sbFetch('prestations_equipe?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=prestations.date_prestation.asc'),
+      sbFetch('prestations_equipe?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc'),
       sbFetch('prestations_equipe?select=est_responsable&collaborateur_id=eq.'+uid),
     ]);
-    _photoDashCache=rawEquipe||[];
+    if(!Array.isArray(rawEquipe))throw new Error(rawEquipe?.message||'Erreur API');
+    _photoDashCache=rawEquipe;
     const data=_photoDashCache;
+    // Tri JS par date prestation (le tri serveur sur embedded ne marche pas sur toutes les versions)
+    data.sort((a,b)=>(a.prestations?.date_prestation||'').localeCompare(b.prestations?.date_prestation||''));
     const invitations=data.filter(d=>d.statut==='invitation_envoyée'&&d.prestations);
     const actives=data.filter(d=>!['refusée','annulée'].includes(d.statut)&&d.prestations);
     const prestations=actives.map(d=>d.prestations).filter(Boolean);
@@ -2649,8 +2652,10 @@ async function loadPhotoMesPrestations(){
   const el=document.getElementById('photo-pre-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations_equipe?select=id,statut,remuneration,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom))&collaborateur_id=eq.'+uid+'&order=prestations.date_prestation.desc');
-    _photoPreData=(data||[]).filter(d=>d.prestations&&d.statut!=='annulée');
+    const data=await sbFetch('prestations_equipe?select=id,statut,remuneration,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc');
+    if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
+    _photoPreData=data.filter(d=>d.prestations&&d.statut!=='annulée');
+    _photoPreData.sort((a,b)=>(b.prestations?.date_prestation||'').localeCompare(a.prestations?.date_prestation||''));
     renderPhotoPre();
   }catch(e){
     if(el)el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';
@@ -3541,8 +3546,10 @@ async function loadPhotoRevenus(){
   const uid=localStorage.getItem('sv_uid');
   if(!uid)return;
   try{
-    const data=await sbFetch('prestations_equipe?select=id,remuneration,est_responsable,statut,prestations(id,reference,statut,type_prestation,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=prestations.date_prestation.desc&limit=200');
-    _revAllData=(data||[]).filter(r=>r.prestations&&r.statut!=='refusée'&&r.statut!=='annulée');
+    const data=await sbFetch('prestations_equipe?select=id,remuneration,est_responsable,statut,prestations(id,reference,statut,type_prestation,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=200');
+    if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
+    _revAllData=data.filter(r=>r.prestations&&r.statut!=='refusée'&&r.statut!=='annulée');
+    _revAllData.sort((a,b)=>(b.prestations?.date_prestation||'').localeCompare(a.prestations?.date_prestation||''));
     renderPhotoRevenus();
   }catch(e){const el=document.getElementById('rev-real');if(el)el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
@@ -5346,9 +5353,10 @@ async function loadPhotoPlan(){
   const de=sunday.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
   if(titleEl)titleEl.textContent='Semaine du '+ds+' au '+de;
   try{
-    const data=await sbFetch('prestations_equipe?select=id,statut,fonction,heure_rdv,remuneration,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.'+uid+'&order=prestations.date_prestation.asc');
-    const list=(data||[]).filter(r=>r.prestations&&r.prestations.date_prestation>=start&&r.prestations.date_prestation<=end);
-    const allWeek=(data||[]).filter(r=>r.prestations&&r.prestations.date_prestation>=start&&r.prestations.date_prestation<=end);
+    const raw=await sbFetch('prestations_equipe?select=id,statut,fonction,heure_rdv,remuneration,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
+    if(!Array.isArray(raw))throw new Error(raw?.message||'Erreur API');
+    const list=raw.filter(r=>r.prestations&&r.prestations.date_prestation>=start&&r.prestations.date_prestation<=end);
+    const allWeek=list;
     if(kpiEl)kpiEl.textContent=allWeek.length+' mission'+(allWeek.length>1?'s':'')+(allWeek.length?' cette semaine':'s cette semaine');
     const today=new Date().toISOString().slice(0,10);
     const JOURS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
