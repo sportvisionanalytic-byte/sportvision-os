@@ -3053,6 +3053,7 @@ function renderClientsTable(){
       const ct=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'—';
       const emailBtn=c.email?`<span onclick="copier('${c.email.replace(/'/g,"\\'")}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${c.email}</span>`:'—';
       const telBtn=c.telephone?`<span onclick="copier('${c.telephone.replace(/'/g,"\\'")}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${c.telephone}</span>`:'';
+      const crmNext={'prospect':{lb:'✓ Qualifier',st:'qualifié',clr:'var(--ok)'},'qualifié':{lb:'→ Devis',st:'devis_envoyé',clr:'var(--acc)'},'devis_envoyé':{lb:'→ Négo',st:'négociation',clr:'var(--wa)'},'négociation':{lb:'✓ Partenaire',st:'partenaire',clr:'var(--ok)'}}[c.statut];
       return`<tr>
         <td class="tp" style="cursor:pointer" onclick="modalModifierClient(${i})">${c.nom}</td>
         <td>${c.type_client||'—'}</td>
@@ -3061,9 +3062,21 @@ function renderClientsTable(){
         <td>${ct}</td>
         <td style="font-size:12px">${emailBtn}${telBtn}</td>
         <td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${scLb[c.statut]||c.statut}</span></td>
-        <td><button onclick="modalModifierClient(${i})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button></td>
+        <td><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+          ${crmNext?`<button onclick="crmAvancerStatut('${c.id}','${crmNext.st}')" style="padding:4px 8px;font-size:11px;background:transparent;border:1px solid ${crmNext.clr}55;border-radius:var(--rp);color:${crmNext.clr};cursor:pointer;white-space:nowrap;font-weight:600">${crmNext.lb}</button>`:''}
+          ${c.email?`<a href="mailto:${c.email.replace(/'/g,'%27')}" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;text-decoration:none;white-space:nowrap" title="${c.email}">✉</a>`:''}
+          <button onclick="modalNouvellePrestation('${c.id}')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">+ Presta</button>
+          <button onclick="modalModifierClient(${i})" style="padding:4px 8px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button>
+        </div></td>
       </tr>`;}).join('')+
   '</tbody></table></div>':'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat.</div>'}`;
+}
+
+async function crmAvancerStatut(id,statut){
+  await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
+  const lb={qualifié:'Client qualifié.',devis_envoyé:'Devis à envoyer.',négociation:'En négociation.',partenaire:'Nouveau partenaire !',client:'Client signé !'}[statut]||'Statut mis à jour.';
+  toast(lb,'ok');
+  loadClients();
 }
 
 function modalModifierClient(idx){
@@ -12795,8 +12808,10 @@ async function loadCollaborateurs(){
           <div class="av" style="width:50px;height:50px;font-size:17px;font-weight:700;background:${col}">${ini}</div>
           <div style="font-size:13px;font-weight:650;color:var(--t1)">${name}</div>
           <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2)">${rLabels[t.role]||t.role}</span>
-          ${t.telephone?`<div style="font-size:11px;color:var(--t3)">${t.telephone}</div>`:''}
-          <button onclick="modalModifierCollaborateur(${i})" style="padding:5px 14px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer;width:100%">Modifier</button>
+          <div style="display:flex;gap:6px;width:100%">
+            ${t.telephone?`<a href="tel:${t.telephone}" onclick="event.stopPropagation()" style="flex:1;padding:5px 8px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;text-align:center;text-decoration:none">📞</a>`:''}
+            <button onclick="modalModifierCollaborateur(${i})" style="flex:1;padding:5px 14px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button>
+          </div>
         </div>`;
       }).join('')+'</div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
