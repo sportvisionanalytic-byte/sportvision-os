@@ -380,7 +380,6 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   </div>
 </div>
 
-<script src="https://accounts.google.com/gsi/client" async defer onload="initGCal()"></script>
 <script>
 // ── ICONS ────────────────────────────────
 const IC={
@@ -1082,25 +1081,6 @@ const VIEWS={
 };
 
 function _settingsView(){
-  const gcalOn=localStorage.getItem('sv_gcal_on')==='1';
-  const hasClientId=GCAL_CLIENT_ID&&GCAL_CLIENT_ID!=='VOTRE_CLIENT_ID_ICI';
-  const gcalCard=hasClientId?`
-    <div class="cd" style="margin-top:13px">
-      <div class="cd-h">
-        <div class="cd-t">Google Agenda</div>
-        <span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:var(--rp);background:${gcalOn?'rgba(46,204,138,.15)':'rgba(255,255,255,.07)'};color:${gcalOn?'var(--ok)':'var(--t3)'}">${gcalOn?'Connecté':'Non connecté'}</span>
-      </div>
-      <div style="padding:18px;display:flex;align-items:center;justify-content:space-between;gap:16px">
-        <div style="font-size:13px;color:var(--t2)">${gcalOn?'Les prestations créées sont automatiquement ajoutées à ton Google Agenda.':'Connecte ton compte Google pour synchroniser automatiquement les prestations.'}</div>
-        ${gcalOn
-          ?`<button class="btn bg2" onclick="disconnectGCal()" style="white-space:nowrap;flex-shrink:0">Déconnecter</button>`
-          :`<button class="btn bp" onclick="connectGCal()" style="white-space:nowrap;flex-shrink:0">Connecter</button>`}
-      </div>
-    </div>`:`
-    <div class="cd" style="margin-top:13px">
-      <div class="cd-h"><div class="cd-t">Google Agenda</div><span style="font-size:10px;padding:3px 9px;border-radius:var(--rp);background:rgba(245,165,36,.12);color:var(--wa)">Config requise</span></div>
-      <div style="padding:16px 18px;font-size:12.5px;color:var(--t3);line-height:1.6">Remplace <code style="background:var(--s2);padding:1px 5px;border-radius:4px;font-size:11px">VOTRE_CLIENT_ID_ICI</code> dans le code par ton Client ID Google Cloud Console pour activer la synchronisation.</div>
-    </div>`;
   return`
     <div class="sh"><div class="sh-t">Paramètres</div></div>
     <div id="set-profile"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
@@ -1115,7 +1095,12 @@ function _settingsView(){
         <div style="display:flex;justify-content:flex-end"><button class="btn bp" onclick="sauvegarderMdp()">Changer le mot de passe</button></div>
       </div>
     </div>
-    ${gcalCard}
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Google Agenda</div></div>
+      <div style="padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+        <div style="font-size:13px;color:var(--t2)">Sur chaque prestation dans le planning, un bouton <b>📅 Google Agenda</b> permet de l'ajouter en un clic sans aucun compte.</div>
+      </div>
+    </div>
     <div class="cd" style="margin-top:13px;border:1px solid rgba(240,68,94,.2)">
       <div class="cd-h"><div class="cd-t" style="color:var(--er)">Zone de danger</div></div>
       <div style="padding:18px;display:flex;align-items:center;justify-content:space-between;gap:16px">
@@ -1157,65 +1142,19 @@ function fallbackView(role,view){
 const SB_URL='https://lulgezzpvrlbftbykzrc.supabase.co';
 const SB_KEY='sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
 
-// ── GOOGLE CALENDAR ───────────────────────
-// Remplace par ton Client ID Google Cloud Console
-const GCAL_CLIENT_ID='VOTRE_CLIENT_ID_ICI';
-let _gcalClient=null;
-
-function initGCal(){
-  if(!window.google||!GCAL_CLIENT_ID||GCAL_CLIENT_ID==='VOTRE_CLIENT_ID_ICI')return;
-  _gcalClient=google.accounts.oauth2.initTokenClient({
-    client_id:GCAL_CLIENT_ID,
-    scope:'https://www.googleapis.com/auth/calendar.events',
-    callback:(resp)=>{
-      if(resp.error){toast('Erreur Google Agenda','er');return;}
-      localStorage.setItem('sv_gcal_tok',resp.access_token);
-      localStorage.setItem('sv_gcal_on','1');
-      toast('Google Agenda connecté !','ok');
-      if(S.view==='set')loadSettings();
-    }
-  });
-}
-function connectGCal(){
-  if(!_gcalClient){toast('Client ID Google manquant dans le code.','wa');return;}
-  _gcalClient.requestAccessToken();
-}
-function disconnectGCal(){
-  const tok=localStorage.getItem('sv_gcal_tok');
-  if(tok&&window.google)google.accounts.oauth2.revoke(tok,()=>{});
-  localStorage.removeItem('sv_gcal_tok');
-  localStorage.removeItem('sv_gcal_on');
-  toast('Google Agenda déconnecté.','ok');
-  if(S.view==='set')loadSettings();
-}
-async function syncPrestationToGCal(p){
-  const tok=localStorage.getItem('sv_gcal_tok');
-  if(!tok||!p||!p.date_prestation)return;
-  const date=p.date_prestation;
-  const start=`${date}T${(p.heure_debut||'08:00:00').substring(0,5)}:00`;
-  const end=`${date}T${(p.heure_fin||'18:00:00').substring(0,5)}:00`;
-  const event={
-    summary:`SportVision — ${p.client_nom||p.type_prestation||'Prestation'}`,
-    location:p.lieu||'',
-    description:`Réf: ${p.reference||'—'}\nType: ${p.type_prestation||''}\n${p.description_besoin||''}`.trim(),
-    start:{dateTime:start,timeZone:'Europe/Paris'},
-    end:{dateTime:end,timeZone:'Europe/Paris'},
-    colorId:'9'
-  };
-  try{
-    const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
-      body:JSON.stringify(event)
-    });
-    if(r.status===401){
-      localStorage.removeItem('sv_gcal_tok');
-      localStorage.removeItem('sv_gcal_on');
-      toast('Session Google expirée — reconnecte dans Paramètres.','wa');
-      return;
-    }
-    if(r.ok)toast('Ajouté à Google Agenda ✓','ok');
-  }catch(e){}
+// ── GOOGLE CALENDAR (lien direct, sans API) ───
+function addToGcal(titre,date,hdeb,hfin,lieu,desc){
+  if(!date)return;
+  const fmtT=t=>(t||'').replace(/:/g,'').substring(0,6).padEnd(6,'0');
+  const d=date.replace(/-/g,'');
+  const start=`${d}T${fmtT(hdeb)||'080000'}`;
+  const end=`${d}T${fmtT(hfin)||fmtT(hdeb)||'180000'}`;
+  const url='https://calendar.google.com/calendar/render?action=TEMPLATE'
+    +'&text='+encodeURIComponent('SportVision — '+(titre||'Prestation'))
+    +'&dates='+start+'/'+end
+    +'&location='+encodeURIComponent(lieu||'')
+    +'&details='+encodeURIComponent(desc||'');
+  window.open(url,'_blank');
 }
 
 function svSave(token,refresh,uid,role){
@@ -1446,13 +1385,9 @@ async function creerPrestation(){
       description_besoin:document.getElementById('f-besoin').value||null,
       created_by:localStorage.getItem('sv_uid')
     };
-    const res=await sbFetch('prestations',{method:'POST',body});
+    await sbFetch('prestations',{method:'POST',body});
     closeModal();
     toast('Prestation créée.','ok');
-    if(localStorage.getItem('sv_gcal_on')==='1'){
-      const created=Array.isArray(res)?res[0]:res;
-      syncPrestationToGCal({...body,reference:created?.reference,client_nom:document.getElementById('f-client-search')?.value||''});
-    }
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de la création.';}
@@ -4478,9 +4413,13 @@ async function loadPlanning(){
             const brd=sc==='ba'?'var(--ok)':sc==='bl'?'var(--er)':'var(--acc)';
             const h=p.heure_debut?p.heure_debut.slice(0,5):'';
             const hf=p.heure_fin?'→'+p.heure_fin.slice(0,5):'';
-            return `<div style="background:${clr};border-left:3px solid ${brd};border-radius:0 6px 6px 0;padding:6px 10px;cursor:pointer" onclick="modalDetailById('${p.id}')">
-              <div style="font-size:12px;font-weight:600;color:var(--t1)">${p.reference||'—'} · ${p.clients?.nom||'—'}</div>
-              <div style="font-size:11px;color:var(--t2)">${p.type_prestation||''}${h?' · '+h+' '+hf:''}</div>
+            const gcT=(p.clients?.nom||p.type_prestation||'Prestation').replace(/'/g,"\\'");
+            return `<div style="background:${clr};border-left:3px solid ${brd};border-radius:0 6px 6px 0;padding:6px 10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px" onclick="modalDetailById('${p.id}')">
+              <div style="min-width:0">
+                <div style="font-size:12px;font-weight:600;color:var(--t1)">${p.reference||'—'} · ${p.clients?.nom||'—'}</div>
+                <div style="font-size:11px;color:var(--t2)">${p.type_prestation||''}${h?' · '+h+' '+hf:''}</div>
+              </div>
+              <div onclick="event.stopPropagation();addToGcal('${gcT}','${key}','${p.heure_debut||''}','${p.heure_fin||''}','','')" style="flex-shrink:0;font-size:10px;color:var(--t3);padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.06);cursor:pointer;white-space:nowrap" title="Ajouter à Google Agenda">📅</div>
             </div>`;
           }).join('')}
           ${pres.length===0?'<div style="font-size:11px;color:var(--t3);padding:2px 0">—</div>':''}
@@ -5016,11 +4955,14 @@ async function loadPhotoPlan(){
             const p=r.prestations;
             const rdv=(r.heure_rdv||p.heure_rdv||p.heure_debut||'').slice(0,5);
             const clr=SC_C[p.statut]||'var(--t3)';
+            const gcalTitre=(p.clients?.nom||p.type_prestation||'Prestation').replace(/'/g,"\\'");
+            const gcalLieu=(p.lieu||'').replace(/'/g,"\\'");
             return`<div onclick="modalDetailById('${p.id}')" style="background:${clr}15;border-left:2px solid ${clr};padding:6px 8px;border-radius:6px;margin-bottom:6px;cursor:pointer">
               ${rdv?`<div style="font-size:9px;font-weight:700;color:${clr};letter-spacing:.06em">${rdv}</div>`:''}
               <div style="font-size:11px;font-weight:600;color:var(--t1);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.clients?.nom||'—'}</div>
               <div style="font-size:10px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.fonction||p.type_prestation||'—'}</div>
               ${p.lieu?`<div style="font-size:10px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📍 ${p.lieu}</div>`:''}
+              <div onclick="event.stopPropagation();addToGcal('${gcalTitre}','${p.date_prestation}','${p.heure_debut||''}','${p.heure_fin||''}','${gcalLieu}','')" style="font-size:9px;color:var(--t3);margin-top:5px;display:inline-flex;align-items:center;gap:3px;padding:2px 5px;border-radius:4px;background:rgba(255,255,255,.06);cursor:pointer" title="Ajouter à Google Agenda">📅 Agenda</div>
             </div>`;
           }).join('')}
         </div>`;
