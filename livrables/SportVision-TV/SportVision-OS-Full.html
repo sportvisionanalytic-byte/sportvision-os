@@ -963,13 +963,16 @@ const VIEWS={
     </div>`,
 
   'photo.form':()=>`
-    <div class="sh"><div class="sh-t">Centre de formation</div></div>
-    <div class="cd" style="margin-bottom:13px" id="form-grade-card">
-      <div style="padding:16px 18px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
+    <div class="cd" style="margin-bottom:14px">
+      <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
     </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Modules de formation</div><div style="font-size:11px;color:var(--t3)">Cliquer la barre pour progresser</div></div>
-      <div id="form-real" style="display:flex;flex-direction:column;gap:0px"></div>
-    </div>`,
+    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:2px">
+      <button data-tab="dashboard" onclick="setFormTab('dashboard')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--acc);background:var(--acc);color:#fff;flex-shrink:0">Tableau de bord</button>
+      <button data-tab="catalogue" onclick="setFormTab('catalogue')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Catalogue</button>
+      <button data-tab="mes-formations" onclick="setFormTab('mes-formations')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Mes formations</button>
+      <button data-tab="certifications" onclick="setFormTab('certifications')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Certifications</button>
+    </div>
+    <div id="form-real"></div>`,
 
   // ── COMMUNITY MANAGER ───────────────────
   'cm.dash':()=>`
@@ -1748,7 +1751,7 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
   if(role==='cm'&&view==='publications') await loadCmPublications();
   if(role==='photo'&&view==='medias') await loadMedias();
-  if(role==='photo'&&view==='form') loadForm();
+  if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(['prod','admin','sec','photo','cm'].includes(role)&&view==='msg') await loadMsg();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
@@ -4121,77 +4124,315 @@ async function loadMedias(){
 }
 
 // ── Formation photo (localStorage) ───────────────────────────────────────────
-const FORM_MODULES=[
-  {id:'video',ti:'Captation vidéo sportive',desc:'Angles, tracking, cadrage sportif'},
-  {id:'photo',ti:'Photographie terrain & action',desc:'Mise au point, déclenchement, lumière'},
-  {id:'montage',ti:'Montage et post-production',desc:'DaVinci, Premiere, export livraison'},
-  {id:'drone',ti:'Drone — certification A1/A3',desc:'Réglementation, pilotage, cadrage aérien'},
-  {id:'motion',ti:'Identité visuelle & motion',desc:'Motion design, templates, charte graphique'},
+const FORMATIONS_CATALOG=[
+  {id:'sv-culture',titre:'Culture & standards SportVision',categorie:'Culture SportVision',icone:'🎯',niveau:'Débutant',type:'en_ligne',duree:'45 min',xp:50,formateur:'Équipe SportVision',obligatoire:true,description:'Comprendre les valeurs, la vision et les standards qualité de SportVision. Module d\'accueil indispensable avant toute mission.',modules:[{titre:'La mission de SportVision',lecons:['Histoire et vision','Nos clients : les clubs','Nos standards de qualité','L\'image de marque']},{titre:'Comportement professionnel',lecons:['Ponctualité et présentation','Communication avec le client','Gestion des imprévus']},{titre:'Processus SportVision OS',lecons:['Naviguer dans l\'OS','Accepter une mission','Soumettre ses médias']}],certification:null,statut:'publiée'},
+  {id:'sv-securite',titre:'Sécurité et gestion du matériel',categorie:'Matériel',icone:'🔧',niveau:'Débutant',type:'en_ligne',duree:'30 min',xp:50,formateur:'Équipe SportVision',obligatoire:true,description:'Règles essentielles pour manipuler, transporter et restituer le matériel SportVision en bon état.',modules:[{titre:'Checklist matériel',lecons:['Vérification avant départ','Nettoyage des objectifs','Gestion des batteries','Stockage des cartes mémoire']},{titre:'Transport et protection',lecons:['Utilisation des housses','Sécurité en voiture','Intempéries et humidité']},{titre:'Retour de matériel',lecons:['Transfert des fichiers','Signalement des dommages','Retour en stock']}],certification:null,statut:'publiée'},
+  {id:'sv-comportement',titre:'Comportement en prestation',categorie:'Relation client',icone:'🤝',niveau:'Débutant',type:'en_ligne',duree:'30 min',xp:50,formateur:'Équipe SportVision',obligatoire:true,description:'Les règles de savoir-être et de communication avec les clubs, les familles et les joueurs lors des prestations.',modules:[{titre:'L\'accueil sur place',lecons:['Se présenter au contact','S\'intégrer discrètement','Zones autorisées et interdites']},{titre:'Relation avec les familles',lecons:['Bienveillance et professionnalisme','Gérer les demandes','Droit à l\'image']},{titre:'Fin de prestation',lecons:['Remercier le contact','Ranger le matériel','Confirmer la livraison']}],certification:null,statut:'publiée'},
+  {id:'photo-bases',titre:'Bases de la photographie sportive',categorie:'Photographie',icone:'📷',niveau:'Débutant',type:'hybride',duree:'3h',xp:100,formateur:'Fouka',obligatoire:true,description:'Les fondamentaux de la photographie en contexte sportif : exposition, autofocus, déclenchement, cadrage.',modules:[{titre:'Triangle d\'exposition',lecons:['Vitesse d\'obturation au sport','Ouverture et profondeur de champ','ISO en conditions difficiles','Mode Sport auto']},{titre:'Autofocus sportif',lecons:['AF Tracking','Zones AF','Suivi de sujet','Burst mode']},{titre:'Cadrage et composition',lecons:['La règle des tiers','Anticiper l\'action','Arrière-plans propres','Hauteur de shooting']},{titre:'Validation terrain',lecons:['Session de pratique supervisée']}],certification:null,statut:'publiée'},
+  {id:'photo-sony-a7',titre:'Maîtrise Sony A7 IV',categorie:'Matériel',icone:'📸',niveau:'Intermédiaire',type:'en_ligne',duree:'1h30',xp:75,formateur:'Fouka',obligatoire:false,description:'Configuration complète du Sony A7 IV pour la photographie sportive : menus, AF, bracketing, profils utilisateur.',modules:[{titre:'Configuration initiale',lecons:['Profils utilisateur','Format RAW+JPEG','Stabilisation IBIS','Réinitialisation']},{titre:'AF avancé',lecons:['Real-Time Tracking','AF Spot Flexible','Sensibilité AF en action','Sujet humain']},{titre:'Ergonomie terrain',lecons:['Touches personnalisées','Molette ISO','Quick Menu','Viseur vs écran']}],certification:null,statut:'publiée'},
+  {id:'photo-football',titre:'Photographie de football',categorie:'Photographie',icone:'⚽',niveau:'Intermédiaire',type:'hybride',duree:'2h',xp:100,formateur:'Fouka',obligatoire:false,description:'Technique spécifique au football : placement, anticipation des actions, couverture complète d\'un match.',modules:[{titre:'Placement terrain',lecons:['Zones de restriction','Position de départ','Se déplacer pendant le match','Gestion de la lumière']},{titre:'Types de prises',lecons:['Phases de jeu','Célébrations','Portraits d\'action','Phases arrêtées']},{titre:'Couverture complète',lecons:['Avant-match & échauffement','Mi-temps','Après-match']},{titre:'Session pratique',lecons:['Couvrir un match supervisé']}],certification:null,statut:'publiée'},
+  {id:'video-bases',titre:'Bases de la vidéo sportive',categorie:'Vidéo',icone:'🎬',niveau:'Débutant',type:'hybride',duree:'3h',xp:100,formateur:'Fouka',obligatoire:false,description:'Captation vidéo en contexte sportif : réglages caméra, angles de prise de vue, gestion du son.',modules:[{titre:'Réglages caméra vidéo',lecons:['Format et résolution','Frame rate sport','Shutter angle','Profil colorimétrique']},{titre:'Angles et mouvements',lecons:['Plans fixes et larges','Travelling et panoramique','Plans de coupe','Ralentis']},{titre:'Son en extérieur',lecons:['Micro directif','Niveaux audio','Vent et bruit ambiant']},{titre:'Session terrain',lecons:['Captation d\'un match complet']}],certification:null,statut:'publiée'},
+  {id:'cert-drone',titre:'Drone — Pilotage & certification',categorie:'Drone',icone:'🚁',niveau:'Avancé',type:'hybride',duree:'6h',xp:200,formateur:'Fouka',obligatoire:false,description:'Maîtrise du DJI Mavic 3 Pro et Air 3 pour la captation sportive. Réglementation DGAC, sécurité, cadrage aérien.',modules:[{titre:'Réglementation DGAC',lecons:['Catégories A1/A3','Zones d\'exclusion','Déclaration de vol','Assurance obligatoire']},{titre:'Prise en main DJI',lecons:['Préparation et check pré-vol','Interface DJI Fly','Modes de vol','Retour automatique']},{titre:'Cadrage aérien',lecons:['Points d\'intérêt','Dronie et Helix','Surplomb de terrain','Transitions créatives']},{titre:'Sécurité et urgences',lecons:['Vents forts','Perte de signal','Atterrissage d\'urgence']},{titre:'Certification pratique',lecons:['Vol supervisé niveau requis']}],certification:{id:'cert-drone',nom:'Certification Drone SportVision',validite_mois:12,badge:'🚁'},statut:'publiée'},
+  {id:'cert-veo',titre:'Caméra Veo — Installation & utilisation',categorie:'Vidéo',icone:'📹',niveau:'Intermédiaire',type:'terrain',duree:'1h30',xp:100,formateur:'Fouka',obligatoire:false,description:'Installation, configuration et récupération des données de la caméra Veo pour la captation automatique de matchs.',modules:[{titre:'Matériel Veo',lecons:['Présentation de la caméra','Support et fixation','Charge et stockage']},{titre:'Installation terrain',lecons:['Positionnement sur tribunes','Cadrage du terrain','Connexion à l\'application','Démarrage de l\'enregistrement']},{titre:'Récupération des données',lecons:['Arrêt et exportation','Upload plateforme Veo','Transmission au client']}],certification:{id:'cert-veo',nom:'Certification Caméra Veo',validite_mois:18,badge:'📹'},statut:'publiée'},
+  {id:'montage-base',titre:'Introduction au montage sportif',categorie:'Montage',icone:'🎞️',niveau:'Intermédiaire',type:'en_ligne',duree:'4h',xp:150,formateur:'Équipe SportVision',obligatoire:false,description:'Bases du montage vidéo avec DaVinci Resolve : organisation des rushs, coupe, étalonnage, export pour les réseaux.',modules:[{titre:'DaVinci Resolve — Prise en main',lecons:['Interface et onglets','Importer ses rushs','Organisation de la timeline']},{titre:'Montage sportif',lecons:['Points d\'entrée/sortie','Rythme et musique','Textes et titres']},{titre:'Étalonnage basique',lecons:['Balance des blancs','Contraste et saturation','LUTs Sport']},{titre:'Export et livraison',lecons:['Formats réseaux','Compression optimale','Nommage des fichiers']}],certification:null,statut:'publiée'},
+  {id:'interview-sport',titre:'Tournage d\'interviews sportives',categorie:'Vidéo',icone:'🎙️',niveau:'Intermédiaire',type:'hybride',duree:'2h',xp:75,formateur:'Fouka',obligatoire:false,description:'Technique pour réaliser des interviews de qualité avec joueurs, entraîneurs et dirigeants de clubs.',modules:[{titre:'Setup interview',lecons:['Choix du cadre','Placement du sujet','Lumière naturelle et flash','Son pour interview']},{titre:'Direction du sujet',lecons:['Mise en confiance','Questions ouvertes','Langage corporel','Gérer le trac']},{titre:'Tournage terrain',lecons:['Interview d\'après-match supervisée']}],certification:null,statut:'publiée'},
+  {id:'cert-responsable',titre:'Responsable de prestation',categorie:'Management',icone:'⭐',niveau:'Expert',type:'hybride',duree:'8h',xp:300,formateur:'Fouka',obligatoire:false,description:'Formation pour diriger une prestation SportVision : organisation, management terrain, relation client, gestion d\'incidents.',modules:[{titre:'Lecture du briefing',lecons:['Déchiffrer une fiche prestation','Identifier les priorités','Briefer l\'équipe']},{titre:'Management terrain',lecons:['Répartition des rôles','Communication équipe','Gestion des retards','Prises de décision']},{titre:'Relation client Responsable',lecons:['Premier contact','Gestion des attentes','Clôture de prestation']},{titre:'Gestion d\'incidents',lecons:['Types d\'incidents','Procédure d\'urgence','Rapport post-prestation']},{titre:'Validation terrain',lecons:['Diriger une prestation complète']}],certification:{id:'cert-responsable',nom:'Certification Responsable de prestation',validite_mois:24,badge:'⭐'},statut:'publiée'},
 ];
+
+let _formTab='dashboard';
+
+function getFormProg(uid){try{return JSON.parse(localStorage.getItem('sv_fp_'+uid)||'{}');}catch(e){return{};}}
+function saveFormProg(uid,data){localStorage.setItem('sv_fp_'+uid,JSON.stringify(data));}
+
+function setFormTab(tab){
+  _formTab=tab;
+  document.querySelectorAll('.form-tab').forEach(b=>{
+    const on=b.dataset.tab===tab;
+    b.style.background=on?'var(--acc)':'var(--s2)';
+    b.style.color=on?'#fff':'var(--t2)';
+    b.style.border='1px solid '+(on?'var(--acc)':'var(--b1)');
+  });
+  const el=document.getElementById('form-real');
+  if(el){
+    const uid=localStorage.getItem('sv_uid')||'x';
+    const prog=getFormProg(uid);
+    if(tab==='dashboard')renderFormDashboard(el,prog);
+    else if(tab==='catalogue')renderFormCatalogue(el,prog);
+    else if(tab==='mes-formations')renderFormMes(el,prog);
+    else if(tab==='certifications')renderFormCerts(el,prog);
+  }
+}
+
 async function loadForm(){
   const el=document.getElementById('form-real');
   const gradeEl=document.getElementById('form-grade-content');
   if(!el)return;
   const uid=localStorage.getItem('sv_uid')||'x';
-  // Grade header
-  if(gradeEl&&S.role==='photo'){
-    try{
-      const missions=await sbFetch('prestations_equipe?select=est_responsable&collaborateur_id=eq.'+uid);
-      const xp=(missions||[]).reduce((s,m)=>s+100+(m.est_responsable?50:0),0);
-      const {grade,next,pct}=calcGrade(xp);
-      const totalMod=FORM_MODULES.length;
-      const done=FORM_MODULES.filter(m=>parseInt(localStorage.getItem('sv_form_'+uid+'_'+m.id)||'0')===100).length;
-      gradeEl.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:center">
-        <div>
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-            <div style="font-size:36px">${grade.ic}</div>
-            <div>
-              <div style="font-size:18px;font-weight:800;color:${grade.color}">${grade.nom}</div>
-              <div style="font-size:12px;color:var(--t3)">${xp.toLocaleString('fr-FR')} XP</div>
-            </div>
-          </div>
-          ${next?`<div class="pg" style="margin-bottom:5px"><div class="pg-f" style="width:${pct}%;background:${grade.color}"></div></div>
-          <div style="font-size:11px;color:var(--t3)">→ ${next.ic} ${next.nom} dans ${(next.xp-xp).toLocaleString('fr-FR')} XP</div>`:'<div style="font-size:12px;color:'+grade.color+';font-weight:600">👑 Grade maximum atteint !</div>'}
+  let missionXp=0,nbMissions=0;
+  try{
+    const missions=await sbFetch('prestations_equipe?select=est_responsable&collaborateur_id=eq.'+uid);
+    if(Array.isArray(missions)){nbMissions=missions.length;missionXp=missions.reduce((s,m)=>s+100+(m.est_responsable?50:0),0);}
+  }catch(e){}
+  const prog=getFormProg(uid);
+  const formXp=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée').reduce((s,f)=>s+f.xp,0);
+  const totalXp=missionXp+formXp;
+  const {grade,next,pct}=calcGrade(totalXp);
+  const nbTerminees=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée').length;
+  const nbCerts=FORMATIONS_CATALOG.filter(f=>f.certification&&prog[f.id]?.statut==='terminée').length;
+  const obligFailed=FORMATIONS_CATALOG.filter(f=>f.obligatoire&&prog[f.id]?.statut!=='terminée');
+  if(gradeEl){
+    gradeEl.innerHTML=`
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+        <div style="font-size:44px;line-height:1">${grade.ic}</div>
+        <div style="flex:1">
+          <div style="font-size:22px;font-weight:800;color:${grade.color};line-height:1">${grade.nom}</div>
+          <div style="font-size:13px;color:var(--t3);margin-top:3px">${totalXp.toLocaleString('fr-FR')} XP total</div>
+          ${next?`<div style="margin-top:10px"><div class="pg"><div class="pg-f" style="width:${pct}%;background:${grade.color}"></div></div><div style="font-size:11px;color:var(--t3);margin-top:4px">→ ${next.ic} ${next.nom} dans ${(next.xp-totalXp).toLocaleString('fr-FR')} XP</div></div>`:`<div style="font-size:12px;color:${grade.color};font-weight:700;margin-top:6px">Grade maximum atteint 👑</div>`}
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="fs"><div class="fs-l">Formations</div><div class="fs-v">${done}/${totalMod}</div></div>
-          <div class="fs"><div class="fs-l">Missions</div><div class="fs-v">${(missions||[]).length}</div></div>
-          <div class="fs"><div class="fs-l">Classement</div><div class="fs-v" style="font-size:13px;color:${grade.color}">${grade.nom}</div></div>
-          <div class="fs"><div class="fs-l">Complété</div><div class="fs-v">${totalMod?Math.round(done/totalMod*100):0}%</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div class="fs"><div class="fs-l">Missions</div><div class="fs-v">${nbMissions}</div></div>
+        <div class="fs"><div class="fs-l">Formations</div><div class="fs-v">${nbTerminees}/${FORMATIONS_CATALOG.length}</div></div>
+        <div class="fs" style="${formXp>0?'border-color:rgba(46,204,138,.3)':''}"><div class="fs-l">XP formations</div><div class="fs-v" style="${formXp>0?'color:var(--ok)':''}">+${formXp}</div></div>
+        <div class="fs" style="${nbCerts>0?'border-color:rgba(124,77,255,.3)':''}"><div class="fs-l">Certifications</div><div class="fs-v" style="${nbCerts>0?'color:#9C6FFF':''}">${nbCerts}</div></div>
+      </div>
+      ${obligFailed.length?`<div style="margin-top:12px;padding:10px 14px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);display:flex;align-items:center;gap:8px">
+        <span style="color:var(--er);font-size:16px">⚠</span>
+        <div style="font-size:12px;color:var(--er);font-weight:500">${obligFailed.length} formation${obligFailed.length>1?'s':''} obligatoire${obligFailed.length>1?'s':''} à compléter</div>
+        <button onclick="setFormTab('catalogue');setTimeout(()=>{window._formCatFilter='Obligatoires';renderFormCatalogue(document.getElementById('form-real'),getFormProg(localStorage.getItem('sv_uid')||'x'))},50)" style="margin-left:auto;background:transparent;border:none;color:var(--er);font-size:11px;font-weight:700;cursor:pointer;padding:0;white-space:nowrap">Voir →</button>
+      </div>`:''}`;
+  }
+  const p=getFormProg(uid);
+  if(_formTab==='dashboard')renderFormDashboard(el,p);
+  else if(_formTab==='catalogue')renderFormCatalogue(el,p);
+  else if(_formTab==='mes-formations')renderFormMes(el,p);
+  else if(_formTab==='certifications')renderFormCerts(el,p);
+}
+
+function renderFormDashboard(el,prog){
+  const oblig=FORMATIONS_CATALOG.filter(f=>f.obligatoire&&prog[f.id]?.statut!=='terminée');
+  const enCours=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='en_cours');
+  const reco=FORMATIONS_CATALOG.filter(f=>!prog[f.id]&&!f.obligatoire).slice(0,3);
+  let html='';
+  if(oblig.length){
+    html+=`<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--er);margin-bottom:10px">Formations obligatoires</div>
+    ${oblig.map(f=>`<div onclick="modalFormDetail('${f.id}')" style="background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:14px">
+      <div style="font-size:28px;flex-shrink:0">${f.icone}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.titre}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${f.duree} · +${f.xp} XP · ${f.categorie}</div></div>
+      <span style="font-size:10px;font-weight:700;color:var(--er);background:rgba(240,68,94,.15);padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0">Obligatoire</span>
+    </div>`).join('')}</div>`;
+  }
+  if(enCours.length){
+    html+=`<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);margin-bottom:10px">En cours</div>
+    ${enCours.map(f=>{
+      const fp=prog[f.id];const ld=Object.keys(fp?.lessons||{}).length;const tl=f.modules.reduce((s,m)=>s+m.lecons.length,0);const pct=tl?Math.round(ld/tl*100):0;
+      return`<div onclick="modalFormDetail('${f.id}')" style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="font-size:24px">${f.icone}</div>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.titre}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${ld}/${tl} leçons · +${f.xp} XP</div></div>
+          <span style="font-size:14px;font-weight:700;color:var(--acc);flex-shrink:0">${pct}%</span>
+        </div>
+        <div class="pg"><div class="pg-f" style="width:${pct}%;background:var(--acc)"></div></div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  if(reco.length){
+    html+=`<div><div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:10px">Recommandées</div>
+    ${reco.map(f=>`<div onclick="modalFormDetail('${f.id}')" style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:24px">${f.icone}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.titre}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${f.duree} · +${f.xp} XP · ${f.niveau}</div></div>
+      ${f.certification?`<span style="font-size:9px;color:#9C6FFF;font-weight:700;background:rgba(124,77,255,.12);padding:3px 7px;border-radius:20px;white-space:nowrap;flex-shrink:0">🏅 Cert.</span>`:''}
+    </div>`).join('')}
+    <button onclick="setFormTab('catalogue')" style="width:100%;padding:10px;background:transparent;border:1px dashed var(--b2);border-radius:10px;color:var(--t3);font-size:12px;cursor:pointer;margin-top:4px">Voir tout le catalogue →</button>
+    </div>`;
+  }
+  if(!html)html=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:12px;color:var(--t3)"><div style="font-size:40px">🎉</div><div style="font-size:14px;font-weight:600;color:var(--ok)">Toutes les formations terminées !</div></div>`;
+  el.innerHTML=html;
+}
+
+function renderFormCatalogue(el,prog){
+  if(!window._formCatFilter)window._formCatFilter='Toutes';
+  const filt=window._formCatFilter;
+  const filtered=filt==='Toutes'?FORMATIONS_CATALOG:filt==='Obligatoires'?FORMATIONS_CATALOG.filter(f=>f.obligatoire):filt==='En cours'?FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='en_cours'):filt==='Terminées'?FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée'):filt==='Certifiantes'?FORMATIONS_CATALOG.filter(f=>f.certification):FORMATIONS_CATALOG;
+  const FILTERS=['Toutes','Obligatoires','En cours','Terminées','Certifiantes'];
+  const NCLR={Débutant:'#2ECC8A',Intermédiaire:'#366BFF',Avancé:'#7C4DFF',Expert:'#F5A524'};
+  const TLBL={en_ligne:'En ligne',hybride:'Hybride',terrain:'Terrain',presentiel:'Présentiel'};
+  const getSlb=f=>{const s=prog[f.id]?.statut;return s==='terminée'?{lb:'✓ Terminée',clr:'var(--ok)'}:s==='en_cours'?{lb:'En cours',clr:'var(--acc)'}:{lb:'Disponible',clr:'var(--t3)'};};
+  el.innerHTML=`
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      ${FILTERS.map(f=>`<button onclick="window._formCatFilter='${f}';renderFormCatalogue(document.getElementById('form-real'),getFormProg(localStorage.getItem('sv_uid')||'x'))" style="padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${f===filt?'var(--acc)':'var(--b1)'};background:${f===filt?'var(--acc)':'var(--s2)'};color:${f===filt?'#fff':'var(--t2)'}">${f}</button>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+      ${filtered.map(f=>{
+        const sl=getSlb(f);const fp=prog[f.id];const ld=Object.keys(fp?.lessons||{}).length;const tl=f.modules.reduce((s,m)=>s+m.lecons.length,0);const pct=tl&&fp?Math.round(ld/tl*100):0;
+        return`<div onclick="modalFormDetail('${f.id}')" style="background:var(--s1);border:1px solid ${f.obligatoire&&!fp?'rgba(240,68,94,.3)':'var(--b1)'};border-radius:12px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div style="font-size:30px;line-height:1">${f.icone}</div>
+            ${f.obligatoire?`<span style="font-size:9px;font-weight:700;color:var(--er);background:rgba(240,68,94,.12);padding:2px 7px;border-radius:20px;flex-shrink:0">Oblig.</span>`:f.certification?`<span style="font-size:9px;font-weight:700;color:#9C6FFF;background:rgba(124,77,255,.12);padding:2px 7px;border-radius:20px;flex-shrink:0">🏅</span>`:''}
+          </div>
+          <div><div style="font-size:12px;font-weight:700;color:var(--t1);line-height:1.3">${f.titre}</div><div style="font-size:10px;color:var(--t3);margin-top:3px">${f.duree} · +${f.xp} XP</div></div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <span style="font-size:9px;font-weight:600;color:${NCLR[f.niveau]||'var(--t3)'};background:${(NCLR[f.niveau]||'#888')}22;padding:2px 6px;border-radius:20px">${f.niveau}</span>
+            <span style="font-size:9px;color:var(--t3);background:var(--s2);padding:2px 6px;border-radius:20px">${TLBL[f.type]||f.type}</span>
+          </div>
+          ${pct>0?`<div class="pg"><div class="pg-f" style="width:${pct}%;background:${sl.clr}"></div></div>`:''}
+          <div style="font-size:10px;font-weight:600;color:${sl.clr}">${sl.lb}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${filtered.length===0?`<div style="text-align:center;padding:40px;color:var(--t3);font-size:13px">Aucune formation dans ce filtre.</div>`:''}`;
+}
+
+function renderFormMes(el,prog){
+  const enCours=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='en_cours');
+  const terminées=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée');
+  let html='';
+  if(enCours.length){
+    html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);margin-bottom:10px">En cours</div>`;
+    enCours.forEach(f=>{
+      const fp=prog[f.id];const ld=Object.keys(fp?.lessons||{}).length;const tl=f.modules.reduce((s,m)=>s+m.lecons.length,0);const pct=tl?Math.round(ld/tl*100):0;
+      html+=`<div onclick="modalFormDetail('${f.id}')" style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="font-size:24px">${f.icone}</div>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${f.titre}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${ld}/${tl} leçons · +${f.xp} XP</div></div>
+          <span style="font-size:14px;font-weight:700;color:var(--acc)">${pct}%</span>
+        </div>
+        <div class="pg"><div class="pg-f" style="width:${pct}%;background:var(--acc)"></div></div>
+      </div>`;
+    });
+  }
+  if(terminées.length){
+    html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ok);margin-bottom:10px;${enCours.length?'margin-top:16px':''}">Terminées</div>`;
+    terminées.forEach(f=>{
+      const fp=prog[f.id];
+      html+=`<div onclick="modalFormDetail('${f.id}')" style="background:rgba(46,204,138,.05);border:1px solid rgba(46,204,138,.2);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px">${f.icone}</div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${f.titre}</div><div style="font-size:11px;color:var(--ok);margin-top:2px">+${f.xp} XP${f.certification?' · 🏅 Certifié':''}${fp.completed_at?' · '+new Date(fp.completed_at).toLocaleDateString('fr-FR'):''}</div></div>
+        <span style="font-size:18px">✓</span>
+      </div>`;
+    });
+  }
+  if(!enCours.length&&!terminées.length){
+    html=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px;gap:12px;color:var(--t3)"><div style="font-size:40px;opacity:.2">📚</div><div style="font-size:14px;font-weight:500">Aucune formation commencée</div><button onclick="setFormTab('catalogue')" style="padding:8px 18px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Explorer le catalogue</button></div>`;
+  }
+  el.innerHTML=html;
+}
+
+function renderFormCerts(el,prog){
+  const certForms=FORMATIONS_CATALOG.filter(f=>f.certification);
+  const earned=certForms.filter(f=>prog[f.id]?.statut==='terminée');
+  const upcoming=certForms.filter(f=>prog[f.id]?.statut!=='terminée');
+  let html='';
+  if(earned.length){
+    html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ok);margin-bottom:12px">Certifications obtenues</div>`;
+    earned.forEach(f=>{
+      const fp=prog[f.id];const cert=f.certification;const dt=fp.completed_at?new Date(fp.completed_at):null;
+      html+=`<div style="background:linear-gradient(135deg,rgba(124,77,255,.12),rgba(54,107,255,.08));border:1px solid rgba(124,77,255,.3);border-radius:14px;padding:18px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="font-size:40px;filter:drop-shadow(0 0 8px rgba(124,77,255,.4))">${cert.badge}</div>
+          <div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--t1)">${cert.nom}</div><div style="font-size:11px;color:var(--t3);margin-top:3px">via ${f.titre}</div>${dt?`<div style="font-size:11px;color:var(--ok);margin-top:2px;font-weight:500">Obtenue le ${dt.toLocaleDateString('fr-FR')}</div>`:''}<div style="font-size:11px;color:var(--t3);margin-top:2px">Valide ${cert.validite_mois} mois</div></div>
+          <span style="padding:5px 12px;background:rgba(46,204,138,.15);border:1px solid rgba(46,204,138,.3);border-radius:20px;font-size:10px;font-weight:700;color:var(--ok)">Active</span>
         </div>
       </div>`;
-    }catch(e){gradeEl.innerHTML='<div style="color:var(--t3);font-size:13px">Données de grade indisponibles.</div>';}
-  }else if(gradeEl){
-    gradeEl.innerHTML='<div style="color:var(--t3);font-size:13px;padding:4px 0">Progression des formations de l\'équipe.</div>';
+    });
   }
-  // Modules
-  el.innerHTML=FORM_MODULES.map(m=>{
-    const k='sv_form_'+uid+'_'+m.id;
-    const prog=parseInt(localStorage.getItem(k)||'0');
-    const clr=prog===100?'var(--ok)':prog>=50?'var(--acc)':prog>0?'var(--wa)':'var(--t3)';
-    const lbl=prog===100?'✓ Terminé':prog>0?'En cours':'À débuter';
-    return`<div style="padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.04)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--t1)">${m.ti}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px">${m.desc}</div>
-        </div>
-        <span style="font-size:11px;font-weight:600;color:${clr};margin-left:12px;flex-shrink:0">${lbl}</span>
-      </div>
-      <div class="pg" style="cursor:pointer" onclick="setFormProg('${m.id}',${Math.min(prog+25,100)})">
-        <div class="pg-f" style="width:${prog}%;background:${clr};transition:width .4s"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:5px">
-        <div style="font-size:10px;color:var(--t3)">${prog}% — cliquer pour avancer</div>
-        ${prog>0?`<button onclick="setFormProg('${m.id}',0)" style="background:transparent;border:none;font-size:10px;color:var(--t3);cursor:pointer;padding:0">Réinitialiser</button>`:''}
-      </div>
-    </div>`;
-  }).join('');
+  if(upcoming.length){
+    html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:12px;${earned.length?'margin-top:16px':''}">À obtenir</div>`;
+    upcoming.forEach(f=>{
+      const cert=f.certification;const isEnC=prog[f.id]?.statut==='en_cours';
+      html+=`<div onclick="modalFormDetail('${f.id}')" style="background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:16px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:14px;opacity:${isEnC?1:.65}">
+        <div style="font-size:32px;filter:grayscale(${isEnC?0:1})">${cert.badge}</div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${cert.nom}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">via ${f.titre} · +${f.xp} XP</div></div>
+        <span style="font-size:10px;color:${isEnC?'var(--acc)':'var(--t3)'};font-weight:600">${isEnC?'En cours':'À débuter'}</span>
+      </div>`;
+    });
+  }
+  if(!earned.length&&!upcoming.length)html=`<div style="text-align:center;padding:40px;color:var(--t3)">Aucune certification disponible.</div>`;
+  el.innerHTML=html;
 }
-function setFormProg(id,val){
+
+function modalFormDetail(id){
+  const f=FORMATIONS_CATALOG.find(x=>x.id===id);
+  if(!f)return;
   const uid=localStorage.getItem('sv_uid')||'x';
-  localStorage.setItem('sv_form_'+uid+'_'+id,String(val));
-  loadForm();
+  const prog=getFormProg(uid);
+  const fp=prog[id]||{};
+  const lessons=fp.lessons||{};
+  const tl=f.modules.reduce((s,m)=>s+m.lecons.length,0);
+  const ld=Object.keys(lessons).length;
+  const pct=tl?Math.round(ld/tl*100):0;
+  const isTerminée=fp.statut==='terminée';
+  const NCLR={Débutant:'#2ECC8A',Intermédiaire:'#366BFF',Avancé:'#7C4DFF',Expert:'#F5A524'};
+  const TLBL={en_ligne:'En ligne',hybride:'Hybride',terrain:'Terrain',presentiel:'Présentiel'};
+  const body=document.getElementById('modal-body');
+  const modal=document.getElementById('modal');
+  if(!body||!modal)return;
+  modal.style.display='flex';
+  body.innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
+    <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:18px">
+      <div style="font-size:44px;flex-shrink:0;line-height:1">${f.icone}</div>
+      <div style="flex:1">
+        <div style="font-size:18px;font-weight:700;color:var(--t1);line-height:1.2">${f.titre}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
+          <span style="font-size:10px;font-weight:600;color:${NCLR[f.niveau]};background:${NCLR[f.niveau]}22;padding:3px 8px;border-radius:20px">${f.niveau}</span>
+          <span style="font-size:10px;color:var(--t3);background:var(--s2);padding:3px 8px;border-radius:20px">${TLBL[f.type]||f.type}</span>
+          <span style="font-size:10px;color:var(--t3);background:var(--s2);padding:3px 8px;border-radius:20px">⏱ ${f.duree}</span>
+          <span style="font-size:10px;color:var(--wa);background:rgba(245,165,36,.12);padding:3px 8px;border-radius:20px;font-weight:600">+${f.xp} XP</span>
+          ${f.obligatoire?'<span style="font-size:10px;color:var(--er);background:rgba(240,68,94,.12);padding:3px 8px;border-radius:20px;font-weight:600">Obligatoire</span>':''}
+        </div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--t2);line-height:1.6;margin:0 0 16px">${f.description}</p>
+    ${f.certification?`<div style="background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.25);border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px"><span style="font-size:20px">${f.certification.badge}</span><div><div style="font-size:12px;font-weight:700;color:#9C6FFF">${f.certification.nom}</div><div style="font-size:11px;color:var(--t3)">Valide ${f.certification.validite_mois} mois</div></div></div>`:''}
+    ${pct>0?`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;font-weight:600;color:var(--t2)">Progression</div><div style="font-size:12px;font-weight:700;color:${isTerminée?'var(--ok)':'var(--acc)'}">${ld}/${tl} leçons · ${pct}%</div></div><div class="pg"><div class="pg-f" style="width:${pct}%;background:${isTerminée?'var(--ok)':'var(--acc)'}"></div></div></div>`:''}
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px">${f.modules.length} module${f.modules.length>1?'s':''} · ${tl} leçons</div>
+      ${f.modules.map((mod,mi)=>{
+        const modDone=mod.lecons.filter((_,li)=>lessons[mi+'_'+li]).length;
+        return`<div style="border:1px solid var(--b1);border-radius:10px;margin-bottom:8px;overflow:hidden">
+          <div style="padding:11px 14px;background:var(--s2);display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:13px;font-weight:600;color:var(--t1)">${mod.titre}</div>
+            <div style="font-size:11px;color:var(--t3)">${modDone}/${mod.lecons.length}</div>
+          </div>
+          ${mod.lecons.map((lecon,li)=>{
+            const key=mi+'_'+li;const done=!!lessons[key];
+            return`<div onclick="toggleFormLesson('${id}',${mi},${li})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;${done?'opacity:.55':''}">
+              <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid ${done?'var(--ok)':'var(--b2)'};background:${done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                ${done?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}
+              </div>
+              <div style="flex:1;font-size:12px;color:var(--t1);${done?'text-decoration:line-through':''}">${lecon}</div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('')}
+    </div>
+    ${!fp.statut?`<button onclick="enrollForm('${id}')" style="width:100%;padding:14px;background:var(--acc);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Commencer cette formation</button>`:isTerminée?`<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:12px"><span style="font-size:18px">🎉</span><span style="font-size:14px;font-weight:700;color:var(--ok)">Formation terminée · +${f.xp} XP gagnés</span></div>`:`<button onclick="closeModal();setFormTab('mes-formations')" style="width:100%;padding:14px;background:var(--s2);border:1px solid var(--b1);border-radius:12px;color:var(--t1);font-size:14px;font-weight:600;cursor:pointer">Continuer (${pct}%)</button>`}
+  </div>`;
+}
+
+function enrollForm(id){
+  const uid=localStorage.getItem('sv_uid')||'x';
+  const prog=getFormProg(uid);
+  prog[id]={statut:'en_cours',lessons:{},enrolled_at:new Date().toISOString()};
+  saveFormProg(uid,prog);
+  modalFormDetail(id);
+}
+
+function toggleFormLesson(id,mi,li){
+  const uid=localStorage.getItem('sv_uid')||'x';
+  const prog=getFormProg(uid);
+  if(!prog[id])prog[id]={statut:'en_cours',lessons:{},enrolled_at:new Date().toISOString()};
+  const fp=prog[id];const key=mi+'_'+li;
+  const f=FORMATIONS_CATALOG.find(x=>x.id===id);
+  if(!f)return;
+  if(fp.lessons[key]){delete fp.lessons[key];if(fp.statut==='terminée')fp.statut='en_cours';}
+  else{
+    fp.lessons[key]=true;
+    const total=f.modules.reduce((s,m)=>s+m.lecons.length,0);
+    if(Object.keys(fp.lessons).length>=total){fp.statut='terminée';fp.completed_at=new Date().toISOString();toast('🎉 Formation terminée ! +'+f.xp+' XP','ok');}
+  }
+  saveFormProg(uid,prog);
+  modalFormDetail(id);
 }
 
 // ── CM — Calendrier éditorial ─────────────────────────────────────────────────
