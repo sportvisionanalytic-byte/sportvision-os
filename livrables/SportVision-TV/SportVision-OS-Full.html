@@ -520,13 +520,29 @@ const NAV={
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   prod:[
-    {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
+    {type:'sep',lb:'Opérations'},
+    {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    {id:'pre',lb:'Prestations',ic:'pre'},
     {id:'planning',lb:'Planning production',ic:'cal'},
+    {id:'jourj',lb:'Mode Jour J',ic:'live'},
+    {type:'sep',lb:'Équipe'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
+    {id:'equipes',lb:'Affectations',ic:'col'},
+    {id:'rem',lb:'Rémunérations',ic:'fin'},
+    {id:'frais',lb:'Frais & km',ic:'fin'},
+    {type:'sep',lb:'Production'},
+    {id:'brief',lb:'Briefings',ic:'doc'},
+    {id:'kits',lb:'Kits & matériel',ic:'kits'},
+    {id:'media',lb:'Médias',ic:'med'},
+    {id:'post',lb:'Postproduction',ic:'kan'},
+    {id:'livr',lb:'Livrables',ic:'check'},
+    {type:'sep',lb:'Suivi'},
     {id:'kanban',lb:'Kanban',ic:'kan'},
-    {id:'kits',lb:'Kits',ic:'kits'},
-    {id:'equipes',lb:'Équipes par prestation',ic:'col'},
     {id:'incidents',lb:'Incidents',ic:'alert'},
+    {id:'budget',lb:'Budget production',ic:'fin'},
+    {id:'rapports',lb:'Rapports',ic:'doc'},
+    {id:'form',lb:'Centre de formation',ic:'form'},
+    {type:'sep',lb:'Communication'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -849,31 +865,52 @@ const VIEWS={
   'prod.dash':()=>`
     <div style="overflow-x:auto;scrollbar-width:none;margin-bottom:18px;-webkit-overflow-scrolling:touch">
       <div style="display:flex;gap:8px;width:max-content;padding-bottom:2px">
-        <button onclick="switchView('equipes')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">👥 Nouvelle équipe</button>
-        <button onclick="switchView('kits')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">🎒 Réserver un kit</button>
-        <button onclick="modalSignalerIncident()" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer">⚠ Déclarer un incident</button>
+        <button onclick="switchView('jourj')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer">🔴 Mode Jour J</button>
+        <button onclick="switchView('pre')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">📋 Prestations</button>
+        <button onclick="switchView('equipes')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">👥 Affecter équipe</button>
+        <button onclick="switchView('kits')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">🎒 Kits</button>
+        <button onclick="switchView('brief')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">📄 Briefings</button>
+        <button onclick="modalSignalerIncident()" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">⚠ Incident</button>
         <button onclick="switchView('planning')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">📅 Planning</button>
-        <button onclick="switchView('msg')" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">📤 Envoyer briefing</button>
       </div>
     </div>
     <div style="margin-bottom:14px">
       <div style="font-size:20px;font-weight:800;color:var(--t1)">Tour de contrôle</div>
-      <div style="font-size:12px;color:var(--t3);margin-top:2px">Vue d'ensemble des opérations en cours</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:2px">Centre de contrôle opérationnel SportVision</div>
     </div>
     <div class="kpi-g" style="margin-bottom:18px">
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">À planifier</div><div class="kpi-v" id="prod-kpi-ap">—</div><span class="kpi-d dnt">prestations</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">À valider</div><div class="kpi-v" id="prod-kpi-val" style="color:var(--er)">—</div><span class="kpi-d dnt">en attente prod</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">À planifier</div><div class="kpi-v" id="prod-kpi-ap">—</div><span class="kpi-d dnt">confirmées</span></div>
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Aujourd'hui</div><div class="kpi-v" id="prod-kpi-auj">—</div><span class="kpi-d dnt">productions</span></div>
       <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">En tournage</div><div class="kpi-v" id="prod-kpi-live">—</div><span class="kpi-d dnt">en direct</span></div>
-      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">En montage</div><div class="kpi-v" id="prod-kpi-mont">—</div><span class="kpi-d dnt">post-prod</span></div>
-      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('equipes')"><div class="kpi-ey">Collab. disponibles</div><div class="kpi-v" id="prod-kpi-cd">—</div><span class="kpi-d dnt">ce jour</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('post')"><div class="kpi-ey">En montage</div><div class="kpi-v" id="prod-kpi-mont">—</div><span class="kpi-d dnt">post-prod</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('livr')"><div class="kpi-ey">Livrables</div><div class="kpi-v" id="prod-kpi-livr">—</div><span class="kpi-d dnt">à valider</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('col')"><div class="kpi-ey">Collab. dispos</div><div class="kpi-v" id="prod-kpi-cd">—</div><span class="kpi-d dnt">ce jour</span></div>
       <div class="kpi" style="--kl:#00B8D4;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Kits disponibles</div><div class="kpi-v" id="prod-kpi-kd">—</div><span class="kpi-d dnt">en stock</span></div>
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Kits réservés</div><div class="kpi-v" id="prod-kpi-kr">—</div><span class="kpi-d dnt">déployés</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Kits déployés</div><div class="kpi-v" id="prod-kpi-kr">—</div><span class="kpi-d dnt">sortis</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('media')"><div class="kpi-ey">Médias manquants</div><div class="kpi-v" id="prod-kpi-med">—</div><span class="kpi-d dnt">à transférer</span></div>
+      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('rem')"><div class="kpi-ey">Rémunérations</div><div class="kpi-v" id="prod-kpi-rem">—</div><span class="kpi-d dnt">à contrôler</span></div>
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('incidents')"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="prod-kpi-inc">—</div><span class="kpi-d dnt">à traiter</span></div>
+    </div>
+    <div id="prod-dash-priorite" style="margin-bottom:13px;display:none">
+      <div class="cd" style="padding:0;overflow:hidden;border-left:3px solid var(--er)">
+        <div class="cd-h">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--er);animation:prodPulse 1.5s ease-in-out infinite"></div>
+            <div class="cd-t" style="color:var(--er)">À traiter en priorité</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;padding:2px 8px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:20px;color:var(--er)" id="prod-prio-nb"></span>
+        </div>
+        <div id="prod-prio-real"></div>
+      </div>
     </div>
     <div class="g32">
       <div>
         <div class="cd" style="margin-bottom:13px;padding:0;overflow:hidden">
-          <div class="cd-h"><div class="cd-t">📋 Prestations à planifier</div><span style="font-size:11px;font-weight:700;padding:2px 8px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:20px;color:var(--wa)" id="prod-a-planifier-nb"></span></div>
+          <div class="cd-h">
+            <div class="cd-t">📅 Prestations du jour</div>
+            <button class="btn bg2 bs" onclick="switchView('planning')">Planning →</button>
+          </div>
           <div id="prod-a-planifier-real"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
         </div>
         <div class="cd" style="padding:0;overflow:hidden;border-left:3px solid var(--er)">
@@ -888,11 +925,11 @@ const VIEWS={
       </div>
       <div>
         <div class="cd" style="margin-bottom:13px;padding:0;overflow:hidden">
-          <div class="cd-h"><div class="cd-t">⚠ Alertes</div><span style="font-size:11px;font-weight:700;padding:2px 8px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:20px;color:var(--er)" id="prod-inc-nb"></span></div>
+          <div class="cd-h"><div class="cd-t">⚠ Alertes & incidents</div><span style="font-size:11px;font-weight:700;padding:2px 8px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:20px;color:var(--er)" id="prod-inc-nb"></span></div>
           <div id="prod-alertes-real"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
         </div>
         <div class="cd" style="padding:0;overflow:hidden">
-          <div class="cd-h"><div class="cd-t">Équipe</div><button class="btn bg2 bs" onclick="switchView('equipes')">Détail →</button></div>
+          <div class="cd-h"><div class="cd-t">Équipe du jour</div><button class="btn bg2 bs" onclick="switchView('col')">Tous →</button></div>
           <div id="prod-dash-team"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
         </div>
       </div>
@@ -947,6 +984,168 @@ const VIEWS={
   'admin.incidents':()=>`
     <div class="sh"><div class="sh-t">Incidents</div><button class="btn bp bs" onclick="modalSignalerIncident()">+ Signaler</button></div>
     <div id="incidents-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : PRESTATIONS ──────────────────────────────────────────────────────
+  'prod.pre':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Prestations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Toutes les prestations opérationnelles</div></div>
+      <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+      <button onclick="filterProdPre('all')" class="btn bp bs" id="ppf-all" style="flex-shrink:0;font-size:11px">Toutes</button>
+      <button onclick="filterProdPre('valider')" class="btn bg2 bs" id="ppf-val" style="flex-shrink:0;font-size:11px;border-color:rgba(240,68,94,.3);color:var(--er)">⚠ À valider</button>
+      <button onclick="filterProdPre('planifier')" class="btn bg2 bs" id="ppf-plan" style="flex-shrink:0;font-size:11px">À planifier</button>
+      <button onclick="filterProdPre('equipe')" class="btn bg2 bs" id="ppf-eq" style="flex-shrink:0;font-size:11px">Sans équipe</button>
+      <button onclick="filterProdPre('active')" class="btn bg2 bs" id="ppf-act" style="flex-shrink:0;font-size:11px">En production</button>
+      <button onclick="filterProdPre('postprod')" class="btn bg2 bs" id="ppf-post" style="flex-shrink:0;font-size:11px">Post-prod</button>
+      <button onclick="filterProdPre('done')" class="btn bg2 bs" id="ppf-done" style="flex-shrink:0;font-size:11px">Terminées</button>
+    </div>
+    <div id="prod-pre-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : MODE JOUR J ──────────────────────────────────────────────────────
+  'prod.jourj':()=>`
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--er);animation:prodPulse 1.5s ease-in-out infinite;flex-shrink:0"></div>
+        <div style="font-size:20px;font-weight:800;color:var(--t1)">Mode Supervision Jour J</div>
+      </div>
+      <div style="font-size:12px;color:var(--t3)" id="jj-prod-subtitle">Vue en temps réel des productions du jour</div>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">En tournage</div><div class="kpi-v" id="jjp-live">—</div><span class="kpi-d dnt">direct</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">En route</div><div class="kpi-v" id="jjp-route">—</div><span class="kpi-d dnt">collaborateurs</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Sur place</div><div class="kpi-v" id="jjp-place">—</div><span class="kpi-d dnt">arrivés</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Incidents</div><div class="kpi-v" id="jjp-inc">—</div><span class="kpi-d dnt">ouverts</span></div>
+    </div>
+    <div id="jjp-pre-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : BRIEFINGS ──────────────────────────────────────────────────────
+  'prod.brief':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Briefings</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Suivi des briefings par prestation</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+      <button onclick="filterProdBrief('all')" class="btn bp bs" id="pbf-all" style="flex-shrink:0;font-size:11px">Tous</button>
+      <button onclick="filterProdBrief('incomplet')" class="btn bg2 bs" id="pbf-inc" style="flex-shrink:0;font-size:11px">Incomplets</button>
+      <button onclick="filterProdBrief('non_consulte')" class="btn bg2 bs" id="pbf-nc" style="flex-shrink:0;font-size:11px">Non consultés</button>
+      <button onclick="filterProdBrief('valide')" class="btn bg2 bs" id="pbf-val" style="flex-shrink:0;font-size:11px">Validés</button>
+    </div>
+    <div id="prod-brief-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : MÉDIAS ──────────────────────────────────────────────────────────
+  'prod.media':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Médias & transferts</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Suivi des transferts de rushs</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">À transférer</div><div class="fs-v" id="media-attente" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En cours</div><div class="fs-v" id="media-encours" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Complets</div><div class="fs-v" id="media-ok" style="color:var(--ok)">—</div></div>
+    </div>
+    <div id="prod-media-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : POSTPRODUCTION ─────────────────────────────────────────────────
+  'prod.post':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Postproduction</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Suivi des montages et corrections</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+      <button onclick="filterProdPost('all')" class="btn bp bs" id="ppost-all" style="flex-shrink:0;font-size:11px">Tous</button>
+      <button onclick="filterProdPost('a_monter')" class="btn bg2 bs" id="ppost-am" style="flex-shrink:0;font-size:11px">À monter</button>
+      <button onclick="filterProdPost('en_cours')" class="btn bg2 bs" id="ppost-enc" style="flex-shrink:0;font-size:11px">En montage</button>
+      <button onclick="filterProdPost('corrections')" class="btn bg2 bs" id="ppost-cor" style="flex-shrink:0;font-size:11px">Corrections</button>
+      <button onclick="filterProdPost('valider')" class="btn bg2 bs" id="ppost-val" style="flex-shrink:0;font-size:11px">À valider</button>
+    </div>
+    <div id="prod-post-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : LIVRABLES ──────────────────────────────────────────────────────
+  'prod.livr':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Livrables & validations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Contrôle qualité avant livraison</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+      <button onclick="filterProdLivr('all')" class="btn bp bs" id="pliv-all" style="flex-shrink:0;font-size:11px">Tous</button>
+      <button onclick="filterProdLivr('valider')" class="btn bg2 bs" id="pliv-val" style="flex-shrink:0;font-size:11px">À valider</button>
+      <button onclick="filterProdLivr('valide')" class="btn bg2 bs" id="pliv-ok" style="flex-shrink:0;font-size:11px">Validés</button>
+      <button onclick="filterProdLivr('livre')" class="btn bg2 bs" id="pliv-lv" style="flex-shrink:0;font-size:11px">Livrés</button>
+    </div>
+    <div id="prod-livr-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : BUDGET ──────────────────────────────────────────────────────────
+  'prod.budget':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Budget production</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Suivi financier opérationnel (hors comptabilité générale)</div></div>
+    </div>
+    <div class="kpi-g" style="margin-bottom:16px">
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">CA produit</div><div class="kpi-v" id="bud-ca">—</div><span class="kpi-d dnt">ce mois</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Coûts prod</div><div class="kpi-v" id="bud-couts">—</div><span class="kpi-d dnt">estimés</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Marge op.</div><div class="kpi-v" id="bud-marge">—</div><span class="kpi-d dnt">estimée</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prestations</div><div class="kpi-v" id="bud-nb">—</div><span class="kpi-d dnt">actives</span></div>
+    </div>
+    <div id="prod-budget-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : RÉMUNÉRATIONS ──────────────────────────────────────────────────
+  'prod.rem':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Rémunérations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Contrôle des heures, présences et transmissions comptabilité</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
+      <button onclick="filterProdRem('all')" class="btn bp bs" id="prem-all" style="flex-shrink:0;font-size:11px">Toutes</button>
+      <button onclick="filterProdRem('controle')" class="btn bg2 bs" id="prem-ctrl" style="flex-shrink:0;font-size:11px">À contrôler</button>
+      <button onclick="filterProdRem('valide')" class="btn bg2 bs" id="prem-val" style="flex-shrink:0;font-size:11px">Validées prod</button>
+      <button onclick="filterProdRem('transmis')" class="btn bg2 bs" id="prem-tx" style="flex-shrink:0;font-size:11px">Transmises compta</button>
+    </div>
+    <div id="prod-rem-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : FRAIS & KM ─────────────────────────────────────────────────────
+  'prod.frais':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Frais & kilométrage</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Contrôle des déplacements et frais opérationnels</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="frais-att" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Validés</div><div class="fs-v" id="frais-val" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Total km</div><div class="fs-v" id="frais-km">—</div></div>
+    </div>
+    <div id="prod-frais-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : FORMATION ──────────────────────────────────────────────────────
+  'prod.form':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Centre de formation</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Compétences, certifications et habilitations de l'équipe</div></div>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Collaborateurs</div><div class="kpi-v" id="form-nb">—</div><span class="kpi-d dnt">formés</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Certifs expirées</div><div class="kpi-v" id="form-exp">—</div><span class="kpi-d dnt">à renouveler</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Formations actives</div><div class="kpi-v" id="form-active">—</div><span class="kpi-d dnt">en cours</span></div>
+    </div>
+    <div id="prod-form-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── PROD : RAPPORTS ───────────────────────────────────────────────────────
+  'prod.rapports':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div><div class="sh-t">Rapports production</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Analyses et exports des données opérationnelles</div></div>
+      <button class="btn bg2 bs" onclick="exportProdRapportCSV()">Exporter CSV</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-bottom:14px">
+      <div class="cd" style="cursor:pointer" onclick="loadProdRapport('prestations')">
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Rapport prestations</div>
+        <div style="font-size:12px;color:var(--t3)">Toutes les prestations avec statuts, équipes et coûts</div>
+      </div>
+      <div class="cd" style="cursor:pointer" onclick="loadProdRapport('equipe')">
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Rapport équipe</div>
+        <div style="font-size:12px;color:var(--t3)">Missions par collaborateur, heures et rémunérations</div>
+      </div>
+      <div class="cd" style="cursor:pointer" onclick="loadProdRapport('kits')">
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Rapport kits</div>
+        <div style="font-size:12px;color:var(--t3)">Historique des sorties et incidents matériel</div>
+      </div>
+      <div class="cd" style="cursor:pointer" onclick="loadProdRapport('incidents')">
+        <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Rapport incidents</div>
+        <div style="font-size:12px;color:var(--t3)">Tous les incidents avec gravité et résolution</div>
+      </div>
+    </div>
+    <div id="prod-rapports-real"></div>`,
 
   'prod.msg':()=>buildMsgShell(),
   'admin.msg':()=>buildMsgShell(),
@@ -1863,10 +2062,21 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='dash') await loadAdminDash();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='prod'&&view==='dash') await loadProdDash();
+  if(role==='prod'&&view==='pre') await loadProdPrestations();
   if(role==='prod'&&view==='planning'){_prodPlanTab='semaine';await loadProdPlanning();}
+  if(role==='prod'&&view==='jourj') await loadProdJourJ();
   if(role==='prod'&&view==='col') await loadProdCollaborateurs();
   if(role==='prod'&&view==='equipes') await loadEquipes();
+  if(role==='prod'&&view==='rem') await loadProdRemunerations();
+  if(role==='prod'&&view==='frais') await loadProdFrais();
+  if(role==='prod'&&view==='brief') await loadProdBriefings();
+  if(role==='prod'&&view==='media') await loadProdMedias();
+  if(role==='prod'&&view==='post') await loadProdPost();
+  if(role==='prod'&&view==='livr') await loadProdLivrables();
   if(role==='prod'&&view==='kanban') await loadKanban();
+  if(role==='prod'&&view==='budget') await loadProdBudget();
+  if(role==='prod'&&view==='form') await loadProdFormation();
+  if(role==='prod'&&view==='rapports'){}
   if(role==='photo'&&view==='dash') await loadPhotoDash();
   if(role==='photo'&&view==='pre') await loadPhotoMesPrestations();
   if(role==='photo'&&view==='planning'){_photoPlanOffset=0;await loadPhotoPlan();}
@@ -2552,10 +2762,14 @@ async function loadProdDash(){
     const inc=Array.isArray(incRaw)?incRaw:[];
     const prof=Array.isArray(profRaw)?profRaw:[];
     // KPIs
+    const VALIDER_ST=['à_valider_production'];
+    const aValider=pre.filter(p=>VALIDER_ST.includes(p.statut));
     const aPlanifier=pre.filter(p=>PLAN_ST.includes(p.statut));
     const aujPres=pre.filter(p=>p.date_prestation===today&&!DONE_ST.includes(p.statut));
     const enTournage=pre.filter(p=>LIVE_ST.includes(p.statut));
     const enMontage=pre.filter(p=>MONT_ST.includes(p.statut));
+    const aTransferer=pre.filter(p=>['médias_à_transférer','production_terminée'].includes(p.statut));
+    const livrablesAValider=pre.filter(p=>['prête_validation','prêt_validation'].includes(p.statut));
     const kitsDispo=kits.filter(k=>k.statut==='disponible').length;
     const kitsRes=kits.filter(k=>['réservé','pré_réservé','sorti','en_prestation'].includes(k.statut)).length;
     const todayAssigned=new Set(
@@ -2565,36 +2779,71 @@ async function loadProdDash(){
     );
     const collabs=prof.filter(p=>['photo','prod','cm'].includes(p.role));
     const collabDispo=collabs.filter(p=>!todayAssigned.has(p.id)).length;
+    set('prod-kpi-val',aValider.length||'0');
     set('prod-kpi-ap',aPlanifier.length);
     set('prod-kpi-auj',aujPres.length);
     set('prod-kpi-live',enTournage.length);
     set('prod-kpi-mont',enMontage.length);
+    set('prod-kpi-livr',livrablesAValider.length||'0');
     set('prod-kpi-cd',collabDispo+'/'+collabs.length);
     set('prod-kpi-kd',kitsDispo);
     set('prod-kpi-kr',kitsRes);
+    set('prod-kpi-med',aTransferer.length||'0');
+    set('prod-kpi-rem','—');
     set('prod-kpi-inc',inc.length);
-    // Badge counts
-    const nbAP=document.getElementById('prod-a-planifier-nb');
-    if(nbAP)nbAP.textContent=aPlanifier.length?aPlanifier.length+' en attente':'';
     const nbInc=document.getElementById('prod-inc-nb');
     if(nbInc)nbInc.textContent=inc.length?inc.length+' alerte'+(inc.length>1?'s':''):'';
-    // Prestations à planifier
+    // Section "À traiter en priorité"
+    const prioItems=[];
+    aValider.forEach(p=>prioItems.push({lvl:'er',txt:`Valider prestation : ${p.clients?.nom||'—'} — ${p.type_prestation||'—'}`,action:`modalDetailById('${p.id}')`}));
+    pre.filter(p=>!DONE_ST.includes(p.statut)&&p.date_prestation&&p.date_prestation<=today&&(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length===0)
+       .slice(0,3).forEach(p=>prioItems.push({lvl:'wa',txt:`Aucun collaborateur affecté : ${p.clients?.nom||'—'}`,action:`modalDetailById('${p.id}')`}));
+    pre.filter(p=>['médias_à_transférer','production_terminée'].includes(p.statut)).slice(0,2)
+       .forEach(p=>prioItems.push({lvl:'wa',txt:`Médias non transférés : ${p.clients?.nom||'—'}`,action:`switchView('media')`}));
+    livrablesAValider.slice(0,2).forEach(p=>prioItems.push({lvl:'wa',txt:`Livrable à valider : ${p.clients?.nom||'—'}`,action:`modalDetailById('${p.id}')`}));
+    inc.filter(al=>al.gravite==='critique').slice(0,2).forEach(al=>prioItems.push({lvl:'er',txt:`Incident critique : ${al.type||al.description?.slice(0,40)||'—'}`,action:`switchView('incidents')`}));
+    const elPrio=document.getElementById('prod-dash-priorite');
+    const elPrioNb=document.getElementById('prod-prio-nb');
+    const elPrioReal=document.getElementById('prod-prio-real');
+    if(elPrio){
+      if(prioItems.length){
+        elPrio.style.display='';
+        if(elPrioNb)elPrioNb.textContent=prioItems.length;
+        if(elPrioReal)elPrioReal.innerHTML=prioItems.map((it,i)=>`
+          <div onclick="${it.action}" style="display:flex;align-items:center;gap:10px;padding:10px 18px;${i<prioItems.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--${it.lvl});flex-shrink:0"></div>
+            <div style="flex:1;min-width:0;font-size:12.5px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.txt}</div>
+            <span style="font-size:10px;color:var(--t3);flex-shrink:0">→</span>
+          </div>`).join('');
+      }else{
+        elPrio.style.display='none';
+      }
+    }
+    // Prestations du jour
     const elAP=document.getElementById('prod-a-planifier-real');
     if(elAP){
-      if(!aPlanifier.length){
-        elAP.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">✓ Toutes les prestations sont planifiées.</div>';
+      const todayPres=aujPres.slice(0,5);
+      if(!todayPres.length){
+        elAP.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation aujourd\'hui.</div>';
       }else{
-        elAP.innerHTML=aPlanifier.slice(0,4).map((p,i)=>{
-          const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
-          const isLast=i===Math.min(aPlanifier.length,4)-1&&aPlanifier.length<=4;
-          return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;${isLast?'':'border-bottom:1px solid var(--b1)'}">
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:13px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
-              <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · <span style="font-family:monospace">${p.reference||'—'}</span></div>
+        const ST_CLR={'production_démarrée':'var(--er)','équipe_en_route':'var(--wa)','arrivée_sur_place':'var(--wa)','confirmée':'var(--acc)','planifiée':'var(--acc)','équipe_affectée':'var(--ok)','prête':'var(--ok)'};
+        const ST_LB2={'production_démarrée':'En tournage','équipe_en_route':'En route','arrivée_sur_place':'Sur place','confirmée':'Confirmée','planifiée':'Planifiée','équipe_affectée':'Équipe OK','prête':'Prête','à_valider_production':'⚠ À valider'};
+        elAP.innerHTML=todayPres.map((p,i)=>{
+          const heures=[(p.heure_debut||'').slice(0,5),(p.heure_fin||'').slice(0,5)].filter(Boolean).join('–')||'—';
+          const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée');
+          const clr=ST_CLR[p.statut]||'var(--t3)';
+          const lb=ST_LB2[p.statut]||p.statut;
+          return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<todayPres.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+            <div style="width:4px;background:${clr};flex-shrink:0;border-radius:0"></div>
+            <div style="flex:1;min-width:0;padding:11px 14px">
+              <div style="font-size:13px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:2px">${heures} · ${p.lieu||'—'} · ${equipe.length} collab.</div>
             </div>
-            <button onclick="modalDetailById('${p.id}')" style="flex-shrink:0;padding:8px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Transformer en mission</button>
+            <div style="flex-shrink:0;padding:10px 14px;display:flex;align-items:center">
+              <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${clr}22;border:1px solid ${clr}55;color:${clr};white-space:nowrap">${lb}</span>
+            </div>
           </div>`;
-        }).join('')+(aPlanifier.length>4?`<div style="padding:10px 18px;border-top:1px solid var(--b1);text-align:center"><button onclick="switchView('pre')" class="btn bg2 bs" style="font-size:12px">Voir les ${aPlanifier.length-4} autres →</button></div>`:'');
+        }).join('')+(aujPres.length>5?`<div style="padding:10px 18px;border-top:1px solid var(--b1);text-align:center"><button onclick="switchView('planning')" class="btn bg2 bs" style="font-size:12px">+${aujPres.length-5} autres →</button></div>`:'');
       }
     }
     // Production en direct
@@ -2878,6 +3127,536 @@ async function loadProdCollaborateurs(){
   }catch(e){
     if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
   }
+}
+
+// ── PROD PRESTATIONS ─────────────────────────────────────────────────────────
+let _prodPreData=[];
+let _prodPreFilter='all';
+
+function filterProdPre(f){
+  _prodPreFilter=f;
+  ['all','valider','planifier','equipe','active','postprod','done'].forEach(id=>{
+    const b=document.getElementById('ppf-'+id.replace('valider','val').replace('planifier','plan').replace('equipe','eq').replace('active','act').replace('postprod','post').replace('done','done'));
+    if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
+    if(b)b.style.fontSize='11px';
+    if(b&&f===id&&id==='valider'){b.style.borderColor='rgba(240,68,94,.3)';b.style.color='var(--er)';}
+  });
+  renderProdPreList();
+}
+
+function renderProdPreList(){
+  const el=document.getElementById('prod-pre-real');
+  if(!el)return;
+  const DONE_ST=['livrée','clôturée','annulée','refusée'];
+  const LIVE_ST=['production_démarrée','équipe_en_route','arrivée_sur_place'];
+  const POST_ST=['médias_à_transférer','production_terminée','médias_complets','à_monter','montage_en_cours','prête_validation','prêt_validation'];
+  let list=_prodPreData;
+  if(_prodPreFilter==='valider') list=list.filter(p=>p.statut==='à_valider_production');
+  else if(_prodPreFilter==='planifier') list=list.filter(p=>['confirmée','planifiée'].includes(p.statut));
+  else if(_prodPreFilter==='equipe') list=list.filter(p=>!DONE_ST.includes(p.statut)&&(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length===0);
+  else if(_prodPreFilter==='active') list=list.filter(p=>LIVE_ST.includes(p.statut)||['équipe_affectée','prête'].includes(p.statut));
+  else if(_prodPreFilter==='postprod') list=list.filter(p=>POST_ST.includes(p.statut));
+  else if(_prodPreFilter==='done') list=list.filter(p=>DONE_ST.includes(p.statut));
+  else list=list.filter(p=>!DONE_ST.includes(p.statut));
+  if(!list.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div style="font-size:13px">Aucune prestation dans ce filtre.</div></div>';
+    return;
+  }
+  const ST_LB={'à_valider_production':'⚠ À valider','confirmée':'Confirmée','planifiée':'Planifiée','équipe_affectée':'Équipe OK','prête':'Prête','production_démarrée':'En tournage','équipe_en_route':'En route','arrivée_sur_place':'Sur place','médias_à_transférer':'Post-prod','médias_complets':'Post-prod','à_monter':'À monter','montage_en_cours':'En montage','prête_validation':'À valider','prêt_validation':'À valider','livrée':'Livrée','clôturée':'Clôturée','annulée':'Annulée','refusée':'Refusée'};
+  const ST_CLR={'à_valider_production':'var(--er)','confirmée':'var(--acc)','planifiée':'var(--acc)','équipe_affectée':'var(--wa)','prête':'var(--ok)','production_démarrée':'var(--er)','équipe_en_route':'var(--wa)','arrivée_sur_place':'var(--wa)','médias_à_transférer':'#7C4DFF','médias_complets':'#7C4DFF','à_monter':'#7C4DFF','montage_en_cours':'#7C4DFF','prête_validation':'var(--wa)','prêt_validation':'var(--wa)','livrée':'var(--ok)','clôturée':'var(--t3)'};
+  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+list.map((p,i)=>{
+    const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}):'—';
+    const heures=[(p.heure_debut||'').slice(0,5),(p.heure_fin||'').slice(0,5)].filter(Boolean).join('–')||'—';
+    const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée');
+    const clr=ST_CLR[p.statut]||'var(--t3)';
+    const lb=ST_LB[p.statut]||p.statut;
+    const noEquipe=equipe.length===0&&!['livrée','clôturée','annulée','refusée'].includes(p.statut);
+    return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+      <div style="width:4px;background:${clr};flex-shrink:0"></div>
+      <div style="width:60px;flex-shrink:0;padding:12px;border-right:1px solid var(--b1);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px">
+        <div style="font-size:11px;font-weight:700;color:var(--t1);text-align:center;line-height:1.2">${date}</div>
+        <div style="font-size:10px;color:var(--t3)">${heures}</div>
+      </div>
+      <div style="flex:1;min-width:0;padding:12px 14px">
+        <div style="font-size:13.5px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'}</div>
+        <div style="font-size:11.5px;color:var(--t2);margin-top:1px">${p.type_prestation||'—'} · ${p.lieu||'—'}</div>
+        ${noEquipe?'<div style="font-size:10.5px;color:var(--wa);margin-top:3px">⚠ Aucun collaborateur affecté</div>':'<div style="font-size:10.5px;color:var(--t3);margin-top:3px">'+equipe.length+' collab. · <span style="font-family:monospace">'+( p.reference||'—')+'</span></div>'}
+      </div>
+      <div style="flex-shrink:0;padding:12px 14px;display:flex;align-items:center">
+        <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function loadProdPrestations(){
+  const el=document.getElementById('prod-pre-real');
+  if(!el)return;
+  try{
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom))&order=date_prestation.desc&limit=100');
+    _prodPreData=Array.isArray(raw)?raw:[];
+    _prodPreFilter='all';
+    ['all','valider','planifier','equipe','active','postprod','done'].forEach(id=>{
+      const b=document.getElementById('ppf-'+id.replace('valider','val').replace('planifier','plan').replace('equipe','eq').replace('active','act').replace('postprod','post').replace('done','done'));
+      if(b)b.className='btn '+(id==='all'?'bp':'bg2')+' bs';
+      if(b)b.style.fontSize='11px';
+    });
+    renderProdPreList();
+  }catch(e){
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+// ── PROD MODE JOUR J ──────────────────────────────────────────────────────────
+async function loadProdJourJ(){
+  const el=document.getElementById('jjp-pre-real');
+  if(!el)return;
+  const today=new Date().toISOString().slice(0,10);
+  el.innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">Chargement…</div>';
+  try{
+    const [preRaw,incRaw]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,telephone,role))&date_prestation=eq.'+today+'&statut=not.in.(annulée,refusée,livrée,clôturée)&order=heure_debut.asc'),
+      sbFetch('incidents?select=id,type,gravite,statut&statut=not.in.(résolu,clôturé)'),
+    ]);
+    const pre=Array.isArray(preRaw)?preRaw:[];
+    const inc=Array.isArray(incRaw)?incRaw:[];
+    const LIVE_ST=['production_démarrée','équipe_en_route','arrivée_sur_place'];
+    const live=pre.filter(p=>p.statut==='production_démarrée').length;
+    const route=pre.filter(p=>p.statut==='équipe_en_route').length;
+    const place=pre.filter(p=>p.statut==='arrivée_sur_place').length;
+    const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    s('jjp-live',live); s('jjp-route',route); s('jjp-place',place); s('jjp-inc',inc.length);
+    const now=new Date();
+    const sub=document.getElementById('jj-prod-subtitle');
+    if(sub)sub.textContent=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' · '+pre.length+' prestation'+(pre.length>1?'s':'');
+    if(!pre.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:12px;color:var(--t3)"><div style="font-size:48px;opacity:.15">🎬</div><div style="font-size:14px;font-weight:600">Aucune production aujourd\'hui</div><div style="font-size:12px">Tout est calme.</div></div>';
+      return;
+    }
+    const ST_LB={'confirmée':'Confirmée','planifiée':'Planifiée','équipe_affectée':'Équipe OK','prête':'Prête','équipe_en_route':'En route','arrivée_sur_place':'Sur place','production_démarrée':'EN TOURNAGE','production_terminée':'Terminée','à_valider_production':'À valider'};
+    const ST_BRD={'production_démarrée':'var(--er)','équipe_en_route':'var(--wa)','arrivée_sur_place':'var(--wa)','confirmée':'var(--acc)','planifiée':'var(--acc)','équipe_affectée':'var(--wa)','prête':'var(--ok)'};
+    const RC={'photo':'#7C4DFF','prod':'#2ECC8A','cm':'#F5A524','admin':'#366BFF','sec':'#00B8D4'};
+    el.innerHTML=pre.map(p=>{
+      const heures=[(p.heure_debut||'').slice(0,5),(p.heure_fin||'').slice(0,5)].filter(Boolean).join('–')||'—';
+      const equipe=(p.prestations_equipe||[]);
+      const accepted=equipe.filter(e=>e.statut==='acceptée');
+      const brd=ST_BRD[p.statut]||'var(--b1)';
+      const isLive=p.statut==='production_démarrée';
+      return`<div class="cd" style="padding:0;overflow:hidden;border-left:3px solid ${brd};margin-bottom:13px">
+        <div style="padding:16px 18px;border-bottom:1px solid var(--b1)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+            <div>
+              <div style="font-size:15px;font-weight:800;color:var(--t1)">${p.clients?.nom||'—'}</div>
+              <div style="font-size:12px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'} · ${p.lieu||'—'} · ${heures}</div>
+            </div>
+            <span style="font-size:11px;font-weight:700;padding:4px 10px;background:${brd}22;border:1px solid ${brd}55;border-radius:20px;color:${brd};flex-shrink:0;${isLive?'animation:prodPulse 2s ease-in-out infinite':''}">${ST_LB[p.statut]||p.statut}</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="switchView('msg')" style="padding:7px 12px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">💬 Message équipe</button>
+            <button onclick="modalSignalerIncident()" style="padding:7px 12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);font-size:11px;font-weight:600;cursor:pointer">⚠ Incident</button>
+            <button onclick="modalDetailById('${p.id}')" style="padding:7px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer">Voir fiche →</button>
+          </div>
+        </div>
+        <div style="padding:14px 18px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:10px">Équipe (${accepted.length})</div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            ${accepted.length?accepted.map(e=>{
+              const c=e.collaborateur||{};
+              const name=[c.prenom,c.nom].filter(Boolean).join(' ')||'—';
+              const ini=((c.prenom?.[0]||'')+(c.nom?.[0]||'')).toUpperCase()||'?';
+              const col=RC[c.role]||'#366BFF';
+              return`<div style="display:flex;align-items:center;gap:10px">
+                <div class="av" style="width:28px;height:28px;font-size:10px;background:${col}">${ini}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${name}</div>
+                  ${c.telephone?`<div style="font-size:11px;color:var(--t3)">${c.telephone}</div>`:''}
+                </div>
+                ${c.telephone?`<a href="tel:${c.telephone}" style="padding:5px 10px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;text-decoration:none">📞 Appeler</a>`:''}
+              </div>`;
+            }).join(''):'<div style="font-size:12px;color:var(--wa)">⚠ Aucun collaborateur affecté</div>'}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+// ── PROD BRIEFINGS ────────────────────────────────────────────────────────────
+let _prodBriefFilter='all';
+let _prodBriefData=[];
+
+function filterProdBrief(f){
+  _prodBriefFilter=f;
+  ['all','incomplet','non_consulte','valide'].forEach(id=>{
+    const b=document.getElementById('pbf-'+id.replace('non_consulte','nc').replace('incomplet','inc').replace('valide','val'));
+    if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
+    if(b)b.style.fontSize='11px';
+  });
+  renderProdBriefList();
+}
+
+function renderProdBriefList(){
+  const el=document.getElementById('prod-brief-real');
+  if(!el)return;
+  let list=_prodBriefData;
+  if(_prodBriefFilter==='incomplet') list=list.filter(p=>!p._briefOk);
+  else if(_prodBriefFilter==='non_consulte') list=list.filter(p=>!p._briefConsulte);
+  else if(_prodBriefFilter==='valide') list=list.filter(p=>p._briefOk);
+  if(!list.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📄</div><div style="font-size:13px">Aucun briefing dans ce filtre.</div></div>';
+    return;
+  }
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:10px">'+list.map(p=>{
+    const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+    const ok=p._briefOk;
+    const consulte=p._briefConsulte;
+    return`<div class="cd" style="padding:0;overflow:hidden;cursor:pointer" onclick="modalDetailById('${p.id}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--b1)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13.5px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · ${p.lieu||'—'}</div>
+        </div>
+        <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${ok?'rgba(46,204,138,.1)':'rgba(245,165,36,.1)'};border:1px solid ${ok?'rgba(46,204,138,.25)':'rgba(245,165,36,.25)'};border-radius:20px;color:${ok?'var(--ok)':'var(--wa)'};flex-shrink:0;margin-left:10px">${ok?'✓ Complet':'Incomplet'}</span>
+      </div>
+      <div style="display:flex;gap:16px;padding:10px 18px;font-size:11px;color:var(--t3)">
+        <span>${consulte?'✓ Consulté':'⚠ Non consulté'}</span>
+        <span>${(p._briefEquipe||0)} collab. assignés</span>
+        <span style="margin-left:auto;color:var(--acc);font-weight:600">Voir →</span>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function loadProdBriefings(){
+  const el=document.getElementById('prod-brief-real');
+  if(!el)return;
+  try{
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,clients(nom),prestations_equipe(statut)&statut=not.in.(annulée,refusée,livrée,clôturée)&order=date_prestation.asc&limit=50');
+    const pre=Array.isArray(raw)?raw:[];
+    _prodBriefData=pre.map(p=>({
+      ...p,
+      _briefOk:['prête','équipe_affectée','production_démarrée','production_terminée','livrée'].includes(p.statut),
+      _briefConsulte:['prête','production_démarrée','production_terminée','livrée'].includes(p.statut),
+      _briefEquipe:(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length,
+    }));
+    _prodBriefFilter='all';
+    ['all','incomplet','non_consulte','valide'].forEach(id=>{
+      const b=document.getElementById('pbf-'+id.replace('non_consulte','nc').replace('incomplet','inc').replace('valide','val'));
+      if(b)b.className='btn '+(id==='all'?'bp':'bg2')+' bs';
+      if(b)b.style.fontSize='11px';
+    });
+    renderProdBriefList();
+  }catch(e){
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+// ── PROD MÉDIAS ───────────────────────────────────────────────────────────────
+async function loadProdMedias(){
+  const el=document.getElementById('prod-media-real');
+  if(!el)return;
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  try{
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom),prestations_equipe(statut,collaborateur:profiles(prenom,nom))&statut=not.in.(annulée,refusée,à_valider_production,demande_reçue)&order=date_prestation.desc&limit=50');
+    const pre=Array.isArray(raw)?raw:[];
+    const POST_STAT=['médias_à_transférer','production_terminée'];
+    const OK_STAT=['médias_complets','à_monter','montage_en_cours','prête_validation','prêt_validation','livrée','clôturée'];
+    const att=pre.filter(p=>POST_STAT.includes(p.statut));
+    const enc=pre.filter(p=>p.statut==='médias_à_transférer');
+    const ok=pre.filter(p=>OK_STAT.includes(p.statut));
+    s('media-attente',att.length); s('media-encours',enc.length); s('media-ok',ok.length);
+    const relevant=pre.filter(p=>POST_STAT.includes(p.statut)||OK_STAT.includes(p.statut));
+    if(!relevant.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📁</div><div style="font-size:13px">Aucun transfert en cours ou en attente.</div></div>';
+      return;
+    }
+    const ST_LB={'médias_à_transférer':'À transférer','production_terminée':'Terminée','médias_complets':'Médias OK','à_monter':'À monter','montage_en_cours':'En montage','prête_validation':'À valider','prêt_validation':'À valider','livrée':'Livrée'};
+    const ST_CLR={'médias_à_transférer':'var(--er)','production_terminée':'var(--wa)','médias_complets':'var(--ok)','à_monter':'#7C4DFF','montage_en_cours':'#7C4DFF','prête_validation':'var(--wa)','prêt_validation':'var(--wa)','livrée':'var(--ok)'};
+    el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+relevant.map((p,i)=>{
+      const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+      const equipe=(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée');
+      const clr=ST_CLR[p.statut]||'var(--t3)';
+      const lb=ST_LB[p.statut]||p.statut;
+      return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<relevant.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+        <div style="width:4px;background:${clr};flex-shrink:0"></div>
+        <div style="flex:1;min-width:0;padding:12px 14px">
+          <div style="font-size:13px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · ${equipe.length} collab.</div>
+        </div>
+        <div style="flex-shrink:0;padding:12px 14px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:6px">
+          <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
+          ${POST_STAT.includes(p.statut)?`<button onclick="event.stopPropagation();alert('Relance envoyée')" style="padding:4px 10px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">📢 Relancer</button>`:''}
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+// ── PROD POSTPRODUCTION ───────────────────────────────────────────────────────
+let _prodPostData=[];
+let _prodPostFilter='all';
+
+function filterProdPost(f){
+  _prodPostFilter=f;
+  ['all','a_monter','en_cours','corrections','valider'].forEach(id=>{
+    const b=document.getElementById('ppost-'+id.replace('a_monter','am').replace('en_cours','enc').replace('corrections','cor').replace('valider','val'));
+    if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
+    if(b)b.style.fontSize='11px';
+  });
+  renderProdPostList();
+}
+
+function renderProdPostList(){
+  const el=document.getElementById('prod-post-real');
+  if(!el)return;
+  let list=_prodPostData;
+  if(_prodPostFilter==='a_monter') list=list.filter(p=>p.statut==='à_monter');
+  else if(_prodPostFilter==='en_cours') list=list.filter(p=>p.statut==='montage_en_cours');
+  else if(_prodPostFilter==='corrections') list=list.filter(p=>['prête_validation','prêt_validation'].includes(p.statut));
+  else if(_prodPostFilter==='valider') list=list.filter(p=>['prête_validation','prêt_validation'].includes(p.statut));
+  if(!list.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🎬</div><div style="font-size:13px">Aucun contenu dans ce filtre.</div></div>';
+    return;
+  }
+  const ST_LB={'médias_complets':'Médias OK','à_monter':'À monter','montage_en_cours':'En montage','prête_validation':'À contrôler','prêt_validation':'À contrôler','livrée':'Livrée'};
+  const ST_CLR={'médias_complets':'var(--t3)','à_monter':'var(--wa)','montage_en_cours':'#7C4DFF','prête_validation':'var(--ok)','prêt_validation':'var(--ok)','livrée':'var(--ok)'};
+  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+list.map((p,i)=>{
+    const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+    const clr=ST_CLR[p.statut]||'var(--t3)';
+    const lb=ST_LB[p.statut]||p.statut;
+    return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+      <div style="width:4px;background:${clr};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0;padding:12px 14px">
+        <div style="font-size:13px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${date}</div>
+      </div>
+      <div style="flex-shrink:0;padding:12px 14px;display:flex;align-items:center">
+        <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function loadProdPost(){
+  const el=document.getElementById('prod-post-real');
+  if(!el)return;
+  try{
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=in.(médias_complets,à_monter,montage_en_cours,prête_validation,prêt_validation)&order=date_prestation.asc&limit=50');
+    _prodPostData=Array.isArray(raw)?raw:[];
+    _prodPostFilter='all';
+    renderProdPostList();
+  }catch(e){
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+// ── PROD LIVRABLES ────────────────────────────────────────────────────────────
+let _prodLivrData=[];
+let _prodLivrFilter='all';
+
+function filterProdLivr(f){
+  _prodLivrFilter=f;
+  ['all','valider','valide','livre'].forEach(id=>{
+    const b=document.getElementById('pliv-'+id.replace('valider','val').replace('valide','ok').replace('livre','lv'));
+    if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
+    if(b)b.style.fontSize='11px';
+  });
+  renderProdLivrList();
+}
+
+function renderProdLivrList(){
+  const el=document.getElementById('prod-livr-real');
+  if(!el)return;
+  let list=_prodLivrData;
+  if(_prodLivrFilter==='valider') list=list.filter(p=>['prête_validation','prêt_validation'].includes(p.statut));
+  else if(_prodLivrFilter==='valide') list=list.filter(p=>p.statut==='prête');
+  else if(_prodLivrFilter==='livre') list=list.filter(p=>p.statut==='livrée');
+  if(!list.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">✅</div><div style="font-size:13px">Aucun livrable dans ce filtre.</div></div>';
+    return;
+  }
+  const ST_LB={'prête_validation':'À valider','prêt_validation':'À valider','prête':'Validé','livrée':'Livré','clôturée':'Clôturé'};
+  const ST_CLR={'prête_validation':'var(--wa)','prêt_validation':'var(--wa)','prête':'var(--ok)','livrée':'var(--ok)','clôturée':'var(--t3)'};
+  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+list.map((p,i)=>{
+    const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+    const clr=ST_CLR[p.statut]||'var(--t3)';
+    const lb=ST_LB[p.statut]||p.statut;
+    const canValidate=['prête_validation','prêt_validation'].includes(p.statut);
+    return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+      <div style="width:4px;background:${clr};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0;padding:12px 14px">
+        <div style="font-size:13px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${date}</div>
+      </div>
+      <div style="flex-shrink:0;padding:12px 14px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
+        ${canValidate?`<button onclick="event.stopPropagation();modalDetailById('${p.id}')" style="padding:6px 12px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Valider</button>`:''}
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+async function loadProdLivrables(){
+  const el=document.getElementById('prod-livr-real');
+  if(!el)return;
+  try{
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=in.(prête_validation,prêt_validation,prête,livrée)&order=date_prestation.asc&limit=50');
+    _prodLivrData=Array.isArray(raw)?raw:[];
+    _prodLivrFilter='all';
+    renderProdLivrList();
+  }catch(e){
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+// ── PROD BUDGET ───────────────────────────────────────────────────────────────
+async function loadProdBudget(){
+  const el=document.getElementById('prod-budget-real');
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  if(!el)return;
+  try{
+    const raw=await sbFetch('prestations?select=id,statut,type_prestation,date_prestation,clients(nom),devis(montant_ht)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=30');
+    const pre=Array.isArray(raw)?raw:[];
+    const active=pre.filter(p=>!['livrée','clôturée'].includes(p.statut));
+    s('bud-nb',active.length);
+    // Estimate CA from devis (sum of montant_ht where available)
+    const ca=pre.reduce((acc,p)=>{const m=p.devis?.montant_ht;return acc+(m?Number(m):0);},0);
+    s('bud-ca',ca?ca.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €':'—');
+    s('bud-couts','—'); s('bud-marge','—');
+    el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+pre.slice(0,10).map((p,i)=>{
+      const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+      const ca=p.devis?.montant_ht?Number(p.devis.montant_ht).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €':'—';
+      return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:center;${i<Math.min(pre.length,10)-1?'border-bottom:1px solid var(--b1)':''};padding:12px 18px;cursor:pointer;gap:12px" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${date}</div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--ok);flex-shrink:0">${ca}</div>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+// ── PROD RÉMUNÉRATIONS ────────────────────────────────────────────────────────
+let _prodRemData=[];
+let _prodRemFilter='all';
+
+function filterProdRem(f){
+  _prodRemFilter=f;
+  ['all','controle','valide','transmis'].forEach(id=>{
+    const b=document.getElementById('prem-'+id.replace('controle','ctrl').replace('valide','val').replace('transmis','tx'));
+    if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
+    if(b)b.style.fontSize='11px';
+  });
+  renderProdRemList();
+}
+
+function renderProdRemList(){
+  const el=document.getElementById('prod-rem-real');
+  if(!el)return;
+  let list=_prodRemData;
+  if(!list.length){
+    el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:12px;color:var(--t3)">
+      <div style="font-size:48px;opacity:.15">💰</div>
+      <div style="font-size:14px;font-weight:600">Module rémunérations</div>
+      <div style="font-size:12px;text-align:center;max-width:320px">Les rémunérations sont calculées à partir des prestations terminées. Table <span style="font-family:monospace;color:var(--acc)">remunerations</span> requise en base.</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+list.map((r,i)=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 18px;${i<list.length-1?'border-bottom:1px solid var(--b1)':''}">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${r.nom||'—'}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${r.prestation||'—'}</div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--ok)">${r.montant||'—'}</div>
+      <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);color:var(--wa)">${r.statut||'—'}</span>
+    </div>`).join('')+'</div>';
+}
+
+async function loadProdRemunerations(){
+  const el=document.getElementById('prod-rem-real');
+  if(!el)return;
+  try{
+    // Try to load from remunerations table if it exists
+    const raw=await sbFetch('remunerations?select=id,statut,montant_total,collaborateur:profiles(prenom,nom),prestations(reference,clients(nom))&order=created_at.desc&limit=30');
+    if(Array.isArray(raw)&&raw.length){
+      _prodRemData=raw.map(r=>({
+        nom:[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||'—',
+        prestation:r.prestations?.clients?.nom||r.prestations?.reference||'—',
+        montant:r.montant_total?Number(r.montant_total).toFixed(2)+' €':'—',
+        statut:r.statut||'—',
+      }));
+    }else{
+      _prodRemData=[];
+    }
+    renderProdRemList();
+  }catch(e){
+    _prodRemData=[];
+    renderProdRemList();
+  }
+}
+
+// ── PROD FRAIS ────────────────────────────────────────────────────────────────
+async function loadProdFrais(){
+  const el=document.getElementById('prod-frais-real');
+  if(!el)return;
+  el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:12px;color:var(--t3)">
+    <div style="font-size:48px;opacity:.15">🚗</div>
+    <div style="font-size:14px;font-weight:600">Module frais & kilométrage</div>
+    <div style="font-size:12px;text-align:center;max-width:320px">Les déclarations de frais et kilomètres seront listées ici. Table <span style="font-family:monospace;color:var(--acc)">frais_deplacement</span> requise.</div>
+  </div>`;
+}
+
+// ── PROD FORMATION ────────────────────────────────────────────────────────────
+async function loadProdFormation(){
+  const el=document.getElementById('prod-form-real');
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  if(!el)return;
+  try{
+    const profRaw=await sbFetch('profiles?select=id,prenom,nom,role,xp&role=in.(photo,cm,prod)&order=nom.asc');
+    const prof=Array.isArray(profRaw)?profRaw:[];
+    s('form-nb',prof.length); s('form-exp','0'); s('form-active','—');
+    const RC={'photo':'#7C4DFF','prod':'#2ECC8A','cm':'#F5A524'};
+    const RL={'photo':'Photo / Vidéo','prod':'Resp. Production','cm':'Community Manager'};
+    el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+prof.map((t,i)=>{
+      const name=[t.prenom,t.nom].filter(Boolean).join(' ')||t.role;
+      const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase();
+      const col=RC[t.role]||'#366BFF';
+      const xp=t.xp||0;
+      const grade=xp>=500?'Expert':xp>=200?'Confirmé':xp>=50?'Junior':'Débutant';
+      return`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;${i<prof.length-1?'border-bottom:1px solid var(--b1)':''}">
+        <div class="av" style="width:34px;height:34px;font-size:12px;background:${col}">${ini}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">${name}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:1px">${RL[t.role]||t.role}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11px;font-weight:700;color:var(--acc)">${grade}</div>
+          <div style="font-size:10px;color:var(--t3)">${xp} XP</div>
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+// ── PROD RAPPORTS ─────────────────────────────────────────────────────────────
+function exportProdRapportCSV(){
+  toast('Export CSV en préparation…','ok');
+}
+function loadProdRapport(type){
+  const el=document.getElementById('prod-rapports-real');
+  if(!el)return;
+  el.innerHTML='<div style="color:var(--t3);text-align:center;padding:30px;font-size:13px">Rapport '+type+' — chargement en cours…</div>';
+  setTimeout(()=>{el.innerHTML='<div class="cd" style="padding:20px"><div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:8px">Rapport : '+type+'</div><div style="font-size:12px;color:var(--t3)">Sélectionnez une période pour générer ce rapport.</div><div style="display:flex;gap:8px;margin-top:14px"><button class="btn bg2 bs" style="font-size:11px">Ce mois</button><button class="btn bg2 bs" style="font-size:11px">Cette année</button><button class="btn bg2 bs" style="font-size:11px">Personnalisé</button></div></div>';},300);
 }
 
 async function modalAffecterCollab(collabId,collabName){
@@ -6114,19 +6893,22 @@ function goApp(role){
   S.role=role;
   const cfg=ROLES[role];
   const nav=NAV[role];
-  S.view=nav[0].id;
-  const ptEl=document.getElementById('pt');if(ptEl&&nav[0])ptEl.textContent=nav[0].lb;
+  const firstNav=nav.find(i=>!i.type);
+  S.view=firstNav?.id||'dash';
+  const ptEl=document.getElementById('pt');if(ptEl&&firstNav)ptEl.textContent=firstNav.lb;
   document.getElementById('u-av').textContent=cfg.i;
   document.getElementById('u-av').style.background=cfg.c;
   document.getElementById('u-nm').textContent=cfg.r;
   document.getElementById('u-rl').textContent=cfg.r;
   document.getElementById('cta-btn').textContent=cfg.cta;
   document.getElementById('sb-nav').innerHTML=`<div class="nav">`+
-    nav.map(item=>`<button class="ni${item.id===S.view?' on':''}" data-id="${item.id}" onclick="switchView('${item.id}')">
-      <span class="ni-ic">${IC[item.ic]||''}</span>
-      <span class="ni-lb">${item.lb}</span>
-      <span class="nb" id="nb-${item.id}" style="display:none"></span>
-    </button>`).join('')+`</div>`;
+    nav.map(item=>item.type==='sep'
+      ?`<span class="nl">${item.lb}</span>`
+      :`<button class="ni${item.id===S.view?' on':''}" data-id="${item.id}" onclick="switchView('${item.id}')">
+        <span class="ni-ic">${IC[item.ic]||''}</span>
+        <span class="ni-lb">${item.lb}</span>
+        <span class="nb" id="nb-${item.id}" style="display:none"></span>
+      </button>`).join('')+`</div>`;
   show('app');
   renderBottomNav();
   updateCta();
@@ -6175,6 +6957,14 @@ async function updateNavBadges(role){
       const pre=await sbFetch('prestations?select=id,statut');
       const n=(pre||[]).filter(p=>!['clôturée','annulée','refusée','livrée'].includes(p.statut)).length;
       setBadge('pre',n,'nb-o');
+      if(role==='prod'){
+        const aValider=(pre||[]).filter(p=>p.statut==='à_valider_production').length;
+        if(aValider>0)setBadge('pre',aValider,'nb-r');
+        const aTransferer=(pre||[]).filter(p=>['médias_à_transférer','production_terminée'].includes(p.statut)).length;
+        setBadge('media',aTransferer,'nb-r');
+        const aValiderLivr=(pre||[]).filter(p=>['prête_validation','prêt_validation'].includes(p.statut)).length;
+        setBadge('livr',aValiderLivr,'nb-o');
+      }
     }
     if(role==='sec'){
       setBadge('crm',(await sbFetch('clients?select=id')||[]).length,'nb-b');
@@ -6322,7 +7112,7 @@ function closeMobNav(){
 const BNAV_ITEMS={
   admin:['dash','pre','planning','fin'],
   sec:  ['dash','pre','taches','crm'],
-  prod: ['dash','planning','col','kanban'],
+  prod: ['dash','jourj','pre','planning','col'],
   photo:['dash','jourj','pre','medias'],
   com:  ['dash','crm','pipeline','devis'],
   compta:['dash','factures','paiements','rap'],
@@ -6401,10 +7191,12 @@ const VIEW_CTA={
   'sec.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'sec.taches':{t:'+ Nouvelle tâche',fn:'modalNouvelleTache'},
   'prod.incidents':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
-  'prod.kits':{t:'+ Nouveau kit',fn:'modalNouveauKit'},
+  'prod.kits':{t:'+ Ajouter matériel',fn:'modalNouveauKit'},
   'prod.dash':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
+  'prod.pre':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'prod.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'prod.col':{t:'+ Inviter un collaborateur',fn:'modalInviterCollaborateur'},
+  'prod.jourj':{t:'⚠ Déclarer incident',fn:'modalSignalerIncident'},
   'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.cal':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.contenus':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
