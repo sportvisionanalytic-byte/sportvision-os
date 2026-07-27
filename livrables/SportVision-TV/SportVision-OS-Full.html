@@ -672,6 +672,7 @@ const NAV={
     {id:'documents',lb:'Centre documentaire',ic:'doc'},
     {id:'users',lb:'Utilisateurs & accès',ic:'col'},
     {id:'grades',lb:'Grades & XP',ic:'target'},
+    {id:'form',lb:'Centre de formation',ic:'form'},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
     {type:'sep',lb:'Équipe & Espace'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
@@ -1952,6 +1953,19 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Utilisateurs & accès</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Ajouter un membre</button></div>
     <div id="users-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  // ── ADMIN : CENTRE DE FORMATION ──────────
+  'admin.form':()=>`<div class="sh">
+    <div class="sh-t">Centre de formation</div>
+    <div style="font-size:12px;color:var(--t3)">Pilotage formations — Administrateur</div>
+  </div>
+  <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+    <div class="kpi" style="--kl:var(--acc)"><div class="kpi-ey">Formations actives</div><div class="kpi-v" id="af-kpi-tot">—</div></div>
+    <div class="kpi" style="--kl:var(--ok)"><div class="kpi-ey">Completions</div><div class="kpi-v" id="af-kpi-done" style="color:var(--ok)">—</div></div>
+    <div class="kpi" style="--kl:var(--wa)"><div class="kpi-ey">En cours</div><div class="kpi-v" id="af-kpi-enc" style="color:var(--wa)">—</div></div>
+    <div class="kpi" style="--kl:#9C6FFF"><div class="kpi-ey">XP distribués</div><div class="kpi-v" id="af-kpi-xp" style="color:#9C6FFF">—</div></div>
+  </div>
+  <div id="admin-form-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   // ── GRADES & XP ──────────────────────────
   'admin.grades':()=>`
     <div class="sh"><div class="sh-t">Grades & XP</div><div style="font-size:12px;color:var(--t3)">Système de progression de l'équipe</div></div>
@@ -2648,6 +2662,8 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='medias') await loadMedias();
   if(role==='photo'&&view==='kits') await loadPhotoKits();
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
+  if(role==='admin'&&view==='form') await loadAdminForm();
+  if(role==='prod'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(['prod','admin','sec','photo','cm'].includes(role)&&view==='msg') await loadMsg();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
@@ -7972,9 +7988,35 @@ const FORMATIONS_CATALOG=[
 ];
 
 let _formTab='dashboard';
+let _formProgCache={};   // keyed by formation_id → {statut, lessons:{key:true}, xp_gagnes, enrolled_at, completed_at, _insId}
+let _formInscIds={};     // formation_id → inscription uuid
 
-function getFormProg(uid){try{return JSON.parse(localStorage.getItem('sv_fp_'+uid)||'{}');}catch(e){return{};}}
-function saveFormProg(uid,data){localStorage.setItem('sv_fp_'+uid,JSON.stringify(data));}
+function getFormProg(uid){return _formProgCache;}
+function saveFormProg(uid,data){_formProgCache=data;}
+
+async function loadFormProgFromDB(uid){
+  try{
+    const ins=await sbFetch(
+      'formation_inscriptions?select=id,formation_id,statut,xp_gagnes,enrolled_at,completed_at,progression_pct,formation_progression(lecon_key)&collaborateur_id=eq.'+uid
+    ).catch(()=>[]);
+    const prog={};
+    (ins||[]).forEach(i=>{
+      const lessons={};
+      (i.formation_progression||[]).forEach(p=>{lessons[p.lecon_key]=true;});
+      prog[i.formation_id]={
+        statut:i.statut==='terminee'?'terminée':i.statut||'en_cours',
+        lessons,xp_gagnes:i.xp_gagnes||0,
+        enrolled_at:i.enrolled_at,completed_at:i.completed_at,_insId:i.id,
+      };
+      _formInscIds[i.formation_id]=i.id;
+    });
+    _formProgCache=prog;
+    return prog;
+  }catch(e){
+    // fallback localStorage
+    try{return JSON.parse(localStorage.getItem('sv_fp_'+uid)||'{}')}catch(e2){return{};}
+  }
+}
 
 function setFormTab(tab){
   _formTab=tab;
@@ -8005,6 +8047,8 @@ async function loadForm(){
     const missions=await sbFetch('prestations_equipe?select=est_responsable&collaborateur_id=eq.'+uid);
     if(Array.isArray(missions)){nbMissions=missions.length;missionXp=missions.reduce((s,m)=>s+100+(m.est_responsable?50:0),0);}
   }catch(e){}
+  // Charger la progression depuis Supabase (avec fallback localStorage)
+  await loadFormProgFromDB(uid);
   const prog=getFormProg(uid);
   const formXp=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée').reduce((s,f)=>s+f.xp,0);
   const totalXp=missionXp+formXp;
@@ -8242,29 +8286,178 @@ function modalFormDetail(id){
   </div>`;
 }
 
-function enrollForm(id){
+async function enrollForm(id){
   const uid=localStorage.getItem('sv_uid')||'x';
-  const prog=getFormProg(uid);
-  prog[id]={statut:'en_cours',lessons:{},enrolled_at:new Date().toISOString()};
-  saveFormProg(uid,prog);
-  modalFormDetail(id);
+  try{
+    let insId=_formInscIds[id];
+    if(!insId){
+      try{
+        const r=await sbFetch('formation_inscriptions',{method:'POST',body:{
+          formation_id:id,collaborateur_id:uid,statut:'en_cours',
+          enrolled_at:new Date().toISOString(),
+        }});
+        const ins=Array.isArray(r)?r[0]:r;
+        if(ins?.id){insId=ins.id;_formInscIds[id]=ins.id;}
+      }catch(e){
+        // Déjà inscrit — récupérer l'existant
+        const ex=await sbFetch('formation_inscriptions?formation_id=eq.'+id+'&collaborateur_id=eq.'+uid+'&limit=1').catch(()=>[]);
+        if(ex?.[0]?.id){insId=ex[0].id;_formInscIds[id]=ex[0].id;}
+      }
+    }
+    if(!_formProgCache[id]){
+      _formProgCache[id]={statut:'en_cours',lessons:{},enrolled_at:new Date().toISOString(),_insId:insId};
+    }
+    modalFormDetail(id);
+  }catch(e){toast('Erreur lors de l\'inscription.','er');}
 }
 
-function toggleFormLesson(id,mi,li){
+async function toggleFormLesson(id,mi,li){
   const uid=localStorage.getItem('sv_uid')||'x';
-  const prog=getFormProg(uid);
-  if(!prog[id])prog[id]={statut:'en_cours',lessons:{},enrolled_at:new Date().toISOString()};
-  const fp=prog[id];const key=mi+'_'+li;
+  // Auto-enrôlement si pas encore inscrit
+  if(!_formProgCache[id]||!_formInscIds[id]){await enrollForm(id);}
+  const insId=_formInscIds[id];
+  if(!insId){toast('Impossible de sauvegarder la progression.','er');return;}
+  const fp=_formProgCache[id]||{statut:'en_cours',lessons:{},_insId:insId};
+  const key=mi+'_'+li;
   const f=FORMATIONS_CATALOG.find(x=>x.id===id);
   if(!f)return;
-  if(fp.lessons[key]){delete fp.lessons[key];if(fp.statut==='terminée')fp.statut='en_cours';}
-  else{
-    fp.lessons[key]=true;
-    const total=f.modules.reduce((s,m)=>s+m.lecons.length,0);
-    if(Object.keys(fp.lessons).length>=total){fp.statut='terminée';fp.completed_at=new Date().toISOString();toast('🎉 Formation terminée ! +'+f.xp+' XP','ok');}
+  const total=f.modules.reduce((s,m)=>s+m.lecons.length,0);
+
+  if(fp.lessons?.[key]){
+    // Décocher une leçon
+    delete fp.lessons[key];
+    if(fp.statut==='terminée')fp.statut='en_cours';
+    const pct=total?Math.round(Object.keys(fp.lessons).length/total*100):0;
+    await sbFetch('formation_progression?inscription_id=eq.'+insId+'&lecon_key=eq.'+key,{method:'DELETE'}).catch(()=>{});
+    await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{statut:'en_cours',progression_pct:pct}}).catch(()=>{});
+  }else{
+    // Cocher une leçon
+    fp.lessons=fp.lessons||{};fp.lessons[key]=true;
+    await sbFetch('formation_progression',{method:'POST',body:{inscription_id:insId,lecon_key:key}}).catch(()=>{});
+    const done=Object.keys(fp.lessons).length;const pct=total?Math.round(done/total*100):0;
+    if(done>=total){
+      fp.statut='terminée';fp.completed_at=new Date().toISOString();
+      toast('🎉 Formation terminée ! +'+f.xp+' XP','ok');
+      await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{
+        statut:'terminee',progression_pct:100,xp_gagnes:f.xp,completed_at:new Date().toISOString(),
+      }}).catch(()=>{});
+      // Écrire dans xp_events
+      await sbFetch('xp_events',{method:'POST',body:{
+        collaborateur_id:uid,montant:f.xp,type:'formation',
+        source_id:insId,source_type:'formation_inscriptions',
+        description:'Formation terminée : '+f.titre,attribue_par:uid,
+      }}).catch(()=>{});
+      // Mettre à jour profiles.xp
+      try{
+        const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
+        const cur=pr?.[0]?.xp||0;
+        await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+f.xp}});
+      }catch(e){}
+    }else{
+      await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{statut:'en_cours',progression_pct:pct}}).catch(()=>{});
+    }
   }
-  saveFormProg(uid,prog);
+  _formProgCache[id]=fp;
   modalFormDetail(id);
+  // Refresh grade panel si visible
+  if(document.getElementById('form-grade-content'))await loadForm();
+}
+
+// ── Admin : Centre de formation ──────────────────────────────────────────────
+async function loadAdminForm(){
+  const el=document.getElementById('admin-form-real');
+  if(!el)return;
+  try{
+    const [ins,profiles]=await Promise.all([
+      sbFetch('formation_inscriptions?select=id,formation_id,statut,xp_gagnes,enrolled_at,completed_at,collaborateur_id,profiles(id,prenom,nom,role)&order=completed_at.desc.nullslast,enrolled_at.desc&limit=500').catch(()=>[]),
+      sbFetch('profiles?select=id,prenom,nom,role&order=nom.asc&limit=100').catch(()=>[]),
+    ]);
+    const insList=ins||[];const profList=profiles||[];
+    // KPIs
+    const done=insList.filter(i=>i.statut==='terminee').length;
+    const enc=insList.filter(i=>i.statut==='en_cours').length;
+    const totalXp=insList.reduce((s,i)=>s+(i.xp_gagnes||0),0);
+    const g=id=>document.getElementById(id);
+    if(g('af-kpi-tot'))g('af-kpi-tot').textContent=FORMATIONS_CATALOG.length;
+    if(g('af-kpi-done'))g('af-kpi-done').textContent=done;
+    if(g('af-kpi-enc'))g('af-kpi-enc').textContent=enc;
+    if(g('af-kpi-xp'))g('af-kpi-xp').textContent=totalXp.toLocaleString('fr-FR')+' XP';
+    // Stats par formation
+    const fStats={};
+    FORMATIONS_CATALOG.forEach(f=>{
+      const fi=insList.filter(i=>i.formation_id===f.id);
+      fStats[f.id]={inscrits:fi.length,terminees:fi.filter(i=>i.statut==='terminee').length,enc:fi.filter(i=>i.statut==='en_cours').length};
+    });
+    // Stats par collab
+    const cStats={};
+    profList.forEach(p=>{
+      const pi=insList.filter(i=>i.collaborateur_id===p.id);
+      cStats[p.id]={...p,
+        terminees:pi.filter(i=>i.statut==='terminee').length,
+        enc:pi.filter(i=>i.statut==='en_cours').length,
+        xp:pi.reduce((s,i)=>s+(i.xp_gagnes||0),0),
+        oblManq:FORMATIONS_CATALOG.filter(f=>f.obligatoire&&!pi.find(i=>i.formation_id===f.id&&i.statut==='terminee')).length,
+      };
+    });
+    const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+    el.innerHTML=`
+      <div class="cd" style="margin-bottom:12px">
+        <div class="cd-h"><div class="cd-t">Formations — Vue d'ensemble</div></div>
+        <div class="tw"><table><thead><tr><th>Formation</th><th>Catégorie</th><th>XP</th><th>Inscrits</th><th>Terminées</th><th>Taux</th><th>Obligatoire</th></tr></thead><tbody>
+          ${FORMATIONS_CATALOG.map(f=>{
+            const st=fStats[f.id]||{inscrits:0,terminees:0};
+            const taux=st.inscrits?Math.round(st.terminees/st.inscrits*100):0;
+            return`<tr>
+              <td class="tm"><span style="margin-right:6px">${f.icone}</span>${f.titre}</td>
+              <td style="font-size:11.5px;color:var(--t3)">${f.categorie}</td>
+              <td style="color:var(--wa);font-weight:700">+${f.xp}</td>
+              <td class="tm">${st.inscrits}</td>
+              <td class="tm" style="color:var(--ok);font-weight:700">${st.terminees}</td>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="pg" style="width:50px;display:inline-flex"><div class="pg-f" style="width:${taux}%;background:${taux===100?'var(--ok)':taux>50?'var(--acc)':'var(--wa)'}"></div></div><span style="font-size:11.5px">${taux}%</span></div></td>
+              <td>${f.obligatoire?`<span style="font-size:10px;color:var(--er);font-weight:700;background:rgba(240,68,94,.1);padding:2px 8px;border-radius:20px">Oui</span>`:'—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody></table></div>
+      </div>
+      <div class="cd" style="margin-bottom:12px">
+        <div class="cd-h"><div class="cd-t">Collaborateurs — Progression formations</div></div>
+        <div class="tw"><table><thead><tr><th>Collaborateur</th><th>Rôle</th><th>Terminées</th><th>En cours</th><th>XP formations</th><th>Oblig. manquantes</th></tr></thead><tbody>
+          ${profList.map(p=>{
+            const cs=cStats[p.id]||{};
+            return`<tr>
+              <td class="tm">${p.prenom||''} ${p.nom||''}</td>
+              <td style="font-size:11px;color:var(--t3)">${ROLE_LABELS[p.role]||p.role||'—'}</td>
+              <td class="tm" style="color:var(--ok);font-weight:${cs.terminees?'700':'400'}">${cs.terminees||0}</td>
+              <td class="tm">${cs.enc||0}</td>
+              <td class="tm" style="color:#9C6FFF">${(cs.xp||0).toLocaleString('fr-FR')} XP</td>
+              <td class="tm">${(cs.oblManq||0)>0?`<span style="color:var(--er);font-weight:700">${cs.oblManq}</span>`:'<span style="color:var(--ok)">✓</span>'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody></table></div>
+      </div>
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">Activité récente</div></div>
+        <div>
+          ${insList.slice(0,25).map(i=>{
+            const f=FORMATIONS_CATALOG.find(x=>x.id===i.formation_id);
+            return`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+              <div style="font-size:20px;flex-shrink:0">${f?.icone||'📚'}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${i.profiles?.prenom||''} ${i.profiles?.nom||''}</div>
+                <div style="font-size:11.5px;color:var(--t3)">${f?.titre||i.formation_id}</div>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                ${i.statut==='terminee'?`<span style="font-size:10.5px;color:var(--ok);font-weight:700;background:rgba(46,204,138,.1);padding:2px 8px;border-radius:20px">✓ Terminée +${i.xp_gagnes||f?.xp||0} XP</span>`:i.statut==='en_cours'?`<span style="font-size:10.5px;color:var(--acc);font-weight:700;background:rgba(14,165,255,.1);padding:2px 8px;border-radius:20px">En cours</span>`:''}
+                <div style="font-size:10.5px;color:var(--t3);margin-top:2px">${fd(i.completed_at||i.enrolled_at)}</div>
+              </div>
+            </div>`;
+          }).join('')}
+          ${!insList.length?`<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune inscription enregistrée.<div style="font-size:11px;margin-top:4px;opacity:.6">Les formations commenceront à apparaître dès que les collaborateurs s'inscriront.</div></div>`:''}
+        </div>
+      </div>`;
+  }catch(e){
+    el.innerHTML='<div class="cd"><div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement des données de formation.</div></div>';
+  }
 }
 
 // ── CM — Calendrier éditorial ─────────────────────────────────────────────────
