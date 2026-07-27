@@ -320,6 +320,12 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   /* Settings */
   #set-profile [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}
   .cd [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}
+  /* Photo — accès rapide reste en 2×2, filtres scrollables */
+  .cd .photo-qg{grid-template-columns:1fr 1fr!important}
+  #photo-pre-tabs{flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}
+  #photo-pre-tabs::-webkit-scrollbar{display:none}
+  /* Revenus: grille total+chart reste côte à côte */
+  .photo-rev-grid{display:grid;grid-template-columns:1fr 1fr!important;gap:13px;margin-bottom:13px}
   /* Inline grids répétés */
   [style*="grid-template-columns:repeat(3,1fr)"]{grid-template-columns:1fr 1fr!important}
   [style*="grid-template-columns:repeat(4,1fr)"]{grid-template-columns:1fr 1fr!important}
@@ -668,13 +674,13 @@ const VIEWS={
   'photo.planning':()=>`
     <div class="sh" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn bg2 bs" onclick="photoPlanPrev()" style="padding:6px 12px;font-size:14px">←</button>
-        <div class="sh-t" id="photo-plan-title" style="min-width:160px;text-align:center">—</div>
-        <button class="btn bg2 bs" onclick="photoPlanNext()" style="padding:6px 12px;font-size:14px">→</button>
+        <button class="btn bg2 bs" onclick="photoPlanPrev()" style="padding:10px 16px;font-size:16px;min-width:44px;min-height:44px">←</button>
+        <div class="sh-t" id="photo-plan-title" style="min-width:140px;text-align:center">—</div>
+        <button class="btn bg2 bs" onclick="photoPlanNext()" style="padding:10px 16px;font-size:16px;min-width:44px;min-height:44px">→</button>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:12px;color:var(--t3)" id="photo-plan-kpi"></div>
-        <button class="btn bg2 bs" onclick="_photoPlanOffset=0;loadPhotoPlan()" style="font-size:11px">Aujourd'hui</button>
+        <button class="btn bg2 bs" onclick="_photoPlanOffset=0;loadPhotoPlan()" style="font-size:12px;padding:8px 14px;min-height:36px">Aujourd'hui</button>
       </div>
     </div>
     <div id="photo-plan-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
@@ -685,7 +691,7 @@ const VIEWS={
         <div style="font-size:18px;font-weight:700;color:var(--t1)">Mode Terrain</div>
         <div style="font-size:12px;color:var(--t3);margin-top:2px" id="jourj-date">—</div>
       </div>
-      <button onclick="modalSignalerIncident()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer;font-size:12px;font-weight:700">⚠ Incident</button>
+      <button onclick="modalSignalerIncident()" style="display:flex;align-items:center;gap:6px;padding:11px 16px;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer;font-size:13px;font-weight:700;min-height:44px">⚠ Incident</button>
     </div>
     <div id="jourj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -902,18 +908,18 @@ const VIEWS={
         <div id="photo-dash-grade"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
       </div>
       <div class="cd"><div class="cd-h"><div class="cd-t">Accès rapide</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 18px">
-          <button onclick="switchView('pre')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;color:var(--t2);font-size:12px;font-weight:500">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Mes prestations
+        <div class="photo-qg" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 18px">
+          <button onclick="switchView('pre')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;color:var(--t2);font-size:12px;font-weight:500;min-height:72px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Mes prestations
           </button>
-          <button onclick="switchView('jourj')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;color:var(--t2);font-size:12px;font-weight:500">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--er)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Mode Jour J
+          <button onclick="switchView('jourj')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rb);cursor:pointer;color:var(--er);font-size:12px;font-weight:600;min-height:72px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--er)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Mode Jour J
           </button>
-          <button onclick="switchView('medias')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;color:var(--t2);font-size:12px;font-weight:500">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Mes médias
+          <button onclick="switchView('medias')" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;color:var(--t2);font-size:12px;font-weight:500;min-height:72px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Mes médias
           </button>
-          <button onclick="modalSignalerIncident&&modalSignalerIncident()" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;color:var(--t2);font-size:12px;font-weight:500">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--wa)" stroke-width="1.8" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Signaler incident
+          <button onclick="modalSignalerIncident&&modalSignalerIncident()" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;background:rgba(245,165,36,.07);border:1px solid rgba(245,165,36,.2);border-radius:var(--rb);cursor:pointer;color:var(--wa);font-size:12px;font-weight:500;min-height:72px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--wa)" stroke-width="1.8" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Incident
           </button>
         </div>
       </div>
@@ -921,20 +927,20 @@ const VIEWS={
 
   'photo.pre':()=>`
     <div class="sh"><div class="sh-t">Mes prestations</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px" id="photo-pre-tabs">
-      <button onclick="filterPhotoPre('')" class="btn bp bs" id="ppt-all">Toutes</button>
-      <button onclick="filterPhotoPre('invitation_envoyée')" class="btn bg2 bs" id="ppt-inv">À confirmer</button>
-      <button onclick="filterPhotoPre('acceptée')" class="btn bg2 bs" id="ppt-acc">Confirmées</button>
-      <button onclick="filterPhotoPre('done')" class="btn bg2 bs" id="ppt-done">Terminées</button>
+    <div style="display:flex;gap:8px;margin-bottom:13px" id="photo-pre-tabs">
+      <button onclick="filterPhotoPre('')" class="btn bp bs" id="ppt-all" style="flex-shrink:0">Toutes</button>
+      <button onclick="filterPhotoPre('invitation_envoyée')" class="btn bg2 bs" id="ppt-inv" style="flex-shrink:0">📬 À confirmer</button>
+      <button onclick="filterPhotoPre('acceptée')" class="btn bg2 bs" id="ppt-acc" style="flex-shrink:0">✓ Confirmées</button>
+      <button onclick="filterPhotoPre('done')" class="btn bg2 bs" id="ppt-done" style="flex-shrink:0">🏁 Terminées</button>
     </div>
     <div id="photo-pre-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'photo.medias':()=>`
     <div class="sh"><div class="sh-t">Mes médias</div></div>
-    <div class="g3" style="margin-bottom:13px">
-      <div class="fs"><div class="fs-l">Missions assignées</div><div class="fs-v" id="med-nb">—</div></div>
-      <div class="fs"><div class="fs-l">Rushs transférés</div><div class="fs-v" id="med-done" style="color:var(--ok)">—</div></div>
-      <div class="fs"><div class="fs-l">En attente transfert</div><div class="fs-v" id="med-att" style="color:var(--wa)">—</div></div>
+    <div style="display:flex;gap:10px;margin-bottom:13px">
+      <div class="fs" style="flex:1;min-width:0"><div class="fs-l">Missions</div><div class="fs-v" id="med-nb">—</div></div>
+      <div class="fs" style="flex:1;min-width:0"><div class="fs-l">Rushs OK</div><div class="fs-v" id="med-done" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="flex:1;min-width:0"><div class="fs-l">À transférer</div><div class="fs-v" id="med-att" style="color:var(--wa)">—</div></div>
     </div>
     <div id="medias-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -943,13 +949,13 @@ const VIEWS={
       <div style="display:flex;align-items:center;gap:10px">
         <div class="sh-t">Mes revenus</div>
       </div>
-      <div style="display:flex;gap:6px">
-        <button onclick="setRevPeriod('mois')" class="btn bp bs" id="rev-p-mois" style="font-size:11px">Ce mois</button>
-        <button onclick="setRevPeriod('annee')" class="btn bg2 bs" id="rev-p-annee" style="font-size:11px">Cette année</button>
-        <button onclick="setRevPeriod('tout')" class="btn bg2 bs" id="rev-p-tout" style="font-size:11px">Tout</button>
+      <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex-shrink:0">
+        <button onclick="setRevPeriod('mois')" class="btn bp bs" id="rev-p-mois" style="font-size:11px;flex-shrink:0">Ce mois</button>
+        <button onclick="setRevPeriod('annee')" class="btn bg2 bs" id="rev-p-annee" style="font-size:11px;flex-shrink:0">Cette année</button>
+        <button onclick="setRevPeriod('tout')" class="btn bg2 bs" id="rev-p-tout" style="font-size:11px;flex-shrink:0">Tout</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px">
+    <div class="photo-rev-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px">
       <div class="cd" style="margin-bottom:0;background:var(--gr)">
         <div style="padding:20px">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.6);margin-bottom:8px" id="rev-period-label">CE MOIS</div>
@@ -2619,8 +2625,8 @@ async function loadPhotoDash(){
               <div style="font-size:11px;color:var(--t3);margin-top:2px">${p.reference||'—'} · ${d} · ${p.lieu||'Lieu TBD'}</div>
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0">
-              <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:6px 12px;font-size:11.5px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600">Accepter</button>
-              <button onclick="repondreInvitation('${row.id}','refusée')" style="padding:6px 10px;font-size:11px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer">Refuser</button>
+              <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;min-height:40px">✓ Accepter</button>
+              <button onclick="repondreInvitation('${row.id}','refusée')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;min-height:40px">✗ Refuser</button>
             </div>
           </div>`;
         }).join('');
@@ -2724,8 +2730,8 @@ function renderPhotoPre(){
             </div>
           </div>
           ${row.statut==='invitation_envoyée'?`<div style="display:flex;flex-direction:column;gap:5px" onclick="event.stopPropagation()">
-            <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:5px 10px;font-size:11px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap">✓ Accepter</button>
-            <button onclick="repondreInvitation('${row.id}','refusée')" style="padding:5px 10px;font-size:11px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;white-space:nowrap">✗ Refuser</button>
+            <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px">✓ Accepter</button>
+            <button onclick="repondreInvitation('${row.id}','refusée')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
           </div>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
         </div>
       </div>
@@ -4337,7 +4343,7 @@ async function loadMedias(){
             <div style="font-size:12px;color:var(--t3);margin-top:3px">${dt} · ${e.fonction||'Photographe'}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-            ${canTransfer?`<button onclick="event.stopPropagation();avanJourJ('${p.id}','médias_complets')" style="padding:6px 14px;font-size:11.5px;font-weight:700;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer">📤 Médias envoyés</button>`:''}
+            ${canTransfer?`<button onclick="event.stopPropagation();avanJourJ('${p.id}','médias_complets')" style="padding:12px 18px;font-size:13px;font-weight:700;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;min-height:44px;width:100%;margin-top:4px">📤 Confirmer transfert médias</button>`:''}
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
             <div style="width:40px;height:40px;border-radius:10px;border:1.5px solid ${rushDone?'var(--ok)':'var(--b2)'};background:${rushDone?'rgba(46,204,138,.12)':'transparent'};display:flex;align-items:center;justify-content:center">
@@ -5870,7 +5876,7 @@ const BNAV_ITEMS={
   admin:['dash','pre','planning','fin'],
   sec:  ['dash','pre','taches','crm'],
   prod: ['dash','pre','kanban','equipes'],
-  photo:['dash','pre','planning','jourj'],
+  photo:['dash','jourj','pre','medias'],
   com:  ['dash','crm','pipeline','devis'],
   compta:['dash','factures','paiements','rap'],
   cm:   ['dash','cal','contenus','publications'],
@@ -6042,20 +6048,21 @@ async function loadPhotoPlan(){
     }
     for(let d=1;d<=trailingDays;d++)cells.push({num:d,other:true});
     el.innerHTML=`
-      <div style="border:1px solid var(--b1);border-radius:12px;overflow:hidden">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px">
+      <div style="border:1px solid var(--b1);border-radius:12px;overflow:hidden;min-width:320px">
         <div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--s2);border-bottom:1px solid var(--b1)">
-          ${DAYS_H.map((d,i)=>`<div style="padding:8px 4px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)${i<6?';border-right:1px solid var(--b1)':''}">${d}</div>`).join('')}
+          ${DAYS_H.map((d,i)=>`<div style="padding:8px 2px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--t3)${i<6?';border-right:1px solid var(--b1)':''}">${d}</div>`).join('')}
         </div>
         <div style="display:grid;grid-template-columns:repeat(7,1fr)">
           ${cells.map((cell,i)=>{
             const col=(i+1)%7===0?'':'border-right:1px solid var(--b1);';
             const row=i<cells.length-7?'border-bottom:1px solid var(--b1);':'';
-            if(cell.other)return`<div style="${col}${row}padding:6px 8px;min-height:80px;background:var(--bg);opacity:.35"><span style="font-size:11px;color:var(--t3)">${cell.num}</span></div>`;
+            if(cell.other)return`<div style="${col}${row}padding:5px 4px;min-height:70px;background:var(--bg);opacity:.35"><span style="font-size:10px;color:var(--t3)">${cell.num}</span></div>`;
             const dm=missions.filter(r=>r.prestations?.date_prestation===cell.date);
             const todayBg=cell.isToday?'background:rgba(54,107,255,.07);':'';
-            return`<div style="${col}${row}${todayBg}padding:6px 8px;min-height:80px;vertical-align:top">
-              <div style="margin-bottom:4px;${cell.isToday?'display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:var(--acc);border-radius:50%;':''}" >
-                <span style="font-size:12px;font-weight:${cell.isToday?700:400};color:${cell.isToday?'#fff':'var(--t2)'}">${cell.num}</span>
+            return`<div style="${col}${row}${todayBg}padding:5px 4px;min-height:70px;vertical-align:top">
+              <div style="margin-bottom:3px;${cell.isToday?'display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:var(--acc);border-radius:50%;':''}" >
+                <span style="font-size:11px;font-weight:${cell.isToday?700:400};color:${cell.isToday?'#fff':'var(--t2)'}">${cell.num}</span>
               </div>
               ${dm.map(r=>{
                 const p=r.prestations;
@@ -6063,15 +6070,16 @@ async function loadPhotoPlan(){
                 const clr=SC_C[p.statut]||'#366BFF';
                 const gcalTitre=(p.clients?.nom||p.type_prestation||'Prestation').replace(/'/g,"\\'");
                 const gcalLieu=(p.lieu||'').replace(/'/g,"\\'");
-                return`<div onclick="modalDetailById('${p.id}')" style="background:${clr};border-radius:4px;padding:2px 5px;margin-bottom:3px;cursor:pointer;overflow:hidden" title="${p.clients?.nom||''}${rdv?' — '+rdv:''}">
+                return`<div onclick="modalDetailById('${p.id}')" style="background:${clr};border-radius:4px;padding:2px 4px;margin-bottom:3px;cursor:pointer;overflow:hidden" title="${p.clients?.nom||''}${rdv?' — '+rdv:''}">
                   ${rdv?`<div style="font-size:8px;font-weight:700;color:rgba(255,255,255,.8);line-height:1.2">${rdv}</div>`:''}
-                  <div style="font-size:10px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3">${p.clients?.nom||p.type_prestation||'—'}</div>
-                  <div onclick="event.stopPropagation();addToGcal('${gcalTitre}','${p.date_prestation}','${p.heure_debut||''}','${p.heure_fin||''}','${gcalLieu}','')" style="font-size:8px;color:rgba(255,255,255,.7);margin-top:2px;cursor:pointer" title="Google Agenda">📅</div>
+                  <div style="font-size:9px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3">${p.clients?.nom||p.type_prestation||'—'}</div>
+                  <div onclick="event.stopPropagation();addToGcal('${gcalTitre}','${p.date_prestation}','${p.heure_debut||''}','${p.heure_fin||''}','${gcalLieu}','')" style="font-size:8px;color:rgba(255,255,255,.7);margin-top:1px;cursor:pointer" title="Google Agenda">📅</div>
                 </div>`;
               }).join('')}
             </div>`;
           }).join('')}
         </div>
+      </div>
       </div>
       ${missions.length===0?`<div style="text-align:center;padding:24px;color:var(--t3);font-size:13px">Aucune mission ce mois.</div>`:''}`;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
