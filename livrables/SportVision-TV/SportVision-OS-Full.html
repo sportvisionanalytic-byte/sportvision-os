@@ -8321,20 +8321,88 @@ async function loadDevis(){
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
+// ── Éditeur lignes devis ─────────────────────────────────────────────────────
+let _dvLignes=[];
+function dvRenderLignes(){
+  const c=document.getElementById('dv-lignes-container');if(!c)return;
+  c.innerHTML=_dvLignes.map((l,i)=>`<div class="dv-ligne-row" style="display:grid;grid-template-columns:1fr 52px 84px 80px 22px;gap:5px;align-items:start;padding:7px 0;border-bottom:1px solid var(--b1)"><div><input class="fi dv-lg-lib" placeholder="Description *" value="${(l.libelle||'').replace(/"/g,'&quot;')}" oninput="dvLireEtRecalculer()" style="margin-bottom:3px;font-size:12.5px"><input class="fi dv-lg-det" placeholder="Détail (opt.)" value="${(l.details||'').replace(/"/g,'&quot;')}" style="font-size:11px;padding:3px 7px;color:var(--t2)"></div><input class="fi dv-lg-qte" type="number" min="0.01" step="0.5" value="${l.qte||1}" oninput="dvLireEtRecalculer()" style="text-align:center;font-size:12.5px;padding:6px 4px"><input class="fi dv-lg-pu" type="number" min="0" step="0.01" placeholder="0,00" value="${l.pu||''}" oninput="dvLireEtRecalculer()" style="text-align:right;font-size:12.5px;padding:6px 5px"><div class="dv-lg-tot" style="padding:7px 2px 0;text-align:right;font-weight:600;font-size:12.5px;color:var(--t1);font-variant-numeric:tabular-nums">${((l.qte||1)*(l.pu||0)).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div><button onclick="dvSupprimerLigne(${i})" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:18px;padding:5px 0 0;line-height:1" onmouseover="this.style.color='var(--er)'" onmouseout="this.style.color='var(--t3)'" title="Supprimer">×</button></div>`).join('');
+  dvUpdateTotaux();
+}
+function dvUpdateTotaux(){
+  let s=0;
+  document.querySelectorAll('.dv-ligne-row').forEach(row=>{
+    const q=parseFloat(row.querySelector('.dv-lg-qte')?.value||1);
+    const p=parseFloat(row.querySelector('.dv-lg-pu')?.value||0);
+    const t=row.querySelector('.dv-lg-tot');const lt=q*p;s+=lt;
+    if(t)t.textContent=lt.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  });
+  const tva=parseFloat(document.getElementById('dv-tva')?.value||20);
+  const rp=parseFloat(document.getElementById('dv-remise')?.value||0);
+  const rm=Math.round(s*rp*100)/10000;
+  const ht=Math.round((s-rm)*100)/100;
+  const tv=Math.round(ht*tva*100)/10000;
+  const ttc=Math.round((ht+tv)*100)/100;
+  const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('dv-tot-sous',fmt(s));set('dv-tot-remise',rp>0?'- '+fmt(rm):'—');
+  set('dv-tot-ht',fmt(ht));set('dv-tot-tva',fmt(tv));set('dv-tot-ttc',fmt(ttc));
+  const rr=document.getElementById('dv-remise-row');if(rr)rr.style.opacity=rp>0?'1':'.5';
+}
+function dvLireEtRecalculer(){dvUpdateTotaux();}
+function dvAjouterLigne(){
+  const cur=[];
+  document.querySelectorAll('.dv-ligne-row').forEach(r=>{cur.push({libelle:r.querySelector('.dv-lg-lib')?.value||'',details:r.querySelector('.dv-lg-det')?.value||'',qte:parseFloat(r.querySelector('.dv-lg-qte')?.value||1),pu:parseFloat(r.querySelector('.dv-lg-pu')?.value||0)});});
+  cur.push({libelle:'',details:'',qte:1,pu:0});_dvLignes=cur;dvRenderLignes();
+  setTimeout(()=>{const is=document.querySelectorAll('.dv-lg-lib');if(is.length)is[is.length-1].focus();},30);
+}
+function dvSupprimerLigne(i){
+  const cur=[];
+  document.querySelectorAll('.dv-ligne-row').forEach(r=>{cur.push({libelle:r.querySelector('.dv-lg-lib')?.value||'',details:r.querySelector('.dv-lg-det')?.value||'',qte:parseFloat(r.querySelector('.dv-lg-qte')?.value||1),pu:parseFloat(r.querySelector('.dv-lg-pu')?.value||0)});});
+  if(cur.length<=1){_dvLignes=[{libelle:'',details:'',qte:1,pu:0}];}else{cur.splice(i,1);_dvLignes=cur;}dvRenderLignes();
+}
+function dvReadLignes(){
+  const l=[];
+  document.querySelectorAll('.dv-ligne-row').forEach(r=>{
+    const lib=(r.querySelector('.dv-lg-lib')?.value||'').trim();
+    const pu=parseFloat(r.querySelector('.dv-lg-pu')?.value||0);
+    if(lib||pu>0)l.push({libelle:lib,details:(r.querySelector('.dv-lg-det')?.value||'').trim(),qte:parseFloat(r.querySelector('.dv-lg-qte')?.value||1),pu});
+  });
+  return l;
+}
+function dvComputeTotaux(){
+  const lignes=dvReadLignes();
+  const sousTotal=lignes.reduce((s,l)=>s+(l.qte||1)*(l.pu||0),0);
+  const tvaPct=parseFloat(document.getElementById('dv-tva')?.value||20);
+  const remisePct=parseFloat(document.getElementById('dv-remise')?.value||0);
+  const remiseMontant=Math.round(sousTotal*remisePct*100)/10000;
+  const totalHT=Math.round((sousTotal-remiseMontant)*100)/100;
+  const tvaMontant=Math.round(totalHT*tvaPct*100)/10000;
+  const totalTTC=Math.round((totalHT+tvaMontant)*100)/100;
+  return{lignes,sousTotal:Math.round(sousTotal*100)/100,remisePct,remiseMontant,totalHT,tvaPct,tvaMontant,totalTTC};
+}
+function dvEditorHTML(tvaPct,remisePct){
+  return`<div style="margin-top:6px"><div style="display:grid;grid-template-columns:1fr 52px 84px 80px 22px;gap:5px;padding:0 0 5px;border-bottom:2px solid var(--b1)"><span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Description</span><span style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);text-align:center">Qté</span><span style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);text-align:right">Prix unit. HT</span><span style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);text-align:right">Total HT</span><span></span></div><div id="dv-lignes-container"></div><button onclick="dvAjouterLigne()" style="margin-top:7px;padding:5px 11px;background:rgba(14,165,255,.06);border:1px dashed rgba(14,165,255,.22);border-radius:var(--rp);color:var(--acc);font-size:11.5px;cursor:pointer;font-family:inherit">+ Ajouter une ligne</button></div><div style="display:flex;justify-content:flex-end;margin-top:10px;margin-bottom:4px"><div style="width:272px;font-size:12px"><div style="display:flex;justify-content:space-between;padding:4px 0;color:var(--t2);border-bottom:1px solid var(--b1)"><span>Sous-total HT</span><span id="dv-tot-sous" style="font-variant-numeric:tabular-nums">0,00 €</span></div><div id="dv-remise-row" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--b1);opacity:.5"><span style="display:flex;align-items:center;gap:5px;color:var(--t2)">Remise <input id="dv-remise" type="number" min="0" max="100" step="1" value="${remisePct||0}" oninput="dvLireEtRecalculer()" style="width:38px;padding:2px 4px;background:var(--s2);border:1px solid var(--b1);border-radius:4px;color:var(--t1);font-size:11px;text-align:right"> %</span><span id="dv-tot-remise" style="color:var(--wa)">—</span></div><div style="display:flex;justify-content:space-between;padding:4px 0;color:var(--t2);border-bottom:1px solid var(--b1)"><span>Total HT</span><span id="dv-tot-ht" style="font-variant-numeric:tabular-nums">0,00 €</span></div><div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;color:var(--t2);border-bottom:1px solid var(--b1)"><span style="display:flex;align-items:center;gap:5px">TVA <input id="dv-tva" type="number" min="0" max="100" step="0.5" value="${tvaPct||20}" oninput="dvLireEtRecalculer()" style="width:38px;padding:2px 4px;background:var(--s2);border:1px solid var(--b1);border-radius:4px;color:var(--t1);font-size:11px;text-align:right"> %</span><span id="dv-tot-tva" style="font-variant-numeric:tabular-nums">0,00 €</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:800;color:var(--t1);border-top:2px solid var(--b2);margin-top:2px"><span>TOTAL TTC</span><span id="dv-tot-ttc" style="color:var(--acc);font-variant-numeric:tabular-nums">0,00 €</span></div></div></div>`;
+}
+function dvOpenWide(){const w=document.querySelector('#sv-modal > div');if(w)w.style.width='min(680px,calc(100vw - 24px))';}
+
 function modalNouveauDevis(){
   sbFetch('clients?select=id,nom&order=nom.asc').then(clients=>{
     const opts=(clients||[]).map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+    const today=new Date().toISOString().slice(0,10);
+    _dvLignes=[{libelle:'',details:'',qte:1,pu:0}];
     openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()">✕</button></div>
-      <div class="mb">
-        <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi"><option value="">-- Sélectionner --</option>${opts}</select></div>
-        <div class="fg"><label class="fl">Notes / Description</label><textarea id="dv-notes" class="fi" rows="3" placeholder="Contenu du devis, prestations incluses…"></textarea></div>
-        <div class="g2"><div class="fg"><label class="fl">Montant HT (€)</label><input type="number" id="dv-ht" class="fi" placeholder="0.00" step="0.01"></div>
-        <div class="fg"><label class="fl">TVA (%)</label><input type="number" id="dv-tva" class="fi" value="20" step="1"></div></div>
-        <div class="g2"><div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-envoi" class="fi"></div>
-        <div class="fg"><label class="fl">Validité (jours)</label><input type="number" id="dv-validite" class="fi" value="30"></div></div>
-        <div id="dv-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
-      </div>
-      <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
+<div class="mb">
+  <div class="fg"><label class="fl">Client *</label><select id="dv-cli" class="fi"><option value="">-- Sélectionner --</option>${opts}</select></div>
+  ${dvEditorHTML(20,0)}
+  <div class="fg" style="margin-top:6px"><label class="fl">Notes / Conditions</label><textarea id="dv-notes" class="fi" rows="2" placeholder="Conditions de paiement, délais de livraison…"></textarea></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-envoi" class="fi" value="${today}"></div>
+    <div class="fg"><label class="fl">Validité (jours)</label><input type="number" id="dv-validite" class="fi" value="30"></div>
+  </div>
+  <div id="dv-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+</div>
+<div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
+    dvRenderLignes();dvOpenWide();
   }).catch(()=>{openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb"><p style="color:var(--er)">Impossible de charger les clients.</p></div>`);});
 }
 
@@ -8343,125 +8411,139 @@ async function modalCreerDevisRapide(clientId,clientNom){
   const opts=(clients||[]).map(c=>`<option value="${c.id}"${c.id===clientId?' selected':''}>${c.nom}</option>`).join('');
   const today=new Date().toISOString().slice(0,10);
   const templates=[
-    {lb:'Couverture match (1 rencontre)',note:'Couverture photographique + vidéo d\'une rencontre sportive. Livraison des photos et highlights sous 48h.',ht:250},
-    {lb:'Pack saison (10 matchs)',note:'Couverture photo et vidéo de 10 rencontres sur la saison. Highlights + galerie photos après chaque match.',ht:2000},
-    {lb:'Pack annuel club partenaire',note:'Partenariat annuel SportVision : couverture de toutes les rencontres à domicile, galerie en ligne, highlights vidéo, contenu réseaux sociaux.',ht:4500},
-    {lb:'Reportage événement spécial',note:'Reportage photo et vidéo pour un événement club (tournoi, gala, remise de trophées). Livraison sous 72h.',ht:400},
+    {lb:'Couverture match (1 rencontre)',desc:'Couverture photographique + vidéo d\'une rencontre sportive. Livraison sous 48h.',qte:1,pu:250},
+    {lb:'Pack saison (10 matchs)',desc:'Couverture photo et vidéo de 10 rencontres. Highlights + galerie après chaque match.',qte:1,pu:2000},
+    {lb:'Pack annuel club partenaire',desc:'Partenariat annuel : couverture domicile, galerie en ligne, highlights, réseaux sociaux.',qte:1,pu:4500},
+    {lb:'Reportage événement spécial',desc:'Reportage photo et vidéo pour tournoi, gala, remise de trophées. Livraison sous 72h.',qte:1,pu:400},
   ];
+  _dvLignes=[{libelle:'',details:'',qte:1,pu:0}];
   openModal(`<div class="mh"><div class="mt">Devis rapide — ${clientNom||'Club'}</div><button class="mc" onclick="closeModal()">✕</button></div>
-    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
-      <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi">${opts}</select></div>
-      <div>
-        <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Templates rapides</div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          ${templates.map((t,i)=>`<button onclick="devisRapideFillTemplate(${i})" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);cursor:pointer;text-align:left;font-family:var(--ff);transition:border-color .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--b1)'">
-            <span style="font-size:12px;font-weight:500;color:var(--t1)">${t.lb}</span>
-            <span style="font-size:12px;font-weight:700;color:var(--wa);font-variant-numeric:tabular-nums;flex-shrink:0;margin-left:10px">${t.ht} €</span>
-          </button>`).join('')}
-        </div>
-      </div>
-      <div class="fg"><label class="fl">Description / Notes</label><textarea id="dv-notes" class="fi" rows="3" placeholder="Détail du devis…"></textarea></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-        <div class="fg"><label class="fl">Montant HT (€)</label><input type="number" id="dv-ht" class="fi" placeholder="0.00" step="0.01"></div>
-        <div class="fg"><label class="fl">TVA (%)</label><input type="number" id="dv-tva" class="fi" value="20"></div>
-        <div class="fg"><label class="fl">Validité (j)</label><input type="number" id="dv-validite" class="fi" value="30"></div>
-      </div>
-      <div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-envoi" class="fi" value="${today}"></div>
-      <div id="dv-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+<div class="mb">
+  <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi">${opts}</select></div>
+  <div style="margin-bottom:8px">
+    <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Templates rapides</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      ${templates.map((t,i)=>`<button onclick="devisRapideFillTemplate(${i})" style="display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);cursor:pointer;text-align:left;font-family:var(--ff);transition:border-color .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--b1)'"><span style="font-size:12px;font-weight:500;color:var(--t1)">${t.lb}</span><span style="font-size:12px;font-weight:700;color:var(--wa);font-variant-numeric:tabular-nums;flex-shrink:0;margin-left:10px">${t.pu} €</span></button>`).join('')}
     </div>
-    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
+  </div>
+  ${dvEditorHTML(20,0)}
+  <div class="fg" style="margin-top:6px"><label class="fl">Notes / Conditions</label><textarea id="dv-notes" class="fi" rows="2" placeholder="Conditions de paiement…"></textarea></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-envoi" class="fi" value="${today}"></div>
+    <div class="fg"><label class="fl">Validité (jours)</label><input type="number" id="dv-validite" class="fi" value="30"></div>
+  </div>
+  <div id="dv-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+</div>
+<div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
   window._devisRapideTemplates=templates;
+  dvRenderLignes();dvOpenWide();
 }
 
 function devisRapideFillTemplate(i){
   const t=(window._devisRapideTemplates||[])[i];if(!t)return;
-  const n=document.getElementById('dv-notes');if(n)n.value=t.note;
-  const h=document.getElementById('dv-ht');if(h)h.value=t.ht;
+  const cur=[];
+  document.querySelectorAll('.dv-ligne-row').forEach(r=>{cur.push({libelle:r.querySelector('.dv-lg-lib')?.value||'',details:r.querySelector('.dv-lg-det')?.value||'',qte:parseFloat(r.querySelector('.dv-lg-qte')?.value||1),pu:parseFloat(r.querySelector('.dv-lg-pu')?.value||0)});});
+  const empty=cur.length===1&&!cur[0].libelle&&!cur[0].pu;
+  if(empty){_dvLignes=[{libelle:t.lb,details:t.desc,qte:t.qte,pu:t.pu}];}
+  else{cur.push({libelle:t.lb,details:t.desc,qte:t.qte,pu:t.pu});_dvLignes=cur;}
+  dvRenderLignes();
 }
 
 async function creerDevis(){
   const cli=document.getElementById('dv-cli')?.value;
-  const notes=document.getElementById('dv-notes')?.value?.trim();
-  const ht=parseFloat(document.getElementById('dv-ht')?.value||0);
-  const tva=parseFloat(document.getElementById('dv-tva')?.value||20);
+  const notes=(document.getElementById('dv-notes')?.value||'').trim();
   const envoi=document.getElementById('dv-envoi')?.value;
   const validite=parseInt(document.getElementById('dv-validite')?.value||30);
   const preId=document.getElementById('dv-pre-id')?.value||null;
   const err=document.getElementById('dv-err');
   if(!cli){if(err)err.textContent='Sélectionnez un client.';return;}
-  const ttc=Math.round(ht*(1+tva/100)*100)/100;
+  const{lignes,sousTotal,remisePct,remiseMontant,totalHT,tvaPct,tvaMontant,totalTTC}=dvComputeTotaux();
+  if(!lignes.length){if(err)err.textContent='Ajoutez au moins une ligne avec une description.';return;}
   const expiration=envoi?new Date(new Date(envoi).getTime()+validite*86400000).toISOString().slice(0,10):null;
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){btn.disabled=true;btn.textContent='Création…';}
   try{
     await sbFetch('devis',{method:'POST',body:{
       client_id:cli,notes:notes||null,
-      total_ht:ht,tva_pct:tva,total_ttc:ttc,
-      sous_total:ht,
+      lignes,sous_total:sousTotal,remise_pct:remisePct,remise_montant:remiseMontant,
+      total_ht:totalHT,tva_pct:tvaPct,total_ttc:totalTTC,
       statut:'brouillon',
-      date_envoi:envoi||null,
-      date_expiration:expiration,
-      validite_jours:validite,
+      date_envoi:envoi||null,date_expiration:expiration,validite_jours:validite,
       prestation_id:preId||undefined,
       created_by:localStorage.getItem('sv_uid'),
     }});
     closeModal();toast('Devis créé.','ok');
     if(S.view==='devis')loadDevis();else{switchView('devis');}
-  }catch(e){if(err)err.textContent='Erreur lors de la création.';}
+  }catch(e){
+    if(err)err.textContent='Erreur lors de la création.';
+    if(btn){btn.disabled=false;btn.textContent='Créer le devis';}
+  }
 }
 
 async function modalNouveauDevisFromPrestation(prestId,clientNom,montantHT){
   const clients=await sbFetch('clients?select=id,nom&order=nom.asc').catch(()=>[]);
   const opts=(clients||[]).map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
   const matchedId=(clients||[]).find(c=>c.nom===clientNom)?.id||'';
+  const today=new Date().toISOString().slice(0,10);
+  _dvLignes=[{libelle:'Prestation SportVision',details:'',qte:1,pu:parseFloat(montantHT)||0}];
   openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()">✕</button></div>
-    <div class="mb">
-      <input type="hidden" id="dv-pre-id" value="${prestId}">
-      <div style="font-size:11px;color:var(--t3);padding:4px 0 8px">Lié à la prestation</div>
-      <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi"><option value="">-- Sélectionner --</option>${opts.replace(`value="${matchedId}"`,`value="${matchedId}" selected`)}</select></div>
-      <div class="fg"><label class="fl">Notes / Description</label><textarea id="dv-notes" class="fi" rows="3" placeholder="Contenu du devis, prestations incluses…"></textarea></div>
-      <div class="g2"><div class="fg"><label class="fl">Montant HT (€)</label><input type="number" id="dv-ht" class="fi" value="${montantHT||''}" placeholder="0.00" step="0.01"></div>
-      <div class="fg"><label class="fl">TVA (%)</label><input type="number" id="dv-tva" class="fi" value="20" step="1"></div></div>
-      <div class="g2"><div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-envoi" class="fi"></div>
-      <div class="fg"><label class="fl">Validité (jours)</label><input type="number" id="dv-validite" class="fi" value="30"></div></div>
-      <div id="dv-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
-    </div>
-    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
+<div class="mb">
+  <input type="hidden" id="dv-pre-id" value="${prestId}">
+  <div style="font-size:11px;color:var(--t3);padding:2px 0 6px">Lié à la prestation</div>
+  <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi"><option value="">-- Sélectionner --</option>${opts.replace(`value="${matchedId}"`,`value="${matchedId}" selected`)}</select></div>
+  ${dvEditorHTML(20,0)}
+  <div class="fg" style="margin-top:6px"><label class="fl">Notes / Conditions</label><textarea id="dv-notes" class="fi" rows="2" placeholder="Conditions de paiement, délais de livraison…"></textarea></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-envoi" class="fi" value="${today}"></div>
+    <div class="fg"><label class="fl">Validité (jours)</label><input type="number" id="dv-validite" class="fi" value="30"></div>
+  </div>
+  <div id="dv-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+</div>
+<div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
+  dvRenderLignes();dvOpenWide();
 }
 
 async function modalModifierDevis(idx){
-  const d=_devisCache[idx];
-  if(!d)return;
+  const cached=_devisCache[idx];if(!cached)return;
+  const full=(await sbFetch(`devis?id=eq.${cached.id}&select=*,clients(id,nom),prestation:prestations(id,reference)`).catch(()=>[]))?.[0]||cached;
+  const lignes=Array.isArray(full.lignes)?full.lignes:[];
+  const tva=full.tva_pct||20;const remise=full.remise_pct||0;
+  _dvLignes=lignes.length?lignes.map(l=>({libelle:l.description||l.libelle||'',details:l.details||'',qte:parseFloat(l.quantite||l.qte||1),pu:parseFloat(l.prix_unitaire||l.pu||0)})):[{libelle:'',details:'',qte:1,pu:0}];
   const statuts=['brouillon','envoyé','en_attente','accepté','refusé','expiré','annulé'];
-  const opts=statuts.map(s=>`<option value="${s}"${d.statut===s?' selected':''}>${{brouillon:'Brouillon',envoyé:'Envoyé',en_attente:'En attente',accepté:'Accepté',refusé:'Refusé',expiré:'Expiré',annulé:'Annulé'}[s]}</option>`).join('');
-  const preRef=d.prestation?.reference;
-  const preId=d.prestation?.id||d.prestation_id;
-  openModal(`<div class="mh"><div class="mt">${d.numero||'Devis'}</div><button class="mc" onclick="closeModal()">✕</button></div>
-    <div class="mb">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font-size:12px;color:var(--t3)">Client :</span>
-        <span style="font-size:12.5px;font-weight:600;color:var(--t1)">${d.clients?.nom||'—'}</span>
-        ${preRef?`<span style="font-size:10px;color:var(--t3)">·</span><span style="font-size:11px;font-family:monospace;color:var(--acc);cursor:pointer;text-decoration:underline" onclick="closeModal();setTimeout(()=>modalDetailById('${preId}'),150)">${preRef} ›</span>`:''}
-      </div>
-      <div class="fg"><label class="fl">Statut</label><select id="dv-st" class="fi">${opts}</select></div>
-      <div class="fg"><label class="fl">Notes</label><textarea id="dv-no" class="fi" rows="3">${d.notes||''}</textarea></div>
-      <div class="g2">
-        <div class="fg"><label class="fl">Total HT (€)</label><input type="number" id="dv-ht2" class="fi" value="${d.total_ht||''}" step="0.01"></div>
-        <div class="fg"><label class="fl">Total TTC (€)</label><input type="number" id="dv-ttc2" class="fi" value="${d.total_ttc||''}" step="0.01"></div>
-      </div>
-      <div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-env2" class="fi" value="${d.date_envoi||''}"></div>
-      <div id="dv-err2" style="color:var(--er);font-size:12px;min-height:16px"></div>
-    </div>
-    <div class="mf"><button class="btn bb" onclick="supprimerDevis('${d.id}')">Supprimer</button><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="sauvegarderDevis('${d.id}')">Sauvegarder</button></div>`);
+  const stLb={brouillon:'Brouillon',envoyé:'Envoyé',en_attente:'En attente',accepté:'Accepté',refusé:'Refusé',expiré:'Expiré',annulé:'Annulé'};
+  const opts=statuts.map(s=>`<option value="${s}"${full.statut===s?' selected':''}>${stLb[s]}</option>`).join('');
+  const preRef=full.prestation?.reference;const preId=full.prestation?.id||full.prestation_id;
+  openModal(`<div class="mh"><div class="mt">${full.numero||'Devis'} — ${full.clients?.nom||''}</div><button class="mc" onclick="closeModal()">✕</button></div>
+<div class="mb">
+  <div class="fg"><label class="fl">Statut</label><select id="dv-st" class="fi">${opts}</select></div>
+  ${preRef?`<div style="font-size:11px;color:var(--t3);margin-bottom:4px">Prestation : <span style="color:var(--acc);cursor:pointer;text-decoration:underline" onclick="closeModal();setTimeout(()=>modalDetailById('${preId}'),150)">${preRef} ›</span></div>`:''}
+  ${dvEditorHTML(tva,remise)}
+  <div class="fg" style="margin-top:6px"><label class="fl">Notes / Conditions</label><textarea id="dv-no" class="fi" rows="2">${full.notes||''}</textarea></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-env2" class="fi" value="${full.date_envoi||''}"></div>
+    <div class="fg"><label class="fl">Validité (jours)</label><input type="number" id="dv-validite" class="fi" value="${full.validite_jours||30}"></div>
+  </div>
+  <div id="dv-err2" style="color:var(--er);font-size:12px;min-height:16px"></div>
+</div>
+<div class="mf"><button class="btn bb" onclick="supprimerDevis('${full.id}')">Supprimer</button><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="sauvegarderDevis('${full.id}')">Sauvegarder</button></div>`);
+  dvRenderLignes();dvOpenWide();
 }
 
 async function sauvegarderDevis(id){
   const err=document.getElementById('dv-err2');
   const newStatut=document.getElementById('dv-st')?.value;
+  const{lignes,sousTotal,remisePct,remiseMontant,totalHT,tvaPct,tvaMontant,totalTTC}=dvComputeTotaux();
+  const validite=parseInt(document.getElementById('dv-validite')?.value||30);
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){btn.disabled=true;btn.textContent='Sauvegarde…';}
   try{
     await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{
       statut:newStatut,
       notes:document.getElementById('dv-no')?.value||null,
-      total_ht:parseFloat(document.getElementById('dv-ht2')?.value||0),
-      total_ttc:parseFloat(document.getElementById('dv-ttc2')?.value||0),
+      lignes:lignes.length?lignes:null,
+      sous_total:sousTotal,remise_pct:remisePct,remise_montant:remiseMontant,
+      total_ht:totalHT,tva_pct:tvaPct,total_ttc:totalTTC,
+      validite_jours:validite,
       date_envoi:document.getElementById('dv-env2')?.value||null,
     }});
     closeModal();toast('Devis mis à jour.','ok');loadDevis();
@@ -8490,7 +8572,10 @@ async function sauvegarderDevis(id){
         }catch(e){}
       }
     }
-  }catch(e){if(err)err.textContent='Erreur lors de la sauvegarde.';}
+  }catch(e){
+    if(err)err.textContent='Erreur lors de la sauvegarde.';
+    if(btn){btn.disabled=false;btn.textContent='Sauvegarder';}
+  }
 }
 
 function supprimerDevis(id){
