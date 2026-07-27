@@ -746,12 +746,12 @@ const VIEWS={
 
   'admin.kits':()=>`
     <div class="sh"><div class="sh-t">Inventaire des kits</div><button class="btn bp bs" onclick="modalNouveauKit()">+ Ajouter</button></div>
-    <div class="g3" style="margin-bottom:14px">
-      <div class="fs"><div class="fs-l">Disponibles</div><div class="fs-v" id="kits-dispo" style="color:var(--ok)">—</div></div>
-      <div class="fs"><div class="fs-l">En prestation</div><div class="fs-v" id="kits-encours" style="color:var(--wa)">—</div></div>
-      <div class="fs"><div class="fs-l">Maintenance</div><div class="fs-v" id="kits-maint" style="color:var(--er)">—</div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Disponibles</div><div class="fs-v" id="kits-dispo" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Déployés</div><div class="fs-v" id="kits-encours" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Maintenance</div><div class="fs-v" id="kits-maint" style="color:var(--er)">—</div></div>
     </div>
-    <div id="kits-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="kits-real" style="min-height:200px"></div>`,
 
   'admin.fin':()=>`
     <div class="g3">
@@ -845,12 +845,12 @@ const VIEWS={
 
   'prod.kits':()=>`
     <div class="sh"><div class="sh-t">État des kits</div></div>
-    <div class="g3" style="margin-bottom:13px">
-      <div class="fs"><div class="fs-l">Disponibles</div><div class="fs-v" id="kits-dispo" style="color:var(--ok)">—</div></div>
-      <div class="fs"><div class="fs-l">Déployés</div><div class="fs-v" id="kits-encours" style="color:var(--wa)">—</div></div>
-      <div class="fs"><div class="fs-l">Maintenance</div><div class="fs-v" id="kits-maint" style="color:var(--er)">—</div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Disponibles</div><div class="fs-v" id="kits-dispo" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Déployés</div><div class="fs-v" id="kits-encours" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Maintenance</div><div class="fs-v" id="kits-maint" style="color:var(--er)">—</div></div>
     </div>
-    <div id="kits-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="kits-real" style="min-height:200px"></div>`,
 
   'prod.equipes':()=>`
     <div class="sh"><div class="sh-t">Équipes par prestation</div></div>
@@ -1724,7 +1724,7 @@ async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='prod')&&view==='pre') await loadPrestations();
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
   if(role==='admin'&&view==='col') await loadCollaborateurs();
-  if((role==='admin'||role==='prod')&&view==='kits') await loadKits();
+  if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';await loadKits();}
   if(role==='admin'&&view==='dash') await loadAdminDash();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='prod'&&view==='dash') await loadProdDash();
@@ -3002,28 +3002,131 @@ let _kitsCache=[];
 async function loadKits(){
   const el=document.getElementById('kits-real');
   if(!el)return;
+  if(!window._kitsTypeF)window._kitsTypeF='Tous';
+  if(!window._kitsStatF)window._kitsStatF='Tous';
+  el.innerHTML='<div style="text-align:center;padding:40px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const data=await sbFetch('kits?select=id,nom,type_kit,description,statut,valeur&order=type_kit.asc,nom.asc');
-    if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📦</div><div>Aucun kit. Ajoutez le premier.</div></div>';return;}
+    const [data,resa]=await Promise.all([
+      sbFetch('kits?select=id,nom,type_kit,description,statut,valeur&order=type_kit.asc,nom.asc'),
+      sbFetch('kit_reservations?select=id,statut,kit_id,prestations(id,reference,date_prestation,clients(nom))&statut=not.in.(retourné,en_contrôle)&order=created_at.desc&limit=100'),
+    ]);
+    if(!Array.isArray(data)||data.length===0){
+      el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:12px;color:var(--t3)"><div style="font-size:40px;opacity:.15">📦</div><div style="font-size:14px;font-weight:500">Aucun kit enregistré</div>${S.role==='admin'?'<button onclick="modalNouveauKit()" style="padding:8px 18px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Ajouter le premier kit</button>':''}</div>`;
+      return;
+    }
     _kitsCache=data;
+    const resaByKit={};
+    (Array.isArray(resa)?resa:[]).forEach(r=>{if(r.kit_id&&!resaByKit[r.kit_id])resaByKit[r.kit_id]=r;});
     const dispo=data.filter(k=>k.statut==='disponible').length;
-    const enCours=data.filter(k=>['sorti','en_prestation','pré_réservé','réservé','à_récupérer'].includes(k.statut)).length;
+    const deployed=data.filter(k=>['sorti','en_prestation','pré_réservé','réservé','à_récupérer','à_retourner'].includes(k.statut)).length;
     const maint=data.filter(k=>['en_maintenance','endommagé','indisponible'].includes(k.statut)).length;
-    const dispEl=document.getElementById('kits-dispo');const enEl=document.getElementById('kits-encours');const mainEl=document.getElementById('kits-maint');
-    if(dispEl)dispEl.textContent=dispo;if(enEl)enEl.textContent=enCours;if(mainEl)mainEl.textContent=maint;
-    const tIco={'photo':'📷','vidéo':'🎥','drone':'🚁','audio':'🎙️','streaming':'📡','son':'🎙️','lumière':'💡','réalisation':'🎬','réseaux':'📱'};
-    const stCls={'disponible':'ba','en_prestation':'bl','sorti':'bl','pré_réservé':'bw','réservé':'bw','en_maintenance':'bn','endommagé':'br','indisponible':'br','à_récupérer':'bw','retourné':'bn','en_contrôle':'bn','à_retourner':'bw'};
-    const stLbl={'disponible':'Disponible','en_prestation':'En prestation','sorti':'Sorti','pré_réservé':'Pré-réservé','réservé':'Réservé','en_maintenance':'Maintenance','endommagé':'Endommagé','indisponible':'Indisponible','à_récupérer':'À récupérer','retourné':'Retourné','en_contrôle':'En contrôle','à_retourner':'À retourner'};
-    el.innerHTML='<div class="cd">'+data.map((k,i)=>`<div style="display:flex;align-items:center;gap:13px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.035);transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.025)'" onmouseout="this.style.background=''">
-      <div style="width:36px;height:36px;border-radius:9px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${tIco[k.type_kit]||'📦'}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${k.nom}</div><div style="font-size:11px;color:var(--t3)">${k.description||k.type_kit}${k.valeur?' · '+k.valeur.toLocaleString('fr-FR')+' €':''}</div></div>
-      <span class="bd ${stCls[k.statut]||'bw'}"><span class="bd-d"></span>${stLbl[k.statut]||k.statut}</span>
-      <div style="display:flex;gap:6px;margin-left:8px">
-        <button onclick="modalModifierKit(${i})" style="padding:5px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">Modifier</button>
-        <button onclick="supprimerKit('${k.id}')" style="padding:5px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer" onmouseover="this.style.background='rgba(240,68,94,.2)'" onmouseout="this.style.background='rgba(240,68,94,.1)'">Supprimer</button>
+    const dEl=document.getElementById('kits-dispo');const eEl=document.getElementById('kits-encours');const mEl=document.getElementById('kits-maint');
+    if(dEl)dEl.textContent=dispo;if(eEl)eEl.textContent=deployed;if(mEl)mEl.textContent=maint;
+    const types=['Tous',...[...new Set(data.map(k=>k.type_kit))].sort()];
+    const statFilt=['Tous','Disponibles','Déployés','Maintenance'];
+    let filtered=data;
+    if(window._kitsTypeF!=='Tous')filtered=filtered.filter(k=>k.type_kit===window._kitsTypeF);
+    if(window._kitsStatF==='Disponibles')filtered=filtered.filter(k=>k.statut==='disponible');
+    else if(window._kitsStatF==='Déployés')filtered=filtered.filter(k=>['sorti','en_prestation','pré_réservé','réservé','à_récupérer','à_retourner'].includes(k.statut));
+    else if(window._kitsStatF==='Maintenance')filtered=filtered.filter(k=>['en_maintenance','endommagé','indisponible'].includes(k.statut));
+    filtered=[...filtered].sort((a,b)=>{
+      const ord=k=>['sorti','en_prestation','à_retourner'].includes(k.statut)?0:['pré_réservé','réservé','à_récupérer'].includes(k.statut)?1:k.statut==='disponible'?2:3;
+      return ord(a)-ord(b)||a.nom.localeCompare(b.nom);
+    });
+    const ST={
+      disponible:{bg:'rgba(46,204,138,.12)',br:'rgba(46,204,138,.3)',dot:'#2ECC8A',tx:'var(--ok)',lb:'Disponible'},
+      en_prestation:{bg:'rgba(245,165,36,.12)',br:'rgba(245,165,36,.3)',dot:'#F5A524',tx:'var(--wa)',lb:'En prestation'},
+      sorti:{bg:'rgba(245,165,36,.12)',br:'rgba(245,165,36,.3)',dot:'#F5A524',tx:'var(--wa)',lb:'Sorti'},
+      'pré_réservé':{bg:'rgba(54,107,255,.12)',br:'rgba(54,107,255,.3)',dot:'#366BFF',tx:'var(--acc)',lb:'Pré-réservé'},
+      réservé:{bg:'rgba(54,107,255,.12)',br:'rgba(54,107,255,.3)',dot:'#366BFF',tx:'var(--acc)',lb:'Réservé'},
+      'à_récupérer':{bg:'rgba(245,165,36,.12)',br:'rgba(245,165,36,.3)',dot:'#F5A524',tx:'var(--wa)',lb:'À récupérer'},
+      'à_retourner':{bg:'rgba(245,165,36,.12)',br:'rgba(245,165,36,.3)',dot:'#F5A524',tx:'var(--wa)',lb:'À retourner'},
+      retourné:{bg:'rgba(136,145,168,.1)',br:'rgba(136,145,168,.2)',dot:'#8891A8',tx:'var(--t3)',lb:'Retourné'},
+      'en_contrôle':{bg:'rgba(136,145,168,.1)',br:'rgba(136,145,168,.2)',dot:'#8891A8',tx:'var(--t3)',lb:'En contrôle'},
+      en_maintenance:{bg:'rgba(240,68,94,.1)',br:'rgba(240,68,94,.25)',dot:'#F0445E',tx:'var(--er)',lb:'Maintenance'},
+      endommagé:{bg:'rgba(240,68,94,.12)',br:'rgba(240,68,94,.3)',dot:'#F0445E',tx:'var(--er)',lb:'Endommagé'},
+      indisponible:{bg:'rgba(240,68,94,.08)',br:'rgba(240,68,94,.2)',dot:'#F0445E',tx:'var(--er)',lb:'Indisponible'},
+    };
+    const TICO={photo:'📷',vidéo:'🎥',drone:'🚁',audio:'🎙️',streaming:'📡',son:'🎙️',lumière:'💡',réalisation:'🎬',réseaux:'📱'};
+    const isAdmin=S.role==='admin';
+    el.innerHTML=`
+      <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:2px;flex-wrap:wrap">
+        ${types.map(t=>`<button onclick="window._kitsTypeF='${t}';loadKits()" style="padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${t===window._kitsTypeF?'var(--acc)':'var(--b1)'};background:${t===window._kitsTypeF?'var(--acc)':'var(--s2)'};color:${t===window._kitsTypeF?'#fff':'var(--t2)'}">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join('')}
+        <div style="margin-left:auto;display:flex;gap:5px">
+          ${statFilt.map(s=>`<button onclick="window._kitsStatF='${s}';loadKits()" style="padding:5px 11px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${s===window._kitsStatF?'var(--wa)':'var(--b1)'};background:${s===window._kitsStatF?'rgba(245,165,36,.1)':'var(--s2)'};color:${s===window._kitsStatF?'var(--wa)':'var(--t3)'}">${s}</button>`).join('')}
+        </div>
       </div>
-    </div>`).join('')+'</div>';
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+        ${filtered.map(k=>{
+          const st=ST[k.statut]||ST.disponible;
+          const ico=TICO[k.type_kit]||'📦';
+          const r=resaByKit[k.id];
+          const pre=r?.prestations;
+          const isDeployed=['sorti','en_prestation','à_retourner','pré_réservé','réservé','à_récupérer'].includes(k.statut);
+          const idx=_kitsCache.indexOf(k);
+          return`<div style="background:var(--s1);border:1px solid ${isDeployed?st.br:'var(--b1)'};border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+              <div style="width:40px;height:40px;border-radius:10px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${ico}</div>
+              <span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:${st.bg};border:1px solid ${st.br};color:${st.tx};white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${st.dot}"></span>${st.lb}</span>
+            </div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--t1);line-height:1.2">${k.nom}</div>
+              ${k.description?`<div style="font-size:11px;color:var(--t3);margin-top:3px;line-height:1.4">${k.description}</div>`:''}
+            </div>
+            ${pre?`<div style="background:rgba(245,165,36,.07);border:1px solid rgba(245,165,36,.2);border-radius:8px;padding:8px 10px">
+              <div style="font-size:9px;font-weight:700;color:var(--wa);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Prestation en cours</div>
+              <div style="font-size:12px;color:var(--t1);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pre.clients?.nom||'—'}</div>
+              <div style="font-size:10px;color:var(--t3);margin-top:1px">${pre.reference||''}${pre.date_prestation?' · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>
+            </div>`:''}
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:4px">
+              ${k.valeur?`<div style="font-size:11px;color:var(--t3)">💰 ${k.valeur.toLocaleString('fr-FR')} €</div>`:`<div></div>`}
+              <div style="display:flex;gap:5px">
+                ${isAdmin?`<button onclick="modalModifierKit(${idx})" style="padding:5px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button>`:''}
+                <button onclick="modalChangerStatutKit('${k.id}','${k.statut}')" style="padding:5px 10px;font-size:11px;background:${st.bg};border:1px solid ${st.br};border-radius:var(--rp);color:${st.tx};cursor:pointer">Statut ▾</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${filtered.length===0?`<div style="text-align:center;padding:40px;color:var(--t3);font-size:13px">Aucun kit dans ce filtre.</div>`:''}`;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function modalChangerStatutKit(id,currentStatut){
+  const STATUTS=[
+    ['disponible','✅ Disponible'],
+    ['pré_réservé','🔵 Pré-réservé'],
+    ['réservé','🔵 Réservé'],
+    ['à_récupérer','🟡 À récupérer'],
+    ['sorti','🟡 Sorti'],
+    ['en_prestation','🟡 En prestation'],
+    ['à_retourner','🟡 À retourner'],
+    ['retourné','⚫ Retourné'],
+    ['en_contrôle','⚫ En contrôle'],
+    ['en_maintenance','🔴 Maintenance'],
+    ['endommagé','🔴 Endommagé'],
+    ['indisponible','🔴 Indisponible'],
+  ];
+  openModal(`<div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Changer le statut du kit</div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:6px">Nouveau statut</label>
+      <select id="kit-stat-sel" class="l-inp fi" style="height:42px;font-size:13px">
+        ${STATUTS.map(([v,l])=>`<option value="${v}"${v===currentStatut?' selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="appliquerStatutKit('${id}')">Enregistrer</button>
+    </div>`);
+}
+
+async function appliquerStatutKit(id){
+  const sel=document.getElementById('kit-stat-sel');
+  if(!sel)return;
+  try{
+    await sbFetch('kits?id=eq.'+id,{method:'PATCH',body:{statut:sel.value}});
+    closeModal();toast('Statut mis à jour.','ok');loadKits();updateNavBadges(S.role);
+  }catch(e){toast('Erreur lors de la modification.');}
 }
 
 function modalModifierKit(idx){
