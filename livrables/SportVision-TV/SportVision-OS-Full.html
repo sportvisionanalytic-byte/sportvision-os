@@ -4100,7 +4100,9 @@ async function loadProdFormation(){
   try{
     const profRaw=await sbFetch('profiles?select=id,prenom,nom,role,xp&role=in.(photo,cm,prod)&order=nom.asc');
     const prof=Array.isArray(profRaw)?profRaw:[];
-    s('form-nb',prof.length); s('form-exp','0'); s('form-active','—');
+    const totXp=prof.reduce((sum,t)=>sum+(t.xp||0),0);
+    const actifs=prof.filter(t=>(t.xp||0)>=50).length;
+    s('form-nb',prof.length);s('form-exp',totXp.toLocaleString('fr-FR')+' XP');s('form-active',actifs);
     const RC={'photo':'#7C4DFF','prod':'#2ECC8A','cm':'#F5A524'};
     const RL={'photo':'Photo / Vidéo','prod':'Resp. Production','cm':'Community Manager'};
     el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+prof.map((t,i)=>{
@@ -4143,8 +4145,16 @@ async function exportProdRapportCSV(){
       const rows=[['Collaborateur','Rôle','Fonction','Prestation','Date','Rémunération','Paiement']];
       (Array.isArray(d)?d:[]).forEach(r=>rows.push([[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||'',r.collaborateur?.role||'',r.fonction||'',r.prestations?.reference||'',r.prestations?.date_prestation||'',r.remuneration||'',r.statut_paiement||'']));
       dlCSV(`rapport-equipe-${new Date().toISOString().slice(0,10)}.csv`,rows);
-    } else {
-      toast('Export de ce type pas encore disponible.','ok');
+    } else if(type==='kits'){
+      const d=await sbFetch('kits?select=nom,type_kit,statut,valeur,description&order=type_kit.asc,nom.asc');
+      const rows=[['Nom','Type','Statut','Valeur (€)','Description']];
+      (Array.isArray(d)?d:[]).forEach(k=>rows.push([k.nom||'',k.type_kit||'',k.statut||'',k.valeur||'',k.description||'']));
+      dlCSV(`rapport-kits-${new Date().toISOString().slice(0,10)}.csv`,rows);
+    } else if(type==='incidents'){
+      const d=await sbFetch('incidents?select=titre,niveau,cloture,date_incident,description,prestations(reference)&order=date_incident.desc&limit=500');
+      const rows=[['Date','Titre','Niveau','Prestation','Clôturé']];
+      (Array.isArray(d)?d:[]).forEach(i=>rows.push([i.date_incident||'',i.titre||'',i.niveau||'',i.prestations?.reference||'',i.cloture?'Oui':'Non']));
+      dlCSV(`rapport-incidents-${new Date().toISOString().slice(0,10)}.csv`,rows);
     }
   }catch(e){toast('Erreur lors de l\'export.','er');}
 }
@@ -4199,6 +4209,30 @@ async function loadProdRapport(type){
             <td class="tm" style="font-weight:600">${c.rem.toLocaleString('fr-FR')} €</td>
             <td class="tm" style="color:var(--ok)">${c.paye.toLocaleString('fr-FR')} €</td>
             <td class="tm" style="color:var(--wa)">${(c.rem-c.paye).toLocaleString('fr-FR')} €</td>
+          </tr>`).join('')}
+        </tbody></table></div>
+      </div>`;
+    } else if(type==='kits'){
+      const data=await sbFetch('kits?select=id,nom,type_kit,statut,valeur,description&order=type_kit.asc,nom.asc');
+      const list=Array.isArray(data)?data:[];
+      const dispo=list.filter(k=>k.statut==='disponible').length;
+      const sortis=list.filter(k=>k.statut==='en_sortie'||k.statut==='réservé').length;
+      const valTot=list.reduce((s,k)=>s+(k.valeur||0),0);
+      el.innerHTML=`<div class="cd">
+        <div class="cd-h"><div class="cd-t">${titles[type]} — ${list.length} références</div>
+          <div style="display:flex;gap:12px;font-size:12px">
+            <span style="color:var(--ok)">${dispo} dispo.</span>
+            <span style="color:var(--wa)">${sortis} sortis</span>
+            <span style="color:var(--t3)">${valTot.toLocaleString('fr-FR')} € total</span>
+          </div>
+        </div>
+        <div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Valeur</th><th>Description</th><th>Statut</th></tr></thead><tbody>
+          ${list.map(k=>`<tr>
+            <td class="tp">${k.nom||'—'}</td>
+            <td>${k.type_kit||'—'}</td>
+            <td class="tm">${k.valeur?k.valeur.toLocaleString('fr-FR')+' €':'—'}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k.description||'—'}</td>
+            <td><span class="bd ${k.statut==='disponible'?'ba':k.statut==='en_sortie'?'bb':'bw'}"><span class="bd-d"></span>${k.statut||'—'}</span></td>
           </tr>`).join('')}
         </tbody></table></div>
       </div>`;
@@ -5654,7 +5688,7 @@ async function loadCmDash(){
     const in14=new Date(now);in14.setDate(in14.getDate()+14);
     const [clients,preMois,preSoon]=await Promise.all([
       sbFetch('clients?select=id,nom,statut,sport,ville,type_client&order=nom.asc&limit=100'),
-      sbFetch(`prestations?select=id&created_at=gte.${m0}&statut=not.in.(annulée,refusée)`),
+      sbFetch(`prestations?select=id&date_prestation=gte.${m0}&statut=not.in.(annulée,refusée)`),
       sbFetch(`prestations?select=id,reference,type_prestation,date_prestation,clients(nom)&date_prestation=gte.${now.toISOString().slice(0,10)}&date_prestation=lte.${in14.toISOString().slice(0,10)}&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=10`),
     ]);
     const list=clients||[];
@@ -6988,9 +7022,11 @@ async function loadComptaImpayes(){
   try{
     const data=await sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom,email,telephone)&statut_financier=in.(facturée,partiellement_payée)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
     const list=Array.isArray(data)?data:[];
+    const now30=new Date();now30.setDate(now30.getDate()-30);
+    const enRetard=list.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now30).length;
     const tot=list.reduce((s,p)=>s+(p.montant_ttc||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-    set('imp-kpi-tot',tot.toLocaleString('fr-FR')+' €');set('imp-kpi-nb',list.length);set('imp-kpi-rel',0);
+    set('imp-kpi-tot',tot.toLocaleString('fr-FR')+' €');set('imp-kpi-nb',list.length);set('imp-kpi-rel',enRetard+'+30j');
     el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date presta.</th><th>Statut fin.</th><th></th></tr></thead><tbody>'+
       list.map(p=>`<tr>
         <td class="tm">${p.reference||'—'}</td>
@@ -7151,10 +7187,11 @@ async function loadComptaRentabilite(){
   try{
     const now=new Date();
     const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
     const [data,remData,fraisData]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=in.(payée,partiellement_payée,facturée)&order=date_prestation.desc&limit=50'),
-      sbFetch('prestations_equipe?select=remuneration&date_paiement=gte.'+mStart).catch(()=>[]),
-      sbFetch('frais?select=montant,date_frais&date_frais=gte.'+mStart).catch(()=>[]),
+      sbFetch('prestations_equipe?select=remuneration,prestations(date_prestation)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('frais?select=montant,date_frais&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext).catch(()=>[]),
     ]);
     const list=Array.isArray(data)?data:[];
     const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart);
@@ -7200,8 +7237,10 @@ async function loadComptaClotures(){
       byMonth[m].nb++;
     });
     const fmt=n=>n?n.toLocaleString('fr-FR')+' €':'—';
+    const curKey=months[months.length-1].key;
+    const encours=list.filter(p=>p.date_prestation&&p.date_prestation.slice(0,7)===curKey&&['facturée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     set('clo-kpi-clos',months.filter(m=>!m.current).length);
-    set('clo-kpi-enc','0');
+    set('clo-kpi-enc',encours>0?encours.toLocaleString('fr-FR')+' €':'0 €');
     set('clo-kpi-cur',months[months.length-1].label);
     el.innerHTML='<div class="tw"><table><thead><tr><th>Mois</th><th>Statut</th><th>CA encaissé</th><th>Prestations</th><th>Actions</th></tr></thead><tbody>'+
       months.map(m=>`<tr>
@@ -7209,12 +7248,40 @@ async function loadComptaClotures(){
         <td><span class="bd ${m.current?'bb':'ba'}"><span class="bd-d"></span>${m.current?'En cours':'Clôturé'}</span></td>
         <td class="tm" style="font-weight:600">${fmt(byMonth[m.key]?.ca)}</td>
         <td class="tm">${byMonth[m.key]?.nb||'—'}</td>
-        <td>${m.current?'<button class="btn bg2 bs" onclick="toast(\'Clôture de mois — fonctionnalité à venir\',\'ok\')">Clôturer</button>':'<button class="btn bg2 bs" onclick="exportCSV(\'ca-mensuel\')">Export</button>'}</td>
+        <td>${m.current?`<button class="btn bg2 bs" onclick="exportComptaMois('${m.key}')">Export mois</button>`:'<button class="btn bg2 bs" onclick="exportCSV(\'ca-mensuel\')">Export</button>'}</td>
       </tr>`).join('')+'</tbody></table></div>';
   }catch(e){
     set('clo-kpi-clos','5');set('clo-kpi-enc','0');set('clo-kpi-cur',months[months.length-1].label);
     el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement des clôtures.</div>';
   }
+}
+
+async function exportComptaMois(moisKey){
+  toast('Export en cours…','ok');
+  try{
+    const mStart=moisKey+'-01';
+    const [y,m]=moisKey.split('-').map(Number);
+    const mNext=new Date(y,m,1).toISOString().slice(0,10);
+    const [pres,rems,frais]=await Promise.all([
+      sbFetch('prestations?select=reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom)&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext+'&order=date_prestation.asc&limit=500'),
+      sbFetch('prestations_equipe?select=remuneration,statut_paiement,prestations(reference,date_prestation),profiles!collaborateur_id(prenom,nom)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext+'&limit=500').catch(()=>[]),
+      sbFetch('frais?select=montant,type,description,date_frais&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext+'&limit=200').catch(()=>[]),
+    ]);
+    const ts=new Date().toISOString().slice(0,10);
+    const rowsPre=[['Référence','Client','Type','Date','Montant HT','Montant TTC','Statut financier']];
+    (Array.isArray(pres)?pres:[]).forEach(p=>rowsPre.push([p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.montant_ht||'',p.montant_ttc||'',p.statut_financier||'']));
+    downloadCSV(rowsPre,`Compta-Prestations-${moisKey}-${ts}.csv`);
+    if((Array.isArray(rems)?rems:[]).length){
+      const rowsRem=[['Collaborateur','Prestation','Date','Rémunération (€)','Statut paiement']];
+      (Array.isArray(rems)?rems:[]).forEach(r=>rowsRem.push([(r.profiles?.prenom||'')+' '+(r.profiles?.nom||''),r.prestations?.reference||'',r.prestations?.date_prestation||'',r.remuneration||'0',r.statut_paiement||'']));
+      downloadCSV(rowsRem,`Compta-Remunerations-${moisKey}-${ts}.csv`);
+    }
+    if((Array.isArray(frais)?frais:[]).length){
+      const rowsFrais=[['Date','Type','Description','Montant (€)']];
+      (Array.isArray(frais)?frais:[]).forEach(f=>rowsFrais.push([f.date_frais||'',f.type||'',f.description||'',f.montant||'']));
+      downloadCSV(rowsFrais,`Compta-Frais-${moisKey}-${ts}.csv`);
+    }
+  }catch(e){toast('Erreur export : '+(e.message||'inconnue'),'er');}
 }
 
 // ── Dashboard secrétaire ─────────────────────────────────────────────────────
@@ -7224,11 +7291,14 @@ let _secLivrData=[],_secLivrFilter='all';
 
 async function loadSecDash(){
   try{
+    const uid=localStorage.getItem('sv_uid');
     const now=new Date();const in14=new Date(now);in14.setDate(in14.getDate()+14);
-    const [clients,pres,devis]=await Promise.all([
+    const [clients,pres,devis,conts,tachesRaw]=await Promise.all([
       sbFetch('clients?select=id,statut&limit=500'),
       sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ttc,clients(nom)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200'),
       sbFetch('devis?select=id,statut&limit=200'),
+      sbFetch('contrats?select=id,statut&limit=500').catch(()=>[]),
+      uid?sbFetch('notifications?select=id&type=eq.tache&lue=eq.false&destinataire_id=eq.'+uid).catch(()=>[]):[],
     ]);
     const actifs=(clients||[]).filter(c=>c.statut==='client').length;
     const demandes=(pres||[]).filter(p=>['demande_reçue','à_qualifier','offre_en_préparation'].includes(p.statut)).length;
@@ -7236,16 +7306,19 @@ async function loadSecDash(){
     const acomptes=(pres||[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
     const livraisons=(pres||[]).filter(p=>['prête_validation','livrée','prête_à_livrer'].includes(p.statut)).length;
     const encours=(pres||[]).filter(p=>!['demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse','devis_accepté','en_attente_signature','en_attente_acompte'].includes(p.statut)).length;
+    const signManquantes=(Array.isArray(conts)?conts:[]).filter(c=>c.statut==='brouillon').length
+      +(pres||[]).filter(p=>p.statut==='en_attente_signature').length;
+    const tachesOuvertes=(Array.isArray(tachesRaw)?tachesRaw:[]).length;
 
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
     set('sec-kpi-demandes',demandes);
     set('sec-kpi-devis',devisBrouillon);
-    set('sec-kpi-sign',0);
+    set('sec-kpi-sign',signManquantes);
     set('sec-kpi-relances',acomptes);
     set('sec-kpi-livr',livraisons);
     set('sec-kpi-clients',actifs);
     set('sec-kpi-pre',encours);
-    set('sec-kpi-taches',0);
+    set('sec-kpi-taches',tachesOuvertes);
 
     // Bloc priorité
     const prioItems=[];
@@ -7356,10 +7429,12 @@ async function loadSecRelances(){
   try{
     const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,montant_acompte,date_prestation,clients(nom,email,telephone)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
     _secRelData=Array.isArray(data)?data:[];
+    const now2=new Date();
     const acomptes=_secRelData.filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
     const soldes=_secRelData.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payé').length;
+    const enRetardRel=_secRelData.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now2&&p.statut_financier!=='payé'&&!['annulée','refusée','clôturée'].includes(p.statut)).length;
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-    set('rel-kpi-acomp',acomptes);set('rel-kpi-solde',soldes);set('rel-kpi-sent',0);
+    set('rel-kpi-acomp',acomptes);set('rel-kpi-solde',soldes);set('rel-kpi-sent',enRetardRel);
     renderSecRelances();
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';console.error(e);}
 }
