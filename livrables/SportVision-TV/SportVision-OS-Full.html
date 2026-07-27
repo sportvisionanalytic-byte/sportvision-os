@@ -2611,7 +2611,7 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='kanban') await loadKanban();
   if(role==='prod'&&view==='budget') await loadProdBudget();
   if(role==='prod'&&view==='form') await loadProdFormation();
-  if(role==='prod'&&view==='rapports'){}
+  if(role==='prod'&&view==='rapports') await loadProdRapport('prestations');
   if(role==='photo'&&view==='dash') await loadPhotoDash();
   if(role==='photo'&&view==='pre') await loadPhotoMesPrestations();
   if(role==='photo'&&view==='planning'){_photoPlanOffset=0;await loadPhotoPlan();}
