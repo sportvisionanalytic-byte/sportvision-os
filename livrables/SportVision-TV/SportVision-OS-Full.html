@@ -2774,7 +2774,10 @@ async function avancerStatutPrestation(id,statut){
     updateNavBadges(S.role);
     // Moteur d'événements
     const evMap={'confirmée':'prestation.confirmed','production_terminée':'prestation.completed','payée':'payment.confirmed'};
-    if(evMap[next])dispatchSVEvent(evMap[next],{prestation_id:id});
+    if(evMap[next]){
+      dispatchSVEvent(evMap[next],{prestation_id:id});
+      creerTachesAuto(evMap[next],{source_type:'prestation',source_id:id}).catch(()=>{});
+    }
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
@@ -6275,7 +6278,7 @@ function _documentsView(role){
 </div>
 <div style="overflow-x:auto;scrollbar-width:none;margin-bottom:16px">
   <div style="display:flex;gap:2px;padding:3px;background:var(--s2);border-radius:var(--rp);width:max-content">
-    ${[['tous','Tous'],['devis','Devis'],['contrats','Contrats'],['factures','Factures'],['avoirs','Avoirs'],['journal','Journal']].map(([t,lb])=>`<button class="docs-tab-btn" data-tab="${t}" onclick="docsSetTab('${t}')" style="padding:6px 16px;border:none;border-radius:calc(var(--rp) - 2px);background:${t==='tous'?'var(--s1)':'transparent'};color:${t==='tous'?'var(--t1)':'var(--t3)'};font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap">${lb}</button>`).join('')}
+    ${[['tous','Tous'],['devis','Devis'],['contrats','Contrats'],['factures','Factures'],['avoirs','Avoirs'],['signatures','Signatures'],['journal','Journal']].map(([t,lb])=>`<button class="docs-tab-btn" data-tab="${t}" onclick="docsSetTab('${t}')" style="padding:6px 16px;border:none;border-radius:calc(var(--rp) - 2px);background:${t==='tous'?'var(--s1)':'transparent'};color:${t==='tous'?'var(--t1)':'var(--t3)'};font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap">${lb}</button>`).join('')}
   </div>
 </div>
 <div id="docs-content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
@@ -6296,8 +6299,8 @@ async function loadDocuments(role){
 async function docsLoadAll(){
   try{
     const [devisData,contratsData,facturesData,avoirsData]=await Promise.all([
-      sbFetch('devis?select=id,numero,statut,total_ttc,date_envoi,date_expiration,clients(id,nom),created_at&order=created_at.desc&limit=200'),
-      sbFetch('contrats?select=id,type_contrat,statut,montant_mensuel,frequence,date_debut,date_fin,clients(nom),created_at&order=created_at.desc&limit=200').catch(()=>[]),
+      sbFetch('devis?select=id,numero,statut,signature_statut,signature_demandee_at,signature_confirmee_at,total_ttc,date_envoi,date_expiration,clients(id,nom),created_at&order=created_at.desc&limit=200'),
+      sbFetch('contrats?select=id,type_contrat,statut,signature_statut,signature_demandee_at,signature_confirmee_at,montant_mensuel,frequence,date_debut,date_fin,clients(nom),created_at&order=created_at.desc&limit=200').catch(()=>[]),
       sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom),updated_at&statut_financier=neq.non_facturée&order=date_prestation.desc&limit=200').catch(()=>[]),
       sbFetch('avoirs?select=*,clients(nom),prestation:prestations(reference,date_prestation)&order=created_at.desc&limit=200').catch(()=>[]),
     ]);
@@ -6342,6 +6345,7 @@ async function docsRenderTab(){
   else if(_docsTab==='contrats')el.innerHTML=docsRenderContrats();
   else if(_docsTab==='factures')el.innerHTML=docsRenderFactures();
   else if(_docsTab==='avoirs')el.innerHTML=docsRenderAvoirs();
+  else if(_docsTab==='signatures')el.innerHTML=await docsRenderSignatures();
   else if(_docsTab==='journal')el.innerHTML=await docsRenderJournal();
 }
 
@@ -6411,6 +6415,8 @@ function docsRenderDevis(){
       <td>${_docsBadge(d.statut||'brouillon',DEVIS_STATUTS)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
         ${d.statut==='brouillon'?`<button onclick="envoyerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:#366BFF;cursor:pointer">Envoyer</button>`:''}
+        ${(d.statut==='envoyé'||d.statut==='en_attente')&&(!d.signature_statut||d.signature_statut==='non_demandee')?`<button onclick="demanderSignatureDoc('devis','${d.id}','${d.numero||d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
+        ${d.signature_statut==='demandee'?`<button onclick="confirmerSignatureDoc('devis','${d.id}','${d.numero||d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">✓</button>`:''}
         <button onclick="imprimerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">PDF</button>
         <button class="btn bg2 bs" onclick="modalModifierDevis(${i})" style="font-size:11px;padding:3px 9px">Modifier</button>
       </td>
@@ -6430,7 +6436,12 @@ function docsRenderContrats(){
       <td style="color:var(--t3);font-size:11.5px">${fd(c.date_debut)}</td>
       <td style="color:var(--t3);font-size:11.5px">${fd(c.date_fin)||'—'}</td>
       <td>${_docsBadge(c.statut||'brouillon',CONTRAT_STATUTS)}</td>
-      <td><button onclick="genererContratPDF('${c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer">PDF</button></td>
+      <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
+        ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='resilie'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
+        ${c.signature_statut==='demandee'?`<button onclick="confirmerSignatureDoc('contrat','${c.id}','${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">✓</button>`:''}
+        ${c.signature_statut?_sigBadge(c.signature_statut):''}
+        <button onclick="genererContratPDF('${c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer">PDF</button>
+      </td>
     </tr>`).join('')}
   </tbody></table></div></div>`;
 }
@@ -6502,6 +6513,126 @@ async function logDocEvent(eventType,docRef,docType,description){
       description,user_id:S.uid,
     })});
   }catch(e){}
+}
+
+// ── Phase 3 : Suivi des signatures ──────────────────────────────────────────
+const _SIG_CFG={
+  non_demandee:{lb:'Non demandée',cl:'#8891A8',bc:'rgba(136,145,168,.12)'},
+  demandee:{lb:'En attente',cl:'#F5A524',bc:'rgba(245,165,36,.12)'},
+  signee:{lb:'Signé ✓',cl:'#2ECC8A',bc:'rgba(46,204,138,.12)'},
+  refusee:{lb:'Refusé',cl:'#F0445E',bc:'rgba(240,68,94,.12)'},
+};
+function _sigBadge(st){
+  const c=_SIG_CFG[st||'non_demandee']||_SIG_CFG.non_demandee;
+  return`<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.03em;background:${c.bc};color:${c.cl}">${c.lb}</span>`;
+}
+
+async function demanderSignatureDoc(docType,id,ref){
+  const table=docType==='devis'?'devis':'contrats';
+  try{
+    await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:{signature_statut:'demandee',signature_demandee_at:new Date().toISOString()}});
+    await logDocEvent('envoi',ref,docType,'Signature demandée — '+ref);
+    toast('Signature demandée — suivez-la dans l\'onglet Signatures.','ok');
+    await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
+  }catch(e){toast('Erreur lors de la demande de signature.','er');}
+}
+
+async function confirmerSignatureDoc(docType,id,ref){
+  const table=docType==='devis'?'devis':'contrats';
+  try{
+    const patch={signature_statut:'signee',signature_confirmee_at:new Date().toISOString()};
+    if(docType==='devis')patch.statut='accepté';
+    else patch.statut='actif';
+    await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:patch});
+    await logDocEvent('signature',ref,docType,'Document signé — '+ref);
+    dispatchSVEvent('document.signed',{label:ref}).catch(()=>{});
+    toast('Document marqué comme signé.','ok');
+    await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
+  }catch(e){toast('Erreur.','er');}
+}
+
+async function refuserSignatureDoc(docType,id,ref){
+  const table=docType==='devis'?'devis':'contrats';
+  try{
+    await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:{signature_statut:'refusee'}});
+    await logDocEvent('annulation',ref,docType,'Signature refusée — '+ref);
+    toast('Signature marquée comme refusée.','ok');
+    await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
+  }catch(e){toast('Erreur.','er');}
+}
+
+async function docsRenderSignatures(){
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+  const enCours=[
+    ..._docsCache.devis.filter(d=>d.signature_statut&&d.signature_statut!=='non_demandee').map(d=>({...d,_type:'devis',_ref:d.numero||'—',_client:d.clients?.nom||'—',_montant:d.total_ttc||0})),
+    ..._docsCache.contrats.filter(c=>c.signature_statut&&c.signature_statut!=='non_demandee').map(c=>({...c,_type:'contrat',_ref:CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—',_client:c.clients?.nom||'—',_montant:c.montant_mensuel||0})),
+  ];
+  const aEnvoyer=[
+    ..._docsCache.devis.filter(d=>(!d.signature_statut||d.signature_statut==='non_demandee')&&['envoyé','en_attente'].includes(d.statut)).map(d=>({...d,_type:'devis',_ref:d.numero||'—',_client:d.clients?.nom||'—',_montant:d.total_ttc||0})),
+    ..._docsCache.contrats.filter(c=>(!c.signature_statut||c.signature_statut==='non_demandee')&&['brouillon','envoyé'].includes(c.statut)).map(c=>({...c,_type:'contrat',_ref:CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—',_client:c.clients?.nom||'—',_montant:c.montant_mensuel||0})),
+  ];
+  if(!enCours.length&&!aEnvoyer.length)return`<div class="cd"><div style="padding:60px;text-align:center;color:var(--t3);font-size:13px">Aucun document en cours de signature.<div style="font-size:11px;margin-top:6px;opacity:.6">Les devis envoyés et contrats apparaîtront ici dès qu'une signature sera demandée.</div></div></div>`;
+  let html='';
+  if(enCours.length){
+    html+=`<div class="cd" style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:12px">En cours de signature</div><div class="tw"><table><thead><tr><th>Type</th><th>Référence</th><th>Client</th><th>Demandé le</th><th>Signé le</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${enCours.map(d=>`<tr>
+      <td>${_docsTypePill(d._type==='devis'?'Devis':'Contrat',d._type==='devis'?'#366BFF':'#7C4DFF')}</td>
+      <td class="tm">${d._ref}</td><td class="tp">${d._client}</td>
+      <td style="color:var(--t3);font-size:11.5px">${fd(d.signature_demandee_at)}</td>
+      <td style="color:var(--t3);font-size:11.5px">${fd(d.signature_confirmee_at)}</td>
+      <td>${_sigBadge(d.signature_statut)}</td>
+      <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
+        ${d.signature_statut==='demandee'?`<button onclick="confirmerSignatureDoc('${d._type}','${d.id}','${d._ref}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">✓ Signé</button><button onclick="refuserSignatureDoc('${d._type}','${d.id}','${d._ref}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.18);border-radius:var(--rp);color:var(--er);cursor:pointer">Refuser</button>`:''}
+      </td></tr>`).join('')}
+    </tbody></table></div></div>`;
+  }
+  if(aEnvoyer.length){
+    html+=`<div class="cd"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:12px">Documents sans signature demandée</div><div class="tw"><table><thead><tr><th>Type</th><th>Référence</th><th>Client</th><th>Montant</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${aEnvoyer.map(d=>`<tr>
+      <td>${_docsTypePill(d._type==='devis'?'Devis':'Contrat',d._type==='devis'?'#366BFF':'#7C4DFF')}</td>
+      <td class="tm">${d._ref}</td><td class="tp">${d._client}</td>
+      <td style="font-weight:600;font-variant-numeric:tabular-nums">${fmt(d._montant)}</td>
+      <td>${d._type==='devis'?_docsBadge(d.statut||'brouillon',DEVIS_STATUTS):_docsBadge(d.statut||'brouillon',CONTRAT_STATUTS)}</td>
+      <td><button onclick="demanderSignatureDoc('${d._type}','${d.id}','${d._ref}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Demander</button></td>
+    </tr>`).join('')}
+    </tbody></table></div></div>`;
+  }
+  return html;
+}
+
+// ── Phase 4 : Auto-tâches sur événements ────────────────────────────────────
+const _TACHES_AUTO_CFG={
+  'devis.envoye':[{role:'sec',titre:'Relance devis à planifier',msg:'Devis envoyé. Planifiez une relance dans 3 à 5 jours si aucune réponse.',priorite:'normale'}],
+  'devis.accepted':[{role:'sec',titre:'Préparer contrat ou prestation',msg:'Devis accepté. Créez la prestation et préparez le contrat.',priorite:'haute'}],
+  'prestation.confirmed':[{role:'sec',titre:'Envoyer convocations équipe',msg:'Prestation confirmée. Envoyez les invitations aux collaborateurs.',priorite:'haute'}],
+  'prestation.completed':[
+    {role:'sec',titre:'Préparer livraison client',msg:'Prestation terminée. Récupérez les médias et préparez la livraison.',priorite:'normale'},
+    {role:'compta',titre:'Émettre la facture',msg:'Prestation terminée. La facture peut être émise.',priorite:'normale'},
+  ],
+};
+
+async function creerTachesAuto(eventType,data){
+  const uid=localStorage.getItem('sv_uid');
+  const tasks=_TACHES_AUTO_CFG[eventType];
+  if(!tasks||!tasks.length)return;
+  try{
+    for(const t of tasks){
+      const profiles=await sbFetch('profiles?select=id&role=eq.'+t.role+'&limit=10').catch(()=>[]);
+      for(const p of (profiles||[])){
+        if(p.id===uid)continue;
+        await sbFetch('notifications',{method:'POST',body:{
+          type:'tache',
+          titre:t.titre+(data?.label?' — '+data.label:''),
+          message:t.msg,lue:false,
+          destinataire_id:p.id,
+          priorite:t.priorite||'normale',
+          source_type:data?.source_type||null,
+          source_id:data?.source_id||null,
+        }});
+      }
+    }
+  }catch(e){console.warn('creerTachesAuto',e);}
 }
 
 // ── PDF Contrat ───────────────────────────────────────────────────────────────
@@ -6847,6 +6978,7 @@ async function sauvegarderDevis(id){
     if(newStatut==='accepté'){
       const dv=(_devisCache||[]).find(d=>d.id===id);
       dispatchSVEvent('devis.accepted',{prestation_id:dv?.prestation_id,label:dv?.clients?.nom||''});
+      creerTachesAuto('devis.accepted',{source_type:'devis',source_id:id,label:dv?.clients?.nom||''}).catch(()=>{});
       if(dv?.prestation_id){
         try{
           const pre=await sbFetch('prestations?select=id,statut&id=eq.'+dv.prestation_id);
@@ -6877,6 +7009,7 @@ async function envoyerDevis(id){
     const today=new Date().toISOString().slice(0,10);
     await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:today}});
     toast('Devis marqué comme envoyé.','ok');loadDevis();updateNavBadges(S.role);
+    creerTachesAuto('devis.envoye',{source_type:'devis',source_id:id}).catch(()=>{});
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
@@ -11927,9 +12060,31 @@ function _integrationsView(){
     <div class="sh-t">Intégrations & Connecteurs</div>
     <div style="font-size:12px;color:var(--t3)">Architecture connecteur — SportVision OS v2</div>
   </div>
-  <div id="int-grid" class="g3" style="gap:12px;margin-top:4px">
+  <div style="overflow-x:auto;scrollbar-width:none;margin-bottom:16px">
+    <div style="display:flex;gap:2px;padding:3px;background:var(--s2);border-radius:var(--rp);width:max-content">
+      <button id="int-tab-connecteurs" onclick="intSetTab('connecteurs')" style="padding:6px 18px;border:none;border-radius:calc(var(--rp) - 2px);background:var(--s1);color:var(--t1);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">Connecteurs</button>
+      <button id="int-tab-templates" onclick="intSetTab('templates')" style="padding:6px 18px;border:none;border-radius:calc(var(--rp) - 2px);background:transparent;color:var(--t3);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">Templates email</button>
+    </div>
+  </div>
+  <div id="int-grid" class="g3" style="gap:12px">
+    <div style="padding:32px;text-align:center;color:var(--t3)">Chargement…</div>
+  </div>
+  <div id="int-templates-grid" style="display:none">
     <div style="padding:32px;text-align:center;color:var(--t3)">Chargement…</div>
   </div>`;
+}
+
+let _intTab='connecteurs';
+function intSetTab(tab){
+  _intTab=tab;
+  const tabs=['connecteurs','templates'];
+  tabs.forEach(t=>{
+    const btn=document.getElementById('int-tab-'+t);
+    if(btn){btn.style.background=t===tab?'var(--s1)':'transparent';btn.style.color=t===tab?'var(--t1)':'var(--t3)';}
+  });
+  document.getElementById('int-grid').style.display=tab==='connecteurs'?'':'none';
+  document.getElementById('int-templates-grid').style.display=tab==='templates'?'':'none';
+  if(tab==='templates')loadEmailTemplates();
 }
 
 // ── RÔLES LABELS ─────────────────────────────────────────────────────────
@@ -12227,6 +12382,89 @@ function openIntegrationSetup(id){
     <button class="btn bg2" onclick="closeModal()">Fermer</button>
     <button class="btn bp" onclick="closeModal();toast('Configuration enregistrée — déploiement Edge Functions requis','ok')">Enregistrer</button>
   </div>`);
+}
+
+// ── Phase 5 : Templates email ────────────────────────────────────────────────
+let _emailTemplatesCache=[];
+const _TPL_CODES={
+  devis_envoye:{nom:'Devis envoyé',ic:'📋',cl:'#366BFF'},
+  relance_acompte:{nom:'Relance acompte',ic:'💶',cl:'#F5A524'},
+  livraison_prete:{nom:'Livraison prête',ic:'📦',cl:'#2ECC8A'},
+  contrat_signer:{nom:'Contrat à signer',ic:'📝',cl:'#7C4DFF'},
+  relance_facture:{nom:'Relance facture',ic:'🔔',cl:'#F0445E'},
+};
+
+async function loadEmailTemplates(){
+  const el=document.getElementById('int-templates-grid');
+  if(!el)return;
+  try{
+    const tpls=await sbFetch('email_templates?select=*&order=code.asc').catch(()=>[]);
+    _emailTemplatesCache=tpls||[];
+    if(!_emailTemplatesCache.length){
+      el.innerHTML=`<div class="cd"><div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun template trouvé.<div style="font-size:11px;margin-top:6px;opacity:.6">Exécutez la migration SQL phase 3-4-5 pour initialiser les 5 templates par défaut.</div></div></div>`;
+      return;
+    }
+    el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+      ${_emailTemplatesCache.map(t=>_renderTemplateCard(t)).join('')}
+    </div>`;
+  }catch(e){el.innerHTML='<div class="cd" style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur chargement templates.</div>';}
+}
+
+function _renderTemplateCard(t){
+  const meta=_TPL_CODES[t.code]||{nom:t.nom,ic:'📧',cl:'var(--acc)'};
+  return`<div class="cd" style="padding:0;overflow:hidden;border-color:${meta.cl}33">
+    <div style="height:3px;background:${meta.cl}"></div>
+    <div style="padding:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="font-size:22px">${meta.ic}</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${t.nom||meta.nom}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-top:1px">${t.code}</div>
+        </div>
+        <div style="margin-left:auto">
+          ${t.actif?`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(46,204,138,.12);color:#2ECC8A;font-weight:700">Actif</span>`:`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(136,145,168,.12);color:#8891A8;font-weight:700">Inactif</span>`}
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:4px">Sujet :</div>
+      <div style="font-size:12.5px;color:var(--t1);background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.sujet||'—'}</div>
+      ${(t.variables||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">${(t.variables||[]).map(v=>`<span style="font-size:11px;padding:2px 7px;border-radius:var(--rp);background:rgba(14,165,255,.1);color:var(--acc);border:1px solid rgba(14,165,255,.2)">{{${v}}}</span>`).join('')}</div>`:''}
+      <button onclick="modalEditerTemplate('${t.code}')" style="width:100%;padding:8px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">✏ Modifier le template</button>
+    </div>
+  </div>`;
+}
+
+function modalEditerTemplate(code){
+  const t=_emailTemplatesCache.find(x=>x.code===code);
+  if(!t){toast('Template introuvable.');return;}
+  const meta=_TPL_CODES[code]||{nom:t.nom,ic:'📧',cl:'var(--acc)'};
+  openModal(`<div class="mh">
+    <div class="mt">${meta.ic} Modifier — ${t.nom}</div>
+    <button class="mc" onclick="closeModal()">✕</button>
+  </div>
+  <div class="mb">
+    <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Code template : <code style="color:var(--acc)">${code}</code> — Variables disponibles : ${(t.variables||[]).map(v=>`<code style="font-size:11px;color:#2ECC8A">{{${v}}}</code>`).join(', ')}</div>
+    <div class="fg"><label class="fl">Sujet de l'email</label><input class="fi" id="tpl-sujet" value="${(t.sujet||'').replace(/"/g,'&quot;')}"></div>
+    <div class="fg"><label class="fl">Corps de l'email</label><textarea class="fi" id="tpl-corps" style="height:220px;resize:vertical;font-family:monospace;font-size:12.5px;line-height:1.6">${t.corps||''}</textarea></div>
+    <div style="padding:10px 12px;background:rgba(14,165,255,.06);border:1px solid rgba(14,165,255,.15);border-radius:8px;font-size:11.5px;color:var(--t3)">
+      Utilisez les variables avec la syntaxe <code style="color:var(--acc)">{{nom_variable}}</code> — elles seront remplacées au moment de l'envoi.
+    </div>
+  </div>
+  <div class="mf">
+    <button class="btn bg2" onclick="closeModal()">Annuler</button>
+    <button class="btn bp" onclick="sauvegarderTemplate('${code}')">Enregistrer</button>
+  </div>`);
+}
+
+async function sauvegarderTemplate(code){
+  const sujet=(document.getElementById('tpl-sujet')?.value||'').trim();
+  const corps=document.getElementById('tpl-corps')?.value||'';
+  if(!sujet){toast('Le sujet est requis.','er');return;}
+  try{
+    await sbFetch('email_templates?code=eq.'+code,{method:'PATCH',body:{sujet,corps,modifie_par:S.uid}});
+    toast('Template enregistré.','ok');
+    closeModal();
+    await loadEmailTemplates();
+  }catch(e){toast('Erreur lors de la sauvegarde.','er');}
 }
 
 // ── Moteur d'événements SportVision ──────────────────────────────────────
