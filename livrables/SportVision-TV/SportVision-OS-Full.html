@@ -258,10 +258,16 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 }
 @media(max-width:768px){
   :root{--sw:0px}
-  .sb{display:none}
+  .sb{display:none;position:fixed;left:0;top:0;height:100dvh;z-index:300;width:220px;box-shadow:6px 0 32px rgba(0,0,0,.5)}
+  .sb.mob-open{display:flex}
+  #mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:299}
+  #mob-overlay.on{display:block}
+  .mob-ham{display:flex!important}
   .kpi-g{grid-template-columns:1fr 1fr}
   .ct{padding:14px}
   .l-right{padding:32px 20px}
+  .g32{grid-template-columns:1fr}
+  .tw{overflow-x:auto}
 }
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
@@ -315,6 +321,8 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   </div>
 </div>
 
+<div id="mob-overlay" onclick="closeMobNav()"></div>
+
 <!-- APP -->
 <div id="s-app" class="scr">
   <aside class="sb" id="app-sb">
@@ -340,6 +348,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   <div class="main">
     <header class="tb">
       <div class="tb-bc">
+        <div class="ib mob-ham" onclick="toggleMobNav()" style="display:none" title="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg></div>
         <span class="tb-bc-root">SportVision OS</span>
         <span class="tb-bc-sep">/</span>
         <h1 id="pt">Tableau de bord</h1>
@@ -4782,9 +4791,19 @@ async function marquerToutLu(uid){
   try{await sbFetch('notifications?destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)',{method:'PATCH',body:{lue:true}});openNotifPanel();}catch(e){}
 }
 
+function toggleMobNav(){
+  document.getElementById('app-sb').classList.toggle('mob-open');
+  document.getElementById('mob-overlay').classList.toggle('on');
+}
+function closeMobNav(){
+  document.getElementById('app-sb').classList.remove('mob-open');
+  document.getElementById('mob-overlay').classList.remove('on');
+}
+
 function switchView(id){
   if(_msgInterval){clearInterval(_msgInterval);_msgInterval=null;}
   S.view=id;
+  closeMobNav();
   document.querySelectorAll('.ni[data-id]').forEach(n=>n.classList.toggle('on',n.dataset.id===id));
   const cfg=NAV[S.role].find(n=>n.id===id);
   document.getElementById('pt').textContent=cfg?cfg.lb:'';
