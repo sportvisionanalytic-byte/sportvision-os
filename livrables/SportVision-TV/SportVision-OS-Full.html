@@ -5528,7 +5528,7 @@ async function loadPhotoKits(){
   const el=document.getElementById('photo-kits-real');if(!el)return;
   const uid=localStorage.getItem('sv_uid');if(!uid)return;
   try{
-    const data=await sbFetch('kit_reservations?select=id,statut,date_debut,date_fin,prestation_id,kit_id,kits(nom,type,reference)&collaborateur_id=eq.'+uid+'&order=date_debut.desc&limit=50');
+    const data=await sbFetch('kit_reservations?select=id,statut,date_debut,date_fin,prestation_id,kit_id,kits(nom,type_kit,description)&collaborateur_id=eq.'+uid+'&order=date_debut.desc&limit=50');
     const list=Array.isArray(data)?data:[];
     const dispo=list.filter(k=>k.statut==='disponible'||k.statut==='réservé').length;
     const mission=list.filter(k=>k.statut==='déployé'||k.statut==='en_mission').length;
@@ -5536,11 +5536,11 @@ async function loadPhotoKits(){
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     set('phkit-dispo',dispo);set('phkit-mission',mission);set('phkit-retour',retour);
     if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucun kit assigné en ce moment.</div>';return;}
-    el.innerHTML='<div class="tw"><table><thead><tr><th>Kit</th><th>Type</th><th>Référence</th><th>Début</th><th>Fin</th><th>Statut</th></tr></thead><tbody>'+
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Kit</th><th>Type</th><th>Description</th><th>Début</th><th>Fin</th><th>Statut</th></tr></thead><tbody>'+
       list.map(k=>`<tr>
         <td class="tp">${k.kits?.nom||'—'}</td>
-        <td>${k.kits?.type||'—'}</td>
-        <td class="tm">${k.kits?.reference||'—'}</td>
+        <td>${k.kits?.type_kit||'—'}</td>
+        <td class="tm" style="font-size:11px;color:var(--t3);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k.kits?.description?.slice(0,60)||'—'}</td>
         <td>${k.date_debut?new Date(k.date_debut).toLocaleDateString('fr-FR'):'—'}</td>
         <td>${k.date_fin?new Date(k.date_fin).toLocaleDateString('fr-FR'):'—'}</td>
         <td><span class="bd ${k.statut==='disponible'?'ba':k.statut==='déployé'||k.statut==='en_mission'?'bl':'bw'}"><span class="bd-d"></span>${k.statut||'—'}</span></td>
