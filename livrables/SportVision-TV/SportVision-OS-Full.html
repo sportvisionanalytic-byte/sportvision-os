@@ -2384,7 +2384,7 @@ function filtrerClientsSelect(q){
   const list=lq?_clientsNP.filter(c=>(c.nom||'').toLowerCase().includes(lq)):_clientsNP.slice(0,25);
   if(!list.length){dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--t3)">Aucun résultat</div>';dd.style.display='block';return;}
   dd.style.display='block';
-  const stC={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
+  const stC={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw','partenaire':'ba','client':'ba','inactif':'bn','bloqué':'br','perdu':'br'};
   dd.innerHTML=list.map(c=>{
     const safId=c.id.replace(/'/g,"\\'");
     const safNom=(c.nom||'').replace(/</g,'&lt;').replace(/'/g,"\\'");
@@ -3038,12 +3038,13 @@ function renderClientsTable(){
     const matchSt=!sf||c.statut===sf;
     return matchQ&&matchSt;
   });
-  const sc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
+  const sc={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw','partenaire':'ba','client':'ba','inactif':'bn','bloqué':'br','perdu':'br'};
+  const scLb={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis envoyé','négociation':'Négociation','partenaire':'Partenaire','client':'Client','inactif':'Inactif','bloqué':'Bloqué','perdu':'Perdu'};
   el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px">
     <input id="crm-search" type="text" class="l-inp" placeholder="Rechercher nom, ville, sport, email…" value="${_crmFiltre}" oninput="_crmFiltre=this.value;renderClientsTable()" style="height:34px;flex:1;max-width:320px">
     <select id="crm-st-filter" class="l-inp" style="height:34px;max-width:180px" onchange="_crmStFiltre=this.value;renderClientsTable()">
       <option value="">Tous les statuts</option>
-      ${['prospect','qualifié','client','inactif','bloqué'].map(s=>`<option value="${s}"${sf===s?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+      ${Object.entries(scLb).map(([v,l])=>`<option value="${v}"${sf===v?' selected':''}>${l}</option>`).join('')}
     </select>
     <span style="font-size:11px;color:var(--t3);white-space:nowrap">${list.length} / ${_clientsCache.length}</span>
   </div>
@@ -3059,7 +3060,7 @@ function renderClientsTable(){
         <td>${c.ville||'—'}</td>
         <td>${ct}</td>
         <td style="font-size:12px">${emailBtn}${telBtn}</td>
-        <td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${c.statut}</span></td>
+        <td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${scLb[c.statut]||c.statut}</span></td>
         <td><button onclick="modalModifierClient(${i})" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button></td>
       </tr>`;}).join('')+
   '</tbody></table></div>':'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat.</div>'}`;
@@ -11469,8 +11470,8 @@ async function loadSecDash(){
     const ec=document.getElementById('sec-dash-clients');
     if(ec){
       const recents=await sbFetch('clients?select=id,nom,statut,ville,sport&order=created_at.desc&limit=5');
-      const scc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn','bloqué':'br'};
-      const scl={'prospect':'Prospect','qualifié':'Qualifié','client':'Client','inactif':'Inactif','bloqué':'Bloqué'};
+      const scc={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw','partenaire':'ba','client':'ba','inactif':'bn','bloqué':'br','perdu':'br'};
+      const scl={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis envoyé','négociation':'Négociation','partenaire':'Partenaire','client':'Client','inactif':'Inactif','bloqué':'Bloqué','perdu':'Perdu'};
       ec.innerHTML=(recents||[]).length?'<div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Statut</th><th></th></tr></thead><tbody>'+
         (recents||[]).map(c=>`<tr>
           <td class="tp">${c.nom}</td>
