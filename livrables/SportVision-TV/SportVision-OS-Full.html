@@ -3104,12 +3104,16 @@ function modalModifierClient(idx){
       </div>
       <div id="fce-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div id="fce-tabs" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
-        <div style="display:flex;gap:6px;margin-bottom:12px">
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
           <button id="fce-tab-pres" onclick="fceShowTab('pres')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Prestations</button>
-          <button id="fce-tab-tl" onclick="fceShowTab('tl')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Historique complet</button>
+          <button id="fce-tab-rel" onclick="fceShowTab('rel')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Suivi contacts</button>
+          <button id="fce-tab-tl" onclick="fceShowTab('tl')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Historique</button>
         </div>
         <div id="fce-panel-pres">
           <div id="fce-hist"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+        </div>
+        <div id="fce-panel-rel" style="display:none">
+          <div id="fce-contacts-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
         </div>
         <div id="fce-panel-tl" style="display:none">
           <div id="client-timeline"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
@@ -3218,21 +3222,123 @@ async function chargerPresByClient(clientId){
 }
 
 function fceShowTab(tab){
-  const pBtn=document.getElementById('fce-tab-pres');
-  const tBtn=document.getElementById('fce-tab-tl');
-  const pPanel=document.getElementById('fce-panel-pres');
-  const tPanel=document.getElementById('fce-panel-tl');
-  if(!pBtn)return;
-  const onStyle='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
-  const offStyle='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
-  if(tab==='pres'){
-    pBtn.style.cssText=onStyle;tBtn.style.cssText=offStyle;
-    if(pPanel)pPanel.style.display='';if(tPanel)tPanel.style.display='none';
-  } else {
-    tBtn.style.cssText=onStyle;pBtn.style.cssText=offStyle;
-    if(tPanel)tPanel.style.display='';if(pPanel)pPanel.style.display='none';
-    if(window._fceClientId)loadClientTimeline(window._fceClientId);
-  }
+  const on='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
+  const off='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
+  ['pres','rel','tl'].forEach(t=>{
+    const b=document.getElementById('fce-tab-'+t);const p=document.getElementById('fce-panel-'+t);
+    if(b)b.style.cssText=t===tab?on:off;
+    if(p)p.style.display=t===tab?'':'none';
+  });
+  if(tab==='tl'&&window._fceClientId)loadClientTimeline(window._fceClientId);
+  if(tab==='rel'&&window._fceClientId)loadClientContacts(window._fceClientId);
+}
+
+async function loadClientContacts(clientId){
+  const el=document.getElementById('fce-contacts-list');if(!el)return;
+  el.innerHTML='<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const data=await sbFetch('client_contacts?select=id,type,resultat,note,next_action,next_action_date,created_at,auteur:profiles(prenom,nom)&client_id=eq.'+clientId+'&order=created_at.desc&limit=50');
+    const list=Array.isArray(data)?data:[];
+    const TYPE_IC={appel:'📞',email:'✉️',reunion:'🤝',relance:'🔔',devis_envoyé:'📋',visite:'🚗',autre:'📌'};
+    const RES_CLR={positif:'var(--ok)',neutre:'var(--t3)',negatif:'var(--er)',sans_reponse:'var(--wa)'};
+    const RES_LB={positif:'Positif',neutre:'Neutre',negatif:'Négatif',sans_reponse:'Sans réponse'};
+    el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button onclick="modalAjouterContact('${clientId}')" style="padding:6px 14px;font-size:12px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Ajouter un contact</button>
+    </div>`+
+    (list.length?'<div style="display:flex;flex-direction:column;gap:8px">'+list.map(c=>{
+      const auteur=[c.auteur?.prenom,c.auteur?.nom].filter(Boolean).join(' ')||'—';
+      const d=new Date(c.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+      return`<div style="padding:12px 14px;background:var(--s2);border-radius:var(--rb);border:1px solid var(--b1)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+          <span style="font-size:16px">${TYPE_IC[c.type]||'📌'}</span>
+          <span style="font-size:12px;font-weight:600;color:var(--t1);text-transform:capitalize">${c.type?.replace(/_/g,' ')||'—'}</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.06);color:${RES_CLR[c.resultat]||'var(--t3)'}">${RES_LB[c.resultat]||'—'}</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--t3)">${d} · ${auteur}</span>
+        </div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.5">${c.note}</div>
+        ${c.next_action?`<div style="margin-top:8px;padding:6px 10px;background:rgba(245,165,36,.07);border-radius:6px;border-left:2px solid var(--wa)">
+          <div style="font-size:10px;font-weight:700;color:var(--wa);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">Prochaine action</div>
+          <div style="font-size:12px;color:var(--t2)">${c.next_action}${c.next_action_date?' · <b style="color:var(--wa)">'+new Date(c.next_action_date).toLocaleDateString('fr-FR',{day:'2-digit',month:'long'})+'</b>':''}</div>
+        </div>`:''}
+      </div>`;
+    }).join('')+'</div>':
+    '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px"><div style="font-size:32px;opacity:.2;margin-bottom:8px">📋</div>Aucun contact enregistré.<br><span style="font-size:12px;opacity:.6">Ajoutez des notes après chaque échange avec ce club.</span></div>');
+  }catch(e){el.innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button onclick="modalAjouterContact(\''+clientId+'\')" style="padding:6px 14px;font-size:12px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Ajouter un contact</button></div><div style="padding:20px;text-align:center;color:var(--t3);font-size:12px">Table client_contacts non trouvée. Exécutez migration-crm-v2.sql.</div>';}
+}
+
+function modalAjouterContact(clientId){
+  const today=new Date().toISOString().slice(0,10);
+  openModal(`<div class="mh"><div class="mt">Nouveau contact</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type de contact</label>
+          <select id="cc-type" class="l-inp" style="height:38px">
+            <option value="appel">📞 Appel téléphonique</option>
+            <option value="email">✉️ Email</option>
+            <option value="reunion">🤝 Réunion / RDV</option>
+            <option value="relance">🔔 Relance</option>
+            <option value="devis_envoyé">📋 Devis envoyé</option>
+            <option value="visite">🚗 Visite terrain</option>
+            <option value="autre">📌 Autre</option>
+          </select>
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Résultat</label>
+          <select id="cc-resultat" class="l-inp" style="height:38px">
+            <option value="positif">✅ Positif</option>
+            <option value="neutre" selected>➖ Neutre</option>
+            <option value="negatif">❌ Négatif</option>
+            <option value="sans_reponse">🔕 Sans réponse</option>
+          </select>
+        </div>
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Note *</label>
+        <textarea id="cc-note" class="l-inp" style="height:80px;padding-top:10px;resize:none" placeholder="Résumé de l'échange, points clés discutés…"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Prochaine action</label>
+          <input id="cc-next" type="text" class="l-inp" style="height:38px" placeholder="Ex: Rappeler pour devis, Envoyer contrat…">
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Date de relance</label>
+          <input id="cc-date" type="date" class="l-inp" style="height:38px" min="${today}">
+        </div>
+      </div>
+      <div id="cc-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="sauvegarderContact('${clientId}')">Enregistrer</button>
+    </div>`);
+}
+
+async function sauvegarderContact(clientId){
+  const note=document.getElementById('cc-note')?.value?.trim();
+  const err=document.getElementById('cc-err');
+  if(!note){if(err)err.textContent='La note est obligatoire.';return;}
+  const next=document.getElementById('cc-next')?.value?.trim()||null;
+  const nextDate=document.getElementById('cc-date')?.value||null;
+  try{
+    await sbFetch('client_contacts',{method:'POST',body:{
+      client_id:clientId,
+      auteur_id:localStorage.getItem('sv_uid')||null,
+      type:document.getElementById('cc-type').value,
+      resultat:document.getElementById('cc-resultat').value,
+      note,
+      next_action:next||null,
+      next_action_date:nextDate||null,
+    }});
+    if(next||nextDate){
+      await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{
+        prochaine_action:next||null,
+        date_prochaine_action:nextDate||null,
+      }}).catch(()=>{});
+    }
+    closeModal();
+    toast('Contact enregistré.','ok');
+    setTimeout(()=>{
+      window._fceClientId=clientId;
+      fceShowTab('rel');
+    },150);
+  }catch(e){if(err)err.textContent='Erreur lors de l\'enregistrement.';}
 }
 
 async function modalModifierClientById(id){
@@ -8008,7 +8114,7 @@ async function loadDevis(){
         <td><span class="bd ${s_cls[d.statut]||'bw'}"><span class="bd-d"></span>${s_lbl[d.statut]||d.statut}</span></td>
         <td style="color:var(--t3)">${d.date_envoi?new Date(d.date_envoi).toLocaleDateString('fr-FR'):'—'}</td>
         <td style="color:${expExpired?'var(--er)':expAlert?'var(--wa)':'var(--t3)'};font-weight:${expAlert?600:400}">${expFmt}${expAlert?' ⚠':''}</td>
-        <td><div style="display:flex;gap:4px;justify-content:flex-end">${d.statut==='brouillon'?`<button onclick="envoyerDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap" title="Marquer comme envoyé">→ Envoyer</button>`:''}<button onclick="imprimerDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap" title="Générer PDF">PDF</button><button class="btn bg2 bs" onclick="modalModifierDevis(${i})">Modifier</button></div></td>
+        <td><div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap">${d.statut==='brouillon'?`<button onclick="envoyerDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap" title="Marquer comme envoyé">→ Envoyer</button>`:''}${d.statut==='accepté'?`<button onclick="modalContratFromDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap;font-weight:600">→ Contrat</button>`:''}<button onclick="imprimerDevis('${d.id}')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap" title="Générer PDF">PDF</button><button class="btn bg2 bs" onclick="modalModifierDevis(${i})">Modifier</button></div></td>
       </tr>`;}).join('')+'</tbody></table></div></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
@@ -12781,6 +12887,80 @@ async function sauvegarderContrat(){
   const r=await sbFetch('contrats',{method:'POST',body:payload});
   if(r.error){if(err){err.textContent='Erreur: '+(r.error.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}return;}
   closeModal();toast('Contrat créé','ok');await loadContrats();
+}
+
+async function modalContratFromDevis(devisId){
+  try{
+    const data=await sbFetch('devis?id=eq.'+devisId+'&select=id,total_ht,total_ttc,tva_pct,notes,client_id,clients(id,nom,email,telephone,ville)');
+    const d=Array.isArray(data)&&data[0]?data[0]:null;
+    if(!d){toast('Devis introuvable','er');return;}
+    const cl=d.clients||{};
+    const today=new Date().toISOString().slice(0,10);
+    const in1y=new Date();in1y.setFullYear(in1y.getFullYear()+1);
+    const fin1y=in1y.toISOString().slice(0,10);
+    const montantM=d.total_ht?Math.round(d.total_ht/12*100)/100:null;
+    openModal(`<div class="mh"><div class="mt">Créer un contrat — ${cl.nom||'Client'}</div><button class="mc" onclick="closeModal()">✕</button></div>
+      <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+        <div style="padding:10px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.2);border-radius:var(--rb)">
+          <div style="font-size:10px;font-weight:700;color:var(--ok);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Devis de référence</div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">${cl.nom||'—'}</div>
+          <div style="font-size:12px;color:var(--t3)">Montant TTC : <b style="color:var(--ok)">${d.total_ttc?d.total_ttc.toLocaleString('fr-FR')+' €':'—'}</b></div>
+        </div>
+        <div id="ncf-err" style="display:none;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);padding:10px;font-size:12px;color:var(--er)"></div>
+        <input type="hidden" id="nc-client" value="${d.client_id||''}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">TYPE DE CONTRAT</label>
+            <select id="nc-type" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
+              <option value="forfait_saison">Forfait saison</option>
+              <option value="partenariat">Partenariat</option>
+              <option value="abonnement_annuel">Abonnement annuel</option>
+              <option value="abonnement_mensuel">Abonnement mensuel</option>
+              <option value="ponctuel">Prestation ponctuelle</option>
+            </select>
+          </div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">STATUT</label>
+            <select id="nc-statut" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
+              <option value="brouillon">Brouillon</option>
+              <option value="actif">Actif — signé</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT (€)</label>
+            <input id="nc-montant" type="number" min="0" step="0.01" value="${montantM||''}" placeholder="0.00" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box">
+          </div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">FRÉQUENCE</label>
+            <select id="nc-freq" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
+              <option value="annuel">Annuel</option>
+              <option value="mensuel">Mensuel</option>
+              <option value="semestriel">Semestriel</option>
+              <option value="trimestriel">Trimestriel</option>
+            </select>
+          </div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">RENOUVELLEMENT</label>
+            <div style="display:flex;align-items:center;gap:8px;height:38px">
+              <input type="checkbox" id="nc-auto" style="width:15px;height:15px;accent-color:var(--acc)">
+              <label for="nc-auto" style="font-size:12px;color:var(--t2);cursor:pointer">Automatique</label>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">DATE DÉBUT</label>
+            <input id="nc-debut" type="date" value="${today}" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box">
+          </div>
+          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">DATE FIN</label>
+            <input id="nc-fin" type="date" value="${fin1y}" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES</label>
+          <textarea id="nc-notes" rows="3" placeholder="Conditions, services inclus…" style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box">${d.notes||''}</textarea>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="sauvegarderContrat()">Créer le contrat</button>
+      </div>`);
+  }catch(e){toast('Erreur de chargement du devis','er');}
 }
 
 async function modalEditerContrat(id){
