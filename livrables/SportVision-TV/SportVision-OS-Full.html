@@ -15996,7 +15996,7 @@ async function loadMobileComDash(ct){
     </div>`;
     const recents=(clients||[]).slice(0,6);
     html+=`<div class="ms-head"><div class="ms-title">Clients récents</div><button class="ms-link" onclick="switchView('crm')">Tous →</button></div>`;
-    html+=recents.map(c=>{const sc={'prospect':'bw','qualifié':'bb','client':'ba','inactif':'bn'};const sl={'prospect':'Prospect','qualifié':'Qualifié','client':'Client','inactif':'Inactif'};
+    html+=recents.map(c=>{const sc={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw','partenaire':'bn','client':'ba','inactif':'bn','bloqué':'bb','perdu':'bb'};const sl={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis','négociation':'Nég.','partenaire':'Partenaire','client':'Client','inactif':'Inactif','bloqué':'Bloqué','perdu':'Perdu'};
       return`<div class="mc" onclick="modalModifierClientById('${c.id}')" style="cursor:pointer">
         <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
           <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nom}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${[c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
