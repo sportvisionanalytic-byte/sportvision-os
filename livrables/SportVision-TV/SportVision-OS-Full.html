@@ -725,6 +725,19 @@ const VIEWS={
           <div><div style="font-size:13px;color:var(--t1);font-weight:500">${n}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${d}</div></div>
           <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2);font-family:monospace">${r}</span>
         </div>`).join('')}
+    </div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Google Agenda</div></div>
+      <div style="padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+        <div style="font-size:13px;color:var(--t2)">Sur chaque prestation dans le planning, un bouton <b>📅 Google Agenda</b> permet de l'ajouter en un clic sans aucun compte.</div>
+      </div>
+    </div>
+    <div class="cd" style="margin-top:13px;border:1px solid rgba(240,68,94,.2)">
+      <div class="cd-h"><div class="cd-t" style="color:var(--er)">Zone de danger</div></div>
+      <div style="padding:18px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+        <div style="font-size:13px;color:var(--t2)">Te déconnecter de SportVision OS sur cet appareil.</div>
+        <button class="btn" style="background:rgba(240,68,94,.12);color:var(--er);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="doLogout()">Se déconnecter</button>
+      </div>
     </div>`,
 
   // ── SECRÉTAIRE ──────────────────────────
@@ -1697,7 +1710,7 @@ async function loadPrestations(){
   const el=document.getElementById('pre-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,clients(nom)&order=date_prestation.desc&limit=200');
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,clients(nom)&order=date_prestation.desc&limit=200');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div>Aucune prestation. Créez la première.</div></div>';return;}
     _prestationsCache=data;
     renderPreTable();
@@ -1841,6 +1854,15 @@ function modalDetailPrestation(idx){
           <input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0">
         </div>
       </div>
+      ${(p.description_besoin||p.livrables_demandes||['admin','sec','prod'].includes(S.role))?`<div style="background:rgba(54,107,255,.05);border:1px solid rgba(54,107,255,.15);border-radius:var(--rb);padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--acc)">Brief prestation</div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description du besoin</label>
+          <textarea id="pd-desc" class="l-inp" style="height:56px;padding-top:10px;resize:none" placeholder="Que souhaite le client ?">${p.description_besoin||''}</textarea>
+        </div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Livrables attendus</label>
+          <textarea id="pd-livr" class="l-inp" style="height:56px;padding-top:10px;resize:none" placeholder="Photos, vidéos, délais…">${p.livrables_demandes||''}</textarea>
+        </div>
+      </div>`:''}
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Notes internes</label>
         <textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none" placeholder="Informations internes…">${p.notes_internes||''}</textarea>
       </div>
@@ -1880,6 +1902,8 @@ async function modifierPrestation(id){
       montant_ttc:document.getElementById('pd-ttc').value?Number(document.getElementById('pd-ttc').value):null,
       montant_ht:document.getElementById('pd-ht').value?Number(document.getElementById('pd-ht').value):null,
       notes_internes:document.getElementById('pd-notes').value||null,
+      description_besoin:document.getElementById('pd-desc')?.value||null,
+      livrables_demandes:document.getElementById('pd-livr')?.value||null,
     };
     await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body});
     closeModal();
@@ -2728,6 +2752,7 @@ async function ajouterMembreEquipe(prestationId,ref){
     const rem=document.getElementById('eq-rem').value;
     const rdv=document.getElementById('eq-rdv').value;
     await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
+    sbFetch('notifications',{method:'POST',body:{destinataire_id:colId,type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId}}).catch(()=>{});
     document.getElementById('eq-col').value='';
     document.getElementById('eq-fonc').value='';
     document.getElementById('eq-rem').value='';
@@ -4370,7 +4395,7 @@ async function loadKanban(){
 
 async function modalDetailById(id){
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,clients(nom)&id=eq.'+id);
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,clients(nom)&id=eq.'+id);
     if(!data||!data[0])return;
     const saved=_prestationsCache;
     _prestationsCache=[data[0]];
