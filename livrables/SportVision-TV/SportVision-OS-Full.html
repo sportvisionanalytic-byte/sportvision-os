@@ -13295,6 +13295,14 @@ async function sauvegarderContrat(){
     renouvellement_auto:document.getElementById('nc-auto').checked,notes:document.getElementById('nc-notes').value.trim()||null,created_by:S.uid};
   const r=await sbFetch('contrats',{method:'POST',body:payload});
   if(r.error){if(err){err.textContent='Erreur: '+(r.error.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}return;}
+  if(payload.statut==='actif'&&clientId){
+    try{
+      const cl=await sbFetch('clients?select=id,statut&id=eq.'+clientId);
+      if(cl&&cl[0]&&cl[0].statut!=='partenaire'){
+        await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{statut:'partenaire'}});
+      }
+    }catch(e){}
+  }
   closeModal();toast('Contrat créé','ok');await loadContrats();
 }
 
@@ -13436,6 +13444,18 @@ async function mettreAJourContrat(id){
     renouvellement_auto:document.getElementById('ec-auto').checked,notes:document.getElementById('ec-notes').value.trim()||null};
   const r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payload});
   if(r.error){const e=document.getElementById('ecf-err');if(e){e.textContent='Erreur: '+(r.error.message||'Impossible de modifier.');e.style.display='block';}return;}
+  if(payload.statut==='actif'){
+    try{
+      const ct=await sbFetch('contrats?select=client_id&id=eq.'+id);
+      const cid=ct&&ct[0]&&ct[0].client_id;
+      if(cid){
+        const cl=await sbFetch('clients?select=id,statut&id=eq.'+cid);
+        if(cl&&cl[0]&&cl[0].statut!=='partenaire'){
+          await sbFetch('clients?id=eq.'+cid,{method:'PATCH',body:{statut:'partenaire'}});
+        }
+      }
+    }catch(e){}
+  }
   closeModal();toast('Contrat mis à jour','ok');await loadContrats();
 }
 
