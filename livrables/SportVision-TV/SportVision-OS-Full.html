@@ -2006,6 +2006,7 @@ const VIEWS={
     <button id="af-tab-stats" onclick="afTab('stats')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--acc);background:var(--acc);color:#fff">Statistiques</button>
     <button id="af-tab-sessions" onclick="afTab('sessions')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Sessions</button>
     <button id="af-tab-certifs" onclick="afTab('certifs')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Certifications</button>
+    <button id="af-tab-catalogue" onclick="afTab('catalogue')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Gérer le catalogue</button>
   </div>
   <div id="admin-form-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -9770,7 +9771,7 @@ async function loadMedias(){
 }
 
 // ── Formation photo (localStorage) ───────────────────────────────────────────
-const FORMATIONS_CATALOG=[
+let FORMATIONS_CATALOG=[
   {id:'sv-culture',titre:'Culture & standards SportVision',categorie:'Culture SportVision',icone:'🎯',niveau:'Débutant',type:'en_ligne',duree:'45 min',xp:50,formateur:'Équipe SportVision',obligatoire:true,description:'Comprendre les valeurs, la vision et les standards qualité de SportVision. Module d\'accueil indispensable avant toute mission.',modules:[{titre:'La mission de SportVision',lecons:['Histoire et vision','Nos clients : les clubs','Nos standards de qualité','L\'image de marque']},{titre:'Comportement professionnel',lecons:['Ponctualité et présentation','Communication avec le client','Gestion des imprévus']},{titre:'Processus SportVision OS',lecons:['Naviguer dans l\'OS','Accepter une mission','Soumettre ses médias']}],certification:null,statut:'publiée'},
   {id:'sv-securite',titre:'Sécurité et gestion du matériel',categorie:'Matériel',icone:'🔧',niveau:'Débutant',type:'en_ligne',duree:'30 min',xp:50,formateur:'Équipe SportVision',obligatoire:true,description:'Règles essentielles pour manipuler, transporter et restituer le matériel SportVision en bon état.',modules:[{titre:'Checklist matériel',lecons:['Vérification avant départ','Nettoyage des objectifs','Gestion des batteries','Stockage des cartes mémoire']},{titre:'Transport et protection',lecons:['Utilisation des housses','Sécurité en voiture','Intempéries et humidité']},{titre:'Retour de matériel',lecons:['Transfert des fichiers','Signalement des dommages','Retour en stock']}],certification:null,statut:'publiée'},
   {id:'sv-comportement',titre:'Comportement en prestation',categorie:'Relation client',icone:'🤝',niveau:'Débutant',type:'en_ligne',duree:'30 min',xp:50,formateur:'Équipe SportVision',obligatoire:true,description:'Les règles de savoir-être et de communication avec les clubs, les familles et les joueurs lors des prestations.',modules:[{titre:'L\'accueil sur place',lecons:['Se présenter au contact','S\'intégrer discrètement','Zones autorisées et interdites']},{titre:'Relation avec les familles',lecons:['Bienveillance et professionnalisme','Gérer les demandes','Droit à l\'image']},{titre:'Fin de prestation',lecons:['Remercier le contact','Ranger le matériel','Confirmer la livraison']}],certification:null,statut:'publiée'},
@@ -9864,11 +9865,21 @@ const FORMATION_ROLE_MAP={
 };
 
 let _formTab='dashboard';
-let _formProgCache={};   // keyed by formation_id → {statut, lessons:{key:true}, xp_gagnes, enrolled_at, completed_at, _insId}
-let _formInscIds={};     // formation_id → inscription uuid
-let _certifCache=[];     // collaborateur_certifications depuis Supabase
-let _quizState=null;     // quiz en cours {id, qs, answers}
-let _formSessCache=[];   // sessions chargées (collab + admin) pour ICS
+let _formProgCache={};
+let _formInscIds={};
+let _certifCache=[];
+let _quizState=null;
+let _formSessCache=[];
+let _customFormsCache=[];
+
+async function _mergeCustomFormations(){
+  try{
+    const r=await sbFetch('formations_custom?statut=eq.publiée&order=created_at.asc').catch(()=>[]);
+    if(!Array.isArray(r)||!r.length)return;
+    const ids=new Set(FORMATIONS_CATALOG.map(f=>f.id));
+    r.forEach(f=>{if(!ids.has(f.id)){FORMATIONS_CATALOG.push(f);ids.add(f.id);}});
+  }catch(e){}
+}
 
 function getFormProg(uid){return _formProgCache;}
 function saveFormProg(uid,data){_formProgCache=data;}
@@ -9933,6 +9944,7 @@ function setFormTab(tab){
 }
 
 async function loadForm(){
+  await _mergeCustomFormations();
   const el=document.getElementById('form-real');
   const gradeEl=document.getElementById('form-grade-content');
   if(!el)return;
@@ -10237,8 +10249,13 @@ async function enrollForm(id){
   }catch(e){toast('Erreur lors de l\'inscription.','er');}
 }
 
-function lancerQuiz(id){
-  const qs=FORMATION_QUIZ_CATALOG[id];
+async function lancerQuiz(id){
+  let qs=null;
+  try{
+    const dbQs=await sbFetch('formations_quiz_custom?formation_id=eq.'+id+'&order=ordre.asc').catch(()=>[]);
+    if(Array.isArray(dbQs)&&dbQs.length) qs=dbQs.map(q=>({q:q.question,opts:Array.isArray(q.options)?q.options:[],rep:q.reponse_correcte}));
+  }catch(e){}
+  if(!qs||!qs.length) qs=FORMATION_QUIZ_CATALOG[id];
   if(!qs||!qs.length){toast('Aucune question disponible pour cette formation.','wa');return;}
   const f=FORMATIONS_CATALOG.find(x=>x.id===id);
   _quizState={id,qs,answers:{}};
@@ -10376,7 +10393,7 @@ async function toggleFormLesson(id,mi,li){
 let _afTab='stats';
 function afTab(tab){
   _afTab=tab;
-  ['stats','sessions','certifs'].forEach(t=>{
+  ['stats','sessions','certifs','catalogue'].forEach(t=>{
     const b=document.getElementById('af-tab-'+t);
     if(!b)return;
     const on=t===tab;
@@ -10385,6 +10402,7 @@ function afTab(tab){
   if(tab==='stats')loadAdminFormStats();
   else if(tab==='sessions')loadAdminFormSessions();
   else if(tab==='certifs')loadAdminFormCertifs();
+  else if(tab==='catalogue')loadAdminFormCatalogue();
 }
 
 async function loadAdminForm(){
@@ -10572,6 +10590,256 @@ async function loadAdminFormCertifs(){
         ${active.length?`<div class="tw"><table><thead><tr><th>Collaborateur</th><th>Certification</th><th>Formation</th><th>Obtenue le</th><th>Expire le</th><th>Statut</th></tr></thead><tbody>${active.map(renderRow).join('')}</tbody></table></div>`:`<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune certification active.<br><span style="font-size:11px;opacity:.7">Les certifications apparaissent automatiquement à la fin des formations certifiantes.</span></div>`}
       </div>`;
   }catch(e){el.innerHTML='<div class="cd"><div style="padding:32px;text-align:center;color:var(--er)">Erreur de chargement des certifications.</div></div>';}
+}
+
+// ── ADMIN FORMATION : GESTION CATALOGUE ─────────────────────────────────────
+async function loadAdminFormCatalogue(){
+  const el=document.getElementById('admin-form-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--t3);font-size:13px">Chargement…</div>';
+  let customForms=[];let dbOk=true;
+  try{
+    const r=await sbFetch('formations_custom?select=*&order=created_at.asc').catch(()=>null);
+    if(Array.isArray(r)){customForms=r;_customFormsCache=r;}
+    else{dbOk=false;}
+  }catch(e){dbOk=false;}
+  const allForms=[...FORMATIONS_CATALOG.map(f=>({...f,_builtin:true})),...customForms.map(f=>({...f,_builtin:false}))];
+  el.innerHTML=`
+    <div class="cd" style="margin-bottom:12px">
+      <div class="cd-h">
+        <div class="cd-t">Catalogue de formations (${allForms.length})</div>
+        <button onclick="modalNouvelleFormation()" style="padding:7px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">+ Nouvelle formation</button>
+      </div>
+      ${!dbOk?`<div style="padding:12px 14px;background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.2);border-radius:8px;font-size:12px;color:var(--wa);margin-bottom:12px">
+        <strong>Table "formations_custom" manquante.</strong> Exécutez <code>migration-formations-admin.sql</code> dans Supabase pour activer la gestion du catalogue.
+        <button onclick="window.open('https://supabase.com/dashboard/project/lulgezzpvrlbftbykzrc/sql/new','_blank')" class="btn bp bs" style="margin-left:8px;font-size:11px">SQL Editor →</button>
+      </div>`:''}
+      <div class="tw"><table><thead><tr><th>Formation</th><th>Catégorie</th><th>Niveau</th><th>XP</th><th>Obligatoire</th><th>Type</th><th>Actions</th></tr></thead><tbody>
+        ${allForms.map(f=>`<tr>
+          <td class="tm"><span style="margin-right:6px">${f.icone||'📚'}</span>${f.titre}</td>
+          <td style="font-size:11.5px;color:var(--t3)">${f.categorie||'—'}</td>
+          <td style="font-size:11.5px">${f.niveau||'—'}</td>
+          <td style="color:var(--wa);font-weight:700">+${f.xp||0}</td>
+          <td>${f.obligatoire?'<span style="font-size:10px;color:var(--er);font-weight:700;background:rgba(240,68,94,.1);padding:2px 8px;border-radius:20px">Oui</span>':'—'}</td>
+          <td><span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${f._builtin?'rgba(54,107,255,.1)':'rgba(46,204,138,.1)'};color:${f._builtin?'var(--acc)':'var(--ok)'};font-weight:600">${f._builtin?'Intégré':'Personnalisé'}</span></td>
+          <td><div style="display:flex;gap:5px">
+            <button onclick="modalGererQuizFormation('${f.id}','${(f.titre||'').replace(/'/g,"\\'")}')" style="padding:4px 8px;font-size:11px;background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:var(--wa);cursor:pointer">Quiz</button>
+            ${!f._builtin?`<button onclick="modalEditerFormation('${f.id}')" style="padding:4px 8px;font-size:11px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button>`:''}
+            ${!f._builtin?`<button onclick="confirmerSupprimerFormation('${f.id}','${(f.titre||'').replace(/'/g,"\\'")}' )" style="padding:4px 8px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>`:''}
+          </div></td>
+        </tr>`).join('')}
+      </tbody></table></div>
+    </div>`;
+}
+
+function modalNouvelleFormation(){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const cats=['Culture SportVision','Photographie','Vidéo','Matériel','Relation client','Montage','Drone','Management','Autre'];
+  const niveaux=['Débutant','Intermédiaire','Avancé','Expert'];
+  const types=[['en_ligne','En ligne'],['hybride','Hybride'],['terrain','Terrain']];
+  openModal(`<div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:16px">Nouvelle formation</div>
+    <div style="display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;padding-right:4px">
+      <div style="display:grid;grid-template-columns:2fr 80px;gap:10px">
+        <div><label style="${L}">Titre *</label><input id="nf-titre" class="l-inp" placeholder="Nom de la formation" style="height:38px"></div>
+        <div><label style="${L}">Icône</label><input id="nf-icone" class="l-inp" placeholder="📚" style="height:38px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label style="${L}">Catégorie</label><select id="nf-cat" class="l-inp" style="height:38px">${cats.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div><label style="${L}">Niveau</label><select id="nf-niveau" class="l-inp" style="height:38px">${niveaux.map(n=>`<option>${n}</option>`).join('')}</select></div>
+        <div><label style="${L}">Type</label><select id="nf-type" class="l-inp" style="height:38px">${types.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label style="${L}">Durée</label><input id="nf-duree" class="l-inp" placeholder="1h30" style="height:38px"></div>
+        <div><label style="${L}">XP</label><input id="nf-xp" type="number" min="0" class="l-inp" value="50" style="height:38px"></div>
+        <div><label style="${L}">Formateur</label><input id="nf-formateur" class="l-inp" placeholder="Fouka" style="height:38px"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="nf-oblig" style="width:15px;height:15px;accent-color:var(--er)">
+        <label for="nf-oblig" style="font-size:13px;color:var(--t2);cursor:pointer">Formation obligatoire</label>
+      </div>
+      <div><label style="${L}">Description</label><textarea id="nf-desc" class="l-inp" style="height:72px;resize:none;padding-top:8px" placeholder="Objectifs, contenu, public visé…"></textarea></div>
+      <div id="nf-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="sauvegarderNouvelleFormation()">Créer la formation</button>
+    </div>`);
+}
+
+async function sauvegarderNouvelleFormation(){
+  const err=document.getElementById('nf-err');
+  const titre=(document.getElementById('nf-titre')?.value||'').trim();
+  if(!titre){err.textContent='Le titre est obligatoire.';return;}
+  const slug=titre.toLowerCase().replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a').replace(/[ùûü]/g,'u').replace(/[ôö]/g,'o').replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,32)+'-'+(Date.now()%100000);
+  const payload={id:slug,titre,icone:document.getElementById('nf-icone')?.value.trim()||'📚',
+    categorie:document.getElementById('nf-cat')?.value||'Autre',
+    niveau:document.getElementById('nf-niveau')?.value||'Débutant',
+    type:document.getElementById('nf-type')?.value||'en_ligne',
+    duree:document.getElementById('nf-duree')?.value.trim()||'1h',
+    xp:parseInt(document.getElementById('nf-xp')?.value)||50,
+    formateur:document.getElementById('nf-formateur')?.value.trim()||null,
+    obligatoire:document.getElementById('nf-oblig')?.checked||false,
+    description:document.getElementById('nf-desc')?.value.trim()||null,
+    modules:[],statut:'publiée',created_by:S.uid||null};
+  const r=await sbFetch('formations_custom',{method:'POST',body:payload});
+  if(r&&r.error){err.textContent='Erreur : '+(r.error.message||'Table manquante — exécutez migration-formations-admin.sql');return;}
+  closeModal();toast('Formation créée.','ok');afTab('catalogue');
+}
+
+function modalEditerFormation(id){
+  const f=_customFormsCache.find(x=>x.id===id);
+  if(!f){toast('Formation introuvable.','er');return;}
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const cats=['Culture SportVision','Photographie','Vidéo','Matériel','Relation client','Montage','Drone','Management','Autre'];
+  const niveaux=['Débutant','Intermédiaire','Avancé','Expert'];
+  const types=[['en_ligne','En ligne'],['hybride','Hybride'],['terrain','Terrain']];
+  openModal(`<div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:16px">Modifier : ${f.titre}</div>
+    <div style="display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;padding-right:4px">
+      <div style="display:grid;grid-template-columns:2fr 80px;gap:10px">
+        <div><label style="${L}">Titre *</label><input id="ef-titre" class="l-inp" value="${(f.titre||'').replace(/"/g,'&quot;')}" style="height:38px"></div>
+        <div><label style="${L}">Icône</label><input id="ef-icone" class="l-inp" value="${f.icone||'📚'}" style="height:38px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label style="${L}">Catégorie</label><select id="ef-cat" class="l-inp" style="height:38px">${cats.map(c=>`<option${f.categorie===c?' selected':''}>${c}</option>`).join('')}</select></div>
+        <div><label style="${L}">Niveau</label><select id="ef-niveau" class="l-inp" style="height:38px">${niveaux.map(n=>`<option${f.niveau===n?' selected':''}>${n}</option>`).join('')}</select></div>
+        <div><label style="${L}">Type</label><select id="ef-type" class="l-inp" style="height:38px">${types.map(([v,l])=>`<option value="${v}"${f.type===v?' selected':''}>${l}</option>`).join('')}</select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label style="${L}">Durée</label><input id="ef-duree" class="l-inp" value="${f.duree||''}" style="height:38px"></div>
+        <div><label style="${L}">XP</label><input id="ef-xp" type="number" min="0" class="l-inp" value="${f.xp||50}" style="height:38px"></div>
+        <div><label style="${L}">Formateur</label><input id="ef-formateur" class="l-inp" value="${f.formateur||''}" style="height:38px"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="ef-oblig"${f.obligatoire?' checked':''} style="width:15px;height:15px;accent-color:var(--er)">
+        <label for="ef-oblig" style="font-size:13px;color:var(--t2);cursor:pointer">Formation obligatoire</label>
+      </div>
+      <div><label style="${L}">Description</label><textarea id="ef-desc" class="l-inp" style="height:72px;resize:none;padding-top:8px">${f.description||''}</textarea></div>
+      <div id="ef-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="sauvegarderEditionFormation('${id}')">Enregistrer</button>
+    </div>`);
+}
+
+async function sauvegarderEditionFormation(id){
+  const err=document.getElementById('ef-err');
+  const titre=(document.getElementById('ef-titre')?.value||'').trim();
+  if(!titre){err.textContent='Le titre est obligatoire.';return;}
+  const payload={titre,icone:document.getElementById('ef-icone')?.value.trim()||'📚',
+    categorie:document.getElementById('ef-cat')?.value,
+    niveau:document.getElementById('ef-niveau')?.value,
+    type:document.getElementById('ef-type')?.value,
+    duree:document.getElementById('ef-duree')?.value.trim()||'1h',
+    xp:parseInt(document.getElementById('ef-xp')?.value)||50,
+    formateur:document.getElementById('ef-formateur')?.value.trim()||null,
+    obligatoire:document.getElementById('ef-oblig')?.checked||false,
+    description:document.getElementById('ef-desc')?.value.trim()||null};
+  const r=await sbFetch('formations_custom?id=eq.'+id,{method:'PATCH',body:payload});
+  if(r&&r.error){err.textContent='Erreur : '+(r.error.message||'Impossible de modifier.');return;}
+  closeModal();toast('Formation mise à jour.','ok');afTab('catalogue');
+}
+
+function confirmerSupprimerFormation(id,titre){
+  openModal(`<div style="text-align:center;padding:8px 0 4px">
+    <div style="font-size:22px;margin-bottom:12px">⚠️</div>
+    <div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:8px">Supprimer la formation ?</div>
+    <div style="font-size:13px;color:var(--t3);margin-bottom:20px;max-width:340px;margin-left:auto;margin-right:auto">"${titre}" — les progressions et inscriptions liées seront conservées, mais la formation disparaîtra du catalogue.</div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn" style="background:var(--er)" onclick="supprimerFormationCustom('${id}')">Supprimer</button>
+    </div></div>`);
+}
+
+async function supprimerFormationCustom(id){
+  await sbFetch('formations_custom?id=eq.'+id,{method:'DELETE'});
+  closeModal();toast('Formation supprimée.','ok');
+  FORMATIONS_CATALOG=FORMATIONS_CATALOG.filter(f=>f.id!==id);
+  _customFormsCache=_customFormsCache.filter(f=>f.id!==id);
+  afTab('catalogue');
+}
+
+async function modalGererQuizFormation(formId,formTitre){
+  const titleSafe=formTitre.replace(/'/g,"\\'");
+  openModal(`<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">Quiz — ${formTitre}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Gérer les questions (remplacent les questions intégrées si présentes)</div>
+    <div id="quiz-admin-content"><div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--b1)">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:10px">Ajouter une question</div>
+      <textarea id="qa-question" class="l-inp" placeholder="Question…" style="height:52px;resize:none;padding-top:8px;margin-bottom:8px;display:block;width:100%;box-sizing:border-box"></textarea>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+        ${[0,1,2,3].map(i=>`<div style="display:flex;align-items:center;gap:8px">
+          <input type="radio" name="qa-rep" value="${i}" id="qa-rep-${i}"${i===0?' checked':''} style="accent-color:var(--ok);flex-shrink:0">
+          <input id="qa-opt-${i}" class="l-inp" placeholder="Option ${i+1}…" style="height:32px;flex:1">
+          <label for="qa-rep-${i}" style="font-size:10px;color:var(--ok);white-space:nowrap;cursor:pointer;flex-shrink:0">✓ Bonne</label>
+        </div>`).join('')}
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button onclick="adminAjouterQuestion('${formId}','${titleSafe}')" style="padding:7px 16px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">+ Ajouter</button>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px">
+      <button class="btn bg2" onclick="closeModal()">Fermer</button>
+    </div>`);
+  await _reloadQuizAdmin(formId,formTitre);
+}
+
+async function _reloadQuizAdmin(formId,formTitre){
+  const el=document.getElementById('quiz-admin-content');
+  if(!el)return;
+  try{
+    const dbQs=await sbFetch('formations_quiz_custom?formation_id=eq.'+formId+'&order=ordre.asc').catch(()=>[]);
+    const list=Array.isArray(dbQs)?dbQs:[];
+    const hc=FORMATION_QUIZ_CATALOG[formId]||[];
+    let html='';
+    if(!list.length&&!hc.length){
+      html='<div style="padding:16px;text-align:center;color:var(--t3);font-size:12px">Aucune question. Ajoutez-en une ci-dessous.</div>';
+    } else if(!list.length&&hc.length){
+      html=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;font-style:italic">${hc.length} question${hc.length>1?'s':''} intégrée${hc.length>1?'s':''} (lecture seule). Ajoutez des questions via le formulaire pour les remplacer.</div>`;
+      html+=hc.map((q,i)=>`<div style="background:rgba(54,107,255,.04);border:1px solid rgba(54,107,255,.1);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">${i+1}. ${q.q}</div>
+        ${q.opts.map((o,oi)=>`<div style="font-size:11px;color:${oi===q.rep?'var(--ok)':'var(--t3)'};padding:1px 0">${oi===q.rep?'✓ ':'    '}${o}</div>`).join('')}
+      </div>`).join('');
+    } else {
+      html=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${list.length} question${list.length>1?'s':''} (base de données)</div>`;
+      const titleSafe=formTitre.replace(/'/g,"\\'");
+      html+=list.map((q,i)=>{
+        const opts=Array.isArray(q.options)?q.options:[];
+        return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;gap:10px;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">${i+1}. ${q.question}</div>
+            ${opts.map((o,oi)=>`<div style="font-size:11px;color:${oi===q.reponse_correcte?'var(--ok)':'var(--t3)'};padding:1px 0">${oi===q.reponse_correcte?'✓ ':'    '}${o}</div>`).join('')}
+          </div>
+          <button onclick="adminSupprimerQuestion('${q.id}','${formId}','${titleSafe}')" style="padding:4px 8px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;flex-shrink:0">✕</button>
+        </div>`;
+      }).join('');
+    }
+    el.innerHTML=html;
+  }catch(e){el.innerHTML='<div style="padding:16px;text-align:center;color:var(--er);font-size:12px">Erreur de chargement.</div>';}
+}
+
+async function adminAjouterQuestion(formId,formTitre){
+  const q=(document.getElementById('qa-question')?.value||'').trim();
+  if(!q){toast('La question est obligatoire.','wa');return;}
+  const opts=[0,1,2,3].map(i=>(document.getElementById('qa-opt-'+i)?.value||'').trim()).filter(Boolean);
+  if(opts.length<2){toast('Renseignez au moins 2 options.','wa');return;}
+  const repEl=document.querySelector('input[name="qa-rep"]:checked');
+  const rep=repEl?parseInt(repEl.value):0;
+  const dbQs=await sbFetch('formations_quiz_custom?formation_id=eq.'+formId+'&select=ordre&order=ordre.desc&limit=1').catch(()=>[]);
+  const ordre=Array.isArray(dbQs)&&dbQs.length?(dbQs[0].ordre||0)+1:0;
+  const r=await sbFetch('formations_quiz_custom',{method:'POST',body:{formation_id:formId,question:q,options:opts,reponse_correcte:rep,ordre}});
+  if(r&&r.error){toast('Erreur : table "formations_quiz_custom" manquante — exécutez migration-formations-admin.sql','er');return;}
+  const qEl=document.getElementById('qa-question');if(qEl)qEl.value='';
+  [0,1,2,3].forEach(i=>{const e=document.getElementById('qa-opt-'+i);if(e)e.value='';});
+  const r0=document.getElementById('qa-rep-0');if(r0)r0.checked=true;
+  toast('Question ajoutée.','ok');
+  await _reloadQuizAdmin(formId,formTitre);
+}
+
+async function adminSupprimerQuestion(qId,formId,formTitre){
+  await sbFetch('formations_quiz_custom?id=eq.'+qId,{method:'DELETE'});
+  toast('Question supprimée.','ok');
+  await _reloadQuizAdmin(formId,formTitre);
 }
 
 function modalCreerSession(){
