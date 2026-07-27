@@ -205,16 +205,18 @@ tbody td{padding:11px 13px;color:var(--t2);vertical-align:middle}
 .jj-tile-s{font-size:11px;color:var(--t3)}
 
 /* ── PIPELINE ──────────────────────────── */
-.pip{display:flex;gap:11px;overflow-x:auto;padding-bottom:8px}
-.pip-col{min-width:200px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rc);display:flex;flex-direction:column}
-.pip-h{padding:11px 13px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
-.pip-ht{font-size:11.5px;font-weight:650;color:var(--t1)}
-.pip-b{padding:9px;display:flex;flex-direction:column;gap:7px;flex:1}
-.pip-card{background:var(--s1);border:1px solid var(--b1);border-radius:9px;padding:11px;cursor:pointer;transition:border-color .15s}
+.pip{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;align-items:flex-start}
+.pip-col{min-width:215px;width:215px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rc);display:flex;flex-direction:column;flex-shrink:0}
+.pip-h{padding:10px 12px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
+.pip-ht{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.pip-b{padding:8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:calc(100dvh - 290px)}
+.pip-card{background:var(--s1);border:1px solid var(--b1);border-radius:9px;padding:10px;cursor:pointer;transition:border-color .15s}
 .pip-card:hover{border-color:rgba(54,107,255,.3)}
-.pip-cn{font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:3px}
-.pip-det{font-size:11px;color:var(--t2)}
+.pip-cn{font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pip-det{font-size:10.5px;color:var(--t2)}
 .pip-val{font-size:11.5px;font-weight:700;color:var(--ok);margin-top:6px;font-variant-numeric:tabular-nums}
+.pip-qa{display:flex;gap:4px;margin-top:7px}
+.pip-qa button{flex:1;padding:3px 0;font-size:10px;font-weight:600;border-radius:var(--rp);cursor:pointer;white-space:nowrap}
 
 /* ── PROGRESS ──────────────────────────── */
 .pg{height:4px;background:rgba(255,255,255,.07);border-radius:var(--rp);overflow:hidden;margin-top:6px}
@@ -1023,25 +1025,8 @@ const VIEWS={
       <div id="compta-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
-  'com.pipeline':()=>`
-    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="pip-kpi-pr">—</div><span class="kpi-d dnt">à qualifier</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="pip-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="pip-kpi-cl">—</div><span class="kpi-d dnt">signés</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Total pipeline</div><div class="kpi-v" id="pip-kpi-tot">—</div><span class="kpi-d dnt">contacts</span></div>
-    </div>
-    <div class="sh"><div class="sh-t">Pipeline</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Prospect</button></div>
-    <div id="pipeline-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
-
-  'admin.pipeline':()=>`
-    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="pip-kpi-pr">—</div><span class="kpi-d dnt">à qualifier</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="pip-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="pip-kpi-cl">—</div><span class="kpi-d dnt">signés</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Total pipeline</div><div class="kpi-v" id="pip-kpi-tot">—</div><span class="kpi-d dnt">contacts</span></div>
-    </div>
-    <div class="sh"><div class="sh-t">Pipeline commercial</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Prospect</button></div>
-    <div id="pipeline-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+  'com.pipeline':()=>_buildPipelineShell('Pipeline'),
+  'admin.pipeline':()=>_buildPipelineShell('Pipeline commercial'),
 
   // ── ADMIN ──────────────────────────────
   'admin.pre':()=>`
@@ -3005,6 +2990,29 @@ let _clientsCache=[];
 let _clientsNP=[];
 let _crmFiltre='';
 let _crmStFiltre='';
+let _pipData={clients:[],lastPre:{},lastCon:{},devisMap:{}};
+
+function _buildPipelineShell(titre){
+  return`<div class="kpi-g" style="grid-template-columns:repeat(5,1fr)">
+    <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="pip-kpi-pr">—</div><span class="kpi-d dnt">à qualifier</span></div>
+    <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Qualifiés</div><div class="kpi-v" id="pip-kpi-q">—</div><span class="kpi-d dnt">en discussion</span></div>
+    <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Devis envoyés</div><div class="kpi-v" id="pip-kpi-dv">—</div><span class="kpi-d dnt">en attente réponse</span></div>
+    <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Négociation</div><div class="kpi-v" id="pip-kpi-ng">—</div><span class="kpi-d dnt">à conclure</span></div>
+    <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Partenaires</div><div class="kpi-v" id="pip-kpi-cl">—</div><span class="kpi-d dnt">signés actifs</span></div>
+  </div>
+  <div class="sh">
+    <div class="sh-t">${titre}</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="pip-search" type="text" placeholder="Rechercher…" oninput="renderPipeline()" style="height:33px;padding:0 10px;font-size:12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);width:160px">
+      <select id="pip-sport" onchange="renderPipeline()" style="height:33px;padding:0 8px;font-size:12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1)">
+        <option value="">Tous sports</option>
+        <option>Football</option><option>Basketball</option><option>Rugby</option><option>Handball</option><option>Volleyball</option><option>Tennis</option><option>Natation</option><option>Athlétisme</option><option>Autres</option>
+      </select>
+      <button class="btn bp bs" onclick="modalNouveauClient()">+ Prospect</button>
+    </div>
+  </div>
+  <div id="pipeline-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
 async function loadClients(){
   const el=document.getElementById('crm-real');
   if(!el)return;
@@ -8883,54 +8891,126 @@ async function signalerIncident(){
 async function loadPipeline(){
   const el=document.getElementById('pipeline-real');
   if(!el)return;
-  const COLS=[
-    {id:'prospect',lb:'Prospect',clr:'rgba(54,107,255,.3)',st:['prospect']},
-    {id:'qualifie',lb:'Qualifié',clr:'rgba(245,165,36,.3)',st:['qualifié']},
-    {id:'client',lb:'Client',clr:'rgba(46,204,138,.3)',st:['client']},
-    {id:'inactif',lb:'Inactif / Bloqué',clr:'rgba(255,255,255,.1)',st:['inactif','bloqué']},
-  ];
   try{
-    const [data,recentPres]=await Promise.all([
-      sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect&order=created_at.desc&limit=200'),
-      sbFetch('prestations?select=client_id,date_prestation&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500'),
+    const [data,recentPres,recentCons,devisData]=await Promise.all([
+      sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,prochaine_action,date_prochaine_action,score_priorite&order=score_priorite.desc.nullslast,created_at.desc&limit=300'),
+      sbFetch('prestations?select=client_id,date_prestation&order=date_prestation.desc&limit=500'),
+      sbFetch('client_contacts?select=client_id,created_at,type,resultat&order=created_at.desc&limit=500'),
+      sbFetch('devis?select=client_id,id,statut,total_ttc&order=created_at.desc&limit=500'),
     ]);
     const list=data||[];
     _clientsCache=list;
-    const lastPre={};
-    (recentPres||[]).forEach(p=>{if(p.client_id&&!lastPre[p.client_id])lastPre[p.client_id]=p.date_prestation;});
-    const s1=document.getElementById('pip-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
-    const s2=document.getElementById('pip-kpi-q');if(s2)s2.textContent=list.filter(c=>c.statut==='qualifié').length;
-    const s3=document.getElementById('pip-kpi-cl');if(s3)s3.textContent=list.filter(c=>c.statut==='client').length;
-    const s4=document.getElementById('pip-kpi-tot');if(s4)s4.textContent=list.length;
-    const s5=document.getElementById('com-kpi-pr');if(s5)s5.textContent=list.filter(c=>c.statut==='prospect').length;
-    const s6=document.getElementById('com-kpi-q');if(s6)s6.textContent=list.filter(c=>c.statut==='qualifié').length;
-    const s7=document.getElementById('com-kpi-cl');if(s7)s7.textContent=list.filter(c=>c.statut==='client').length;
-    const _nextSt={prospect:'qualifié',qualifié:'client'};
-    const _nextLb={prospect:'Qualifier',qualifié:'Convertir en client'};
-    el.innerHTML='<div class="pip">'+COLS.map(col=>{
-      const cards=list.filter(c=>col.st.includes(c.statut));
-      return `<div class="pip-col">
-        <div class="pip-h" style="border-top:2px solid ${col.clr}"><span class="pip-ht">${col.lb}</span><span class="kb-cnt">${cards.length}</span></div>
-        <div class="pip-b">${cards.length?cards.map(c=>{const i=list.indexOf(c);const nxt=_nextSt[c.statut];const lp=lastPre[c.id];return`<div class="pip-card" onclick="modalModifierClient(${i})">
-          <div class="pip-cn">${c.nom}</div>
-          <div class="pip-det">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div>
-          ${c.email?`<div style="font-size:10px;color:var(--t3);margin-top:3px">${c.email}</div>`:''}
-          ${c.telephone?`<div style="font-size:10px;color:var(--t3)">${c.telephone}</div>`:''}
-          ${lp?`<div style="font-size:10px;color:var(--t3);margin-top:3px">Dernière presta : ${new Date(lp).toLocaleDateString('fr-FR')}</div>`:''}
-          ${nxt?`<div style="margin-top:8px" onclick="event.stopPropagation();avancerPipeline('${c.id}','${nxt}')"><span style="font-size:10px;font-weight:600;color:var(--acc);cursor:pointer;padding:3px 8px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp)">${_nextLb[c.statut]} →</span></div>`:''}
-        </div>`;}).join(''):'<div style="padding:12px;text-align:center;color:var(--t3);font-size:11px;opacity:.5">—</div>'}</div>
-      </div>`;
-    }).join('')+'</div>';
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+    const lastPre={};(recentPres||[]).forEach(p=>{if(p.client_id&&!lastPre[p.client_id])lastPre[p.client_id]=p.date_prestation;});
+    const lastCon={};(recentCons||[]).forEach(c=>{if(!lastCon[c.client_id])lastCon[c.client_id]=c;});
+    const devisMap={};(devisData||[]).forEach(d=>{if(!devisMap[d.client_id])devisMap[d.client_id]=[];devisMap[d.client_id].push(d);});
+    _pipData={clients:list,lastPre,lastCon,devisMap};
+    const setKpi=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+    setKpi('pip-kpi-pr',list.filter(c=>c.statut==='prospect').length);
+    setKpi('pip-kpi-q', list.filter(c=>c.statut==='qualifié').length);
+    setKpi('pip-kpi-dv',list.filter(c=>c.statut==='devis_envoyé').length);
+    setKpi('pip-kpi-ng',list.filter(c=>c.statut==='négociation').length);
+    setKpi('pip-kpi-cl',list.filter(c=>['client','partenaire'].includes(c.statut)).length);
+    setKpi('com-kpi-pr',list.filter(c=>c.statut==='prospect').length);
+    setKpi('com-kpi-q', list.filter(c=>c.statut==='qualifié').length);
+    setKpi('com-kpi-cl',list.filter(c=>['client','partenaire'].includes(c.statut)).length);
+    renderPipeline();
+  }catch(e){const el2=document.getElementById('pipeline-real');if(el2)el2.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function renderPipeline(){
+  const el=document.getElementById('pipeline-real');
+  if(!el)return;
+  const {clients:list,lastPre,lastCon,devisMap}=_pipData;
+  if(!list.length){el.innerHTML='<div style="padding:30px;color:var(--t3);text-align:center;font-size:13px">Aucun prospect. Cliquez sur "+ Prospect" pour commencer.</div>';return;}
+  const q=((document.getElementById('pip-search')||{}).value||'').toLowerCase();
+  const sp=(document.getElementById('pip-sport')||{}).value||'';
+  const filtered=list.filter(c=>{
+    if(q&&!c.nom.toLowerCase().includes(q)&&!(c.ville||'').toLowerCase().includes(q))return false;
+    if(sp&&c.sport!==sp)return false;
+    return true;
+  });
+  const today=new Date().toISOString().slice(0,10);
+  const COLS=[
+    {lb:'Prospect',   clr:'#366BFF',st:['prospect']},
+    {lb:'Qualifié',   clr:'#F5A524',st:['qualifié']},
+    {lb:'Devis envoyé',clr:'#7C4DFF',st:['devis_envoyé']},
+    {lb:'Négociation',clr:'#F0445E',st:['négociation']},
+    {lb:'Partenaire', clr:'#2ECC8A',st:['client','partenaire']},
+  ];
+  const _chain=['prospect','qualifié','devis_envoyé','négociation','partenaire'];
+  const _chainLb={prospect:'Qualifier →',qualifié:'Devis envoyé →',devis_envoyé:'Négociation →',négociation:'Partenaire !'};
+  const _chainNext={prospect:'qualifié',qualifié:'devis_envoyé',devis_envoyé:'négociation',négociation:'partenaire'};
+
+  function buildCard(c){
+    const idx=list.indexOf(c);
+    const nxt=_chainNext[c.statut];
+    const nxtLb=_chainLb[c.statut];
+    const lp=lastPre[c.id];
+    const lc=lastCon[c.id];
+    const dvList=(devisMap[c.id]||[]).filter(d=>!['refusé','expiré'].includes(d.statut));
+    const hasDv=dvList.length>0;
+    const score=c.score_priorite||0;
+    let nextActHtml='';
+    if(c.prochaine_action){
+      let actClr='var(--t3)';let dateTxt='';
+      if(c.date_prochaine_action){
+        if(c.date_prochaine_action<today){actClr='var(--er)';dateTxt=' · RETARD';}
+        else if(c.date_prochaine_action===today){actClr='var(--wa)';dateTxt=' · Aujourd\'hui';}
+        else{actClr='var(--acc)';const d=new Date(c.date_prochaine_action);dateTxt=' · '+d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});}
+      }
+      nextActHtml=`<div style="margin-top:5px;font-size:10px;color:${actClr};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${c.prochaine_action}">⚡ ${c.prochaine_action}${dateTxt}</div>`;
+    }
+    let lcHtml='';
+    if(lc){const d=new Date(lc.created_at);const ico={appel:'📞',email:'📧',reunion:'🤝',relance:'🔁',visite:'📍',devis_envoyé:'📄',autre:'💬'}[lc.type]||'💬';lcHtml=`<div style="font-size:10px;color:var(--t3);margin-top:3px">${ico} ${d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div>`;}
+    else{lcHtml='<div style="font-size:10px;color:rgba(240,68,94,.55);margin-top:3px">Pas encore contacté</div>';}
+    return`<div class="pip-card" onclick="modalModifierClient(${idx})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
+        <div class="pip-cn">${c.nom}</div>
+        ${score>0?`<span style="font-size:9px;font-weight:700;color:#F5A524;background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.3);border-radius:4px;padding:1px 5px;flex-shrink:0">${score}</span>`:''}
+      </div>
+      <div class="pip-det">${[c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div>
+      ${lcHtml}
+      ${nextActHtml}
+      ${hasDv?`<div style="margin-top:4px"><span style="font-size:9px;background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.25);border-radius:4px;padding:1px 6px;color:#7C4DFF">${dvList.length} devis</span></div>`:''}
+      <div class="pip-qa" onclick="event.stopPropagation()">
+        <button onclick="modalAjouterContact('${c.id}')" style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);color:var(--acc)">+ Contact</button>
+        ${!hasDv&&['prospect','qualifié','devis_envoyé'].includes(c.statut)?`<button onclick="modalCreerDevisRapide('${c.id}','${c.nom.replace(/'/g,"\\'")}') " style="background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);color:#7C4DFF">Devis</button>`:''}
+        ${nxt?`<button onclick="avancerPipeline('${c.id}','${nxt}')" style="background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);color:var(--ok)">${nxtLb}</button>`:''}
+      </div>
+    </div>`;
+  }
+
+  const mainCols=COLS.map(col=>{
+    const cards=filtered.filter(c=>col.st.includes(c.statut)).sort((a,b)=>(b.score_priorite||0)-(a.score_priorite||0));
+    return`<div class="pip-col">
+      <div class="pip-h" style="border-top:3px solid ${col.clr}">
+        <span class="pip-ht" style="color:${col.clr}">${col.lb}</span>
+        <span class="kb-cnt">${cards.length}</span>
+      </div>
+      <div class="pip-b">${cards.length?cards.map(buildCard).join(''):'<div style="padding:14px;text-align:center;color:var(--t3);font-size:11px;opacity:.4">—</div>'}</div>
+    </div>`;
+  }).join('');
+
+  const perdu=filtered.filter(c=>['inactif','bloqué','perdu'].includes(c.statut));
+  const perduCol=perdu.length?`<div class="pip-col" style="opacity:.5">
+    <div class="pip-h" style="border-top:3px solid #555">
+      <span class="pip-ht" style="color:var(--t3)">Perdus</span>
+      <span class="kb-cnt">${perdu.length}</span>
+    </div>
+    <div class="pip-b">${perdu.map(c=>`<div style="font-size:11px;color:var(--t3);padding:6px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:7px;cursor:pointer" onclick="modalModifierClient(${list.indexOf(c)})">${c.nom}</div>`).join('')}</div>
+  </div>`:'' ;
+
+  el.innerHTML='<div class="pip">'+mainCols+perduCol+'</div>';
 }
 
 async function avancerPipeline(id,statut){
   try{
     await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
-    toast('Statut avancé : '+statut+'.','ok');
+    const lb={prospect:'Prospect',qualifié:'Qualifié',devis_envoyé:'Devis envoyé',négociation:'Négociation',partenaire:'Partenaire',client:'Client'}[statut]||statut;
+    toast('→ '+lb,'ok');
     loadPipeline();
     updateNavBadges(S.role);
-  }catch(e){toast('Erreur lors de la mise à jour.');}
+  }catch(e){toast('Erreur lors de la mise à jour.','er');}
 }
 
 // ── MESSAGERIE ────────────────────────────────────────────────────────────────
