@@ -43,27 +43,8 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t1);font-size:14px;l
 .l-inp{width:100%;height:44px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rb);padding:0 14px;color:var(--t1);font-size:13.5px;font-family:var(--ff);outline:none;transition:border-color .15s,box-shadow .15s}
 .l-inp:focus{border-color:rgba(54,107,255,.5);box-shadow:0 0 0 3px rgba(54,107,255,.08)}
 .l-inp::placeholder{color:var(--t3)}
-.l-sep{display:flex;align-items:center;gap:12px;color:var(--t3);font-size:11px}
-.l-sep::before,.l-sep::after{content:'';flex:1;height:1px;background:var(--b1)}
-.demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.demo-btn{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;font-family:var(--ff);color:var(--t2);font-size:12px;font-weight:500;transition:border-color .15s,color .15s,background .15s}
-.demo-btn:hover{background:var(--s3);color:var(--t1);border-color:var(--b2)}
-.demo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
 /* ── ONBOARDING ─────────────────────────── */
-#s-onboard{align-items:center;justify-content:center;background:var(--bg)}
-.obw{width:480px;display:flex;flex-direction:column;gap:32px}
-.ob-steps{display:flex;align-items:center;gap:0}
-.ob-step{flex:1;height:3px;background:var(--b1);border-radius:var(--rp);transition:background .3s}
-.ob-step.done{background:var(--gr)}
-.ob-step+.ob-step{margin-left:4px}
-.ob-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:32px;display:flex;flex-direction:column;gap:20px}
-.ob-ico{width:52px;height:52px;border-radius:14px;background:var(--gr);display:flex;align-items:center;justify-content:center;font-size:22px}
-.ob-title{font-size:20px;font-weight:700;color:var(--t1)}
-.ob-sub{font-size:13.5px;color:var(--t2);line-height:1.6}
-.ob-fields{display:flex;flex-direction:column;gap:12px}
-.ob-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.ob-actions{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
 
 /* ── ERROR ──────────────────────────────── */
 #s-error{align-items:center;justify-content:center;background:var(--bg)}
@@ -309,25 +290,15 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
     <div class="l-form-wrap">
       <div><div class="l-form-title">Connexion</div><div class="l-form-sub">Accédez à votre espace SportVision OS</div></div>
       <div class="l-form">
-        <div><label>Adresse email</label><input id="l-email" class="l-inp" type="email" placeholder="nom@sportvision.fr" autocomplete="email"></div>
-        <div><label>Mot de passe</label><input id="l-pass" class="l-inp" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+        <div><label>Adresse email</label><input id="l-email" class="l-inp" type="email" placeholder="nom@sportvision.fr" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('l-pass').focus()"></div>
+        <div><label>Mot de passe</label><input id="l-pass" class="l-inp" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
         <div id="l-err" style="font-size:12px;color:var(--er);min-height:16px"></div>
         <button id="l-btn" class="btn bp" style="width:100%;justify-content:center;height:44px;font-size:14px" onclick="doLogin()">Se connecter</button>
       </div>
-      <div>
-        <div class="l-sep">accès démo</div>
-        <div style="margin-top:10px;text-align:center"><button onclick="document.getElementById('demo-btns').style.display=document.getElementById('demo-btns').style.display==='none'?'grid':'none'" style="background:transparent;border:none;color:var(--t3);font-size:11.5px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:color .12s" onmouseover="this.style.color='var(--t2)'" onmouseout="this.style.color='var(--t3)'">Afficher les comptes de démonstration ↓</button></div>
-        <div class="demo-grid" id="demo-btns" style="display:none;margin-top:10px"></div>
+      <div style="text-align:center;margin-top:2px">
+        <button onclick="motDePasseOublie()" style="background:none;border:none;color:var(--t3);font-size:12px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='var(--acc)'" onmouseout="this.style.color='var(--t3)'">Mot de passe oublié ?</button>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- ONBOARDING -->
-<div id="s-onboard" class="scr" style="flex-direction:column">
-  <div class="obw">
-    <div class="ob-steps" id="ob-steps"></div>
-    <div class="ob-card" id="ob-content"></div>
   </div>
 </div>
 
@@ -4572,60 +4543,40 @@ function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.remov
 // ── LOGIN ────────────────────────────────
 function goLogin(){show('login')}
 
-const demoRoles=[
-  {id:'admin',lb:'Administrateur',c:'#366BFF'},
-  {id:'sec',lb:'Secrétaire',c:'#00B8D4'},
-  {id:'prod',lb:'Resp. Production',c:'#2ECC8A'},
-  {id:'photo',lb:'Photographe/Vidéaste',c:'#7C4DFF'},
-  {id:'cm',lb:'Community Manager',c:'#F5A524'},
-  {id:'compta',lb:'Comptable',c:'#FF6B35'},
-  {id:'com',lb:'Commercial',c:'#F0445E'},
-];
-document.getElementById('demo-btns').innerHTML=demoRoles.map(r=>`
-  <button class="demo-btn" onclick="goOnboard('${r.id}')">
-    <span class="demo-dot" style="background:${r.c}"></span>
-    ${r.lb}
-  </button>`).join('');
-
-// ── ONBOARDING ───────────────────────────
-const OB_STEPS=[
-  {ico:'👋',title:'Bienvenue sur SportVision OS',sub:'Votre espace de gestion de prestations audiovisuelles est prêt. Quelques étapes pour personnaliser votre expérience.',fields:null},
-  {ico:'👤',title:'Votre profil',sub:'Ces informations sont utilisées dans les prestations et les notifications.',fields:[
-    [{lb:'Prénom',ph:'Votre prénom'},{lb:'Nom',ph:'Votre nom'}],
-    [{lb:'Téléphone',ph:'+33 6 00 00 00 00'},{lb:'Ville',ph:'Paris'}],
-  ]},
-  {ico:'🔔',title:'Préférences de notifications',sub:'Choisissez comment SportVision OS vous informe des événements importants.',fields:null,notifs:true},
-  {ico:'🚀',title:'Tout est prêt !',sub:'Votre espace est configuré. Vous pouvez maintenant accéder à votre tableau de bord.',done:true},
-];
-
-function goOnboard(role){
-  S.obRole=role||'admin';S.obStep=1;show('onboard');renderOb();
+// ── MOT DE PASSE OUBLIÉ ──────────────────
+function motDePasseOublie(){
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:6px">Mot de passe oublié</div>
+    <div style="font-size:13px;color:var(--t3);margin-bottom:18px">Entre ton adresse email. Tu recevras un lien pour créer un nouveau mot de passe.</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Adresse email</label>
+        <input id="reset-email" type="email" class="l-inp" placeholder="nom@sportvision.fr" style="height:40px" onkeydown="if(event.key==='Enter')envoyerResetMdp()">
+      </div>
+      <div id="reset-msg" style="font-size:12px;min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="envoyerResetMdp()">Envoyer le lien</button>
+      </div>
+    </div>`);
+  setTimeout(()=>{const e=document.getElementById('reset-email');if(e)e.focus();},80);
 }
-function renderOb(){
-  const steps=document.getElementById('ob-steps');
-  steps.innerHTML=OB_STEPS.map((_,i)=>`<div class="ob-step${i<S.obStep?' done':''}"></div>`).join('');
-  const step=OB_STEPS[S.obStep-1];
-  const isLast=S.obStep===OB_STEPS.length;
-  let inner='';
-  if(step.notifs){
-    inner=`<div style="display:flex;flex-direction:column;gap:10px">`+
-    [['Nouvelle prestation assignée','✅'],['Prestation modifiée','✅'],['Message de l\'équipe','✅'],['Rapport hebdomadaire','']].map(([lb,chk])=>`
-      <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer">
-        <div style="width:18px;height:18px;border-radius:5px;border:1.5px solid ${chk?'var(--acc)':'var(--b2)'};background:${chk?'rgba(54,107,255,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${chk?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--acc)" stroke-width="2" stroke-linecap="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}</div>
-        <span style="font-size:13px;color:var(--t1)">${lb}</span>
-      </label>`).join('')+'</div>';
-  } else if(step.fields){
-    inner='<div class="ob-fields">'+step.fields.map(row=>`<div class="ob-row">${row.map(f=>`<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">${f.lb}</label><input class="l-inp" placeholder="${f.ph}" style="width:100%;height:38px"></div>`).join('')}</div>`).join('')+'</div>';
+async function envoyerResetMdp(){
+  const emailEl=document.getElementById('reset-email');
+  const msg=document.getElementById('reset-msg');
+  const email=(emailEl?.value||'').trim();
+  if(!email){if(msg){msg.style.color='var(--er)';msg.textContent='Entre ton adresse email.';}return;}
+  if(msg){msg.style.color='var(--t3)';msg.textContent='Envoi en cours…';}
+  try{
+    await fetch(SB_URL+'/auth/v1/recover',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email})
+    });
+    if(msg){msg.style.color='var(--ok)';msg.textContent='Email envoyé ! Vérifie ta boîte mail (et les spams).';}
+    setTimeout(closeModal,2800);
+  }catch(e){
+    if(msg){msg.style.color='var(--er)';msg.textContent='Erreur réseau. Réessaie.';}
   }
-  document.getElementById('ob-content').innerHTML=`
-    <div class="ob-ico">${step.ico}</div>
-    <div class="ob-title">${step.title}</div>
-    <div class="ob-sub">${step.sub}</div>
-    ${inner}
-    <div class="ob-actions">
-      ${S.obStep>1?`<button class="btn bg2" onclick="S.obStep--;renderOb()">← Retour</button>`:`<div></div>`}
-      <button class="btn bp" onclick="${isLast?`goApp('${S.obRole}')`:'S.obStep++;renderOb()'}">${isLast?'Accéder à l\'espace →':'Continuer →'}</button>
-    </div>`;
 }
 
 // ── APP ──────────────────────────────────
