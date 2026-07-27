@@ -651,6 +651,22 @@ const VIEWS={
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('crm')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="kpi-cli-v">—</div><span class="kpi-d dnt">partenaires</span></div>
       <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('incidents')"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="kpi-inc-v">—</div><span class="kpi-d dnt">à traiter</span></div>
     </div>
+    <div class="cd" style="margin-bottom:14px;padding:16px 20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3)">Objectif prioritaire</div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1);margin-top:2px">5 clubs partenaires</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--acc)" id="obj-clubs-count">—</div>
+          <div style="font-size:11px;color:var(--t3)">/ 5 clubs</div>
+        </div>
+      </div>
+      <div style="height:8px;background:var(--s2);border-radius:4px;overflow:hidden;margin-bottom:8px">
+        <div id="obj-clubs-bar" style="height:100%;width:0%;background:var(--gr);border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1)"></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="obj-clubs-dots"></div>
+    </div>
     <div class="g32">
       <div style="display:flex;flex-direction:column;gap:13px">
         <div class="cd"><div class="cd-h"><div class="cd-t">Planning du jour</div><button class="btn bg2 bs" onclick="switchView('planning')">Voir tout</button></div>
@@ -1135,6 +1151,12 @@ const VIEWS={
     <div class="sh" style="margin-bottom:14px">
       <div><div class="sh-t">Rémunérations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Contrôle des heures, présences et transmissions comptabilité</div></div>
     </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div class="fs"><div class="fs-l">Total équipe</div><div class="fs-v" id="rem-kpi-total" style="color:var(--acc)">—</div></div>
+      <div class="fs" style="border-color:rgba(54,107,255,.25)"><div class="fs-l">Ce mois</div><div class="fs-v" id="rem-kpi-mois" style="color:var(--acc)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Déjà payé</div><div class="fs-v" id="rem-kpi-paye" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En attente</div><div class="fs-v" id="rem-kpi-attente" style="color:var(--wa)">—</div></div>
+    </div>
     <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px">
       <button onclick="filterProdRem('all')" class="btn bp bs" id="prem-all" style="flex-shrink:0;font-size:11px">Toutes</button>
       <button onclick="filterProdRem('controle')" class="btn bg2 bs" id="prem-ctrl" style="flex-shrink:0;font-size:11px">À contrôler</button>
@@ -1147,11 +1169,12 @@ const VIEWS={
   'prod.frais':()=>`
     <div class="sh" style="margin-bottom:14px">
       <div><div class="sh-t">Frais & kilométrage</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Contrôle des déplacements et frais opérationnels</div></div>
+      <button class="btn bp bs" onclick="modalDeclarerFrais()">+ Déclarer</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="frais-att" style="color:var(--wa)">—</div></div>
-      <div class="fs"><div class="fs-l">Validés</div><div class="fs-v" id="frais-val" style="color:var(--ok)">—</div></div>
-      <div class="fs"><div class="fs-l">Total km</div><div class="fs-v" id="frais-km">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En attente (nb)</div><div class="fs-v" id="frais-kpi-nb" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Montant à valider</div><div class="fs-v" id="frais-kpi-att" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Total remboursé</div><div class="fs-v" id="frais-kpi-rem" style="color:var(--ok)">—</div></div>
     </div>
     <div id="prod-frais-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -2958,6 +2981,28 @@ async function loadAdminDash(){
     }
   }
 
+  // Tracker 5 clubs partenaires
+  try{
+    const clubs=await sbFetch('clients?select=id,nom,statut&statut=eq.client&limit=20');
+    const clubList=Array.isArray(clubs)?clubs:[];
+    const n=Math.min(clubList.length,5);
+    const objCount=document.getElementById('obj-clubs-count');
+    const objBar=document.getElementById('obj-clubs-bar');
+    const objDots=document.getElementById('obj-clubs-dots');
+    if(objCount)objCount.textContent=clubList.length+'/5';
+    if(objBar)objBar.style.width=Math.min(100,Math.round((n/5)*100))+'%';
+    if(objDots){
+      const dots=Array.from({length:5},(_,i)=>{
+        const club=clubList[i];
+        return`<div style="display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:20px;background:${club?'rgba(54,107,255,.12)':'rgba(255,255,255,.05)'};border:1px solid ${club?'rgba(54,107,255,.3)':'rgba(255,255,255,.08)'}">
+          <div style="width:7px;height:7px;border-radius:50%;background:${club?'var(--acc)':'rgba(255,255,255,.15)'}"></div>
+          <span style="font-size:11px;font-weight:600;color:${club?'var(--acc)':'var(--t3)'}">${club?club.nom:'Club '+( i+1)}</span>
+        </div>`;
+      });
+      objDots.innerHTML=dots.join('');
+    }
+  }catch(e){}
+
   // Suivi de production
   const elProd=document.getElementById('dash-prod');
   if(elProd&&allPre){
@@ -3901,18 +3946,16 @@ async function loadProdRemunerations(){
   const el=document.getElementById('prod-rem-real');
   if(!el)return;
   try{
-    // Try to load from remunerations table if it exists
-    const raw=await sbFetch('remunerations?select=id,statut,montant_total,collaborateur:profiles(prenom,nom),prestations(reference,clients(nom))&order=created_at.desc&limit=30');
-    if(Array.isArray(raw)&&raw.length){
-      _prodRemData=raw.map(r=>({
-        nom:[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||'—',
-        prestation:r.prestations?.clients?.nom||r.prestations?.reference||'—',
-        montant:r.montant_total?Number(r.montant_total).toFixed(2)+' €':'—',
-        statut:r.statut||'—',
-      }));
-    }else{
-      _prodRemData=[];
-    }
+    const raw=await sbFetch('prestations_equipe?select=id,remuneration,statut_paiement,date_paiement,fonction,prestations(id,reference,date_prestation,statut,clients(nom)),collaborateur:profiles(id,prenom,nom,role)&order=created_at.desc&limit=100');
+    _prodRemData=Array.isArray(raw)?raw:[];
+    // KPIs
+    const now=new Date();const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const tot=_prodRemData.reduce((s,r)=>s+(r.remuneration||0),0);
+    const mois=_prodRemData.filter(r=>r.prestations?.date_prestation>=mStart).reduce((s,r)=>s+(r.remuneration||0),0);
+    const pay=_prodRemData.filter(r=>r.statut_paiement==='payé').reduce((s,r)=>s+(r.remuneration||0),0);
+    const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('rem-kpi-total',fmt(tot));set('rem-kpi-mois',fmt(mois));set('rem-kpi-paye',fmt(pay));set('rem-kpi-attente',fmt(tot-pay));
     renderProdRemList();
   }catch(e){
     _prodRemData=[];
@@ -3924,11 +3967,97 @@ async function loadProdRemunerations(){
 async function loadProdFrais(){
   const el=document.getElementById('prod-frais-real');
   if(!el)return;
-  el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:12px;color:var(--t3)">
-    <div style="font-size:48px;opacity:.15">🚗</div>
-    <div style="font-size:14px;font-weight:600">Module frais & kilométrage</div>
-    <div style="font-size:12px;text-align:center;max-width:320px">Les déclarations de frais et kilomètres seront listées ici. Table <span style="font-family:monospace;color:var(--acc)">frais_deplacement</span> requise.</div>
-  </div>`;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  try{
+    const raw=await sbFetch('frais?select=id,type,montant,km,description,statut,date_frais,collaborateur_id,profiles(prenom,nom)&order=date_frais.desc&limit=100');
+    const list=Array.isArray(raw)?raw:[];
+    const att=list.filter(f=>f.statut==='en_attente');
+    const rem=list.filter(f=>f.statut==='remboursé');
+    const totAtt=att.reduce((s,f)=>s+(f.montant||0),0);
+    const totRem=rem.reduce((s,f)=>s+(f.montant||0),0);
+    set('frais-kpi-nb',att.length);
+    set('frais-kpi-att',totAtt.toLocaleString('fr-FR')+' €');
+    set('frais-kpi-rem',totRem.toLocaleString('fr-FR')+' €');
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Date</th><th>Collaborateur</th><th>Type</th><th>km</th><th>Montant</th><th>Statut</th><th></th></tr></thead><tbody>'+
+      list.map(f=>`<tr>
+        <td>${f.date_frais?new Date(f.date_frais).toLocaleDateString('fr-FR'):'—'}</td>
+        <td class="tp">${f.profiles?.prenom||''} ${f.profiles?.nom||''}</td>
+        <td>${f.type||'—'}</td>
+        <td class="tm">${f.km?f.km+' km':'—'}</td>
+        <td class="tm" style="font-weight:600">${f.montant?f.montant.toLocaleString('fr-FR')+' €':'—'}</td>
+        <td><span class="bd ${f.statut==='remboursé'?'ba':f.statut==='validé'?'bb':'bw'}"><span class="bd-d"></span>${f.statut||'En attente'}</span></td>
+        <td>${f.statut==='en_attente'?`<button class="btn bg2 bs" onclick="validerFrais('${f.id}')">Valider</button>`:'—'}</td>
+      </tr>`).join('')+'</tbody></table></div>':
+      '<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:12px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🚗</div><div style="font-size:13px">Aucune déclaration de frais.</div><button class="btn bp bs" onclick="modalDeclarerFrais()" style="margin-top:8px">+ Déclarer des frais</button></div>';
+  }catch(e){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:12px;color:var(--t3)"><div style="font-size:48px;opacity:.15">🚗</div><div style="font-size:14px;font-weight:600">Module frais & kilométrage</div><div style="font-size:12px;text-align:center;max-width:320px">Table <span style="font-family:monospace;color:var(--acc)">frais</span> requise en base de données.</div><button class="btn bp bs" onclick="modalDeclarerFrais()" style="margin-top:8px">+ Déclarer des frais (test)</button></div>';
+    console.error(e);
+  }
+}
+
+async function validerFrais(id){
+  try{
+    await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'validé'}});
+    toast('Frais validés.','ok');
+    loadViewData(S.role,S.view);
+  }catch(e){toast('Erreur lors de la validation.','er');}
+}
+
+function modalDeclarerFrais(prestationId){
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Déclarer des frais</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">Frais de déplacement ou de matériel à rembourser</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Type</label>
+          <select id="frais-type" class="l-inp" style="height:38px">
+            <option value="km">Kilométrage</option>
+            <option value="repas">Repas</option>
+            <option value="materiel">Matériel</option>
+            <option value="transport">Transport</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div><label style="${lbl}">Date</label>
+          <input id="frais-date" type="date" class="l-inp" value="${new Date().toISOString().slice(0,10)}" style="height:38px">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Kilométrage (km)</label>
+          <input id="frais-km" type="number" class="l-inp" placeholder="0" style="height:38px" oninput="const m=document.getElementById('frais-montant');if(m&&!m.value)m.value=Math.round(Number(this.value)*0.325*100)/100">
+        </div>
+        <div><label style="${lbl}">Montant (€) <span style="opacity:.5;font-size:9px">0,325€/km auto</span></label>
+          <input id="frais-montant" type="number" class="l-inp" placeholder="0.00" step="0.01" style="height:38px">
+        </div>
+      </div>
+      <div><label style="${lbl}">Description</label>
+        <input id="frais-desc" type="text" class="l-inp" placeholder="Ex: Aller-retour terrain Sens" style="height:38px">
+      </div>
+      <div id="frais-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="soumettrefrais('${prestationId||''}')">Envoyer</button>
+      </div>
+    </div>`);
+}
+
+async function soumettrefrais(prestationId){
+  const err=document.getElementById('frais-err');if(err)err.textContent='';
+  const uid=localStorage.getItem('sv_uid');
+  const type=document.getElementById('frais-type')?.value;
+  const date=document.getElementById('frais-date')?.value;
+  const km=document.getElementById('frais-km')?.value;
+  const montant=document.getElementById('frais-montant')?.value;
+  const desc=document.getElementById('frais-desc')?.value;
+  if(!montant||Number(montant)<=0){if(err)err.textContent='Montant requis.';return;}
+  const body={type,date_frais:date,km:km?Number(km):null,montant:Number(montant),description:desc||null,collaborateur_id:uid,statut:'en_attente'};
+  if(prestationId)body.prestation_id=prestationId;
+  try{
+    await sbFetch('frais',{method:'POST',body});
+    closeModal();toast('Frais déclarés.','ok');
+    loadViewData(S.role,S.view);
+  }catch(e){if(err)err.textContent='Erreur : table frais non disponible.';}
 }
 
 // ── PROD FORMATION ────────────────────────────────────────────────────────────
@@ -3966,14 +4095,104 @@ async function loadProdFormation(){
 }
 
 // ── PROD RAPPORTS ─────────────────────────────────────────────────────────────
-function exportProdRapportCSV(){
+let _prodRapportType='prestations';
+
+async function exportProdRapportCSV(){
+  const type=_prodRapportType||'prestations';
   toast('Export CSV en préparation…','ok');
+  try{
+    if(type==='prestations'){
+      const d=await sbFetch('prestations?select=reference,statut,type_prestation,date_prestation,lieu,montant_ttc,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500');
+      const rows=[['Référence','Client','Type','Date','Lieu','Montant TTC','Statut']];
+      (Array.isArray(d)?d:[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.lieu||'',p.montant_ttc||'',p.statut||'']));
+      dlCSV(`rapport-prestations-${new Date().toISOString().slice(0,10)}.csv`,rows);
+    } else if(type==='equipe'){
+      const d=await sbFetch('prestations_equipe?select=remuneration,statut_paiement,fonction,prestations(reference,date_prestation),collaborateur:profiles(prenom,nom,role)&order=created_at.desc&limit=500');
+      const rows=[['Collaborateur','Rôle','Fonction','Prestation','Date','Rémunération','Paiement']];
+      (Array.isArray(d)?d:[]).forEach(r=>rows.push([[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||'',r.collaborateur?.role||'',r.fonction||'',r.prestations?.reference||'',r.prestations?.date_prestation||'',r.remuneration||'',r.statut_paiement||'']));
+      dlCSV(`rapport-equipe-${new Date().toISOString().slice(0,10)}.csv`,rows);
+    } else {
+      toast('Export de ce type pas encore disponible.','ok');
+    }
+  }catch(e){toast('Erreur lors de l\'export.','er');}
 }
-function loadProdRapport(type){
+
+async function loadProdRapport(type){
+  _prodRapportType=type;
   const el=document.getElementById('prod-rapports-real');
   if(!el)return;
-  el.innerHTML='<div style="color:var(--t3);text-align:center;padding:30px;font-size:13px">Rapport '+type+' — chargement en cours…</div>';
-  setTimeout(()=>{el.innerHTML='<div class="cd" style="padding:20px"><div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:8px">Rapport : '+type+'</div><div style="font-size:12px;color:var(--t3)">Sélectionnez une période pour générer ce rapport.</div><div style="display:flex;gap:8px;margin-top:14px"><button class="btn bg2 bs" style="font-size:11px">Ce mois</button><button class="btn bg2 bs" style="font-size:11px">Cette année</button><button class="btn bg2 bs" style="font-size:11px">Personnalisé</button></div></div>';},300);
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div>';
+  const titles={'prestations':'Rapport prestations','equipe':'Rapport équipe','kits':'Rapport kits','incidents':'Rapport incidents'};
+  try{
+    if(type==='prestations'){
+      const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,montant_ttc,clients(nom),prestations_equipe(id)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=50');
+      const list=Array.isArray(data)?data:[];
+      const total=list.reduce((s,p)=>s+(p.montant_ttc||0),0);
+      el.innerHTML=`<div class="cd">
+        <div class="cd-h"><div class="cd-t">${titles[type]} (${list.length})</div>
+          <div style="font-size:13px;font-weight:700;color:var(--ok)">${total.toLocaleString('fr-FR')} €</div>
+        </div>
+        <div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Équipe</th><th>Montant</th><th>Statut</th></tr></thead><tbody>
+          ${list.map(p=>`<tr>
+            <td class="tm">${p.reference||'—'}</td>
+            <td class="tp">${p.clients?.nom||'—'}</td>
+            <td>${p.type_prestation||'—'}</td>
+            <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+            <td class="tm">${(p.prestations_equipe||[]).length} pers.</td>
+            <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+            <td><span class="bd ${SC[p.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+          </tr>`).join('')}
+        </tbody></table></div>
+      </div>`;
+    } else if(type==='equipe'){
+      const data=await sbFetch('prestations_equipe?select=remuneration,statut_paiement,fonction,prestations(reference,date_prestation,clients(nom)),collaborateur:profiles(prenom,nom,role)&order=created_at.desc&limit=100');
+      const list=Array.isArray(data)?data:[];
+      // Group by collaborateur
+      const byCol={};
+      list.forEach(r=>{
+        const key=[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||r.collaborateur?.role||'?';
+        if(!byCol[key])byCol[key]={name:key,role:r.collaborateur?.role||'',missions:0,rem:0,paye:0};
+        byCol[key].missions++;
+        byCol[key].rem+=(r.remuneration||0);
+        if(r.statut_paiement==='payé')byCol[key].paye+=(r.remuneration||0);
+      });
+      const colList=Object.values(byCol).sort((a,b)=>b.rem-a.rem);
+      el.innerHTML=`<div class="cd">
+        <div class="cd-h"><div class="cd-t">${titles[type]}</div></div>
+        <div class="tw"><table><thead><tr><th>Collaborateur</th><th>Rôle</th><th>Missions</th><th>Total rémunération</th><th>Payé</th><th>En attente</th></tr></thead><tbody>
+          ${colList.map(c=>`<tr>
+            <td class="tp">${c.name}</td>
+            <td>${c.role}</td>
+            <td class="tm">${c.missions}</td>
+            <td class="tm" style="font-weight:600">${c.rem.toLocaleString('fr-FR')} €</td>
+            <td class="tm" style="color:var(--ok)">${c.paye.toLocaleString('fr-FR')} €</td>
+            <td class="tm" style="color:var(--wa)">${(c.rem-c.paye).toLocaleString('fr-FR')} €</td>
+          </tr>`).join('')}
+        </tbody></table></div>
+      </div>`;
+    } else if(type==='incidents'){
+      const data=await sbFetch('incidents?select=id,titre,gravite,statut,cloture,created_at,prestations(reference,clients(nom))&order=created_at.desc&limit=50');
+      const list=Array.isArray(data)?data:[];
+      const open=list.filter(i=>!i.cloture).length;
+      el.innerHTML=`<div class="cd">
+        <div class="cd-h"><div class="cd-t">${titles[type]} — ${open} ouverts / ${list.length} total</div></div>
+        <div class="tw"><table><thead><tr><th>Titre</th><th>Prestation</th><th>Gravité</th><th>Date</th><th>Statut</th></tr></thead><tbody>
+          ${list.map(i=>`<tr>
+            <td class="tp">${i.titre||'—'}</td>
+            <td class="tm">${i.prestations?.reference||'—'} ${i.prestations?.clients?.nom?'· '+i.prestations.clients.nom:''}</td>
+            <td><span style="font-weight:700;color:${i.gravite==='critique'?'var(--er)':i.gravite==='élevé'?'var(--wa)':'var(--t2)'}">${i.gravite||'—'}</span></td>
+            <td>${i.created_at?new Date(i.created_at).toLocaleDateString('fr-FR'):'—'}</td>
+            <td><span class="bd ${i.cloture?'ba':'br'}"><span class="bd-d"></span>${i.cloture?'Clôturé':'Ouvert'}</span></td>
+          </tr>`).join('')}
+        </tbody></table></div>
+      </div>`;
+    } else {
+      el.innerHTML=`<div class="cd" style="padding:20px"><div style="font-size:13px;color:var(--t3);text-align:center">Rapport "${type}" — en cours de développement.</div></div>`;
+    }
+  }catch(e){
+    el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement du rapport.</div>';
+    console.error(e);
+  }
 }
 
 async function modalAffecterCollab(collabId,collabName){
@@ -8037,6 +8256,7 @@ const VIEW_CTA={
   'prod.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'prod.col':{t:'+ Inviter un collaborateur',fn:'modalInviterCollaborateur'},
   'prod.jourj':{t:'⚠ Déclarer incident',fn:'modalSignalerIncident'},
+  'prod.frais':{t:'+ Déclarer frais',fn:'modalDeclarerFrais'},
   'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.cal':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.contenus':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
