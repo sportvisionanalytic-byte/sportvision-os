@@ -767,6 +767,15 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Paramètres</div></div>
     <div id="set-profile"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
     <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Adresse email</div></div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:13px;color:var(--t2)">Email actuel : <span id="set-email-current" style="color:var(--t1);font-weight:600">—</span></div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouvel email</label><input id="set-email-new" type="email" class="l-inp" placeholder="nouveau@email.com" style="height:38px"></div>
+        <div id="set-email-err" style="font-size:12px;min-height:14px"></div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn bp" onclick="changerEmail()">Changer l'email</button></div>
+      </div>
+    </div>
+    <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Changer le mot de passe</div></div>
       <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -1185,6 +1194,15 @@ function _settingsView(){
   return`
     <div class="sh"><div class="sh-t">Paramètres</div></div>
     <div id="set-profile"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Adresse email</div></div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:13px;color:var(--t2)">Email actuel : <span id="set-email-current" style="color:var(--t1);font-weight:600">—</span></div>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouvel email</label><input id="set-email-new" type="email" class="l-inp" placeholder="nouveau@email.com" style="height:38px"></div>
+        <div id="set-email-err" style="font-size:12px;min-height:14px"></div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn bp" onclick="changerEmail()">Changer l'email</button></div>
+      </div>
+    </div>
     <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Sécurité — Mot de passe</div></div>
       <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
@@ -2868,17 +2886,27 @@ async function loadSettings(){
   if(!uid){el.innerHTML='';return;}
   try{
     const [data,authR]=await Promise.all([
-      sbFetch('profiles?select=prenom,nom,telephone,role&id=eq.'+uid),
+      sbFetch('profiles?select=prenom,nom,telephone,role,avatar_url,bio,adresse,ville,code_postal,vehicule,permis&id=eq.'+uid),
       fetch(SB_URL+'/auth/v1/user',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok}}).then(r=>r.json()).catch(()=>({}))
     ]);
     const p=data?.[0]||{};
     const email=authR?.email||'';
     const ini=(((p.prenom||'')[0]||'')+((p.nom||'')[0]||'')).toUpperCase();
     const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+    const sec='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-top:4px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.05)';
+    const avatarBg=p.avatar_url?`background:url(${p.avatar_url}) center/cover no-repeat`:'background:var(--gr);display:flex;align-items:center;justify-content:center';
+    const emailEl=document.getElementById('set-email-current');
+    if(emailEl)emailEl.textContent=email||'—';
     el.innerHTML=`<div class="cd">
       <div class="cd-h">
         <div style="display:flex;align-items:center;gap:14px">
-          <div style="width:48px;height:48px;border-radius:50%;background:var(--gr);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#fff;flex-shrink:0">${ini||'?'}</div>
+          <div style="position:relative;flex-shrink:0">
+            <div id="set-avatar-preview" onclick="document.getElementById('set-avatar-input').click()" style="width:60px;height:60px;border-radius:50%;${avatarBg};cursor:pointer;overflow:hidden;border:2px solid rgba(255,255,255,.12)">
+              ${p.avatar_url?'':`<span id="set-avatar-ini" style="font-size:20px;font-weight:800;color:#fff;pointer-events:none">${ini||'?'}</span>`}
+            </div>
+            <input type="file" id="set-avatar-input" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+            <div onclick="document.getElementById('set-avatar-input').click()" title="Changer la photo" style="position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-radius:50%;background:var(--acc);border:2px solid var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff">✏</div>
+          </div>
           <div>
             <div style="font-size:15px;font-weight:700;color:var(--t1)">${[p.prenom,p.nom].filter(Boolean).join(' ')||'—'}</div>
             <div style="font-size:12px;color:var(--t3);margin-top:2px">${email}</div>
@@ -2887,11 +2915,24 @@ async function loadSettings(){
         <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2);font-family:monospace">${p.role||''}</span>
       </div>
       <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="${sec}">Identité</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div><label style="${lbl}">Prénom</label><input id="set-prenom" class="l-inp" value="${p.prenom||''}" style="height:38px"></div>
           <div><label style="${lbl}">Nom</label><input id="set-nom" class="l-inp" value="${p.nom||''}" style="height:38px"></div>
         </div>
         <div><label style="${lbl}">Téléphone</label><input id="set-tel" type="tel" class="l-inp" value="${p.telephone||''}" placeholder="+33 6 00 00 00 00" style="height:38px"></div>
+        <div><label style="${lbl}">Bio / À propos</label><textarea id="set-bio" class="l-inp" rows="3" placeholder="Tes spécialités, ton équipement, une info utile…" style="resize:vertical;padding:10px 12px;line-height:1.5">${p.bio||''}</textarea></div>
+        <div style="${sec}">Coordonnées postales</div>
+        <div><label style="${lbl}">Adresse</label><input id="set-adresse" class="l-inp" value="${p.adresse||''}" placeholder="Numéro, rue…" style="height:38px"></div>
+        <div style="display:grid;grid-template-columns:1fr 110px;gap:10px">
+          <div><label style="${lbl}">Ville</label><input id="set-ville" class="l-inp" value="${p.ville||''}" placeholder="Ville" style="height:38px"></div>
+          <div><label style="${lbl}">Code postal</label><input id="set-cp" class="l-inp" value="${p.code_postal||''}" placeholder="75000" style="height:38px"></div>
+        </div>
+        <div style="${sec}">Infos pratiques</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;padding:4px 0">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="set-vehicule" ${p.vehicule?'checked':''} style="width:16px;height:16px;accent-color:var(--acc)"><span style="font-size:13px;color:var(--t1)">🚗 Véhicule personnel</span></label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="set-permis" ${p.permis?'checked':''} style="width:16px;height:16px;accent-color:var(--acc)"><span style="font-size:13px;color:var(--t1)">🪪 Permis de conduire</span></label>
+        </div>
         <div id="set-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
         <div style="display:flex;justify-content:flex-end"><button class="btn bp" onclick="sauvegarderProfil('${uid}')">Enregistrer le profil</button></div>
       </div>
@@ -2902,20 +2943,26 @@ async function sauvegarderProfil(uid){
   const err=document.getElementById('set-err');
   if(err)err.textContent='Enregistrement…';
   try{
-    await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{
-      prenom:document.getElementById('set-prenom').value.trim()||null,
-      nom:document.getElementById('set-nom').value.trim()||null,
-      telephone:document.getElementById('set-tel').value.trim()||null,
-    }});
+    const body={
+      prenom:document.getElementById('set-prenom')?.value.trim()||null,
+      nom:document.getElementById('set-nom')?.value.trim()||null,
+      telephone:document.getElementById('set-tel')?.value.trim()||null,
+      bio:document.getElementById('set-bio')?.value.trim()||null,
+      adresse:document.getElementById('set-adresse')?.value.trim()||null,
+      ville:document.getElementById('set-ville')?.value.trim()||null,
+      code_postal:document.getElementById('set-cp')?.value.trim()||null,
+      vehicule:document.getElementById('set-vehicule')?.checked||false,
+      permis:document.getElementById('set-permis')?.checked||false,
+    };
+    if(window._pendingAvatar){body.avatar_url=window._pendingAvatar;window._pendingAvatar=null;}
+    await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body});
     toast('Profil mis à jour.','ok');
     if(err)err.style.color='var(--ok)',err.textContent='Profil mis à jour.';
-    // Mettre à jour la sidebar
-    const prenom=document.getElementById('set-prenom').value.trim();
-    const nom=document.getElementById('set-nom').value.trim();
+    const prenom=body.prenom||'';const nom=body.nom||'';
     const name=[prenom,nom].filter(Boolean).join(' ');
     const ini=((prenom[0]||'')+(nom[0]||'')).toUpperCase();
     if(name){const nm=document.getElementById('u-nm');if(nm)nm.textContent=name;}
-    if(ini){const av=document.getElementById('u-av');if(av)av.textContent=ini;}
+    if(ini&&!body.avatar_url){const av=document.getElementById('u-av');if(av)av.textContent=ini;}
   }catch(e){if(err)err.style.color='var(--er)',err.textContent='Erreur lors de la sauvegarde.';}
 }
 
@@ -2943,6 +2990,58 @@ async function sauvegarderMdp(){
       if(err){err.style.color='var(--er)';err.textContent=d.message||d.msg||'Erreur lors du changement.';}
     }
   }catch(e){if(err){err.style.color='var(--er)';err.textContent='Erreur réseau.';}}
+}
+
+async function changerEmail(){
+  const err=document.getElementById('set-email-err');
+  const newEmail=(document.getElementById('set-email-new')?.value||'').trim();
+  if(!newEmail){if(err){err.style.color='var(--er)';err.textContent='Entrez un nouvel email.';}return;}
+  if(!newEmail.includes('@')){if(err){err.style.color='var(--er)';err.textContent='Email invalide.';}return;}
+  if(err){err.style.color='var(--t3)';err.textContent='Envoi en cours…';}
+  try{
+    const tok=localStorage.getItem('sv_tok');
+    const r=await fetch(SB_URL+'/auth/v1/user',{
+      method:'PUT',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+      body:JSON.stringify({email:newEmail})
+    });
+    if(r.ok){
+      if(err){err.style.color='var(--ok)';err.textContent='Email mis à jour. Confirme via le lien envoyé à ton ancienne adresse.';}
+      const inp=document.getElementById('set-email-new');if(inp)inp.value='';
+    }else{
+      const d=await r.json().catch(()=>({}));
+      if(err){err.style.color='var(--er)';err.textContent=d.message||d.msg||'Erreur lors du changement.';}
+    }
+  }catch(e){if(err){err.style.color='var(--er)';err.textContent='Erreur réseau.';}}
+}
+
+function handleAvatarUpload(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const img=new Image();
+    img.onload=function(){
+      const canvas=document.createElement('canvas');
+      canvas.width=canvas.height=120;
+      const ctx=canvas.getContext('2d');
+      const size=Math.min(img.width,img.height);
+      const sx=(img.width-size)/2;const sy=(img.height-size)/2;
+      ctx.drawImage(img,sx,sy,size,size,0,0,120,120);
+      const b64=canvas.toDataURL('image/jpeg',0.75);
+      window._pendingAvatar=b64;
+      const prev=document.getElementById('set-avatar-preview');
+      if(prev){
+        prev.style.backgroundImage='url('+b64+')';
+        prev.style.backgroundSize='cover';
+        prev.style.backgroundPosition='center';
+        const ini=document.getElementById('set-avatar-ini');if(ini)ini.style.display='none';
+      }
+      toast('Photo prête — enregistre le profil pour valider.','ok');
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 // ── ÉQUIPE PRESTATION ─────────────────────
