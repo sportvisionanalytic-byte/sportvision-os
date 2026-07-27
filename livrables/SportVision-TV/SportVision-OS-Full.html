@@ -1509,9 +1509,9 @@ const VIEWS={
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="filterSecDemandes('all')" id="dem-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
-      <button class="btn bg2 bs" onclick="filterSecDemandes('nouveau')" id="dem-f-new">Nouvelles</button>
-      <button class="btn bg2 bs" onclick="filterSecDemandes('devis')" id="dem-f-dev">Devis envoyé</button>
-      <button class="btn bg2 bs" onclick="filterSecDemandes('confirmee')" id="dem-f-conf">Confirmées</button>
+      <button class="btn bg2 bs" onclick="filterSecDemandes('nouveau')" id="dem-f-nouveau">Nouvelles</button>
+      <button class="btn bg2 bs" onclick="filterSecDemandes('devis')" id="dem-f-devis">Devis envoyé</button>
+      <button class="btn bg2 bs" onclick="filterSecDemandes('confirmee')" id="dem-f-confirmee">Confirmées</button>
     </div>
     <div id="sec-demandes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1524,9 +1524,9 @@ const VIEWS={
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="filterSecRelances('all')" id="rel-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
-      <button class="btn bg2 bs" onclick="filterSecRelances('acompte')" id="rel-f-ac">Acomptes</button>
-      <button class="btn bg2 bs" onclick="filterSecRelances('solde')" id="rel-f-so">Soldes</button>
-      <button class="btn bg2 bs" onclick="filterSecRelances('retard')" id="rel-f-re">En retard</button>
+      <button class="btn bg2 bs" onclick="filterSecRelances('acompte')" id="rel-f-acompte">Acomptes</button>
+      <button class="btn bg2 bs" onclick="filterSecRelances('solde')" id="rel-f-solde">Soldes</button>
+      <button class="btn bg2 bs" onclick="filterSecRelances('retard')" id="rel-f-retard">En retard</button>
     </div>
     <div id="sec-relances-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1557,9 +1557,9 @@ const VIEWS={
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="filterSecLivraisons('all')" id="liv-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
-      <button class="btn bg2 bs" onclick="filterSecLivraisons('prete')" id="liv-f-pr">Prêtes</button>
-      <button class="btn bg2 bs" onclick="filterSecLivraisons('envoyee')" id="liv-f-en">Envoyées</button>
-      <button class="btn bg2 bs" onclick="filterSecLivraisons('attente')" id="liv-f-at">En attente</button>
+      <button class="btn bg2 bs" onclick="filterSecLivraisons('prete')" id="liv-f-prete">Prêtes</button>
+      <button class="btn bg2 bs" onclick="filterSecLivraisons('envoyee')" id="liv-f-envoyee">Envoyées</button>
+      <button class="btn bg2 bs" onclick="filterSecLivraisons('attente')" id="liv-f-attente">En attente</button>
     </div>
     <div id="sec-livraisons-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1622,9 +1622,9 @@ const VIEWS={
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="filterComptaAcomptes('all')" id="ac-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
-      <button class="btn bg2 bs" onclick="filterComptaAcomptes('en_attente')" id="ac-f-att">En attente</button>
-      <button class="btn bg2 bs" onclick="filterComptaAcomptes('encaisse')" id="ac-f-enc">Encaissés</button>
-      <button class="btn bg2 bs" onclick="filterComptaAcomptes('retard')" id="ac-f-ret">En retard</button>
+      <button class="btn bg2 bs" onclick="filterComptaAcomptes('en_attente')" id="ac-f-en_attente">En attente</button>
+      <button class="btn bg2 bs" onclick="filterComptaAcomptes('encaisse')" id="ac-f-encaisse">Encaissés</button>
+      <button class="btn bg2 bs" onclick="filterComptaAcomptes('retard')" id="ac-f-retard">En retard</button>
     </div>
     <div id="compta-acomptes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1655,10 +1655,10 @@ const VIEWS={
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="filterComptaDepenses('all')" id="dep-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
-      <button class="btn bg2 bs" onclick="filterComptaDepenses('materiel')" id="dep-f-mat">Matériel</button>
-      <button class="btn bg2 bs" onclick="filterComptaDepenses('logistique')" id="dep-f-log">Logistique</button>
-      <button class="btn bg2 bs" onclick="filterComptaDepenses('marketing')" id="dep-f-mkt">Marketing</button>
-      <button class="btn bg2 bs" onclick="filterComptaDepenses('autres')" id="dep-f-aut">Autres</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('materiel')" id="dep-f-materiel">Matériel</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('logistique')" id="dep-f-logistique">Logistique</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('marketing')" id="dep-f-marketing">Marketing</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('autres')" id="dep-f-autres">Autres</button>
     </div>
     <div id="compta-depenses-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1672,9 +1672,9 @@ const VIEWS={
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="filterComptaFrais('all')" id="fra-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
       <button class="btn bg2 bs" onclick="filterComptaFrais('km')" id="fra-f-km">Kilométrage</button>
-      <button class="btn bg2 bs" onclick="filterComptaFrais('repas')" id="fra-f-rep">Repas</button>
-      <button class="btn bg2 bs" onclick="filterComptaFrais('materiel')" id="fra-f-mat">Matériel</button>
-      <button class="btn bg2 bs" onclick="filterComptaFrais('attente')" id="fra-f-att">En attente</button>
+      <button class="btn bg2 bs" onclick="filterComptaFrais('repas')" id="fra-f-repas">Repas</button>
+      <button class="btn bg2 bs" onclick="filterComptaFrais('materiel')" id="fra-f-materiel">Matériel</button>
+      <button class="btn bg2 bs" onclick="filterComptaFrais('attente')" id="fra-f-attente">En attente</button>
     </div>
     <div id="compta-frais-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1687,8 +1687,8 @@ const VIEWS={
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="filterComptaRem('all')" id="crem-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Tous</button>
-      <button class="btn bg2 bs" onclick="filterComptaRem('en_attente')" id="crem-f-att">En attente</button>
-      <button class="btn bg2 bs" onclick="filterComptaRem('paye')" id="crem-f-pay">Payés</button>
+      <button class="btn bg2 bs" onclick="filterComptaRem('en_attente')" id="crem-f-en_attente">En attente</button>
+      <button class="btn bg2 bs" onclick="filterComptaRem('paye')" id="crem-f-paye">Payés</button>
     </div>
     <div id="compta-rem-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
