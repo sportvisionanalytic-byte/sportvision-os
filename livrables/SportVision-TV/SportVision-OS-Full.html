@@ -8595,31 +8595,92 @@ async function runSearch(q){
   const hasCRM=['admin','sec'].includes(S.role);
   const hasPipeline=S.role==='com';
   const hasDevis=['admin','sec','com'].includes(S.role);
+  const hasAnnuaire=true; // all roles can see annuaire
+  const hasKits=['admin','prod'].includes(S.role);
   try{
     const qEnc=encodeURIComponent(q);
+    const q2=q.toLowerCase();
     const uid=localStorage.getItem('sv_uid');
     const fetches=[];
+    // Prestations
     if(hasPre){
-      fetches.push(sbFetch('prestations?select=id,reference,statut,date_prestation,clients(nom)&or=(reference.ilike.*'+qEnc+'*,lieu.ilike.*'+qEnc+'*)&limit=8'));
+      fetches.push(sbFetch('prestations?select=id,reference,statut,date_prestation,clients(nom)&or=(reference.ilike.*'+qEnc+'*,lieu.ilike.*'+qEnc+'*,type_prestation.ilike.*'+qEnc+'*)&limit=6'));
     }else if(hasPhoto){
-      const q2=q.toLowerCase();
       fetches.push(
         sbFetch('prestations_equipe?select=prestations(id,reference,statut,date_prestation,clients(nom))&collaborateur_id=eq.'+uid)
-        .then(data=>(data||[]).filter(r=>r.prestations&&((r.prestations.reference||'').toLowerCase().includes(q2)||(r.prestations.clients?.nom||'').toLowerCase().includes(q2))).slice(0,8).map(r=>r.prestations))
+        .then(data=>(data||[]).filter(r=>r.prestations&&((r.prestations.reference||'').toLowerCase().includes(q2)||(r.prestations.clients?.nom||'').toLowerCase().includes(q2))).slice(0,6).map(r=>r.prestations))
       );
-    }else{
-      fetches.push(Promise.resolve([]));
+    }else{fetches.push(Promise.resolve([]));}
+    // Clients
+    if(hasCRM||hasPipeline)fetches.push(sbFetch('clients?select=id,nom,statut,ville,sport&or=(nom.ilike.*'+qEnc+'*,ville.ilike.*'+qEnc+'*,email.ilike.*'+qEnc+'*)&limit=6'));
+    else fetches.push(Promise.resolve([]));
+    // Devis
+    if(hasDevis)fetches.push(sbFetch('devis?select=id,numero,statut,clients(nom)&or=(numero.ilike.*'+qEnc+'*,notes.ilike.*'+qEnc+'*)&limit=4'));
+    else fetches.push(Promise.resolve([]));
+    // Collaborateurs (annuaire)
+    fetches.push(sbFetch('profiles?select=id,prenom,nom,role,ville&or=(prenom.ilike.*'+qEnc+'*,nom.ilike.*'+qEnc+'*,role.ilike.*'+qEnc+'*)&limit=4').catch(()=>[]));
+    // Kits
+    if(hasKits)fetches.push(sbFetch('kits?select=id,nom,type_kit,statut&or=(nom.ilike.*'+qEnc+'*,type_kit.ilike.*'+qEnc+'*)&limit=4').catch(()=>[]));
+    else fetches.push(Promise.resolve([]));
+
+    const [pre,cli,dev,profiles,kits]=await Promise.all(fetches);
+
+    const sections=[];
+    if((pre||[]).length){
+      sections.push({
+        label:'Prestations',icon:'📋',
+        rows:(pre||[]).map(p=>({
+          title:p.reference||'—',
+          sub:(p.clients?.nom||'')+(p.date_prestation?' · '+new Date(p.date_prestation).toLocaleDateString('fr-FR'):''),
+          action:`closeModal();modalDetailById('${p.id}')`,
+          badge:SL[p.statut]||p.statut,
+          badgeCls:SC[p.statut]||'bw',
+        })),
+      });
     }
-    if(hasCRM||hasPipeline)fetches.push(sbFetch('clients?select=id,nom,statut,ville,sport&or=(nom.ilike.*'+qEnc+'*,ville.ilike.*'+qEnc+'*,email.ilike.*'+qEnc+'*)&limit=8'));
-    else fetches.push(Promise.resolve([]));
-    if(hasDevis)fetches.push(sbFetch('devis?select=id,numero,statut,clients(nom)&or=(numero.ilike.*'+qEnc+'*,notes.ilike.*'+qEnc+'*)&limit=5'));
-    else fetches.push(Promise.resolve([]));
-    const [pre,cli,dev]=await Promise.all(fetches);
-    const rows=[];
-    (pre||[]).forEach(p=>rows.push({icon:'📋',title:p.reference||'—',sub:(p.clients?.nom||'')+(p.date_prestation?' · '+new Date(p.date_prestation).toLocaleDateString('fr-FR'):''),action:`closeModal();modalDetailById('${p.id}')`}));
-    (cli||[]).forEach(c=>{const nm=c.nom.replace(/'/g,"\\'");const dest=hasPipeline?'pipeline':'crm';rows.push({icon:'👥',title:c.nom||'—',sub:[c.ville,c.sport].filter(Boolean).join(' · ')||c.statut,action:`closeModal();_crmFiltre='${nm}';_crmStFiltre='';switchView('${dest}')`});});
-    (dev||[]).forEach(d=>rows.push({icon:'📄',title:d.numero||'Devis',sub:(d.clients?.nom||'—')+' · '+(d.statut||''),action:`closeModal();switchView('devis')`}));
-    if(!rows.length){
+    if((cli||[]).length){
+      const dest=hasPipeline?'pipeline':'crm';
+      sections.push({
+        label:'Clients',icon:'👥',
+        rows:(cli||[]).map(c=>({
+          title:c.nom||'—',
+          sub:[c.ville,c.sport].filter(Boolean).join(' · ')||c.statut,
+          action:`closeModal();_crmFiltre='${c.nom.replace(/'/g,"\\'")}';_crmStFiltre='';switchView('${dest}')`,
+        })),
+      });
+    }
+    if((dev||[]).length){
+      sections.push({
+        label:'Devis',icon:'📄',
+        rows:(dev||[]).map(d=>({
+          title:d.numero||'Devis',
+          sub:(d.clients?.nom||'—')+' · '+(d.statut||''),
+          action:`closeModal();switchView('devis')`,
+        })),
+      });
+    }
+    if((profiles||[]).length){
+      sections.push({
+        label:'Équipe',icon:'🤝',
+        rows:(profiles||[]).map(p=>({
+          title:[p.prenom,p.nom].filter(Boolean).join(' ')||'—',
+          sub:(ROLE_LABELS?.[p.role]||p.role)+(p.ville?' · '+p.ville:''),
+          action:`closeModal();switchView('annuaire')`,
+        })),
+      });
+    }
+    if((kits||[]).length){
+      sections.push({
+        label:'Kits & matériel',icon:'📦',
+        rows:(kits||[]).map(k=>({
+          title:k.nom||'—',
+          sub:(k.type_kit||'')+(k.statut?' · '+k.statut:''),
+          action:`closeModal();switchView('kits')`,
+        })),
+      });
+    }
+
+    if(!sections.length){
       const canCreatePre=['admin','sec','prod'].includes(S.role);
       const canCreateCli=['admin','sec'].includes(S.role);
       el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px 0">Aucun résultat pour "'+q+'".</div>'
@@ -8629,34 +8690,72 @@ async function runSearch(q){
         +'</div>':'');
       return;
     }
-    el.innerHTML=rows.map(r=>`<div onclick="${r.action}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;background:transparent;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='transparent'">
-      <span style="font-size:18px">${r.icon}</span>
-      <div><div style="font-size:13px;font-weight:500;color:var(--t1)">${r.title}</div><div style="font-size:11px;color:var(--t3)">${r.sub}</div></div>
-    </div>`).join('');
+    el.innerHTML=sections.map(sec=>`
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:10px 0 5px;${sections.indexOf(sec)>0?'border-top:1px solid var(--b1);margin-top:6px':''}">${sec.icon} ${sec.label}</div>
+      ${sec.rows.map(r=>`<div onclick="${r.action}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px;border-radius:7px;cursor:pointer;background:transparent;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='transparent'">
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.title}</div>
+          <div style="font-size:11px;color:var(--t3)">${r.sub||''}</div>
+        </div>
+        ${r.badge?`<span class="bd ${r.badgeCls||'bw'}" style="flex-shrink:0;font-size:10px"><span class="bd-d"></span>${r.badge}</span>`:''}
+      </div>`).join('')}
+    `).join('');
   }catch(e){el.innerHTML='<div style="color:var(--er);font-size:12px;padding:8px">Erreur de recherche.</div>';}
 }
 
 // ── Panneau notifications ─────────────────────────────────────────────────────
+const NOTIF_PRIORITY_CFG={
+  high:{color:'var(--er)',bg:'rgba(240,68,94,.07)',border:'rgba(240,68,94,.2)',dot:'var(--er)',label:'⚡'},
+  medium:{color:'var(--wa)',bg:'rgba(245,165,36,.05)',border:'rgba(245,165,36,.15)',dot:'var(--wa)',label:'◎'},
+  low:{color:'var(--t3)',bg:'transparent',border:'transparent',dot:'var(--acc)',label:''},
+};
 async function openNotifPanel(){
   const uid=localStorage.getItem('sv_uid');
   openModal(`<div class="mh"><div class="mt">Notifications</div><button class="mc" onclick="closeModal()">✕</button></div>
-    <div class="mb" id="notif-panel-body"><div style="text-align:center;padding:30px;color:var(--t3);font-size:13px">Chargement…</div></div>`);
+    <div class="mb" style="padding-top:4px" id="notif-panel-body"><div style="text-align:center;padding:30px;color:var(--t3);font-size:13px">Chargement…</div></div>`);
   try{
-    const data=await sbFetch('notifications?select=id,type,titre,message,lue,created_at&destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)&order=created_at.desc&limit=20');
+    const data=await sbFetch('notifications?select=id,type,titre,message,lue,created_at,priorite,lien_prestation_id,lien_client_id&destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)&order=lue.asc,created_at.desc&limit=30');
     const el=document.getElementById('notif-panel-body');
     if(!el)return;
-    if(!data||!data.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--t3);font-size:13px">Aucune notification.</div>';return;}
+    if(!data||!data.length){
+      el.innerHTML='<div style="text-align:center;padding:48px;color:var(--t3);font-size:13px"><div style="font-size:32px;margin-bottom:8px;opacity:.3">🔔</div>Aucune notification.</div>';
+      return;
+    }
     const unread=data.filter(n=>!n.lue);
-    el.innerHTML=(unread.length?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bg2 bs" onclick="marquerToutLu('${uid}')">Tout marquer lu</button></div>`:'')
-      +data.map(n=>`<div style="display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd);${!n.lue?'background:rgba(54,107,255,.04)':''};cursor:pointer" onclick="marquerNotifLu('${n.id}')">
-        <div style="width:8px;height:8px;border-radius:50%;background:${!n.lue?'var(--ac)':'transparent'};flex-shrink:0;margin-top:4px"></div>
-        <div>
-          <div style="font-size:13px;color:var(--t1);font-weight:${!n.lue?'600':'400'}">${n.titre}</div>
-          ${n.message?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${n.message}</div>`:''}
-          <div style="font-size:10px;color:var(--t3);margin-top:3px">${new Date(n.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
-        </div>
-      </div>`).join('');
-    // Update dot
+    const now=new Date();
+    function relTime(d){
+      const diff=Math.floor((now-new Date(d))/60000);
+      if(diff<1)return'À l\'instant';if(diff<60)return diff+'min';
+      const h=Math.floor(diff/60);if(h<24)return h+'h';
+      const days=Math.floor(h/24);if(days<7)return days+'j';
+      return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+    }
+    el.innerHTML=
+      (unread.length?`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--b1)">
+        <div style="font-size:12px;font-weight:600;color:var(--t2)">${unread.length} non lue${unread.length>1?'s':''}</div>
+        <button class="btn bg2 bs" onclick="marquerToutLu('${uid}')">Tout marquer lu</button>
+      </div>`:'')
+      +data.map(n=>{
+        const p=NOTIF_PRIORITY_CFG[n.priorite]||NOTIF_PRIORITY_CFG.low;
+        const action=n.lien_prestation_id
+          ?`closeModal();modalDetailById('${n.lien_prestation_id}')`
+          :n.lien_client_id
+            ?`closeModal();modalModifierClientById('${n.lien_client_id}')`
+            :`marquerNotifLu('${n.id}')`;
+        return`<div onclick="${action}" style="display:flex;gap:12px;padding:11px 12px;border-radius:8px;margin-bottom:3px;background:${!n.lue?p.bg:'transparent'};border:1px solid ${!n.lue?p.border:'transparent'};cursor:pointer;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='${!n.lue?p.bg:'transparent'}'">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;padding-top:2px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${!n.lue?p.dot:'var(--b2)'};flex-shrink:0"></div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:3px">
+              <div style="font-size:13px;color:var(--t1);font-weight:${!n.lue?'600':'400'};line-height:1.3">${n.titre||'—'}</div>
+              <div style="font-size:10px;color:var(--t3);white-space:nowrap;flex-shrink:0">${relTime(n.created_at)}</div>
+            </div>
+            ${n.message?`<div style="font-size:12px;color:var(--t2);line-height:1.45">${n.message}</div>`:''}
+            ${(n.lien_prestation_id||n.lien_client_id)?`<div style="font-size:10.5px;color:var(--acc);margin-top:5px;font-weight:600">${n.lien_prestation_id?'→ Voir la prestation':'→ Voir le client'}</div>`:''}
+          </div>
+        </div>`;
+      }).join('');
     document.querySelector('.ndot').style.display=unread.length>0?'':'none';
   }catch(e){}
 }
