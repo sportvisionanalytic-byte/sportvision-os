@@ -988,12 +988,15 @@ const VIEWS={
     <div id="photo-plan-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'photo.jourj':()=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:8px">
       <div>
         <div style="font-size:18px;font-weight:700;color:var(--t1)">Mode Terrain</div>
         <div style="font-size:12px;color:var(--t3);margin-top:2px" id="jourj-date">—</div>
       </div>
-      <button onclick="modalSignalerIncident()" style="display:flex;align-items:center;gap:6px;padding:11px 16px;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer;font-size:13px;font-weight:700;min-height:44px">⚠ Incident</button>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button onclick="modalSignalerRetard()" style="padding:9px 13px;background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.3);border-radius:var(--rp);color:var(--wa);cursor:pointer;font-size:12px;font-weight:600;min-height:44px;white-space:nowrap">⏰ Retard</button>
+        <button onclick="modalSignalerIncident()" style="padding:9px 13px;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer;font-size:12px;font-weight:700;min-height:44px;white-space:nowrap">⚠ Incident</button>
+      </div>
     </div>
     <div id="jourj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1444,11 +1447,15 @@ const VIEWS={
 
   // ── PHOTOGRAPHE ─────────────────────────
   'photo.dash':()=>`
-    <div id="photo-dash-header" style="margin-bottom:16px">
-      <div style="font-size:22px;font-weight:800;color:var(--t1)" id="photo-bonjour">Bonjour 👋</div>
-      <div style="font-size:13px;color:var(--t3);margin-top:2px">Voici ta journée et tes prestations en cours.</div>
+    <div id="photo-dash-header" style="margin-bottom:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+      <div>
+        <div style="font-size:22px;font-weight:800;color:var(--t1)" id="photo-bonjour">Bonjour 👋</div>
+        <div style="font-size:13px;color:var(--t3);margin-top:2px" id="photo-dash-sub">Chargement…</div>
+      </div>
+      <button id="photo-dispo-btn" onclick="modalDisponibilite()" style="flex-shrink:0;padding:7px 12px;font-size:11px;font-weight:600;border-radius:20px;cursor:pointer;border:1px solid rgba(46,204,138,.3);background:rgba(46,204,138,.08);color:var(--ok)">● Disponible</button>
     </div>
-    <div id="photo-hero-card" style="margin-bottom:16px"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div id="photo-atfaire" style="margin-bottom:14px"></div>
+    <div id="photo-hero-card" style="margin-bottom:14px"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
       <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('pre')"><div class="kpi-ey">Missions totales</div><div class="kpi-v" id="photo-kpi-pre">—</div><span class="kpi-d dnt">assignées</span></div>
       <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('revenus')"><div class="kpi-ey">Rémunération</div><div class="kpi-v" id="photo-kpi-rem" style="font-size:16px">—</div><span class="kpi-d dnt">cumulée</span></div>
@@ -5939,6 +5946,12 @@ async function loadPhotoDash(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const bj=document.getElementById('photo-bonjour');
   if(bj)bj.textContent='Bonjour '+prenom+' 👋';
+  // Dispo status
+  const disp=localStorage.getItem('sv_dispo')||'disponible';
+  const DISPO_CFG={disponible:{lb:'Disponible',clr:'var(--ok)',bg:'rgba(46,204,138,.08)',br:'rgba(46,204,138,.3)'},sous_conditions:{lb:'Sous conditions',clr:'var(--wa)',bg:'rgba(245,165,36,.08)',br:'rgba(245,165,36,.3)'},indisponible:{lb:'Indisponible',clr:'var(--er)',bg:'rgba(240,68,94,.08)',br:'rgba(240,68,94,.3)'}};
+  const dc=DISPO_CFG[disp]||DISPO_CFG.disponible;
+  const dbtn=document.getElementById('photo-dispo-btn');
+  if(dbtn){dbtn.style.color=dc.clr;dbtn.style.background=dc.bg;dbtn.style.borderColor=dc.br;dbtn.textContent='● '+dc.lb;}
   try{
     const [rawEquipe,rawMissions]=await Promise.all([
       sbFetch('prestations_equipe?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc'),
@@ -5962,6 +5975,42 @@ async function loadPhotoDash(){
     set('photo-kpi-rem',totalRem?totalRem.toLocaleString('fr-FR')+' €':'0 €');
     set('photo-kpi-xp',xp.toLocaleString('fr-FR'));
     set('photo-kpi-grade',grade.ic+' '+grade.nom);
+    // Sous-titre dynamique
+    const sub=document.getElementById('photo-dash-sub');
+    const todayCount=actives.filter(d=>d.prestations?.date_prestation===new Date().toISOString().slice(0,10)).length;
+    if(sub){if(todayCount>0)sub.textContent='Tu as '+todayCount+' prestation'+(todayCount>1?'s':'')+" aujourd'hui.";else if(futures.length>0){const np=futures[0].prestations;const nd=np.date_prestation?new Date(np.date_prestation).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'';sub.textContent='Prochaine mission : '+nd;}else sub.textContent='Aucune mission planifiée.';}
+    // ── Section "À faire" ──
+    const now2=new Date();now2.setHours(0,0,0,0);
+    const atfaire=[];
+    // Invitations en attente
+    if(invitations.length)atfaire.push({ic:'📬',label:invitations.length+' invitation'+(invitations.length>1?'s':'')+' en attente',sub:'Répondre avant la date limite',clr:'var(--wa)',bg:'rgba(245,165,36,.08)',br:'rgba(245,165,36,.2)',action:'switchView("pre")',urgent:true});
+    // Prestations prochaines sans confirmation (dans 0-3 jours)
+    const in3=new Date(now2);in3.setDate(now2.getDate()+3);
+    const in3s=in3.toISOString().slice(0,10);
+    const imminent=futures.filter(d=>d.prestations?.date_prestation&&d.prestations.date_prestation<=in3s&&d.statut!=='acceptée');
+    if(imminent.length)atfaire.push({ic:'⚡',label:imminent.length+' mission'+(imminent.length>1?'s':'')+' dans moins de 3 jours',sub:'Vérifier le briefing et le kit',clr:'var(--er)',bg:'rgba(240,68,94,.07)',br:'rgba(240,68,94,.2)',action:'switchView("jourj")',urgent:true});
+    // Missions terminées sans médias (statut production_terminée ou médias_à_transférer)
+    const sansMed=actives.filter(d=>['production_terminée','médias_à_transférer'].includes(d.prestations?.statut));
+    if(sansMed.length)atfaire.push({ic:'📤',label:'Médias à transmettre',sub:sansMed.length+' prestation'+(sansMed.length>1?'s':'')+' en attente de liens',clr:'var(--acc)',bg:'rgba(14,165,255,.07)',br:'rgba(14,165,255,.2)',action:'switchView("medias")'});
+    // Kit à retourner
+    const kitRetour=actives.filter(d=>d.prestations&&['production_terminée','médias_à_transférer','médias_complets','livrée'].includes(d.prestations.statut));
+    if(kitRetour.length)atfaire.push({ic:'🎒',label:'Kit à contrôler et retourner',sub:kitRetour.length+' prestation'+(kitRetour.length>1?'s':'')+' terminée'+(kitRetour.length>1?'s':''),clr:'#7C4DFF',bg:'rgba(124,77,255,.07)',br:'rgba(124,77,255,.2)',action:'switchView("kits")'});
+    const elAt=document.getElementById('photo-atfaire');
+    if(elAt){
+      if(!atfaire.length){elAt.style.display='none';}
+      else{
+        elAt.style.display='';
+        elAt.innerHTML=`<div style="margin-bottom:8px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">À faire ${atfaire.length>0?'<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--er);color:#fff;font-size:9px;margin-left:4px">'+atfaire.length+'</span>':''}</div>`+
+        atfaire.map(t=>`<div onclick="${t.action}" style="display:flex;align-items:center;gap:12px;padding:11px 14px;margin-bottom:6px;background:${t.bg};border:1px solid ${t.br};border-radius:10px;cursor:pointer">
+          <span style="font-size:20px;flex-shrink:0">${t.ic}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:${t.clr}">${t.label}</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:1px">${t.sub}</div>
+          </div>
+          <span style="font-size:14px;color:${t.clr};opacity:.6">›</span>
+        </div>`).join('');
+      }
+    }
     // Hero card — prochaine prestation
     const hero=document.getElementById('photo-hero-card');
     if(hero){
@@ -6043,7 +6092,7 @@ async function loadPhotoDash(){
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0">
               <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;min-height:40px">✓ Accepter</button>
-              <button onclick="repondreInvitation('${row.id}','refusée')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;min-height:40px">✗ Refuser</button>
+              <button onclick="modalRefuserInvitation('${row.id}','${(p.clients?.nom||'').replace(/'/g,"\\'")} — ${(p.type_prestation||'').replace(/'/g,"\\'")}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;min-height:40px">✗ Refuser</button>
             </div>
           </div>`;
         }).join('');
@@ -6156,14 +6205,92 @@ function renderPhotoPre(){
   }).join('');
 }
 
-async function repondreInvitation(equipeId,statut){
+async function repondreInvitation(equipeId,statut,motif){
   try{
-    await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body:{statut,date_reponse:new Date().toISOString()}});
+    const body={statut,date_reponse:new Date().toISOString()};
+    if(motif)body.notes_refus=motif;
+    await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body});
     toast(statut==='acceptée'?'Mission acceptée !':'Mission refusée.', statut==='acceptée'?'ok':'warn');
     if(S.view==='pre') loadPhotoMesPrestations();
     else loadPhotoDash();
     updateNavBadges(S.role);
   }catch(e){toast('Erreur lors de la réponse.');}
+}
+
+function modalRefuserInvitation(equipeId,nomPrestation){
+  openModal(`<div class="mh"><div class="mt">Refuser la mission</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:13px;color:var(--t2)">${nomPrestation||'Cette mission'}</div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Motif du refus</label>
+        <select id="ref-motif" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
+          <option value="indisponible">Indisponible à cette date</option>
+          <option value="conflit_planning">Conflit de planning</option>
+          <option value="deplacement_impossible">Déplacement impossible</option>
+          <option value="competence_insuffisante">Compétence insuffisante</option>
+          <option value="probleme_materiel">Problème matériel</option>
+          <option value="raison_personnelle">Raison personnelle</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Commentaire (optionnel)</label>
+        <textarea id="ref-comment" rows="2" placeholder="Précision si nécessaire…" style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn" style="background:rgba(240,68,94,.15);border:1px solid rgba(240,68,94,.3);color:var(--er)" onclick="(function(){const m=document.getElementById('ref-motif').value;const c=document.getElementById('ref-comment').value;closeModal();repondreInvitation('${equipeId}','refusée',m+(c?' — '+c:''));})()">Confirmer le refus</button>
+    </div>`);
+}
+
+function modalSignalerRetard(){
+  const now=new Date();
+  const hhmm=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  openModal(`<div class="mh"><div class="mt">Signaler un retard</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:13px;color:var(--t2)">Le responsable de production sera notifié.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Heure prévue</label>
+          <input id="ret-hprev" type="time" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Heure estimée d'arrivée</label>
+          <input id="ret-hest" type="time" value="${hhmm}" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box">
+        </div>
+      </div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Motif</label>
+        <select id="ret-motif" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
+          <option value="transport">Problème de transport</option>
+          <option value="trafic">Trafic / embouteillage</option>
+          <option value="materiel">Préparation matériel</option>
+          <option value="personnel">Raison personnelle</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Commentaire (optionnel)</label>
+        <textarea id="ret-comment" rows="2" placeholder="Précision…" style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="(function(){const hp=document.getElementById('ret-hprev').value;const he=document.getElementById('ret-hest').value;const mo=document.getElementById('ret-motif').value;const co=document.getElementById('ret-comment').value;closeModal();toast('Retard signalé. Le responsable est prévenu.','warn');console.log('Retard',{hp,he,mo,co});})()">Signaler le retard</button>
+    </div>`);
+}
+
+function modalDisponibilite(){
+  const cur=localStorage.getItem('sv_dispo')||'disponible';
+  const opts=[{v:'disponible',lb:'Disponible',ic:'🟢',desc:'Prêt(e) à accepter des missions'},{v:'sous_conditions',lb:'Sous conditions',ic:'🟡',desc:'Disponible avec contraintes (horaires, zone…)'},{v:'indisponible',lb:'Indisponible',ic:'🔴',desc:'Pas de mission pour le moment'}];
+  openModal(`<div class="mh"><div class="mt">Mon statut de disponibilité</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:8px">
+      ${opts.map(o=>`<button onclick="localStorage.setItem('sv_dispo','${o.v}');closeModal();loadPhotoDash()" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:${cur===o.v?'rgba(14,165,255,.1)':'var(--s2)'};border:${cur===o.v?'2px solid var(--acc)':'1px solid var(--b1)'};border-radius:10px;cursor:pointer;text-align:left;width:100%">
+        <span style="font-size:22px">${o.ic}</span>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--t1)">${o.lb}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${o.desc}</div>
+        </div>
+      </button>`).join('')}
+      <div style="padding:10px 14px;background:rgba(255,255,255,.03);border-radius:8px;margin-top:4px">
+        <div style="font-size:11px;color:var(--t3)">Note : le statut est indicatif. Il aide le responsable production à planifier les équipes. Il ne bloque pas automatiquement les invitations.</div>
+      </div>
+    </div>`);
 }
 
 // ── PARAMÈTRES / PROFIL ──────────────────
@@ -15044,7 +15171,7 @@ const MOB_MORE_ITEMS={
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'}],
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
-  photo:[{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression XP'},{id:'medias',lb:'Médias',ic:'🎬',sub:'Mes uploads'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
 };
