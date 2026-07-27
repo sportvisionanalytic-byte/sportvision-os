@@ -6271,8 +6271,24 @@ function modalSignalerRetard(){
     </div>
     <div class="mf">
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
-      <button class="btn bp" onclick="(function(){const hp=document.getElementById('ret-hprev').value;const he=document.getElementById('ret-hest').value;const mo=document.getElementById('ret-motif').value;const co=document.getElementById('ret-comment').value;closeModal();toast('Retard signalé. Le responsable est prévenu.','warn');console.log('Retard',{hp,he,mo,co});})()">Signaler le retard</button>
+      <button class="btn bp" onclick="(function(){const hp=document.getElementById('ret-hprev').value;const he=document.getElementById('ret-hest').value;const mo=document.getElementById('ret-motif').value;const co=document.getElementById('ret-comment').value;closeModal();signalerRetardCbk(hp,he,mo,co);})()">Signaler le retard</button>
     </div>`);
+}
+
+async function signalerRetardCbk(hp,he,mo,co){
+  const motifLb={transport:'Problème de transport',trafic:'Trafic / embouteillage',materiel:'Préparation matériel',personnel:'Raison personnelle',autre:'Autre'};
+  const desc='Heure prévue : '+(hp||'?')+' · Heure estimée d\'arrivée : '+(he||'?')+' · Motif : '+(motifLb[mo]||mo)+(co?' — '+co:'');
+  try{
+    await sbFetch('incidents',{method:'POST',body:{
+      type_incident:'Retard',
+      niveau:'mineur',
+      description:desc,
+      declare_par:localStorage.getItem('sv_uid'),
+      cloture:false,
+    }});
+    toast('Retard signalé. Le responsable est prévenu.','warn');
+    updateNavBadges(S.role);
+  }catch(e){toast('Erreur lors du signalement.','er');}
 }
 
 function modalDisponibilite(){
@@ -11942,11 +11958,131 @@ async function modalDetailById(id){
     const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,clients(nom)&id=eq.'+id);
     if(!data||!data[0])return;
     if(S.role==='prod'){modalProdFiche(data[0]);return;}
+    if(S.role==='photo'){
+      const uid=localStorage.getItem('sv_uid');
+      const eq=await sbFetch('prestations_equipe?select=id,remuneration,heures_declarees&collaborateur_id=eq.'+uid+'&prestation_id=eq.'+id+'&limit=1');
+      const p=data[0];
+      if(eq&&eq[0]){p._equipeId=eq[0].id;p._remuneration=eq[0].remuneration||0;p._heuresDec=eq[0].heures_declarees||null;}
+      modalPhotoBriefing(p);
+      return;
+    }
     const saved=_prestationsCache;
     _prestationsCache=[data[0]];
     modalDetailPrestation(0);
     _prestationsCache=saved;
   }catch(e){toast('Erreur de chargement.');}
+}
+
+// ── Modale briefing photo — lecture seule ────────────────────────────────────
+function modalPhotoBriefing(p){
+  if(!p)return;
+  const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'—';
+  const rdv=(p.heure_rdv||p.heure_debut||'').slice(0,5);
+  const hasBrief=p.description_besoin||p.livrables_demandes;
+  const decBtn=p._equipeId?`<button class="btn bp" onclick="closeModal();modalDeclarerHeures('${p._equipeId}','${(p.reference||'').replace(/'/g,"\\'")}')" >Déclarer mes heures</button>`:'';
+  const decNote=p._heuresDec?`<div style="margin-top:2px;font-size:11px;color:var(--ok)">✓ ${p._heuresDec}h déclarées</div>`:'';
+  openModal(`<div class="mh">
+    <div>
+      <div class="mt">${p.reference||'Prestation'}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px">${p.clients?.nom||'—'} · ${p.type_prestation||'—'}</div>
+    </div>
+    <button class="mc" onclick="closeModal()">✕</button>
+  </div>
+  <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:12px">
+        <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Date</div>
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${d}</div>
+      </div>
+      <div style="background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:12px">
+        <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">RDV équipe</div>
+        <div style="font-size:22px;font-weight:800;color:var(--t1);line-height:1">${rdv||'—'}</div>
+        ${decNote}
+      </div>
+    </div>
+    ${p.lieu?`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:12px;display:flex;align-items:flex-start;gap:10px">
+      <span style="font-size:20px">📍</span>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${p.lieu}</div>
+        ${p.adresse_complete?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${p.adresse_complete}</div>`:''}
+      </div>
+    </div>`:''}
+    ${p.contact_sur_place?`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s1);border:1px solid var(--b1);border-radius:10px">
+      <span style="font-size:18px">👤</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${p.contact_sur_place}</div>
+        ${p.telephone_sur_place?`<div style="font-size:11px;color:var(--t3)">${p.telephone_sur_place}</div>`:''}
+      </div>
+      ${p.telephone_sur_place?`<a href="tel:${p.telephone_sur_place.replace(/[\s\-\(\)]/g,'')}" style="padding:7px 12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;text-decoration:none">📞</a>`:''}
+    </div>`:''}
+    <div style="background:rgba(54,107,255,.07);border:1px solid rgba(54,107,255,.18);border-radius:10px;padding:14px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--acc);margin-bottom:12px">Brief</div>
+      ${hasBrief?`
+        ${p.description_besoin?`<div style="margin-bottom:10px">
+          <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Besoin client</div>
+          <div style="font-size:13px;color:var(--t1);white-space:pre-wrap;line-height:1.5">${p.description_besoin}</div>
+        </div>`:''}
+        ${p.livrables_demandes?`<div>
+          <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Livrables attendus</div>
+          <div style="font-size:13px;color:var(--t1);white-space:pre-wrap;line-height:1.5">${p.livrables_demandes}</div>
+        </div>`:''}
+      `:'<div style="text-align:center;padding:14px;color:var(--t3);font-size:12px">Aucun brief renseigné pour cette mission.</div>'}
+    </div>
+    ${p.notes_internes?`<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:10px 12px">
+      <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Notes</div>
+      <div style="font-size:12px;color:var(--t2);white-space:pre-wrap">${p.notes_internes}</div>
+    </div>`:''}
+  </div>
+  <div class="mf">
+    <button class="btn bg2" onclick="closeModal()">Fermer</button>
+    ${decBtn}
+  </div>`);
+}
+
+function modalDeclarerHeures(equipeId,ref){
+  if(!equipeId){toast('Mission introuvable.','er');return;}
+  openModal(`<div class="mh"><div class="mt">Déclarer mes heures</div><button class="mc" onclick="closeModal()">✕</button></div>
+  <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+    ${ref?`<div style="font-size:12px;color:var(--t3)">${ref}</div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);display:block;margin-bottom:4px">Heures travaillées *</label>
+        <input id="dh-h" type="number" min="0" max="24" step="0.5" class="l-inp" style="height:38px" placeholder="Ex : 4.5">
+      </div>
+      <div><label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);display:block;margin-bottom:4px">Km parcourus</label>
+        <input id="dh-km" type="number" min="0" class="l-inp" style="height:38px" placeholder="Ex : 45">
+      </div>
+    </div>
+    <div><label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);display:block;margin-bottom:4px">Frais divers (€)</label>
+      <input id="dh-frais" type="number" min="0" step="0.01" class="l-inp" style="height:38px" placeholder="Stationnement, péage…">
+    </div>
+    <div><label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);display:block;margin-bottom:4px">Notes (optionnel)</label>
+      <textarea id="dh-notes" class="l-inp" style="height:56px;padding-top:10px;resize:none" placeholder="Précisions sur les heures ou frais…"></textarea>
+    </div>
+    <div id="dh-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+  </div>
+  <div class="mf">
+    <button class="btn bg2" onclick="closeModal()">Annuler</button>
+    <button class="btn bp" onclick="sauvegarderHeures('${equipeId}')">Enregistrer</button>
+  </div>`);
+}
+
+async function sauvegarderHeures(equipeId){
+  const err=document.getElementById('dh-err');
+  const h=parseFloat(document.getElementById('dh-h').value);
+  if(!h||h<=0){err.textContent='Indiquez le nombre d\'heures travaillées.';return;}
+  err.textContent='Enregistrement…';
+  try{
+    const body={heures_declarees:h};
+    const km=parseFloat(document.getElementById('dh-km').value);
+    const frais=parseFloat(document.getElementById('dh-frais').value);
+    const notes=document.getElementById('dh-notes').value.trim();
+    if(km>0)body.km_declares=km;
+    if(frais>0)body.frais_declares=frais;
+    if(notes)body.notes_declaration=notes;
+    await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body});
+    closeModal();
+    toast('Heures enregistrées.','ok');
+  }catch(e){err.textContent='Erreur lors de l\'enregistrement.';}
 }
 
 // ── Modale fiche prod — vue tabulée ─────────────────────────────────────────
