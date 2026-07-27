@@ -1028,7 +1028,7 @@ const VIEWS={
 
   // ── UTILISATEURS & ACCÈS ─────────────────
   'admin.users':()=>`
-    <div class="sh"><div class="sh-t">Utilisateurs & accès</div><button class="btn bp bs" onclick="modalCreerCollaborateur()">+ Ajouter un membre</button></div>
+    <div class="sh"><div class="sh-t">Utilisateurs & accès</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Ajouter un membre</button></div>
     <div id="users-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── GRADES & XP ──────────────────────────
@@ -1551,7 +1551,8 @@ async function creerCollaborateur(){
     if(!d.id&&!d.user?.id){err.textContent='Compte non créé. Vérifie que l\'email n\'est pas déjà utilisé.';return;}
     closeModal();
     toast('Collaborateur invité.','ok');
-    loadCollaborateurs();
+    if(document.getElementById('users-real')) await loadUsers();
+    else if(document.getElementById('col-real')) loadCollaborateurs();
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur réseau.';}
 }
@@ -3172,7 +3173,7 @@ async function loadPhotoRevenus(){
       return d&&d>=m0&&['livrée','payée','facturée','partiellement_payée','clôturée'].includes(r.prestations?.statut);
     }).length;
     const s1=document.getElementById('rev-nb');if(s1)s1.textContent=list.length;
-    const s2=document.getElementById('rev-total');if(s2)s2.textContent=total?total.toLocaleString('fr-FR')+' €':'—';
+    const s2=document.getElementById('rev-total');if(s2)s2.textContent=(total||0).toLocaleString('fr-FR')+' €';
     const s3=document.getElementById('rev-done');if(s3)s3.textContent=done;
     if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune mission assignée pour l\'instant.</div>';return;}
     el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Rémunération</th><th>Statut</th><th></th></tr></thead><tbody>'+
@@ -4516,6 +4517,7 @@ function goApp(role){
   const cfg=ROLES[role];
   const nav=NAV[role];
   S.view=nav[0].id;
+  const ptEl=document.getElementById('pt');if(ptEl&&nav[0])ptEl.textContent=nav[0].lb;
   document.getElementById('u-av').textContent=cfg.i;
   document.getElementById('u-av').style.background=cfg.c;
   document.getElementById('u-nm').textContent=cfg.r;
@@ -4528,6 +4530,7 @@ function goApp(role){
       <span class="nb" id="nb-${item.id}" style="display:none"></span>
     </button>`).join('')+`</div>`;
   show('app');
+  updateCta();
   renderContent();
   const _wp=localStorage.getItem('sv_prenom');
   setTimeout(()=>toast('Bonjour'+(_wp?' '+_wp:'')+'.',  'ok'),500);
@@ -4713,6 +4716,7 @@ function switchView(id){
   document.querySelectorAll('.ni[data-id]').forEach(n=>n.classList.toggle('on',n.dataset.id===id));
   const cfg=NAV[S.role].find(n=>n.id===id);
   document.getElementById('pt').textContent=cfg?cfg.lb:'';
+  updateCta();
   renderContent();
 }
 
@@ -4725,11 +4729,49 @@ function renderContent(){
   loadViewData(S.role,S.view);
 }
 
+const VIEW_CTA={
+  'admin.dash':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
+  'admin.pre':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
+  'admin.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
+  'admin.crm':{t:'+ Nouveau client',fn:'modalNouveauClient'},
+  'admin.col':{t:'+ Inviter',fn:'modalInviterCollaborateur'},
+  'admin.kits':{t:'+ Nouveau kit',fn:'modalNouveauKit'},
+  'admin.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
+  'admin.contrats':{t:'+ Nouveau contrat',fn:'modalNouveauContrat'},
+  'admin.users':{t:'+ Ajouter un membre',fn:'modalInviterCollaborateur'},
+  'admin.pipeline':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
+  'admin.incidents':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
+  'sec.dash':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
+  'sec.pre':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
+  'sec.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
+  'sec.crm':{t:'+ Nouveau client',fn:'modalNouveauClient'},
+  'sec.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
+  'sec.taches':{t:'+ Nouvelle tâche',fn:'modalNouvelleTache'},
+  'prod.incidents':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
+  'prod.kits':{t:'+ Nouveau kit',fn:'modalNouveauKit'},
+  'prod.dash':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
+  'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
+  'cm.cal':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
+  'cm.contenus':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
+  'com.dash':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
+  'com.pipeline':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
+  'com.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
+  'cm.publications':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
+};
+
+function updateCta(){
+  const key=`${S.role}.${S.view}`;
+  const cfg=VIEW_CTA[key];
+  const btn=document.getElementById('cta-btn');
+  if(!btn)return;
+  if(cfg){btn.textContent=cfg.t;btn.style.display='';}
+  else{btn.style.display='none';}
+}
+
 function ctaAction(){
-  const role=S.role;
-  if(role==='admin'||role==='prod'||role==='sec') modalNouvellePrestation();
-  else if(role==='com') modalNouveauClient();
-  else if(role==='cm') switchView('cal');
+  const key=`${S.role}.${S.view}`;
+  const cfg=VIEW_CTA[key];
+  if(cfg&&window[cfg.fn]) window[cfg.fn]();
 }
 
 // ── ERRORS ───────────────────────────────
@@ -4756,10 +4798,12 @@ async function loadContrats(){
   const d=document.getElementById('contrats-real');
   const r=await sbFetch('contrats?select=*,clients(nom)&order=created_at.desc');
   if(r.error){
+    const setZ=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    setZ('ct-kpi-act',0);setZ('ct-kpi-exp',0);setZ('ct-kpi-quo',0);setZ('ct-kpi-ca','0 €');
     d.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:60px 20px;text-align:center">
       <div style="width:48px;height:48px;border-radius:50%;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);display:flex;align-items:center;justify-content:center;color:var(--wa);font-size:22px;font-weight:700">!</div>
       <div><div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">Table "contrats" manquante</div>
-      <div style="font-size:13px;color:var(--t3);max-width:420px">Exécutez la migration SQL fournie dans Supabase pour activer cette fonctionnalité.</div></div>
+      <div style="font-size:13px;color:var(--t3);max-width:420px">Exécutez <code style="background:var(--s1);padding:1px 6px;border-radius:4px">migration-contrats.sql</code> dans Supabase pour activer cette fonctionnalité.</div></div>
       <button class="btn bp bs" onclick="window.open('https://supabase.com/dashboard/project/lulgezzpvrlbftbykzrc/sql/new','_blank')">Ouvrir SQL Editor →</button>
     </div>`;
     return;
@@ -4771,7 +4815,7 @@ async function loadContrats(){
   const caTotal=actifs.reduce((s,c)=>s+(c.montant_mensuel||0),0);
   const kpiAct=document.getElementById('ct-kpi-act');if(kpiAct)kpiAct.textContent=actifs.length;
   const kpiExp=document.getElementById('ct-kpi-exp');if(kpiExp)kpiExp.textContent=expBientot.length;
-  const kpiQuo=document.getElementById('ct-kpi-quo');if(kpiQuo)kpiQuo.textContent='—';
+  const kpiQuo=document.getElementById('ct-kpi-quo');if(kpiQuo)kpiQuo.textContent=0;
   const kpiCa=document.getElementById('ct-kpi-ca');if(kpiCa)kpiCa.textContent=fmt(caTotal);
   if(!list.length){d.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--t3);font-size:13px">Aucun contrat. Cliquez sur "+ Nouveau contrat" pour commencer.</div>`;return;}
   const SC={actif:'var(--ok)',suspendu:'var(--wa)',résilié:'var(--er)',expiré:'var(--t3)',brouillon:'var(--t3)'};
