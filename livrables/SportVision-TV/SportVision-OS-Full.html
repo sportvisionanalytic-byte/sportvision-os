@@ -10430,11 +10430,121 @@ async function modalDetailById(id){
   try{
     const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,clients(nom)&id=eq.'+id);
     if(!data||!data[0])return;
+    if(S.role==='prod'){modalProdFiche(data[0]);return;}
     const saved=_prestationsCache;
     _prestationsCache=[data[0]];
     modalDetailPrestation(0);
     _prestationsCache=saved;
   }catch(e){toast('Erreur de chargement.');}
+}
+
+// ── Modale fiche prod — vue tabulée ─────────────────────────────────────────
+function modalProdFiche(p){
+  if(!p)return;
+  const stO=Object.keys(SL).map(s=>`<option value="${s}"${p.statut===s?' selected':''}>${SL[s]}</option>`).join('');
+  const sfO=[['non_facturée','Non facturée'],['en_préparation','En préparation'],['facturée','Facturée'],
+    ['partiellement_payée','Part. payée'],['payée','Payée'],['en_retard','En retard'],['annulée','Annulée']]
+    .map(([v,l])=>`<option value="${v}"${(p.statut_financier||'non_facturée')===v?' selected':''}>${l}</option>`).join('');
+  const nextSt=_NEXT_ST[p.statut];
+  const stC={'demande_reçue':'bw','à_qualifier':'bw','offre_en_préparation':'bb','devis_envoyé':'bb','en_attente_réponse':'bb','devis_accepté':'ba','confirmée':'ba','planifiée':'ba','équipe_affectée':'ba','prête':'ba','production_démarrée':'bl','production_terminée':'bb','livrée':'ba','facturée':'bb','payée':'ba','clôturée':'bn','annulée':'br','refusée':'br','à_valider_production':'bw'};
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const pref=p.id;
+  openModal(`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:3px">${p.reference||'Prestation'}</div>
+        <div style="font-size:12px;color:var(--t3)">${p.clients?.nom||'Sans client'} · ${p.type_prestation||'—'}</div>
+      </div>
+      <span class="bd ${stC[p.statut]||'bw'}" style="flex-shrink:0;margin-top:3px"><span class="bd-d"></span>${(p.statut||'').replace(/_/g,' ')}</span>
+    </div>
+    ${p.statut==='à_valider_production'?`<div style="display:flex;gap:8px;margin-bottom:14px;padding:12px 14px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.25);border-radius:var(--rb)">
+      <div style="flex:1"><div style="font-size:11px;font-weight:700;color:var(--er);margin-bottom:2px">VALIDATION REQUISE</div>
+      <div style="font-size:12px;color:var(--t2)">Cette prestation attend votre validation.</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button onclick="validerPrestation('${pref}','refusée')" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(240,68,94,.12);border:1px solid rgba(240,68,94,.3);border-radius:var(--rp);color:var(--er);cursor:pointer">✕ Refuser</button>
+        <button onclick="validerPrestation('${pref}','confirmée')" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer">✓ Valider</button>
+      </div></div>`:''}
+    <div style="display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--b1)">
+      ${[['infos','Infos'],['equipe','Équipe'],['brief','Brief'],['budget','Budget']].map(([t,lb],i)=>
+        `<button id="pf-tab-${t}" onclick="setProdFicheTab('${t}')" style="padding:7px 14px;font-size:12px;font-weight:600;background:none;border:none;border-bottom:2px solid ${i===0?'var(--acc)':'transparent'};color:${i===0?'var(--acc)':'var(--t3)'};cursor:pointer;margin-bottom:-1px;transition:color .15s,border-color .15s">${lb}</button>`
+      ).join('')}
+    </div>
+    <div id="pf-panel-infos" style="display:flex;flex-direction:column;gap:11px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Statut prestation</label><select id="pd-statut" class="l-inp" style="height:38px">${stO}</select></div>
+        <div><label style="${L}">Statut financier</label><select id="pd-sfin" class="l-inp" style="height:38px">${sfO}</select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Date</label><input id="pd-date" type="date" class="l-inp" value="${p.date_prestation||''}" style="height:38px"></div>
+        <div><label style="${L}">Lieu</label><input id="pd-lieu" type="text" class="l-inp" value="${p.lieu||''}" style="height:38px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label style="${L}">RDV équipe</label><input id="pd-hrdv" type="time" class="l-inp" value="${p.heure_rdv?p.heure_rdv.slice(0,5):''}" style="height:38px"></div>
+        <div><label style="${L}">Heure début</label><input id="pd-hdeb" type="time" class="l-inp" value="${p.heure_debut?p.heure_debut.slice(0,5):''}" style="height:38px"></div>
+        <div><label style="${L}">Heure fin</label><input id="pd-hfin" type="time" class="l-inp" value="${p.heure_fin?p.heure_fin.slice(0,5):''}" style="height:38px"></div>
+      </div>
+      <div><label style="${L}">Adresse complète</label><input id="pd-adr" type="text" class="l-inp" value="${p.adresse_complete||''}" style="height:38px" placeholder="Rue, code postal, ville…"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Contact sur place</label><input id="pd-csp" type="text" class="l-inp" value="${p.contact_sur_place||''}" style="height:38px"></div>
+        <div><label style="${L}">Tél. sur place</label><input id="pd-tsp" type="tel" class="l-inp" value="${p.telephone_sur_place||''}" style="height:38px" placeholder="06 …"></div>
+      </div>
+      <div><label style="${L}">Notes internes</label><textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none">${p.notes_internes||''}</textarea></div>
+      ${nextSt?`<div><button onclick="pdAvancer()" style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;background:rgba(54,107,255,.12);border:1px solid rgba(54,107,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-size:12px;font-weight:600"><span style="opacity:.7">→</span> Étape suivante : ${SL[nextSt]||nextSt}</button></div>`:''}
+    </div>
+    <div id="pf-panel-equipe" style="display:none;flex-direction:column;gap:10px">
+      <div id="pd-equipe-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
+      <button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${pref}','${(p.reference||'').replace(/'/g,"\\'")}'),150)" style="align-self:flex-start;padding:8px 14px;font-size:12px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Gérer l'équipe</button>
+    </div>
+    <div id="pf-panel-brief" style="display:none;flex-direction:column;gap:11px">
+      <div><label style="${L}">Description du besoin</label><textarea id="pd-desc" class="l-inp" style="height:90px;padding-top:10px;resize:none" placeholder="Que souhaite le client ?">${p.description_besoin||''}</textarea></div>
+      <div><label style="${L}">Livrables attendus</label><textarea id="pd-livr" class="l-inp" style="height:90px;padding-top:10px;resize:none" placeholder="Photos, vidéos, délais…">${p.livrables_demandes||''}</textarea></div>
+    </div>
+    <div id="pf-panel-budget" style="display:none;flex-direction:column;gap:11px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Montant HT (€)</label><input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0" oninput="const t=document.getElementById('pd-ttc');if(t&&this.value)t.value=Math.round(Number(this.value)*1.2*100)/100"></div>
+        <div><label style="${L}">Montant TTC (€) <span style="font-size:9px;opacity:.5">TVA 20%</span></label><input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0"></div>
+      </div>
+      <div style="background:var(--s2);border-radius:var(--rb);padding:12px 14px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:8px">Rémunérations équipe</div>
+        <div id="pf-rem-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
+      </div>
+    </div>
+    <div id="pd-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:10px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="modifierPrestation('${pref}')">Enregistrer</button>
+    </div>`);
+  chargerEquipeModal(p.id);
+  _chargerRemProdFiche(p.id);
+}
+
+function setProdFicheTab(tab){
+  ['infos','equipe','brief','budget'].forEach(t=>{
+    const panel=document.getElementById('pf-panel-'+t);
+    const btn=document.getElementById('pf-tab-'+t);
+    if(panel)panel.style.display=t===tab?'flex':'none';
+    if(btn){btn.style.borderBottom=t===tab?'2px solid var(--acc)':'2px solid transparent';btn.style.color=t===tab?'var(--acc)':'var(--t3)';}
+  });
+}
+
+async function _chargerRemProdFiche(prestationId){
+  const el=document.getElementById('pf-rem-list');
+  if(!el)return;
+  try{
+    const data=await sbFetch('prestations_equipe?select=remuneration,statut_paiement,fonction,collaborateur:profiles(prenom,nom)&prestation_id=eq.'+prestationId);
+    if(!data||!data.length){el.innerHTML='<span style="color:var(--t3)">Aucune rémunération enregistrée.</span>';return;}
+    const total=data.reduce((s,r)=>s+(Number(r.remuneration)||0),0);
+    el.innerHTML='<div style="display:flex;flex-direction:column;gap:5px">'+data.map(r=>{
+      const name=[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||'?';
+      const paid=r.statut_paiement==='payé';
+      return`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--s1);border-radius:6px">
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1)">${name}</div>
+        <div style="font-size:11px;color:var(--t3)">${r.fonction||'—'}</div></div>
+        <span style="font-size:13px;font-weight:700;color:var(--t1)">${r.remuneration?r.remuneration+'€':'—'}</span>
+        <span style="font-size:10px;color:${paid?'var(--ok)':'var(--t3)'}">${paid?'✓ payé':'en attente'}</span>
+      </div>`;
+    }).join('')+'</div>'+`<div style="border-top:1px solid var(--b1);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--t1)"><span>Total équipe</span><span>${total}€</span></div>`;
+  }catch(e){if(el)el.innerHTML='<span style="color:var(--t3)">—</span>';}
 }
 
 // ── Planning secrétaire ──────────────────────────────────────────────────────
