@@ -676,6 +676,8 @@ const NAV={
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'integrations',lb:'Intégrations',ic:'set'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
+    {type:'sep',lb:'Ressources'},
+    {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   sec:[
@@ -699,6 +701,8 @@ const NAV={
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
+    {type:'sep',lb:'Ressources'},
+    {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   prod:[
@@ -727,6 +731,8 @@ const NAV={
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
+    {type:'sep',lb:'Ressources'},
+    {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   photo:[
@@ -744,6 +750,8 @@ const NAV={
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
+    {type:'sep',lb:'Ressources'},
+    {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   cm:[
@@ -754,6 +762,8 @@ const NAV={
     {id:'analytics',lb:'Analytics',ic:'fin'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
+    {type:'sep',lb:'Ressources'},
+    {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   compta:[
@@ -778,6 +788,8 @@ const NAV={
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
+    {type:'sep',lb:'Ressources'},
+    {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   com:[
@@ -787,6 +799,8 @@ const NAV={
     {id:'objectifs',lb:'Objectifs',ic:'target'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
+    {type:'sep',lb:'Ressources'},
+    {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
 };
@@ -1953,6 +1967,13 @@ const VIEWS={
     <div id="grades-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── ANNUAIRE (tous rôles) ───────────────
+  'admin.centre':()=>_centreView(),
+  'sec.centre':()=>_centreView(),
+  'prod.centre':()=>_centreView(),
+  'photo.centre':()=>_centreView(),
+  'cm.centre':()=>_centreView(),
+  'compta.centre':()=>_centreView(),
+  'com.centre':()=>_centreView(),
   'admin.annuaire':()=>_annuaireView(),
   'sec.annuaire':()=>_annuaireView(),
   'prod.annuaire':()=>_annuaireView(),
@@ -2646,6 +2667,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='contrats') await loadContrats();
   if(role==='admin'&&view==='users') await loadUsers();
   if(role==='admin'&&view==='grades') await loadGrades();
+  if(view==='centre'){_centreSection='accueil';await loadCentre(role);}
   if(view==='annuaire') await loadAnnuaire(role);
   if(role==='admin'&&view==='integrations') await loadIntegrations();
   // Mobile dashboard override (remplace le contenu desktop sur petit écran)
@@ -9497,6 +9519,1103 @@ async function loadGrades(){
       ${c.nextGrade?`<div style="font-size:10px;color:var(--t3);margin-top:3px">${(c.nextGrade.xp-c.xp).toLocaleString('fr')} XP pour ${c.nextGrade.nom}</div>`:''}
     </div>`).join('')}</div>`}
   </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// CENTRE SPORTVISION — Règlement, Grades, XP, Compétences, Guides
+// ════════════════════════════════════════════════════════════════
+
+// ── Référentiel grades ────────────────────────────────────────────────────────
+const SV_GRADES=[
+  {id:0,nom:'En intégration',ic:'🌱',color:'#4E5870',xp:0,desc:'Découverte de SportVision. Accompagné en permanence. Ne peut pas être responsable de prestation.'},
+  {id:1,nom:'Junior',ic:'⭐',color:'#2ECC8A',xp:100,desc:'Connaît les règles essentielles. Participe aux prestations simples. Reste accompagné sur les productions importantes.'},
+  {id:2,nom:'Opérationnel',ic:'⭐⭐',color:'#0EA5FF',xp:300,desc:'Travaille de manière autonome. Maîtrise les processus. Peut gérer une prestation simple.'},
+  {id:3,nom:'Confirmé',ic:'⭐⭐⭐',color:'#F5A524',xp:600,desc:'Maîtrise plusieurs compétences. Réalise des prestations complexes. Peut devenir responsable de prestation.'},
+  {id:4,nom:'Référent',ic:'⭐⭐⭐⭐',color:'#8B2BFF',xp:1000,desc:'Forte expertise. Accompagne les équipes. Peut former. Participe aux validations.'},
+  {id:5,nom:'Leader',ic:'⭐⭐⭐⭐⭐',color:'#FF6B35',xp:1500,desc:'Excellence opérationnelle. Représente les standards SportVision. Encadre plusieurs équipes.'},
+];
+
+// ── FAQ officielle ────────────────────────────────────────────────────────────
+const SV_FAQ=[
+  {cat:'Travail',q:'Comment accepter une prestation ?',a:'Dans votre tableau de bord ou la section Prestations → cliquez sur la prestation → Accepter. Vous recevrez une confirmation automatique.'},
+  {cat:'Travail',q:'Que faire si je suis indisponible ?',a:'Mettez vos disponibilités à jour dans Profil → Disponibilités. Si vous avez déjà accepté, contactez immédiatement le Responsable Production.'},
+  {cat:'Travail',q:'Que faire si je suis en retard ?',a:'Utilisez le bouton Signaler un retard dans le Mode Jour J de votre téléphone. Appelez également le Responsable directement.'},
+  {cat:'Travail',q:'Qui dirige la prestation ?',a:'Le Responsable de prestation désigné dans le briefing. En absence de responsable nommé, c\'est le Responsable Production.'},
+  {cat:'Travail',q:'Puis-je quitter plus tôt ?',a:'Non, sans accord explicite du Responsable de prestation. Une fin anticipée non validée est un manquement professionnel.'},
+  {cat:'Travail',q:'Puis-je accepter un contrat direct avec un client SportVision ?',a:'Non. Tout contact commercial avec un client doit passer par SportVision. Transmettez la demande à votre responsable via une tâche dans l\'OS.'},
+  {cat:'SportVision OS',q:'Comment modifier mon profil ?',a:'Menu principal → Mon Profil → Modifier. Vous pouvez y mettre à jour vos coordonnées, photo, disponibilités et compétences.'},
+  {cat:'SportVision OS',q:'Comment voir mon planning ?',a:'Navigation principale → Planning. Vous voyez toutes vos prestations à venir. Sur mobile, le tableau de bord affiche les 7 prochains jours.'},
+  {cat:'SportVision OS',q:'Comment contacter un collaborateur ?',a:'Via Messagerie dans la navigation, ou depuis Centre SportVision → Annuaire équipe → bouton Message.'},
+  {cat:'SportVision OS',q:'Comment déclarer un incident ?',a:'Depuis la prestation → onglet Incidents → Signaler un incident. Sur mobile : Mode Jour J → Signaler un incident.'},
+  {cat:'SportVision OS',q:'Pourquoi une action est-elle bloquée ?',a:'Soit vous n\'avez pas le rôle requis, soit une étape préalable est incomplète (document non signé, certification expirée). Contactez votre Responsable.'},
+  {cat:'SportVision OS',q:'Comment utiliser le Mode Jour J ?',a:'Sur mobile, accédez à Jour J depuis votre tableau de bord ou la barre de navigation. Il affiche toutes les informations terrain de votre prestation du jour.'},
+  {cat:'Matériel',q:'Comment récupérer un kit ?',a:'Le Responsable Production organise la distribution. Confirmez la sortie dans l\'OS après vérification complète du contenu. Signalez tout élément manquant avant de partir.'},
+  {cat:'Matériel',q:'Que faire en cas de casse ?',a:'Signalez immédiatement l\'incident dans l\'OS (Prestation → Incidents) et contactez le Responsable Production. Ne jamais attendre.'},
+  {cat:'Matériel',q:'Où retourner le matériel ?',a:'Au lieu habituel ou au point indiqué dans le briefing. Confirmez le retour dans l\'OS. Délai maximum : 24h après la prestation.'},
+  {cat:'Matériel',q:'Qui est responsable du kit sorti ?',a:'Le collaborateur à qui le kit a été attribué est responsable de la sortie au retour confirmé dans l\'OS.'},
+  {cat:'Rémunération',q:'Comment mon montant est-il calculé ?',a:'Voir la section Rémunération dans ce Centre. Le calcul dépend de votre rôle, grade, type de prestation, durée et responsabilités exercées.'},
+  {cat:'Rémunération',q:'Quand suis-je payé ?',a:'Selon les conditions définies dans votre contrat. Le Comptable gère les virements après validation de la Production et de l\'Administrateur.'},
+  {cat:'Rémunération',q:'Pourquoi mon paiement est-il en attente ?',a:'Soit vos heures et frais ne sont pas encore déclarés, soit la validation Production ou Comptable est en cours. Vérifiez dans Mes revenus → Statuts.'},
+  {cat:'Rémunération',q:'Comment déclarer des kilomètres ?',a:'Depuis la prestation → Déclarer mes frais → Kilomètres. Renseignez le trajet, les km et enregistrez. Un justificatif peut être demandé.'},
+  {cat:'Rémunération',q:'Quel justificatif fournir pour les frais ?',a:'Ticket, facture ou photo du justificatif à joindre dans la déclaration. Sans justificatif, le remboursement ne peut pas être validé.'},
+  {cat:'Grades',q:'Comment monter de grade ?',a:'Le système calcule un score basé sur vos XP, formations, certifications et comportement. Quand les conditions sont réunies, une recommandation est soumise à l\'Administrateur.'},
+  {cat:'Grades',q:'Les XP suffisent-ils pour monter de grade ?',a:'Non. Les XP sont un indicateur parmi d\'autres. Le passage de grade nécessite des formations, certifications et une validation humaine.'},
+  {cat:'Grades',q:'Qui valide mon grade ?',a:'L\'Administrateur, après avis du Responsable Production. Le système peut recommander, mais ne valide jamais seul.'},
+  {cat:'Grades',q:'Une certification est-elle obligatoire ?',a:'Certaines certifications sont obligatoires pour certaines fonctions (Drone, Responsable de prestation). Sans elles, vous ne pouvez pas être affecté à ces rôles.'},
+];
+
+// ── Règlement chapitres ───────────────────────────────────────────────────────
+const SV_REGLEMENT=[
+  {id:'comportement',ic:'🤝',titre:'Chapitre 1 — Respect et comportement',contenu:[
+    {t:'Obligations',b:['Respecter les clients, joueurs, parents, coachs et organisateurs','Adopter une communication professionnelle à tout moment','Appliquer les consignes du responsable de prestation','Protéger l\'image de SportVision par votre attitude','Signaler tout comportement inadapté via SportVision OS']},
+    {t:'Interdictions strictes',b:['Insultes, harcèlement, violence ou discrimination','Comportement dangereux sur les lieux de prestation','Travail sous l\'influence d\'alcool ou de substances','Dégradation volontaire du matériel','Diffusion d\'informations confidentielles']},
+    {t:'Signalement',b:['Toute situation grave doit être déclarée dans SportVision OS via la section Incidents','Le Responsable Production et l\'Administrateur sont alertés automatiquement','Un incident peut déclencher un entretien ou une procédure selon son contexte']},
+  ]},
+  {id:'ponctualite',ic:'⏱️',titre:'Chapitre 2 — Ponctualité',contenu:[
+    {t:'Principe fondamental',b:['Être à l\'heure ne signifie pas arriver exactement à l\'heure prévue','Vous devez être présent, prêt, équipé, briefé et disponible à l\'heure de début','La ponctualité est une obligation professionnelle, pas une option']},
+    {t:'Marges recommandées',b:['Responsable de prestation → 30 minutes avant','Photographe / Vidéaste → 20 minutes avant','Installation technique complexe → 45 à 60 minutes avant','Ces marges s\'adaptent selon le lieu, le matériel et la difficulté']},
+    {t:'En cas de retard prévisible',b:['Informer le responsable dès que vous identifiez le retard','Indiquer la raison et donner une heure estimée précise','Rester joignable en permanence jusqu\'à votre arrivée','Confirmer votre arrivée réelle dans l\'OS','Utiliser le bouton « Signaler un retard » dans le Mode Jour J']},
+    {t:'Traitement des retards',b:['Les retards sont enregistrés dans l\'OS pour analyse','Un nombre élevé de retards génère une alerte Administrateur','L\'Administrateur examine la situation globale avant toute décision','Un retard non signalé est plus grave qu\'un retard signalé']},
+  ]},
+  {id:'disponibilites',ic:'📅',titre:'Chapitre 3 — Disponibilités et absences',contenu:[
+    {t:'Mise à jour obligatoire',b:['Chaque collaborateur doit maintenir ses disponibilités à jour dans l\'OS','Une disponibilité ne garantit pas automatiquement une affectation','Un collaborateur indisponible ne peut pas être affecté sans dérogation explicite']},
+    {t:'Statuts disponibles',b:['Disponible — vous pouvez être affecté','Disponible avec conditions — précisez la condition','Indisponible — vous ne pouvez pas être affecté','En formation — apprentissage en cours']},
+    {t:'Engagement et annulation',b:['Une affectation acceptée crée un engagement professionnel','Un refus doit être signalé rapidement et justifié','Une absence le Jour J est traitée comme un incident grave','Pour annuler : indiquez le motif, la date, un justificatif si possible et votre disponibilité alternative']},
+  ]},
+  {id:'tenue',ic:'👔',titre:'Chapitre 4 — Tenue et présentation',contenu:[
+    {t:'Règles vestimentaires',b:['Porter la tenue SportVision propre et en bon état','Adapter la tenue au sport et à la météo','Chaussures adaptées au terrain','Aucun vêtement avec message ou logo inapproprié','Respecter le dress code indiqué dans le briefing de prestation']},
+    {t:'Matériel et équipement',b:['Matériel rangé et protégé en toutes circonstances','Présentation professionnelle du kit sur le terrain','Aucun objet personnel gênant sur le lieu de prestation']},
+  ]},
+  {id:'clients',ic:'🤝',titre:'Chapitre 5 — Relation avec les clients',contenu:[
+    {t:'Ce que vous ne devez pas faire',b:['Négocier un prix ou une condition sur place','Promettre une prestation supplémentaire sans validation','Encaisser personnellement un paiement sans autorisation écrite','Transmettre des informations financières internes','Critiquer SportVision ou un collaborateur devant un client','Publier des contenus sans validation','Accepter un contrat personnel direct avec un client SportVision']},
+    {t:'Réponse standard aux demandes commerciales',b:['Si un client vous fait une demande, répondez : « Je transmets votre demande à la personne responsable chez SportVision. »','Puis créez immédiatement une tâche ou une note dans l\'OS','Ne prenez jamais d\'engagement verbal sans validation']},
+  ]},
+  {id:'confidentialite',ic:'🔒',titre:'Chapitre 6 — Confidentialité et propriété',contenu:[
+    {t:'Ce que vous devez protéger',b:['Données clients et coordonnées personnelles','Prix internes et conditions commerciales','Contrats et documents officiels','Rémunérations de vos collègues','Rushs, photos et vidéos non livrés','Conversations internes']},
+    {t:'Règles médias strictes',b:['Interdiction de publier personnellement des rushs ou contenus non validés','Interdiction de conserver des fichiers dans un espace personnel non autorisé','Interdiction de vendre un contenu directement à un tiers','Interdiction de supprimer des fichiers avant confirmation de la sauvegarde']},
+    {t:'Propriété des contenus',b:['Tous les contenus créés pour SportVision appartiennent à SportVision jusqu\'à livraison contractuelle','Le non-respect de ces règles constitue une faute grave']},
+  ]},
+  {id:'materiel',ic:'📷',titre:'Chapitre 7 — Matériel et kits',contenu:[
+    {t:'Avant la sortie du kit',b:['Vérifier le contenu complet du kit','Vérifier l\'état général de chaque élément','Vérifier les batteries et niveaux de charge','Vérifier les cartes mémoire (capacité disponible)','Signaler toute anomalie dans l\'OS avant de partir']},
+    {t:'Pendant la prestation',b:['Protéger le matériel en permanence','Ne jamais laisser le kit sans surveillance','Utiliser uniquement le matériel pour lequel vous êtes certifié','Signaler immédiatement toute panne ou chute']},
+    {t:'Après la prestation',b:['Rendre le kit complet dans les 24h','Remettre chaque élément à sa place dans le kit','Signaler tout dommage même mineur','Confirmer le transfert complet des fichiers','Confirmer le retour dans l\'OS']},
+    {t:'Incidents matériel',b:['Toute perte, casse ou élément manquant crée automatiquement un incident','L\'incident est notifié au Responsable Production et à l\'Administrateur','Un rapport doit être complété dans les 24h']},
+  ]},
+  {id:'communication',ic:'💬',titre:'Chapitre 8 — Communication interne',contenu:[
+    {t:'Règles de communication',b:['Utiliser les conversations liées aux prestations pour les sujets opérationnels','Rester professionnel en toutes circonstances dans les canaux SportVision','Transformer une demande importante en tâche pour la tracer','Éviter les messages personnels dans les canaux professionnels','Ne pas partager d\'informations confidentielles dans un mauvais canal']},
+    {t:'Bonne pratique',b:['Si vous avez une information importante, créez une tâche plutôt qu\'un message','Une tâche est visible, assignée et traçable. Un message peut être oublié.','Pour une urgence Jour J, appelez directement le Responsable de prestation']},
+  ]},
+];
+
+// ── Rôles SportVision ─────────────────────────────────────────────────────────
+const SV_ROLES_DESC={
+  admin:{titre:'Administrateur',ic:'🏛️',color:'#8B2BFF',
+    mission:'Dirige, supervise et décide. Définit la stratégie, valide les décisions importantes et garantit le bon fonctionnement de SportVision.',
+    responsabilites:['Définir et appliquer la stratégie globale','Valider les grades, XP et certifications','Gérer les accès et permissions','Superviser les finances','Résoudre les situations exceptionnelles','Être le dernier recours en cas de conflit'],
+  },
+  prod:{titre:'Responsable Production',ic:'🎬',color:'#0EA5FF',
+    mission:'Organise et dirige la production. Planifie les prestations, affecte les équipes et garantit la qualité de la production.',
+    responsabilites:['Planifier les prestations et affecter les équipes','Valider la qualité de la production','Gérer les kits et le matériel','Superviser les briefings','Contrôler les rémunérations des collaborateurs','Signaler les incidents terrain'],
+  },
+  sec:{titre:'Secrétaire',ic:'📋',color:'#2ECC8A',
+    mission:'Organise le dossier administratif et la relation client. Gère les devis, contrats, livraisons et communications clients.',
+    responsabilites:['Créer et gérer les devis et contrats','Organiser la relation client','Gérer les livraisons de contenus','Rédiger les communications officielles','Préparer les documents obligatoires','Relancer les paiements en attente'],
+  },
+  compta:{titre:'Comptable',ic:'💶',color:'#F5A524',
+    mission:'Contrôle les factures, paiements, frais et rémunérations. Garantit la bonne santé financière de SportVision.',
+    responsabilites:['Valider et émettre les factures','Contrôler les rémunérations','Gérer les remboursements de frais','Suivre les impayés et relances','Préparer les exports comptables','Rapprocher les paiements bancaires'],
+  },
+  com:{titre:'Commercial',ic:'📈',color:'#F0445E',
+    mission:'Prospecte et développe le portefeuille client. Gère le pipeline commercial et convertit les prospects en clients.',
+    responsabilites:['Prospecter de nouveaux clubs et clients','Gérer le pipeline commercial','Préparer les offres commerciales','Convertir les prospects en clients','Suivre les objectifs de vente','Développer les partenariats'],
+  },
+  cm:{titre:'Community Manager',ic:'📱',color:'#00C4FF',
+    mission:'Crée, organise et publie les contenus. Gère la présence digitale de SportVision et développe la communauté.',
+    responsabilites:['Créer et planifier les contenus','Gérer les réseaux sociaux','Analyser les performances','Développer l\'audience','Coordonner les livrables visuels','Maintenir l\'identité de marque'],
+  },
+  photo:{titre:'Photographe / Vidéaste',ic:'📸',color:'#7C25FF',
+    mission:'Réalise les prestations terrain et transfère les médias. Capture les moments clés selon les standards SportVision.',
+    responsabilites:['Réaliser les photos et vidéos en prestation','Gérer le matériel confié','Transférer les fichiers dans les délais','Respecter les standards de qualité','Signaler les incidents terrain','Maintenir ses certifications à jour'],
+  },
+};
+
+// ── Compétences référentiel ───────────────────────────────────────────────────
+const SV_COMPETENCES=[
+  {id:'photo-sport',nom:'Photographie sportive',cat:'Production'},
+  {id:'video-sport',nom:'Vidéo sportive',cat:'Production'},
+  {id:'montage',nom:'Montage vidéo',cat:'Production'},
+  {id:'drone',nom:'Pilotage drone',cat:'Production',cert:true},
+  {id:'interview',nom:'Conduite d\'interview',cat:'Production',cert:true},
+  {id:'son',nom:'Prise de son',cat:'Production'},
+  {id:'veo',nom:'Opérateur Veo',cat:'Production',cert:true},
+  {id:'streaming',nom:'Streaming live',cat:'Production',cert:true},
+  {id:'graphisme',nom:'Graphisme & identité visuelle',cat:'Création'},
+  {id:'cm',nom:'Community Management',cat:'Communication'},
+  {id:'relation-client',nom:'Relation client',cat:'Commercial'},
+  {id:'direction-pre',nom:'Direction de prestation',cat:'Management',cert:true},
+  {id:'gestion-equipe',nom:'Gestion d\'équipe',cat:'Management'},
+  {id:'os-admin',nom:'Administration SportVision OS',cat:'Technique'},
+];
+
+// ── Template principal Centre ─────────────────────────────────────────────────
+let _centreSection='accueil';
+let _centreSearchQ='';
+let _centreUserProg={grade:0,xp:0};
+
+function _centreView(){
+  const isAdmin=S.role==='admin';
+  return`<style>
+    #centre-layout{display:flex;min-height:540px;gap:0}
+    #centre-sidenav{width:210px;flex-shrink:0;border-right:1px solid var(--b1);display:flex;flex-direction:column;gap:1px;overflow-y:auto;max-height:calc(100vh - 120px)}
+    #centre-main{flex:1;min-width:0;padding:24px 28px;overflow-y:auto}
+    .cnav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--t2);transition:all .12s;border-left:3px solid transparent}
+    .cnav-item:hover{background:rgba(255,255,255,.04);color:var(--t1)}
+    .cnav-item.on{background:rgba(14,165,255,.09);color:var(--acc);border-left-color:var(--acc);font-weight:600}
+    .cnav-sep{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:12px 16px 4px}
+    .cv-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--rb);padding:20px 24px;margin-bottom:16px}
+    .cv-h1{font-size:22px;font-weight:800;color:var(--t1);margin-bottom:4px}
+    .cv-h2{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:12px}
+    .cv-h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px}
+    .cv-p{font-size:13.5px;color:var(--t2);line-height:1.6;margin-bottom:10px}
+    .cv-ul{list-style:none;padding:0;margin:0 0 12px;display:flex;flex-direction:column;gap:5px}
+    .cv-ul li{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:var(--t2);line-height:1.5}
+    .cv-ul li::before{content:'→';color:var(--acc);flex-shrink:0;margin-top:1px}
+    .cv-ul.check li::before{content:'✓';color:var(--ok)}
+    .cv-ul.x li::before{content:'✕';color:var(--er)}
+    .cv-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--rp);font-size:11px;font-weight:600}
+    .cv-step{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+    .cv-step:last-child{border-bottom:none}
+    .cv-step-n{width:28px;height:28px;border-radius:50%;background:var(--gr);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+    .cv-faq-q{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 14px;cursor:pointer;border-radius:8px;transition:background .1s}
+    .cv-faq-q:hover{background:rgba(255,255,255,.04)}
+    .grade-bar{height:8px;border-radius:4px;background:var(--s2);overflow:hidden;margin:8px 0}
+    .grade-bar-fill{height:100%;border-radius:4px;background:var(--gr);transition:width .8s cubic-bezier(.4,0,.2,1)}
+    @media(max-width:768px){
+      #centre-layout{flex-direction:column}
+      #centre-sidenav{width:100%;max-height:none;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--b1);flex-wrap:nowrap;scrollbar-width:none;padding:4px 0}
+      .cnav-sep{display:none}
+      .cnav-item{flex-shrink:0;border-left:none;border-bottom:3px solid transparent;padding:10px 14px;font-size:12px}
+      .cnav-item.on{border-bottom-color:var(--acc);border-left-color:transparent;background:rgba(14,165,255,.07)}
+      #centre-main{padding:16px}
+    }
+  </style>
+  <div id="centre-layout">
+    <div id="centre-sidenav">
+      <div style="padding:10px 14px 2px">
+        <input type="search" class="fi" id="centre-sq" placeholder="Rechercher…" style="height:30px;font-size:12px" oninput="centreSearchAll(this.value)">
+      </div>
+      ${_centreNavHtml(isAdmin)}
+    </div>
+    <div id="centre-main"><div style="padding:48px;text-align:center;color:var(--t3)">Chargement…</div></div>
+  </div>`;
+}
+
+function _centreNavHtml(isAdmin){
+  const items=[
+    {id:'accueil',ic:'🏠',lb:'Accueil'},
+    {sep:'SportVision'},
+    {id:'apropos',ic:'ℹ️',lb:'À propos'},
+    {id:'organisation',ic:'🏗️',lb:'Organisation'},
+    {id:'fonctionnement',ic:'⚙️',lb:'Fonctionnement prestation'},
+    {sep:'Règles & Guides'},
+    {id:'reglement',ic:'📋',lb:'Règlement'},
+    {id:'roles',ic:'👥',lb:'Rôles & Responsabilités'},
+    {id:'procedures',ic:'📝',lb:'Procédures'},
+    {id:'materiel-guide',ic:'📦',lb:'Matériel & Kits'},
+    {sep:'Mon Évolution'},
+    {id:'grades',ic:'⭐',lb:'Grades & XP'},
+    {id:'competences',ic:'🎯',lb:'Compétences'},
+    {id:'remuneration-guide',ic:'💶',lb:'Rémunération'},
+    {sep:'Ressources'},
+    {id:'faq',ic:'❓',lb:'FAQ'},
+    {id:'contacts-sv',ic:'📞',lb:'Qui contacter ?'},
+    ...(isAdmin?[{sep:'Administration'},{id:'admin-centre',ic:'📊',lb:'Tableau de bord'}]:[]),
+  ];
+  return items.map(item=>{
+    if(item.sep)return`<div class="cnav-sep">${item.sep}</div>`;
+    return`<div class="cnav-item" id="cnav-${item.id}" onclick="loadCentreSection('${item.id}')">${item.ic} ${item.lb}</div>`;
+  }).join('');
+}
+
+async function loadCentre(role){
+  _centreSection='accueil';
+  centreSwitchNav('accueil');
+  // Charger la progression de l'utilisateur
+  const uid=localStorage.getItem('sv_uid');
+  if(uid){
+    try{
+      const p=await sbFetch('profiles?select=grade,xp,prenom,nom,role&id=eq.'+uid);
+      if(p&&p[0]){_centreUserProg={grade:p[0].grade||0,xp:p[0].xp||0,prenom:p[0].prenom||''};}
+    }catch(e){}
+  }
+  await loadCentreSection('accueil');
+}
+
+async function loadCentreSection(section){
+  _centreSection=section;
+  centreSwitchNav(section);
+  const ct=document.getElementById('centre-main');
+  if(!ct)return;
+  ct.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3)">Chargement…</div>';
+  const renderers={
+    accueil:renderCentreAccueil,
+    apropos:renderCentreAPropos,
+    organisation:renderCentreOrganisation,
+    fonctionnement:renderCentreFonctionnement,
+    reglement:renderCentreReglement,
+    roles:renderCentreRoles,
+    procedures:renderCentreProcedures,
+    'materiel-guide':renderCentreMateriel,
+    grades:renderCentreGrades,
+    competences:renderCentreCompetences,
+    'remuneration-guide':renderCentreRemuneration,
+    faq:renderCentreFAQ,
+    'contacts-sv':renderCentreContacts,
+    'admin-centre':renderCentreAdminDash,
+  };
+  const fn=renderers[section];
+  if(fn)try{ct.innerHTML=await fn();}catch(e){ct.innerHTML=`<div style="padding:40px;color:var(--er);text-align:center">Erreur de chargement.<br><small>${e.message||''}</small></div>`;}
+  else ct.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Section en cours de construction.</div>';
+}
+
+function centreSwitchNav(section){
+  document.querySelectorAll('.cnav-item').forEach(el=>{el.classList.remove('on');});
+  const active=document.getElementById('cnav-'+section);
+  if(active)active.classList.add('on');
+}
+
+function centreSearchAll(q){
+  _centreSearchQ=q;
+  if(q.length>=2)loadCentreSection('faq');
+}
+
+// ── ACCUEIL ──────────────────────────────────────────────────────────────────
+async function renderCentreAccueil(){
+  const uid=localStorage.getItem('sv_uid');
+  const prenom=_centreUserProg.prenom||localStorage.getItem('sv_prenom')||'';
+  const grade=SV_GRADES[_centreUserProg.grade||0]||SV_GRADES[0];
+  const nextGrade=SV_GRADES[(_centreUserProg.grade||0)+1];
+  const xp=_centreUserProg.xp||0;
+  const pct=nextGrade?Math.min(100,Math.round((xp-grade.xp)/(nextGrade.xp-grade.xp)*100)):100;
+
+  // Obligations (documents à lire)
+  let obligHtml='<div style="font-size:13px;color:var(--ok)">✓ Aucune obligation en attente.</div>';
+  try{
+    const nonLus=await sbFetch('centre_validations?select=id&collaborateur_id=eq.'+uid+'&type=eq.accepte&limit=50').catch(()=>[]);
+    const acceptes=new Set((nonLus||[]).map(v=>v.chapitre_id));
+    const manquants=SV_REGLEMENT.filter(c=>!acceptes.has(c.id));
+    if(manquants.length){
+      obligHtml=`<div style="font-size:13px;font-weight:600;color:var(--wa);margin-bottom:8px">⚠ ${manquants.length} chapitre${manquants.length>1?'s':''} du règlement à lire et accepter</div>`+
+        manquants.slice(0,3).map(c=>`<div onclick="loadCentreSection('reglement')" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(245,165,36,.07);border:1px solid rgba(245,165,36,.2);border-radius:8px;margin-bottom:6px;cursor:pointer">
+          <span style="font-size:16px">${c.ic}</span>
+          <div>
+            <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${c.titre}</div>
+            <div style="font-size:11px;color:var(--wa)">À lire et accepter →</div>
+          </div>
+        </div>`).join('');
+    }
+  }catch(e){}
+
+  const roleDesc=SV_ROLES_DESC[S.role]||{titre:S.role,ic:'👤',mission:'—'};
+
+  return`
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px">
+    <div>
+      <div style="font-size:13px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Centre SportVision</div>
+      <div class="cv-h1">Bonjour ${prenom} 👋</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap">
+        <span style="font-size:13px;color:var(--t2)">${roleDesc.ic} ${roleDesc.titre}</span>
+        <span style="width:4px;height:4px;border-radius:50%;background:var(--b2)"></span>
+        <span style="font-size:13px;color:${grade.color};font-weight:600">${grade.ic} Grade ${grade.nom}</span>
+        <span style="width:4px;height:4px;border-radius:50%;background:var(--b2)"></span>
+        <span style="font-size:13px;color:var(--t3)">${xp} XP</span>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:11px;color:var(--t3);margin-bottom:4px">${nextGrade?`Vers ${nextGrade.nom}`:'Grade maximum atteint'}</div>
+      <div style="width:180px">
+        <div class="grade-bar"><div class="grade-bar-fill" style="width:${pct}%;background:${grade.color}"></div></div>
+      </div>
+      <div style="font-size:11px;color:var(--t3)">${nextGrade?`${xp} / ${nextGrade.xp} XP`:'Maximum'}</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+    <div class="cv-card" style="border-color:rgba(245,165,36,.2)">
+      <div class="cv-h3" style="color:var(--wa)">Obligations</div>
+      ${obligHtml}
+    </div>
+    <div class="cv-card">
+      <div class="cv-h3">Accès rapides</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${[
+          {ic:'📋',lb:'Règlement SportVision',sec:'reglement'},
+          {ic:'⭐',lb:'Mon grade et mes XP',sec:'grades'},
+          {ic:'❓',lb:'FAQ — questions fréquentes',sec:'faq'},
+          {ic:'📞',lb:'Qui contacter ?',sec:'contacts-sv'},
+        ].map(a=>`<div onclick="loadCentreSection('${a.sec}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;cursor:pointer;background:rgba(255,255,255,.03);border:1px solid var(--b1);font-size:13px;color:var(--t1)" onmouseover="this.style.background='rgba(14,165,255,.07)'" onmouseout="this.style.background='rgba(255,255,255,.03)'"><span>${a.ic}</span>${a.lb}</div>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <div class="cv-card" style="background:linear-gradient(135deg,rgba(139,43,255,.08) 0%,rgba(14,165,255,.06) 100%);border-color:rgba(139,43,255,.2)">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="font-size:40px">${roleDesc.ic}</div>
+      <div>
+        <div class="cv-h3">Votre rôle</div>
+        <div style="font-size:15px;font-weight:700;color:var(--t1)">${roleDesc.titre}</div>
+        <div class="cv-p" style="margin:4px 0 0">${roleDesc.mission}</div>
+      </div>
+      <button onclick="loadCentreSection('roles')" style="margin-left:auto;flex-shrink:0;padding:8px 14px;border-radius:var(--rp);background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);white-space:nowrap">Voir tous les rôles →</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px">
+    ${[
+      {ic:'⚙️',lb:'Fonctionnement d\'une prestation',sec:'fonctionnement'},
+      {ic:'📦',lb:'Utiliser le matériel correctement',sec:'materiel-guide'},
+      {ic:'💶',lb:'Comprendre ma rémunération',sec:'remuneration-guide'},
+    ].map(a=>`<div onclick="loadCentreSection('${a.sec}')" class="cv-card" style="cursor:pointer;text-align:center;padding:20px 16px" onmouseover="this.style.borderColor='rgba(14,165,255,.3)'" onmouseout="this.style.borderColor='var(--b1)'">
+      <div style="font-size:28px;margin-bottom:8px">${a.ic}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--t1)">${a.lb}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ── À PROPOS ─────────────────────────────────────────────────────────────────
+function renderCentreAPropos(){
+  return`
+  <div class="cv-h1">À propos de SportVision</div>
+  <div style="font-size:18px;font-style:italic;color:var(--acc);margin-bottom:24px;font-weight:600">Voir l'invisible, gagner l'impossible.</div>
+
+  <div class="cv-card" style="background:linear-gradient(135deg,rgba(139,43,255,.07),rgba(14,165,255,.05));border-color:rgba(139,43,255,.2);margin-bottom:16px">
+    <div class="cv-h2">Notre mission</div>
+    <div class="cv-p">SportVision est une agence de communication sportive spécialisée dans la mise en lumière du sport amateur et semi-professionnel.</div>
+    <div class="cv-p">Nous mettons en lumière le sport amateur et semi-professionnel grâce à une communication professionnelle qui développe la visibilité, l'image et la crédibilité des acteurs du sport.</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+    <div class="cv-card">
+      <div class="cv-h2">Ce que SportVision apporte</div>
+      <ul class="cv-ul check">
+        ${['Une meilleure visibilité','Une image professionnelle','Plus de crédibilité','Une communication structurée','Des contenus photo et vidéo de qualité','Une meilleure valorisation des partenaires','Plus d\'attractivité auprès des licenciés','Des souvenirs durables','Une identité visuelle cohérente'].map(v=>`<li>${v}</li>`).join('')}
+      </ul>
+    </div>
+    <div class="cv-card">
+      <div class="cv-h2">Nos clients cibles</div>
+      <ul class="cv-ul">
+        ${['Clubs sportifs','Joueurs','Tournois & stages','Académies sportives','Coachs et préparateurs','Associations sportives','Entreprises liées au sport'].map(v=>`<li>${v}</li>`).join('')}
+      </ul>
+      <div style="background:rgba(14,165,255,.07);border:1px solid rgba(14,165,255,.2);border-radius:8px;padding:10px 12px;margin-top:8px">
+        <div style="font-size:11.5px;color:var(--acc);font-weight:600">SportVision ne réalise que des projets liés au sport.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cv-card">
+    <div class="cv-h2">Nos valeurs officielles</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${['Ambition','Exigence','Créativité','Discipline','Professionnalisme','Respect','Esprit d\'équipe','Progression','Fiabilité','Responsabilité'].map(v=>`<span style="padding:6px 14px;border-radius:var(--rp);background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);font-size:12.5px;font-weight:600;color:var(--acc)">${v}</span>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── ORGANISATION ─────────────────────────────────────────────────────────────
+function renderCentreOrganisation(){
+  return`
+  <div class="cv-h1">Organisation SportVision</div>
+  <div class="cv-p">SportVision est organisée autour de 7 rôles complémentaires. Un rôle définit votre fonction dans l'entreprise, indépendamment de votre grade.</div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px">
+    ${Object.entries(SV_ROLES_DESC).map(([key,r])=>`
+    <div class="cv-card" style="border-left:4px solid ${r.color};cursor:pointer" onclick="loadCentreSection('roles')" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background=''">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="font-size:28px">${r.ic}</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${r.titre}</div>
+          <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-top:3px">${r.mission}</div>
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div class="cv-card" style="background:rgba(139,43,255,.06);border-color:rgba(139,43,255,.2)">
+    <div class="cv-h2">Fonctions spécialisées</div>
+    <div class="cv-p">Ces fonctions ne sont pas des rôles généraux dans l'OS. Elles sont attribuées sous forme de <strong style="color:var(--acc)">compétences</strong>, de <strong style="color:var(--acc)">certifications</strong> ou de <strong style="color:var(--acc)">responsabilités sur une prestation</strong> spécifique.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${['Opérateur drone','Monteur vidéo','Opérateur Veo','Graphiste','Intervieweur','Responsable de prestation','Opérateur streaming'].map(f=>`<span style="padding:4px 12px;border-radius:var(--rp);background:rgba(139,43,255,.1);border:1px solid rgba(139,43,255,.25);font-size:12px;color:#C084FC">${f}</span>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── FONCTIONNEMENT ───────────────────────────────────────────────────────────
+function renderCentreFonctionnement(){
+  const steps=['Prospect','Client','Devis','Acceptation','Contrat si nécessaire','Acompte','Validation Production','Planification','Affectation équipe','Réservation des kits','Briefing','Checklist','Jour J','Transfert des médias','Postproduction','Validation','Livraison','Facturation','Paiement','Clôture'];
+  return`
+  <div class="cv-h1">Fonctionnement d'une prestation</div>
+  <div class="cv-p">Chaque prestation suit un workflow officiel de ${steps.length} étapes. Chaque étape a une signification précise — ne modifiez pas un statut sans avoir réalisé l'action correspondante.</div>
+  <div class="cv-card" style="margin-bottom:20px">
+    <div style="display:flex;flex-wrap:wrap;gap:0">
+      ${steps.map((s,i)=>`<div style="display:flex;align-items:center;gap:0;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;padding:8px 12px;background:${i<2?'rgba(14,165,255,.08)':i<5?'rgba(46,204,138,.08)':i<12?'rgba(245,165,36,.08)':'rgba(139,43,255,.08)'};border:1px solid ${i<2?'rgba(14,165,255,.2)':i<5?'rgba(46,204,138,.2)':i<12?'rgba(245,165,36,.2)':'rgba(139,43,255,.2)'};border-radius:8px;min-width:100px;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:var(--t3)">${i+1}</div>
+          <div style="font-size:11.5px;font-weight:600;color:var(--t1)">${s}</div>
+        </div>
+        ${i<steps.length-1?'<div style="width:10px;height:1px;background:var(--b2)"></div>':''}
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="cv-card">
+    <div class="cv-h2">Ce que contient une prestation</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      ${['Client','Devis','Contrat','Date & horaires','Lieu','Équipe & responsable','Kits & matériel','Briefing','Checklist','Médias','Livrables','Incidents','Rémunérations','Frais','Facture','Historique complet'].map(item=>`<div style="padding:6px 10px;background:rgba(255,255,255,.04);border-radius:6px;font-size:12px;color:var(--t2)">• ${item}</div>`).join('')}
+    </div>
+  </div>
+  <div class="cv-card" style="background:rgba(240,68,94,.05);border-color:rgba(240,68,94,.2);margin-top:14px">
+    <div class="cv-h3">Règle fondamentale</div>
+    <div class="cv-p">Une <strong style="color:var(--t1)">mission</strong> chez SportVision correspond à l'affectation d'un collaborateur sur une prestation. Ce n'est pas une entité séparée dans l'OS — tout est centralisé dans la Prestation.</div>
+  </div>`;
+}
+
+// ── RÈGLEMENT ────────────────────────────────────────────────────────────────
+async function renderCentreReglement(){
+  const uid=localStorage.getItem('sv_uid');
+  let acceptes=new Set();
+  try{
+    const vals=await sbFetch('centre_validations?select=chapitre_id&collaborateur_id=eq.'+uid+'&type=eq.accepte').catch(()=>[]);
+    acceptes=new Set((vals||[]).map(v=>v.chapitre_id));
+  }catch(e){}
+
+  const chapitresHtml=SV_REGLEMENT.map((ch,i)=>{
+    const ok=acceptes.has(ch.id);
+    return`<div class="cv-card" style="border-left:4px solid ${ok?'var(--ok)':'var(--b2)'};margin-bottom:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="display:flex;align-items:center;gap:12px;cursor:pointer;flex:1" onclick="centreToggleChapitre('cch-${i}')">
+          <span style="font-size:20px">${ch.ic}</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--t1)">${ch.titre}</div>
+            <div style="font-size:11px;color:${ok?'var(--ok)':'var(--t3)'};margin-top:2px">${ok?'✓ Accepté':'À lire et accepter'}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          ${!ok?`<button onclick="centreAccepterDoc('${ch.id}')" style="padding:6px 14px;border-radius:var(--rp);background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓ Accepter</button>`:`<span style="font-size:11px;color:var(--ok);font-weight:600">✓ Accepté</span>`}
+          <span id="cch-arr-${i}" style="color:var(--t3);cursor:pointer" onclick="centreToggleChapitre('cch-${i}')">▾</span>
+        </div>
+      </div>
+      <div id="cch-${i}" style="display:none;margin-top:16px;border-top:1px solid var(--b1);padding-top:16px">
+        ${ch.contenu.map(section=>`
+          <div style="margin-bottom:14px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">${section.t}</div>
+            <ul class="cv-ul">${section.b.map(item=>`<li>${item}</li>`).join('')}</ul>
+          </div>`).join('')}
+        ${!ok?`<div style="text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--b1)">
+          <button onclick="centreAccepterDoc('${ch.id}')" style="padding:10px 24px;border-radius:var(--rp);background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);color:var(--ok);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--ff)">J'ai lu et j'accepte ce chapitre ✓</button>
+        </div>`:''}
+      </div>
+    </div>`;
+  }).join('<div style="height:8px"></div>');
+
+  const total=SV_REGLEMENT.length;
+  const done=acceptes.size;
+  const pct=Math.round(done/total*100);
+
+  return`
+  <div class="cv-h1">Règlement SportVision</div>
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+    <div style="flex:1">
+      <div style="font-size:13px;color:var(--t2);margin-bottom:6px">${done} / ${total} chapitres acceptés</div>
+      <div class="grade-bar" style="height:6px"><div class="grade-bar-fill" style="width:${pct}%;background:${pct===100?'var(--ok)':'var(--acc)'}"></div></div>
+    </div>
+    ${pct===100?'<div style="padding:6px 14px;border-radius:var(--rp);background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);color:var(--ok);font-size:12.5px;font-weight:600">✓ Règlement complet</div>':''}
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px">${chapitresHtml}</div>`;
+}
+
+function centreToggleChapitre(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const visible=el.style.display!=='none';
+  el.style.display=visible?'none':'block';
+}
+
+async function centreAccepterDoc(chapitreId){
+  const uid=localStorage.getItem('sv_uid');
+  if(!uid)return;
+  try{
+    await sbFetch('centre_validations',{method:'POST',body:{
+      collaborateur_id:uid,chapitre_id:chapitreId,version:'1.0',type:'accepte',
+    }});
+    toast('Chapitre accepté.','ok');
+    // Rafraîchir la section règlement
+    const ct=document.getElementById('centre-main');
+    if(ct){ct.innerHTML=await renderCentreReglement();}
+    // XP pour acceptation
+    await centreAttribuerXP(uid,10,'manuel','Acceptation règlement — chapitre '+chapitreId);
+  }catch(e){
+    // Peut échouer si la contrainte unique est violée (déjà accepté) ou si la table n'existe pas
+    if(e.message&&e.message.includes('duplicate'))toast('Déjà accepté.','ok');
+    else{
+      // Fallback localStorage si table pas encore créée
+      const key='sv_regl_accept_'+uid;
+      const done=JSON.parse(localStorage.getItem(key)||'[]');
+      if(!done.includes(chapitreId)){done.push(chapitreId);localStorage.setItem(key,JSON.stringify(done));}
+      toast('Chapitre accepté (local).','ok');
+      const ct=document.getElementById('centre-main');
+      if(ct){ct.innerHTML=await renderCentreReglement();}
+    }
+  }
+}
+
+// ── RÔLES ────────────────────────────────────────────────────────────────────
+function renderCentreRoles(){
+  return`
+  <div class="cv-h1">Rôles et Responsabilités</div>
+  <div class="cv-p">Chaque collaborateur a un rôle qui définit sa fonction dans l'entreprise. Le rôle est distinct du grade, qui mesure le niveau d'expérience.</div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    ${Object.entries(SV_ROLES_DESC).map(([key,r])=>`
+    <div class="cv-card" style="border-left:4px solid ${r.color}">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div style="font-size:32px;flex-shrink:0">${r.ic}</div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">${r.titre}</div>
+          <div class="cv-p" style="margin-bottom:10px">${r.mission}</div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Responsabilités principales</div>
+          <ul class="cv-ul check" style="column-count:2;gap:4px 20px">${r.responsabilites.map(resp=>`<li style="break-inside:avoid">${resp}</li>`).join('')}</ul>
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ── PROCÉDURES ───────────────────────────────────────────────────────────────
+function renderCentreProcedures(){
+  const procedures=[
+    {titre:'Onboarding nouveau collaborateur',ic:'👤',steps:['Compte créé par l\'Administrateur','Première connexion → compléter le profil','Lire la présentation SportVision','Accepter le règlement chapitre par chapitre','Lire les règles de confidentialité','Suivre la formation SportVision OS','Suivre les formations métier','Attribution du grade En intégration','Première prestation accompagnée','Validation terrain → Attribution du grade Junior']},
+    {titre:'Déroulement d\'une prestation',ic:'📅',steps:['Prestation créée dans l\'OS','Devis préparé et envoyé','Client accepte → contrat si nécessaire → acompte','Validation Production','Planification et affectation équipe','Réservation des kits','Briefing équipe','Checklist Jour J','Prestation réalisée','Transfert médias dans les 24h','Postproduction','Validation qualité','Livraison client','Facturation et paiement','Clôture prestation']},
+    {titre:'Signaler un retard le Jour J',ic:'⏱️',steps:['Identifiez le retard dès qu\'il est prévisible','Ouvrez SportVision OS → Mode Jour J','Cliquez sur « Signaler un retard »','Renseignez : prestation, heure prévue, heure estimée, motif','Envoyez la notification → le Responsable est alerté automatiquement','Appelez directement le Responsable de prestation','Confirmez votre arrivée réelle dans l\'OS à votre arrivée']},
+    {titre:'Récupérer et retourner un kit',ic:'📦',steps:['Confirmer la réservation dans SportVision OS','Récupérer le kit au lieu indiqué','Vérifier le contenu complet de la checklist','Signaler immédiatement toute anomalie avant de partir','Confirmer la sortie dans l\'OS','Après la prestation : retourner le kit dans les 24h','Remettre chaque élément à sa place','Confirmer le retour dans l\'OS','Signaler tout dommage même mineur']},
+    {titre:'Déclarer ses heures et frais',ic:'💶',steps:['Accéder à la prestation concernée','Cliquer sur « Déclarer mes heures »','Saisir l\'heure réelle de début et de fin','Indiquer toute pause ou dépassement','Enregistrer','Pour les km : « Déclarer des kilomètres » → saisir trajet et km','Pour les frais : joindre la photo du justificatif','Tout doit être déclaré dans les 48h suivant la prestation']},
+    {titre:'Signaler un incident',ic:'🚨',steps:['Depuis la prestation → onglet Incidents → Signaler','Sur mobile : Mode Jour J → Signaler un incident','Renseigner : type, description, gravité, personnes concernées','Ajouter une photo si possible','Valider → le Responsable et l\'Administrateur sont alertés','Rester disponible pour un suivi dans les 24h']},
+  ];
+  return`
+  <div class="cv-h1">Procédures internes</div>
+  <div class="cv-p">Suivez ces étapes dans l'ordre. Chaque procédure garantit que le processus est complet, traçable et conforme aux standards SportVision.</div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    ${procedures.map((proc,pi)=>`
+    <div class="cv-card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;cursor:pointer" onclick="centreToggleChapitre('proc-${pi}')">
+        <span style="font-size:22px">${proc.ic}</span>
+        <div class="cv-h2" style="margin:0">${proc.titre}</div>
+        <span style="margin-left:auto;color:var(--t3)">▾</span>
+      </div>
+      <div id="proc-${pi}" style="display:none">
+        ${proc.steps.map((s,i)=>`<div class="cv-step">
+          <div class="cv-step-n">${i+1}</div>
+          <div style="font-size:13.5px;color:var(--t1);line-height:1.5;padding-top:4px">${s}</div>
+        </div>`).join('')}
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ── MATÉRIEL ─────────────────────────────────────────────────────────────────
+function renderCentreMateriel(){
+  return`
+  <div class="cv-h1">Matériel & Kits</div>
+  <div class="cv-p">Le matériel SportVision est un investissement collectif. Vous en êtes responsable de la sortie au retour confirmé.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+    ${[
+      {ic:'✅',titre:'Avant la sortie',items:['Vérifier le contenu complet du kit','Vérifier l\'état de chaque élément','Batteries et niveaux de charge OK','Cartes mémoire : capacité suffisante','Signaler toute anomalie avant de partir','Confirmer la sortie dans l\'OS']},
+      {ic:'🎬',titre:'Pendant la prestation',items:['Protéger le matériel en permanence','Ne jamais laisser le kit sans surveillance','Utiliser uniquement le matériel pour lequel vous êtes certifié','Signaler immédiatement toute panne ou chute']},
+      {ic:'↩',titre:'Après la prestation',items:['Rendre le kit complet dans les 24h','Chaque élément à sa place dans le kit','Signaler tout dommage même mineur','Confirmer le transfert des fichiers','Confirmer le retour dans l\'OS']},
+      {ic:'🚨',titre:'En cas d\'incident matériel',items:['Signaler immédiatement dans l\'OS → Incidents','Contacter le Responsable Production directement','Compléter un rapport dans les 24h','Fournir les informations : quand, comment, état actuel']},
+    ].map(s=>`<div class="cv-card">
+      <div style="font-size:22px;margin-bottom:8px">${s.ic}</div>
+      <div class="cv-h2">${s.titre}</div>
+      <ul class="cv-ul check">${s.items.map(item=>`<li>${item}</li>`).join('')}</ul>
+    </div>`).join('')}
+  </div>
+  <div class="cv-card" style="background:rgba(240,68,94,.05);border-color:rgba(240,68,94,.2)">
+    <div class="cv-h3" style="color:var(--er)">Statuts du matériel dans l'OS</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${['Disponible','Réservé','À préparer','Prêt','Sorti','En prestation','À retourner','Retourné','En contrôle','Endommagé','En maintenance','Indisponible'].map((s,i)=>{const colors=['var(--ok)','var(--wa)','var(--acc)','var(--acc)','#8B2BFF','#8B2BFF','var(--wa)','var(--ok)','var(--t3)','var(--er)','var(--wa)','var(--er)'];return`<span style="padding:4px 10px;border-radius:var(--rp);background:rgba(255,255,255,.05);border:1px solid var(--b1);font-size:11.5px;color:${colors[i]||'var(--t2)'}">${s}</span>`}).join('')}
+    </div>
+  </div>`;
+}
+
+// ── GRADES & XP ──────────────────────────────────────────────────────────────
+async function renderCentreGrades(){
+  const uid=localStorage.getItem('sv_uid');
+  const isAdmin=S.role==='admin';
+  let userGrade=_centreUserProg.grade||0;
+  let userXP=_centreUserProg.xp||0;
+
+  // Charger recommandations de grade en attente (admin)
+  let recoHtml='';
+  if(isAdmin){
+    try{
+      const recos=await sbFetch('grade_recommendations?select=id,collaborateur_id,grade_actuel,grade_propose,statut,created_at,profiles(prenom,nom)&statut=eq.en_attente&order=created_at.desc&limit=20').catch(()=>[]);
+      if(recos&&recos.length){
+        recoHtml=`<div class="cv-card" style="border-color:rgba(245,165,36,.25);background:rgba(245,165,36,.05);margin-bottom:16px">
+          <div class="cv-h2">⏳ Recommandations de grade en attente (${recos.length})</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${recos.map(r=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:8px">
+              <div style="flex:1">
+                <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${r.profiles?.prenom||''} ${r.profiles?.nom||''}</div>
+                <div style="font-size:12px;color:var(--t3)">${SV_GRADES[r.grade_actuel]?.nom||'—'} → ${SV_GRADES[r.grade_propose]?.nom||'—'}</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button onclick="centreValiderGrade('${r.id}','valide')" style="padding:6px 12px;border-radius:var(--rp);background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓ Valider</button>
+                <button onclick="centreValiderGrade('${r.id}','refuse')" style="padding:6px 12px;border-radius:var(--rp);background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);color:var(--er);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✕ Refuser</button>
+              </div>
+            </div>`).join('')}
+          </div>
+        </div>`;
+      }
+    }catch(e){}
+  }
+
+  const grade=SV_GRADES[userGrade]||SV_GRADES[0];
+  const nextGrade=SV_GRADES[userGrade+1];
+  const pct=nextGrade?Math.min(100,Math.round((userXP-grade.xp)/(nextGrade.xp-grade.xp)*100)):100;
+
+  return`
+  <div class="cv-h1">Grades & XP</div>
+  ${recoHtml}
+
+  <div class="cv-card" style="background:linear-gradient(135deg,rgba(${grade.id>2?'139,43,255':'14,165,255'},.1),rgba(${grade.id>2?'14,165,255':'46,204,138'},.07));border-color:${grade.color}44;margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;gap:14px">
+      <div style="font-size:48px;line-height:1">${grade.ic}</div>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:4px">Mon grade actuel</div>
+        <div style="font-size:24px;font-weight:800;color:${grade.color};margin-bottom:4px">${grade.nom}</div>
+        <div style="font-size:13px;color:var(--t2)">${grade.desc}</div>
+        <div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t3);margin-bottom:4px">
+            <span>${userXP} XP</span>
+            <span>${nextGrade?`${nextGrade.xp} XP pour ${nextGrade.nom}`:'Grade maximum'}</span>
+          </div>
+          <div class="grade-bar"><div class="grade-bar-fill" style="width:${pct}%;background:${grade.color}"></div></div>
+        </div>
+      </div>
+      ${isAdmin&&uid?`<button onclick="centreModalAttribuerXP('${uid}')" style="flex-shrink:0;padding:8px 14px;border-radius:var(--rp);background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">+ XP</button>`:''}
+    </div>
+  </div>
+
+  <div class="cv-h2" style="margin-bottom:12px">Les 6 grades SportVision</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+    ${SV_GRADES.map(g=>{
+      const isMe=g.id===userGrade;
+      const past=g.id<userGrade;
+      return`<div class="cv-card" style="padding:14px 18px;border-left:4px solid ${g.color};opacity:${g.id>userGrade+1?.6:1};background:${isMe?`rgba(${g.id===5?'255,107,53':g.id===4?'139,43,255':g.id===3?'245,165,36':g.id===2?'14,165,255':'46,204,138'},.07)`:''}">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:24px">${g.ic}</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-size:14px;font-weight:700;color:${g.color}">${g.nom}</div>
+              ${isMe?'<span style="font-size:10px;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.1);color:var(--t1);font-weight:700">← vous</span>':''}
+              ${past?'<span style="font-size:10px;color:var(--ok)">✓ déjà atteint</span>':''}
+            </div>
+            <div style="font-size:12px;color:var(--t2);margin-top:2px">${g.desc}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:11px;color:var(--t3)">XP minimum</div>
+            <div style="font-size:14px;font-weight:700;color:var(--t2)">${g.xp} XP</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <div class="cv-card">
+    <div class="cv-h2">Comment gagner des XP</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      ${[
+        {lb:'Formation courte',xp:'+25'},
+        {lb:'Formation intermédiaire',xp:'+50'},
+        {lb:'Certification obtenue',xp:'+100 à 300'},
+        {lb:'Prestation réalisée',xp:'Selon difficulté'},
+        {lb:'Responsable de prestation',xp:'Bonus'},
+        {lb:'Contribution validée',xp:'Bonus'},
+      ].map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:7px">
+        <span style="font-size:12.5px;color:var(--t1)">${r.lb}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--acc)">${r.xp}</span>
+      </div>`).join('')}
+    </div>
+    <div class="cv-card" style="background:rgba(240,68,94,.05);border-color:rgba(240,68,94,.2)">
+      <div class="cv-h3" style="color:var(--er)">Règles importantes</div>
+      <ul class="cv-ul x">
+        <li>Vous ne pouvez pas vous attribuer vos propres XP</li>
+        <li>Les XP manuels nécessitent une justification</li>
+        <li>Un même événement ne peut pas donner deux fois les mêmes XP</li>
+        <li>Le retrait d'XP doit être exceptionnel et tracé</li>
+      </ul>
+    </div>
+    <div style="background:rgba(14,165,255,.07);border:1px solid rgba(14,165,255,.2);border-radius:8px;padding:12px 16px;margin-top:12px">
+      <div style="font-size:12.5px;color:var(--acc);font-weight:600;margin-bottom:4px">Règle de validation</div>
+      <div style="font-size:13px;color:var(--t2)">Le système peut recommander une évolution de grade, mais seul l'Administrateur valide le changement. La validation nécessite : XP suffisants + formations + avis du Responsable Production.</div>
+    </div>
+  </div>
+
+  ${isAdmin?`<div class="cv-card" style="margin-top:14px">
+    <div class="cv-h2">Gestion des grades (Admin)</div>
+    <div id="admin-grades-list"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
+  </div>`:''}
+  `;
+}
+
+// ── COMPÉTENCES ──────────────────────────────────────────────────────────────
+function renderCentreCompetences(){
+  const cats=['Production','Création','Communication','Commercial','Management','Technique'];
+  return`
+  <div class="cv-h1">Compétences & Certifications</div>
+  <div class="cv-p">Une compétence mesure votre maîtrise dans un domaine. Une certification prouve que vous êtes autorisé à exercer une fonction précise chez SportVision.</div>
+  ${cats.map(cat=>{
+    const comps=SV_COMPETENCES.filter(c=>c.cat===cat);
+    if(!comps.length)return'';
+    return`<div class="cv-card" style="margin-bottom:12px">
+      <div class="cv-h2">${cat}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${comps.map(comp=>`<div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:7px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--t1)">${comp.nom}</div>
+          </div>
+          ${comp.cert?`<span style="font-size:10px;padding:2px 8px;border-radius:var(--rp);background:rgba(139,43,255,.12);border:1px solid rgba(139,43,255,.25);color:#C084FC;font-weight:600">Certification requise</span>`:''}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('')}
+  <div class="cv-card" style="background:rgba(139,43,255,.06);border-color:rgba(139,43,255,.2)">
+    <div class="cv-h2">Niveaux de compétence</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${[{n:'Non acquise',c:'var(--t3)'},{n:'En apprentissage',c:'var(--wa)'},{n:'Opérationnelle',c:'var(--acc)'},{n:'Confirmée',c:'var(--ok)'},{n:'Experte',c:'#8B2BFF'}].map(l=>`<div style="text-align:center;padding:10px 16px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid var(--b1)">
+        <div style="width:10px;height:10px;border-radius:50%;background:${l.c};margin:0 auto 6px"></div>
+        <div style="font-size:12px;font-weight:600;color:${l.c}">${l.n}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── RÉMUNÉRATION ─────────────────────────────────────────────────────────────
+function renderCentreRemuneration(){
+  return`
+  <div class="cv-h1">Rémunération & Frais</div>
+  <div style="background:rgba(14,165,255,.07);border:1px solid rgba(14,165,255,.2);border-radius:8px;padding:12px 16px;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:600;color:var(--acc);margin-bottom:3px">Information importante</div>
+    <div style="font-size:13px;color:var(--t2)">Les montants affichés sont des repères indicatifs. Le montant réel dépend de votre contrat, statut, grade, prestation, durée, responsabilités et validations.</div>
+  </div>
+  <div class="cv-card" style="margin-bottom:14px">
+    <div class="cv-h2">Comment est calculée ma rémunération</div>
+    <div style="background:var(--s2);border-radius:8px;padding:16px">
+      ${[
+        ['Rémunération de base','selon votre contrat et rôle'],
+        ['+ Coefficient de grade','si activé par l\'Administrateur'],
+        ['+ Prime de responsabilité','si vous êtes Responsable de prestation'],
+        ['+ Prime de complexité','pour les prestations techniques'],
+        ['+ Heures supplémentaires validées','sur accord du Responsable'],
+        ['+ Frais kilométriques','selon barème en vigueur'],
+        ['+ Notes de frais','avec justificatifs validés'],
+        ['− Avance éventuelle','si une avance a été versée'],
+        ['= Montant final','soumis à validation'],
+      ].map(([lb,sub],i)=>`<div style="display:flex;align-items:baseline;gap:10px;padding:7px 0;${i<8?'border-bottom:1px solid rgba(255,255,255,.04)':''}">
+        <div style="font-size:13.5px;font-weight:${i===8?'700':'400'};color:${i===8?'var(--acc)':'var(--t1)'};min-width:280px">${lb}</div>
+        <div style="font-size:12px;color:var(--t3)">${sub}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="cv-card">
+      <div class="cv-h2">Déclarer ses heures</div>
+      <ul class="cv-ul check">
+        <li>Heure réelle de début</li><li>Heure réelle de fin</li>
+        <li>Pauses et dépassements</li><li>Motif si dépassement</li>
+        <li>Délai : 48h après la prestation</li>
+      </ul>
+    </div>
+    <div class="cv-card">
+      <div class="cv-h2">Déclarer ses frais</div>
+      <ul class="cv-ul check">
+        <li>Péage, stationnement, repas</li><li>Hébergement si nécessaire</li>
+        <li>Achat urgent autorisé</li><li>Justificatif obligatoire</li>
+        <li>Délai : 48h après la prestation</li>
+      </ul>
+    </div>
+  </div>
+  <div class="cv-card" style="margin-top:14px">
+    <div class="cv-h2">Statuts de rémunération</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${[['Estimation','var(--t3)'],['À compléter','var(--wa)'],['Déclarée','var(--acc)'],['Contrôle Production','var(--wa)'],['Validée Production','var(--acc)'],['Contrôle Comptabilité','var(--wa)'],['Validée Comptabilité','var(--ok)'],['Programmée','var(--acc)'],['Payée','var(--ok)'],['Suspendue','var(--er)'],['Annulée','var(--er)']].map(([lb,c])=>`<span style="padding:4px 10px;border-radius:var(--rp);background:rgba(255,255,255,.05);border:1px solid var(--b1);font-size:11.5px;color:${c}">${lb}</span>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── FAQ ──────────────────────────────────────────────────────────────────────
+function renderCentreFAQ(filtre){
+  const q=(_centreSearchQ||filtre||'').toLowerCase();
+  const cats=['Travail','SportVision OS','Matériel','Rémunération','Grades'];
+  const results=q.length>=2?SV_FAQ.filter(f=>f.q.toLowerCase().includes(q)||f.a.toLowerCase().includes(q)||f.cat.toLowerCase().includes(q)):SV_FAQ;
+
+  return`
+  <div class="cv-h1">FAQ officielle</div>
+  <input type="search" class="fi" id="faq-q" placeholder="Rechercher dans la FAQ…" style="margin-bottom:20px;height:38px" value="${q}" oninput="centreFaqSearch(this.value)">
+  <div id="faq-results">
+  ${q&&!results.length?'<div style="padding:32px;text-align:center;color:var(--t3)">Aucun résultat pour « '+q+' ».</div>':
+    (q?[{cat:'Résultats',questions:results}]:cats.map(cat=>({cat,questions:results.filter(f=>f.cat===cat)}))).filter(g=>g.questions.length).map(group=>`
+    <div style="margin-bottom:20px">
+      <div class="cv-h3">${group.cat}</div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        ${group.questions.map((f,i)=>`
+        <div>
+          <div class="cv-faq-q" onclick="centreFaqToggle('faq-${group.cat}-${i}','faq-arr-${group.cat}-${i}')">
+            <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${f.q}</div>
+            <span id="faq-arr-${group.cat}-${i}" style="color:var(--t3);flex-shrink:0">▾</span>
+          </div>
+          <div id="faq-${group.cat}-${i}" style="display:none;padding:2px 14px 12px;font-size:13px;color:var(--t2);line-height:1.6">${f.a}</div>
+        </div>`).join('')}
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function centreFaqSearch(q){
+  _centreSearchQ=q;
+  const el=document.getElementById('faq-results');
+  if(!el)return;
+  // Réutilise le renderer (sans rechargement complet)
+  const tmp=document.createElement('div');
+  tmp.innerHTML=renderCentreFAQ();
+  const newRes=tmp.querySelector('#faq-results');
+  if(newRes)el.innerHTML=newRes.innerHTML;
+}
+
+function centreFaqToggle(contentId,arrowId){
+  const el=document.getElementById(contentId);
+  const arr=document.getElementById(arrowId);
+  if(!el)return;
+  const visible=el.style.display!=='none';
+  el.style.display=visible?'none':'block';
+  if(arr)arr.textContent=visible?'▾':'▴';
+}
+
+// ── CONTACTS ─────────────────────────────────────────────────────────────────
+function renderCentreContacts(){
+  const contacts=[
+    {sujet:'Administratif (contrats, documents)',role:'sec',titre:'Secrétaire',ic:'📋',color:'#2ECC8A'},
+    {sujet:'Production & terrain',role:'prod',titre:'Responsable Production',ic:'🎬',color:'#0EA5FF'},
+    {sujet:'Paiement, frais, rémunération',role:'compta',titre:'Comptable',ic:'💶',color:'#F5A524'},
+    {sujet:'Vente ou demande client',role:'com',titre:'Commercial',ic:'📈',color:'#F0445E'},
+    {sujet:'Contenu et réseaux sociaux',role:'cm',titre:'Community Manager',ic:'📱',color:'#00C4FF'},
+    {sujet:'Incident grave ou situation exceptionnelle',role:'admin',titre:'Administrateur',ic:'🏛️',color:'#8B2BFF'},
+  ];
+  return`
+  <div class="cv-h1">Qui contacter ?</div>
+  <div class="cv-p">En cas de doute sur qui contacter, privilégiez le Responsable Production pour tout ce qui est opérationnel, et le Secrétaire pour l'administratif.</div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    ${contacts.map(c=>`
+    <div class="cv-card" style="border-left:4px solid ${c.color}">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="font-size:28px">${c.ic}</div>
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--t3);margin-bottom:2px">${c.sujet}</div>
+          <div style="font-size:15px;font-weight:700;color:var(--t1)">${c.titre}</div>
+        </div>
+        <button onclick="switchView('msg');setTimeout(()=>msgOpenConvByRole('${c.role}'),400)" style="padding:8px 14px;border-radius:var(--rp);background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);flex-shrink:0">💬 Message</button>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div class="cv-card" style="margin-top:14px;background:rgba(240,68,94,.05);border-color:rgba(240,68,94,.2)">
+    <div class="cv-h3" style="color:var(--er)">Escalade</div>
+    <div class="cv-p">Si votre interlocuteur principal n'est pas disponible et que la situation est urgente → contactez directement l'Administrateur. Pour une urgence terrain le Jour J : appelez en direct.</div>
+  </div>`;
+}
+
+// ── ADMIN TABLEAU DE BORD ─────────────────────────────────────────────────────
+async function renderCentreAdminDash(){
+  if(S.role!=='admin')return'<div style="padding:48px;text-align:center;color:var(--t3)">Accès réservé à l\'Administrateur.</div>';
+  let statsHtml='<div style="color:var(--t3);font-size:13px">Chargement des statistiques…</div>';
+  try{
+    const [collab,recos,vals]=await Promise.all([
+      sbFetch('profiles?select=id,prenom,nom,role,grade,xp&role=neq.admin&order=nom.asc').catch(()=>[]),
+      sbFetch('grade_recommendations?select=id&statut=eq.en_attente').catch(()=>[]),
+      sbFetch('centre_validations?select=collaborateur_id,chapitre_id&type=eq.accepte').catch(()=>[]),
+    ]);
+    const profiles=Array.isArray(collab)?collab:[];
+    const recosN=(Array.isArray(recos)?recos:[]).length;
+    // Stats validations
+    const totalReq=profiles.length*SV_REGLEMENT.length;
+    const totalDone=Array.isArray(vals)?vals.length:0;
+    const tauxAccept=totalReq>0?Math.round(totalDone/totalReq*100):0;
+
+    statsHtml=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      ${[
+        {lb:'Collaborateurs',v:profiles.length,ic:'👥',c:'var(--acc)'},
+        {lb:'Recommandations grade en attente',v:recosN,ic:'⭐',c:recosN>0?'var(--wa)':'var(--ok)'},
+        {lb:'Taux acceptation règlement',v:tauxAccept+'%',ic:'📋',c:tauxAccept<80?'var(--wa)':'var(--ok)'},
+      ].map(s=>`<div class="kpi" style="--kl:${s.c}"><div class="kpi-ey">${s.ic} ${s.lb}</div><div class="kpi-v" style="font-size:22px">${s.v}</div></div>`).join('')}
+    </div>
+
+    <div class="cv-card" style="margin-bottom:14px">
+      <div class="cv-h2">Progression de l'équipe</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${profiles.map(p=>{
+          const g=SV_GRADES[p.grade||0]||SV_GRADES[0];
+          const ng=SV_GRADES[(p.grade||0)+1];
+          const xp=p.xp||0;
+          const pct=ng?Math.min(100,Math.round((xp-g.xp)/(ng.xp-g.xp)*100)):100;
+          return`<div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:7px">
+            <div style="min-width:140px;font-size:12.5px;font-weight:600;color:var(--t1)">${p.prenom||''} ${p.nom||''}</div>
+            <div style="font-size:11px;color:var(--t3);min-width:80px">${ROLE_LABELS[p.role]||p.role}</div>
+            <div style="flex:1;display:flex;align-items:center;gap:8px">
+              <div style="flex:1;height:4px;background:var(--s2);border-radius:2px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${g.color};border-radius:2px"></div>
+              </div>
+              <span style="font-size:11px;color:${g.color};font-weight:600;white-space:nowrap">${g.nom}</span>
+              <span style="font-size:11px;color:var(--t3);white-space:nowrap">${xp} XP</span>
+            </div>
+            <button onclick="centreModalAttribuerXP('${p.id}')" style="padding:4px 10px;border-radius:var(--rp);background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:11px;cursor:pointer;font-family:var(--ff)">+ XP</button>
+            <button onclick="centreModalChangerGrade('${p.id}','${p.prenom}','${p.nom}',${p.grade||0})" style="padding:4px 10px;border-radius:var(--rp);background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);color:#C084FC;font-size:11px;cursor:pointer;font-family:var(--ff)">Grade</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="cv-card">
+      <div class="cv-h2">Actions rapides</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[
+          {lb:'Voir règlement',fn:"loadCentreSection('reglement')"},
+          {lb:'Gérer les grades',fn:"document.getElementById('admin-grades-list')?.scrollIntoView()"},
+          {lb:'Publier une ressource',fn:"centreModalPublierRessource()"},
+        ].map(a=>`<button onclick="${a.fn}" style="padding:8px 16px;border-radius:var(--rp);background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">${a.lb}</button>`).join('')}
+      </div>
+    </div>`;
+  }catch(e){statsHtml='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';}
+
+  return`<div class="cv-h1">📊 Tableau de bord Centre SportVision</div>${statsHtml}`;
+}
+
+// ── Actions XP & Grade ────────────────────────────────────────────────────────
+function centreModalAttribuerXP(userId){
+  openModal(`<div class="mh"><div class="mt">Attribuer des XP</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Montant XP</label>
+        <input id="axp-v" type="number" class="fi" value="50" min="1" max="1000">
+      </div>
+      <div class="fg"><label class="fl">Type</label>
+        <select id="axp-type" class="fi">
+          <option value="manuel">Attribution manuelle</option>
+          <option value="formation">Formation</option>
+          <option value="certification">Certification</option>
+          <option value="bonus">Bonus</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Motif</label>
+        <input id="axp-desc" type="text" class="fi" placeholder="Raison de l'attribution…">
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="centreAttribuerXPSubmit('${userId}')">Attribuer</button>
+    </div>`);
+}
+
+async function centreAttribuerXPSubmit(userId){
+  const montant=parseInt(document.getElementById('axp-v')?.value||'0');
+  const type=document.getElementById('axp-type')?.value||'manuel';
+  const desc=document.getElementById('axp-desc')?.value.trim()||'Attribution manuelle';
+  if(!montant||montant<1){toast('Montant invalide.','er');return;}
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:userId,montant,type,description:desc,attribue_par:uid}});
+    // Mettre à jour le champ xp dans profiles
+    const profile=await sbFetch('profiles?select=xp&id=eq.'+userId);
+    const xpActuel=(profile&&profile[0]?.xp)||0;
+    await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{xp:xpActuel+montant}});
+    closeModal();toast(`+${montant} XP attribués.`,'ok');
+    if(S.view==='centre')await loadCentre(S.role);
+  }catch(e){toast('Erreur lors de l\'attribution.','er');}
+}
+
+async function centreAttribuerXP(userId,montant,type,description){
+  if(!userId||!montant)return;
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:userId,montant,type,description,attribue_par:uid}}).catch(()=>{});
+    const p=await sbFetch('profiles?select=xp&id=eq.'+userId).catch(()=>[]);
+    const xpActuel=(p&&p[0]?.xp)||0;
+    await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{xp:xpActuel+montant}}).catch(()=>{});
+  }catch(e){}
+}
+
+function centreModalChangerGrade(userId,prenom,nom,gradeActuel){
+  const grade=SV_GRADES[gradeActuel]||SV_GRADES[0];
+  openModal(`<div class="mh"><div class="mt">Changer le grade — ${prenom} ${nom}</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div style="font-size:13px;color:var(--t2);margin-bottom:14px">Grade actuel : <strong style="color:${grade.color}">${grade.ic} ${grade.nom}</strong></div>
+      <div class="fg"><label class="fl">Nouveau grade</label>
+        <select id="cg-grade" class="fi">
+          ${SV_GRADES.map(g=>`<option value="${g.id}"${g.id===gradeActuel?' selected':''}>${g.ic} ${g.nom}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Commentaire (optionnel)</label>
+        <input id="cg-comment" type="text" class="fi" placeholder="Motif du changement…">
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="centreValidateGradeChange('${userId}',${gradeActuel})">Valider</button>
+    </div>`);
+}
+
+async function centreValidateGradeChange(userId,gradeActuel){
+  const newGrade=parseInt(document.getElementById('cg-grade')?.value||'0');
+  const commentaire=document.getElementById('cg-comment')?.value.trim()||null;
+  if(newGrade===gradeActuel){toast('Grade inchangé.','ok');closeModal();return;}
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{grade:newGrade,grade_valide_at:new Date().toISOString(),grade_valide_par:uid}});
+    // Créer un log dans grade_recommendations
+    await sbFetch('grade_recommendations',{method:'POST',body:{
+      collaborateur_id:userId,grade_actuel:gradeActuel,grade_propose:newGrade,
+      statut:'valide',valide_par:uid,commentaire,
+    }}).catch(()=>{});
+    // XP bonus si montée de grade
+    if(newGrade>gradeActuel){
+      const bonus=[0,50,100,200,350,500][newGrade]||0;
+      if(bonus)await centreAttribuerXP(userId,bonus,'manuel','Passage de grade → '+SV_GRADES[newGrade]?.nom);
+    }
+    closeModal();toast('Grade mis à jour.','ok');
+    if(S.view==='centre')await loadCentreSection('admin-centre');
+  }catch(e){toast('Erreur lors de la mise à jour.','er');}
+}
+
+async function centreValiderGrade(recoId,decision){
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    const reco=await sbFetch('grade_recommendations?select=collaborateur_id,grade_propose&id=eq.'+recoId);
+    if(!reco||!reco[0])return;
+    await sbFetch('grade_recommendations?id=eq.'+recoId,{method:'PATCH',body:{statut:decision,valide_par:uid}});
+    if(decision==='valide'){
+      const {collaborateur_id,grade_propose}=reco[0];
+      await sbFetch('profiles?id=eq.'+collaborateur_id,{method:'PATCH',body:{grade:grade_propose,grade_valide_at:new Date().toISOString(),grade_valide_par:uid}});
+      toast('Grade validé et attribué.','ok');
+    }else{toast('Recommandation refusée.','ok');}
+    if(S.view==='centre')await loadCentreSection('grades');
+  }catch(e){toast('Erreur.','er');}
+}
+
+function centreModalPublierRessource(){
+  toast('Fonctionnalité de publication de ressources personnalisées — disponible après migration SQL.','ok');
+}
+
+// Helper : ouvrir conversation avec le premier user d'un rôle
+async function msgOpenConvByRole(role){
+  try{
+    const users=await sbFetch('profiles?select=id,prenom,nom&role=eq.'+role+'&limit=1');
+    if(users&&users[0]){
+      const name=((users[0].prenom||'')+(users[0].nom?' '+users[0].nom:'')).trim();
+      msgOpenConv(users[0].id);
+    }
+  }catch(e){}
 }
 
 // ════════════════════════════════════════════════════════════════
