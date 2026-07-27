@@ -8691,8 +8691,8 @@ async function loadObjectifs(){
       sbFetch(`prestations?select=id,reference,statut,montant_ttc,date_prestation,clients(nom)&date_prestation=gte.${m0}&date_prestation=lte.${m1}&statut=not.in.(annulée,refusée)&order=date_prestation.asc`),
     ]);
     const cl=clients||[];const pa=preAll||[];const pm=preMois||[];
-    const nbClients=cl.filter(c=>c.statut==='client').length;
-    const nbProspects=cl.filter(c=>c.statut==='prospect'||c.statut==='qualifié').length;
+    const nbClients=cl.filter(c=>c.statut==='partenaire').length;
+    const nbProspects=cl.filter(c=>['prospect','qualifié','devis_envoyé','négociation'].includes(c.statut)).length;
     const caMois=pm.filter(p=>['payée','facturée','partiellement_payée'].includes(p.statut)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const caTotal=pa.filter(p=>['payée','facturée','partiellement_payée'].includes(p.statut)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
