@@ -1531,7 +1531,7 @@ const VIEWS={
     <div id="sec-relances-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.contrats':()=>`
-    <div class="sh"><div class="sh-t">Contrats & abonnements</div><button class="btn bp bs" onclick="switchView('abonnements')">Voir abonnements</button></div>
+    <div class="sh"><div class="sh-t">Contrats & abonnements</div><div style="display:flex;gap:8px"><button class="btn bg2 bs" onclick="switchView('abonnements')">Abonnements</button><button class="btn bp bs" onclick="modalNouveauContrat()">+ Contrat</button></div></div>
     <div class="g3" style="margin-bottom:13px">
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Contrats actifs</div><div class="fs-v" id="cnt-kpi-act" style="color:var(--ok)">—</div></div>
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">À signer</div><div class="fs-v" id="cnt-kpi-sign" style="color:var(--wa)">—</div></div>
@@ -7073,23 +7073,31 @@ function renderComptaRem(){
 async function loadComptaRentabilite(){
   const el=document.getElementById('compta-rent-real');if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=in.(payée,partiellement_payée,facturée)&order=montant_ttc.desc&limit=20');
-    const list=Array.isArray(data)?data:[];
     const now=new Date();
-    const enc=list.filter(p=>p.statut_financier==='payée').reduce((s,p)=>s+(p.montant_ttc||0),0);
-    const charges=0;
+    const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const [data,remData,fraisData]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=in.(payée,partiellement_payée,facturée)&order=date_prestation.desc&limit=50'),
+      sbFetch('prestations_equipe?select=remuneration&date_paiement=gte.'+mStart).catch(()=>[]),
+      sbFetch('frais?select=montant,date_frais&date_frais=gte.'+mStart).catch(()=>[]),
+    ]);
+    const list=Array.isArray(data)?data:[];
+    const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart);
+    const enc=moisList.filter(p=>p.statut_financier==='payée').reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const chargesRem=(Array.isArray(remData)?remData:[]).reduce((s,r)=>s+(r.remuneration||0),0);
+    const chargesFrais=(Array.isArray(fraisData)?fraisData:[]).reduce((s,f)=>s+(f.montant||0),0);
+    const charges=chargesRem+chargesFrais;
     const marge=enc-charges;
     const tx=enc>0?Math.round((marge/enc)*100):0;
     const fmt=n=>n.toLocaleString('fr-FR')+' €';
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
     set('rent-kpi-ca',fmt(enc));set('rent-kpi-ch',fmt(charges));set('rent-kpi-marge',fmt(marge));set('rent-kpi-tx',tx+'%');
-    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant TTC</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+
-      list.map(p=>`<tr>
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant TTC</th><th>Date</th><th>Statut fin.</th></tr></thead><tbody>'+
+      list.slice(0,15).map(p=>`<tr>
         <td class="tm">${p.reference||'—'}</td>
         <td class="tp">${p.clients?.nom||'—'}</td>
         <td class="tm" style="font-weight:600;color:var(--ok)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
-        <td><span class="bd ${p.statut_financier==='payée'?'ba':'bw'}"><span class="bd-d"></span>${p.statut_financier}</span></td>
+        <td><span class="bd ${p.statut_financier==='payée'?'ba':p.statut_financier==='facturée'?'bw':'bb'}"><span class="bd-d"></span>${p.statut_financier}</span></td>
       </tr>`).join('')+'</tbody></table></div>':
       '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune donnée de rentabilité disponible.</div>';
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
@@ -7104,15 +7112,33 @@ async function loadComptaClotures(){
     months.push({label:d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}),key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,current:i===0});
   }
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  set('clo-kpi-clos','5');set('clo-kpi-enc','0');set('clo-kpi-cur',months[5].label);
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Mois</th><th>Statut</th><th>CA encaissé</th><th>Factures</th><th>Actions</th></tr></thead><tbody>'+
-    months.map(m=>`<tr>
-      <td style="font-weight:${m.current?700:400};color:${m.current?'var(--acc)':'var(--t1)'}">${m.label}</td>
-      <td><span class="bd ${m.current?'bb':'ba'}"><span class="bd-d"></span>${m.current?'En cours':'Clôturé'}</span></td>
-      <td class="tm">—</td>
-      <td class="tm">—</td>
-      <td>${m.current?'<button class="btn bg2 bs" onclick="">Clôturer</button>':'<button class="btn bg2 bs" onclick="exportCSV(\'ca-mensuel\')">Export</button>'}</td>
-    </tr>`).join('')+'</tbody></table></div>';
+  try{
+    const firstMonth=months[0].key+'-01';
+    const data=await sbFetch('prestations?select=montant_ttc,statut_financier,date_prestation&date_prestation=gte.'+firstMonth+'&statut_financier=in.(payée,partiellement_payée,facturée)&limit=500');
+    const list=Array.isArray(data)?data:[];
+    const byMonth={};
+    list.forEach(p=>{
+      const m=(p.date_prestation||'').slice(0,7);
+      if(!byMonth[m])byMonth[m]={ca:0,nb:0};
+      if(p.statut_financier==='payée')byMonth[m].ca+=(p.montant_ttc||0);
+      byMonth[m].nb++;
+    });
+    const fmt=n=>n?n.toLocaleString('fr-FR')+' €':'—';
+    set('clo-kpi-clos',months.filter(m=>!m.current).length);
+    set('clo-kpi-enc','0');
+    set('clo-kpi-cur',months[months.length-1].label);
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Mois</th><th>Statut</th><th>CA encaissé</th><th>Prestations</th><th>Actions</th></tr></thead><tbody>'+
+      months.map(m=>`<tr>
+        <td style="font-weight:${m.current?700:400};color:${m.current?'var(--acc)':'var(--t1)'}">${m.label}</td>
+        <td><span class="bd ${m.current?'bb':'ba'}"><span class="bd-d"></span>${m.current?'En cours':'Clôturé'}</span></td>
+        <td class="tm" style="font-weight:600">${fmt(byMonth[m.key]?.ca)}</td>
+        <td class="tm">${byMonth[m.key]?.nb||'—'}</td>
+        <td>${m.current?'<button class="btn bg2 bs" onclick="toast(\'Clôture de mois — fonctionnalité à venir\',\'ok\')">Clôturer</button>':'<button class="btn bg2 bs" onclick="exportCSV(\'ca-mensuel\')">Export</button>'}</td>
+      </tr>`).join('')+'</tbody></table></div>';
+  }catch(e){
+    set('clo-kpi-clos','5');set('clo-kpi-enc','0');set('clo-kpi-cur',months[months.length-1].label);
+    el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement des clôtures.</div>';
+  }
 }
 
 // ── Dashboard secrétaire ─────────────────────────────────────────────────────
