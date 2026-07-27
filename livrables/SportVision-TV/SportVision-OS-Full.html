@@ -1030,14 +1030,7 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Collaborateurs</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Inviter</button></div>
     <div id="col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
-  'admin.kits':()=>`
-    <div class="sh"><div class="sh-t">Inventaire des kits</div><button class="btn bp bs" onclick="modalNouveauKit()">+ Ajouter</button></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Disponibles</div><div class="fs-v" id="kits-dispo" style="color:var(--ok)">—</div></div>
-      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Déployés</div><div class="fs-v" id="kits-encours" style="color:var(--wa)">—</div></div>
-      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Maintenance</div><div class="fs-v" id="kits-maint" style="color:var(--er)">—</div></div>
-    </div>
-    <div id="kits-real" style="min-height:200px"></div>`,
+  'admin.kits':()=>_kitsViewShell('admin'),
 
   'admin.fin':()=>`
     <div class="g3">
@@ -1231,14 +1224,7 @@ const VIEWS={
     </div>
     <div id="prod-col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
-  'prod.kits':()=>`
-    <div class="sh"><div class="sh-t">État des kits</div></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Disponibles</div><div class="fs-v" id="kits-dispo" style="color:var(--ok)">—</div></div>
-      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Déployés</div><div class="fs-v" id="kits-encours" style="color:var(--wa)">—</div></div>
-      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Maintenance</div><div class="fs-v" id="kits-maint" style="color:var(--er)">—</div></div>
-    </div>
-    <div id="kits-real" style="min-height:200px"></div>`,
+  'prod.kits':()=>_kitsViewShell('prod'),
 
   'prod.equipes':()=>`
     <div class="sh"><div class="sh-t">Équipes par prestation</div></div>
@@ -2437,7 +2423,7 @@ async function creerClient(){
   }catch(e){err.textContent='Erreur lors de la création.';}
 }
 
-// ── MODALE NOUVEAU KIT ───────────────────
+// ── KITS v2 — fonctions déplacées dans le bloc principal Kits ────────────────
 function modalNouveauKit(){
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   openModal(`
@@ -5231,204 +5217,1003 @@ function retirerMembreEquipe(equipeId,prestationId,ref){
 // ── MODIFIER COLLABORATEUR ────────────────
 let _colsCache=[];
 
+// ════════════════════════════════════════════════════════════════
+// MODULE KITS & MATÉRIEL v2
+// ════════════════════════════════════════════════════════════════
+
+const KIT_TYPES_LIST=['Photo','Vidéo','Interview','Son','Drone','Veo','Streaming','Stand photo','Éclairage','Community Manager','Événement','Mobile','Secours'];
+
+const MAT_CATS={
+  boitier_photo:{lb:'Boîtier photo',ic:'📷'},
+  camera:{lb:'Caméra',ic:'🎥'},
+  objectif:{lb:'Objectif',ic:'🔭'},
+  microphone:{lb:'Microphone',ic:'🎙️'},
+  drone:{lb:'Drone',ic:'🚁'},
+  stabilisateur:{lb:'Stabilisateur',ic:'🎚️'},
+  trepied:{lb:'Trépied',ic:'🎛️'},
+  eclairage:{lb:'Éclairage',ic:'💡'},
+  batterie:{lb:'Batterie',ic:'🔋'},
+  carte_memoire:{lb:'Carte mémoire',ic:'💾'},
+  chargeur:{lb:'Chargeur',ic:'⚡'},
+  cable:{lb:'Câble',ic:'🔌'},
+  ordinateur:{lb:'Ordinateur',ic:'💻'},
+  telephone:{lb:'Téléphone',ic:'📱'},
+  sac:{lb:'Sac / Contenant',ic:'🎒'},
+  accessoire:{lb:'Accessoire',ic:'🔧'},
+  consommable:{lb:'Consommable',ic:'📦'},
+  autre:{lb:'Autre',ic:'📎'},
+};
+
+const KIT_ST_CFG={
+  disponible:{lb:'Disponible',dot:'#2ECC8A',bg:'rgba(46,204,138,.1)',br:'rgba(46,204,138,.25)',tx:'var(--ok)'},
+  pret:{lb:'Prêt',dot:'#2ECC8A',bg:'rgba(46,204,138,.1)',br:'rgba(46,204,138,.25)',tx:'var(--ok)'},
+  pre_reserve:{lb:'Pré-réservé',dot:'#366BFF',bg:'rgba(54,107,255,.1)',br:'rgba(54,107,255,.25)',tx:'var(--acc)'},
+  reserve:{lb:'Réservé',dot:'#366BFF',bg:'rgba(54,107,255,.1)',br:'rgba(54,107,255,.25)',tx:'var(--acc)'},
+  a_preparer:{lb:'À préparer',dot:'#F5A524',bg:'rgba(245,165,36,.1)',br:'rgba(245,165,36,.25)',tx:'var(--wa)'},
+  a_recuperer:{lb:'À récupérer',dot:'#F5A524',bg:'rgba(245,165,36,.1)',br:'rgba(245,165,36,.25)',tx:'var(--wa)'},
+  sorti:{lb:'Sorti',dot:'#F5A524',bg:'rgba(245,165,36,.1)',br:'rgba(245,165,36,.25)',tx:'var(--wa)'},
+  en_prestation:{lb:'En prestation',dot:'#F5A524',bg:'rgba(245,165,36,.1)',br:'rgba(245,165,36,.25)',tx:'var(--wa)'},
+  a_retourner:{lb:'À retourner',dot:'#F0445E',bg:'rgba(240,68,94,.1)',br:'rgba(240,68,94,.25)',tx:'var(--er)'},
+  retourne:{lb:'Retourné',dot:'#8891A8',bg:'rgba(136,145,168,.08)',br:'rgba(136,145,168,.2)',tx:'var(--t3)'},
+  en_controle:{lb:'En contrôle',dot:'#8891A8',bg:'rgba(136,145,168,.08)',br:'rgba(136,145,168,.2)',tx:'var(--t3)'},
+  en_maintenance:{lb:'Maintenance',dot:'#F0445E',bg:'rgba(240,68,94,.08)',br:'rgba(240,68,94,.2)',tx:'var(--er)'},
+  endommage:{lb:'Endommagé',dot:'#F0445E',bg:'rgba(240,68,94,.1)',br:'rgba(240,68,94,.3)',tx:'var(--er)'},
+  indisponible:{lb:'Indisponible',dot:'#F0445E',bg:'rgba(240,68,94,.08)',br:'rgba(240,68,94,.2)',tx:'var(--er)'},
+};
+
+const INCIDENT_TYPES=[
+  ['panne','Panne'],['chute','Chute'],['choc','Choc'],['casse','Casse'],
+  ['perte','Perte'],['vol','Vol'],['element_manquant','Élément manquant'],
+  ['surchauffe','Surchauffe'],['batterie_defectueuse','Batterie défectueuse'],
+  ['carte_defectueuse','Carte défectueuse'],['probleme_audio','Problème audio'],
+  ['probleme_image','Problème image'],['mauvaise_manipulation','Mauvaise manipulation'],
+  ['incident_externe','Incident externe'],['autre','Autre'],
+];
+
+const MAINT_ST_CFG={
+  a_diagnostiquer:{lb:'À diagnostiquer',c:'var(--t3)'},
+  diagnostic_en_cours:{lb:'Diagnostic en cours',c:'var(--wa)'},
+  validation_requise:{lb:'Validation requise',c:'var(--wa)'},
+  attente_piece:{lb:'Attente de pièce',c:'var(--wa)'},
+  en_reparation:{lb:'En réparation',c:'var(--acc)'},
+  repare:{lb:'Réparé',c:'var(--ok)'},
+  test_a_effectuer:{lb:'Test à effectuer',c:'var(--wa)'},
+  remis_en_service:{lb:'Remis en service',c:'var(--ok)'},
+  non_reparable:{lb:'Non réparable',c:'var(--er)'},
+  remplace:{lb:'Remplacé',c:'var(--t3)'},
+  archive:{lb:'Archivé',c:'var(--t3)'},
+};
+
 let _kitsCache=[];
+let _kitsTab2='kits'; // 'kits'|'materiels'|'controles'|'incidents'|'maintenance'
+let _matCache=[];
+
+// ── Shell principal ───────────────────────────────────────────────────────────
+function _kitsViewShell(role){
+  const isAdmin=role==='admin';
+  const tabs=[
+    {id:'kits',lb:'Kits'},
+    {id:'materiels',lb:'Matériels'},
+    {id:'controles',lb:'Contrôles'},
+    {id:'incidents',lb:'Incidents'},
+    ...(isAdmin?[{id:'maintenance',lb:'Maintenance'}]:[]),
+  ];
+  return`<style>
+    #kits-tab-bar{display:flex;gap:2px;margin-bottom:16px;background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:3px}
+    .ktab{flex:1;padding:7px 0;text-align:center;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;color:var(--t2);transition:all .12s}
+    .ktab.on{background:var(--acc);color:#fff}
+    .ktab:hover:not(.on){background:rgba(255,255,255,.06)}
+    .kit-card{background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:border-color .12s}
+    .kit-card:hover{border-color:rgba(14,165,255,.3)}
+    .mat-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
+    .mat-row:last-child{border-bottom:none}
+    .mat-row:hover{background:rgba(255,255,255,.02)}
+    .kbadge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+    @media(max-width:768px){
+      #kits-tab-bar{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+      .ktab{flex-shrink:0;padding:7px 14px}
+    }
+  </style>
+  <div class="sh">
+    <div class="sh-t">Kits & Matériel</div>
+    <div style="display:flex;gap:8px">
+      ${isAdmin?`<button class="btn bg2 bs" onclick="kitsModalCreerMateriel()">+ Matériel</button>
+      <button class="btn bp bs" onclick="kitsModalCreerKit()">+ Kit</button>`:''}
+    </div>
+  </div>
+  <div id="kits-kpi" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+    <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Kits disponibles</div><div class="fs-v" id="kits-dispo" style="color:var(--ok)">—</div></div>
+    <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Déployés</div><div class="fs-v" id="kits-encours" style="color:var(--wa)">—</div></div>
+    <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Incidents ouverts</div><div class="fs-v" id="kits-incidents" style="color:var(--er)">—</div></div>
+    <div class="fs" style="border-color:rgba(240,68,94,.2)"><div class="fs-l">Maintenance</div><div class="fs-v" id="kits-maint" style="color:var(--er)">—</div></div>
+  </div>
+  <div id="kits-tab-bar">
+    ${tabs.map(t=>`<div class="ktab${t.id===_kitsTab2?' on':''}" id="ktab-${t.id}" onclick="kitsSetTab('${t.id}')">${t.lb}</div>`).join('')}
+  </div>
+  <div id="kits-real" style="min-height:200px"></div>`;
+}
+
+function kitsSetTab(tab){
+  _kitsTab2=tab;
+  document.querySelectorAll('.ktab').forEach(el=>el.classList.remove('on'));
+  const el=document.getElementById('ktab-'+tab);
+  if(el)el.classList.add('on');
+  kitsRenderTab();
+}
+
 async function loadKits(){
+  await kitsLoadAll();
+}
+
+async function kitsLoadAll(){
   const el=document.getElementById('kits-real');
   if(!el)return;
-  if(!window._kitsTypeF)window._kitsTypeF='Tous';
-  if(!window._kitsStatF)window._kitsStatF='Tous';
-  el.innerHTML='<div style="text-align:center;padding:40px;color:var(--t3);font-size:13px">Chargement…</div>';
+  el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Chargement…</div>';
   try{
-    const [data,resa]=await Promise.all([
-      sbFetch('kits?select=id,nom,type_kit,description,statut,valeur&order=type_kit.asc,nom.asc'),
-      sbFetch('kit_reservations?select=id,statut,kit_id,prestations(id,reference,date_prestation,clients(nom))&statut=not.in.(retourné,en_contrôle)&order=created_at.desc&limit=100'),
+    const [kitsRaw,matsRaw,incRaw,maintRaw]=await Promise.all([
+      sbFetch('kits?select=id,nom,type_kit,statut,valeur,description,localisation,responsable_id,num_interne,notes&order=type_kit.asc,nom.asc'),
+      sbFetch('materiels?select=id,nom,categorie,marque,modele,statut,kit_id,num_interne,num_serie,valeur&order=categorie.asc,nom.asc'),
+      sbFetch('materiel_incidents?select=id,gravite,statut&statut=in.(ouvert,en_cours)').catch(()=>[]),
+      sbFetch('materiel_maintenances?select=id,statut&statut=not.in.(remis_en_service,non_reparable,remplace,archive)').catch(()=>[]),
     ]);
-    if(!Array.isArray(data)||data.length===0){
-      el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:60px;gap:12px;color:var(--t3)"><div style="font-size:40px;opacity:.15">📦</div><div style="font-size:14px;font-weight:500">Aucun kit enregistré</div>${S.role==='admin'?'<button onclick="modalNouveauKit()" style="padding:8px 18px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Ajouter le premier kit</button>':''}</div>`;
-      return;
-    }
-    _kitsCache=data;
-    const resaByKit={};
-    (Array.isArray(resa)?resa:[]).forEach(r=>{if(r.kit_id&&!resaByKit[r.kit_id])resaByKit[r.kit_id]=r;});
-    const dispo=data.filter(k=>k.statut==='disponible').length;
-    const deployed=data.filter(k=>['sorti','en_prestation','pré_réservé','réservé','à_récupérer','à_retourner'].includes(k.statut)).length;
-    const maint=data.filter(k=>['en_maintenance','endommagé','indisponible'].includes(k.statut)).length;
-    const dEl=document.getElementById('kits-dispo');const eEl=document.getElementById('kits-encours');const mEl=document.getElementById('kits-maint');
-    if(dEl)dEl.textContent=dispo;if(eEl)eEl.textContent=deployed;if(mEl)mEl.textContent=maint;
-    const types=['Tous',...[...new Set(data.map(k=>k.type_kit))].sort()];
-    const statFilt=['Tous','Disponibles','Déployés','Maintenance'];
-    let filtered=data;
-    if(window._kitsTypeF!=='Tous')filtered=filtered.filter(k=>k.type_kit===window._kitsTypeF);
-    if(window._kitsStatF==='Disponibles')filtered=filtered.filter(k=>k.statut==='disponible');
-    else if(window._kitsStatF==='Déployés')filtered=filtered.filter(k=>['sorti','en_prestation','pré_réservé','réservé','à_récupérer','à_retourner'].includes(k.statut));
-    else if(window._kitsStatF==='Maintenance')filtered=filtered.filter(k=>['en_maintenance','endommagé','indisponible'].includes(k.statut));
-    filtered=[...filtered].sort((a,b)=>{
-      const ord=k=>['sorti','en_prestation','à_retourner'].includes(k.statut)?0:['pré_réservé','réservé','à_récupérer'].includes(k.statut)?1:k.statut==='disponible'?2:3;
-      return ord(a)-ord(b)||a.nom.localeCompare(b.nom);
-    });
-    const ST={
-      disponible:{bg:'rgba(46,204,138,.12)',br:'rgba(46,204,138,.3)',dot:'#2ECC8A',tx:'var(--ok)',lb:'Disponible'},
-      en_prestation:{bg:'rgba(245,165,36,.12)',br:'rgba(245,165,36,.3)',dot:'#F5A524',tx:'var(--wa)',lb:'En prestation'},
-      sorti:{bg:'rgba(245,165,36,.12)',br:'rgba(245,165,36,.3)',dot:'#F5A524',tx:'var(--wa)',lb:'Sorti'},
-      'pré_réservé':{bg:'rgba(54,107,255,.12)',br:'rgba(54,107,255,.3)',dot:'#366BFF',tx:'var(--acc)',lb:'Pré-réservé'},
-      réservé:{bg:'rgba(54,107,255,.12)',br:'rgba(54,107,255,.3)',dot:'#366BFF',tx:'var(--acc)',lb:'Réservé'},
-      'à_récupérer':{bg:'rgba(245,165,36,.12)',br:'rgba(245,165,36,.3)',dot:'#F5A524',tx:'var(--wa)',lb:'À récupérer'},
-      'à_retourner':{bg:'rgba(245,165,36,.12)',br:'rgba(245,165,36,.3)',dot:'#F5A524',tx:'var(--wa)',lb:'À retourner'},
-      retourné:{bg:'rgba(136,145,168,.1)',br:'rgba(136,145,168,.2)',dot:'#8891A8',tx:'var(--t3)',lb:'Retourné'},
-      'en_contrôle':{bg:'rgba(136,145,168,.1)',br:'rgba(136,145,168,.2)',dot:'#8891A8',tx:'var(--t3)',lb:'En contrôle'},
-      en_maintenance:{bg:'rgba(240,68,94,.1)',br:'rgba(240,68,94,.25)',dot:'#F0445E',tx:'var(--er)',lb:'Maintenance'},
-      endommagé:{bg:'rgba(240,68,94,.12)',br:'rgba(240,68,94,.3)',dot:'#F0445E',tx:'var(--er)',lb:'Endommagé'},
-      indisponible:{bg:'rgba(240,68,94,.08)',br:'rgba(240,68,94,.2)',dot:'#F0445E',tx:'var(--er)',lb:'Indisponible'},
-    };
-    const TICO={photo:'📷',vidéo:'🎥',drone:'🚁',audio:'🎙️',streaming:'📡',son:'🎙️',lumière:'💡',réalisation:'🎬',réseaux:'📱'};
-    const isAdmin=S.role==='admin';
-    el.innerHTML=`
-      <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:2px;flex-wrap:wrap">
-        ${types.map(t=>`<button onclick="window._kitsTypeF='${t}';loadKits()" style="padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${t===window._kitsTypeF?'var(--acc)':'var(--b1)'};background:${t===window._kitsTypeF?'var(--acc)':'var(--s2)'};color:${t===window._kitsTypeF?'#fff':'var(--t2)'}">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join('')}
-        <div style="margin-left:auto;display:flex;gap:5px">
-          ${statFilt.map(s=>`<button onclick="window._kitsStatF='${s}';loadKits()" style="padding:5px 11px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${s===window._kitsStatF?'var(--wa)':'var(--b1)'};background:${s===window._kitsStatF?'rgba(245,165,36,.1)':'var(--s2)'};color:${s===window._kitsStatF?'var(--wa)':'var(--t3)'}">${s}</button>`).join('')}
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
-        ${filtered.map(k=>{
-          const st=ST[k.statut]||ST.disponible;
-          const ico=TICO[k.type_kit]||'📦';
-          const r=resaByKit[k.id];
-          const pre=r?.prestations;
-          const isDeployed=['sorti','en_prestation','à_retourner','pré_réservé','réservé','à_récupérer'].includes(k.statut);
-          const idx=_kitsCache.indexOf(k);
-          return`<div style="background:var(--s1);border:1px solid ${isDeployed?st.br:'var(--b1)'};border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-              <div style="width:40px;height:40px;border-radius:10px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${ico}</div>
-              <span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:${st.bg};border:1px solid ${st.br};color:${st.tx};white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${st.dot}"></span>${st.lb}</span>
-            </div>
-            <div>
-              <div style="font-size:14px;font-weight:700;color:var(--t1);line-height:1.2">${k.nom}</div>
-              ${k.description?`<div style="font-size:11px;color:var(--t3);margin-top:3px;line-height:1.4">${k.description}</div>`:''}
-            </div>
-            ${pre?`<div style="background:rgba(245,165,36,.07);border:1px solid rgba(245,165,36,.2);border-radius:8px;padding:8px 10px">
-              <div style="font-size:9px;font-weight:700;color:var(--wa);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Prestation en cours</div>
-              <div style="font-size:12px;color:var(--t1);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pre.clients?.nom||'—'}</div>
-              <div style="font-size:10px;color:var(--t3);margin-top:1px">${pre.reference||''}${pre.date_prestation?' · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>
-            </div>`:''}
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:4px">
-              ${k.valeur?`<div style="font-size:11px;color:var(--t3)">💰 ${k.valeur.toLocaleString('fr-FR')} €</div>`:`<div></div>`}
-              <div style="display:flex;gap:5px">
-                ${isAdmin?`<button onclick="modalModifierKit(${idx})" style="padding:5px 10px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button>`:''}
-                <button onclick="modalChangerStatutKit('${k.id}','${k.statut}')" style="padding:5px 10px;font-size:11px;background:${st.bg};border:1px solid ${st.br};border-radius:var(--rp);color:${st.tx};cursor:pointer">Statut ▾</button>
-              </div>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-      ${filtered.length===0?`<div style="text-align:center;padding:40px;color:var(--t3);font-size:13px">Aucun kit dans ce filtre.</div>`:''}`;
+    _kitsCache=Array.isArray(kitsRaw)?kitsRaw:[];
+    _matCache=Array.isArray(matsRaw)?matsRaw:[];
+    // KPIs
+    const dispo=_kitsCache.filter(k=>k.statut==='disponible').length;
+    const deployed=_kitsCache.filter(k=>['sorti','en_prestation','a_recuperer','a_retourner','reserve','pre_reserve'].includes(k.statut)).length;
+    const incN=(Array.isArray(incRaw)?incRaw:[]).length;
+    const maintN=(Array.isArray(maintRaw)?maintRaw:[]).length;
+    const setKpi=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+    setKpi('kits-dispo',dispo);setKpi('kits-encours',deployed);
+    setKpi('kits-incidents',incN);setKpi('kits-maint',maintN);
+    kitsRenderTab();
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
-function modalChangerStatutKit(id,currentStatut){
-  const STATUTS=[
-    ['disponible','✅ Disponible'],
-    ['pré_réservé','🔵 Pré-réservé'],
-    ['réservé','🔵 Réservé'],
-    ['à_récupérer','🟡 À récupérer'],
-    ['sorti','🟡 Sorti'],
-    ['en_prestation','🟡 En prestation'],
-    ['à_retourner','🟡 À retourner'],
-    ['retourné','⚫ Retourné'],
-    ['en_contrôle','⚫ En contrôle'],
-    ['en_maintenance','🔴 Maintenance'],
-    ['endommagé','🔴 Endommagé'],
-    ['indisponible','🔴 Indisponible'],
-  ];
-  openModal(`<div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Changer le statut du kit</div>
-    <div style="margin-bottom:16px">
-      <label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:6px">Nouveau statut</label>
-      <select id="kit-stat-sel" class="l-inp fi" style="height:42px;font-size:13px">
-        ${STATUTS.map(([v,l])=>`<option value="${v}"${v===currentStatut?' selected':''}>${l}</option>`).join('')}
-      </select>
-    </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn bg2" onclick="closeModal()">Annuler</button>
-      <button class="btn bp" onclick="appliquerStatutKit('${id}')">Enregistrer</button>
-    </div>`);
+function kitsRenderTab(){
+  const el=document.getElementById('kits-real');
+  if(!el)return;
+  if(_kitsTab2==='kits')el.innerHTML=kitsRenderKitsGrid();
+  else if(_kitsTab2==='materiels')el.innerHTML=kitsRenderMatGrid();
+  else if(_kitsTab2==='controles')kitsRenderControles();
+  else if(_kitsTab2==='incidents')kitsRenderIncidents();
+  else if(_kitsTab2==='maintenance')kitsRenderMaintenance();
 }
 
-async function appliquerStatutKit(id){
-  const sel=document.getElementById('kit-stat-sel');
-  if(!sel)return;
-  try{
-    await sbFetch('kits?id=eq.'+id,{method:'PATCH',body:{statut:sel.value}});
-    closeModal();toast('Statut mis à jour.','ok');loadKits();updateNavBadges(S.role);
-  }catch(e){toast('Erreur lors de la modification.');}
-}
-
-function modalModifierKit(idx){
-  const k=_kitsCache[idx];
-  if(!k)return;
-  openModal(`
-    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Modifier le kit</div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom *</label>
-          <input id="fke-nom" type="text" class="l-inp" value="${k.nom}" style="height:38px">
+// ── TAB KITS ────────────────────────────────────────────────────────────────
+function kitsRenderKitsGrid(){
+  const isAdmin=S.role==='admin';
+  if(!_kitsCache.length)return`<div style="padding:60px;text-align:center;color:var(--t3)"><div style="font-size:40px;opacity:.15;margin-bottom:12px">📦</div><div>Aucun kit enregistré</div>${isAdmin?'<div style="margin-top:12px"><button onclick="kitsModalCreerKit()" style="padding:8px 18px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Créer le premier kit</button></div>':''}</div>`;
+  return`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+    ${_kitsCache.map(k=>{
+      const st=KIT_ST_CFG[k.statut]||KIT_ST_CFG.disponible;
+      const matsInKit=_matCache.filter(m=>m.kit_id===k.id);
+      const isDeployed=['sorti','en_prestation','a_retourner','reserve','pre_reserve','a_recuperer'].includes(k.statut);
+      return`<div class="kit-card" style="${isDeployed?'border-color:'+st.br:''}" onclick="kitsOpenFiche('${k.id}')">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div style="font-size:14px;font-weight:700;color:var(--t1)">${k.nom}</div>
+          <span class="kbadge" style="background:${st.bg};border:1px solid ${st.br};color:${st.tx}"><span style="width:6px;height:6px;border-radius:50%;background:${st.dot}"></span>${st.lb}</span>
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type</label>
-          <select id="fke-type" class="l-inp" style="height:38px">
-            ${['photo','vidéo','drone','audio','streaming','son','lumière','réalisation','réseaux'].map(t=>`<option value="${t}"${k.type_kit===t?' selected':''}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}
-          </select>
+        ${k.type_kit?`<div style="font-size:11px;color:var(--t3)">${k.type_kit}</div>`:''}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-size:12px;color:var(--t2)">📦 ${matsInKit.length} équipement${matsInKit.length!==1?'s':''}</span>
+          ${k.valeur?`<span style="font-size:11px;color:var(--t3)">${k.valeur.toLocaleString('fr-FR')} €</span>`:''}
+        </div>
+        ${k.localisation?`<div style="font-size:11px;color:var(--t3)">📍 ${k.localisation}</div>`:''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="event.stopPropagation();kitsOpenFiche('${k.id}')" style="flex:1;padding:6px 0;font-size:11.5px;font-weight:600;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-family:var(--ff)">Voir la fiche</button>
+          ${isAdmin?`<button onclick="event.stopPropagation();kitsModalChangerStatut('${k.id}','${k.statut}')" style="padding:6px 10px;font-size:11.5px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff)">Statut ▾</button>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── TAB MATÉRIELS ────────────────────────────────────────────────────────────
+function kitsRenderMatGrid(){
+  const isAdmin=S.role==='admin';
+  if(!_matCache.length)return`<div style="padding:60px;text-align:center;color:var(--t3)"><div style="font-size:40px;opacity:.15;margin-bottom:12px">🔧</div><div>Aucun matériel enregistré</div>${isAdmin?'<div style="margin-top:12px"><button onclick="kitsModalCreerMateriel()" style="padding:8px 18px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Ajouter du matériel</button></div>':''}</div>`;
+  const cats=[...new Set(_matCache.map(m=>m.categorie))];
+  return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rb);overflow:hidden">
+    ${cats.map(cat=>{
+      const mats=_matCache.filter(m=>m.categorie===cat);
+      const cfg=MAT_CATS[cat]||{lb:cat,ic:'📎'};
+      return`<div style="border-bottom:1px solid rgba(255,255,255,.04)">
+        <div style="padding:8px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);background:rgba(255,255,255,.02)">${cfg.ic} ${cfg.lb} (${mats.length})</div>
+        ${mats.map(m=>{
+          const st=KIT_ST_CFG[m.statut]||KIT_ST_CFG.disponible;
+          const kitName=m.kit_id?(_kitsCache.find(k=>k.id===m.kit_id)?.nom||'Kit'):'—';
+          return`<div class="mat-row">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.nom}</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:1px">${m.marque||''}${m.modele?' '+m.modele:''}${m.num_interne?' · N°'+m.num_interne:''}</div>
+            </div>
+            <div style="font-size:11px;color:var(--t3);min-width:80px;text-align:center">${kitName}</div>
+            <span class="kbadge" style="background:${st.bg};border:1px solid ${st.br};color:${st.tx}">${st.lb}</span>
+            ${isAdmin?`<button onclick="kitsModalEditMateriel('${m.id}')" style="padding:4px 9px;font-size:11px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff)">✎</button>`:''}
+            <button onclick="kitsModalSignalerIncidentById('${m.id}')" style="padding:4px 9px;font-size:11px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff)">!</button>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── TAB CONTRÔLES ────────────────────────────────────────────────────────────
+async function kitsRenderControles(){
+  const el=document.getElementById('kits-real');
+  if(!el)return;
+  el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Chargement…</div>';
+  try{
+    const controles=await sbFetch('kit_controles?select=id,type,statut,created_at,kits(nom),kit_reservations(collaborateur_id,prestations(reference,date_prestation,clients(nom))),profiles(prenom,nom)&order=created_at.desc&limit=50&collaborateur_id=eq.'+localStorage.getItem('sv_uid')).catch(()=>[]);
+    const all=Array.isArray(controles)?controles:[];
+    if(!all.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--t3)">Aucun contrôle à réaliser.</div>';return;}
+    el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">
+      ${all.map(c=>{
+        const pre=c.kit_reservations?.prestations;
+        const typeLabel=c.type==='avant'?'Contrôle avant prestation':'Contrôle après prestation';
+        const stColor=c.statut==='valide'?'var(--ok)':c.statut==='bloquant'?'var(--er)':'var(--wa)';
+        return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:14px 16px">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="flex:1">
+              <div style="font-size:13.5px;font-weight:700;color:var(--t1)">${c.kits?.nom||'Kit'}</div>
+              <div style="font-size:12px;color:var(--t2);margin-top:2px">${typeLabel}</div>
+              ${pre?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${pre.clients?.nom||'—'} · ${pre.reference||''}${pre.date_prestation?' · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>`:''}
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:11px;font-weight:700;color:${stColor}">${c.statut==='valide'?'✓ Validé':c.statut==='bloquant'?'⚠ Bloquant':'En cours'}</div>
+              <div style="font-size:10px;color:var(--t3);margin-top:2px">${new Date(c.created_at).toLocaleDateString('fr-FR')}</div>
+            </div>
+          </div>
+          ${c.statut!=='valide'?`<div style="margin-top:10px">
+            <button onclick="kitsControleOpen('${c.id}')" style="width:100%;padding:9px 0;font-size:12.5px;font-weight:700;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-family:var(--ff)">Réaliser ce contrôle →</button>
+          </div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+}
+
+// ── TAB INCIDENTS ────────────────────────────────────────────────────────────
+async function kitsRenderIncidents(){
+  const el=document.getElementById('kits-real');
+  if(!el)return;
+  el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Chargement…</div>';
+  try{
+    const inc=await sbFetch('materiel_incidents?select=id,type_incident,description,gravite,statut,created_at,impact_prestation,materiels(nom),kits(nom),profiles(prenom,nom)&order=created_at.desc&limit=80').catch(()=>[]);
+    const all=Array.isArray(inc)?inc:[];
+    const GRAV_CFG={critique:{c:'var(--er)',bg:'rgba(240,68,94,.1)',br:'rgba(240,68,94,.25)'},important:{c:'var(--wa)',bg:'rgba(245,165,36,.08)',br:'rgba(245,165,36,.2)'},mineur:{c:'var(--t3)',bg:'rgba(255,255,255,.04)',br:'var(--b1)'}};
+    if(!all.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--t3)"><div style="font-size:40px;opacity:.15;margin-bottom:12px">🔎</div>Aucun incident enregistré.</div>';return;}
+    el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">
+      ${all.map(i=>{
+        const gc=GRAV_CFG[i.gravite]||GRAV_CFG.mineur;
+        const typeLabel=INCIDENT_TYPES.find(t=>t[0]===i.type_incident)?.[1]||i.type_incident;
+        const isOpen=['ouvert','en_cours'].includes(i.statut);
+        return`<div style="background:var(--s1);border:1px solid ${isOpen?gc.br:'var(--b1)'};border-radius:12px;padding:14px 16px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:${gc.bg};border:1px solid ${gc.br};color:${gc.c}">${i.gravite?.charAt(0).toUpperCase()+i.gravite?.slice(1)||'—'}</span>
+                <span style="font-size:11px;color:var(--t3)">${typeLabel}</span>
+                <span style="font-size:10px;color:${isOpen?'var(--wa)':'var(--ok)'}">● ${isOpen?'Ouvert':'Résolu'}</span>
+              </div>
+              <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${i.materiels?.nom||i.kits?.nom||'—'}</div>
+              ${i.description?`<div style="font-size:12px;color:var(--t2);margin-top:3px">${i.description}</div>`:''}
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:11px;color:var(--t3)">${new Date(i.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</div>
+              <div style="font-size:11px;color:var(--t3)">${i.profiles?.prenom||''} ${i.profiles?.nom||''}</div>
+            </div>
+          </div>
+          ${isOpen&&(S.role==='admin'||S.role==='prod')?`<div style="margin-top:10px">
+            <button onclick="kitsResoudreIncident('${i.id}')" style="padding:6px 14px;font-size:11.5px;font-weight:600;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-family:var(--ff)">Marquer résolu</button>
+          </div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+}
+
+// ── TAB MAINTENANCE ──────────────────────────────────────────────────────────
+async function kitsRenderMaintenance(){
+  const el=document.getElementById('kits-real');
+  if(!el)return;
+  el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Chargement…</div>';
+  try{
+    const maint=await sbFetch('materiel_maintenances?select=id,statut,priorite,description,created_at,cout_final,devis,prestataire,date_retour_prevue,materiels(nom,categorie),kits(nom)&order=created_at.desc&limit=80').catch(()=>[]);
+    const all=Array.isArray(maint)?maint:[];
+    if(!all.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--t3)">Aucune maintenance enregistrée.</div>';return;}
+    const PRI_C={urgente:'var(--er)',haute:'var(--wa)',normale:'var(--acc)',faible:'var(--t3)'};
+    el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">
+      ${all.map(m=>{
+        const stc=MAINT_ST_CFG[m.statut]||{lb:m.statut,c:'var(--t3)'};
+        const isActive=!['remis_en_service','non_reparable','remplace','archive'].includes(m.statut);
+        return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:14px 16px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid var(--b1);color:${PRI_C[m.priorite]||'var(--t3)'}">${m.priorite||'normale'}</span>
+                <span style="font-size:11px;color:${stc.c};font-weight:600">${stc.lb}</span>
+              </div>
+              <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${m.materiels?.nom||m.kits?.nom||'—'}</div>
+              ${m.description?`<div style="font-size:12px;color:var(--t2);margin-top:3px">${m.description}</div>`:''}
+              ${m.prestataire?`<div style="font-size:11px;color:var(--t3);margin-top:2px">Prestataire : ${m.prestataire}</div>`:''}
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              ${m.devis?`<div style="font-size:12px;font-weight:600;color:var(--t1)">${m.devis.toLocaleString('fr-FR')} €</div>`:''}
+              ${m.date_retour_prevue?`<div style="font-size:11px;color:var(--t3)">Retour : ${new Date(m.date_retour_prevue).toLocaleDateString('fr-FR')}</div>`:''}
+            </div>
+          </div>
+          ${isActive&&S.role==='admin'?`<div style="margin-top:10px">
+            <button onclick="kitsModalMajMaintenance('${m.id}')" style="padding:6px 14px;font-size:11.5px;font-weight:600;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-family:var(--ff)">Mettre à jour</button>
+          </div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+}
+
+// ── FICHE KIT ────────────────────────────────────────────────────────────────
+async function kitsOpenFiche(kitId){
+  const kit=_kitsCache.find(k=>k.id===kitId);
+  if(!kit)return;
+  openModal('<div style="padding:24px;text-align:center;color:var(--t3)">Chargement…</div>',true);
+  try{
+    const [compRaw,resaRaw,incRaw]=await Promise.all([
+      sbFetch('kit_compositions?select=id,quantite,obligatoire,ordre,notes,materiels(id,nom,categorie,marque,modele,statut,num_interne,num_serie)&kit_id=eq.'+kitId+'&order=ordre.asc'),
+      sbFetch('kit_reservations?select=id,statut,heure_sortie,heure_retour_prevue,responsable_id,consignes,prestations(reference,date_prestation,clients(nom)),profiles(prenom,nom)&kit_id=eq.'+kitId+'&order=created_at.desc&limit=20'),
+      sbFetch('materiel_incidents?select=id,type_incident,gravite,statut,description,created_at&kit_id=eq.'+kitId+'&statut=in.(ouvert,en_cours)&limit=10').catch(()=>[]),
+    ]);
+    const comp=Array.isArray(compRaw)?compRaw:[];
+    const resa=Array.isArray(resaRaw)?resaRaw:[];
+    const inc=Array.isArray(incRaw)?incRaw:[];
+    const isAdmin=S.role==='admin';
+    const isProd=S.role==='prod'||isAdmin;
+    const st=KIT_ST_CFG[kit.statut]||KIT_ST_CFG.disponible;
+    const oblig=comp.filter(c=>c.obligatoire!==false);
+    const opt=comp.filter(c=>c.obligatoire===false);
+    const valeurTotal=_matCache.filter(m=>m.kit_id===kitId).reduce((s,m)=>s+(m.valeur||0),0);
+    const CTRL_STATUT_IC={ok:'<span style="color:var(--ok)">✓</span>',reserve:'<span style="color:var(--wa)">⚠</span>',defectueux:'<span style="color:var(--er)">✕</span>',absent:'<span style="color:var(--er)">○</span>',non_verifie:'<span style="color:var(--t3)">—</span>'};
+
+    const html=`<div class="mh">
+      <div>
+        <div class="mt">${kit.nom}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <span class="kbadge" style="background:${st.bg};border:1px solid ${st.br};color:${st.tx}"><span style="width:6px;height:6px;border-radius:50%;background:${st.dot}"></span>${st.lb}</span>
+          ${kit.type_kit?`<span style="font-size:11px;color:var(--t3)">${kit.type_kit}</span>`:''}
+          ${valeurTotal>0?`<span style="font-size:11px;color:var(--t3)">${valeurTotal.toLocaleString('fr-FR')} €</span>`:''}
         </div>
       </div>
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description / contenu</label>
-        <input id="fke-desc" type="text" class="l-inp" value="${k.description||''}" style="height:38px">
+      <button class="mc" onclick="closeModal()">✕</button>
+    </div>
+    <div class="mb" style="max-height:70vh;overflow-y:auto;padding:0 24px 24px">
+      ${inc.length?`<div style="background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--er);margin-bottom:4px">⚠ ${inc.length} incident${inc.length>1?'s':''} en cours</div>
+        ${inc.map(i=>`<div style="font-size:12px;color:var(--t2)">${INCIDENT_TYPES.find(t=>t[0]===i.type_incident)?.[1]||i.type_incident} — ${i.description||''}</div>`).join('')}
+      </div>`:''}
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Composition (${comp.length} éléments)</div>
+      <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;overflow:hidden;margin-bottom:16px">
+        ${comp.length===0?`<div style="padding:20px;text-align:center;color:var(--t3);font-size:12px">Aucun équipement associé.${isAdmin?'<br><button onclick="kitsModalAddMaterielToKit(\''+kitId+'\')" style="margin-top:8px;padding:6px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:11px;font-weight:600;cursor:pointer">+ Ajouter</button>':''}
+        </div>`:comp.map(c=>{
+          const m=c.materiels;if(!m)return'';
+          const mst=KIT_ST_CFG[m.statut]||KIT_ST_CFG.disponible;
+          const matCfg=MAT_CATS[m.categorie]||{ic:'📎'};
+          return`<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.04)">
+            ${c.obligatoire===false?'<span style="color:var(--t3);font-size:13px">○</span>':'<span style="color:var(--acc);font-size:13px">●</span>'}
+            <span style="font-size:15px">${matCfg.ic}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.nom}</div>
+              <div style="font-size:11px;color:var(--t3)">${m.marque||''}${m.num_serie?' · SN: '+m.num_serie:''}</div>
+            </div>
+            ${c.quantite>1?`<span style="font-size:11px;color:var(--t3)">×${c.quantite}</span>`:''}
+            <span class="kbadge" style="background:${mst.bg};border:1px solid ${mst.br};color:${mst.tx};font-size:9.5px">${mst.lb}</span>
+            ${isAdmin?`<button onclick="kitsRetirerMateriel('${c.id}','${kit.id}')" style="padding:3px 7px;font-size:10px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:5px;color:var(--er);cursor:pointer;font-family:var(--ff)">✕</button>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+
+      ${resa.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Réservations récentes</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+        ${resa.slice(0,5).map(r=>{
+          const rst=KIT_ST_CFG[r.statut]||KIT_ST_CFG.disponible;
+          const pre=r.prestations;
+          return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:8px">
+            <div style="flex:1">
+              <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${pre?.clients?.nom||'—'}</div>
+              <div style="font-size:11px;color:var(--t3)">${pre?.reference||''}${pre?.date_prestation?' · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>
+            </div>
+            <span class="kbadge" style="background:${rst.bg};border:1px solid ${rst.br};color:${rst.tx}">${rst.lb}</span>
+          </div>`;
+        }).join('')}
+      </div>`:''}
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${isAdmin?`<button onclick="kitsModalAddMaterielToKit('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-family:var(--ff)">+ Ajouter matériel</button>`:''}
+        ${isProd?`<button onclick="closeModal();kitsModalAttribuer('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-family:var(--ff)">📋 Attribuer à une prestation</button>`:''}
+        ${isAdmin?`<button onclick="kitsModalChangerStatut('${kit.id}','${kit.statut}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff)">Changer statut</button>`:''}
+        <button onclick="closeModal();kitsSetTab('incidents');kitsRenderIncidents()" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff)">⚠ Incident</button>
+      </div>
+    </div>`;
+    document.getElementById('app-modal').innerHTML=html;
+  }catch(e){document.getElementById('app-modal').innerHTML=`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb">${e.message}</div>`;}
+}
+
+// ── CRÉATION KIT ─────────────────────────────────────────────────────────────
+function kitsModalCreerKit(){
+  openModal(`<div class="mh"><div class="mt">Créer un kit</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Nom du kit *</label>
+        <input id="ck-nom" type="text" class="fi" placeholder="KIT PHOTO 01, KIT VIDÉO 01…" autofocus>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut</label>
-          <select id="fke-statut" class="l-inp" style="height:38px">
-            ${['disponible','pré_réservé','réservé','sorti','en_prestation','à_retourner','retourné','en_contrôle','en_maintenance','endommagé','indisponible'].map(s=>`<option value="${s}"${k.statut===s?' selected':''}>${s.replace(/_/g,' ')}</option>`).join('')}
-          </select>
+        <div class="fg"><label class="fl">Type</label>
+          <select id="ck-type" class="fi"><option value="">— Type —</option>${KIT_TYPES_LIST.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Valeur (€)</label>
-          <input id="fke-val" type="number" class="l-inp" value="${k.valeur||''}" style="height:38px">
+        <div class="fg"><label class="fl">N° interne</label>
+          <input id="ck-num" type="text" class="fi" placeholder="01">
         </div>
       </div>
-      <div id="fke-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
-        <button class="btn bg2" onclick="closeModal()">Annuler</button>
-        <button class="btn bp" onclick="modifierKit('${k.id}')">Enregistrer</button>
+      <div class="fg"><label class="fl">Localisation</label>
+        <input id="ck-loc" type="text" class="fi" placeholder="Entrepôt, Bureau…">
       </div>
+      <div class="fg"><label class="fl">Notes</label>
+        <input id="ck-notes" type="text" class="fi" placeholder="Informations complémentaires…">
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="kitsCreerKitSubmit()">Créer le kit</button>
     </div>`);
 }
 
-async function modifierKit(id){
-  const err=document.getElementById('fke-err');
-  const nom=document.getElementById('fke-nom').value.trim();
-  if(!nom){err.textContent='Le nom est obligatoire.';return;}
-  err.textContent='Enregistrement…';
+async function kitsCreerKitSubmit(){
+  const nom=document.getElementById('ck-nom')?.value.trim();
+  if(!nom){toast('Le nom est obligatoire.','er');return;}
   try{
-    await sbFetch('kits?id=eq.'+id,{method:'PATCH',body:{
+    await sbFetch('kits',{method:'POST',body:{
       nom,
-      type_kit:document.getElementById('fke-type').value,
-      description:document.getElementById('fke-desc').value||null,
-      statut:document.getElementById('fke-statut').value,
-      valeur:document.getElementById('fke-val').value?Number(document.getElementById('fke-val').value):null,
+      type_kit:document.getElementById('ck-type')?.value||null,
+      num_interne:document.getElementById('ck-num')?.value||null,
+      localisation:document.getElementById('ck-loc')?.value||null,
+      notes:document.getElementById('ck-notes')?.value||null,
+      statut:'disponible',
     }});
-    closeModal();
-    toast('Kit mis à jour.','ok');
-    loadKits();
-    updateNavBadges(S.role);
-  }catch(e){err.textContent='Erreur lors de la modification.';}
+    closeModal();toast('Kit créé.','ok');kitsLoadAll();
+  }catch(e){toast('Erreur lors de la création.','er');}
 }
 
-function supprimerKit(id){
-  confirmerAction('Supprimer ce kit ? Cette action est irréversible.',async()=>{
-    try{
-      await sbFetch('kits?id=eq.'+id,{method:'DELETE'});
-      toast('Kit supprimé.','ok');
-      loadKits();
-      updateNavBadges(S.role);
-    }catch(e){toast('Erreur lors de la suppression.');}
+// ── CRÉATION MATÉRIEL ─────────────────────────────────────────────────────────
+function kitsModalCreerMateriel(){
+  openModal(`<div class="mh"><div class="mt">Ajouter un équipement</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Nom *</label>
+        <input id="cm-nom" type="text" class="fi" placeholder="Sony A6700, DJI Mini 3 Pro, Rode VideoMic…" autofocus>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Catégorie</label>
+          <select id="cm-cat" class="fi">${Object.entries(MAT_CATS).map(([v,c])=>`<option value="${v}">${c.ic} ${c.lb}</option>`).join('')}</select>
+        </div>
+        <div class="fg"><label class="fl">Affecter au kit</label>
+          <select id="cm-kit" class="fi"><option value="">— Kit —</option>${_kitsCache.map(k=>`<option value="${k.id}">${k.nom}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Marque</label>
+          <input id="cm-marque" type="text" class="fi" placeholder="Sony, DJI, Canon…">
+        </div>
+        <div class="fg"><label class="fl">Modèle</label>
+          <input id="cm-modele" type="text" class="fi" placeholder="A6700, Mini 3 Pro…">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">N° de série</label>
+          <input id="cm-serie" type="text" class="fi" placeholder="Optionnel">
+        </div>
+        <div class="fg"><label class="fl">N° interne</label>
+          <input id="cm-num" type="text" class="fi" placeholder="MAT-001">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Valeur (€)</label>
+          <input id="cm-val" type="number" class="fi" min="0">
+        </div>
+        <div class="fg"><label class="fl">Date d'achat</label>
+          <input id="cm-achat" type="date" class="fi">
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Description</label>
+        <input id="cm-desc" type="text" class="fi" placeholder="Accessoires inclus, notes…">
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="kitsCreerMaterielSubmit()">Enregistrer</button>
+    </div>`);
+}
+
+async function kitsCreerMaterielSubmit(){
+  const nom=document.getElementById('cm-nom')?.value.trim();
+  if(!nom){toast('Le nom est obligatoire.','er');return;}
+  const kitId=document.getElementById('cm-kit')?.value||null;
+  try{
+    const newMat=await sbFetch('materiels',{method:'POST',body:{
+      nom,
+      categorie:document.getElementById('cm-cat')?.value||'autre',
+      marque:document.getElementById('cm-marque')?.value||null,
+      modele:document.getElementById('cm-modele')?.value||null,
+      num_serie:document.getElementById('cm-serie')?.value||null,
+      num_interne:document.getElementById('cm-num')?.value||null,
+      valeur:document.getElementById('cm-val')?.value?Number(document.getElementById('cm-val').value):null,
+      date_achat:document.getElementById('cm-achat')?.value||null,
+      description:document.getElementById('cm-desc')?.value||null,
+      statut:'disponible',
+      kit_id:kitId||null,
+      created_by:localStorage.getItem('sv_uid'),
+    }});
+    // Si kit sélectionné, créer la composition
+    if(kitId&&Array.isArray(newMat)&&newMat[0]){
+      await sbFetch('kit_compositions',{method:'POST',body:{
+        kit_id:kitId,materiel_id:newMat[0].id,obligatoire:true,
+        ajoute_par:localStorage.getItem('sv_uid'),
+      }}).catch(()=>{});
+    }
+    closeModal();toast('Équipement enregistré.','ok');kitsLoadAll();
+  }catch(e){toast('Erreur lors de l\'enregistrement.','er');}
+}
+
+// ── AJOUTER MATÉRIEL À UN KIT ────────────────────────────────────────────────
+function kitsModalAddMaterielToKit(kitId){
+  const dispo=_matCache.filter(m=>!m.kit_id||m.kit_id===kitId);
+  openModal(`<div class="mh"><div class="mt">Ajouter au kit</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Équipement</label>
+        <select id="add-mat-sel" class="fi">
+          <option value="">— Sélectionner —</option>
+          ${dispo.map(m=>`<option value="${m.id}">${m.nom}${m.marque?' ('+m.marque+')':''}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Quantité</label>
+          <input id="add-mat-qty" type="number" class="fi" value="1" min="1">
+        </div>
+        <div class="fg"><label class="fl">Obligatoire</label>
+          <select id="add-mat-oblig" class="fi"><option value="true">Oui</option><option value="false">Non (facultatif)</option></select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Notes</label>
+        <input id="add-mat-notes" type="text" class="fi" placeholder="Emplacement dans le sac, remarques…">
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="kitsAddMaterielSubmit('${kitId}')">Ajouter</button>
+    </div>`);
+}
+
+async function kitsAddMaterielSubmit(kitId){
+  const matId=document.getElementById('add-mat-sel')?.value;
+  if(!matId){toast('Sélectionnez un équipement.','er');return;}
+  try{
+    const qty=parseInt(document.getElementById('add-mat-qty')?.value||'1');
+    const oblig=document.getElementById('add-mat-oblig')?.value!=='false';
+    const notes=document.getElementById('add-mat-notes')?.value||null;
+    await sbFetch('kit_compositions',{method:'POST',body:{
+      kit_id:kitId,materiel_id:matId,quantite:qty,obligatoire:oblig,notes,
+      ajoute_par:localStorage.getItem('sv_uid'),
+    }});
+    await sbFetch('materiels?id=eq.'+matId,{method:'PATCH',body:{kit_id:kitId,statut:'affecte_kit'}}).catch(()=>{});
+    closeModal();toast('Équipement ajouté au kit.','ok');kitsLoadAll();
+  }catch(e){toast(e.message?.includes('duplicate')?'Déjà dans ce kit.':'Erreur.','er');}
+}
+
+async function kitsRetirerMateriel(compId,kitId){
+  try{
+    const comp=await sbFetch('kit_compositions?select=materiel_id&id=eq.'+compId);
+    await sbFetch('kit_compositions?id=eq.'+compId,{method:'DELETE'});
+    if(comp&&comp[0])await sbFetch('materiels?id=eq.'+comp[0].materiel_id,{method:'PATCH',body:{kit_id:null,statut:'disponible'}}).catch(()=>{});
+    toast('Matériel retiré du kit.','ok');kitsLoadAll();
+    kitsOpenFiche(kitId);
+  }catch(e){toast('Erreur.','er');}
+}
+
+// ── CHANGER STATUT KIT ────────────────────────────────────────────────────────
+function kitsModalChangerStatut(id,currentStatut){
+  openModal(`<div class="mh"><div class="mt">Changer le statut</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <select id="kit-stat-sel" class="fi" style="height:42px">
+        ${Object.entries(KIT_ST_CFG).map(([v,c])=>`<option value="${v}"${v===currentStatut?' selected':''}>${c.lb}</option>`).join('')}
+      </select>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="kitsAppliquerStatut('${id}')">Enregistrer</button>
+    </div>`);
+}
+
+async function kitsAppliquerStatut(id){
+  const val=document.getElementById('kit-stat-sel')?.value;
+  if(!val)return;
+  try{
+    await sbFetch('kits?id=eq.'+id,{method:'PATCH',body:{statut:val}});
+    closeModal();toast('Statut mis à jour.','ok');kitsLoadAll();updateNavBadges(S.role);
+  }catch(e){toast('Erreur.','er');}
+}
+
+// ── ATTRIBUER KIT À PRESTATION ───────────────────────────────────────────────
+async function kitsModalAttribuer(kitId){
+  const prests=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&statut=in.(confirmée,en_production,planifiée)&order=date_prestation.asc&limit=50').catch(()=>[]);
+  const colls=await sbFetch('profiles?select=id,prenom,nom&role=in.(photo,prod)&order=nom.asc').catch(()=>[]);
+  openModal(`<div class="mh"><div class="mt">Attribuer le kit</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Prestation</label>
+        <select id="attr-pre" class="fi">
+          <option value="">— Prestation —</option>
+          ${(Array.isArray(prests)?prests:[]).map(p=>`<option value="${p.id}">${p.clients?.nom||'—'} · ${p.reference||''} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):''}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Responsable du kit</label>
+        <select id="attr-resp" class="fi">
+          <option value="">— Responsable —</option>
+          ${(Array.isArray(colls)?colls:[]).map(c=>`<option value="${c.id}">${c.prenom||''} ${c.nom||''}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Heure de sortie prévue</label>
+          <input id="attr-sortie" type="datetime-local" class="fi">
+        </div>
+        <div class="fg"><label class="fl">Heure de retour prévue</label>
+          <input id="attr-retour" type="datetime-local" class="fi">
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Lieu de récupération</label>
+        <input id="attr-lieu" type="text" class="fi" placeholder="Adresse ou lieu de remise du kit">
+      </div>
+      <div class="fg"><label class="fl">Consignes</label>
+        <textarea id="attr-cons" class="fi" rows="2" placeholder="Instructions particulières pour ce kit…"></textarea>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="kitsAttribuerSubmit('${kitId}')">Attribuer</button>
+    </div>`);
+}
+
+async function kitsAttribuerSubmit(kitId){
+  const preId=document.getElementById('attr-pre')?.value;
+  if(!preId){toast('Sélectionnez une prestation.','er');return;}
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    await sbFetch('kit_reservations',{method:'POST',body:{
+      kit_id:kitId,
+      prestation_id:preId,
+      collaborateur_id:uid,
+      responsable_id:document.getElementById('attr-resp')?.value||null,
+      statut:'reserve',
+      heure_sortie:document.getElementById('attr-sortie')?.value||null,
+      heure_retour_prevue:document.getElementById('attr-retour')?.value||null,
+      lieu_recuperation:document.getElementById('attr-lieu')?.value||null,
+      consignes:document.getElementById('attr-cons')?.value||null,
+    }});
+    await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'reserve'}}).catch(()=>{});
+    // Notifier le responsable
+    const respId=document.getElementById('attr-resp')?.value;
+    if(respId){
+      await sbFetch('notifications',{method:'POST',body:{
+        user_id:respId,type:'kit_attribue',
+        message:'Un kit vous a été attribué pour une prestation.',source_type:'kits',source_id:kitId,
+      }}).catch(()=>{});
+    }
+    closeModal();toast('Kit attribué.','ok');kitsLoadAll();updateNavBadges(S.role);
+  }catch(e){toast('Erreur lors de l\'attribution.','er');}
+}
+
+// ── INCIDENT ──────────────────────────────────────────────────────────────────
+function kitsModalSignalerIncidentById(materielId){
+  const m=_matCache.find(x=>x.id===materielId);
+  kitsModalSignalerIncident(materielId,m?.nom||'—');
+}
+function kitsModalSignalerIncident(materielId,materielNom){
+  openModal(`<div class="mh"><div class="mt">Signaler un incident</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div style="font-size:12.5px;font-weight:600;color:var(--t2);margin-bottom:12px">Matériel concerné : <span style="color:var(--t1)">${materielNom}</span></div>
+      <div class="fg"><label class="fl">Type d'incident *</label>
+        <select id="inc-type" class="fi">
+          ${INCIDENT_TYPES.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Gravité</label>
+        <select id="inc-grav" class="fi">
+          <option value="mineur">Mineure — Sans impact majeur</option>
+          <option value="important">Importante — Impact partiel</option>
+          <option value="critique">Critique — Bloquant</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Description *</label>
+        <textarea id="inc-desc" class="fi" rows="3" placeholder="Décrivez précisément ce qui s'est passé…"></textarea>
+      </div>
+      <div class="fg"><label class="fl">Impact sur la prestation</label>
+        <input id="inc-impact" type="text" class="fi" placeholder="Prestation non impactée / retard / arrêt…">
+      </div>
+      <div class="fg"><label class="fl">Action immédiate prise</label>
+        <input id="inc-action" type="text" class="fi" placeholder="Remplacement, arrêt d'utilisation…">
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="kitsIncidentSubmit('${materielId}')">Déclarer l'incident</button>
+    </div>`);
+}
+
+async function kitsIncidentSubmit(materielId){
+  const desc=document.getElementById('inc-desc')?.value.trim();
+  if(!desc){toast('La description est obligatoire.','er');return;}
+  const gravite=document.getElementById('inc-grav')?.value||'mineur';
+  try{
+    const uid=localStorage.getItem('sv_uid');
+    const mat=_matCache.find(m=>m.id===materielId);
+    await sbFetch('materiel_incidents',{method:'POST',body:{
+      materiel_id:materielId,
+      kit_id:mat?.kit_id||null,
+      collaborateur_id:uid,
+      type_incident:document.getElementById('inc-type')?.value||'autre',
+      description:desc,
+      gravite,
+      impact_prestation:document.getElementById('inc-impact')?.value||null,
+      action_immediate:document.getElementById('inc-action')?.value||null,
+      statut:'ouvert',
+    }});
+    // Bloquer le matériel si critique
+    const newStatut=gravite==='critique'?'endommage':'fonctionnel_reserve';
+    await sbFetch('materiels?id=eq.'+materielId,{method:'PATCH',body:{statut:newStatut}}).catch(()=>{});
+    // Notifier prod + admin si critique
+    if(gravite==='critique'){
+      await dispatchSVEvent('prestation.confirmed',{prestation_id:null}).catch(()=>{});
+      const prods=await sbFetch('profiles?select=id&role=in.(admin,prod)').catch(()=>[]);
+      for(const p of (prods||[])){
+        await sbFetch('notifications',{method:'POST',body:{
+          user_id:p.id,type:'incident_critique',priorite:'high',
+          message:'Incident critique matériel signalé : '+desc.slice(0,80),
+          source_type:'materiels',source_id:materielId,
+        }}).catch(()=>{});
+      }
+    }
+    closeModal();toast('Incident déclaré.','ok');kitsLoadAll();
+  }catch(e){toast('Erreur lors de la déclaration.','er');}
+}
+
+async function kitsResoudreIncident(incId){
+  try{
+    await sbFetch('materiel_incidents?id=eq.'+incId,{method:'PATCH',body:{
+      statut:'resolu',resolu_par:localStorage.getItem('sv_uid'),resolu_at:new Date().toISOString(),
+    }});
+    toast('Incident marqué résolu.','ok');kitsRenderIncidents();
+  }catch(e){toast('Erreur.','er');}
+}
+
+// ── CONTRÔLE AVANT/APRÈS ─────────────────────────────────────────────────────
+async function kitsControleOpen(controleId){
+  openModal('<div style="padding:24px;text-align:center;color:var(--t3)">Chargement du contrôle…</div>',true);
+  try{
+    const [ctrl,items]=await Promise.all([
+      sbFetch('kit_controles?select=id,type,statut,kit_id,kits(nom),kit_reservations(prestations(reference,clients(nom)))&id=eq.'+controleId),
+      sbFetch('kit_controle_items?select=id,statut_item,commentaire,materiels(id,nom,categorie,marque,num_serie)&controle_id=eq.'+controleId+'&order=materiels(nom).asc'),
+    ]);
+    const c=ctrl&&ctrl[0];const its=Array.isArray(items)?items:[];
+    if(!c){closeModal();toast('Contrôle introuvable.','er');return;}
+    const typeLabel=c.type==='avant'?'Contrôle avant prestation':'Contrôle après prestation';
+    const pre=c.kit_reservations?.prestations;
+    const ITEM_OPT=[{v:'ok',lb:'✓ Fonctionnel',c:'var(--ok)'},{v:'reserve',lb:'⚠ Avec réserve',c:'var(--wa)'},{v:'defectueux',lb:'✕ Défectueux',c:'var(--er)'},{v:'absent',lb:'○ Absent',c:'var(--er)'}];
+    document.getElementById('app-modal').innerHTML=`
+      <div class="mh">
+        <div><div class="mt">${typeLabel}</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">${c.kits?.nom||'Kit'}${pre?' · '+(pre.clients?.nom||'—'):''}</div>
+        </div>
+        <button class="mc" onclick="closeModal()">✕</button>
+      </div>
+      <div class="mb" style="max-height:65vh;overflow-y:auto;padding:0 24px 16px">
+        ${its.length===0?'<div style="padding:24px;text-align:center;color:var(--t3)">Aucun équipement à contrôler dans ce kit.</div>':
+          its.map(item=>{
+            const matCfg=MAT_CATS[item.materiels?.categorie]||{ic:'📎'};
+            return`<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+              <div style="font-size:13.5px;font-weight:700;color:var(--t1);margin-bottom:8px">${matCfg.ic} ${item.materiels?.nom||'—'}${item.materiels?.marque?' · '+item.materiels.marque:''}</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+                ${ITEM_OPT.map(o=>`<button id="ci-btn-${item.id}-${o.v}" onclick="kitsCtrlSelectItem('${item.id}','${o.v}')" style="flex:1;padding:7px 0;font-size:11.5px;font-weight:600;border-radius:var(--rp);cursor:pointer;font-family:var(--ff);transition:all .1s;border:1px solid ${item.statut_item===o.v?'transparent':'var(--b1)'};background:${item.statut_item===o.v?o.c:'rgba(255,255,255,.04)'};color:${item.statut_item===o.v?'#fff':o.c}">${o.lb}</button>`).join('')}
+              </div>
+              <input id="ci-note-${item.id}" type="text" class="fi" placeholder="Commentaire (optionnel)…" value="${item.commentaire||''}" style="height:30px;font-size:11.5px">
+            </div>`;
+          }).join('')
+        }
+      </div>
+      <div class="mf">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="kitsControleSubmit('${controleId}')">Valider le contrôle</button>
+      </div>`;
+    // Stocker les statuts courants
+    window._kitsCtrlItems={};
+    its.forEach(i=>{window._kitsCtrlItems[i.id]=i.statut_item||'non_verifie';});
+  }catch(e){closeModal();toast('Erreur.','er');}
+}
+
+function kitsCtrlSelectItem(itemId,statut){
+  if(!window._kitsCtrlItems)window._kitsCtrlItems={};
+  window._kitsCtrlItems[itemId]=statut;
+  // Mettre à jour l'affichage des boutons
+  ['ok','reserve','defectueux','absent'].forEach(v=>{
+    const btn=document.getElementById('ci-btn-'+itemId+'-'+v);
+    if(!btn)return;
+    const ITEM_OPT={ok:'var(--ok)',reserve:'var(--wa)',defectueux:'var(--er)',absent:'var(--er)'};
+    const c=ITEM_OPT[v]||'var(--t3)';
+    if(v===statut){btn.style.background=c;btn.style.color='#fff';btn.style.border='1px solid transparent';}
+    else{btn.style.background='rgba(255,255,255,.04)';btn.style.color=c;btn.style.border='1px solid var(--b1)';}
   });
 }
+
+async function kitsControleSubmit(controleId){
+  const items=window._kitsCtrlItems||{};
+  try{
+    const updates=Object.entries(items).map(([id,statut_item])=>{
+      const commentaire=document.getElementById('ci-note-'+id)?.value||null;
+      return sbFetch('kit_controle_items?id=eq.'+id,{method:'PATCH',body:{statut_item,commentaire}});
+    });
+    await Promise.all(updates);
+    const vals=Object.values(items);
+    const ok=vals.filter(v=>v==='ok').length;
+    const absent=vals.filter(v=>v==='absent').length;
+    const def=vals.filter(v=>v==='defectueux').length;
+    const reserve=vals.filter(v=>v==='reserve').length;
+    const hasBloquant=absent>0||def>0;
+    const statut=hasBloquant?'bloquant':reserve>0?'anomalie':'valide';
+    await sbFetch('kit_controles?id=eq.'+controleId,{method:'PATCH',body:{
+      statut,signature_at:new Date().toISOString(),
+      items_total:vals.length,items_ok:ok,items_reserve:reserve,items_ko:def,items_absent:absent,
+    }});
+    if(hasBloquant){
+      // Notifier prod
+      const prods=await sbFetch('profiles?select=id&role=in.(admin,prod)').catch(()=>[]);
+      for(const p of (prods||[])){
+        await sbFetch('notifications',{method:'POST',body:{
+          user_id:p.id,type:'controle_bloquant',priorite:'high',
+          message:`Contrôle bloquant — ${absent} absent(s), ${def} défectueux`,
+          source_type:'kit_controles',source_id:controleId,
+        }}).catch(()=>{});
+      }
+      closeModal();toast('Contrôle validé avec anomalie bloquante. Production alertée.','er');
+    }else{
+      closeModal();toast('Contrôle validé.','ok');
+    }
+    kitsRenderControles();
+  }catch(e){toast('Erreur lors de la validation.','er');}
+}
+
+// ── MAINTENANCE ───────────────────────────────────────────────────────────────
+async function kitsModalMajMaintenance(maintId){
+  openModal(`<div class="mh"><div class="mt">Mettre à jour la maintenance</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Statut</label>
+        <select id="maint-stat" class="fi">
+          ${Object.entries(MAINT_ST_CFG).map(([v,c])=>`<option value="${v}">${c.lb}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Coût final (€)</label>
+        <input id="maint-cout" type="number" class="fi" min="0">
+      </div>
+      <div class="fg"><label class="fl">Date de retour réelle</label>
+        <input id="maint-retour" type="date" class="fi">
+      </div>
+      <div class="fg"><label class="fl">Notes</label>
+        <textarea id="maint-notes" class="fi" rows="2" placeholder="Rapport de maintenance…"></textarea>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="kitsMaintSubmit('${maintId}')">Enregistrer</button>
+    </div>`);
+}
+
+async function kitsMaintSubmit(maintId){
+  try{
+    await sbFetch('materiel_maintenances?id=eq.'+maintId,{method:'PATCH',body:{
+      statut:document.getElementById('maint-stat')?.value,
+      cout_final:document.getElementById('maint-cout')?.value?Number(document.getElementById('maint-cout').value):null,
+      date_retour_reelle:document.getElementById('maint-retour')?.value||null,
+      notes:document.getElementById('maint-notes')?.value||null,
+    }});
+    closeModal();toast('Maintenance mise à jour.','ok');kitsRenderMaintenance();
+  }catch(e){toast('Erreur.','er');}
+}
+
+// ── ÉDITION MATÉRIEL ──────────────────────────────────────────────────────────
+async function kitsModalEditMateriel(materielId){
+  const m=_matCache.find(x=>x.id===materielId);
+  if(!m)return;
+  openModal(`<div class="mh"><div class="mt">Modifier l'équipement</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Nom</label>
+        <input id="em-nom" type="text" class="fi" value="${m.nom}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Catégorie</label>
+          <select id="em-cat" class="fi">${Object.entries(MAT_CATS).map(([v,c])=>`<option value="${v}"${v===m.categorie?' selected':''}>${c.ic} ${c.lb}</option>`).join('')}</select>
+        </div>
+        <div class="fg"><label class="fl">Statut</label>
+          <select id="em-stat" class="fi">${Object.entries(KIT_ST_CFG).map(([v,c])=>`<option value="${v}"${v===m.statut?' selected':''}>${c.lb}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Marque</label>
+          <input id="em-marque" type="text" class="fi" value="${m.marque||''}">
+        </div>
+        <div class="fg"><label class="fl">Valeur (€)</label>
+          <input id="em-val" type="number" class="fi" value="${m.valeur||''}">
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="kitsEditMaterielSubmit('${materielId}')">Enregistrer</button>
+    </div>`);
+}
+
+async function kitsEditMaterielSubmit(id){
+  const nom=document.getElementById('em-nom')?.value.trim();
+  if(!nom){toast('Le nom est obligatoire.','er');return;}
+  try{
+    await sbFetch('materiels?id=eq.'+id,{method:'PATCH',body:{
+      nom,
+      categorie:document.getElementById('em-cat')?.value,
+      statut:document.getElementById('em-stat')?.value,
+      marque:document.getElementById('em-marque')?.value||null,
+      valeur:document.getElementById('em-val')?.value?Number(document.getElementById('em-val').value):null,
+    }});
+    closeModal();toast('Équipement mis à jour.','ok');kitsLoadAll();
+  }catch(e){toast('Erreur.','er');}
+}
+
+// ── Compatibilité backward ────────────────────────────────────────────────────
+function modalChangerStatutKit(id,s){kitsModalChangerStatut(id,s);}
+async function appliquerStatutKit(id){kitsAppliquerStatut(id);}
+function modalModifierKit(idx){const k=_kitsCache[idx];if(k)kitsModalEditMateriel&&kitsModalChangerStatut(k.id,k.statut);}
+async function modifierKit(id){}
+function supprimerKit(id){}
+async function ajouterEquipement(){kitsModalCreerMateriel();}
+
+// ── Photo role — dashboard kits perso ────────────────────────────────────────
+async function loadPhotoKits(){
+  const el=document.getElementById('photo-kits-real');if(!el)return;
+  const uid=localStorage.getItem('sv_uid');
+  try{
+    const resa=await sbFetch('kit_reservations?select=id,statut,heure_sortie,heure_retour_prevue,consignes,kits(id,nom,type_kit),prestations(reference,date_prestation,clients(nom))&responsable_id=eq.'+uid+'&statut=not.in.(retourne,clôture,annule)&order=created_at.desc&limit=10').catch(()=>[]);
+    const items=Array.isArray(resa)?resa:[];
+    if(!items.length){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:12.5px">Aucun kit attribué.</div>';return;}
+    const KIT_IC2={Photo:'📷',Vidéo:'🎥',Drone:'🚁',Son:'🎙️',Streaming:'📡'};
+    el.innerHTML=items.map(r=>{
+      const st=KIT_ST_CFG[r.statut]||KIT_ST_CFG.reserve;
+      const pre=r.prestations;const k=r.kits;
+      const ic=KIT_IC2[k?.type_kit]||'📦';
+      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05)">
+        <span style="font-size:20px">${ic}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--t1)">${k?.nom||'Kit'}</div>
+          <div style="font-size:11px;color:var(--t3)">${pre?.clients?.nom||'—'}${pre?.date_prestation?' · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <span class="kbadge" style="background:${st.bg};border:1px solid ${st.br};color:${st.tx}">${st.lb}</span>
+          <button onclick="kitsControleOuvrirDepuisResa('${r.id}')" style="padding:4px 10px;font-size:10.5px;font-weight:600;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-family:var(--ff)">Contrôle →</button>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="padding:14px;color:var(--er);font-size:12px">Erreur de chargement.</div>';}
+}
+
+async function kitsControleOuvrirDepuisResa(resaId){
+  try{
+    const ctrl=await sbFetch('kit_controles?select=id,type,statut&kit_reservation_id=eq.'+resaId+'&statut=neq.valide&limit=1').catch(()=>[]);
+    if(ctrl&&ctrl[0]){kitsControleOpen(ctrl[0].id);return;}
+    toast('Aucun contrôle en attente pour ce kit.','ok');
+  }catch(e){toast('Erreur.','er');}
+}
+
 
 // ── Devis ────────────────────────────────────────────────────────────────────
 let _devisCache=[];
