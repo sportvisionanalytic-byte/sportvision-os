@@ -894,6 +894,16 @@ const VIEWS={
           <div class="fb" id="mc" style="height:70px"></div>
         </div></div>
       </div>
+    </div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h">
+        <div class="cd-t">Clubs cibles</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button>
+          <button class="btn bp bs" onclick="modalNouveauClient()">+ Club</button>
+        </div>
+      </div>
+      <div id="dash-clubs-cibles"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
   'admin.planning':()=>`
@@ -1446,6 +1456,8 @@ const VIEWS={
   'sec.msg':()=>buildMsgShell(),
   'photo.msg':()=>buildMsgShell(),
   'cm.msg':()=>buildMsgShell(),
+  'compta.msg':()=>buildMsgShell(),
+  'com.msg':()=>buildMsgShell(),
 
   // ── PHOTOGRAPHE ─────────────────────────
   'photo.dash':()=>`
@@ -2705,7 +2717,7 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='admin'&&view==='form') await loadAdminForm();
   if(role==='prod'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
-  if(['prod','admin','sec','photo','cm'].includes(role)&&view==='msg') await loadMsg();
+  if(['prod','admin','sec','photo','cm','compta','com'].includes(role)&&view==='msg') await loadMsg();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
   if(view==='documents'||((role==='sec'||role==='admin'||role==='compta')&&view==='docs')) await loadDocuments(role);
@@ -3425,6 +3437,49 @@ async function loadAdminDash(){
         <div style="font-size:9px;color:var(--t3)">${months[i].slice(5)}</div>
       </div>`;
     }).join('');
+  }
+
+  // Clubs cibles (prospects + qualifiés prioritaires)
+  const elCC=document.getElementById('dash-clubs-cibles');
+  if(elCC){
+    try{
+      const [prospects,presAll]=await Promise.all([
+        sbFetch('clients?select=id,nom,type_client,sport,ville,email,telephone,statut,notes,created_at&statut=in.(prospect,qualifié)&order=created_at.desc&limit=10'),
+        sbFetch('prestations?select=client_id,date_prestation&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=200'),
+      ]);
+      const list=Array.isArray(prospects)?prospects:[];
+      const lastPre={};
+      (Array.isArray(presAll)?presAll:[]).forEach(p=>{if(p.client_id&&!lastPre[p.client_id])lastPre[p.client_id]=p.date_prestation;});
+      if(!list.length){
+        elCC.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun prospect en cours. <button onclick="modalNouveauClient()" class="btn bp bs" style="margin-left:8px;font-size:11px">+ Ajouter un club</button></div>';
+      } else {
+        const SCL={prospect:'Prospect',qualifié:'Qualifié'};
+        const SCC={prospect:'bw',qualifié:'bb'};
+        elCC.innerHTML='<div style="display:flex;flex-direction:column">'+list.map((c,i)=>{
+          const lp=lastPre[c.id];
+          const lpStr=lp?new Date(lp).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'Jamais';
+          const meta=[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ');
+          const idx=list.indexOf(c);
+          return`<div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--b1)${i===list.length-1?';border-bottom:none':''}">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚽</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">${c.nom}</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:1px">${meta||'—'}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+              <span class="bd ${SCC[c.statut]||'bw'}"><span class="bd-d"></span>${SCL[c.statut]||c.statut}</span>
+              <div style="font-size:10px;color:var(--t3)">Dernière presta : ${lpStr}</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0">
+              ${c.email?`<a href="mailto:${c.email}?subject=Partenariat SportVision&body=Bonjour,%0A%0AJe me permets de vous contacter concernant un partenariat SportVision pour ${c.nom}.%0A%0ACordialement" style="padding:5px 10px;font-size:11px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);text-decoration:none;white-space:nowrap">✉</a>`:''}
+              ${c.telephone?`<a href="tel:${c.telephone}" style="padding:5px 10px;font-size:11px;font-weight:600;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);text-decoration:none">📞</a>`:''}
+              <button onclick="modalCreerDevisRapide('${c.id}','${(c.nom||'').replace(/'/g,"\\'")}')" style="padding:5px 10px;font-size:11px;font-weight:600;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:var(--wa);cursor:pointer">Devis</button>
+              <button onclick="modalModifierClientById('${c.id}')" style="padding:5px 10px;font-size:11px;font-weight:600;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Fiche</button>
+            </div>
+          </div>`;
+        }).join('')+'</div>';
+      }
+    }catch(e){if(elCC)elCC.innerHTML='<div style="padding:20px;color:var(--t3);font-size:12px">Erreur de chargement.</div>';}
   }
 }
 
@@ -7299,33 +7354,7 @@ async function modifierKit(id){}
 function supprimerKit(id){}
 async function ajouterEquipement(){kitsModalCreerMateriel();}
 
-// ── Photo role — dashboard kits perso ────────────────────────────────────────
-async function loadPhotoKits(){
-  const el=document.getElementById('photo-kits-real');if(!el)return;
-  const uid=localStorage.getItem('sv_uid');
-  try{
-    const resa=await sbFetch('kit_reservations?select=id,statut,heure_sortie,heure_retour_prevue,consignes,kits(id,nom,type_kit),prestations(reference,date_prestation,clients(nom))&responsable_id=eq.'+uid+'&statut=not.in.(retourne,clôture,annule)&order=created_at.desc&limit=10').catch(()=>[]);
-    const items=Array.isArray(resa)?resa:[];
-    if(!items.length){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:12.5px">Aucun kit attribué.</div>';return;}
-    const KIT_IC2={Photo:'📷',Vidéo:'🎥',Drone:'🚁',Son:'🎙️',Streaming:'📡'};
-    el.innerHTML=items.map(r=>{
-      const st=KIT_ST_CFG[r.statut]||KIT_ST_CFG.reserve;
-      const pre=r.prestations;const k=r.kits;
-      const ic=KIT_IC2[k?.type_kit]||'📦';
-      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05)">
-        <span style="font-size:20px">${ic}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--t1)">${k?.nom||'Kit'}</div>
-          <div style="font-size:11px;color:var(--t3)">${pre?.clients?.nom||'—'}${pre?.date_prestation?' · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          <span class="kbadge" style="background:${st.bg};border:1px solid ${st.br};color:${st.tx}">${st.lb}</span>
-          <button onclick="kitsControleOuvrirDepuisResa('${r.id}')" style="padding:4px 10px;font-size:10.5px;font-weight:600;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-family:var(--ff)">Contrôle →</button>
-        </div>
-      </div>`;
-    }).join('');
-  }catch(e){el.innerHTML='<div style="padding:14px;color:var(--er);font-size:12px">Erreur de chargement.</div>';}
-}
+// ── Photo role — kits perso (voir implémentation complète dans "── Kits photographe") ─
 
 async function kitsControleOuvrirDepuisResa(resaId){
   try{
@@ -7999,6 +8028,47 @@ function modalNouveauDevis(){
       </div>
       <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
   }).catch(()=>{openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb"><p style="color:var(--er)">Impossible de charger les clients.</p></div>`);});
+}
+
+async function modalCreerDevisRapide(clientId,clientNom){
+  const clients=await sbFetch('clients?select=id,nom&order=nom.asc').catch(()=>[]);
+  const opts=(clients||[]).map(c=>`<option value="${c.id}"${c.id===clientId?' selected':''}>${c.nom}</option>`).join('');
+  const today=new Date().toISOString().slice(0,10);
+  const templates=[
+    {lb:'Couverture match (1 rencontre)',note:'Couverture photographique + vidéo d\'une rencontre sportive. Livraison des photos et highlights sous 48h.',ht:250},
+    {lb:'Pack saison (10 matchs)',note:'Couverture photo et vidéo de 10 rencontres sur la saison. Highlights + galerie photos après chaque match.',ht:2000},
+    {lb:'Pack annuel club partenaire',note:'Partenariat annuel SportVision : couverture de toutes les rencontres à domicile, galerie en ligne, highlights vidéo, contenu réseaux sociaux.',ht:4500},
+    {lb:'Reportage événement spécial',note:'Reportage photo et vidéo pour un événement club (tournoi, gala, remise de trophées). Livraison sous 72h.',ht:400},
+  ];
+  openModal(`<div class="mh"><div class="mt">Devis rapide — ${clientNom||'Club'}</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi">${opts}</select></div>
+      <div>
+        <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Templates rapides</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          ${templates.map((t,i)=>`<button onclick="devisRapideFillTemplate(${i})" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);cursor:pointer;text-align:left;font-family:var(--ff);transition:border-color .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--b1)'">
+            <span style="font-size:12px;font-weight:500;color:var(--t1)">${t.lb}</span>
+            <span style="font-size:12px;font-weight:700;color:var(--wa);font-variant-numeric:tabular-nums;flex-shrink:0;margin-left:10px">${t.ht} €</span>
+          </button>`).join('')}
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Description / Notes</label><textarea id="dv-notes" class="fi" rows="3" placeholder="Détail du devis…"></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Montant HT (€)</label><input type="number" id="dv-ht" class="fi" placeholder="0.00" step="0.01"></div>
+        <div class="fg"><label class="fl">TVA (%)</label><input type="number" id="dv-tva" class="fi" value="20"></div>
+        <div class="fg"><label class="fl">Validité (j)</label><input type="number" id="dv-validite" class="fi" value="30"></div>
+      </div>
+      <div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-envoi" class="fi" value="${today}"></div>
+      <div id="dv-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
+  window._devisRapideTemplates=templates;
+}
+
+function devisRapideFillTemplate(i){
+  const t=(window._devisRapideTemplates||[])[i];if(!t)return;
+  const n=document.getElementById('dv-notes');if(n)n.value=t.note;
+  const h=document.getElementById('dv-ht');if(h)h.value=t.ht;
 }
 
 async function creerDevis(){
