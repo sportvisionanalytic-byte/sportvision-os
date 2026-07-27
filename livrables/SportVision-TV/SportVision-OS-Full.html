@@ -275,6 +275,9 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   .l-form-wrap{gap:20px}
 }
 @media(max-width:768px){
+  /* Messagerie mobile : contacts panel plein écran par défaut */
+  #msg-contacts-panel{width:100%!important;min-width:0!important;border-right:none!important}
+  #msg-conv-panel{display:none!important}
   :root{--sw:0px}
   .sb{display:none;position:fixed;left:0;top:0;height:100dvh;z-index:300;width:260px;box-shadow:6px 0 40px rgba(0,0,0,.6)}
   .sb.mob-open{display:flex}
@@ -855,55 +858,11 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Incidents</div><button class="btn bp bs" onclick="modalSignalerIncident()">+ Signaler</button></div>
     <div id="incidents-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
-  'prod.msg':()=>`
-    <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
-    <div id="msg-real">
-      <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
-      <div class="cd"><div style="display:flex;gap:10px;padding:14px 18px">
-        <input type="text" id="msg-input" class="fi" style="flex:1" placeholder="Écrire un message à l'équipe…" onkeydown="if(event.key==='Enter')envoyerMessage()">
-        <button class="btn bp" onclick="envoyerMessage()">Envoyer</button>
-      </div></div>
-    </div>`,
-
-  'admin.msg':()=>`
-    <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
-    <div id="msg-real">
-      <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
-      <div class="cd"><div style="display:flex;gap:10px;padding:14px 18px">
-        <input type="text" id="msg-input" class="fi" style="flex:1" placeholder="Écrire un message à l'équipe…" onkeydown="if(event.key==='Enter')envoyerMessage()">
-        <button class="btn bp" onclick="envoyerMessage()">Envoyer</button>
-      </div></div>
-    </div>`,
-
-  'sec.msg':()=>`
-    <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
-    <div id="msg-real">
-      <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
-      <div class="cd"><div style="display:flex;gap:10px;padding:14px 18px">
-        <input type="text" id="msg-input" class="fi" style="flex:1" placeholder="Écrire un message à l'équipe…" onkeydown="if(event.key==='Enter')envoyerMessage()">
-        <button class="btn bp" onclick="envoyerMessage()">Envoyer</button>
-      </div></div>
-    </div>`,
-
-  'photo.msg':()=>`
-    <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
-    <div id="msg-real">
-      <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
-      <div class="cd"><div style="display:flex;gap:10px;padding:14px 18px">
-        <input type="text" id="msg-input" class="fi" style="flex:1" placeholder="Écrire un message à l'équipe…" onkeydown="if(event.key==='Enter')envoyerMessage()">
-        <button class="btn bp" onclick="envoyerMessage()">Envoyer</button>
-      </div></div>
-    </div>`,
-
-  'cm.msg':()=>`
-    <div class="sh"><div class="sh-t">Messagerie équipe</div></div>
-    <div id="msg-real">
-      <div id="msg-list" style="max-height:60vh;overflow-y:auto;margin-bottom:13px"></div>
-      <div class="cd"><div style="display:flex;gap:10px;padding:14px 18px">
-        <input type="text" id="msg-input" class="fi" style="flex:1" placeholder="Écrire un message à l'équipe…" onkeydown="if(event.key==='Enter')envoyerMessage()">
-        <button class="btn bp" onclick="envoyerMessage()">Envoyer</button>
-      </div></div>
-    </div>`,
+  'prod.msg':()=>buildMsgShell(),
+  'admin.msg':()=>buildMsgShell(),
+  'sec.msg':()=>buildMsgShell(),
+  'photo.msg':()=>buildMsgShell(),
+  'cm.msg':()=>buildMsgShell(),
 
   // ── PHOTOGRAPHE ─────────────────────────
   'photo.dash':()=>`
@@ -3915,75 +3874,174 @@ async function avancerPipeline(id,statut){
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
-// ── Messagerie équipe (prod.msg) ─────────────────────────────────────────────
+// ── MESSAGERIE ────────────────────────────────────────────────────────────────
 let _msgInterval=null;
-const MSG_MIGRATION_KEY='sv_msg_migrated';
+let _msgConv='team';     // 'team' | uid du destinataire
+let _msgProfiles={};     // uid → {n, ini, role}
+let _msgMobView='list';  // 'list' | 'conv' (mobile only)
+
+const ROLE_COLORS={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
+
+function buildMsgShell(){
+  return`<div style="display:flex;height:calc(100dvh - 99px);border:1px solid var(--b1);border-radius:var(--rc);overflow:hidden;background:var(--bg)">
+    <!-- Contacts -->
+    <div id="msg-contacts-panel" style="width:270px;min-width:270px;border-right:1px solid var(--b1);display:flex;flex-direction:column;background:var(--s2);flex-shrink:0">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:10px">
+        <div style="font-size:14px;font-weight:700;color:var(--t1);flex:1">Messages</div>
+        <button onclick="msgNewConv()" style="padding:5px 10px;font-size:11px;font-weight:600;background:rgba(54,107,255,.12);border:1px solid rgba(54,107,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Nouveau</button>
+      </div>
+      <div id="msg-contact-list" style="flex:1;overflow-y:auto;padding:8px 0">
+        <div style="padding:20px;text-align:center;color:var(--t3);font-size:12px">Chargement…</div>
+      </div>
+    </div>
+    <!-- Conversation -->
+    <div id="msg-conv-panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
+      <div id="msg-conv-header" style="padding:12px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:12px;background:var(--s2);flex-shrink:0">
+        <button id="msg-back-btn" onclick="msgShowList()" style="display:none;background:none;border:none;color:var(--t2);cursor:pointer;padding:4px;border-radius:6px;font-size:16px;line-height:1">‹</button>
+        <div id="msg-conv-title" style="font-size:14px;font-weight:600;color:var(--t1)">Chargement…</div>
+      </div>
+      <div id="msg-list" style="flex:1;overflow-y:auto;padding:8px 0"></div>
+      <div style="border-top:1px solid var(--b1);padding:12px 16px;display:flex;gap:10px;background:var(--s2);flex-shrink:0">
+        <input type="text" id="msg-input" class="fi" style="flex:1;height:40px;font-size:14px" placeholder="Écrire un message…" onkeydown="if(event.key==='Enter')envoyerMessage()">
+        <button class="btn bp" style="height:40px" onclick="envoyerMessage()">Envoyer</button>
+      </div>
+    </div>
+  </div>`;
+}
 
 async function loadMsg(){
-  const el=document.getElementById('msg-list');
-  if(!el)return;
-  if(_msgInterval)clearInterval(_msgInterval);
+  if(_msgInterval){clearInterval(_msgInterval);_msgInterval=null;}
+  const uid=localStorage.getItem('sv_uid');
+  if(!uid)return;
+  try{
+    const profiles=await sbFetch('profiles?select=id,prenom,nom,role&order=prenom.asc');
+    _msgProfiles={};
+    (profiles||[]).forEach(p=>{
+      const n=([p.prenom,p.nom].filter(Boolean).join(' '))||'Membre';
+      const ini=((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase()||'?';
+      _msgProfiles[p.id]={n,ini,role:p.role};
+    });
+    _renderMsgContacts(uid);
+    _msgConv='team';
+    await _renderMsgConv(uid);
+    _msgInterval=setInterval(()=>_renderMsgConv(uid),15000);
+  }catch(e){console.error('loadMsg',e);}
+}
 
-  // Bannière migration si jamais dismissée
-  const msgReal=document.getElementById('msg-real');
-  const migDone=localStorage.getItem(MSG_MIGRATION_KEY)==='1';
-  if(!migDone&&msgReal&&!document.getElementById('msg-migration-banner')){
-    const banner=document.createElement('div');
-    banner.id='msg-migration-banner';
-    banner.style.cssText='background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:12px;';
-    banner.innerHTML=`<div style="color:var(--wa);font-size:18px;flex-shrink:0">⚠</div>
-      <div style="flex:1">
-        <div style="font-size:12px;font-weight:600;color:var(--wa);margin-bottom:3px">Migration SQL requise pour la messagerie d'équipe</div>
-        <div style="font-size:11px;color:var(--t3);margin-bottom:8px">Sans cette migration, chaque membre ne voit que ses propres messages.</div>
-        <div style="background:var(--bg);border:1px solid var(--b1);border-radius:6px;padding:8px 10px;font-family:monospace;font-size:10.5px;color:var(--t2);user-select:all;margin-bottom:8px">create policy "notifs_messages_broadcast" on notifications for select using (type = 'message' and exists (select 1 from profiles where id = auth.uid()));</div>
-        <div style="display:flex;gap:8px">
-          <button onclick="window.open('https://supabase.com/dashboard/project/lulgezzpvrlbftbykzrc/sql/new','_blank')" style="padding:5px 12px;font-size:11px;background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.3);border-radius:var(--rp);color:var(--wa);cursor:pointer">Ouvrir SQL Editor →</button>
-          <button onclick="localStorage.setItem('${MSG_MIGRATION_KEY}','1');document.getElementById('msg-migration-banner')?.remove();loadMsg()" style="padding:5px 12px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer">Migration faite ✓</button>
+function _renderMsgContacts(myUid){
+  const el=document.getElementById('msg-contact-list');
+  if(!el)return;
+  const others=Object.entries(_msgProfiles).filter(([id])=>id!==myUid);
+  const teamActive=_msgConv==='team';
+  el.innerHTML=
+    `<div onclick="msgOpenConv('team')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;border-radius:8px;margin:0 6px;background:${teamActive?'rgba(54,107,255,.12)':'transparent'};border:1px solid ${teamActive?'rgba(54,107,255,.25)':'transparent'}">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--gr);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🌐</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:${teamActive?'var(--acc)':'var(--t1)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Équipe</div>
+        <div style="font-size:11px;color:var(--t3)">Broadcast — tout le monde</div>
+      </div>
+    </div>
+    <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);padding:10px 16px 4px">Messages privés</div>`+
+    others.map(([id,p])=>{
+      const isActive=_msgConv===id;
+      const clr=ROLE_COLORS[p.role]||'var(--acc)';
+      return`<div onclick="msgOpenConv('${id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;border-radius:8px;margin:0 6px;background:${isActive?'rgba(54,107,255,.12)':'transparent'};border:1px solid ${isActive?'rgba(54,107,255,.25)':'transparent'}">
+        <div style="width:36px;height:36px;border-radius:50%;background:${clr}22;border:1.5px solid ${clr}44;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${clr};flex-shrink:0">${p.ini}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500;color:${isActive?'var(--acc)':'var(--t1)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.n}</div>
+          <div style="font-size:11px;color:var(--t3);text-transform:capitalize">${p.role||'—'}</div>
         </div>
       </div>`;
-    msgReal.insertBefore(banner,msgReal.firstChild);
-  }
+    }).join('');
+}
 
-  const renderMessages=async()=>{
-    const msgEl=document.getElementById('msg-list');
-    if(!msgEl)return;
-    try{
-      const [msgs,profiles]=await Promise.all([
-        sbFetch('notifications?select=id,titre,message,created_at&type=eq.message&order=created_at.asc&limit=100'),
-        sbFetch('profiles?select=id,prenom,nom'),
-      ]);
-      const pmap={};(profiles||[]).forEach(p=>{pmap[p.id]={n:(p.prenom||'')+' '+(p.nom||'').trim(),ini:((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase()||'?'};});
-      const uid=localStorage.getItem('sv_uid');
-      if(!msgs||!msgs.length){
-        msgEl.innerHTML='<div style="padding:60px 20px;text-align:center;color:var(--t3);font-size:13px">Aucun message pour l\'instant. Envoyez le premier !</div>';
-        return;
-      }
-      let lastDay='';
-      const items=msgs.map(m=>{
-        const isMe=m.titre===uid;
-        const who=pmap[m.titre];
-        const dt=new Date(m.created_at);
-        const dayKey=dt.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
-        const when=dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-        const ini=who?.ini||'?';
-        const name=who?.n||'Membre';
-        const sep=dayKey!==lastDay?`<div style="text-align:center;margin:12px 0"><span style="font-size:10px;color:var(--t3);background:var(--s1);padding:2px 10px;border-radius:20px;border:1px solid var(--b1)">${dayKey}</span></div>`:'';
-        lastDay=dayKey;
-        return sep+`<div style="display:flex;gap:10px;padding:6px 16px;align-items:flex-end;${isMe?'flex-direction:row-reverse':''}">
-          <div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':'rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px">${ini}</div>
-          <div style="max-width:72%;${isMe?'align-items:flex-end;':'align-items:flex-start;'}display:flex;flex-direction:column;gap:2px">
-            ${!isMe?`<div style="font-size:10px;color:var(--t3);margin-left:2px">${name}</div>`:''}
-            <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.08)'};padding:8px 12px;border-radius:${isMe?'14px 14px 3px 14px':'14px 14px 14px 3px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.4;word-break:break-word">${m.message}</div>
-            <div style="font-size:10px;color:var(--t3);margin-${isMe?'right':'left'}:2px">${when}</div>
-          </div>
+async function _renderMsgConv(myUid){
+  const el=document.getElementById('msg-list');
+  const hdr=document.getElementById('msg-conv-title');
+  if(!el)return;
+  const isTeam=_msgConv==='team';
+  if(hdr){
+    if(isTeam) hdr.innerHTML='<span style="color:var(--t1)">🌐 Équipe SportVision</span><span style="font-size:11px;color:var(--t3);margin-left:8px">Broadcast — visible par tous</span>';
+    else{const p=_msgProfiles[_msgConv];hdr.textContent=p?.n||'Conversation';}
+  }
+  try{
+    let msgs=[];
+    if(isTeam){
+      msgs=await sbFetch('notifications?select=id,titre,message,created_at&type=eq.message&order=created_at.asc&limit=200');
+    }else{
+      const raw=await sbFetch('notifications?select=id,titre,message,created_at,prestation_id&type=eq.message_prive&destinataire_id=eq.'+myUid+'&order=created_at.asc&limit=200');
+      const partner=_msgConv;
+      msgs=(raw||[]).filter(m=>m.titre===partner||(m.titre===myUid&&m.prestation_id===partner));
+    }
+    if(!Array.isArray(msgs)||!msgs.length){
+      el.innerHTML='<div style="padding:60px 20px;text-align:center;color:var(--t3);font-size:13px">'+(isTeam?'Aucun message d\'équipe. Envoyez le premier !':'Envoyez votre premier message privé.')+'</div>';
+      return;
+    }
+    let lastDay='';
+    el.innerHTML=msgs.map(m=>{
+      const isMe=m.titre===myUid;
+      const who=_msgProfiles[m.titre];
+      const dt=new Date(m.created_at);
+      const dayKey=dt.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+      const when=dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      const ini=who?.ini||'?';
+      const name=who?.n||'Membre';
+      const clr=ROLE_COLORS[who?.role]||'var(--acc)';
+      const sep=dayKey!==lastDay?`<div style="text-align:center;margin:12px 0"><span style="font-size:10px;color:var(--t3);background:var(--s2);padding:3px 12px;border-radius:20px;border:1px solid var(--b1)">${dayKey}</span></div>`:'';
+      lastDay=dayKey;
+      return sep+`<div style="display:flex;gap:9px;padding:4px 16px;align-items:flex-end;${isMe?'flex-direction:row-reverse':''}">
+        <div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':clr+'22'};border:${isMe?'none':'1px solid '+clr+'44'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px;color:${isMe?'#fff':clr}">${ini}</div>
+        <div style="max-width:68%;display:flex;flex-direction:column;gap:2px;align-items:${isMe?'flex-end':'flex-start'}">
+          ${!isMe&&isTeam?`<div style="font-size:10px;color:var(--t3);margin-left:3px">${name}</div>`:''}
+          <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.07)'};padding:9px 13px;border-radius:${isMe?'16px 16px 4px 16px':'16px 16px 16px 4px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.45;word-break:break-word">${m.message}</div>
+          <div style="font-size:10px;color:var(--t3);margin-${isMe?'right':'left'}:3px">${when}</div>
+        </div>
+      </div>`;
+    }).join('');
+    setTimeout(()=>{el.scrollTop=el.scrollHeight;},40);
+  }catch(e){console.error('_renderMsgConv',e);}
+}
+
+function msgOpenConv(uid){
+  _msgConv=uid;
+  const myUid=localStorage.getItem('sv_uid');
+  _renderMsgContacts(myUid);
+  _renderMsgConv(myUid);
+  // mobile: afficher la conversation
+  const cp=document.getElementById('msg-contacts-panel');
+  const cv=document.getElementById('msg-conv-panel');
+  const bb=document.getElementById('msg-back-btn');
+  if(window.innerWidth<=768){
+    if(cp)cp.style.display='none';
+    if(cv)cv.style.display='flex';
+    if(bb)bb.style.display='';
+  }
+  document.getElementById('msg-input')?.focus();
+}
+
+function msgShowList(){
+  const cp=document.getElementById('msg-contacts-panel');
+  const cv=document.getElementById('msg-conv-panel');
+  const bb=document.getElementById('msg-back-btn');
+  if(cp)cp.style.display='flex';
+  if(cv)cv.style.display='none';
+  if(bb)bb.style.display='none';
+}
+
+function msgNewConv(){
+  const myUid=localStorage.getItem('sv_uid');
+  const others=Object.entries(_msgProfiles).filter(([id])=>id!==myUid);
+  openModal(`<div class="mh"><div class="mt">Nouvelle conversation</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Choisir un membre de l'équipe :</div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      ${others.map(([id,p])=>{
+        const clr=ROLE_COLORS[p.role]||'var(--acc)';
+        return`<div onclick="closeModal();msgOpenConv('${id}')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:var(--rb);cursor:pointer;background:var(--s2);border:1px solid var(--b1);margin-bottom:4px" onmouseover="this.style.borderColor='rgba(54,107,255,.3)'" onmouseout="this.style.borderColor='var(--b1)'">
+          <div style="width:36px;height:36px;border-radius:50%;background:${clr}22;border:1.5px solid ${clr}44;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${clr};flex-shrink:0">${p.ini}</div>
+          <div><div style="font-size:13px;font-weight:600;color:var(--t1)">${p.n}</div><div style="font-size:11px;color:var(--t3);text-transform:capitalize">${p.role}</div></div>
         </div>`;
-      }).join('');
-      msgEl.innerHTML=items;
-      setTimeout(()=>{msgEl.scrollTop=msgEl.scrollHeight;},50);
-    }catch(e){console.error('loadMsg',e);}
-  };
-  await renderMessages();
-  _msgInterval=setInterval(renderMessages,15000);
+      }).join('')}
+    </div>`);
 }
 
 async function envoyerMessage(){
@@ -3992,10 +4050,21 @@ async function envoyerMessage(){
   if(!txt)return;
   const uid=localStorage.getItem('sv_uid');
   inp.value='';
+  inp.focus();
   try{
-    await sbFetch('notifications',{method:'POST',body:{type:'message',titre:uid,message:txt,destinataire_id:uid,lue:false}});
-    await loadMsg();
-  }catch(e){}
+    if(_msgConv==='team'){
+      await sbFetch('notifications',{method:'POST',body:{type:'message',titre:uid,message:txt,destinataire_id:uid,lue:true}});
+    }else{
+      const recipient=_msgConv;
+      await Promise.all([
+        // Copie pour le destinataire
+        sbFetch('notifications',{method:'POST',body:{type:'message_prive',titre:uid,message:txt,destinataire_id:recipient,prestation_id:uid,lue:false}}),
+        // Copie pour l'expéditeur (sent box) — prestation_id = partner uid pour retrouver la conversation
+        sbFetch('notifications',{method:'POST',body:{type:'message_prive',titre:uid,message:txt,destinataire_id:uid,prestation_id:recipient,lue:true}}),
+      ]);
+    }
+    _renderMsgConv(uid);
+  }catch(e){toast('Erreur lors de l\'envoi.','err');}
 }
 
 // ── Médias / missions photo ───────────────────────────────────────────────────
