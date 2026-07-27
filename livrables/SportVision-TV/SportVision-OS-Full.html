@@ -3403,7 +3403,7 @@ async function loadAdminDash(){
 
   // KPIs
   const prestJour=(todayPre||[]).length;
-  const cliActifs=(allCli||[]).filter(c=>c.statut==='client').length;
+  const cliActifs=(allCli||[]).filter(c=>['client','partenaire'].includes(c.statut)).length;
   const incOuverts=(allInc||[]).length;
   set('kpi-jour',prestJour);
   set('kpi-jour-s',prestJour>1?'prestations':'prestation');
@@ -8872,7 +8872,7 @@ async function loadCmDash(){
       sbFetch(`prestations?select=id,reference,type_prestation,date_prestation,clients(nom)&date_prestation=gte.${now.toISOString().slice(0,10)}&date_prestation=lte.${in14.toISOString().slice(0,10)}&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=10`),
     ]);
     const list=clients||[];
-    const actifs=list.filter(c=>c.statut==='client').length;
+    const actifs=list.filter(c=>['client','partenaire'].includes(c.statut)).length;
     const prospects=list.filter(c=>c.statut==='prospect'||c.statut==='qualifié').length;
     const s1=document.getElementById('cm-kpi-cl');if(s1)s1.textContent=actifs;
     const s2=document.getElementById('cm-kpi-pre');if(s2)s2.textContent=(preMois||[]).length;
@@ -8892,7 +8892,7 @@ async function loadCmDash(){
     }
     const ec=document.getElementById('cm-dash-cl');
     if(ec){
-      const cl_actifs=list.filter(c=>c.statut==='client').slice(0,6);
+      const cl_actifs=list.filter(c=>['client','partenaire'].includes(c.statut)).slice(0,6);
       ec.innerHTML=cl_actifs.length?'<div class="cd-b">'+cl_actifs.map(c=>`
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClientById('${c.id}')">
           <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${c.nom}</div>
@@ -11397,7 +11397,7 @@ async function loadSecDash(){
       sbFetch('contrats?select=id,statut&limit=500').catch(()=>[]),
       uid?sbFetch('notifications?select=id&type=eq.tache&lue=eq.false&destinataire_id=eq.'+uid).catch(()=>[]):[],
     ]);
-    const actifs=(clients||[]).filter(c=>c.statut==='client').length;
+    const actifs=(clients||[]).filter(c=>['client','partenaire'].includes(c.statut)).length;
     const demandes=(pres||[]).filter(p=>['demande_reçue','à_qualifier','offre_en_préparation'].includes(p.statut)).length;
     const devisBrouillon=(devis||[]).filter(d=>d.statut==='brouillon'||d.statut==='en_cours').length;
     const acomptes=(pres||[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
@@ -15895,7 +15895,7 @@ async function loadMobileAdminDash(ct){
     const todayPre=list.filter(p=>p.date_prestation===today);
     const caM=list.filter(p=>p.date_prestation>=mStart&&['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const aEnc=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
-    const cliActifs=(cli||[]).filter(c=>c.statut==='client').length;
+    const cliActifs=(cli||[]).filter(c=>['client','partenaire'].includes(c.statut)).length;
     const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
     let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div><div style="font-size:20px;font-weight:800;color:var(--t1)">Bonjour ${prenom} 👋</div>
@@ -15945,7 +15945,7 @@ async function loadMobileCmDash(ct){
       sbFetch('clients?select=id,statut&limit=500').catch(()=>[]),
       sbFetch('prestations?select=id,reference,type_prestation,date_prestation,clients(nom)&date_prestation=gte.'+today+'&date_prestation=lte.'+in14.toISOString().slice(0,10)+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=10').catch(()=>[]),
     ]);
-    const actifs=(clients||[]).filter(c=>c.statut==='client').length;
+    const actifs=(clients||[]).filter(c=>['client','partenaire'].includes(c.statut)).length;
     const prospects=(clients||[]).filter(c=>c.statut==='prospect'||c.statut==='qualifié').length;
     let html=`<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:800;color:var(--t1)">Community Manager</div></div>
     <div class="mkpi-strip">
@@ -15981,13 +15981,13 @@ async function loadMobileComDash(ct){
     ]);
     const prospects=(clients||[]).filter(c=>c.statut==='prospect').length;
     const qualifies=(clients||[]).filter(c=>c.statut==='qualifié').length;
-    const actifs=(clients||[]).filter(c=>c.statut==='client').length;
+    const actifs=(clients||[]).filter(c=>c.statut==='partenaire').length;
     const devisEnv=(devis||[]).filter(d=>['envoyé','en_attente'].includes(d.statut)).length;
     let html=`<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:800;color:var(--t1)">Commercial</div></div>
     <div class="mkpi-strip">
       <div class="mkpi" style="--mkl:var(--wa)"><div class="mkpi-label">Prospects</div><div class="mkpi-val">${prospects}</div><div class="mkpi-sub">pipeline</div></div>
       <div class="mkpi" style="--mkl:#7C4DFF"><div class="mkpi-label">Qualifiés</div><div class="mkpi-val">${qualifies}</div><div class="mkpi-sub">à proposer</div></div>
-      <div class="mkpi" style="--mkl:var(--ok)"><div class="mkpi-label">Clients</div><div class="mkpi-val">${actifs}</div><div class="mkpi-sub">actifs</div></div>
+      <div class="mkpi" style="--mkl:var(--ok)"><div class="mkpi-label">Partenaires</div><div class="mkpi-val">${actifs}</div><div class="mkpi-sub">signés</div></div>
       <div class="mkpi" style="--mkl:var(--acc)"><div class="mkpi-label">Devis</div><div class="mkpi-val">${devisEnv}</div><div class="mkpi-sub">en attente</div></div>
     </div>
     <div class="mob-actions">
