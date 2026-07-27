@@ -669,6 +669,7 @@ const NAV={
     {id:'pipeline',lb:'Prospection',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
+    {id:'documents',lb:'Centre documentaire',ic:'doc'},
     {id:'users',lb:'Utilisateurs & accès',ic:'col'},
     {id:'grades',lb:'Grades & XP',ic:'target'},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
@@ -776,6 +777,7 @@ const NAV={
     {id:'acomptes',lb:'Acomptes',ic:'fin'},
     {id:'impayes',lb:'Impayés',ic:'alert'},
     {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
+    {id:'documents',lb:'Centre documentaire',ic:'doc'},
     {type:'sep',lb:'Paiements'},
     {id:'paiements',lb:'Paiements équipe',ic:'fin'},
     {id:'rem',lb:'Rémunérations',ic:'col'},
@@ -1117,9 +1119,8 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Tâches</div><button class="btn bp bs" onclick="modalNouvelleTache()">+ Tâche</button></div>
     <div id="taches-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
-  'sec.docs':()=>`
-    <div class="sh"><div class="sh-t">Documents</div></div>
-    <div id="docs-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+  'sec.docs':()=>_documentsView('sec'),
+  'sec.documents':()=>_documentsView('sec'),
 
   // ── PRODUCTION ──────────────────────────
   'prod.dash':()=>`
@@ -1837,6 +1838,8 @@ const VIEWS={
     </div>
     <div id="compta-avoirs-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  'compta.documents':()=>_documentsView('compta'),
+
   'compta.depenses':()=>`
     <div class="sh"><div class="sh-t">Dépenses</div></div>
     <div class="g3" style="margin-bottom:13px">
@@ -1942,6 +1945,8 @@ const VIEWS={
     </div>
     <div id="contrats-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  'admin.documents':()=>_documentsView('admin'),
+
   // ── UTILISATEURS & ACCÈS ─────────────────
   'admin.users':()=>`
     <div class="sh"><div class="sh-t">Utilisateurs & accès</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Ajouter un membre</button></div>
@@ -2039,7 +2044,7 @@ function filterPre(){
 
 // ── FALLBACK VIEW ────────────────────────
 function fallbackView(role,view){
-  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Analytics',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs'};
+  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',documents:'Centre documentaire',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Analytics',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs',avoirs:'Avoirs & remises',contrats:'Contrats'};
   return`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:14px;color:var(--t3);text-align:center">
     <div style="font-size:44px;opacity:.2">📋</div>
     <div style="font-size:15px;font-weight:650;color:var(--t2)">${labels[view]||view}</div>
@@ -2646,7 +2651,7 @@ async function loadViewData(role,view){
   if(['prod','admin','sec','photo','cm'].includes(role)&&view==='msg') await loadMsg();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
-  if(role==='sec'&&view==='docs') await loadDocs();
+  if(view==='documents'||((role==='sec'||role==='admin'||role==='compta')&&view==='docs')) await loadDocuments(role);
   if(role==='compta'&&view==='rapprochement') await loadRapprochement();
   if(view==='set') await loadSettings();
   if(role==='admin'&&view==='rapport'){_rapportOffset=0;await loadRapport();}
@@ -6215,6 +6220,482 @@ async function kitsControleOuvrirDepuisResa(resaId){
 }
 
 
+// ── Centre Documentaire ───────────────────────────────────────────────────────
+let _docsTab='tous',_docsCache={devis:[],contrats:[],factures:[],avoirs:[]};
+
+const DEVIS_STATUTS={
+  brouillon:{lb:'Brouillon',cl:'#8891A8',bc:'rgba(136,145,168,.12)'},
+  'envoyé':{lb:'Envoyé',cl:'#366BFF',bc:'rgba(54,107,255,.12)'},
+  'en_attente':{lb:'En attente',cl:'#F5A524',bc:'rgba(245,165,36,.12)'},
+  'accepté':{lb:'Accepté',cl:'#2ECC8A',bc:'rgba(46,204,138,.12)'},
+  'refusé':{lb:'Refusé',cl:'#F0445E',bc:'rgba(240,68,94,.12)'},
+  'expiré':{lb:'Expiré',cl:'#8891A8',bc:'rgba(136,145,168,.12)'},
+};
+const CONTRAT_STATUTS={
+  actif:{lb:'Actif',cl:'#2ECC8A',bc:'rgba(46,204,138,.12)'},
+  'en_attente':{lb:'En attente',cl:'#F5A524',bc:'rgba(245,165,36,.12)'},
+  suspendu:{lb:'Suspendu',cl:'#8891A8',bc:'rgba(136,145,168,.12)'},
+  'résilié':{lb:'Résilié',cl:'#F0445E',bc:'rgba(240,68,94,.12)'},
+  'expiré':{lb:'Expiré',cl:'#8891A8',bc:'rgba(136,145,168,.12)'},
+  brouillon:{lb:'Brouillon',cl:'#8891A8',bc:'rgba(136,145,168,.12)'},
+};
+const FACT_STATUTS={
+  'non_facturée':{lb:'Non facturée',cl:'#8891A8',bc:'rgba(136,145,168,.12)'},
+  'facturée':{lb:'Facturée',cl:'#366BFF',bc:'rgba(54,107,255,.12)'},
+  'partiellement_payée':{lb:'Part. payée',cl:'#F5A524',bc:'rgba(245,165,36,.12)'},
+  'payée':{lb:'Payée',cl:'#2ECC8A',bc:'rgba(46,204,138,.12)'},
+  'en_retard':{lb:'En retard',cl:'#F0445E',bc:'rgba(240,68,94,.12)'},
+};
+const AVOIR_STATUTS={
+  emis:{lb:'Émis',cl:'#F5A524',bc:'rgba(245,165,36,.12)'},
+  comptabilise:{lb:'Comptabilisé',cl:'#366BFF',bc:'rgba(54,107,255,.12)'},
+  rembourse:{lb:'Remboursé',cl:'#2ECC8A',bc:'rgba(46,204,138,.12)'},
+};
+const CONTRAT_TYPES_LB={
+  abonnement_mensuel:'Abonnement mensuel',abonnement_annuel:'Abonnement annuel',
+  forfait_saison:'Forfait saison',forfait_evenement:'Forfait événement',
+  partenariat:'Partenariat',prestations_ponctuelles:'Ponctuel',autre:'Autre',
+};
+
+function _documentsView(role){
+  const canCreateDevis=role==='admin'||role==='sec'||role==='com';
+  const canCreateAvoir=role==='admin'||role==='compta';
+  return`<div class="sh">
+  <div class="sh-t">Centre documentaire</div>
+  <div class="sh-r" style="display:flex;gap:6px">
+    ${canCreateDevis?`<button class="btn bg2 bs" onclick="modalNouveauDevis()">+ Devis</button>`:''}
+    ${canCreateAvoir?`<button class="btn bp bs" onclick="docsModalNouvelAvoir()">+ Avoir</button>`:''}
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
+  <div class="fs"><div class="fs-l">Devis en attente</div><div class="fs-v" id="doc-kpi-devis" style="color:var(--acc)">—</div></div>
+  <div class="fs"><div class="fs-l">Contrats actifs</div><div class="fs-v" id="doc-kpi-contrats" style="color:var(--ok)">—</div></div>
+  <div class="fs" style="border-color:rgba(245,165,36,.3)"><div class="fs-l">Factures à encaisser</div><div class="fs-v" id="doc-kpi-fact" style="color:#F5A524">—</div></div>
+  <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Avoirs émis</div><div class="fs-v" id="doc-kpi-avoirs" style="color:var(--er)">—</div></div>
+</div>
+<div style="overflow-x:auto;scrollbar-width:none;margin-bottom:16px">
+  <div style="display:flex;gap:2px;padding:3px;background:var(--s2);border-radius:var(--rp);width:max-content">
+    ${[['tous','Tous'],['devis','Devis'],['contrats','Contrats'],['factures','Factures'],['avoirs','Avoirs'],['journal','Journal']].map(([t,lb])=>`<button class="docs-tab-btn" data-tab="${t}" onclick="docsSetTab('${t}')" style="padding:6px 16px;border:none;border-radius:calc(var(--rp) - 2px);background:${t==='tous'?'var(--s1)':'transparent'};color:${t==='tous'?'var(--t1)':'var(--t3)'};font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap">${lb}</button>`).join('')}
+  </div>
+</div>
+<div id="docs-content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+
+async function loadDocuments(role){
+  _docsTab='tous';
+  document.querySelectorAll('.docs-tab-btn').forEach(el=>{
+    const isActive=el.dataset.tab==='tous';
+    el.style.background=isActive?'var(--s1)':'transparent';
+    el.style.color=isActive?'var(--t1)':'var(--t3)';
+  });
+  await docsLoadAll();
+  docsUpdateKPIs();
+  await docsRenderTab();
+}
+
+async function docsLoadAll(){
+  try{
+    const [devisData,contratsData,facturesData,avoirsData]=await Promise.all([
+      sbFetch('devis?select=id,numero,statut,total_ttc,date_envoi,date_expiration,clients(id,nom),created_at&order=created_at.desc&limit=200'),
+      sbFetch('contrats?select=id,type_contrat,statut,montant_mensuel,frequence,date_debut,date_fin,clients(nom),created_at&order=created_at.desc&limit=200').catch(()=>[]),
+      sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom),updated_at&statut_financier=neq.non_facturée&order=date_prestation.desc&limit=200').catch(()=>[]),
+      sbFetch('avoirs?select=*,clients(nom),prestation:prestations(reference,date_prestation)&order=created_at.desc&limit=200').catch(()=>[]),
+    ]);
+    _docsCache.devis=devisData||[];
+    _docsCache.contrats=contratsData||[];
+    _docsCache.factures=facturesData||[];
+    _docsCache.avoirs=avoirsData||[];
+    _devisCache=_docsCache.devis;
+  }catch(e){console.error('docsLoadAll',e);}
+}
+
+function docsUpdateKPIs(){
+  const devisEnAttente=_docsCache.devis.filter(d=>['envoyé','en_attente'].includes(d.statut)).length;
+  const contratsActifs=_docsCache.contrats.filter(c=>c.statut==='actif').length;
+  const factEncaisser=_docsCache.factures.filter(f=>['facturée','partiellement_payée','en_retard'].includes(f.statut_financier));
+  const montant=factEncaisser.reduce((s,f)=>s+(f.montant_ttc||0),0);
+  const avoirsEmis=_docsCache.avoirs.filter(a=>a.statut==='emis').length;
+  const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const g=id=>document.getElementById(id);
+  if(g('doc-kpi-devis'))g('doc-kpi-devis').textContent=devisEnAttente;
+  if(g('doc-kpi-contrats'))g('doc-kpi-contrats').textContent=contratsActifs;
+  if(g('doc-kpi-fact'))g('doc-kpi-fact').textContent=fmt(montant);
+  if(g('doc-kpi-avoirs'))g('doc-kpi-avoirs').textContent=avoirsEmis;
+}
+
+async function docsSetTab(tab){
+  _docsTab=tab;
+  document.querySelectorAll('.docs-tab-btn').forEach(el=>{
+    const isActive=el.dataset.tab===tab;
+    el.style.background=isActive?'var(--s1)':'transparent';
+    el.style.color=isActive?'var(--t1)':'var(--t3)';
+  });
+  await docsRenderTab();
+}
+
+async function docsRenderTab(){
+  const el=document.getElementById('docs-content');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div>';
+  if(_docsTab==='tous')el.innerHTML=docsRenderTous();
+  else if(_docsTab==='devis')el.innerHTML=docsRenderDevis();
+  else if(_docsTab==='contrats')el.innerHTML=docsRenderContrats();
+  else if(_docsTab==='factures')el.innerHTML=docsRenderFactures();
+  else if(_docsTab==='avoirs')el.innerHTML=docsRenderAvoirs();
+  else if(_docsTab==='journal')el.innerHTML=await docsRenderJournal();
+}
+
+function _docsBadge(st,cfg){
+  const c=cfg[st]||{lb:st,cl:'#8891A8',bc:'rgba(136,145,168,.12)'};
+  return`<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.03em;background:${c.bc};color:${c.cl}">${c.lb}</span>`;
+}
+
+function _docsTypePill(type,cl){
+  return`<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:${cl}18;color:${cl}">${type}</span>`;
+}
+
+function docsRenderTous(){
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+  const rows=[];
+  _docsCache.devis.forEach((d,i)=>{
+    rows.push({dt:new Date(d.created_at||0),type:'Devis',cl:'#366BFF',ref:d.numero||'—',client:d.clients?.nom||'—',
+      montant:fmt(d.total_ttc),dateStr:fd(d.date_envoi||d.created_at),
+      badge:_docsBadge(d.statut||'brouillon',DEVIS_STATUTS),
+      actions:`<button onclick="imprimerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:#366BFF;cursor:pointer">PDF</button><button class="btn bg2 bs" onclick="modalModifierDevis(${i})" style="font-size:11px;padding:3px 9px">Ouvrir</button>`});
+  });
+  _docsCache.contrats.forEach(c=>{
+    rows.push({dt:new Date(c.created_at||0),type:'Contrat',cl:'#7C4DFF',ref:CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—',
+      client:c.clients?.nom||'—',montant:c.montant_mensuel?fmt(c.montant_mensuel)+'/m':'—',
+      dateStr:fd(c.date_debut),badge:_docsBadge(c.statut||'brouillon',CONTRAT_STATUTS),
+      actions:`<button onclick="genererContratPDF('${c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer">PDF</button>`});
+  });
+  _docsCache.factures.forEach(p=>{
+    rows.push({dt:new Date(p.date_prestation||0),type:'Facture',cl:'#2ECC8A',ref:p.reference||'—',
+      client:p.clients?.nom||'—',montant:fmt(p.montant_ttc),dateStr:fd(p.date_prestation),
+      badge:_docsBadge(p.statut_financier||'facturée',FACT_STATUTS),
+      actions:`<button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">PDF</button>`});
+  });
+  _docsCache.avoirs.forEach(a=>{
+    rows.push({dt:new Date(a.created_at||0),type:'Avoir',cl:'#F0445E',ref:a.numero||'—',
+      client:a.clients?.nom||'—',montant:'- '+fmt(a.montant_ttc),dateStr:fd(a.created_at),
+      badge:_docsBadge(a.statut||'emis',AVOIR_STATUTS),
+      actions:`<button onclick="genererAvoirPDF('${a.id}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:#F0445E;cursor:pointer">PDF</button>`});
+  });
+  if(!rows.length)return`<div class="cd"><div style="padding:60px;text-align:center;color:var(--t3);font-size:13px">Aucun document disponible.</div></div>`;
+  rows.sort((a,b)=>b.dt-a.dt);
+  return`<div class="cd"><div class="tw"><table><thead><tr><th>Type</th><th>Référence</th><th>Client</th><th style="text-align:right">Montant</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${rows.map(r=>`<tr>
+      <td>${_docsTypePill(r.type,r.cl)}</td>
+      <td class="tm">${r.ref}</td>
+      <td class="tp">${r.client}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:${r.type==='Avoir'?'var(--er)':'var(--t1)'}">${r.montant}</td>
+      <td style="color:var(--t3);font-size:11.5px">${r.dateStr}</td>
+      <td>${r.badge}</td>
+      <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">${r.actions}</td>
+    </tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+function docsRenderDevis(){
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+  if(!_docsCache.devis.length)return`<div class="cd"><div style="padding:60px;text-align:center;color:var(--t3);font-size:13px">Aucun devis.<div style="font-size:11px;margin-top:6px;opacity:.6">Créez votre premier devis via le bouton ci-dessus.</div></div></div>`;
+  return`<div class="cd"><div class="tw"><table><thead><tr><th>Numéro</th><th>Client</th><th style="text-align:right">Montant TTC</th><th>Date envoi</th><th>Expiration</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${_docsCache.devis.map((d,i)=>`<tr>
+      <td class="tm">${d.numero||'—'}</td>
+      <td class="tp">${d.clients?.nom||'—'}</td>
+      <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmt(d.total_ttc)}</td>
+      <td style="color:var(--t3);font-size:11.5px">${fd(d.date_envoi)}</td>
+      <td style="color:var(--t3);font-size:11.5px">${fd(d.date_expiration)}</td>
+      <td>${_docsBadge(d.statut||'brouillon',DEVIS_STATUTS)}</td>
+      <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
+        ${d.statut==='brouillon'?`<button onclick="envoyerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:#366BFF;cursor:pointer">Envoyer</button>`:''}
+        <button onclick="imprimerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">PDF</button>
+        <button class="btn bg2 bs" onclick="modalModifierDevis(${i})" style="font-size:11px;padding:3px 9px">Modifier</button>
+      </td>
+    </tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+function docsRenderContrats(){
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+  if(!_docsCache.contrats.length)return`<div class="cd"><div style="padding:60px;text-align:center;color:var(--t3);font-size:13px">Aucun contrat.<div style="font-size:11px;margin-top:6px;opacity:.6">Créez des contrats depuis la vue Contrats.</div></div></div>`;
+  return`<div class="cd"><div class="tw"><table><thead><tr><th>Type</th><th>Client</th><th style="text-align:right">Montant</th><th>Début</th><th>Fin</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${_docsCache.contrats.map(c=>`<tr>
+      <td class="tm">${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—'}</td>
+      <td class="tp">${c.clients?.nom||'—'}</td>
+      <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${c.montant_mensuel?fmt(c.montant_mensuel)+'<span style="color:var(--t3);font-size:10.5px">/m</span>':'—'}</td>
+      <td style="color:var(--t3);font-size:11.5px">${fd(c.date_debut)}</td>
+      <td style="color:var(--t3);font-size:11.5px">${fd(c.date_fin)||'—'}</td>
+      <td>${_docsBadge(c.statut||'brouillon',CONTRAT_STATUTS)}</td>
+      <td><button onclick="genererContratPDF('${c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer">PDF</button></td>
+    </tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+function docsRenderFactures(){
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+  if(!_docsCache.factures.length)return`<div class="cd"><div style="padding:60px;text-align:center;color:var(--t3);font-size:13px">Aucune facture à afficher.</div></div>`;
+  return`<div class="cd"><div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th style="text-align:right">Montant TTC</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${_docsCache.factures.map(p=>`<tr>
+      <td class="tm">${p.reference||'—'}</td>
+      <td class="tp">${p.clients?.nom||'—'}</td>
+      <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmt(p.montant_ttc)}</td>
+      <td style="color:var(--t3);font-size:11.5px">${fd(p.date_prestation)}</td>
+      <td>${_docsBadge(p.statut_financier||'facturée',FACT_STATUTS)}</td>
+      <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
+        <button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">Facture</button>
+        <button onclick="docsModalNouvelAvoir('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.18);border-radius:var(--rp);color:var(--er);cursor:pointer">+ Avoir</button>
+      </td>
+    </tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+function docsRenderAvoirs(){
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+  if(!_docsCache.avoirs.length)return`<div class="cd"><div style="padding:60px;text-align:center;color:var(--t3);font-size:13px">Aucun avoir enregistré.<div style="font-size:11px;margin-top:6px;opacity:.6">Créez un avoir depuis l'onglet Factures ou le bouton "Avoir" ci-dessus.</div></div></div>`;
+  return`<div class="cd"><div class="tw"><table><thead><tr><th>Numéro</th><th>Client</th><th style="text-align:right">Montant</th><th>Motif</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${_docsCache.avoirs.map(a=>`<tr>
+      <td class="tm">${a.numero||'—'}</td>
+      <td class="tp">${a.clients?.nom||'—'}</td>
+      <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums;color:var(--er)">- ${fmt(a.montant_ttc)}</td>
+      <td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.motif||'—'}</td>
+      <td style="color:var(--t3);font-size:11.5px">${fd(a.created_at)}</td>
+      <td>${_docsBadge(a.statut||'emis',AVOIR_STATUTS)}</td>
+      <td><button onclick="genererAvoirPDF('${a.id}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer">PDF</button></td>
+    </tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+async function docsRenderJournal(){
+  try{
+    const events=await sbFetch('document_events?select=*,profiles(prenom,nom)&order=created_at.desc&limit=100').catch(()=>[]);
+    if(!events||!events.length)return`<div class="cd"><div style="padding:60px;text-align:center;color:var(--t3);font-size:13px">Aucun événement enregistré.<div style="font-size:11px;margin-top:6px;opacity:.6">Le journal est alimenté automatiquement lors des actions documentaires.</div></div></div>`;
+    const fd=s=>s?new Date(s).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+    const evClr={creation:'#366BFF',envoi:'#7C4DFF',signature:'#2ECC8A',paiement:'#2ECC8A',modification:'#F5A524',annulation:'#F0445E',avoir:'#F0445E',relance:'#F5A524',vue:'#8891A8'};
+    const evLb={creation:'Création',envoi:'Envoi',signature:'Signature',paiement:'Paiement',modification:'Modification',annulation:'Annulation',avoir:'Avoir',relance:'Relance',vue:'Consulté'};
+    return`<div class="cd" style="padding:0">${events.map(e=>{
+      const cl=evClr[e.event_type]||'#8891A8';
+      const user=e.profiles?[e.profiles.prenom,e.profiles.nom].filter(Boolean).join(' '):'—';
+      return`<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--b1)">
+        <div style="margin-top:4px;width:8px;height:8px;border-radius:50%;background:${cl};flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;gap:8px">
+            <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${e.description||evLb[e.event_type]||e.event_type}</div>
+            <div style="font-size:11px;color:var(--t3);white-space:nowrap;flex-shrink:0">${fd(e.created_at)}</div>
+          </div>
+          <div style="font-size:11.5px;color:var(--t3);margin-top:2px">${user}${e.document_ref?' · '+e.document_ref:''}</div>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  }catch(e){return`<div class="cd"><div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Erreur chargement journal.</div></div>`;}
+}
+
+async function logDocEvent(eventType,docRef,docType,description){
+  try{
+    await sbFetch('document_events',{method:'POST',body:JSON.stringify({
+      event_type:eventType,document_ref:docRef,document_type:docType,
+      description,user_id:S.uid,
+    })});
+  }catch(e){}
+}
+
+// ── PDF Contrat ───────────────────────────────────────────────────────────────
+async function genererContratPDF(id){
+  try{
+    const cArr=await sbFetch(`contrats?id=eq.${id}&select=*,clients(*)`);
+    const c=cArr?.[0];
+    if(!c){toast('Contrat introuvable.');return;}
+    const cl=c.clients||{};
+    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
+    const numContrat='CON-'+new Date().getFullYear()+'-'+id.substring(0,6).toUpperCase();
+    const stCl=CONTRAT_STATUTS[c.statut||'brouillon']||{lb:'Brouillon',cl:'#8891A8',bc:'rgba(136,145,168,.12)'};
+    const win=window.open('','_blank','width=900,height=800');
+    if(!win){toast('Autorisez les popups pour générer le contrat.');return;}
+    win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Contrat ${numContrat} — SportVision</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5}.page{max-width:800px;margin:0 auto;padding:48px}@media print{.np{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="page">
+<div class="np" style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #E8EBF4">
+  <button onclick="window.print()" style="padding:8px 18px;background:#7C4DFF;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer">Imprimer / PDF</button>
+  <button onclick="window.close()" style="padding:8px 14px;background:#F0F2F7;color:#555E73;border:none;border-radius:7px;font-size:13px;cursor:pointer">Fermer</button>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:24px;border-bottom:2px solid #7C4DFF">
+  <div>
+    <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
+    <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Elkana Group</div>
+    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">Villeneuve-la-Guyard<br>contact@sportvision.fr</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:30px;font-weight:800;color:#7C4DFF;letter-spacing:-.01em">CONTRAT</div>
+    <div style="font-size:12px;color:#8891A8;margin-top:4px">${numContrat}</div>
+    <div style="margin-top:10px"><span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;background:${stCl.bc};color:${stCl.cl}">${stCl.lb}</span></div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px">
+  <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Prestataire</div>
+    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision / Elkana Group</div>
+    <div style="font-size:12px;color:#555E73;line-height:1.7">Villeneuve-la-Guyard<br>contact@sportvision.fr</div></div>
+  <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Client / Partenaire</div>
+    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${cl.nom||'—'}</div>
+    <div style="font-size:12px;color:#555E73;line-height:1.7">${[cl.prenom_contact,cl.nom_contact].filter(Boolean).join(' ')||''}${cl.email?'<br>'+cl.email:''}${cl.telephone?'<br>'+cl.telephone:''}${cl.ville?'<br>'+cl.ville:''}</div></div>
+</div>
+<div style="margin-bottom:28px">
+  <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:12px">Modalités</div>
+  <table style="width:100%;border-collapse:collapse">
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:10px 0;font-weight:600;width:220px">Type de contrat</td><td style="padding:10px 0;color:#555E73">${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—'}</td></tr>
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:10px 0;font-weight:600">Montant mensuel</td><td style="padding:10px 0;color:#555E73">${c.montant_mensuel?fmt(c.montant_mensuel)+' TTC / mois':'—'}</td></tr>
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:10px 0;font-weight:600">Fréquence</td><td style="padding:10px 0;color:#555E73">${c.frequence||'Mensuelle'}</td></tr>
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:10px 0;font-weight:600">Date de début</td><td style="padding:10px 0;color:#555E73">${fd(c.date_debut)}</td></tr>
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:10px 0;font-weight:600">Date de fin</td><td style="padding:10px 0;color:#555E73">${fd(c.date_fin)||'Sans échéance'}</td></tr>
+    <tr><td style="padding:10px 0;font-weight:600">Renouvellement auto</td><td style="padding:10px 0;color:#555E73">${c.renouvellement_auto?'Oui — reconduction tacite':'Non'}</td></tr>
+  </table>
+</div>
+${c.description?`<div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:28px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Prestations incluses</div><div style="font-size:12.5px;color:#555E73;line-height:1.7">${c.description}</div></div>`:''}
+<div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:32px">
+  <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Conditions générales</div>
+  <div style="font-size:11.5px;color:#555E73;line-height:1.8">1. Le présent contrat prend effet à la date de signature par les deux parties.<br>2. Le paiement est dû selon la fréquence indiquée ci-dessus, par virement bancaire.<br>3. En cas de résiliation, un préavis de 30 jours est requis par lettre recommandée avec AR.<br>4. SportVision se réserve le droit de sous-traiter certaines prestations à des partenaires qualifiés.<br>5. Les droits sur les productions restent la propriété de SportVision jusqu'au paiement intégral.</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;border-top:1px solid #E8EBF4;padding-top:28px">
+  <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:32px">Pour SportVision</div>
+    <div style="width:180px;border-bottom:1px solid #1a1a2e"></div>
+    <div style="font-size:10px;color:#8891A8;margin-top:4px">Date :</div></div>
+  <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:32px">Client — Bon pour accord</div>
+    <div style="width:180px;border-bottom:1px solid #1a1a2e"></div>
+    <div style="font-size:10px;color:#8891A8;margin-top:4px">Date :</div></div>
+</div>
+</div></body></html>`);
+    win.document.close();
+  }catch(e){toast('Erreur génération contrat.');}
+}
+
+// ── PDF Avoir ─────────────────────────────────────────────────────────────────
+async function genererAvoirPDF(id){
+  try{
+    const aArr=await sbFetch(`avoirs?id=eq.${id}&select=*,clients(*),prestation:prestations(reference,date_prestation)`);
+    const a=aArr?.[0];
+    if(!a){toast('Avoir introuvable.');return;}
+    const cl=a.clients||{};
+    const p=Array.isArray(a.prestation)?a.prestation[0]:a.prestation;
+    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
+    const tva=a.tva_pct||20;
+    const ht=a.montant_ht||((a.montant_ttc||0)/(1+tva/100));
+    const win=window.open('','_blank','width=900,height=800');
+    if(!win){toast("Autorisez les popups pour générer l'avoir.");return;}
+    win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Avoir ${a.numero||''} — SportVision</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5}.page{max-width:800px;margin:0 auto;padding:48px}@media print{.np{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="page">
+<div class="np" style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #E8EBF4">
+  <button onclick="window.print()" style="padding:8px 18px;background:#F0445E;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer">Imprimer / PDF</button>
+  <button onclick="window.close()" style="padding:8px 14px;background:#F0F2F7;color:#555E73;border:none;border-radius:7px;font-size:13px;cursor:pointer">Fermer</button>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:24px;border-bottom:2px solid #F0445E">
+  <div>
+    <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
+    <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Elkana Group</div>
+    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">Villeneuve-la-Guyard<br>contact@sportvision.fr</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:30px;font-weight:800;color:#F0445E;letter-spacing:-.01em">AVOIR</div>
+    <div style="font-size:12px;color:#8891A8;margin-top:4px">${a.numero||'—'}</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px">
+  <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Émetteur</div>
+    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision / Elkana Group</div>
+    <div style="font-size:12px;color:#555E73;line-height:1.7">Villeneuve-la-Guyard<br>contact@sportvision.fr</div></div>
+  <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Destinataire</div>
+    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${cl.nom||'—'}</div>
+    <div style="font-size:12px;color:#555E73;line-height:1.7">${cl.email||''}${cl.telephone?'<br>'+cl.telephone:''}${cl.ville?'<br>'+cl.ville:''}</div></div>
+</div>
+${p?`<div style="background:#FFF5F7;border-radius:10px;padding:16px 20px;margin-bottom:24px;border:1px solid rgba(240,68,94,.2)"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Prestation concernée</div><div style="font-size:13px;font-weight:600;color:#1a1a2e">${p.reference||'—'}</div>${p.date_prestation?`<div style="font-size:11.5px;color:#555E73;margin-top:2px">Date : ${fd(p.date_prestation)}</div>`:''}</div>`:''}
+<div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:28px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Motif de l'avoir</div><div style="font-size:13px;color:#555E73;line-height:1.7">${a.motif||'—'}</div></div>
+<div style="display:flex;justify-content:flex-end;margin-bottom:32px">
+  <div style="width:280px">
+    <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:#555E73;border-bottom:1px solid #E8EBF4"><span>Montant HT</span><span>- ${fmt(ht)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:#555E73;border-bottom:1px solid #E8EBF4"><span>TVA (${tva}%)</span><span>- ${fmt((a.montant_ttc||0)-ht)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:17px;font-weight:800;color:#F0445E;border-top:2px solid #F0445E;margin-top:4px"><span>TOTAL AVOIR TTC</span><span>- ${fmt(a.montant_ttc||0)}</span></div>
+  </div>
+</div>
+<div style="border-top:1px solid #E8EBF4;padding-top:20px"><div style="font-size:11px;color:#8891A8;line-height:1.6">Cet avoir sera déduit de votre prochaine facture ou remboursé selon les modalités convenues.<br>Document émis le ${fd(a.created_at)}.</div></div>
+</div></body></html>`);
+    win.document.close();
+  }catch(e){toast("Erreur génération avoir.");}
+}
+
+// ── Modal Avoir ───────────────────────────────────────────────────────────────
+function docsModalNouvelAvoir(prestationId){
+  openModal(`
+    <div class="mh"><div class="mt">Nouvel avoir</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <label class="fl">Client <select id="av-client-id" class="inp"><option value="">Sélectionner un client...</option></select></label>
+      <label class="fl">Prestation liée (optionnel) <select id="av-prestation-id" class="inp"><option value="">Aucune prestation liée</option></select></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <label class="fl">Montant HT (€) <input id="av-ht" class="inp" type="number" step="0.01" min="0" placeholder="0.00"></label>
+        <label class="fl">TVA (%) <input id="av-tva" class="inp" type="number" step="0.5" min="0" value="20"></label>
+      </div>
+      <label class="fl">Motif <textarea id="av-motif" class="inp" rows="3" placeholder="Annulation, prestation non conforme, geste commercial..."></textarea></label>
+    </div>
+    <div class="mf"><button class="btn bg2 bs" onclick="closeModal()">Annuler</button><button class="btn bp bs" onclick="avoirSubmit()">Émettre l'avoir</button></div>
+  `);
+  sbFetch('clients?select=id,nom&order=nom.asc').then(data=>{
+    const sel=document.getElementById('av-client-id');
+    if(!sel||!data)return;
+    (data||[]).forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nom;sel.appendChild(o);});
+  });
+  sbFetch('prestations?select=id,reference,clients(nom)&statut_financier=neq.non_facturée&order=date_prestation.desc&limit=100').then(data=>{
+    const sel=document.getElementById('av-prestation-id');
+    if(!sel||!data)return;
+    (data||[]).forEach(p=>{
+      const o=document.createElement('option');o.value=p.id;
+      o.textContent=p.reference+(p.clients?.nom?' — '+p.clients.nom:'');
+      if(prestationId&&p.id===prestationId)o.selected=true;
+      sel.appendChild(o);
+    });
+  });
+}
+
+async function avoirSubmit(){
+  const clientId=document.getElementById('av-client-id')?.value;
+  const prestId=document.getElementById('av-prestation-id')?.value||null;
+  const ht=parseFloat(document.getElementById('av-ht')?.value||'0');
+  const tva=parseFloat(document.getElementById('av-tva')?.value||'20');
+  const motif=(document.getElementById('av-motif')?.value||'').trim();
+  if(!clientId){toast('Sélectionnez un client.','er');return;}
+  if(!ht||ht<=0){toast('Montant invalide.','er');return;}
+  if(!motif){toast('Motif requis.','er');return;}
+  const ttc=Math.round(ht*(1+tva/100)*100)/100;
+  const year=new Date().getFullYear();
+  let numAvoir='AVO-'+year+'-'+Date.now().toString().slice(-4);
+  try{
+    const seq=await sbFetch(`document_sequences?type=eq.avoir&year=eq.${year}&select=*`).catch(()=>[]);
+    const cur=seq?.[0];
+    if(cur){
+      const next=(cur.counter||0)+1;
+      await sbFetch(`document_sequences?type=eq.avoir&year=eq.${year}`,{method:'PATCH',body:JSON.stringify({counter:next})});
+      numAvoir=`AVO-${year}-${String(next).padStart(4,'0')}`;
+    }else{
+      await sbFetch('document_sequences',{method:'POST',body:JSON.stringify({type:'avoir',year,counter:1})});
+      numAvoir=`AVO-${year}-0001`;
+    }
+  }catch(e){}
+  try{
+    await sbFetch('avoirs',{method:'POST',body:JSON.stringify({
+      numero:numAvoir,client_id:clientId,prestation_id:prestId,
+      motif,montant_ht:ht,tva_pct:tva,montant_ttc:ttc,statut:'emis',created_by:S.uid,
+    })});
+    await logDocEvent('avoir',numAvoir,'avoir','Avoir émis — '+motif.substring(0,60));
+    closeModal();
+    toast('Avoir '+numAvoir+' créé.','ok');
+    await docsLoadAll();
+    docsUpdateKPIs();
+    await docsRenderTab();
+  }catch(e){toast('Erreur création avoir.','er');}
+}
+
 // ── Devis ────────────────────────────────────────────────────────────────────
 let _devisCache=[];
 async function loadDevis(){
@@ -9726,6 +10207,10 @@ const VIEW_CTA={
   'admin.kits':{t:'+ Nouveau kit',fn:'modalNouveauKit'},
   'admin.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'admin.contrats':{t:'+ Nouveau contrat',fn:'modalNouveauContrat'},
+  'admin.documents':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
+  'sec.documents':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
+  'sec.docs':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
+  'compta.documents':{t:'+ Avoir',fn:'docsModalNouvelAvoir'},
   'admin.users':{t:'+ Ajouter un membre',fn:'modalInviterCollaborateur'},
   'admin.pipeline':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
   'admin.incidents':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
