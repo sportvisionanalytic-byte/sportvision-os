@@ -1696,57 +1696,96 @@ async function creerClient(){
 
 // ── MODALE NOUVEAU KIT ───────────────────
 function modalNouveauKit(){
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   openModal(`
-    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouveau kit</div>
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Ajouter du matériel</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Chaque équipement est enregistré individuellement dans l'inventaire.</div>
+    <div id="fk-added"></div>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom du kit *</label>
-          <input id="fk-nom" type="text" class="l-inp" placeholder="Kit Vidéo 03" style="height:38px">
+      <div><label style="${lbl}">Nom de l'équipement *</label>
+        <input id="fk-nom" type="text" class="l-inp" placeholder="Sony A7 IV, DJI Mini 3 Pro, Rode VideoMic…" style="height:40px" autofocus>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Marque</label>
+          <input id="fk-marque" type="text" class="l-inp" placeholder="Sony, DJI, Canon…" style="height:38px">
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type *</label>
-          <select id="fk-type" class="l-inp" style="height:38px">
-            <option value="photo">Photo</option>
-            <option value="vidéo">Vidéo</option>
-            <option value="drone">Drone</option>
-            <option value="audio">Audio</option>
-            <option value="streaming">Streaming</option>
-            <option value="son">Son</option>
-            <option value="lumière">Lumière</option>
-            <option value="réalisation">Réalisation</option>
-            <option value="réseaux">Réseaux sociaux</option>
+        <div><label style="${lbl}">N° de série</label>
+          <input id="fk-serie" type="text" class="l-inp" placeholder="Optionnel" style="height:38px">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">État</label>
+          <select id="fk-etat" class="l-inp" style="height:38px">
+            <option value="Neuf">Neuf</option>
+            <option value="Bon état" selected>Bon état</option>
+            <option value="Usé">Usé</option>
           </select>
         </div>
+        <div><label style="${lbl}">Valeur estimée (€)</label>
+          <input id="fk-val" type="number" class="l-inp" placeholder="0" style="height:38px" min="0">
+        </div>
       </div>
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description / contenu</label>
-        <input id="fk-desc" type="text" class="l-inp" placeholder="Corps d'appareil + objectifs + accessoires…" style="height:38px">
+      <div><label style="${lbl}">Notes</label>
+        <input id="fk-notes" type="text" class="l-inp" placeholder="Accessoires inclus, remarques particulières…" style="height:38px">
       </div>
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Valeur estimée (€)</label>
-        <input id="fk-val" type="number" class="l-inp" placeholder="0" style="height:38px">
-      </div>
-      <div id="fk-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div id="fk-err" style="font-size:12px;min-height:16px"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
-        <button class="btn bg2" onclick="closeModal()">Annuler</button>
-        <button class="btn bp" onclick="creerKit()">Créer le kit</button>
+        <button class="btn bg2" onclick="closeModal();loadKits()">Terminer</button>
+        <button class="btn bp" onclick="ajouterEquipement()">+ Ajouter cet équipement</button>
       </div>
     </div>`);
+  window._fkCount=0;
 }
-async function creerKit(){
+
+async function ajouterEquipement(){
   const err=document.getElementById('fk-err');
-  const nom=document.getElementById('fk-nom').value.trim();
-  if(!nom){err.textContent='Le nom est obligatoire.';return;}
-  err.textContent='Création…';
+  if(!err)return;
+  const nom=document.getElementById('fk-nom')?.value.trim();
+  if(!nom){err.style.color='var(--er)';err.textContent='Le nom est obligatoire.';document.getElementById('fk-nom')?.focus();return;}
+  err.style.color='var(--t3)';err.textContent='Enregistrement…';
+  const marque=document.getElementById('fk-marque')?.value.trim()||'';
+  const serie=document.getElementById('fk-serie')?.value.trim()||'';
+  const etat=document.getElementById('fk-etat')?.value||'Bon état';
+  const notes=document.getElementById('fk-notes')?.value.trim()||'';
+  const val=document.getElementById('fk-val')?.value||'';
+  // Build description: État · Marque · N°série · Notes
+  const parts=[etat];
+  if(marque)parts.push(marque);
+  if(serie)parts.push('N°'+serie);
+  if(notes)parts.push(notes);
+  const desc=parts.join(' · ');
   try{
     await sbFetch('kits',{method:'POST',body:{
       nom,
-      type_kit:document.getElementById('fk-type').value,
-      description:document.getElementById('fk-desc').value||null,
-      valeur:document.getElementById('fk-val').value?Number(document.getElementById('fk-val').value):null,
-      statut:'disponible'
+      type_kit:'matériel',
+      description:desc||null,
+      valeur:val?Number(val):null,
+      statut:'disponible',
     }});
-    closeModal();
-    toast('Kit ajouté.','ok');
-    loadKits();
-  }catch(e){err.textContent='Erreur lors de la création.';}
+    // Show in running list
+    window._fkCount=(window._fkCount||0)+1;
+    const addedEl=document.getElementById('fk-added');
+    if(addedEl){
+      if(window._fkCount===1){
+        addedEl.innerHTML='<div style="margin-bottom:14px;padding:10px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb)"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:6px">Équipements ajoutés</div><div id="fk-items"></div></div>';
+      }
+      const listEl=document.getElementById('fk-items');
+      if(listEl){
+        const row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px';
+        row.innerHTML=`<span style="color:var(--ok)">✓</span><span style="color:var(--t1);font-weight:600">${nom}</span>${marque?`<span style="color:var(--t3);font-size:11px">${marque}</span>`:''}${etat!=='Bon état'?`<span style="font-size:10px;color:var(--t3);background:var(--bg);padding:1px 6px;border-radius:10px;border:1px solid var(--b1)">${etat}</span>`:''}`;
+        listEl.appendChild(row);
+      }
+    }
+    // Clear form for next item
+    ['fk-nom','fk-marque','fk-serie','fk-notes','fk-val'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const etatEl=document.getElementById('fk-etat');if(etatEl)etatEl.value='Bon état';
+    err.style.color='var(--ok)';
+    err.textContent='✓ Équipement ajouté — vous pouvez en saisir un autre.';
+    setTimeout(()=>{const e=document.getElementById('fk-err');if(e)e.textContent='';},3000);
+    document.getElementById('fk-nom')?.focus();
+    toast(nom+' ajouté à l\'inventaire.','ok');
+  }catch(e){err.style.color='var(--er)';err.textContent='Erreur lors de l\'ajout.';}
 }
 
 // ── MODALE INVITER COLLABORATEUR ─────────
