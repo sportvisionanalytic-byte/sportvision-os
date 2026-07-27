@@ -326,10 +326,14 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
     </div>
     <div id="sb-nav"></div>
     <div class="sb-foot">
-      <div class="u-row" onclick="switchView('set')" title="Paramètres du compte">
-        <div class="av" id="u-av" style="background:var(--gr)"></div>
-        <div class="u-meta"><div class="u-n" id="u-nm"></div><div class="u-r" id="u-rl"></div></div>
-        <svg width="13" height="13" viewBox="0 0 15 15" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.5" stroke-linecap="round" style="flex-shrink:0"><circle cx="7.5" cy="7.5" r="2"/><path d="M7.5 1v1M7.5 13v1M1 7.5h1M13 7.5h1M2.93 2.93l.71.71M11.36 11.36l.71.71M2.93 12.07l.71-.71M11.36 3.64l.71-.71"/></svg>
+      <div style="display:flex;align-items:center;gap:6px;padding:4px 6px">
+        <div class="u-row" onclick="switchView('set')" title="Paramètres du compte" style="flex:1;min-width:0">
+          <div class="av" id="u-av" style="background:var(--gr)"></div>
+          <div class="u-meta"><div class="u-n" id="u-nm"></div><div class="u-r" id="u-rl"></div></div>
+        </div>
+        <div onclick="doLogout()" title="Se déconnecter" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);transition:background .12s,color .12s" onmouseover="this.style.background='rgba(240,68,94,.12)';this.style.color='var(--er)'" onmouseout="this.style.background='';this.style.color='var(--t3)'">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3l4 4-4 4M14 7H5M8 1H2a1 1 0 00-1 1v11a1 1 0 001 1h6"/></svg>
+        </div>
       </div>
     </div>
   </aside>
