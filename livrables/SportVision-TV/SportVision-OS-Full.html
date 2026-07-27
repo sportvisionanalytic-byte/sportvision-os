@@ -522,9 +522,10 @@ const NAV={
   prod:[
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
     {id:'planning',lb:'Planning production',ic:'cal'},
+    {id:'col',lb:'Collaborateurs',ic:'col'},
     {id:'kanban',lb:'Kanban',ic:'kan'},
     {id:'kits',lb:'Kits',ic:'kits'},
-    {id:'equipes',lb:'Équipes',ic:'col'},
+    {id:'equipes',lb:'Équipes par prestation',ic:'col'},
     {id:'incidents',lb:'Incidents',ic:'alert'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {id:'set',lb:'Paramètres',ic:'set'},
@@ -914,6 +915,17 @@ const VIEWS={
       <button onclick="setProdPlanTab('kits')" class="btn bg2 bs" id="pplt-kits" style="flex-shrink:0">Kits</button>
     </div>
     <div id="prod-plan-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'prod.col':()=>`
+    <div class="sh" style="margin-bottom:14px">
+      <div class="sh-t">Collaborateurs</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="filterProdCol('all')" class="btn bp bs" id="pcf-all" style="font-size:11px">Tous</button>
+        <button onclick="filterProdCol('dispo')" class="btn bg2 bs" id="pcf-dispo" style="font-size:11px">Disponibles</button>
+        <button onclick="filterProdCol('photo')" class="btn bg2 bs" id="pcf-photo" style="font-size:11px">Photo/Vidéo</button>
+      </div>
+    </div>
+    <div id="prod-col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'prod.kits':()=>`
     <div class="sh"><div class="sh-t">État des kits</div></div>
@@ -1813,6 +1825,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='prod'&&view==='dash') await loadProdDash();
   if(role==='prod'&&view==='planning'){_prodPlanTab='semaine';await loadProdPlanning();}
+  if(role==='prod'&&view==='col') await loadProdCollaborateurs();
   if(role==='prod'&&view==='equipes') await loadEquipes();
   if(role==='prod'&&view==='kanban') await loadKanban();
   if(role==='photo'&&view==='dash') await loadPhotoDash();
@@ -2730,6 +2743,132 @@ async function loadProdPlanning(){
     console.error('loadProdPlanning',e);
     el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
   }
+}
+
+// ── COLLABORATEURS PROD ──────────────────────────────────────────────────────
+let _prodColData=[];
+let _prodColFilter='all';
+
+function filterProdCol(f){
+  _prodColFilter=f;
+  ['all','dispo','photo'].forEach(id=>{
+    const b=document.getElementById('pcf-'+id);
+    if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
+    if(b)b.style.fontSize='11px';
+  });
+  renderProdColList();
+}
+
+function renderProdColList(){
+  const el=document.getElementById('prod-col-real');
+  if(!el)return;
+  const today=new Date().toISOString().slice(0,10);
+  const DONE_ST=['livrée','clôturée','annulée','refusée'];
+  let list=_prodColData;
+  if(_prodColFilter==='dispo') list=list.filter(t=>!t._isMission);
+  else if(_prodColFilter==='photo') list=list.filter(t=>t.role==='photo');
+  if(!list.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div style="font-size:13px">Aucun collaborateur trouvé.</div></div>';
+    return;
+  }
+  const RC={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
+  const RL={'admin':'Administrateur','sec':'Secrétaire','prod':'Resp. Production','photo':'Photo / Vidéo','cm':'Community Manager','compta':'Comptable','com':'Commercial'};
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px">'+
+    list.map(t=>{
+      const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||t.role.slice(0,2).toUpperCase();
+      const name=[t.prenom,t.nom].filter(Boolean).join(' ')||t.role;
+      const col=RC[t.role]||'#366BFF';
+      const isMission=t._isMission;
+      const stBg=isMission?'rgba(245,165,36,.12)':'rgba(46,204,138,.12)';
+      const stBd=isMission?'rgba(245,165,36,.25)':'rgba(46,204,138,.25)';
+      const stCl=isMission?'var(--wa)':'var(--ok)';
+      const stLb=isMission?'Sur mission':'Disponible';
+      const missionInfo=isMission&&t._missionClient?`<div style="font-size:10.5px;color:var(--t3);margin-top:2px;text-align:center">${t._missionClient}</div>`:'';
+      return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+        <div style="position:relative">
+          <div class="av" style="width:52px;height:52px;font-size:18px;font-weight:700;background:${col}">${ini}</div>
+          <div style="position:absolute;bottom:0;right:-2px;width:14px;height:14px;border-radius:50%;background:${isMission?'var(--wa)':'var(--ok)'};border:2px solid var(--s1)"></div>
+        </div>
+        <div>
+          <div style="font-size:13.5px;font-weight:700;color:var(--t1)">${name}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${RL[t.role]||t.role}</div>
+          ${t.telephone?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${t.telephone}</div>`:''}
+        </div>
+        <span style="font-size:10.5px;font-weight:700;padding:3px 10px;background:${stBg};border:1px solid ${stBd};border-radius:20px;color:${stCl}">${stLb}</span>
+        ${missionInfo}
+        <div style="display:flex;gap:8px;width:100%;margin-top:2px">
+          <button onclick="switchView('msg')" style="flex:1;padding:8px 6px;font-size:11.5px;font-weight:600;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer">💬 Message</button>
+          <button onclick="modalAffecterCollab('${t.id}','${name.replace(/'/g,"\\'")}')" style="flex:1;padding:8px 6px;font-size:11.5px;font-weight:600;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer">+ Affecter</button>
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+}
+
+async function loadProdCollaborateurs(){
+  const el=document.getElementById('prod-col-real');
+  if(!el)return;
+  const today=new Date().toISOString().slice(0,10);
+  const DONE_ST=['livrée','clôturée','annulée','refusée'];
+  try{
+    const [profRaw,equipeRaw]=await Promise.all([
+      sbFetch('profiles?select=id,role,prenom,nom,telephone&order=nom.asc'),
+      sbFetch('prestations?select=id,date_prestation,statut,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom))&date_prestation=eq.'+today+'&statut=not.in.(annulée,refusée,livrée,clôturée)'),
+    ]);
+    const prof=Array.isArray(profRaw)?profRaw:[];
+    const todayPre=Array.isArray(equipeRaw)?equipeRaw:[];
+    // Build mission map: collaborateur_id → client name
+    const missionMap={};
+    todayPre.forEach(p=>{
+      (p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').forEach(e=>{
+        if(e.collaborateur?.id) missionMap[e.collaborateur.id]=p.clients?.nom||'En mission';
+      });
+    });
+    _prodColData=prof.map(t=>({
+      ...t,
+      _isMission:!!missionMap[t.id],
+      _missionClient:missionMap[t.id]||null,
+    }));
+    _prodColFilter='all';
+    // Reset filter buttons
+    ['all','dispo','photo'].forEach(id=>{
+      const b=document.getElementById('pcf-'+id);
+      if(b)b.className='btn '+(id==='all'?'bp':'bg2')+' bs';
+      if(b)b.style.fontSize='11px';
+    });
+    renderProdColList();
+  }catch(e){
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+async function modalAffecterCollab(collabId,collabName){
+  // Charger les prestations sans équipe complète pour proposer l'affectation
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Affecter ${collabName}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">Choisissez une prestation pour affecter ce collaborateur.</div>
+    <div id="aff-pre-list"><div style="color:var(--t3);text-align:center;padding:20px;font-size:13px">Chargement…</div></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn bg2" onclick="closeModal()">Fermer</button>
+    </div>`);
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,livrée,clôturée)&order=date_prestation.asc&limit=20');
+    const el=document.getElementById('aff-pre-list');
+    if(!el)return;
+    if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="color:var(--t3);text-align:center;padding:20px;font-size:13px">Aucune prestation active.</div>';return;}
+    const sLb={'confirmée':'Confirmée','planifiée':'Planifiée','équipe_affectée':'Équipe OK','prête':'Prête','production_démarrée':'En cours'};
+    el.innerHTML='<div style="display:flex;flex-direction:column;gap:8px">'+
+      data.map(p=>{
+        const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
+        return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · <span class="bd bw"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></div>
+          </div>
+          <button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${p.id}','${(p.reference||'').replace(/'/g,"\\'")}'),150)" style="flex-shrink:0;padding:8px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:700;cursor:pointer">Affecter</button>
+        </div>`;
+      }).join('')+'</div>';
+  }catch(e){const el=document.getElementById('aff-pre-list');if(el)el.innerHTML='<div style="color:var(--er);font-size:13px;padding:10px">Erreur.</div>';}
 }
 
 async function loadEquipes(){
@@ -6144,7 +6283,7 @@ function closeMobNav(){
 const BNAV_ITEMS={
   admin:['dash','pre','planning','fin'],
   sec:  ['dash','pre','taches','crm'],
-  prod: ['dash','planning','incidents','kanban'],
+  prod: ['dash','planning','col','kanban'],
   photo:['dash','jourj','pre','medias'],
   com:  ['dash','crm','pipeline','devis'],
   compta:['dash','factures','paiements','rap'],
@@ -6226,6 +6365,7 @@ const VIEW_CTA={
   'prod.kits':{t:'+ Nouveau kit',fn:'modalNouveauKit'},
   'prod.dash':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
   'prod.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
+  'prod.col':{t:'+ Inviter un collaborateur',fn:'modalInviterCollaborateur'},
   'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.cal':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
   'cm.contenus':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
