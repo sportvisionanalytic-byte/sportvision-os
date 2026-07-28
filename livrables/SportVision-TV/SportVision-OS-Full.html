@@ -15624,7 +15624,7 @@ function annuaireCard(p){
   const busy=_annuaireTodayBusy.has(p.id);
   const dispoColor=busy?'var(--wa)':'var(--ok)';
   const dispoLabel=busy?'En prestation':'Disponible';
-  const canSeePhone=['admin','prod','sec'].includes(S.role)||(S.role==='photo'&&p.role==='photo');
+  const canSeePhone=['admin','prod','sec'].includes(S.role)||['sec','prod'].includes(p.role);
   const canSeeDetails=['admin','compta'].includes(S.role);
   return`<div class="cd" style="padding:0;overflow:hidden">
     <div style="height:5px;background:${color}"></div>
