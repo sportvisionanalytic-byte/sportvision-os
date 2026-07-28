@@ -7117,10 +7117,30 @@ async function kitsCreerMaterielSubmit(){
 }
 
 // ── AJOUTER MATÉRIEL À UN KIT ────────────────────────────────────────────────
-function kitsModalAddMaterielToKit(kitId){
-  const dispo=_matCache.filter(m=>!m.kit_id||m.kit_id===kitId);
+async function kitsModalAddMaterielToKit(kitId){
   openModal(`<div class="mh"><div class="mt">Ajouter au kit</div><button class="mc" onclick="closeModal()">✕</button></div>
-    <div class="mb">
+    <div class="mb"><div id="am-inner" style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button id="am-submit" class="btn bp" style="display:none" onclick="kitsAddMaterielSubmit('${kitId}')">Ajouter</button>
+    </div>`);
+  try{
+    const mats=await sbFetch('materiels?select=id,nom,marque,categorie,kit_id,statut&order=categorie.asc,nom.asc');
+    const dispo=Array.isArray(mats)?mats.filter(m=>!m.kit_id||m.kit_id===kitId):[];
+    const inner=document.getElementById('am-inner');
+    const btn=document.getElementById('am-submit');
+    if(!inner)return;
+    if(!dispo.length){
+      inner.innerHTML=`<div style="padding:12px 0 20px">
+        <div style="font-size:32px;opacity:.18;margin-bottom:10px">🔧</div>
+        <div style="font-size:13px;color:var(--t2);margin-bottom:6px">Aucun équipement disponible.</div>
+        <div style="font-size:11.5px;color:var(--t3);margin-bottom:14px">Tous les équipements sont déjà affectés à d'autres kits, ou aucun n'a encore été créé.</div>
+        <button onclick="closeModal();kitsModalCreerMateriel()" style="padding:7px 18px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">+ Créer un équipement</button>
+      </div>`;
+      return;
+    }
+    if(btn)btn.style.display='';
+    inner.innerHTML=`
       <div class="fg"><label class="fl">Équipement</label>
         <select id="add-mat-sel" class="fi">
           <option value="">— Sélectionner —</option>
@@ -7137,12 +7157,11 @@ function kitsModalAddMaterielToKit(kitId){
       </div>
       <div class="fg"><label class="fl">Notes</label>
         <input id="add-mat-notes" type="text" class="fi" placeholder="Emplacement dans le sac, remarques…">
-      </div>
-    </div>
-    <div class="mf">
-      <button class="btn bg2" onclick="closeModal()">Annuler</button>
-      <button class="btn bp" onclick="kitsAddMaterielSubmit('${kitId}')">Ajouter</button>
-    </div>`);
+      </div>`;
+  }catch(e){
+    const inner=document.getElementById('am-inner');
+    if(inner)inner.innerHTML='<div style="padding:20px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
 }
 
 async function kitsAddMaterielSubmit(kitId){
