@@ -1760,11 +1760,12 @@ const VIEWS={
     <div id="sec-demandes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.relances':()=>`
-    <div class="sh"><div class="sh-t">Suivi des relances</div></div>
-    <div class="g3" style="margin-bottom:13px">
+    <div class="sh"><div class="sh-t">Suivi des relances</div><button class="btn bg2 bs" onclick="exportSecRapport('relances')">Export CSV</button></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:13px">
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Acomptes en attente</div><div class="fs-v" id="rel-kpi-acomp" style="color:var(--er)">—</div></div>
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Soldes à encaisser</div><div class="fs-v" id="rel-kpi-solde" style="color:var(--wa)">—</div></div>
-      <div class="fs"><div class="fs-l">Relances envoyées</div><div class="fs-v" id="rel-kpi-sent">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.35)"><div class="fs-l">En retard</div><div class="fs-v" id="rel-kpi-retard" style="color:var(--er)">—</div></div>
+      <div class="fs" style="border-color:rgba(54,107,255,.25)"><div class="fs-l">Montant en attente</div><div class="fs-v" id="rel-kpi-montant" style="color:var(--acc);font-size:15px">—</div></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="filterSecRelances('all')" id="rel-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
@@ -1808,40 +1809,50 @@ const VIEWS={
     <div id="sec-livraisons-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.rapports':()=>`
-    <div class="sh"><div class="sh-t">Rapports administratifs</div></div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
-      <div class="cd" style="cursor:pointer" onclick="exportSecRapport('prestations')">
-        <div style="padding:20px">
-          <div style="font-size:28px;margin-bottom:8px">📋</div>
-          <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Prestations du mois</div>
-          <div style="font-size:12px;color:var(--t3)">Export CSV avec statuts, clients, montants</div>
-          <button class="btn bp bs" style="margin-top:12px;font-size:12px">Exporter CSV</button>
-        </div>
+    <div class="sh">
+      <div>
+        <div class="sh-t">Rapport mensuel</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px" id="sec-rap-periode">Chargement…</div>
       </div>
-      <div class="cd" style="cursor:pointer" onclick="exportSecRapport('clients')">
-        <div style="padding:20px">
-          <div style="font-size:28px;margin-bottom:8px">👥</div>
-          <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Base clients</div>
-          <div style="font-size:12px;color:var(--t3)">Export CSV clients, contacts, abonnements</div>
-          <button class="btn bp bs" style="margin-top:12px;font-size:12px">Exporter CSV</button>
-        </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn bg2 bs" onclick="secRapportMoisPrev()">←</button>
+        <button class="btn bg2 bs" onclick="secRapportMoisNext()">→</button>
       </div>
-      <div class="cd" style="cursor:pointer" onclick="exportSecRapport('devis')">
-        <div style="padding:20px">
-          <div style="font-size:28px;margin-bottom:8px">📄</div>
-          <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Suivi devis</div>
-          <div style="font-size:12px;color:var(--t3)">Taux de conversion, montants, statuts</div>
-          <button class="btn bp bs" style="margin-top:12px;font-size:12px">Exporter CSV</button>
-        </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">CA encaissé</div><div class="fs-v" id="rap-kpi-ca" style="color:var(--ok)">—</div></div>
+      <div class="fs" style="border-color:rgba(54,107,255,.25)"><div class="fs-l">Prestations réalisées</div><div class="fs-v" id="rap-kpi-pre" style="color:var(--acc)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Taux conversion devis</div><div class="fs-v" id="rap-kpi-conv" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Nouveaux clients</div><div class="fs-v" id="rap-kpi-cli">—</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px">
+      <div class="cd" style="padding:14px">
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:10px">Prestations du mois</div>
+        <div id="rap-pre-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
       </div>
-      <div class="cd" style="cursor:pointer" onclick="exportSecRapport('relances')">
-        <div style="padding:20px">
-          <div style="font-size:28px;margin-bottom:8px">🔔</div>
-          <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px">Relances & paiements</div>
-          <div style="font-size:12px;color:var(--t3)">Acomptes en attente, soldes, historique</div>
-          <button class="btn bp bs" style="margin-top:12px;font-size:12px">Exporter CSV</button>
-        </div>
+      <div class="cd" style="padding:14px">
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:10px">Devis du mois</div>
+        <div id="rap-devis-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
       </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:10px">Exports CSV</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+      <button onclick="exportSecRapport('prestations')" style="padding:14px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">📋</span>
+        <div><div style="font-size:13px;font-weight:700;color:var(--t1)">Prestations du mois</div><div style="font-size:11px;color:var(--t3);margin-top:2px">statuts, clients, montants</div></div>
+      </button>
+      <button onclick="exportSecRapport('clients')" style="padding:14px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">👥</span>
+        <div><div style="font-size:13px;font-weight:700;color:var(--t1)">Base clients</div><div style="font-size:11px;color:var(--t3);margin-top:2px">contacts, abonnements</div></div>
+      </button>
+      <button onclick="exportSecRapport('devis')" style="padding:14px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">📄</span>
+        <div><div style="font-size:13px;font-weight:700;color:var(--t1)">Suivi devis</div><div style="font-size:11px;color:var(--t3);margin-top:2px">taux conversion, montants</div></div>
+      </button>
+      <button onclick="exportSecRapport('relances')" style="padding:14px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rb);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">🔔</span>
+        <div><div style="font-size:13px;font-weight:700;color:var(--t1)">Relances & paiements</div><div style="font-size:11px;color:var(--t3);margin-top:2px">acomptes, soldes, historique</div></div>
+      </button>
     </div>`,
 
   'cm.publications':()=>`
@@ -2666,6 +2677,7 @@ async function loadViewData(role,view){
   if(role==='sec'&&view==='contrats') await loadSecContrats();
   if(role==='sec'&&view==='abonnements') await loadSecAbonnements();
   if(role==='sec'&&view==='livraisons') await loadSecLivraisons();
+  if(role==='sec'&&view==='rapports'){_secRapDate=new Date();await loadSecRapports();}
   if(role==='sec'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='admin'&&view==='fin') await loadFinances();
   if(role==='compta'&&view==='factures') await loadComptaFactures();
@@ -12321,8 +12333,10 @@ async function loadSecRelances(){
     const acomptes=_secRelData.filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
     const soldes=_secRelData.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payé').length;
     const enRetardRel=_secRelData.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now2&&p.statut_financier!=='payé'&&!['annulée','refusée','clôturée'].includes(p.statut)).length;
+    const montantAtt=_secRelData.filter(p=>p.statut_financier!=='payé'&&!['annulée','refusée','clôturée'].includes(p.statut)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-    set('rel-kpi-acomp',acomptes);set('rel-kpi-solde',soldes);set('rel-kpi-sent',enRetardRel);
+    set('rel-kpi-acomp',acomptes);set('rel-kpi-solde',soldes);set('rel-kpi-retard',enRetardRel);
+    set('rel-kpi-montant',montantAtt.toLocaleString('fr-FR')+' €');
     renderSecRelances();
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';console.error(e);}
 }
@@ -12484,6 +12498,81 @@ function dlCSV(fname,rows){
   const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);a.download=fname;a.click();
   toast('Fichier téléchargé : '+fname);
+}
+
+// ── Rapport mensuel secrétaire ────────────────────────────────────────────────
+let _secRapDate=new Date();
+
+function secRapportMoisPrev(){_secRapDate=new Date(_secRapDate.getFullYear(),_secRapDate.getMonth()-1,1);loadSecRapports();}
+function secRapportMoisNext(){_secRapDate=new Date(_secRapDate.getFullYear(),_secRapDate.getMonth()+1,1);loadSecRapports();}
+
+async function loadSecRapports(){
+  const d=_secRapDate;
+  const mStart=new Date(d.getFullYear(),d.getMonth(),1);
+  const mEnd=new Date(d.getFullYear(),d.getMonth()+1,1);
+  const mStartS=mStart.toISOString().slice(0,10);
+  const mEndS=mEnd.toISOString().slice(0,10);
+  const mois=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const periodeEl=document.getElementById('sec-rap-periode');
+  if(periodeEl)periodeEl.textContent=mois[d.getMonth()]+' '+d.getFullYear();
+  set('rap-kpi-ca','…');set('rap-kpi-pre','…');set('rap-kpi-conv','…');set('rap-kpi-cli','…');
+  try{
+    const [pres,devis,cli]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ttc,clients(nom)&date_prestation=gte.'+mStartS+'&date_prestation=lt.'+mEndS+'&order=date_prestation.asc&limit=500'),
+      sbFetch('devis?select=id,reference,statut,montant_ttc,date_creation,clients(nom)&date_creation=gte.'+mStartS+'&date_creation=lt.'+mEndS+'&order=date_creation.desc&limit=200'),
+      sbFetch('clients?select=id,nom,statut,created_at&created_at=gte.'+mStart.toISOString()+'&created_at=lt.'+mEnd.toISOString()+'&order=created_at.desc&limit=100').catch(()=>[]),
+    ]);
+    const preList=Array.isArray(pres)?pres:[];
+    const devList=Array.isArray(devis)?devis:[];
+    const cliList=Array.isArray(cli)?cli:[];
+    const preTerminees=preList.filter(p=>!['annulée','refusée','demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse','devis_accepté'].includes(p.statut));
+    const caPaye=preList.filter(p=>p.statut_financier==='payé').reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const devTotal=devList.length;
+    const devAcc=devList.filter(d=>['accepté','signé'].includes(d.statut)).length;
+    const convRate=devTotal>0?Math.round(devAcc/devTotal*100):0;
+    set('rap-kpi-ca',caPaye.toLocaleString('fr-FR')+' €');
+    set('rap-kpi-pre',preTerminees.length);
+    set('rap-kpi-conv',convRate+'%');
+    set('rap-kpi-cli',cliList.length);
+    const SC2={'demande_reçue':'bw','à_qualifier':'bw','offre_en_préparation':'bb','devis_envoyé':'bb','en_attente_réponse':'bb','devis_accepté':'ba','confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl','production_terminée':'bb','livrée':'ba','facturée':'bb','payée':'ba','clôturée':'bn','annulée':'br','refusée':'br'};
+    const preEl=document.getElementById('rap-pre-list');
+    if(preEl){
+      preEl.innerHTML=preList.length
+        ?'<div style="display:flex;flex-direction:column;gap:5px">'+preList.slice(0,8).map(p=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--b1)">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.reference||'—'} — ${p.clients?.nom||'?'}</div>
+              <div style="font-size:10.5px;color:var(--t3)">${p.type_prestation||'—'} · ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—'}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <span style="font-size:12px;font-weight:700;color:var(--ok)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</span>
+              <span class="bd ${SC2[p.statut]||'bw'}" style="font-size:9.5px"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
+            </div>
+          </div>`).join('')+'</div>'+(preList.length>8?`<div style="font-size:11px;color:var(--t3);padding-top:6px">+${preList.length-8} autres</div>`:'')
+        :'<div style="font-size:12px;color:var(--t3);padding:16px 0;text-align:center">Aucune prestation ce mois.</div>';
+    }
+    const devEl=document.getElementById('rap-devis-list');
+    if(devEl){
+      const DSC={'brouillon':'bw','en_cours':'bw','envoyé':'bb','accepté':'ba','signé':'ba','refusé':'br','expiré':'bn'};
+      const DSL={'brouillon':'Brouillon','en_cours':'En cours','envoyé':'Envoyé','accepté':'Accepté','signé':'Signé','refusé':'Refusé','expiré':'Expiré'};
+      devEl.innerHTML=devList.length
+        ?'<div style="display:flex;flex-direction:column;gap:5px">'+devList.slice(0,8).map(d=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--b1)">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.reference||'—'} — ${d.clients?.nom||'?'}</div>
+              <div style="font-size:10.5px;color:var(--t3)">${d.date_creation?new Date(d.date_creation).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—'}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <span style="font-size:12px;font-weight:700;color:var(--t2)">${d.montant_ttc?d.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</span>
+              <span class="bd ${DSC[d.statut]||'bw'}" style="font-size:9.5px"><span class="bd-d"></span>${DSL[d.statut]||d.statut}</span>
+            </div>
+          </div>`).join('')+'</div>'+(devList.length>8?`<div style="font-size:11px;color:var(--t3);padding-top:6px">+${devList.length-8} autres</div>`:'')
+        :'<div style="font-size:12px;color:var(--t3);padding:16px 0;text-align:center">Aucun devis ce mois.</div>';
+    }
+  }catch(e){
+    set('rap-kpi-ca','Err');console.error('loadSecRapports',e);
+  }
 }
 
 // ── Actions rapides secrétaire ────────────────────────────────────────────────
