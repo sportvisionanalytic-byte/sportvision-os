@@ -3106,12 +3106,15 @@ function modalModifierClient(idx){
           <input id="fce-tel" type="tel" class="l-inp" value="${c.telephone||''}" style="height:38px">
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
         <div><label style="${lbl}">Sport</label>
           <input id="fce-sport" type="text" class="l-inp" value="${c.sport||''}" style="height:38px">
         </div>
         <div><label style="${lbl}">Ville</label>
           <input id="fce-ville" type="text" class="l-inp" value="${c.ville||''}" style="height:38px">
+        </div>
+        <div><label style="${lbl}">Division / Ligue</label>
+          <input id="fce-division" type="text" class="l-inp" value="${c.division||''}" placeholder="R1, Dept…" style="height:38px">
         </div>
       </div>
       <div><label style="${lbl}">Notes internes</label>
@@ -3163,6 +3166,7 @@ async function modifierClient(id){
       telephone:document.getElementById('fce-tel').value||null,
       sport:document.getElementById('fce-sport').value||null,
       ville:document.getElementById('fce-ville').value||null,
+      division:document.getElementById('fce-division')?.value||null,
       notes:document.getElementById('fce-notes').value.trim()||null,
     }});
     closeModal();
@@ -16217,8 +16221,14 @@ function addClientTimelineTab(clientId){
 const isMobile=()=>window.innerWidth<=768;
 
 // Offline
-window.addEventListener('online',()=>document.getElementById('mob-offline-banner')?.classList.remove('on'));
-window.addEventListener('offline',()=>document.getElementById('mob-offline-banner')?.classList.add('on'));
+let _offlineTimer=null;
+function _checkOffline(){
+  fetch('https://lulgezzpvrlbftbykzrc.supabase.co/rest/v1/',{method:'HEAD',signal:AbortSignal.timeout(4000)})
+    .then(()=>document.getElementById('mob-offline-banner')?.classList.remove('on'))
+    .catch(()=>document.getElementById('mob-offline-banner')?.classList.add('on'));
+}
+window.addEventListener('online',()=>{clearTimeout(_offlineTimer);document.getElementById('mob-offline-banner')?.classList.remove('on');});
+window.addEventListener('offline',()=>{clearTimeout(_offlineTimer);_offlineTimer=setTimeout(_checkOffline,3000);});
 
 // ── Action Sheet ──────────────────────────────────────────────────────────
 function showMobActionSheet(title,actions){
