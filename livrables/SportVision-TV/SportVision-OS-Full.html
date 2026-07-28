@@ -14501,6 +14501,8 @@ function rapportNext(){if(_rapportOffset<0){_rapportOffset++;loadRapport();}}
 async function loadRapport(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const setH=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
   const now=new Date();
   const targetDate=new Date(now.getFullYear(),now.getMonth()+_rapportOffset,1);
   const mStart=targetDate.toISOString().slice(0,7)+'-01';
@@ -14956,13 +14958,7 @@ async function supprimerUser(id){
 // ── GRADES & XP ─────────────────────────────────────────────────────────────
 async function loadGrades(){
   const d=document.getElementById('grades-real');
-  const GRADES=[
-    {nom:'Junior',xp:0,color:'#8891A8',ic:'🌱'},
-    {nom:'Confirmé',xp:500,color:'#2ECC8A',ic:'⭐'},
-    {nom:'Senior',xp:1500,color:'#366BFF',ic:'🔷'},
-    {nom:'Expert',xp:3000,color:'#7C4DFF',ic:'💎'},
-    {nom:'Elite',xp:5000,color:'#F5A524',ic:'👑'},
-  ];
+  const GRADES=GRADES_DEF;
   const [rProf,rMissions]=await Promise.all([
     sbFetch('profiles?select=*&order=created_at.asc'),
     sbFetch('prestations_equipe?select=collaborateur_id,est_responsable'),
@@ -14990,7 +14986,7 @@ async function loadGrades(){
               <span style="font-size:13px;font-weight:600;color:${g.color}">${g.nom}</span>
               <span style="font-size:11px;color:var(--t3)">${g.xp.toLocaleString('fr')} XP</span>
             </div>
-            ${GRADES[i+1]?`<div style="height:3px;border-radius:2px;background:var(--b1)"><div style="height:3px;border-radius:2px;width:${Math.round(g.xp/5000*100)}%;background:${g.color}"></div></div>`:`<div style="font-size:10px;color:${g.color};font-weight:600">Grade maximum</div>`}
+            ${GRADES[i+1]?`<div style="height:3px;border-radius:2px;background:var(--b1)"><div style="height:3px;border-radius:2px;width:${Math.round(g.xp/GRADES[GRADES.length-1].xp*100)}%;background:${g.color}"></div></div>`:`<div style="font-size:10px;color:${g.color};font-weight:600">Grade maximum</div>`}
           </div>
         </div>`).join('')}
       </div>
@@ -16825,17 +16821,20 @@ const isMobile=()=>window.innerWidth<=768;
 // Offline
 let _offlineTimer=null;
 function _checkOffline(){
-  // Utilise navigator.onLine comme signal primaire, fetch comme confirmation
-  if(!navigator.onLine){document.getElementById('mob-offline-banner')?.classList.add('on');return;}
-  fetch('https://lulgezzpvrlbftbykzrc.supabase.co/rest/v1/profiles?select=id&limit=1',{
+  const banner=document.getElementById('mob-offline-banner');
+  if(!navigator.onLine){banner?.classList.add('on');return;}
+  // Navigateur dit en ligne → retirer immédiatement la bannière
+  banner?.classList.remove('on');
+  // Confirmer avec Supabase (réactiver seulement si vrai problème réseau)
+  fetch(SB_URL+'/rest/v1/profiles?select=id&limit=1',{
     method:'GET',
-    headers:{apikey:'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4'},
-    signal:AbortSignal.timeout(5000)
+    headers:{apikey:SB_KEY},
+    signal:AbortSignal.timeout(6000)
   })
-    .then(r=>{if(r.ok||r.status===400||r.status===401||r.status===200)document.getElementById('mob-offline-banner')?.classList.remove('on');})
-    .catch(()=>document.getElementById('mob-offline-banner')?.classList.add('on'));
+    .then(r=>{if(!r.ok&&r.status!==400&&r.status!==401&&r.status!==403&&r.status!==200)banner?.classList.add('on');})
+    .catch(()=>banner?.classList.add('on'));
 }
-window.addEventListener('online',()=>{clearTimeout(_offlineTimer);setTimeout(_checkOffline,500);});
+window.addEventListener('online',()=>{clearTimeout(_offlineTimer);document.getElementById('mob-offline-banner')?.classList.remove('on');setTimeout(_checkOffline,500);});
 window.addEventListener('offline',()=>{clearTimeout(_offlineTimer);document.getElementById('mob-offline-banner')?.classList.add('on');});
 setTimeout(_checkOffline,3000);setInterval(_checkOffline,30000);
 
