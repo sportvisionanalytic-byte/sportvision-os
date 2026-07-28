@@ -1476,6 +1476,9 @@ const VIEWS={
     <div class="cd" id="photo-invitations-card" style="margin-bottom:13px;display:none;border-left:3px solid var(--wa)"><div class="cd-h"><div class="cd-t" style="color:var(--wa)">Invitations en attente</div><span class="bd bn" id="photo-inv-nb"></span></div>
       <div id="photo-invitations"></div>
     </div>
+    <div class="cd" id="photo-equipe-card" style="margin-bottom:13px;display:none;border-left:3px solid #7C4DFF"><div class="cd-h"><div class="cd-t">Mon équipe sur les missions</div><span style="font-size:11px;color:var(--t3)" id="photo-equipe-nb"></span></div>
+      <div id="photo-equipe-real"></div>
+    </div>
     <div class="g2">
       <div class="cd"><div class="cd-h"><div class="cd-t">Progression & grade</div><button class="btn bg2 bs" onclick="switchView('form')">Formation →</button></div>
         <div id="photo-dash-grade"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
@@ -1556,12 +1559,13 @@ const VIEWS={
         </div>
       </div>
     </div>
-    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:13px">
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Missions réalisées</div><div class="kpi-v" id="rev-nb">—</div><span class="kpi-d dnt">total</span></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Missions</div><div class="kpi-v" id="rev-nb">—</div><span class="kpi-d dnt">total</span></div>
       <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">XP accumulés</div><div class="kpi-v" id="rev-xp">—</div><span class="kpi-d dnt">grade</span></div>
-      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Terminées ce mois</div><div class="kpi-v" id="rev-done">—</div><span class="kpi-d dnt">prestations</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Payé</div><div class="kpi-v" id="rev-paye" style="font-size:16px">—</div><span class="kpi-d dnt">encaissé</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">En attente</div><div class="kpi-v" id="rev-att" style="font-size:16px">—</div><span class="kpi-d dnt">à percevoir</span></div>
     </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Historique des missions</div></div>
+    <div class="cd"><div class="cd-h"><div class="cd-t">Historique des missions</div><button class="btn bg2 bs" onclick="exportRevCSV()">Export CSV</button></div>
       <div id="rev-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
@@ -6015,6 +6019,47 @@ async function loadPhotoDash(){
         <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--t3)">100 XP / mission · +50 XP si responsable · ${actives.length} mission${actives.length>1?'s':''} réalisée${actives.length>1?'s':''}</div>
       </div>`;
     }
+    // ── Équipe sur mes missions à venir ──
+    const equipeCard=document.getElementById('photo-equipe-card');
+    const equipeReal=document.getElementById('photo-equipe-real');
+    const equipeNb=document.getElementById('photo-equipe-nb');
+    if(equipeCard&&equipeReal){
+      try{
+        const futurIds=futures.slice(0,5).map(d=>d.prestations?.id).filter(Boolean);
+        if(futurIds.length){
+          const teammates=await sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations(id,reference,date_prestation,type_prestation),profiles(id,prenom,nom,role)&prestation_id=in.('+futurIds.join(',')+')'+'&collaborateur_id=neq.'+uid+'&statut=in.(invitation_envoyée,acceptée)');
+          const tm=Array.isArray(teammates)?teammates:[];
+          // Dédupliquer par collaborateur + regrouper ses missions
+          const byCollab={};
+          tm.forEach(t=>{
+            const id=t.collaborateur_id;
+            if(!byCollab[id]){byCollab[id]={profile:t.profiles,missions:[]};}
+            if(t.prestations)byCollab[id].missions.push(t.prestations);
+          });
+          const collabList=Object.values(byCollab);
+          if(collabList.length){
+            equipeCard.style.display='';
+            if(equipeNb)equipeNb.textContent=collabList.length+' coéquipier'+(collabList.length>1?'s':'');
+            const RCLR={'admin':'#366BFF','prod':'#7C4DFF','photo':'#2ECC8A','sec':'#F5A524','compta':'#0EA5FF','com':'#F0445E','cm':'#8891A8'};
+            equipeReal.innerHTML=collabList.map(({profile:p,missions})=>{
+              const nom=(p?.prenom||'')+' '+(p?.nom||'');
+              const ini=((p?.prenom||'')[0]||'')+''+((p?.nom||'')[0]||'');
+              const rclr=RCLR[p?.role]||'#8891A8';
+              const mTxt=missions.map(m=>m.reference||'').filter(Boolean).join(', ');
+              return`<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
+                <div style="width:34px;height:34px;border-radius:50%;background:${rclr}22;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${rclr};flex-shrink:0">${ini.toUpperCase()}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;color:var(--t1)">${nom}</div>
+                  <div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mTxt||'Missions à venir'}</div>
+                </div>
+                <button onclick="ouvrirConvAvec('${p?.id}','${nom.replace(/'/g,"\\'")}')
+" style="padding:7px 12px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);white-space:nowrap">💬 Message</button>
+              </div>`;
+            }).join('');
+          }else{equipeCard.style.display='none';}
+        }else{equipeCard.style.display='none';}
+      }catch(e){equipeCard.style.display='none';}
+    }
   }catch(e){
     const hero=document.getElementById('photo-hero-card');
     if(hero)hero.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
@@ -8902,6 +8947,18 @@ function setRevPeriod(p){
   renderPhotoRevenus();
 }
 
+function exportRevCSV(){
+  if(!_revAllData.length)return toast('Aucune donnée à exporter','wa');
+  const rows=[['Référence','Client','Type','Date','Rémunération','Paiement']];
+  _revAllData.forEach(r=>{
+    const p=r.prestations||{};
+    const isPaid=r.statut_paiement==='payé'||p.statut==='payée'||p.statut==='clôturée';
+    rows.push([p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',(r.remuneration||0).toString(),isPaid?'Payé':'En attente']);
+  });
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);a.download='revenus-sportvision.csv';a.click();
+}
+
 async function loadPhotoRevenus(){
   const uid=localStorage.getItem('sv_uid');
   if(!uid)return;
@@ -8930,13 +8987,15 @@ function renderPhotoRevenus(){
     periodLabel='TOTAL';
   }
   const total=list.reduce((s,r)=>s+(r.remuneration||0),0);
-  const done=list.filter(r=>['livrée','payée','clôturée'].includes(r.prestations?.statut)).length;
+  const paye=list.filter(r=>r.statut_paiement==='payé'||(r.prestations?.statut==='payée'||r.prestations?.statut==='clôturée')).reduce((s,r)=>s+(r.remuneration||0),0);
+  const att=total-paye;
   const xp=_revAllData.reduce((s,m)=>s+100+(m.est_responsable?50:0),0);
   const {grade}=calcGrade(xp);
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('rev-nb',list.length);
   set('rev-total',(total||0).toLocaleString('fr-FR')+' €');
-  set('rev-done',done);
+  set('rev-paye',(paye||0).toLocaleString('fr-FR')+' €');
+  set('rev-att',(att||0).toLocaleString('fr-FR')+' €');
   set('rev-xp',xp.toLocaleString('fr-FR')+' XP ('+grade.ic+' '+grade.nom+')');
   const pEl=document.getElementById('rev-period-label');if(pEl)pEl.textContent=periodLabel;
   const subEl=document.getElementById('rev-subtitle');
@@ -8970,16 +9029,19 @@ function renderPhotoRevenus(){
   if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune mission sur cette période.</div>';return;}
   const sLb={'demande_reçue':'Demande','confirmée':'Confirmée','planifiée':'Planifiée','prête':'Prête','production_démarrée':'En prod.','livrée':'Livrée','clôturée':'Clôturée','payée':'Payée'};
   const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl','livrée':'bn','clôturée':'bn','payée':'bn'};
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Rémunération</th><th>Statut</th><th></th></tr></thead><tbody>'+
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Rémunération</th><th>Paiement</th><th></th></tr></thead><tbody>'+
     list.map(r=>{
       const p=r.prestations;
+      const isPaid=r.statut_paiement==='payé'||p.statut==='payée'||p.statut==='clôturée';
+      const payLabel=isPaid?'✓ Payé':'En attente';
+      const payCl=isPaid?'ba':'bw';
       return `<tr>
         <td class="tm">${p.reference||'—'}</td>
         <td class="tp">${p.clients?.nom||'—'}</td>
         <td>${p.type_prestation||'—'}</td>
         <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
         <td class="tm" style="color:var(--t1);font-weight:600">${r.remuneration?r.remuneration.toLocaleString('fr-FR')+' €':'—'}</td>
-        <td><span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></td>
+        <td><span class="bd ${payCl}"><span class="bd-d"></span>${payLabel}</span></td>
         <td><button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button></td>
       </tr>`;
     }).join('')+'</tbody></table></div>';
