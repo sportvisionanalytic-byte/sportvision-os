@@ -1017,14 +1017,21 @@ const VIEWS={
     <div id="cal-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.factures':()=>`
-    <div class="g3">
-      <div class="fs"><div class="fs-l">CA encaissé</div><div class="fs-v" id="cpt-enc">—</div></div>
-      <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" id="cpt-att" style="color:var(--wa)">—</div></div>
-      <div class="fs"><div class="fs-l">CA total facturé</div><div class="fs-v" id="cpt-total">—</div></div>
+    <div class="sh"><div class="sh-t">Factures</div>
+      <div style="display:flex;gap:8px"><button class="btn bg2 bs" onclick="exportCSV('factures')">Export CSV</button></div>
     </div>
-    <div class="cd"><div class="cd-h"><div class="cd-t">Prestations facturées</div></div>
-      <div id="compta-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
-    </div>`,
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA encaissé</div><div class="kpi-v" id="cpt-enc" style="font-size:18px;color:var(--ok)">—</div><span class="kpi-d dnt">payé</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">En attente</div><div class="kpi-v" id="cpt-att" style="font-size:18px;color:var(--wa)">—</div><span class="kpi-d dnt">à encaisser</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">CA total facturé</div><div class="kpi-v" id="cpt-total" style="font-size:18px">—</div><span class="kpi-d dnt">émis</span></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterComptaFactures('all')" id="cptf-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterComptaFactures('payée')" id="cptf-f-payee">Payées</button>
+      <button class="btn bg2 bs" onclick="filterComptaFactures('facturée')" id="cptf-f-facturee">Facturées</button>
+      <button class="btn bg2 bs" onclick="filterComptaFactures('partiellement_payée')" id="cptf-f-partiel">Part. payées</button>
+    </div>
+    <div id="compta-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'com.pipeline':()=>_buildPipelineShell('Pipeline'),
   'admin.pipeline':()=>_buildPipelineShell('Pipeline commercial'),
@@ -1880,7 +1887,7 @@ const VIEWS={
   'compta.documents':()=>_documentsView('compta'),
 
   'compta.depenses':()=>`
-    <div class="sh"><div class="sh-t">Dépenses</div></div>
+    <div class="sh"><div class="sh-t">Dépenses</div><button class="btn bp bs" onclick="modalNouvelleDepense()">+ Nouvelle dépense</button></div>
     <div class="g3" style="margin-bottom:13px">
       <div class="fs"><div class="fs-l">Dépenses ce mois</div><div class="fs-v" id="dep-kpi-mois" style="color:var(--er)">—</div></div>
       <div class="fs"><div class="fs-l">Budget annuel utilisé</div><div class="fs-v" id="dep-kpi-pct" style="color:var(--wa)">—</div></div>
@@ -11437,6 +11444,7 @@ let _comptaAcData=[],_comptaAcFilter='all';
 let _comptaDepData=[],_comptaDepFilter='all';
 let _comptaFraData=[],_comptaFraFilter='all';
 let _comptaRemData=[],_comptaRemFilter='all';
+let _comptaFactData=[],_comptaFactFilter='all';
 
 async function loadComptaAcomptes(){
   const el=document.getElementById('compta-acomptes-real');if(!el)return;
@@ -11641,15 +11649,52 @@ function renderComptaRem(){
   if(_comptaRemFilter==='en_attente')list=list.filter(r=>r.statut_paiement!=='payé');
   else if(_comptaRemFilter==='paye')list=list.filter(r=>r.statut_paiement==='payé');
   if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune rémunération dans cette catégorie.</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Collaborateur</th><th>Prestation</th><th>Date</th><th>Rémunération</th><th>Paiement</th><th></th></tr></thead><tbody>'+
-    list.slice(0,30).map(r=>`<tr>
-      <td class="tp">${r.collaborateur?.prenom||''} ${r.collaborateur?.nom||''}</td>
-      <td class="tm">${r.prestations?.reference||'—'}</td>
-      <td>${r.prestations?.date_prestation?new Date(r.prestations.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
-      <td class="tm" style="font-weight:600">${r.remuneration?r.remuneration.toLocaleString('fr-FR')+' €':'—'}</td>
-      <td><span class="bd ${r.statut_paiement==='payé'?'ba':'bw'}"><span class="bd-d"></span>${r.statut_paiement||'En attente'}</span></td>
-      <td>${r.statut_paiement!=='payé'?`<button onclick="marquerPayeRem('${r.id}',this)" style="padding:4px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:11px;cursor:pointer">Payer</button>`:'<span style="font-size:11px;color:var(--ok)">✓</span>'}</td>
-    </tr>`).join('')+'</tbody></table></div>';
+  const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+  // Groupement par collaborateur
+  const byCollab={};
+  list.forEach(r=>{
+    const cid=r.collaborateur?.id||'unknown';
+    if(!byCollab[cid])byCollab[cid]={prenom:r.collaborateur?.prenom||'',nom:r.collaborateur?.nom||'',items:[],total:0,att:0};
+    byCollab[cid].items.push(r);
+    byCollab[cid].total+=(r.remuneration||0);
+    if(r.statut_paiement!=='payé')byCollab[cid].att+=(r.remuneration||0);
+  });
+  el.innerHTML=Object.values(byCollab).map(g=>{
+    const attIds=g.items.filter(r=>r.statut_paiement!=='payé').map(r=>r.id);
+    return`<div class="cd" style="margin-bottom:10px">
+      <div class="cd-h" style="align-items:center">
+        <div>
+          <div class="cd-t">${g.prenom} ${g.nom}</div>
+          <div style="font-size:11.5px;color:var(--t3);margin-top:2px">Total : <strong style="color:var(--t1)">${fmt(g.total)}</strong>${g.att>0?` — <span style="color:var(--wa)">À payer : ${fmt(g.att)}</span>`:'<span style="color:var(--ok)"> — Tout payé</span>'}</div>
+        </div>
+        ${attIds.length?`<button onclick="toutPayerCollab(${JSON.stringify(attIds)},this)" style="padding:6px 14px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap">Tout payer (${attIds.length})</button>`:''}
+      </div>
+      <div class="tw" style="margin-top:2px"><table><thead><tr><th>Prestation</th><th>Date</th><th>Rémunération</th><th>Statut</th><th></th></tr></thead><tbody>
+        ${g.items.map(r=>`<tr>
+          <td class="tm">${r.prestations?.reference||'—'}</td>
+          <td>${r.prestations?.date_prestation?new Date(r.prestations.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td class="tm" style="font-weight:600">${fmt(r.remuneration)}</td>
+          <td><span class="bd ${r.statut_paiement==='payé'?'ba':'bw'}"><span class="bd-d"></span>${r.statut_paiement==='payé'?'Payé':'En attente'}</span></td>
+          <td>${r.statut_paiement!=='payé'?`<button id="rem-btn-${r.id}" onclick="marquerPayeRem('${r.id}',this)" style="padding:4px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:11px;cursor:pointer">Payer</button>`:'<span style="font-size:11px;color:var(--ok)">✓</span>'}</td>
+        </tr>`).join('')}
+      </tbody></table></div>
+    </div>`;
+  }).join('');
+}
+
+async function toutPayerCollab(ids,btn){
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  try{
+    await Promise.all(ids.map(id=>sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body:{statut_paiement:'payé',date_paiement:new Date().toISOString()}})));
+    ids.forEach(id=>{const item=_comptaRemData.find(r=>r.id===id);if(item)item.statut_paiement='payé';});
+    const tot=_comptaRemData.reduce((s,r)=>s+(r.remuneration||0),0);
+    const pay=_comptaRemData.filter(r=>r.statut_paiement==='payé').reduce((s,r)=>s+(r.remuneration||0),0);
+    const fmt=n=>n.toLocaleString('fr-FR')+' €';
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('crem-kpi-pay',fmt(pay));set('crem-kpi-att',fmt(tot-pay));
+    toast('Toutes les rémunérations marquées payées.','ok');
+    renderComptaRem();
+  }catch(e){toast('Erreur lors du paiement groupé.','er');if(btn){btn.disabled=false;btn.textContent='Tout payer';}}
 }
 
 async function marquerPayeRem(id,btn){
@@ -11737,6 +11782,60 @@ async function comptaRembourserFrais(id,source){
     toast('Frais marqué remboursé.','ok');
     if(source==='fra')loadComptaFrais();else loadComptaDepenses();
   }catch(e){toast('Erreur lors du remboursement.','er');}
+}
+
+function modalNouvelleDepense(){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const types=[['materiel','Matériel'],['logistique','Logistique'],['marketing','Marketing'],['repas','Repas'],['km','Kilométrage'],['autre','Autre']];
+  openModal(`<div class="mh"><div class="mt">Nouvelle dépense</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Type *</label>
+          <select id="nd-type" class="fi">${types.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>
+        </div>
+        <div><label style="${L}">Montant (€) *</label>
+          <input id="nd-montant" type="number" step="0.01" min="0" class="fi" placeholder="0.00">
+        </div>
+      </div>
+      <div style="margin-top:10px"><label style="${L}">Description</label>
+        <input id="nd-desc" class="fi" placeholder="Détail de la dépense…">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+        <div><label style="${L}">Date</label>
+          <input id="nd-date" type="date" class="fi" value="${new Date().toISOString().slice(0,10)}">
+        </div>
+        <div id="nd-km-wrap" style="display:none"><label style="${L}">Kilomètres</label>
+          <input id="nd-km" type="number" min="0" class="fi" placeholder="km">
+        </div>
+      </div>
+      <div id="nd-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:8px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="sauvegarderNouvelleDepense()">Enregistrer</button>
+    </div>`);
+  document.getElementById('nd-type')?.addEventListener('change',function(){
+    const kmWrap=document.getElementById('nd-km-wrap');
+    if(kmWrap)kmWrap.style.display=this.value==='km'?'':'none';
+  });
+}
+
+async function sauvegarderNouvelleDepense(){
+  const err=document.getElementById('nd-err');
+  const montant=parseFloat(document.getElementById('nd-montant')?.value||'0');
+  if(!montant||montant<=0){err.textContent='Le montant est obligatoire.';return;}
+  const type=document.getElementById('nd-type')?.value||'autre';
+  const body={
+    type,montant,
+    description:document.getElementById('nd-desc')?.value.trim()||null,
+    date_frais:document.getElementById('nd-date')?.value||new Date().toISOString().slice(0,10),
+    km:type==='km'?parseInt(document.getElementById('nd-km')?.value||'0')||null:null,
+    collaborateur_id:localStorage.getItem('sv_uid')||null,
+    statut:'validé',
+  };
+  const r=await sbFetch('frais',{method:'POST',body});
+  if(r&&r.error){err.textContent='Erreur : '+(r.error.message||'Impossible d\'enregistrer.');return;}
+  closeModal();toast('Dépense enregistrée.','ok');loadComptaDepenses();
 }
 
 async function loadComptaRentabilite(){
@@ -12433,39 +12532,59 @@ async function loadComptaFactures(){
   const el=document.getElementById('compta-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=100');
-    const list=data||[];
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom,email)&statut_financier=not.in.(non_facturée,brouillon)&order=date_prestation.desc&limit=200');
+    _comptaFactData=Array.isArray(data)?data:[];
+    const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
     let enc=0,att=0,total=0;
-    list.forEach(p=>{
+    _comptaFactData.forEach(p=>{
       const m=p.montant_ttc||0;
       if(p.statut_financier==='payée')enc+=m;
       if(['facturée','partiellement_payée'].includes(p.statut_financier))att+=m;
       if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))total+=m;
     });
-    const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
-    const s1=document.getElementById('cpt-enc');if(s1)s1.textContent=fmt(enc);
-    const s2=document.getElementById('cpt-att');if(s2)s2.textContent=fmt(att);
-    const s3=document.getElementById('cpt-total');if(s3)s3.textContent=fmt(total);
-    if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune facturation enregistrée.</div>';return;}
-    const sf_cls={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl','annulée':'bb','en_préparation':'bn'};
-    const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard','annulée':'Annulée','en_préparation':'En préparation'};
-    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut facture</th><th></th></tr></thead><tbody>'+
-      list.map(p=>{
-        const canPayer=['facturée','partiellement_payée','en_retard'].includes(p.statut_financier);
-        return`<tr>
-          <td class="tm">${p.reference||'—'}</td>
-          <td class="tp">${p.clients?.nom||'—'}</td>
-          <td>${p.type_prestation||'—'}</td>
-          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
-          <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-          <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
-          <td><div style="display:flex;gap:4px;justify-content:flex-end">
-            ${canPayer?`<button onclick="majStatutFinancier('${p.id}','payée')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">Payée ✓</button>`:''}
-            <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
-          </div></td>
-        </tr>`;
-      }).join('')+'</tbody></table></div>';
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('cpt-enc',fmt(enc));set('cpt-att',fmt(att));set('cpt-total',fmt(total));
+    _comptaFactFilter='all';
+    renderComptaFactures();
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function filterComptaFactures(f){
+  _comptaFactFilter=f;
+  ['all','payée','facturée','partiellement_payée'].forEach(id=>{
+    const btnId='cptf-f-'+id.replace('partiellement_payée','partiel');
+    const b=document.getElementById(btnId);
+    if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}
+  });
+  renderComptaFactures();
+}
+
+function renderComptaFactures(){
+  const el=document.getElementById('compta-real');if(!el)return;
+  let list=_comptaFactData;
+  if(_comptaFactFilter!=='all')list=list.filter(p=>p.statut_financier===_comptaFactFilter);
+  if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune facture dans cette catégorie.</div>';return;}
+  const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','en_retard':'bl','annulée':'bn'};
+  const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard','annulée':'Annulée'};
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    list.map(p=>{
+      const canPayer=['facturée','partiellement_payée','en_retard'].includes(p.statut_financier);
+      const mailSuj=`Relance paiement — ${p.reference||'SportVision'}`;
+      const mailBody=`Bonjour,%0A%0ANotre prestation ${p.reference||''} (${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision`;
+      return`<tr>
+        <td class="tm">${p.reference||'—'}</td>
+        <td class="tp">${p.clients?.nom||'—'}</td>
+        <td>${p.type_prestation||'—'}</td>
+        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+        <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
+        <td><div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap">
+          ${canPayer?`<button onclick="majStatutFinancier('${p.id}','payée')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">✓ Payée</button>`:''}
+          ${canPayer&&p.clients?.email?`<a href="mailto:${p.clients.email}?subject=${mailSuj}&body=${mailBody}" style="padding:4px 8px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;text-decoration:none;white-space:nowrap">✉ Relancer</a>`:''}
+          <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
+        </div></td>
+      </tr>`;
+    }).join('')+'</tbody></table></div>';
 }
 
 // ── Kanban production ────────────────────────────────────────────────────────
