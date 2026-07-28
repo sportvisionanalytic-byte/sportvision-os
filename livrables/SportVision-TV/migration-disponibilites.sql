@@ -1,5 +1,5 @@
 -- Migration : Table disponibilites collaborateurs
--- À exécuter dans Supabase → SQL Editor
+-- Idempotente : peut être rejouée sans erreur (DROP POLICY IF EXISTS avant chaque CREATE)
 -- Utilisée par : vue "Équipe en direct" (admin + prod), annuaire
 
 create table if not exists disponibilites (
@@ -16,24 +16,24 @@ create table if not exists disponibilites (
 
 alter table disponibilites enable row level security;
 
--- Lecture : tous les collaborateurs connectés
+drop policy if exists "dispo_select" on disponibilites;
+drop policy if exists "dispo_insert" on disponibilites;
+drop policy if exists "dispo_update" on disponibilites;
+drop policy if exists "dispo_delete" on disponibilites;
+
 create policy "dispo_select" on disponibilites for select using (
   exists (select 1 from profiles where id = auth.uid())
 );
 
--- Insertion : chaque collaborateur peut déclarer sa dispo
 create policy "dispo_insert" on disponibilites for insert with check (
   auth.uid() = collaborateur_id
 );
 
--- Modification : chaque collaborateur peut modifier sa propre dispo
--- Admin et prod peuvent modifier celle de n'importe qui
 create policy "dispo_update" on disponibilites for update using (
   auth.uid() = collaborateur_id
   or exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod'))
 );
 
--- Suppression : admin seulement
 create policy "dispo_delete" on disponibilites for delete using (
   exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
