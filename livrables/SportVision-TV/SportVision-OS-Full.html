@@ -10274,7 +10274,7 @@ function modalFormDetail(id){
 
 const FORMATION_CONTENT={
 'sv-culture':[
-  [['SportVision est née pour capturer et valoriser les moments sportifs des clubs amateurs.','Mission : offrir aux clubs amateurs un niveau de contenu visuel identique au monde pro.','Valeurs fondamentales : excellence technique, discrétion, ponctualité, professionnalisme.','Chaque prestation porte l\'image de SportVision — votre comportement est notre carte de visite.'],
+  [{d:'SportVision est née d\'un constat simple : les clubs sportifs amateurs méritent des contenus visuels de qualité professionnelle. Comprendre cette mission, c\'est savoir pourquoi chaque prestation compte au-delà de la technique.',p:['La mission de SportVision : capturer les moments qui comptent — le but, la célébration, l\'effort — et les livrer de façon professionnelle aux clubs et aux familles.','Notre positionnement repose sur trois piliers : qualité technique irréprochable, relation humaine authentique avec les clubs, et fiabilité opérationnelle à chaque prestation.','En tant que collaborateur, vous n\'êtes pas un simple technicien : vous êtes la marque SportVision sur le terrain. Votre comportement, votre ponctualité et votre rendu construisent ou abîment la réputation de l\'entreprise.','À long terme, l\'objectif est de devenir la référence du sport amateur en France — ce qui implique de lever le niveau à chaque mission, sans exception.'],t:'Avant chaque prestation, rappelez-vous : vous permettez à des familles de garder un souvenir de leur enfant sportif. Cette phrase seule justifie l\'exigence que SportVision demande.'},
    ['Nos clients sont des clubs sportifs amateurs, des associations et des familles de joueurs.','Comprendre leurs attentes : moments forts, portraits, souvenir émotionnel, communication de club.','Un club satisfait = renouvellement de contrat + recommandations. C\'est notre moteur de croissance.','Traiter le contact du club comme un partenaire à long terme, pas comme un simple commanditaire.'],
    ['Standard technique : photos nettes, bien exposées, cadrées, livrées dans les délais convenus.','Standard comportemental : tenue adaptée, ponctualité, discrétion sur le terrain.','Standard de livraison : fichiers nommés correctement, uploadés et confirmés au client.','En cas de doute sur la qualité, prévenir l\'admin plutôt que livrer du contenu insuffisant.'],
    ['L\'image de marque SportVision repose sur la cohérence de tous nos collaborateurs.','Ne jamais partager du contenu d\'une prestation sans validation préalable de l\'admin.','Sur les réseaux, ne pas mentionner les clubs clients sans autorisation explicite.','Votre tenue, votre attitude et votre matériel reflètent le niveau professionnel SportVision.']],
@@ -10447,42 +10447,54 @@ function modalLeconDetail(formId,mi,li){
   const lecon=mod.lecons[li];
   const lessons=_formProgCache[formId]||{};
   const done=!!lessons[mi+'_'+li];
-  const bullets=(FORMATION_CONTENT[formId]||[])[mi]?.[li]||[];
+  const entry=(FORMATION_CONTENT[formId]||[])[mi]?.[li]||{};
   const typeLabel=f.type==='en_ligne'?'📖 Formation en ligne — auto-apprentissage'
     :f.type==='hybride'?'🤝 Formation hybride — session avec formateur'
     :'📍 Formation terrain — présence obligatoire';
 
-  const contenuHtml=bullets.length
-    ?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px;margin:14px 0">
-        <div style="font-size:10px;font-weight:700;color:var(--acc);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Points clés</div>
-        <ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:7px">
-          ${bullets.map(b=>`<li style="font-size:12.5px;color:var(--t2);line-height:1.5">${b}</li>`).join('')}
-        </ul>
-      </div>`
-    :`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px;margin:14px 0">
-        <p style="font-size:13px;color:var(--t2);line-height:1.6;margin:0">Contenu transmis lors de la session de formation encadrée par votre formateur.</p>
-      </div>`;
+  const contenuHtml=entry.d
+    ?`${entry.d?`<p style="font-size:13px;color:var(--t2);line-height:1.65;margin:14px 0 0">${entry.d}</p>`:''}
+      ${entry.p&&entry.p.length?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px;margin:12px 0">
+        <div style="font-size:10px;font-weight:700;color:var(--acc);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">À savoir</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${entry.p.map(b=>`<div style="display:flex;gap:10px;align-items:flex-start"><div style="width:5px;height:5px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:6px"></div><span style="font-size:12.5px;color:var(--t2);line-height:1.6">${b}</span></div>`).join('')}
+        </div>
+      </div>`:''}
+      ${entry.t?`<div style="background:rgba(255,193,7,.07);border:1px solid rgba(255,193,7,.22);border-radius:8px;padding:11px 14px;margin-bottom:4px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:15px;flex-shrink:0">💡</span>
+        <span style="font-size:12px;color:var(--t2);line-height:1.55">${entry.t}</span>
+      </div>`:''}`
+    :Array.isArray(entry)&&entry.length
+      ?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px;margin:14px 0">
+          <div style="font-size:10px;font-weight:700;color:var(--acc);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">À savoir</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${entry.map(b=>`<div style="display:flex;gap:10px;align-items:flex-start"><div style="width:5px;height:5px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:6px"></div><span style="font-size:12.5px;color:var(--t2);line-height:1.6">${b}</span></div>`).join('')}
+          </div>
+        </div>`
+      :`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px;margin:14px 0">
+          <p style="font-size:13px;color:var(--t2);line-height:1.6;margin:0">Contenu transmis lors de la session de formation encadrée par votre formateur.</p>
+        </div>`;
 
   const actionHtml=done
-    ?`<div style="display:flex;gap:10px;margin-top:16px">
+    ?`<div style="display:flex;gap:10px;margin-top:14px">
         <div style="flex:1;display:flex;align-items:center;gap:8px;padding:12px 16px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:10px">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2ECC8A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5 7-7"/></svg>
           <span style="font-size:13px;font-weight:600;color:var(--ok)">Leçon complétée</span>
         </div>
         <button onclick="toggleFormLesson('${formId}',${mi},${li});closeModal();setTimeout(()=>modalFormDetail('${formId}'),80)" style="padding:12px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t3);font-size:12px;cursor:pointer;white-space:nowrap">Décocher</button>
       </div>`
-    :`<button onclick="toggleFormLesson('${formId}',${mi},${li});closeModal();setTimeout(()=>modalFormDetail('${formId}'),80)" style="width:100%;margin-top:16px;padding:14px;background:var(--acc);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✓ Marquer comme lu</button>`;
+    :`<button onclick="toggleFormLesson('${formId}',${mi},${li});closeModal();setTimeout(()=>modalFormDetail('${formId}'),80)" style="width:100%;margin-top:14px;padding:14px;background:var(--acc);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✓ Marquer comme lu</button>`;
 
-  openModal(`<div style="padding:20px 24px 24px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+  openModal(`<div style="padding:20px 24px 24px;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
       <button onclick="closeModal();setTimeout(()=>modalFormDetail('${formId}'),80)" style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:6px 10px;color:var(--t2);font-size:12px;cursor:pointer;flex-shrink:0">← Retour</button>
       <div>
         <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">${f.titre} · ${mod.titre}</div>
         <div style="font-size:16px;font-weight:700;color:var(--t1);margin-top:2px">${lecon}</div>
       </div>
     </div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:2px">${typeLabel}</div>
     ${contenuHtml}
-    <div style="font-size:11px;color:var(--t3);padding:6px 2px">${typeLabel}</div>
     ${actionHtml}
   </div>`);
 }
