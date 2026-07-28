@@ -10219,11 +10219,7 @@ function modalFormDetail(id){
   const isTerminée=fp.statut==='terminée';
   const NCLR={Débutant:'#2ECC8A',Intermédiaire:'#366BFF',Avancé:'#7C4DFF',Expert:'#F5A524'};
   const TLBL={en_ligne:'En ligne',hybride:'Hybride',terrain:'Terrain',presentiel:'Présentiel'};
-  const body=document.getElementById('modal-body');
-  const modal=document.getElementById('modal');
-  if(!body||!modal)return;
-  modal.style.display='flex';
-  body.innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
+  openModal(`<button onclick="closeModal()" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--b1);color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1;flex-shrink:0">✕</button><div style="padding:24px 20px;max-width:520px;margin:auto;position:relative">
     <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:18px">
       <div style="font-size:44px;flex-shrink:0;line-height:1">${f.icone}</div>
       <div style="flex:1">
@@ -10272,7 +10268,7 @@ function modalFormDetail(id){
         <button onclick="lancerQuiz('${id}')" style="padding:8px 14px;background:${fp.quiz_passe?'rgba(46,204,138,.15)':'var(--acc)'};border:${fp.quiz_passe?'1px solid rgba(46,204,138,.3)':'none'};border-radius:8px;color:${fp.quiz_passe?'var(--ok)':'#fff'};font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">${fp.quiz_passe?'Repasser':'Passer le quiz'}</button>
       </div>
     </div>`:''}
-  </div>`;
+  </div>`);
 }
 
 async function enrollForm(id){
@@ -10310,9 +10306,7 @@ async function lancerQuiz(id){
   if(!qs||!qs.length){toast('Aucune question disponible pour cette formation.','wa');return;}
   const f=FORMATIONS_CATALOG.find(x=>x.id===id);
   _quizState={id,qs,answers:{}};
-  const body=document.getElementById('modal-body');
-  if(!body)return;
-  body.innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
+  document.getElementById('sv-modal-ct').innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
       <button onclick="modalFormDetail('${id}')" style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:7px 12px;color:var(--t2);font-size:12px;cursor:pointer;flex-shrink:0">← Retour</button>
       <div><div style="font-size:15px;font-weight:700;color:var(--t1)">Quiz de validation</div><div style="font-size:11px;color:var(--t3)">${f?.titre||id} · ${qs.length} question${qs.length>1?'s':''}</div></div>
@@ -10350,9 +10344,7 @@ async function soumettreQuiz(id){
     }
   }
   if(_formProgCache[id]){_formProgCache[id].score_quiz=score;_formProgCache[id].quiz_passe=pass;}
-  const body=document.getElementById('modal-body');
-  if(!body)return;
-  body.innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
+  document.getElementById('sv-modal-ct').innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
     <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid var(--b1);margin-bottom:20px">
       <div style="font-size:52px;margin-bottom:10px">${pass?'🎉':'📖'}</div>
       <div style="font-size:24px;font-weight:800;color:${pass?'var(--ok)':'var(--wa)'}">${score}%</div>
@@ -10966,12 +10958,8 @@ async function adminToggleStatut(id){
 }
 
 function modalCreerSession(){
-  const body=document.getElementById('modal-body');
-  const modal=document.getElementById('modal');
-  if(!body||!modal)return;
-  modal.style.display='flex';
   const profs=(window._afProfCache||[]).filter(p=>['admin','prod'].includes(p.role));
-  body.innerHTML=`<div style="padding:24px 20px;max-width:500px;margin:auto">
+  openModal(`<div style="padding:24px 20px;max-width:500px;margin:auto">
     <div style="font-size:17px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouvelle session de formation</div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Formation</div>
@@ -11002,7 +10990,7 @@ function modalCreerSession(){
         <button onclick="sauvegarderSession()" style="flex:2;padding:12px;background:var(--acc);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Créer la session</button>
       </div>
     </div>
-  </div>`;
+  </div>`);
 }
 
 async function sauvegarderSession(){
@@ -11026,11 +11014,8 @@ async function sauvegarderSession(){
 }
 
 async function modalGererPresences(sessionId){
-  const body=document.getElementById('modal-body');
-  const modal=document.getElementById('modal');
-  if(!body||!modal)return;
-  modal.style.display='flex';
-  body.innerHTML=`<div style="padding:24px;max-width:520px;margin:auto;text-align:center;color:var(--t3)">Chargement…</div>`;
+  const _mc=document.getElementById('sv-modal-ct');
+  openModal(`<div style="padding:24px;max-width:520px;margin:auto;text-align:center;color:var(--t3)">Chargement…</div>`);
   try{
     const [sessions,presences,profiles]=await Promise.all([
       sbFetch('formation_sessions?id=eq.'+sessionId+'&select=*,profiles(prenom,nom)&limit=1').catch(()=>[]),
@@ -11041,7 +11026,7 @@ async function modalGererPresences(sessionId){
     (presences||[]).forEach(p=>{presMap[p.collaborateur_id]=p;});
     const f=FORMATIONS_CATALOG.find(x=>x.id===s.formation_id);
     const PSTLBL={inscrit:'Inscrit',present:'Présent',retard:'En retard',partiel:'Partiel',absent_justifie:'Absent justifié',absent:'Absent'};
-    body.innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
+    _mc.innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
       <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Présences — ${f?.titre||s.formation_id}</div>
       <div style="font-size:12px;color:var(--t3);margin-bottom:18px">${s.date_session?new Date(s.date_session).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):''}</div>
       <div style="display:flex;flex-direction:column;gap:6px">
@@ -11055,7 +11040,7 @@ async function modalGererPresences(sessionId){
       </div>
       <button onclick="closeModal()" style="width:100%;padding:12px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-size:13px;font-weight:600;cursor:pointer;margin-top:16px">Fermer</button>
     </div>`;
-  }catch(e){body.innerHTML=`<div style="padding:24px;text-align:center;color:var(--er)">Erreur de chargement.</div>`;}
+  }catch(e){_mc.innerHTML=`<div style="padding:24px;text-align:center;color:var(--er)">Erreur de chargement.</div>`;}
 }
 
 async function majPresence(sessionId,collabId,statut){
