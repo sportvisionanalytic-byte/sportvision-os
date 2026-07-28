@@ -15652,7 +15652,10 @@ function annuaireCard(p){
     </div>
     <div style="padding:10px 14px;border-top:1px solid var(--b1);display:flex;gap:8px">
       <button onclick="ouvrirConvAvec('${p.id}','${(p.prenom||'').replace(/'/g,"\\'")} ${(p.nom||'').replace(/'/g,"\\'")}')" style="flex:1;padding:8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">💬 Message</button>
-      ${canSeePhone&&p.telephone?`<a href="tel:${p.telephone}" style="flex:1;padding:8px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center">📞 Appeler</a>`:''}
+      ${canSeePhone?(p.telephone
+        ?`<a href="tel:${p.telephone}" style="flex:1;padding:8px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px">📞 Appeler</a>`
+        :`<span title="Numéro non renseigné" style="flex:1;padding:8px;background:rgba(46,204,138,.03);border:1px solid rgba(46,204,138,.1);border-radius:var(--rp);color:var(--t3);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:4px;opacity:.5;cursor:default">📞 Appeler</span>`)
+      :''}
       ${canSeePhone&&p.email?`<a href="mailto:${p.email}" style="flex:1;padding:8px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center">✉ Email</a>`:''}
     </div>
   </div>`;

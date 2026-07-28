@@ -8,4 +8,5 @@ alter table profiles
   add column if not exists ville       text,
   add column if not exists code_postal text,
   add column if not exists vehicule    boolean default false,
-  add column if not exists permis      boolean default false;
+  add column if not exists permis      boolean default false,
+  add column if not exists telephone   text;
