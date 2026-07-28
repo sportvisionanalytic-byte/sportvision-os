@@ -5684,7 +5684,7 @@ async function loadProdFormation(){
       const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase();
       const col=RC[t.role]||'#366BFF';
       const xp=t.xp||0;
-      const grade=xp>=500?'Expert':xp>=200?'Confirmé':xp>=50?'Junior':'Débutant';
+      const grade=xp>=9000?'Maître':xp>=6500?'Elite':xp>=4000?'Expert':xp>=2000?'Senior':xp>=600?'Confirmé':'Débutant';
       return`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;${i<prof.length-1?'border-bottom:1px solid var(--b1)':''}">
         <div class="av" style="width:34px;height:34px;font-size:12px;background:${col}">${ini}</div>
         <div style="flex:1;min-width:0">
@@ -5901,11 +5901,12 @@ async function loadEquipes(){
 }
 
 const GRADES_DEF=[
-  {nom:'Junior',xp:0,color:'#8891A8',ic:'🌱'},
-  {nom:'Confirmé',xp:500,color:'#2ECC8A',ic:'⭐'},
-  {nom:'Senior',xp:1500,color:'#366BFF',ic:'🔷'},
-  {nom:'Expert',xp:3000,color:'#7C4DFF',ic:'💎'},
-  {nom:'Elite',xp:5000,color:'#F5A524',ic:'👑'},
+  {nom:'Débutant',xp:0,color:'#8891A8',ic:'🌱'},
+  {nom:'Confirmé',xp:600,color:'#2ECC8A',ic:'⭐'},
+  {nom:'Senior',xp:2000,color:'#366BFF',ic:'⭐⭐'},
+  {nom:'Expert',xp:4000,color:'#7C4DFF',ic:'⭐⭐⭐'},
+  {nom:'Elite',xp:6500,color:'#F5A524',ic:'⭐⭐⭐⭐'},
+  {nom:'Maître',xp:9000,color:'#FF6B35',ic:'⭐⭐⭐⭐⭐'},
 ];
 function calcGrade(xp){
   const grade=[...GRADES_DEF].reverse().find(g=>xp>=g.xp)||GRADES_DEF[0];
@@ -6315,7 +6316,7 @@ function modalDisponibilite(){
   const opts=[{v:'disponible',lb:'Disponible',ic:'🟢',desc:'Prêt(e) à accepter des missions'},{v:'sous_conditions',lb:'Sous conditions',ic:'🟡',desc:'Disponible avec contraintes (horaires, zone…)'},{v:'indisponible',lb:'Indisponible',ic:'🔴',desc:'Pas de mission pour le moment'}];
   openModal(`<div class="mh"><div class="mt">Mon statut de disponibilité</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:8px">
-      ${opts.map(o=>`<button onclick="setDisponibilite('${o.v}')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:${cur===o.v?'rgba(14,165,255,.1)':'var(--s2)'};border:${cur===o.v?'2px solid var(--acc)':'1px solid var(--b1)'};border-radius:10px;cursor:pointer;text-align:left;width:100%">
+      ${opts.map(o=>`<button onclick="${o.v==='sous_conditions'?'modalDisponibiliteSousConditions()':'setDisponibilite(\''+o.v+'\')'}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:${cur===o.v?'rgba(14,165,255,.1)':'var(--s2)'};border:${cur===o.v?'2px solid var(--acc)':'1px solid var(--b1)'};border-radius:10px;cursor:pointer;text-align:left;width:100%">
         <span style="font-size:22px">${o.ic}</span>
         <div>
           <div style="font-size:14px;font-weight:600;color:var(--t1)">${o.lb}</div>
@@ -6326,6 +6327,61 @@ function modalDisponibilite(){
         <div style="font-size:11px;color:var(--t3)">Note : le statut est indicatif. Il aide le responsable production à planifier les équipes. Il ne bloque pas automatiquement les invitations.</div>
       </div>
     </div>`);
+}
+
+function modalDisponibiliteSousConditions(){
+  const jours=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  openModal(`<div class="mh"><div class="mt">Disponibilité sous conditions</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:6px">Conditions</label>
+        <input id="dsc-cond" type="text" class="fi" placeholder="ex : disponible le matin uniquement, zone Paris…">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:6px">Jours disponibles</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${jours.map((j,i)=>`<label style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);cursor:pointer;font-size:12px;color:var(--t2)">
+            <input type="checkbox" id="dsc-j${i}" value="${j}" style="accent-color:var(--acc)">${j}
+          </label>`).join('')}
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:6px">Horaires</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input id="dsc-hdeb" type="time" class="fi" style="width:130px" value="08:00">
+          <span style="color:var(--t3);font-size:12px">à</span>
+          <input id="dsc-hfin" type="time" class="fi" style="width:130px" value="18:00">
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="modalDisponibilite()">Retour</button>
+      <button class="btn bp" onclick="submitDisponibiliteSousConditions()">Enregistrer</button>
+    </div>`);
+}
+
+async function submitDisponibiliteSousConditions(){
+  const conditions=document.getElementById('dsc-cond')?.value.trim()||'';
+  const jours=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const joursSelec=jours.filter((_,i)=>document.getElementById('dsc-j'+i)?.checked);
+  const hDeb=document.getElementById('dsc-hdeb')?.value||'';
+  const hFin=document.getElementById('dsc-hfin')?.value||'';
+  const note=JSON.stringify({conditions,jours:joursSelec,horaires:{de:hDeb,a:hFin}});
+  localStorage.setItem('sv_dispo','sous_conditions');
+  closeModal();
+  const uid=localStorage.getItem('sv_uid');
+  const today=new Date().toISOString().split('T')[0];
+  if(uid){
+    try{
+      await sbFetch('disponibilites?collaborateur_id=eq.'+uid+'&date=eq.'+today,{
+        method:'POST',
+        headers:{'Prefer':'resolution=merge-duplicates'},
+        body:{collaborateur_id:uid,date:today,statut:'sous_conditions',note},
+      });
+    }catch(e){}
+  }
+  toast('Disponibilité mise à jour.','ok');
+  if(typeof loadPhotoDash==='function')loadPhotoDash();
 }
 
 async function setDisponibilite(statut){
@@ -7139,6 +7195,7 @@ async function kitsOpenFiche(kitId){
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${isAdmin?`<button onclick="kitsModalAddMaterielToKit('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-family:var(--ff)">+ Ajouter matériel</button>`:''}
         ${isProd?`<button onclick="closeModal();kitsModalAttribuer('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-family:var(--ff)">📋 Attribuer à une prestation</button>`:''}
+        ${isProd?`<button onclick="kitsModalAttribuerCollab('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer;font-family:var(--ff)">👤 Attribuer à un collaborateur</button>`:''}
         ${isAdmin?`<button onclick="kitsModalChangerStatut('${kit.id}','${kit.statut}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(255,255,255,.06);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff)">Changer statut</button>`:''}
         ${isAdmin?`<button onclick="kitsModalEditKit('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(255,200,20,.08);border:1px solid rgba(255,200,20,.25);border-radius:var(--rp);color:var(--wa);cursor:pointer;font-family:var(--ff)">✎ Modifier</button>`:''}
         ${isAdmin?`<button onclick="kitsConfirmerSupprimer('${kit.id}')" style="padding:8px 14px;font-size:12px;font-weight:600;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff)">🗑 Supprimer</button>`:''}
@@ -7435,6 +7492,60 @@ async function kitsAttribuerSubmit(kitId){
     }
     closeModal();toast('Kit attribué.','ok');kitsLoadAll();updateNavBadges(S.role);
   }catch(e){toast('Erreur lors de l\'attribution.','er');}
+}
+
+// ── ATTRIBUTION KIT → COLLABORATEUR ──────────────────────────────────────────
+async function kitsModalAttribuerCollab(kitId){
+  const collabs=await sbFetch('profiles?select=id,prenom,nom&role=in.(photo,cm)&order=nom.asc').catch(()=>[]);
+  const curResas=await sbFetch('kit_reservations?select=id,collaborateur_id,profiles(prenom,nom)&kit_id=eq.'+kitId+'&prestation_id=is.null&statut=eq.sortie&limit=1').catch(()=>[]);
+  const cur=Array.isArray(curResas)&&curResas[0]?curResas[0]:null;
+  const list=Array.isArray(collabs)?collabs:[];
+  openModal(`<div class="mh"><div class="mt">Attribuer le kit à un collaborateur</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      ${cur?`<div style="background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;color:var(--ok)">Actuellement attribué à <strong>${cur.profiles?.prenom||''} ${cur.profiles?.nom||''}</strong></span>
+        <button onclick="libererKitCollaborateur('${kitId}','${cur.id}')" style="padding:5px 10px;font-size:11px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff)">Libérer</button>
+      </div>`:'<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Aucune attribution permanente en cours.</div>'}
+      <div class="fg"><label class="fl">Collaborateur</label>
+        <select id="akc-collab" class="fi">
+          <option value="">— Sélectionner —</option>
+          ${list.map(c=>`<option value="${c.id}">${c.prenom||''} ${c.nom||''}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="attribuerKitCollaborateur('${kitId}')">Attribuer</button>
+    </div>`);
+}
+
+async function attribuerKitCollaborateur(kitId){
+  const collabId=document.getElementById('akc-collab')?.value;
+  if(!collabId){toast('Sélectionnez un collaborateur.','er');return;}
+  try{
+    await sbFetch('kit_reservations',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
+      kit_id:kitId,
+      prestation_id:null,
+      collaborateur_id:collabId,
+      responsable_id:collabId,
+      statut:'sortie',
+      heure_sortie:new Date().toISOString(),
+    }});
+    await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'sorti'}}).catch(()=>{});
+    closeModal();
+    toast('Kit attribué au collaborateur.','ok');
+    kitsLoadAll();
+  }catch(e){toast('Erreur lors de l\'attribution.','er');}
+}
+
+async function libererKitCollaborateur(kitId,resaId){
+  try{
+    await sbFetch('kit_reservations?id=eq.'+resaId,{method:'PATCH',body:{statut:'retourné',heure_retour_reel:new Date().toISOString()}});
+    await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'disponible'}}).catch(()=>{});
+    closeModal();
+    toast('Attribution annulée — kit libéré.','ok');
+    kitsLoadAll();
+  }catch(e){toast('Erreur lors de la libération.','er');}
 }
 
 // ── INCIDENT ──────────────────────────────────────────────────────────────────
@@ -9704,18 +9815,18 @@ async function envoyerMessage(){
   inp.focus();
   try{
     if(_msgConv==='team'){
-      await sbFetch('notifications',{method:'POST',body:{type:'message',titre:uid,message:txt,destinataire_id:uid,lue:true}});
+      const r=await sbFetch('notifications',{method:'POST',headers:{'Prefer':'return=minimal'},body:{type:'message',titre:uid,message:txt,destinataire_id:uid,lue:true}});
+      if(r&&r.code){throw new Error(r.message||'Erreur envoi');}
     }else{
       const recipient=_msgConv;
-      await Promise.all([
-        // Copie pour le destinataire
-        sbFetch('notifications',{method:'POST',body:{type:'message_prive',titre:uid,message:txt,destinataire_id:recipient,prestation_id:uid,lue:false}}),
-        // Copie pour l'expéditeur (sent box) — prestation_id = partner uid pour retrouver la conversation
-        sbFetch('notifications',{method:'POST',body:{type:'message_prive',titre:uid,message:txt,destinataire_id:uid,prestation_id:recipient,lue:true}}),
+      const [r1]=await Promise.all([
+        sbFetch('notifications',{method:'POST',headers:{'Prefer':'return=minimal'},body:{type:'message_prive',titre:uid,message:txt,destinataire_id:recipient,prestation_id:uid,lue:false}}),
+        sbFetch('notifications',{method:'POST',headers:{'Prefer':'return=minimal'},body:{type:'message_prive',titre:uid,message:txt,destinataire_id:uid,prestation_id:recipient,lue:true}}),
       ]);
+      if(r1&&r1.code){throw new Error(r1.message||'Erreur envoi');}
     }
     _renderMsgConv(uid);
-  }catch(e){toast('Erreur lors de l\'envoi.','err');}
+  }catch(e){toast('Erreur lors de l\'envoi : vérifiez les permissions Supabase.','err');}
 }
 
 function msgReplyTo(txt){
@@ -13545,7 +13656,46 @@ async function loadFinances(){
     const s2=document.getElementById('fin-ca-total');if(s2)s2.innerHTML=fmt(total);
     const s3=document.getElementById('fin-en-attente');if(s3)s3.innerHTML=fmt(att);
     if(list.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">💶</div><div>Aucune prestation avec montant renseigné.</div></div>';return;}
-    el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut financier</th><th></th></tr></thead><tbody>'+
+    // ── Mini charts — 6 derniers mois ──
+    const now2=new Date();
+    const months6=Array.from({length:6},(_,i)=>{const d=new Date(now2.getFullYear(),now2.getMonth()-5+i,1);return{key:d.toISOString().slice(0,7),lb:d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'})};});
+    const byMonth={};
+    list.forEach(p=>{if(!p.date_prestation)return;const mk=p.date_prestation.slice(0,7);if(!byMonth[mk])byMonth[mk]={enc:0,att:0};const m=p.montant_ttc||0;if(p.statut_financier==='payée')byMonth[mk].enc+=m;else if(['facturée','partiellement_payée'].includes(p.statut_financier))byMonth[mk].att+=m;});
+    const chartData=months6.map(m=>({lb:m.lb,enc:byMonth[m.key]?.enc||0,att:byMonth[m.key]?.att||0}));
+    const maxVal=Math.max(1,...chartData.map(d=>d.enc+d.att));
+    const cashFlowEnc=enc;const cashFlowAtt=att;const cashFlowPct=total>0?Math.round(enc/total*100):0;
+    const chartHtml=`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:18px 20px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">Évolution sur 6 mois</div>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:70px;margin-bottom:8px">
+        ${chartData.map(d=>{const h1=Math.round(d.enc/maxVal*64);const h2=Math.round(d.att/maxVal*64);return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:70px;justify-content:flex-end">
+          <div style="width:100%;display:flex;flex-direction:column;align-items:stretch">
+            <div style="height:${h2}px;background:rgba(245,165,36,.35);border-radius:3px 3px 0 0" title="En attente: ${fmt(d.att)}"></div>
+            <div style="height:${h1}px;background:var(--ok);border-radius:${h2?'0':'3px 3px'} 3px 3px" title="Encaissé: ${fmt(d.enc)}"></div>
+          </div>
+        </div>`;}).join('')}
+      </div>
+      <div style="display:flex;gap:6px">
+        ${chartData.map(d=>`<div style="flex:1;text-align:center;font-size:9px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.lb}</div>`).join('')}
+      </div>
+      <div style="display:flex;gap:14px;margin-top:12px;padding-top:10px;border-top:1px solid var(--b1)">
+        <div style="display:flex;align-items:center;gap:5px"><div style="width:10px;height:10px;border-radius:2px;background:var(--ok)"></div><span style="font-size:11px;color:var(--t3)">Encaissé</span></div>
+        <div style="display:flex;align-items:center;gap:5px"><div style="width:10px;height:10px;border-radius:2px;background:rgba(245,165,36,.5)"></div><span style="font-size:11px;color:var(--t3)">En attente</span></div>
+        <div style="margin-left:auto;font-size:11px;color:var(--t3)">Taux encaissement : <strong style="color:${cashFlowPct>=70?'var(--ok)':cashFlowPct>=40?'var(--wa)':'var(--er)'}">${cashFlowPct}%</strong></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:14px 16px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px">Cash Flow — Encaissé</div>
+        <div style="font-size:20px;font-weight:800;color:var(--ok)">${fmt(cashFlowEnc)}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${cashFlowPct}% du CA facturé</div>
+      </div>
+      <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:14px 16px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px">À Encaisser</div>
+        <div style="font-size:20px;font-weight:800;color:var(--wa)">${fmt(cashFlowAtt)}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${total>0?100-cashFlowPct:0}% du CA en attente</div>
+      </div>
+    </div>`;
+    el.innerHTML=chartHtml+'<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut financier</th><th></th></tr></thead><tbody>'+
       list.map(p=>{
         const sf=p.statut_financier||'non_facturée';
         const sc={'payée':'ba','partiellement_payée':'bw','facturée':'bw','non_facturée':'bb','en_préparation':'bl','en_retard':'bb'}[sf]||'bw';
@@ -13587,7 +13737,9 @@ async function loadCollaborateurs(){
   const el=document.getElementById('col-real');
   if(!el)return;
   try{
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone&order=role.asc,nom.asc');
+    const _colRole=localStorage.getItem('sv_role');
+    const _colFilter=_colRole==='prod'?'&role=in.(photo,cm)':'';
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone'+_colFilter+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
@@ -13597,13 +13749,13 @@ async function loadCollaborateurs(){
         const ini=((t.prenom?t.prenom[0]:'')+(t.nom?t.nom[0]:'')).toUpperCase()||t.role.substring(0,2).toUpperCase();
         const name=[t.prenom,t.nom].filter(Boolean).join(' ')||t.role;
         const col=rColors[t.role]||'#366BFF';
-        return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+        return`<div onclick="modalFicheCollaborateur('${t.id}')" style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--acc)'" onmouseout="this.style.borderColor='var(--b1)'">
           <div class="av" style="width:50px;height:50px;font-size:17px;font-weight:700;background:${col}">${ini}</div>
           <div style="font-size:13px;font-weight:650;color:var(--t1)">${name}</div>
           <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 8px;border-radius:var(--rp);background:rgba(255,255,255,.07);color:var(--t2)">${rLabels[t.role]||t.role}</span>
           <div style="display:flex;gap:6px;width:100%">
             ${t.telephone?`<a href="tel:${t.telephone}" onclick="event.stopPropagation()" style="flex:1;padding:5px 8px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;text-align:center;text-decoration:none">📞</a>`:''}
-            <button onclick="modalModifierCollaborateur(${i})" style="flex:1;padding:5px 14px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button>
+            <button onclick="event.stopPropagation();modalModifierCollaborateur(${i})" style="flex:1;padding:5px 14px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button>
           </div>
         </div>`;
       }).join('')+'</div>';
@@ -13650,6 +13802,92 @@ async function modifierCollaborateur(id){
     toast('Collaborateur mis à jour.','ok');
     loadCollaborateurs();
   }catch(e){err.textContent='Erreur lors de la modification.';}
+}
+
+async function modalFicheCollaborateur(id){
+  const role=localStorage.getItem('sv_role');
+  const canManage=(role==='admin'||role==='sec'||role==='prod');
+  const RLBL={admin:'Administrateur',sec:'Secrétaire',prod:'Resp. Production',photo:'Photographe',cm:'Community Manager',compta:'Comptable',com:'Commercial'};
+  const RCLR={admin:'#366BFF',sec:'#00B8D4',prod:'#2ECC8A',photo:'#7C4DFF',cm:'#F5A524',compta:'#FF6B35',com:'#F0445E'};
+  openModal('<div style="padding:24px;text-align:center;color:var(--t3)">Chargement de la fiche…</div>',true);
+  try{
+    const [profRaw,presRaw,certRaw,xpRaw]=await Promise.all([
+      sbFetch('profiles?select=*&id=eq.'+id).catch(()=>[]),
+      sbFetch('prestations_equipe?select=id,statut,remuneration,prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=100').catch(()=>[]),
+      sbFetch('collaborateur_certifications?select=*&collaborateur_id=eq.'+id).catch(()=>[]),
+      sbFetch('xp_events?select=montant&collaborateur_id=eq.'+id).catch(()=>[]),
+    ]);
+    const prof=(Array.isArray(profRaw)?profRaw:[])[0];
+    if(!prof){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb">Profil introuvable.</div>');return;}
+    const pres=Array.isArray(presRaw)?presRaw:[];
+    const certs=Array.isArray(certRaw)?certRaw:[];
+    const xpTotal=(Array.isArray(xpRaw)?xpRaw:[]).reduce((s,e)=>s+(e.montant||0),0);
+    const name=[prof.prenom,prof.nom].filter(Boolean).join(' ')||prof.role;
+    const ini=((prof.prenom?.[0]||'')+(prof.nom?.[0]||'')).toUpperCase()||'?';
+    const col=RCLR[prof.role]||'#366BFF';
+    const nbPre=pres.length;
+    const totalRem=pres.reduce((s,p)=>s+(p.remuneration||0),0);
+    const {grade}=calcGrade(xpTotal);
+    const last5=pres.slice(0,5);
+    const fmtD=d=>d?new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'2-digit'}):'—';
+    const fmtE=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
+    const ST_CLR={livrée:'var(--ok)',payée:'var(--ok)',facturée:'var(--acc)',confirmée:'#7C4DFF',planifiée:'var(--wa)',annulée:'var(--er)'};
+    openModal(`<div class="mh">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:54px;height:54px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:800;color:#fff;flex-shrink:0">${ini}</div>
+        <div>
+          <div style="font-size:17px;font-weight:700;color:var(--t1)">${name}</div>
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:${col}">${RLBL[prof.role]||prof.role}</span>
+        </div>
+      </div>
+      <button class="mc" onclick="closeModal()">✕</button>
+    </div>
+    <div class="mb" style="max-height:72vh;overflow-y:auto;padding:0 24px 24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        ${prof.telephone?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:3px">Téléphone</div><div style="font-size:12.5px;color:var(--t1);font-weight:500">${prof.telephone}</div></div>`:''}
+        ${prof.email?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:3px">Email</div><div style="font-size:12.5px;color:var(--t1);font-weight:500;word-break:break-all">${prof.email}</div></div>`:''}
+        ${prof.ville?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:3px">Ville</div><div style="font-size:12.5px;color:var(--t1);font-weight:500">${prof.ville}${prof.code_postal?' ('+prof.code_postal+')':''}</div></div>`:''}
+        ${prof.adresse?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:3px">Adresse</div><div style="font-size:12.5px;color:var(--t1);font-weight:500">${prof.adresse}</div></div>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--t1)">${nbPre}</div><div style="font-size:10px;color:var(--t3)">Missions</div></div>
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800;color:var(--ok)">${fmtE(totalRem)}</div><div style="font-size:10px;color:var(--t3)">Rémunération</div></div>
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--acc)">${xpTotal}</div><div style="font-size:10px;color:var(--t3)">XP total</div></div>
+        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px;text-align:center"><div style="font-size:13px;font-weight:800;color:${grade.color}">${grade.ic} ${grade.nom}</div><div style="font-size:10px;color:var(--t3)">Grade</div></div>
+      </div>
+      ${certs.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Certifications (${certs.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">${certs.map(c=>`<span style="font-size:11px;padding:3px 9px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc)">${c.certification_id||c.nom||'Certification'}</span>`).join('')}</div>`:''}
+      ${last5.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Dernières missions</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">${last5.map(pe=>{
+        const p=pe.prestations||{};
+        return`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:8px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12.5px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.clients?.nom||'—'}</div>
+            <div style="font-size:10.5px;color:var(--t3)">${p.reference||''}${p.date_prestation?' · '+fmtD(p.date_prestation):''}</div>
+          </div>
+          ${pe.remuneration?`<span style="font-size:11px;font-weight:600;color:var(--ok);flex-shrink:0">${fmtE(pe.remuneration)}</span>`:''}
+          <span style="font-size:10.5px;color:${ST_CLR[p.statut]||'var(--t3)'};flex-shrink:0">${p.statut||'—'}</span>
+        </div>`;
+      }).join('')}</div>`:''}
+      ${canManage?`<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--b1);padding-top:14px">
+        <button onclick="closeModal();setTimeout(()=>modalModifierCollaborateur((_colsCache||[]).findIndex(x=>x.id==='${id}')),50)" style="width:100%;padding:11px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:10px;color:var(--acc);font-size:13px;cursor:pointer;font-family:var(--ff)">Modifier le profil</button>
+        ${role==='admin'?`<button onclick="supprimerCollaborateur('${id}')" style="width:100%;padding:11px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;color:#EF4444;font-size:13px;cursor:pointer;font-family:var(--ff)">Supprimer ce collaborateur</button>`:''}
+      </div>`:''}
+    </div>`);
+  }catch(e){openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb">${e.message||'Impossible de charger la fiche.'}</div>`);}
+}
+
+async function supprimerCollaborateur(id){
+  const role=localStorage.getItem('sv_role');
+  if(role!=='admin'){toast('Accès refusé.','err');return;}
+  confirmerAction('Supprimer définitivement ce collaborateur ? Cette action est irréversible.',async()=>{
+    try{
+      await sbFetch('profiles?id=eq.'+id,{method:'DELETE'});
+      closeModal();
+      toast('Collaborateur supprimé.','ok');
+      loadCollaborateurs();
+    }catch(e){toast('Erreur lors de la suppression.','err');}
+  });
 }
 
 // ── STATE ────────────────────────────────
@@ -14305,7 +14543,7 @@ async function loadRapport(){
       </div>`).join(''));
     // Équipe
     const byCollab={};
-    eq.filter(r=>r.prestation).forEach(r=>{
+    eq.filter(r=>r.prestation_id).forEach(r=>{
       const k=r.collaborateur_id;if(!k)return;
       if(!byCollab[k])byCollab[k]={id:k,nb:0,rem:0};
       byCollab[k].nb++;byCollab[k].rem+=(r.remuneration||0);
@@ -14453,6 +14691,14 @@ function modalNouveauContrat(){
         <input type="checkbox" id="nc-auto" style="width:15px;height:15px;accent-color:var(--acc)">
         <label for="nc-auto" style="font-size:13px;color:var(--t2);cursor:pointer">Renouvellement automatique</label>
       </div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">TYPE D'ABONNEMENT</label>
+        <select id="nc-abonnement" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
+          <option value="">— Non défini —</option>
+          <option value="standard">Standard (3 prestations/mois)</option>
+          <option value="premium">Premium (6 prestations/mois)</option>
+          <option value="elite">Elite (prestations illimitées)</option>
+          <option value="sur_mesure">Sur mesure</option>
+        </select></div>
       <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES</label>
         <textarea id="nc-notes" rows="3" placeholder="Notes, conditions particulières..." style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea></div>
     </div>
@@ -14474,7 +14720,9 @@ async function sauvegarderContrat(){
   const payload={client_id:clientId,type_contrat:document.getElementById('nc-type').value,statut:document.getElementById('nc-statut').value,
     montant_mensuel:parseFloat(document.getElementById('nc-montant').value)||null,frequence:document.getElementById('nc-freq').value,
     date_debut:document.getElementById('nc-debut').value||null,date_fin:document.getElementById('nc-fin').value||null,
-    renouvellement_auto:document.getElementById('nc-auto').checked,notes:document.getElementById('nc-notes').value.trim()||null,created_by:S.uid};
+    renouvellement_auto:document.getElementById('nc-auto').checked,notes:document.getElementById('nc-notes').value.trim()||null,
+    type_abonnement:document.getElementById('nc-abonnement')?.value||null,
+    created_by:S.uid};
   const r=await sbFetch('contrats',{method:'POST',body:payload});
   if(r.error){if(err){err.textContent='Erreur: '+(r.error.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}return;}
   if(payload.statut==='actif'&&clientId){
@@ -14868,6 +15116,12 @@ const SV_REGLEMENT=[
   {id:'communication',ic:'💬',titre:'Chapitre 8 — Communication interne',contenu:[
     {t:'Règles de communication',b:['Utiliser les conversations liées aux prestations pour les sujets opérationnels','Rester professionnel en toutes circonstances dans les canaux SportVision','Transformer une demande importante en tâche pour la tracer','Éviter les messages personnels dans les canaux professionnels','Ne pas partager d\'informations confidentielles dans un mauvais canal']},
     {t:'Bonne pratique',b:['Si vous avez une information importante, créez une tâche plutôt qu\'un message','Une tâche est visible, assignée et traçable. Un message peut être oublié.','Pour une urgence Jour J, appelez directement le Responsable de prestation']},
+  ]},
+  {id:'sanctions',ic:'⚠️',titre:'Chapitre 9 — Sanctions & Pénalités',contenu:[
+    {t:'Principes généraux',b:['Les sanctions sont décidées par l\'Administrateur après analyse de la situation','Elles visent à corriger un comportement, pas à punir','Toute sanction est notifiée dans l\'OS avec une justification','Le collaborateur peut soumettre une explication écrite dans les 48h']},
+    {t:'Barème des pénalités XP',b:['Retard sur prestation : −50 XP + note écrite','Absence non justifiée non prévenue : −150 XP + avertissement','Retard livraison contenu : −30 XP par jour de retard','Mauvais comportement terrain / pas de tenue SportVision : −80 XP','Casse matériel par négligence : −200 XP + remboursement partiel selon évaluation','Refus d\'une mission sans motif valide : −50 XP','Partage non autorisé de contenu client : avertissement grave + possible exclusion']},
+    {t:'Procédure',b:['L\'Administrateur ou le Responsable Production constate l\'infraction','Un signalement est créé dans l\'OS avec date, description et preuves','Le collaborateur concerné est notifié et peut répondre','La décision de sanction est prise dans les 5 jours ouvrés','Les pénalités XP sont appliquées via le module XP de l\'OS','Les avertissements s\'accumulent : 3 avertissements = entretien disciplinaire']},
+    {t:'Cas d\'exclusion',b:['Une faute grave peut mener à une suspension immédiate sans préavis','La faute grave inclut : violence, discrimination, vol, sabotage, violation grave de confidentialité','L\'exclusion est irréversible et peut être accompagnée de poursuites judiciaires']},
   ]},
 ];
 
@@ -16067,8 +16321,10 @@ async function loadEquipeEnDirect(){
   const monthStart=today.slice(0,7)+'-01';
 
   // Fetch profiles + today's missions + month counts in parallel
+  const _eqRole=localStorage.getItem('sv_role');
+  const _eqRoleFilter=_eqRole==='prod'?'&role=in.(photo,cm)':'';
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role,statut,photo_url&order=prenom.asc').catch(()=>[]),
+    sbFetch('profiles?select=id,prenom,nom,role,statut,photo_url'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
     sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations(id,reference,titre_court,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=in.(acceptée,en_route,sur_place)').catch(()=>[]),
     sbFetch('prestations_equipe?select=collaborateur_id&statut=in.(acceptée,en_route,sur_place,done)&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
@@ -16571,7 +16827,7 @@ let _offlineTimer=null;
 function _checkOffline(){
   // Utilise navigator.onLine comme signal primaire, fetch comme confirmation
   if(!navigator.onLine){document.getElementById('mob-offline-banner')?.classList.add('on');return;}
-  fetch('https://lulgezzpvrlbftbykzrc.supabase.co/rest/v1/?limit=0',{
+  fetch('https://lulgezzpvrlbftbykzrc.supabase.co/rest/v1/profiles?select=id&limit=1',{
     method:'GET',
     headers:{apikey:'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4'},
     signal:AbortSignal.timeout(5000)
@@ -16581,6 +16837,7 @@ function _checkOffline(){
 }
 window.addEventListener('online',()=>{clearTimeout(_offlineTimer);setTimeout(_checkOffline,500);});
 window.addEventListener('offline',()=>{clearTimeout(_offlineTimer);document.getElementById('mob-offline-banner')?.classList.add('on');});
+setTimeout(_checkOffline,3000);setInterval(_checkOffline,30000);
 
 // ── Action Sheet ──────────────────────────────────────────────────────────
 function showMobActionSheet(title,actions){
