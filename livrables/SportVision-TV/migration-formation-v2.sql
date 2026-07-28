@@ -1,4 +1,5 @@
 -- Migration : Centre de formation v2 — Sessions, Quiz, Certifications
+-- Idempotente : peut être rejouée sans erreur (DROP POLICY IF EXISTS avant chaque CREATE)
 -- À exécuter dans Supabase → SQL Editor
 
 -- 1. Score quiz sur formation_inscriptions
@@ -26,6 +27,8 @@ create table if not exists formation_sessions (
 );
 
 alter table formation_sessions enable row level security;
+drop policy if exists "fsess_read"   on formation_sessions;
+drop policy if exists "fsess_manage" on formation_sessions;
 create policy "fsess_read" on formation_sessions for select using (
   exists (select 1 from profiles where id = auth.uid())
 );
@@ -46,6 +49,8 @@ create table if not exists formation_presences (
 );
 
 alter table formation_presences enable row level security;
+drop policy if exists "fpres_read"   on formation_presences;
+drop policy if exists "fpres_manage" on formation_presences;
 create policy "fpres_read" on formation_presences for select using (
   collaborateur_id = auth.uid()
   or exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod'))
@@ -71,6 +76,8 @@ create table if not exists formation_validations_terrain (
 );
 
 alter table formation_validations_terrain enable row level security;
+drop policy if exists "fvt_read"   on formation_validations_terrain;
+drop policy if exists "fvt_manage" on formation_validations_terrain;
 create policy "fvt_read" on formation_validations_terrain for select using (
   exists (
     select 1 from formation_inscriptions fi
@@ -103,6 +110,8 @@ create table if not exists collaborateur_certifications (
 );
 
 alter table collaborateur_certifications enable row level security;
+drop policy if exists "cc_own_read"    on collaborateur_certifications;
+drop policy if exists "cc_admin_manage" on collaborateur_certifications;
 create policy "cc_own_read" on collaborateur_certifications for select using (
   collaborateur_id = auth.uid()
   or exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod'))

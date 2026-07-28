@@ -1,5 +1,5 @@
 -- Migration : Centre de formation v1 — SportVision OS
--- Remplace le stockage localStorage par une persistance Supabase
+-- Idempotente : peut être rejouée sans erreur (DROP POLICY IF EXISTS avant chaque CREATE)
 -- À exécuter dans Supabase → SQL Editor
 
 -- 1. Inscriptions aux formations
@@ -18,6 +18,10 @@ create table if not exists formation_inscriptions (
 );
 
 alter table formation_inscriptions enable row level security;
+
+drop policy if exists "fi_own_read"    on formation_inscriptions;
+drop policy if exists "fi_own_write"   on formation_inscriptions;
+drop policy if exists "fi_admin_update" on formation_inscriptions;
 
 create policy "fi_own_read" on formation_inscriptions for select using (
   collaborateur_id = auth.uid()
@@ -43,6 +47,8 @@ create table if not exists formation_progression (
 );
 
 alter table formation_progression enable row level security;
+
+drop policy if exists "fp_own" on formation_progression;
 
 create policy "fp_own" on formation_progression for all using (
   exists (

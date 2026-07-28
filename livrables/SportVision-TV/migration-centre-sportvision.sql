@@ -1,4 +1,5 @@
 -- Migration : Centre SportVision — Grades, XP, Ressources, Validations
+-- Idempotente : peut être rejouée sans erreur (DROP POLICY IF EXISTS avant chaque CREATE)
 -- À exécuter dans Supabase → SQL Editor
 
 -- 1. Colonnes grade et XP sur la table profiles
@@ -28,6 +29,9 @@ create table if not exists centre_ressources (
 
 alter table centre_ressources enable row level security;
 
+drop policy if exists "centre_res_read"  on centre_ressources;
+drop policy if exists "centre_res_admin" on centre_ressources;
+
 create policy "centre_res_read" on centre_ressources for select using (
   publie = true
   and exists (select 1 from profiles where id = auth.uid())
@@ -55,6 +59,8 @@ create table if not exists centre_validations (
 
 alter table centre_validations enable row level security;
 
+drop policy if exists "validations_own" on centre_validations;
+
 create policy "validations_own" on centre_validations for all using (
   collaborateur_id = auth.uid()
   or exists (select 1 from profiles where id = auth.uid() and role in ('admin','sec'))
@@ -74,6 +80,9 @@ create table if not exists xp_events (
 );
 
 alter table xp_events enable row level security;
+
+drop policy if exists "xp_own_select"   on xp_events;
+drop policy if exists "xp_admin_insert" on xp_events;
 
 create policy "xp_own_select" on xp_events for select using (
   collaborateur_id = auth.uid()
@@ -101,6 +110,8 @@ create table if not exists grade_recommendations (
 );
 
 alter table grade_recommendations enable row level security;
+
+drop policy if exists "grade_rec_access" on grade_recommendations;
 
 create policy "grade_rec_access" on grade_recommendations for all using (
   collaborateur_id = auth.uid()
