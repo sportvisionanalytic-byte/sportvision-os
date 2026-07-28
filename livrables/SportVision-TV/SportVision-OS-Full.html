@@ -6235,7 +6235,7 @@ function modalDisponibilite(){
   const opts=[{v:'disponible',lb:'Disponible',ic:'🟢',desc:'Prêt(e) à accepter des missions'},{v:'sous_conditions',lb:'Sous conditions',ic:'🟡',desc:'Disponible avec contraintes (horaires, zone…)'},{v:'indisponible',lb:'Indisponible',ic:'🔴',desc:'Pas de mission pour le moment'}];
   openModal(`<div class="mh"><div class="mt">Mon statut de disponibilité</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:8px">
-      ${opts.map(o=>`<button onclick="localStorage.setItem('sv_dispo','${o.v}');closeModal();loadPhotoDash()" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:${cur===o.v?'rgba(14,165,255,.1)':'var(--s2)'};border:${cur===o.v?'2px solid var(--acc)':'1px solid var(--b1)'};border-radius:10px;cursor:pointer;text-align:left;width:100%">
+      ${opts.map(o=>`<button onclick="setDisponibilite('${o.v}')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:${cur===o.v?'rgba(14,165,255,.1)':'var(--s2)'};border:${cur===o.v?'2px solid var(--acc)':'1px solid var(--b1)'};border-radius:10px;cursor:pointer;text-align:left;width:100%">
         <span style="font-size:22px">${o.ic}</span>
         <div>
           <div style="font-size:14px;font-weight:600;color:var(--t1)">${o.lb}</div>
@@ -6246,6 +6246,23 @@ function modalDisponibilite(){
         <div style="font-size:11px;color:var(--t3)">Note : le statut est indicatif. Il aide le responsable production à planifier les équipes. Il ne bloque pas automatiquement les invitations.</div>
       </div>
     </div>`);
+}
+
+async function setDisponibilite(statut){
+  localStorage.setItem('sv_dispo',statut);
+  closeModal();
+  const uid=localStorage.getItem('sv_uid');
+  const today=new Date().toISOString().split('T')[0];
+  if(uid){
+    try{
+      await sbFetch('disponibilites?collaborateur_id=eq.'+uid+'&date=eq.'+today,{
+        method:'POST',
+        headers:{'Prefer':'resolution=merge-duplicates'},
+        body:{collaborateur_id:uid,date:today,statut},
+      });
+    }catch(e){}
+  }
+  if(typeof loadPhotoDash==='function')loadPhotoDash();
 }
 
 // ── PARAMÈTRES / PROFIL ──────────────────
