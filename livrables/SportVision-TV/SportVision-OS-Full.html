@@ -4384,7 +4384,8 @@ async function loadProdMedias(){
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const all=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,date_expiration,transfert_confirme,prestation_id,ajouteur:profiles!ajouteur_id(prenom,nom),prestations(reference,clients(nom))&order=created_at.desc&limit=200');
+    const all=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,date_expiration,transfert_confirme,prestation_id,ajouteur:profiles!ajouteur_id(prenom,nom),prestations(reference,clients(nom))&order=created_at.desc&limit=200').catch(()=>null);
+    if(all===null){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">🔗</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Table media_liens requise</div><div style="font-size:12px;text-align:center;max-width:300px">Exécutez <span style="font-family:monospace;color:var(--acc)">migration-medias.sql</span> dans Supabase → SQL Editor pour activer ce module.</div></div>';return;}
     _mediaLiens=Array.isArray(all)?all:[];
     const now=new Date();
     const in7=new Date(now.getTime()+7*864e5);
@@ -4812,7 +4813,7 @@ async function loadPhotoMedias(){
   try{
     const [pres,liens]=await Promise.all([
       sbFetch('prestations_equipe?select=prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+S.uid+'&order=created_at.desc&limit=30'),
-      sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,transfert_confirme,prestation_id&ajouteur_id=eq.'+S.uid+'&order=created_at.desc&limit=100')
+      sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,transfert_confirme,prestation_id&ajouteur_id=eq.'+S.uid+'&order=created_at.desc&limit=100').catch(()=>[])
     ]);
     const mesPres=(pres||[]).map(e=>e.prestations).filter(Boolean);
     const mesLiens=Array.isArray(liens)?liens:[];
@@ -4869,7 +4870,8 @@ async function loadProdPostprod(){
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const raw=await sbFetch('media_postproductions?select=id,type_travail,statut,priorite,delai,validation_client_requise,created_at,prestations(id,reference,clients(nom)),responsable:profiles!responsable_id(prenom,nom)&statut=not.in.(archivee,annulee)&order=created_at.desc&limit=100');
+    const raw=await sbFetch('media_postproductions?select=id,type_travail,statut,priorite,delai,validation_client_requise,created_at,prestations(id,reference,clients(nom)),responsable:profiles!responsable_id(prenom,nom)&statut=not.in.(archivee,annulee)&order=created_at.desc&limit=100').catch(()=>null);
+    if(raw===null){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">🎬</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Table media_postproductions requise</div><div style="font-size:12px;text-align:center;max-width:300px">Exécutez <span style="font-family:monospace;color:var(--acc)">migration-medias.sql</span> dans Supabase → SQL Editor.</div></div>';return;}
     _prodPostprodData=Array.isArray(raw)?raw:[];
     s('pp-kpi-att',_prodPostprodData.filter(p=>p.statut==='a_attribuer').length);
     s('pp-kpi-enc',_prodPostprodData.filter(p=>['en_cours','attribuee','a_commencer'].includes(p.statut)).length);
