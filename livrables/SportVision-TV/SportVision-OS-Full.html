@@ -2419,14 +2419,15 @@ function selectClientNP(id,nom){
 
 // ── FORMULAIRE NOUVEAU CLIENT ─────────────
 function modalNouveauClient(){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   openModal(`
-    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">Nouveau client / prospect</div>
-    <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:16px">Nouveau client / prospect</div>
+    <div style="display:flex;flex-direction:column;gap:10px;max-height:65vh;overflow-y:auto;padding-right:4px">
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom du club / client *</label>
+        <div><label style="${L}">Nom du club / client *</label>
           <input id="fc-nom" type="text" class="l-inp" placeholder="Brunoy FC" style="height:38px">
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type</label>
+        <div><label style="${L}">Type</label>
           <select id="fc-type" class="l-inp" style="height:38px">
             <option value="club">Club</option>
             <option value="association">Association</option>
@@ -2437,38 +2438,54 @@ function modalNouveauClient(){
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Prénom contact</label>
+        <div><label style="${L}">Statut CRM</label>
+          <select id="fc-statut" class="l-inp" style="height:38px">
+            <option value="prospect">Prospect</option>
+            <option value="qualifié">Qualifié</option>
+            <option value="négociation">Négociation</option>
+            <option value="partenaire">Partenaire</option>
+          </select>
+        </div>
+        <div><label style="${L}">Origine du contact</label>
+          <select id="fc-origine" class="l-inp" style="height:38px">
+            <option value="">—</option>
+            <option value="bouche_à_oreille">Bouche à oreille</option>
+            <option value="réseaux_sociaux">Réseaux sociaux</option>
+            <option value="prospection">Prospection directe</option>
+            <option value="site_web">Site web</option>
+            <option value="partenaire">Partenaire</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Prénom contact</label>
           <input id="fc-prenom" type="text" class="l-inp" style="height:38px">
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom contact</label>
+        <div><label style="${L}">Nom contact</label>
           <input id="fc-nomct" type="text" class="l-inp" style="height:38px">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Email</label>
+        <div><label style="${L}">Email</label>
           <input id="fc-email" type="email" class="l-inp" style="height:38px">
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Téléphone</label>
+        <div><label style="${L}">Téléphone</label>
           <input id="fc-tel" type="tel" class="l-inp" style="height:38px">
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Sport</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label style="${L}">Sport</label>
           <input id="fc-sport" type="text" class="l-inp" placeholder="Football" style="height:38px">
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Ville</label>
+        <div><label style="${L}">Ville</label>
           <input id="fc-ville" type="text" class="l-inp" style="height:38px">
         </div>
+        <div><label style="${L}">Division / Ligue</label>
+          <input id="fc-division" type="text" class="l-inp" placeholder="R1, Dept…" style="height:38px">
+        </div>
       </div>
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Origine du prospect</label>
-        <select id="fc-origine" class="l-inp" style="height:38px">
-          <option value="">—</option>
-          <option value="bouche_à_oreille">Bouche à oreille</option>
-          <option value="réseaux_sociaux">Réseaux sociaux</option>
-          <option value="prospection">Prospection directe</option>
-          <option value="site_web">Site web</option>
-          <option value="partenaire">Partenaire</option>
-        </select>
+      <div><label style="${L}">Notes</label>
+        <textarea id="fc-notes" class="l-inp" style="height:56px;resize:none;padding-top:8px" placeholder="Contexte, besoins spécifiques, points de contact…"></textarea>
       </div>
       <div id="fc-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
@@ -2487,12 +2504,15 @@ async function creerClient(){
     await sbFetch('clients',{method:'POST',body:{
       nom,
       type_client:document.getElementById('fc-type').value,
+      statut:document.getElementById('fc-statut')?.value||'prospect',
       prenom_contact:document.getElementById('fc-prenom').value||null,
       nom_contact:document.getElementById('fc-nomct').value||null,
       email:document.getElementById('fc-email').value||null,
       telephone:document.getElementById('fc-tel').value||null,
       sport:document.getElementById('fc-sport').value||null,
       ville:document.getElementById('fc-ville').value||null,
+      division:document.getElementById('fc-division')?.value||null,
+      notes:document.getElementById('fc-notes')?.value||null,
       origine_prospect:document.getElementById('fc-origine').value||null,
       created_by:localStorage.getItem('sv_uid')
     }});
@@ -13901,12 +13921,15 @@ async function loadRapport(){
   const titleEl=document.getElementById('rapport-titre');
   if(titleEl)titleEl.textContent='Rapport — '+mLabel.charAt(0).toUpperCase()+mLabel.slice(1);
   try{
-    const [preMois,cliMois,equipe]=await Promise.all([
+    const [preMois,cliMois]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(id,nom)&date_prestation=gte.'+mStart+'&date_prestation=lte.'+mEnd+'&order=date_prestation.asc'),
       sbFetch('clients?select=id,nom,created_at&created_at=gte.'+mStart+'T00:00:00&created_at=lte.'+mEnd+'T23:59:59&order=created_at.desc'),
-      sbFetch('prestations_equipe?select=collaborateur_id,statut,remuneration,prestation:prestations(date_prestation,statut)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lte.'+mEnd),
     ]);
     const list=Array.isArray(preMois)?preMois:[];
+    const preIds=list.map(p=>p.id);
+    const equipe=preIds.length
+      ? await sbFetch('prestations_equipe?select=collaborateur_id,statut,remuneration,prestation_id&prestation_id=in.('+preIds.join(',')+')')
+      : [];
     const newCli=Array.isArray(cliMois)?cliMois:[];
     const eq=Array.isArray(equipe)?equipe:[];
     const done=list.filter(p=>['payée','partiellement_payée','livrée','facturée','clôturée'].includes(p.statut_financier)||['livrée','clôturée'].includes(p.statut));
