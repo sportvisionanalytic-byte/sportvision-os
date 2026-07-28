@@ -2276,7 +2276,12 @@ async function sbFetch(path,opts={}){
     }else{svClear();goLogin();return null;}
   }
   const txt=await res.text();
-  return txt?JSON.parse(txt):null;
+  const result=txt?JSON.parse(txt):null;
+  // Chaque requête Supabase réussie confirme qu'on est en ligne
+  if(res.ok||res.status===201||res.status===204){
+    document.getElementById('mob-offline-banner')?.classList.remove('on');
+  }
+  return result;
 }
 
 // ── MODAL ────────────────────────────────
@@ -15035,12 +15040,12 @@ async function loadGrades(){
 
 // ── Référentiel grades ────────────────────────────────────────────────────────
 const SV_GRADES=[
-  {id:0,nom:'En intégration',ic:'🌱',color:'#4E5870',xp:0,desc:'Découverte de SportVision. Accompagné en permanence. Ne peut pas être responsable de prestation.'},
-  {id:1,nom:'Junior',ic:'⭐',color:'#2ECC8A',xp:100,desc:'Connaît les règles essentielles. Participe aux prestations simples. Reste accompagné sur les productions importantes.'},
-  {id:2,nom:'Opérationnel',ic:'⭐⭐',color:'#0EA5FF',xp:300,desc:'Travaille de manière autonome. Maîtrise les processus. Peut gérer une prestation simple.'},
-  {id:3,nom:'Confirmé',ic:'⭐⭐⭐',color:'#F5A524',xp:600,desc:'Maîtrise plusieurs compétences. Réalise des prestations complexes. Peut devenir responsable de prestation.'},
-  {id:4,nom:'Référent',ic:'⭐⭐⭐⭐',color:'#8B2BFF',xp:1000,desc:'Forte expertise. Accompagne les équipes. Peut former. Participe aux validations.'},
-  {id:5,nom:'Leader',ic:'⭐⭐⭐⭐⭐',color:'#FF6B35',xp:1500,desc:'Excellence opérationnelle. Représente les standards SportVision. Encadre plusieurs équipes.'},
+  {id:0,nom:'Débutant',ic:'🌱',color:'#8891A8',xp:0,desc:'Découverte de SportVision. Accompagné en permanence. Ne peut pas encore être responsable de prestation.'},
+  {id:1,nom:'Confirmé',ic:'⭐',color:'#2ECC8A',xp:600,desc:'Connaît les règles essentielles. Participe aux prestations simples. Accompagné sur les productions importantes.'},
+  {id:2,nom:'Senior',ic:'⭐⭐',color:'#366BFF',xp:2000,desc:'Travaille de manière autonome. Maîtrise les processus. Peut gérer une prestation simple en solo.'},
+  {id:3,nom:'Expert',ic:'⭐⭐⭐',color:'#7C4DFF',xp:4000,desc:'Maîtrise plusieurs compétences. Réalise des prestations complexes. Peut être responsable de prestation.'},
+  {id:4,nom:'Elite',ic:'⭐⭐⭐⭐',color:'#F5A524',xp:6500,desc:'Forte expertise. Accompagne les équipes. Peut former les nouveaux collaborateurs. Participe aux validations.'},
+  {id:5,nom:'Maître',ic:'⭐⭐⭐⭐⭐',color:'#FF6B35',xp:9000,desc:'Excellence opérationnelle. Représente les standards SportVision au plus haut niveau. Encadre plusieurs équipes.'},
 ];
 
 // ── FAQ officielle ────────────────────────────────────────────────────────────
