@@ -4812,10 +4812,10 @@ async function loadPhotoMedias(){
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
     const [pres,liens]=await Promise.all([
-      sbFetch('prestations_equipe?select=prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+S.uid+'&order=created_at.desc&limit=30'),
+      sbFetch('prestations_equipe?select=prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+S.uid+'&order=created_at.desc&limit=30').catch(()=>[]),
       sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,transfert_confirme,prestation_id&ajouteur_id=eq.'+S.uid+'&order=created_at.desc&limit=100').catch(()=>[])
     ]);
-    const mesPres=(pres||[]).map(e=>e.prestations).filter(Boolean);
+    const mesPres=(Array.isArray(pres)?pres:[]).map(e=>e.prestations).filter(Boolean);
     const mesLiens=Array.isArray(liens)?liens:[];
     const att=mesPres.filter(p=>['production_terminée','médias_à_transférer'].includes(p.statut)&&!mesLiens.find(l=>l.prestation_id===p.id&&l.transfert_confirme)).length;
     const verif=mesLiens.filter(l=>l.statut==='a_verifier').length;
@@ -4857,7 +4857,7 @@ async function loadPhotoMedias(){
         }).join('')+'</div>':`<div style="font-size:12px;color:var(--t3);font-style:italic">Aucun lien transmis pour cette prestation.</div>`}
       </div>`;
     }).join('')+(mesLiens.filter(l=>!l.prestation_id).length?`<div class="cd"><div style="font-size:12px;font-weight:600;color:var(--t3);margin-bottom:8px">Liens sans prestation associée</div><div style="display:flex;flex-direction:column;gap:5px">`+mesLiens.filter(l=>!l.prestation_id).map(l=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:6px"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1)">${l.nom}</div></div><button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button></div>`).join('')+'</div></div>':'');
-  }catch(e){if(el)el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+  }catch(e){if(el)el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:12px;color:var(--t3)"><div style="font-size:32px;opacity:.2">📶</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Connexion instable</div><div style="font-size:12px;text-align:center">Vérifiez votre réseau puis réessayez.</div><button onclick="loadPhotoMedias()" style="margin-top:4px;padding:8px 18px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">↻ Réessayer</button></div>';}
 }
 
 // ─── Postproduction ───────────────────────────────────────────────────────────
@@ -16341,12 +16341,18 @@ const isMobile=()=>window.innerWidth<=768;
 // Offline
 let _offlineTimer=null;
 function _checkOffline(){
-  fetch('https://lulgezzpvrlbftbykzrc.supabase.co/rest/v1/',{method:'HEAD',signal:AbortSignal.timeout(4000)})
-    .then(()=>document.getElementById('mob-offline-banner')?.classList.remove('on'))
+  // Utilise navigator.onLine comme signal primaire, fetch comme confirmation
+  if(!navigator.onLine){document.getElementById('mob-offline-banner')?.classList.add('on');return;}
+  fetch('https://lulgezzpvrlbftbykzrc.supabase.co/rest/v1/?limit=0',{
+    method:'GET',
+    headers:{apikey:'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4'},
+    signal:AbortSignal.timeout(5000)
+  })
+    .then(r=>{if(r.ok||r.status===400||r.status===401||r.status===200)document.getElementById('mob-offline-banner')?.classList.remove('on');})
     .catch(()=>document.getElementById('mob-offline-banner')?.classList.add('on'));
 }
-window.addEventListener('online',()=>{clearTimeout(_offlineTimer);document.getElementById('mob-offline-banner')?.classList.remove('on');});
-window.addEventListener('offline',()=>{clearTimeout(_offlineTimer);_offlineTimer=setTimeout(_checkOffline,3000);});
+window.addEventListener('online',()=>{clearTimeout(_offlineTimer);setTimeout(_checkOffline,500);});
+window.addEventListener('offline',()=>{clearTimeout(_offlineTimer);document.getElementById('mob-offline-banner')?.classList.add('on');});
 
 // ── Action Sheet ──────────────────────────────────────────────────────────
 function showMobActionSheet(title,actions){
