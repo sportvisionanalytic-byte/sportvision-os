@@ -687,6 +687,7 @@ const NAV={
     {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
     {type:'sep',lb:'Équipe & Espace'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
+    {id:'equipe',lb:'Équipe en direct',ic:'col'},
     {id:'integrations',lb:'Intégrations',ic:'set'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
@@ -743,6 +744,7 @@ const NAV={
     {id:'form',lb:'Centre de formation',ic:'form'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
+    {id:'equipe',lb:'Équipe en direct',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
@@ -2038,6 +2040,10 @@ const VIEWS={
   'compta.annuaire':()=>_annuaireView(),
   'com.annuaire':()=>_annuaireView(),
 
+  // ── ÉQUIPE EN DIRECT (admin + prod) ─────
+  'admin.equipe':()=>_equipeEnDirectView(),
+  'prod.equipe':()=>_equipeEnDirectView(),
+
   // ── INTÉGRATIONS (admin) ────────────────
   'admin.integrations':()=>_integrationsView(),
 
@@ -2676,6 +2682,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='grades') await loadGrades();
   if(view==='centre'){_centreSection='accueil';await loadCentre(role);}
   if(view==='annuaire') await loadAnnuaire(role);
+  if((role==='admin'||role==='prod')&&view==='equipe') await loadEquipeEnDirect();
   if(role==='admin'&&view==='integrations') await loadIntegrations();
   // Mobile dashboard override (remplace le contenu desktop sur petit écran)
   if(isMobile()&&view==='dash') await loadMobileDash(role);
@@ -15495,23 +15502,115 @@ function annuaireCard(p){
   </div>`;
 }
 
-// ── Ouvrir conversation depuis annuaire ───────────────────────────────────
+// ── Ouvrir conversation depuis annuaire ou équipe en direct ──────────────
 async function ouvrirConvAvec(userId, userName){
+  if(!userId||userId===localStorage.getItem('sv_uid'))return;
   switchView('msg');
-  // Attendre que la vue msg soit rendue, puis sélectionner/créer la conv
-  setTimeout(async()=>{
-    try{
-      const myId=localStorage.getItem('sv_uid');
-      if(!myId||myId===userId)return;
-      // Chercher une conversation existante entre les deux
-      const convs=await sbFetch('notifications?select=conversation_id,expediteur_id,destinataire_id&type=eq.message&or=(and(expediteur_id.eq.'+myId+',destinataire_id.eq.'+userId+'),and(expediteur_id.eq.'+userId+',destinataire_id.eq.'+myId+'))&limit=1').catch(()=>[]);
-      if(convs&&convs[0]?.conversation_id){
-        selectConversation(convs[0].conversation_id,userName);
-      } else {
-        toast('Nouvelle conversation avec '+userName,'ok');
-      }
-    }catch(e){}
-  },400);
+  // Attendre que _msgProfiles soit chargé, puis ouvrir la conv
+  const tryOpen=(attempts=0)=>{
+    if(_msgProfiles[userId]){msgOpenConv(userId);}
+    else if(attempts<10){setTimeout(()=>tryOpen(attempts+1),200);}
+    else{toast('Ouverture conversation avec '+userName,'ok');}
+  };
+  setTimeout(()=>tryOpen(),350);
+}
+
+// ── Équipe en direct ──────────────────────────────────────────────────────
+function _equipeEnDirectView(){
+  return`<div class="sh"><div class="sh-t">Équipe en direct</div>
+    <button class="btn bg2 bs" onclick="loadEquipeEnDirect()">↻ Actualiser</button>
+  </div>
+  <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
+    <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Disponibles</div><div class="kpi-v" id="eq-kpi-dispo">—</div><span class="kpi-d dnt">maintenant</span></div>
+    <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">En mission</div><div class="kpi-v" id="eq-kpi-mission">—</div><span class="kpi-d dnt">aujourd'hui</span></div>
+    <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Ce mois</div><div class="kpi-v" id="eq-kpi-mois">—</div><span class="kpi-d dnt">missions total</span></div>
+  </div>
+  <div id="equipe-real"><div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+
+let _equipeCache=[];
+
+async function loadEquipeEnDirect(){
+  const today=new Date().toISOString().split('T')[0];
+  const monthStart=today.slice(0,7)+'-01';
+
+  // Fetch profiles + today's missions + month counts in parallel
+  const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
+    sbFetch('profiles?select=id,prenom,nom,role,statut,photo_url&order=prenom.asc').catch(()=>[]),
+    sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations(id,reference,titre_court,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=in.(acceptée,en_route,sur_place)').catch(()=>[]),
+    sbFetch('prestations_equipe?select=collaborateur_id&statut=in.(acceptée,en_route,sur_place,done)&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
+    sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
+  ]);
+
+  const collabs=(Array.isArray(profiles)?profiles:[]).filter(p=>p.role!=='client');
+  const missionToday={};
+  if(Array.isArray(todayMissions))todayMissions.forEach(m=>{if(m.prestations)missionToday[m.collaborateur_id]=m.prestations;});
+  const missionCount={};
+  if(Array.isArray(monthMissions))monthMissions.forEach(m=>{missionCount[m.collaborateur_id]=(missionCount[m.collaborateur_id]||0)+1;});
+  const dispoMap={};
+  if(Array.isArray(disponibilites))disponibilites.forEach(d=>{dispoMap[d.collaborateur_id]=d.statut;});
+
+  _equipeCache=collabs;
+
+  // KPIs
+  let nbDispo=0,nbMission=0,nbMois=0;
+  collabs.forEach(c=>{
+    if(missionToday[c.id])nbMission++;
+    else if(dispoMap[c.id]==='disponible'||dispoMap[c.id]===undefined)nbDispo++;
+    nbMois+=missionCount[c.id]||0;
+  });
+  const el=id=>document.getElementById(id);
+  if(el('eq-kpi-dispo'))el('eq-kpi-dispo').textContent=nbDispo;
+  if(el('eq-kpi-mission'))el('eq-kpi-mission').textContent=nbMission;
+  if(el('eq-kpi-mois'))el('eq-kpi-mois').textContent=nbMois;
+
+  const RLBL={'admin':'Admin','prod':'Prod','photo':'Photo','sec':'Secrétaire','compta':'Comptable','com':'Commerce','cm':'CM'};
+  const RCLR={'admin':'#366BFF','prod':'#7C4DFF','photo':'#2ECC8A','sec':'#F5A524','compta':'#0EA5FF','com':'#F0445E','cm':'#8891A8'};
+
+  const cards=collabs.map(c=>{
+    const ini=((c.prenom||'')[0]||'')+''+((c.nom||'')[0]||'');
+    const nom=(c.prenom||'')+' '+(c.nom||'');
+    const mission=missionToday[c.id];
+    const nb=missionCount[c.id]||0;
+    const dsp=dispoMap[c.id];
+    let statusHtml,statusColor;
+    if(mission){
+      statusColor='#366BFF';
+      statusHtml=`<div style="font-size:11px;color:#366BFF;font-weight:600;margin-bottom:2px">🎬 En mission</div>
+        <div style="font-size:10.5px;color:var(--t3)">${mission.reference||''} ${mission.lieu?'· '+mission.lieu:''}</div>`;
+    } else if(dsp==='indisponible'){
+      statusColor='#F0445E';
+      statusHtml=`<div style="font-size:11px;color:var(--er);font-weight:600">✗ Indisponible</div>`;
+    } else {
+      statusColor='#2ECC8A';
+      statusHtml=`<div style="font-size:11px;color:var(--ok);font-weight:600">✓ Disponible</div>`;
+    }
+    const rclr=RCLR[c.role]||'#8891A8';
+    const rlbl=RLBL[c.role]||c.role;
+    const email=c.email||'';
+    return`<div class="cd" style="padding:14px 16px;border-left:3px solid ${statusColor}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        ${c.photo_url?`<img src="${c.photo_url}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+          :`<div style="width:38px;height:38px;border-radius:50%;background:${rclr}22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${rclr};flex-shrink:0">${ini.toUpperCase()}</div>`}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nom}</div>
+          <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${rclr}">${rlbl}</span>
+        </div>
+        <div style="font-size:11px;color:var(--t3);text-align:right;flex-shrink:0"><div style="font-size:18px;font-weight:800;color:var(--t1)">${nb}</div><div>mission${nb!==1?'s':''}</div></div>
+      </div>
+      <div style="margin-bottom:10px">${statusHtml}</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="ouvrirConvAvec('${c.id}','${nom.replace(/'/g,"\\'")}')
+" style="flex:1;padding:7px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff)">💬 Message</button>
+        ${email?`<a href="mailto:${email}" style="flex:1;padding:7px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);text-decoration:none;text-align:center;display:block">✉ Email</a>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const real=document.getElementById('equipe-real');
+  if(real)real.innerHTML=collabs.length
+    ?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">${cards}</div>`
+    :'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun collaborateur trouvé.</div>';
 }
 
 // ── Integration Hub Load ──────────────────────────────────────────────────
