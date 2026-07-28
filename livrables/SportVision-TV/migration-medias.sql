@@ -1,7 +1,7 @@
 -- Migration : Centre Médias & Postproduction — SportVision OS
--- À exécuter dans Supabase → SQL Editor
+-- Idempotente : peut être rejouée sans erreur (DROP POLICY IF EXISTS avant chaque CREATE)
 
--- 1. Liens médias (table centrale — aucun fichier stocké, uniquement des URLs)
+-- 1. Liens médias
 create table if not exists media_liens (
   id uuid default gen_random_uuid() primary key,
   prestation_id uuid references prestations(id) on delete cascade,
@@ -14,7 +14,7 @@ create table if not exists media_liens (
   ajouteur_id uuid references profiles(id) on delete set null,
   responsable_id uuid references profiles(id) on delete set null,
   date_expiration timestamptz,
-  mot_de_passe_enc text,                          -- mot de passe chiffré (base64 simple, suffisant pour usage interne)
+  mot_de_passe_enc text,
   confidentialite text check (confidentialite in ('public','interne','restreint','confidentiel')) default 'interne',
   nombre_fichiers integer,
   poids_approx text,
@@ -35,12 +35,10 @@ create table if not exists media_liens (
 );
 
 alter table media_liens enable row level security;
-create policy "ml_read" on media_liens for select using (
-  exists (select 1 from profiles where id = auth.uid())
-);
-create policy "ml_write" on media_liens for all using (
-  exists (select 1 from profiles where id = auth.uid())
-);
+drop policy if exists "ml_read"  on media_liens;
+drop policy if exists "ml_write" on media_liens;
+create policy "ml_read"  on media_liens for select using (exists (select 1 from profiles where id = auth.uid()));
+create policy "ml_write" on media_liens for all    using (exists (select 1 from profiles where id = auth.uid()));
 
 -- 2. Postproductions
 create table if not exists media_postproductions (
@@ -74,12 +72,10 @@ create table if not exists media_postproductions (
 );
 
 alter table media_postproductions enable row level security;
-create policy "mp_read" on media_postproductions for select using (
-  exists (select 1 from profiles where id = auth.uid())
-);
-create policy "mp_write" on media_postproductions for all using (
-  exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod'))
-);
+drop policy if exists "mp_read"  on media_postproductions;
+drop policy if exists "mp_write" on media_postproductions;
+create policy "mp_read"  on media_postproductions for select using (exists (select 1 from profiles where id = auth.uid()));
+create policy "mp_write" on media_postproductions for all    using (exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod')));
 
 -- 3. Versions
 create table if not exists media_versions (
@@ -99,12 +95,10 @@ create table if not exists media_versions (
 );
 
 alter table media_versions enable row level security;
-create policy "mv_read" on media_versions for select using (
-  exists (select 1 from profiles where id = auth.uid())
-);
-create policy "mv_write" on media_versions for all using (
-  exists (select 1 from profiles where id = auth.uid())
-);
+drop policy if exists "mv_read"  on media_versions;
+drop policy if exists "mv_write" on media_versions;
+create policy "mv_read"  on media_versions for select using (exists (select 1 from profiles where id = auth.uid()));
+create policy "mv_write" on media_versions for all    using (exists (select 1 from profiles where id = auth.uid()));
 
 -- 4. Corrections
 create table if not exists media_corrections (
@@ -125,12 +119,10 @@ create table if not exists media_corrections (
 );
 
 alter table media_corrections enable row level security;
-create policy "mc_read" on media_corrections for select using (
-  exists (select 1 from profiles where id = auth.uid())
-);
-create policy "mc_write" on media_corrections for all using (
-  exists (select 1 from profiles where id = auth.uid())
-);
+drop policy if exists "mc_read"  on media_corrections;
+drop policy if exists "mc_write" on media_corrections;
+create policy "mc_read"  on media_corrections for select using (exists (select 1 from profiles where id = auth.uid()));
+create policy "mc_write" on media_corrections for all    using (exists (select 1 from profiles where id = auth.uid()));
 
 -- 5. Validations
 create table if not exists media_validations (
@@ -148,12 +140,10 @@ create table if not exists media_validations (
 );
 
 alter table media_validations enable row level security;
-create policy "mval_read" on media_validations for select using (
-  exists (select 1 from profiles where id = auth.uid())
-);
-create policy "mval_write" on media_validations for all using (
-  exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod'))
-);
+drop policy if exists "mval_read"  on media_validations;
+drop policy if exists "mval_write" on media_validations;
+create policy "mval_read"  on media_validations for select using (exists (select 1 from profiles where id = auth.uid()));
+create policy "mval_write" on media_validations for all    using (exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod')));
 
 -- 6. Livrables finaux
 create table if not exists media_livrables (
@@ -176,12 +166,10 @@ create table if not exists media_livrables (
 );
 
 alter table media_livrables enable row level security;
-create policy "mlivr_read" on media_livrables for select using (
-  exists (select 1 from profiles where id = auth.uid())
-);
-create policy "mlivr_write" on media_livrables for all using (
-  exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod','sec'))
-);
+drop policy if exists "mlivr_read"  on media_livrables;
+drop policy if exists "mlivr_write" on media_livrables;
+create policy "mlivr_read"  on media_livrables for select using (exists (select 1 from profiles where id = auth.uid()));
+create policy "mlivr_write" on media_livrables for all    using (exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod','sec')));
 
 -- 7. Livraisons client
 create table if not exists media_livraisons (
@@ -203,12 +191,10 @@ create table if not exists media_livraisons (
 );
 
 alter table media_livraisons enable row level security;
-create policy "mliv_read" on media_livraisons for select using (
-  exists (select 1 from profiles where id = auth.uid())
-);
-create policy "mliv_write" on media_livraisons for all using (
-  exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod','sec'))
-);
+drop policy if exists "mliv_read"  on media_livraisons;
+drop policy if exists "mliv_write" on media_livraisons;
+create policy "mliv_read"  on media_livraisons for select using (exists (select 1 from profiles where id = auth.uid()));
+create policy "mliv_write" on media_livraisons for all    using (exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod','sec')));
 
 -- 8. Historique
 create table if not exists media_historique (
@@ -225,12 +211,10 @@ create table if not exists media_historique (
 );
 
 alter table media_historique enable row level security;
-create policy "mhist_read" on media_historique for select using (
-  exists (select 1 from profiles where id = auth.uid())
-);
-create policy "mhist_insert" on media_historique for insert with check (
-  exists (select 1 from profiles where id = auth.uid())
-);
+drop policy if exists "mhist_read"   on media_historique;
+drop policy if exists "mhist_insert" on media_historique;
+create policy "mhist_read"   on media_historique for select using (exists (select 1 from profiles where id = auth.uid()));
+create policy "mhist_insert" on media_historique for insert with check (exists (select 1 from profiles where id = auth.uid()));
 
 -- 9. Bibliothèque partagée
 create table if not exists media_bibliotheque (
@@ -249,26 +233,25 @@ create table if not exists media_bibliotheque (
 );
 
 alter table media_bibliotheque enable row level security;
-create policy "mbib_read" on media_bibliotheque for select using (
-  exists (
-    select 1 from profiles p where p.id = auth.uid()
-    and (p.role = any(acces_roles) or p.role = 'admin')
-  )
+drop policy if exists "mbib_read"  on media_bibliotheque;
+drop policy if exists "mbib_write" on media_bibliotheque;
+create policy "mbib_read"  on media_bibliotheque for select using (
+  exists (select 1 from profiles p where p.id = auth.uid() and (p.role = any(acces_roles) or p.role = 'admin'))
 );
 create policy "mbib_write" on media_bibliotheque for all using (
   exists (select 1 from profiles where id = auth.uid() and role in ('admin','prod'))
 );
 
 -- 10. Index
-create index if not exists idx_ml_prestation on media_liens(prestation_id, statut);
-create index if not exists idx_ml_ajouteur on media_liens(ajouteur_id);
-create index if not exists idx_ml_expiration on media_liens(date_expiration) where date_expiration is not null;
-create index if not exists idx_mp_prestation on media_postproductions(prestation_id, statut);
-create index if not exists idx_mp_responsable on media_postproductions(responsable_id, statut);
-create index if not exists idx_mv_postprod on media_versions(postproduction_id, statut);
-create index if not exists idx_mc_version on media_corrections(version_id, statut);
+create index if not exists idx_ml_prestation   on media_liens(prestation_id, statut);
+create index if not exists idx_ml_ajouteur      on media_liens(ajouteur_id);
+create index if not exists idx_ml_expiration    on media_liens(date_expiration) where date_expiration is not null;
+create index if not exists idx_mp_prestation    on media_postproductions(prestation_id, statut);
+create index if not exists idx_mp_responsable   on media_postproductions(responsable_id, statut);
+create index if not exists idx_mv_postprod      on media_versions(postproduction_id, statut);
+create index if not exists idx_mc_version       on media_corrections(version_id, statut);
 create index if not exists idx_mlivr_prestation on media_livrables(prestation_id, statut);
-create index if not exists idx_mliv_prestation on media_livraisons(prestation_id, statut);
+create index if not exists idx_mliv_prestation  on media_livraisons(prestation_id, statut);
 create index if not exists idx_mhist_prestation on media_historique(prestation_id, created_at desc);
 
 -- 11. Triggers updated_at
@@ -276,22 +259,8 @@ create or replace function update_updated_at_generic()
 returns trigger language plpgsql as $$
 begin new.updated_at = now(); return new; end; $$;
 
-drop trigger if exists trg_ml_upd on media_liens;
-create trigger trg_ml_upd before update on media_liens
-  for each row execute procedure update_updated_at_generic();
-
-drop trigger if exists trg_mp_upd on media_postproductions;
-create trigger trg_mp_upd before update on media_postproductions
-  for each row execute procedure update_updated_at_generic();
-
-drop trigger if exists trg_mc_upd on media_corrections;
-create trigger trg_mc_upd before update on media_corrections
-  for each row execute procedure update_updated_at_generic();
-
-drop trigger if exists trg_mlivr_upd on media_livrables;
-create trigger trg_mlivr_upd before update on media_livrables
-  for each row execute procedure update_updated_at_generic();
-
-drop trigger if exists trg_mliv_upd on media_livraisons;
-create trigger trg_mliv_upd before update on media_livraisons
-  for each row execute procedure update_updated_at_generic();
+drop trigger if exists trg_ml_upd   on media_liens;          create trigger trg_ml_upd   before update on media_liens          for each row execute procedure update_updated_at_generic();
+drop trigger if exists trg_mp_upd   on media_postproductions; create trigger trg_mp_upd   before update on media_postproductions for each row execute procedure update_updated_at_generic();
+drop trigger if exists trg_mc_upd   on media_corrections;     create trigger trg_mc_upd   before update on media_corrections     for each row execute procedure update_updated_at_generic();
+drop trigger if exists trg_mlivr_upd on media_livrables;      create trigger trg_mlivr_upd before update on media_livrables      for each row execute procedure update_updated_at_generic();
+drop trigger if exists trg_mliv_upd on media_livraisons;      create trigger trg_mliv_upd before update on media_livraisons      for each row execute procedure update_updated_at_generic();
