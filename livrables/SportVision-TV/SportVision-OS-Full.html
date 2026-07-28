@@ -10247,18 +10247,19 @@ function modalFormDetail(id){
           </div>
           ${mod.lecons.map((lecon,li)=>{
             const key=mi+'_'+li;const done=!!lessons[key];
-            return`<div onclick="toggleFormLesson('${id}',${mi},${li})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;${done?'opacity:.55':''}">
-              <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid ${done?'var(--ok)':'var(--b2)'};background:${done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            return`<div onclick="modalLeconDetail('${id}',${mi},${li})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+              <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid ${done?'var(--ok)':'var(--b2)'};background:${done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-shrink:0">
                 ${done?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}
               </div>
-              <div style="flex:1;font-size:12px;color:var(--t1);${done?'text-decoration:line-through':''}">${lecon}</div>
+              <div style="flex:1;font-size:12px;color:${done?'var(--t3)':'var(--t1)'};${done?'text-decoration:line-through':''}">${lecon}</div>
+              <div style="font-size:10px;color:var(--t3);flex-shrink:0">${done?'✓':'→'}</div>
             </div>`;
           }).join('')}
         </div>`;
       }).join('')}
     </div>
     ${!fp.statut?`<button onclick="enrollForm('${id}')" style="width:100%;padding:14px;background:var(--acc);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Commencer cette formation</button>`:isTerminée?`<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:12px"><span style="font-size:18px">🎉</span><span style="font-size:14px;font-weight:700;color:var(--ok)">Formation terminée · +${f.xp} XP gagnés</span></div>`:`<button onclick="closeModal();setFormTab('mes-formations')" style="width:100%;padding:14px;background:var(--s2);border:1px solid var(--b1);border-radius:12px;color:var(--t1);font-size:14px;font-weight:600;cursor:pointer">Continuer (${pct}%)</button>`}
-    ${fp.statut&&FORMATION_QUIZ_CATALOG[id]?`<div style="margin-top:12px;padding:14px;background:var(--s1);border:1px solid var(--b1);border-radius:12px">
+    ${fp.statut&&pct===100&&FORMATION_QUIZ_CATALOG[id]?`<div style="margin-top:12px;padding:14px;background:var(--s1);border:1px solid var(--b1);border-radius:12px">
       <div style="display:flex;align-items:center;gap:10px;justify-content:space-between">
         <div>
           <div style="font-size:13px;font-weight:700;color:var(--t1)">Quiz de validation</div>
@@ -10268,6 +10269,56 @@ function modalFormDetail(id){
         <button onclick="lancerQuiz('${id}')" style="padding:8px 14px;background:${fp.quiz_passe?'rgba(46,204,138,.15)':'var(--acc)'};border:${fp.quiz_passe?'1px solid rgba(46,204,138,.3)':'none'};border-radius:8px;color:${fp.quiz_passe?'var(--ok)':'#fff'};font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">${fp.quiz_passe?'Repasser':'Passer le quiz'}</button>
       </div>
     </div>`:''}
+  </div>`);
+}
+
+function modalLeconDetail(formId,mi,li){
+  const f=FORMATIONS_CATALOG.find(x=>x.id===formId);
+  if(!f)return;
+  const mod=f.modules[mi];
+  if(!mod)return;
+  const lecon=mod.lecons[li];
+  const lessons=_formProgCache[formId]||{};
+  const done=!!lessons[mi+'_'+li];
+  const isEnLigne=f.type==='en_ligne';
+  const isHybride=f.type==='hybride';
+
+  const contenuHtml=isEnLigne?`
+    <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px;margin:16px 0">
+      <div style="font-size:11px;font-weight:700;color:var(--acc);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">Contenu de la leçon</div>
+      <p style="font-size:13px;color:var(--t2);line-height:1.6;margin:0">Cette leçon couvre <strong style="color:var(--t1)">${lecon}</strong> dans le cadre du module <em>${mod.titre}</em>.<br><br>Lisez attentivement les ressources partagées par votre formateur, prenez des notes, puis marquez la leçon comme lue pour valider votre avancement.</p>
+    </div>
+    <div style="background:rgba(46,204,138,.06);border:1px solid rgba(46,204,138,.15);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--t2)">
+      💡 <strong>Formation en ligne</strong> : les ressources pédagogiques sont transmises par votre formateur via les sessions ou la messagerie.
+    </div>`
+  :`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px;margin:16px 0">
+      <div style="font-size:11px;font-weight:700;color:var(--acc);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">Instructions</div>
+      <p style="font-size:13px;color:var(--t2);line-height:1.6;margin:0">La leçon <strong style="color:var(--t1)">${lecon}</strong> est encadrée par votre formateur${isHybride?' lors d\'une session en présentiel ou distancielle':' directement sur le terrain'}.<br><br>Participez à la session prévue, appliquez les consignes, puis marquez la leçon comme lue pour valider votre progression.</p>
+    </div>
+    <div style="background:rgba(255,193,7,.06);border:1px solid rgba(255,193,7,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--t2)">
+      📍 <strong>Formation ${isHybride?'hybride':'terrain'}</strong> : présence requise à la session planifiée par votre responsable.
+    </div>`;
+
+  const actionHtml=done
+    ?`<div style="display:flex;gap:10px;margin-top:20px">
+        <div style="flex:1;display:flex;align-items:center;gap:8px;padding:12px 16px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:10px">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2ECC8A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5 7-7"/></svg>
+          <span style="font-size:13px;font-weight:600;color:var(--ok)">Leçon complétée</span>
+        </div>
+        <button onclick="toggleFormLesson('${formId}',${mi},${li});closeModal();setTimeout(()=>modalFormDetail('${formId}'),80)" style="padding:12px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t3);font-size:12px;cursor:pointer;white-space:nowrap">Décocher</button>
+      </div>`
+    :`<button onclick="toggleFormLesson('${formId}',${mi},${li});closeModal();setTimeout(()=>modalFormDetail('${formId}'),80)" style="width:100%;margin-top:20px;padding:14px;background:var(--acc);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✓ Marquer comme lu</button>`;
+
+  openModal(`<div style="padding:20px 24px 24px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button onclick="closeModal();setTimeout(()=>modalFormDetail('${formId}'),80)" style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:6px 10px;color:var(--t2);font-size:12px;cursor:pointer">← Retour</button>
+      <div>
+        <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">${f.titre} · ${mod.titre}</div>
+        <div style="font-size:16px;font-weight:700;color:var(--t1);margin-top:2px">${lecon}</div>
+      </div>
+    </div>
+    ${contenuHtml}
+    ${actionHtml}
   </div>`);
 }
 
