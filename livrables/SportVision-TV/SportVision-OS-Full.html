@@ -9664,7 +9664,7 @@ async function loadMsg(){
   try{
     const [profiles,unreadMsgs]=await Promise.all([
       sbFetch('profiles?select=id,prenom,nom,role&order=prenom.asc'),
-      sbFetch('notifications?select=titre,destinataire_id&type=eq.message_prive&destinataire_id=eq.'+uid+'&lue=eq.false').catch(()=>[]),
+      sbFetch('messages?select=expediteur_id&destinataire_id=eq.'+uid+'&lue=eq.false').catch(()=>[]),
     ]);
     _msgProfiles={};
     (profiles||[]).forEach(p=>{
@@ -9672,9 +9672,8 @@ async function loadMsg(){
       const ini=((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase()||'?';
       _msgProfiles[p.id]={n,ini,role:p.role};
     });
-    // Compter non-lus par expéditeur (titre = expediteur_id)
     const unreadByUser={};
-    (unreadMsgs||[]).forEach(m=>{if(m.titre)unreadByUser[m.titre]=(unreadByUser[m.titre]||0)+1;});
+    (unreadMsgs||[]).forEach(m=>{if(m.expediteur_id)unreadByUser[m.expediteur_id]=(unreadByUser[m.expediteur_id]||0)+1;});
     _msgUnread=unreadByUser;
     _renderMsgContacts(uid);
     _msgConv='team';
@@ -9727,20 +9726,22 @@ async function _renderMsgConv(myUid){
   try{
     let msgs=[];
     if(isTeam){
-      msgs=await sbFetch('notifications?select=id,titre,message,created_at&type=eq.message&order=created_at.asc&limit=200');
+      msgs=await sbFetch('messages?select=id,expediteur_id,contenu,lue,created_at&destinataire_id=is.null&order=created_at.asc&limit=200');
     }else{
-      const raw=await sbFetch('notifications?select=id,titre,message,created_at,prestation_id&type=eq.message_prive&destinataire_id=eq.'+myUid+'&order=created_at.asc&limit=200');
       const partner=_msgConv;
-      msgs=(raw||[]).filter(m=>m.titre===partner||(m.titre===myUid&&m.prestation_id===partner));
+      msgs=await sbFetch('messages?select=id,expediteur_id,destinataire_id,contenu,lue,created_at&or=(and(expediteur_id.eq.'+myUid+',destinataire_id.eq.'+partner+'),and(expediteur_id.eq.'+partner+',destinataire_id.eq.'+myUid+'))&order=created_at.asc&limit=200');
+      // Marquer comme lus les messages reçus
+      sbFetch('messages?destinataire_id=eq.'+myUid+'&expediteur_id=eq.'+partner+'&lue=eq.false',{method:'PATCH',body:{lue:true}}).catch(()=>{});
     }
-    if(!Array.isArray(msgs)||!msgs.length){
+    msgs=Array.isArray(msgs)?msgs:[];
+    if(!msgs.length){
       el.innerHTML='<div style="padding:60px 20px;text-align:center;color:var(--t3);font-size:13px">'+(isTeam?'Aucun message d\'équipe. Envoyez le premier !':'Envoyez votre premier message privé.')+'</div>';
       return;
     }
     let lastDay='';
     el.innerHTML=msgs.map(m=>{
-      const isMe=m.titre===myUid;
-      const who=_msgProfiles[m.titre];
+      const isMe=m.expediteur_id===myUid;
+      const who=_msgProfiles[m.expediteur_id];
       const dt=new Date(m.created_at);
       const dayKey=dt.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
       const when=dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
@@ -9749,13 +9750,13 @@ async function _renderMsgConv(myUid){
       const clr=ROLE_COLORS[who?.role]||'var(--acc)';
       const sep=dayKey!==lastDay?`<div style="text-align:center;margin:12px 0"><span style="font-size:10px;color:var(--t3);background:var(--s2);padding:3px 12px;border-radius:20px;border:1px solid var(--b1)">${dayKey}</span></div>`:'';
       lastDay=dayKey;
-      const msgTxt=(m.message||'').replace(/'/g,"\\'");
+      const msgTxt=(m.contenu||'').replace(/'/g,"\\'");
       return sep+`<div class="msg-row" style="display:flex;gap:9px;padding:4px 16px;align-items:flex-end;${isMe?'flex-direction:row-reverse':''}" onmouseenter="this.querySelector('.msg-acts')?.style.setProperty('opacity','1')" onmouseleave="this.querySelector('.msg-acts')?.style.setProperty('opacity','0')">
         <div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':clr+'22'};border:${isMe?'none':'1px solid '+clr+'44'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px;color:${isMe?'#fff':clr}">${ini}</div>
         <div style="max-width:68%;display:flex;flex-direction:column;gap:2px;align-items:${isMe?'flex-end':'flex-start'}">
           ${!isMe&&isTeam?`<div style="font-size:10px;color:var(--t3);margin-left:3px">${name}</div>`:''}
           <div style="display:flex;align-items:center;gap:5px;${isMe?'flex-direction:row-reverse':''}">
-            <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.07)'};padding:9px 13px;border-radius:${isMe?'16px 16px 4px 16px':'16px 16px 16px 4px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.45;word-break:break-word">${m.message}</div>
+            <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.07)'};padding:9px 13px;border-radius:${isMe?'16px 16px 4px 16px':'16px 16px 16px 4px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.45;word-break:break-word">${m.contenu}</div>
             <div class="msg-acts" style="opacity:0;transition:opacity .15s;display:flex;gap:3px">
               <button onclick="msgReplyTo('${msgTxt}')" title="Répondre" style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.07);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center" title="Répondre">↩</button>
               <button onclick="msgCrTache('${msgTxt}')" title="Créer une tâche" style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.07);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">✓</button>
@@ -9816,22 +9817,17 @@ async function envoyerMessage(){
   const txt=(inp?.value||'').trim();
   if(!txt)return;
   const uid=localStorage.getItem('sv_uid');
+  if(!uid)return;
   inp.value='';
   inp.focus();
   try{
-    if(_msgConv==='team'){
-      const r=await sbFetch('notifications',{method:'POST',headers:{'Prefer':'return=minimal'},body:{type:'message',titre:uid,message:txt,destinataire_id:uid,lue:true}});
-      if(r&&r.code){throw new Error(r.message||'Erreur envoi');}
-    }else{
-      const recipient=_msgConv;
-      const [r1]=await Promise.all([
-        sbFetch('notifications',{method:'POST',headers:{'Prefer':'return=minimal'},body:{type:'message_prive',titre:uid,message:txt,destinataire_id:recipient,prestation_id:uid,lue:false}}),
-        sbFetch('notifications',{method:'POST',headers:{'Prefer':'return=minimal'},body:{type:'message_prive',titre:uid,message:txt,destinataire_id:uid,prestation_id:recipient,lue:true}}),
-      ]);
-      if(r1&&r1.code){throw new Error(r1.message||'Erreur envoi');}
-    }
+    const body=_msgConv==='team'
+      ?{expediteur_id:uid,destinataire_id:null,contenu:txt,lue:false}
+      :{expediteur_id:uid,destinataire_id:_msgConv,contenu:txt,lue:false};
+    const r=await sbFetch('messages',{method:'POST',headers:{'Prefer':'return=minimal'},body});
+    if(r&&r.code){throw new Error(r.message||r.hint||'Permission refusée');}
     _renderMsgConv(uid);
-  }catch(e){toast('Erreur lors de l\'envoi : vérifiez les permissions Supabase.','err');}
+  }catch(e){toast('Erreur envoi : '+e.message,'err');}
 }
 
 function msgReplyTo(txt){
