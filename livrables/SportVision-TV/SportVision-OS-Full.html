@@ -14275,7 +14275,7 @@ async function loadGrades(){
   const missions=Array.isArray(rMissions)?rMissions:[];
   const xpMap={};
   missions.forEach(m=>{if(!m.collaborateur_id)return;if(!xpMap[m.collaborateur_id])xpMap[m.collaborateur_id]=0;xpMap[m.collaborateur_id]+=100;if(m.est_responsable)xpMap[m.collaborateur_id]+=50;});
-  const collab=profiles.filter(p=>p.role!=='admin').map(p=>{
+  const collab=profiles.filter(p=>!['admin','sec','compta'].includes(p.role)).map(p=>{
     const xp=xpMap[p.id]||0;
     const grade=[...GRADES].reverse().find(g=>xp>=g.xp)||GRADES[0];
     const nextGrade=GRADES[GRADES.indexOf(grade)+1];
