@@ -13806,76 +13806,169 @@ async function modifierCollaborateur(id){
 }
 
 async function modalFicheCollaborateur(id){
-  const role=localStorage.getItem('sv_role');
-  const canManage=(role==='admin'||role==='sec'||role==='prod');
+  const myRole=localStorage.getItem('sv_role');
+  const canManage=(myRole==='admin'||myRole==='sec'||myRole==='prod');
   const RLBL={admin:'Administrateur',sec:'Secrétaire',prod:'Resp. Production',photo:'Photographe',cm:'Community Manager',compta:'Comptable',com:'Commercial'};
   const RCLR={admin:'#366BFF',sec:'#00B8D4',prod:'#2ECC8A',photo:'#7C4DFF',cm:'#F5A524',compta:'#FF6B35',com:'#F0445E'};
-  openModal('<div style="padding:24px;text-align:center;color:var(--t3)">Chargement de la fiche…</div>',true);
+  openModal('<div style="padding:32px;text-align:center;color:var(--t3)">Chargement de la fiche…</div>');
   try{
-    const [profRaw,presRaw,certRaw,xpRaw]=await Promise.all([
+    const today=new Date().toISOString().slice(0,10);
+    const [profRaw,presRaw,certRaw,xpRaw,dispoRaw]=await Promise.all([
       sbFetch('profiles?select=*&id=eq.'+id).catch(()=>[]),
-      sbFetch('prestations_equipe?select=id,statut,remuneration,prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=100').catch(()=>[]),
+      sbFetch('prestations_equipe?select=id,statut,remuneration,prestations(id,reference,date_prestation,statut,lieu,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=200').catch(()=>[]),
       sbFetch('collaborateur_certifications?select=*&collaborateur_id=eq.'+id).catch(()=>[]),
       sbFetch('xp_events?select=montant&collaborateur_id=eq.'+id).catch(()=>[]),
+      sbFetch('disponibilites?select=*&collaborateur_id=eq.'+id+'&date=eq.'+today).catch(()=>[]),
     ]);
     const prof=(Array.isArray(profRaw)?profRaw:[])[0];
     if(!prof){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb">Profil introuvable.</div>');return;}
     const pres=Array.isArray(presRaw)?presRaw:[];
     const certs=Array.isArray(certRaw)?certRaw:[];
     const xpTotal=(Array.isArray(xpRaw)?xpRaw:[]).reduce((s,e)=>s+(e.montant||0),0);
+    const dispoRec=(Array.isArray(dispoRaw)?dispoRaw:[])[0];
     const name=[prof.prenom,prof.nom].filter(Boolean).join(' ')||prof.role;
     const ini=((prof.prenom?.[0]||'')+(prof.nom?.[0]||'')).toUpperCase()||'?';
     const col=RCLR[prof.role]||'#366BFF';
-    const nbPre=pres.length;
-    const totalRem=pres.reduce((s,p)=>s+(p.remuneration||0),0);
     const {grade}=calcGrade(xpTotal);
-    const last5=pres.slice(0,5);
-    const fmtD=d=>d?new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'2-digit'}):'—';
-    const fmtE=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
-    const ST_CLR={livrée:'var(--ok)',payée:'var(--ok)',facturée:'var(--acc)',confirmée:'#7C4DFF',planifiée:'var(--wa)',annulée:'var(--er)'};
-    openModal(`<div class="mh">
-      <div style="display:flex;align-items:center;gap:14px">
-        <div style="width:54px;height:54px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:800;color:#fff;flex-shrink:0">${ini}</div>
-        <div>
-          <div style="font-size:17px;font-weight:700;color:var(--t1)">${name}</div>
-          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:${col}">${RLBL[prof.role]||prof.role}</span>
-        </div>
-      </div>
-      <button class="mc" onclick="closeModal()">✕</button>
-    </div>
-    <div class="mb" style="max-height:72vh;overflow-y:auto;padding:0 24px 24px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-        ${prof.telephone?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:3px">Téléphone</div><div style="font-size:12.5px;color:var(--t1);font-weight:500">${prof.telephone}</div></div>`:''}
-        ${prof.email?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:3px">Email</div><div style="font-size:12.5px;color:var(--t1);font-weight:500;word-break:break-all">${prof.email}</div></div>`:''}
-        ${prof.ville?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:3px">Ville</div><div style="font-size:12.5px;color:var(--t1);font-weight:500">${prof.ville}${prof.code_postal?' ('+prof.code_postal+')':''}</div></div>`:''}
-        ${prof.adresse?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 12px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;margin-bottom:3px">Adresse</div><div style="font-size:12.5px;color:var(--t1);font-weight:500">${prof.adresse}</div></div>`:''}
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
-        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--t1)">${nbPre}</div><div style="font-size:10px;color:var(--t3)">Missions</div></div>
-        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800;color:var(--ok)">${fmtE(totalRem)}</div><div style="font-size:10px;color:var(--t3)">Rémunération</div></div>
-        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--acc)">${xpTotal}</div><div style="font-size:10px;color:var(--t3)">XP total</div></div>
-        <div style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px;text-align:center"><div style="font-size:13px;font-weight:800;color:${grade.color}">${grade.ic} ${grade.nom}</div><div style="font-size:10px;color:var(--t3)">Grade</div></div>
-      </div>
-      ${certs.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Certifications (${certs.length})</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">${certs.map(c=>`<span style="font-size:11px;padding:3px 9px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc)">${c.certification_id||c.nom||'Certification'}</span>`).join('')}</div>`:''}
-      ${last5.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Dernières missions</div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">${last5.map(pe=>{
-        const p=pe.prestations||{};
-        return`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:8px">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12.5px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.clients?.nom||'—'}</div>
-            <div style="font-size:10.5px;color:var(--t3)">${p.reference||''}${p.date_prestation?' · '+fmtD(p.date_prestation):''}</div>
-          </div>
-          ${pe.remuneration?`<span style="font-size:11px;font-weight:600;color:var(--ok);flex-shrink:0">${fmtE(pe.remuneration)}</span>`:''}
-          <span style="font-size:10.5px;color:${ST_CLR[p.statut]||'var(--t3)'};flex-shrink:0">${p.statut||'—'}</span>
-        </div>`;
-      }).join('')}</div>`:''}
-      ${canManage?`<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--b1);padding-top:14px">
-        <button onclick="closeModal();setTimeout(()=>modalModifierCollaborateur((_colsCache||[]).findIndex(x=>x.id==='${id}')),50)" style="width:100%;padding:11px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:10px;color:var(--acc);font-size:13px;cursor:pointer;font-family:var(--ff)">Modifier le profil</button>
-        ${role==='admin'?`<button onclick="supprimerCollaborateur('${id}')" style="width:100%;padding:11px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;color:#EF4444;font-size:13px;cursor:pointer;font-family:var(--ff)">Supprimer ce collaborateur</button>`:''}
-      </div>`:''}
-    </div>`);
-  }catch(e){openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb">${e.message||'Impossible de charger la fiche.'}</div>`);}
+    const dispo=dispoRec?.statut||prof.disponibilite||'disponible';
+    const DISPO_LBL={disponible:'Disponible',sous_conditions:'Sous conditions',indisponible:'Indisponible'};
+    const DISPO_CLR={disponible:'#2ECC8A',sous_conditions:'#F5A524',indisponible:'#EF4444'};
+    const DISPO_BG={disponible:'rgba(46,204,138,.15)',sous_conditions:'rgba(245,165,36,.15)',indisponible:'rgba(239,68,68,.15)'};
+    const ST_CLR={livrée:'#2ECC8A',payée:'#2ECC8A',facturée:'var(--acc)',confirmée:'#7C4DFF',planifiée:'#F5A524',annulée:'#EF4444',acceptée:'#7C4DFF',refusée:'#EF4444'};
+    const ST_BG={livrée:'rgba(46,204,138,.12)',payée:'rgba(46,204,138,.12)',facturée:'rgba(54,107,255,.12)',confirmée:'rgba(124,77,255,.12)',planifiée:'rgba(245,165,36,.12)',annulée:'rgba(239,68,68,.12)',acceptée:'rgba(124,77,255,.12)',refusée:'rgba(239,68,68,.12)'};
+    const CERT_LBL={terminée:'Terminée',en_cours:'En cours',obligatoire:'Obligatoire'};
+    const CERT_CLR={terminée:'#2ECC8A',en_cours:'var(--acc)',obligatoire:'#F5A524'};
+    const CERT_BG={terminée:'rgba(46,204,138,.12)',en_cours:'rgba(54,107,255,.12)',obligatoire:'rgba(245,165,36,.12)'};
+    const CERT_PCT={terminée:100,en_cours:55,obligatoire:20};
+    const fmtE=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
+    const fmtD=d=>d?new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+    const totalRem=pres.reduce((s,p)=>s+(p.remuneration||0),0);
+    const accepted=pres.filter(p=>p.statut!=='refusée'&&p.statut!=='annulée').length;
+    const tauxAcc=pres.length?Math.round(accepted/pres.length*100):0;
+    const prochaine=pres.filter(p=>{const d=p.prestations?.date_prestation;return d&&d>=today&&p.statut!=='annulée';})
+      .sort((a,b)=>(a.prestations?.date_prestation||'').localeCompare(b.prestations?.date_prestation||''))[0];
+    const ic=(lbl,val)=>'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:14px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">'+lbl+'</div><div style="font-size:13.5px;color:var(--t1);font-weight:500">'+val+'</div></div>';
+    // Rémunérations groupées par mois
+    const remByMonth={};
+    pres.forEach(pe=>{
+      const d=pe.prestations?.date_prestation;if(!d)return;
+      const dt=new Date(d);
+      const key=dt.getFullYear()+'-'+(dt.getMonth()+1).toString().padStart(2,'0');
+      const lbl=dt.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}).replace(/^\w/,c=>c.toUpperCase());
+      if(!remByMonth[key])remByMonth[key]={lbl,items:[],total:0};
+      remByMonth[key].items.push(pe);remByMonth[key].total+=(pe.remuneration||0);
+    });
+    const remMonths=Object.entries(remByMonth).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,6);
+    // Construire les contenus de chaque onglet
+    const T_OVERVIEW='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +ic('Rôle principal',RLBL[prof.role]||prof.role)
+      +ic('Disponibilité','<span style="color:'+DISPO_CLR[dispo]+';font-weight:600">'+(DISPO_LBL[dispo]||dispo)+'</span>')
+      +(prof.email?ic('Email','<span style="word-break:break-all">'+prof.email+'</span>'):'')
+      +(prof.telephone?ic('Téléphone',prof.telephone):'')
+      +(prof.ville?ic('Ville',prof.ville+(prof.code_postal?' ('+prof.code_postal+')':'')):'')
+      +(prof.adresse?ic('Adresse',prof.adresse):'')
+      +ic('XP','<span style="color:var(--acc);font-weight:700">'+xpTotal.toLocaleString('fr-FR')+'</span>')
+      +ic('Prochaine mission',prochaine?(prochaine.prestations?.clients?.nom||'Mission')+' — '+fmtD(prochaine.prestations?.date_prestation):'Aucune planifiée')
+      +'</div>';
+    const T_MISSIONS=pres.length
+      ?'<div style="display:flex;flex-direction:column;gap:8px">'+pres.slice(0,50).map(pe=>{
+          const p=pe.prestations||{};const st=pe.statut||p.statut||'—';
+          return'<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:10px">'
+            +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.clients?.nom||'—')+' — '+(RLBL[prof.role]||prof.role)+'</div>'
+            +'<div style="font-size:11px;color:var(--t3);margin-top:2px">'+fmtD(p.date_prestation)+(p.lieu?' · '+p.lieu:'')+'</div></div>'
+            +(pe.remuneration?'<span style="font-size:12px;font-weight:700;color:var(--t1);flex-shrink:0">'+fmtE(pe.remuneration)+'</span>':'')
+            +'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:'+(ST_BG[st]||'rgba(100,100,100,.1)')+';color:'+(ST_CLR[st]||'var(--t3)')+';flex-shrink:0;text-transform:capitalize">'+st+'</span>'
+            +'<span style="color:var(--t3);font-size:15px;flex-shrink:0">›</span></div>';
+        }).join('')+'</div>'
+      :'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Aucune mission trouvée</div>';
+    const T_COMPETENCES=certs.length
+      ?'<div style="display:flex;flex-direction:column;gap:10px">'+certs.map(c=>{
+          const s=c.statut||'en_cours';const pct=CERT_PCT[s]||50;
+          return'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:14px 16px">'
+            +'<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:13px;font-weight:500;color:var(--t1)">'+(c.certification_id||c.nom||'Compétence')+'</span><span style="font-size:13px;font-weight:700;color:var(--t1)">'+pct+'%</span></div>'
+            +'<div style="height:5px;border-radius:3px;background:var(--b1)"><div style="height:100%;border-radius:3px;background:'+(CERT_CLR[s]||'var(--acc)')+';width:'+pct+'%"></div></div>'
+            +'</div>';
+        }).join('')+'</div>'
+      :'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Aucune compétence enregistrée</div>';
+    const T_PERFORMANCE='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
+      +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Missions réalisées</div><div style="font-size:26px;font-weight:800;color:var(--t1)">'+pres.length+'</div></div>'
+      +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Taux d\'acceptation</div><div style="font-size:26px;font-weight:800;color:#2ECC8A">'+tauxAcc+'%</div></div>'
+      +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Rémunération totale</div><div style="font-size:20px;font-weight:800;color:var(--acc)">'+fmtE(totalRem)+'</div></div>'
+      +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">XP total</div><div style="font-size:26px;font-weight:800;color:var(--acc)">'+xpTotal.toLocaleString('fr-FR')+'</div></div>'
+      +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Grade actuel</div><div style="font-size:18px;font-weight:800;color:'+grade.color+'">'+grade.ic+' '+grade.nom+'</div></div>'
+      +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Certifications</div><div style="font-size:26px;font-weight:800;color:var(--t1)">'+certs.length+'</div></div>'
+      +'</div>';
+    const T_FORMATION=certs.length
+      ?'<div style="display:flex;flex-direction:column;gap:8px">'+certs.map(c=>{
+          const s=c.statut||'en_cours';
+          return'<div style="display:flex;align-items:center;padding:13px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:10px">'
+            +'<div style="flex:1;font-size:13px;font-weight:500;color:var(--t1)">'+(c.certification_id||c.nom||'Formation')+'</div>'
+            +'<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+(CERT_BG[s]||'rgba(100,100,100,.1)')+';color:'+(CERT_CLR[s]||'var(--t3)')+'">'+( CERT_LBL[s]||s)+'</span>'
+            +'</div>';
+        }).join('')+'</div>'
+      :'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Aucune formation enregistrée</div>';
+    const T_REM=remMonths.length
+      ?'<div style="display:flex;flex-direction:column;gap:12px">'+remMonths.map(([k,m])=>
+          '<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;overflow:hidden">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--b1)">'
+          +'<div style="font-size:13px;font-weight:700;color:var(--t1)">'+m.lbl+'</div>'
+          +'<div style="font-size:12px;color:var(--t3)">Sous-total : '+fmtE(m.total)+'</div></div>'
+          +m.items.map(pe=>{
+            const p=pe.prestations||{};const st=pe.statut||p.statut||'—';
+            return'<div style="display:flex;align-items:center;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.04)">'
+              +'<div style="flex:1;font-size:13px;color:var(--t1)">'+(p.clients?.nom||p.reference||'Mission')+'</div>'
+              +'<div style="font-size:13px;font-weight:700;color:var(--t1);margin-right:14px">'+fmtE(pe.remuneration||0)+'</div>'
+              +'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:'+(ST_BG[st]||'rgba(100,100,100,.1)')+';color:'+(ST_CLR[st]||'var(--t3)')+';text-transform:capitalize">'+st+'</span>'
+              +'</div>';
+          }).join('')+'</div>').join('')
+        +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:13px;font-weight:700;color:var(--t1)">Total rémunérations</div><div style="font-size:15px;font-weight:800;color:var(--acc)">'+fmtE(totalRem)+'</div></div>'
+        +'</div>'
+      :'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Aucune rémunération enregistrée</div>';
+    window._svFicheTabs={overview:T_OVERVIEW,missions:T_MISSIONS,competences:T_COMPETENCES,performance:T_PERFORMANCE,formation:T_FORMATION,remunerations:T_REM};
+    window.ficheSwitch=function(tab){
+      document.querySelectorAll('.sv-ftab').forEach(b=>{
+        const on=b.dataset.tab===tab;
+        b.style.color=on?'var(--t1)':'var(--t3)';
+        b.style.borderBottomColor=on?'var(--acc)':'transparent';
+        b.style.fontWeight=on?'700':'500';
+      });
+      const el=document.getElementById('sv-fiche-body');
+      if(el)el.innerHTML=window._svFicheTabs[tab]||'';
+    };
+    const TABS=[
+      {id:'overview',lbl:'Vue d\'ensemble'},
+      {id:'missions',lbl:'Missions'},
+      {id:'competences',lbl:'Compétences'},
+      {id:'performance',lbl:'Performance'},
+      {id:'formation',lbl:'Formation'},
+      {id:'remunerations',lbl:'Rémunérations'},
+    ];
+    const tabsNav=TABS.map((t,i)=>'<button class="sv-ftab" data-tab="'+t.id+'" onclick="ficheSwitch(\''+t.id+'\')" style="padding:12px 16px;background:transparent;border:none;border-bottom:2px solid '+(i===0?'var(--acc)':'transparent')+';color:'+(i===0?'var(--t1)':'var(--t3)')+';font-size:12.5px;font-weight:'+(i===0?'700':'500')+';cursor:pointer;font-family:var(--ff);white-space:nowrap;transition:color .12s">'+t.lbl+'</button>').join('');
+    const modifierBtn=canManage?'<button onclick="closeModal();setTimeout(()=>modalModifierCollaborateur((_colsCache||[]).findIndex(x=>x.id===\''+id+'\')),50)" style="padding:7px 15px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Modifier</button>':'';
+    const suppBtn=myRole==='admin'?'<div style="padding:10px 24px 14px;border-top:1px solid var(--b1);display:flex;justify-content:flex-end"><button onclick="supprimerCollaborateur(\''+id+'\')" style="padding:6px 14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;color:#EF4444;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">Supprimer le collaborateur</button></div>':'';
+    openModal('<div style="padding:0">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--b1)">'
+        +'<div style="display:flex;align-items:center;gap:14px">'
+          +'<div style="width:56px;height:56px;border-radius:50%;background:'+col+';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0">'+ini+'</div>'
+          +'<div>'
+            +'<div style="font-size:18px;font-weight:700;color:var(--t1)">'+name+'</div>'
+            +'<div style="font-size:12px;color:var(--t3);margin-top:2px">'+(RLBL[prof.role]||prof.role)+'</div>'
+            +'<div style="font-size:14px;color:'+grade.color+';margin-top:4px;letter-spacing:.06em">'+grade.ic+'</div>'
+          +'</div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">'
+          +'<span style="font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;background:'+(DISPO_BG[dispo]||'rgba(100,100,100,.1)')+';color:'+(DISPO_CLR[dispo]||'var(--t3)')+'">'+( DISPO_LBL[dispo]||dispo)+'</span>'
+          +modifierBtn
+          +'<button onclick="toast(\'Ouvre la Messagerie et sélectionne '+name+'\',\'info\')" style="padding:7px 15px;background:var(--acc);border:none;border-radius:8px;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Contacter</button>'
+        +'</div>'
+      +'</div>'
+      +'<div style="display:flex;padding:0 24px;border-bottom:1px solid var(--b1);overflow-x:auto;scrollbar-width:none">'+tabsNav+'</div>'
+      +'<div id="sv-fiche-body" style="padding:20px 24px;max-height:52vh;overflow-y:auto">'+T_OVERVIEW+'</div>'
+      +suppBtn
+      +'</div>');
+    const mw=document.querySelector('#sv-modal > div');
+    if(mw){mw.style.width='min(720px,calc(100vw - 16px))';mw.style.padding='0';mw.style.overflow='hidden';const ob=mw.querySelector(':scope > button');if(ob)ob.style.display='none';}
+  }catch(e){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb">'+(e.message||'Impossible de charger la fiche.')+'</div>');}
 }
 
 async function supprimerCollaborateur(id){
