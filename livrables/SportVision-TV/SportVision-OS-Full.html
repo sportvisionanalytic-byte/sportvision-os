@@ -9715,6 +9715,7 @@ async function avancerPipeline(id,statut){
 
 // ── MESSAGERIE ────────────────────────────────────────────────────────────────
 let _msgInterval=null;
+let _msgSending=false;
 let _msgConv='team';     // 'team' | uid du destinataire
 let _msgProfiles={};     // uid → {n, ini, role}
 let _msgMobView='list';  // 'list' | 'conv' (mobile only)
@@ -9809,11 +9810,16 @@ function _renderMsgContacts(myUid){
     }).join('');
 }
 
+function _escMsgHtml(s){
+  return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 async function _renderMsgConv(myUid){
   const el=document.getElementById('msg-list');
   const hdr=document.getElementById('msg-conv-title');
   if(!el)return;
   const isTeam=_msgConv==='team';
+  const wasNearBottom=(el.scrollHeight-el.scrollTop-el.clientHeight)<80;
   if(hdr){
     if(isTeam) hdr.innerHTML='<span style="color:var(--t1)">🌐 Équipe SportVision</span><span style="font-size:11px;color:var(--t3);margin-left:8px">Broadcast — visible par tous</span>';
     else{const p=_msgProfiles[_msgConv];hdr.textContent=p?.n||'Conversation';}
@@ -9851,7 +9857,7 @@ async function _renderMsgConv(myUid){
         <div style="max-width:68%;display:flex;flex-direction:column;gap:2px;align-items:${isMe?'flex-end':'flex-start'}">
           ${!isMe&&isTeam?`<div style="font-size:10px;color:var(--t3);margin-left:3px">${name}</div>`:''}
           <div style="display:flex;align-items:center;gap:5px;${isMe?'flex-direction:row-reverse':''}">
-            <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.07)'};padding:9px 13px;border-radius:${isMe?'16px 16px 4px 16px':'16px 16px 16px 4px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.45;word-break:break-word">${m.contenu}</div>
+            <div style="background:${isMe?'var(--acc)':'rgba(255,255,255,.07)'};padding:9px 13px;border-radius:${isMe?'16px 16px 4px 16px':'16px 16px 16px 4px'};font-size:13px;color:${isMe?'#fff':'var(--t1)'};line-height:1.45;word-break:break-word">${_escMsgHtml(m.contenu)}</div>
             <div class="msg-acts" style="opacity:0;transition:opacity .15s;display:flex;gap:3px">
               <button onclick="msgReplyTo('${msgTxt}')" title="Répondre" style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.07);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center" title="Répondre">↩</button>
               <button onclick="msgCrTache('${msgTxt}')" title="Créer une tâche" style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.07);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">✓</button>
@@ -9864,7 +9870,7 @@ async function _renderMsgConv(myUid){
         </div>
       </div>`;
     }).join('');
-    setTimeout(()=>{el.scrollTop=el.scrollHeight;},40);
+    if(wasNearBottom)setTimeout(()=>{el.scrollTop=el.scrollHeight;},40);
   }catch(e){console.error('_renderMsgConv',e);}
 }
 
@@ -9909,21 +9915,33 @@ function msgNewConv(){
 }
 
 async function envoyerMessage(){
+  if(_msgSending)return;
   const inp=document.getElementById('msg-input');
   const txt=(inp?.value||'').trim();
   if(!txt)return;
   const uid=localStorage.getItem('sv_uid');
   if(!uid)return;
+  _msgSending=true;
+  const sendBtn=document.querySelector('#msg-shell .btn.bp');
+  if(sendBtn)sendBtn.disabled=true;
   inp.value='';
-  inp.focus();
+  inp.disabled=true;
   try{
     const body=_msgConv==='team'
       ?{expediteur_id:uid,destinataire_id:null,contenu:txt,lue:false}
       :{expediteur_id:uid,destinataire_id:_msgConv,contenu:txt,lue:false};
     const r=await sbFetch('messages',{method:'POST',headers:{'Prefer':'return=minimal'},body});
     if(r&&r.code){throw new Error(r.message||r.hint||'Permission refusée');}
-    _renderMsgConv(uid);
-  }catch(e){toast('Erreur envoi : '+e.message,'err');}
+    await _renderMsgConv(uid);
+  }catch(e){
+    inp.value=txt;
+    toast('Erreur envoi : '+e.message,'err');
+  }finally{
+    _msgSending=false;
+    if(sendBtn)sendBtn.disabled=false;
+    inp.disabled=false;
+    inp.focus();
+  }
 }
 
 function msgReplyTo(txt){
@@ -14801,6 +14819,198 @@ function updateBottomNav(viewId){
     if(ic)ic.style.color=on?'var(--acc)':'var(--t3)';
   });
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// PORTAIL CLIENT — Messages, Rendez-vous, Catalogue (ajout non-invasif : n'édite
+// aucun code existant, seulement des ajouts sur NAV/VIEWS/loadViewData).
+// Nécessite migration-portail-v1.sql minimum (tables messages_client,
+// rendez_vous, catalogue_offres).
+// ══════════════════════════════════════════════════════════════════════════
+
+['admin','sec'].forEach(role=>{
+  if(!NAV[role])return;
+  NAV[role].push(
+    {type:'sep',lb:'Portail client'},
+    {id:'msgclients',lb:'Messages clients',ic:'msg'},
+    {id:'rdvclients',lb:'Rendez-vous clients',ic:'cal'},
+    {id:'catalogue',lb:'Catalogue public',ic:'pre'},
+  );
+});
+
+function tplMsgClients(){
+  return `<div class="sh"><div class="sh-t">Messages clients</div></div>
+    <div id="msgcl-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+function tplRdvClients(){
+  return `<div class="sh"><div class="sh-t">Rendez-vous clients</div></div>
+    <div id="rdvcl-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+function tplCataloguePortail(){
+  return `<div class="sh"><div class="sh-t">Catalogue public (Portail)</div></div>
+    <div id="catalogue-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+['admin','sec'].forEach(role=>{
+  VIEWS[role+'.msgclients']=tplMsgClients;
+  VIEWS[role+'.rdvclients']=tplRdvClients;
+  VIEWS[role+'.catalogue']=tplCataloguePortail;
+});
+
+const _svp_origLoadViewData=loadViewData;
+loadViewData=async function(role,view){
+  await _svp_origLoadViewData(role,view);
+  if((role==='admin'||role==='sec')&&view==='msgclients') await loadMsgClients();
+  if((role==='admin'||role==='sec')&&view==='rdvclients') await loadRdvClients();
+  if((role==='admin'||role==='sec')&&view==='catalogue') await loadCatalogueOffres();
+};
+
+// ── Messages clients ──
+let _msgClCache=[];
+async function loadMsgClients(){
+  const el=document.getElementById('msgcl-list');
+  const data=await sbFetch('messages_client?select=*,clients(nom,email),prestations(reference,type_prestation)&order=created_at.asc&limit=1000');
+  _msgClCache=Array.isArray(data)?data:[];
+  renderMsgClients();
+}
+function renderMsgClients(){
+  const el=document.getElementById('msgcl-list');
+  if(!el)return;
+  if(!_msgClCache.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun message client pour le moment.</div>';return;}
+  const groups={};
+  _msgClCache.forEach(m=>{
+    const key=m.client_id+'|'+(m.prestation_id||'general');
+    if(!groups[key])groups[key]={client_id:m.client_id,prestation_id:m.prestation_id,clientNom:m.clients?.nom||'—',ref:m.prestations?.reference||m.prestations?.type_prestation||'Discussion générale',msgs:[]};
+    groups[key].msgs.push(m);
+  });
+  const list=Object.values(groups).sort((a,b)=>new Date(b.msgs[b.msgs.length-1].created_at)-new Date(a.msgs[a.msgs.length-1].created_at));
+  el.innerHTML=list.map((g,i)=>{
+    const last5=g.msgs.slice(-5);
+    return `<div class="cd" style="margin-bottom:12px">
+      <div class="cd-h"><div class="cd-t">${g.clientNom} — ${g.ref}</div></div>
+      <div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px">
+        ${last5.map(m=>`<div style="align-self:${m.auteur_type==='staff'?'flex-end':'flex-start'};max-width:75%;background:${m.auteur_type==='staff'?'var(--acc)':'var(--s1)'};color:${m.auteur_type==='staff'?'#fff':'var(--t1)'};padding:8px 12px;border-radius:10px;font-size:13px">${m.contenu}</div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;padding:0 18px 16px">
+        <input type="text" id="msgcl-input-${i}" placeholder="Répondre..." style="flex:1;background:var(--s1);border:1px solid var(--b1);border-radius:8px;padding:10px;color:var(--t1);font-size:13px">
+        <button class="btn bp bs" onclick="sendMsgClient('${g.client_id}',${g.prestation_id?`'${g.prestation_id}'`:'null'},${i})">Envoyer</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function sendMsgClient(clientId,prestationId,idx){
+  const input=document.getElementById('msgcl-input-'+idx);
+  const contenu=input.value.trim();
+  if(!contenu)return;
+  const r=await sbFetch('messages_client',{method:'POST',body:{client_id:clientId,prestation_id:prestationId,auteur_type:'staff',auteur_staff_id:localStorage.getItem('sv_uid'),contenu}});
+  if(!r){toast('Message non envoyé.');return;}
+  await loadMsgClients();
+}
+
+// ── Rendez-vous clients ──
+let _rdvClCache=[];
+const RDV_CL_LBL={a_confirmer:'À confirmer',confirme:'Confirmé',annule:'Annulé',realise:'Réalisé'};
+const RDV_CL_CLS={a_confirmer:'bw',confirme:'ba',annule:'bb',realise:'bn'};
+async function loadRdvClients(){
+  const data=await sbFetch('rendez_vous?select=*,clients(nom,email,telephone)&order=date_demandee.asc&limit=300');
+  _rdvClCache=Array.isArray(data)?data:[];
+  renderRdvClients();
+}
+function renderRdvClients(){
+  const el=document.getElementById('rdvcl-list');
+  if(!el)return;
+  if(!_rdvClCache.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun rendez-vous pour le moment.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Client</th><th>Type</th><th>Objet</th><th>Date souhaitée</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    _rdvClCache.map(r=>`<tr>
+      <td class="tp">${r.clients?.nom||'—'}<div style="font-size:11px;color:var(--t3)">${r.clients?.telephone||r.clients?.email||''}</div></td>
+      <td>${r.type_rdv==='appel'?'Appel':'Physique'}</td>
+      <td>${r.objet||'—'}</td>
+      <td>${r.date_demandee?new Date(r.date_demandee).toLocaleDateString('fr-FR'):'—'}${r.heure_demandee?' à '+r.heure_demandee.slice(0,5):''}</td>
+      <td><span class="bd ${RDV_CL_CLS[r.statut]||'bw'}"><span class="bd-d"></span>${RDV_CL_LBL[r.statut]||r.statut}</span></td>
+      <td style="white-space:nowrap">${r.statut==='a_confirmer'?`<button class="btn bp bs" onclick="confirmerRdvClient('${r.id}')">Confirmer</button> <button class="btn bg2 bs" onclick="annulerRdvClient('${r.id}')">Annuler</button>`:''}</td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+async function confirmerRdvClient(id){
+  const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'confirme',confirme_par:localStorage.getItem('sv_uid')}});
+  if(!r){toast('Erreur mise à jour.');return;}
+  toast('Rendez-vous confirmé.','ok');
+  await loadRdvClients();
+}
+async function annulerRdvClient(id){
+  if(!confirm('Annuler ce rendez-vous ?'))return;
+  const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'annule'}});
+  if(!r){toast('Erreur mise à jour.');return;}
+  toast('Rendez-vous annulé.','ok');
+  await loadRdvClients();
+}
+
+// ── Catalogue public (catalogue_offres) ──
+let _catalogueCache=[];
+const CATALOGUE_CATS=['photo','video','pack','tournoi','stage','shooting','drone','veo','contenu'];
+async function loadCatalogueOffres(){
+  const data=await sbFetch('catalogue_offres?order=ordre.asc');
+  _catalogueCache=Array.isArray(data)?data:[];
+  renderCatalogueOffres();
+}
+function renderCatalogueOffres(){
+  const el=document.getElementById('catalogue-list');
+  if(!el)return;
+  el.innerHTML='<div style="padding:14px 18px;display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="modalCatalogueOffreById(null)">+ Nouvelle offre</button></div>'+
+  (_catalogueCache.length?('<div class="tw"><table><thead><tr><th>Nom</th><th>Catégorie</th><th>Tarif</th><th>Actif</th><th></th></tr></thead><tbody>'+
+    _catalogueCache.map(o=>`<tr>
+      <td class="tp">${o.nom}</td>
+      <td>${o.categorie}</td>
+      <td>${o.tarif_type==='fixe'?(o.prix_ht||0).toLocaleString('fr-FR')+' € HT':'Sur devis'}</td>
+      <td><span class="bd ${o.actif?'ba':'bn'}"><span class="bd-d"></span>${o.actif?'Actif':'Inactif'}</span></td>
+      <td><button class="btn bg2 bs" onclick="modalCatalogueOffreById('${o.id}')">Modifier</button></td>
+    </tr>`).join('')+'</tbody></table></div>')
+    :'<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune offre publiée. Créez-en une pour qu\'elle apparaisse sur le Portail.</div>');
+}
+function modalCatalogueOffreById(id){
+  const o=id?(_catalogueCache.find(x=>x.id===id)||{}):{};
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">${id?'Modifier':'Nouvelle'} offre</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nom</label>
+        <input id="cof-nom" value="${(o.nom||'').replace(/"/g,'&quot;')}" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box"></div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Slug (identifiant URL, sans espace)</label>
+        <input id="cof-slug" value="${(o.slug||'').replace(/"/g,'&quot;')}" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box"></div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Catégorie</label>
+        <select id="cof-cat" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1)">
+          ${CATALOGUE_CATS.map(c=>`<option value="${c}" ${o.categorie===c?'selected':''}>${c}</option>`).join('')}
+        </select></div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description courte</label>
+        <textarea id="cof-desc" rows="2" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box">${o.description||''}</textarea></div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1"><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Tarif</label>
+          <select id="cof-tarif" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1)">
+            <option value="fixe" ${o.tarif_type==='fixe'?'selected':''}>Fixe</option>
+            <option value="sur_devis" ${o.tarif_type==='sur_devis'?'selected':''}>Sur devis</option>
+          </select></div>
+        <div style="flex:1"><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Prix HT (€)</label>
+          <input id="cof-prix" type="number" step="0.01" value="${o.prix_ht??''}" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1)"><input type="checkbox" id="cof-actif" ${o.actif!==false?'checked':''}> Offre active (visible sur le Portail)</label>
+      <button class="btn bp" onclick="saveCatalogueOffre('${id||''}')" style="margin-top:8px">Enregistrer</button>
+    </div>
+  `);
+}
+async function saveCatalogueOffre(id){
+  const body={
+    nom:document.getElementById('cof-nom').value.trim(),
+    slug:document.getElementById('cof-slug').value.trim(),
+    categorie:document.getElementById('cof-cat').value,
+    description:document.getElementById('cof-desc').value.trim(),
+    tarif_type:document.getElementById('cof-tarif').value,
+    prix_ht:document.getElementById('cof-prix').value?parseFloat(document.getElementById('cof-prix').value):null,
+    actif:document.getElementById('cof-actif').checked,
+  };
+  if(!body.nom||!body.slug){toast('Le nom et le slug sont obligatoires.');return;}
+  const r=id?await sbFetch('catalogue_offres?id=eq.'+id,{method:'PATCH',body}):await sbFetch('catalogue_offres',{method:'POST',body});
+  if(!r){toast('Erreur lors de la sauvegarde.');return;}
+  toast(id?'Offre mise à jour.':'Offre créée.','ok');
+  closeModal();
+  await loadCatalogueOffres();
+}
+// ══════════════════════════════════════════════════════════════════════════
 
 function switchView(id){
   if(_msgInterval){clearInterval(_msgInterval);_msgInterval=null;}
