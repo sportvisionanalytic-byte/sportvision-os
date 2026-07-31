@@ -15356,6 +15356,7 @@ function _centreNavHtml(isAdmin){
     {id:'competences',ic:'🎯',lb:'Compétences'},
     {id:'remuneration-guide',ic:'💶',lb:'Rémunération'},
     {sep:'Ressources'},
+    {id:'ressources',ic:'📚',lb:'Ressources publiées'},
     {id:'faq',ic:'❓',lb:'FAQ'},
     {id:'contacts-sv',ic:'📞',lb:'Qui contacter ?'},
     ...(isAdmin?[{sep:'Administration'},{id:'admin-centre',ic:'📊',lb:'Tableau de bord'}]:[]),
@@ -15398,6 +15399,7 @@ async function loadCentreSection(section){
     grades:renderCentreGrades,
     competences:renderCentreCompetences,
     'remuneration-guide':renderCentreRemuneration,
+    ressources:renderCentreRessources,
     faq:renderCentreFAQ,
     'contacts-sv':renderCentreContacts,
     'admin-centre':renderCentreAdminDash,
@@ -16232,8 +16234,132 @@ async function centreValiderGrade(recoId,decision){
   }catch(e){toast('Erreur.','er');}
 }
 
+// ── CENTRE — RESSOURCES PUBLIÉES ──────────────────────────────────────────────
+let _centreRessourcesCache=[];
+async function renderCentreRessources(){
+  const isAdmin=S.role==='admin';
+  let items;
+  try{
+    items=await sbFetch('centre_ressources?select=*&order=ordre.asc,created_at.desc');
+    if(!Array.isArray(items))items=[];
+  }catch(e){
+    return `<div style="padding:48px 24px;text-align:center;color:var(--t3)">
+      <div style="font-size:15px;font-weight:650;color:var(--t2);margin-bottom:8px">📚 Ressources</div>
+      <div style="font-size:13px">Ressources non disponibles (migration SQL requise).</div>
+    </div>`;
+  }
+  _centreRessourcesCache=items;
+  const TYPE_IC={lien:'🔗',texte:'📝'};
+  return `<div style="padding:24px 28px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px">
+      <div style="font-size:18px;font-weight:700;color:var(--t1)">📚 Ressources</div>
+      ${isAdmin?`<button onclick="centreModalPublierRessource()" style="padding:8px 16px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff);flex-shrink:0">+ Publier une ressource</button>`:''}
+    </div>
+    ${!items.length?`<div style="padding:48px 24px;text-align:center;color:var(--t3);font-size:13px">Aucune ressource publiée pour le moment.</div>`
+    :`<div style="display:flex;flex-direction:column;gap:10px">${items.map(r=>{
+        const action=r.type==='texte'?`centreModalVoirRessource('${r.id}')`:(r.url?`window.open('${r.url}','_blank')`:'');
+        return `<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:10px${action?';cursor:pointer':''}"${action?` onclick="${action}"`:''}>
+          <span style="font-size:20px;flex-shrink:0">${r.icone||TYPE_IC[r.type]||'📄'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${r.titre}</div>
+            ${r.description?`<div style="font-size:11.5px;color:var(--t3);margin-top:2px">${r.description}</div>`:''}
+          </div>
+          ${!r.actif?`<span style="font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(239,68,68,.12);color:var(--er);flex-shrink:0">Masquée</span>`:''}
+          ${isAdmin?`<button onclick="event.stopPropagation();modalEditerRessourceCentre('${r.id}')" style="padding:5px 10px;font-size:11px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff);flex-shrink:0">✎</button>
+          <button onclick="event.stopPropagation();supprimerRessourceCentre('${r.id}')" style="padding:5px 10px;font-size:11px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff);flex-shrink:0">🗑</button>`:''}
+        </div>`;
+      }).join('')}</div>`}
+  </div>`;
+}
+function centreModalVoirRessource(id){
+  const r=(_centreRessourcesCache||[]).find(x=>x.id===id);
+  if(!r)return;
+  openModal(`<div class="mh"><div class="mt">${r.icone||'📝'} ${r.titre}</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" style="font-size:13.5px;color:var(--t2);white-space:pre-wrap;line-height:1.6">${(r.contenu||'').replace(/</g,'&lt;')}</div>`);
+}
+function _crToggleType(){
+  const t=document.getElementById('cr-type').value;
+  document.getElementById('cr-champ-url').style.display=t==='lien'?'':'none';
+  document.getElementById('cr-champ-texte').style.display=t==='texte'?'':'none';
+}
 function centreModalPublierRessource(){
-  toast('Fonctionnalité de publication de ressources personnalisées — disponible après migration SQL.','ok');
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  openModal(`
+    <div id="cr-titre-modal" style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Publier une ressource</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:18px">Visible par toute l'équipe dans Centre SportVision → Ressources.</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="${lbl}">Titre</label><input id="cr-titre" class="l-inp" placeholder="Ex : Charte graphique clubs" style="height:38px"></div>
+      <div><label style="${lbl}">Description courte</label><input id="cr-desc" class="l-inp" placeholder="Optionnel" style="height:38px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Type</label>
+          <select id="cr-type" class="l-inp" style="height:38px" onchange="_crToggleType()">
+            <option value="lien">🔗 Lien externe</option>
+            <option value="texte">📝 Texte / note</option>
+          </select>
+        </div>
+        <div><label style="${lbl}">Icône (emoji)</label><input id="cr-icone" class="l-inp" placeholder="📄" style="height:38px"></div>
+      </div>
+      <div id="cr-champ-url"><label style="${lbl}">URL</label><input id="cr-url" type="url" class="l-inp" placeholder="https://…" style="height:38px"></div>
+      <div id="cr-champ-texte" style="display:none"><label style="${lbl}">Contenu</label><textarea id="cr-contenu" class="l-inp" style="height:140px;padding-top:10px;resize:none"></textarea></div>
+      <div id="cr-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="sauvegarderRessourceCentre()">Publier</button>
+      </div>
+    </div>`);
+}
+function modalEditerRessourceCentre(id){
+  const r=(_centreRessourcesCache||[]).find(x=>x.id===id);
+  if(!r)return;
+  centreModalPublierRessource();
+  setTimeout(()=>{
+    document.getElementById('cr-titre-modal').textContent='Modifier la ressource';
+    document.getElementById('cr-titre').value=r.titre||'';
+    document.getElementById('cr-desc').value=r.description||'';
+    document.getElementById('cr-type').value=r.type||'lien';
+    document.getElementById('cr-icone').value=r.icone||'';
+    if(r.type==='lien')document.getElementById('cr-url').value=r.url||'';
+    if(r.type==='texte')document.getElementById('cr-contenu').value=r.contenu||'';
+    _crToggleType();
+    const saveBtn=document.querySelector('#sv-modal .bp');
+    if(saveBtn)saveBtn.setAttribute('onclick',"sauvegarderRessourceCentre('"+id+"')");
+  },30);
+}
+async function sauvegarderRessourceCentre(id){
+  const err=document.getElementById('cr-err');
+  const titre=document.getElementById('cr-titre').value.trim();
+  if(!titre){err.textContent='Le titre est obligatoire.';return;}
+  const type=document.getElementById('cr-type').value;
+  const url=document.getElementById('cr-url')?.value.trim()||'';
+  const contenu=document.getElementById('cr-contenu')?.value.trim()||'';
+  if(type==='lien'&&!url){err.textContent="L'URL est obligatoire pour un lien.";return;}
+  if(type==='texte'&&!contenu){err.textContent='Le contenu est obligatoire pour une note.';return;}
+  err.textContent='Enregistrement…';
+  const body={
+    titre,
+    description:document.getElementById('cr-desc').value.trim()||null,
+    type,
+    url:type==='lien'?url:null,
+    contenu:type==='texte'?contenu:null,
+    icone:document.getElementById('cr-icone').value.trim()||'📄',
+  };
+  try{
+    if(id)await sbFetch('centre_ressources?id=eq.'+id,{method:'PATCH',body});
+    else await sbFetch('centre_ressources',{method:'POST',body:{...body,created_by:localStorage.getItem('sv_uid')}});
+    closeModal();
+    toast(id?'Ressource mise à jour.':'Ressource publiée.','ok');
+    loadCentreSection('ressources');
+  }catch(e){err.textContent='Erreur lors de l\'enregistrement.';}
+}
+function supprimerRessourceCentre(id){
+  confirmerAction('Supprimer définitivement cette ressource ?',async()=>{
+    try{
+      await sbFetch('centre_ressources?id=eq.'+id,{method:'DELETE'});
+      closeModal();
+      toast('Ressource supprimée.','ok');
+      loadCentreSection('ressources');
+    }catch(e){toast('Erreur lors de la suppression.','er');}
+  });
 }
 
 // Helper : ouvrir conversation avec le premier user d'un rôle
