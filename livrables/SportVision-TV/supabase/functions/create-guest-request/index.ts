@@ -43,6 +43,7 @@ serve(async (req) => {
     const {
       prenom, nom, email, telephone, profil,
       offre_id, options, date, heure, lieu, ville, adresse, cp, commentaire, sport, equipes,
+      retractation_renoncee,
     } = await req.json();
 
     if (!email || !prenom || !nom) {
@@ -90,6 +91,8 @@ serve(async (req) => {
         sport: sport || null,
         equipes: equipes || null,
         description_besoin: commentaire || null,
+        retractation_renoncee: !!retractation_renoncee,
+        retractation_renoncee_at: retractation_renoncee ? new Date().toISOString() : null,
       })
       .select("id, reference")
       .single();
