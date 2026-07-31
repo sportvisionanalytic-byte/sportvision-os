@@ -30,25 +30,18 @@ Récapitulatif des 4 fonctions à avoir en ligne : `portal-onboarding`, `create-
 
 ## Étape 3 — Créer le site Netlify du Portail
 
-Le Portail doit être un **site Netlify distinct** de celui de l'OS (domaine différent), même s'il vit dans le même dépôt GitHub.
+Le Portail doit être un **site Netlify distinct** de celui de l'OS (domaine différent), même s'il vit dans le même dépôt GitHub. Son code vit dans un dossier séparé, `livrables/SportVision-Portail/`, spécifiquement pour éviter tout conflit de configuration Netlify avec le dossier `livrables/SportVision-TV/` de l'OS (les deux sites pointant vers le même dossier de publication créait des redirections qui se marchaient dessus).
 
 1. Netlify → **Add new site** → **Import an existing project** → sélectionner le même dépôt GitHub que l'OS
-2. Dans les réglages de build de ce nouveau site :
+2. Dans **Project configuration → Build & deploy → Build settings** de ce nouveau site :
+   - **Base directory** : `livrables/SportVision-Portail`
    - **Build command** : laisser vide
-   - **Publish directory** : `livrables/SportVision-TV`
+   - **Publish directory** : `.`
 3. Déployer
 
-Le site sera accessible à une adresse du type `https://un-nom-aleatoire.netlify.app/SportVision-Portail.html`.
+Le `netlify.toml` propre à ce dossier gère déjà la redirection : le Portail s'affiche directement à la racine du domaine, sans rien à configurer de plus.
 
-### Rendre l'accueil direct (sans `/SportVision-Portail.html` dans l'URL)
-
-Ce site partage son dossier de publication avec l'OS, donc **ne pas** ajouter le fichier `netlify.toml` racine à ce nouveau site (il redirige vers l'OS). À la place, dans ce nouveau site Netlify → **Site configuration → Build & deploy → Post processing → Redirects**, ajouter une règle :
-
-```
-/*    /SportVision-Portail.html   200
-```
-
-Cela sert le Portail à la racine du domaine sans toucher au déploiement existant de l'OS.
+**Important** : ne jamais modifier le Base directory / Publish directory du site Netlify de l'OS (celui qui utilise le `netlify.toml` à la racine du dépôt) — ces deux sites doivent chacun rester sur son propre dossier isolé.
 
 ---
 
