@@ -1862,16 +1862,24 @@ async function saveOrganisation(){
 // ── INIT ──
 (async function init(){
   const params = new URLSearchParams(window.location.search);
-  const loggedIn = await checkSession();
-
-  if (params.get('paiement')){
-    if (loggedIn){ await go('factures'); }
-    toast(params.get('paiement') === 'succes' ? 'Paiement confirmé, merci !' : 'Paiement annulé.');
-    history.replaceState({}, '', window.location.pathname);
-    return;
+  let loggedIn = false;
+  try{
+    loggedIn = await checkSession();
+  }catch(e){
+    toast('Connexion au serveur impossible pour le moment.');
   }
 
-  await go(loggedIn ? 'dashboard' : 'home');
+  try{
+    if (params.get('paiement')){
+      if (loggedIn){ await go('factures'); } else { await go('home'); }
+      toast(params.get('paiement') === 'succes' ? 'Paiement confirmé, merci !' : 'Paiement annulé.');
+      history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+    await go(loggedIn ? 'dashboard' : 'home');
+  }catch(e){
+    await go('home').catch(()=>{});
+  }
 })();
 </script>
 </body>
