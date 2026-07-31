@@ -143,14 +143,16 @@ serve(async (req) => {
     </div>
 
     <!-- Footer -->
-    <div style="border-top:1px solid #E8EBF4;padding:20px 36px;display:flex;justify-content:space-between;align-items:center;background:#FAFBFD">
-      <div style="font-size:11px;color:#8891A8;line-height:1.6">
-        Facture à régler avant le ${fd(f.date_echeance)}.<br>
-        Merci de préciser la référence "${f.numero || ""}" lors du règlement.
+    <div style="border-top:1px solid #E8EBF4;padding:20px 36px;background:#FAFBFD">
+      <div style="font-size:11px;color:#8891A8;line-height:1.6;margin-bottom:14px">
+        Facture à régler avant le ${fd(f.date_echeance)}. Merci de préciser la référence "${f.numero || ""}" lors du règlement.<br>
+        Paiement par virement bancaire à 30 jours. Pas d'escompte pour paiement anticipé.<br>
+        Pénalité de retard : taux d'intérêt légal x3. Indemnité forfaitaire pour frais de recouvrement : 40 €.
       </div>
-      <div style="font-size:11px;color:#8891A8;text-align:right">
-        SportVision / Elkana Group<br>
-        Villeneuve-la-Guyard
+      <div style="font-size:10.5px;color:#8891A8;line-height:1.6;border-top:1px solid #E8EBF4;padding-top:12px">
+        SportVision — Elkana Group, SAS — 4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>
+        SIREN 105 173 124 · SIRET 105 173 124 00014 · RCS Melun · APE 74.20Z<br>
+        TVA intracommunautaire : FR15 105 173 124
       </div>
     </div>
   </div>
