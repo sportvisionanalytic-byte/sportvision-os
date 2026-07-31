@@ -59,8 +59,17 @@ label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--t2);
 .nav-link{color:var(--t2);font-size:14.5px;font-weight:600;padding:8px 14px;border-radius:100px}
 .nav-link.active{color:var(--t1);background:rgba(22,139,255,.12)}
 .hdr-right{display:flex;align-items:center;gap:14px}
-@media(max-width:820px){.pub-nav{display:none}}
+.mob-menu-btn{display:none;background:none;border:1px solid var(--bd2);border-radius:8px;width:38px;height:38px;color:var(--t1);font-size:16px;align-items:center;justify-content:center}
+.mob-nav{display:none;flex-direction:column;padding:10px 24px 18px;border-top:1px solid var(--bd);gap:4px}
+.mob-nav.on{display:flex}
+.mob-nav a{color:var(--t2);font-size:15px;font-weight:600;padding:10px 6px}
+@media(max-width:820px){
+  .pub-nav{display:none}
+  .mob-menu-btn{display:flex}
+  .hdr-right .btn-p{padding:11px 14px;font-size:13px}
+}
 .hero{padding:90px 24px 70px;background:linear-gradient(180deg,var(--bg2),var(--bg))}
+@media(max-width:640px){.hero{padding:50px 20px 44px}.hero h1{font-size:32px}section{padding:40px 20px}}
 .hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;max-width:1280px;margin:0 auto}
 @media(max-width:900px){.hero-grid{grid-template-columns:1fr}}
 .hero h1{font-size:44px;line-height:1.1;font-weight:700;margin-bottom:18px;letter-spacing:-.5px}
@@ -95,7 +104,21 @@ section{padding:60px 24px}
 #portal-topbar{padding:18px 28px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
 .pv{display:none;padding:28px}
 .pv.on{display:block}
-@media(max-width:860px){#portal-sidebar{display:none}.pv{padding:18px}}
+.portal-bottomnav{display:none}
+.portal-more-sheet{display:none}
+@media(max-width:860px){
+  #portal-sidebar{display:none}
+  .pv{padding:16px 16px 90px}
+  .portal-bottomnav{display:flex;position:fixed;bottom:0;left:0;right:0;background:rgba(11,27,51,.97);backdrop-filter:blur(10px);border-top:1px solid var(--bd);padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:60;justify-content:space-around}
+  .portal-bottomnav a{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--t2);font-size:10.5px;font-weight:700;padding:4px 6px}
+  .portal-bottomnav a.active{color:var(--t1)}
+  .portal-bottomnav a .dot{width:7px;height:7px;border-radius:50%;background:var(--t3)}
+  .portal-bottomnav a.active .dot{background:var(--cyan)}
+  .portal-more-sheet.on{display:flex;position:fixed;inset:0;background:rgba(6,17,31,.7);z-index:65;align-items:flex-end}
+  .portal-more-inner{background:var(--bg2);border-top:1px solid var(--bd);border-radius:16px 16px 0 0;padding:10px 8px calc(20px + env(safe-area-inset-bottom));width:100%;display:flex;flex-direction:column;gap:2px;max-height:70vh;overflow:auto}
+  .portal-more-inner a{padding:14px 16px;font-size:15px;font-weight:600;color:var(--t1);border-bottom:1px solid var(--bd)}
+  #portal-topbar{padding:14px 16px}
+}
 .row-item{background:var(--surf);border:1px solid var(--bd);border-radius:14px;padding:18px 20px;margin-bottom:12px;cursor:pointer}
 .row-item:hover{border-color:var(--bd2)}
 .flex-between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
@@ -107,6 +130,14 @@ section{padding:60px 24px}
 .msg-bubble{max-width:70%;border-radius:12px;padding:12px 14px;margin-bottom:10px}
 .msg-mine{margin-left:auto;background:var(--pri)}
 .msg-theirs{background:var(--bg2)}
+@media(max-width:640px){
+  .msg-bubble{max-width:85%}
+  .cfg-wrap{padding:24px 16px 90px}
+  .auth-left{padding:36px 24px}
+  .auth-right{padding:36px 24px}
+  section{padding:36px 16px}
+  .wrap{padding:0 16px}
+}
 </style>
 </head>
 <body>
@@ -119,13 +150,25 @@ section{padding:60px 24px}
     </div>
     <nav class="pub-nav">
       <a class="nav-link" data-view="catalogue" onclick="go('catalogue')">Nos prestations</a>
+      <a class="nav-link" data-view="realisations" onclick="go('realisations')">Réalisations</a>
+      <a class="nav-link" data-view="apropos" onclick="go('apropos')">À propos</a>
+      <a class="nav-link" data-view="faq" onclick="go('faq')">FAQ</a>
       <a class="nav-link" data-view="home" onclick="go('home')">Accueil</a>
     </nav>
     <div class="hdr-right">
       <a id="hdr-auth-link" onclick="go('connexion')">Se connecter</a>
       <button class="btn btn-p" onclick="go('configurateur')">Faire une demande</button>
+      <button class="mob-menu-btn" onclick="toggleMobNav()">☰</button>
     </div>
   </div>
+  <nav id="mob-nav" class="mob-nav">
+    <a onclick="go('catalogue')">Nos prestations</a>
+    <a onclick="go('realisations')">Réalisations</a>
+    <a onclick="go('apropos')">À propos</a>
+    <a onclick="go('faq')">FAQ</a>
+    <a onclick="go('aide')">Aide</a>
+    <a id="mob-auth-link" onclick="go('connexion')">Se connecter</a>
+  </nav>
 </header>
 
 <main id="app">
@@ -170,6 +213,59 @@ section{padding:60px 24px}
     <div class="wrap" style="padding-top:50px;max-width:900px">
       <a onclick="go('catalogue')">← Retour aux prestations</a>
       <div id="offre-content" style="margin-top:20px"></div>
+    </div>
+  </section>
+
+  <!-- REALISATIONS -->
+  <section id="scr-realisations" class="scr">
+    <div class="wrap" style="padding-top:50px;padding-bottom:70px">
+      <h1 class="sec-title">Réalisations</h1>
+      <p class="muted" style="margin-bottom:26px">Un aperçu des projets photo, vidéo et communication réalisés pour nos clients.</p>
+      <div class="grid g3" id="realisations-grid"></div>
+    </div>
+  </section>
+
+  <!-- A PROPOS -->
+  <section id="scr-apropos" class="scr">
+    <div class="wrap" style="padding-top:50px;padding-bottom:70px;max-width:820px">
+      <h1 class="sec-title">À propos de SportVision</h1>
+      <p class="muted" style="font-size:16px;line-height:1.7;margin-bottom:24px">SportVision accompagne joueurs, clubs, académies, organisateurs, coachs et entreprises dans la production de contenus photo, vidéo et communication sportive.</p>
+      <div class="card" style="margin-bottom:30px">
+        <span class="faint" style="font-size:12px;font-weight:700">NOTRE MISSION</span>
+        <p style="font-size:17px;font-weight:700;margin-top:10px">Mettre en lumière le sport amateur grâce à une production visuelle professionnelle.</p>
+      </div>
+      <h2 style="font-size:20px;margin-bottom:16px">Nos engagements</h2>
+      <div class="grid g2" style="margin-bottom:10px">
+        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Spécialisation dans le sport amateur et semi-professionnel</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Suivi de la demande jusqu'à la livraison, sans email perdu</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Tarifs transparents, devis clairs</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Réactivité et fiabilité des délais annoncés</span></div>
+      </div>
+      <div style="text-align:center;margin-top:40px">
+        <button class="btn btn-p" onclick="go('configurateur')">Parler de mon projet</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="scr-faq" class="scr">
+    <div class="wrap" style="padding-top:50px;padding-bottom:70px;max-width:760px">
+      <h1 class="sec-title">Questions fréquentes</h1>
+      <input type="text" id="faq-search" placeholder="Rechercher une question..." style="margin:20px 0" oninput="renderFaqList()">
+      <div id="faq-list"></div>
+    </div>
+  </section>
+
+  <!-- AIDE -->
+  <section id="scr-aide" class="scr">
+    <div class="wrap" style="padding-top:50px;padding-bottom:70px">
+      <h1 class="sec-title">Aide</h1>
+      <p class="muted" style="margin-bottom:26px">Trouvez rapidement une réponse, ou contactez SportVision directement.</p>
+      <div class="grid g3" id="aide-grid"></div>
+      <div class="card" style="margin-top:30px;text-align:center">
+        <h3 style="font-size:17px;margin-bottom:10px">Vous ne trouvez pas votre réponse ?</h3>
+        <button class="btn btn-p" onclick="go(isLoggedIn()?'messagerie':'connexion')">Contacter SportVision</button>
+      </div>
     </div>
   </section>
 
@@ -253,13 +349,16 @@ section{padding:60px 24px}
         <a class="side-link" data-view="dashboard" onclick="go('dashboard')">Accueil</a>
         <a class="side-link" data-view="demandes" onclick="go('demandes')">Mes demandes</a>
         <a class="side-link" data-view="devis" onclick="go('devis')">Devis</a>
+        <a class="side-link" data-view="contrats" onclick="go('contrats')">Contrats</a>
         <a class="side-link" data-view="factures" onclick="go('factures')">Factures</a>
         <a class="side-link" data-view="livrables" onclick="go('livrables')">Livrables</a>
         <a class="side-link" data-view="messagerie" onclick="go('messagerie')">Messages</a>
+        <a class="side-link" data-view="notifications" onclick="go('notifications')">Notifications</a>
         <a class="side-link" data-view="rdv" onclick="go('rdv')">Rendez-vous</a>
         <a class="side-link" data-view="compte" onclick="go('compte')">Mon compte</a>
       </nav>
       <div style="margin-top:auto;padding-top:14px;border-top:1px solid var(--bd)">
+        <a onclick="go('aide')" style="font-size:13.5px;font-weight:600;display:block;margin-bottom:10px">Aide</a>
         <a onclick="doLogout()" style="color:var(--er);font-size:13.5px;font-weight:600">Déconnexion</a>
       </div>
     </aside>
@@ -294,6 +393,16 @@ section{padding:60px 24px}
       <div id="pv-devis" class="pv">
         <h1 style="font-size:24px;margin-bottom:20px">Devis</h1>
         <div id="devis-list"></div>
+      </div>
+
+      <div id="pv-contrats" class="pv">
+        <h1 style="font-size:24px;margin-bottom:20px">Contrats</h1>
+        <div id="contrats-list"></div>
+      </div>
+
+      <div id="pv-notifications" class="pv">
+        <h1 style="font-size:24px;margin-bottom:20px">Notifications</h1>
+        <div id="notifications-list"></div>
       </div>
 
       <div id="pv-factures" class="pv">
@@ -343,6 +452,28 @@ section{padding:60px 24px}
         </div>
       </div>
     </div>
+
+    <div id="portal-more-sheet" class="portal-more-sheet" onclick="toggleMoreSheet(event)">
+      <div class="portal-more-inner">
+        <a onclick="go('devis')">Devis</a>
+        <a onclick="go('contrats')">Contrats</a>
+        <a onclick="go('factures')">Factures</a>
+        <a onclick="go('livrables')">Livrables</a>
+        <a onclick="go('messagerie')">Messages</a>
+        <a onclick="go('notifications')">Notifications</a>
+        <a onclick="go('rdv')">Rendez-vous</a>
+        <a onclick="go('compte')">Mon compte</a>
+        <a onclick="go('aide')">Aide</a>
+        <a onclick="doLogout()" style="color:var(--er)">Déconnexion</a>
+      </div>
+    </div>
+    <nav class="portal-bottomnav">
+      <a class="bn-link" data-view="dashboard" onclick="go('dashboard')"><span class="dot"></span>Accueil</a>
+      <a class="bn-link" data-view="demandes" onclick="go('demandes')"><span class="dot"></span>Demandes</a>
+      <a onclick="go('configurateur')"><span class="dot"></span>Nouveau</a>
+      <a class="bn-link" data-view="livrables" onclick="go('livrables')"><span class="dot"></span>Livrables</a>
+      <a onclick="toggleMoreSheet()"><span class="dot"></span>Plus</a>
+    </nav>
   </div>
 
 </main>
@@ -488,9 +619,23 @@ async function checkSession(){
 }
 
 function updateHeaderAuthState(){
-  const el = document.getElementById('hdr-auth-link');
-  if (isLoggedIn()){ el.textContent = 'Mon espace'; el.onclick = ()=>go('dashboard'); }
-  else { el.textContent = 'Se connecter'; el.onclick = ()=>go('connexion'); }
+  const label = isLoggedIn() ? 'Mon espace' : 'Se connecter';
+  const target = isLoggedIn() ? 'dashboard' : 'connexion';
+  ['hdr-auth-link','mob-auth-link'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = label;
+    el.onclick = ()=>go(target);
+  });
+}
+
+function toggleMobNav(){
+  document.getElementById('mob-nav').classList.toggle('on');
+}
+
+function toggleMoreSheet(e){
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('portal-more-sheet').classList.toggle('on');
 }
 
 // ── TOAST ──
@@ -503,13 +648,16 @@ function toast(msg){
 }
 
 // ── ROUTER ──
-const PORTAL_VIEWS = ['dashboard','demandes','demande-detail','devis','factures','messagerie','livrables','rdv','compte'];
-const PORTAL_TITLES = {dashboard:'Tableau de bord', demandes:'Mes demandes', 'demande-detail':'Demande', devis:'Devis', factures:'Factures', messagerie:'Messagerie', livrables:'Livrables', rdv:'Rendez-vous', compte:'Mon compte'};
+const PORTAL_VIEWS = ['dashboard','demandes','demande-detail','devis','contrats','factures','messagerie','livrables','notifications','rdv','compte'];
+const PORTAL_TITLES = {dashboard:'Tableau de bord', demandes:'Mes demandes', 'demande-detail':'Demande', devis:'Devis', contrats:'Contrats', factures:'Factures', messagerie:'Messagerie', livrables:'Livrables', notifications:'Notifications', rdv:'Rendez-vous', compte:'Mon compte'};
+const BOTTOMNAV_MATCH = {dashboard:'dashboard', demandes:'demandes', 'demande-detail':'demandes', livrables:'livrables'};
 let state = { params:{} };
 
 async function go(view, params={}){
   window.scrollTo(0,0);
   state.params = params;
+  document.getElementById('mob-nav')?.classList.remove('on');
+  document.getElementById('portal-more-sheet')?.classList.remove('on');
 
   if (PORTAL_VIEWS.includes(view)){
     if (!isLoggedIn()){ go('connexion'); return; }
@@ -518,6 +666,7 @@ async function go(view, params={}){
     document.querySelectorAll('.pv').forEach(el=>el.classList.remove('on'));
     document.getElementById('pv-'+view).classList.add('on');
     document.querySelectorAll('.side-link').forEach(el=>el.classList.toggle('active', el.dataset.view===view));
+    document.querySelectorAll('.bn-link').forEach(el=>el.classList.toggle('active', el.dataset.view===(BOTTOMNAV_MATCH[view]||'')));
     document.getElementById('portal-title').textContent = PORTAL_TITLES[view] || '';
     document.getElementById('pub-header').style.display = 'none';
     document.getElementById('pub-footer').style.display = 'none';
@@ -578,6 +727,55 @@ async function renderPublicView(view, params){
       +'<button class="btn btn-p" onclick="startConfigurateur(\''+o.id+'\')">Configurer cette prestation</button>';
   }
   if (view === 'configurateur') renderCfgStep();
+  if (view === 'realisations') renderRealisations();
+  if (view === 'faq') renderFaqList();
+  if (view === 'aide') renderAide();
+}
+
+// ── REALISATIONS (contenus de démonstration, à remplacer par de vrais visuels) ──
+const REALISATIONS = [
+  {title:'Photographie', tag:'Shooting joueur'}, {title:'Vidéo', tag:'Highlight match'},
+  {title:'Tournoi', tag:'Couverture 2 jours'}, {title:'Joueur', tag:'Portrait communication'},
+  {title:'Contenu réseaux', tag:'Création de contenu'}, {title:'Événement', tag:'Stage été'},
+];
+function renderRealisations(){
+  document.getElementById('realisations-grid').innerHTML = REALISATIONS.map(r=>
+    '<div class="card" style="aspect-ratio:4/3;display:flex;flex-direction:column;justify-content:flex-end"><span style="font-size:13px;font-weight:700">'+r.title+'</span><span class="faint" style="font-size:12px;margin-top:4px">'+r.tag+'</span></div>'
+  ).join('');
+}
+
+// ── FAQ ──
+const FAQ_ITEMS = [
+  {q:'Combien de temps pour recevoir mes contenus ?', a:'Le délai dépend de la prestation, généralement entre 48h et 7 jours après la séance ou l\'événement.'},
+  {q:'Comment fonctionne le paiement ?', a:'Un acompte est généralement demandé à la confirmation, le solde étant réglé selon les conditions du devis.'},
+  {q:'Puis-je annuler ou reporter une prestation ?', a:'Oui, vous pouvez demander une annulation depuis votre espace client tant que la prestation n\'est pas encore confirmée. Pour un report, contactez SportVision via la messagerie.'},
+  {q:'Dans quelles zones intervenez-vous ?', a:'SportVision intervient sur toute la France ; un déplacement peut être facturé en option selon la distance.'},
+  {q:'Comment récupérer mes livrables ?', a:'Vos livrables sont disponibles via des liens externes sécurisés dans votre espace client, avec une date d\'expiration.'},
+  {q:'Dois-je avoir un compte pour faire une demande ?', a:'Non, vous pouvez envoyer une demande sans compte. Un espace client vous sera proposé ensuite pour suivre votre projet.'},
+];
+function renderFaqList(){
+  const q = (document.getElementById('faq-search')?.value || '').toLowerCase();
+  const filtered = FAQ_ITEMS.filter(f => !q || (f.q+f.a).toLowerCase().includes(q));
+  document.getElementById('faq-list').innerHTML = filtered.map((f,i)=>
+    '<div class="card" style="margin-bottom:10px;cursor:pointer" onclick="this.querySelector(\'.faq-a\').style.display = this.querySelector(\'.faq-a\').style.display===\'block\'?\'none\':\'block\'">'
+    +'<div style="font-weight:700">'+f.q+'</div>'
+    +'<div class="faq-a muted" style="display:none;margin-top:10px;font-size:13.5px;line-height:1.6">'+f.a+'</div></div>'
+  ).join('') || '<p class="muted">Aucune question ne correspond à votre recherche.</p>';
+}
+
+// ── AIDE ──
+const AIDE_CATEGORIES = [
+  {title:'Demandes', items:['Comment suivre ma demande ?', 'Comment annuler une demande ?']},
+  {title:'Devis et contrats', items:['Comment accepter un devis ?', 'Comment signer un contrat ?']},
+  {title:'Paiements', items:['Comment payer mon acompte ?', 'Où trouver mes factures ?']},
+  {title:'Livrables', items:['Comment ouvrir mon livrable ?', 'Mon lien a expiré, que faire ?']},
+];
+function renderAide(){
+  document.getElementById('aide-grid').innerHTML = AIDE_CATEGORIES.map(c=>
+    '<div class="card"><span style="font-weight:700;display:block;margin-bottom:10px">'+c.title+'</span>'
+    + c.items.map(it=>'<div class="muted" style="font-size:13.5px;margin-top:6px">'+it+'</div>').join('')
+    +'</div>'
+  ).join('');
 }
 async function setCatFilter(id){
   catFilter = id;
@@ -592,7 +790,62 @@ function renderCatalogueGrid(offres){
 
 // ── CONFIGURATEUR ──
 const CFG_STEPS = ['offre','details','options','coordonnees','confirmation'];
+const CFG_EXTRA_FIELDS = ['matchAdversaire','matchCategorieAge','matchStade','tournoiJours','tournoiEquipes','tournoiSponsors','shootingObjectif','shootingLieu','contenuPlateformes','contenuFrequence'];
 let cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:'', telephone:'', profil:'joueur' };
+CFG_EXTRA_FIELDS.forEach(f=>{ cfg[f] = ''; });
+
+function cfgCategoryGroup(categorie){
+  if (['photo','video','pack','drone','veo'].includes(categorie)) return 'match';
+  if (['tournoi','stage'].includes(categorie)) return 'tournoi';
+  if (categorie === 'shooting') return 'shooting';
+  if (categorie === 'contenu') return 'contenu';
+  return null;
+}
+function cfgCategoryExtraHtml(categorie){
+  const group = cfgCategoryGroup(categorie);
+  if (group === 'match') return '<div class="grid g2" style="margin:14px 0">'
+    +'<label>Adversaire<input type="text" id="cfg-matchAdversaire" value="'+cfg.matchAdversaire+'"></label>'
+    +'<label>Catégorie / âge<input type="text" id="cfg-matchCategorieAge" value="'+cfg.matchCategorieAge+'"></label>'
+    +'<label>Stade / complexe<input type="text" id="cfg-matchStade" value="'+cfg.matchStade+'"></label>'
+    +'</div>';
+  if (group === 'tournoi') return '<div class="grid g2" style="margin:14px 0">'
+    +'<label>Nombre de jours<input type="text" id="cfg-tournoiJours" value="'+cfg.tournoiJours+'"></label>'
+    +'<label>Nombre d\'équipes / participants<input type="text" id="cfg-tournoiEquipes" value="'+cfg.tournoiEquipes+'"></label>'
+    +'<label>Sponsors à valoriser<input type="text" id="cfg-tournoiSponsors" value="'+cfg.tournoiSponsors+'"></label>'
+    +'</div>';
+  if (group === 'shooting') return '<div class="grid g2" style="margin:14px 0">'
+    +'<label>Objectif du contenu<input type="text" id="cfg-shootingObjectif" value="'+cfg.shootingObjectif+'" placeholder="Ex : book joueur, réseaux sociaux..."></label>'
+    +'<label>Lieu souhaité<input type="text" id="cfg-shootingLieu" value="'+cfg.shootingLieu+'"></label>'
+    +'</div>';
+  if (group === 'contenu') return '<div class="grid g2" style="margin:14px 0">'
+    +'<label>Plateformes visées<input type="text" id="cfg-contenuPlateformes" value="'+cfg.contenuPlateformes+'" placeholder="Instagram, TikTok, LinkedIn..."></label>'
+    +'<label>Fréquence souhaitée<input type="text" id="cfg-contenuFrequence" value="'+cfg.contenuFrequence+'" placeholder="Ponctuel, mensuel..."></label>'
+    +'</div>';
+  return '';
+}
+function cfgCollectCategoryExtra(categorie){
+  const group = cfgCategoryGroup(categorie);
+  const ids = {
+    match: ['matchAdversaire','matchCategorieAge','matchStade'],
+    tournoi: ['tournoiJours','tournoiEquipes','tournoiSponsors'],
+    shooting: ['shootingObjectif','shootingLieu'],
+    contenu: ['contenuPlateformes','contenuFrequence'],
+  }[group] || [];
+  ids.forEach(id=>{ const el = document.getElementById('cfg-'+id); if (el) cfg[id] = el.value; });
+}
+const CFG_EXTRA_LABELS = {matchAdversaire:'Adversaire', matchCategorieAge:'Catégorie/âge', matchStade:'Stade', tournoiJours:'Jours', tournoiEquipes:'Équipes/participants', tournoiSponsors:'Sponsors', shootingObjectif:'Objectif', shootingLieu:'Lieu souhaité', contenuPlateformes:'Plateformes', contenuFrequence:'Fréquence'};
+function cfgBuildCommentaire(){
+  const o = cfgCurrentOffer();
+  const group = o ? cfgCategoryGroup(o.categorie) : null;
+  const ids = {
+    match: ['matchAdversaire','matchCategorieAge','matchStade'],
+    tournoi: ['tournoiJours','tournoiEquipes','tournoiSponsors'],
+    shooting: ['shootingObjectif','shootingLieu'],
+    contenu: ['contenuPlateformes','contenuFrequence'],
+  }[group] || [];
+  const extra = ids.filter(id=>cfg[id]).map(id=>CFG_EXTRA_LABELS[id]+' : '+cfg[id]).join(' — ');
+  return [cfg.commentaire, extra].filter(Boolean).join('\n\n');
+}
 
 function startConfigurateur(offreId){
   cfg = Object.assign(cfg, { step:1, offreId });
@@ -636,6 +889,7 @@ async function renderCfgStep(){
       +'<label>Sport<input type="text" id="cfg-sport" value="'+cfg.sport+'"></label>'
       +'<label>Équipe(s) / participants<input type="text" id="cfg-equipes" value="'+cfg.equipes+'"></label>'
       +'</div>'
+      + cfgCategoryExtraHtml(o ? o.categorie : null)
       +'<label>Commentaire ou besoin précis<textarea id="cfg-commentaire" rows="3">'+cfg.commentaire+'</textarea></label>';
   }
 
@@ -696,6 +950,8 @@ function cfgCollectStepFields(){
     cfg.sport = document.getElementById('cfg-sport').value;
     cfg.equipes = document.getElementById('cfg-equipes').value;
     cfg.commentaire = document.getElementById('cfg-commentaire').value;
+    const o = cfgCurrentOffer();
+    cfgCollectCategoryExtra(o ? o.categorie : null);
   }
   if (key === 'coordonnees' && !isLoggedIn()){
     cfg.prenom = document.getElementById('cfg-prenom').value.trim();
@@ -727,10 +983,11 @@ async function submitDemande(){
   btn.disabled = true; btn.textContent = 'Envoi…';
   const errEl = document.getElementById('cfg-err');
   try{
+    const commentaireFinal = cfgBuildCommentaire();
     const payload = {
       offre_id: cfg.offreId, options: cfg.options, date: cfg.date || null, heure: cfg.heure || null,
       lieu: cfg.ville || null, adresse: cfg.adresse || null, ville: cfg.ville || null, cp: cfg.cp || null,
-      sport: cfg.sport || null, equipes: cfg.equipes || null, commentaire: cfg.commentaire || null,
+      sport: cfg.sport || null, equipes: cfg.equipes || null, commentaire: commentaireFinal || null,
     };
     if (isLoggedIn()){
       const clientId = localStorage.getItem('svp_client_id');
@@ -738,7 +995,7 @@ async function submitDemande(){
         statut:'demande_reçue', client_id: clientId, offre_id: cfg.offreId, options_selectionnees: cfg.options,
         date_prestation: cfg.date || null, heure_debut: cfg.heure || null, lieu: cfg.ville || null,
         adresse_complete: [cfg.adresse, cfg.cp, cfg.ville].filter(Boolean).join(', ') || null,
-        sport: cfg.sport || null, equipes: cfg.equipes || null, description_besoin: cfg.commentaire || null,
+        sport: cfg.sport || null, equipes: cfg.equipes || null, description_besoin: commentaireFinal || null,
       }});
       if (!insert.ok) throw new Error('Impossible d\'envoyer la demande. Réessayez.');
       cfg.reference = insert.data && insert.data[0] ? insert.data[0].reference : null;
@@ -762,6 +1019,7 @@ async function submitDemande(){
 function resetCfgAndGo(view){
   const draftEmail = cfg.email;
   cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:draftEmail||'', telephone:'', profil:'joueur' };
+  CFG_EXTRA_FIELDS.forEach(f=>{ cfg[f] = ''; });
   if (view === 'inscription' && draftEmail) document.addEventListener('DOMContentLoaded', ()=>{});
   go(view);
   if (view === 'inscription' && draftEmail) setTimeout(()=>{ const el=document.getElementById('ins-email'); if(el) el.value = draftEmail; }, 50);
@@ -778,6 +1036,8 @@ async function renderPortalView(view, params){
   if (view === 'demandes') await renderDemandes();
   if (view === 'demande-detail') await renderDemandeDetail(params.id);
   if (view === 'devis') await renderDevis();
+  if (view === 'contrats') await renderContrats();
+  if (view === 'notifications') await renderNotifications();
   if (view === 'factures') await renderFactures();
   if (view === 'livrables') await renderLivrables();
   if (view === 'messagerie') await renderMessagerie();
@@ -889,6 +1149,55 @@ async function payDevis(devisId, prestationId){
   const r = await sbFunction('create-checkout-session', body);
   if (!r.ok || !r.data?.url){ toast(r.data?.error || 'Paiement indisponible pour le moment.'); return; }
   window.location.href = r.data.url;
+}
+
+async function renderContrats(){
+  const clientId = localStorage.getItem('svp_client_id');
+  const r = await sbFetch('client_contrats?client_id=eq.'+clientId+'&order=created_at.desc');
+  const list = r.data || [];
+  const el = document.getElementById('contrats-list');
+  if (!list.length){ el.innerHTML = '<div class="empty">Aucun contrat pour le moment.</div>'; return; }
+  const sigBadge = {a_signer:['b-orange','À signer'], signe:['b-green','Signé'], refuse:['b-red','Refusé']};
+  el.innerHTML = list.map(c=>{
+    const [cls,label] = sigBadge[c.statut_signature] || ['b-grey', c.statut_signature];
+    const canSign = c.statut_signature === 'a_signer';
+    return '<div class="row-item">'
+      +'<div class="flex-between"><div><div style="font-weight:700">'+(c.type_contrat||'Contrat')+'</div>'
+      +'<div class="faint" style="font-size:13px;margin-top:2px">'+statutBadge(c.statut)+'</div></div>'
+      +'<span class="badge '+cls+'">'+label+'</span></div>'
+      + (canSign ? '<button class="btn btn-p" style="margin-top:14px" onclick="signContrat(\''+c.id+'\')">Signer le contrat</button>' : '')
+      + (c.statut_signature==='signe' ? '<div class="faint" style="font-size:12.5px;margin-top:10px">Signé par '+(c.signataire_nom||'')+' le '+fmtDate(c.signe_at)+'</div>' : '')
+      +'</div>';
+  }).join('') + '<p class="faint" style="font-size:12px;margin-top:6px">La signature électronique est simulée pour le moment.</p>';
+}
+
+async function signContrat(contratId){
+  const nom = prompt('Merci de taper votre nom complet pour valider la signature :');
+  if (!nom || !nom.trim()) return;
+  const r = await sbRpc('client_sign_contrat', { p_contrat_id: contratId, p_signataire_nom: nom.trim() });
+  if (!r.ok){ toast((r.data && r.data.message) || 'Impossible de signer ce contrat.'); return; }
+  toast('Contrat signé.');
+  renderContrats();
+}
+
+async function renderNotifications(){
+  const clientId = localStorage.getItem('svp_client_id');
+  const [devis, factures, messages, livrables] = await Promise.all([
+    sbFetch('client_devis?client_id=eq.'+clientId+'&statut=eq.envoyé&select=numero,created_at&order=created_at.desc'),
+    sbFetch('client_factures?client_id=eq.'+clientId+'&statut=eq.emise&select=numero,montant_ttc,created_at&order=created_at.desc'),
+    sbFetch('messages_client?client_id=eq.'+clientId+'&auteur_type=eq.staff&lu=eq.false&select=contenu,created_at&order=created_at.desc'),
+    sbFetch('client_media_livrables?select=nom,created_at&order=created_at.desc&limit=5'),
+  ]);
+  const items = [
+    ...(devis.data||[]).map(d=>({title:'Devis disponible', detail:d.numero+' est en attente de votre réponse', date:d.created_at, cls:'b-blue', onClick:"go('devis')"})),
+    ...(factures.data||[]).map(f=>({title:'Facture à régler', detail:f.numero+' — '+fmtEUR(f.montant_ttc), date:f.created_at, cls:'b-orange', onClick:"go('factures')"})),
+    ...(messages.data||[]).map(m=>({title:'Nouveau message', detail:(m.contenu||'').slice(0,60), date:m.created_at, cls:'b-blue', onClick:"go('messagerie')"})),
+    ...(livrables.data||[]).map(l=>({title:'Livrable disponible', detail:l.nom, date:l.created_at, cls:'b-green', onClick:"go('livrables')"})),
+  ].sort((a,b)=> new Date(b.date) - new Date(a.date));
+  const el = document.getElementById('notifications-list');
+  el.innerHTML = items.length ? items.map(n=>
+    '<div class="row-item flex-between" onclick="'+n.onClick+'"><div><div style="font-weight:700">'+n.title+'</div><div class="faint" style="font-size:13px;margin-top:2px">'+n.detail+'</div></div><span class="badge '+n.cls+'">'+fmtDate(n.date)+'</span></div>'
+  ).join('') : '<div class="empty">Rien de nouveau pour le moment.</div>';
 }
 
 async function renderFactures(){
