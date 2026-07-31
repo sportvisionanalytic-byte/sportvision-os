@@ -264,7 +264,7 @@ section{padding:60px 24px}
       <h2 style="font-size:30px;margin-bottom:24px">Votre prochaine prestation commence ici.</h2>
       <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-p" onclick="go('configurateur')">Configurer mon projet</button>
-        <button class="btn btn-o" onclick="go(isLoggedIn()?'rdv':'connexion')">Prendre rendez-vous</button>
+        <button class="btn btn-o" onclick="go('rdv')">Prendre rendez-vous</button>
       </div>
     </section>
   </section>
@@ -279,7 +279,7 @@ section{padding:60px 24px}
           <p class="muted" style="font-size:16px;max-width:500px;margin-bottom:26px">De la captation d'un match à la gestion complète de votre communication, SportVision transforme vos événements, vos performances et votre identité en contenus qui marquent.</p>
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
             <a class="btn btn-p" href="#sv-objectif">Trouver mon service</a>
-            <button class="btn btn-o" onclick="go(isLoggedIn()?'rdv':'connexion')">Parler de mon projet</button>
+            <button class="btn btn-o" onclick="go('rdv')">Parler de mon projet</button>
           </div>
           <a onclick="go('catalogue')">Voir les prestations configurables →</a>
         </div>
@@ -354,8 +354,8 @@ section{padding:60px 24px}
           <p class="muted" style="margin-bottom:20px">SportVision peut prendre en charge la stratégie, la production, la rédaction, la programmation et le suivi de vos réseaux sociaux.</p>
           <span class="badge b-orange" style="margin-bottom:20px;display:inline-block">Accompagnement sur devis</span>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
-            <button class="btn btn-p" onclick="go(isLoggedIn()?'rdv':'connexion')">Demander un audit</button>
-            <button class="btn btn-o" onclick="go(isLoggedIn()?'rdv':'connexion')">Prendre rendez-vous</button>
+            <button class="btn btn-p" onclick="go('rdv')">Demander un audit</button>
+            <button class="btn btn-o" onclick="go('rdv')">Prendre rendez-vous</button>
           </div>
         </div>
         <div class="hero-img" style="aspect-ratio:4/3">calendrier éditorial</div>
@@ -368,13 +368,13 @@ section{padding:60px 24px}
           <span style="font-size:11.5px;font-weight:700;color:var(--cyan)">DESIGN & COMMUNICATION VISUELLE</span>
           <p style="font-weight:700;margin:10px 0 8px">Donner une identité professionnelle à vos communications.</p>
           <p class="muted" style="font-size:13px;margin-bottom:14px">Affiches, compositions d'équipe, templates et identité visuelle complète.</p>
-          <button class="btn btn-o" onclick="go(isLoggedIn()?'rdv':'connexion')">Présenter mon besoin graphique</button>
+          <button class="btn btn-o" onclick="go('rdv')">Présenter mon besoin graphique</button>
         </div>
         <div class="card">
           <span style="font-size:11.5px;font-weight:700;color:var(--pur)">COUVERTURE D'ÉVÉNEMENTS</span>
           <p style="font-weight:700;margin:10px 0 8px">Faire vivre votre événement avant, pendant et après.</p>
           <p class="muted" style="font-size:13px;margin-bottom:14px">Tournois, cérémonies, lancements de marque. <b style="color:var(--wa)">Sur devis</b></p>
-          <button class="btn btn-o" onclick="go(isLoggedIn()?'rdv':'connexion')">Construire ma couverture</button>
+          <button class="btn btn-o" onclick="go('rdv')">Construire ma couverture</button>
         </div>
         <div class="card">
           <span style="font-size:11.5px;font-weight:700;color:var(--pri)">TECHNOLOGIES & CAPTATION</span>
@@ -410,7 +410,7 @@ section{padding:60px 24px}
             <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px" class="muted">
               <span>✓ Deux matchs couverts par mois</span><span>✓ Planification prioritaire</span><span>✓ Livraison centralisée</span><span>✓ Interlocuteur dédié</span>
             </div>
-            <button class="btn btn-o" style="width:100%" onclick="go(isLoggedIn()?'rdv':'connexion')">Prendre rendez-vous</button>
+            <button class="btn btn-o" style="width:100%" onclick="go('rdv')">Prendre rendez-vous</button>
           </div>
           <div class="card">
             <span style="font-weight:700">Formule Performance</span>
@@ -418,7 +418,7 @@ section{padding:60px 24px}
             <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px" class="muted">
               <span>✓ Quatre matchs couverts par mois</span><span>✓ Priorité de planning</span><span>✓ Suivi renforcé</span><span>✓ Options préférentielles</span>
             </div>
-            <button class="btn btn-p" style="width:100%" onclick="go(isLoggedIn()?'rdv':'connexion')">Prendre rendez-vous</button>
+            <button class="btn btn-p" style="width:100%" onclick="go('rdv')">Prendre rendez-vous</button>
           </div>
           <div class="card">
             <span style="font-weight:700">Offre personnalisée</span>
@@ -426,7 +426,7 @@ section{padding:60px 24px}
             <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px" class="muted">
               <span>✓ Gestion des réseaux sociaux</span><span>✓ Couverture multi-équipes</span><span>✓ Besoins sponsors et événements</span><span>✓ Communication globale</span>
             </div>
-            <button class="btn btn-o" style="width:100%" onclick="go(isLoggedIn()?'rdv':'connexion')">Prendre rendez-vous</button>
+            <button class="btn btn-o" style="width:100%" onclick="go('rdv')">Prendre rendez-vous</button>
           </div>
         </div>
         <p class="muted" style="text-align:center;font-size:12.5px;margin-top:22px">Découverte de la formule → Questionnaire → Rendez-vous → Étude du besoin → Devis → Contrat → Activation</p>
@@ -454,7 +454,7 @@ section{padding:60px 24px}
       <h2 style="font-size:28px;margin-bottom:20px">Parlons de ce que SportVision peut créer pour vous.</h2>
       <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">
         <button class="btn btn-p" onclick="go('configurateur')">Configurer une prestation</button>
-        <button class="btn btn-o" onclick="go(isLoggedIn()?'rdv':'connexion')">Prendre rendez-vous</button>
+        <button class="btn btn-o" onclick="go('rdv')">Prendre rendez-vous</button>
       </div>
       <a onclick="go(isLoggedIn()?'messagerie':'connexion')">Poser une question à SportVision</a>
     </section>
@@ -528,6 +528,15 @@ section{padding:60px 24px}
         <h3 style="font-size:17px;margin-bottom:10px">Vous ne trouvez pas votre réponse ?</h3>
         <button class="btn btn-p" onclick="go(isLoggedIn()?'messagerie':'connexion')">Contacter SportVision</button>
       </div>
+    </div>
+  </section>
+
+  <!-- RENDEZ-VOUS (public, sans compte requis) -->
+  <section id="scr-rdv" class="scr">
+    <div class="wrap" style="padding-top:50px;padding-bottom:80px;max-width:640px">
+      <h1 class="sec-title">Prendre rendez-vous</h1>
+      <p class="muted" style="margin-bottom:30px">Choisissez le type d'échange puis un créneau. Le créneau sera confirmé par SportVision.</p>
+      <div id="rdv-page-body"></div>
     </div>
   </section>
 
@@ -628,7 +637,7 @@ section{padding:60px 24px}
         <a class="side-link" data-view="livrables" onclick="go('livrables')">Livrables</a>
         <a class="side-link" data-view="messagerie" onclick="go('messagerie')">Messages</a>
         <a class="side-link" data-view="notifications" onclick="go('notifications')">Notifications</a>
-        <a class="side-link" data-view="rdv" onclick="go('rdv')">Rendez-vous</a>
+        <a class="side-link" data-view="mesrdv" onclick="go('mesrdv')">Rendez-vous</a>
         <a class="side-link" data-view="compte" onclick="go('compte')">Mon compte</a>
         <a class="side-link" data-view="organisation" onclick="go('organisation')">Mon organisation</a>
       </nav>
@@ -720,18 +729,10 @@ section{padding:60px 24px}
         </div>
       </div>
 
-      <div id="pv-rdv" class="pv">
-        <h1 style="font-size:24px;margin-bottom:20px">Rendez-vous</h1>
-        <div class="card" style="max-width:480px;margin-bottom:24px">
-          <div class="field-col" style="margin-top:0">
-            <label>Type<select id="rdv-type"><option value="appel">Appel téléphonique</option><option value="physique">Rendez-vous physique</option></select></label>
-            <label>Objet<input type="text" id="rdv-objet" placeholder="Ex : Étude accompagnement club"></label>
-            <div class="grid g2">
-              <label>Date<input type="date" id="rdv-date"></label>
-              <label>Heure<input type="time" id="rdv-heure"></label>
-            </div>
-            <button class="btn btn-p" onclick="submitRdv()">Envoyer ma demande</button>
-          </div>
+      <div id="pv-mesrdv" class="pv">
+        <div class="flex-between" style="margin-bottom:20px">
+          <h1 style="font-size:24px">Mes rendez-vous</h1>
+          <button class="btn btn-p" onclick="go('rdv')">+ Prendre rendez-vous</button>
         </div>
         <div id="rdv-list"></div>
       </div>
@@ -790,7 +791,7 @@ section{padding:60px 24px}
         <a onclick="go('livrables')">Livrables</a>
         <a onclick="go('messagerie')">Messages</a>
         <a onclick="go('notifications')">Notifications</a>
-        <a onclick="go('rdv')">Rendez-vous</a>
+        <a onclick="go('mesrdv')">Mes rendez-vous</a>
         <a onclick="go('compte')">Mon compte</a>
         <a onclick="go('organisation')">Mon organisation</a>
         <a onclick="go('aide')">Aide</a>
@@ -1003,8 +1004,8 @@ function toast(msg){
 }
 
 // ── ROUTER ──
-const PORTAL_VIEWS = ['dashboard','demandes','demande-detail','devis','contrats','factures','messagerie','livrables','notifications','rdv','compte','organisation'];
-const PORTAL_TITLES = {dashboard:'Tableau de bord', demandes:'Mes demandes', 'demande-detail':'Demande', devis:'Devis', contrats:'Contrats', factures:'Factures', messagerie:'Messagerie', livrables:'Livrables', notifications:'Notifications', rdv:'Rendez-vous', compte:'Mon compte', organisation:'Mon organisation'};
+const PORTAL_VIEWS = ['dashboard','demandes','demande-detail','devis','contrats','factures','messagerie','livrables','notifications','mesrdv','compte','organisation'];
+const PORTAL_TITLES = {dashboard:'Tableau de bord', demandes:'Mes demandes', 'demande-detail':'Demande', devis:'Devis', contrats:'Contrats', factures:'Factures', messagerie:'Messagerie', livrables:'Livrables', notifications:'Notifications', mesrdv:'Mes rendez-vous', compte:'Mon compte', organisation:'Mon organisation'};
 const BOTTOMNAV_MATCH = {dashboard:'dashboard', demandes:'demandes', 'demande-detail':'demandes', livrables:'livrables'};
 let state = { params:{} };
 
@@ -1123,6 +1124,7 @@ async function renderPublicView(view, params){
   if (view === 'faq') renderFaqList();
   if (view === 'aide') renderAide();
   if (view === 'legal'){ if (params.tab) legalTab = params.tab; renderLegal(); }
+  if (view === 'rdv') await renderRdvPage();
 }
 
 // ── PAGE NOS SERVICES ──
@@ -1153,7 +1155,7 @@ let svProfileTab = 'joueur';
 
 function svObjClick(i){
   const o = SV_OBJECTIFS[i];
-  if (o.rdv) return go(isLoggedIn()?'rdv':'connexion');
+  if (o.rdv) return go('rdv');
   if (o.scroll) { const el = document.getElementById(o.scroll); if (el) el.scrollIntoView({behavior:'smooth'}); return; }
   if (o.cat) { setCatFilter(o.cat); go('catalogue'); }
 }
@@ -1564,7 +1566,7 @@ async function renderPortalView(view, params){
   if (view === 'factures') await renderFactures();
   if (view === 'livrables') await renderLivrables();
   if (view === 'messagerie') await renderMessagerie();
-  if (view === 'rdv') await renderRdv();
+  if (view === 'mesrdv') await renderMesRdv();
   if (view === 'compte') await renderCompte();
   if (view === 'organisation') await renderOrganisation();
 }
@@ -1877,7 +1879,7 @@ async function sendMessage(){
   await renderThread();
 }
 
-async function renderRdv(){
+async function renderMesRdv(){
   const clientId = localStorage.getItem('svp_client_id');
   const r = await sbFetch('rendez_vous?client_id=eq.'+clientId+'&order=created_at.desc');
   const list = r.data || [];
@@ -1888,21 +1890,106 @@ async function renderRdv(){
     return '<div class="row-item flex-between"><div><div style="font-weight:700">'+(r2.objet||'Rendez-vous')+'</div>'
       +'<div class="faint" style="font-size:13px">'+(r2.type_rdv==='appel'?'Appel téléphonique':'Rendez-vous physique')+' · '+fmtDate(r2.date_demandee)+'</div></div>'
       +'<span class="badge '+cls+'">'+label+'</span></div>';
-  }).join('') || '<div class="empty">Aucun rendez-vous pour le moment.</div>';
+  }).join('') || '<div class="empty">Aucun rendez-vous pour le moment.<br><br><button class="btn btn-p" onclick="go(\'rdv\')">Prendre rendez-vous</button></div>';
 }
 
-async function submitRdv(){
-  const clientId = localStorage.getItem('svp_client_id');
-  const type_rdv = document.getElementById('rdv-type').value;
-  const objet = document.getElementById('rdv-objet').value.trim();
-  const date_demandee = document.getElementById('rdv-date').value;
-  const heure_demandee = document.getElementById('rdv-heure').value;
-  if (!date_demandee){ toast('Merci de choisir une date.'); return; }
-  const r = await sbFetch('rendez_vous', {method:'POST', body:{ client_id: clientId, type_rdv, objet, date_demandee, heure_demandee: heure_demandee || null }});
-  if (!r.ok){ toast('Impossible d\'envoyer la demande de rendez-vous.'); return; }
-  toast('Demande de rendez-vous envoyée.');
-  document.getElementById('rdv-objet').value='';
-  renderRdv();
+// ── PRISE DE RENDEZ-VOUS (page publique, accessible sans compte) ──
+let rdvForm = { type:null, date:'', heure:'', objet:'', prenom:'', nom:'', telephone:'', email:'', demandeId:'', confirmed:false };
+
+async function renderRdvPage(){
+  rdvForm = { type:null, date:'', heure:'', objet:'', prenom:'', nom:'', telephone:'', email:'', demandeId:'', confirmed:false };
+  document.getElementById('rdv-page-body').innerHTML = '';
+  if (isLoggedIn()){
+    const clientId = localStorage.getItem('svp_client_id');
+    const r = await sbFetch('client_prestations?client_id=eq.'+clientId+'&select=id,reference,type_prestation&order=created_at.desc');
+    rdvForm._demandes = r.data || [];
+  }
+  renderRdvForm();
+}
+
+function rdvSelectType(t){ rdvForm.type = t; renderRdvForm(); }
+
+function renderRdvForm(){
+  const connected = isLoggedIn();
+  const demandeOptions = (rdvForm._demandes||[]).map(d=>'<option value="'+d.id+'">'+(d.reference||d.type_prestation||'Demande')+'</option>').join('');
+
+  document.getElementById('rdv-page-body').innerHTML =
+    '<span style="font-size:13px;font-weight:700;color:var(--t2);letter-spacing:.3px">TYPE DE RENDEZ-VOUS</span>'
+    +'<div class="grid g2" style="margin:14px 0 30px">'
+    +'<div class="opt-row'+(rdvForm.type==='appel'?' sel':'')+'" style="margin-bottom:0" onclick="rdvSelectType(\'appel\')"><b>Appel téléphonique</b></div>'
+    +'<div class="opt-row'+(rdvForm.type==='physique'?' sel':'')+'" style="margin-bottom:0" onclick="rdvSelectType(\'physique\')"><b>Rendez-vous physique</b></div>'
+    +'</div>'
+    +'<span style="font-size:13px;font-weight:700;color:var(--t2);letter-spacing:.3px">DATE ET HORAIRE SOUHAITÉS</span>'
+    +'<p class="faint" style="font-size:12.5px;margin:6px 0 14px">Choisissez librement votre date et un horaire entre 7h et 22h. SportVision confirmera la disponibilité.</p>'
+    +'<div class="grid g2" style="margin-bottom:20px">'
+    +'<label>Date<input type="date" id="rdv-date" value="'+rdvForm.date+'"></label>'
+    +'<label>Horaire (entre 7h et 22h)<input type="time" id="rdv-heure" min="07:00" max="22:00" value="'+rdvForm.heure+'"></label>'
+    +'</div>'
+    +'<label>Objet (facultatif)<input type="text" id="rdv-objet" value="'+rdvForm.objet+'" placeholder="Ex : Étude accompagnement club" style="margin-bottom:20px"></label>'
+    + (connected ?
+        ('<label>Ce rendez-vous concerne-t-il une demande en cours ?<select id="rdv-demande" style="margin-bottom:24px"><option value="">Aucune — nouveau projet</option>'+demandeOptions+'</select>')
+      : (
+        '<span style="font-size:13px;font-weight:700;color:var(--t2);letter-spacing:.3px;display:block;margin-top:10px">VOS COORDONNÉES</span>'
+        +'<div class="grid g2" style="margin:14px 0">'
+        +'<label>Prénom<input type="text" id="rdv-prenom" value="'+rdvForm.prenom+'"></label>'
+        +'<label>Nom<input type="text" id="rdv-nom" value="'+rdvForm.nom+'"></label>'
+        +'</div>'
+        +'<div class="grid g2" style="margin-bottom:24px">'
+        +'<label>E-mail<input type="email" id="rdv-email" value="'+rdvForm.email+'"></label>'
+        +'<label>Téléphone<input type="tel" id="rdv-telephone" value="'+rdvForm.telephone+'" placeholder="06 12 34 56 78"></label>'
+        +'</div>'
+      ))
+    +'<div id="rdv-err" class="err-msg" style="margin-bottom:14px"></div>'
+    +'<button class="btn btn-p" style="width:100%" onclick="submitRdvPage()">Confirmer ma demande de rendez-vous</button>';
+}
+
+async function submitRdvPage(){
+  const connected = isLoggedIn();
+  rdvForm.date = document.getElementById('rdv-date').value;
+  rdvForm.heure = document.getElementById('rdv-heure').value;
+  rdvForm.objet = document.getElementById('rdv-objet').value.trim();
+  const errEl = document.getElementById('rdv-err');
+  errEl.textContent = '';
+
+  if (!rdvForm.type){ errEl.textContent = 'Merci de choisir un type de rendez-vous.'; return; }
+  if (!rdvForm.date || !rdvForm.heure){ errEl.textContent = 'Merci de choisir une date et un horaire.'; return; }
+  if (rdvForm.heure < '07:00' || rdvForm.heure > '22:00'){ errEl.textContent = 'Merci de choisir un horaire entre 7h et 22h.'; return; }
+
+  if (!connected){
+    rdvForm.prenom = document.getElementById('rdv-prenom').value.trim();
+    rdvForm.nom = document.getElementById('rdv-nom').value.trim();
+    rdvForm.email = document.getElementById('rdv-email').value.trim();
+    rdvForm.telephone = document.getElementById('rdv-telephone').value.trim();
+    if (!rdvForm.prenom || !rdvForm.nom || !rdvForm.email){ errEl.textContent = 'Merci de compléter vos coordonnées.'; return; }
+  }
+
+  try{
+    if (connected){
+      const demandeId = document.getElementById('rdv-demande').value;
+      const clientId = localStorage.getItem('svp_client_id');
+      const r = await sbFetch('rendez_vous', {method:'POST', body:{
+        client_id: clientId, prestation_id: demandeId || null, type_rdv: rdvForm.type,
+        objet: rdvForm.objet || null, date_demandee: rdvForm.date, heure_demandee: rdvForm.heure,
+      }});
+      if (!r.ok) throw new Error();
+    } else {
+      const res = await sbFunction('create-guest-rdv', {
+        prenom: rdvForm.prenom, nom: rdvForm.nom, email: rdvForm.email, telephone: rdvForm.telephone,
+        type_rdv: rdvForm.type, objet: rdvForm.objet, date_demandee: rdvForm.date, heure_demandee: rdvForm.heure,
+      });
+      if (!res.ok) throw new Error(res.data?.error);
+    }
+    rdvForm.confirmed = true;
+    document.getElementById('rdv-page-body').innerHTML =
+      '<div style="text-align:center">'
+      +'<div style="width:56px;height:56px;border-radius:50%;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;font-size:24px;color:var(--ok)">✓</div>'
+      +'<h2 style="font-size:22px;margin-bottom:14px">Demande de rendez-vous envoyée</h2>'
+      +'<p class="muted" style="max-width:420px;margin:0 auto 26px">SportVision vous recontactera pour confirmer votre rendez-vous sous 24 heures.</p>'
+      + (connected ? '<button class="btn btn-p" onclick="go(\'mesrdv\')">Voir mes rendez-vous</button>' : '<button class="btn btn-o" onclick="go(\'home\')">Retour à l\'accueil</button>')
+      +'</div>';
+  }catch(e){
+    errEl.textContent = 'Impossible d\'envoyer la demande de rendez-vous. Réessayez.';
+  }
 }
 
 async function renderCompte(){
