@@ -96,7 +96,7 @@ section{padding:60px 24px}
 .cfg-progress i{display:block;height:100%;background:linear-gradient(90deg,var(--pri),var(--cyan))}
 .opt-row{background:var(--surf);border:1px solid var(--bd);border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px}
 .opt-row.sel{border-color:var(--cyan)}
-.portal-shell{display:flex;min-height:100vh}
+#scr-portal.on{display:flex;min-height:100vh}
 #portal-sidebar{width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);padding:20px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .side-link{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600;color:var(--t2)}
 .side-link.active{color:var(--t1);background:rgba(22,139,255,.12)}
@@ -338,7 +338,7 @@ section{padding:60px 24px}
   </section>
 
   <!-- ESPACE CLIENT CONNECTÉ -->
-  <div id="scr-portal" class="scr portal-shell">
+  <div id="scr-portal" class="scr">
     <aside id="portal-sidebar">
       <div class="brand" style="margin-bottom:20px" onclick="go('dashboard')">
         <div class="brand-mark"></div>
