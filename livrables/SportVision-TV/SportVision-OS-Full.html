@@ -12809,9 +12809,9 @@ async function exportSecRapport(type){
       (Array.isArray(data)?data:[]).forEach(c=>rows.push([c.nom||'',[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'',c.email||'',c.telephone||'',c.ville||'',c.sport||'',c.statut||'',c.type_client||'',c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR'):'']));
       dlCSV(`clients-${ts}.csv`,rows);
     } else if(type==='devis'){
-      const data=await sbFetch('devis?select=reference,statut,montant_ht,montant_ttc,date_creation,date_expiration,clients(nom),prestations(reference)&order=date_creation.desc&limit=500');
+      const data=await sbFetch('devis?select=numero,statut,total_ht,total_ttc,created_at,date_expiration,clients(nom),prestations(reference)&order=created_at.desc&limit=500');
       const rows=[['Référence','Client','Prestation','Montant HT','Montant TTC','Date création','Date expiration','Statut']];
-      (Array.isArray(data)?data:[]).forEach(d=>rows.push([d.reference||'',d.clients?.nom||'',d.prestations?.reference||'',d.montant_ht||'',d.montant_ttc||'',d.date_creation||'',d.date_expiration||'',d.statut||'']));
+      (Array.isArray(data)?data:[]).forEach(d=>rows.push([d.numero||'',d.clients?.nom||'',d.prestations?.reference||'',d.total_ht||'',d.total_ttc||'',d.created_at||'',d.date_expiration||'',d.statut||'']));
       dlCSV(`devis-${ts}.csv`,rows);
     } else if(type==='relances'){
       const data=await sbFetch('prestations?select=reference,statut,statut_financier,date_prestation,montant_ttc,clients(nom,email,telephone)&statut_financier=in.(acompte_demandé,partiellement_payée,facturée)&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=500');
@@ -12847,7 +12847,7 @@ async function loadSecRapports(){
   try{
     const [pres,devis,cli]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ttc,clients(nom)&date_prestation=gte.'+mStartS+'&date_prestation=lt.'+mEndS+'&order=date_prestation.asc&limit=500'),
-      sbFetch('devis?select=id,reference,statut,montant_ttc,date_creation,clients(nom)&date_creation=gte.'+mStartS+'&date_creation=lt.'+mEndS+'&order=date_creation.desc&limit=200'),
+      sbFetch('devis?select=id,numero,statut,total_ttc,created_at,clients(nom)&created_at=gte.'+mStartS+'&created_at=lt.'+mEndS+'&order=created_at.desc&limit=200'),
       sbFetch('clients?select=id,nom,statut,created_at&created_at=gte.'+mStart.toISOString()+'&created_at=lt.'+mEnd.toISOString()+'&order=created_at.desc&limit=100').catch(()=>[]),
     ]);
     const preList=Array.isArray(pres)?pres:[];
@@ -12887,11 +12887,11 @@ async function loadSecRapports(){
         ?'<div style="display:flex;flex-direction:column;gap:5px">'+devList.slice(0,8).map(d=>`
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--b1)">
             <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.reference||'—'} — ${d.clients?.nom||'?'}</div>
-              <div style="font-size:10.5px;color:var(--t3)">${d.date_creation?new Date(d.date_creation).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—'}</div>
+              <div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.numero||'—'} — ${d.clients?.nom||'?'}</div>
+              <div style="font-size:10.5px;color:var(--t3)">${d.created_at?new Date(d.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—'}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-              <span style="font-size:12px;font-weight:700;color:var(--t2)">${d.montant_ttc?d.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</span>
+              <span style="font-size:12px;font-weight:700;color:var(--t2)">${d.total_ttc?d.total_ttc.toLocaleString('fr-FR')+' €':'—'}</span>
               <span class="bd ${DSC[d.statut]||'bw'}" style="font-size:9.5px"><span class="bd-d"></span>${DSL[d.statut]||d.statut}</span>
             </div>
           </div>`).join('')+'</div>'+(devList.length>8?`<div style="font-size:11px;color:var(--t3);padding-top:6px">+${devList.length-8} autres</div>`:'')
@@ -16991,7 +16991,7 @@ async function loadClientTimeline(clientId){
   try{
     const [pres,devis,notifs]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,montant_ttc,created_at&client_id=eq.'+clientId+'&order=date_prestation.desc&limit=50').catch(()=>[]),
-      sbFetch('devis?select=id,numero_devis,statut,montant_ttc,created_at&client_id=eq.'+clientId+'&order=created_at.desc&limit=20').catch(()=>[]),
+      sbFetch('devis?select=id,numero,statut,total_ttc,created_at&client_id=eq.'+clientId+'&order=created_at.desc&limit=20').catch(()=>[]),
       sbFetch('notifications?select=id,titre,message,created_at,type&lien_client_id=eq.'+clientId+'&order=created_at.desc&limit=30').catch(()=>[]),
     ]);
     // Fusionner et trier chronologiquement
@@ -17009,9 +17009,9 @@ async function loadClientTimeline(clientId){
         sub=ev.data.statut?SL[ev.data.statut]||ev.data.statut:'';
         cls=SC[ev.data.statut]||'bw';
       } else if(ev.type==='devis'){
-        ic='📋';label='Devis '+(ev.data.numero_devis||ev.data.id?.slice(0,8));
+        ic='📋';label='Devis '+(ev.data.numero||ev.data.id?.slice(0,8));
         sub=ev.data.statut||'';
-        const montant=ev.data.montant_ttc?ev.data.montant_ttc.toLocaleString('fr-FR')+' €':'';
+        const montant=ev.data.total_ttc?ev.data.total_ttc.toLocaleString('fr-FR')+' €':'';
         if(montant)sub=(sub?sub+' · ':'')+montant;
       } else if(ev.type==='notif'){
         ic='🔔';label=ev.data.titre||'Notification';sub=ev.data.message||'';
