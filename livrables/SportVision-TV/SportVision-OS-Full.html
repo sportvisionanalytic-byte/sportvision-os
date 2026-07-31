@@ -13740,7 +13740,7 @@ async function loadCollaborateurs(){
   try{
     const _colRole=localStorage.getItem('sv_role');
     const _colFilter=_colRole==='prod'?'&role=in.(photo,cm)':'';
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone'+_colFilter+'&order=role.asc,nom.asc');
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal'+_colFilter+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
@@ -13777,6 +13777,11 @@ function modalModifierCollaborateur(idx){
         <div><label style="${lbl}">Nom</label><input id="fco-nom" class="l-inp" value="${t.nom||''}" style="height:38px"></div>
       </div>
       <div><label style="${lbl}">Téléphone</label><input id="fco-tel" type="tel" class="l-inp" value="${t.telephone||''}" style="height:38px"></div>
+      <div><label style="${lbl}">Adresse</label><input id="fco-adresse" class="l-inp" value="${t.adresse||''}" placeholder="Numéro, rue…" style="height:38px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${lbl}">Ville</label><input id="fco-ville" class="l-inp" value="${t.ville||''}" placeholder="Ville" style="height:38px"></div>
+        <div><label style="${lbl}">Code postal</label><input id="fco-cp" class="l-inp" value="${t.code_postal||''}" placeholder="75000" style="height:38px"></div>
+      </div>
       <div><label style="${lbl}">Rôle</label>
         <select id="fco-role" class="l-inp" style="height:38px">
           ${['admin','sec','prod','photo','cm','compta','com'].map(r=>`<option value="${r}"${t.role===r?' selected':''}>${rLabels[r]||r}</option>`).join('')}
@@ -13797,6 +13802,9 @@ async function modifierCollaborateur(id){
       prenom:document.getElementById('fco-prenom').value.trim()||null,
       nom:document.getElementById('fco-nom').value.trim()||null,
       telephone:document.getElementById('fco-tel').value.trim()||null,
+      adresse:document.getElementById('fco-adresse').value.trim()||null,
+      ville:document.getElementById('fco-ville').value.trim()||null,
+      code_postal:document.getElementById('fco-cp').value.trim()||null,
       role:document.getElementById('fco-role').value,
     }});
     closeModal();
