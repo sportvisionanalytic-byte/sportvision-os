@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>SportVision Portail</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06111F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06111F;--bg2:#0B1B33;--surf:#10243E;
+  --pri:#168BFF;--pur:#7857FF;--cyan:#32D8E6;
+  --t1:#F7F9FC;--t2:#9DAEC3;--t3:#6B7A90;
+  --bd:rgba(255,255,255,.08);--bd2:rgba(255,255,255,.15);
+  --ok:#34D399;--wa:#F0A94E;--er:#F87171;
+  --ff-h:'Space Grotesk',sans-serif;--ff-b:'Manrope',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--ff-b);background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--cyan);text-decoration:none;cursor:pointer}
+h1,h2,h3{font-family:var(--ff-h)}
+button{font-family:var(--ff-b);cursor:pointer}
+input,select,textarea{font-family:var(--ff-b);background:var(--surf);border:1px solid var(--bd2);border-radius:9px;padding:12px;color:var(--t1);font-size:14.5px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri)}
+.scr{display:none}
+.scr.on{display:block}
+.wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+.grid{display:grid;gap:20px}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:860px){.g3,.g2{grid-template-columns:1fr}}
+.btn{border:none;border-radius:9px;padding:13px 22px;font-size:14.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn-p{background:var(--pri);color:#fff}
+.btn-p:hover{background:#0f7ae0}
+.btn-o{background:transparent;color:var(--t1);border:1px solid var(--bd2)}
+.btn-o:hover{border-color:var(--t2)}
+.btn-d{background:transparent;color:var(--er);border:1px solid rgba(248,113,113,.3)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.card{background:var(--surf);border:1px solid var(--bd);border-radius:16px;padding:22px}
+.badge{display:inline-block;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:7px}
+.b-blue{background:rgba(22,139,255,.15);color:var(--pri)}
+.b-green{background:rgba(52,211,153,.15);color:var(--ok)}
+.b-orange{background:rgba(240,169,78,.15);color:var(--wa)}
+.b-red{background:rgba(248,113,113,.15);color:var(--er)}
+.b-grey{background:rgba(157,174,195,.15);color:var(--t2)}
+.muted{color:var(--t2)}
+.faint{color:var(--t3)}
+label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--t2);font-weight:600}
+#pub-header{position:sticky;top:0;z-index:40;background:rgba(6,17,31,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd)}
+.hdr-inner{max-width:1280px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:center;gap:10px;cursor:pointer}
+.brand-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--pri),var(--pur));flex-shrink:0}
+.brand-txt{line-height:1.05}
+.brand-txt b{font-family:var(--ff-h);font-weight:700;font-size:15px;letter-spacing:.3px}
+.brand-txt span{display:block;font-family:var(--ff-h);font-weight:600;font-size:10px;letter-spacing:3px;color:var(--cyan)}
+.pub-nav{display:flex;gap:6px;align-items:center}
+.nav-link{color:var(--t2);font-size:14.5px;font-weight:600;padding:8px 14px;border-radius:100px}
+.nav-link.active{color:var(--t1);background:rgba(22,139,255,.12)}
+.hdr-right{display:flex;align-items:center;gap:14px}
+@media(max-width:820px){.pub-nav{display:none}}
+.hero{padding:90px 24px 70px;background:linear-gradient(180deg,var(--bg2),var(--bg))}
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;max-width:1280px;margin:0 auto}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr}}
+.hero h1{font-size:44px;line-height:1.1;font-weight:700;margin-bottom:18px;letter-spacing:-.5px}
+.hero-img{aspect-ratio:4/5;border-radius:18px;background:repeating-linear-gradient(135deg,var(--surf),var(--surf) 14px,var(--bg2) 14px,var(--bg2) 28px);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;color:var(--t3);font-family:monospace;font-size:12px}
+section{padding:60px 24px}
+.sec-title{font-size:28px;font-weight:700;margin-bottom:10px}
+.offer-card{background:var(--surf);border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:.15s}
+.offer-card:hover{border-color:var(--pri);transform:translateY(-2px)}
+.offer-thumb{height:130px;background:repeating-linear-gradient(120deg,#16324f,#16324f 10px,#0d2038 10px,#0d2038 20px)}
+.offer-body{padding:18px;display:flex;flex-direction:column;gap:8px;flex:1}
+.price{font-size:14.5px;font-weight:700;color:var(--cyan)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.chip{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--t2);border:1px solid var(--bd2)}
+.chip.active{background:rgba(22,139,255,.15);color:var(--pri);border-color:rgba(22,139,255,.4)}
+#pub-footer{border-top:1px solid var(--bd);padding:40px 24px;background:var(--bg2);text-align:center;color:var(--t3);font-size:12.5px}
+.auth-split{display:grid;grid-template-columns:1fr 1fr;min-height:70vh}
+@media(max-width:860px){.auth-split{grid-template-columns:1fr}}
+.auth-left{background:linear-gradient(135deg,var(--bg2),var(--surf));padding:60px;display:flex;flex-direction:column;justify-content:center}
+.auth-right{padding:60px 40px;display:flex;flex-direction:column;justify-content:center;max-width:460px;margin:0 auto;width:100%}
+.field-col{display:flex;flex-direction:column;gap:16px;margin-top:20px}
+.err-msg{color:var(--er);font-size:13px;font-weight:600;margin-top:10px}
+.cfg-wrap{max-width:900px;margin:0 auto;padding:40px 24px 100px}
+.cfg-progress{height:6px;background:var(--bd);border-radius:100px;overflow:hidden;margin:14px 0 30px}
+.cfg-progress i{display:block;height:100%;background:linear-gradient(90deg,var(--pri),var(--cyan))}
+.opt-row{background:var(--surf);border:1px solid var(--bd);border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px}
+.opt-row.sel{border-color:var(--cyan)}
+.portal-shell{display:flex;min-height:100vh}
+#portal-sidebar{width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);padding:20px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.side-link{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600;color:var(--t2)}
+.side-link.active{color:var(--t1);background:rgba(22,139,255,.12)}
+.portal-main{flex:1;min-width:0}
+#portal-topbar{padding:18px 28px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+.pv{display:none;padding:28px}
+.pv.on{display:block}
+@media(max-width:860px){#portal-sidebar{display:none}.pv{padding:18px}}
+.row-item{background:var(--surf);border:1px solid var(--bd);border-radius:14px;padding:18px 20px;margin-bottom:12px;cursor:pointer}
+.row-item:hover{border-color:var(--bd2)}
+.flex-between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surf);border:1px solid var(--bd2);color:var(--t1);padding:14px 22px;border-radius:10px;font-size:14px;font-weight:600;z-index:200;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.empty{text-align:center;padding:50px 20px;color:var(--t2)}
+.timeline{display:flex;gap:6px;margin:20px 0}
+.timeline i{flex:1;height:5px;border-radius:100px;background:var(--bd)}
+.timeline i.done{background:var(--pri)}
+.msg-bubble{max-width:70%;border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.msg-mine{margin-left:auto;background:var(--pri)}
+.msg-theirs{background:var(--bg2)}
+</style>
+</head>
+<body>
+
+<header id="pub-header">
+  <div class="hdr-inner">
+    <div class="brand" onclick="go('home')">
+      <div class="brand-mark"></div>
+      <div class="brand-txt"><b>SPORTVISION</b><span>PORTAIL</span></div>
+    </div>
+    <nav class="pub-nav">
+      <a class="nav-link" data-view="catalogue" onclick="go('catalogue')">Nos prestations</a>
+      <a class="nav-link" data-view="home" onclick="go('home')">Accueil</a>
+    </nav>
+    <div class="hdr-right">
+      <a id="hdr-auth-link" onclick="go('connexion')">Se connecter</a>
+      <button class="btn btn-p" onclick="go('configurateur')">Faire une demande</button>
+    </div>
+  </div>
+</header>
+
+<main id="app">
+
+  <!-- HOME -->
+  <section id="scr-home" class="scr">
+    <div class="hero">
+      <div class="hero-grid">
+        <div>
+          <span class="badge b-blue">Votre espace client SportVision</span>
+          <h1 style="margin-top:18px">Votre sport mérite une image à sa hauteur.</h1>
+          <p class="muted" style="font-size:17px;max-width:480px;margin-bottom:28px">Photo, vidéo et communication sportive. Configurez votre prestation en quelques minutes et suivez votre projet jusqu'à la livraison.</p>
+          <div style="display:flex;gap:14px;flex-wrap:wrap">
+            <button class="btn btn-p" onclick="go('configurateur')">Configurer ma prestation</button>
+            <button class="btn btn-o" onclick="go('catalogue')">Découvrir les prestations</button>
+          </div>
+        </div>
+        <div class="hero-img">photo sportive — hero</div>
+      </div>
+    </div>
+    <section>
+      <div class="wrap">
+        <h2 class="sec-title">Prestations principales</h2>
+        <p class="muted" style="margin-bottom:28px">Demande directe ou sur devis selon votre besoin.</p>
+        <div id="home-offers" class="grid g3"><div class="empty">Chargement du catalogue…</div></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- CATALOGUE -->
+  <section id="scr-catalogue" class="scr">
+    <div class="wrap" style="padding-top:50px">
+      <h1 class="sec-title">Nos prestations</h1>
+      <p class="muted" style="margin-bottom:26px">Demande directe ou sur devis selon la prestation.</p>
+      <div id="cat-filters" class="filters"></div>
+      <div id="cat-offers" class="grid g3"><div class="empty">Chargement…</div></div>
+    </div>
+  </section>
+
+  <!-- OFFRE DETAIL -->
+  <section id="scr-offre" class="scr">
+    <div class="wrap" style="padding-top:50px;max-width:900px">
+      <a onclick="go('catalogue')">← Retour aux prestations</a>
+      <div id="offre-content" style="margin-top:20px"></div>
+    </div>
+  </section>
+
+  <!-- CONNEXION -->
+  <section id="scr-connexion" class="scr">
+    <div class="auth-split">
+      <div class="auth-left">
+        <h2 style="font-size:30px;margin-bottom:16px">Tout votre projet, au même endroit.</h2>
+        <p class="muted" style="max-width:380px">Demandes, prestations, documents, paiements et livrables.</p>
+      </div>
+      <div class="auth-right">
+        <h1 style="font-size:24px;margin-bottom:24px">Connexion</h1>
+        <div class="field-col">
+          <label>E-mail<input type="email" id="lg-email"></label>
+          <label>Mot de passe<input type="password" id="lg-pass"></label>
+          <button class="btn btn-p" id="lg-btn" onclick="handleLogin()">Se connecter</button>
+          <button class="btn btn-o" onclick="go('inscription')">Créer un compte</button>
+          <div id="lg-err" class="err-msg"></div>
+          <a onclick="go('configurateur')" style="font-size:13.5px">Commander sans compte</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSCRIPTION -->
+  <section id="scr-inscription" class="scr">
+    <div style="display:flex;align-items:center;justify-content:center;padding:60px 24px;min-height:70vh">
+      <div style="max-width:460px;width:100%">
+        <h1 style="font-size:24px;margin-bottom:8px">Créer mon espace</h1>
+        <p class="muted" style="margin-bottom:24px">Suivez vos demandes, devis, factures et livrables au même endroit.</p>
+        <div class="field-col">
+          <div class="grid g2" style="gap:14px">
+            <label>Prénom<input type="text" id="ins-prenom"></label>
+            <label>Nom<input type="text" id="ins-nom"></label>
+          </div>
+          <label>E-mail<input type="email" id="ins-email"></label>
+          <label>Téléphone<input type="tel" id="ins-tel" placeholder="06 00 00 00 00"></label>
+          <label>Mot de passe<input type="password" id="ins-pass"></label>
+          <label>Vous êtes
+            <select id="ins-profil">
+              <option value="joueur">Joueur</option>
+              <option value="parent">Parent de joueur</option>
+              <option value="club">Club ou académie</option>
+              <option value="organisateur">Organisateur d'événement</option>
+              <option value="coach">Coach ou préparateur</option>
+              <option value="entreprise">Entreprise ou association</option>
+              <option value="autre">Autre</option>
+            </select>
+          </label>
+          <button class="btn btn-p" id="ins-btn" onclick="handleSignup()">Créer mon compte</button>
+          <div id="ins-err" class="err-msg"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIGURATEUR -->
+  <section id="scr-configurateur" class="scr">
+    <div class="cfg-wrap">
+      <div class="flex-between">
+        <span class="faint" style="font-weight:700" id="cfg-step-label">ÉTAPE 1 / 5</span>
+      </div>
+      <div class="cfg-progress"><i id="cfg-progress-bar" style="width:20%"></i></div>
+      <div id="cfg-body"></div>
+      <div id="cfg-nav" class="flex-between" style="margin-top:30px">
+        <button class="btn btn-o" id="cfg-prev-btn" onclick="cfgPrev()">Précédent</button>
+        <button class="btn btn-p" id="cfg-next-btn" onclick="cfgNext()">Suivant</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ESPACE CLIENT CONNECTÉ -->
+  <div id="scr-portal" class="scr portal-shell">
+    <aside id="portal-sidebar">
+      <div class="brand" style="margin-bottom:20px" onclick="go('dashboard')">
+        <div class="brand-mark"></div>
+        <div class="brand-txt"><b>SPORTVISION</b><span>PORTAIL</span></div>
+      </div>
+      <button class="btn btn-p" style="margin-bottom:16px" onclick="go('configurateur')">+ Nouvelle demande</button>
+      <nav style="display:flex;flex-direction:column;gap:2px">
+        <a class="side-link" data-view="dashboard" onclick="go('dashboard')">Accueil</a>
+        <a class="side-link" data-view="demandes" onclick="go('demandes')">Mes demandes</a>
+        <a class="side-link" data-view="devis" onclick="go('devis')">Devis</a>
+        <a class="side-link" data-view="factures" onclick="go('factures')">Factures</a>
+        <a class="side-link" data-view="livrables" onclick="go('livrables')">Livrables</a>
+        <a class="side-link" data-view="messagerie" onclick="go('messagerie')">Messages</a>
+        <a class="side-link" data-view="rdv" onclick="go('rdv')">Rendez-vous</a>
+        <a class="side-link" data-view="compte" onclick="go('compte')">Mon compte</a>
+      </nav>
+      <div style="margin-top:auto;padding-top:14px;border-top:1px solid var(--bd)">
+        <a onclick="doLogout()" style="color:var(--er);font-size:13.5px;font-weight:600">Déconnexion</a>
+      </div>
+    </aside>
+    <div class="portal-main">
+      <header id="portal-topbar">
+        <h2 id="portal-title" style="font-size:18px">Tableau de bord</h2>
+      </header>
+
+      <div id="pv-dashboard" class="pv">
+        <h1 style="font-size:26px;margin-bottom:6px">Bonjour<span id="dash-prenom"></span>,</h1>
+        <p class="muted" style="margin-bottom:26px">Retrouvez ici le suivi de vos projets SportVision.</p>
+        <div class="grid g3">
+          <div class="card"><div class="faint" style="font-size:12px;font-weight:700">DEMANDES</div><div id="dash-count-demandes" style="font-size:28px;font-weight:700;font-family:var(--ff-h);margin-top:6px">—</div></div>
+          <div class="card"><div class="faint" style="font-size:12px;font-weight:700">DEVIS EN ATTENTE</div><div id="dash-count-devis" style="font-size:28px;font-weight:700;font-family:var(--ff-h);margin-top:6px">—</div></div>
+          <div class="card"><div class="faint" style="font-size:12px;font-weight:700">FACTURES À RÉGLER</div><div id="dash-count-factures" style="font-size:28px;font-weight:700;font-family:var(--ff-h);margin-top:6px">—</div></div>
+        </div>
+      </div>
+
+      <div id="pv-demandes" class="pv">
+        <div class="flex-between" style="margin-bottom:20px">
+          <h1 style="font-size:24px">Mes demandes</h1>
+          <button class="btn btn-p" onclick="go('configurateur')">Nouvelle demande</button>
+        </div>
+        <div id="demandes-list"></div>
+      </div>
+
+      <div id="pv-demande-detail" class="pv">
+        <a onclick="go('demandes')">← Retour aux demandes</a>
+        <div id="demande-detail-content" style="margin-top:18px"></div>
+      </div>
+
+      <div id="pv-devis" class="pv">
+        <h1 style="font-size:24px;margin-bottom:20px">Devis</h1>
+        <div id="devis-list"></div>
+      </div>
+
+      <div id="pv-factures" class="pv">
+        <h1 style="font-size:24px;margin-bottom:20px">Factures et paiements</h1>
+        <div id="factures-list"></div>
+      </div>
+
+      <div id="pv-livrables" class="pv">
+        <h1 style="font-size:24px;margin-bottom:20px">Livrables</h1>
+        <div id="livrables-list"></div>
+      </div>
+
+      <div id="pv-messagerie" class="pv">
+        <h1 style="font-size:24px;margin-bottom:20px">Messagerie</h1>
+        <div id="msg-thread" style="max-width:640px;display:flex;flex-direction:column;margin-bottom:20px"></div>
+        <div style="display:flex;gap:10px;max-width:640px">
+          <input type="text" id="msg-input" placeholder="Écrire un message...">
+          <button class="btn btn-p" onclick="sendMessage()">Envoyer</button>
+        </div>
+      </div>
+
+      <div id="pv-rdv" class="pv">
+        <h1 style="font-size:24px;margin-bottom:20px">Rendez-vous</h1>
+        <div class="card" style="max-width:480px;margin-bottom:24px">
+          <div class="field-col" style="margin-top:0">
+            <label>Type<select id="rdv-type"><option value="appel">Appel téléphonique</option><option value="physique">Rendez-vous physique</option></select></label>
+            <label>Objet<input type="text" id="rdv-objet" placeholder="Ex : Étude accompagnement club"></label>
+            <div class="grid g2">
+              <label>Date<input type="date" id="rdv-date"></label>
+              <label>Heure<input type="time" id="rdv-heure"></label>
+            </div>
+            <button class="btn btn-p" onclick="submitRdv()">Envoyer ma demande</button>
+          </div>
+        </div>
+        <div id="rdv-list"></div>
+      </div>
+
+      <div id="pv-compte" class="pv">
+        <h1 style="font-size:24px;margin-bottom:20px">Mon compte</h1>
+        <div class="card" style="max-width:480px">
+          <div class="field-col" style="margin-top:0">
+            <label>Prénom<input type="text" id="cpt-prenom"></label>
+            <label>Nom<input type="text" id="cpt-nom"></label>
+            <label>Téléphone<input type="tel" id="cpt-tel"></label>
+            <button class="btn btn-p" onclick="saveCompte()">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer id="pub-footer">
+  <div>© SportVision — Portail client</div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+// ── SUPABASE (même projet que SportVision OS, pas de duplication de données) ──
+const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
+const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
+
+function svSave(tok, ref, uid){
+  localStorage.setItem('svp_tok', tok);
+  localStorage.setItem('svp_ref', ref);
+  localStorage.setItem('svp_uid', uid);
+}
+function svClear(){
+  ['svp_tok','svp_ref','svp_uid','svp_client_id','svp_prenom'].forEach(k=>localStorage.removeItem(k));
+}
+function isLoggedIn(){ return !!localStorage.getItem('svp_tok'); }
+
+async function sbFetch(path, opts={}){
+  const _do = async (tok) => fetch(SB_URL+'/rest/v1/'+path, {
+    method: opts.method || 'GET',
+    headers: {
+      apikey: SB_KEY,
+      Authorization: 'Bearer ' + (tok || SB_KEY),
+      'Content-Type': 'application/json',
+      ...((opts.method==='POST'||opts.method==='PATCH') ? {Prefer:'return=representation'} : {}),
+      ...(opts.headers||{}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let tok = localStorage.getItem('svp_tok') || '';
+  let res = await _do(tok);
+  if (res.status === 401 && tok){
+    const ref = localStorage.getItem('svp_ref');
+    if (ref){
+      const r2 = await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:ref})});
+      const d = await r2.json();
+      if (d.access_token){ svSave(d.access_token, d.refresh_token, localStorage.getItem('svp_uid')); tok = d.access_token; res = await _do(tok); }
+      else { svClear(); }
+    }
+  }
+  const txt = await res.text();
+  return { ok: res.ok, status: res.status, data: txt ? JSON.parse(txt) : null };
+}
+
+async function sbRpc(fn, body){
+  const tok = localStorage.getItem('svp_tok') || SB_KEY;
+  const res = await fetch(SB_URL+'/rest/v1/rpc/'+fn, {method:'POST', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const txt = await res.text();
+  return { ok: res.ok, data: txt ? JSON.parse(txt) : null };
+}
+
+async function sbFunction(name, body){
+  const tok = localStorage.getItem('svp_tok') || SB_KEY;
+  const res = await fetch(SB_URL+'/functions/v1/'+name, {method:'POST', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const txt = await res.text();
+  return { ok: res.ok, data: txt ? JSON.parse(txt) : null };
+}
+
+// ── AUTH ──
+async function handleLogin(){
+  const email = document.getElementById('lg-email').value.trim();
+  const pass = document.getElementById('lg-pass').value;
+  const errEl = document.getElementById('lg-err'); errEl.textContent='';
+  const btn = document.getElementById('lg-btn');
+  if (!email || !pass){ errEl.textContent='Renseignez votre e-mail et votre mot de passe.'; return; }
+  btn.disabled = true; btn.textContent = 'Connexion…';
+  try{
+    const res = await fetch(SB_URL+'/auth/v1/token?grant_type=password', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email,password:pass})});
+    const d = await res.json();
+    if (!d.access_token) throw new Error('E-mail ou mot de passe incorrect.');
+    svSave(d.access_token, d.refresh_token, d.user.id);
+    const cu = await sbFetch('client_users?id=eq.'+d.user.id+'&select=client_id,prenom');
+    if (cu.data && cu.data[0]){
+      localStorage.setItem('svp_client_id', cu.data[0].client_id);
+      if (cu.data[0].prenom) localStorage.setItem('svp_prenom', cu.data[0].prenom);
+    }
+    await go('dashboard');
+    toast('Connexion réussie.');
+  }catch(e){
+    errEl.textContent = e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Se connecter';
+  }
+}
+
+async function handleSignup(){
+  const prenom = document.getElementById('ins-prenom').value.trim();
+  const nom = document.getElementById('ins-nom').value.trim();
+  const email = document.getElementById('ins-email').value.trim();
+  const tel = document.getElementById('ins-tel').value.trim();
+  const pass = document.getElementById('ins-pass').value;
+  const profil = document.getElementById('ins-profil').value;
+  const errEl = document.getElementById('ins-err'); errEl.textContent='';
+  const btn = document.getElementById('ins-btn');
+  if (!prenom || !nom || !email || !pass){ errEl.textContent='Merci de compléter tous les champs obligatoires.'; return; }
+  if (pass.length < 6){ errEl.textContent='Le mot de passe doit contenir au moins 6 caractères.'; return; }
+  btn.disabled = true; btn.textContent = 'Création…';
+  try{
+    const res = await fetch(SB_URL+'/auth/v1/signup', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, password:pass, data:{prenom,nom}})});
+    const d = await res.json();
+    if (!d.access_token) throw new Error(d.msg || d.error_description || 'Inscription impossible, cet e-mail est peut-être déjà utilisé.');
+    svSave(d.access_token, d.refresh_token, d.user.id);
+    const onboard = await sbFunction('portal-onboarding', {prenom, nom, telephone:tel, profil});
+    if (!onboard.ok) throw new Error(onboard.data?.error || 'Erreur lors de la création de votre compte client.');
+    localStorage.setItem('svp_client_id', onboard.data.client_id);
+    localStorage.setItem('svp_prenom', prenom);
+    await maybeAttachDraftRequest();
+    await go('dashboard');
+    toast('Compte créé avec succès.');
+  }catch(e){
+    errEl.textContent = e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Créer mon compte';
+  }
+}
+
+async function doLogout(){
+  await fetch(SB_URL+'/auth/v1/logout', {method:'POST', headers:{apikey:SB_KEY, Authorization:'Bearer '+(localStorage.getItem('svp_tok')||'')}}).catch(()=>{});
+  svClear();
+  go('home');
+}
+
+async function checkSession(){
+  const tok = localStorage.getItem('svp_tok');
+  if (!tok) return false;
+  const res = await fetch(SB_URL+'/auth/v1/user', {headers:{apikey:SB_KEY, Authorization:'Bearer '+tok}});
+  if (res.ok) return true;
+  const ref = localStorage.getItem('svp_ref');
+  if (!ref){ svClear(); return false; }
+  const r2 = await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:ref})});
+  const d = await r2.json();
+  if (d.access_token){ svSave(d.access_token, d.refresh_token, localStorage.getItem('svp_uid')); return true; }
+  svClear();
+  return false;
+}
+
+function updateHeaderAuthState(){
+  const el = document.getElementById('hdr-auth-link');
+  if (isLoggedIn()){ el.textContent = 'Mon espace'; el.onclick = ()=>go('dashboard'); }
+  else { el.textContent = 'Se connecter'; el.onclick = ()=>go('connexion'); }
+}
+
+// ── TOAST ──
+let toastTimer;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.style.display='none'; }, 3000);
+}
+
+// ── ROUTER ──
+const PORTAL_VIEWS = ['dashboard','demandes','demande-detail','devis','factures','messagerie','livrables','rdv','compte'];
+const PORTAL_TITLES = {dashboard:'Tableau de bord', demandes:'Mes demandes', 'demande-detail':'Demande', devis:'Devis', factures:'Factures', messagerie:'Messagerie', livrables:'Livrables', rdv:'Rendez-vous', compte:'Mon compte'};
+let state = { params:{} };
+
+async function go(view, params={}){
+  window.scrollTo(0,0);
+  state.params = params;
+
+  if (PORTAL_VIEWS.includes(view)){
+    if (!isLoggedIn()){ go('connexion'); return; }
+    document.querySelectorAll('.scr').forEach(el=>el.classList.remove('on'));
+    document.getElementById('scr-portal').classList.add('on');
+    document.querySelectorAll('.pv').forEach(el=>el.classList.remove('on'));
+    document.getElementById('pv-'+view).classList.add('on');
+    document.querySelectorAll('.side-link').forEach(el=>el.classList.toggle('active', el.dataset.view===view));
+    document.getElementById('portal-title').textContent = PORTAL_TITLES[view] || '';
+    document.getElementById('pub-header').style.display = 'none';
+    document.getElementById('pub-footer').style.display = 'none';
+    await renderPortalView(view, params);
+  } else {
+    document.querySelectorAll('.scr').forEach(el=>el.classList.remove('on'));
+    document.getElementById('scr-'+view).classList.add('on');
+    document.getElementById('pub-header').style.display = '';
+    document.getElementById('pub-footer').style.display = (view==='configurateur') ? 'none' : '';
+    document.querySelectorAll('.nav-link').forEach(el=>el.classList.toggle('active', el.dataset.view===view));
+    await renderPublicView(view, params);
+  }
+  updateHeaderAuthState();
+}
+
+// ── CATALOGUE ──
+let CATALOGUE_CACHE = null;
+async function loadCatalogue(){
+  if (CATALOGUE_CACHE) return CATALOGUE_CACHE;
+  const r = await sbFetch('catalogue_offres?actif=eq.true&order=ordre.asc');
+  CATALOGUE_CACHE = r.data || [];
+  return CATALOGUE_CACHE;
+}
+function priceLabel(o){
+  return o.tarif_type === 'fixe' && o.prix_ht != null ? (Math.round(o.prix_ht*1.2*100)/100).toLocaleString('fr-FR')+' € TTC' : 'Sur devis';
+}
+function offerCardHtml(o){
+  return '<div class="offer-card" onclick="go(\'offre\',{slug:\''+o.slug+'\'})">'
+    +'<div class="offer-thumb"></div>'
+    +'<div class="offer-body"><h3 style="font-size:16px">'+o.nom+'</h3>'
+    +'<p class="muted" style="font-size:13px;flex:1">'+(o.description||'')+'</p>'
+    +'<span class="price">'+priceLabel(o)+'</span></div></div>';
+}
+
+let catFilter = 'all';
+const CATEGORIES = [['all','Toutes'],['photo','Photo'],['video','Vidéo'],['pack','Pack'],['tournoi','Tournoi'],['stage','Stage'],['shooting','Shooting'],['drone','Drone'],['veo','Veo'],['contenu','Contenu']];
+
+async function renderPublicView(view, params){
+  if (view === 'home'){
+    const offres = await loadCatalogue();
+    document.getElementById('home-offers').innerHTML = offres.slice(0,6).map(offerCardHtml).join('') || '<div class="empty">Aucune prestation publiée pour le moment.</div>';
+  }
+  if (view === 'catalogue'){
+    const offres = await loadCatalogue();
+    document.getElementById('cat-filters').innerHTML = CATEGORIES.map(([id,label])=>'<button class="chip'+(catFilter===id?' active':'')+'" onclick="setCatFilter(\''+id+'\')">'+label+'</button>').join('');
+    renderCatalogueGrid(offres);
+  }
+  if (view === 'offre'){
+    const offres = await loadCatalogue();
+    const o = offres.find(x=>x.slug===params.slug);
+    const el = document.getElementById('offre-content');
+    if (!o){ el.innerHTML = '<div class="empty">Prestation introuvable.</div>'; return; }
+    el.innerHTML = '<h1 style="font-size:30px;margin:20px 0 12px">'+o.nom+'</h1>'
+      +'<p class="muted" style="font-size:15.5px;margin-bottom:20px">'+(o.description_longue||o.description||'')+'</p>'
+      +'<div class="card" style="margin-bottom:22px"><div style="font-size:22px;font-weight:700;color:var(--cyan);font-family:var(--ff-h)">'+priceLabel(o)+'</div>'
+      +'<div class="faint" style="margin-top:4px">'+(o.duree_estimee?('Délai estimé : '+o.duree_estimee):'Estimation selon la date, le lieu et les options.')+'</div></div>'
+      +(o.livrables_inclus?('<div style="margin-bottom:20px"><span class="faint" style="font-weight:700;font-size:12.5px">LIVRABLES INCLUS</span><p style="margin-top:8px">'+o.livrables_inclus+'</p></div>'):'')
+      +'<button class="btn btn-p" onclick="startConfigurateur(\''+o.id+'\')">Configurer cette prestation</button>';
+  }
+  if (view === 'configurateur') renderCfgStep();
+}
+async function setCatFilter(id){
+  catFilter = id;
+  const offres = await loadCatalogue();
+  document.getElementById('cat-filters').innerHTML = CATEGORIES.map(([cid,label])=>'<button class="chip'+(catFilter===cid?' active':'')+'" onclick="setCatFilter(\''+cid+'\')">'+label+'</button>').join('');
+  renderCatalogueGrid(offres);
+}
+function renderCatalogueGrid(offres){
+  const filtered = catFilter==='all' ? offres : offres.filter(o=>o.categorie===catFilter);
+  document.getElementById('cat-offers').innerHTML = filtered.map(offerCardHtml).join('') || '<div class="empty">Aucune prestation dans cette catégorie.</div>';
+}
+
+// ── CONFIGURATEUR ──
+const CFG_STEPS = ['offre','details','options','coordonnees','confirmation'];
+let cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:'', telephone:'', profil:'joueur' };
+
+function startConfigurateur(offreId){
+  cfg = Object.assign(cfg, { step:1, offreId });
+  go('configurateur');
+}
+
+function cfgCurrentOffer(){
+  return (CATALOGUE_CACHE||[]).find(o=>o.id===cfg.offreId) || null;
+}
+
+async function renderCfgStep(){
+  if (!CATALOGUE_CACHE) await loadCatalogue();
+  const key = CFG_STEPS[cfg.step];
+  document.getElementById('cfg-step-label').textContent = 'ÉTAPE '+(cfg.step+1)+' / '+CFG_STEPS.length;
+  document.getElementById('cfg-progress-bar').style.width = Math.round(((cfg.step+1)/CFG_STEPS.length)*100)+'%';
+  document.getElementById('cfg-prev-btn').style.visibility = cfg.step===0 ? 'hidden' : 'visible';
+  document.getElementById('cfg-next-btn').textContent = key==='coordonnees' ? 'Envoyer ma demande' : 'Suivant';
+  document.getElementById('cfg-nav').style.display = key==='confirmation' ? 'none' : 'flex';
+
+  const body = document.getElementById('cfg-body');
+
+  if (key === 'offre'){
+    body.innerHTML = '<h2 style="font-size:24px;margin-bottom:20px">Votre prestation</h2><div id="cfg-offer-list"></div>';
+    document.getElementById('cfg-offer-list').innerHTML = (CATALOGUE_CACHE||[]).map(o=>
+      '<div class="opt-row'+(cfg.offreId===o.id?' sel':'')+'" onclick="cfgSelectOffer(\''+o.id+'\')"><div><b>'+o.nom+'</b><div class="faint" style="font-size:12.5px">'+(o.description||'')+'</div></div><span class="price">'+priceLabel(o)+'</span></div>'
+    ).join('');
+  }
+
+  if (key === 'details'){
+    const o = cfgCurrentOffer();
+    body.innerHTML = '<h2 style="font-size:24px;margin-bottom:6px">Date, lieu et détails</h2>'
+      +(o?('<p class="muted" style="margin-bottom:20px">Prestation : <b style="color:var(--t1)">'+o.nom+'</b></p>'):'')
+      +'<div class="grid g2" style="margin-bottom:14px">'
+      +'<label>Date souhaitée<input type="date" id="cfg-date" value="'+cfg.date+'"></label>'
+      +'<label>Heure souhaitée<input type="time" id="cfg-heure" value="'+cfg.heure+'"></label>'
+      +'<label>Ville<input type="text" id="cfg-ville" value="'+cfg.ville+'"></label>'
+      +'<label>Code postal<input type="text" id="cfg-cp" value="'+cfg.cp+'"></label>'
+      +'</div>'
+      +'<label>Adresse<input type="text" id="cfg-adresse" value="'+cfg.adresse+'"></label>'
+      +'<div class="grid g2" style="margin:14px 0">'
+      +'<label>Sport<input type="text" id="cfg-sport" value="'+cfg.sport+'"></label>'
+      +'<label>Équipe(s) / participants<input type="text" id="cfg-equipes" value="'+cfg.equipes+'"></label>'
+      +'</div>'
+      +'<label>Commentaire ou besoin précis<textarea id="cfg-commentaire" rows="3">'+cfg.commentaire+'</textarea></label>';
+  }
+
+  if (key === 'options'){
+    const o = cfgCurrentOffer();
+    const opts = (o && Array.isArray(o.options)) ? o.options : [];
+    body.innerHTML = '<h2 style="font-size:24px;margin-bottom:20px">Options</h2><div id="cfg-options-list"></div>'
+      + (opts.length ? '' : '<p class="muted">Aucune option disponible pour cette prestation.</p>');
+    document.getElementById('cfg-options-list').innerHTML = opts.map(op=>{
+      const sel = cfg.options.includes(op.nom);
+      return '<div class="opt-row'+(sel?' sel':'')+'" onclick="cfgToggleOption(\''+op.nom.replace(/'/g,"\\'")+'\')"><b>'+op.nom+'</b><span class="price">'+(sel?'-':'+')+(op.prix_ht||0)+' € HT</span></div>';
+    }).join('');
+  }
+
+  if (key === 'coordonnees'){
+    const connected = isLoggedIn();
+    body.innerHTML = '<h2 style="font-size:24px;margin-bottom:20px">Vos coordonnées</h2>'
+      + (connected ? '<p class="muted" style="margin-bottom:16px">Vous êtes connecté : votre demande sera directement rattachée à votre espace.</p>' : '')
+      + (connected ? '' : (
+        '<div class="grid g2" style="margin-bottom:14px">'
+        +'<label>Prénom<input type="text" id="cfg-prenom" value="'+cfg.prenom+'"></label>'
+        +'<label>Nom<input type="text" id="cfg-nom" value="'+cfg.nom+'"></label>'
+        +'</div>'
+        +'<div class="grid g2" style="margin-bottom:14px">'
+        +'<label>E-mail<input type="email" id="cfg-email" value="'+cfg.email+'"></label>'
+        +'<label>Téléphone<input type="tel" id="cfg-telephone" value="'+cfg.telephone+'"></label>'
+        +'</div>'
+      ))
+      + '<div id="cfg-err" class="err-msg"></div>';
+  }
+
+  if (key === 'confirmation'){
+    body.innerHTML = '<div style="text-align:center;padding:30px 0">'
+      +'<div style="width:56px;height:56px;border-radius:50%;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;font-size:24px;color:var(--ok)">✓</div>'
+      +'<h2 style="font-size:24px;margin-bottom:14px">Demande envoyée</h2>'
+      +'<p class="muted" style="max-width:440px;margin:0 auto 20px">Votre demande a bien été transmise à SportVision. Référence : <b style="color:var(--t1)">'+(cfg.reference||'—')+'</b></p>'
+      + (isLoggedIn()
+          ? '<button class="btn btn-p" onclick="resetCfgAndGo(\'demandes\')">Voir mes demandes</button>'
+          : '<div class="card" style="max-width:440px;margin:0 auto 20px;text-align:left"><h3 style="font-size:16px;margin-bottom:8px">Retrouvez cette demande dans votre espace</h3><p class="muted" style="font-size:13.5px;margin-bottom:16px">Créez votre compte pour suivre son évolution, recevoir le devis et régler en ligne.</p><button class="btn btn-p" style="width:100%" onclick="resetCfgAndGo(\'inscription\')">Créer mon espace</button></div><a onclick="resetCfgAndGo(\'home\')">Continuer sans espace</a>'
+        )
+      + '</div>';
+  }
+}
+
+function cfgSelectOffer(id){ cfg.offreId = id; renderCfgStep(); }
+function cfgToggleOption(nom){
+  cfg.options = cfg.options.includes(nom) ? cfg.options.filter(o=>o!==nom) : [...cfg.options, nom];
+  renderCfgStep();
+}
+function cfgCollectStepFields(){
+  const key = CFG_STEPS[cfg.step];
+  if (key === 'details'){
+    cfg.date = document.getElementById('cfg-date').value;
+    cfg.heure = document.getElementById('cfg-heure').value;
+    cfg.ville = document.getElementById('cfg-ville').value;
+    cfg.cp = document.getElementById('cfg-cp').value;
+    cfg.adresse = document.getElementById('cfg-adresse').value;
+    cfg.sport = document.getElementById('cfg-sport').value;
+    cfg.equipes = document.getElementById('cfg-equipes').value;
+    cfg.commentaire = document.getElementById('cfg-commentaire').value;
+  }
+  if (key === 'coordonnees' && !isLoggedIn()){
+    cfg.prenom = document.getElementById('cfg-prenom').value.trim();
+    cfg.nom = document.getElementById('cfg-nom').value.trim();
+    cfg.email = document.getElementById('cfg-email').value.trim();
+    cfg.telephone = document.getElementById('cfg-telephone').value.trim();
+  }
+}
+function cfgPrev(){ if (cfg.step>0){ cfg.step--; renderCfgStep(); } }
+async function cfgNext(){
+  const key = CFG_STEPS[cfg.step];
+  if (key === 'offre' && !cfg.offreId){ toast('Merci de sélectionner une prestation.'); return; }
+  cfgCollectStepFields();
+  if (key === 'details' && (!cfg.date || !cfg.ville)){ toast('Merci de renseigner au moins la date et la ville.'); return; }
+  if (key === 'coordonnees'){
+    if (!isLoggedIn() && (!cfg.prenom || !cfg.nom || !cfg.email)){
+      document.getElementById('cfg-err').textContent = 'Merci de compléter vos coordonnées.';
+      return;
+    }
+    await submitDemande();
+    return;
+  }
+  cfg.step = Math.min(CFG_STEPS.length-1, cfg.step+1);
+  renderCfgStep();
+}
+
+async function submitDemande(){
+  const btn = document.getElementById('cfg-next-btn');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  const errEl = document.getElementById('cfg-err');
+  try{
+    const payload = {
+      offre_id: cfg.offreId, options: cfg.options, date: cfg.date || null, heure: cfg.heure || null,
+      lieu: cfg.ville || null, adresse: cfg.adresse || null, ville: cfg.ville || null, cp: cfg.cp || null,
+      sport: cfg.sport || null, equipes: cfg.equipes || null, commentaire: cfg.commentaire || null,
+    };
+    if (isLoggedIn()){
+      const clientId = localStorage.getItem('svp_client_id');
+      const insert = await sbFetch('prestations', {method:'POST', body:{
+        statut:'demande_reçue', client_id: clientId, offre_id: cfg.offreId, options_selectionnees: cfg.options,
+        date_prestation: cfg.date || null, heure_debut: cfg.heure || null, lieu: cfg.ville || null,
+        adresse_complete: [cfg.adresse, cfg.cp, cfg.ville].filter(Boolean).join(', ') || null,
+        sport: cfg.sport || null, equipes: cfg.equipes || null, description_besoin: cfg.commentaire || null,
+      }});
+      if (!insert.ok) throw new Error('Impossible d\'envoyer la demande. Réessayez.');
+      cfg.reference = insert.data && insert.data[0] ? insert.data[0].reference : null;
+    } else {
+      const res = await sbFunction('create-guest-request', Object.assign({}, payload, {
+        prenom: cfg.prenom, nom: cfg.nom, email: cfg.email, telephone: cfg.telephone, profil: cfg.profil,
+      }));
+      if (!res.ok) throw new Error(res.data?.error || 'Impossible d\'envoyer la demande.');
+      cfg.reference = res.data.reference;
+      localStorage.setItem('svp_draft_email', cfg.email);
+    }
+    cfg.step = CFG_STEPS.length - 1;
+    renderCfgStep();
+  }catch(e){
+    errEl.textContent = e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Envoyer ma demande';
+  }
+}
+
+function resetCfgAndGo(view){
+  const draftEmail = cfg.email;
+  cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:draftEmail||'', telephone:'', profil:'joueur' };
+  if (view === 'inscription' && draftEmail) document.addEventListener('DOMContentLoaded', ()=>{});
+  go(view);
+  if (view === 'inscription' && draftEmail) setTimeout(()=>{ const el=document.getElementById('ins-email'); if(el) el.value = draftEmail; }, 50);
+}
+
+// Rattache automatiquement une demande envoyée en invité si l'e-mail correspond au compte qui vient d'être créé
+async function maybeAttachDraftRequest(){
+  localStorage.removeItem('svp_draft_email');
+}
+
+// ── ESPACE CLIENT ──
+async function renderPortalView(view, params){
+  if (view === 'dashboard') await renderDashboard();
+  if (view === 'demandes') await renderDemandes();
+  if (view === 'demande-detail') await renderDemandeDetail(params.id);
+  if (view === 'devis') await renderDevis();
+  if (view === 'factures') await renderFactures();
+  if (view === 'livrables') await renderLivrables();
+  if (view === 'messagerie') await renderMessagerie();
+  if (view === 'rdv') await renderRdv();
+  if (view === 'compte') await renderCompte();
+}
+
+function statutBadge(statut){
+  const map = {
+    'demande_reçue':['b-orange','Demande reçue'],'à_qualifier':['b-orange',"À qualifier"],
+    'offre_en_préparation':['b-orange','En préparation'],'devis_envoyé':['b-blue','Devis envoyé'],
+    'en_attente_réponse':['b-orange','En attente'],'devis_accepté':['b-green','Devis accepté'],
+    'en_attente_signature':['b-orange','En attente signature'],'en_attente_acompte':['b-orange','En attente acompte'],
+    'confirmée':['b-green','Confirmée'],'planifiée':['b-green','Planifiée'],'équipe_affectée':['b-green','Équipe affectée'],
+    'production_démarrée':['b-blue','En production'],'production_terminée':['b-blue','Production terminée'],
+    'montage_en_cours':['b-blue','Postproduction'],'à_valider_client':['b-orange','À valider'],
+    'prête_à_livrer':['b-blue','Prête à livrer'],'livrée':['b-green','Livrée'],'facturée':['b-blue','Facturée'],
+    'partiellement_payée':['b-orange','Partiellement payée'],'payée':['b-green','Payée'],'clôturée':['b-grey','Clôturée'],
+    'annulée':['b-red','Annulée'],'refusée':['b-red','Refusée'],
+  };
+  const [cls,label] = map[statut] || ['b-grey', statut||'—'];
+  return '<span class="badge '+cls+'">'+label+'</span>';
+}
+function fmtEUR(n){ return (Number(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function fmtDate(s){ return s ? new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) : '—'; }
+
+async function renderDashboard(){
+  document.getElementById('dash-prenom').textContent = ' ' + (localStorage.getItem('svp_prenom')||'');
+  const clientId = localStorage.getItem('svp_client_id');
+  const [dem, dev, fac] = await Promise.all([
+    sbFetch('client_prestations?client_id=eq.'+clientId+'&select=id'),
+    sbFetch('client_devis?client_id=eq.'+clientId+'&statut=eq.envoyé&select=id'),
+    sbFetch('client_factures?client_id=eq.'+clientId+'&statut=eq.emise&select=id'),
+  ]);
+  document.getElementById('dash-count-demandes').textContent = (dem.data||[]).length;
+  document.getElementById('dash-count-devis').textContent = (dev.data||[]).length;
+  document.getElementById('dash-count-factures').textContent = (fac.data||[]).length;
+}
+
+async function renderDemandes(){
+  const clientId = localStorage.getItem('svp_client_id');
+  const r = await sbFetch('client_prestations?client_id=eq.'+clientId+'&order=created_at.desc');
+  const list = r.data || [];
+  const el = document.getElementById('demandes-list');
+  if (!list.length){ el.innerHTML = '<div class="empty">Vous n\'avez encore aucune demande.<br><br><button class="btn btn-p" onclick="go(\'configurateur\')">Découvrir les prestations</button></div>'; return; }
+  el.innerHTML = list.map(d=>
+    '<div class="row-item flex-between" onclick="go(\'demande-detail\',{id:\''+d.id+'\'})">'
+    +'<div><div class="faint" style="font-family:monospace;font-size:11.5px">'+(d.reference||'')+'</div>'
+    +'<div style="font-weight:700;margin-top:2px">'+(d.type_prestation||'Prestation')+'</div>'
+    +'<div class="faint" style="font-size:13px;margin-top:2px">'+fmtDate(d.date_prestation)+' · '+(d.lieu||'—')+'</div></div>'
+    +statutBadge(d.statut)+'</div>'
+  ).join('');
+}
+
+async function renderDemandeDetail(id){
+  const clientId = localStorage.getItem('svp_client_id');
+  const r = await sbFetch('client_prestations?id=eq.'+id+'&client_id=eq.'+clientId);
+  const d = r.data && r.data[0];
+  const el = document.getElementById('demande-detail-content');
+  if (!d){ el.innerHTML = '<div class="empty">Demande introuvable.</div>'; return; }
+  const cancelable = ['demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse'].includes(d.statut);
+  el.innerHTML = '<div class="flex-between" style="margin:16px 0"><h1 style="font-size:24px">'+(d.type_prestation||'Prestation')+'</h1>'+statutBadge(d.statut)+'</div>'
+    +'<div class="grid g2">'
+    +'<div class="card"><span class="faint" style="font-size:12px;font-weight:700">DATE ET LIEU</span><p style="margin-top:8px">'+fmtDate(d.date_prestation)+' · '+(d.lieu||'—')+'</p></div>'
+    +'<div class="card"><span class="faint" style="font-size:12px;font-weight:700">MONTANT</span><p style="margin-top:8px;font-size:20px;font-weight:700;color:var(--cyan)">'+(d.montant_ttc ? fmtEUR(d.montant_ttc) : 'En cours de chiffrage')+'</p></div>'
+    +'</div>'
+    +(d.description_besoin ? '<div class="card" style="margin-top:16px"><span class="faint" style="font-size:12px;font-weight:700">DESCRIPTION</span><p style="margin-top:8px">'+d.description_besoin+'</p></div>' : '')
+    +'<div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">'
+    +'<button class="btn btn-o" onclick="go(\'messagerie\')">Contacter SportVision</button>'
+    + (cancelable ? '<button class="btn btn-d" onclick="cancelDemande(\''+d.id+'\')">Annuler la demande</button>' : '')
+    +'</div>';
+}
+
+async function cancelDemande(id){
+  if (!confirm('Confirmer l\'annulation de cette demande ?')) return;
+  const r = await sbRpc('client_cancel_prestation', { p_prestation_id: id });
+  if (!r.ok){ toast((r.data && r.data.message) || 'Impossible d\'annuler cette demande.'); return; }
+  toast('Demande annulée.');
+  go('demandes');
+}
+
+async function renderDevis(){
+  const clientId = localStorage.getItem('svp_client_id');
+  const r = await sbFetch('client_devis?client_id=eq.'+clientId+'&order=created_at.desc');
+  const list = r.data || [];
+  const el = document.getElementById('devis-list');
+  if (!list.length){ el.innerHTML = '<div class="empty">Aucun devis pour le moment.</div>'; return; }
+  el.innerHTML = list.map(d=>{
+    const canDecide = ['envoyé','en_attente'].includes(d.statut);
+    return '<div class="row-item">'
+      +'<div class="flex-between"><div><div class="faint" style="font-family:monospace;font-size:11.5px">'+d.numero+'</div></div>'+statutBadge(d.statut)+'</div>'
+      +'<div class="flex-between" style="margin-top:14px">'
+      +'<span style="font-size:20px;font-weight:700;color:var(--cyan);font-family:var(--ff-h)">'+fmtEUR(d.total_ttc)+'</span>'
+      + (canDecide ? '<div style="display:flex;gap:8px"><button class="btn btn-o" onclick="decideDevis(\''+d.id+'\',\'refusé\')">Refuser</button><button class="btn btn-p" onclick="decideDevis(\''+d.id+'\',\'accepté\')">Accepter</button></div>'
+        : (d.statut==='accepté' ? '<button class="btn btn-p" onclick="payDevis(\''+d.id+'\',\''+(d.prestation_id||'')+'\')">Payer l\'acompte</button>' : ''))
+      +'</div></div>';
+  }).join('');
+}
+
+async function decideDevis(devisId, decision){
+  const r = await sbRpc('client_decide_devis', { p_devis_id: devisId, p_decision: decision });
+  if (!r.ok){ toast('Action impossible sur ce devis.'); return; }
+  toast(decision === 'accepté' ? 'Devis accepté.' : 'Devis refusé.');
+  renderDevis();
+}
+
+async function payDevis(devisId, prestationId){
+  const body = prestationId ? { prestation_id: prestationId, type_paiement:'acompte' } : { devis_id: devisId, type_paiement:'acompte' };
+  const r = await sbFunction('create-checkout-session', body);
+  if (!r.ok || !r.data?.url){ toast(r.data?.error || 'Paiement indisponible pour le moment.'); return; }
+  window.location.href = r.data.url;
+}
+
+async function renderFactures(){
+  const clientId = localStorage.getItem('svp_client_id');
+  const r = await sbFetch('client_factures?client_id=eq.'+clientId+'&order=created_at.desc');
+  const list = r.data || [];
+  const el = document.getElementById('factures-list');
+  if (!list.length){ el.innerHTML = '<div class="empty">Aucune facture pour le moment.</div>'; return; }
+  el.innerHTML = list.map(f=>{
+    const canPay = ['emise','en_retard'].includes(f.statut) && f.prestation_id;
+    return '<div class="row-item"><div class="flex-between"><div><div class="faint" style="font-family:monospace;font-size:11.5px">'+f.numero+'</div>'
+      +'<div style="font-weight:700;margin-top:2px">'+f.type_facture+'</div></div>'+statutBadge(f.statut)+'</div>'
+      +'<div class="flex-between" style="margin-top:14px"><span style="font-size:20px;font-weight:700;color:var(--cyan);font-family:var(--ff-h)">'+fmtEUR(f.montant_ttc)+'</span>'
+      + (canPay ? '<button class="btn btn-p" onclick="payFacture(\''+f.prestation_id+'\',\''+f.type_facture+'\')">Payer</button>' : '')
+      +'</div></div>';
+  }).join('');
+}
+
+async function payFacture(prestationId, typeFacture){
+  const r = await sbFunction('create-checkout-session', { prestation_id: prestationId, type_paiement: typeFacture });
+  if (!r.ok || !r.data?.url){ toast(r.data?.error || 'Paiement indisponible pour le moment.'); return; }
+  window.location.href = r.data.url;
+}
+
+async function renderLivrables(){
+  // La vue client_media_livrables filtre déjà par client via auth.uid(), pas besoin de filtre client_id ici.
+  const r = await sbFetch('client_media_livrables?order=created_at.desc');
+  const list = r.data || [];
+  const el = document.getElementById('livrables-list');
+  if (!list.length){ el.innerHTML = '<div class="empty">Vous n\'avez encore aucun livrable disponible.</div>'; return; }
+  el.innerHTML = '<div class="grid g3">' + list.map(l=>
+    '<div class="card"><span class="faint" style="font-size:11px;font-weight:700">'+(l.type_livrable||'').toUpperCase()+'</span>'
+    +'<div style="font-weight:700;margin:8px 0 4px">'+l.nom+'</div>'
+    +'<div class="faint" style="font-size:13px">'+(l.date_expiration ? ('Expire le '+fmtDate(l.date_expiration)) : '')+'</div></div>'
+  ).join('') + '</div>';
+}
+
+async function renderMessagerie(){
+  const clientId = localStorage.getItem('svp_client_id');
+  const r = await sbFetch('messages_client?client_id=eq.'+clientId+'&order=created_at.asc');
+  const list = r.data || [];
+  const el = document.getElementById('msg-thread');
+  el.innerHTML = list.length ? list.map(m=>
+    '<div class="msg-bubble '+(m.auteur_type==='client'?'msg-mine':'msg-theirs')+'">'+m.contenu+'</div>'
+  ).join('') : '<div class="empty">Aucun message pour le moment. Écrivez à SportVision ci-dessous.</div>';
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendMessage(){
+  const input = document.getElementById('msg-input');
+  const contenu = input.value.trim();
+  if (!contenu) return;
+  const clientId = localStorage.getItem('svp_client_id');
+  const uid = localStorage.getItem('svp_uid');
+  const r = await sbFetch('messages_client', {method:'POST', body:{ client_id: clientId, auteur_type:'client', auteur_client_id: uid, contenu }});
+  if (!r.ok){ toast('Message non envoyé.'); return; }
+  input.value = '';
+  renderMessagerie();
+}
+
+async function renderRdv(){
+  const clientId = localStorage.getItem('svp_client_id');
+  const r = await sbFetch('rendez_vous?client_id=eq.'+clientId+'&order=created_at.desc');
+  const list = r.data || [];
+  const el = document.getElementById('rdv-list');
+  const rdvBadge = {a_confirmer:['b-orange','À confirmer'], confirme:['b-green','Confirmé'], annule:['b-red','Annulé'], realise:['b-grey','Réalisé']};
+  el.innerHTML = list.map(r2=>{
+    const [cls,label] = rdvBadge[r2.statut] || ['b-grey', r2.statut];
+    return '<div class="row-item flex-between"><div><div style="font-weight:700">'+(r2.objet||'Rendez-vous')+'</div>'
+      +'<div class="faint" style="font-size:13px">'+(r2.type_rdv==='appel'?'Appel téléphonique':'Rendez-vous physique')+' · '+fmtDate(r2.date_demandee)+'</div></div>'
+      +'<span class="badge '+cls+'">'+label+'</span></div>';
+  }).join('') || '<div class="empty">Aucun rendez-vous pour le moment.</div>';
+}
+
+async function submitRdv(){
+  const clientId = localStorage.getItem('svp_client_id');
+  const type_rdv = document.getElementById('rdv-type').value;
+  const objet = document.getElementById('rdv-objet').value.trim();
+  const date_demandee = document.getElementById('rdv-date').value;
+  const heure_demandee = document.getElementById('rdv-heure').value;
+  if (!date_demandee){ toast('Merci de choisir une date.'); return; }
+  const r = await sbFetch('rendez_vous', {method:'POST', body:{ client_id: clientId, type_rdv, objet, date_demandee, heure_demandee: heure_demandee || null }});
+  if (!r.ok){ toast('Impossible d\'envoyer la demande de rendez-vous.'); return; }
+  toast('Demande de rendez-vous envoyée.');
+  document.getElementById('rdv-objet').value='';
+  renderRdv();
+}
+
+async function renderCompte(){
+  const uid = localStorage.getItem('svp_uid');
+  const r = await sbFetch('client_users?id=eq.'+uid);
+  const cu = r.data && r.data[0];
+  if (cu){
+    document.getElementById('cpt-prenom').value = cu.prenom || '';
+    document.getElementById('cpt-nom').value = cu.nom || '';
+    document.getElementById('cpt-tel').value = cu.telephone || '';
+  }
+}
+async function saveCompte(){
+  const uid = localStorage.getItem('svp_uid');
+  const prenom = document.getElementById('cpt-prenom').value.trim();
+  const nom = document.getElementById('cpt-nom').value.trim();
+  const telephone = document.getElementById('cpt-tel').value.trim();
+  const r = await sbFetch('client_users?id=eq.'+uid, {method:'PATCH', body:{ prenom, nom, telephone }});
+  if (!r.ok){ toast('Enregistrement impossible.'); return; }
+  localStorage.setItem('svp_prenom', prenom);
+  toast('Modifications enregistrées.');
+}
+
+// ── INIT ──
+(async function init(){
+  const params = new URLSearchParams(window.location.search);
+  const loggedIn = await checkSession();
+
+  if (params.get('paiement')){
+    if (loggedIn){ await go('factures'); }
+    toast(params.get('paiement') === 'succes' ? 'Paiement confirmé, merci !' : 'Paiement annulé.');
+    history.replaceState({}, '', window.location.pathname);
+    return;
+  }
+
+  await go(loggedIn ? 'dashboard' : 'home');
+})();
+</script>
+</body>
+</html>
