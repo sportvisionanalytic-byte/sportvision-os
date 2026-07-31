@@ -15,7 +15,9 @@ Durée estimée : ~10 minutes. Aucun code à écrire, juste de la configuration.
 
 ---
 
-## Étape 2 — Déployer l'Edge Function dans Supabase
+## Étape 2 — Déployer les Edge Functions dans Supabase
+
+Il y a deux fonctions à déployer (devis et factures), même procédure pour chacune :
 
 1. Va sur [supabase.com](https://supabase.com) → ton projet **lulgezzpvrlbftbykzrc**
 2. Menu gauche → **Edge Functions** → **Create a new function**
@@ -23,12 +25,18 @@ Durée estimée : ~10 minutes. Aucun code à écrire, juste de la configuration.
 4. Remplace tout le code par le contenu du fichier :
    `livrables/SportVision-TV/supabase/functions/send-devis-email/index.ts`
 5. Clique **Deploy**
+6. Recommence avec **`send-facture-email`** et le fichier
+   `livrables/SportVision-TV/supabase/functions/send-facture-email/index.ts`
+
+> La fonction facture a besoin que la table `factures` existe en base (numérotation
+> auto FAC-AAAA-0001, RLS). Si `migration-portail-v1.sql` n'a pas encore été exécutée
+> dans Supabase → SQL Editor, fais-le avant de tester l'envoi de facture.
 
 ---
 
 ## Étape 3 — Ajouter les secrets
 
-Dans Supabase → **Edge Functions** → **Secrets** (ou Settings > Secrets) :
+Dans Supabase → **Edge Functions** → **Secrets** (ou Settings > Secrets) — communs aux deux fonctions :
 
 | Nom | Valeur |
 |-----|--------|
@@ -48,6 +56,10 @@ Dans Supabase → **Edge Functions** → **Secrets** (ou Settings > Secrets) :
 4. Clique **Envoyer**
 
 Si tu vois "Email envoyé avec succès !" → tout fonctionne.
+
+Pour les factures : onglet **Documents → Factures**, bouton **✉** sur n'importe quelle
+ligne. La première fois, ça crée une vraie facture numérotée en base (visible ensuite
+sous le même numéro à chaque renvoi), puis l'envoie.
 
 ---
 

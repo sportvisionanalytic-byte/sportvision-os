@@ -8137,6 +8137,7 @@ function docsRenderFactures(){
       <td>${_docsBadge(p.statut_financier||'facturée',FACT_STATUTS)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
         <button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">Facture</button>
+        <button onclick="envoyerFactureParEmail('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);border-radius:var(--rp);color:var(--acc2);cursor:pointer" title="Envoyer par email">✉</button>
         <button onclick="docsModalNouvelAvoir('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.18);border-radius:var(--rp);color:var(--er);cursor:pointer">+ Avoir</button>
       </td>
     </tr>`).join('')}
@@ -8981,6 +8982,31 @@ async function _sendDevisEmailConfirm(id,statutActuel){
   }
 }
 
+// ── Facture réelle (table factures) ────────────────────────────────────────────
+// Récupère la facture existante liée à cette prestation, ou en crée une vraie
+// (numérotation auto FAC-AAAA-0001 via trigger Supabase) si aucune n'existe.
+async function getOrCreateFacture(prestationId){
+  const existing=await sbFetch('factures?select=*&prestation_id=eq.'+prestationId+'&order=created_at.desc&limit=1').catch(()=>[]);
+  if(Array.isArray(existing)&&existing[0])return existing[0];
+  const pArr=await sbFetch(`prestations?id=eq.${prestationId}&select=id,client_id,montant_ht,montant_ttc,tva_pct,devis(id,numero,total_ht,total_ttc,tva_pct,lignes)`);
+  const p=pArr?.[0];
+  if(!p)return null;
+  const dv=p.devis?.[0]||null;
+  const montant_ht=dv?.total_ht||p.montant_ht||0;
+  const montant_ttc=dv?.total_ttc||p.montant_ttc||0;
+  const tva_pct=dv?.tva_pct||p.tva_pct||20;
+  const lignes=Array.isArray(dv?.lignes)?dv.lignes:[];
+  const dateEmission=new Date().toISOString().slice(0,10);
+  const dateEcheance=new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+  const created=await sbFetch('factures',{method:'POST',body:{
+    prestation_id:prestationId,devis_id:dv?.id||null,client_id:p.client_id||null,
+    type_facture:'totalite',lignes,montant_ht,tva_pct,montant_ttc,
+    statut:'emise',date_emission:dateEmission,date_echeance:dateEcheance,
+    created_by:localStorage.getItem('sv_uid'),
+  }});
+  return Array.isArray(created)?created[0]:created;
+}
+
 // ── PDF Facture ───────────────────────────────────────────────────────────────
 async function imprimerFacture(id){
   try{
@@ -8989,6 +9015,7 @@ async function imprimerFacture(id){
     if(!p){toast('Prestation introuvable.');return;}
     const c=p.clients||{};
     const dv=p.devis?.[0]||null;
+    const fact=await getOrCreateFacture(id).catch(()=>null);
     const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
     const ht=dv?.total_ht||p.montant_ht||0;
@@ -9002,7 +9029,7 @@ async function imprimerFacture(id){
     const sfLbl={payée:'Payée',facturée:'Facturée',partiellement_payée:'Part. payée',en_retard:'En retard',non_facturée:'Non facturée'};
     const sfClr={payée:'#2ECC8A',facturée:'#366BFF',partiellement_payée:'#F5A524',en_retard:'#F0445E',non_facturée:'#8891A8'};
     const sf=p.statut_financier||'non_facturée';
-    const numFact='FAC-'+new Date().getFullYear()+'-'+(p.reference||'').replace('SV-','').replace(/\d{4}-/,'');
+    const numFact=fact?.numero||'FAC-'+new Date().getFullYear()+'-'+(p.reference||'').replace('SV-','').replace(/\d{4}-/,'');
     const win=window.open('','_blank','width=900,height=800');
     if(!win){toast('Autorisez les popups pour générer la facture.');return;}
     win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Facture ${numFact} — SportVision</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5}.page{max-width:800px;margin:0 auto;padding:48px}@media print{.np{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
@@ -9036,7 +9063,7 @@ async function imprimerFacture(id){
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:4px">Réf. prestation</div><div style="font-size:12.5px;font-weight:600;color:#1a1a2e;font-family:monospace">${p.reference||'—'}</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:4px">Date prestation</div><div style="font-size:12.5px;font-weight:600;color:#1a1a2e">${fd(p.date_prestation)}</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:4px">Lieu</div><div style="font-size:12.5px;font-weight:600;color:#1a1a2e">${p.lieu||'—'}</div></div>
-  <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:4px">Date de facturation</div><div style="font-size:12.5px;font-weight:600;color:#1a1a2e">${fd(new Date().toISOString())}</div></div>
+  <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:4px">Date de facturation</div><div style="font-size:12.5px;font-weight:600;color:#1a1a2e">${fd(fact?.date_emission||new Date().toISOString())}</div></div>
 </div>
 <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
   <thead><tr>${['Prestation','Qté','Prix unit. HT','Total HT'].map((h,i)=>`<th style="background:#1a1a2e;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:10px 14px;text-align:${i>0?'right':'left'}">${h}</th>`).join('')}</tr></thead>
@@ -9057,6 +9084,67 @@ async function imprimerFacture(id){
 </div></body></html>`);
     win.document.close();
   }catch(e){toast('Erreur lors de la génération de la facture.');}
+}
+
+async function envoyerFactureParEmail(prestationId){
+  try{
+    const fact=await getOrCreateFacture(prestationId);
+    if(!fact){toast('Prestation introuvable.');return;}
+    const pArr=await sbFetch(`prestations?id=eq.${prestationId}&select=clients(nom,email,prenom_contact,nom_contact)`);
+    const c=pArr?.[0]?.clients||{};
+    const num=fact.numero||'—';
+    const montant=(fact.montant_ttc||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    const contact=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||c.nom||'';
+    const echeance=fact.date_echeance?new Date(fact.date_echeance).toLocaleDateString('fr-FR'):'30 jours';
+    const msgDefaut=`${contact?'Bonjour '+contact+',':'Bonjour,'}\n\nVeuillez trouver ci-dessous la facture ${num} d'un montant de ${montant} TTC.\n\nRèglement attendu avant le ${echeance}.\n\nN'hésitez pas à me contacter pour toute question.\n\nBien cordialement,\nFouka\nSportVision`;
+    openModal(`<div class="mh"><div class="mt">Envoyer la facture par email</div><button class="mc" onclick="closeModal()">✕</button></div>
+      <div class="mb">
+        <div style="background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.18);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:var(--t2);display:flex;gap:16px;flex-wrap:wrap">
+          <span><span style="color:var(--t3);font-size:11px">FACTURE</span><br><span style="font-weight:700;color:#2ECC8A">${num}</span></span>
+          <span><span style="color:var(--t3);font-size:11px">CLIENT</span><br><span style="font-weight:600">${c.nom||'—'}</span></span>
+          <span><span style="color:var(--t3);font-size:11px">MONTANT TTC</span><br><span style="font-weight:700;color:var(--ok)">${montant}</span></span>
+        </div>
+        <div class="fg"><label class="fl">Destinataire *</label><input id="em-to" class="fi" type="email" value="${c.email||''}" placeholder="email@club.fr"></div>
+        <div class="fg"><label class="fl">Objet</label><input id="em-subj" class="fi" type="text" value="Facture ${num} — SportVision"></div>
+        <div class="fg"><label class="fl">Message</label><textarea id="em-msg" class="fi" rows="7" style="font-family:inherit;white-space:pre-wrap">${msgDefaut}</textarea></div>
+        <div id="em-err" style="color:var(--er);font-size:12px;min-height:16px;margin-top:6px"></div>
+      </div>
+      <div class="mf">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="_sendFactureEmailConfirm('${fact.id}')">✉ Envoyer</button>
+      </div>`);
+  }catch(e){toast('Erreur: '+e.message);}
+}
+
+async function _sendFactureEmailConfirm(factureId){
+  const to=(document.getElementById('em-to')?.value||'').trim();
+  const subj=(document.getElementById('em-subj')?.value||'').trim();
+  const msg=(document.getElementById('em-msg')?.value||'').trim();
+  const errEl=document.getElementById('em-err');
+  if(!to){if(errEl)errEl.textContent='Email destinataire requis.';return;}
+  if(!to.includes('@')||!to.includes('.')){if(errEl)errEl.textContent='Adresse email invalide.';return;}
+  if(errEl)errEl.textContent='';
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){btn.disabled=true;btn.textContent='Envoi en cours…';}
+  try{
+    const res=await fetch(SB_URL+'/functions/v1/send-facture-email',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY},
+      body:JSON.stringify({facture_id:factureId,to,subject:subj||('Facture — SportVision'),message:msg})
+    });
+    let json={};
+    try{json=await res.json();}catch(e2){}
+    if(!res.ok){
+      if(res.status===404)throw new Error('Edge Function non déployée. Voir instructions setup.');
+      throw new Error(json.error||json.message||('Erreur serveur ('+res.status+')'));
+    }
+    closeModal();
+    toast('Facture envoyée avec succès !');
+    if(typeof loadDocs==='function')loadDocs().catch(()=>{});
+  }catch(e){
+    if(errEl)errEl.textContent='Erreur : '+e.message;
+    if(btn){btn.disabled=false;btn.textContent='✉ Envoyer';}
+  }
 }
 
 // ── Objectifs commerciaux ────────────────────────────────────────────────────
