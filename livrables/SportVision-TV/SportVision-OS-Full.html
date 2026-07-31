@@ -7491,7 +7491,7 @@ async function kitsAttribuerSubmit(kitId){
     const respId=document.getElementById('attr-resp')?.value;
     if(respId){
       await sbFetch('notifications',{method:'POST',body:{
-        user_id:respId,type:'kit_attribue',
+        destinataire_id:respId,type:'kit_attribue',titre:'Kit attribué',
         message:'Un kit vous a été attribué pour une prestation.',source_type:'kits',source_id:kitId,
       }}).catch(()=>{});
     }
@@ -7617,7 +7617,7 @@ async function kitsIncidentSubmit(materielId){
       const prods=await sbFetch('profiles?select=id&role=in.(admin,prod)').catch(()=>[]);
       for(const p of (prods||[])){
         await sbFetch('notifications',{method:'POST',body:{
-          destinataire_id:p.id,type:'incident_critique',priorite:'high',
+          destinataire_id:p.id,type:'incident_critique',priorite:'high',titre:'Incident critique matériel',
           message:'Incident critique matériel signalé : '+desc.slice(0,80),
           source_type:'materiels',source_id:materielId,
         }}).catch(()=>{});
@@ -7718,7 +7718,7 @@ async function kitsControleSubmit(controleId){
       const prods=await sbFetch('profiles?select=id&role=in.(admin,prod)').catch(()=>[]);
       for(const p of (prods||[])){
         await sbFetch('notifications',{method:'POST',body:{
-          destinataire_id:p.id,type:'controle_bloquant',priorite:'high',
+          destinataire_id:p.id,type:'controle_bloquant',priorite:'high',titre:'Contrôle bloquant',
           message:`Contrôle bloquant — ${absent} absent(s), ${def} défectueux`,
           source_type:'kit_controles',source_id:controleId,
         }}).catch(()=>{});
@@ -8281,12 +8281,12 @@ async function docsRenderSignatures(){
 
 // ── Phase 4 : Auto-tâches sur événements ────────────────────────────────────
 const _TACHES_AUTO_CFG={
-  'devis.envoye':[{role:'sec',titre:'Relance devis à planifier',msg:'Devis envoyé. Planifiez une relance dans 3 à 5 jours si aucune réponse.',priorite:'normale'}],
-  'devis.accepted':[{role:'sec',titre:'Préparer contrat ou prestation',msg:'Devis accepté. Créez la prestation et préparez le contrat.',priorite:'haute'}],
-  'prestation.confirmed':[{role:'sec',titre:'Envoyer convocations équipe',msg:'Prestation confirmée. Envoyez les invitations aux collaborateurs.',priorite:'haute'}],
+  'devis.envoye':[{role:'sec',titre:'Relance devis à planifier',msg:'Devis envoyé. Planifiez une relance dans 3 à 5 jours si aucune réponse.',priorite:'medium'}],
+  'devis.accepted':[{role:'sec',titre:'Préparer contrat ou prestation',msg:'Devis accepté. Créez la prestation et préparez le contrat.',priorite:'high'}],
+  'prestation.confirmed':[{role:'sec',titre:'Envoyer convocations équipe',msg:'Prestation confirmée. Envoyez les invitations aux collaborateurs.',priorite:'high'}],
   'prestation.completed':[
-    {role:'sec',titre:'Préparer livraison client',msg:'Prestation terminée. Récupérez les médias et préparez la livraison.',priorite:'normale'},
-    {role:'compta',titre:'Émettre la facture',msg:'Prestation terminée. La facture peut être émise.',priorite:'normale'},
+    {role:'sec',titre:'Préparer livraison client',msg:'Prestation terminée. Récupérez les médias et préparez la livraison.',priorite:'medium'},
+    {role:'compta',titre:'Émettre la facture',msg:'Prestation terminée. La facture peut être émise.',priorite:'medium'},
   ],
 };
 
