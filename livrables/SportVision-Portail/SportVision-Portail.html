@@ -31,6 +31,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri)}
 .g3{grid-template-columns:repeat(3,1fr)}
 .g2{grid-template-columns:repeat(2,1fr)}
 @media(max-width:860px){.g3,.g2{grid-template-columns:1fr}}
+#home-process{grid-template-columns:repeat(5,1fr)}
+@media(max-width:760px){#home-process{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){#home-process{grid-template-columns:1fr}}
 .btn{border:none;border-radius:9px;padding:13px 22px;font-size:14.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .btn-p{background:var(--pri);color:#fff}
 .btn-p:hover{background:#0f7ae0}
@@ -149,7 +152,7 @@ section{padding:60px 24px}
       <div class="brand-txt"><b>SPORTVISION</b><span>PORTAIL</span></div>
     </div>
     <nav class="pub-nav">
-      <a class="nav-link" data-view="catalogue" onclick="go('catalogue')">Nos prestations</a>
+      <a class="nav-link" data-view="catalogue" onclick="go('catalogue')">Nos services</a>
       <a class="nav-link" data-view="realisations" onclick="go('realisations')">Réalisations</a>
       <a class="nav-link" data-view="apropos" onclick="go('apropos')">À propos</a>
       <a class="nav-link" data-view="faq" onclick="go('faq')">FAQ</a>
@@ -162,7 +165,7 @@ section{padding:60px 24px}
     </div>
   </div>
   <nav id="mob-nav" class="mob-nav">
-    <a onclick="go('catalogue')">Nos prestations</a>
+    <a onclick="go('catalogue')">Nos services</a>
     <a onclick="go('realisations')">Réalisations</a>
     <a onclick="go('apropos')">À propos</a>
     <a onclick="go('faq')">FAQ</a>
@@ -181,19 +184,76 @@ section{padding:60px 24px}
           <span class="badge b-blue">Votre espace client SportVision</span>
           <h1 style="margin-top:18px">Votre sport mérite une image à sa hauteur.</h1>
           <p class="muted" style="font-size:17px;max-width:480px;margin-bottom:28px">Photo, vidéo et communication sportive. Configurez votre prestation en quelques minutes et suivez votre projet jusqu'à la livraison.</p>
-          <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px">
             <button class="btn btn-p" onclick="go('configurateur')">Configurer ma prestation</button>
-            <button class="btn btn-o" onclick="go('catalogue')">Découvrir les prestations</button>
+            <button class="btn btn-o" onclick="go('catalogue')">Découvrir les services</button>
+          </div>
+          <a onclick="go(isLoggedIn()?'dashboard':'connexion')">Déjà client ? Accéder à mon espace →</a>
+          <div style="display:flex;gap:28px;margin-top:34px;flex-wrap:wrap">
+            <div><div style="font-family:var(--ff-h);font-weight:700;color:var(--cyan)">Demande</div><div class="faint" style="font-size:12.5px">En quelques minutes</div></div>
+            <div><div style="font-family:var(--ff-h);font-weight:700;color:var(--cyan)">Étude</div><div class="faint" style="font-size:12.5px">Sous 24 heures</div></div>
+            <div><div style="font-family:var(--ff-h);font-weight:700;color:var(--cyan)">Suivi</div><div class="faint" style="font-size:12.5px">Centralisé dans votre espace</div></div>
           </div>
         </div>
         <div class="hero-img">photo sportive — hero</div>
       </div>
     </div>
+
     <section>
       <div class="wrap">
-        <h2 class="sec-title">Prestations principales</h2>
-        <p class="muted" style="margin-bottom:28px">Demande directe ou sur devis selon votre besoin.</p>
+        <h2 class="sec-title" style="text-align:center">Quel est votre projet ?</h2>
+        <p class="muted" style="text-align:center;margin-bottom:32px">Chaque profil a un parcours adapté</p>
+        <div class="grid g3" id="home-journeys"></div>
+      </div>
+    </section>
+
+    <section style="background:var(--bg2)">
+      <div class="wrap">
+        <div class="flex-between" style="margin-bottom:24px">
+          <div>
+            <h2 class="sec-title">Prestations principales</h2>
+            <p class="muted">Demande directe ou sur devis selon votre besoin.</p>
+          </div>
+          <button class="btn btn-o" onclick="go('catalogue')">Voir tout le catalogue</button>
+        </div>
         <div id="home-offers" class="grid g3"><div class="empty">Chargement du catalogue…</div></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2 class="sec-title" style="text-align:center;margin-bottom:36px">Comment ça fonctionne</h2>
+        <div class="grid" id="home-process"></div>
+        <p class="muted" style="text-align:center;max-width:640px;margin:30px auto 0">Prise en charge confirmée sous 24 heures après validation de la demande, du devis et du paiement requis.</p>
+      </div>
+    </section>
+
+    <section style="background:linear-gradient(135deg,var(--bg2),var(--surf))">
+      <div class="wrap grid g2" style="align-items:center">
+        <div>
+          <h2 style="font-size:26px;margin-bottom:14px">Votre projet ne s'arrête pas après la demande.</h2>
+          <p class="muted" style="margin-bottom:20px">Depuis votre espace client, vous suivez chaque étape sans chercher vos informations dans plusieurs e-mails.</p>
+          <div id="home-benefits" style="display:flex;flex-direction:column;gap:10px;margin-bottom:26px"></div>
+          <button class="btn btn-p" onclick="go('inscription')">Créer mon espace client</button>
+          <div class="faint" style="margin-top:10px;font-size:12px">Gratuit • Sans engagement</div>
+        </div>
+        <div class="hero-img" style="aspect-ratio:16/10">aperçu tableau de bord</div>
+      </div>
+    </section>
+
+    <section style="background:var(--bg2)">
+      <div class="wrap">
+        <h2 class="sec-title" style="text-align:center">Ils nous font confiance</h2>
+        <p class="faint" style="text-align:center;font-style:italic;margin-bottom:30px">Témoignages de démonstration</p>
+        <div class="grid g3" id="home-testimonials"></div>
+      </div>
+    </section>
+
+    <section style="text-align:center;padding:70px 24px">
+      <h2 style="font-size:30px;margin-bottom:24px">Votre prochaine prestation commence ici.</h2>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-p" onclick="go('configurateur')">Configurer mon projet</button>
+        <button class="btn btn-o" onclick="go(isLoggedIn()?'rdv':'connexion')">Prendre rendez-vous</button>
       </div>
     </section>
   </section>
@@ -201,7 +261,7 @@ section{padding:60px 24px}
   <!-- CATALOGUE -->
   <section id="scr-catalogue" class="scr">
     <div class="wrap" style="padding-top:50px">
-      <h1 class="sec-title">Nos prestations</h1>
+      <h1 class="sec-title">Nos services</h1>
       <p class="muted" style="margin-bottom:26px">Demande directe ou sur devis selon la prestation.</p>
       <div id="cat-filters" class="filters"></div>
       <div id="cat-offers" class="grid g3"><div class="empty">Chargement…</div></div>
@@ -704,10 +764,56 @@ function offerCardHtml(o){
 let catFilter = 'all';
 const CATEGORIES = [['all','Toutes'],['photo','Photo'],['video','Vidéo'],['pack','Pack'],['tournoi','Tournoi'],['stage','Stage'],['shooting','Shooting'],['drone','Drone'],['veo','Veo'],['contenu','Contenu']];
 
+const HOME_JOURNEYS = [
+  {title:'Je suis un joueur', text:'Créez votre image, développez votre visibilité et conservez les meilleurs moments de votre parcours.', color:'#168BFF', cat:'shooting'},
+  {title:'Je représente un club ou une académie', text:'Commandez une prestation ponctuelle ou échangez avec SportVision sur un accompagnement personnalisé.', color:'#7857FF', cat:'pack'},
+  {title:"J'organise un tournoi ou un stage", text:'Immortalisez votre événement et valorisez vos participants, partenaires et sponsors.', color:'#32D8E6', cat:'tournoi'},
+  {title:'Je suis coach ou préparateur', text:'Mettez en avant votre expertise, vos séances et votre méthode.', color:'#168BFF', cat:'shooting'},
+  {title:'Je représente une entreprise ou une association', text:'Développez une communication sportive professionnelle adaptée à votre activité.', color:'#7857FF', cat:'contenu'},
+  {title:"J'ai un besoin personnalisé", text:'Présentez votre projet et recevez une proposition construite par SportVision.', color:'#32D8E6', cat:null},
+];
+const HOME_PROCESS = [
+  {n:1, label:'Choisissez votre prestation', detail:'Parcourez notre catalogue selon votre besoin.'},
+  {n:2, label:'Configurez votre besoin', detail:"Date, lieu, options : le configurateur s'adapte."},
+  {n:3, label:'Recevez votre devis définitif', detail:'Notre équipe vérifie la faisabilité et le tarif exact.'},
+  {n:4, label:'Validez et payez', detail:"Acceptez le devis et réglez l'acompte en sécurité."},
+  {n:5, label:'Suivez et recevez vos contenus', detail:'Suivez chaque étape et récupérez vos livrables.'},
+];
+const HOME_BENEFITS = ['Demandes plus rapides','Informations préremplies','Suivi des prestations','Documents centralisés','Paiements sécurisés','Livrables disponibles'];
+const HOME_TESTIMONIALS = [
+  {quote:"Un suivi impeccable du premier échange jusqu'à la livraison des photos.", name:'Club fictif A', role:'Académie de football'},
+  {quote:"L'espace client rend tout simple : devis, paiement, livrables, tout est centralisé.", name:'Organisateur fictif', role:'Tournoi régional'},
+  {quote:'Des contenus de qualité professionnelle pour valoriser mon parcours.', name:'Joueur fictif', role:'Joueur amateur'},
+];
+
 async function renderPublicView(view, params){
   if (view === 'home'){
     const offres = await loadCatalogue();
     document.getElementById('home-offers').innerHTML = offres.slice(0,6).map(offerCardHtml).join('') || '<div class="empty">Aucune prestation publiée pour le moment.</div>';
+
+    document.getElementById('home-journeys').innerHTML = HOME_JOURNEYS.map(j=>
+      '<div class="card" style="cursor:pointer" onclick="'+(j.cat?("setCatFilter('"+j.cat+"');go('catalogue')"):"go('configurateur')")+'">'
+      +'<div style="width:40px;height:40px;border-radius:10px;background:'+j.color+';margin-bottom:16px"></div>'
+      +'<h3 style="font-size:17px;margin-bottom:8px">'+j.title+'</h3>'
+      +'<p class="muted" style="font-size:13.5px;margin-bottom:14px">'+j.text+'</p>'
+      +'<span style="color:var(--cyan);font-size:13px;font-weight:700">Découvrir mon parcours →</span></div>'
+    ).join('');
+
+    document.getElementById('home-process').innerHTML = HOME_PROCESS.map(p=>
+      '<div style="text-align:center"><div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--pri),var(--pur));display:flex;align-items:center;justify-content:center;font-family:var(--ff-h);font-weight:700;margin:0 auto 14px">'+p.n+'</div>'
+      +'<p style="font-size:14px;font-weight:700;margin-bottom:6px">'+p.label+'</p>'
+      +'<p class="faint" style="font-size:12.5px">'+p.detail+'</p></div>'
+    ).join('');
+
+    document.getElementById('home-benefits').innerHTML = HOME_BENEFITS.map(b=>
+      '<div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;border-radius:50%;background:var(--cyan);flex-shrink:0"></span><span>'+b+'</span></div>'
+    ).join('');
+
+    document.getElementById('home-testimonials').innerHTML = HOME_TESTIMONIALS.map(t=>
+      '<div class="card"><p style="margin-bottom:16px">« '+t.quote+' »</p>'
+      +'<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--pri),var(--pur))"></div>'
+      +'<div><div style="font-size:13.5px;font-weight:700">'+t.name+'</div><div class="faint" style="font-size:12px">'+t.role+'</div></div></div></div>'
+    ).join('');
   }
   if (view === 'catalogue'){
     const offres = await loadCatalogue();
