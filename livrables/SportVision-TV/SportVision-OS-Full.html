@@ -293,6 +293,8 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   /* Messagerie mobile : contacts panel plein écran par défaut */
   #msg-contacts-panel{width:100%!important;min-width:0!important;border-right:none!important}
   #msg-conv-panel{display:none!important}
+  #msg-shell.msg-conv-active #msg-contacts-panel{display:none!important}
+  #msg-shell.msg-conv-active #msg-conv-panel{display:flex!important}
   :root{--sw:0px}
   .sb{display:flex;position:fixed;left:0;top:0;height:100dvh;z-index:300;width:280px;box-shadow:6px 0 40px rgba(0,0,0,.6);transform:translateX(-100%);transition:transform .22s cubic-bezier(.4,0,.2,1);visibility:hidden}
   .sb.mob-open{transform:translateX(0);visibility:visible}
@@ -9720,7 +9722,7 @@ let _msgMobView='list';  // 'list' | 'conv' (mobile only)
 const ROLE_COLORS={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
 
 function buildMsgShell(){
-  return`<div style="display:flex;height:calc(100dvh - 99px);border:1px solid var(--b1);border-radius:var(--rc);overflow:hidden;background:var(--bg)">
+  return`<div id="msg-shell" style="display:flex;height:calc(100dvh - 109px - env(safe-area-inset-bottom,0px));border:1px solid var(--b1);border-radius:var(--rc);overflow:hidden;background:var(--bg)">
     <!-- Contacts -->
     <div id="msg-contacts-panel" style="width:270px;min-width:270px;border-right:1px solid var(--b1);display:flex;flex-direction:column;background:var(--s2);flex-shrink:0">
       <div style="padding:14px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:10px">
@@ -9865,23 +9867,19 @@ function msgOpenConv(uid){
   _renderMsgContacts(myUid);
   _renderMsgConv(myUid);
   // mobile: afficher la conversation
-  const cp=document.getElementById('msg-contacts-panel');
-  const cv=document.getElementById('msg-conv-panel');
+  const shell=document.getElementById('msg-shell');
   const bb=document.getElementById('msg-back-btn');
   if(window.innerWidth<=768){
-    if(cp)cp.style.display='none';
-    if(cv)cv.style.display='flex';
+    if(shell)shell.classList.add('msg-conv-active');
     if(bb)bb.style.display='';
   }
   document.getElementById('msg-input')?.focus();
 }
 
 function msgShowList(){
-  const cp=document.getElementById('msg-contacts-panel');
-  const cv=document.getElementById('msg-conv-panel');
+  const shell=document.getElementById('msg-shell');
   const bb=document.getElementById('msg-back-btn');
-  if(cp)cp.style.display='flex';
-  if(cv)cv.style.display='none';
+  if(shell)shell.classList.remove('msg-conv-active');
   if(bb)bb.style.display='none';
 }
 
