@@ -9748,28 +9748,32 @@ function buildMsgShell(){
   </div>`;
 }
 
+async function _refreshMsgUnread(uid){
+  try{
+    const unreadMsgs=await sbFetch('messages?select=expediteur_id&destinataire_id=eq.'+uid+'&lue=eq.false').catch(()=>[]);
+    const unreadByUser={};
+    (unreadMsgs||[]).forEach(m=>{if(m.expediteur_id)unreadByUser[m.expediteur_id]=(unreadByUser[m.expediteur_id]||0)+1;});
+    _msgUnread=unreadByUser;
+    _renderMsgContacts(uid);
+  }catch(e){}
+}
+
 async function loadMsg(){
   if(_msgInterval){clearInterval(_msgInterval);_msgInterval=null;}
   const uid=localStorage.getItem('sv_uid');
   if(!uid)return;
   try{
-    const [profiles,unreadMsgs]=await Promise.all([
-      sbFetch('profiles?select=id,prenom,nom,role&order=prenom.asc'),
-      sbFetch('messages?select=expediteur_id&destinataire_id=eq.'+uid+'&lue=eq.false').catch(()=>[]),
-    ]);
+    const profiles=await sbFetch('profiles?select=id,prenom,nom,role&order=prenom.asc');
     _msgProfiles={};
     (profiles||[]).forEach(p=>{
       const n=([p.prenom,p.nom].filter(Boolean).join(' '))||'Membre';
       const ini=((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase()||'?';
       _msgProfiles[p.id]={n,ini,role:p.role};
     });
-    const unreadByUser={};
-    (unreadMsgs||[]).forEach(m=>{if(m.expediteur_id)unreadByUser[m.expediteur_id]=(unreadByUser[m.expediteur_id]||0)+1;});
-    _msgUnread=unreadByUser;
-    _renderMsgContacts(uid);
+    await _refreshMsgUnread(uid);
     _msgConv='team';
     await _renderMsgConv(uid);
-    _msgInterval=setInterval(()=>_renderMsgConv(uid),15000);
+    _msgInterval=setInterval(()=>{_renderMsgConv(uid);_refreshMsgUnread(uid);updateNavBadges(S.role);},15000);
   }catch(e){console.error('loadMsg',e);}
 }
 let _msgUnread={};
@@ -9853,7 +9857,10 @@ async function _renderMsgConv(myUid){
               <button onclick="msgCrTache('${msgTxt}')" title="Créer une tâche" style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.07);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">✓</button>
             </div>
           </div>
-          <div style="font-size:10px;color:var(--t3);margin-${isMe?'right':'left'}:3px">${when}</div>
+          <div style="font-size:10px;color:var(--t3);margin-${isMe?'right':'left'}:3px;display:flex;align-items:center;gap:4px${isMe?';flex-direction:row-reverse':''}">
+            <span>${when}</span>
+            ${isMe&&!isTeam?`<span style="color:${m.lue?'var(--acc)':'var(--t3)'}" title="${m.lue?'Lu':'Envoyé'}">${m.lue?'✓✓':'✓'}</span>`:''}
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -9865,7 +9872,9 @@ function msgOpenConv(uid){
   _msgConv=uid;
   const myUid=localStorage.getItem('sv_uid');
   _renderMsgContacts(myUid);
-  _renderMsgConv(myUid);
+  _renderMsgConv(myUid).then(()=>{
+    setTimeout(()=>{_refreshMsgUnread(myUid);updateNavBadges(S.role);},300);
+  });
   // mobile: afficher la conversation
   const shell=document.getElementById('msg-shell');
   const bb=document.getElementById('msg-back-btn');
@@ -14484,6 +14493,8 @@ async function updateNavBadges(role){
     if(uid){
       const notifs=await sbFetch('notifications?select=id&destinataire_id=eq.'+uid+'&lue=eq.false&type=not.in.(tache,contenu,message)');
       setDot((notifs||[]).length);
+      const unreadMsgs=await sbFetch('messages?select=id&destinataire_id=eq.'+uid+'&lue=eq.false').catch(()=>[]);
+      setBadge('msg',(unreadMsgs||[]).length,'nb-r');
     }
     if(['admin','sec','prod'].includes(role)){
       const pre=await sbFetch('prestations?select=id,statut');
