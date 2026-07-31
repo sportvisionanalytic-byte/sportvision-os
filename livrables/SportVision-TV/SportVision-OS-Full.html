@@ -16562,8 +16562,8 @@ async function loadEquipeEnDirect(){
   const _eqRoleFilter=_eqRole==='prod'?'&role=in.(photo,cm)':'';
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
     sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
-    sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations(id,reference,titre_court,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=in.(acceptée,en_route,sur_place)').catch(()=>[]),
-    sbFetch('prestations_equipe?select=collaborateur_id&statut=in.(acceptée,en_route,sur_place,done)&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
+    sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations(id,reference,titre_court,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
+    sbFetch('prestations_equipe?select=collaborateur_id&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
   ]);
 
