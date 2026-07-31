@@ -729,12 +729,23 @@ section{padding:60px 24px}
 
       <div id="pv-compte" class="pv">
         <h1 style="font-size:24px;margin-bottom:20px">Mon compte</h1>
-        <div class="card" style="max-width:480px">
+        <div class="card" style="max-width:480px;margin-bottom:20px">
+          <h3 style="font-size:15px;margin-bottom:16px">Informations personnelles</h3>
           <div class="field-col" style="margin-top:0">
             <label>Prénom<input type="text" id="cpt-prenom"></label>
             <label>Nom<input type="text" id="cpt-nom"></label>
             <label>Téléphone<input type="tel" id="cpt-tel"></label>
+            <label>E-mail<input type="email" id="cpt-email" disabled style="opacity:.6"></label>
             <button class="btn btn-p" onclick="saveCompte()">Enregistrer</button>
+            <div id="cpt-msg" class="faint" style="font-size:12.5px"></div>
+          </div>
+        </div>
+        <div class="card" style="max-width:480px">
+          <h3 style="font-size:15px;margin-bottom:16px">Sécurité</h3>
+          <div class="field-col" style="margin-top:0">
+            <label>Nouveau mot de passe<input type="password" id="cpt-pass" placeholder="Laisser vide pour ne pas changer"></label>
+            <button class="btn btn-o" onclick="changePassword()">Mettre à jour le mot de passe</button>
+            <div id="cpt-pass-msg" class="err-msg"></div>
           </div>
         </div>
       </div>
@@ -1650,8 +1661,17 @@ async function renderLivrables(){
   el.innerHTML = '<div class="grid g3">' + list.map(l=>
     '<div class="card"><span class="faint" style="font-size:11px;font-weight:700">'+(l.type_livrable||'').toUpperCase()+'</span>'
     +'<div style="font-weight:700;margin:8px 0 4px">'+l.nom+'</div>'
-    +'<div class="faint" style="font-size:13px">'+(l.date_expiration ? ('Expire le '+fmtDate(l.date_expiration)) : '')+'</div></div>'
+    +'<div class="faint" style="font-size:13px;margin-bottom:14px">'+(l.date_expiration ? ('Expire le '+fmtDate(l.date_expiration)) : '')+'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    + (l.lien_url
+        ? '<a class="btn btn-p" href="'+l.lien_url+'" target="_blank" rel="noopener">Ouvrir</a><button class="btn btn-o" onclick="copyLivrableLink(\''+l.lien_url.replace(/'/g,"\\'")+'\')">Copier le lien</button>'
+        : '<span class="faint" style="font-size:12.5px">Lien en préparation</span>')
+    +'</div></div>'
   ).join('') + '</div>';
+}
+
+function copyLivrableLink(url){
+  navigator.clipboard?.writeText(url).then(()=>toast('Lien copié dans le presse-papiers.')).catch(()=>toast('Impossible de copier le lien.'));
 }
 
 let msgConversations = [];
@@ -1770,13 +1790,20 @@ async function submitRdv(){
 
 async function renderCompte(){
   const uid = localStorage.getItem('svp_uid');
-  const r = await sbFetch('client_users?id=eq.'+uid);
-  const cu = r.data && r.data[0];
+  const tok = localStorage.getItem('svp_tok');
+  const [cuRes, userRes] = await Promise.all([
+    sbFetch('client_users?id=eq.'+uid),
+    fetch(SB_URL+'/auth/v1/user', {headers:{apikey:SB_KEY, Authorization:'Bearer '+tok}}).then(r=>r.json()).catch(()=>null),
+  ]);
+  const cu = cuRes.data && cuRes.data[0];
   if (cu){
     document.getElementById('cpt-prenom').value = cu.prenom || '';
     document.getElementById('cpt-nom').value = cu.nom || '';
     document.getElementById('cpt-tel').value = cu.telephone || '';
   }
+  document.getElementById('cpt-email').value = (userRes && userRes.email) || '';
+  document.getElementById('cpt-pass').value = '';
+  document.getElementById('cpt-pass-msg').textContent = '';
 }
 async function saveCompte(){
   const uid = localStorage.getItem('svp_uid');
@@ -1784,9 +1811,21 @@ async function saveCompte(){
   const nom = document.getElementById('cpt-nom').value.trim();
   const telephone = document.getElementById('cpt-tel').value.trim();
   const r = await sbFetch('client_users?id=eq.'+uid, {method:'PATCH', body:{ prenom, nom, telephone }});
-  if (!r.ok){ toast('Enregistrement impossible.'); return; }
+  if (!r.ok){ document.getElementById('cpt-msg').textContent = 'Enregistrement impossible.'; return; }
   localStorage.setItem('svp_prenom', prenom);
   toast('Modifications enregistrées.');
+}
+async function changePassword(){
+  const pass = document.getElementById('cpt-pass').value;
+  const msgEl = document.getElementById('cpt-pass-msg');
+  msgEl.textContent = '';
+  if (!pass) return;
+  if (pass.length < 6){ msgEl.textContent = 'Le mot de passe doit contenir au moins 6 caractères.'; return; }
+  const tok = localStorage.getItem('svp_tok');
+  const res = await fetch(SB_URL+'/auth/v1/user', {method:'PUT', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':'application/json'}, body:JSON.stringify({password:pass})});
+  if (!res.ok){ msgEl.textContent = 'Impossible de mettre à jour le mot de passe.'; return; }
+  document.getElementById('cpt-pass').value = '';
+  toast('Mot de passe mis à jour.');
 }
 
 // ── INIT ──
