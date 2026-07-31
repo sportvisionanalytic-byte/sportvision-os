@@ -11046,7 +11046,7 @@ async function soumettreQuiz(id){
   if(insId){
     await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{score_quiz:score,quiz_passe:pass}}).catch(()=>{});
     if(pass&&bonusXp>0&&!alreadyPassed){
-      await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:uid,montant:bonusXp,type:'quiz',source_id:insId,source_type:'formation_inscriptions',description:'Quiz réussi : '+(f?.titre||id),attribue_par:uid}}).catch(()=>{});
+      await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:uid,montant:bonusXp,type:'bonus',source_id:insId,source_type:'formation_inscriptions',description:'Quiz réussi : '+(f?.titre||id),attribue_par:uid}}).catch(()=>{});
       try{const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');const cur=pr?.[0]?.xp||0;await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+bonusXp}});}catch(e){}
     }
   }
