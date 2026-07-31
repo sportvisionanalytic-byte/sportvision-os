@@ -133,6 +133,19 @@ section{padding:60px 24px}
 .msg-bubble{max-width:70%;border-radius:12px;padding:12px 14px;margin-bottom:10px}
 .msg-mine{margin-left:auto;background:var(--pri)}
 .msg-theirs{background:var(--bg2)}
+.msg-shell{display:grid;grid-template-columns:280px 1fr;gap:0;background:var(--surf);border:1px solid var(--bd);border-radius:16px;overflow:hidden;min-height:480px}
+.msg-conv-list{border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto}
+.msg-conv-item{padding:16px 18px;cursor:pointer;border-bottom:1px solid var(--bd)}
+.msg-conv-item.active{background:rgba(22,139,255,.08)}
+.msg-panel{padding:22px;display:flex;flex-direction:column;min-height:480px}
+.msg-back-mobile{display:none;margin-bottom:14px}
+@media(max-width:760px){
+  .msg-title-desktop{display:none}
+  .msg-shell{grid-template-columns:1fr;min-height:0}
+  .msg-conv-list.msg-hide-mobile{display:none}
+  .msg-panel.msg-hide-mobile{display:none}
+  .msg-back-mobile{display:block}
+}
 @media(max-width:640px){
   .msg-bubble{max-width:85%}
   .cfg-wrap{padding:24px 16px 90px}
@@ -669,11 +682,18 @@ section{padding:60px 24px}
       </div>
 
       <div id="pv-messagerie" class="pv">
-        <h1 style="font-size:24px;margin-bottom:20px">Messagerie</h1>
-        <div id="msg-thread" style="max-width:640px;display:flex;flex-direction:column;margin-bottom:20px"></div>
-        <div style="display:flex;gap:10px;max-width:640px">
-          <input type="text" id="msg-input" placeholder="Écrire un message...">
-          <button class="btn btn-p" onclick="sendMessage()">Envoyer</button>
+        <h1 style="font-size:24px;margin-bottom:20px" class="msg-title-desktop">Messagerie</h1>
+        <div class="msg-shell">
+          <div id="msg-conversations" class="msg-conv-list"></div>
+          <div class="msg-panel">
+            <a class="msg-back-mobile" onclick="msgBackToList()">← Retour aux conversations</a>
+            <div id="msg-panel-title" style="font-weight:700;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--bd)"></div>
+            <div id="msg-thread"></div>
+            <div style="display:flex;gap:10px;margin-top:16px">
+              <input type="text" id="msg-input" placeholder="Écrire un message...">
+              <button class="btn btn-p" onclick="sendMessage()">Envoyer</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1597,9 +1617,65 @@ async function renderLivrables(){
   ).join('') + '</div>';
 }
 
+let msgConversations = [];
+let msgActiveConv = null;
+
 async function renderMessagerie(){
   const clientId = localStorage.getItem('svp_client_id');
-  const r = await sbFetch('messages_client?client_id=eq.'+clientId+'&order=created_at.asc');
+  const [prestations, allMsgs] = await Promise.all([
+    sbFetch('client_prestations?client_id=eq.'+clientId+'&select=id,reference,type_prestation&order=created_at.desc'),
+    sbFetch('messages_client?client_id=eq.'+clientId+'&select=prestation_id,contenu,created_at,auteur_type,lu&order=created_at.desc'),
+  ]);
+  const msgs = allMsgs.data || [];
+  const byConv = {};
+  msgs.forEach(m=>{
+    const key = m.prestation_id || 'general';
+    if (!byConv[key]) byConv[key] = [];
+    byConv[key].push(m);
+  });
+  msgConversations = [{ id: null, key: 'general', label: 'Discussion générale' }]
+    .concat((prestations.data||[]).map(p=>({ id: p.id, key: p.id, label: p.type_prestation || p.reference || 'Prestation' })));
+  msgConversations.forEach(c=>{
+    const list = byConv[c.key] || [];
+    c.last = list[0] || null;
+    c.unread = list.filter(m=>m.auteur_type==='staff' && !m.lu).length;
+  });
+
+  // Retour à la vue liste sur mobile à chaque entrée dans la messagerie
+  document.getElementById('msg-conversations').classList.remove('msg-hide-mobile');
+  document.querySelector('#pv-messagerie .msg-panel').classList.add('msg-hide-mobile');
+
+  renderConvList();
+  await renderThread();
+}
+
+function renderConvList(){
+  document.getElementById('msg-conversations').innerHTML = msgConversations.map(c=>
+    '<div class="msg-conv-item'+(c.id===msgActiveConv?' active':'')+'" onclick="selectConversation('+(c.id===null?'null':"'"+c.id+"'")+')">'
+    +'<div style="font-weight:700;font-size:14px">'+c.label+(c.unread?(' <span class="badge b-blue" style="margin-left:6px">'+c.unread+'</span>'):'')+'</div>'
+    +'<div class="faint" style="font-size:12.5px;margin-top:4px">'+(c.last ? (c.last.contenu||'').slice(0,40) : 'Aucun message')+'</div></div>'
+  ).join('');
+}
+
+function selectConversation(id){
+  msgActiveConv = id;
+  renderConvList();
+  renderThread();
+  document.getElementById('msg-conversations').classList.add('msg-hide-mobile');
+  document.querySelector('#pv-messagerie .msg-panel').classList.remove('msg-hide-mobile');
+}
+
+function msgBackToList(){
+  document.getElementById('msg-conversations').classList.remove('msg-hide-mobile');
+  document.querySelector('#pv-messagerie .msg-panel').classList.add('msg-hide-mobile');
+}
+
+async function renderThread(){
+  const clientId = localStorage.getItem('svp_client_id');
+  const conv = msgConversations.find(c=>c.id===msgActiveConv) || msgConversations[0];
+  document.getElementById('msg-panel-title').textContent = conv ? conv.label : '';
+  const filter = msgActiveConv===null ? 'prestation_id=is.null' : 'prestation_id=eq.'+msgActiveConv;
+  const r = await sbFetch('messages_client?client_id=eq.'+clientId+'&'+filter+'&order=created_at.asc');
   const list = r.data || [];
   const el = document.getElementById('msg-thread');
   el.innerHTML = list.length ? list.map(m=>
@@ -1614,10 +1690,10 @@ async function sendMessage(){
   if (!contenu) return;
   const clientId = localStorage.getItem('svp_client_id');
   const uid = localStorage.getItem('svp_uid');
-  const r = await sbFetch('messages_client', {method:'POST', body:{ client_id: clientId, auteur_type:'client', auteur_client_id: uid, contenu }});
+  const r = await sbFetch('messages_client', {method:'POST', body:{ client_id: clientId, prestation_id: msgActiveConv, auteur_type:'client', auteur_client_id: uid, contenu }});
   if (!r.ok){ toast('Message non envoyé.'); return; }
   input.value = '';
-  renderMessagerie();
+  await renderThread();
 }
 
 async function renderRdv(){
