@@ -2,6 +2,6 @@
   publish = "."
 
 [[redirects]]
-  from = "/"
+  from = "/*"
   to = "/SportVision-Portail.html"
   status = 200
