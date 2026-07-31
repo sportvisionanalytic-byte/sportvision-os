@@ -622,6 +622,7 @@ section{padding:60px 24px}
         <a class="side-link" data-view="notifications" onclick="go('notifications')">Notifications</a>
         <a class="side-link" data-view="rdv" onclick="go('rdv')">Rendez-vous</a>
         <a class="side-link" data-view="compte" onclick="go('compte')">Mon compte</a>
+        <a class="side-link" data-view="organisation" onclick="go('organisation')">Mon organisation</a>
       </nav>
       <div style="margin-top:auto;padding-top:14px;border-top:1px solid var(--bd)">
         <a onclick="go('aide')" style="font-size:13.5px;font-weight:600;display:block;margin-bottom:10px">Aide</a>
@@ -749,6 +750,28 @@ section{padding:60px 24px}
           </div>
         </div>
       </div>
+
+      <div id="pv-organisation" class="pv">
+        <a onclick="go('compte')">← Retour au compte</a>
+        <h1 style="font-size:24px;margin:14px 0 20px">Mon organisation</h1>
+        <div class="card" style="max-width:600px;margin-bottom:20px">
+          <div class="grid g2" style="margin-bottom:14px">
+            <label>Nom de l'organisation<input type="text" id="org-nom"></label>
+            <label>Sport<input type="text" id="org-sport"></label>
+          </div>
+          <div class="grid g2" style="margin-bottom:14px">
+            <label>Ville<input type="text" id="org-ville"></label>
+            <label>Code postal<input type="text" id="org-cp"></label>
+          </div>
+          <label>Adresse<input type="text" id="org-adresse"></label>
+          <button class="btn btn-p" style="margin-top:16px" onclick="saveOrganisation()">Enregistrer</button>
+        </div>
+        <div class="card" style="max-width:600px">
+          <span class="faint" style="font-size:12px;font-weight:700">MEMBRES</span>
+          <div id="org-members" style="margin-top:10px"></div>
+          <p class="faint" style="font-size:12px;margin-top:16px">La gestion multi-utilisateurs avancée (invitations, droits) sera disponible avec SportVision Club+.</p>
+        </div>
+      </div>
     </div>
 
     <div id="portal-more-sheet" class="portal-more-sheet" onclick="toggleMoreSheet(event)">
@@ -761,6 +784,7 @@ section{padding:60px 24px}
         <a onclick="go('notifications')">Notifications</a>
         <a onclick="go('rdv')">Rendez-vous</a>
         <a onclick="go('compte')">Mon compte</a>
+        <a onclick="go('organisation')">Mon organisation</a>
         <a onclick="go('aide')">Aide</a>
         <a onclick="doLogout()" style="color:var(--er)">Déconnexion</a>
       </div>
@@ -946,8 +970,8 @@ function toast(msg){
 }
 
 // ── ROUTER ──
-const PORTAL_VIEWS = ['dashboard','demandes','demande-detail','devis','contrats','factures','messagerie','livrables','notifications','rdv','compte'];
-const PORTAL_TITLES = {dashboard:'Tableau de bord', demandes:'Mes demandes', 'demande-detail':'Demande', devis:'Devis', contrats:'Contrats', factures:'Factures', messagerie:'Messagerie', livrables:'Livrables', notifications:'Notifications', rdv:'Rendez-vous', compte:'Mon compte'};
+const PORTAL_VIEWS = ['dashboard','demandes','demande-detail','devis','contrats','factures','messagerie','livrables','notifications','rdv','compte','organisation'];
+const PORTAL_TITLES = {dashboard:'Tableau de bord', demandes:'Mes demandes', 'demande-detail':'Demande', devis:'Devis', contrats:'Contrats', factures:'Factures', messagerie:'Messagerie', livrables:'Livrables', notifications:'Notifications', rdv:'Rendez-vous', compte:'Mon compte', organisation:'Mon organisation'};
 const BOTTOMNAV_MATCH = {dashboard:'dashboard', demandes:'demandes', 'demande-detail':'demandes', livrables:'livrables'};
 let state = { params:{} };
 
@@ -1450,6 +1474,7 @@ async function renderPortalView(view, params){
   if (view === 'messagerie') await renderMessagerie();
   if (view === 'rdv') await renderRdv();
   if (view === 'compte') await renderCompte();
+  if (view === 'organisation') await renderOrganisation();
 }
 
 function statutBadge(statut){
@@ -1826,6 +1851,37 @@ async function changePassword(){
   if (!res.ok){ msgEl.textContent = 'Impossible de mettre à jour le mot de passe.'; return; }
   document.getElementById('cpt-pass').value = '';
   toast('Mot de passe mis à jour.');
+}
+
+async function renderOrganisation(){
+  const uid = localStorage.getItem('svp_uid');
+  const [orgRes, membersRes] = await Promise.all([
+    sbFetch('client_organisation'),
+    sbFetch('client_organisation_members'),
+  ]);
+  const org = orgRes.data && orgRes.data[0];
+  if (org){
+    document.getElementById('org-nom').value = org.nom || '';
+    document.getElementById('org-sport').value = org.sport || '';
+    document.getElementById('org-ville').value = org.ville || '';
+    document.getElementById('org-cp').value = org.code_postal || '';
+    document.getElementById('org-adresse').value = org.adresse || '';
+  }
+  const members = membersRes.data || [];
+  document.getElementById('org-members').innerHTML = members.length ? members.map(m=>
+    '<div class="flex-between" style="padding:10px 0;border-bottom:1px solid var(--bd)"><span>'+([m.prenom,m.nom].filter(Boolean).join(' ')||'Membre')+'</span>'
+    +(m.id===uid ? '<span class="faint" style="font-size:12px">Vous</span>' : '')+'</div>'
+  ).join('') : '<div class="empty" style="padding:16px">Aucun membre trouvé.</div>';
+}
+async function saveOrganisation(){
+  const p_nom = document.getElementById('org-nom').value.trim();
+  const p_sport = document.getElementById('org-sport').value.trim();
+  const p_ville = document.getElementById('org-ville').value.trim();
+  const p_code_postal = document.getElementById('org-cp').value.trim();
+  const p_adresse = document.getElementById('org-adresse').value.trim();
+  const r = await sbRpc('client_update_organisation', { p_nom, p_ville, p_code_postal, p_adresse, p_sport });
+  if (!r.ok){ toast('Enregistrement impossible.'); return; }
+  toast('Organisation mise à jour.');
 }
 
 // ── INIT ──
