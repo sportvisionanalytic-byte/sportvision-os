@@ -3697,7 +3697,7 @@ async function loadProdDash(){
     const [preRaw,kitsRaw,incRaw,profRaw,remRaw]=await Promise.all([
       sbFetch('prestations?select=id,statut,reference,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,role))'),
       sbFetch('kits?select=id,statut,nom,type_kit'),
-      sbFetch('incidents?select=id,type,description,gravite,statut,prestation_id,created_at,prestations(reference,clients(nom))&statut=not.in.(résolu,clôturé)&order=created_at.desc&limit=8'),
+      sbFetch('incidents?select=id,type_incident,description,niveau,cloture,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
       sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=nom.asc'),
       sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
     ]);
@@ -3746,7 +3746,7 @@ async function loadProdDash(){
     pre.filter(p=>['médias_à_transférer','production_terminée'].includes(p.statut)).slice(0,2)
        .forEach(p=>prioItems.push({lvl:'wa',txt:`Médias non transférés : ${p.clients?.nom||'—'}`,action:`switchView('media')`}));
     livrablesAValider.slice(0,2).forEach(p=>prioItems.push({lvl:'wa',txt:`Livrable à valider : ${p.clients?.nom||'—'}`,action:`modalDetailById('${p.id}')`}));
-    inc.filter(al=>al.gravite==='critique').slice(0,2).forEach(al=>prioItems.push({lvl:'er',txt:`Incident critique : ${al.type||al.description?.slice(0,40)||'—'}`,action:`switchView('incidents')`}));
+    inc.filter(al=>al.niveau==='critique').slice(0,2).forEach(al=>prioItems.push({lvl:'er',txt:`Incident critique : ${al.type_incident||al.description?.slice(0,40)||'—'}`,action:`switchView('incidents')`}));
     const elPrio=document.getElementById('prod-dash-priorite');
     const elPrioNb=document.getElementById('prod-prio-nb');
     const elPrioReal=document.getElementById('prod-prio-real');
@@ -4161,7 +4161,7 @@ async function loadProdJourJ(){
   try{
     const [preRaw,incRaw]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom,telephone,role))&date_prestation=eq.'+today+'&statut=not.in.(annulée,refusée,livrée,clôturée)&order=heure_debut.asc'),
-      sbFetch('incidents?select=id,type,gravite,statut&statut=not.in.(résolu,clôturé)'),
+      sbFetch('incidents?select=id,type_incident,niveau,cloture&cloture=eq.false'),
     ]);
     const pre=Array.isArray(preRaw)?preRaw:[];
     const inc=Array.isArray(incRaw)?incRaw:[];
@@ -5730,9 +5730,9 @@ async function exportProdRapportCSV(){
       (Array.isArray(d)?d:[]).forEach(k=>rows.push([k.nom||'',k.type_kit||'',k.statut||'',k.valeur||'',k.description||'']));
       dlCSV(`rapport-kits-${new Date().toISOString().slice(0,10)}.csv`,rows);
     } else if(type==='incidents'){
-      const d=await sbFetch('incidents?select=titre,niveau,cloture,date_incident,description,prestations(reference)&order=date_incident.desc&limit=500');
-      const rows=[['Date','Titre','Niveau','Prestation','Clôturé']];
-      (Array.isArray(d)?d:[]).forEach(i=>rows.push([i.date_incident||'',i.titre||'',i.niveau||'',i.prestations?.reference||'',i.cloture?'Oui':'Non']));
+      const d=await sbFetch('incidents?select=niveau,cloture,date_incident,description,prestations(reference)&order=date_incident.desc&limit=500');
+      const rows=[['Date','Description','Niveau','Prestation','Clôturé']];
+      (Array.isArray(d)?d:[]).forEach(i=>rows.push([i.date_incident||'',i.description||'',i.niveau||'',i.prestations?.reference||'',i.cloture?'Oui':'Non']));
       dlCSV(`rapport-incidents-${new Date().toISOString().slice(0,10)}.csv`,rows);
     }
   }catch(e){toast('Erreur lors de l\'export.','er');}
@@ -5816,16 +5816,16 @@ async function loadProdRapport(type){
         </tbody></table></div>
       </div>`;
     } else if(type==='incidents'){
-      const data=await sbFetch('incidents?select=id,titre,gravite,statut,cloture,created_at,prestations(reference,clients(nom))&order=created_at.desc&limit=50');
+      const data=await sbFetch('incidents?select=id,type_incident,description,niveau,cloture,created_at,prestations(reference,clients(nom))&order=created_at.desc&limit=50');
       const list=Array.isArray(data)?data:[];
       const open=list.filter(i=>!i.cloture).length;
       el.innerHTML=`<div class="cd">
         <div class="cd-h"><div class="cd-t">${titles[type]} — ${open} ouverts / ${list.length} total</div></div>
-        <div class="tw"><table><thead><tr><th>Titre</th><th>Prestation</th><th>Gravité</th><th>Date</th><th>Statut</th></tr></thead><tbody>
+        <div class="tw"><table><thead><tr><th>Description</th><th>Prestation</th><th>Niveau</th><th>Date</th><th>Statut</th></tr></thead><tbody>
           ${list.map(i=>`<tr>
-            <td class="tp">${i.titre||'—'}</td>
+            <td class="tp">${i.description||i.type_incident||'—'}</td>
             <td class="tm">${i.prestations?.reference||'—'} ${i.prestations?.clients?.nom?'· '+i.prestations.clients.nom:''}</td>
-            <td><span style="font-weight:700;color:${i.gravite==='critique'?'var(--er)':i.gravite==='élevé'?'var(--wa)':'var(--t2)'}">${i.gravite||'—'}</span></td>
+            <td><span style="font-weight:700;color:${i.niveau==='critique'?'var(--er)':i.niveau==='important'?'var(--wa)':'var(--t2)'}">${i.niveau||'—'}</span></td>
             <td>${i.created_at?new Date(i.created_at).toLocaleDateString('fr-FR'):'—'}</td>
             <td><span class="bd ${i.cloture?'ba':'br'}"><span class="bd-d"></span>${i.cloture?'Clôturé':'Ouvert'}</span></td>
           </tr>`).join('')}
@@ -16561,7 +16561,7 @@ async function loadEquipeEnDirect(){
   const _eqRole=localStorage.getItem('sv_role');
   const _eqRoleFilter=_eqRole==='prod'?'&role=in.(photo,cm)':'';
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role,statut,photo_url'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
+    sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
     sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations(id,reference,titre_court,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=in.(acceptée,en_route,sur_place)').catch(()=>[]),
     sbFetch('prestations_equipe?select=collaborateur_id&statut=in.(acceptée,en_route,sur_place,done)&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
@@ -16615,7 +16615,7 @@ async function loadEquipeEnDirect(){
     const email=c.email||'';
     return`<div class="cd" style="padding:14px 16px;border-left:3px solid ${statusColor}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        ${c.photo_url?`<img src="${c.photo_url}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+        ${c.avatar_url?`<img src="${c.avatar_url}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">`
           :`<div style="width:38px;height:38px;border-radius:50%;background:${rclr}22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${rclr};flex-shrink:0">${ini.toUpperCase()}</div>`}
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:13px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nom}</div>
