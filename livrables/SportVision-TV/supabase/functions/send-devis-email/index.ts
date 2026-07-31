@@ -154,14 +154,14 @@ serve(async (req) => {
     ${d.notes ? `<div style="margin:0 36px 24px;background:#F5F7FF;border-radius:10px;padding:16px 20px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Notes & conditions</div><div style="font-size:12.5px;color:#555E73;line-height:1.7">${d.notes}</div></div>` : ""}
 
     <!-- Footer -->
-    <div style="border-top:1px solid #E8EBF4;padding:20px 36px;display:flex;justify-content:space-between;align-items:center;background:#FAFBFD">
-      <div style="font-size:11px;color:#8891A8;line-height:1.6">
-        Devis valable ${d.validite_jours || 30} jours.<br>
-        Pour accepter : répondre avec la mention "Bon pour accord".
+    <div style="border-top:1px solid #E8EBF4;padding:20px 36px;background:#FAFBFD">
+      <div style="font-size:11px;color:#8891A8;line-height:1.6;margin-bottom:14px">
+        Devis valable ${d.validite_jours || 30} jours. Pour accepter : répondre avec la mention "Bon pour accord".
       </div>
-      <div style="font-size:11px;color:#8891A8;text-align:right">
-        SportVision / Elkana Group<br>
-        Villeneuve-la-Guyard
+      <div style="font-size:10.5px;color:#8891A8;line-height:1.6;border-top:1px solid #E8EBF4;padding-top:12px">
+        SportVision — Elkana Group, SAS — 4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>
+        SIREN 105 173 124 · SIRET 105 173 124 00014 · RCS Melun · APE 74.20Z<br>
+        TVA intracommunautaire : FR15 105 173 124
       </div>
     </div>
   </div>
