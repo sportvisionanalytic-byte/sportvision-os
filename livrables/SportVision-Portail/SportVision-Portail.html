@@ -635,11 +635,25 @@ section{padding:60px 24px}
 
       <div id="pv-dashboard" class="pv">
         <h1 style="font-size:26px;margin-bottom:6px">Bonjour<span id="dash-prenom"></span>,</h1>
-        <p class="muted" style="margin-bottom:26px">Retrouvez ici le suivi de vos projets SportVision.</p>
-        <div class="grid g3">
+        <p class="muted" style="margin-bottom:22px">Retrouvez ici le suivi de vos projets SportVision.</p>
+
+        <div id="dash-next-card"></div>
+
+        <div class="grid g3" style="margin:22px 0">
           <div class="card"><div class="faint" style="font-size:12px;font-weight:700">DEMANDES</div><div id="dash-count-demandes" style="font-size:28px;font-weight:700;font-family:var(--ff-h);margin-top:6px">—</div></div>
           <div class="card"><div class="faint" style="font-size:12px;font-weight:700">DEVIS EN ATTENTE</div><div id="dash-count-devis" style="font-size:28px;font-weight:700;font-family:var(--ff-h);margin-top:6px">—</div></div>
           <div class="card"><div class="faint" style="font-size:12px;font-weight:700">FACTURES À RÉGLER</div><div id="dash-count-factures" style="font-size:28px;font-weight:700;font-family:var(--ff-h);margin-top:6px">—</div></div>
+        </div>
+
+        <div class="grid g2">
+          <div>
+            <h3 style="font-size:16px;margin-bottom:12px">À faire</h3>
+            <div id="dash-todos"></div>
+          </div>
+          <div>
+            <h3 style="font-size:16px;margin-bottom:12px">Messages récents</h3>
+            <div id="dash-messages"></div>
+          </div>
         </div>
       </div>
 
@@ -1449,14 +1463,37 @@ function fmtDate(s){ return s ? new Date(s).toLocaleDateString('fr-FR',{day:'2-d
 async function renderDashboard(){
   document.getElementById('dash-prenom').textContent = ' ' + (localStorage.getItem('svp_prenom')||'');
   const clientId = localStorage.getItem('svp_client_id');
-  const [dem, dev, fac] = await Promise.all([
+  const today = new Date().toISOString().slice(0,10);
+  const [dem, dev, fac, next, msgs] = await Promise.all([
     sbFetch('client_prestations?client_id=eq.'+clientId+'&select=id'),
-    sbFetch('client_devis?client_id=eq.'+clientId+'&statut=eq.envoyé&select=id'),
-    sbFetch('client_factures?client_id=eq.'+clientId+'&statut=eq.emise&select=id'),
+    sbFetch('client_devis?client_id=eq.'+clientId+'&statut=eq.envoyé&select=id,numero'),
+    sbFetch('client_factures?client_id=eq.'+clientId+'&statut=eq.emise&select=id,numero'),
+    sbFetch('client_prestations?client_id=eq.'+clientId+'&date_prestation=gte.'+today+'&order=date_prestation.asc&limit=1'),
+    sbFetch('messages_client?client_id=eq.'+clientId+'&auteur_type=eq.staff&order=created_at.desc&limit=3'),
   ]);
   document.getElementById('dash-count-demandes').textContent = (dem.data||[]).length;
   document.getElementById('dash-count-devis').textContent = (dev.data||[]).length;
   document.getElementById('dash-count-factures').textContent = (fac.data||[]).length;
+
+  const n = next.data && next.data[0];
+  document.getElementById('dash-next-card').innerHTML = n
+    ? '<div class="card flex-between"><div><span class="faint" style="font-size:12px;font-weight:700">PROCHAINE PRESTATION</span>'
+      +'<h3 style="font-size:18px;margin:8px 0 4px">'+(n.type_prestation||'Prestation')+'</h3>'
+      +'<div class="muted" style="font-size:13.5px">'+fmtDate(n.date_prestation)+' · '+(n.lieu||'—')+'</div></div>'
+      +'<button class="btn btn-p" onclick="go(\'demande-detail\',{id:\''+n.id+'\'})">Voir le détail</button></div>'
+    : '';
+
+  const todos = [];
+  (dev.data||[]).forEach(d=>todos.push({label:'Répondre au devis '+d.numero, onClick:"go('devis')"}));
+  (fac.data||[]).forEach(f=>todos.push({label:'Régler la facture '+f.numero, onClick:"go('factures')"}));
+  document.getElementById('dash-todos').innerHTML = todos.length
+    ? todos.map(t=>'<div class="row-item flex-between" onclick="'+t.onClick+'"><span>'+t.label+'</span><span style="color:var(--cyan);font-size:13px;font-weight:700">Ouvrir →</span></div>').join('')
+    : '<div class="empty" style="padding:20px">Rien en attente, tout est à jour.</div>';
+
+  const ml = msgs.data || [];
+  document.getElementById('dash-messages').innerHTML = ml.length
+    ? ml.map(m=>'<div class="row-item" onclick="go(\'messagerie\')">'+((m.contenu||'').slice(0,70))+'</div>').join('')
+    : '<div class="empty" style="padding:20px">Aucun message récent.</div>';
 }
 
 async function renderDemandes(){
@@ -1682,6 +1719,13 @@ async function renderThread(){
     '<div class="msg-bubble '+(m.auteur_type==='client'?'msg-mine':'msg-theirs')+'">'+m.contenu+'</div>'
   ).join('') : '<div class="empty">Aucun message pour le moment. Écrivez à SportVision ci-dessous.</div>';
   el.scrollTop = el.scrollHeight;
+
+  const unread = list.filter(m=>m.auteur_type==='staff' && !m.lu);
+  if (unread.length){
+    await Promise.all(unread.map(m=>sbRpc('client_mark_message_read', { p_message_id: m.id })));
+    if (conv) conv.unread = 0;
+    renderConvList();
+  }
 }
 
 async function sendMessage(){
