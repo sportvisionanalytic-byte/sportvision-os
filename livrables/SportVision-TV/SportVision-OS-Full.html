@@ -7545,7 +7545,7 @@ async function attribuerKitCollaborateur(kitId){
 
 async function libererKitCollaborateur(kitId,resaId){
   try{
-    await sbFetch('kit_reservations?id=eq.'+resaId,{method:'PATCH',body:{statut:'retourné',heure_retour_reel:new Date().toISOString()}});
+    await sbFetch('kit_reservations?id=eq.'+resaId,{method:'PATCH',body:{statut:'retourné',heure_retour_reelle:new Date().toISOString()}});
     await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'disponible'}}).catch(()=>{});
     closeModal();
     toast('Attribution annulée — kit libéré.','ok');
