@@ -5795,7 +5795,7 @@ async function loadProdRapport(type){
       const data=await sbFetch('kits?select=id,nom,type_kit,statut,valeur,description&order=type_kit.asc,nom.asc');
       const list=Array.isArray(data)?data:[];
       const dispo=list.filter(k=>k.statut==='disponible').length;
-      const sortis=list.filter(k=>k.statut==='en_sortie'||k.statut==='réservé').length;
+      const sortis=list.filter(k=>k.statut==='sorti'||k.statut==='réservé').length;
       const valTot=list.reduce((s,k)=>s+(k.valeur||0),0);
       el.innerHTML=`<div class="cd">
         <div class="cd-h"><div class="cd-t">${titles[type]} — ${list.length} références</div>
@@ -5811,7 +5811,7 @@ async function loadProdRapport(type){
             <td>${k.type_kit||'—'}</td>
             <td class="tm">${k.valeur?k.valeur.toLocaleString('fr-FR')+' €':'—'}</td>
             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k.description||'—'}</td>
-            <td><span class="bd ${k.statut==='disponible'?'ba':k.statut==='en_sortie'?'bb':'bw'}"><span class="bd-d"></span>${k.statut||'—'}</span></td>
+            <td><span class="bd ${k.statut==='disponible'?'ba':k.statut==='sorti'?'bb':'bw'}"><span class="bd-d"></span>${k.statut||'—'}</span></td>
           </tr>`).join('')}
         </tbody></table></div>
       </div>`;
