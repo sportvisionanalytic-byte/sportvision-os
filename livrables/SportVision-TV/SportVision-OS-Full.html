@@ -10089,6 +10089,20 @@ let FORMATIONS_CATALOG=[
     {titre:'Exports, formats réseaux sociaux, livraison express et contrôle qualité',lecons:['Choisir le bon format','Paramètres d\'export vidéo','Export photo','Workflow express','Check-list qualité','Ressources & cas pratique']},
     {titre:'Contrôle client, progression par étoiles et certification finale',lecons:['Auto-contrôle avant remise','Système d\'étoiles','Feedback et correction','Spécialisation et évolution','Certification SportVision','Ressources & cas pratique']},
   ],certification:{id:'cert-photo-video-complet',nom:'Certification Photographe-Vidéaste Sportif Complet',validite_mois:24,badge:'🎬'},statut:'publiée'},
+  {id:'cert-responsable-production-complet',titre:'Responsable Production Complet',categorie:'Certification complète',icone:'🧭',niveau:'Complet',type:'hybride',duree:'42h',xp:750,formateur:'Fouka',obligatoire:false,minGrade:3,description:'Parcours complet et autonome pour piloter la production SportVision : SportVision OS, planning, management d\'équipe, kits et matériel, gestion de crise, contrôle qualité, coordination inter-pôles, KPI et croissance jusqu\'à 15 collaborateurs. 12 modules, cours complets, cas pratiques et quiz. Débloqué à partir de 3 étoiles.',modules:[
+    {titre:'Comprendre SportVision et le rôle du Responsable Production',lecons:['La promesse opérationnelle de SportVision','Le circuit d\'une prestation','Les quatre responsabilités centrales','La posture attendue','Limites du poste','Ressources & cas pratique']},
+    {titre:'Maîtriser SportVision OS et le pipeline de production',lecons:['SportVision OS comme centre de commande','Structure d\'une fiche prestation','Pipeline recommandé','Vues et filtres utiles','Discipline de mise à jour','Ressources & cas pratique']},
+    {titre:'Planifier les prestations et affecter les bons profils',lecons:['Collecter les disponibilités','Évaluer la charge réelle','Système d\'étoiles et complexité','Priorités de planification','Plan A, B et C','Ressources & cas pratique']},
+    {titre:'Manager, communiquer et faire progresser l\'équipe',lecons:['La consigne opérationnelle','Feedback rapide après mission','Évaluation des étoiles','Conflits et tensions','Construire une équipe responsable','Ressources & cas pratique']},
+    {titre:'Intégrer et former un nouveau photographe-vidéaste',lecons:['Pré-onboarding','Semaine 1 : culture et procédures','Semaine 2 : technique et matériel','Semaine 3 : postproduction et délai','Semaine 4 : validation et première mission','Ressources & cas pratique']},
+    {titre:'Gérer les kits, le matériel, la Veo et le drone',lecons:['Inventaire et identification','Check-list de sortie','Retour et maintenance','Veo','Drone','Incident matériel','Ressources & cas pratique']},
+    {titre:'Sécuriser chaque prestation avec la méthode SportVision Ready',lecons:['La notion de prêt','Revue à 72 et 48 heures','Brief terrain','Jour J','Preuve de préparation','Ressources & cas pratique']},
+    {titre:'Gérer les urgences, les incidents et la continuité de service',lecons:['Méthode I-S-R-I-D-P','Absence ou retard','Panne ou perte de fichiers','Changement client','Rapport d\'incident et retour d\'expérience','Ressources & cas pratique']},
+    {titre:'Superviser la postproduction express et le contrôle qualité',lecons:['Sécurisation des fichiers','Délais de production','Contrôle photo','Contrôle vidéo','Corrections efficaces','Ressources & cas pratique']},
+    {titre:'Coordonner la secrétaire, les community managers et la direction',lecons:['Qui a besoin de quoi ?','Rituels de coordination','Gestion des contenus en temps réel','Communication écrite','Passerelle et escalade','Ressources & cas pratique']},
+    {titre:'Piloter les indicateurs, le reporting et la capacité',lecons:['Les KPI de production','Qualité des données','Reporting hebdomadaire','Reporting mensuel','Capacité et seuils de croissance','Ressources & cas pratique']},
+    {titre:'Faire grandir la production jusqu\'à 15 collaborateurs et certifier le responsable',lecons:['Passer du faire au faire-faire','Référents et spécialités','Croissance par paliers','Maintenir la culture','Certification finale','Ressources & cas pratique']},
+  ],certification:{id:'cert-responsable-production-complet',nom:'Certification Responsable Production Complet',validite_mois:24,badge:'🧭'},statut:'publiée'},
 ];
 
 const FORMATION_QUIZ_CATALOG={
@@ -10287,11 +10301,109 @@ const FORMATION_QUIZ_CATALOG={
     {q:'Le niveau 5 peut-il accéder à des missions premium ?',opts:['Oui','Non'],rep:0},
     {q:'Le portfolio peut-il contenir des contenus non autorisés ?',opts:['Oui','Non'],rep:1},
   ],
+  'cert-responsable-production-complet':[
+    {q:'Quel est l\'objectif principal du Responsable Production ?',opts:['Créer les devis','Garantir que les prestations soient préparées, réalisées et livrées','Gérer uniquement les réseaux sociaux','Vendre les abonnements'],rep:1},
+    {q:'Quand commence sa responsabilité opérationnelle ?',opts:['Après le match','À la confirmation de la prestation','Au moment du paiement du freelance','Lors de la publication Instagram'],rep:1},
+    {q:'Quelle attitude est la plus adaptée face à un imprévu ?',opts:['Chercher un responsable avant d\'agir','Attendre les instructions','Sécuriser, informer et documenter','Annuler systématiquement'],rep:2},
+    {q:'Le Responsable Production peut-il modifier un tarif client ?',opts:['Oui','Non','Uniquement le week-end','Uniquement si le photographe accepte'],rep:1},
+    {q:'Quelle phrase correspond à la culture SportVision ?',opts:['On improvise sur place','On prépare les solutions avant les problèmes','Le client attendra','Le matériel sera vérifié après'],rep:1},
+    {q:'Quel pôle gère principalement l\'administratif ?',opts:['La secrétaire','Le photographe','Le commercial','Le community manager'],rep:0},
+    {q:'Une prestation est-elle terminée dès le coup de sifflet final ?',opts:['Oui','Non'],rep:1},
+    {q:'Combien de collaborateurs maximum un Responsable Production SportVision peut-il gérer ?',opts:['5','10','15','25'],rep:2},
+    {q:'Quelle est la source de vérité opérationnelle ?',opts:['Les messages privés','SportVision OS','La mémoire du responsable','Le groupe WhatsApp'],rep:1},
+    {q:'Une prestation peut-elle passer à "Prêt" sans contact terrain ?',opts:['Oui','Non'],rep:1},
+    {q:'Que signifie "Kit préparé" ?',opts:['Le kit existe','Le kit est contrôlé et réservé','Le photographe a un appareil personnel','Le client a payé'],rep:1},
+    {q:'Quelle vue permet d\'identifier une surcharge individuelle ?',opts:['Vue par opérateur','Vue par client','Vue par prix','Vue logo'],rep:0},
+    {q:'Quand mettre à jour une information importante ?',opts:['Une fois par mois','Dès qu\'elle change','Après la livraison','Seulement en cas de problème'],rep:1},
+    {q:'Le statut "Contrôle" signifie :',opts:['Le match commence','Le contenu est prêt à être vérifié','La facture est payée','Le kit est rendu'],rep:1},
+    {q:'Pourquoi créer une vue 48 heures ?',opts:['Décorer le dashboard','Identifier les missions proches non sécurisées','Calculer les salaires','Suivre les abonnés Instagram'],rep:1},
+    {q:'Faut-il conserver tous les champs visibles pour tout le monde ?',opts:['Oui','Non'],rep:1},
+    {q:'Une disponibilité "samedi" suffit-elle pour affecter une mission ?',opts:['Oui','Non'],rep:1},
+    {q:'Que faut-il intégrer dans la charge d\'une mission ?',opts:['Captation uniquement','Trajet, captation, transfert et postproduction','Prix client uniquement','Nombre d\'abonnés'],rep:1},
+    {q:'Quel niveau est généralement autonome sur une mission standard ?',opts:['1 étoile','2 étoiles','3 étoiles','Aucun'],rep:2},
+    {q:'Faut-il remplir 100% de la capacité disponible ?',opts:['Toujours','Jamais sans marge de sécurité'],rep:1},
+    {q:'Que représente le plan B ?',opts:['Une remise client','Un remplaçant identifiable','Un second montage','Un autre tarif'],rep:1},
+    {q:'Un profil 5 étoiles maîtrise-t-il automatiquement toutes les spécialités ?',opts:['Oui','Non'],rep:1},
+    {q:'Quels clients sécuriser tôt ?',opts:['Les clients abonnés et prestations stratégiques','Uniquement les demandes gratuites','Seulement les matchs proches','Les derniers arrivés'],rep:0},
+    {q:'Une double affectation peut-elle être acceptée si les horaires se chevauchent de 10 minutes ?',opts:['Oui','Non'],rep:1},
+    {q:'Une consigne complète doit-elle préciser le rendu attendu ?',opts:['Oui','Non'],rep:0},
+    {q:'Quel type de confirmation est préférable ?',opts:['Un emoji','Une reformulation des informations essentielles','Aucune réponse','Un appel après le match'],rep:1},
+    {q:'Le feedback doit s\'appuyer sur :',opts:['Des rumeurs','Des faits observables','La personnalité','L\'ancienneté'],rep:1},
+    {q:'Un conflit doit-il être réglé devant le client ?',opts:['Oui','Non'],rep:1},
+    {q:'Une promotion d\'étoiles doit-elle reposer sur une seule mission ?',opts:['Oui','Non'],rep:1},
+    {q:'Quelle différence entre erreur technique et manque de fiabilité ?',opts:['Aucune','La première appelle souvent une formation, le second un recadrage','La technique est toujours plus grave','La fiabilité ne compte pas'],rep:1},
+    {q:'Le manager doit-il tout faire lui-même ?',opts:['Oui','Non'],rep:1},
+    {q:'Faut-il aussi faire des retours positifs ?',opts:['Oui','Non'],rep:0},
+    {q:'Quand commence l\'onboarding ?',opts:['Le jour de la première mission','Avant l\'arrivée','Après trois mois','Après un incident'],rep:1},
+    {q:'Quelle semaine traite principalement la culture et les procédures ?',opts:['Semaine 1','Semaine 2','Semaine 3','Semaine 4'],rep:0},
+    {q:'Les exercices techniques initiaux doivent-ils engager un client réel ?',opts:['Oui','Non'],rep:1},
+    {q:'Quand attribuer le niveau initial ?',opts:['Avant toute évaluation','Après les mises en situation','Selon l\'âge','Selon le nombre d\'abonnés'],rep:1},
+    {q:'La première mission doit-elle être adaptée au niveau ?',opts:['Oui','Non'],rep:0},
+    {q:'Quel est l\'objectif de la semaine 3 ?',opts:['Vente','Postproduction et délais','Contrats clients','Comptabilité'],rep:1},
+    {q:'Un référent est-il utile ?',opts:['Oui','Non'],rep:0},
+    {q:'Le suivi s\'arrête-t-il après la formation ?',opts:['Oui','Non'],rep:1},
+    {q:'Quand un kit redevient-il disponible ?',opts:['Dès son retour physique','Après contrôle complet','Après le paiement client','Après une semaine'],rep:1},
+    {q:'Une carte peut-elle être vidée avant vérification des sauvegardes ?',opts:['Oui','Non'],rep:1},
+    {q:'Que doit contenir un inventaire fiable ?',opts:['Seulement le nom du matériel','Identifiant, état, localisation et statut','Le prix client','Le logo'],rep:1},
+    {q:'Qui peut piloter le drone ?',opts:['N\'importe quel opérateur','Une personne formée et autorisée selon la mission','Uniquement le client','Le commercial'],rep:1},
+    {q:'Peut-on annuler un vol dangereux sans pénalité ?',opts:['Oui','Non'],rep:0},
+    {q:'Que vérifier après une captation Veo ?',opts:['Uniquement le trépied','La mise en ligne et le traitement','La facture du club','Le nombre de likes'],rep:1},
+    {q:'En cas de casse, faut-il conclure immédiatement à une faute ?',opts:['Oui','Non'],rep:1},
+    {q:'Pourquoi standardiser les kits ?',opts:['Pour les rendre plus lourds','Pour accélérer les contrôles et réduire les oublis','Pour changer de marque','Pour éviter l\'inventaire'],rep:1},
+    {q:'Une mission affectée est-elle automatiquement prête ?',opts:['Oui','Non'],rep:1},
+    {q:'Quand réaliser la revue finale ?',opts:['48 heures avant','Après le match','Un mois après','Uniquement sur demande'],rep:0},
+    {q:'Un brief terrain doit-il être très long ?',opts:['Oui','Non'],rep:1},
+    {q:'Quel élément est critique ?',opts:['La couleur de l\'icône OS','Le contact terrain','Le nombre de commentaires Instagram','La police du document'],rep:1},
+    {q:'Faut-il tracer le contrôle ?',opts:['Oui','Non'],rep:0},
+    {q:'Que confirme l\'opérateur après la captation ?',opts:['Le nombre de spectateurs','Fin de captation, sécurité du matériel et transfert','Le chiffre d\'affaires annuel','Les disponibilités du mois suivant'],rep:1},
+    {q:'Une demande tardive doit-elle être ajoutée sans analyse ?',opts:['Oui','Non'],rep:1},
+    {q:'Le statut "Prêt" doit représenter :',opts:['Une intention','Une réalité vérifiée','Une estimation commerciale','Un encouragement'],rep:1},
+    {q:'Quelle est la première étape de la méthode I-S-R-I-D-P ?',opts:['Informer Instagram','Identifier le problème','Sanctionner','Annuler'],rep:1},
+    {q:'Quand chercher les responsabilités ?',opts:['Avant de sécuriser','Après avoir protégé la prestation','Jamais','Devant le client'],rep:1},
+    {q:'Faut-il promettre une récupération de fichiers certaine ?',opts:['Oui','Non'],rep:1},
+    {q:'Un changement client doit-il être enregistré ?',opts:['Oui','Non'],rep:0},
+    {q:'Le rapport d\'incident doit-il contenir des opinions personnelles ?',opts:['Oui','Non, des faits et preuves'],rep:1},
+    {q:'Quand réaliser le retour d\'expérience ?',opts:['Dans les 72 heures','Un an après','Jamais','Avant l\'incident'],rep:0},
+    {q:'Une action corrective doit avoir :',opts:['Un responsable et une date','Un logo','Un prix client','Un hashtag'],rep:0},
+    {q:'Peut-on informer le client sans solution fiable ?',opts:['Il faut limiter l\'information aux faits validés et options réalistes','Oui, avec des promesses'],rep:0},
+    {q:'Combien de copies avant de vider une carte ?',opts:['Aucune','Au moins deux emplacements sécurisés','Une capture d\'écran','Un seul export compressé'],rep:1},
+    {q:'Quand relancer une échéance ?',opts:['Après le retard uniquement','Avant le retard','Jamais','Après la facturation'],rep:1},
+    {q:'Une galerie de qualité doit-elle raconter l\'événement ?',opts:['Oui','Non'],rep:0},
+    {q:'Que vérifier dans les textes vidéo ?',opts:['Orthographe et identité','Uniquement la couleur','Le prix du matériel','Le nombre de vues futur'],rep:0},
+    {q:'Comment structurer une correction ?',opts:['Messages successifs toute la journée','Liste regroupée et priorisée','Vocabulaire vague','Aucune preuve'],rep:1},
+    {q:'Que signifie une correction bloquante ?',opts:['Un défaut empêchant la livraison','Une préférence légère','Un futur projet','Un commentaire positif'],rep:0},
+    {q:'Faut-il séparer rushs, exports et versions ?',opts:['Oui','Non'],rep:0},
+    {q:'Le Responsable Production doit-il regarder la vidéo comme spectateur puis contrôleur ?',opts:['Oui','Non'],rep:0},
+    {q:'À quoi servent principalement les réunions ?',opts:['Stocker toutes les données','Décider et aligner','Remplacer SportVision OS','Faire des publications'],rep:1},
+    {q:'Que doit recevoir le community manager ?',opts:['Les formats et délais de contenus','Les marges commerciales','Le contrat du freelance complet','Le mot de passe bancaire'],rep:0},
+    {q:'Que transmettre à la secrétaire ?',opts:['Prestations réalisées et frais','Réglages Lightroom','Plans drone uniquement','Nombre de buts'],rep:0},
+    {q:'Un opérateur terrain doit-il monter une vidéo complexe pendant le match ?',opts:['Oui systématiquement','Non, sauf organisation spécifique'],rep:1},
+    {q:'Une escalade utile contient :',opts:['Faits, impact, options et recommandation','Uniquement le problème','Un long message émotionnel','Aucune proposition'],rep:0},
+    {q:'Les informations permanentes doivent être :',opts:['Dans SportVision OS','Dans la mémoire','Dans un groupe éphémère uniquement','Sur papier non partagé'],rep:0},
+    {q:'Quel rituel clôture le week-end ?',opts:['Bilan du lundi','Point du vendredi','Réunion annuelle','Appel client avant match'],rep:0},
+    {q:'Les messages opérationnels doivent-ils être actionnables ?',opts:['Oui','Non'],rep:0},
+    {q:'Un KPI utile doit-il conduire à une décision ?',opts:['Oui','Non'],rep:0},
+    {q:'Quelle condition rend un KPI fiable ?',opts:['Des données cohérentes','Un beau graphique uniquement','Un grand nombre de couleurs','Une estimation orale'],rep:0},
+    {q:'Le reporting hebdomadaire doit-il détailler chaque fichier ?',opts:['Oui','Non'],rep:1},
+    {q:'Que montre le reporting mensuel ?',opts:['Les tendances et actions','Uniquement les prochains matchs','Les mots de passe','Les contrats clients complets'],rep:0},
+    {q:'Quel est le maximum d\'opérateurs par responsable ?',opts:['10','12','15','20'],rep:2},
+    {q:'Quand préparer un second responsable ?',opts:['Après avoir dépassé la limite','Avant la saturation','Jamais','Quand un client le demande'],rep:1},
+    {q:'Une exception KPI doit-elle être expliquée ?',opts:['Oui','Non'],rep:0},
+    {q:'Quel indicateur mesure la préparation ?',opts:['Missions prêtes à 48 heures','Nombre de couleurs du logo','Prix du boîtier','Nombre de messages'],rep:0},
+    {q:'Pourquoi déléguer ?',opts:['Pour supprimer tout contrôle','Pour rendre le système scalable avec des preuves','Pour éviter de former','Pour réduire la qualité'],rep:1},
+    {q:'Un référent remplace-t-il le Responsable Production ?',opts:['Oui','Non'],rep:1},
+    {q:'Quel palier correspond à 11-15 opérateurs ?',opts:['Palier 1','Palier 2','Palier 3','Aucun'],rep:2},
+    {q:'Que faire au-delà de 15 opérateurs ?',opts:['Ignorer la charge','Créer un second périmètre ou adjoint','Réduire tous les délais','Supprimer le contrôle qualité'],rep:1},
+    {q:'Les procédures doivent-elles être accessibles et révisées ?',opts:['Oui','Non'],rep:0},
+    {q:'Quel score minimum au quiz final ?',opts:['50%','60%','80%','100%'],rep:2},
+    {q:'Une erreur critique de sécurité peut-elle être compensée par un bon score ?',opts:['Oui','Non'],rep:1},
+    {q:'La certification comprend-elle une mise en situation ?',opts:['Oui','Non'],rep:0},
+  ],
 };
 
 const FORMATION_ROLE_MAP={
   photo:['photo-bases','photo-sony-a7','photo-football','cert-drone','cert-veo','video-bases','montage-base','cert-photo-video-complet'],
-  prod:['cert-responsable','video-bases','interview-sport','photo-football','montage-base'],
+  prod:['cert-responsable','video-bases','interview-sport','photo-football','montage-base','cert-responsable-production-complet'],
   sec:['sv-comportement','cert-veo','montage-base'],
   compta:[],
   cm:['montage-base','interview-sport','video-bases'],
@@ -10306,6 +10418,11 @@ let _certifCache=[];
 let _quizState=null;
 let _formSessCache=[];
 let _customFormsCache=[];
+let _myFormGrade=0;
+function _formLockLabel(f){
+  if(!f.minGrade||_myFormGrade>=f.minGrade)return null;
+  return '🔒 Débloqué à partir de '+'⭐'.repeat(f.minGrade)+' ('+f.minGrade+' étoiles)';
+}
 
 async function _mergeCustomFormations(){
   try{
@@ -10393,6 +10510,10 @@ async function loadForm(){
     const missions=await sbFetch('prestations_equipe?select=est_responsable&collaborateur_id=eq.'+uid);
     if(Array.isArray(missions)){nbMissions=missions.length;missionXp=missions.reduce((s,m)=>s+100+(m.est_responsable?50:0),0);}
   }catch(e){}
+  try{
+    const pr=await sbFetch('profiles?select=grade&id=eq.'+uid);
+    _myFormGrade=pr?.[0]?.grade||0;
+  }catch(e){_myFormGrade=0;}
   // Charger la progression et les certifications depuis Supabase
   await loadFormProgFromDB(uid);
   await loadCertifFromDB(uid);
@@ -10491,18 +10612,18 @@ function renderFormCatalogue(el,prog){
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
       ${filtered.map(f=>{
         const sl=getSlb(f);const fp=prog[f.id];const ld=Object.keys(fp?.lessons||{}).length;const tl=f.modules.reduce((s,m)=>s+m.lecons.length,0);const pct=tl&&fp?Math.round(ld/tl*100):0;
-        return`<div onclick="modalFormDetail('${f.id}')" style="background:var(--s1);border:1px solid ${f.obligatoire&&!fp?'rgba(240,68,94,.3)':'var(--b1)'};border-radius:12px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:8px">
+        const lockLbl=_formLockLabel(f);
+        return`<div onclick="${lockLbl?`toast('${lockLbl.replace(/'/g,"\\'")}','wa')`:`modalFormDetail('${f.id}')`}" style="background:var(--s1);border:1px solid ${lockLbl?'var(--b1)':f.obligatoire&&!fp?'rgba(240,68,94,.3)':'var(--b1)'};border-radius:12px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:8px;${lockLbl?'opacity:.55':''}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start">
             <div style="font-size:30px;line-height:1">${f.icone}</div>
-            ${f.obligatoire?`<span style="font-size:9px;font-weight:700;color:var(--er);background:rgba(240,68,94,.12);padding:2px 7px;border-radius:20px;flex-shrink:0">Oblig.</span>`:f.certification?`<span style="font-size:9px;font-weight:700;color:#9C6FFF;background:rgba(124,77,255,.12);padding:2px 7px;border-radius:20px;flex-shrink:0">🏅</span>`:''}
+            ${lockLbl?`<span style="font-size:9px;font-weight:700;color:var(--t3);background:var(--s2);padding:2px 7px;border-radius:20px;flex-shrink:0">🔒 ${f.minGrade}⭐</span>`:f.obligatoire?`<span style="font-size:9px;font-weight:700;color:var(--er);background:rgba(240,68,94,.12);padding:2px 7px;border-radius:20px;flex-shrink:0">Oblig.</span>`:f.certification?`<span style="font-size:9px;font-weight:700;color:#9C6FFF;background:rgba(124,77,255,.12);padding:2px 7px;border-radius:20px;flex-shrink:0">🏅</span>`:''}
           </div>
           <div><div style="font-size:12px;font-weight:700;color:var(--t1);line-height:1.3">${f.titre}</div><div style="font-size:10px;color:var(--t3);margin-top:3px">${f.duree} · +${f.xp} XP</div></div>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
             <span style="font-size:9px;font-weight:600;color:${NCLR[f.niveau]||'var(--t3)'};background:${(NCLR[f.niveau]||'#888')}22;padding:2px 6px;border-radius:20px">${f.niveau}</span>
             <span style="font-size:9px;color:var(--t3);background:var(--s2);padding:2px 6px;border-radius:20px">${TLBL[f.type]||f.type}</span>
           </div>
-          ${pct>0?`<div class="pg"><div class="pg-f" style="width:${pct}%;background:${sl.clr}"></div></div>`:''}
-          <div style="font-size:10px;font-weight:600;color:${sl.clr}">${sl.lb}</div>
+          ${lockLbl?`<div style="font-size:10px;font-weight:600;color:var(--t3)">${lockLbl}</div>`:pct>0?`<div class="pg"><div class="pg-f" style="width:${pct}%;background:${sl.clr}"></div></div><div style="font-size:10px;font-weight:600;color:${sl.clr}">${sl.lb}</div>`:`<div style="font-size:10px;font-weight:600;color:${sl.clr}">${sl.lb}</div>`}
         </div>`;
       }).join('')}
     </div>
@@ -10597,6 +10718,16 @@ function renderFormCerts(el,prog){
 function modalFormDetail(id){
   const f=FORMATIONS_CATALOG.find(x=>x.id===id);
   if(!f)return;
+  const lockLbl=_formLockLabel(f);
+  if(lockLbl){
+    openModal(`<button onclick="closeModal()" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--b1);color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+      <div style="padding:40px 24px;text-align:center;max-width:400px;margin:auto">
+        <div style="font-size:44px;margin-bottom:14px;opacity:.6">🔒</div>
+        <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:8px">${f.titre}</div>
+        <div style="font-size:13px;color:var(--t3);line-height:1.6">${lockLbl}</div>
+      </div>`);
+    return;
+  }
   const uid=localStorage.getItem('sv_uid')||'x';
   const prog=getFormProg(uid);
   const fp=prog[id]||{};
@@ -10954,6 +11085,105 @@ const FORMATION_CONTENT={
     {d:'La certification combine un quiz, une préparation de mission, une captation photo-vidéo, une sauvegarde, une postproduction photo, un montage vidéo, un contrôle qualité et une soutenance. La réussite exige au moins 80% au quiz, aucun manquement critique de sécurité ou de sauvegarde et une livraison conforme. La certification initiale attribue un niveau d\'entrée. La progression réelle est confirmée par les missions suivantes.'},
     {d:'Vidéo interne à produire : "L\'épreuve finale Photographe-Vidéaste SportVision" (10 min).\n\nCas pratique autonome : épreuve finale — couvrir une séquence sportive, livrer 20 photos retouchées, un Reel de 45 secondes, un dossier de rushs organisé et un rapport de mission. Présenter les choix techniques lors d\'une soutenance de 15 minutes.',v:[{t:'Comment faire des photos de sport : méthode complète',id:'P_iNPmXQLvg'},{t:'Comment réaliser un documentaire de sport',id:'L2_GHOxSEMs'}]},
   ],
+],
+'cert-responsable-production-complet':[
+  [
+    {d:'SportVision ne vend pas uniquement une présence au bord d\'un terrain. L\'entreprise vend une expérience complète : un opérateur préparé, un matériel fonctionnel, une couverture conforme au brief, une postproduction rapide et une livraison exploitable. Le Responsable Production est le garant de cette promesse. Son rôle commence dès qu\'une prestation est confirmée et se termine lorsque le contenu est livré, archivé et clôturé dans SportVision OS. Il ne doit pas attendre qu\'un problème lui soit signalé : il doit créer un système qui rend les problèmes visibles avant le jour J.'},
+    {d:'Une prestation suit un circuit précis : confirmation administrative, collecte des informations, planification, affectation d\'un opérateur, attribution d\'un kit, préparation du brief, réalisation terrain, transfert des fichiers, postproduction, contrôle qualité, livraison et clôture. Chaque étape possède un responsable et une preuve de réalisation. Le Responsable Production pilote principalement les étapes comprises entre la planification et le contrôle qualité. Il doit néanmoins rester en lien avec la secrétaire pour les informations administratives et avec les community managers pour les contenus attendus.'},
+    {d:'Le poste repose sur quatre responsabilités. Premièrement, la planification : chaque prestation doit avoir une personne, un horaire, une adresse et un plan de remplacement. Deuxièmement, les ressources : le bon kit doit être disponible, vérifié et tracé. Troisièmement, l\'équipe : les collaborateurs doivent recevoir les informations, être accompagnés et évalués. Quatrièmement, la continuité : lorsqu\'un imprévu survient, le Responsable Production protège la prestation, le client et l\'image de SportVision.'},
+    {d:'Le Responsable Production représente la fiabilité de SportVision. Il communique clairement, ne transmet pas son stress, ne promet pas ce qu\'il ne peut pas garantir et documente ses décisions. Il distingue l\'urgence réelle de la pression émotionnelle. Il traite les personnes avec respect tout en maintenant des standards élevés. Il prépare les solutions avant d\'en avoir besoin : remplaçants, batteries supplémentaires, itinéraires alternatifs, contacts secondaires et marges de temps.'},
+    {d:'Le Responsable Production ne modifie pas les tarifs, ne signe pas les contrats clients et ne décide pas seul d\'une sanction contractuelle importante. Il ne remplace pas la secrétaire dans la gestion administrative ni le community manager dans la stratégie éditoriale. En revanche, il fournit à chacun les informations opérationnelles nécessaires et alerte rapidement la direction lorsque la capacité, le budget ou la qualité sont menacés.'},
+    {d:'Vidéo interne à produire : "Le Responsable Production : chef d\'orchestre de SportVision" (7 à 9 min).\n\nCas pratique autonome : à partir d\'un exemple de match prévu dimanche à 15h, dessiner le circuit complet de la prestation et attribuer un responsable à chaque étape. Identifier cinq risques possibles et une action préventive pour chacun.',v:[{t:'Les bases du management : 6 principes pour une gestion d\'équipe',id:'FCXvKIEtuEQ'},{t:'Management : pour débuter, 5 conseils pratiques',id:'483XMvLNivo'}]},
+  ],
+  [
+    {d:'SportVision OS doit remplacer les informations dispersées dans les messages, notes personnelles et mémoires individuelles. Une donnée importante communiquée sur WhatsApp doit être reportée dans la fiche concernée. L\'outil sert à savoir ce qui est prévu, qui est responsable, ce qui manque et ce qui bloque. Le Responsable Production vérifie quotidiennement les vues « à planifier », « cette semaine », « kits à préparer », « retards » et « livraisons à contrôler ».'},
+    {d:'Une fiche complète contient le client, le type de prestation, la date, les horaires, le lieu, le contact terrain, l\'opérateur, le remplaçant éventuel, le kit, le brief, les livrables, le délai, la priorité, le mode de déplacement et les incidents. Les pièces administratives ne doivent pas être dupliquées inutilement : la fiche peut être reliée au dossier client et au dossier collaborateur. Les champs obligatoires empêchent la prestation de passer au statut « Prêt ».'},
+    {d:'Le pipeline est : Confirmé, À planifier, Opérateur affecté, Kit préparé, Prêt, En production, Transfert, Postproduction, Contrôle, Livré, Clôturé. Un changement de statut doit correspondre à un fait réel. Par exemple, « Kit préparé » signifie que le kit a été contrôlé et réservé, pas seulement qu\'il existe. « Contrôle » signifie que les fichiers sont prêts à être vérifiés. Le statut ne sert pas à rassurer : il sert à représenter la réalité.'},
+    {d:'Une vue calendrier montre la charge globale. Une vue tableau par statut révèle les blocages. Une vue par opérateur permet d\'éviter la surcharge. Une vue « 48 heures » rassemble les prestations non prêtes à moins de deux jours. Une vue « retards » filtre les échéances dépassées. Le Responsable Production doit limiter le nombre de vues et conserver des noms simples afin que toute l\'équipe comprenne l\'outil.'},
+    {d:'Une mise à jour est réalisée au moment où l\'information change. Les décisions importantes doivent comporter une date et, si nécessaire, une courte note. Les champs sensibles ne sont visibles que par les personnes autorisées. Les accès sont retirés lorsqu\'un collaborateur quitte l\'équipe. Une revue quotidienne de 10 à 15 minutes permet de maintenir un système fiable.'},
+    {d:'Vidéo interne à produire : "SportVision OS : créer et piloter une prestation" (10 à 12 min).\n\nCas pratique autonome : créer dans une copie de SportVision OS trois prestations : un match photo, un match vidéo et un tournoi. Chaque fiche doit être complète. Construire une vue filtrée affichant uniquement les missions non prêtes des sept prochains jours.',v:[{t:'Création d\'un système de gestion de projet en équipe avec Notion',id:'gAdzB8s4fCA'},{t:'Gérer son association sportive avec Notion',id:'spyfz3w2k3k'}]},
+  ],
+  [
+    {d:'Les disponibilités sont demandées selon une cadence fixe, idéalement chaque début de semaine pour les deux week-ends suivants. Une disponibilité doit préciser le jour, la plage horaire, la zone accessible, le moyen de transport et les contraintes. Une personne « disponible samedi » n\'est pas automatiquement disponible pour une mission à deux heures de trajet. Les réponses sont centralisées dans SportVision OS.'},
+    {d:'Une mission comprend le trajet, l\'arrivée anticipée, la captation, le retour, le transfert et la postproduction. Deux matchs proches géographiquement peuvent être compatibles ; deux matchs éloignés avec des rendus express ne le sont pas. Le Responsable Production calcule la charge globale et évite d\'attribuer des prestations que l\'opérateur ne pourra pas livrer correctement.'},
+    {d:'Les profils 1 et 2 étoiles interviennent sur des missions basiques ou accompagnées. Les profils 3 étoiles sont autonomes sur les prestations standards. Les profils 4 et 5 étoiles peuvent gérer des clients sensibles, des matchs importants, des contenus premium ou des déplacements. Le niveau ne remplace pas la spécialité : un profil très bon en photo mais débutant en interview doit être encadré sur une mission vidéo exigeante.'},
+    {d:'Les clients abonnés, les prestations déjà encaissées et les événements stratégiques doivent être sécurisés tôt. Les demandes ponctuelles sont intégrées selon la capacité restante. Le Responsable Production ne doit pas remplir chaque créneau au maximum : une marge de capacité protège contre les reports, absences et urgences. Une équipe surchargée produit davantage de retards et de corrections.'},
+    {d:'Pour les missions importantes, le plan A est l\'opérateur principal, le plan B est un remplaçant informé et le plan C est une solution de réduction du périmètre validable par la direction. Le remplaçant n\'est pas mobilisé inutilement, mais il doit être identifiable et joignable. Les kits critiques disposent également d\'une solution de secours.'},
+    {d:'Vidéo interne à produire : "Construire le planning d\'un week-end SportVision" (10 min).\n\nCas pratique autonome : 8 prestations, 6 opérateurs, 4 kits et deux zones géographiques. Construire le planning, justifier les affectations, identifier les risques et proposer deux remplacements.',v:[{t:'Planification & gestion de projet pour les débutants',id:'y6EqaGyrxYE'},{t:'Matrice d\'Eisenhower : apprendre à prioriser les tâches',id:'ZSonNpNSnzs'}]},
+  ],
+  [
+    {d:'Une bonne consigne répond à six questions : qui, quoi, où, quand, avec quel matériel et pour quel rendu. Elle contient aussi le contact d\'urgence et la date limite. Le Responsable Production demande une confirmation explicite, pas seulement une réaction par emoji. Lorsque le collaborateur reformule les éléments essentiels, le risque d\'incompréhension diminue.'},
+    {d:'Le feedback intervient rapidement, à partir de faits observables. Le responsable décrit la situation, le comportement, l\'impact puis l\'attente pour la prochaine mission. Il distingue une erreur technique, qui peut nécessiter une formation, d\'un manquement de fiabilité, qui exige un recadrage. Les réussites sont également reconnues afin d\'installer les bons comportements.'},
+    {d:'Le niveau d\'étoiles est évalué selon la qualité, la ponctualité, la communication, la postproduction, la gestion du kit, l\'autonomie et l\'attitude client. Une progression doit être justifiée par plusieurs missions réussies, pas par une impression unique. Une baisse temporaire peut intervenir après des manquements documentés et un échange avec le collaborateur.'},
+    {d:'Le conflit ne se règle pas devant le client. Le Responsable Production recueille séparément les faits, vérifie les traces et organise un échange calme. Il rappelle l\'objectif commun et recherche une solution opérationnelle. Si la sécurité, le respect ou l\'image de SportVision sont menacés, il protège d\'abord la prestation puis alerte la direction.'},
+    {d:'Le manager ne doit pas tout faire à la place de l\'équipe. Il donne des standards, des outils, un cadre et un suivi. Les profils expérimentés peuvent accompagner les nouveaux. Les responsabilités sont progressives : mission simple, autonomie, client régulier, rôle de référent. La confiance augmente lorsque les preuves de fiabilité s\'accumulent.'},
+    {d:'Vidéo interne à produire : "Donner un feedback SportVision en 5 minutes" (8 min).\n\nCas pratique autonome : rédiger trois feedbacks : retard de 20 minutes, excellent rendu express, kit rendu incomplet. Pour chaque cas, séparer faits, impact, attente et action de suivi.',v:[{t:'5 conseils pour réussir son feedback à un collaborateur',id:'Th9dYDE1Z0Y'},{t:'Comment gérer les conflits dans une équipe ?',id:'hQ_y_LC1FDA'}]},
+  ],
+  [
+    {d:'Avant le premier jour, le dossier du collaborateur doit être complet : identité, statut, documents, coordonnées, matériel personnel, disponibilités et zone. Les accès nécessaires sont préparés. Le programme du premier mois est envoyé afin que le candidat comprenne les attentes. Le Responsable Production identifie un référent et vérifie la disponibilité des kits de formation.'},
+    {d:'La première semaine présente SportVision, les services, la posture, la ponctualité, la tenue, la confidentialité et l\'utilisation de SportVision OS. Le collaborateur apprend à lire un brief, confirmer une mission et signaler un problème. Il réalise des exercices sur des cas fictifs.'},
+    {d:'La deuxième semaine couvre les réglages photo et vidéo, l\'utilisation des kits, les batteries, cartes, sauvegardes, la Veo et les bases du drone selon les autorisations. Les exercices doivent être courts, encadrés et sans engagement client. Le Responsable Production utilise une grille d\'observation.'},
+    {d:'Le collaborateur apprend l\'organisation des dossiers, la sélection, les presets, le montage court, les exports et la livraison express. Une simulation impose un délai réaliste. Les fichiers tests sont contrôlés et corrigés.'},
+    {d:'Une mise en situation complète vérifie la préparation, la ponctualité, la captation, le transfert et la postproduction. Le niveau initial est attribué. La première mission client est adaptée au niveau et peut être accompagnée. Un point de suivi est programmé après chaque mission du premier mois d\'activité.'},
+    {d:'Vidéo interne à produire : "Le parcours d\'intégration SportVision sur 30 jours" (9 min).\n\nCas pratique autonome : construire le plan d\'intégration d\'un candidat débutant disposant d\'un ordinateur mais sans appareil personnel. Détailler les séances, exercices, responsable, preuves attendues et critères de validation.',v:[{t:'5 étapes essentielles pour un onboarding réussi',id:'Avwy6EhpvFQ'},{t:'L\'accueil et l\'intégration des nouveaux salariés',id:'R5zFYCONDUU'}]},
+  ],
+  [
+    {d:'Chaque équipement reçoit un identifiant unique, une catégorie, un état, une valeur indicative et une localisation. Les kits sont composés de manière standard afin de faciliter les contrôles. SportVision OS indique si un matériel est disponible, réservé, sorti, en maintenance ou indisponible. L\'inventaire physique est comparé régulièrement à l\'inventaire numérique.'},
+    {d:'Le contrôle porte sur le boîtier, les objectifs, les protections, batteries, chargeurs, cartes, accessoires, câbles et sacs. Le matériel est allumé et testé. Les cartes sont vidées seulement après vérification des sauvegardes. Le collaborateur confirme la remise du kit et devient responsable de sa garde selon le contrat.'},
+    {d:'Au retour, le Responsable Production vérifie la présence et l\'état de chaque élément. Les batteries sont rechargées, les cartes sont sécurisées et le matériel est nettoyé selon les procédures. Une anomalie est photographiée et enregistrée immédiatement. Le kit ne revient pas au statut disponible tant que le contrôle n\'est pas terminé.'},
+    {d:'La Veo doit être réservée, chargée et associée au bon compte. Le lieu d\'installation, la hauteur, la stabilité et le champ de vision sont vérifiés. Après la captation, le match est mis en ligne et le traitement est contrôlé. Le Responsable Production conserve une procédure simple permettant à plusieurs opérateurs validés d\'installer la caméra.'},
+    {d:'Le drone est utilisé uniquement par une personne formée, enregistrée lorsque nécessaire et autorisée pour la mission. La zone, la météo, les restrictions, la présence de personnes et les autorisations sont vérifiées avant le déplacement. Le Responsable Production peut annuler le vol sans pénalité lorsque les conditions sont dangereuses ou interdites. Les règles évoluent : les ressources officielles doivent être consultées avant les missions.'},
+    {d:'En cas de panne ou casse, la priorité est de sécuriser la prestation avec un kit de secours, puis de documenter les faits. Le Responsable Production recueille les photos, la chronologie et les témoignages, sans conclure immédiatement à une responsabilité. Le matériel est isolé, déclaré en maintenance et transmis au réparateur ou à l\'assurance selon la procédure.'},
+    {d:'Vidéo interne à produire : "Sortie et retour d\'un kit SportVision" (10 min).\n\nCas pratique autonome : effectuer un inventaire réel d\'un kit, créer sa fiche dans SportVision OS, réaliser une sortie fictive puis un retour avec une anomalie. Rédiger le rapport d\'incident et décider du statut final du kit.',v:[{t:'Créer une gestion de stock simple et efficace',id:'tJTUrH27tTs'},{t:'Veo Camera Football : comment ça marche ?',id:'4st54_TNSyY'},{t:'Complément : Réglementation drone 2026 France',id:'BLzz9h0gWEc'}]},
+  ],
+  [
+    {d:'Une prestation n\'est pas prête parce qu\'un opérateur est affecté. Elle est prête lorsque toutes les dépendances critiques sont confirmées : client, lieu, horaire, contact, brief, livrables, kit, déplacement, tenue, délai et relais. Le statut « Prêt » doit être une certification opérationnelle.'},
+    {d:'À 72 heures, le Responsable Production identifie les informations manquantes et les risques. À 48 heures, il réalise la check-list finale. Les éléments non critiques peuvent encore être ajustés ; les éléments critiques doivent déclencher une alerte et une action immédiate. Une prestation non sécurisée reste visible dans une vue dédiée.'},
+    {d:'Le brief tient sur une page ou une fiche lisible sur téléphone. Il contient l\'objectif, les plans indispensables, les personnes prioritaires, les restrictions, les formats, le délai et le contact. Un brief trop long ne sera pas utilisé. Les demandes supplémentaires reçues après validation sont tracées et évaluées.'},
+    {d:'Le collaborateur confirme son départ et son arrivée. Le Responsable Production surveille surtout les missions prioritaires et ne surcharge pas les opérateurs de messages inutiles. Les incidents sont centralisés par un canal clair. À la fin, l\'opérateur confirme la fin de captation, la sécurité du matériel et le début du transfert.'},
+    {d:'La check-list doit laisser une trace : date, personne ayant contrôlé, anomalies et actions. Cette preuve permet d\'améliorer le système après un incident. Les erreurs répétées sont transformées en nouvelles étapes de contrôle.'},
+    {d:'Vidéo interne à produire : "La check-list SportVision Ready en situation réelle" (8 min).\n\nCas pratique autonome : prendre trois prestations fictives : une complète, une sans contact terrain et une avec kit indisponible. Décider lesquelles peuvent passer à « Prêt », documenter les blocages et lancer les actions nécessaires.',v:[{t:'Planification de projet : outils et méthodes',id:'cR502G9xvn4'},{t:'Piloter un événement sportif en 6 étapes',id:'UMwqsyg6jwo'}]},
+  ],
+  [
+    {d:'SportVision utilise une méthode simple : Identifier le problème, Sécuriser les personnes et fichiers, Remplacer ou réduire le périmètre, Informer les personnes utiles, Documenter les faits, Prévenir la répétition. Cette séquence évite de perdre du temps dans les reproches pendant la crise.'},
+    {d:'Le responsable contacte immédiatement l\'opérateur, active le remplaçant et informe le client uniquement avec une solution ou une estimation fiable. Si la mission peut être partiellement sauvée, le périmètre est ajusté avec la direction. Les faits, horaires et impacts sont enregistrés pour l\'application éventuelle des mesures contractuelles.'},
+    {d:'La priorité est de basculer vers un équipement de secours, puis de protéger toutes les copies existantes. Aucun formatage, effacement ou manipulation risquée n\'est effectué dans la précipitation. La récupération de données peut être confiée à un spécialiste. Le client reçoit une information validée, sans promesse impossible.'},
+    {d:'Un changement d\'horaire, de lieu ou de livrable est évalué selon la capacité et le contrat. Le Responsable Production vérifie l\'opérateur, le kit, le déplacement et le délai. Il ne dit pas oui automatiquement. Une modification acceptée est enregistrée dans la fiche et communiquée à toutes les personnes concernées.'},
+    {d:'Le rapport contient la chronologie, les faits, les personnes, l\'impact, les actions et les preuves. Dans les 72 heures, un retour d\'expérience identifie la cause racine : information manquante, procédure absente, contrôle non réalisé, matériel insuffisant ou comportement individuel. L\'action corrective doit avoir un responsable et une date.'},
+    {d:'Vidéo interne à produire : "Simulation : l\'opérateur ne répond pas à 90 minutes du match" (12 min).\n\nCas pratique autonome : table-top exercise — gérer simultanément un opérateur absent, un kit incomplet et un client qui avance le match de 30 minutes. Produire la chronologie, les décisions, les messages et le rapport final.',v:[{t:'La gestion de crise, c\'est quoi ?',id:'LVSBIhbGu7s'},{t:'Les 3 points essentiels d\'un plan de gestion de crise',id:'8sG6megY6i0'}]},
+  ],
+  [
+    {d:'À la fin de la mission, les fichiers sont copiés vers au moins deux emplacements avant toute suppression de carte. Les dossiers suivent une convention de nommage : date, client, événement, opérateur et type. Les rushs, exports, sélections et versions sont séparés. Le Responsable Production vérifie que la sauvegarde existe et que le lien est accessible.'},
+    {d:'Le délai express peut imposer une sélection photo ou un contenu court le soir même. Le délai standard se situe généralement entre 48 et 72 heures selon le brief. Les projets complexes disposent d\'un calendrier. Le Responsable Production surveille les échéances et relance avant le retard, pas après. Les priorités sont visibles dans SportVision OS.'},
+    {d:'Le contrôle vérifie la netteté, l\'exposition, la colorimétrie, le cadrage, la variété, les doublons, les moments clés, les logos et le format. La galerie doit raconter l\'événement. Une qualité technique élevée ne compense pas l\'absence des joueurs ou actions demandés.'},
+    {d:'Le contrôle vérifie la stabilisation, le son, le rythme, la cohérence, les transitions, les textes, l\'orthographe, les logos, la musique autorisée, le format et la durée. Les premières secondes doivent servir l\'objectif. Le Responsable Production regarde le contenu une fois comme un spectateur puis une seconde fois comme contrôleur technique.'},
+    {d:'Une demande de correction est regroupée, horodatée si nécessaire et classée par priorité : bloquant, important, amélioration. Le Responsable Production évite les préférences floues. Il indique le résultat attendu et vérifie la nouvelle version. Les erreurs récurrentes deviennent un point de formation ou une règle de template.'},
+    {d:'Vidéo interne à produire : "Contrôle qualité d\'une livraison SportVision" (12 min).\n\nCas pratique autonome : contrôler un pack fictif composé de 30 photos et d\'un Reel. Identifier au moins dix points, les classer par priorité et rédiger un message de correction professionnel.',v:[{t:'5 étapes indispensables pour bien retoucher dans Lightroom',id:'jFraBHj4PlM'},{t:'La meilleure manière de trier et sauvegarder ses fichiers',id:'o3HvXFQn1vs'}]},
+  ],
+  [
+    {d:'La secrétaire a besoin des prestations réalisées, annulations, frais, factures et documents manquants. Les community managers ont besoin des contenus attendus, délais, formats, moments prioritaires et liens de transfert. La direction a besoin de la capacité, des risques, incidents, besoins matériels et décisions à prendre. Le Responsable Production adapte son message au destinataire.'},
+    {d:'Un point court en début de semaine aligne les prestations à venir. Un contrôle le vendredi valide les urgences. Un bilan le lundi clôture le week-end. Les informations permanentes sont dans SportVision OS ; les réunions servent à décider. Chaque décision importante reçoit un responsable et une date.'},
+    {d:'Pour un tournoi ou un stage, le community manager reçoit une liste de contenus : arrivée, coulisses, action, résultat, interview, ambiance et partenaires. L\'opérateur transfère des sélections légères selon un rythme défini. La production complète reste séparée. Le Responsable Production évite de demander un montage complexe à un opérateur encore mobilisé sur le terrain.'},
+    {d:'Les messages opérationnels sont courts, factuels et actionnables. Un objet ou un début de message précise la prestation. Les urgences utilisent un canal défini ; les informations durables sont enregistrées dans l\'OS. Le responsable ne mélange pas plusieurs décisions sans structure.'},
+    {d:'Le Responsable Production résout les problèmes relevant de son périmètre. Il escalade lorsqu\'un budget, un contrat, un risque juridique, une sanction majeure ou un engagement client est concerné. Une escalade utile contient les faits, l\'impact, les options et la recommandation.'},
+    {d:'Vidéo interne à produire : "Le briefing inter-pôles du vendredi" (9 min).\n\nCas pratique autonome : préparer le briefing d\'un tournoi de deux jours : informations secrétaire, besoins community manager, points direction et consignes opérateurs. Produire un ordre du jour et un compte rendu d\'une page.',v:[{t:'Communication au travail : conseils et erreurs',id:'Kx7siSvIchk'},{t:'Les outils pour une bonne communication interne à distance',id:'IKIVHX4RWjA'}]},
+  ],
+  [
+    {d:'Les indicateurs principaux sont : prestations planifiées à temps, missions prêtes à 48 heures, ponctualité, livraisons dans les délais, corrections, incidents, disponibilité des kits, satisfaction et charge par opérateur. Chaque KPI doit mener à une décision. Un tableau rempli de chiffres sans action ne sert pas au pilotage.'},
+    {d:'Un KPI fiable dépend de statuts et dates correctement renseignés. Le Responsable Production vérifie les données avant le reporting. Les définitions restent stables : un retard de livraison doit être calculé de la même manière chaque mois. Les exceptions sont expliquées.'},
+    {d:'Le rapport hebdomadaire tient sur une page : prestations réalisées, à venir, alertes, incidents, kits indisponibles et décisions attendues. Il permet à la direction d\'agir rapidement. Les détails sont accessibles dans l\'OS.'},
+    {d:'Le bilan mensuel analyse les tendances : volume, qualité, charge, évolution des étoiles, coûts d\'incidents et capacité restante. Il propose des actions : formation, recrutement, achat d\'un kit, changement de procédure ou réduction temporaire des ventes sur une zone.'},
+    {d:'Le Responsable Production suit le nombre d\'opérateurs actifs, les missions par semaine et la disponibilité des kits. Il gère jusqu\'à 15 photographes-vidéastes maximum. Avant d\'atteindre cette limite, il prépare des référents, standardise les procédures et alerte la direction sur la création d\'un adjoint ou d\'un second responsable.'},
+    {d:'Vidéo interne à produire : "Le reporting mensuel SportVision en 15 minutes" (11 min).\n\nCas pratique autonome : à partir d\'un jeu de données fictif de 40 prestations, calculer huit KPI, identifier trois problèmes, proposer cinq actions et rédiger un reporting direction d\'une page.',v:[{t:'Qu\'est-ce qu\'un tableau de bord ?',id:'wsYrtliU7h0'},{t:'Tableau de bord des indicateurs de performance qualité',id:'hwVmDDq88SE'}]},
+  ],
+  [
+    {d:'Au démarrage, le Responsable Production peut préparer lui-même chaque kit et relancer chaque personne. Avec dix à quinze opérateurs, cette méthode devient fragile. Il doit créer des standards, des responsabilités et des points de contrôle. Déléguer ne signifie pas abandonner : le responsable définit le résultat, vérifie les preuves et accompagne les écarts.'},
+    {d:'Des référents peuvent être nommés par zone, type de mission ou compétence : photo, vidéo, postproduction, Veo, drone. Ils ne remplacent pas le Responsable Production, mais facilitent l\'intégration, la préparation et le retour terrain. Leur périmètre est écrit et limité.'},
+    {d:'Le palier 1 gère jusqu\'à 5 opérateurs avec un contrôle très direct. Le palier 2 gère 6 à 10 opérateurs avec davantage de standardisation. Le palier 3 gère 11 à 15 opérateurs avec référents, vues de capacité et reporting renforcé. Au-delà, SportVision crée un second périmètre ou un adjoint.'},
+    {d:'La croissance ne doit pas diminuer la ponctualité, la posture ou la vitesse. Les formations, évaluations d\'étoiles et retours d\'expérience maintiennent les standards. Les procédures sont courtes, accessibles et révisées après les incidents. La direction reçoit les alertes avant que la qualité ne baisse.'},
+    {d:'La certification combine un quiz, un cas de planning, une préparation de kits, une simulation de crise, un contrôle qualité et un reporting. La réussite exige au moins 80% au quiz, aucune erreur critique de sécurité ou de planning et une posture adaptée. Une validation pratique par la direction complète le parcours.'},
+    {d:'Vidéo interne à produire : "De 5 à 15 opérateurs : le modèle de croissance SportVision" (12 min).\n\nCas pratique autonome : capstone — planifier un week-end de 12 prestations avec 11 opérateurs, 6 kits, deux tournois et une livraison express. Gérer ensuite une absence, contrôler un Reel et produire le rapport direction.',v:[{t:'Les bases du management : passer du faire au faire-faire',id:'EhtVr8XhafY'},{t:'Management d\'équipe : la masterclass d\'un champion de basket',id:'j7Oe5kiGw0I'}]},
+  ],
 ]
 };
 
@@ -10999,6 +11229,8 @@ function _fpContentHtml(formId,mi,li){
 function openFormationPlayer(formId,mi,li){
   const f=FORMATIONS_CATALOG.find(x=>x.id===formId);
   if(!f)return;
+  const lockLbl=_formLockLabel(f);
+  if(lockLbl){toast(lockLbl,'wa');return;}
   if(mi===undefined||li===undefined){
     const uid=localStorage.getItem('sv_uid')||'x';
     const lessons=(getFormProg(uid)[formId]||{}).lessons||{};
@@ -11120,6 +11352,9 @@ async function _fpToggleDone(){
 }
 
 async function enrollForm(id){
+  const f0=FORMATIONS_CATALOG.find(x=>x.id===id);
+  const lockLbl0=f0&&_formLockLabel(f0);
+  if(lockLbl0){toast(lockLbl0,'wa');return;}
   const uid=localStorage.getItem('sv_uid')||'x';
   try{
     let insId=_formInscIds[id];
