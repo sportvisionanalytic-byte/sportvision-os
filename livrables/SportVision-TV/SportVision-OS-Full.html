@@ -10331,6 +10331,19 @@ let FORMATIONS_CATALOG=[
     {titre:'Collaboration avec l\'équipe de production',lecons:['Points essentiels']},
     {titre:'Continuité et absence',lecons:['Points essentiels']},
   ],certification:{id:'cm-sport-01',nom:'CERT-CM — Community management sportif',validite_mois:18,badge:'📱'},statut:'publiée'},
+  {id:'content-sport-01',titre:'Création de contenus sportifs pour les réseaux sociaux',categorie:'Création de contenu',icone:'🎬',niveau:'Débutant à intermédiaire',type:'hybride',duree:'3h',xp:100,formateur:'Fouka',obligatoire:false,description:'Comprendre les formats sociaux, identifier une audience, transformer un événement en plusieurs contenus, créer un Hook, filmer verticalement, produire des formats courts, intégrer texte et sous-titres, créer un rythme, intégrer un sponsor et terminer par un appel à l\'action — jusqu\'à la certification CERT-VERT.',modules:[
+    {titre:'Comprendre l\'objectif',lecons:['Points essentiels']},
+    {titre:'Connaître l\'audience',lecons:['Points essentiels']},
+    {titre:'Les piliers de contenu sportif',lecons:['Points essentiels']},
+    {titre:'Créer un Hook',lecons:['Points essentiels']},
+    {titre:'Construire le contenu',lecons:['Points essentiels']},
+    {titre:'Filmer verticalement',lecons:['Points essentiels']},
+    {titre:'Rythme et montage',lecons:['Points essentiels']},
+    {titre:'Sous-titres et textes',lecons:['Points essentiels']},
+    {titre:'Appel à l\'action',lecons:['Points essentiels']},
+    {titre:'Intégrer un sponsor',lecons:['Points essentiels']},
+    {titre:'Évaluation pratique',lecons:['Mise en situation']},
+  ],certification:{id:'content-sport-01',nom:'CERT-VERT — Contenus verticaux sportifs',validite_mois:18,badge:'🎬'},statut:'publiée'},
 ];
 
 const FORMATION_QUIZ_CATALOG={
@@ -10878,14 +10891,26 @@ const FORMATION_QUIZ_CATALOG={
     {q:'Une publication déclenche une polémique publique. Quelle est la bonne démarche ?',opts:['Suivre le processus de gestion de crise et désigner un porte-parole unique','Répondre à chaud sous le coup de l\'émotion','Supprimer tous les commentaires sans distinction','Ignorer complètement la situation'],rep:0},
     {q:'Une statistique montre beaucoup de vues mais aucune conversion. Quelle interprétation est correcte ?',opts:['Analyser le contexte (ciblage, CTA, format) avant de conclure','Conclure que l\'algorithme bloque le compte','Arrêter immédiatement ce format sans analyse','Changer de plateforme sans analyse'],rep:0},
   ],
+  'content-sport-01':[
+    {q:'À quoi sert principalement le Hook ?',opts:['À présenter immédiatement une raison de regarder','À afficher la facture','À remplacer la vidéo','À ralentir tous les plans'],rep:0},
+    {q:'Quel format est adapté à TikTok et aux Reels ?',opts:['9:16','16:9 uniquement','Format A4','Format PDF'],rep:0},
+    {q:'Pourquoi varier les valeurs de plans ?',opts:['Pour créer du rythme et mieux raconter','Pour augmenter les ISO','Pour réduire le son','Pour supprimer le sujet'],rep:0},
+    {q:'Quel contenu correspond au pilier « coulisses » ?',opts:['Préparation du vestiaire avant le match','Facture client','Tableau comptable','Contrat fournisseur'],rep:0},
+    {q:'Où placer les textes à l\'écran ?',opts:['Sans masquer le visage ou l\'action principale','Toujours sur les yeux','Hors du cadre','Uniquement en bas de chaque vidéo'],rep:0},
+    {q:'Quelle étape doit être pensée avant le montage d\'un Reel ?',opts:['Les plans et le tournage','La facture','La suppression du son','L\'impression'],rep:0},
+    {q:'Un contenu sponsor doit-il toujours afficher un logo géant ?',opts:['Non, l\'intégration doit correspondre à l\'accord et au contenu','Oui, sans exception','Uniquement sur les visages','Jamais'],rep:0},
+    {q:'Quelle structure est la plus cohérente pour un contenu court ?',opts:['Hook, contexte, action, résultat, CTA','CTA, écran noir, facture, fin','Logo, logo, logo, fin','Introduction de deux minutes avant l\'action'],rep:0},
+    {q:'Pourquoi ajouter des sous-titres ?',opts:['Pour rendre le message plus accessible et compréhensible sans son','Pour modifier l\'exposition','Pour augmenter la fréquence d\'image','Pour remplacer le cadrage'],rep:0},
+    {q:'Une vidéo de 20 secondes contient quinze transitions différentes. Quel est le risque ?',opts:['Surcharger le contenu et détourner l\'attention','Améliorer automatiquement le storytelling','Réduire la taille du fichier','Améliorer le microphone'],rep:0},
+  ],
 };
 
 const FORMATION_ROLE_MAP={
-  photo:['photo-bases','photo-sony-a7','cert-photo-video-complet'],
+  photo:['photo-bases','content-sport-01','photo-sony-a7','cert-photo-video-complet'],
   prod:['cert-responsable-production-complet'],
   sec:['sv-comportement','cert-secretaire-complet','sec-crm-05'],
   compta:[],
-  cm:['cm-sport-01'],
+  cm:['cm-sport-01','content-sport-01'],
   com:['cert-commercial-complet'],
   admin:['photo-bases'],
 };
@@ -11873,6 +11898,19 @@ const FORMATION_CONTENT={
   [['Structure du rapport : résumé (objectifs, période, résultats, événements marquants), performance (audience, portée, engagement, vues, clics, conversions), contenus (meilleurs/faibles, formats, sujets, raisons probables).','Communauté (commentaires, messages, sentiment, questions, incidents), sponsors (contenus, exposition, résultats, recommandations), mois suivant (objectifs, tests, calendrier, besoins de production, décisions attendues).']],
   [['Le Community Manager doit transmettre aux créateurs : formats, orientation, durée, priorités, sponsor, personne ciblée, délai, contexte, CTA — jamais une simple demande vague comme « faites-moi plein de contenu ».','Exemple de bonne demande : « Trois séquences verticales de quinze à trente secondes : arrivée des équipes, échauffement et réaction après-match, avec au moins deux plans sponsor clairement exploitables. »']],
   [['Chaque compte doit pouvoir continuer à fonctionner en cas d\'absence, de maladie, de départ, de perte de téléphone, de suspension ou d\'incident.','Dossier de continuité à tenir à jour : accès sécurisés, calendrier, templates, ton, sponsors, FAQ, modération, urgences, contacts, publications programmées, campagnes actives.','Règle : aucun compte client ne doit dépendre uniquement de la mémoire ou du téléphone personnel d\'un collaborateur.']],
+],
+'content-sport-01':[
+  [{d:'Un contenu doit toujours servir au moins un objectif clair avant d\'être produit.',p:['Objectifs possibles : informer, divertir, valoriser, éduquer, vendre, rassurer, créer de l\'engagement, montrer les coulisses, mettre en avant un sponsor.'],t:'Vidéo recommandée : « Créer son premier Reel Instagram » — lien à ajouter.'}],
+  [['Identifier l\'audience visée : joueurs, parents, supporters, clubs, éducateurs, recruteurs, sponsors, entreprises, futurs clients.','Un même événement peut produire plusieurs contenus différents selon l\'audience ciblée.']],
+  [['Piliers de contenu sportif : performance, émotion, coulisses, éducation, divertissement, identité, communauté, sponsors, promotion.']],
+  [['Le Hook doit apparaître immédiatement, dès la première seconde.','Exemples : « Personne ne s\'attendait à cette réaction. », « Trois erreurs qui empêchent un joueur de progresser. », « Voilà ce qui se passe avant un match important. », « Le défi : dépasser 900 points. », « Une séance, un objectif, aucune excuse. »','Éviter les Hooks trompeurs qui ne correspondent pas au contenu réel de la vidéo.']],
+  [{d:'Structure courte recommandée pour construire un contenu : Hook → contexte → action → moment fort → résultat → appel à l\'action.',t:'Vidéo recommandée : « Comment faire des Reels Instagram comme un professionnel » — lien à ajouter.'}],
+  [{d:'Pour TikTok, Reels et Shorts, filmer en 9:16 en gardant le sujet dans la zone centrale.',p:['Éviter les éléments importants trop proches des bords.','Anticiper les zones occupées par les textes natifs de l\'application.','Produire des plans courts et varier les échelles.'],t:'Vidéo recommandée : « Comment faire une vidéo fitness » (coulisses de tournage sportif) — lien à ajouter.'}],
+  [['Utiliser : plans courts, changements de valeur, mouvements motivés, sons réels, musique adaptée, textes courts, sous-titres, silence lorsque pertinent.','Ne pas ajouter une transition complexe entre chaque plan — cela surcharge le contenu et détourne l\'attention.']],
+  [['Les textes doivent être lisibles, rester courts, respecter la charte graphique, ne pas masquer les visages, être relus et conserver la même typographie tout au long de la vidéo.']],
+  [['Exemples d\'appel à l\'action : « Identifie un coéquipier. », « Donne ton avis. », « Enregistre cette vidéo. », « Suis le club pour la suite. », « Réserve ta prestation. », « Retrouve les résultats ce week-end. »']],
+  [['Le sponsor doit être intégré avec cohérence : logo, produit, lieu, texte, remerciement, activation, offre.','Ne pas ajouter un logo de manière arbitraire sur une vidéo qui n\'a pas été prévue pour ce sponsor.']],
+  [['Évaluation pratique : créer trois contenus — un Reel dynamique de 15 à 25 secondes, un contenu narratif de 30 à 45 secondes, et un contenu intégrant un sponsor de manière naturelle.','Chaque contenu doit comprendre : un Hook, au moins trois valeurs de plans, du texte ou des sous-titres, l\'identité SportVision ou du client, un CTA et un export vertical propre.']],
 ]
 };
 
