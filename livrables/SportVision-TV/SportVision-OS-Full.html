@@ -782,11 +782,13 @@ const NAV={
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   cm:[
+    {type:'sep',lb:'Éditorial'},
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
     {id:'cal',lb:'Calendrier éditorial',ic:'cal'},
     {id:'contenus',lb:'Contenus',ic:'pre'},
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
+    {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
@@ -821,10 +823,12 @@ const NAV={
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   com:[
+    {type:'sep',lb:'Commercial'},
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
     {id:'pipeline',lb:'Pipeline',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'objectifs',lb:'Objectifs',ic:'target'},
+    {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
@@ -5374,12 +5378,13 @@ async function loadProdBudget(){
     const pre=Array.isArray(rawPre)?rawPre:[];
     const preIds=pre.map(p=>p.id);
     const rawRem=preIds.length
-      ? await sbFetch('prestations_equipe?select=remuneration&prestation_id=in.('+preIds.join(',')+')')
+      ? await sbFetch('prestations_equipe?select=remuneration,statut&prestation_id=in.('+preIds.join(',')+')')
       : [];
     const active=pre.filter(p=>!['livrée','clôturée'].includes(p.statut));
     s('bud-nb',active.length||pre.length);
     const ca=pre.reduce((acc,p)=>acc+(Number(p.montant_ttc)||0),0);
-    const costsRem=(Array.isArray(rawRem)?rawRem:[]).reduce((acc,r)=>acc+(Number(r.remuneration)||0),0);
+    // Une mission refusée/remplacée/annulée n'est pas un coût réel.
+    const costsRem=(Array.isArray(rawRem)?rawRem:[]).filter(r=>r.statut==='acceptée').reduce((acc,r)=>acc+(Number(r.remuneration)||0),0);
     const costsFrais=(Array.isArray(rawFrais)?rawFrais:[]).reduce((acc,f)=>acc+(Number(f.montant)||0),0);
     const couts=costsRem+costsFrais;
     const marge=ca-couts;
@@ -5469,8 +5474,9 @@ async function loadProdRemunerations(){
   const el=document.getElementById('prod-rem-real');
   if(!el)return;
   try{
-    const raw=await sbFetch('prestations_equipe?select=id,remuneration,statut_paiement,date_paiement,fonction,prestations(id,reference,date_prestation,statut,clients(nom)),collaborateur:profiles(id,prenom,nom,role)&order=created_at.desc&limit=100');
-    _prodRemData=Array.isArray(raw)?raw:[];
+    const raw=await sbFetch('prestations_equipe?select=id,statut,remuneration,statut_paiement,date_paiement,fonction,prestations(id,reference,date_prestation,statut,clients(nom)),collaborateur:profiles(id,prenom,nom,role)&order=created_at.desc&limit=100');
+    // Une mission refusée/remplacée/annulée ou une prestation annulée/refusée ne doit jamais générer de rémunération à valider.
+    _prodRemData=(Array.isArray(raw)?raw:[]).filter(r=>r.statut==='acceptée'&&!['annulée','refusée'].includes(r.prestations?.statut));
     // KPIs
     const now=new Date();const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
     const tot=_prodRemData.reduce((s,r)=>s+(r.remuneration||0),0);
@@ -9369,16 +9375,18 @@ async function loadPaiements(){
   const el=document.getElementById('paiements-real');
   if(!el)return;
   try{
-    const [profiles,equipes]=await Promise.all([
+    const [profiles,equipesRaw]=await Promise.all([
       sbFetch('profiles?select=id,prenom,nom,role&order=role.asc,nom.asc'),
-      sbFetch('prestations_equipe?select=collaborateur_id,remuneration,prestations(statut)'),
+      sbFetch('prestations_equipe?select=collaborateur_id,statut,remuneration,prestations(statut)'),
     ]);
     const colls=(profiles||[]).filter(p=>p.role!=='admin');
     if(!colls.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3)">Aucun collaborateur.</div>';return;}
+    // Une mission refusée/remplacée/annulée ou une prestation annulée/refusée ne compte pas dans la rémunération prévue.
+    const equipes=(Array.isArray(equipesRaw)?equipesRaw:[]).filter(e=>e.statut==='acceptée'&&!['annulée','refusée'].includes(e.prestations?.statut));
     const ROLE_LBL={sec:'Secrétaire',prod:'Resp. Production',photo:'Photographe',cm:'Community Manager',compta:'Comptable',com:'Commercial'};
     el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Collaborateur</th><th>Rôle</th><th>Missions</th><th>Rém. prévue</th></tr></thead><tbody>'+
       colls.map(p=>{
-        const missions=(equipes||[]).filter(e=>e.collaborateur_id===p.id);
+        const missions=equipes.filter(e=>e.collaborateur_id===p.id);
         const remTotal=missions.reduce((s,e)=>s+(e.remuneration||0),0);
         const initials=((p.prenom?p.prenom[0]:'')+( p.nom?p.nom[0]:'')).toUpperCase()||'?';
         return `<tr>
@@ -13580,13 +13588,14 @@ async function loadComptaRentabilite(){
     const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
     const [data,remData,fraisData]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=in.(payée,partiellement_payée,facturée)&order=date_prestation.desc&limit=50'),
-      sbFetch('prestations_equipe?select=remuneration,prestations(date_prestation)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('prestations_equipe?select=remuneration,statut,prestations(date_prestation)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
       sbFetch('frais?select=montant,date_frais&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext).catch(()=>[]),
     ]);
     const list=Array.isArray(data)?data:[];
     const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart);
     const enc=moisList.filter(p=>p.statut_financier==='payée').reduce((s,p)=>s+(p.montant_ttc||0),0);
-    const chargesRem=(Array.isArray(remData)?remData:[]).reduce((s,r)=>s+(r.remuneration||0),0);
+    // Une mission refusée/remplacée/annulée n'est pas une charge réelle.
+    const chargesRem=(Array.isArray(remData)?remData:[]).filter(r=>r.statut==='acceptée').reduce((s,r)=>s+(r.remuneration||0),0);
     const chargesFrais=(Array.isArray(fraisData)?fraisData:[]).reduce((s,f)=>s+(f.montant||0),0);
     const charges=chargesRem+chargesFrais;
     const marge=enc-charges;
