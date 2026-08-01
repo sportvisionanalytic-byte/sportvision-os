@@ -2281,6 +2281,13 @@ async function sbFetch(path,opts={}){
   return result;
 }
 
+// sbFetch ne rejette jamais sur une erreur HTTP : PostgREST renvoie alors un objet
+// plat {code,message,details,hint} (jamais imbriqué sous .error). Un DELETE réussi
+// renvoie null (204 No Content) ; un GET/POST/PATCH réussi renvoie un tableau.
+// sbErr() détecte donc la vraie forme d'erreur sans planter sur le null de succès
+// ni ignorer silencieusement un objet d'erreur comme si c'était un succès.
+function sbErr(r){return !!(r&&typeof r==='object'&&!Array.isArray(r)&&(r.code||r.message));}
+
 // Upload d'un fichier vers Supabase Storage (bucket public, écriture protégée par RLS storage.objects).
 // Retourne l'URL publique du fichier, ou null en cas d'échec.
 async function sbUpload(bucket, path, file){
@@ -12243,7 +12250,7 @@ async function sauvegarderNouvelleFormation(){
     description:document.getElementById('nf-desc')?.value.trim()||null,
     modules,statut:'publiée',created_by:S.uid||null};
   const r=await sbFetch('formations_custom',{method:'POST',body:payload});
-  if(r&&r.error){err.textContent='Erreur : '+(r.error.message||'Table manquante — exécutez migration-formations-admin.sql');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Table manquante — exécutez migration-formations-admin.sql');return;}
   closeModal();toast('Formation créée.','ok');afTab('catalogue');
 }
 
@@ -12302,7 +12309,7 @@ async function sauvegarderEditionFormation(id){
     description:document.getElementById('ef-desc')?.value.trim()||null,
     modules};
   const r=await sbFetch('formations_custom?id=eq.'+id,{method:'PATCH',body:payload});
-  if(r&&r.error){err.textContent='Erreur : '+(r.error.message||'Impossible de modifier.');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible de modifier.');return;}
   closeModal();toast('Formation mise à jour.','ok');afTab('catalogue');
 }
 
@@ -12394,7 +12401,7 @@ async function adminAjouterQuestion(formId,formTitre){
   const dbQs=await sbFetch('formations_quiz_custom?formation_id=eq.'+formId+'&select=ordre&order=ordre.desc&limit=1').catch(()=>[]);
   const ordre=Array.isArray(dbQs)&&dbQs.length?(dbQs[0].ordre||0)+1:0;
   const r=await sbFetch('formations_quiz_custom',{method:'POST',body:{formation_id:formId,question:q,options:opts,reponse_correcte:rep,ordre}});
-  if(r&&r.error){toast('Erreur : table "formations_quiz_custom" manquante — exécutez migration-formations-admin.sql','er');return;}
+  if(sbErr(r)){toast('Erreur : table "formations_quiz_custom" manquante — exécutez migration-formations-admin.sql','er');return;}
   const qEl=document.getElementById('qa-question');if(qEl)qEl.value='';
   [0,1,2,3].forEach(i=>{const e=document.getElementById('qa-opt-'+i);if(e)e.value='';});
   const r0=document.getElementById('qa-rep-0');if(r0)r0.checked=true;
@@ -12422,7 +12429,7 @@ async function _ensureBuiltinInDB(id,fData){
     headers:{'Prefer':'resolution=merge-duplicates'},
     body:payload,
   });
-  if(r&&r.error)throw new Error(r.error.message||'Table manquante — exécutez migration-formations-admin.sql');
+  if(sbErr(r))throw new Error(r.message||'Table manquante — exécutez migration-formations-admin.sql');
   _customFormsCache.push(payload);
 }
 
@@ -12446,7 +12453,7 @@ async function adminToggleStatut(id){
   }
   const next=cycle[(cycle.indexOf(cf.statut||'publiée')+1)%cycle.length];
   const r=await sbFetch('formations_custom?id=eq.'+id,{method:'PATCH',body:{statut:next}});
-  if(r&&r.error){toast('Erreur mise à jour.','er');return;}
+  if(sbErr(r)){toast('Erreur mise à jour.','er');return;}
   cf.statut=next;
   toast('Statut → '+next,'ok');
   afTab('catalogue');
@@ -13556,7 +13563,7 @@ async function sauvegarderNouvelleDepense(){
     statut:'validé',
   };
   const r=await sbFetch('frais',{method:'POST',body});
-  if(r&&r.error){err.textContent='Erreur : '+(r.error.message||'Impossible d\'enregistrer.');return;}
+  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
   closeModal();toast('Dépense enregistrée.','ok');loadComptaDepenses();
 }
 
@@ -16194,7 +16201,7 @@ async function exportRapportCSV(){
 async function loadContrats(){
   const d=document.getElementById('contrats-real');
   const r=await sbFetch('contrats?select=*,clients(nom)&order=created_at.desc');
-  if(r.error){
+  if(sbErr(r)){
     const setZ=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     setZ('ct-kpi-act',0);setZ('ct-kpi-exp',0);setZ('ct-kpi-quo',0);setZ('ct-kpi-ca','0 €');
     d.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:60px 20px;text-align:center">
@@ -16301,7 +16308,7 @@ async function sauvegarderContrat(){
     type_abonnement:document.getElementById('nc-abonnement')?.value||null,
     created_by:S.uid};
   const r=await sbFetch('contrats',{method:'POST',body:payload});
-  if(r.error){if(err){err.textContent='Erreur: '+(r.error.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}return;}
+  if(sbErr(r)){if(err){err.textContent='Erreur: '+(r.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}return;}
   if(payload.statut==='actif'&&clientId){
     try{
       const cl=await sbFetch('clients?select=id,statut&id=eq.'+clientId);
@@ -16450,7 +16457,7 @@ async function mettreAJourContrat(id){
     date_debut:document.getElementById('ec-debut').value||null,date_fin:document.getElementById('ec-fin').value||null,
     renouvellement_auto:document.getElementById('ec-auto').checked,notes:document.getElementById('ec-notes').value.trim()||null};
   const r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payload});
-  if(r.error){const e=document.getElementById('ecf-err');if(e){e.textContent='Erreur: '+(r.error.message||'Impossible de modifier.');e.style.display='block';}return;}
+  if(sbErr(r)){const e=document.getElementById('ecf-err');if(e){e.textContent='Erreur: '+(r.message||'Impossible de modifier.');e.style.display='block';}return;}
   if(payload.statut==='actif'){
     try{
       const ct=await sbFetch('contrats?select=client_id&id=eq.'+id);
@@ -16468,7 +16475,7 @@ async function mettreAJourContrat(id){
 
 async function supprimerContrat(id){
   const r=await sbFetch('contrats?id=eq.'+id,{method:'DELETE'});
-  if(r.error){toast('Erreur suppression','er');return;}
+  if(sbErr(r)){toast('Erreur suppression','er');return;}
   closeModal();toast('Contrat supprimé','ok');await loadContrats();
 }
 
@@ -16476,7 +16483,7 @@ async function supprimerContrat(id){
 async function loadUsers(){
   const d=document.getElementById('users-real');
   const r=await sbFetch('profiles?select=*&order=created_at.asc');
-  if(r.error){d.innerHTML=`<div style="padding:40px;text-align:center;color:var(--er);font-size:13px">Erreur: ${r.error.message||'Impossible de charger les utilisateurs'}</div>`;return;}
+  if(sbErr(r)){d.innerHTML=`<div style="padding:40px;text-align:center;color:var(--er);font-size:13px">Erreur: ${r.message||'Impossible de charger les utilisateurs'}</div>`;return;}
   const list=Array.isArray(r)?r:[];
   const RL={admin:'Administrateur',sec:'Secrétaire',prod:'Resp. Production',photo:'Photo / Vidéaste',cm:'Community Manager',compta:'Comptable',com:'Commercial'};
   const RC={admin:'var(--gr)',sec:'#00B8D4',prod:'var(--ok)',photo:'#7C4DFF',cm:'var(--acc)',compta:'#FF6B35',com:'var(--er)'};
@@ -16508,7 +16515,7 @@ async function loadUsers(){
 
 async function changerRoleUser(id,role){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{role}});
-  if(r.error){toast('Erreur changement de rôle','er');return;}
+  if(sbErr(r)){toast('Erreur changement de rôle','er');return;}
   toast('Rôle mis à jour','ok');
 }
 
@@ -16526,7 +16533,7 @@ function confirmerSupprimerUser(id,prenom,nom){
 
 async function supprimerUser(id){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'DELETE'});
-  if(r.error){toast('Erreur suppression','er');return;}
+  if(sbErr(r)){toast('Erreur suppression','er');return;}
   closeModal();toast('Utilisateur supprimé','ok');await loadUsers();
 }
 
@@ -16538,7 +16545,7 @@ async function loadGrades(){
     sbFetch('profiles?select=*&order=created_at.asc'),
     sbFetch('prestations_equipe?select=collaborateur_id,est_responsable'),
   ]);
-  if(rProf.error){d.innerHTML=`<div style="padding:40px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement</div>`;return;}
+  if(sbErr(rProf)){d.innerHTML=`<div style="padding:40px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement</div>`;return;}
   const profiles=Array.isArray(rProf)?rProf:[];
   const missions=Array.isArray(rMissions)?rMissions:[];
   const xpMap={};
