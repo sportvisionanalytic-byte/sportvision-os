@@ -5898,8 +5898,13 @@ const MISSION_XP_DONE_STATUTS=['livrée','facturée','partiellement_payée','pay
 // xp_events(source_type,source_id,type) en base + vérification préalable ici).
 // `preloadedRows` évite une requête redondante quand l'appelant a déjà chargé
 // prestations_equipe avec le statut de la prestation liée.
+// Le système XP/Grade est réservé au rôle photographe/vidéaste (seul rôle avec un
+// parcours d'évolution) : les autres rôles ne sont jamais crédités.
 async function syncMissionXp(uid,preloadedRows){
   try{
+    const pr=await sbFetch('profiles?id=eq.'+uid+'&select=role,xp');
+    const prof=pr?.[0];
+    if(!prof||prof.role!=='photo')return;
     let rows=preloadedRows;
     if(!rows){
       rows=await sbFetch('prestations_equipe?select=id,statut,est_responsable,prestations(statut)&collaborateur_id=eq.'+uid+'&statut=eq.acceptée').catch(()=>[]);
@@ -5913,11 +5918,29 @@ async function syncMissionXp(uid,preloadedRows){
     const events=missing.map(r=>({collaborateur_id:uid,montant:100+(r.est_responsable?50:0),type:'prestation',source_id:r.id,source_type:'prestations_equipe',description:'Mission réalisée',attribue_par:uid}));
     await sbFetch('xp_events',{method:'POST',body:events}).catch(()=>{});
     const addedXp=events.reduce((s,e)=>s+e.montant,0);
-    try{
-      const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
-      const cur=pr?.[0]?.xp||0;
-      await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+addedXp}});
-    }catch(e){}
+    const cur=prof.xp||0;
+    await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+addedXp}}).catch(()=>{});
+    await _checkGradePromotion(uid,cur+addedXp);
+  }catch(e){}
+}
+
+// Vérifie si l'XP atteint permet de proposer une promotion de grade à l'admin.
+// Le grade ne change jamais automatiquement — seule une recommandation "en attente"
+// est créée ; c'est l'Administrateur qui valide ou refuse (voir centreValiderGrade).
+async function _checkGradePromotion(uid,xp){
+  try{
+    const pr=await sbFetch('profiles?id=eq.'+uid+'&select=grade,role').catch(()=>[]);
+    const prof=pr?.[0];
+    if(!prof||prof.role!=='photo')return;
+    const gradeActuel=prof.grade||0;
+    const {grade:gradeAtteint}=calcGrade(xp);
+    if(gradeAtteint.id<=gradeActuel)return;
+    const existing=await sbFetch('grade_recommendations?select=id&collaborateur_id=eq.'+uid+'&statut=eq.en_attente&limit=1').catch(()=>[]);
+    if(Array.isArray(existing)&&existing.length)return;
+    await sbFetch('grade_recommendations',{method:'POST',body:{
+      collaborateur_id:uid,grade_actuel:gradeActuel,grade_propose:gradeAtteint.id,
+      statut:'en_attente',commentaire:'Proposition automatique — XP requis atteint ('+xp+' XP).',
+    }}).catch(()=>{});
   }catch(e){}
 }
 
@@ -10160,7 +10183,7 @@ let FORMATIONS_CATALOG=[
     {titre:'Exports, formats réseaux sociaux, livraison express et contrôle qualité',lecons:['Choisir le bon format','Paramètres d\'export vidéo','Export photo','Workflow express','Check-list qualité','Ressources & cas pratique']},
     {titre:'Contrôle client, progression par étoiles et certification finale',lecons:['Auto-contrôle avant remise','Système d\'étoiles','Feedback et correction','Spécialisation et évolution','Certification SportVision','Ressources & cas pratique']},
   ],certification:{id:'cert-photo-video-complet',nom:'Certification Photographe-Vidéaste Sportif Complet',validite_mois:24,badge:'🎬'},statut:'publiée'},
-  {id:'cert-responsable-production-complet',titre:'Responsable Production Complet',categorie:'Certification complète',icone:'🧭',niveau:'Complet',type:'hybride',duree:'42h',xp:750,formateur:'Fouka',obligatoire:false,minGrade:3,description:'Parcours complet et autonome pour piloter la production SportVision : SportVision OS, planning, management d\'équipe, kits et matériel, gestion de crise, contrôle qualité, coordination inter-pôles, KPI et croissance jusqu\'à 15 collaborateurs. 12 modules, cours complets, cas pratiques et quiz. Débloqué à partir de 3 étoiles.',modules:[
+  {id:'cert-responsable-production-complet',titre:'Responsable Production Complet',categorie:'Certification complète',icone:'🧭',niveau:'Complet',type:'hybride',duree:'42h',xp:750,formateur:'Fouka',obligatoire:false,description:'Parcours complet et autonome pour piloter la production SportVision : SportVision OS, planning, management d\'équipe, kits et matériel, gestion de crise, contrôle qualité, coordination inter-pôles, KPI et croissance jusqu\'à 15 collaborateurs. 12 modules, cours complets, cas pratiques et quiz.',modules:[
     {titre:'Comprendre SportVision et le rôle du Responsable Production',lecons:['La promesse opérationnelle de SportVision','Le circuit d\'une prestation','Les quatre responsabilités centrales','La posture attendue','Limites du poste','Ressources & cas pratique']},
     {titre:'Maîtriser SportVision OS et le pipeline de production',lecons:['SportVision OS comme centre de commande','Structure d\'une fiche prestation','Pipeline recommandé','Vues et filtres utiles','Discipline de mise à jour','Ressources & cas pratique']},
     {titre:'Planifier les prestations et affecter les bons profils',lecons:['Collecter les disponibilités','Évaluer la charge réelle','Système d\'étoiles et complexité','Priorités de planification','Plan A, B et C','Ressources & cas pratique']},
@@ -10895,7 +10918,9 @@ async function loadForm(){
     if(fp.quiz_passe)x+=Math.round(f.xp*0.3);
     return s+x;
   },0);
-  // XP total = profiles.xp, source de vérité unique (missions synchronisées, formations, bonus quiz, attributions manuelles)
+  // XP/Grade réservé aux photographes/vidéastes : les autres rôles n'ont pas de
+  // parcours d'évolution, on n'affiche donc ni grade ni XP sur cet écran pour eux.
+  const isPhotoRole=localStorage.getItem('sv_role')==='photo';
   const totalXp=profileXp;
   const {grade,next,pct}=calcGrade(totalXp);
   const nbTerminees=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée').length;
@@ -10903,18 +10928,18 @@ async function loadForm(){
   const obligFailed=FORMATIONS_CATALOG.filter(f=>f.obligatoire&&prog[f.id]?.statut!=='terminée');
   if(gradeEl){
     gradeEl.innerHTML=`
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+      ${isPhotoRole?`<div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
         <div style="font-size:44px;line-height:1">${grade.ic}</div>
         <div style="flex:1">
           <div style="font-size:22px;font-weight:800;color:${grade.color};line-height:1">${grade.nom}</div>
           <div style="font-size:13px;color:var(--t3);margin-top:3px">${totalXp.toLocaleString('fr-FR')} XP total</div>
           ${next?`<div style="margin-top:10px"><div class="pg"><div class="pg-f" style="width:${pct}%;background:${grade.color}"></div></div><div style="font-size:11px;color:var(--t3);margin-top:4px">→ ${next.ic} ${next.nom} dans ${(next.xp-totalXp).toLocaleString('fr-FR')} XP</div></div>`:`<div style="font-size:12px;color:${grade.color};font-weight:700;margin-top:6px">Grade maximum atteint 👑</div>`}
         </div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      </div>`:''}
+      <div style="display:grid;grid-template-columns:repeat(${isPhotoRole?4:3},1fr);gap:8px">
         <div class="fs"><div class="fs-l">Missions</div><div class="fs-v">${nbMissions}</div></div>
         <div class="fs"><div class="fs-l">Formations</div><div class="fs-v">${nbTerminees}/${FORMATIONS_CATALOG.length}</div></div>
-        <div class="fs" style="${formXp>0?'border-color:rgba(46,204,138,.3)':''}"><div class="fs-l">XP formations</div><div class="fs-v" style="${formXp>0?'color:var(--ok)':''}">+${formXp}</div></div>
+        ${isPhotoRole?`<div class="fs" style="${formXp>0?'border-color:rgba(46,204,138,.3)':''}"><div class="fs-l">XP formations</div><div class="fs-v" style="${formXp>0?'color:var(--ok)':''}">+${formXp}</div></div>`:''}
         <div class="fs" style="${nbCerts>0?'border-color:rgba(124,77,255,.3)':''}"><div class="fs-l">Certifications</div><div class="fs-v" style="${nbCerts>0?'color:#9C6FFF':''}">${nbCerts}</div></div>
       </div>
       ${obligFailed.length?`<div style="margin-top:12px;padding:10px 14px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);display:flex;align-items:center;gap:8px">
@@ -11956,14 +11981,20 @@ async function soumettreQuiz(id){
   const pass=score>=70;
   const f=FORMATIONS_CATALOG.find(x=>x.id===id);
   const uid=localStorage.getItem('sv_uid')||'x';
+  const xpEligible=localStorage.getItem('sv_role')==='photo';
   const insId=_formInscIds[id];
   const bonusXp=pass?Math.round((f?.xp||0)*0.3):0;
   const alreadyPassed=_formProgCache[id]?.quiz_passe;
   if(insId){
     await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{score_quiz:score,quiz_passe:pass}}).catch(()=>{});
-    if(pass&&bonusXp>0&&!alreadyPassed){
+    if(xpEligible&&pass&&bonusXp>0&&!alreadyPassed){
       await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:uid,montant:bonusXp,type:'bonus',source_id:insId,source_type:'formation_inscriptions',description:'Quiz réussi : '+(f?.titre||id),attribue_par:uid}}).catch(()=>{});
-      try{const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');const cur=pr?.[0]?.xp||0;await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+bonusXp}});}catch(e){}
+      try{
+        const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
+        const cur=pr?.[0]?.xp||0;
+        await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+bonusXp}});
+        await _checkGradePromotion(uid,cur+bonusXp);
+      }catch(e){}
     }
   }
   if(_formProgCache[id]){_formProgCache[id].score_quiz=score;_formProgCache[id].quiz_passe=pass;}
@@ -11974,7 +12005,7 @@ async function soumettreQuiz(id){
       <div style="font-size:24px;font-weight:800;color:${pass?'var(--ok)':'var(--wa)'}">${score}%</div>
       <div style="font-size:15px;font-weight:700;color:var(--t1);margin-top:4px">${pass?'Quiz réussi !':'Pas encore…'}</div>
       <div style="font-size:12px;color:var(--t3);margin-top:4px">${correct}/${tot} bonne${correct>1?'s':''} réponse${correct>1?'s':''}</div>
-      ${pass&&bonusXp>0&&!alreadyPassed?`<div style="font-size:12px;color:var(--ok);font-weight:600;margin-top:6px">+${bonusXp} XP bonus débloqués</div>`:''}
+      ${xpEligible&&pass&&bonusXp>0&&!alreadyPassed?`<div style="font-size:12px;color:var(--ok);font-weight:600;margin-top:6px">+${bonusXp} XP bonus débloqués</div>`:''}
       ${!pass?`<div style="font-size:12px;color:var(--wa);margin-top:6px">Score minimum requis : 70% — Révisez et réessayez.</div>`:''}
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
@@ -12017,22 +12048,27 @@ async function toggleFormLesson(id,mi,li){
     const done=Object.keys(fp.lessons).length;const pct=total?Math.round(done/total*100):0;
     if(done>=total){
       fp.statut='terminée';fp.completed_at=new Date().toISOString();
-      toast('🎉 Formation terminée ! +'+f.xp+' XP','ok');
+      const xpEligible=localStorage.getItem('sv_role')==='photo';
+      toast(xpEligible?'🎉 Formation terminée ! +'+f.xp+' XP':'🎉 Formation terminée !','ok');
       await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{
-        statut:'terminee',progression_pct:100,xp_gagnes:f.xp,completed_at:new Date().toISOString(),
+        statut:'terminee',progression_pct:100,xp_gagnes:xpEligible?f.xp:0,completed_at:new Date().toISOString(),
       }}).catch(()=>{});
-      // Écrire dans xp_events
-      await sbFetch('xp_events',{method:'POST',body:{
-        collaborateur_id:uid,montant:f.xp,type:'formation',
-        source_id:insId,source_type:'formation_inscriptions',
-        description:'Formation terminée : '+f.titre,attribue_par:uid,
-      }}).catch(()=>{});
-      // Mettre à jour profiles.xp
-      try{
-        const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
-        const cur=pr?.[0]?.xp||0;
-        await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+f.xp}});
-      }catch(e){}
+      // Le système XP/Grade est réservé au rôle photographe/vidéaste
+      if(xpEligible){
+        // Écrire dans xp_events
+        await sbFetch('xp_events',{method:'POST',body:{
+          collaborateur_id:uid,montant:f.xp,type:'formation',
+          source_id:insId,source_type:'formation_inscriptions',
+          description:'Formation terminée : '+f.titre,attribue_par:uid,
+        }}).catch(()=>{});
+        // Mettre à jour profiles.xp
+        try{
+          const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
+          const cur=pr?.[0]?.xp||0;
+          await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+f.xp}});
+          await _checkGradePromotion(uid,cur+f.xp);
+        }catch(e){}
+      }
       // Créer la certification en DB si la formation est certifiante
       if(f.certification){
         const expDate=new Date();
@@ -15132,10 +15168,14 @@ async function modalFicheCollaborateur(id){
     const pres=Array.isArray(presRaw)?presRaw:[];
     const certs=Array.isArray(certRaw)?certRaw:[];
     const inscriptions=Array.isArray(inscrRaw)?inscrRaw:[];
-    // Synchronise l'XP de mission avant de calculer le total, pour que la fiche
-    // reste à jour même si ce collaborateur n'a pas ouvert son propre tableau de bord.
-    await syncMissionXp(id,pres);
-    const xpRaw=await sbFetch('xp_events?select=montant&collaborateur_id=eq.'+id).catch(()=>xpRaw0);
+    // Le système XP/Grade est réservé aux photographes/vidéastes.
+    const isPhotoProfile=prof.role==='photo';
+    if(isPhotoProfile){
+      // Synchronise l'XP de mission avant de calculer le total, pour que la fiche
+      // reste à jour même si ce collaborateur n'a pas ouvert son propre tableau de bord.
+      await syncMissionXp(id,pres);
+    }
+    const xpRaw=isPhotoProfile?await sbFetch('xp_events?select=montant&collaborateur_id=eq.'+id).catch(()=>xpRaw0):[];
     const xpTotal=(Array.isArray(xpRaw)?xpRaw:[]).reduce((s,e)=>s+(e.montant||0),0);
     const dispoRec=(Array.isArray(dispoRaw)?dispoRaw:[])[0];
     const name=[prof.prenom,prof.nom].filter(Boolean).join(' ')||prof.role;
@@ -15181,7 +15221,7 @@ async function modalFicheCollaborateur(id){
       +(prof.telephone?ic('Téléphone',prof.telephone):'')
       +(prof.ville?ic('Ville',prof.ville+(prof.code_postal?' ('+prof.code_postal+')':'')):'')
       +(prof.adresse?ic('Adresse',prof.adresse):'')
-      +ic('XP','<span style="color:var(--acc);font-weight:700">'+xpTotal.toLocaleString('fr-FR')+'</span>')
+      +(isPhotoProfile?ic('XP','<span style="color:var(--acc);font-weight:700">'+xpTotal.toLocaleString('fr-FR')+'</span>'):'')
       +ic('Prochaine mission',prochaine?(prochaine.prestations?.clients?.nom||'Mission')+' — '+fmtD(prochaine.prestations?.date_prestation):'Aucune planifiée')
       +'</div>';
     const T_MISSIONS=pres.length
@@ -15210,8 +15250,8 @@ async function modalFicheCollaborateur(id){
       +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Missions réalisées</div><div style="font-size:26px;font-weight:800;color:var(--t1)">'+pres.length+'</div></div>'
       +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Taux d\'acceptation</div><div style="font-size:26px;font-weight:800;color:#2ECC8A">'+tauxAcc+'%</div></div>'
       +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Rémunération totale</div><div style="font-size:20px;font-weight:800;color:var(--acc)">'+fmtE(totalRem)+'</div></div>'
-      +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">XP total</div><div style="font-size:26px;font-weight:800;color:var(--acc)">'+xpTotal.toLocaleString('fr-FR')+'</div></div>'
-      +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Grade actuel</div><div style="font-size:18px;font-weight:800;color:'+grade.color+'">'+grade.ic+' '+grade.nom+'</div></div>'
+      +(isPhotoProfile?'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">XP total</div><div style="font-size:26px;font-weight:800;color:var(--acc)">'+xpTotal.toLocaleString('fr-FR')+'</div></div>':'')
+      +(isPhotoProfile?'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Grade actuel</div><div style="font-size:18px;font-weight:800;color:'+grade.color+'">'+grade.ic+' '+grade.nom+'</div></div>':'')
       +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Certifications</div><div style="font-size:26px;font-weight:800;color:var(--t1)">'+certs.length+'</div></div>'
       +'</div>';
     const T_FORMATION=inscriptions.length
@@ -15276,7 +15316,7 @@ async function modalFicheCollaborateur(id){
           +'<div>'
             +'<div style="font-size:18px;font-weight:700;color:var(--t1)">'+name+'</div>'
             +'<div style="font-size:12px;color:var(--t3);margin-top:2px">'+(RLBL[prof.role]||prof.role)+'</div>'
-            +'<div style="font-size:14px;color:'+grade.color+';margin-top:4px;letter-spacing:.06em">'+grade.ic+'</div>'
+            +(isPhotoProfile?'<div style="font-size:14px;color:'+grade.color+';margin-top:4px;letter-spacing:.06em">'+grade.ic+'</div>':'')
           +'</div>'
         +'</div>'
         +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">'
@@ -16703,7 +16743,9 @@ async function loadGrades(){
   const rProf=await sbFetch('profiles?select=*&order=created_at.asc');
   if(sbErr(rProf)){d.innerHTML=`<div style="padding:40px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement</div>`;return;}
   const profiles=Array.isArray(rProf)?rProf:[];
-  const collab=profiles.filter(p=>!['admin','sec','compta'].includes(p.role)).map(p=>{
+  // Le système Grades & XP ne concerne que les photographes/vidéastes — seul rôle
+  // avec des missions terrain notées et un parcours d'évolution.
+  const collab=profiles.filter(p=>p.role==='photo').map(p=>{
     const xp=p.xp||0;
     const grade=[...GRADES].reverse().find(g=>xp>=g.xp)||GRADES[0];
     const nextGrade=GRADES[GRADES.indexOf(grade)+1];
@@ -16960,6 +17002,10 @@ function _centreView(){
 }
 
 function _centreNavHtml(isAdmin){
+  // Le système Grades & XP ne concerne que les photographes/vidéastes (seul rôle avec
+  // des missions terrain notées) ; l'admin le garde pour la gestion, les autres rôles
+  // n'ont pas de parcours de progression et ne voient donc pas cet onglet.
+  const showGrades=isAdmin||S.role==='photo';
   const items=[
     {id:'accueil',ic:'🏠',lb:'Accueil'},
     {sep:'SportVision'},
@@ -16972,7 +17018,7 @@ function _centreNavHtml(isAdmin){
     {id:'procedures',ic:'📝',lb:'Procédures'},
     {id:'materiel-guide',ic:'📦',lb:'Matériel & Kits'},
     {sep:'Mon Évolution'},
-    {id:'grades',ic:'⭐',lb:'Grades & XP'},
+    ...(showGrades?[{id:'grades',ic:'⭐',lb:'Grades & XP'}]:[]),
     {id:'competences',ic:'🎯',lb:'Compétences'},
     {id:'remuneration-guide',ic:'💶',lb:'Rémunération'},
     {sep:'Ressources'},
@@ -17399,12 +17445,42 @@ function renderCentreMateriel(){
   </div>`;
 }
 
-// ── GRADES & XP ──────────────────────────────────────────────────────────────
+// ── GRADES & XP (réservé aux photographes/vidéastes + gestion admin) ────────
 async function renderCentreGrades(){
+  if(S.role!=='admin'&&S.role!=='photo'){
+    return'<div style="padding:48px;text-align:center;color:var(--t3)">Le système Grades & XP est réservé aux photographes/vidéastes.</div>';
+  }
   const uid=localStorage.getItem('sv_uid');
   const isAdmin=S.role==='admin';
+  const isPhoto=S.role==='photo';
   let userGrade=_centreUserProg.grade||0;
   let userXP=_centreUserProg.xp||0;
+
+  // Charger la liste des photographes/vidéastes pour la gestion admin des grades
+  let adminListHtml='<div style="color:var(--t3);font-size:13px">Aucun photographe/vidéaste.</div>';
+  if(isAdmin){
+    const photogs=await sbFetch('profiles?select=id,prenom,nom,grade,xp&role=eq.photo&order=nom.asc').catch(()=>[]);
+    const list=Array.isArray(photogs)?photogs:[];
+    if(list.length){
+      adminListHtml=`<div style="display:flex;flex-direction:column;gap:6px">${list.map(p=>{
+        const g=SV_GRADES[p.grade||0]||SV_GRADES[0];
+        const ng=SV_GRADES[(p.grade||0)+1];
+        const xp=p.xp||0;
+        const pct=ng?Math.min(100,Math.round((xp-g.xp)/(ng.xp-g.xp)*100)):100;
+        return`<div style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:7px">
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+            <div style="font-size:12.5px;font-weight:600;color:var(--t1);white-space:nowrap">${p.prenom||''} ${p.nom||''}</div>
+            <span style="font-size:11px;color:${g.color};font-weight:600;white-space:nowrap">${g.nom}</span>
+            <span style="font-size:11px;color:var(--t3);white-space:nowrap">${xp} XP</span>
+            <div style="flex:1"></div>
+            <button onclick="centreModalAttribuerXP('${p.id}')" style="flex-shrink:0;padding:4px 10px;border-radius:var(--rp);background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:11px;cursor:pointer;font-family:var(--ff)">+ XP</button>
+            <button onclick="centreModalChangerGrade('${p.id}','${p.prenom}','${p.nom}',${p.grade||0})" style="flex-shrink:0;padding:4px 10px;border-radius:var(--rp);background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);color:#C084FC;font-size:11px;cursor:pointer;font-family:var(--ff)">Grade</button>
+          </div>
+          <div style="height:4px;background:var(--s2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${g.color};border-radius:2px"></div></div>
+        </div>`;
+      }).join('')}</div>`;
+    }
+  }
 
   // Charger recommandations de grade en attente (admin)
   let recoHtml='';
@@ -17440,7 +17516,7 @@ async function renderCentreGrades(){
   <div class="cv-h1">Grades & XP</div>
   ${recoHtml}
 
-  <div class="cv-card" style="background:linear-gradient(135deg,rgba(${grade.id>2?'139,43,255':'14,165,255'},.1),rgba(${grade.id>2?'14,165,255':'46,204,138'},.07));border-color:${grade.color}44;margin-bottom:16px">
+  ${isPhoto?`<div class="cv-card" style="background:linear-gradient(135deg,rgba(${grade.id>2?'139,43,255':'14,165,255'},.1),rgba(${grade.id>2?'14,165,255':'46,204,138'},.07));border-color:${grade.color}44;margin-bottom:16px">
     <div style="display:flex;align-items:flex-start;gap:14px">
       <div style="font-size:48px;line-height:1">${grade.ic}</div>
       <div style="flex:1">
@@ -17455,16 +17531,15 @@ async function renderCentreGrades(){
           <div class="grade-bar"><div class="grade-bar-fill" style="width:${pct}%;background:${grade.color}"></div></div>
         </div>
       </div>
-      ${isAdmin&&uid?`<button onclick="centreModalAttribuerXP('${uid}')" style="flex-shrink:0;padding:8px 14px;border-radius:var(--rp);background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">+ XP</button>`:''}
     </div>
-  </div>
+  </div>`:''}
 
   <div class="cv-h2" style="margin-bottom:12px">Les 6 grades SportVision</div>
   <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
     ${SV_GRADES.map(g=>{
-      const isMe=g.id===userGrade;
-      const past=g.id<userGrade;
-      return`<div class="cv-card" style="padding:14px 18px;border-left:4px solid ${g.color};opacity:${g.id>userGrade+1?.6:1};background:${isMe?`rgba(${g.id===5?'255,107,53':g.id===4?'139,43,255':g.id===3?'245,165,36':g.id===2?'14,165,255':'46,204,138'},.07)`:''}">
+      const isMe=isPhoto&&g.id===userGrade;
+      const past=isPhoto&&g.id<userGrade;
+      return`<div class="cv-card" style="padding:14px 18px;border-left:4px solid ${g.color};opacity:${isPhoto&&g.id>userGrade+1?.6:1};background:${isMe?`rgba(${g.id===5?'255,107,53':g.id===4?'139,43,255':g.id===3?'245,165,36':g.id===2?'14,165,255':'46,204,138'},.07)`:''}">
         <div style="display:flex;align-items:center;gap:12px">
           <div style="font-size:24px">${g.ic}</div>
           <div style="flex:1">
@@ -17515,8 +17590,8 @@ async function renderCentreGrades(){
   </div>
 
   ${isAdmin?`<div class="cv-card" style="margin-top:14px">
-    <div class="cv-h2">Gestion des grades (Admin)</div>
-    <div id="admin-grades-list"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div class="cv-h2">Gestion des grades (Admin) — Photographes / Vidéastes</div>
+    <div id="admin-grades-list">${adminListHtml}</div>
   </div>`:''}
   `;
 }
@@ -17712,38 +17787,12 @@ async function renderCentreAdminDash(){
       ].map(s=>`<div class="kpi" style="--kl:${s.c}"><div class="kpi-ey">${s.ic} ${s.lb}</div><div class="kpi-v" style="font-size:22px">${s.v}</div></div>`).join('')}
     </div>
 
-    <div class="cv-card" style="margin-bottom:14px">
-      <div class="cv-h2">Progression de l'équipe</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        ${profiles.map(p=>{
-          const g=SV_GRADES[p.grade||0]||SV_GRADES[0];
-          const ng=SV_GRADES[(p.grade||0)+1];
-          const xp=p.xp||0;
-          const pct=ng?Math.min(100,Math.round((xp-g.xp)/(ng.xp-g.xp)*100)):100;
-          return`<div style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:7px">
-            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
-              <div style="font-size:12.5px;font-weight:600;color:var(--t1);white-space:nowrap">${p.prenom||''} ${p.nom||''}</div>
-              <div style="font-size:11px;color:var(--t3);white-space:nowrap">${ROLE_LABELS[p.role]||p.role}</div>
-              <span style="font-size:11px;color:${g.color};font-weight:600;white-space:nowrap">${g.nom}</span>
-              <span style="font-size:11px;color:var(--t3);white-space:nowrap">${xp} XP</span>
-              <div style="flex:1"></div>
-              <button onclick="centreModalAttribuerXP('${p.id}')" style="flex-shrink:0;padding:4px 10px;border-radius:var(--rp);background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:11px;cursor:pointer;font-family:var(--ff)">+ XP</button>
-              <button onclick="centreModalChangerGrade('${p.id}','${p.prenom}','${p.nom}',${p.grade||0})" style="flex-shrink:0;padding:4px 10px;border-radius:var(--rp);background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);color:#C084FC;font-size:11px;cursor:pointer;font-family:var(--ff)">Grade</button>
-            </div>
-            <div style="height:4px;background:var(--s2);border-radius:2px;overflow:hidden">
-              <div style="height:100%;width:${pct}%;background:${g.color};border-radius:2px"></div>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-
     <div class="cv-card">
       <div class="cv-h2">Actions rapides</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${[
           {lb:'Voir règlement',fn:"loadCentreSection('reglement')"},
-          {lb:'Gérer les grades',fn:"document.getElementById('admin-grades-list')?.scrollIntoView()"},
+          {lb:'Gérer les grades',fn:"loadCentreSection('grades')"},
           {lb:'Publier une ressource',fn:"centreModalPublierRessource()"},
         ].map(a=>`<button onclick="${a.fn}" style="padding:8px 16px;border-radius:var(--rp);background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">${a.lb}</button>`).join('')}
       </div>
@@ -17784,14 +17833,17 @@ async function centreAttribuerXPSubmit(userId){
   const desc=document.getElementById('axp-desc')?.value.trim()||'Attribution manuelle';
   if(!montant||montant<1){toast('Montant invalide.','er');return;}
   try{
+    const profile=await sbFetch('profiles?select=xp,role&id=eq.'+userId);
+    const targetProf=profile?.[0];
+    if(!targetProf||targetProf.role!=='photo'){toast('XP/Grade réservé au rôle Photographe/Vidéaste.','er');return;}
     const uid=localStorage.getItem('sv_uid');
     const rXp=await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:userId,montant,type,description:desc,attribue_par:uid}});
     if(sbErr(rXp)){toast('Erreur : '+(rXp.message||'attribution impossible.'),'er');return;}
     // Mettre à jour le champ xp dans profiles
-    const profile=await sbFetch('profiles?select=xp&id=eq.'+userId);
-    const xpActuel=(profile&&profile[0]?.xp)||0;
+    const xpActuel=targetProf.xp||0;
     const rProf=await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{xp:xpActuel+montant}});
     if(sbErr(rProf)){toast('Erreur : '+(rProf.message||'mise à jour du solde impossible.'),'er');return;}
+    await _checkGradePromotion(userId,xpActuel+montant);
     closeModal();toast(`+${montant} XP attribués.`,'ok');
     if(S.view==='centre')await loadCentre(S.role);
   }catch(e){toast('Erreur lors de l\'attribution.','er');}
@@ -17800,11 +17852,14 @@ async function centreAttribuerXPSubmit(userId){
 async function centreAttribuerXP(userId,montant,type,description){
   if(!userId||!montant)return;
   try{
+    const p=await sbFetch('profiles?select=xp,role&id=eq.'+userId).catch(()=>[]);
+    const prof=p?.[0];
+    if(!prof||prof.role!=='photo')return; // XP/Grade réservé au rôle photographe/vidéaste
     const uid=localStorage.getItem('sv_uid');
     await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:userId,montant,type,description,attribue_par:uid}}).catch(()=>{});
-    const p=await sbFetch('profiles?select=xp&id=eq.'+userId).catch(()=>[]);
-    const xpActuel=(p&&p[0]?.xp)||0;
+    const xpActuel=prof.xp||0;
     await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{xp:xpActuel+montant}}).catch(()=>{});
+    await _checkGradePromotion(userId,xpActuel+montant);
   }catch(e){}
 }
 
