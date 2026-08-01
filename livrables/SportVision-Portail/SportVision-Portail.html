@@ -913,6 +913,14 @@ async function handleLogin(){
     if (cu.data && cu.data[0]){
       localStorage.setItem('svp_client_id', cu.data[0].client_id);
       if (cu.data[0].prenom) localStorage.setItem('svp_prenom', cu.data[0].prenom);
+    } else {
+      // Filet de sécurité : si l'inscription n'a pas pu créer la fiche client (ex : confirmation
+      // d'e-mail obligatoire sur le projet, session absente au moment de l'inscription), on la
+      // crée maintenant, à la première connexion réussie. portal-onboarding est idempotent.
+      const onboard = await sbFunction('portal-onboarding', { prenom: '', nom: '', telephone: '', profil: '' });
+      if (onboard.ok){
+        localStorage.setItem('svp_client_id', onboard.data.client_id);
+      }
     }
     await go('dashboard');
     toast('Connexion réussie.');
@@ -938,7 +946,16 @@ async function handleSignup(){
   try{
     const res = await fetch(SB_URL+'/auth/v1/signup', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, password:pass, data:{prenom,nom}})});
     const d = await res.json();
-    if (!d.access_token) throw new Error(d.msg || d.error_description || 'Inscription impossible, cet e-mail est peut-être déjà utilisé.');
+    if (!res.ok) throw new Error(d.msg || d.error_description || 'Inscription impossible, cet e-mail est peut-être déjà utilisé.');
+    if (!d.access_token){
+      // Le compte est créé mais la confirmation par e-mail est activée sur ce projet :
+      // pas de session immédiate, donc pas de fiche client tout de suite. Elle sera créée
+      // au premier login réussi (filet de sécurité dans handleLogin).
+      document.getElementById('ins-err').style.color = 'var(--ok)';
+      document.getElementById('ins-err').textContent = 'Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse avant de vous connecter.';
+      btn.disabled = false; btn.textContent = 'Créer mon compte';
+      return;
+    }
     svSave(d.access_token, d.refresh_token, d.user.id);
     const onboard = await sbFunction('portal-onboarding', {prenom, nom, telephone:tel, profil});
     if (!onboard.ok) throw new Error(onboard.data?.error || 'Erreur lors de la création de votre compte client.');
