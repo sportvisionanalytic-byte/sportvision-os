@@ -567,7 +567,44 @@ section{padding:60px 24px}
           <button class="btn btn-p" id="lg-btn" onclick="handleLogin()">Se connecter</button>
           <button class="btn btn-o" onclick="go('inscription')">Créer un compte</button>
           <div id="lg-err" class="err-msg"></div>
-          <a onclick="go('configurateur')" style="font-size:13.5px">Commander sans compte</a>
+          <div style="display:flex;justify-content:space-between;gap:10px">
+            <a onclick="go('configurateur')" style="font-size:13.5px">Commander sans compte</a>
+            <a onclick="go('mdp-oublie')" style="font-size:13.5px">Mot de passe oublié ?</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MOT DE PASSE OUBLIÉ -->
+  <section id="scr-mdp-oublie" class="scr">
+    <div style="display:flex;align-items:center;justify-content:center;padding:60px 24px;min-height:60vh">
+      <div style="max-width:420px;width:100%">
+        <div id="mdp-oublie-body">
+          <h1 style="font-size:24px;margin-bottom:10px">Mot de passe oublié</h1>
+          <p class="muted" style="margin-bottom:24px">Indiquez votre e-mail, vous recevrez un lien pour choisir un nouveau mot de passe.</p>
+          <div class="field-col" style="margin-top:0">
+            <label>E-mail<input type="email" id="mdp-email"></label>
+            <button class="btn btn-p" id="mdp-btn" onclick="handleRequestRecovery()">Envoyer le lien</button>
+            <div id="mdp-err" class="err-msg"></div>
+            <a onclick="go('connexion')" style="font-size:13.5px">← Retour à la connexion</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NOUVEAU MOT DE PASSE (après clic sur le lien reçu par e-mail) -->
+  <section id="scr-nouveau-mdp" class="scr">
+    <div style="display:flex;align-items:center;justify-content:center;padding:60px 24px;min-height:60vh">
+      <div style="max-width:420px;width:100%">
+        <h1 style="font-size:24px;margin-bottom:10px">Choisir un nouveau mot de passe</h1>
+        <p class="muted" style="margin-bottom:24px">Ce lien est à usage unique, valable une durée limitée.</p>
+        <div class="field-col" style="margin-top:0">
+          <label>Nouveau mot de passe<input type="password" id="new-pass1"></label>
+          <label>Confirmer le mot de passe<input type="password" id="new-pass2"></label>
+          <button class="btn btn-p" id="new-pass-btn" onclick="handleSetNewPassword()">Enregistrer</button>
+          <div id="new-pass-err" class="err-msg"></div>
         </div>
       </div>
     </div>
@@ -1310,7 +1347,7 @@ function renderCatalogueGrid(offres){
 // ── CONFIGURATEUR ──
 const CFG_STEPS = ['offre','details','options','coordonnees','confirmation'];
 const CFG_EXTRA_FIELDS = ['matchAdversaire','matchCategorieAge','matchStade','tournoiJours','tournoiEquipes','tournoiSponsors','shootingObjectif','shootingLieu','contenuPlateformes','contenuFrequence'];
-let cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:'', telephone:'', profil:'joueur', retractationRenoncee:false };
+let cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:'', telephone:'', profil:'joueur', retractationRenoncee:false, siteWeb:'' };
 CFG_EXTRA_FIELDS.forEach(f=>{ cfg[f] = ''; });
 
 function cfgNeedsRetractationWaiver(){
@@ -1444,6 +1481,7 @@ async function renderCfgStep(){
         +'<label>E-mail<input type="email" id="cfg-email" value="'+cfg.email+'"></label>'
         +'<label>Téléphone<input type="tel" id="cfg-telephone" value="'+cfg.telephone+'"></label>'
         +'</div>'
+        +'<input type="text" id="cfg-site-web" name="site_web" value="" autocomplete="off" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">'
       ))
       + (cfgNeedsRetractationWaiver() ?
           '<label style="flex-direction:row;align-items:flex-start;gap:10px;margin-top:6px;color:var(--t1);font-weight:400"><input type="checkbox" id="cfg-retractation" style="width:auto;margin-top:3px" '+(cfg.retractationRenoncee?'checked':'')+'> '
@@ -1490,6 +1528,8 @@ function cfgCollectStepFields(){
       cfg.nom = document.getElementById('cfg-nom').value.trim();
       cfg.email = document.getElementById('cfg-email').value.trim();
       cfg.telephone = document.getElementById('cfg-telephone').value.trim();
+      const hp = document.getElementById('cfg-site-web');
+      cfg.siteWeb = hp ? hp.value : '';
     }
     const rc = document.getElementById('cfg-retractation');
     if (rc) cfg.retractationRenoncee = rc.checked;
@@ -1544,6 +1584,7 @@ async function submitDemande(){
     } else {
       const res = await sbFunction('create-guest-request', Object.assign({}, payload, {
         prenom: cfg.prenom, nom: cfg.nom, email: cfg.email, telephone: cfg.telephone, profil: cfg.profil,
+        site_web: cfg.siteWeb || '',
       }));
       if (!res.ok) throw new Error(res.data?.error || 'Impossible d\'envoyer la demande.');
       cfg.reference = res.data.reference;
@@ -1560,7 +1601,7 @@ async function submitDemande(){
 
 function resetCfgAndGo(view){
   const draftEmail = cfg.email;
-  cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:draftEmail||'', telephone:'', profil:'joueur', retractationRenoncee:false };
+  cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:draftEmail||'', telephone:'', profil:'joueur', retractationRenoncee:false, siteWeb:'' };
   CFG_EXTRA_FIELDS.forEach(f=>{ cfg[f] = ''; });
   if (view === 'inscription' && draftEmail) document.addEventListener('DOMContentLoaded', ()=>{});
   go(view);
@@ -1956,6 +1997,7 @@ function renderRdvForm(){
         +'<label>E-mail<input type="email" id="rdv-email" value="'+rdvForm.email+'"></label>'
         +'<label>Téléphone<input type="tel" id="rdv-telephone" value="'+rdvForm.telephone+'" placeholder="06 12 34 56 78"></label>'
         +'</div>'
+        +'<input type="text" id="rdv-site-web" name="site_web" value="" autocomplete="off" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">'
       ))
     +'<div id="rdv-err" class="err-msg" style="margin-bottom:14px"></div>'
     +'<button class="btn btn-p" style="width:100%" onclick="submitRdvPage()">Confirmer ma demande de rendez-vous</button>';
@@ -1991,9 +2033,11 @@ async function submitRdvPage(){
       }});
       if (!r.ok) throw new Error();
     } else {
+      const hp = document.getElementById('rdv-site-web');
       const res = await sbFunction('create-guest-rdv', {
         prenom: rdvForm.prenom, nom: rdvForm.nom, email: rdvForm.email, telephone: rdvForm.telephone,
         type_rdv: rdvForm.type, objet: rdvForm.objet, date_demandee: rdvForm.date, heure_demandee: rdvForm.heure,
+        site_web: hp ? hp.value : '',
       });
       if (!res.ok) throw new Error(res.data?.error);
     }
@@ -2050,6 +2094,58 @@ async function changePassword(){
   toast('Mot de passe mis à jour.');
 }
 
+// ── RÉCUPÉRATION DE MOT DE PASSE ──
+async function handleRequestRecovery(){
+  const email = document.getElementById('mdp-email').value.trim();
+  const errEl = document.getElementById('mdp-err');
+  errEl.style.color = 'var(--er)'; errEl.textContent = '';
+  if (!email){ errEl.textContent = 'Merci de renseigner votre e-mail.'; return; }
+  const btn = document.getElementById('mdp-btn');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    const redirectTo = window.location.origin + window.location.pathname;
+    await fetch(SB_URL+'/auth/v1/recover?redirect_to='+encodeURIComponent(redirectTo), {
+      method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email}),
+    });
+    // Réponse volontairement identique que l'e-mail existe ou non (pas de fuite d'information sur les comptes existants).
+    document.getElementById('mdp-oublie-body').innerHTML =
+      '<h1 style="font-size:24px;margin-bottom:14px">Vérifiez votre boîte mail</h1>'
+      +'<p class="muted">Si un compte existe pour <b style="color:var(--t1)">'+email.replace(/</g,'&lt;')+'</b>, un lien pour choisir un nouveau mot de passe vient d\'être envoyé.</p>';
+  }catch(e){
+    errEl.textContent = 'Une erreur est survenue, réessayez.';
+    btn.disabled = false; btn.textContent = 'Envoyer le lien';
+  }
+}
+
+async function handleSetNewPassword(){
+  const p1 = document.getElementById('new-pass1').value;
+  const p2 = document.getElementById('new-pass2').value;
+  const errEl = document.getElementById('new-pass-err');
+  errEl.textContent = '';
+  if (p1.length < 6){ errEl.textContent = 'Le mot de passe doit contenir au moins 6 caractères.'; return; }
+  if (p1 !== p2){ errEl.textContent = 'Les deux mots de passe ne correspondent pas.'; return; }
+  const btn = document.getElementById('new-pass-btn');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  const tok = localStorage.getItem('svp_tok');
+  const res = await fetch(SB_URL+'/auth/v1/user', {method:'PUT', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':'application/json'}, body:JSON.stringify({password:p1})});
+  if (!res.ok){ errEl.textContent = 'Le lien a peut-être expiré. Redemandez un nouveau lien.'; btn.disabled = false; btn.textContent = 'Enregistrer'; return; }
+  toast('Mot de passe enregistré. Vous êtes connecté.');
+  await go('dashboard');
+}
+
+// Détecte un lien de récupération Supabase (#access_token=...&type=recovery) au chargement.
+async function consumeRecoveryHash(){
+  if (!window.location.hash.includes('type=recovery')) return false;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (!accessToken) return false;
+  history.replaceState({}, '', window.location.pathname);
+  const userRes = await fetch(SB_URL+'/auth/v1/user', {headers:{apikey:SB_KEY, Authorization:'Bearer '+accessToken}}).then(r=>r.json()).catch(()=>null);
+  svSave(accessToken, refreshToken || '', userRes?.id || '');
+  return true;
+}
+
 async function renderOrganisation(){
   const uid = localStorage.getItem('svp_uid');
   const [orgRes, membersRes] = await Promise.all([
@@ -2084,6 +2180,14 @@ async function saveOrganisation(){
 // ── INIT ──
 (async function init(){
   const params = new URLSearchParams(window.location.search);
+
+  try{
+    if (await consumeRecoveryHash()){
+      await go('nouveau-mdp');
+      return;
+    }
+  }catch(e){ /* lien de récupération invalide, on continue le chargement normal */ }
+
   let loggedIn = false;
   try{
     loggedIn = await checkSession();

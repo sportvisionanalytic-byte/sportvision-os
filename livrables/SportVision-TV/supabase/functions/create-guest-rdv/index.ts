@@ -5,9 +5,29 @@
 // création du client par e-mail que create-guest-request.
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: create-guest-rdv)
 // Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+//
+// Anti-abus : champ honeypot ("site_web", doit rester vide, un bot le remplit
+// généralement) + limite de fréquence par IP (5 demandes / heure max), via la
+// table guest_rate_limits (migration-portail-v11.sql).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+
+// deno-lint-ignore no-explicit-any
+async function checkRateLimit(admin: any, identifiant: string) {
+  const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  const { count } = await admin
+    .from("guest_rate_limits")
+    .select("id", { count: "exact", head: true })
+    .eq("identifiant", identifiant)
+    .gte("created_at", since);
+  if ((count || 0) >= RATE_LIMIT_MAX) return false;
+  await admin.from("guest_rate_limits").insert({ identifiant });
+  return true;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,13 +57,25 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const { prenom, nom, email, telephone, profil, type_rdv, objet, date_demandee, heure_demandee } = await req.json();
+    const { prenom, nom, email, telephone, profil, type_rdv, objet, date_demandee, heure_demandee, site_web } = await req.json();
+
+    // Honeypot : champ invisible pour un humain, rempli seulement par des bots.
+    // On répond succès (sans rien écrire) pour ne pas révéler la détection.
+    if (site_web) {
+      return json({ rdv_id: null, client_email: email || null });
+    }
 
     if (!email || !prenom || !nom || !date_demandee) {
       return json({ error: "Prénom, nom, e-mail et date sont requis" }, 400);
     }
     if (!["appel", "physique"].includes(type_rdv)) {
       return json({ error: "Type de rendez-vous invalide" }, 400);
+    }
+
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("cf-connecting-ip") || "inconnu";
+    const rateOk = await checkRateLimit(admin, `rdv:${ip}`);
+    if (!rateOk) {
+      return json({ error: "Trop de demandes envoyées récemment. Merci de réessayer plus tard." }, 429);
     }
 
     let clientId: string | null = null;

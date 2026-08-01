@@ -107,6 +107,22 @@ serve(async (req) => {
             } catch (_e) {
               // ignoré volontairement
             }
+
+            // Reçu de paiement au client — best-effort, n'affecte jamais la confirmation du paiement.
+            try {
+              if (paiement.client_id) {
+                const { data: client } = await admin.from("clients").select("email").eq("id", paiement.client_id).maybeSingle();
+                if (client?.email) {
+                  await sendPaymentReceiptEmail(client.email, {
+                    montant: paiement.montant,
+                    type_paiement: paiement.type_paiement,
+                    reference: prestation?.reference || null,
+                  });
+                }
+              }
+            } catch (_e) {
+              // ignoré volontairement
+            }
           }
 
           await admin.from("document_events").insert({
@@ -131,3 +147,41 @@ serve(async (req) => {
 
   return new Response(JSON.stringify({ received: true }), { status: 200 });
 });
+
+async function sendPaymentReceiptEmail(
+  to: string,
+  info: { montant: number; type_paiement: string; reference: string | null },
+) {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) return;
+  const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
+  const portalUrl = Deno.env.get("PORTAL_URL") || "https://portail.sportvision.fr";
+  const montantFmt = (info.montant || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+  const typeLbl = info.type_paiement === "acompte" ? "Acompte" : info.type_paiement === "solde" ? "Solde" : "Paiement total";
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#06111F;font-family:Arial,sans-serif;color:#F7F9FC">
+  <div style="max-width:520px;margin:32px auto;background:#10243E;border-radius:14px;overflow:hidden">
+    <div style="background:#0B1B33;padding:26px 32px">
+      <div style="font-size:20px;font-weight:800;color:#fff">SPORTVISION</div>
+      <div style="font-size:10px;color:#32D8E6;letter-spacing:.1em;margin-top:2px">PORTAIL</div>
+    </div>
+    <div style="padding:28px 32px">
+      <p style="font-size:15px;line-height:1.6">Bonjour,</p>
+      <p style="font-size:14px;line-height:1.7;color:#9DAEC3">Nous confirmons la bonne réception de votre paiement${info.reference ? " pour la prestation " + info.reference : ""}.</p>
+      <div style="background:#0B1B33;border-radius:10px;padding:16px 20px;margin:18px 0">
+        <div style="font-size:12px;color:#9DAEC3">${typeLbl}</div>
+        <div style="font-size:22px;font-weight:800;color:#32D8E6;margin-top:4px">${montantFmt}</div>
+      </div>
+      <a href="${portalUrl}" style="display:inline-block;background:#168BFF;color:#fff;text-decoration:none;padding:12px 22px;border-radius:9px;font-size:14px;font-weight:700">Voir mon espace</a>
+    </div>
+  </div>
+</body></html>`;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: fromEmail, to: [to], subject: "Confirmation de paiement — SportVision", html }),
+  });
+}
