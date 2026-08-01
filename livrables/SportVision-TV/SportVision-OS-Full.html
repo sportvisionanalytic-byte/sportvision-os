@@ -16654,7 +16654,7 @@ async function loadUsers(){
         return `<div style="background:var(--s1);border:1px solid ${isMe?'rgba(54,107,255,.3)':'var(--b1)'};border-radius:var(--r);padding:16px;position:relative">
           ${isMe?`<div style="position:absolute;top:10px;right:10px;font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(54,107,255,.12);color:var(--acc);font-weight:600">Vous</div>`:''}
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <div style="width:40px;height:40px;border-radius:50%;background:${rc}22;border:1px solid ${rc}44;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:${rc};flex-shrink:0">${(u.prenom||'?')[0].toUpperCase()}</div>
+            <div style="width:40px;height:40px;border-radius:50%;background:${u.avatar_url?`url(${u.avatar_url}) center/cover no-repeat`:rc+'22'};border:1px solid ${rc}44;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:${rc};flex-shrink:0">${u.avatar_url?'':(u.prenom||'?')[0].toUpperCase()}</div>
             <div style="min-width:0">
               <div style="font-size:14px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.prenom||''} ${u.nom||''}</div>
               <span style="display:inline-block;margin-top:2px;font-size:11px;padding:1px 8px;border-radius:20px;font-weight:600;background:${rc}22;color:${rc}">${rl}</span>
@@ -17720,18 +17720,19 @@ async function renderCentreAdminDash(){
           const ng=SV_GRADES[(p.grade||0)+1];
           const xp=p.xp||0;
           const pct=ng?Math.min(100,Math.round((xp-g.xp)/(ng.xp-g.xp)*100)):100;
-          return`<div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:7px">
-            <div style="min-width:140px;font-size:12.5px;font-weight:600;color:var(--t1)">${p.prenom||''} ${p.nom||''}</div>
-            <div style="font-size:11px;color:var(--t3);min-width:80px">${ROLE_LABELS[p.role]||p.role}</div>
-            <div style="flex:1;display:flex;align-items:center;gap:8px">
-              <div style="flex:1;height:4px;background:var(--s2);border-radius:2px;overflow:hidden">
-                <div style="height:100%;width:${pct}%;background:${g.color};border-radius:2px"></div>
-              </div>
+          return`<div style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:7px">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+              <div style="font-size:12.5px;font-weight:600;color:var(--t1);white-space:nowrap">${p.prenom||''} ${p.nom||''}</div>
+              <div style="font-size:11px;color:var(--t3);white-space:nowrap">${ROLE_LABELS[p.role]||p.role}</div>
               <span style="font-size:11px;color:${g.color};font-weight:600;white-space:nowrap">${g.nom}</span>
               <span style="font-size:11px;color:var(--t3);white-space:nowrap">${xp} XP</span>
+              <div style="flex:1"></div>
+              <button onclick="centreModalAttribuerXP('${p.id}')" style="flex-shrink:0;padding:4px 10px;border-radius:var(--rp);background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:11px;cursor:pointer;font-family:var(--ff)">+ XP</button>
+              <button onclick="centreModalChangerGrade('${p.id}','${p.prenom}','${p.nom}',${p.grade||0})" style="flex-shrink:0;padding:4px 10px;border-radius:var(--rp);background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);color:#C084FC;font-size:11px;cursor:pointer;font-family:var(--ff)">Grade</button>
             </div>
-            <button onclick="centreModalAttribuerXP('${p.id}')" style="padding:4px 10px;border-radius:var(--rp);background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);color:var(--acc);font-size:11px;cursor:pointer;font-family:var(--ff)">+ XP</button>
-            <button onclick="centreModalChangerGrade('${p.id}','${p.prenom}','${p.nom}',${p.grade||0})" style="padding:4px 10px;border-radius:var(--rp);background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);color:#C084FC;font-size:11px;cursor:pointer;font-family:var(--ff)">Grade</button>
+            <div style="height:4px;background:var(--s2);border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${g.color};border-radius:2px"></div>
+            </div>
           </div>`;
         }).join('')}
       </div>
@@ -18698,22 +18699,34 @@ const isMobile=()=>window.innerWidth<=768;
 
 // Offline
 let _offlineTimer=null;
+let _offlineFailCount=0;
+// Un seul ping lent ou en échec (cold start Supabase, pic de latence réseau…) ne doit
+// pas afficher "hors-ligne" : on exige 2 échecs consécutifs avant d'alerter, et on
+// laisse largement le temps à la requête d'aboutir (10s) pour éviter les faux positifs.
 function _checkOffline(){
   const banner=document.getElementById('mob-offline-banner');
-  if(!navigator.onLine){banner?.classList.add('on');return;}
-  // Navigateur dit en ligne → retirer immédiatement la bannière
-  banner?.classList.remove('on');
-  // Confirmer avec Supabase (réactiver seulement si vrai problème réseau)
+  if(!navigator.onLine){banner?.classList.add('on');_offlineFailCount=0;return;}
   fetch(SB_URL+'/rest/v1/profiles?select=id&limit=1',{
     method:'GET',
     headers:{apikey:SB_KEY},
-    signal:AbortSignal.timeout(6000)
+    signal:AbortSignal.timeout(10000)
   })
-    .then(r=>{if(!r.ok&&r.status!==400&&r.status!==401&&r.status!==403&&r.status!==200)banner?.classList.add('on');})
-    .catch(()=>banner?.classList.add('on'));
+    .then(r=>{
+      if(!r.ok&&r.status!==400&&r.status!==401&&r.status!==403&&r.status!==200){
+        _offlineFailCount++;
+        if(_offlineFailCount>=2)banner?.classList.add('on');
+      }else{
+        _offlineFailCount=0;
+        banner?.classList.remove('on');
+      }
+    })
+    .catch(()=>{
+      _offlineFailCount++;
+      if(_offlineFailCount>=2)banner?.classList.add('on');
+    });
 }
-window.addEventListener('online',()=>{clearTimeout(_offlineTimer);document.getElementById('mob-offline-banner')?.classList.remove('on');setTimeout(_checkOffline,500);});
-window.addEventListener('offline',()=>{clearTimeout(_offlineTimer);document.getElementById('mob-offline-banner')?.classList.add('on');});
+window.addEventListener('online',()=>{clearTimeout(_offlineTimer);_offlineFailCount=0;document.getElementById('mob-offline-banner')?.classList.remove('on');setTimeout(_checkOffline,500);});
+window.addEventListener('offline',()=>{clearTimeout(_offlineTimer);_offlineFailCount=0;document.getElementById('mob-offline-banner')?.classList.add('on');});
 setTimeout(_checkOffline,3000);setInterval(_checkOffline,30000);
 
 // ── Action Sheet ──────────────────────────────────────────────────────────
