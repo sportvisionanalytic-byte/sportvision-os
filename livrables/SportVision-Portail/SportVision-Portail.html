@@ -150,6 +150,13 @@ section{padding:60px 24px}
 .row-item:hover{border-color:var(--bd2)}
 .flex-between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surf);border:1px solid var(--bd2);color:var(--t1);padding:14px 22px;border-radius:10px;font-size:14px;font-weight:600;z-index:200;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#cookie-banner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:300;background:var(--bg2);border-top:1px solid var(--bd2);padding:18px 24px;box-shadow:0 -8px 24px rgba(0,0,0,.35)}
+#cookie-banner.on{display:flex}
+.cookie-banner-inner{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.cookie-banner-text{flex:1;min-width:240px;font-size:13.5px;color:var(--t2);line-height:1.6}
+.cookie-banner-text a{color:var(--cyan);text-decoration:underline}
+.cookie-banner-actions{display:flex;gap:10px;flex-shrink:0}
+@media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}}
 .empty{text-align:center;padding:50px 20px;color:var(--t2)}
 .timeline{display:flex;gap:6px;margin:20px 0}
 .timeline i{flex:1;height:5px;border-radius:100px;background:var(--bd)}
@@ -945,6 +952,16 @@ body.app-mode .app-only{display:block!important}
 
 <div id="toast"></div>
 
+<div id="cookie-banner">
+  <div class="cookie-banner-inner">
+    <div class="cookie-banner-text">Ce site peut utiliser des cookies de mesure d'audience (Google Analytics) pour comprendre comment il est utilisé. Ils ne sont activés qu'avec votre accord. <a onclick="event.preventDefault();go('legal',{tab:'cookies'})" href="#">En savoir plus</a></div>
+    <div class="cookie-banner-actions">
+      <button class="btn btn-o" onclick="refuseCookies()">Refuser</button>
+      <button class="btn btn-p" onclick="acceptCookies()">Accepter</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── SUPABASE (même projet que SportVision OS, pas de duplication de données) ──
 const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
@@ -952,8 +969,9 @@ const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
 
 // ── ANALYTICS (Google Analytics 4, désactivé tant que GA_MEASUREMENT_ID est vide) ──
 // Créer la propriété sur analytics.google.com (gratuit), coller l'ID "G-XXXXXXXXXX" ici.
+// Ne se charge qu'après consentement RGPD (voir bandeau cookies plus bas) — jamais avant.
 const GA_MEASUREMENT_ID = '';
-function initAnalytics(){
+function loadAnalytics(){
   if (!GA_MEASUREMENT_ID || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) return;
   const s = document.createElement('script');
   s.async = true;
@@ -963,6 +981,26 @@ function initAnalytics(){
   window.gtag = function(){ window.dataLayer.push(arguments); };
   gtag('js', new Date());
   gtag('config', GA_MEASUREMENT_ID);
+}
+
+// ── CONSENTEMENT COOKIES (RGPD) ──
+// GA_MEASUREMENT_ID vide = la question ne se pose pas encore, mais le bandeau
+// reste prêt pour le jour où l'ID sera renseigné.
+function initCookieConsent(){
+  if (!GA_MEASUREMENT_ID || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) return;
+  const choice = localStorage.getItem('svp_cookie_consent');
+  if (choice === 'accepted'){ loadAnalytics(); return; }
+  if (choice === 'refused') return;
+  document.getElementById('cookie-banner').classList.add('on');
+}
+function acceptCookies(){
+  localStorage.setItem('svp_cookie_consent', 'accepted');
+  document.getElementById('cookie-banner').classList.remove('on');
+  loadAnalytics();
+}
+function refuseCookies(){
+  localStorage.setItem('svp_cookie_consent', 'refused');
+  document.getElementById('cookie-banner').classList.remove('on');
 }
 
 function svSave(tok, ref, uid){
@@ -1454,9 +1492,9 @@ const LEGAL_CONTENT = {
     {h:"Article 8 — Droit applicable et litiges", p:"Les présentes CGV sont soumises au droit français. En cas de litige, une solution amiable sera recherchée en priorité ; à défaut, les tribunaux du ressort du siège social d'ELKANA GROUP seront seuls compétents. Conformément à l'article L616-1 du Code de la consommation, le client consommateur peut recourir gratuitement à un médiateur de la consommation."},
   ],
   cookies: [
-    {h:"Aucun cookie de suivi", p:"Le Portail n'utilise aucun cookie publicitaire ou de mesure d'audience à ce jour."},
+    {h:"Cookies de mesure d'audience", p:"Le Portail peut utiliser Google Analytics pour mesurer sa fréquentation. Ces cookies ne sont déposés qu'après votre accord explicite, donné via le bandeau affiché lors de votre première visite. Vous pouvez changer d'avis à tout moment en effaçant les données de navigation de ce site depuis votre navigateur, ce qui réaffichera le bandeau."},
+    {h:"Aucun cookie publicitaire", p:"Le Portail n'utilise aucun cookie publicitaire ni de traçage à des fins commerciales tierces."},
     {h:"Stockage local", p:"Pour maintenir votre session connectée, le Portail utilise le stockage local de votre navigateur (localStorage), qui reste sur votre appareil et n'est jamais transmis à des tiers à des fins publicitaires."},
-    {h:"Évolution", p:"Si des outils de mesure d'audience ou publicitaires sont ajoutés ultérieurement, cette page sera mise à jour et un bandeau de consentement sera affiché conformément à la réglementation en vigueur."},
   ],
 };
 let legalTab = 'mentions';
@@ -2364,7 +2402,7 @@ async function saveOrganisation(){
 
 // ── INIT ──
 (async function init(){
-  initAnalytics();
+  initCookieConsent();
   const params = new URLSearchParams(window.location.search);
 
   try{
