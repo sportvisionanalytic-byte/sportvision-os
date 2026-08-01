@@ -2438,7 +2438,8 @@ async function creerPrestation(){
       description_besoin:document.getElementById('f-besoin').value||null,
       created_by:localStorage.getItem('sv_uid')
     };
-    await sbFetch('prestations',{method:'POST',body});
+    const r=await sbFetch('prestations',{method:'POST',body});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Création impossible.');return;}
     closeModal();
     toast('Prestation créée.','ok');
     loadViewData(S.role,S.view);
@@ -2551,7 +2552,7 @@ async function creerClient(){
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
   err.textContent='Création...';
   try{
-    await sbFetch('clients',{method:'POST',body:{
+    const r=await sbFetch('clients',{method:'POST',body:{
       nom,
       type_client:document.getElementById('fc-type').value,
       statut:document.getElementById('fc-statut')?.value||'prospect',
@@ -2566,6 +2567,7 @@ async function creerClient(){
       origine_prospect:document.getElementById('fc-origine').value||null,
       created_by:localStorage.getItem('sv_uid')
     }});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Création impossible.');return;}
     closeModal();
     toast('Client créé.','ok');
     loadViewData(S.role,S.view);
@@ -2865,7 +2867,8 @@ async function avancerStatutPrestation(id,statut){
   const next=_NEXT_ST[statut];
   if(!next)return;
   try{
-    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:next}});
+    const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:next}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
     toast('→ '+(SL[next]||next),'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
@@ -2978,7 +2981,8 @@ function modalDetailPrestation(idx){
 
 async function validerPrestation(id,nouveauStatut){
   try{
-    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:nouveauStatut}});
+    const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:nouveauStatut}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
     closeModal();
     const lbl=nouveauStatut==='confirmée'?'Prestation validée et confirmée.':'Prestation refusée.';
     const type=nouveauStatut==='confirmée'?'ok':'er';
@@ -3010,7 +3014,8 @@ async function modifierPrestation(id){
       description_besoin:document.getElementById('pd-desc')?.value||null,
       livrables_demandes:document.getElementById('pd-livr')?.value||null,
     };
-    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body});
+    const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Modification impossible.');return;}
     closeModal();
     toast('Prestation mise à jour.','ok');
     loadViewData(S.role,S.view);
@@ -3021,7 +3026,8 @@ async function modifierPrestation(id){
 function supprimerPrestation(id){
   confirmerAction('Supprimer cette prestation ? Cette action est irréversible.',async()=>{
     try{
-      await sbFetch('prestations?id=eq.'+id,{method:'DELETE'});
+      const r=await sbFetch('prestations?id=eq.'+id,{method:'DELETE'});
+      if(sbErr(r)){toast('Erreur : '+(r.message||'Suppression impossible.'),'er');return;}
       toast('Prestation supprimée.','ok');
       loadViewData(S.role,S.view);
       updateNavBadges(S.role);
@@ -3111,7 +3117,8 @@ function renderClientsTable(){
 }
 
 async function crmAvancerStatut(id,statut){
-  await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
+  const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
   const lb={qualifié:'Client qualifié.',devis_envoyé:'Devis à envoyer.',négociation:'En négociation.',partenaire:'Nouveau partenaire !',client:'Client signé !'}[statut]||'Statut mis à jour.';
   toast(lb,'ok');
   loadClients();
@@ -3206,7 +3213,7 @@ async function modifierClient(id){
   if(!nom){err.textContent='Le nom est obligatoire.';return;}
   err.textContent='Enregistrement…';
   try{
-    await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{
+    const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{
       nom,
       type_client:document.getElementById('fce-type').value||null,
       statut:document.getElementById('fce-statut').value,
@@ -3219,6 +3226,7 @@ async function modifierClient(id){
       division:document.getElementById('fce-division')?.value||null,
       notes:document.getElementById('fce-notes').value.trim()||null,
     }});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Modification impossible.');return;}
     closeModal();
     toast('Client mis à jour.','ok');
     loadViewData(S.role,S.view);
@@ -3229,7 +3237,8 @@ async function modifierClient(id){
 function supprimerClient(id){
   confirmerAction('Supprimer ce client ? Cette action est irréversible.',async()=>{
     try{
-      await sbFetch('clients?id=eq.'+id,{method:'DELETE'});
+      const r=await sbFetch('clients?id=eq.'+id,{method:'DELETE'});
+      if(sbErr(r)){toast('Erreur : '+(r.message||'Suppression impossible.'),'er');return;}
       toast('Client supprimé.','ok');
       loadViewData(S.role,S.view);
       updateNavBadges(S.role);
@@ -3394,7 +3403,7 @@ async function sauvegarderContact(clientId){
   const next=document.getElementById('cc-next')?.value?.trim()||null;
   const nextDate=document.getElementById('cc-date')?.value||null;
   try{
-    await sbFetch('client_contacts',{method:'POST',body:{
+    const rContact=await sbFetch('client_contacts',{method:'POST',body:{
       client_id:clientId,
       auteur_id:localStorage.getItem('sv_uid')||null,
       type:document.getElementById('cc-type').value,
@@ -3403,6 +3412,7 @@ async function sauvegarderContact(clientId){
       next_action:next||null,
       next_action_date:nextDate||null,
     }});
+    if(sbErr(rContact)){if(err)err.textContent='Erreur : '+(rContact.message||'Enregistrement impossible.');return;}
     const patchCli={};
     if(next||nextDate){patchCli.prochaine_action=next||null;patchCli.date_prochaine_action=nextDate||null;}
     // Auto-calcul score_priorite
@@ -4493,7 +4503,8 @@ function copierLien(encodedUrl){
 }
 async function validerLienMedia(id){
   try{
-    await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{statut:'valide',updated_at:new Date().toISOString()}});
+    const r=await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{statut:'valide',updated_at:new Date().toISOString()}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
     toast('Lien validé','ok');
     await logMediaHistory(null,S.uid,'Lien validé','lien',id,'a_verifier','valide');
     loadProdMedias();
@@ -4689,8 +4700,10 @@ async function executerRemplacement(ancienId){
       commentaire:motif?'Remplacement: '+motif:anc.commentaire,
       ajouteur_id:S.uid,statut:'a_verifier'
     }});
+    if(sbErr(newRes)){err.textContent='Erreur : '+(newRes.message||'Création du nouveau lien impossible.');return;}
     // Marquer l'ancien comme remplacé
-    await sbFetch('media_liens?id=eq.'+ancienId,{method:'PATCH',body:{statut:'remplace',remplace_par_id:newRes?.[0]?.id}});
+    const rOld=await sbFetch('media_liens?id=eq.'+ancienId,{method:'PATCH',body:{statut:'remplace',remplace_par_id:newRes?.[0]?.id}});
+    if(sbErr(rOld)){err.textContent='Erreur : '+(rOld.message||'Mise à jour de l\'ancien lien impossible.');return;}
     await logMediaHistory(anc.prestation_id,S.uid,'Lien remplacé','lien',ancienId,anc.url,nouvelUrl);
     closeModal();
     toast('Lien remplacé','ok');
@@ -4735,13 +4748,14 @@ async function sauvegarderBibliotheque(){
   if(!url||!url.startsWith('http')){err.textContent='URL invalide.';return;}
   err.textContent='Enregistrement…';
   try{
-    await sbFetch('media_bibliotheque',{method:'POST',body:{
+    const r=await sbFetch('media_bibliotheque',{method:'POST',body:{
       nom,url,
       categorie:document.getElementById('bib-cat')?.value||'autre',
       fournisseur:document.getElementById('bib-four')?.value||'autre',
       description:document.getElementById('bib-desc')?.value||null,
       ajouteur_id:S.uid
     }});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Ajout impossible.');return;}
     closeModal();
     toast('Lien ajouté à la bibliothèque','ok');
     loadProdMedias();
@@ -4932,7 +4946,8 @@ async function sauvegarderPostprod(){
       statut:'a_attribuer',
       created_by:S.uid
     };
-    await sbFetch('media_postproductions',{method:'POST',body});
+    const rpp=await sbFetch('media_postproductions',{method:'POST',body});
+    if(sbErr(rpp)){err.textContent='Erreur : '+(rpp.message||'Création impossible.');return;}
     await logMediaHistory(pres[0].id,S.uid,'Postproduction créée','postproduction',null,null,body.type_travail);
     closeModal();
     toast('Postproduction créée','ok');
@@ -5055,8 +5070,9 @@ async function sauvegarderVersion(postprodId){
       fournisseur:document.getElementById('ver-four')?.value||'autre',
       prestation_id:pp.prestation_id,ajouteur_id:S.uid,statut:'a_verifier'
     }});
+    if(sbErr(lienRes)){err.textContent='Erreur : '+(lienRes.message||'Création du lien impossible.');return;}
     // Créer la version
-    await sbFetch('media_versions',{method:'POST',body:{
+    const rVer=await sbFetch('media_versions',{method:'POST',body:{
       postproduction_id:postprodId,
       prestation_id:pp.prestation_id,
       numero,
@@ -5067,6 +5083,7 @@ async function sauvegarderVersion(postprodId){
       date_limite_validation:document.getElementById('ver-delai')?.value||null,
       commentaire:document.getElementById('ver-com')?.value||null
     }});
+    if(sbErr(rVer)){err.textContent='Erreur : '+(rVer.message||'Création de la version impossible.');return;}
     // Mettre à jour le statut de la postprod
     await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'version_prete'}});
     await logMediaHistory(pp.prestation_id,S.uid,'Version soumise','version',null,'—','V'+numero);
@@ -5117,7 +5134,7 @@ async function sauvegarderCorrection(postprodId){
   try{
     const ppData=await sbFetch('media_postproductions?select=prestation_id&id=eq.'+postprodId);
     const pp=ppData?.[0];
-    await sbFetch('media_corrections',{method:'POST',body:{
+    const rCor=await sbFetch('media_corrections',{method:'POST',body:{
       postproduction_id:postprodId,
       auteur_id:S.uid,
       type_correction:document.getElementById('cor-type')?.value||'autre',
@@ -5128,6 +5145,7 @@ async function sauvegarderCorrection(postprodId){
       lien_capture:document.getElementById('cor-lien')?.value?.trim()||null,
       statut:'nouvelle'
     }});
+    if(sbErr(rCor)){err.textContent='Erreur : '+(rCor.message||'Envoi impossible.');return;}
     await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'corrections_demandees'}});
     if(pp) await logMediaHistory(pp.prestation_id,S.uid,'Correction demandée','correction',null,null,desc.slice(0,60));
     closeModal();
@@ -5138,7 +5156,8 @@ async function sauvegarderCorrection(postprodId){
 
 async function changerStatutPostprod(id,nouveauStatut){
   try{
-    await sbFetch('media_postproductions?id=eq.'+id,{method:'PATCH',body:{statut:nouveauStatut}});
+    const r=await sbFetch('media_postproductions?id=eq.'+id,{method:'PATCH',body:{statut:nouveauStatut}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
     const ppData=await sbFetch('media_postproductions?select=prestation_id&id=eq.'+id);
     if(ppData?.[0]) await logMediaHistory(ppData[0].prestation_id,S.uid,'Statut postproduction','postproduction',id,null,nouveauStatut);
     toast('Statut mis à jour','ok');
@@ -5227,7 +5246,8 @@ function renderLivrables(){
 
 async function validerLivrable(id){
   try{
-    await sbFetch('media_livrables?id=eq.'+id,{method:'PATCH',body:{statut:'pret_a_livrer',date_validation:new Date().toISOString(),validateur_id:S.uid}});
+    const r=await sbFetch('media_livrables?id=eq.'+id,{method:'PATCH',body:{statut:'pret_a_livrer',date_validation:new Date().toISOString(),validateur_id:S.uid}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
     const lvData=await sbFetch('media_livrables?select=prestation_id,nom&id=eq.'+id);
     if(lvData?.[0]) await logMediaHistory(lvData[0].prestation_id,S.uid,'Livrable validé','livrable',id,'a_valider','pret_a_livrer');
     toast('Livrable validé — prêt à livrer','ok');
@@ -5288,7 +5308,8 @@ async function sauvegarderLivrable(){
       date_expiration:document.getElementById('lv-exp')?.value||null,
       statut:'valide'
     }});
-    await sbFetch('media_livrables',{method:'POST',body:{
+    if(sbErr(lienRes)){err.textContent='Erreur : '+(lienRes.message||'Création du lien impossible.');return;}
+    const rLivr=await sbFetch('media_livrables',{method:'POST',body:{
       nom,
       type_livrable:document.getElementById('lv-type')?.value||'dossier_complet',
       prestation_id:presId,
@@ -5297,6 +5318,7 @@ async function sauvegarderLivrable(){
       instructions:document.getElementById('lv-inst')?.value||null,
       statut:'a_valider'
     }});
+    if(sbErr(rLivr)){err.textContent='Erreur : '+(rLivr.message||'Création du livrable impossible.');return;}
     if(presId) await logMediaHistory(presId,S.uid,'Livrable créé','livrable',null,null,nom);
     closeModal();
     toast('Livrable créé — en attente de validation','ok');
@@ -5342,7 +5364,7 @@ async function confirmerLivraison(livrableId){
   try{
     const lvData=await sbFetch('media_livrables?select=prestation_id,nom&id=eq.'+livrableId);
     const lv=lvData?.[0];
-    await sbFetch('media_livraisons',{method:'POST',body:{
+    const rEnvoi=await sbFetch('media_livraisons',{method:'POST',body:{
       prestation_id:lv?.prestation_id||null,
       livrables_ids:[livrableId],
       destinataire_nom:document.getElementById('liv-nom')?.value?.trim()||null,
@@ -5353,6 +5375,7 @@ async function confirmerLivraison(livrableId){
       expediteur_id:S.uid,
       statut:'envoyee'
     }});
+    if(sbErr(rEnvoi)){err.textContent='Erreur : '+(rEnvoi.message||'Enregistrement de la livraison impossible.');return;}
     await sbFetch('media_livrables?id=eq.'+livrableId,{method:'PATCH',body:{statut:'livre'}});
     if(lv?.prestation_id) await logMediaHistory(lv.prestation_id,S.uid,'Livraison effectuée','livraison',null,null,email);
     closeModal();
