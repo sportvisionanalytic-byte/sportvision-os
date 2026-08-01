@@ -10522,7 +10522,7 @@ let FORMATIONS_CATALOG=[
     {titre:'Postproduction',lecons:['Points essentiels']},
     {titre:'Clôture et bilan',lecons:['Points essentiels']},
   ],certification:{id:'prod-tournoi-01',nom:'CERT-TOURNOI — Production de tournoi sportif',validite_mois:12,badge:'🏆'},statut:'publiée'},
-  {id:'stab-gimbal-01',titre:'Maîtrise du stabilisateur',categorie:'Production',icone:'⚖️',niveau:'Intermédiaire',type:'hybride',duree:'4h',xp:70,formateur:'Fouka',obligatoire:false,description:'Configurer, équilibrer, calibrer et utiliser un stabilisateur (DJI RS 3 Mini, RS 4, RS 4 Pro, RS 4 Mini et équivalents validés) en toute sécurité sur le terrain sportif : équilibrage des trois axes, calibration, modes PF/PTF/FPV/verrouillage, mouvements (push-in, suivi, révélation, rotation), marche opérateur, sécurité en présence de joueurs et de public, orientation horizontale et verticale — jusqu\'à la certification CERT-STAB.',modules:[
+  {id:'stab-gimbal-01',titre:'Maîtrise du stabilisateur',categorie:'Matériel et captation technique',icone:'⚖️',niveau:'Intermédiaire',type:'hybride',duree:'4h',xp:70,formateur:'Fouka',obligatoire:false,description:'Configurer, équilibrer, calibrer et utiliser un stabilisateur (DJI RS 3 Mini, RS 4, RS 4 Pro, RS 4 Mini et équivalents validés) en toute sécurité sur le terrain sportif : équilibrage des trois axes, calibration, modes PF/PTF/FPV/verrouillage, mouvements (push-in, suivi, révélation, rotation), marche opérateur, sécurité en présence de joueurs et de public, orientation horizontale et verticale — jusqu\'à la certification CERT-STAB.',modules:[
     {titre:'Préparer la configuration',lecons:['Points essentiels']},
     {titre:'Équilibrer les trois axes',lecons:['Points essentiels']},
     {titre:'Calibration',lecons:['Points essentiels']},
@@ -10532,6 +10532,20 @@ let FORMATIONS_CATALOG=[
     {titre:'Sport et sécurité',lecons:['Points essentiels']},
     {titre:'Horizontal et vertical',lecons:['Points essentiels']},
   ],certification:{id:'stab-gimbal-01',nom:'CERT-STAB — Opérateur stabilisateur SportVision',validite_mois:18,badge:'⚖️'},statut:'publiée'},
+  {id:'light-acc-01',titre:'Gestion de la lumière et des accessoires',categorie:'Matériel et captation technique',icone:'💡',niveau:'Débutant à intermédiaire',type:'hybride',duree:'6h',xp:80,formateur:'Fouka',obligatoire:false,description:'Maîtriser la lumière naturelle et artificielle, l\'éclairage trois points, la température de couleur, les modeleurs, les filtres ND, les supports (pieds, monopode, trépied), l\'audio et les accessoires, la gestion de l\'énergie et la protection météo — jusqu\'à la certification CERT-LIGHT-ACC.',modules:[
+    {titre:'Comprendre les caractéristiques',lecons:['Points essentiels']},
+    {titre:'Lumière naturelle',lecons:['Points essentiels']},
+    {titre:'Éclairage trois points',lecons:['Points essentiels']},
+    {titre:'Interview à une source',lecons:['Points essentiels']},
+    {titre:'Température de couleur',lecons:['Points essentiels']},
+    {titre:'Modeleurs',lecons:['Points essentiels']},
+    {titre:'Pieds, pinces et sécurité',lecons:['Points essentiels']},
+    {titre:'Filtres ND',lecons:['Points essentiels']},
+    {titre:'Monopode et trépied',lecons:['Points essentiels']},
+    {titre:'Audio et accessoires',lecons:['Points essentiels']},
+    {titre:'Énergie',lecons:['Points essentiels']},
+    {titre:'Protection météo',lecons:['Points essentiels']},
+  ],certification:{id:'light-acc-01',nom:'CERT-LIGHT-ACC — Lumière et accessoires SportVision',validite_mois:18,badge:'💡'},statut:'publiée'},
 ];
 
 const FORMATION_QUIZ_CATALOG={
@@ -11299,14 +11313,31 @@ const FORMATION_QUIZ_CATALOG={
     {q:'Peut-on transporter le stabilisateur avec des axes mal verrouillés ?',opts:['Non','Oui'],rep:0},
     {q:'Quel est le seuil de réussite de l\'évaluation pratique ?',opts:['16/20','10/20','20/20','12/20'],rep:0},
   ],
+  'light-acc-01':[
+    {q:'Faut-il contrôler la direction, la dureté et la température d\'une source lumineuse avant de tourner ?',opts:['Oui','Non'],rep:0},
+    {q:'Face à un contre-jour non maîtrisé en extérieur, quelle solution est adaptée ?',opts:['Utiliser un réflecteur ou déplacer le sujet','Ignorer le problème','Filmer en plein soleil sans ajustement','Supprimer l\'arrière-plan après coup'],rep:0},
+    {q:'Dans un éclairage trois points, quel est le rôle du Fill Light ?',opts:['Contrôler les ombres','Séparer le sujet du fond','Remplacer la lumière principale','Colorer l\'arrière-plan'],rep:0},
+    {q:'Est-il obligatoire d\'utiliser systématiquement trois sources ?',opts:['Non','Oui'],rep:0},
+    {q:'Pour une interview à une source, où placer la lumière principale ?',opts:['Environ 45°, légèrement au-dessus du regard','Directement derrière le sujet','Au ras du sol','À l\'opposé du regard'],rep:0},
+    {q:'Peut-on mélanger plusieurs températures de couleur sans contrôle ?',opts:['Non','Oui'],rep:0},
+    {q:'Que permet une softbox ?',opts:['Une lumière plus enveloppante','Un blocage total de la lumière','Une réduction de la puissance électrique','Un effet stroboscopique'],rep:0},
+    {q:'Que fait un drapeau noir (flag) ?',opts:['Il bloque ou contrôle la lumière','Il diffuse la lumière','Il recharge la batterie','Il stabilise le pied'],rep:0},
+    {q:'Avant d\'installer une source en hauteur, que faut-il vérifier en priorité ?',opts:['Le lest et la sécurisation','La couleur du fond','Le nombre de plans prévus','Le type de micro utilisé'],rep:0},
+    {q:'À quoi sert un filtre ND ?',opts:['Réduire l\'exposition tout en gardant une vitesse et une ouverture cohérentes','Ajouter de la saturation','Éliminer le bruit numérique','Modifier la balance des blancs automatiquement'],rep:0},
+    {q:'Quel accessoire est adapté à une captation longue et fixe ?',opts:['Trépied','Monopode','Stabilisateur','Drone'],rep:0},
+    {q:'Chaque accessoire audio doit-il être testé avant le tournage ?',opts:['Oui','Non'],rep:0},
+    {q:'Comment étiqueter les batteries selon la méthode recommandée ?',opts:['Chargée / Utilisée / À recharger / Défectueuse','Neuve / Ancienne','Grosse / Petite','Aucun étiquetage nécessaire'],rep:0},
+    {q:'Une protection météo doit-elle être prévue même pour un tournage prévu au sec ?',opts:['Oui, en prévention','Non, jamais nécessaire','Uniquement en hiver','Uniquement pour le drone'],rep:0},
+    {q:'Une affectation drone peut-elle être confirmée uniquement sur la base de CERT-DRONE-INT ?',opts:['Non, les justificatifs réglementaires et la faisabilité doivent aussi être validés','Oui, cela suffit toujours','Oui, si le pilote est volontaire','Non, aucune certification n\'est nécessaire'],rep:0},
+  ],
 };
 
 const FORMATION_ROLE_MAP={
-  photo:['photo-bases','content-sport-01','design-sport-01','mont-capcut-01','fusion-motion-sport-01','photo-ret-01','photo-ret-adv-01','lead-terrain-01','stab-gimbal-01','photo-sony-a7','cert-photo-video-complet'],
+  photo:['photo-bases','content-sport-01','design-sport-01','mont-capcut-01','fusion-motion-sport-01','photo-ret-01','photo-ret-adv-01','lead-terrain-01','stab-gimbal-01','light-acc-01','photo-sony-a7','cert-photo-video-complet'],
   prod:['cert-responsable-production-complet','mont-capcut-01','fusion-motion-sport-01','photo-ret-adv-01','lead-terrain-01','prod-tournoi-01'],
   sec:['sv-comportement','cert-secretaire-complet','sec-crm-05'],
   compta:[],
-  cm:['cm-sport-01','content-sport-01','design-sport-01','mont-capcut-01','stab-gimbal-01'],
+  cm:['cm-sport-01','content-sport-01','design-sport-01','mont-capcut-01','stab-gimbal-01','light-acc-01'],
   com:['cert-commercial-complet'],
   admin:['photo-bases'],
 };
@@ -12495,6 +12526,20 @@ const FORMATION_CONTENT={
   [['Marche opérateur : genoux légèrement fléchis, pas courts, centre de gravité stable, bras souples, vitesse constante, trajectoire préparée, assistant lorsque le déplacement est risqué.']],
   [['Ne pas utiliser le stabilisateur : sur l\'aire de jeu sans autorisation, dans une trajectoire de joueur, en reculant sans assistant, au milieu d\'une foule dense, sous la pluie si le matériel n\'est pas prévu, avec des axes mal verrouillés pendant le transport.']],
   [{d:'Chaque orientation (horizontale ou verticale) nécessite : une installation adaptée, un nouvel équilibrage si la configuration change, une vérification des câbles, un test de cadrage, une calibration éventuelle.',v:[{t:'Passer le DJI RS 3 Mini en mode portrait',id:'imqsT5gnDNE'}]}],
+],
+'light-acc-01':[
+  [{d:'Caractéristiques à identifier pour toute source lumineuse : intensité, direction, taille, distance, dureté, température, qualité, couleur, diffusion, autonomie.',v:[{t:'Apprendre les bases de la lumière en vidéo',id:'ldnIB4atLpc'}]}],
+  [['Analyser : soleil direct, ombre, fenêtre, coucher de soleil, contre-jour, ciel couvert, réflexions du terrain, murs colorés.','Solutions : déplacer le sujet, utiliser un réflecteur, diffuser, modifier l\'angle, protéger les hautes lumières, choisir un arrière-plan adapté.']],
+  [{d:'Key Light (lumière principale) → Fill Light (contrôle des ombres) → Back Light (séparation du sujet et du fond).',p:['Il n\'est pas obligatoire d\'utiliser systématiquement trois sources — le principe sert à comprendre la fonction de chacune.'],v:[{t:'Configuration d\'éclairage trois points',id:'Ti7qx3WnJU0'}]}],
+  [{d:'Installation minimale pour une interview à une source : source à environ 45°, légèrement au-dessus du regard, diffusion, sujet éloigné de l\'arrière-plan, contrôle de la lumière naturelle, réflecteur éventuel.',v:[{t:'Comment filmer une interview professionnelle',id:'JyhLta1a3EU'}]}],
+  [['Éviter de mélanger sans contrôle : lumière du jour, tungstène, LED, projecteur de gymnase, écran, enseigne colorée.','Décider soit d\'harmoniser les sources, soit de conserver une différence volontaire, puis fixer la balance des blancs.']],
+  [{d:'Softbox : lumière plus enveloppante. Grille : contrôle de la diffusion latérale. Réflecteur : renvoi d\'une lumière existante. Diffuseur : adoucissement. Drapeau noir : blocage ou contrôle de la lumière. Parapluie : couverture large et installation rapide.',v:[{t:'Matériel pour un studio photo',id:'1nsmaZo_BqU'}]}],
+  [['Contrôles avant installation : pied entièrement ouvert, charge compatible, source correctement fixée, lest installé, câble sécurisé, passage dégagé, batterie fixée, zone signalée, assistant présent si nécessaire.','Règle : ne jamais laisser une source lourde en hauteur sans sécurisation.']],
+  [['Utilisation des filtres ND : conserver une vitesse vidéo cohérente, conserver une grande ouverture, réduire l\'exposition extérieure, garder un rendu constant.','Contrôler : densité, dominante, vignettage, reflets, polarisation non désirée, propreté du filtre.']],
+  [['Monopode : téléobjectif, sport, mobilité, fatigue réduite. Trépied : interview, captation longue, plan fixe, streaming, caméra secondaire.','Vérifier : plaque, verrouillage, charge, niveau, stabilité, position des pieds.']],
+  [['Kit interview : micro-cravate, micro canon, enregistreur, casque, câbles, adaptateurs, batteries, bonnettes, ruban de fixation.','Règle : chaque accessoire doit être testé avant le tournage.']],
+  [['Prévoir : batteries caméra, batteries lumière, batteries audio, chargeurs, multiprise, rallonge, batterie externe, solution de secours.','Étiqueter : chargée, utilisée, à recharger, défectueuse.']],
+  [['Prévoir : housse pluie, sacs étanches, chiffons, protection du sol, sachets absorbants, parapluie tenu par un assistant, changement de température progressif, séchage avant recharge.']],
 ]
 };
 
