@@ -10344,6 +10344,19 @@ let FORMATIONS_CATALOG=[
     {titre:'Intégrer un sponsor',lecons:['Points essentiels']},
     {titre:'Évaluation pratique',lecons:['Mise en situation']},
   ],certification:{id:'content-sport-01',nom:'CERT-VERT — Contenus verticaux sportifs',validite_mois:18,badge:'🎬'},statut:'publiée'},
+  {id:'design-sport-01',titre:'Création de visuels sportifs',categorie:'Création de contenu',icone:'🎨',niveau:'Débutant à intermédiaire',type:'hybride',duree:'3h30',xp:125,formateur:'Fouka',obligatoire:false,description:'Comprendre le brief, construire une hiérarchie visuelle, utiliser typographie et couleurs, choisir et préparer les images, composer, intégrer les sponsors, produire les bons formats et respecter les templates SportVision — jusqu\'à la certification CERT-VISUEL. La formation ne dépend d\'aucun logiciel en particulier (Canva, Photoshop, Photopea, outils internes) : les principes graphiques restent prioritaires.',modules:[
+    {titre:'Comprendre le brief',lecons:['Points essentiels']},
+    {titre:'Créer une hiérarchie visuelle',lecons:['Points essentiels']},
+    {titre:'Utiliser la typographie',lecons:['Points essentiels']},
+    {titre:'Utiliser les couleurs',lecons:['Points essentiels']},
+    {titre:'Choisir et préparer les images',lecons:['Points essentiels']},
+    {titre:'Construire la composition',lecons:['Points essentiels']},
+    {titre:'Intégrer les sponsors',lecons:['Points essentiels']},
+    {titre:'Formats à produire',lecons:['Points essentiels']},
+    {titre:'Templates SportVision',lecons:['Points essentiels']},
+    {titre:'Contrôle qualité',lecons:['Points essentiels']},
+    {titre:'Évaluation pratique',lecons:['Mise en situation']},
+  ],certification:{id:'design-sport-01',nom:'CERT-VISUEL — Création graphique sportive niveau 1',validite_mois:18,badge:'🎨'},statut:'publiée'},
 ];
 
 const FORMATION_QUIZ_CATALOG={
@@ -10903,14 +10916,28 @@ const FORMATION_QUIZ_CATALOG={
     {q:'Pourquoi ajouter des sous-titres ?',opts:['Pour rendre le message plus accessible et compréhensible sans son','Pour modifier l\'exposition','Pour augmenter la fréquence d\'image','Pour remplacer le cadrage'],rep:0},
     {q:'Une vidéo de 20 secondes contient quinze transitions différentes. Quel est le risque ?',opts:['Surcharger le contenu et détourner l\'attention','Améliorer automatiquement le storytelling','Réduire la taille du fichier','Améliorer le microphone'],rep:0},
   ],
+  'design-sport-01':[
+    {q:'Quel élément doit généralement être visible en premier sur un visuel ?',opts:['L\'information principale','Les mentions secondaires','Le nom du fichier','Les paramètres d\'export'],rep:0},
+    {q:'Combien de familles de polices faut-il généralement utiliser ?',opts:['Une ou deux','Sept','Dix','Aucune'],rep:0},
+    {q:'Peut-on déformer un logo sponsor pour remplir un espace ?',opts:['Non','Oui','Uniquement en story','Uniquement en impression'],rep:0},
+    {q:'Pourquoi tester le visuel en petite taille ?',opts:['Pour vérifier sa lisibilité sur téléphone','Pour réduire les couleurs','Pour supprimer les sponsors','Pour modifier la date'],rep:0},
+    {q:'Que doit contenir un brief de création ?',opts:['Objectif, format, informations, identité et délai','Uniquement le nom du graphiste','Uniquement la photo','Uniquement le logo'],rep:0},
+    {q:'Quelle étape est essentielle dans une affiche sportive ?',opts:['Organiser le sujet, les textes et les informations dans une composition cohérente','Ajouter tous les effets disponibles','Utiliser dix typographies','Masquer la date'],rep:0},
+    {q:'Une story peut-elle être obtenue en étirant simplement une publication carrée ?',opts:['Non, il faut adapter la composition','Oui systématiquement','Uniquement avec Photoshop','Uniquement avec Canva'],rep:0},
+    {q:'Pourquoi utiliser une grille lors de la composition ?',opts:['Pour améliorer les alignements et la structure','Pour augmenter la résolution','Pour modifier les logos','Pour ajouter du son'],rep:0},
+    {q:'Que faut-il vérifier avant d\'utiliser une photo ?',opts:['Sa qualité et son autorisation d\'utilisation','Uniquement son poids','Uniquement son nom','Uniquement sa couleur'],rep:0},
+    {q:'Quelle information ne doit jamais être supposée ?',opts:['La date, l\'heure ou le lieu officiel','Le format de travail','La taille de l\'écran','La couleur de l\'interface'],rep:0},
+    {q:'À quoi servent les zones verrouillées d\'un template ?',opts:['À protéger la cohérence de l\'identité visuelle','À empêcher tout téléchargement','À supprimer les photos','À modifier les factures'],rep:0},
+    {q:'Que faire avant l\'export final d\'un visuel ?',opts:['Relire et effectuer un contrôle complet','Publier immédiatement','Supprimer la source','Modifier tous les logos'],rep:0},
+  ],
 };
 
 const FORMATION_ROLE_MAP={
-  photo:['photo-bases','content-sport-01','photo-sony-a7','cert-photo-video-complet'],
+  photo:['photo-bases','content-sport-01','design-sport-01','photo-sony-a7','cert-photo-video-complet'],
   prod:['cert-responsable-production-complet'],
   sec:['sv-comportement','cert-secretaire-complet','sec-crm-05'],
   compta:[],
-  cm:['cm-sport-01','content-sport-01'],
+  cm:['cm-sport-01','content-sport-01','design-sport-01'],
   com:['cert-commercial-complet'],
   admin:['photo-bases'],
 };
@@ -11911,6 +11938,19 @@ const FORMATION_CONTENT={
   [['Exemples d\'appel à l\'action : « Identifie un coéquipier. », « Donne ton avis. », « Enregistre cette vidéo. », « Suis le club pour la suite. », « Réserve ta prestation. », « Retrouve les résultats ce week-end. »']],
   [['Le sponsor doit être intégré avec cohérence : logo, produit, lieu, texte, remerciement, activation, offre.','Ne pas ajouter un logo de manière arbitraire sur une vidéo qui n\'a pas été prévue pour ce sponsor.']],
   [['Évaluation pratique : créer trois contenus — un Reel dynamique de 15 à 25 secondes, un contenu narratif de 30 à 45 secondes, et un contenu intégrant un sponsor de manière naturelle.','Chaque contenu doit comprendre : un Hook, au moins trois valeurs de plans, du texte ou des sous-titres, l\'identité SportVision ou du client, un CTA et un export vertical propre.']],
+],
+'design-sport-01':[
+  [['La formation ne dépend d\'aucun logiciel en particulier (Canva, Photoshop, Photopea, outils internes SportVision, futurs templates Club+) : les principes graphiques restent prioritaires.','Avant de créer, réunir : type de visuel, objectif, public, équipe, événement, format, informations obligatoires, photo disponible, sponsors, délai, direction artistique.','Exemple de brief : type affiche avant-match, équipe U18, adversaire FC Exemple, date 12 septembre, heure 15 h, lieu Stade municipal, sponsor principal Nova Auto, formats publication et story.']],
+  [{d:'Le spectateur doit lire un visuel dans un ordre précis : information principale, équipes ou sujet, date et heure, lieu, informations secondaires, puis sponsors.',p:['Ne pas donner la même taille à tous les éléments — la hiérarchie visuelle guide l\'œil.'],t:'Vidéo recommandée : « Créer un visuel Football Matchday » — lien à ajouter.'}],
+  [['Limiter le nombre de polices : une police de titre, une police de texte, éventuellement une variante.','Vérifier : lisibilité, contrastes, accents, espaces, alignements, cohérence des capitales.']],
+  [['Les couleurs doivent respecter l\'identité du club, la direction artistique du projet, le contraste, la lisibilité et la hiérarchie.','Éviter : couleurs sans rapport avec le club, trop de couleurs fortes, texte peu lisible, effets lumineux partout, dégradés excessifs.']],
+  [['Vérifier avant utilisation : résolution, netteté, droit d\'utilisation, cadrage, direction du regard, lumière, possibilité de détourage, cohérence avec le message.','Le détourage doit rester propre : cheveux, bras, ballon, chaussures, contours du maillot.']],
+  [{d:'Construire la composition avec grille, alignements, marges, équilibre, espace négatif, profondeur, sujet principal et éléments secondaires.',p:['Le visuel doit rester lisible en petite taille sur téléphone.'],t:'Vidéo recommandée : « Créer une affiche de match de football sur Photoshop » — lien à ajouter.'}],
+  [['Respecter pour chaque sponsor : logo officiel, proportions, couleur autorisée, emplacement, niveau de partenariat, visibilité prévue, zone de sécurité.','Ne jamais : déformer un logo, changer sa couleur sans autorisation, supprimer une partie, le placer sur un fond illisible, mettre un sponsor non concerné.']],
+  [['Formats à produire : publication Instagram 1080 × 1350 px, format carré 1080 × 1080 px, story et Reel Cover 1080 × 1920 px, affiche imprimée adaptée aux dimensions et à la résolution demandées par l\'imprimeur.','Ne pas simplement étirer un visuel horizontal pour en faire une story.']],
+  [{d:'Les templates SportVision doivent contenir : zones verrouillées, logo, couleurs, typographies, emplacements sponsors, champs modifiables, formats, marges.',p:['Un utilisateur ne doit modifier que les éléments autorisés.','Cette logique de templates sera importante pour SportVision Club+.'],t:'Vidéos recommandées : « Créer une affiche sportive sur Canva » et « Guide complet de Canva en français » — liens à ajouter.'}],
+  [['Contrôle qualité avant livraison : noms corrects, date correcte, heure correcte, lieu correct, logos corrects, sponsors corrects, orthographe relue, contraste suffisant, photo autorisée, format correct, marges respectées, export contrôlé.']],
+  [['Évaluation pratique : créer un pack complet pour un même match — affiche avant-match, story matchday, composition, résultat, homme du match, déclinaison sponsor.','Contraintes : identité cohérente, même système graphique, information lisible, formats adaptés, sponsors correctement intégrés, aucune faute, fichiers sources organisés, exports correctement nommés.']],
 ]
 };
 
