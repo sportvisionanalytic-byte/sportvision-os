@@ -1908,7 +1908,7 @@ const VIEWS={
     <div class="g3" style="margin-bottom:13px">
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Total impayés</div><div class="fs-v" id="imp-kpi-tot" style="color:var(--er)">—</div></div>
       <div class="fs"><div class="fs-l">Nombre de dossiers</div><div class="fs-v" id="imp-kpi-nb">—</div></div>
-      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Relances envoyées</div><div class="fs-v" id="imp-kpi-rel" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En retard +30 jours</div><div class="fs-v" id="imp-kpi-rel" style="color:var(--wa)">—</div></div>
     </div>
     <div id="compta-impayes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -1927,7 +1927,7 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Dépenses</div><button class="btn bp bs" onclick="modalNouvelleDepense()">+ Nouvelle dépense</button></div>
     <div class="g3" style="margin-bottom:13px">
       <div class="fs"><div class="fs-l">Dépenses ce mois</div><div class="fs-v" id="dep-kpi-mois" style="color:var(--er)">—</div></div>
-      <div class="fs"><div class="fs-l">Budget annuel utilisé</div><div class="fs-v" id="dep-kpi-pct" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Dépenses cette année</div><div class="fs-v" id="dep-kpi-pct" style="color:var(--wa)">—</div></div>
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">À rembourser</div><div class="fs-v" id="dep-kpi-rem" style="color:var(--ok)">—</div></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -1935,7 +1935,7 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterComptaDepenses('materiel')" id="dep-f-materiel">Matériel</button>
       <button class="btn bg2 bs" onclick="filterComptaDepenses('logistique')" id="dep-f-logistique">Logistique</button>
       <button class="btn bg2 bs" onclick="filterComptaDepenses('marketing')" id="dep-f-marketing">Marketing</button>
-      <button class="btn bg2 bs" onclick="filterComptaDepenses('autres')" id="dep-f-autres">Autres</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('autre')" id="dep-f-autre">Autres</button>
     </div>
     <div id="compta-depenses-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -4021,6 +4021,16 @@ async function loadProdPlanning(){
     const ST_BADGE={'production_démarrée':['rgba(240,68,94,.1)','rgba(240,68,94,.2)','var(--er)'],'équipe_en_route':['rgba(245,165,36,.1)','rgba(245,165,36,.2)','var(--wa)'],'arrivée_sur_place':['rgba(245,165,36,.1)','rgba(245,165,36,.2)','var(--wa)'],'équipe_affectée':['rgba(245,165,36,.1)','rgba(245,165,36,.2)','var(--wa)'],'confirmée':['rgba(54,107,255,.1)','rgba(54,107,255,.2)','var(--acc)'],'planifiée':['rgba(54,107,255,.1)','rgba(54,107,255,.2)','var(--acc)'],'prête':['rgba(46,204,138,.1)','rgba(46,204,138,.2)','var(--ok)'],'livrée':['rgba(46,204,138,.1)','rgba(46,204,138,.2)','var(--ok)'],'montage_en_cours':['rgba(124,77,255,.1)','rgba(124,77,255,.2)','#7C4DFF'],'médias_à_transférer':['rgba(124,77,255,.1)','rgba(124,77,255,.2)','#7C4DFF'],'médias_complets':['rgba(124,77,255,.1)','rgba(124,77,255,.2)','#7C4DFF'],'prête_validation':['rgba(245,165,36,.1)','rgba(245,165,36,.2)','var(--wa)'],'prêt_validation':['rgba(245,165,36,.1)','rgba(245,165,36,.2)','var(--wa)'],'clôturée':['var(--s2)','var(--b1)','var(--t3)']};
     const RC={'photo':'#7C4DFF','prod':'#2ECC8A','cm':'#F5A524','admin':'#366BFF','sec':'#00B8D4','com':'#F0445E'};
     const KIT_IC={'photo':'📷','vidéo':'🎬','drone':'🚁','audio':'🎙','streaming':'📡'};
+    const kitsByPre={};
+    if(tab==='kits'){
+      const preIds=raw.map(p=>p.id);
+      const rawK=await sbFetch('kit_reservations?select=prestation_id,kits(nom,type_kit)&prestation_id=in.('+preIds.join(',')+')'+'&statut=not.in.(retourné,en_contrôle)').catch(()=>[]);
+      (Array.isArray(rawK)?rawK:[]).forEach(k=>{
+        if(!k.prestation_id||!k.kits)return;
+        if(!kitsByPre[k.prestation_id])kitsByPre[k.prestation_id]=[];
+        kitsByPre[k.prestation_id].push((KIT_IC[k.kits.type_kit]||'🎒')+' '+k.kits.nom);
+      });
+    }
     // Group by date
     const grouped={};
     raw.forEach(p=>{const d=p.date_prestation||'—';if(!grouped[d])grouped[d]=[];grouped[d].push(p);});
@@ -4040,13 +4050,12 @@ async function loadProdPlanning(){
       pres.forEach((p,pi)=>{
         const isLast=pi===pres.length-1&&gi===days.length-1;
         const equipe=(p.prestations_equipe||[]).filter(e=>['acceptée','invitation_envoyée'].includes(e.statut));
-        const kitsP=[];
         const hDeb=(p.heure_debut||'').slice(0,5);
         const barClr=ST_BAR[p.statut]||'var(--acc)';
         const lb=ST_LB[p.statut]||p.statut;
         const [bdBg,bdBorder,bdColor]=ST_BADGE[p.statut]||['rgba(54,107,255,.1)','rgba(54,107,255,.2)','var(--acc)'];
         const teamNames=equipe.length?equipe.slice(0,2).map(e=>{const c=e.collaborateur||{};return[c.prenom,c.nom].filter(Boolean).join(' ');}).join(', ')+(equipe.length>2?` +${equipe.length-2}`:''):'';
-        const kitsStr=null;
+        const kitsStr=(kitsByPre[p.id]||[]).join(', ')||null;
         // For kit/equipe views, extra detail
         let extraInfo='';
         if(tab==='equipe'&&teamNames){extraInfo=`<div style="font-size:10.5px;color:var(--t3);margin-top:3px">👥 ${teamNames}</div>`;}
@@ -7100,7 +7109,10 @@ async function kitsRenderControles(){
   if(!el)return;
   el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Chargement…</div>';
   try{
-    const controles=await sbFetch('kit_controles?select=id,type,statut,created_at,kits(nom),kit_reservations(collaborateur_id,prestations(reference,date_prestation,clients(nom))),profiles(prenom,nom)&order=created_at.desc&limit=50&collaborateur_id=eq.'+localStorage.getItem('sv_uid')).catch(()=>[]);
+    const _role=localStorage.getItem('sv_role');
+    const _isManager=_role==='admin'||_role==='prod';
+    const _selfFilter=_isManager?'':'&collaborateur_id=eq.'+localStorage.getItem('sv_uid');
+    const controles=await sbFetch('kit_controles?select=id,type,statut,created_at,kits(nom),kit_reservations(collaborateur_id,prestations(reference,date_prestation,clients(nom))),profiles(prenom,nom)&order=created_at.desc&limit=50'+_selfFilter).catch(()=>[]);
     const all=Array.isArray(controles)?controles:[];
     if(!all.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--t3)">Aucun contrôle à réaliser.</div>';return;}
     el.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">
@@ -7108,11 +7120,12 @@ async function kitsRenderControles(){
         const pre=c.kit_reservations?.prestations;
         const typeLabel=c.type==='avant'?'Contrôle avant prestation':'Contrôle après prestation';
         const stColor=c.statut==='valide'?'var(--ok)':c.statut==='bloquant'?'var(--er)':'var(--wa)';
+        const respo=[c.profiles?.prenom,c.profiles?.nom].filter(Boolean).join(' ');
         return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:14px 16px">
           <div style="display:flex;align-items:flex-start;gap:12px">
             <div style="flex:1">
               <div style="font-size:13.5px;font-weight:700;color:var(--t1)">${c.kits?.nom||'Kit'}</div>
-              <div style="font-size:12px;color:var(--t2);margin-top:2px">${typeLabel}</div>
+              <div style="font-size:12px;color:var(--t2);margin-top:2px">${typeLabel}${_isManager&&respo?' · '+respo:''}</div>
               ${pre?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${pre.clients?.nom||'—'} · ${pre.reference||''}${pre.date_prestation?' · '+new Date(pre.date_prestation).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):''}</div>`:''}
             </div>
             <div style="text-align:right">
@@ -14001,15 +14014,16 @@ async function loadComDash(){
   try{
     const now=new Date();
     const m0=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const m1=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);
     const [clients,preMois]=await Promise.all([
       sbFetch('clients?select=id,nom,statut,type_client,sport,ville,created_at&order=created_at.desc&limit=100'),
-      sbFetch(`prestations?select=id&created_at=gte.${m0}`),
+      sbFetch(`prestations?select=id&date_prestation=gte.${m0}&date_prestation=lte.${m1}&statut=not.in.(annulée,refusée)`),
     ]);
     const list=clients||[];
     _clientsCache=list;
     const s1=document.getElementById('com-kpi-pr');if(s1)s1.textContent=list.filter(c=>c.statut==='prospect').length;
     const s2=document.getElementById('com-kpi-q');if(s2)s2.textContent=list.filter(c=>c.statut==='qualifié').length;
-    const s3=document.getElementById('com-kpi-cl');if(s3)s3.textContent=list.filter(c=>c.statut==='partenaire').length;
+    const s3=document.getElementById('com-kpi-cl');if(s3)s3.textContent=list.filter(c=>['partenaire','client'].includes(c.statut)).length;
     const s4=document.getElementById('com-kpi-pre');if(s4)s4.textContent=(preMois||[]).length;
     const ep=document.getElementById('com-dash-pr');
     if(ep){
@@ -14065,7 +14079,7 @@ async function loadComptaDash(){
     const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
     const [data,remData,fraisData,remAttData]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,acompte_montant,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500'),
-      sbFetch('prestations_equipe?select=remuneration,prestations(date_prestation)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('prestations_equipe?select=remuneration,prestations(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
       sbFetch('frais?select=montant&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext).catch(()=>[]),
       sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
     ]);
@@ -14205,7 +14219,7 @@ async function loadComptaImpayes(){
     const enRetard=list.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now30).length;
     const tot=list.reduce((s,p)=>s+(p.montant_ttc||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-    set('imp-kpi-tot',tot.toLocaleString('fr-FR')+' €');set('imp-kpi-nb',list.length);set('imp-kpi-rel',enRetard+'+30j');
+    set('imp-kpi-tot',tot.toLocaleString('fr-FR')+' €');set('imp-kpi-nb',list.length);set('imp-kpi-rel',enRetard);
     el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date presta.</th><th>Statut fin.</th><th></th></tr></thead><tbody>'+
       list.map(p=>`<tr>
         <td class="tm">${p.reference||'—'}</td>
@@ -14271,16 +14285,20 @@ async function loadComptaDepenses(){
   try{
     const data=await sbFetch('frais?select=id,type,montant,description,statut,date_frais,collaborateur_id,profiles(prenom,nom)&order=date_frais.desc&limit=200');
     _comptaDepData=Array.isArray(data)?data:[];
-    const tot=_comptaDepData.reduce((s,f)=>s+(f.montant||0),0);
+    const now=new Date();
+    const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const yStart=now.getFullYear()+'-01-01';
+    const totMois=_comptaDepData.filter(f=>f.date_frais>=mStart).reduce((s,f)=>s+(f.montant||0),0);
+    const totAnnee=_comptaDepData.filter(f=>f.date_frais>=yStart).reduce((s,f)=>s+(f.montant||0),0);
     const arem=_comptaDepData.filter(f=>f.statut==='en_attente').reduce((s,f)=>s+(f.montant||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-    set('dep-kpi-mois',tot.toLocaleString('fr-FR')+' €');set('dep-kpi-pct','—');set('dep-kpi-rem',arem.toLocaleString('fr-FR')+' €');
+    set('dep-kpi-mois',totMois.toLocaleString('fr-FR')+' €');set('dep-kpi-pct',totAnnee.toLocaleString('fr-FR')+' €');set('dep-kpi-rem',arem.toLocaleString('fr-FR')+' €');
     renderComptaDepenses();
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table frais non disponible.</div>';console.error(e);}
 }
 function filterComptaDepenses(f){
   _comptaDepFilter=f;
-  ['all','materiel','logistique','marketing','autres'].forEach(id=>{const b=document.getElementById('dep-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  ['all','materiel','logistique','marketing','autre'].forEach(id=>{const b=document.getElementById('dep-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
   renderComptaDepenses();
 }
 function renderComptaDepenses(){
@@ -14340,7 +14358,7 @@ function renderComptaFrais(){
 async function loadComptaRem(){
   const el=document.getElementById('compta-rem-real');if(!el)return;
   try{
-    const data=await sbFetch('prestations_equipe?select=id,remuneration,statut_paiement,date_paiement,prestations(reference,date_prestation),collaborateur:profiles(id,prenom,nom,role)&order=created_at.desc&limit=200');
+    const data=await sbFetch('prestations_equipe?select=id,remuneration,statut_paiement,date_paiement,prestations(reference,date_prestation),collaborateur:profiles(id,prenom,nom,role)&statut=eq.acceptée&order=created_at.desc&limit=200');
     _comptaRemData=Array.isArray(data)?data:[];
     const tot=_comptaRemData.reduce((s,r)=>s+(r.remuneration||0),0);
     const pay=_comptaRemData.filter(r=>r.statut_paiement==='payé').reduce((s,r)=>s+(r.remuneration||0),0);
@@ -14549,7 +14567,7 @@ async function sauvegarderNouvelleDepense(){
     date_frais:document.getElementById('nd-date')?.value||new Date().toISOString().slice(0,10),
     km:type==='km'?parseInt(document.getElementById('nd-km')?.value||'0')||null:null,
     collaborateur_id:localStorage.getItem('sv_uid')||null,
-    statut:'validé',
+    statut:'en_attente',
   };
   const r=await sbFetch('frais',{method:'POST',body});
   if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
@@ -17730,7 +17748,7 @@ const SV_REGLEMENT=[
   ]},
   {id:'sanctions',ic:'⚠️',titre:'Chapitre 9 — Sanctions & Pénalités',contenu:[
     {t:'Principes généraux',b:['Les sanctions sont décidées par l\'Administrateur après analyse de la situation','Elles visent à corriger un comportement, pas à punir','Toute sanction est notifiée dans l\'OS avec une justification','Le collaborateur peut soumettre une explication écrite dans les 48h']},
-    {t:'Barème des pénalités XP',b:['Retard sur prestation : −50 XP + note écrite','Absence non justifiée non prévenue : −150 XP + avertissement','Retard livraison contenu : −30 XP par jour de retard','Mauvais comportement terrain / pas de tenue SportVision : −80 XP','Casse matériel par négligence : −200 XP + remboursement partiel selon évaluation','Refus d\'une mission sans motif valide : −50 XP','Partage non autorisé de contenu client : avertissement grave + possible exclusion']},
+    {t:'Barème des pénalités (photographes / vidéastes — système XP)',b:['Ce barème en XP concerne uniquement les collaborateurs Photo/Vidéo, seul rôle disposant d\'un parcours XP/grade. Pour les autres rôles, les mêmes manquements donnent lieu à un avertissement écrit et un entretien, sans retrait de points.','Retard sur prestation : −50 XP + note écrite','Absence non justifiée non prévenue : −150 XP + avertissement','Retard livraison contenu : −30 XP par jour de retard','Mauvais comportement terrain / pas de tenue SportVision : −80 XP','Casse matériel par négligence : −200 XP + remboursement partiel selon évaluation','Refus d\'une mission sans motif valide : −50 XP','Partage non autorisé de contenu client : avertissement grave + possible exclusion']},
     {t:'Procédure',b:['L\'Administrateur ou le Responsable Production constate l\'infraction','Un signalement est créé dans l\'OS avec date, description et preuves','Le collaborateur concerné est notifié et peut répondre','La décision de sanction est prise dans les 5 jours ouvrés','Les pénalités XP sont appliquées via le module XP de l\'OS','Les avertissements s\'accumulent : 3 avertissements = entretien disciplinaire']},
     {t:'Cas d\'exclusion',b:['Une faute grave peut mener à une suspension immédiate sans préavis','La faute grave inclut : violence, discrimination, vol, sabotage, violation grave de confidentialité','L\'exclusion est irréversible et peut être accompagnée de poursuites judiciaires']},
   ]},
@@ -18533,7 +18551,7 @@ function renderCentreRemuneration(){
     <div style="background:var(--s2);border-radius:8px;padding:16px">
       ${[
         ['Rémunération de base','selon votre contrat et rôle'],
-        ['+ Coefficient de grade','si activé par l\'Administrateur'],
+        ['+ Coefficient de grade','Photo/Vidéo uniquement, si activé par l\'Administrateur'],
         ['+ Prime de responsabilité','si vous êtes Responsable de prestation'],
         ['+ Prime de complexité','pour les prestations techniques'],
         ['+ Heures supplémentaires validées','sur accord du Responsable'],
@@ -18576,8 +18594,9 @@ function renderCentreRemuneration(){
 // ── FAQ ──────────────────────────────────────────────────────────────────────
 function renderCentreFAQ(filtre){
   const q=(_centreSearchQ||filtre||'').toLowerCase();
-  const cats=['Travail','SportVision OS','Matériel','Rémunération','Grades'];
-  const results=q.length>=2?SV_FAQ.filter(f=>f.q.toLowerCase().includes(q)||f.a.toLowerCase().includes(q)||f.cat.toLowerCase().includes(q)):SV_FAQ;
+  const showGradesCat=S.role==='photo'||S.role==='admin';
+  const cats=['Travail','SportVision OS','Matériel','Rémunération',...(showGradesCat?['Grades']:[])];
+  const results=(q.length>=2?SV_FAQ.filter(f=>f.q.toLowerCase().includes(q)||f.a.toLowerCase().includes(q)||f.cat.toLowerCase().includes(q)):SV_FAQ).filter(f=>showGradesCat||f.cat!=='Grades');
 
   return`
   <div class="cv-h1">FAQ officielle</div>
@@ -20369,7 +20388,7 @@ async function loadMobileComDash(ct){
     ]);
     const prospects=(clients||[]).filter(c=>c.statut==='prospect').length;
     const qualifies=(clients||[]).filter(c=>c.statut==='qualifié').length;
-    const actifs=(clients||[]).filter(c=>c.statut==='partenaire').length;
+    const actifs=(clients||[]).filter(c=>['partenaire','client'].includes(c.statut)).length;
     const devisEnv=(devis||[]).filter(d=>['envoyé','en_attente'].includes(d.statut)).length;
     let html=`<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:800;color:var(--t1)">Commercial</div></div>
     <div class="mkpi-strip">
@@ -20380,10 +20399,10 @@ async function loadMobileComDash(ct){
     </div>
     <div class="mob-actions">
       <button class="mob-action-btn" onclick="switchView('pipeline')"><div class="mob-action-btn-ic">🎯</div><div><div class="mob-action-btn-t">Pipeline</div><div class="mob-action-btn-s">Prospects</div></div></button>
-      <button class="mob-action-btn" onclick="switchView('crm')"><div class="mob-action-btn-ic">➕</div><div><div class="mob-action-btn-t">Nouveau prospect</div><div class="mob-action-btn-s">CRM</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('pipeline')"><div class="mob-action-btn-ic">➕</div><div><div class="mob-action-btn-t">Nouveau prospect</div><div class="mob-action-btn-s">Pipeline</div></div></button>
     </div>`;
     const recents=(clients||[]).slice(0,6);
-    html+=`<div class="ms-head"><div class="ms-title">Clients récents</div><button class="ms-link" onclick="switchView('crm')">Tous →</button></div>`;
+    html+=`<div class="ms-head"><div class="ms-title">Clients récents</div><button class="ms-link" onclick="switchView('pipeline')">Tous →</button></div>`;
     html+=recents.map(c=>{const sc={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw','partenaire':'bn','client':'ba','inactif':'bn','bloqué':'bb','perdu':'bb'};const sl={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis','négociation':'Nég.','partenaire':'Partenaire','client':'Client','inactif':'Inactif','bloqué':'Bloqué','perdu':'Perdu'};
       return`<div class="mc" onclick="modalModifierClientById('${c.id}')" style="cursor:pointer">
         <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
