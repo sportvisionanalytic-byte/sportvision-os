@@ -7254,7 +7254,7 @@ async function kitsCreerKitSubmit(){
   const nom=document.getElementById('ck-nom')?.value.trim();
   if(!nom){toast('Le nom est obligatoire.','er');return;}
   try{
-    await sbFetch('kits',{method:'POST',body:{
+    const r=await sbFetch('kits',{method:'POST',body:{
       nom,
       type_kit:document.getElementById('ck-type')?.value||null,
       num_interne:document.getElementById('ck-num')?.value||null,
@@ -7262,6 +7262,7 @@ async function kitsCreerKitSubmit(){
       notes:document.getElementById('ck-notes')?.value||null,
       statut:'disponible',
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
     closeModal();toast('Kit créé.','ok');kitsLoadAll();
   }catch(e){toast('Erreur lors de la création.','er');}
 }
@@ -7334,6 +7335,7 @@ async function kitsCreerMaterielSubmit(){
       kit_id:kitId||null,
       created_by:localStorage.getItem('sv_uid'),
     }});
+    if(sbErr(newMat)){toast('Erreur : '+(newMat.message||'enregistrement impossible.'),'er');return;}
     // Si kit sélectionné, créer la composition
     if(kitId&&Array.isArray(newMat)&&newMat[0]){
       await sbFetch('kit_compositions',{method:'POST',body:{
@@ -7400,10 +7402,11 @@ async function kitsAddMaterielSubmit(kitId){
     const qty=parseInt(document.getElementById('add-mat-qty')?.value||'1');
     const oblig=document.getElementById('add-mat-oblig')?.value!=='false';
     const notes=document.getElementById('add-mat-notes')?.value||null;
-    await sbFetch('kit_compositions',{method:'POST',body:{
+    const rComp=await sbFetch('kit_compositions',{method:'POST',body:{
       kit_id:kitId,materiel_id:matId,quantite:qty,obligatoire:oblig,notes,
       ajoute_par:localStorage.getItem('sv_uid'),
     }});
+    if(sbErr(rComp)){toast((rComp.code==='23505'||rComp.message?.includes('duplicate'))?'Déjà dans ce kit.':'Erreur : '+(rComp.message||'ajout impossible.'),'er');return;}
     await sbFetch('materiels?id=eq.'+matId,{method:'PATCH',body:{kit_id:kitId,statut:'affecte_kit'}}).catch(()=>{});
     closeModal();toast('Équipement ajouté au kit.','ok');kitsLoadAll();
   }catch(e){toast(e.message?.includes('duplicate')?'Déjà dans ce kit.':'Erreur.','er');}
@@ -7412,7 +7415,8 @@ async function kitsAddMaterielSubmit(kitId){
 async function kitsRetirerMateriel(compId,kitId){
   try{
     const comp=await sbFetch('kit_compositions?select=materiel_id&id=eq.'+compId);
-    await sbFetch('kit_compositions?id=eq.'+compId,{method:'DELETE'});
+    const rDel=await sbFetch('kit_compositions?id=eq.'+compId,{method:'DELETE'});
+    if(sbErr(rDel)){toast('Erreur : '+(rDel.message||'retrait impossible.'),'er');return;}
     if(comp&&comp[0])await sbFetch('materiels?id=eq.'+comp[0].materiel_id,{method:'PATCH',body:{kit_id:null,statut:'disponible'}}).catch(()=>{});
     toast('Matériel retiré du kit.','ok');kitsLoadAll();
     kitsOpenFiche(kitId);
@@ -7437,7 +7441,8 @@ async function kitsAppliquerStatut(id){
   const val=document.getElementById('kit-stat-sel')?.value;
   if(!val)return;
   try{
-    await sbFetch('kits?id=eq.'+id,{method:'PATCH',body:{statut:val}});
+    const r=await sbFetch('kits?id=eq.'+id,{method:'PATCH',body:{statut:val}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     closeModal();toast('Statut mis à jour.','ok');kitsLoadAll();updateNavBadges(S.role);
   }catch(e){toast('Erreur.','er');}
 }
@@ -7486,7 +7491,7 @@ async function kitsAttribuerSubmit(kitId){
   if(!preId){toast('Sélectionnez une prestation.','er');return;}
   try{
     const uid=localStorage.getItem('sv_uid');
-    await sbFetch('kit_reservations',{method:'POST',body:{
+    const r=await sbFetch('kit_reservations',{method:'POST',body:{
       kit_id:kitId,
       prestation_id:preId,
       collaborateur_id:uid,
@@ -7497,6 +7502,7 @@ async function kitsAttribuerSubmit(kitId){
       lieu_recuperation:document.getElementById('attr-lieu')?.value||null,
       consignes:document.getElementById('attr-cons')?.value||null,
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'attribution impossible.'),'er');return;}
     await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'reserve'}}).catch(()=>{});
     // Notifier le responsable
     const respId=document.getElementById('attr-resp')?.value;
@@ -7539,7 +7545,7 @@ async function attribuerKitCollaborateur(kitId){
   const collabId=document.getElementById('akc-collab')?.value;
   if(!collabId){toast('Sélectionnez un collaborateur.','er');return;}
   try{
-    await sbFetch('kit_reservations',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
+    const r=await sbFetch('kit_reservations',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
       kit_id:kitId,
       prestation_id:null,
       collaborateur_id:collabId,
@@ -7547,6 +7553,7 @@ async function attribuerKitCollaborateur(kitId){
       statut:'sortie',
       heure_sortie:new Date().toISOString(),
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'attribution impossible.'),'er');return;}
     await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'sorti'}}).catch(()=>{});
     closeModal();
     toast('Kit attribué au collaborateur.','ok');
@@ -7556,7 +7563,8 @@ async function attribuerKitCollaborateur(kitId){
 
 async function libererKitCollaborateur(kitId,resaId){
   try{
-    await sbFetch('kit_reservations?id=eq.'+resaId,{method:'PATCH',body:{statut:'retourné',heure_retour_reelle:new Date().toISOString()}});
+    const r=await sbFetch('kit_reservations?id=eq.'+resaId,{method:'PATCH',body:{statut:'retourné',heure_retour_reelle:new Date().toISOString()}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'libération impossible.'),'er');return;}
     await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'disponible'}}).catch(()=>{});
     closeModal();
     toast('Attribution annulée — kit libéré.','ok');
@@ -7608,7 +7616,7 @@ async function kitsIncidentSubmit(materielId){
   try{
     const uid=localStorage.getItem('sv_uid');
     const mat=_matCache.find(m=>m.id===materielId);
-    await sbFetch('materiel_incidents',{method:'POST',body:{
+    const r=await sbFetch('materiel_incidents',{method:'POST',body:{
       materiel_id:materielId,
       kit_id:mat?.kit_id||null,
       collaborateur_id:uid,
@@ -7619,6 +7627,7 @@ async function kitsIncidentSubmit(materielId){
       action_immediate:document.getElementById('inc-action')?.value||null,
       statut:'ouvert',
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'déclaration impossible.'),'er');return;}
     // Bloquer le matériel si critique
     const newStatut=gravite==='critique'?'endommage':'fonctionnel_reserve';
     await sbFetch('materiels?id=eq.'+materielId,{method:'PATCH',body:{statut:newStatut}}).catch(()=>{});
@@ -7640,9 +7649,10 @@ async function kitsIncidentSubmit(materielId){
 
 async function kitsResoudreIncident(incId){
   try{
-    await sbFetch('materiel_incidents?id=eq.'+incId,{method:'PATCH',body:{
+    const r=await sbFetch('materiel_incidents?id=eq.'+incId,{method:'PATCH',body:{
       statut:'resolu',resolu_par:localStorage.getItem('sv_uid'),resolu_at:new Date().toISOString(),
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     toast('Incident marqué résolu.','ok');kitsRenderIncidents();
   }catch(e){toast('Erreur.','er');}
 }
@@ -7712,7 +7722,8 @@ async function kitsControleSubmit(controleId){
       const commentaire=document.getElementById('ci-note-'+id)?.value||null;
       return sbFetch('kit_controle_items?id=eq.'+id,{method:'PATCH',body:{statut_item,commentaire}});
     });
-    await Promise.all(updates);
+    const itemResults=await Promise.all(updates);
+    if(itemResults.some(sbErr)){toast('Erreur lors de l\'enregistrement des items.','er');return;}
     const vals=Object.values(items);
     const ok=vals.filter(v=>v==='ok').length;
     const absent=vals.filter(v=>v==='absent').length;
@@ -7720,10 +7731,11 @@ async function kitsControleSubmit(controleId){
     const reserve=vals.filter(v=>v==='reserve').length;
     const hasBloquant=absent>0||def>0;
     const statut=hasBloquant?'bloquant':reserve>0?'anomalie':'valide';
-    await sbFetch('kit_controles?id=eq.'+controleId,{method:'PATCH',body:{
+    const rCtrl=await sbFetch('kit_controles?id=eq.'+controleId,{method:'PATCH',body:{
       statut,signature_at:new Date().toISOString(),
       items_total:vals.length,items_ok:ok,items_reserve:reserve,items_ko:def,items_absent:absent,
     }});
+    if(sbErr(rCtrl)){toast('Erreur : '+(rCtrl.message||'validation impossible.'),'er');return;}
     if(hasBloquant){
       // Notifier prod
       const prods=await sbFetch('profiles?select=id&role=in.(admin,prod)').catch(()=>[]);
@@ -7769,12 +7781,13 @@ async function kitsModalMajMaintenance(maintId){
 
 async function kitsMaintSubmit(maintId){
   try{
-    await sbFetch('materiel_maintenances?id=eq.'+maintId,{method:'PATCH',body:{
+    const r=await sbFetch('materiel_maintenances?id=eq.'+maintId,{method:'PATCH',body:{
       statut:document.getElementById('maint-stat')?.value,
       cout_final:document.getElementById('maint-cout')?.value?Number(document.getElementById('maint-cout').value):null,
       date_retour_reelle:document.getElementById('maint-retour')?.value||null,
       notes:document.getElementById('maint-notes')?.value||null,
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     closeModal();toast('Maintenance mise à jour.','ok');kitsRenderMaintenance();
   }catch(e){toast('Erreur.','er');}
 }
@@ -7815,13 +7828,14 @@ async function kitsEditMaterielSubmit(id){
   const nom=document.getElementById('em-nom')?.value.trim();
   if(!nom){toast('Le nom est obligatoire.','er');return;}
   try{
-    await sbFetch('materiels?id=eq.'+id,{method:'PATCH',body:{
+    const r=await sbFetch('materiels?id=eq.'+id,{method:'PATCH',body:{
       nom,
       categorie:document.getElementById('em-cat')?.value,
       statut:document.getElementById('em-stat')?.value,
       marque:document.getElementById('em-marque')?.value||null,
       valeur:document.getElementById('em-val')?.value?Number(document.getElementById('em-val').value):null,
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     closeModal();toast('Équipement mis à jour.','ok');kitsLoadAll();
   }catch(e){toast('Erreur.','er');}
 }
@@ -7867,13 +7881,14 @@ async function kitsEditKitSubmit(kitId){
   const nom=document.getElementById('ek-nom')?.value.trim();
   if(!nom){toast('Le nom est obligatoire.','er');return;}
   try{
-    await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{
+    const r=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{
       nom,
       type_kit:document.getElementById('ek-type')?.value||null,
       num_interne:document.getElementById('ek-num')?.value||null,
       localisation:document.getElementById('ek-loc')?.value||null,
       notes:document.getElementById('ek-notes')?.value||null,
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     closeModal();toast('Kit mis à jour.','ok');kitsLoadAll();
   }catch(e){toast('Erreur lors de la mise à jour.','er');}
 }
@@ -7895,7 +7910,8 @@ function kitsConfirmerSupprimer(kitId){
 async function kitsSupprimerConfirme(kitId){
   try{
     await sbFetch('kit_compositions?kit_id=eq.'+kitId,{method:'DELETE'}).catch(()=>{});
-    await sbFetch('kits?id=eq.'+kitId,{method:'DELETE'});
+    const r=await sbFetch('kits?id=eq.'+kitId,{method:'DELETE'});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
     closeModal();toast('Kit supprimé.','ok');kitsLoadAll();
   }catch(e){toast('Erreur lors de la suppression.','er');}
 }
