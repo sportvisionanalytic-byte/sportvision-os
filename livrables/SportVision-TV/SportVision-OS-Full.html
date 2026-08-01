@@ -5553,7 +5553,8 @@ async function loadProdFrais(){
 
 async function validerFrais(id){
   try{
-    await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'validé'}});
+    const r=await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'validé'}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
     toast('Frais validés.','ok');
     loadViewData(S.role,S.view);
   }catch(e){toast('Erreur lors de la validation.','er');}
@@ -5561,7 +5562,8 @@ async function validerFrais(id){
 
 async function rembourserFrais(id){
   try{
-    await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'remboursé'}});
+    const r=await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'remboursé'}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Remboursement impossible.'),'er');return;}
     toast('Frais marqués comme remboursés.','ok');
     loadViewData(S.role,S.view);
   }catch(e){toast('Erreur lors du remboursement.','er');}
@@ -5630,7 +5632,8 @@ async function soumettrefrais(prestationId){
   const body={type,date_frais:date,km:km?Number(km):null,montant:Number(montant),description:desc||null,collaborateur_id:uid,statut:'en_attente'};
   if(prestationId)body.prestation_id=prestationId;
   try{
-    await sbFetch('frais',{method:'POST',body});
+    const r=await sbFetch('frais',{method:'POST',body});
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'table frais non disponible.');return;}
     closeModal();toast('Frais déclarés.','ok');
     loadViewData(S.role,S.view);
   }catch(e){if(err)err.textContent='Erreur : table frais non disponible.';}
@@ -6230,7 +6233,8 @@ async function repondreInvitation(equipeId,statut,motif){
   try{
     const body={statut,date_reponse:new Date().toISOString()};
     if(motif)body.notes_refus=motif;
-    await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body});
+    const r=await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Réponse impossible.'),'er');return;}
     toast(statut==='acceptée'?'Mission acceptée !':'Mission refusée.', statut==='acceptée'?'ok':'warn');
     if(S.view==='pre') loadPhotoMesPrestations();
     else loadPhotoDash();
@@ -6300,13 +6304,14 @@ async function signalerRetardCbk(hp,he,mo,co){
   const motifLb={transport:'Problème de transport',trafic:'Trafic / embouteillage',materiel:'Préparation matériel',personnel:'Raison personnelle',autre:'Autre'};
   const desc='Heure prévue : '+(hp||'?')+' · Heure estimée d\'arrivée : '+(he||'?')+' · Motif : '+(motifLb[mo]||mo)+(co?' — '+co:'');
   try{
-    await sbFetch('incidents',{method:'POST',body:{
+    const r=await sbFetch('incidents',{method:'POST',body:{
       type_incident:'Retard',
       niveau:'mineur',
       description:desc,
       declare_par:localStorage.getItem('sv_uid'),
       cloture:false,
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Signalement impossible.'),'er');return;}
     toast('Retard signalé. Le responsable est prévenu.','warn');
     updateNavBadges(S.role);
   }catch(e){toast('Erreur lors du signalement.','er');}
