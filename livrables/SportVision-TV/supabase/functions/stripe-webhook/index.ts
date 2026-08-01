@@ -63,7 +63,12 @@ serve(async (req) => {
             } else {
               updates.statut_financier = "payée";
             }
-            await admin.from("prestations").update(updates).eq("id", paiement.prestation_id);
+            const { data: prestation } = await admin
+              .from("prestations")
+              .update(updates)
+              .eq("id", paiement.prestation_id)
+              .select("reference")
+              .maybeSingle();
 
             // Best-effort : si une facture (générée côté OS) correspond à ce paiement,
             // la marquer payée aussi. Ne bloque jamais la confirmation du paiement en cas d'échec.
@@ -74,6 +79,31 @@ serve(async (req) => {
                 .eq("prestation_id", paiement.prestation_id)
                 .eq("type_facture", paiement.type_paiement)
                 .in("statut", ["brouillon", "emise"]);
+            } catch (_e) {
+              // ignoré volontairement
+            }
+
+            // Notifie le staff (cloche de notifications de l'OS) — best-effort.
+            try {
+              const ref = prestation?.reference ? ` — ${prestation.reference}` : "";
+              await admin.rpc("notify_staff_by_role", {
+                p_roles: ["sec"],
+                p_titre: `Paiement reçu${ref}`,
+                p_message: "Le paiement a été confirmé via Stripe. Le dossier est financièrement à jour.",
+                p_priorite: "low",
+                p_prestation_id: paiement.prestation_id,
+                p_client_id: paiement.client_id,
+              });
+              await admin.rpc("notify_staff_by_role", {
+                p_roles: ["prod"],
+                p_titre: "Paiement confirmé — prestation débloquée",
+                p_message:
+                  (paiement.type_paiement === "acompte" ? "L'acompte est reçu." : "Le solde est réglé.") +
+                  " La prestation peut être planifiée.",
+                p_priorite: "medium",
+                p_prestation_id: paiement.prestation_id,
+                p_client_id: paiement.client_id,
+              });
             } catch (_e) {
               // ignoré volontairement
             }
