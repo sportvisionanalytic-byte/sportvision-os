@@ -8672,7 +8672,8 @@ function modalNouveauDevis(){
 }
 
 async function modalCreerDevisRapide(clientId,clientNom){
-  const clients=await sbFetch('clients?select=id,nom&order=nom.asc').catch(()=>[]);
+  const clients=await sbFetch('clients?select=id,nom,promo_bienvenue_disponible&order=nom.asc').catch(()=>[]);
+  window._dvClientsPromoMap=Object.fromEntries((clients||[]).map(c=>[c.id,!!c.promo_bienvenue_disponible]));
   const opts=(clients||[]).map(c=>`<option value="${c.id}"${c.id===clientId?' selected':''}>${c.nom}</option>`).join('');
   const today=new Date().toISOString().slice(0,10);
   const templates=[
@@ -8684,7 +8685,11 @@ async function modalCreerDevisRapide(clientId,clientNom){
   _dvLignes=[{libelle:'',details:'',qte:1,pu:0}];
   openModal(`<div class="mh"><div class="mt">Devis rapide — ${clientNom||'Club'}</div><button class="mc" onclick="closeModal()">✕</button></div>
 <div class="mb">
-  <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi">${opts}</select></div>
+  <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi" onchange="dvCheckPromoBienvenue()">${opts}</select></div>
+  <div id="dv-promo-banner" style="display:none;background:rgba(50,216,230,.08);border:1px solid rgba(50,216,230,.3);border-radius:var(--rp);padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:var(--t1)">
+    🎁 Ce client a droit à l'offre de bienvenue (-10% sur sa première prestation).
+    <label style="display:inline-flex;align-items:center;gap:5px;margin-left:8px;cursor:pointer;font-weight:600"><input type="checkbox" id="dv-promo-apply" onchange="dvApplyPromo()"> Appliquer la réduction</label>
+  </div>
   <div style="margin-bottom:8px">
     <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Templates rapides</div>
     <div style="display:flex;flex-direction:column;gap:4px">
@@ -8701,7 +8706,28 @@ async function modalCreerDevisRapide(clientId,clientNom){
 </div>
 <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
   window._devisRapideTemplates=templates;
-  dvRenderLignes();dvOpenWide();
+  dvRenderLignes();dvOpenWide();dvCheckPromoBienvenue();
+}
+
+function dvCheckPromoBienvenue(){
+  const cli=document.getElementById('dv-cli')?.value;
+  const banner=document.getElementById('dv-promo-banner');
+  if(!banner)return;
+  const eligible=!!(window._dvClientsPromoMap||{})[cli];
+  banner.style.display=eligible?'block':'none';
+  const cb=document.getElementById('dv-promo-apply');
+  if(cb){cb.checked=false;}
+  if(!eligible){
+    const remise=document.getElementById('dv-remise');
+    if(remise&&remise.value==='10'){remise.value=0;dvLireEtRecalculer();}
+  }
+}
+function dvApplyPromo(){
+  const cb=document.getElementById('dv-promo-apply');
+  const remise=document.getElementById('dv-remise');
+  if(!remise)return;
+  remise.value=cb&&cb.checked?10:0;
+  dvLireEtRecalculer();
 }
 
 function devisRapideFillTemplate(i){
@@ -8741,6 +8767,9 @@ async function creerDevis(){
       if(err)err.textContent='Erreur : '+(r.message||'création impossible.');
       if(btn){btn.disabled=false;btn.textContent='Créer le devis';}
       return;
+    }
+    if(document.getElementById('dv-promo-apply')?.checked){
+      await sbFetch('clients?id=eq.'+cli,{method:'PATCH',body:{promo_bienvenue_disponible:false}}).catch(()=>{});
     }
     closeModal();toast('Devis créé.','ok');
     if(S.view==='devis')loadDevis();else{switchView('devis');}
@@ -12942,11 +12971,12 @@ async function creerContenu(){
   const uid=localStorage.getItem('sv_uid');
   const pub=st==='publié';
   try{
-    await sbFetch('notifications',{method:'POST',body:{
+    const r=await sbFetch('notifications',{method:'POST',body:{
       type:'contenu',titre:ti,
       message:JSON.stringify({plateforme:pl,type:ty,club:cl,date:dt,statut:st}),
       lue:pub,destinataire_id:uid
     }});
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');return;}
     closeModal();
     if(document.getElementById('contenus-real')) loadCmContenus();
     else if(document.getElementById('cal-real')) loadCmCal();
@@ -12989,7 +13019,8 @@ async function sauvegarderContenu(id){
   const dt=document.getElementById('cte-dt')?.value||'';
   const st=document.getElementById('cte-st')?.value||'brouillon';
   try{
-    await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{titre:ti,message:JSON.stringify({plateforme:pl,type:ty,club:cl,date:dt,statut:st}),lue:st==='publié'}});
+    const r=await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{titre:ti,message:JSON.stringify({plateforme:pl,type:ty,club:cl,date:dt,statut:st}),lue:st==='publié'}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
     closeModal();
     if(document.getElementById('contenus-real')) loadCmContenus();
     else if(document.getElementById('cal-real')) loadCmCal();
@@ -12999,9 +13030,10 @@ async function sauvegarderContenu(id){
 
 async function publierContenu(id){
   try{
-    await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:true}});
+    const r=await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:true}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'publication impossible.'),'er');return;}
     const c=_contenuCache.find(x=>x.id===id);
-    if(c){let info={};try{info=JSON.parse(c.message);}catch(e){}info.statut='publié';await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{message:JSON.stringify(info)}});}
+    if(c){let info={};try{info=JSON.parse(c.message);}catch(e){}info.statut='publié';await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{message:JSON.stringify(info)}}).catch(()=>{});}
     if(document.getElementById('contenus-real')) loadCmContenus();
     else if(document.getElementById('pub-real')) loadCmPublications();
   }catch(e){}
@@ -13010,7 +13042,8 @@ async function publierContenu(id){
 function supprimerContenu(id){
   confirmerAction('Supprimer ce contenu ?',async()=>{
     try{
-      await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
+      const r=await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
+      if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
       closeModal();
       toast('Contenu supprimé.','ok');
       loadViewData(S.role,S.view);
