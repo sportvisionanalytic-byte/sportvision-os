@@ -1924,7 +1924,7 @@ const VIEWS={
   'compta.documents':()=>_documentsView('compta'),
 
   'compta.depenses':()=>`
-    <div class="sh"><div class="sh-t">Dépenses</div><button class="btn bp bs" onclick="modalNouvelleDepense()">+ Nouvelle dépense</button></div>
+    <div class="sh"><div><div class="sh-t">Dépenses</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Toutes les charges de l'entreprise, y compris les frais avancés par l'équipe</div></div><button class="btn bp bs" onclick="modalNouvelleDepense()">+ Nouvelle dépense</button></div>
     <div class="g3" style="margin-bottom:13px">
       <div class="fs"><div class="fs-l">Dépenses ce mois</div><div class="fs-v" id="dep-kpi-mois" style="color:var(--er)">—</div></div>
       <div class="fs"><div class="fs-l">Dépenses cette année</div><div class="fs-v" id="dep-kpi-pct" style="color:var(--wa)">—</div></div>
@@ -1935,12 +1935,14 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterComptaDepenses('materiel')" id="dep-f-materiel">Matériel</button>
       <button class="btn bg2 bs" onclick="filterComptaDepenses('logistique')" id="dep-f-logistique">Logistique</button>
       <button class="btn bg2 bs" onclick="filterComptaDepenses('marketing')" id="dep-f-marketing">Marketing</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('repas')" id="dep-f-repas">Repas</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('km')" id="dep-f-km">Kilométrage</button>
       <button class="btn bg2 bs" onclick="filterComptaDepenses('autre')" id="dep-f-autre">Autres</button>
     </div>
     <div id="compta-depenses-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.frais':()=>`
-    <div class="sh"><div class="sh-t">Frais & remboursements km</div></div>
+    <div class="sh"><div><div class="sh-t">Frais & remboursements km</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Vue filtrée des dépenses avancées par un collaborateur, à traiter pour remboursement</div></div></div>
     <div class="g3" style="margin-bottom:13px">
       <div class="fs"><div class="fs-l">Frais soumis (mois)</div><div class="fs-v" id="fra-kpi-nb">—</div></div>
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Montant à rembourser</div><div class="fs-v" id="fra-kpi-tot" style="color:var(--wa)">—</div></div>
@@ -4308,59 +4310,6 @@ async function loadProdBriefings(){
   }
 }
 
-// ── PROD POSTPRODUCTION ───────────────────────────────────────────────────────
-let _prodPostData=[];
-let _prodPostFilter='all';
-
-async function loadProdPost(){
-  const el=document.getElementById('prod-post-real');
-  if(!el)return;
-  try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=in.(médias_complets,à_monter,montage_en_cours,prête_validation,prêt_validation)&order=date_prestation.asc&limit=50');
-    _prodPostData=Array.isArray(raw)?raw:[];
-    _prodPostFilter='all';
-    renderProdPostList();
-  }catch(e){
-    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
-  }
-}
-
-// ── PROD LIVRABLES ────────────────────────────────────────────────────────────
-let _prodLivrData=[];
-let _prodLivrFilter='all';
-
-function renderProdLivrList(){
-  const el=document.getElementById('prod-livr-real');
-  if(!el)return;
-  let list=_prodLivrData;
-  if(_prodLivrFilter==='valider') list=list.filter(p=>['prête_validation','prêt_validation'].includes(p.statut));
-  else if(_prodLivrFilter==='valide') list=list.filter(p=>p.statut==='prête');
-  else if(_prodLivrFilter==='livre') list=list.filter(p=>p.statut==='livrée');
-  if(!list.length){
-    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">✅</div><div style="font-size:13px">Aucun livrable dans ce filtre.</div></div>';
-    return;
-  }
-  const ST_LB={'prête_validation':'À valider','prêt_validation':'À valider','prête':'Validé','livrée':'Livré','clôturée':'Clôturé'};
-  const ST_CLR={'prête_validation':'var(--wa)','prêt_validation':'var(--wa)','prête':'var(--ok)','livrée':'var(--ok)','clôturée':'var(--t3)'};
-  el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+list.map((p,i)=>{
-    const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
-    const clr=ST_CLR[p.statut]||'var(--t3)';
-    const lb=ST_LB[p.statut]||p.statut;
-    const canValidate=['prête_validation','prêt_validation'].includes(p.statut);
-    return`<div onclick="modalDetailById('${p.id}')" style="display:flex;align-items:stretch;${i<list.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
-      <div style="width:4px;background:${clr};flex-shrink:0"></div>
-      <div style="flex:1;min-width:0;padding:12px 14px">
-        <div style="font-size:13px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
-        <div style="font-size:11px;color:var(--t3);margin-top:2px">${date}</div>
-      </div>
-      <div style="flex-shrink:0;padding:12px 14px;display:flex;align-items:center;gap:8px">
-        <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
-        ${canValidate?`<button onclick="event.stopPropagation();modalDetailById('${p.id}')" style="padding:6px 12px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Valider</button>`:''}
-      </div>
-    </div>`;
-  }).join('')+'</div>';
-}
-
 // ══════════════════════════════════════════════════════════════════════════════
 // ── CENTRE MÉDIAS & POSTPRODUCTION ────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════════
@@ -5698,42 +5647,6 @@ async function soumettrefrais(prestationId){
     closeModal();toast('Frais déclarés.','ok');
     loadViewData(S.role,S.view);
   }catch(e){if(err)err.textContent='Erreur : table frais non disponible.';}
-}
-
-// ── PROD FORMATION ────────────────────────────────────────────────────────────
-async function loadProdFormation(){
-  const el=document.getElementById('prod-form-real');
-  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  if(!el)return;
-  try{
-    const profRaw=await sbFetch('profiles?select=id,prenom,nom,role,xp&role=in.(photo,cm,prod)&order=nom.asc');
-    const prof=Array.isArray(profRaw)?profRaw:[];
-    const totXp=prof.reduce((sum,t)=>sum+(t.xp||0),0);
-    const actifs=prof.filter(t=>(t.xp||0)>=50).length;
-    s('form-nb',prof.length);s('form-exp',totXp.toLocaleString('fr-FR')+' XP');s('form-active',actifs);
-    const RC={'photo':'#7C4DFF','prod':'#2ECC8A','cm':'#F5A524'};
-    const RL={'photo':'Photo / Vidéo','prod':'Resp. Production','cm':'Community Manager'};
-    el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+prof.map((t,i)=>{
-      const name=[t.prenom,t.nom].filter(Boolean).join(' ')||t.role;
-      const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase();
-      const col=RC[t.role]||'#366BFF';
-      const xp=t.xp||0;
-      const grade=xp>=9000?'Maître':xp>=6500?'Elite':xp>=4000?'Expert':xp>=2000?'Senior':xp>=600?'Confirmé':'Débutant';
-      return`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;${i<prof.length-1?'border-bottom:1px solid var(--b1)':''}">
-        <div class="av" style="width:34px;height:34px;font-size:12px;background:${col}">${ini}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--t1)">${name}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:1px">${RL[t.role]||t.role}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:11px;font-weight:700;color:var(--acc)">${grade}</div>
-          <div style="font-size:10px;color:var(--t3)">${xp} XP</div>
-        </div>
-      </div>`;
-    }).join('')+'</div>';
-  }catch(e){
-    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
-  }
 }
 
 // ── PROD RAPPORTS ─────────────────────────────────────────────────────────────
@@ -10178,53 +10091,6 @@ async function msgSubmitCrTache(){
   }catch(e){toast('Erreur lors de la création.','er');}
 }
 
-// ── Médias / missions photo ───────────────────────────────────────────────────
-async function loadMedias(){
-  const el=document.getElementById('medias-real');
-  if(!el)return;
-  const uid=localStorage.getItem('sv_uid');
-  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  try{
-    const data=await sbFetch('prestations_equipe?select=id,statut,fonction,prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=50');
-    const list=data||[];
-    set('med-nb',list.length);
-    const done=list.filter(e=>['médias_à_transférer','médias_complets','à_monter','montage_en_cours','prêt_validation','à_valider_client','prête_à_livrer','livrée','clôturée'].includes(e.prestations?.statut)).length;
-    set('med-done',done);
-    set('med-att',list.length-done);
-    if(!list.length){
-      el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune mission assignée.</div></div>';return;
-    }
-    const sc={disponible:'bn',production_terminée:'bw',médias_à_transférer:'bl',médias_complets:'ba',livrée:'ba',clôturée:'ba',annulée:'bb'};
-    el.innerHTML=list.map(e=>{
-      const p=e.prestations||{};
-      const dt=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—';
-      const rushDone=['médias_complets','à_monter','montage_en_cours','prêt_validation','à_valider_client','prête_à_livrer','livrée','clôturée'].includes(p.statut);
-      const canTransfer=['production_terminée','médias_à_transférer'].includes(p.statut);
-      return`<div class="cd" style="margin-bottom:10px;padding:16px 18px">
-        <div style="display:flex;align-items:center;gap:14px">
-          <div style="flex:1;cursor:pointer" onclick="modalDetailById('${p.id}')">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-              <span class="bd ${sc[p.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
-              <span style="font-size:10px;font-family:monospace;color:var(--t3)">${p.reference||''}</span>
-            </div>
-            <div style="font-size:14px;font-weight:600;color:var(--t1)">${p.clients?.nom||'—'}</div>
-            <div style="font-size:12px;color:var(--t3);margin-top:3px">${dt} · ${e.fonction||'Photographe'}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-            ${canTransfer?`<button onclick="event.stopPropagation();avanJourJ('${p.id}','médias_complets')" style="padding:12px 18px;font-size:13px;font-weight:700;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;min-height:44px;width:100%;margin-top:4px">📤 Confirmer transfert médias</button>`:''}
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
-            <div style="width:40px;height:40px;border-radius:10px;border:1.5px solid ${rushDone?'var(--ok)':'var(--b2)'};background:${rushDone?'rgba(46,204,138,.12)':'transparent'};display:flex;align-items:center;justify-content:center">
-              ${rushDone?'<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#2ECC8A" stroke-width="2" stroke-linecap="round"><path d="M4 9l3.5 3.5 6.5-7"/></svg>':'<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--t3)" stroke-width="1.5"><path d="M8 3v5l3 3"/><circle cx="8" cy="8" r="6"/></svg>'}
-            </div>
-            <div style="font-size:9px;color:var(--t3);text-align:center">${rushDone?'Rushs OK':'En attente'}</div>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
-}
-
 // ── Formation photo (localStorage) ───────────────────────────────────────────
 let FORMATIONS_CATALOG=[
   {id:'sv-culture',titre:'Culture & standards SportVision',categorie:'Culture SportVision',icone:'🎯',niveau:'Débutant',type:'en_ligne',duree:'45 min',xp:25,formateur:'Équipe SportVision',obligatoire:true,description:'Comprendre les valeurs, la vision et les standards qualité de SportVision. Module d\'accueil indispensable avant toute mission.',modules:[{titre:'La mission de SportVision',lecons:['Histoire et vision','Nos clients : les clubs','Nos standards de qualité','L\'image de marque']},{titre:'Comportement professionnel',lecons:['Ponctualité et présentation','Communication avec le client','Gestion des imprévus']},{titre:'Processus SportVision OS',lecons:['Naviguer dans l\'OS','Accepter une mission','Soumettre ses médias']}],certification:null,statut:'publiée'},
@@ -14298,7 +14164,7 @@ async function loadComptaDepenses(){
 }
 function filterComptaDepenses(f){
   _comptaDepFilter=f;
-  ['all','materiel','logistique','marketing','autre'].forEach(id=>{const b=document.getElementById('dep-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  ['all','materiel','logistique','marketing','repas','km','autre'].forEach(id=>{const b=document.getElementById('dep-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
   renderComptaDepenses();
 }
 function renderComptaDepenses(){
