@@ -677,22 +677,27 @@ const ROLES={
 
 const NAV={
   admin:[
+    {type:'sep',lb:'Opérations'},
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
     {id:'planning',lb:'Planning',ic:'cal'},
     {id:'pre',lb:'Prestations',ic:'pre'},
+    {type:'sep',lb:'Clients & Ventes'},
     {id:'crm',lb:'Clients',ic:'cli'},
-    {id:'col',lb:'Collaborateurs',ic:'col'},
-    {id:'kits',lb:'Kits',ic:'kits'},
-    {id:'fin',lb:'Finances',ic:'fin'},
-    {id:'incidents',lb:'Incidents',ic:'alert'},
     {id:'pipeline',lb:'Prospection',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
-    {id:'documents',lb:'Centre documentaire',ic:'doc'},
+    {type:'sep',lb:'Équipe & RH'},
+    {id:'col',lb:'Collaborateurs',ic:'col'},
     {id:'users',lb:'Utilisateurs & accès',ic:'col'},
     {id:'grades',lb:'Grades & XP',ic:'target'},
     {id:'form',lb:'Centre de formation',ic:'form'},
+    {type:'sep',lb:'Production'},
+    {id:'kits',lb:'Kits',ic:'kits'},
+    {id:'incidents',lb:'Incidents',ic:'alert'},
+    {type:'sep',lb:'Finances & Documents'},
+    {id:'fin',lb:'Finances',ic:'fin'},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
+    {id:'documents',lb:'Centre documentaire',ic:'doc'},
     {type:'sep',lb:'Équipe & Espace'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'equipe',lb:'Mon équipe',ic:'col'},
@@ -6063,7 +6068,7 @@ async function loadPhotoDash(){
         <div class="pg"><div class="pg-f" style="width:${pct}%;background:${grade.color}"></div></div>
         <div style="font-size:10px;color:var(--t3);margin-top:5px">${(next.xp-xp).toLocaleString('fr-FR')} XP restants pour ${next.nom}</div>`
         :`<div style="font-size:12px;color:${grade.color};font-weight:600;text-align:center;padding:8px">👑 Grade maximum atteint !</div>`}
-        <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--t3)">100 XP / mission · +50 XP si responsable · ${actives.length} mission${actives.length>1?'s':''} réalisée${actives.length>1?'s':''}</div>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--t3)">100 XP / mission · +50 XP si responsable · +XP formations · ${actives.length} mission${actives.length>1?'s':''} réalisée${actives.length>1?'s':''}</div>
       </div>`;
     }
     // ── Équipe sur mes missions à venir ──
@@ -14947,11 +14952,7 @@ function modalModifierCollaborateur(idx){
         <div><label style="${lbl}">Ville</label><input id="fco-ville" class="l-inp" value="${t.ville||''}" placeholder="Ville" style="height:38px"></div>
         <div><label style="${lbl}">Code postal</label><input id="fco-cp" class="l-inp" value="${t.code_postal||''}" placeholder="75000" style="height:38px"></div>
       </div>
-      <div><label style="${lbl}">Rôle</label>
-        <select id="fco-role" class="l-inp" style="height:38px">
-          ${['admin','sec','prod','photo','cm','compta','com'].map(r=>`<option value="${r}"${t.role===r?' selected':''}>${rLabels[r]||r}</option>`).join('')}
-        </select>
-      </div>
+      <div style="font-size:11px;color:var(--t3);background:rgba(255,255,255,.03);border:1px solid var(--b1);border-radius:8px;padding:8px 10px">Le rôle se change depuis <strong>Utilisateurs & accès</strong>.</div>
       <div id="fco-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
         <button class="btn bg2" onclick="closeModal()">Annuler</button>
@@ -14962,20 +14963,18 @@ function modalModifierCollaborateur(idx){
 async function modifierCollaborateur(id){
   const err=document.getElementById('fco-err');
   err.textContent='Enregistrement…';
-  try{
-    await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{
-      prenom:document.getElementById('fco-prenom').value.trim()||null,
-      nom:document.getElementById('fco-nom').value.trim()||null,
-      telephone:document.getElementById('fco-tel').value.trim()||null,
-      adresse:document.getElementById('fco-adresse').value.trim()||null,
-      ville:document.getElementById('fco-ville').value.trim()||null,
-      code_postal:document.getElementById('fco-cp').value.trim()||null,
-      role:document.getElementById('fco-role').value,
-    }});
-    closeModal();
-    toast('Collaborateur mis à jour.','ok');
-    loadCollaborateurs();
-  }catch(e){err.textContent='Erreur lors de la modification.';}
+  const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{
+    prenom:document.getElementById('fco-prenom').value.trim()||null,
+    nom:document.getElementById('fco-nom').value.trim()||null,
+    telephone:document.getElementById('fco-tel').value.trim()||null,
+    adresse:document.getElementById('fco-adresse').value.trim()||null,
+    ville:document.getElementById('fco-ville').value.trim()||null,
+    code_postal:document.getElementById('fco-cp').value.trim()||null,
+  }});
+  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible de modifier.');return;}
+  closeModal();
+  toast('Collaborateur mis à jour.','ok');
+  loadCollaborateurs();
 }
 
 async function modalFicheCollaborateur(id){
@@ -16541,17 +16540,11 @@ async function supprimerUser(id){
 async function loadGrades(){
   const d=document.getElementById('grades-real');
   const GRADES=GRADES_DEF;
-  const [rProf,rMissions]=await Promise.all([
-    sbFetch('profiles?select=*&order=created_at.asc'),
-    sbFetch('prestations_equipe?select=collaborateur_id,est_responsable'),
-  ]);
+  const rProf=await sbFetch('profiles?select=*&order=created_at.asc');
   if(sbErr(rProf)){d.innerHTML=`<div style="padding:40px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement</div>`;return;}
   const profiles=Array.isArray(rProf)?rProf:[];
-  const missions=Array.isArray(rMissions)?rMissions:[];
-  const xpMap={};
-  missions.forEach(m=>{if(!m.collaborateur_id)return;if(!xpMap[m.collaborateur_id])xpMap[m.collaborateur_id]=0;xpMap[m.collaborateur_id]+=100;if(m.est_responsable)xpMap[m.collaborateur_id]+=50;});
   const collab=profiles.filter(p=>!['admin','sec','compta'].includes(p.role)).map(p=>{
-    const xp=xpMap[p.id]||0;
+    const xp=p.xp||0;
     const grade=[...GRADES].reverse().find(g=>xp>=g.xp)||GRADES[0];
     const nextGrade=GRADES[GRADES.indexOf(grade)+1];
     const pct=nextGrade?Math.min(100,Math.round((xp-grade.xp)/(nextGrade.xp-grade.xp)*100)):100;
@@ -16572,11 +16565,11 @@ async function loadGrades(){
           </div>
         </div>`).join('')}
       </div>
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--b1);font-size:11px;color:var(--t3)">100 XP / mission · +50 XP si responsable</div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--b1);font-size:11px;color:var(--t3)">100 XP / mission · +50 XP si responsable · +XP formations et bonus</div>
     </div>
     <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:20px">
       <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:14px">Classement équipe</div>
-      ${collab.length===0?`<div style="text-align:center;padding:30px 0;color:var(--t3);font-size:12px">Aucune mission enregistrée</div>`:
+      ${collab.length===0?`<div style="text-align:center;padding:30px 0;color:var(--t3);font-size:12px">Aucun collaborateur</div>`:
       collab.slice(0,5).map((c,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;${i<Math.min(collab.length,5)-1?'border-bottom:1px solid rgba(255,255,255,.04)':''}">
         <div style="width:22px;text-align:center;font-size:12px;font-weight:700;color:${i===0?'#F5A524':i===1?'#8891A8':i===2?'#FF6B35':'var(--t3)'}">${i+1}</div>
         <div style="width:32px;height:32px;border-radius:50%;background:${c.grade.color}22;border:1px solid ${c.grade.color}44;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${c.grade.color};flex-shrink:0">${(c.prenom||'?')[0].toUpperCase()}</div>
