@@ -63,7 +63,7 @@ serve(async (req) => {
     const {
       prenom, nom, email, telephone, profil,
       offre_id, options, date, heure, lieu, ville, adresse, cp, commentaire, sport, equipes,
-      retractation_renoncee, site_web,
+      retractation_renoncee, site_web, distance_km, frais_deplacement_ht,
     } = await req.json();
 
     // Honeypot : champ invisible pour un humain, rempli seulement par des bots.
@@ -125,6 +125,8 @@ serve(async (req) => {
         description_besoin: commentaire || null,
         retractation_renoncee: !!retractation_renoncee,
         retractation_renoncee_at: retractation_renoncee ? new Date().toISOString() : null,
+        distance_km: distance_km ?? null,
+        frais_deplacement_ht: frais_deplacement_ht ?? null,
       })
       .select("id, reference")
       .single();

@@ -1347,8 +1347,42 @@ function renderCatalogueGrid(offres){
 // ── CONFIGURATEUR ──
 const CFG_STEPS = ['offre','details','options','coordonnees','confirmation'];
 const CFG_EXTRA_FIELDS = ['matchAdversaire','matchCategorieAge','matchStade','tournoiJours','tournoiEquipes','tournoiSponsors','shootingObjectif','shootingLieu','contenuPlateformes','contenuFrequence'];
-let cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:'', telephone:'', profil:'joueur', retractationRenoncee:false, siteWeb:'' };
+let cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:'', telephone:'', profil:'joueur', retractationRenoncee:false, siteWeb:'', distanceKm:null, fraisDeplacementHt:null, horsIdf:false };
 CFG_EXTRA_FIELDS.forEach(f=>{ cfg[f] = ''; });
+
+// ── FRAIS DE DÉPLACEMENT (hors Île-de-France) ──
+// Siège SportVision (Elkana Group), 4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne
+const SIEGE_LAT = 48.380247, SIEGE_LON = 2.943271;
+const TARIF_KM_TTC = 0.50; // €/km, aller-retour, appliqué uniquement hors Île-de-France
+function haversineKm(lat1, lon1, lat2, lon2){
+  const R = 6371, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+async function cfgComputeFraisDeplacement(){
+  cfg.distanceKm = null; cfg.fraisDeplacementHt = null; cfg.horsIdf = false;
+  const query = [cfg.adresse, cfg.cp, cfg.ville].filter(Boolean).join(' ');
+  if (!query) return;
+  try{
+    const url = 'https://api-adresse.data.gouv.fr/search/?q='+encodeURIComponent(query)+'&limit=1';
+    const r = await fetch(url).then(r=>r.json());
+    const f = r.features && r.features[0];
+    if (!f) return;
+    const context = f.properties.context || '';
+    const horsIdf = !context.includes('Île-de-France');
+    if (!horsIdf) return; // dans le rayon Île-de-France : pas de frais
+    const [lon, lat] = f.geometry.coordinates;
+    const distanceAllerRetour = haversineKm(SIEGE_LAT, SIEGE_LON, lat, lon) * 2;
+    cfg.distanceKm = Math.round(distanceAllerRetour * 10) / 10;
+    cfg.horsIdf = true;
+    const fraisTtc = distanceAllerRetour * TARIF_KM_TTC;
+    cfg.fraisDeplacementHt = Math.round((fraisTtc / 1.2) * 100) / 100;
+  }catch(e){
+    // Best-effort : en cas d'échec de géolocalisation, on n'ajoute aucun frais
+    // plutôt que de bloquer l'envoi de la demande.
+  }
+}
 
 function cfgNeedsRetractationWaiver(){
   if (!cfg.date) return false;
@@ -1408,7 +1442,10 @@ function cfgBuildCommentaire(){
     contenu: ['contenuPlateformes','contenuFrequence'],
   }[group] || [];
   const extra = ids.filter(id=>cfg[id]).map(id=>CFG_EXTRA_LABELS[id]+' : '+cfg[id]).join(' — ');
-  return [cfg.commentaire, extra].filter(Boolean).join('\n\n');
+  const frais = (cfg.horsIdf && cfg.fraisDeplacementHt != null)
+    ? 'Frais de déplacement (hors Île-de-France, '+cfg.distanceKm+' km A/R) : '+(Math.round(cfg.fraisDeplacementHt*1.2*100)/100).toLocaleString('fr-FR')+' € TTC à ajouter au devis.'
+    : '';
+  return [cfg.commentaire, extra, frais].filter(Boolean).join('\n\n');
 }
 
 function startConfigurateur(offreId){
@@ -1461,10 +1498,14 @@ async function renderCfgStep(){
     const o = cfgCurrentOffer();
     const opts = (o && Array.isArray(o.options)) ? o.options : [];
     body.innerHTML = '<h2 style="font-size:24px;margin-bottom:20px">Options</h2><div id="cfg-options-list"></div>'
-      + (opts.length ? '' : '<p class="muted">Aucune option disponible pour cette prestation.</p>');
+      + (opts.length ? '' : '<p class="muted">Aucune option disponible pour cette prestation.</p>')
+      + (cfg.horsIdf && cfg.fraisDeplacementHt != null ?
+          '<div class="card" style="margin-top:18px"><b>Frais de déplacement</b><p class="muted" style="font-size:13px;margin-top:6px">Lieu hors Île-de-France (environ '+cfg.distanceKm+' km aller-retour depuis notre siège) : <b style="color:var(--t1)">+'+(Math.round(cfg.fraisDeplacementHt*1.2*100)/100).toLocaleString('fr-FR')+' € TTC</b></p></div>'
+        : '')
+      + (cfg.distanceKm === null && cfg.ville ? '<p class="faint" style="font-size:12px;margin-top:14px">Lieu en Île-de-France ou non géolocalisable : aucun frais de déplacement appliqué.</p>' : '');
     document.getElementById('cfg-options-list').innerHTML = opts.map(op=>{
       const sel = cfg.options.includes(op.nom);
-      return '<div class="opt-row'+(sel?' sel':'')+'" onclick="cfgToggleOption(\''+op.nom.replace(/'/g,"\\'")+'\')"><b>'+op.nom+'</b><span class="price">'+(sel?'-':'+')+(op.prix_ht||0)+' € HT</span></div>';
+      return '<div class="opt-row'+(sel?' sel':'')+'" onclick="cfgToggleOption(\''+op.nom.replace(/'/g,"\\'")+'\')"><b>'+op.nom+'</b><span class="price">'+(sel?'-':'+')+(Math.round((op.prix_ht||0)*1.2*100)/100)+' € TTC</span></div>';
     }).join('');
   }
 
@@ -1541,6 +1582,12 @@ async function cfgNext(){
   if (key === 'offre' && !cfg.offreId){ toast('Merci de sélectionner une prestation.'); return; }
   cfgCollectStepFields();
   if (key === 'details' && (!cfg.date || !cfg.ville)){ toast('Merci de renseigner au moins la date et la ville.'); return; }
+  if (key === 'details'){
+    const btn = document.getElementById('cfg-next-btn');
+    btn.disabled = true; btn.textContent = 'Calcul…';
+    await cfgComputeFraisDeplacement();
+    btn.disabled = false; btn.textContent = 'Suivant';
+  }
   if (key === 'coordonnees'){
     if (!isLoggedIn() && (!cfg.prenom || !cfg.nom || !cfg.email)){
       document.getElementById('cfg-err').textContent = 'Merci de compléter vos coordonnées.';
@@ -1569,6 +1616,7 @@ async function submitDemande(){
       lieu: cfg.ville || null, adresse: cfg.adresse || null, ville: cfg.ville || null, cp: cfg.cp || null,
       sport: cfg.sport || null, equipes: cfg.equipes || null, commentaire: commentaireFinal || null,
       retractation_renoncee: retractation,
+      distance_km: cfg.distanceKm, frais_deplacement_ht: cfg.fraisDeplacementHt,
     };
     if (isLoggedIn()){
       const clientId = localStorage.getItem('svp_client_id');
@@ -1578,6 +1626,7 @@ async function submitDemande(){
         adresse_complete: [cfg.adresse, cfg.cp, cfg.ville].filter(Boolean).join(', ') || null,
         sport: cfg.sport || null, equipes: cfg.equipes || null, description_besoin: commentaireFinal || null,
         retractation_renoncee: retractation, retractation_renoncee_at: retractation ? new Date().toISOString() : null,
+        distance_km: cfg.distanceKm, frais_deplacement_ht: cfg.fraisDeplacementHt,
       }});
       if (!insert.ok) throw new Error('Impossible d\'envoyer la demande. Réessayez.');
       cfg.reference = insert.data && insert.data[0] ? insert.data[0].reference : null;
