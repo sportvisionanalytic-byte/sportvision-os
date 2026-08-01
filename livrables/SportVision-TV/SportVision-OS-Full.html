@@ -3314,13 +3314,42 @@ async function chargerPresByClient(clientId){
 function fceShowTab(tab){
   const on='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
   const off='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
-  ['pres','rel','tl'].forEach(t=>{
+  ['pres','medias','rel','tl'].forEach(t=>{
     const b=document.getElementById('fce-tab-'+t);const p=document.getElementById('fce-panel-'+t);
     if(b)b.style.cssText=t===tab?on:off;
     if(p)p.style.display=t===tab?'':'none';
   });
   if(tab==='tl'&&window._fceClientId)loadClientTimeline(window._fceClientId);
   if(tab==='rel'&&window._fceClientId)loadClientContacts(window._fceClientId);
+  if(tab==='medias'&&window._fceClientId)loadClientMedias(window._fceClientId);
+}
+
+async function loadClientMedias(clientId){
+  const el=document.getElementById('fce-medias-list');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  const pres=await sbFetch('prestations?select=id&client_id=eq.'+clientId+'&limit=200').catch(()=>[]);
+  const preIds=(Array.isArray(pres)?pres:[]).map(p=>p.id);
+  if(!preIds.length){
+    el.innerHTML='<div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Médias</div><div style="font-size:12px;color:var(--t3)">Aucune prestation, donc aucun média pour ce client.</div>';
+    return;
+  }
+  const medias=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,statut,created_at,prestations(reference,date_prestation)&prestation_id=in.('+preIds.join(',')+')&order=created_at.desc&limit=100').catch(()=>[]);
+  const list=Array.isArray(medias)?medias:[];
+  if(!list.length){
+    el.innerHTML='<div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Médias</div><div style="font-size:12px;color:var(--t3)">Aucun média enregistré pour les prestations de ce client.</div>';
+    return;
+  }
+  const TYPE_IC={photo:'📷',video:'🎬',mixte:'🎞️'};
+  el.innerHTML=`<div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Médias (${list.length})</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      ${list.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;font-size:12px;cursor:pointer" onclick="window.open('${(m.url||'').replace(/'/g,"\\'")}','_blank')">
+        <span style="flex-shrink:0">${TYPE_IC[m.type_media]||'📎'}</span>
+        <span style="font-weight:600;color:var(--t1);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.nom||m.categorie||'Média'}</span>
+        <span style="color:var(--t3);white-space:nowrap">${m.prestations?.reference||''}</span>
+        <span style="color:var(--acc);flex-shrink:0">↗</span>
+      </div>`).join('')}
+    </div>`;
 }
 
 async function loadClientContacts(clientId){
