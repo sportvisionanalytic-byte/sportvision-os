@@ -3181,11 +3181,15 @@ function modalModifierClient(idx){
       <div id="fce-tabs" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
         <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
           <button id="fce-tab-pres" onclick="fceShowTab('pres')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Prestations</button>
+          <button id="fce-tab-medias" onclick="fceShowTab('medias')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Médias</button>
           <button id="fce-tab-rel" onclick="fceShowTab('rel')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Suivi contacts</button>
           <button id="fce-tab-tl" onclick="fceShowTab('tl')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Historique</button>
         </div>
         <div id="fce-panel-pres">
           <div id="fce-hist"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+        </div>
+        <div id="fce-panel-medias" style="display:none">
+          <div id="fce-medias-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
         </div>
         <div id="fce-panel-rel" style="display:none">
           <div id="fce-contacts-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
@@ -15235,7 +15239,23 @@ async function modalFicheCollaborateur(id){
             +'<span style="color:var(--t3);font-size:15px;flex-shrink:0">›</span></div>';
         }).join('')+'</div>'
       :'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Aucune mission trouvée</div>';
-    const T_COMPETENCES=certs.length
+    const _progByFormId={};
+    inscriptions.forEach(i=>{_progByFormId[i.formation_id]=i.statut;});
+    const _compsWithData=SV_COMPETENCES.filter(c=>SV_COMPETENCE_FORMATIONS[c.id]&&SV_COMPETENCE_FORMATIONS[c.id].length);
+    const T_COMP_PCT=_compsWithData.length
+      ?'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">'+_compsWithData.map(comp=>{
+          const pct=calcCompetencePct(comp,_progByFormId,certs);
+          const lvl=_competenceLevel(pct);
+          return'<div style="padding:10px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:10px">'
+            +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">'
+            +'<div style="flex:1;font-size:12.5px;font-weight:600;color:var(--t1)">'+comp.nom+'</div>'
+            +'<span style="font-size:11px;font-weight:700;color:'+lvl.c+'">'+(pct===null?lvl.lb:pct+'% · '+lvl.lb)+'</span>'
+            +'</div>'
+            +(pct===null?'':'<div style="height:4px;background:var(--b1);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+lvl.c+';border-radius:2px"></div></div>')
+            +'</div>';
+        }).join('')+'</div>'
+      :'';
+    const T_COMPETENCES=T_COMP_PCT+(certs.length
       ?'<div style="display:flex;flex-direction:column;gap:8px">'+certs.map(c=>{
           const s=c.statut||'active';
           return'<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:10px">'
@@ -15245,7 +15265,7 @@ async function modalFicheCollaborateur(id){
             +'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:'+(CERT_BG[s]||'rgba(100,100,100,.1)')+';color:'+(CERT_CLR[s]||'var(--t3)')+';flex-shrink:0">'+(CERT_LBL[s]||s)+'</span>'
             +'</div>';
         }).join('')+'</div>'
-      :'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Aucune certification obtenue</div>';
+      :'<div style="text-align:center;padding:48px 24px;color:var(--t3);font-size:13px">Aucune certification obtenue</div>');
     const T_PERFORMANCE='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
       +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Missions réalisées</div><div style="font-size:26px;font-weight:800;color:var(--t1)">'+pres.length+'</div></div>'
       +'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Taux d\'acceptation</div><div style="font-size:26px;font-weight:800;color:#2ECC8A">'+tauxAcc+'%</div></div>'
@@ -17597,23 +17617,76 @@ async function renderCentreGrades(){
 }
 
 // ── COMPÉTENCES ──────────────────────────────────────────────────────────────
-function renderCentreCompetences(){
+// Formations qui contribuent au niveau (%) de chaque compétence du référentiel.
+// Une compétence sans formation associée n'a pas encore de contenu permettant de
+// mesurer un niveau réel (le catalogue de formations dédiées est encore en cours
+// de construction pour drone/veo/streaming/graphisme/community management).
+const SV_COMPETENCE_FORMATIONS={
+  'photo-sport':['photo-bases','cert-photo-video-complet','photo-sony-a7'],
+  'video-sport':['cert-photo-video-complet','photo-sony-a7'],
+  'montage':['cert-photo-video-complet'],
+  'son':['cert-photo-video-complet'],
+  'relation-client':['cert-commercial-complet','sec-crm-05'],
+  'direction-pre':['cert-responsable-production-complet'],
+  'gestion-equipe':['cert-responsable-production-complet'],
+  'os-admin':['cert-responsable-production-complet','sec-crm-05'],
+};
+
+// % automatique = formations liées terminées / total des formations liées ; la
+// certification correspondante (si obtenue et active) fait office de palier final
+// à 100%, même si une formation liée n'a pas été suivie individuellement — c'est
+// la preuve officielle du niveau. Retourne null si aucune formation n'est encore
+// associée à cette compétence (pas de contenu = pas de mesure possible).
+function calcCompetencePct(comp,progByFormationId,certs){
+  const formIds=SV_COMPETENCE_FORMATIONS[comp.id]||[];
+  if(!formIds.length)return null;
+  const hasActiveCert=(certs||[]).some(c=>formIds.includes(c.code_certification)&&(c.statut||'active')==='active');
+  if(hasActiveCert)return 100;
+  const done=formIds.filter(fid=>progByFormationId[fid]==='terminee'||progByFormationId[fid]==='terminée').length;
+  return Math.round(done/formIds.length*100);
+}
+function _competenceLevel(pct){
+  if(pct===null)return{lb:'Pas encore de contenu',c:'var(--t3)'};
+  if(pct<=0)return{lb:'Non acquise',c:'var(--t3)'};
+  if(pct<34)return{lb:'En apprentissage',c:'var(--wa)'};
+  if(pct<67)return{lb:'Opérationnelle',c:'var(--acc)'};
+  if(pct<100)return{lb:'Confirmée',c:'var(--ok)'};
+  return{lb:'Experte',c:'#8B2BFF'};
+}
+
+async function renderCentreCompetences(){
   const cats=['Production','Création','Communication','Commercial','Management','Technique'];
+  const uid=localStorage.getItem('sv_uid');
+  const [inscrRaw,certRaw]=await Promise.all([
+    sbFetch('formation_inscriptions?select=formation_id,statut&collaborateur_id=eq.'+uid).catch(()=>[]),
+    sbFetch('collaborateur_certifications?select=code_certification,statut&collaborateur_id=eq.'+uid).catch(()=>[]),
+  ]);
+  const progByFormationId={};
+  (Array.isArray(inscrRaw)?inscrRaw:[]).forEach(i=>{progByFormationId[i.formation_id]=i.statut;});
+  const certs=Array.isArray(certRaw)?certRaw:[];
   return`
   <div class="cv-h1">Compétences & Certifications</div>
-  <div class="cv-p">Une compétence mesure votre maîtrise dans un domaine. Une certification prouve que vous êtes autorisé à exercer une fonction précise chez SportVision.</div>
+  <div class="cv-p">Le % de chaque compétence est calculé automatiquement à partir des formations liées terminées et des certifications obtenues. Le passage d'un grade à l'autre reste validé par l'Administrateur.</div>
   ${cats.map(cat=>{
     const comps=SV_COMPETENCES.filter(c=>c.cat===cat);
     if(!comps.length)return'';
     return`<div class="cv-card" style="margin-bottom:12px">
       <div class="cv-h2">${cat}</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        ${comps.map(comp=>`<div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:7px">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:var(--t1)">${comp.nom}</div>
-          </div>
-          ${comp.cert?`<span style="font-size:10px;padding:2px 8px;border-radius:var(--rp);background:rgba(139,43,255,.12);border:1px solid rgba(139,43,255,.25);color:#C084FC;font-weight:600">Certification requise</span>`:''}
-        </div>`).join('')}
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${comps.map(comp=>{
+          const pct=calcCompetencePct(comp,progByFormationId,certs);
+          const lvl=_competenceLevel(pct);
+          return`<div style="padding:8px 10px;background:rgba(255,255,255,.03);border-radius:7px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:${pct===null?'0':'6px'}">
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600;color:var(--t1)">${comp.nom}</div>
+              </div>
+              ${comp.cert?`<span style="font-size:10px;padding:2px 8px;border-radius:var(--rp);background:rgba(139,43,255,.12);border:1px solid rgba(139,43,255,.25);color:#C084FC;font-weight:600">Certification requise</span>`:''}
+              <span style="font-size:11px;font-weight:700;color:${lvl.c};white-space:nowrap">${pct===null?lvl.lb:pct+'% · '+lvl.lb}</span>
+            </div>
+            ${pct===null?'':`<div style="height:4px;background:var(--s2);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${lvl.c};border-radius:2px"></div></div>`}
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
   }).join('')}
