@@ -18546,7 +18546,8 @@ async function sauvegarderTemplate(code){
   const corps=document.getElementById('tpl-corps')?.value||'';
   if(!sujet){toast('Le sujet est requis.','er');return;}
   try{
-    await sbFetch('email_templates?code=eq.'+code,{method:'PATCH',body:{sujet,corps,modifie_par:S.uid}});
+    const r=await sbFetch('email_templates?code=eq.'+code,{method:'PATCH',body:{sujet,corps,modifie_par:S.uid}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
     toast('Template enregistré.','ok');
     closeModal();
     await loadEmailTemplates();
@@ -18965,7 +18966,8 @@ function toggleJJCheck(i){
 async function jourJAction(prestationId,newStatut,btn){
   btn.disabled=true;btn.textContent='…';
   try{
-    await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:newStatut}});
+    const r=await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:newStatut}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');btn.disabled=false;return;}
     toast('Statut mis à jour.','ok');
     await enterJourJ(prestationId);
   }catch(e){toast('Erreur mise à jour.','er');btn.disabled=false;}
@@ -18986,7 +18988,8 @@ async function submitIncidentJJ(prestationId){
   if(!desc){if(err)err.textContent='Décrivez l\'incident.';return;}
   const uid=localStorage.getItem('sv_uid');
   try{
-    await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,description:desc,niveau:niv,declare_par:uid,cloture:false,date_incident:new Date().toISOString().slice(0,10)}});
+    const r=await sbFetch('incidents',{method:'POST',body:{prestation_id:prestationId,description:desc,niveau:niv,declare_par:uid,cloture:false,date_incident:new Date().toISOString().slice(0,10)}});
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'déclaration impossible.');return;}
     closeModal();toast('Incident signalé.','ok');
   }catch(e){if(err)err.textContent='Erreur lors de la déclaration.';}
 }
