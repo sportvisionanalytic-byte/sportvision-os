@@ -1105,7 +1105,7 @@ function priceLabel(o){
 }
 function offerCardHtml(o){
   return '<div class="offer-card" onclick="go(\'offre\',{slug:\''+o.slug+'\'})">'
-    +'<div class="offer-thumb"></div>'
+    +(o.image_url ? '<div class="offer-thumb" style="background:url(\''+o.image_url+'\') center/cover"></div>' : '<div class="offer-thumb"></div>')
     +'<div class="offer-body"><h3 style="font-size:16px">'+o.nom+'</h3>'
     +'<p class="muted" style="font-size:13px;flex:1">'+(o.description||'')+'</p>'
     +'<span class="price">'+priceLabel(o)+'</span></div></div>';
@@ -1165,7 +1165,8 @@ async function renderPublicView(view, params){
     const o = offres.find(x=>x.slug===params.slug);
     const el = document.getElementById('offre-content');
     if (!o){ el.innerHTML = '<div class="empty">Prestation introuvable.</div>'; return; }
-    el.innerHTML = '<h1 style="font-size:30px;margin:20px 0 12px">'+o.nom+'</h1>'
+    el.innerHTML = (o.image_url ? '<div style="width:100%;height:260px;border-radius:14px;background:url(\''+o.image_url+'\') center/cover;margin-top:20px"></div>' : '')
+      +'<h1 style="font-size:30px;margin:20px 0 12px">'+o.nom+'</h1>'
       +'<p class="muted" style="font-size:15.5px;margin-bottom:20px">'+(o.description_longue||o.description||'')+'</p>'
       +'<div class="card" style="margin-bottom:22px"><div style="font-size:22px;font-weight:700;color:var(--cyan);font-family:var(--ff-h)">'+priceLabel(o)+'</div>'
       +'<div class="faint" style="margin-top:4px">'+(o.duree_estimee?('Délai estimé : '+o.duree_estimee):'Estimation selon la date, le lieu et les options.')+'</div></div>'
@@ -1244,9 +1245,26 @@ function renderSvProfileTabs(){
 }
 
 // ── REALISATIONS ──
+// Alimentée depuis la table `realisations`, gérée par l'admin via l'OS (upload photo/vidéo).
 // Pas de contenu factice : tant qu'aucune vraie réalisation n'est publiée, un état honnête plutôt que des vignettes inventées.
-function renderRealisations(){
-  document.getElementById('realisations-grid').innerHTML = '<div class="empty" style="grid-column:1/-1">Les premières réalisations seront publiées ici prochainement.<br><br><button class="btn btn-p" onclick="go(\'configurateur\')">Configurer ma prestation</button></div>';
+async function renderRealisations(){
+  const el = document.getElementById('realisations-grid');
+  el.innerHTML = '<div class="empty" style="grid-column:1/-1">Chargement…</div>';
+  const r = await sbFetch('realisations?actif=eq.true&order=ordre.asc');
+  const items = r.ok ? (r.data || []) : [];
+  if (!items.length){
+    el.innerHTML = '<div class="empty" style="grid-column:1/-1">Les premières réalisations seront publiées ici prochainement.<br><br><button class="btn btn-p" onclick="go(\'configurateur\')">Configurer ma prestation</button></div>';
+    return;
+  }
+  el.innerHTML = items.map(it=>
+    '<div class="offer-card" style="cursor:default">'
+    + (it.type === 'video'
+        ? '<video src="'+it.media_url+'" class="offer-thumb" style="width:100%;object-fit:cover" controls preload="metadata"></video>'
+        : '<div class="offer-thumb" style="background:url(\''+it.media_url+'\') center/cover"></div>')
+    + '<div class="offer-body"><h3 style="font-size:16px">'+it.titre+'</h3>'
+    + (it.description ? '<p class="muted" style="font-size:13px;flex:1">'+it.description+'</p>' : '')
+    + '</div></div>'
+  ).join('');
 }
 
 // ── FAQ ──

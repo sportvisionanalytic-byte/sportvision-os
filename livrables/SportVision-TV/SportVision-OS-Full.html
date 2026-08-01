@@ -2292,6 +2292,27 @@ async function sbFetch(path,opts={}){
   return result;
 }
 
+// Upload d'un fichier vers Supabase Storage (bucket public, écriture protégée par RLS storage.objects).
+// Retourne l'URL publique du fichier, ou null en cas d'échec.
+async function sbUpload(bucket, path, file){
+  const tok = localStorage.getItem('sv_tok') || '';
+  const res = await fetch(SB_URL+'/storage/v1/object/'+bucket+'/'+path, {
+    method: 'POST',
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer '+tok,
+      'Content-Type': file.type || 'application/octet-stream',
+      'x-upsert': 'true',
+    },
+    body: file,
+  });
+  if (!res.ok) return null;
+  return SB_URL+'/storage/v1/object/public/'+bucket+'/'+path;
+}
+function sbUploadSafePath(file){
+  return Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_');
+}
+
 // ── MODAL ────────────────────────────────
 function openModal(html){
   document.getElementById('sv-modal-ct').innerHTML=html;
@@ -10125,6 +10146,17 @@ let FORMATIONS_CATALOG=[
     {titre:'Spécialisation - Gestion avancée d\'agenda et organisation des rendez-vous',lecons:['Les niveaux d\'agenda','La préparation d\'un rendez-vous','Les arbitrages','La prise de rendez-vous externe','Le suivi après rendez-vous','Ressources & cas pratique']},
     {titre:'Spécialisation - Recrutement et intégration administrative',lecons:['Le pipeline de recrutement','Le tri administratif','La préparation des entretiens','Le dossier d\'intégration','L\'onboarding d\'un mois','Ressources & cas pratique']},
   ],certification:{id:'cert-secretaire-complet',nom:'Certification Secrétaire SportVision Complet',validite_mois:24,badge:'📋'},statut:'publiée'},
+  {id:'photo-sony-a7',titre:'Maîtrise du Sony A7 IV',categorie:'Matériel',icone:'📸',niveau:'Intermédiaire',type:'hybride',duree:'1h30',xp:75,formateur:'Fouka',obligatoire:false,description:'Apprenez à préparer, configurer et utiliser le Sony A7 IV selon les procédures SportVision, en photographie comme en vidéo : commandes du boîtier, préparation du matériel, exposition, autofocus et suivi, préréglages photo et vidéo SportVision, raccourcis, sécurisation des médias et restitution du kit, jusqu\'à la certification Opérateur Sony A7 IV.',modules:[
+    {titre:'Découvrir le boîtier',lecons:['Face supérieure','Face arrière','Côtés','Dessous','À retenir']},
+    {titre:'Préparer le matériel',lecons:['Contrôler le boîtier','Contrôler la batterie','Contrôler les cartes','Installer l\'objectif','Règle SportVision']},
+    {titre:'Comprendre l\'exposition',lecons:['La vitesse d\'obturation','L\'ouverture','La sensibilité ISO','Mode recommandé pour l\'apprentissage']},
+    {titre:'Autofocus et suivi',lecons:['Modes principaux','Standard SportVision pour l\'action','Exercice pratique']},
+    {titre:'Configuration photo SportVision',lecons:['Préréglage photo d\'action','Vérifications avant le début','Erreurs fréquentes']},
+    {titre:'Configuration vidéo SportVision',lecons:['Préréglage vidéo','Avant chaque enregistrement','Après l\'enregistrement']},
+    {titre:'Raccourcis et personnalisation',lecons:['Menu Fn','Boutons personnalisables','Règle']},
+    {titre:'Sécuriser les médias',lecons:['Procédure de fin de prestation','Arborescence recommandée']},
+    {titre:'Restitution et incidents',lecons:['Restitution normale','Incidents à déclarer','Vidéos de référence Sony']},
+  ],certification:{id:'photo-sony-a7',nom:'Certification Opérateur Sony A7 IV',validite_mois:24,badge:'📸'},statut:'publiée'},
 ];
 
 const FORMATION_QUIZ_CATALOG={
@@ -10591,10 +10623,27 @@ const FORMATION_QUIZ_CATALOG={
     {q:'L\'onboarding peut-il être planifié dans SportVision OS ?',opts:['Oui','Non'],rep:0},
     {q:'Une étape obligatoire manquante avant mission doit être :',opts:['Signalée et bloquée selon la procédure','Ignorée','Supprimée','Remplacée par un message oral'],rep:0},
   ],
+  'photo-sony-a7':[
+    {q:'Quel mode autofocus est généralement le plus adapté à un joueur en mouvement ?',opts:['AF-S','AF-C','MF uniquement','Aucun autofocus'],rep:1},
+    {q:'Quel réglage influence principalement la représentation du mouvement ?',opts:['La vitesse d\'obturation','La date du boîtier','Le volume du casque','Le format du nom de fichier'],rep:0},
+    {q:'Que faut-il faire si une carte mémoire résiste lors de son insertion ?',opts:['Appuyer plus fort','Utiliser un objet pour la pousser','Vérifier son orientation et arrêter de forcer','Retirer la batterie pendant l\'insertion'],rep:2},
+    {q:'Pourquoi faut-il contrôler les premières images d\'une prestation ?',opts:['Pour supprimer immédiatement toutes les photos','Pour vérifier la netteté, l\'exposition et les réglages','Pour économiser la batterie','Pour changer automatiquement l\'objectif'],rep:1},
+    {q:'Que doit faire le collaborateur après avoir enregistré une séquence vidéo importante ?',opts:['Formater immédiatement la carte','Éteindre le boîtier sans contrôle','Relire un extrait pour vérifier l\'image et le son','Envoyer directement la carte au client'],rep:2},
+    {q:'Que faut-il faire après avoir temporairement modifié la configuration du boîtier ?',opts:['Supprimer tous les préréglages','Laisser la configuration sans prévenir','Rétablir la configuration SportVision avant le retour','Réinitialiser obligatoirement le boîtier en usine'],rep:2},
+    {q:'Un message d\'erreur apparaît pendant la prestation. Quelle est la bonne réaction ?',opts:['Cacher le problème','Continuer sans contrôle','Sécuriser les médias, documenter et signaler l\'incident','Formater immédiatement toutes les cartes'],rep:2},
+    {q:'Pourquoi SportVision utilise-t-il une configuration commune des raccourcis ?',opts:['Pour empêcher toute photographie','Pour simplifier l\'utilisation et conserver une méthode cohérente entre les collaborateurs','Pour réduire la capacité des cartes','Pour désactiver l\'autofocus'],rep:1},
+    {q:'Quels sont les trois grands formats d\'image présentés au début de la vidéo de référence ?',opts:['JPEG, HEIF et RAW','PNG, GIF et TIFF','MP4, MOV et AVI','RAW, MP3 et PDF'],rep:0},
+    {q:'Quel est l\'un des avantages du format RAW compressé présenté dans la vidéo ?',opts:['Il supprime automatiquement les photos floues','Il conserve une bonne quantité d\'informations avec des fichiers plus raisonnables','Il empêche toute retouche','Il transforme automatiquement les photos en vidéos'],rep:1},
+    {q:'Que permet le mode APS-C/S35 lorsqu\'il est activé ?',opts:['Il augmente physiquement la focale de l\'objectif','Il recadre l\'image et donne l\'impression de rapprocher le sujet','Il augmente la capacité de la batterie','Il améliore automatiquement le son'],rep:1},
+    {q:'Pourquoi les niveaux audio doivent-ils être contrôlés avant une interview ou une captation sonore ?',opts:['Pour vérifier que le son est enregistré à un niveau exploitable','Pour améliorer l\'autofocus','Pour accélérer la rafale photo','Pour changer la balance des blancs'],rep:0},
+    {q:'Quel avantage apporte la mémorisation de réglages de prise de vue ?',opts:['Retrouver rapidement une configuration préparée pour une situation précise','Sauvegarder les médias sur Internet','Réparer automatiquement le matériel','Améliorer un objectif endommagé'],rep:0},
+    {q:'Vous récupérez le Sony A7 IV et constatez que le mode APS-C/S35 est encore activé alors que la prestation doit être réalisée en pleine résolution. Que devez-vous faire ?',opts:['Le laisser activé sans vérification','Vérifier le briefing et le désactiver si le recadrage n\'est pas nécessaire','Formater les cartes','Changer immédiatement d\'objectif'],rep:1},
+    {q:'Pendant une interview, l\'image est correcte, mais le niveau audio atteint constamment sa limite maximale. Quelle est la bonne réaction ?',opts:['Continuer sans intervenir','Réduire le niveau d\'enregistrement et refaire un test','Augmenter les ISO','Passer en mode rafale'],rep:1},
+  ],
 };
 
 const FORMATION_ROLE_MAP={
-  photo:['photo-bases','cert-photo-video-complet'],
+  photo:['photo-bases','photo-sony-a7','cert-photo-video-complet'],
   prod:['cert-responsable-production-complet'],
   sec:['sv-comportement','cert-secretaire-complet'],
   compta:[],
@@ -11474,6 +11523,39 @@ const FORMATION_CONTENT={
     {d:'L\'intégration peut inclure présentation SportVision, outils, posture, sécurité, matériel, formation photo/vidéo, SportVision OS et mises en situation. La secrétaire planifie les sessions, invitations, documents et validations, suit la progression et alerte si une étape obligatoire manque avant la première mission rémunérée.'},
     {d:'Vidéo interne à produire : « Gérer une candidature jusqu\'à l\'intégration SportVision » (13 à 15 min) — importer une candidature Tally dans SportVision OS, effectuer le contrôle administratif sans juger la technique, planifier l\'entretien et envoyer la convocation, mettre à jour le statut après l\'entretien, créer le dossier freelance ou stage, puis planifier le mois de formation et les validations.\n\nCas pratique autonome : traiter six candidatures fictives (deux freelances, deux stagiaires, deux dossiers incomplets), organiser les entretiens, produire les réponses, créer un dossier d\'intégration et un planning de formation d\'un mois.',v:[{t:'Les étapes de sélection des candidats',id:'eH_j0cfs_tA'},{t:'5 étapes essentielles pour un onboarding réussi',id:'Avwy6EhpvFQ'}]},
   ],
+],
+'photo-sony-a7':[
+  [['Interrupteur marche/arrêt, déclencheur et molette de mode regroupent les commandes principales de prise de vue.','Le sélecteur photo/vidéo/S&Q permet de basculer rapidement entre les trois modes de captation.','Les molettes de réglage ajustent vitesse, ouverture ou exposition selon le mode sélectionné.','Le bouton d\'enregistrement vidéo et la griffe porte-accessoires complètent la face supérieure du boîtier.'],
+   ['Écran orientable et viseur permettent de cadrer selon la situation et la position de prise de vue.','Le joystick et la roue de contrôle servent à déplacer le point AF et naviguer dans les réglages.','Le bouton Menu donne accès à tous les paramètres, le bouton Fn ouvre le menu rapide personnalisable.','Bouton Lecture, bouton de suppression et boutons personnalisables complètent les commandes arrière.'],
+   ['Le logement des cartes mémoire se trouve sur le côté, à ouvrir avec précaution.','Prise microphone et prise casque permettent de contrôler et d\'enrichir le son en vidéo.','Port HDMI et port USB servent au monitoring externe et au transfert ou à la charge du boîtier.','Les connectiques accessoires complètent les possibilités de branchement du Sony A7 IV.'],
+   ['Le logement de batterie et la fixation trépied se trouvent sous le boîtier.','Les références et le numéro de série du boîtier sont également visibles sous l\'appareil.'],
+   ['Ne jamais forcer une carte mémoire, une batterie, un câble, un objectif, une trappe ou une fixation.','En cas de résistance inhabituelle, arrêter la manipulation et vérifier le sens d\'insertion avant de continuer.']],
+  [['Vérifier l\'état extérieur, l\'écran, le viseur, la monture et les connectiques.','Contrôler les trappes, la griffe porte-accessoires et l\'absence de choc visible.','S\'assurer de l\'absence de tout message d\'erreur à l\'allumage du boîtier.'],
+   ['Vérifier que la batterie est compatible et suffisamment chargée.','Contrôler la propreté des contacts et la disponibilité d\'une batterie de secours.','Prévoir un chargeur ou une solution d\'alimentation adaptée à la durée de la prestation.'],
+   ['Vérifier la capacité et la vitesse de la carte selon le type de captation prévu.','S\'assurer que la carte est reconnue par le boîtier et qu\'aucune erreur ne s\'affiche.','Confirmer que les médias précédents ont été sauvegardés avant toute réutilisation.','Ne formater une carte depuis le boîtier qu\'après vérification complète des sauvegardes.'],
+   ['Éteindre le boîtier avant de retirer les bouchons pour limiter l\'exposition du capteur.','Aligner les repères de montage et verrouiller l\'objectif sans forcer.','Vérifier la bonne fixation de l\'objectif avant utilisation.','Remettre systématiquement les bouchons dans le sac pour éviter de les perdre.'],
+   ['Aucune carte ne doit être formatée tant que les anciens médias n\'ont pas été confirmés comme transférés et sauvegardés.']],
+  [['La vitesse d\'obturation influence le mouvement, le flou et la netteté de l\'action.','Elle détermine aussi la quantité de lumière reçue par le capteur.','Pour une action rapide, une vitesse élevée est généralement nécessaire pour figer le mouvement.'],
+   ['L\'ouverture influence la quantité de lumière captée et la profondeur de champ.','Elle détermine le détachement du sujet par rapport à l\'arrière-plan.','Une grande ouverture demande une précision plus importante pour la mise au point.'],
+   ['La sensibilité ISO permet d\'adapter l\'exposition lorsque la lumière diminue.','Une sensibilité plus élevée peut cependant augmenter le bruit numérique de l\'image.'],
+   ['Utiliser le mode manuel avec ISO automatique pour comprendre le comportement du boîtier tout en gardant le contrôle sur la vitesse et l\'ouverture.','Ce mode permet de conserver la maîtrise du rendu du mouvement pendant l\'apprentissage.','Les réglages précis seront approfondis dans les formations dédiées : photographie de football, bases de la vidéo sportive et tournage d\'interviews.']],
+  [['AF-S : autofocus ponctuel, destiné principalement aux sujets immobiles.','AF-C : autofocus continu, destiné aux sujets en mouvement.','MF : mise au point manuelle, à utiliser dans les situations où l\'autofocus n\'est pas fiable.'],
+   ['Pour une action sportive, commencer avec le mode de mise au point AF-C et la reconnaissance du sujet réglée sur Humain.','Activer la priorité visage/œil selon la situation, avec une zone de suivi ou une zone flexible adaptée au sujet.','Adapter le réglage lorsque plusieurs joueurs se croisent, que le sujet est très éloigné, qu\'un grillage se trouve devant l\'objectif, que la lumière est faible, que le visage n\'est pas visible ou que l\'autofocus accroche l\'arrière-plan.'],
+   ['Suivre un sujet qui marche vers le photographe, puis se déplace latéralement.','Suivre le sujet lorsqu\'il accélère, passe derrière un obstacle, puis réapparaît dans le cadre.']],
+  [['Créer un préréglage interne intitulé "SV PHOTO ACTION" à adapter selon la lumière.','Base recommandée : mode manuel, mise au point AF-C, rafale élevée, reconnaissance du sujet humain.','Format RAW ou RAW + JPEG selon la prestation, ISO automatique dans une plage contrôlée.','Balance des blancs adaptée au terrain, stabilisation activée lorsque pertinente.'],
+   ['Heure et date correctes, carte sélectionnée, espace disponible et batterie chargée.','Format de fichier, autofocus, balance des blancs et mode rafale vérifiés.','Réaliser un test de netteté et un test d\'exposition avant de commencer.'],
+   ['Rester en AF-S, utiliser une vitesse trop faible ou laisser une correction d\'exposition précédente active.','Oublier un format recadré ou enregistrer uniquement en JPEG alors que le briefing exige du RAW.','Photographier avec une balance des blancs incohérente ou ne pas contrôler les premières images.']],
+  [['Créer un réglage interne intitulé "SV VIDÉO STANDARD", à adapter selon le livrable.','Toujours vérifier définition, cadence d\'image, vitesse d\'obturation et balance des blancs.','Contrôler également le profil d\'image, l\'autofocus, la stabilisation et le niveau audio.','Vérifier l\'orientation, l\'espace disponible, le risque de surchauffe et la durée estimée.'],
+   ['Vérifier l\'image, le son, l\'autofocus et la stabilisation.','Contrôler la carte, la batterie, le cadre et l\'arrière-plan.'],
+   ['Relire un court extrait pour vérifier la présence du fichier, la netteté et l\'exposition.','Contrôler le son, l\'absence de coupure et l\'orientation de la séquence.']],
+  [['Le menu rapide doit donner accès aux fonctions régulièrement utilisées : autofocus, zone de mise au point, rafale et balance des blancs.','Il doit également inclure l\'ISO, la stabilisation, le format d\'enregistrement, le profil d\'image et le niveau audio.'],
+   ['Prévoir une configuration SportVision commune pour éviter qu\'un collaborateur perde du temps en découvrant une configuration différente sur chaque boîtier.'],
+   ['Un collaborateur peut modifier temporairement un réglage pour une prestation, mais doit connaître le réglage initial.','Il doit éviter de supprimer les préréglages communs et rétablir la configuration SportVision avant le retour du matériel.','Toute modification importante doit être signalée.']],
+  [['Vérifier que les fichiers sont présents et ne pas formater les cartes.','Éteindre correctement le boîtier et protéger les cartes.','Transférer les médias selon la procédure et vérifier le lien de transfert.','Déclarer les médias dans SportVision OS et attendre la confirmation de sauvegarde.','Conserver les cartes tant que la procédure ne permet pas leur réutilisation.'],
+   ['Organiser les médias par CLIENT puis PRESTATION, avec des sous-dossiers PHOTO (par carte), VIDEO, AUDIO et DOCUMENTS.','Cette arborescence standard facilite le contrôle et le classement des fichiers après chaque prestation.']],
+  [['Boîtier éteint, objectif protégé, bouchons présents.','Cartes retirées ou conservées selon la procédure, batterie retirée ou sécurisée.','Câble rangé, matériel nettoyé superficiellement, kit recomposé et retour enregistré dans l\'OS.'],
+   ['Chute, choc, rayure, humidité, surchauffe ou message d\'erreur.','Carte illisible, batterie défectueuse, autofocus anormal, bouton bloqué ou trappe abîmée.','Fichier manquant ou objectif non reconnu — un incident ne doit jamais être caché même si le matériel semble encore fonctionner.'],
+   {d:'Deux vidéos de référence complètent cette formation : elles couvrent les réglages complets photo et vidéo, ainsi que la prise en main des menus et fonctions du Sony A7 IV. Elles sont utiles pour approfondir les points abordés dans les modules précédents.',v:[{t:'Sony A7 IV — Réglages complets pour la photo et la vidéo',id:'272bvkucfYA'},{t:'Prise en main complète du Sony A7 IV — menus et fonctions',id:'fAi0DzMdYCk'}]}],
 ]
 };
 
@@ -15480,6 +15562,9 @@ function updateBottomNav(viewId){
     {id:'catalogue',lb:'Catalogue public',ic:'pre'},
   );
 });
+if(NAV['admin']){
+  NAV['admin'].push({id:'realisations',lb:'Réalisations (photos/vidéos)',ic:'pre'});
+}
 
 function tplMsgClients(){
   return `<div class="sh"><div class="sh-t">Messages clients</div></div>
@@ -15498,6 +15583,7 @@ function tplCataloguePortail(){
   VIEWS[role+'.rdvclients']=tplRdvClients;
   VIEWS[role+'.catalogue']=tplCataloguePortail;
 });
+VIEWS['admin.realisations']=tplRealisationsPortail;
 
 const _svp_origLoadViewData=loadViewData;
 loadViewData=async function(role,view){
@@ -15505,6 +15591,7 @@ loadViewData=async function(role,view){
   if((role==='admin'||role==='sec')&&view==='msgclients') await loadMsgClients();
   if((role==='admin'||role==='sec')&&view==='rdvclients') await loadRdvClients();
   if((role==='admin'||role==='sec')&&view==='catalogue') await loadCatalogueOffres();
+  if(role==='admin'&&view==='realisations') await loadRealisations();
 };
 
 // ── Messages clients ──
@@ -15623,6 +15710,10 @@ function modalCatalogueOffreById(id){
         </select></div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description courte</label>
         <textarea id="cof-desc" rows="2" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box">${o.description||''}</textarea></div>
+      ${S.role==='admin' ? `<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Image (vignette catalogue)</label>
+        ${o.image_url?`<img src="${o.image_url}" style="max-width:160px;border-radius:8px;margin-bottom:8px;display:block">`:''}
+        <input id="cof-image-file" type="file" accept="image/*" style="width:100%;color:var(--t1)">
+        <input type="hidden" id="cof-image-url" value="${(o.image_url||'').replace(/"/g,'&quot;')}"></div>` : ''}
       <div style="display:flex;gap:12px">
         <div style="flex:1"><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Tarif</label>
           <select id="cof-tarif" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1)">
@@ -15648,11 +15739,106 @@ async function saveCatalogueOffre(id){
     actif:document.getElementById('cof-actif').checked,
   };
   if(!body.nom||!body.slug){toast('Le nom et le slug sont obligatoires.');return;}
+  if(S.role==='admin'){
+    const fileInput=document.getElementById('cof-image-file');
+    const hidden=document.getElementById('cof-image-url');
+    let imageUrl=hidden?hidden.value:null;
+    if(fileInput&&fileInput.files&&fileInput.files[0]){
+      const f=fileInput.files[0];
+      const url=await sbUpload('portail-media','catalogue/'+sbUploadSafePath(f),f);
+      if(!url){toast('Échec de l\'envoi de l\'image.');return;}
+      imageUrl=url;
+    }
+    body.image_url=imageUrl||null;
+  }
   const r=id?await sbFetch('catalogue_offres?id=eq.'+id,{method:'PATCH',body}):await sbFetch('catalogue_offres',{method:'POST',body});
   if(!r){toast('Erreur lors de la sauvegarde.');return;}
   toast(id?'Offre mise à jour.':'Offre créée.','ok');
   closeModal();
   await loadCatalogueOffres();
+}
+
+// ── Réalisations (galerie publique photo/vidéo) — réservé admin ──
+function tplRealisationsPortail(){
+  return `<div class="sh"><div class="sh-t">Réalisations (Portail)</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Photos et vidéos affichées sur la page publique "Réalisations"</div></div>
+    <div id="realisations-admin-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+let _realisationsCache=[];
+async function loadRealisations(){
+  const data=await sbFetch('realisations?order=ordre.asc');
+  _realisationsCache=Array.isArray(data)?data:[];
+  renderRealisationsAdmin();
+}
+function renderRealisationsAdmin(){
+  const el=document.getElementById('realisations-admin-list');
+  if(!el)return;
+  el.innerHTML='<div style="padding:14px 18px;display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="modalRealisationById(null)">+ Ajouter une réalisation</button></div>'+
+  (_realisationsCache.length?('<div class="tw"><table><thead><tr><th>Aperçu</th><th>Titre</th><th>Type</th><th>Actif</th><th></th></tr></thead><tbody>'+
+    _realisationsCache.map(r=>`<tr>
+      <td>${r.type==='photo'?`<img src="${r.media_url}" style="width:60px;height:40px;object-fit:cover;border-radius:6px">`:'🎬 Vidéo'}</td>
+      <td class="tp">${r.titre}</td>
+      <td>${r.type==='photo'?'Photo':'Vidéo'}</td>
+      <td><span class="bd ${r.actif?'ba':'bn'}"><span class="bd-d"></span>${r.actif?'Actif':'Inactif'}</span></td>
+      <td style="white-space:nowrap"><button class="btn bg2 bs" onclick="modalRealisationById('${r.id}')">Modifier</button> <button class="btn bg2 bs" onclick="deleteRealisation('${r.id}')">Suppr.</button></td>
+    </tr>`).join('')+'</tbody></table></div>')
+    :'<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune réalisation publiée. Ajoutez-en une pour qu\'elle apparaisse sur le Portail.</div>');
+}
+function modalRealisationById(id){
+  const r=id?(_realisationsCache.find(x=>x.id===id)||{}):{};
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">${id?'Modifier':'Nouvelle'} réalisation</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Titre</label>
+        <input id="real-titre" value="${(r.titre||'').replace(/"/g,'&quot;')}" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box"></div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description (facultative)</label>
+        <textarea id="real-desc" rows="2" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box">${r.description||''}</textarea></div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type</label>
+        <select id="real-type" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1)">
+          <option value="photo" ${r.type!=='video'?'selected':''}>Photo</option>
+          <option value="video" ${r.type==='video'?'selected':''}>Vidéo</option>
+        </select></div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Fichier</label>
+        ${r.media_url?(r.type==='video'?`<a href="${r.media_url}" target="_blank" style="display:block;margin-bottom:8px;color:var(--acc);font-size:12.5px">Voir le fichier actuel</a>`:`<img src="${r.media_url}" style="max-width:160px;border-radius:8px;margin-bottom:8px;display:block">`):''}
+        <input id="real-file" type="file" accept="image/*,video/*" style="width:100%;color:var(--t1)">
+        <input type="hidden" id="real-media-url" value="${(r.media_url||'').replace(/"/g,'&quot;')}"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1)"><input type="checkbox" id="real-actif" ${r.actif!==false?'checked':''}> Visible sur le Portail</label>
+      <button class="btn bp" id="real-save-btn" onclick="saveRealisation('${id||''}')" style="margin-top:8px">Enregistrer</button>
+    </div>
+  `);
+}
+async function saveRealisation(id){
+  const titre=document.getElementById('real-titre').value.trim();
+  if(!titre){toast('Le titre est obligatoire.');return;}
+  const btn=document.getElementById('real-save-btn');
+  let mediaUrl=document.getElementById('real-media-url').value||null;
+  const fileInput=document.getElementById('real-file');
+  if(fileInput&&fileInput.files&&fileInput.files[0]){
+    const f=fileInput.files[0];
+    btn.disabled=true;btn.textContent='Envoi du fichier…';
+    const url=await sbUpload('portail-media','realisations/'+sbUploadSafePath(f),f);
+    btn.disabled=false;btn.textContent='Enregistrer';
+    if(!url){toast('Échec de l\'envoi du fichier.');return;}
+    mediaUrl=url;
+  }
+  if(!mediaUrl){toast('Ajoutez une photo ou une vidéo.');return;}
+  const body={
+    titre,
+    description:document.getElementById('real-desc').value.trim()||null,
+    type:document.getElementById('real-type').value,
+    media_url:mediaUrl,
+    actif:document.getElementById('real-actif').checked,
+  };
+  const r=id?await sbFetch('realisations?id=eq.'+id,{method:'PATCH',body}):await sbFetch('realisations',{method:'POST',body});
+  if(!r){toast('Erreur lors de la sauvegarde.');return;}
+  toast(id?'Réalisation mise à jour.':'Réalisation ajoutée.','ok');
+  closeModal();
+  await loadRealisations();
+}
+async function deleteRealisation(id){
+  if(!confirm('Supprimer cette réalisation ?'))return;
+  await sbFetch('realisations?id=eq.'+id,{method:'DELETE'});
+  toast('Réalisation supprimée.','ok');
+  await loadRealisations();
 }
 // ══════════════════════════════════════════════════════════════════════════
 
