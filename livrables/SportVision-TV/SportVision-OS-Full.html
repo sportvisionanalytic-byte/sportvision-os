@@ -5085,7 +5085,7 @@ async function sauvegarderVersion(postprodId){
     }});
     if(sbErr(rVer)){err.textContent='Erreur : '+(rVer.message||'Création de la version impossible.');return;}
     // Mettre à jour le statut de la postprod
-    await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'version_prete'}});
+    await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'version_prete'}}).catch(()=>{});
     await logMediaHistory(pp.prestation_id,S.uid,'Version soumise','version',null,'—','V'+numero);
     closeModal();
     toast('Version V'+numero+' soumise','ok');
@@ -5146,7 +5146,7 @@ async function sauvegarderCorrection(postprodId){
       statut:'nouvelle'
     }});
     if(sbErr(rCor)){err.textContent='Erreur : '+(rCor.message||'Envoi impossible.');return;}
-    await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'corrections_demandees'}});
+    await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'corrections_demandees'}}).catch(()=>{});
     if(pp) await logMediaHistory(pp.prestation_id,S.uid,'Correction demandée','correction',null,null,desc.slice(0,60));
     closeModal();
     toast('Correction enregistrée','ok');
@@ -5376,7 +5376,7 @@ async function confirmerLivraison(livrableId){
       statut:'envoyee'
     }});
     if(sbErr(rEnvoi)){err.textContent='Erreur : '+(rEnvoi.message||'Enregistrement de la livraison impossible.');return;}
-    await sbFetch('media_livrables?id=eq.'+livrableId,{method:'PATCH',body:{statut:'livre'}});
+    await sbFetch('media_livrables?id=eq.'+livrableId,{method:'PATCH',body:{statut:'livre'}}).catch(()=>{});
     if(lv?.prestation_id) await logMediaHistory(lv.prestation_id,S.uid,'Livraison effectuée','livraison',null,null,email);
     closeModal();
     toast('Livraison enregistrée','ok');
@@ -10078,11 +10078,12 @@ async function msgSubmitCrTache(){
   const dest=document.getElementById('mct-dest')?.value||uid;
   const prio=document.getElementById('mct-prio')?.value||'medium';
   try{
-    await sbFetch('notifications',{method:'POST',body:{
+    const r=await sbFetch('notifications',{method:'POST',body:{
       type:'tache',titre,message:'Tâche créée depuis un message.',
       destinataire_id:dest||uid,expediteur_id:uid,
       priorite:prio,lue:false,created_at:new Date().toISOString(),
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
     closeModal();toast('Tâche créée.','ok');
     updateNavBadges(S.role);
   }catch(e){toast('Erreur lors de la création.','er');}
@@ -14696,7 +14697,8 @@ async function sauvegarderHeures(equipeId){
     if(km>0)body.km_declares=km;
     if(frais>0)body.frais_declares=frais;
     if(notes)body.notes_declaration=notes;
-    await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body});
+    const r=await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
     closeModal();
     toast('Heures enregistrées.','ok');
   }catch(e){err.textContent='Erreur lors de l\'enregistrement.';}
@@ -15297,7 +15299,8 @@ async function supprimerCollaborateur(id){
   if(role!=='admin'){toast('Accès refusé.','err');return;}
   confirmerAction('Supprimer définitivement ce collaborateur ? Cette action est irréversible.',async()=>{
     try{
-      await sbFetch('profiles?id=eq.'+id,{method:'DELETE'});
+      const r=await sbFetch('profiles?id=eq.'+id,{method:'DELETE'});
+      if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
       closeModal();
       toast('Collaborateur supprimé.','ok');
       loadCollaborateurs();
@@ -15892,9 +15895,10 @@ function modalCatalogueOffreById(id){
         </select></div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description courte</label>
         <textarea id="cof-desc" rows="2" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box">${o.description||''}</textarea></div>
-      ${S.role==='admin' ? `<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Image (vignette catalogue)</label>
-        ${o.image_url?`<img src="${o.image_url}" style="max-width:160px;border-radius:8px;margin-bottom:8px;display:block">`:''}
-        <input id="cof-image-file" type="file" accept="image/*" style="width:100%;color:var(--t1)">
+      ${S.role==='admin' ? `<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Image (vignette catalogue et page prestation)</label>
+        <div id="cof-image-preview">${o.image_url?`<img src="${o.image_url}" style="max-width:200px;max-height:140px;border-radius:8px;margin-bottom:8px;display:block;object-fit:cover">`:''}</div>
+        <input id="cof-image-file" type="file" accept="image/*" style="width:100%;color:var(--t1)" onchange="realPreviewFile(this,'cof-image-preview')">
+        <div style="font-size:11px;color:var(--t3);margin-top:6px">JPG/PNG, format paysage recommandé (16:9), 5 Mo max pour un chargement rapide sur le Portail.</div>
         <input type="hidden" id="cof-image-url" value="${(o.image_url||'').replace(/"/g,'&quot;')}"></div>` : ''}
       <div style="display:flex;gap:12px">
         <div style="flex:1"><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Tarif</label>
@@ -15934,7 +15938,7 @@ async function saveCatalogueOffre(id){
     body.image_url=imageUrl||null;
   }
   const r=id?await sbFetch('catalogue_offres?id=eq.'+id,{method:'PATCH',body}):await sbFetch('catalogue_offres',{method:'POST',body});
-  if(!r){toast('Erreur lors de la sauvegarde.');return;}
+  if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
   toast(id?'Offre mise à jour.':'Offre créée.','ok');
   closeModal();
   await loadCatalogueOffres();
@@ -15954,12 +15958,14 @@ async function loadRealisations(){
 function renderRealisationsAdmin(){
   const el=document.getElementById('realisations-admin-list');
   if(!el)return;
+  const catLabel=c=>c?(CATALOGUE_CATS.includes(c)?c.charAt(0).toUpperCase()+c.slice(1):c):'—';
   el.innerHTML='<div style="padding:14px 18px;display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="modalRealisationById(null)">+ Ajouter une réalisation</button></div>'+
-  (_realisationsCache.length?('<div class="tw"><table><thead><tr><th>Aperçu</th><th>Titre</th><th>Type</th><th>Actif</th><th></th></tr></thead><tbody>'+
+  (_realisationsCache.length?('<div class="tw"><table><thead><tr><th>Aperçu</th><th>Titre</th><th>Type</th><th>Catégorie</th><th>Actif</th><th></th></tr></thead><tbody>'+
     _realisationsCache.map(r=>`<tr>
       <td>${r.type==='photo'?`<img src="${r.media_url}" style="width:60px;height:40px;object-fit:cover;border-radius:6px">`:'🎬 Vidéo'}</td>
       <td class="tp">${r.titre}</td>
       <td>${r.type==='photo'?'Photo':'Vidéo'}</td>
+      <td>${catLabel(r.categorie)}</td>
       <td><span class="bd ${r.actif?'ba':'bn'}"><span class="bd-d"></span>${r.actif?'Actif':'Inactif'}</span></td>
       <td style="white-space:nowrap"><button class="btn bg2 bs" onclick="modalRealisationById('${r.id}')">Modifier</button> <button class="btn bg2 bs" onclick="deleteRealisation('${r.id}')">Suppr.</button></td>
     </tr>`).join('')+'</tbody></table></div>')
@@ -15967,26 +15973,46 @@ function renderRealisationsAdmin(){
 }
 function modalRealisationById(id){
   const r=id?(_realisationsCache.find(x=>x.id===id)||{}):{};
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const inp='width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box';
   openModal(`
-    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px">${id?'Modifier':'Nouvelle'} réalisation</div>
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">${id?'Modifier':'Nouvelle'} réalisation</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:20px">Apparaît sur la page publique "Réalisations" du Portail, visible sans compte.</div>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Titre</label>
-        <input id="real-titre" value="${(r.titre||'').replace(/"/g,'&quot;')}" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box"></div>
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description (facultative)</label>
-        <textarea id="real-desc" rows="2" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box">${r.description||''}</textarea></div>
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type</label>
-        <select id="real-type" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1)">
-          <option value="photo" ${r.type!=='video'?'selected':''}>Photo</option>
-          <option value="video" ${r.type==='video'?'selected':''}>Vidéo</option>
-        </select></div>
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Fichier</label>
-        ${r.media_url?(r.type==='video'?`<a href="${r.media_url}" target="_blank" style="display:block;margin-bottom:8px;color:var(--acc);font-size:12.5px">Voir le fichier actuel</a>`:`<img src="${r.media_url}" style="max-width:160px;border-radius:8px;margin-bottom:8px;display:block">`):''}
-        <input id="real-file" type="file" accept="image/*,video/*" style="width:100%;color:var(--t1)">
+      <div><label style="${lbl}">Titre</label>
+        <input id="real-titre" value="${(r.titre||'').replace(/"/g,'&quot;')}" style="${inp}"></div>
+      <div><label style="${lbl}">Description (facultative)</label>
+        <textarea id="real-desc" rows="2" style="${inp}">${r.description||''}</textarea></div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1"><label style="${lbl}">Type</label>
+          <select id="real-type" style="${inp}">
+            <option value="photo" ${r.type!=='video'?'selected':''}>Photo</option>
+            <option value="video" ${r.type==='video'?'selected':''}>Vidéo</option>
+          </select></div>
+        <div style="flex:1"><label style="${lbl}">Catégorie (pour les filtres)</label>
+          <select id="real-cat" style="${inp}">
+            <option value="">— Aucune —</option>
+            ${CATALOGUE_CATS.map(c=>`<option value="${c}" ${r.categorie===c?'selected':''}>${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('')}
+          </select></div>
+      </div>
+      <div><label style="${lbl}">Fichier</label>
+        <div id="real-preview">${r.media_url?(r.type==='video'?`<a href="${r.media_url}" target="_blank" style="display:block;margin-bottom:8px;color:var(--acc);font-size:12.5px">▶ Voir le fichier actuel</a>`:`<img src="${r.media_url}" style="max-width:200px;max-height:140px;border-radius:8px;margin-bottom:8px;display:block;object-fit:cover">`):''}</div>
+        <input id="real-file" type="file" accept="image/*,video/*" style="width:100%;color:var(--t1)" onchange="realPreviewFile(this)">
+        <div id="real-type-hint" style="font-size:11px;color:var(--t3);margin-top:6px">Photo : JPG/PNG, format paysage recommandé, 5 Mo max pour un affichage rapide. Vidéo : MP4, quelques dizaines de Mo max — préférez un extrait court (highlight) plutôt que le match complet.</div>
         <input type="hidden" id="real-media-url" value="${(r.media_url||'').replace(/"/g,'&quot;')}"></div>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1)"><input type="checkbox" id="real-actif" ${r.actif!==false?'checked':''}> Visible sur le Portail</label>
       <button class="btn bp" id="real-save-btn" onclick="saveRealisation('${id||''}')" style="margin-top:8px">Enregistrer</button>
     </div>
   `);
+}
+function realPreviewFile(input,targetId){
+  const el=document.getElementById(targetId||'real-preview');
+  const f=input.files&&input.files[0];
+  if(!el||!f)return;
+  const url=URL.createObjectURL(f);
+  el.innerHTML=f.type.startsWith('video/')
+    ? `<video src="${url}" controls style="max-width:240px;max-height:160px;border-radius:8px;margin-bottom:8px;display:block"></video>`
+    : `<img src="${url}" style="max-width:200px;max-height:140px;border-radius:8px;margin-bottom:8px;display:block;object-fit:cover">`;
 }
 async function saveRealisation(id){
   const titre=document.getElementById('real-titre').value.trim();
@@ -16007,18 +16033,20 @@ async function saveRealisation(id){
     titre,
     description:document.getElementById('real-desc').value.trim()||null,
     type:document.getElementById('real-type').value,
+    categorie:document.getElementById('real-cat').value||null,
     media_url:mediaUrl,
     actif:document.getElementById('real-actif').checked,
   };
   const r=id?await sbFetch('realisations?id=eq.'+id,{method:'PATCH',body}):await sbFetch('realisations',{method:'POST',body});
-  if(!r){toast('Erreur lors de la sauvegarde.');return;}
+  if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
   toast(id?'Réalisation mise à jour.':'Réalisation ajoutée.','ok');
   closeModal();
   await loadRealisations();
 }
 async function deleteRealisation(id){
   if(!confirm('Supprimer cette réalisation ?'))return;
-  await sbFetch('realisations?id=eq.'+id,{method:'DELETE'});
+  const r=await sbFetch('realisations?id=eq.'+id,{method:'DELETE'});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
   toast('Réalisation supprimée.','ok');
   await loadRealisations();
 }
