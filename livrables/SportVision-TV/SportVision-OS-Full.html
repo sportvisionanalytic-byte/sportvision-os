@@ -6144,7 +6144,7 @@ async function loadPhotoDash(){
     if(elGrade){
       elGrade.innerHTML=`<div style="padding:14px 18px">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
-          <div style="width:48px;height:48px;border-radius:50%;background:${grade.color}22;border:2px solid ${grade.color};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${grade.ic}</div>
+          <div style="min-width:48px;height:48px;padding:0 8px;border-radius:24px;background:${grade.color}22;border:2px solid ${grade.color};display:flex;align-items:center;justify-content:center;font-size:16px;white-space:nowrap;flex-shrink:0">${grade.ic}</div>
           <div style="flex:1">
             <div style="font-size:16px;font-weight:700;color:${grade.color}">${grade.nom}</div>
             <div style="font-size:12px;color:var(--t3);margin-top:2px">${xp.toLocaleString('fr-FR')} XP accumulés</div>
@@ -16813,7 +16813,7 @@ async function loadGrades(){
       <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:14px">Niveaux de grade</div>
       <div style="display:flex;flex-direction:column;gap:10px">
         ${GRADES.map((g,i)=>`<div style="display:flex;align-items:center;gap:12px">
-          <span style="font-size:18px;width:24px;text-align:center">${g.ic}</span>
+          <span style="font-size:14px;width:70px;flex-shrink:0;text-align:center;white-space:nowrap">${g.ic}</span>
           <div style="flex:1">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
               <span style="font-size:13px;font-weight:600;color:${g.color}">${g.nom}</span>
@@ -17170,6 +17170,7 @@ async function renderCentreAccueil(){
   }catch(e){}
 
   const roleDesc=SV_ROLES_DESC[S.role]||{titre:S.role,ic:'👤',mission:'—'};
+  const isPhotoRole=S.role==='photo';
 
   return`
   <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px">
@@ -17178,19 +17179,19 @@ async function renderCentreAccueil(){
       <div class="cv-h1">Bonjour ${prenom} 👋</div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap">
         <span style="font-size:13px;color:var(--t2)">${roleDesc.ic} ${roleDesc.titre}</span>
-        <span style="width:4px;height:4px;border-radius:50%;background:var(--b2)"></span>
+        ${isPhotoRole?`<span style="width:4px;height:4px;border-radius:50%;background:var(--b2)"></span>
         <span style="font-size:13px;color:${grade.color};font-weight:600">${grade.ic} Grade ${grade.nom}</span>
         <span style="width:4px;height:4px;border-radius:50%;background:var(--b2)"></span>
-        <span style="font-size:13px;color:var(--t3)">${xp} XP</span>
+        <span style="font-size:13px;color:var(--t3)">${xp} XP</span>`:''}
       </div>
     </div>
-    <div style="text-align:right">
+    ${isPhotoRole?`<div style="text-align:right">
       <div style="font-size:11px;color:var(--t3);margin-bottom:4px">${nextGrade?`Vers ${nextGrade.nom}`:'Grade maximum atteint'}</div>
       <div style="width:180px">
         <div class="grade-bar"><div class="grade-bar-fill" style="width:${pct}%;background:${grade.color}"></div></div>
       </div>
       <div style="font-size:11px;color:var(--t3)">${nextGrade?`${xp} / ${nextGrade.xp} XP`:'Maximum'}</div>
-    </div>
+    </div>`:''}
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
