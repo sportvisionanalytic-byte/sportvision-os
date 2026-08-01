@@ -13540,7 +13540,8 @@ function renderComptaRem(){
 async function toutPayerCollab(ids,btn){
   if(btn){btn.disabled=true;btn.textContent='...';}
   try{
-    await Promise.all(ids.map(id=>sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body:{statut_paiement:'payé',date_paiement:new Date().toISOString()}})));
+    const results=await Promise.all(ids.map(id=>sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body:{statut_paiement:'payé',date_paiement:new Date().toISOString()}})));
+    if(results.some(sbErr)){toast('Erreur : certains paiements n\'ont pas pu être marqués.','er');if(btn){btn.disabled=false;btn.textContent='Tout payer';}return;}
     ids.forEach(id=>{const item=_comptaRemData.find(r=>r.id===id);if(item)item.statut_paiement='payé';});
     const tot=_comptaRemData.reduce((s,r)=>s+(r.remuneration||0),0);
     const pay=_comptaRemData.filter(r=>r.statut_paiement==='payé').reduce((s,r)=>s+(r.remuneration||0),0);
@@ -13554,7 +13555,8 @@ async function toutPayerCollab(ids,btn){
 
 async function marquerPayeRem(id,btn){
   try{
-    await sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body:{statut_paiement:'payé',date_paiement:new Date().toISOString()}});
+    const r=await sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body:{statut_paiement:'payé',date_paiement:new Date().toISOString()}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'paiement impossible.'),'er');return;}
     if(btn){btn.textContent='✓ Payé';btn.disabled=true;btn.style.background='rgba(46,204,138,.15)';btn.style.color='var(--ok)';btn.style.border='1px solid rgba(46,204,138,.3)';}
     const item=_comptaRemData.find(r=>r.id===id);if(item)item.statut_paiement='payé';
     const tot=_comptaRemData.reduce((s,r)=>s+(r.remuneration||0),0);
@@ -14197,7 +14199,8 @@ async function loadSecRapports(){
 // ── Actions rapides secrétaire ────────────────────────────────────────────────
 async function secQualifierDemande(id){
   try{
-    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:'offre_en_préparation'}});
+    const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:'offre_en_préparation'}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'qualification impossible.'),'er');return;}
     toast('Demande qualifiée — devis en préparation.','ok');loadSecDemandes();
   }catch(e){toast('Erreur lors de la qualification.','er');}
 }
@@ -14236,18 +14239,20 @@ async function secMarquerPaye(id){
 
 async function secConfirmerPaye(id){
   try{
-    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
+    const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
       statut_financier:'payé',
       date_paiement:document.getElementById('paye-date')?.value||null,
       mode_paiement:document.getElementById('paye-mode')?.value||null,
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'enregistrement impossible.'),'er');return;}
     closeModal();toast('Paiement enregistré.','ok');loadSecRelances();
   }catch(e){toast('Erreur lors de l\'enregistrement.','er');}
 }
 
 async function secMarquerLivre(id){
   try{
-    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:'livrée'}});
+    const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:'livrée'}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     toast('Prestation marquée livrée.','ok');loadSecLivraisons();
   }catch(e){toast('Erreur.','er');}
 }
@@ -14456,7 +14461,8 @@ function resetChecklist(){
 
 async function avanJourJ(id,newStatut){
   try{
-    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:newStatut}});
+    const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:newStatut}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     toast(SL[newStatut]||newStatut,'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
