@@ -255,7 +255,8 @@ body.app-mode .app-only{display:block!important}
       <div class="wrap grid g2" style="align-items:center">
         <div>
           <h2 style="font-size:26px;margin-bottom:14px">Votre projet ne s'arrête pas après la demande.</h2>
-          <p class="muted" style="margin-bottom:20px">Depuis votre espace client, vous suivez chaque étape sans chercher vos informations dans plusieurs e-mails.</p>
+          <p class="muted" style="margin-bottom:16px">Depuis votre espace client, vous suivez chaque étape sans chercher vos informations dans plusieurs e-mails.</p>
+          <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(50,216,230,.12);border:1px solid rgba(50,216,230,.35);border-radius:100px;padding:7px 16px;margin-bottom:18px;font-size:13.5px;font-weight:700;color:var(--cyan)">🎁 -10% sur votre première prestation à la création de votre compte</div>
           <div id="home-benefits" style="display:flex;flex-direction:column;gap:10px;margin-bottom:26px"></div>
           <button class="btn btn-p" onclick="go('inscription')">Créer mon espace client</button>
           <div class="faint" style="margin-top:10px;font-size:12px">Gratuit • Sans engagement</div>
@@ -435,8 +436,27 @@ body.app-mode .app-only{display:block!important}
           </div>
         </div>
         <p class="muted" style="text-align:center;font-size:12.5px;margin-top:22px">Découverte de la formule → Questionnaire → Rendez-vous → Étude du besoin → Devis → Contrat → Activation</p>
-        <div class="card" style="text-align:center;margin-top:18px;border-color:rgba(120,87,255,.25);background:rgba(120,87,255,.08)">
-          <span style="font-size:13.5px;color:#B7A6FF">SportVision Club+ arrivera prochainement avec de nouveaux outils dédiés à la communication et à l'organisation des clubs.</span>
+      </div>
+    </section>
+
+    <section id="sv-clubplus" style="background:linear-gradient(135deg,rgba(120,87,255,.10),rgba(50,216,230,.06))">
+      <div class="wrap" style="max-width:1100px">
+        <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:14px">
+          <span style="font-family:var(--ff-h);font-weight:800;font-size:20px;background:linear-gradient(90deg,#7857FF,#32D8E6);-webkit-background-clip:text;background-clip:text;color:transparent">SportVision Club+</span>
+        </div>
+        <h2 class="sec-title" style="text-align:center">La plateforme dédiée aux clubs partenaires</h2>
+        <p class="muted" style="text-align:center;max-width:620px;margin:0 auto 32px">Au-delà de la captation photo et vidéo, Club+ centralise la communication et l'organisation de votre club dans un seul espace, pensé pour les dirigeants, coachs et responsables communication.</p>
+        <div class="grid g3" style="margin-bottom:30px">
+          <div class="card"><span style="font-weight:700;display:block;margin-bottom:8px">Espace multi-utilisateurs</span><p class="muted" style="font-size:13.5px">Invitez votre bureau, vos coachs et vos bénévoles avec des droits d'accès adaptés à chacun.</p></div>
+          <div class="card"><span style="font-weight:700;display:block;margin-bottom:8px">Calendrier éditorial du club</span><p class="muted" style="font-size:13.5px">Planifiez vos matchs, événements et publications sur une saison complète, en équipe.</p></div>
+          <div class="card"><span style="font-weight:700;display:block;margin-bottom:8px">Supports sponsors</span><p class="muted" style="font-size:13.5px">Rapports et contenus prêts à partager avec vos partenaires et sponsors.</p></div>
+          <div class="card"><span style="font-weight:700;display:block;margin-bottom:8px">Tarifs club dédiés</span><p class="muted" style="font-size:13.5px">Des conditions préférentielles pensées pour une présence régulière tout au long de la saison.</p></div>
+          <div class="card"><span style="font-weight:700;display:block;margin-bottom:8px">Interlocuteur unique</span><p class="muted" style="font-size:13.5px">Un contact dédié SportVision pour coordonner l'ensemble de vos besoins.</p></div>
+          <div class="card"><span style="font-weight:700;display:block;margin-bottom:8px">Priorité de planification</span><p class="muted" style="font-size:13.5px">Vos matchs et événements sont couverts en priorité sur le planning SportVision.</p></div>
+        </div>
+        <div style="text-align:center">
+          <button class="btn btn-p" onclick="go('rdv')">Découvrir Club+ pour mon club</button>
+          <div class="faint" style="margin-top:10px;font-size:12px">Échange avec notre équipe pour construire la formule adaptée à votre club</div>
         </div>
       </div>
     </section>
@@ -487,7 +507,8 @@ body.app-mode .app-only{display:block!important}
   <section id="scr-realisations" class="scr">
     <div class="wrap" style="padding-top:50px;padding-bottom:70px">
       <h1 class="sec-title">Réalisations</h1>
-      <p class="muted" style="margin-bottom:26px">Un aperçu des projets photo, vidéo et communication réalisés pour nos clients.</p>
+      <p class="muted" style="margin-bottom:20px">Un aperçu des projets photo, vidéo et communication réalisés pour nos clients.</p>
+      <div id="real-filters" class="filters" style="margin-bottom:24px"></div>
       <div class="grid g3" id="realisations-grid"></div>
     </div>
   </section>
@@ -501,15 +522,35 @@ body.app-mode .app-only{display:block!important}
         <span class="faint" style="font-size:12px;font-weight:700">NOTRE MISSION</span>
         <p style="font-size:17px;font-weight:700;margin-top:10px">Mettre en lumière le sport amateur grâce à une production visuelle professionnelle.</p>
       </div>
+
+      <h2 style="font-size:20px;margin-bottom:14px">Pourquoi SportVision</h2>
+      <p class="muted" style="font-size:15px;line-height:1.7;margin-bottom:30px">Le sport professionnel a ses caméras, ses photographes et ses diffuseurs. Le sport amateur, rarement. SportVision est né de cette conviction : un joueur de club, une équipe de quartier ou un tournoi régional méritent une production visuelle aussi exigeante que celle des grandes compétitions. Notre ambition à long terme est de devenir la référence du sport amateur en France, avec SportVision TV comme prochaine étape pour donner à ces contenus une vraie plateforme de diffusion.</p>
+
       <h2 style="font-size:20px;margin-bottom:16px">Nos engagements</h2>
-      <div class="grid g2" style="margin-bottom:10px">
-        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Spécialisation dans le sport amateur et semi-professionnel</span></div>
-        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Suivi de la demande jusqu'à la livraison, sans email perdu</span></div>
-        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Tarifs transparents, devis clairs</span></div>
-        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Réactivité et fiabilité des délais annoncés</span></div>
+      <div class="grid g2" style="margin-bottom:36px">
+        <div class="card"><span style="font-weight:700;display:block;margin-bottom:6px">Spécialisation sportive</span><p class="muted" style="font-size:13.5px">Une équipe qui comprend le rythme, les temps forts et les contraintes du terrain, pas une agence généraliste.</p></div>
+        <div class="card"><span style="font-weight:700;display:block;margin-bottom:6px">Suivi de bout en bout</span><p class="muted" style="font-size:13.5px">De la demande à la livraison, tout est centralisé dans votre espace client — sans e-mail perdu.</p></div>
+        <div class="card"><span style="font-weight:700;display:block;margin-bottom:6px">Tarifs transparents</span><p class="muted" style="font-size:13.5px">Des devis clairs, sans frais cachés, avec le détail de chaque prestation et option.</p></div>
+        <div class="card"><span style="font-weight:700;display:block;margin-bottom:6px">Réactivité et fiabilité</span><p class="muted" style="font-size:13.5px">Livraison express pour les matchs (généralement sous 2h), délais annoncés et respectés pour le reste.</p></div>
       </div>
-      <div style="text-align:center;margin-top:40px">
+
+      <h2 style="font-size:20px;margin-bottom:16px">Pour qui</h2>
+      <div class="grid g3" style="margin-bottom:36px">
+        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Joueurs et joueuses en quête de contenus pour leur image</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Clubs et académies, du loisir au semi-professionnel</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Organisateurs de tournois et stages sportifs</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Coachs et préparateurs souhaitant valoriser leur travail</span></div>
+        <div style="display:flex;gap:10px"><span style="color:var(--cyan)">●</span><span>Entreprises et associations partenaires du sport</span></div>
+      </div>
+
+      <div style="text-align:center;margin-top:10px">
         <button class="btn btn-p" onclick="go('configurateur')">Parler de mon projet</button>
+        <div style="margin-top:16px">
+          <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;color:var(--t2);font-weight:600">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg>
+            Suivez-nous @Sportvision_an
+          </a>
+        </div>
       </div>
     </div>
   </section>
@@ -621,7 +662,8 @@ body.app-mode .app-only{display:block!important}
     <div style="display:flex;align-items:center;justify-content:center;padding:60px 24px;min-height:70vh">
       <div style="max-width:460px;width:100%">
         <h1 style="font-size:24px;margin-bottom:8px">Créer mon espace</h1>
-        <p class="muted" style="margin-bottom:24px">Suivez vos demandes, devis, factures et livrables au même endroit.</p>
+        <p class="muted" style="margin-bottom:14px">Suivez vos demandes, devis, factures et livrables au même endroit.</p>
+        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(50,216,230,.12);border:1px solid rgba(50,216,230,.35);border-radius:100px;padding:6px 14px;margin-bottom:20px;font-size:13px;font-weight:700;color:var(--cyan)">🎁 -10% offerts sur votre première prestation</div>
         <div class="field-col">
           <div class="grid g2" style="gap:14px">
             <label>Prénom<input type="text" id="ins-prenom"></label>
@@ -821,7 +863,7 @@ body.app-mode .app-only{display:block!important}
         <div class="card" style="max-width:600px">
           <span class="faint" style="font-size:12px;font-weight:700">MEMBRES</span>
           <div id="org-members" style="margin-top:10px"></div>
-          <p class="faint" style="font-size:12px;margin-top:16px">La gestion multi-utilisateurs avancée (invitations, droits) sera disponible avec SportVision Club+.</p>
+          <p class="faint" style="font-size:12px;margin-top:16px">La gestion multi-utilisateurs avancée (invitations, droits par membre) fait partie de SportVision Club+, notre offre dédiée aux clubs partenaires. Contactez votre interlocuteur SportVision pour en savoir plus.</p>
         </div>
       </div>
     </div>
@@ -857,6 +899,10 @@ body.app-mode .app-only{display:block!important}
     <div>
       <div class="brand" style="margin-bottom:10px"><div class="brand-mark"></div><div class="brand-txt"><b>SPORTVISION</b><span>PORTAIL</span></div></div>
       <p style="max-width:280px;color:var(--t3)">Mettre en lumière le sport amateur grâce à une production visuelle professionnelle.</p>
+      <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;margin-top:14px;color:var(--t2);font-weight:600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg>
+        @Sportvision_an
+      </a>
     </div>
     <div>
       <span class="footer-col-title">PRESTATIONS</span>
@@ -1204,7 +1250,7 @@ const SV_OBJECTIFS = [
   {title:'Couvrir un match', text:'Photo, vidéo, Veo ou drone : une couverture complète pensée pour le rythme du jeu.', cta:'Configurer un match →', color:'#7857FF', cat:'pack'},
   {title:'Valoriser un événement', text:'Tournois, stages, cérémonies : racontez votre événement et vos participants.', cta:'Présenter mon événement →', color:'#32D8E6', cat:'tournoi'},
   {title:'Développer mes réseaux sociaux', text:'Stratégie, tournages réguliers, Reels et TikTok pour exister chaque semaine.', cta:'Prendre rendez-vous →', color:'#168BFF', cat:'contenu'},
-  {title:'Professionnaliser mon club', text:'Abonnements de couverture, communication mensuelle et supports sponsors.', cta:'Découvrir les solutions clubs →', color:'#7857FF', scroll:'sv-abonnements'},
+  {title:'Professionnaliser mon club', text:'Abonnements de couverture, communication mensuelle et supports sponsors avec SportVision Club+.', cta:'Découvrir Club+ →', color:'#7857FF', scroll:'sv-abonnements'},
   {title:'Créer un projet sur mesure', text:"Un besoin qui ne correspond à aucune offre standard ? Présentez-le nous.", cta:'Parler de mon projet →', color:'#32D8E6', rdv:true},
 ];
 const SV_PROFILE_TABS = [
@@ -1263,13 +1309,38 @@ function renderSvProfileTabs(){
 // ── REALISATIONS ──
 // Alimentée depuis la table `realisations`, gérée par l'admin via l'OS (upload photo/vidéo).
 // Pas de contenu factice : tant qu'aucune vraie réalisation n'est publiée, un état honnête plutôt que des vignettes inventées.
+let REALISATIONS_CACHE = null;
+let realFilter = 'all';
 async function renderRealisations(){
   const el = document.getElementById('realisations-grid');
   el.innerHTML = '<div class="empty" style="grid-column:1/-1">Chargement…</div>';
-  const r = await sbFetch('realisations?actif=eq.true&order=ordre.asc');
-  const items = r.ok ? (r.data || []) : [];
+  if (REALISATIONS_CACHE === null){
+    const r = await sbFetch('realisations?actif=eq.true&order=ordre.asc');
+    REALISATIONS_CACHE = r.ok ? (r.data || []) : [];
+  }
+  const presentCats = new Set(REALISATIONS_CACHE.map(it=>it.categorie).filter(Boolean));
+  const filtersEl = document.getElementById('real-filters');
+  if (presentCats.size){
+    filtersEl.style.display = '';
+    filtersEl.innerHTML = CATEGORIES.filter(([id])=>id==='all'||presentCats.has(id)).map(([id,label])=>
+      '<button class="chip'+(realFilter===id?' active':'')+'" onclick="setRealFilter(\''+id+'\')">'+label+'</button>'
+    ).join('');
+  } else {
+    filtersEl.style.display = 'none';
+  }
+  renderRealisationsGrid();
+}
+function setRealFilter(id){
+  realFilter = id;
+  renderRealisations();
+}
+function renderRealisationsGrid(){
+  const el = document.getElementById('realisations-grid');
+  const items = realFilter==='all' ? REALISATIONS_CACHE : REALISATIONS_CACHE.filter(it=>it.categorie===realFilter);
   if (!items.length){
-    el.innerHTML = '<div class="empty" style="grid-column:1/-1">Les premières réalisations seront publiées ici prochainement.<br><br><button class="btn btn-p" onclick="go(\'configurateur\')">Configurer ma prestation</button></div>';
+    el.innerHTML = '<div class="empty" style="grid-column:1/-1">'
+      + (REALISATIONS_CACHE.length ? 'Aucune réalisation dans cette catégorie pour le moment.' : 'Les premières réalisations seront publiées ici prochainement.')
+      + '<br><br><button class="btn btn-p" onclick="go(\'configurateur\')">Configurer ma prestation</button></div>';
     return;
   }
   el.innerHTML = items.map(it=>
@@ -1285,7 +1356,7 @@ async function renderRealisations(){
 
 // ── FAQ ──
 const FAQ_ITEMS = [
-  {q:'Combien de temps pour recevoir mes contenus ?', a:'Le délai dépend de la prestation, généralement entre 48h et 7 jours après la séance ou l\'événement.'},
+  {q:'Combien de temps pour recevoir mes contenus ?', a:'Le délai dépend de la prestation. Pour un match (photo, vidéo, Veo), la livraison est express : généralement dans les 2h suivant la fin du match. Pour les autres prestations (shooting, tournoi, stage, création de contenu...), comptez entre 48h et 7 jours après la séance ou l\'événement.'},
   {q:'Comment fonctionne le paiement ?', a:'Un acompte est généralement demandé à la confirmation, le solde étant réglé selon les conditions du devis.'},
   {q:'Puis-je annuler ou reporter une prestation ?', a:'Oui, vous pouvez demander une annulation depuis votre espace client tant que la prestation n\'est pas encore confirmée. Pour un report, contactez SportVision via la messagerie.'},
   {q:'Dans quelles zones intervenez-vous ?', a:'SportVision intervient sur toute la France ; un déplacement peut être facturé en option selon la distance.'},

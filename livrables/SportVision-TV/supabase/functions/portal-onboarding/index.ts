@@ -64,6 +64,7 @@ serve(async (req) => {
     }
 
     let clientId: string | null = null;
+    let isNewClient = false;
     if (user.email) {
       const { data: matched } = await admin
         .from("clients")
@@ -92,11 +93,13 @@ serve(async (req) => {
           email: user.email,
           telephone: telephone || null,
           origine_prospect: "portail",
+          promo_bienvenue_disponible: true,
         })
         .select("id")
         .single();
       if (createErr) return json({ error: createErr.message }, 500);
       clientId = created.id;
+      isNewClient = true;
     }
 
     const { error: cuErr } = await admin.from("client_users").insert({
@@ -109,7 +112,7 @@ serve(async (req) => {
     if (cuErr) return json({ error: cuErr.message }, 500);
 
     if (user.email) {
-      await sendWelcomeEmail(user.email, prenom).catch(() => {});
+      await sendWelcomeEmail(user.email, prenom, isNewClient).catch(() => {});
     }
 
     return json({ client_id: clientId, already_onboarded: false });
@@ -118,7 +121,7 @@ serve(async (req) => {
   }
 });
 
-async function sendWelcomeEmail(to: string, prenom?: string) {
+async function sendWelcomeEmail(to: string, prenom: string | undefined, isNewClient: boolean) {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) return; // optionnel : pas d'e-mail si le secret n'est pas configuré
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
@@ -135,7 +138,8 @@ async function sendWelcomeEmail(to: string, prenom?: string) {
     <div style="padding:28px 32px">
       <p style="font-size:15px;line-height:1.6">Bonjour ${prenom || ""},</p>
       <p style="font-size:14px;line-height:1.7;color:#9DAEC3">Votre espace client SportVision est prêt. Vous pouvez désormais suivre vos demandes, devis, factures et livrables directement depuis votre Portail.</p>
-      <a href="${portalUrl}" style="display:inline-block;margin-top:14px;background:#168BFF;color:#fff;text-decoration:none;padding:12px 22px;border-radius:9px;font-size:14px;font-weight:700">Accéder à mon espace</a>
+      ${isNewClient ? `<div style="margin-top:16px;background:#0B1B33;border-radius:10px;padding:14px 18px;font-size:13.5px;color:#32D8E6;font-weight:700">🎁 -10% offerts sur votre première prestation, appliqués automatiquement sur votre devis.</div>` : ""}
+      <a href="${portalUrl}" style="display:inline-block;margin-top:16px;background:#168BFF;color:#fff;text-decoration:none;padding:12px 22px;border-radius:9px;font-size:14px;font-weight:700">Accéder à mon espace</a>
     </div>
   </div>
 </body></html>`;
