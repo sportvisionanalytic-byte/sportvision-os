@@ -10818,16 +10818,26 @@ async function loadForm(){
     const missions=await sbFetch('prestations_equipe?select=est_responsable&collaborateur_id=eq.'+uid);
     if(Array.isArray(missions)){nbMissions=missions.length;missionXp=missions.reduce((s,m)=>s+100+(m.est_responsable?50:0),0);}
   }catch(e){}
+  let profileXp=0;
   try{
-    const pr=await sbFetch('profiles?select=grade&id=eq.'+uid);
+    const pr=await sbFetch('profiles?select=grade,xp&id=eq.'+uid);
     _myFormGrade=pr?.[0]?.grade||0;
+    profileXp=pr?.[0]?.xp||0;
   }catch(e){_myFormGrade=0;}
   // Charger la progression et les certifications depuis Supabase
   await loadFormProgFromDB(uid);
   await loadCertifFromDB(uid);
   const prog=getFormProg(uid);
-  const formXp=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée').reduce((s,f)=>s+f.xp,0);
-  const totalXp=missionXp+formXp;
+  // XP formations = formation terminée (f.xp) + bonus quiz réussi (30% de f.xp), comme réellement crédité dans xp_events/profiles.xp
+  const formXp=FORMATIONS_CATALOG.reduce((s,f)=>{
+    const fp=prog[f.id];if(!fp)return s;
+    let x=0;
+    if(fp.statut==='terminée')x+=f.xp;
+    if(fp.quiz_passe)x+=Math.round(f.xp*0.3);
+    return s+x;
+  },0);
+  // XP total = missions (calcul local, non persisté) + XP réellement crédité en base (formations, bonus quiz, attributions manuelles)
+  const totalXp=missionXp+profileXp;
   const {grade,next,pct}=calcGrade(totalXp);
   const nbTerminees=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée').length;
   const nbCerts=FORMATIONS_CATALOG.filter(f=>f.certification&&prog[f.id]?.statut==='terminée').length;
@@ -10866,7 +10876,7 @@ function renderFormDashboard(el,prog){
   const enCours=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='en_cours');
   const _role=localStorage.getItem('sv_role')||'';
   const _roleIds=FORMATION_ROLE_MAP[_role]||[];
-  const reco=_roleIds.length?_roleIds.map(rid=>FORMATIONS_CATALOG.find(f=>f.id===rid)).filter(f=>f&&!prog[f.id]&&!f.obligatoire).slice(0,3):FORMATIONS_CATALOG.filter(f=>!prog[f.id]&&!f.obligatoire).slice(0,3);
+  const reco=_roleIds.length?_roleIds.map(rid=>FORMATIONS_CATALOG.find(f=>f.id===rid)).filter(f=>f&&!prog[f.id]&&!f.obligatoire&&!_formLockLabel(f)).slice(0,3):FORMATIONS_CATALOG.filter(f=>!prog[f.id]&&!f.obligatoire&&!_formLockLabel(f)).slice(0,3);
   const recoLbl=_role&&_roleIds.length?'Recommandées pour votre rôle':'Recommandées';
   let html='';
   if(oblig.length){
