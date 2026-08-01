@@ -5548,7 +5548,8 @@ async function majStatutPaiement(id,statut){
   try{
     const body={statut_paiement:statut};
     if(statut==='payé')body.date_paiement=new Date().toISOString().slice(0,10);
-    await sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body});
+    const r=await sbFetch('prestations_equipe?id=eq.'+id,{method:'PATCH',body});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
     const labels={validé:'Rémunération validée.',transmis_compta:'Transmis à la comptabilité.',payé:'Paiement enregistré.'};
     toast(labels[statut]||'Statut mis à jour.','ok');
     loadViewData(S.role,S.view);
@@ -13477,11 +13478,12 @@ async function comptaEncaisserAcompte(id){
 }
 async function comptaConfirmerAcompte(id){
   try{
-    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
+    const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
       statut_financier:'partiellement_payée',
       date_paiement:document.getElementById('ac-date')?.value||null,
       mode_paiement:document.getElementById('ac-mode')?.value||null,
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
     closeModal();toast('Acompte enregistré.','ok');loadComptaAcomptes();
   }catch(e){toast('Erreur.','er');}
 }
@@ -13509,18 +13511,20 @@ async function comptaMarquerPayeImpaye(id){
 }
 async function comptaConfirmerImpaye(id){
   try{
-    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
+    const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
       statut_financier:'payée',
       date_paiement:document.getElementById('imp-date')?.value||null,
       mode_paiement:document.getElementById('imp-mode')?.value||null,
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
     closeModal();toast('Paiement enregistré.','ok');loadComptaImpayes();
   }catch(e){toast('Erreur.','er');}
 }
 
 async function comptaRembourserFrais(id,source){
   try{
-    await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'remboursé'}});
+    const r=await sbFetch('frais?id=eq.'+id,{method:'PATCH',body:{statut:'remboursé'}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Remboursement impossible.'),'er');return;}
     toast('Frais marqué remboursé.','ok');
     if(source==='fra')loadComptaFrais();else loadComptaDepenses();
   }catch(e){toast('Erreur lors du remboursement.','er');}
