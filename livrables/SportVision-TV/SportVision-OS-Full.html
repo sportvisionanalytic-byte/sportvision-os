@@ -9764,12 +9764,12 @@ async function loadMsg(){
   const uid=localStorage.getItem('sv_uid');
   if(!uid)return;
   try{
-    const profiles=await sbFetch('profiles?select=id,prenom,nom,role&order=prenom.asc');
+    const profiles=await sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=prenom.asc');
     _msgProfiles={};
     (profiles||[]).forEach(p=>{
       const n=([p.prenom,p.nom].filter(Boolean).join(' '))||'Membre';
       const ini=((p.prenom?.[0]||'')+(p.nom?.[0]||'')).toUpperCase()||'?';
-      _msgProfiles[p.id]={n,ini,role:p.role};
+      _msgProfiles[p.id]={n,ini,role:p.role,av:p.avatar_url||null};
     });
     await _refreshMsgUnread(uid);
     _msgConv='team';
@@ -9797,9 +9797,10 @@ function _renderMsgContacts(myUid){
       const isActive=_msgConv===id;
       const clr=ROLE_COLORS[p.role]||'var(--acc)';
       const unread=(_msgUnread||{})[id]||0;
+      const av=p.av?`<img src="${p.av}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid ${clr}44">`:`<div style="width:36px;height:36px;border-radius:50%;background:${clr}22;border:1.5px solid ${clr}44;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${clr}">${p.ini}</div>`;
       return`<div onclick="msgOpenConv('${id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;border-radius:8px;margin:0 6px;background:${isActive?'rgba(54,107,255,.12)':'transparent'};border:1px solid ${isActive?'rgba(54,107,255,.25)':'transparent'}">
         <div style="position:relative;flex-shrink:0">
-          <div style="width:36px;height:36px;border-radius:50%;background:${clr}22;border:1.5px solid ${clr}44;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${clr}">${p.ini}</div>
+          ${av}
           ${unread>0?`<div style="position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;border-radius:8px;background:var(--er);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--bg);padding:0 3px">${unread}</div>`:''}
         </div>
         <div style="flex:1;min-width:0">
@@ -9822,7 +9823,13 @@ async function _renderMsgConv(myUid){
   const wasNearBottom=(el.scrollHeight-el.scrollTop-el.clientHeight)<80;
   if(hdr){
     if(isTeam) hdr.innerHTML='<span style="color:var(--t1)">🌐 Équipe SportVision</span><span style="font-size:11px;color:var(--t3);margin-left:8px">Broadcast — visible par tous</span>';
-    else{const p=_msgProfiles[_msgConv];hdr.textContent=p?.n||'Conversation';}
+    else{
+      const p=_msgProfiles[_msgConv];
+      const hClr=ROLE_COLORS[p?.role]||'var(--acc)';
+      const hAv=p?.av?`<img src="${p.av}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0">`:`<div style="width:26px;height:26px;border-radius:50%;background:${hClr}22;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${hClr};flex-shrink:0">${p?.ini||'?'}</div>`;
+      const canViewFiche=['admin','sec','prod'].includes(S.role);
+      hdr.innerHTML=`<div style="display:flex;align-items:center;gap:9px${canViewFiche?';cursor:pointer':''}"${canViewFiche?` onclick="modalFicheCollaborateur('${_msgConv}')" title="Voir la fiche collaborateur"`:''}>${hAv}<span>${p?.n||'Conversation'}</span></div>`;
+    }
   }
   try{
     let msgs=[];
@@ -9852,8 +9859,9 @@ async function _renderMsgConv(myUid){
       const sep=dayKey!==lastDay?`<div style="text-align:center;margin:12px 0"><span style="font-size:10px;color:var(--t3);background:var(--s2);padding:3px 12px;border-radius:20px;border:1px solid var(--b1)">${dayKey}</span></div>`:'';
       lastDay=dayKey;
       const msgTxt=(m.contenu||'').replace(/'/g,"\\'");
+      const rowAv=who?.av&&!isMe?`<img src="${who.av}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-bottom:2px">`:`<div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':clr+'22'};border:${isMe?'none':'1px solid '+clr+'44'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px;color:${isMe?'#fff':clr}">${ini}</div>`;
       return sep+`<div class="msg-row" style="display:flex;gap:9px;padding:4px 16px;align-items:flex-end;${isMe?'flex-direction:row-reverse':''}" onmouseenter="this.querySelector('.msg-acts')?.style.setProperty('opacity','1')" onmouseleave="this.querySelector('.msg-acts')?.style.setProperty('opacity','0')">
-        <div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':clr+'22'};border:${isMe?'none':'1px solid '+clr+'44'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px;color:${isMe?'#fff':clr}">${ini}</div>
+        ${rowAv}
         <div style="max-width:68%;display:flex;flex-direction:column;gap:2px;align-items:${isMe?'flex-end':'flex-start'}">
           ${!isMe&&isTeam?`<div style="font-size:10px;color:var(--t3);margin-left:3px">${name}</div>`:''}
           <div style="display:flex;align-items:center;gap:5px;${isMe?'flex-direction:row-reverse':''}">
