@@ -7003,7 +7003,7 @@ async function kitsRenderIncidents(){
   if(!el)return;
   el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3)">Chargement…</div>';
   try{
-    const inc=await sbFetch('materiel_incidents?select=id,type_incident,description,gravite,statut,created_at,impact_prestation,materiels(nom),kits(nom),profiles(prenom,nom)&order=created_at.desc&limit=80').catch(()=>[]);
+    const inc=await sbFetch('materiel_incidents?select=id,type_incident,description,gravite,statut,created_at,impact_prestation,materiels(nom),kits(nom),profiles!collaborateur_id(prenom,nom)&order=created_at.desc&limit=80').catch(()=>[]);
     const all=Array.isArray(inc)?inc:[];
     const GRAV_CFG={critique:{c:'var(--er)',bg:'rgba(240,68,94,.1)',br:'rgba(240,68,94,.25)'},important:{c:'var(--wa)',bg:'rgba(245,165,36,.08)',br:'rgba(245,165,36,.2)'},mineur:{c:'var(--t3)',bg:'rgba(255,255,255,.04)',br:'var(--b1)'}};
     if(!all.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--t3)"><div style="font-size:40px;opacity:.15;margin-bottom:12px">🔎</div>Aucun incident enregistré.</div>';return;}
@@ -7084,7 +7084,7 @@ async function kitsOpenFiche(kitId){
   try{
     const [compRaw,resaRaw,incRaw]=await Promise.all([
       sbFetch('kit_compositions?select=id,quantite,obligatoire,ordre,notes,materiels(id,nom,categorie,marque,modele,statut,num_interne,num_serie)&kit_id=eq.'+kitId+'&order=ordre.asc'),
-      sbFetch('kit_reservations?select=id,statut,heure_sortie,heure_retour_prevue,responsable_id,consignes,prestations(reference,date_prestation,clients(nom)),profiles(prenom,nom)&kit_id=eq.'+kitId+'&order=created_at.desc&limit=20'),
+      sbFetch('kit_reservations?select=id,statut,heure_sortie,heure_retour_prevue,responsable_id,consignes,prestations(reference,date_prestation,clients(nom))&kit_id=eq.'+kitId+'&order=created_at.desc&limit=20'),
       sbFetch('materiel_incidents?select=id,type_incident,gravite,statut,description,created_at&kit_id=eq.'+kitId+'&statut=in.(ouvert,en_cours)&limit=10').catch(()=>[]),
     ]);
     const comp=Array.isArray(compRaw)?compRaw:[];
@@ -7456,7 +7456,7 @@ async function kitsAttribuerSubmit(kitId){
 // ── ATTRIBUTION KIT → COLLABORATEUR ──────────────────────────────────────────
 async function kitsModalAttribuerCollab(kitId){
   const collabs=await sbFetch('profiles?select=id,prenom,nom&role=in.(photo,cm)&order=nom.asc').catch(()=>[]);
-  const curResas=await sbFetch('kit_reservations?select=id,collaborateur_id,profiles(prenom,nom)&kit_id=eq.'+kitId+'&prestation_id=is.null&statut=eq.sortie&limit=1').catch(()=>[]);
+  const curResas=await sbFetch('kit_reservations?select=id,collaborateur_id,profiles!collaborateur_id(prenom,nom)&kit_id=eq.'+kitId+'&prestation_id=is.null&statut=eq.sortie&limit=1').catch(()=>[]);
   const cur=Array.isArray(curResas)&&curResas[0]?curResas[0]:null;
   const list=Array.isArray(collabs)?collabs:[];
   openModal(`<div class="mh"><div class="mt">Attribuer le kit à un collaborateur</div><button class="mc" onclick="closeModal()">✕</button></div>
@@ -12036,9 +12036,9 @@ async function loadAdminFormSessions(){
   if(!el)return;
   el.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--t3)">Chargement des sessions…</div>`;
   try{
-    const sessions=await sbFetch('formation_sessions?select=id,formation_id,titre,date_session,duree_minutes,lieu,lien_visio,capacite,statut,formateur_id,formateur_ext,profiles(prenom,nom)&order=date_session.desc&limit=100').catch(()=>[]);
+    const sessions=await sbFetch('formation_sessions?select=id,formation_id,titre,date_session,duree_minutes,lieu,lien_visio,capacite,statut,formateur_id,formateur_ext,profiles!formateur_id(prenom,nom)&order=date_session.desc&limit=100').catch(()=>[]);
     const now=new Date();
-    const all=sessions||[];
+    const all=Array.isArray(sessions)?sessions:[];
     const upcoming=all.filter(s=>new Date(s.date_session)>=now&&s.statut!=='annulee'&&s.statut!=='terminee');
     const past=all.filter(s=>new Date(s.date_session)<now||s.statut==='terminee'||s.statut==='annulee');
     _formSessCache=all;
@@ -12561,8 +12561,8 @@ async function loadFormSessions(el){
   if(!el)return;
   el.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--t3)">Chargement des sessions…</div>`;
   try{
-    const sessions=await sbFetch('formation_sessions?select=id,formation_id,date_session,duree_minutes,lieu,lien_visio,capacite,statut,profiles(prenom,nom)&statut=neq.annulee&order=date_session.asc&limit=50').catch(()=>[]);
-    _formSessCache=sessions||[];
+    const sessions=await sbFetch('formation_sessions?select=id,formation_id,date_session,duree_minutes,lieu,lien_visio,capacite,statut,profiles!formateur_id(prenom,nom)&statut=neq.annulee&order=date_session.asc&limit=50').catch(()=>[]);
+    _formSessCache=Array.isArray(sessions)?sessions:[];
     const now=new Date();
     const upcoming=_formSessCache.filter(s=>new Date(s.date_session)>=now);
     const past=_formSessCache.filter(s=>new Date(s.date_session)<now);
@@ -17243,8 +17243,9 @@ async function renderCentreGrades(){
   let recoHtml='';
   if(isAdmin){
     try{
-      const recos=await sbFetch('grade_recommendations?select=id,collaborateur_id,grade_actuel,grade_propose,statut,created_at,profiles(prenom,nom)&statut=eq.en_attente&order=created_at.desc&limit=20').catch(()=>[]);
-      if(recos&&recos.length){
+      const recosRaw=await sbFetch('grade_recommendations?select=id,collaborateur_id,grade_actuel,grade_propose,statut,created_at,profiles!collaborateur_id(prenom,nom)&statut=eq.en_attente&order=created_at.desc&limit=20').catch(()=>[]);
+      const recos=Array.isArray(recosRaw)?recosRaw:[];
+      if(recos.length){
         recoHtml=`<div class="cv-card" style="border-color:rgba(245,165,36,.25);background:rgba(245,165,36,.05);margin-bottom:16px">
           <div class="cv-h2">⏳ Recommandations de grade en attente (${recos.length})</div>
           <div style="display:flex;flex-direction:column;gap:8px">
