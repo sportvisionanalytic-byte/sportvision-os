@@ -14787,9 +14787,9 @@ async function loadSecRelances(){
     _secRelData=Array.isArray(data)?data:[];
     const now2=new Date();
     const acomptes=_secRelData.filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
-    const soldes=_secRelData.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payé').length;
-    const enRetardRel=_secRelData.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now2&&p.statut_financier!=='payé'&&!['annulée','refusée','clôturée'].includes(p.statut)).length;
-    const montantAtt=_secRelData.filter(p=>p.statut_financier!=='payé'&&!['annulée','refusée','clôturée'].includes(p.statut)).reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const soldes=_secRelData.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payée').length;
+    const enRetardRel=_secRelData.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now2&&p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut)).length;
+    const montantAtt=_secRelData.filter(p=>p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     set('rel-kpi-acomp',acomptes);set('rel-kpi-solde',soldes);set('rel-kpi-retard',enRetardRel);
     set('rel-kpi-montant',montantAtt.toLocaleString('fr-FR')+' €');
@@ -14805,13 +14805,13 @@ function renderSecRelances(){
   const el=document.getElementById('sec-relances-real');if(!el)return;
   let list=_secRelData;
   if(_secRelFilter==='acompte')list=list.filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte');
-  else if(_secRelFilter==='solde')list=list.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payé');
+  else if(_secRelFilter==='solde')list=list.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payée');
   else if(_secRelFilter==='retard'){
     const now=new Date();
     list=list.filter(p=>{
       if(!p.date_prestation)return false;
       const d=new Date(p.date_prestation);
-      return d<now&&p.statut_financier!=='payé'&&!['annulée','refusée','clôturée'].includes(p.statut);
+      return d<now&&p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut);
     });
   }
   if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune relance pour ce filtre.</div>';return;}
@@ -14983,7 +14983,7 @@ async function loadSecRapports(){
     const devList=Array.isArray(devis)?devis:[];
     const cliList=Array.isArray(cli)?cli:[];
     const preTerminees=preList.filter(p=>!['annulée','refusée','demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse','devis_accepté'].includes(p.statut));
-    const caPaye=preList.filter(p=>p.statut_financier==='payé').reduce((s,p)=>s+(p.montant_ttc||0),0);
+    const caPaye=preList.filter(p=>p.statut_financier==='payée').reduce((s,p)=>s+(p.montant_ttc||0),0);
     const devTotal=devList.length;
     const devAcc=devList.filter(d=>['accepté','signé'].includes(d.statut)).length;
     const convRate=devTotal>0?Math.round(devAcc/devTotal*100):0;
@@ -15075,7 +15075,7 @@ async function secMarquerPaye(id){
 async function secConfirmerPaye(id){
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{
-      statut_financier:'payé',
+      statut_financier:'payée',
       date_paiement:document.getElementById('paye-date')?.value||null,
       mode_paiement:document.getElementById('paye-mode')?.value||null,
     }});
