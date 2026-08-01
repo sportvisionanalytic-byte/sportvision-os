@@ -17291,9 +17291,21 @@ async function centreAccepterDoc(chapitreId){
   const uid=localStorage.getItem('sv_uid');
   if(!uid)return;
   try{
-    await sbFetch('centre_validations',{method:'POST',body:{
+    const r=await sbFetch('centre_validations',{method:'POST',body:{
       collaborateur_id:uid,chapitre_id:chapitreId,version:'1.0',type:'accepte',
     }});
+    if(sbErr(r)){
+      // Peut échouer si la contrainte unique est violée (déjà accepté) ou si la table n'existe pas
+      if(r.code==='23505'||(r.message&&r.message.includes('duplicate'))){toast('Déjà accepté.','ok');return;}
+      // Fallback localStorage si table pas encore créée
+      const key='sv_regl_accept_'+uid;
+      const done=JSON.parse(localStorage.getItem(key)||'[]');
+      if(!done.includes(chapitreId)){done.push(chapitreId);localStorage.setItem(key,JSON.stringify(done));}
+      toast('Chapitre accepté (local).','ok');
+      const ct2=document.getElementById('centre-main');
+      if(ct2){ct2.innerHTML=await renderCentreReglement();}
+      return;
+    }
     toast('Chapitre accepté.','ok');
     // Rafraîchir la section règlement
     const ct=document.getElementById('centre-main');
@@ -17301,17 +17313,12 @@ async function centreAccepterDoc(chapitreId){
     // XP pour acceptation
     await centreAttribuerXP(uid,10,'manuel','Acceptation règlement — chapitre '+chapitreId);
   }catch(e){
-    // Peut échouer si la contrainte unique est violée (déjà accepté) ou si la table n'existe pas
-    if(e.message&&e.message.includes('duplicate'))toast('Déjà accepté.','ok');
-    else{
-      // Fallback localStorage si table pas encore créée
-      const key='sv_regl_accept_'+uid;
-      const done=JSON.parse(localStorage.getItem(key)||'[]');
-      if(!done.includes(chapitreId)){done.push(chapitreId);localStorage.setItem(key,JSON.stringify(done));}
-      toast('Chapitre accepté (local).','ok');
-      const ct=document.getElementById('centre-main');
-      if(ct){ct.innerHTML=await renderCentreReglement();}
-    }
+    const key='sv_regl_accept_'+uid;
+    const done=JSON.parse(localStorage.getItem(key)||'[]');
+    if(!done.includes(chapitreId)){done.push(chapitreId);localStorage.setItem(key,JSON.stringify(done));}
+    toast('Chapitre accepté (local).','ok');
+    const ct=document.getElementById('centre-main');
+    if(ct){ct.innerHTML=await renderCentreReglement();}
   }
 }
 
@@ -17777,11 +17784,13 @@ async function centreAttribuerXPSubmit(userId){
   if(!montant||montant<1){toast('Montant invalide.','er');return;}
   try{
     const uid=localStorage.getItem('sv_uid');
-    await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:userId,montant,type,description:desc,attribue_par:uid}});
+    const rXp=await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:userId,montant,type,description:desc,attribue_par:uid}});
+    if(sbErr(rXp)){toast('Erreur : '+(rXp.message||'attribution impossible.'),'er');return;}
     // Mettre à jour le champ xp dans profiles
     const profile=await sbFetch('profiles?select=xp&id=eq.'+userId);
     const xpActuel=(profile&&profile[0]?.xp)||0;
-    await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{xp:xpActuel+montant}});
+    const rProf=await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{xp:xpActuel+montant}});
+    if(sbErr(rProf)){toast('Erreur : '+(rProf.message||'mise à jour du solde impossible.'),'er');return;}
     closeModal();toast(`+${montant} XP attribués.`,'ok');
     if(S.view==='centre')await loadCentre(S.role);
   }catch(e){toast('Erreur lors de l\'attribution.','er');}
@@ -17824,7 +17833,8 @@ async function centreValidateGradeChange(userId,gradeActuel){
   if(newGrade===gradeActuel){toast('Grade inchangé.','ok');closeModal();return;}
   try{
     const uid=localStorage.getItem('sv_uid');
-    await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{grade:newGrade,grade_valide_at:new Date().toISOString(),grade_valide_par:uid}});
+    const rGrade=await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{grade:newGrade,grade_valide_at:new Date().toISOString(),grade_valide_par:uid}});
+    if(sbErr(rGrade)){toast('Erreur : '+(rGrade.message||'mise à jour impossible.'),'er');return;}
     // Créer un log dans grade_recommendations
     await sbFetch('grade_recommendations',{method:'POST',body:{
       collaborateur_id:userId,grade_actuel:gradeActuel,grade_propose:newGrade,
@@ -17845,10 +17855,12 @@ async function centreValiderGrade(recoId,decision){
     const uid=localStorage.getItem('sv_uid');
     const reco=await sbFetch('grade_recommendations?select=collaborateur_id,grade_propose&id=eq.'+recoId);
     if(!reco||!reco[0])return;
-    await sbFetch('grade_recommendations?id=eq.'+recoId,{method:'PATCH',body:{statut:decision,valide_par:uid}});
+    const rReco=await sbFetch('grade_recommendations?id=eq.'+recoId,{method:'PATCH',body:{statut:decision,valide_par:uid}});
+    if(sbErr(rReco)){toast('Erreur : '+(rReco.message||'mise à jour impossible.'),'er');return;}
     if(decision==='valide'){
       const {collaborateur_id,grade_propose}=reco[0];
-      await sbFetch('profiles?id=eq.'+collaborateur_id,{method:'PATCH',body:{grade:grade_propose,grade_valide_at:new Date().toISOString(),grade_valide_par:uid}});
+      const rProf=await sbFetch('profiles?id=eq.'+collaborateur_id,{method:'PATCH',body:{grade:grade_propose,grade_valide_at:new Date().toISOString(),grade_valide_par:uid}});
+      if(sbErr(rProf)){toast('Erreur : '+(rProf.message||'attribution du grade impossible.'),'er');return;}
       toast('Grade validé et attribué.','ok');
     }else{toast('Recommandation refusée.','ok');}
     if(S.view==='centre')await loadCentreSection('grades');
@@ -17965,8 +17977,8 @@ async function sauvegarderRessourceCentre(id){
     icone:document.getElementById('cr-icone').value.trim()||'📄',
   };
   try{
-    if(id)await sbFetch('centre_ressources?id=eq.'+id,{method:'PATCH',body});
-    else await sbFetch('centre_ressources',{method:'POST',body:{...body,created_by:localStorage.getItem('sv_uid')}});
+    const r=id?await sbFetch('centre_ressources?id=eq.'+id,{method:'PATCH',body}):await sbFetch('centre_ressources',{method:'POST',body:{...body,created_by:localStorage.getItem('sv_uid')}});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
     closeModal();
     toast(id?'Ressource mise à jour.':'Ressource publiée.','ok');
     loadCentreSection('ressources');
@@ -17975,7 +17987,8 @@ async function sauvegarderRessourceCentre(id){
 function supprimerRessourceCentre(id){
   confirmerAction('Supprimer définitivement cette ressource ?',async()=>{
     try{
-      await sbFetch('centre_ressources?id=eq.'+id,{method:'DELETE'});
+      const r=await sbFetch('centre_ressources?id=eq.'+id,{method:'DELETE'});
+      if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
       closeModal();
       toast('Ressource supprimée.','ok');
       loadCentreSection('ressources');
