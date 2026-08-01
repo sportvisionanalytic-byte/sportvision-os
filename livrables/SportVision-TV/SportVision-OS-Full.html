@@ -2009,7 +2009,7 @@ const VIEWS={
     <div class="kpi-g">
       <div class="kpi" style="--kl:var(--ok)"><div class="kpi-ey">Contrats actifs</div><div class="kpi-v" id="ct-kpi-act">—</div><span class="kpi-d dnt">en cours</span></div>
       <div class="kpi" style="--kl:var(--wa)"><div class="kpi-ey">Arrivent à échéance</div><div class="kpi-v" id="ct-kpi-exp">—</div><span class="kpi-d dnt">dans 30 jours</span></div>
-      <div class="kpi" style="--kl:var(--acc)"><div class="kpi-ey">Quotas atteints</div><div class="kpi-v" id="ct-kpi-quo">—</div><span class="kpi-d dnt">ce mois</span></div>
+      <div class="kpi" style="--kl:var(--acc)"><div class="kpi-ey">En brouillon</div><div class="kpi-v" id="ct-kpi-quo">—</div><span class="kpi-d dnt">à activer</span></div>
       <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">CA récurrent / mois</div><div class="kpi-v" id="ct-kpi-ca">—</div><span class="kpi-d dnt">abonnements</span></div>
     </div>
     <div id="contrats-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
@@ -16473,7 +16473,8 @@ async function loadContrats(){
   const caTotal=actifs.reduce((s,c)=>s+(c.montant_mensuel||0),0);
   const kpiAct=document.getElementById('ct-kpi-act');if(kpiAct)kpiAct.textContent=actifs.length;
   const kpiExp=document.getElementById('ct-kpi-exp');if(kpiExp)kpiExp.textContent=expBientot.length;
-  const kpiQuo=document.getElementById('ct-kpi-quo');if(kpiQuo)kpiQuo.textContent=0;
+  const brouillons=list.filter(c=>c.statut==='brouillon');
+  const kpiQuo=document.getElementById('ct-kpi-quo');if(kpiQuo)kpiQuo.textContent=brouillons.length;
   const kpiCa=document.getElementById('ct-kpi-ca');if(kpiCa)kpiCa.textContent=fmt(caTotal);
   if(!list.length){d.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--t3);font-size:13px">Aucun contrat. Cliquez sur "+ Nouveau contrat" pour commencer.</div>`;return;}
   const SC={actif:'var(--ok)',suspendu:'var(--wa)',résilié:'var(--er)',expiré:'var(--t3)',brouillon:'var(--t3)'};
