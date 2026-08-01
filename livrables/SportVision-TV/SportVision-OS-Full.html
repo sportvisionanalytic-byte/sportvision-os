@@ -14894,7 +14894,8 @@ async function loadFinances(){
 
 async function majStatutFinancier(id,statut){
   try{
-    await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut_financier:statut}});
+    const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut_financier:statut}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
     const lbl={facturée:'Prestation facturée.',payée:'Paiement enregistré.'}[statut]||'Mis à jour.';
     toast(lbl,'ok');
     if(S.view==='fin')loadFinances();
