@@ -9558,7 +9558,8 @@ async function loadIncidents(){
 function cloreIncident(id){
   confirmerAction('Clôturer cet incident ?',async()=>{
     try{
-      await sbFetch('incidents?id=eq.'+id,{method:'PATCH',body:{cloture:true,cloture_at:new Date().toISOString(),cloture_par:localStorage.getItem('sv_uid')}});
+      const r=await sbFetch('incidents?id=eq.'+id,{method:'PATCH',body:{cloture:true,cloture_at:new Date().toISOString(),cloture_par:localStorage.getItem('sv_uid')}});
+      if(sbErr(r)){toast('Erreur : '+(r.message||'clôture impossible.'),'er');return;}
       toast('Incident clôturé.','ok');
       loadIncidents();
       updateNavBadges(S.role);
@@ -9620,13 +9621,14 @@ async function signalerIncident(){
   err.textContent='Envoi…';
   try{
     const pid=document.getElementById('inc-pre').value||null;
-    await sbFetch('incidents',{method:'POST',body:{
+    const r=await sbFetch('incidents',{method:'POST',body:{
       type_incident:type,
       niveau:document.getElementById('inc-niv').value,
       description:desc,
       declare_par:localStorage.getItem('sv_uid'),
       prestation_id:pid||null,
     }});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'envoi impossible.');return;}
     closeModal();
     toast('Incident signalé.','ok');
     if(S.view==='incidents')loadIncidents();
@@ -9752,7 +9754,8 @@ function renderPipeline(){
 
 async function avancerPipeline(id,statut){
   try{
-    await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
+    const r=await sbFetch('clients?id=eq.'+id,{method:'PATCH',body:{statut}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     const lb={prospect:'Prospect',qualifié:'Qualifié',devis_envoyé:'Devis envoyé',négociation:'Négociation',partenaire:'Partenaire',client:'Client'}[statut]||statut;
     toast('→ '+lb,'ok');
     loadPipeline();
