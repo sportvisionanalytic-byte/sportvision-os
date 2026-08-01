@@ -792,6 +792,7 @@ const NAV={
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
+    {id:'form',lb:'Centre de formation',ic:'form'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -1426,6 +1427,19 @@ const VIEWS={
     </div>
     <div id="form-real"></div>`,
 
+  'cm.form':()=>`
+    <div class="cd" style="margin-bottom:14px">
+      <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:2px">
+      <button data-tab="dashboard" onclick="setFormTab('dashboard')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--acc);background:var(--acc);color:#fff;flex-shrink:0">Tableau de bord</button>
+      <button data-tab="catalogue" onclick="setFormTab('catalogue')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Catalogue</button>
+      <button data-tab="mes-formations" onclick="setFormTab('mes-formations')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Mes formations</button>
+      <button data-tab="certifications" onclick="setFormTab('certifications')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Certifications</button>
+      <button data-tab="sessions" onclick="setFormTab('sessions')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Sessions</button>
+    </div>
+    <div id="form-real"></div>`,
+
   // ── PROD : RAPPORTS ───────────────────────────────────────────────────────
   'prod.rapports':()=>`
     <div class="sh" style="margin-bottom:14px">
@@ -1594,7 +1608,7 @@ const VIEWS={
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('contenus')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="cm-kpi-cl">—</div><span class="kpi-d dnt">clubs à couvrir</span></div>
       <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('cal')"><div class="kpi-ey">Prestations ce mois</div><div class="kpi-v" id="cm-kpi-pre">—</div><span class="kpi-d dnt">contenu potentiel</span></div>
       <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('cal')"><div class="kpi-ey">À venir (14j)</div><div class="kpi-v" id="cm-kpi-soon">—</div><span class="kpi-d dnt">à préparer</span></div>
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('analytics')"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="cm-kpi-pr">—</div><span class="kpi-d dnt">pipeline</span></div>
+      <div class="kpi" style="--kl:#F5A524"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="cm-kpi-pr">—</div><span class="kpi-d dnt">pipeline</span></div>
     </div>
     <div class="g2">
       <div class="cd"><div class="cd-h"><div class="cd-t">Prochaines prestations à couvrir</div></div>
@@ -2746,6 +2760,7 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='admin'&&view==='form') await loadAdminForm();
   if(role==='prod'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
+  if(role==='cm'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(['prod','admin','sec','photo','cm','compta','com'].includes(role)&&view==='msg') await loadMsg();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
@@ -2884,6 +2899,8 @@ async function avancerStatutPrestation(id,statut){
 function modalDetailPrestation(idx){
   const p=_prestationsCache[idx];
   if(!p)return;
+  const canEdit=S.role!=='cm';
+  const ro=canEdit?'':'disabled';
   const statutOptions=Object.keys(SL).map(s=>`<option value="${s}"${p.statut===s?' selected':''}>${SL[s]}</option>`).join('');
   const SF_OPTS=[
     ['non_facturée','Non facturée'],['en_préparation','En préparation'],['facturée','Facturée'],
@@ -2905,48 +2922,48 @@ function modalDetailPrestation(idx){
     <div style="display:flex;flex-direction:column;gap:11px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut prestation</label>
-          <select id="pd-statut" class="l-inp" style="height:38px">${statutOptions}</select>
+          <select id="pd-statut" class="l-inp" style="height:38px" ${ro}>${statutOptions}</select>
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Statut financier</label>
-          <select id="pd-sfin" class="l-inp" style="height:38px">${SF_OPTS}</select>
+          <select id="pd-sfin" class="l-inp" style="height:38px" ${ro}>${SF_OPTS}</select>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Date</label>
-          <input id="pd-date" type="date" class="l-inp" value="${p.date_prestation||''}" style="height:38px">
+          <input id="pd-date" type="date" class="l-inp" value="${p.date_prestation||''}" style="height:38px" ${ro}>
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Lieu</label>
-          <input id="pd-lieu" type="text" class="l-inp" value="${p.lieu||''}" style="height:38px">
+          <input id="pd-lieu" type="text" class="l-inp" value="${p.lieu||''}" style="height:38px" ${ro}>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Heure RDV équipe</label>
-          <input id="pd-hrdv" type="time" class="l-inp" value="${p.heure_rdv?p.heure_rdv.slice(0,5):''}" style="height:38px">
+          <input id="pd-hrdv" type="time" class="l-inp" value="${p.heure_rdv?p.heure_rdv.slice(0,5):''}" style="height:38px" ${ro}>
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Heure début</label>
-          <input id="pd-hdeb" type="time" class="l-inp" value="${p.heure_debut?p.heure_debut.slice(0,5):''}" style="height:38px">
+          <input id="pd-hdeb" type="time" class="l-inp" value="${p.heure_debut?p.heure_debut.slice(0,5):''}" style="height:38px" ${ro}>
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Heure fin</label>
-          <input id="pd-hfin" type="time" class="l-inp" value="${p.heure_fin?p.heure_fin.slice(0,5):''}" style="height:38px">
+          <input id="pd-hfin" type="time" class="l-inp" value="${p.heure_fin?p.heure_fin.slice(0,5):''}" style="height:38px" ${ro}>
         </div>
       </div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Adresse complète</label>
-        <input id="pd-adr" type="text" class="l-inp" value="${p.adresse_complete||''}" style="height:38px" placeholder="Rue, code postal, ville…">
+        <input id="pd-adr" type="text" class="l-inp" value="${p.adresse_complete||''}" style="height:38px" placeholder="Rue, code postal, ville…" ${ro}>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Contact sur place</label>
-          <input id="pd-csp" type="text" class="l-inp" value="${p.contact_sur_place||''}" style="height:38px" placeholder="Nom du contact">
+          <input id="pd-csp" type="text" class="l-inp" value="${p.contact_sur_place||''}" style="height:38px" placeholder="Nom du contact" ${ro}>
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Tél. sur place</label>
-          <input id="pd-tsp" type="tel" class="l-inp" value="${p.telephone_sur_place||''}" style="height:38px" placeholder="06 …">
+          <input id="pd-tsp" type="tel" class="l-inp" value="${p.telephone_sur_place||''}" style="height:38px" placeholder="06 …" ${ro}>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant HT (€)</label>
-          <input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0" oninput="const ttc=document.getElementById('pd-ttc');if(ttc&&this.value)ttc.value=Math.round(Number(this.value)*1.2*100)/100">
+          <input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0" oninput="const ttc=document.getElementById('pd-ttc');if(ttc&&this.value)ttc.value=Math.round(Number(this.value)*1.2*100)/100" ${ro}>
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant TTC (€) <span style="font-size:9px;opacity:.5">auto TVA 20%</span></label>
-          <input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0">
+          <input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0" ${ro}>
         </div>
       </div>
       ${(p.description_besoin||p.livrables_demandes||['admin','sec','prod'].includes(S.role))?`<div style="background:rgba(54,107,255,.05);border:1px solid rgba(54,107,255,.15);border-radius:var(--rb);padding:12px 14px;display:flex;flex-direction:column;gap:10px">
@@ -2959,7 +2976,7 @@ function modalDetailPrestation(idx){
         </div>
       </div>`:''}
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Notes internes</label>
-        <textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none" placeholder="Informations internes…">${p.notes_internes||''}</textarea>
+        <textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none" placeholder="Informations internes…" ${ro}>${p.notes_internes||''}</textarea>
       </div>
       ${['admin','sec','prod'].includes(S.role)?`<div id="pd-equipe-block" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
         <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Équipe affectée</div>
@@ -2972,7 +2989,7 @@ function modalDetailPrestation(idx){
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
           ${['admin','sec','prod'].includes(S.role)?`<button class="btn bg2" onclick="closeModal();modalEquipePrestation('${p.id}','${p.reference||''}')">Équipe →</button>`:''}
           ${['admin','sec','com'].includes(S.role)?`<button class="btn bg2" onclick="closeModal();modalNouveauDevisFromPrestation('${p.id}','${p.clients?.nom||''}',${p.montant_ht||''})">Devis →</button>`:''}
-          <button class="btn bp" onclick="modifierPrestation('${p.id}')">Enregistrer</button>
+          ${canEdit?`<button class="btn bp" onclick="modifierPrestation('${p.id}')">Enregistrer</button>`:''}
         </div>
       </div>
     </div>`);
@@ -3127,6 +3144,8 @@ async function crmAvancerStatut(id,statut){
 function modalModifierClient(idx){
   const c=_clientsCache[idx];
   if(!c)return;
+  const canEdit=S.role!=='cm';
+  const ro=canEdit?'':'disabled';
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Modifier le client</div>
@@ -3134,48 +3153,48 @@ function modalModifierClient(idx){
     <div style="display:flex;flex-direction:column;gap:12px">
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px">
         <div><label style="${lbl}">Nom *</label>
-          <input id="fce-nom" type="text" class="l-inp" value="${c.nom}" style="height:38px">
+          <input id="fce-nom" type="text" class="l-inp" value="${c.nom}" style="height:38px" ${ro}>
         </div>
         <div><label style="${lbl}">Type</label>
-          <select id="fce-type" class="l-inp" style="height:38px">
+          <select id="fce-type" class="l-inp" style="height:38px" ${ro}>
             ${['club','association','entreprise','particulier','fédération'].map(s=>`<option value="${s}"${(c.type_client||'club')===s?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
           </select>
         </div>
         <div><label style="${lbl}">Statut</label>
-          <select id="fce-statut" class="l-inp" style="height:38px">
+          <select id="fce-statut" class="l-inp" style="height:38px" ${ro}>
             ${[['prospect','Prospect'],['qualifié','Qualifié'],['devis_envoyé','Devis envoyé'],['négociation','Négociation'],['partenaire','Partenaire'],['client','Client'],['inactif','Inactif'],['bloqué','Bloqué'],['perdu','Perdu']].map(([v,l])=>`<option value="${v}"${c.statut===v?' selected':''}>${l}</option>`).join('')}
           </select>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${lbl}">Prénom contact</label>
-          <input id="fce-prenom" type="text" class="l-inp" value="${c.prenom_contact||''}" style="height:38px">
+          <input id="fce-prenom" type="text" class="l-inp" value="${c.prenom_contact||''}" style="height:38px" ${ro}>
         </div>
         <div><label style="${lbl}">Nom contact</label>
-          <input id="fce-nomct" type="text" class="l-inp" value="${c.nom_contact||''}" style="height:38px">
+          <input id="fce-nomct" type="text" class="l-inp" value="${c.nom_contact||''}" style="height:38px" ${ro}>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${lbl}">Email</label>
-          <input id="fce-email" type="email" class="l-inp" value="${c.email||''}" style="height:38px">
+          <input id="fce-email" type="email" class="l-inp" value="${c.email||''}" style="height:38px" ${ro}>
         </div>
         <div><label style="${lbl}">Téléphone</label>
-          <input id="fce-tel" type="tel" class="l-inp" value="${c.telephone||''}" style="height:38px">
+          <input id="fce-tel" type="tel" class="l-inp" value="${c.telephone||''}" style="height:38px" ${ro}>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
         <div><label style="${lbl}">Sport</label>
-          <input id="fce-sport" type="text" class="l-inp" value="${c.sport||''}" style="height:38px">
+          <input id="fce-sport" type="text" class="l-inp" value="${c.sport||''}" style="height:38px" ${ro}>
         </div>
         <div><label style="${lbl}">Ville</label>
-          <input id="fce-ville" type="text" class="l-inp" value="${c.ville||''}" style="height:38px">
+          <input id="fce-ville" type="text" class="l-inp" value="${c.ville||''}" style="height:38px" ${ro}>
         </div>
         <div><label style="${lbl}">Division / Ligue</label>
-          <input id="fce-division" type="text" class="l-inp" value="${c.division||''}" placeholder="R1, Dept…" style="height:38px">
+          <input id="fce-division" type="text" class="l-inp" value="${c.division||''}" placeholder="R1, Dept…" style="height:38px" ${ro}>
         </div>
       </div>
       <div><label style="${lbl}">Notes internes</label>
-        <textarea id="fce-notes" class="l-inp" style="height:72px;resize:vertical;padding-top:8px">${c.notes||''}</textarea>
+        <textarea id="fce-notes" class="l-inp" style="height:72px;resize:vertical;padding-top:8px" ${ro}>${c.notes||''}</textarea>
       </div>
       <div id="fce-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div id="fce-tabs" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
@@ -3199,11 +3218,11 @@ function modalModifierClient(idx){
         </div>
       </div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:12px">
-        <button onclick="supprimerClient('${c.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>
+        ${canEdit?`<button onclick="supprimerClient('${c.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>`:'<div></div>'}
         <div style="display:flex;gap:10px">
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
-          <button class="btn bg2" onclick="closeModal();modalNouvellePrestation('${c.id}')" title="Créer une prestation pour ce client">+ Prestation</button>
-          <button class="btn bp" onclick="modifierClient('${c.id}')">Enregistrer</button>
+          ${canEdit?`<button class="btn bg2" onclick="closeModal();modalNouvellePrestation('${c.id}')" title="Créer une prestation pour ce client">+ Prestation</button>
+          <button class="btn bp" onclick="modifierClient('${c.id}')">Enregistrer</button>`:''}
         </div>
       </div>
     </div>`);
@@ -11357,7 +11376,7 @@ function _formLockLabel(f){
     const _roleTitre=(SV_ROLES_DESC[f.onlyRole]&&SV_ROLES_DESC[f.onlyRole].titre)||f.onlyRole;
     return '🔒 Réservé au rôle '+_roleTitre;
   }
-  if(!f.minGrade||_myFormGrade>=f.minGrade)return null;
+  if(!f.minGrade||_r!=='photo'||_myFormGrade>=f.minGrade)return null;
   return '🔒 Débloqué à partir de '+'⭐'.repeat(f.minGrade)+' ('+f.minGrade+' étoiles)';
 }
 
@@ -11548,6 +11567,7 @@ function renderFormDashboard(el,prog){
 }
 
 function renderFormCatalogue(el,prog){
+  const xpEligible=S.role==='photo';
   if(!window._formCatFilter)window._formCatFilter='Toutes';
   const filt=window._formCatFilter;
   const filtered=filt==='Toutes'?FORMATIONS_CATALOG:filt==='Obligatoires'?FORMATIONS_CATALOG.filter(f=>f.obligatoire):filt==='En cours'?FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='en_cours'):filt==='Terminées'?FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée'):filt==='Certifiantes'?FORMATIONS_CATALOG.filter(f=>f.certification):FORMATIONS_CATALOG;
@@ -11568,7 +11588,7 @@ function renderFormCatalogue(el,prog){
             <div style="font-size:30px;line-height:1">${f.icone}</div>
             ${lockLbl?`<span style="font-size:9px;font-weight:700;color:var(--t3);background:var(--s2);padding:2px 7px;border-radius:20px;flex-shrink:0">🔒 ${f.minGrade}⭐</span>`:f.obligatoire?`<span style="font-size:9px;font-weight:700;color:var(--er);background:rgba(240,68,94,.12);padding:2px 7px;border-radius:20px;flex-shrink:0">Oblig.</span>`:f.certification?`<span style="font-size:9px;font-weight:700;color:#9C6FFF;background:rgba(124,77,255,.12);padding:2px 7px;border-radius:20px;flex-shrink:0">🏅</span>`:''}
           </div>
-          <div><div style="font-size:12px;font-weight:700;color:var(--t1);line-height:1.3">${f.titre}</div><div style="font-size:10px;color:var(--t3);margin-top:3px">${f.duree} · +${f.xp} XP</div></div>
+          <div><div style="font-size:12px;font-weight:700;color:var(--t1);line-height:1.3">${f.titre}</div><div style="font-size:10px;color:var(--t3);margin-top:3px">${f.duree}${xpEligible?' · +'+f.xp+' XP':''}</div></div>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
             <span style="font-size:9px;font-weight:600;color:${NCLR[f.niveau]||'var(--t3)'};background:${(NCLR[f.niveau]||'#888')}22;padding:2px 6px;border-radius:20px">${f.niveau}</span>
             <span style="font-size:9px;color:var(--t3);background:var(--s2);padding:2px 6px;border-radius:20px">${TLBL[f.type]||f.type}</span>
@@ -11581,6 +11601,7 @@ function renderFormCatalogue(el,prog){
 }
 
 function renderFormMes(el,prog){
+  const xpEligible=S.role==='photo';
   const enCours=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='en_cours');
   const terminées=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée');
   let html='';
@@ -11591,7 +11612,7 @@ function renderFormMes(el,prog){
       html+=`<div onclick="modalFormDetail('${f.id}')" style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
           <div style="font-size:24px">${f.icone}</div>
-          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${f.titre}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${ld}/${tl} leçons · +${f.xp} XP</div></div>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${f.titre}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${ld}/${tl} leçons${xpEligible?' · +'+f.xp+' XP':''}</div></div>
           <span style="font-size:14px;font-weight:700;color:var(--acc)">${pct}%</span>
         </div>
         <div class="pg"><div class="pg-f" style="width:${pct}%;background:var(--acc)"></div></div>
@@ -11604,7 +11625,7 @@ function renderFormMes(el,prog){
       const fp=prog[f.id];
       html+=`<div onclick="modalFormDetail('${f.id}')" style="background:rgba(46,204,138,.05);border:1px solid rgba(46,204,138,.2);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px">
         <div style="font-size:24px">${f.icone}</div>
-        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${f.titre}</div><div style="font-size:11px;color:var(--ok);margin-top:2px">+${f.xp} XP${f.certification?' · 🏅 Certifié':''}${fp.completed_at?' · '+new Date(fp.completed_at).toLocaleDateString('fr-FR'):''}</div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${f.titre}</div><div style="font-size:11px;color:var(--ok);margin-top:2px">${xpEligible?'+'+f.xp+' XP':''}${f.certification?(xpEligible?' · ':'')+'🏅 Certifié':''}${fp.completed_at?' · '+new Date(fp.completed_at).toLocaleDateString('fr-FR'):''}</div></div>
         <span style="font-size:18px">✓</span>
       </div>`;
     });
@@ -11616,6 +11637,7 @@ function renderFormMes(el,prog){
 }
 
 function renderFormCerts(el,prog){
+  const xpEligible=S.role==='photo';
   const certForms=FORMATIONS_CATALOG.filter(f=>f.certification);
   const dbMap={};
   _certifCache.forEach(c=>{dbMap[c.code_certification]=c;});
@@ -11656,7 +11678,7 @@ function renderFormCerts(el,prog){
       const cert=f.certification;const isEnC=prog[f.id]?.statut==='en_cours';
       html+=`<div onclick="modalFormDetail('${f.id}')" style="background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:16px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:14px;opacity:${isEnC?1:.65}">
         <div style="font-size:32px;filter:grayscale(${isEnC?0:1})">${cert.badge}</div>
-        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${cert.nom}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">via ${f.titre} · +${f.xp} XP</div></div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">${cert.nom}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">via ${f.titre}${xpEligible?' · +'+f.xp+' XP':''}</div></div>
         <span style="font-size:10px;color:${isEnC?'var(--acc)':'var(--t3)'};font-weight:600">${isEnC?'En cours':'À débuter'}</span>
       </div>`;
     });
@@ -11668,6 +11690,7 @@ function renderFormCerts(el,prog){
 function modalFormDetail(id){
   const f=FORMATIONS_CATALOG.find(x=>x.id===id);
   if(!f)return;
+  const xpEligible=S.role==='photo';
   const lockLbl=_formLockLabel(f);
   if(lockLbl){
     openModal(`<button onclick="closeModal()" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--b1);color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
@@ -11697,7 +11720,7 @@ function modalFormDetail(id){
           <span style="font-size:10px;font-weight:600;color:${NCLR[f.niveau]};background:${NCLR[f.niveau]}22;padding:3px 8px;border-radius:20px">${f.niveau}</span>
           <span style="font-size:10px;color:var(--t3);background:var(--s2);padding:3px 8px;border-radius:20px">${TLBL[f.type]||f.type}</span>
           <span style="font-size:10px;color:var(--t3);background:var(--s2);padding:3px 8px;border-radius:20px">⏱ ${f.duree}</span>
-          <span style="font-size:10px;color:var(--wa);background:rgba(245,165,36,.12);padding:3px 8px;border-radius:20px;font-weight:600">+${f.xp} XP</span>
+          ${xpEligible?`<span style="font-size:10px;color:var(--wa);background:rgba(245,165,36,.12);padding:3px 8px;border-radius:20px;font-weight:600">+${f.xp} XP</span>`:''}
           ${f.obligatoire?'<span style="font-size:10px;color:var(--er);background:rgba(240,68,94,.12);padding:3px 8px;border-radius:20px;font-weight:600">Obligatoire</span>':''}
         </div>
       </div>
@@ -13703,7 +13726,7 @@ async function loadCmCal(){
     ]);
     _contenuCache=contenus||[];
     const preWeek=(pre||[]).length;
-    const prog=(_contenuCache||[]).filter(c=>!c.lue&&(()=>{try{return JSON.parse(c.message).date>=start&&JSON.parse(c.message).date<=end;}catch(e){return false;}})()).length;
+    const prog=(_contenuCache||[]).filter(c=>!c.lue&&(()=>{try{const info=JSON.parse(c.message);return info.statut==='programmé'&&info.date>=start&&info.date<=end;}catch(e){return false;}})()).length;
     set('cal-kpi-pre',preWeek);set('cal-kpi-prog',prog);set('cal-kpi-pub',(pubMois||[]).length);
     const JOURS=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
     const today=new Date().toISOString().slice(0,10);
@@ -17520,7 +17543,7 @@ async function loadUsers(){
             <select onchange="changerRoleUser('${u.id}',this.value)" style="flex:1;height:30px;font-size:11px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);padding:0 8px">
               ${Object.entries(RL).map(([k,v])=>`<option value="${k}"${u.role===k?' selected':''}>${v}</option>`).join('')}
             </select>
-            <button onclick="confirmerSupprimerUser('${u.id}','${(u.prenom||'').replace(/'/g,"\\'")}','${(u.nom||'').replace(/'/g,"\\'")}'")" style="padding:0 10px;height:30px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer" title="Supprimer">✕</button>
+            <button onclick="confirmerSupprimerUser('${u.id}','${(u.prenom||'').replace(/'/g,"\\'")}','${(u.nom||'').replace(/'/g,"\\'")}')" style="padding:0 10px;height:30px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer" title="Supprimer">✕</button>
           </div>`:`<div style="font-size:11px;color:var(--t3);font-style:italic">Votre compte — non modifiable ici</div>`}
         </div>`;
       }).join('')}
@@ -17963,7 +17986,7 @@ async function renderCentreAccueil(){
       <div style="display:flex;flex-direction:column;gap:6px">
         ${[
           {ic:'📋',lb:'Règlement SportVision',sec:'reglement'},
-          {ic:'⭐',lb:'Mon grade et mes XP',sec:'grades'},
+          ...(isPhotoRole?[{ic:'⭐',lb:'Mon grade et mes XP',sec:'grades'}]:[]),
           {ic:'❓',lb:'FAQ — questions fréquentes',sec:'faq'},
           {ic:'📞',lb:'Qui contacter ?',sec:'contacts-sv'},
         ].map(a=>`<div onclick="loadCentreSection('${a.sec}')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;cursor:pointer;background:rgba(255,255,255,.03);border:1px solid var(--b1);font-size:13px;color:var(--t1)" onmouseover="this.style.background='rgba(14,165,255,.07)'" onmouseout="this.style.background='rgba(255,255,255,.03)'"><span>${a.ic}</span>${a.lb}</div>`).join('')}
@@ -19122,7 +19145,7 @@ async function loadEquipeEnDirect(){
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
     sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
     sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations(id,reference,titre_court,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
-    sbFetch('prestations_equipe?select=collaborateur_id&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
+    sbFetch('prestations_equipe?select=collaborateur_id,prestations(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
   ]);
 
@@ -19716,7 +19739,7 @@ const MOB_MORE_ITEMS={
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
-  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
 };
 function openMobMore(){
