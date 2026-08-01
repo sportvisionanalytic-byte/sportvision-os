@@ -695,7 +695,7 @@ const NAV={
     {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
     {type:'sep',lb:'Équipe & Espace'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
-    {id:'equipe',lb:'Équipe en direct',ic:'col'},
+    {id:'equipe',lb:'Mon équipe',ic:'col'},
     {id:'integrations',lb:'Intégrations',ic:'set'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
@@ -734,7 +734,7 @@ const NAV={
     {id:'planning',lb:'Planning production',ic:'cal'},
     {id:'jourj',lb:'Mode Jour J',ic:'live'},
     {type:'sep',lb:'Équipe'},
-    {id:'col',lb:'Collaborateurs',ic:'col'},
+    {id:'equipe',lb:'Mon équipe',ic:'col'},
     {id:'equipes',lb:'Affectations',ic:'col'},
     {id:'rem',lb:'Rémunérations',ic:'fin'},
     {id:'frais',lb:'Frais & km',ic:'fin'},
@@ -752,7 +752,6 @@ const NAV={
     {id:'form',lb:'Centre de formation',ic:'form'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
-    {id:'equipe',lb:'Équipe en direct',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
@@ -1169,7 +1168,7 @@ const VIEWS={
       <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">En tournage</div><div class="kpi-v" id="prod-kpi-live">—</div><span class="kpi-d dnt">en direct</span></div>
       <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('post')"><div class="kpi-ey">En montage</div><div class="kpi-v" id="prod-kpi-mont">—</div><span class="kpi-d dnt">post-prod</span></div>
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('livr')"><div class="kpi-ey">Livrables</div><div class="kpi-v" id="prod-kpi-livr">—</div><span class="kpi-d dnt">à valider</span></div>
-      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('col')"><div class="kpi-ey">Collab. dispos</div><div class="kpi-v" id="prod-kpi-cd">—</div><span class="kpi-d dnt">ce jour</span></div>
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('equipe')"><div class="kpi-ey">Collab. dispos</div><div class="kpi-v" id="prod-kpi-cd">—</div><span class="kpi-d dnt">ce jour</span></div>
       <div class="kpi" style="--kl:#00B8D4;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Kits disponibles</div><div class="kpi-v" id="prod-kpi-kd">—</div><span class="kpi-d dnt">en stock</span></div>
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('kits')"><div class="kpi-ey">Kits déployés</div><div class="kpi-v" id="prod-kpi-kr">—</div><span class="kpi-d dnt">sortis</span></div>
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('media')"><div class="kpi-ey">Médias manquants</div><div class="kpi-v" id="prod-kpi-med">—</div><span class="kpi-d dnt">à transférer</span></div>
@@ -1213,7 +1212,7 @@ const VIEWS={
           <div id="prod-alertes-real"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
         </div>
         <div class="cd" style="padding:0;overflow:hidden">
-          <div class="cd-h"><div class="cd-t">Équipe du jour</div><button class="btn bg2 bs" onclick="switchView('col')">Tous →</button></div>
+          <div class="cd-h"><div class="cd-t">Équipe du jour</div><button class="btn bg2 bs" onclick="switchView('equipe')">Tous →</button></div>
           <div id="prod-dash-team"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
         </div>
       </div>
@@ -1237,16 +1236,6 @@ const VIEWS={
     </div>
     <div id="prod-plan-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
-  'prod.col':()=>`
-    <div class="sh" style="margin-bottom:14px">
-      <div class="sh-t">Collaborateurs</div>
-      <div style="display:flex;gap:8px">
-        <button onclick="filterProdCol('all')" class="btn bp bs" id="pcf-all" style="font-size:11px">Tous</button>
-        <button onclick="filterProdCol('dispo')" class="btn bg2 bs" id="pcf-dispo" style="font-size:11px">Disponibles</button>
-        <button onclick="filterProdCol('photo')" class="btn bg2 bs" id="pcf-photo" style="font-size:11px">Photo/Vidéo</button>
-      </div>
-    </div>
-    <div id="prod-col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'prod.kits':()=>_kitsViewShell('prod'),
 
@@ -2689,7 +2678,6 @@ async function loadViewData(role,view){
   if(role==='prod'&&view==='pre') await loadProdPrestations();
   if(role==='prod'&&view==='planning'){_prodPlanTab='semaine';await loadProdPlanning();}
   if(role==='prod'&&view==='jourj') await loadProdJourJ();
-  if(role==='prod'&&view==='col') await loadProdCollaborateurs();
   if(role==='prod'&&view==='equipes') await loadEquipes();
   if(role==='prod'&&view==='rem') await loadProdRemunerations();
   if(role==='prod'&&view==='frais') await loadProdFrais();
@@ -3875,15 +3863,16 @@ async function loadProdDash(){
     // Équipe
     const elTeam=document.getElementById('prod-dash-team');
     if(elTeam){
-      if(!prof.length){
+      if(!collabs.length){
         elTeam.innerHTML='<div style="padding:16px 18px;color:var(--t3);font-size:13px">Aucun collaborateur.</div>';
       }else{
-        elTeam.innerHTML=prof.map((t,i)=>{
+        const teamPreview=collabs.slice(0,6);
+        elTeam.innerHTML=teamPreview.map((t,i)=>{
           const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||t.role.slice(0,2).toUpperCase();
           const isMission=todayAssigned.has(t.id);
           const avBg=t.avatar_url?`background:url(${t.avatar_url}) center/cover no-repeat`:`background:${RC[t.role]||'#366BFF'};display:flex;align-items:center;justify-content:center`;
           const avContent=t.avatar_url?'':`<span style="color:#fff;font-size:9px;font-weight:700">${ini}</span>`;
-          return`<div style="display:flex;align-items:center;gap:10px;padding:10px 18px;${i<prof.length-1?'border-bottom:1px solid var(--b1)':''}">
+          return`<div style="display:flex;align-items:center;gap:10px;padding:10px 18px;${i<teamPreview.length-1?'border-bottom:1px solid var(--b1)':''}">
             <div style="width:30px;height:30px;border-radius:50%;flex-shrink:0;${avBg}">${avContent}</div>
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:600;color:var(--t1)">${[t.prenom,t.nom].filter(Boolean).join(' ')||t.role}</div>
@@ -3891,7 +3880,7 @@ async function loadProdDash(){
             </div>
             <span style="font-size:10px;font-weight:700;padding:2px 7px;background:${isMission?'rgba(245,165,36,.1)':'rgba(46,204,138,.1)'};border:1px solid ${isMission?'rgba(245,165,36,.25)':'rgba(46,204,138,.25)'};border-radius:20px;color:${isMission?'var(--wa)':'var(--ok)'};white-space:nowrap">${isMission?'Sur mission':'Disponible'}</span>
           </div>`;
-        }).join('');
+        }).join('')+(collabs.length>6?`<div style="padding:10px 18px;text-align:center"><button onclick="switchView('equipe')" class="btn bg2 bs" style="font-size:12px">+${collabs.length-6} autres →</button></div>`:'');
       }
     }
   }catch(e){console.error('loadProdDash',e);}
@@ -4004,102 +3993,6 @@ async function loadProdPlanning(){
   }catch(e){
     console.error('loadProdPlanning',e);
     el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
-  }
-}
-
-// ── COLLABORATEURS PROD ──────────────────────────────────────────────────────
-let _prodColData=[];
-let _prodColFilter='all';
-
-function filterProdCol(f){
-  _prodColFilter=f;
-  ['all','dispo','photo'].forEach(id=>{
-    const b=document.getElementById('pcf-'+id);
-    if(b)b.className='btn '+(f===id?'bp':'bg2')+' bs';
-    if(b)b.style.fontSize='11px';
-  });
-  renderProdColList();
-}
-
-function renderProdColList(){
-  const el=document.getElementById('prod-col-real');
-  if(!el)return;
-  const today=new Date().toISOString().slice(0,10);
-  const DONE_ST=['livrée','clôturée','annulée','refusée'];
-  let list=_prodColData;
-  if(_prodColFilter==='dispo') list=list.filter(t=>!t._isMission);
-  else if(_prodColFilter==='photo') list=list.filter(t=>t.role==='photo');
-  if(!list.length){
-    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div style="font-size:13px">Aucun collaborateur trouvé.</div></div>';
-    return;
-  }
-  const RC={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
-  const RL={'admin':'Administrateur','sec':'Secrétaire','prod':'Resp. Production','photo':'Photo / Vidéo','cm':'Community Manager','compta':'Comptable','com':'Commercial'};
-  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px">'+
-    list.map(t=>{
-      const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||t.role.slice(0,2).toUpperCase();
-      const name=[t.prenom,t.nom].filter(Boolean).join(' ')||t.role;
-      const col=RC[t.role]||'#366BFF';
-      const isMission=t._isMission;
-      const stBg=isMission?'rgba(245,165,36,.12)':'rgba(46,204,138,.12)';
-      const stBd=isMission?'rgba(245,165,36,.25)':'rgba(46,204,138,.25)';
-      const stCl=isMission?'var(--wa)':'var(--ok)';
-      const stLb=isMission?'Sur mission':'Disponible';
-      const missionInfo=isMission&&t._missionClient?`<div style="font-size:10.5px;color:var(--t3);margin-top:2px;text-align:center">${t._missionClient}</div>`:'';
-      return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
-        <div style="position:relative">
-          <div class="av" style="width:52px;height:52px;font-size:18px;font-weight:700;background:${col}">${ini}</div>
-          <div style="position:absolute;bottom:0;right:-2px;width:14px;height:14px;border-radius:50%;background:${isMission?'var(--wa)':'var(--ok)'};border:2px solid var(--s1)"></div>
-        </div>
-        <div>
-          <div style="font-size:13.5px;font-weight:700;color:var(--t1)">${name}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px">${RL[t.role]||t.role}</div>
-          ${t.telephone?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${t.telephone}</div>`:''}
-        </div>
-        <span style="font-size:10.5px;font-weight:700;padding:3px 10px;background:${stBg};border:1px solid ${stBd};border-radius:20px;color:${stCl}">${stLb}</span>
-        ${missionInfo}
-        <div style="display:flex;gap:8px;width:100%;margin-top:2px">
-          <button onclick="switchView('msg')" style="flex:1;padding:8px 6px;font-size:11.5px;font-weight:600;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer">💬 Message</button>
-          <button onclick="modalAffecterCollab('${t.id}','${name.replace(/'/g,"\\'")}')" style="flex:1;padding:8px 6px;font-size:11.5px;font-weight:600;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer">+ Affecter</button>
-        </div>
-      </div>`;
-    }).join('')+'</div>';
-}
-
-async function loadProdCollaborateurs(){
-  const el=document.getElementById('prod-col-real');
-  if(!el)return;
-  const today=new Date().toISOString().slice(0,10);
-  const DONE_ST=['livrée','clôturée','annulée','refusée'];
-  try{
-    const [profRaw,equipeRaw]=await Promise.all([
-      sbFetch('profiles?select=id,role,prenom,nom,telephone&order=nom.asc'),
-      sbFetch('prestations?select=id,date_prestation,statut,clients(nom),prestations_equipe(statut,collaborateur:profiles(id,prenom,nom))&date_prestation=eq.'+today+'&statut=not.in.(annulée,refusée,livrée,clôturée)'),
-    ]);
-    const prof=Array.isArray(profRaw)?profRaw:[];
-    const todayPre=Array.isArray(equipeRaw)?equipeRaw:[];
-    // Build mission map: collaborateur_id → client name
-    const missionMap={};
-    todayPre.forEach(p=>{
-      (p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').forEach(e=>{
-        if(e.collaborateur?.id) missionMap[e.collaborateur.id]=p.clients?.nom||'En mission';
-      });
-    });
-    _prodColData=prof.map(t=>({
-      ...t,
-      _isMission:!!missionMap[t.id],
-      _missionClient:missionMap[t.id]||null,
-    }));
-    _prodColFilter='all';
-    // Reset filter buttons
-    ['all','dispo','photo'].forEach(id=>{
-      const b=document.getElementById('pcf-'+id);
-      if(b)b.className='btn '+(id==='all'?'bp':'bg2')+' bs';
-      if(b)b.style.fontSize='11px';
-    });
-    renderProdColList();
-  }catch(e){
-    if(el)el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
   }
 }
 
@@ -15655,7 +15548,7 @@ function closeMobNav(){
 const BNAV_ITEMS={
   admin:['dash','pre','planning','fin'],
   sec:  ['dash','demandes','pre','relances','taches'],
-  prod: ['dash','jourj','pre','planning','col'],
+  prod: ['dash','jourj','pre','planning','equipe'],
   photo:['dash','jourj','pre','medias'],
   com:  ['dash','crm','pipeline','devis'],
   compta:['dash','factures','impayes','rapprochement','rem'],
@@ -16039,7 +15932,7 @@ const VIEW_CTA={
   'prod.dash':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
   'prod.pre':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'prod.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
-  'prod.col':{t:'+ Inviter un collaborateur',fn:'modalInviterCollaborateur'},
+  'prod.equipe':{t:'+ Inviter un collaborateur',fn:'modalInviterCollaborateur'},
   'prod.jourj':{t:'⚠ Déclarer incident',fn:'modalSignalerIncident'},
   'prod.frais':{t:'+ Déclarer frais',fn:'modalDeclarerFrais'},
   'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
@@ -18101,9 +17994,9 @@ async function ouvrirConvAvec(userId, userName){
   setTimeout(()=>tryOpen(),350);
 }
 
-// ── Équipe en direct ──────────────────────────────────────────────────────
+// ── Mon équipe (roster + disponibilité + affectation rapide) ─────────────
 function _equipeEnDirectView(){
-  return`<div class="sh"><div class="sh-t">Équipe en direct</div>
+  return`<div class="sh"><div><div class="sh-t">Mon équipe</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Disponibilité du jour et missions du mois</div></div>
     <button class="btn bg2 bs" onclick="loadEquipeEnDirect()">↻ Actualiser</button>
   </div>
   <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
@@ -18124,7 +18017,7 @@ async function loadEquipeEnDirect(){
   const _eqRole=localStorage.getItem('sv_role');
   const _eqRoleFilter=_eqRole==='prod'?'&role=in.(photo,cm)':'';
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
-    sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
+    sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
     sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations(id,reference,titre_court,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
     sbFetch('prestations_equipe?select=collaborateur_id&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
@@ -18176,6 +18069,7 @@ async function loadEquipeEnDirect(){
     const rclr=RCLR[c.role]||'#8891A8';
     const rlbl=RLBL[c.role]||c.role;
     const email=c.email||'';
+    const tel=c.telephone||'';
     return`<div class="cd" style="padding:14px 16px;border-left:3px solid ${statusColor}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
         ${c.avatar_url?`<img src="${c.avatar_url}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">`
@@ -18187,11 +18081,12 @@ async function loadEquipeEnDirect(){
         <div style="font-size:11px;color:var(--t3);text-align:right;flex-shrink:0"><div style="font-size:18px;font-weight:800;color:var(--t1)">${nb}</div><div>mission${nb!==1?'s':''}</div></div>
       </div>
       <div style="margin-bottom:10px">${statusHtml}</div>
-      <div style="display:flex;gap:6px">
-        <button onclick="ouvrirConvAvec('${c.id}','${nom.replace(/'/g,"\\'")}')
-" style="flex:1;padding:7px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff)">💬 Message</button>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <button onclick="ouvrirConvAvec('${c.id}','${nom.replace(/'/g,"\\'")}')" style="flex:1;padding:7px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff)">💬 Message</button>
+        ${tel?`<a href="tel:${tel}" style="flex:1;padding:7px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);text-decoration:none;text-align:center;display:block">📞 Appeler</a>`:''}
         ${email?`<a href="mailto:${email}" style="flex:1;padding:7px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);text-decoration:none;text-align:center;display:block">✉ Email</a>`:''}
       </div>
+      <button onclick="modalAffecterCollab('${c.id}','${nom.replace(/'/g,"\\'")}')" style="width:100%;padding:7px;background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#9C6FFF;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff)">+ Affecter à une mission</button>
     </div>`;
   }).join('');
 
