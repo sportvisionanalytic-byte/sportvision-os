@@ -8646,13 +8646,18 @@ function dvEditorHTML(tvaPct,remisePct){
 function dvOpenWide(){const w=document.querySelector('#sv-modal > div');if(w)w.style.width='min(680px,calc(100vw - 24px))';}
 
 function modalNouveauDevis(){
-  sbFetch('clients?select=id,nom&order=nom.asc').then(clients=>{
+  sbFetch('clients?select=id,nom,promo_bienvenue_disponible&order=nom.asc').then(clients=>{
+    window._dvClientsPromoMap=Object.fromEntries((clients||[]).map(c=>[c.id,!!c.promo_bienvenue_disponible]));
     const opts=(clients||[]).map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
     const today=new Date().toISOString().slice(0,10);
     _dvLignes=[{libelle:'',details:'',qte:1,pu:0}];
     openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()">✕</button></div>
 <div class="mb">
-  <div class="fg"><label class="fl">Client *</label><select id="dv-cli" class="fi"><option value="">-- Sélectionner --</option>${opts}</select></div>
+  <div class="fg"><label class="fl">Client *</label><select id="dv-cli" class="fi" onchange="dvCheckPromoBienvenue()"><option value="">-- Sélectionner --</option>${opts}</select></div>
+  <div id="dv-promo-banner" style="display:none;background:rgba(50,216,230,.08);border:1px solid rgba(50,216,230,.3);border-radius:var(--rp);padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:var(--t1)">
+    🎁 Ce client a droit à l'offre de bienvenue (-10% sur sa première prestation).
+    <label style="display:inline-flex;align-items:center;gap:5px;margin-left:8px;cursor:pointer;font-weight:600"><input type="checkbox" id="dv-promo-apply" onchange="dvApplyPromo()"> Appliquer la réduction</label>
+  </div>
   ${dvEditorHTML(20,0)}
   <div class="fg" style="margin-top:6px"><label class="fl">Notes / Conditions</label><textarea id="dv-notes" class="fi" rows="2" placeholder="Conditions de paiement, délais de livraison…"></textarea></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -12412,7 +12417,8 @@ function confirmerSupprimerFormation(id,titre){
 }
 
 async function supprimerFormationCustom(id){
-  await sbFetch('formations_custom?id=eq.'+id,{method:'DELETE'});
+  const r=await sbFetch('formations_custom?id=eq.'+id,{method:'DELETE'});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
   closeModal();toast('Formation supprimée.','ok');
   FORMATIONS_CATALOG=FORMATIONS_CATALOG.filter(f=>f.id!==id);
   _customFormsCache=_customFormsCache.filter(f=>f.id!==id);
@@ -12497,7 +12503,8 @@ async function adminAjouterQuestion(formId,formTitre){
 }
 
 async function adminSupprimerQuestion(qId,formId,formTitre){
-  await sbFetch('formations_quiz_custom?id=eq.'+qId,{method:'DELETE'});
+  const r=await sbFetch('formations_quiz_custom?id=eq.'+qId,{method:'DELETE'});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
   toast('Question supprimée.','ok');
   await _reloadQuizAdmin(formId,formTitre);
 }
@@ -12589,13 +12596,14 @@ async function sauvegarderSession(){
   const uid=localStorage.getItem('sv_uid')||'x';
   const formateurId=g('ns-formateur')||null;
   try{
-    await sbFetch('formation_sessions',{method:'POST',body:{
+    const r=await sbFetch('formation_sessions',{method:'POST',body:{
       formation_id:formationId,date_session:new Date(dateVal).toISOString(),
       duree_minutes:parseInt(g('ns-duree'))||120,
       lieu:g('ns-lieu')||null,lien_visio:g('ns-visio')||null,
       formateur_id:formateurId,capacite:parseInt(g('ns-capacite'))||20,
       statut:'planifiee',created_by:uid,
     }});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
     toast('Session créée avec succès.','ok');
     closeModal();
     loadAdminFormSessions();
@@ -12633,17 +12641,15 @@ async function modalGererPresences(sessionId){
 }
 
 async function majPresence(sessionId,collabId,statut){
-  try{
-    await sbFetch('formation_presences',{method:'POST',body:{session_id:sessionId,collaborateur_id:collabId,statut}});
-  }catch(e){
+  const r=await sbFetch('formation_presences',{method:'POST',body:{session_id:sessionId,collaborateur_id:collabId,statut}});
+  if(sbErr(r)){
     await sbFetch('formation_presences?session_id=eq.'+sessionId+'&collaborateur_id=eq.'+collabId,{method:'PATCH',body:{statut}}).catch(()=>{});
   }
 }
 
 async function marquerSigne(sessionId,collabId,btn){
-  try{
-    await sbFetch('formation_presences',{method:'POST',body:{session_id:sessionId,collaborateur_id:collabId,signe:true,signe_at:new Date().toISOString()}});
-  }catch(e){
+  const r=await sbFetch('formation_presences',{method:'POST',body:{session_id:sessionId,collaborateur_id:collabId,signe:true,signe_at:new Date().toISOString()}});
+  if(sbErr(r)){
     await sbFetch('formation_presences?session_id=eq.'+sessionId+'&collaborateur_id=eq.'+collabId,{method:'PATCH',body:{signe:true,signe_at:new Date().toISOString()}}).catch(()=>{});
   }
   if(btn){btn.textContent='✓';btn.style.background='rgba(46,204,138,.15)';btn.style.border='1px solid rgba(46,204,138,.3)';btn.style.color='var(--ok)';}
