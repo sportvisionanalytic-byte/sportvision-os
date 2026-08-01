@@ -8236,7 +8236,8 @@ function _sigBadge(st){
 async function demanderSignatureDoc(docType,id,ref){
   const table=docType==='devis'?'devis':'contrats';
   try{
-    await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:{signature_statut:'demandee',signature_demandee_at:new Date().toISOString()}});
+    const r=await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:{signature_statut:'demandee',signature_demandee_at:new Date().toISOString()}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'demande impossible.'),'er');return;}
     await logDocEvent('envoi',ref,docType,'Signature demandée — '+ref);
     toast('Signature demandée — suivez-la dans l\'onglet Signatures.','ok');
     await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
@@ -8249,7 +8250,8 @@ async function confirmerSignatureDoc(docType,id,ref){
     const patch={signature_statut:'signee',signature_confirmee_at:new Date().toISOString()};
     if(docType==='devis')patch.statut='accepté';
     else patch.statut='actif';
-    await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:patch});
+    const r=await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:patch});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     await logDocEvent('signature',ref,docType,'Document signé — '+ref);
     dispatchSVEvent('document.signed',{label:ref}).catch(()=>{});
     toast('Document marqué comme signé.','ok');
@@ -8260,7 +8262,8 @@ async function confirmerSignatureDoc(docType,id,ref){
 async function refuserSignatureDoc(docType,id,ref){
   const table=docType==='devis'?'devis':'contrats';
   try{
-    await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:{signature_statut:'refusee'}});
+    const r=await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:{signature_statut:'refusee'}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     await logDocEvent('annulation',ref,docType,'Signature refusée — '+ref);
     toast('Signature marquée comme refusée.','ok');
     await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
@@ -8520,10 +8523,11 @@ async function avoirSubmit(){
     }
   }catch(e){}
   try{
-    await sbFetch('avoirs',{method:'POST',body:JSON.stringify({
+    const r=await sbFetch('avoirs',{method:'POST',body:JSON.stringify({
       numero:numAvoir,client_id:clientId,prestation_id:prestId,
       motif,montant_ht:ht,tva_pct:tva,montant_ttc:ttc,statut:'emis',created_by:S.uid,
     })});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
     await logDocEvent('avoir',numAvoir,'avoir','Avoir émis — '+motif.substring(0,60));
     closeModal();
     toast('Avoir '+numAvoir+' créé.','ok');
@@ -8719,7 +8723,7 @@ async function creerDevis(){
   const btn=document.querySelector('#sv-modal .mf .btn.bp');
   if(btn){btn.disabled=true;btn.textContent='Création…';}
   try{
-    await sbFetch('devis',{method:'POST',body:{
+    const r=await sbFetch('devis',{method:'POST',body:{
       client_id:cli,notes:notes||null,
       lignes,sous_total:sousTotal,remise_pct:remisePct,remise_montant:remiseMontant,
       total_ht:totalHT,tva_pct:tvaPct,total_ttc:totalTTC,
@@ -8728,6 +8732,11 @@ async function creerDevis(){
       prestation_id:preId||undefined,
       created_by:localStorage.getItem('sv_uid'),
     }});
+    if(sbErr(r)){
+      if(err)err.textContent='Erreur : '+(r.message||'création impossible.');
+      if(btn){btn.disabled=false;btn.textContent='Créer le devis';}
+      return;
+    }
     closeModal();toast('Devis créé.','ok');
     if(S.view==='devis')loadDevis();else{switchView('devis');}
   }catch(e){
@@ -8793,7 +8802,7 @@ async function sauvegarderDevis(id){
   const btn=document.querySelector('#sv-modal .mf .btn.bp');
   if(btn){btn.disabled=true;btn.textContent='Sauvegarde…';}
   try{
-    await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{
+    const r=await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{
       statut:newStatut,
       notes:document.getElementById('dv-no')?.value||null,
       lignes:lignes.length?lignes:null,
@@ -8802,6 +8811,11 @@ async function sauvegarderDevis(id){
       validite_jours:validite,
       date_envoi:document.getElementById('dv-env2')?.value||null,
     }});
+    if(sbErr(r)){
+      if(err)err.textContent='Erreur : '+(r.message||'sauvegarde impossible.');
+      if(btn){btn.disabled=false;btn.textContent='Sauvegarder';}
+      return;
+    }
     closeModal();toast('Devis mis à jour.','ok');loadDevis();
     // Sync prestation: si le devis est accepté et lié à une prestation encore en attente, l'avancer
     if(newStatut==='accepté'){
@@ -8837,7 +8851,8 @@ async function sauvegarderDevis(id){
 function supprimerDevis(id){
   confirmerAction('Supprimer ce devis ?',async()=>{
     try{
-      await sbFetch('devis?id=eq.'+id,{method:'DELETE'});
+      const r=await sbFetch('devis?id=eq.'+id,{method:'DELETE'});
+      if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
       closeModal();
       toast('Devis supprimé.','ok');
       loadDevis();
@@ -8848,7 +8863,8 @@ function supprimerDevis(id){
 async function envoyerDevis(id){
   try{
     const today=new Date().toISOString().slice(0,10);
-    await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:today}});
+    const r=await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:today}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
     toast('Devis marqué comme envoyé.','ok');loadDevis();updateNavBadges(S.role);
     creerTachesAuto('devis.envoye',{source_type:'devis',source_id:id}).catch(()=>{});
     // Avancer automatiquement le client en pipeline → devis_envoyé
