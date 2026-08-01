@@ -5950,6 +5950,38 @@ function calcGrade(xp){
   return{grade,next,pct};
 }
 
+// Statuts de prestation à partir desquels une mission acceptée est considérée réalisée
+// (média livré ou au-delà) et donne donc droit à son XP.
+const MISSION_XP_DONE_STATUTS=['livrée','facturée','partiellement_payée','payée','clôturée'];
+// Synchronise l'XP de mission (100 XP + 50 si responsable) dans xp_events/profiles.xp
+// pour les missions acceptées et réalisées qui n'ont pas encore été créditées.
+// Idempotent : ne recrédite jamais une mission déjà synchronisée (contrainte unique
+// xp_events(source_type,source_id,type) en base + vérification préalable ici).
+// `preloadedRows` évite une requête redondante quand l'appelant a déjà chargé
+// prestations_equipe avec le statut de la prestation liée.
+async function syncMissionXp(uid,preloadedRows){
+  try{
+    let rows=preloadedRows;
+    if(!rows){
+      rows=await sbFetch('prestations_equipe?select=id,statut,est_responsable,prestations(statut)&collaborateur_id=eq.'+uid+'&statut=eq.acceptée').catch(()=>[]);
+    }
+    const eligible=(Array.isArray(rows)?rows:[]).filter(r=>r.statut==='acceptée'&&MISSION_XP_DONE_STATUTS.includes(r.prestations?.statut));
+    if(!eligible.length)return;
+    const existing=await sbFetch('xp_events?select=source_id&collaborateur_id=eq.'+uid+'&type=eq.prestation&source_type=eq.prestations_equipe').catch(()=>[]);
+    const already=new Set((Array.isArray(existing)?existing:[]).map(e=>e.source_id));
+    const missing=eligible.filter(r=>!already.has(r.id));
+    if(!missing.length)return;
+    const events=missing.map(r=>({collaborateur_id:uid,montant:100+(r.est_responsable?50:0),type:'prestation',source_id:r.id,source_type:'prestations_equipe',description:'Mission réalisée',attribue_par:uid}));
+    await sbFetch('xp_events',{method:'POST',body:events}).catch(()=>{});
+    const addedXp=events.reduce((s,e)=>s+e.montant,0);
+    try{
+      const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
+      const cur=pr?.[0]?.xp||0;
+      await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+addedXp}});
+    }catch(e){}
+  }catch(e){}
+}
+
 let _photoDashCache=null;
 
 async function loadPhotoDash(){
@@ -5966,12 +5998,10 @@ async function loadPhotoDash(){
   const dbtn=document.getElementById('photo-dispo-btn');
   if(dbtn){dbtn.style.color=dc.clr;dbtn.style.background=dc.bg;dbtn.style.borderColor=dc.br;dbtn.textContent='● '+dc.lb;}
   try{
-    const [rawEquipe,rawMissions]=await Promise.all([
-      sbFetch('prestations_equipe?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc'),
-      sbFetch('prestations_equipe?select=est_responsable&collaborateur_id=eq.'+uid),
-    ]);
+    const rawEquipe=await sbFetch('prestations_equipe?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
     if(!Array.isArray(rawEquipe))throw new Error(rawEquipe?.message||'Erreur API');
     _photoDashCache=rawEquipe;
+    await syncMissionXp(uid,rawEquipe);
     const data=_photoDashCache;
     // Tri JS par date prestation (le tri serveur sur embedded ne marche pas sur toutes les versions)
     data.sort((a,b)=>(a.prestations?.date_prestation||'').localeCompare(b.prestations?.date_prestation||''));
@@ -5981,8 +6011,9 @@ async function loadPhotoDash(){
     const now=new Date();now.setHours(0,0,0,0);
     const futures=actives.filter(d=>d.prestations?.date_prestation&&new Date(d.prestations.date_prestation)>=now);
     const totalRem=actives.reduce((s,d)=>s+(d.remuneration||0),0);
-    // XP
-    const xp=(rawMissions||[]).reduce((s,m)=>s+100+(m.est_responsable?50:0),0);
+    // XP total = source de vérité unique (profiles.xp : missions réalisées + formations + bonus quiz + attributions manuelles)
+    const prXp=await sbFetch('profiles?select=xp&id=eq.'+uid).catch(()=>[]);
+    const xp=prXp?.[0]?.xp||0;
     const {grade,next,pct}=calcGrade(xp);
     set('photo-kpi-pre',actives.length);
     set('photo-kpi-rem',totalRem?totalRem.toLocaleString('fr-FR')+' €':'0 €');
@@ -9266,6 +9297,7 @@ async function loadPhotoKits(){
 // ── Revenus photographe ───────────────────────────────────────────────────────
 let _revPeriod='mois';
 let _revAllData=[];
+let _revXpCache=0;
 
 function setRevPeriod(p){
   _revPeriod=p;
@@ -9298,6 +9330,9 @@ async function loadPhotoRevenus(){
     if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
     _revAllData=data.filter(r=>r.prestations&&r.statut!=='refusée'&&r.statut!=='annulée');
     _revAllData.sort((a,b)=>(b.prestations?.date_prestation||'').localeCompare(a.prestations?.date_prestation||''));
+    await syncMissionXp(uid,data);
+    const prXp=await sbFetch('profiles?select=xp&id=eq.'+uid).catch(()=>[]);
+    _revXpCache=prXp?.[0]?.xp||0;
     renderPhotoRevenus();
   }catch(e){const el=document.getElementById('rev-real');if(el)el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
@@ -9320,7 +9355,7 @@ function renderPhotoRevenus(){
   const total=list.reduce((s,r)=>s+(r.remuneration||0),0);
   const paye=list.filter(r=>r.statut_paiement==='payé'||(r.prestations?.statut==='payée'||r.prestations?.statut==='clôturée')).reduce((s,r)=>s+(r.remuneration||0),0);
   const att=total-paye;
-  const xp=_revAllData.reduce((s,m)=>s+100+(m.est_responsable?50:0),0);
+  const xp=_revXpCache;
   const {grade}=calcGrade(xp);
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('rev-nb',list.length);
@@ -10813,11 +10848,12 @@ async function loadForm(){
   const gradeEl=document.getElementById('form-grade-content');
   if(!el)return;
   const uid=localStorage.getItem('sv_uid')||'x';
-  let missionXp=0,nbMissions=0;
+  let nbMissions=0;
   try{
-    const missions=await sbFetch('prestations_equipe?select=est_responsable&collaborateur_id=eq.'+uid);
-    if(Array.isArray(missions)){nbMissions=missions.length;missionXp=missions.reduce((s,m)=>s+100+(m.est_responsable?50:0),0);}
+    const missions=await sbFetch('prestations_equipe?select=id&collaborateur_id=eq.'+uid+'&statut=eq.acceptée');
+    if(Array.isArray(missions))nbMissions=missions.length;
   }catch(e){}
+  await syncMissionXp(uid);
   let profileXp=0;
   try{
     const pr=await sbFetch('profiles?select=grade,xp&id=eq.'+uid);
@@ -10836,8 +10872,8 @@ async function loadForm(){
     if(fp.quiz_passe)x+=Math.round(f.xp*0.3);
     return s+x;
   },0);
-  // XP total = missions (calcul local, non persisté) + XP réellement crédité en base (formations, bonus quiz, attributions manuelles)
-  const totalXp=missionXp+profileXp;
+  // XP total = profiles.xp, source de vérité unique (missions synchronisées, formations, bonus quiz, attributions manuelles)
+  const totalXp=profileXp;
   const {grade,next,pct}=calcGrade(totalXp);
   const nbTerminees=FORMATIONS_CATALOG.filter(f=>prog[f.id]?.statut==='terminée').length;
   const nbCerts=FORMATIONS_CATALOG.filter(f=>f.certification&&prog[f.id]?.statut==='terminée').length;
@@ -15046,7 +15082,7 @@ async function modalFicheCollaborateur(id){
   openModal('<div style="padding:32px;text-align:center;color:var(--t3)">Chargement de la fiche…</div>');
   try{
     const today=new Date().toISOString().slice(0,10);
-    const [profRaw,presRaw,certRaw,xpRaw,dispoRaw,inscrRaw]=await Promise.all([
+    const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw]=await Promise.all([
       sbFetch('profiles?select=*&id=eq.'+id).catch(()=>[]),
       sbFetch('prestations_equipe?select=id,statut,remuneration,prestations(id,reference,date_prestation,statut,lieu,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=200').catch(()=>[]),
       sbFetch('collaborateur_certifications?select=*&collaborateur_id=eq.'+id).catch(()=>[]),
@@ -15059,6 +15095,10 @@ async function modalFicheCollaborateur(id){
     const pres=Array.isArray(presRaw)?presRaw:[];
     const certs=Array.isArray(certRaw)?certRaw:[];
     const inscriptions=Array.isArray(inscrRaw)?inscrRaw:[];
+    // Synchronise l'XP de mission avant de calculer le total, pour que la fiche
+    // reste à jour même si ce collaborateur n'a pas ouvert son propre tableau de bord.
+    await syncMissionXp(id,pres);
+    const xpRaw=await sbFetch('xp_events?select=montant&collaborateur_id=eq.'+id).catch(()=>xpRaw0);
     const xpTotal=(Array.isArray(xpRaw)?xpRaw:[]).reduce((s,e)=>s+(e.montant||0),0);
     const dispoRec=(Array.isArray(dispoRaw)?dispoRaw:[])[0];
     const name=[prof.prenom,prof.nom].filter(Boolean).join(' ')||prof.role;
@@ -18906,7 +18946,9 @@ async function loadMobilePhotoDash(ct){
     const invitations=data.filter(d=>d.statut==='invitation_envoyée');
     const futures=data.filter(d=>d.prestations?.date_prestation&&d.prestations.date_prestation>=today&&!['refusée','annulée'].includes(d.statut));
     const totalRem=data.filter(d=>d.statut!=='refusée').reduce((s,d)=>s+(d.remuneration||0),0);
-    const xp=data.reduce((s,m)=>s+100+(m.est_responsable?50:0),0);
+    await syncMissionXp(uid,equipe);
+    const prXp=await sbFetch('profiles?select=xp&id=eq.'+uid).catch(()=>[]);
+    const xp=prXp?.[0]?.xp||0;
     const {grade}=calcGrade(xp);
     const prochaine=futures[0];
     let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
