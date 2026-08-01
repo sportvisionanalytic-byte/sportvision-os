@@ -67,7 +67,7 @@ begin
     from prestations_equipe pe
     join prestations p on p.id = pe.prestation_id
     where pe.statut = 'acceptée'
-      and p.statut = any(done_statuts)
+      and p.statut::text = any(done_statuts)
       and not exists (
         select 1 from xp_events xe
         where xe.source_type = 'prestations_equipe' and xe.source_id = pe.id and xe.type = 'prestation'
