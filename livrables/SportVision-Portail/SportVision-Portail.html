@@ -159,6 +159,11 @@ section{padding:60px 24px}
   section{padding:36px 16px}
   .wrap{padding:0 16px}
 }
+/* App mobile (Capacitor) : uniquement connexion/compte, jamais le site public (catalogue, prestations...) */
+body.app-mode #pub-header,body.app-mode #pub-footer{display:none!important}
+body.app-mode .app-hide{display:none!important}
+body.app-mode .app-only{display:block!important}
+.app-only{display:none;margin-top:18px;text-align:center;font-size:12px}
 </style>
 </head>
 <body>
@@ -568,10 +573,11 @@ section{padding:60px 24px}
           <button class="btn btn-o" onclick="go('inscription')">Créer un compte</button>
           <div id="lg-err" class="err-msg"></div>
           <div style="display:flex;justify-content:space-between;gap:10px">
-            <a onclick="go('configurateur')" style="font-size:13.5px">Commander sans compte</a>
+            <a onclick="go('configurateur')" class="app-hide" style="font-size:13.5px">Commander sans compte</a>
             <a onclick="go('mdp-oublie')" style="font-size:13.5px">Mot de passe oublié ?</a>
           </div>
         </div>
+        <div class="app-only faint"><a onclick="go('legal',{tab:'cgv'})">CGV</a> · <a onclick="go('legal',{tab:'confidentialite'})">Confidentialité</a></div>
       </div>
     </div>
   </section>
@@ -1063,7 +1069,17 @@ const PORTAL_TITLES = {dashboard:'Tableau de bord', demandes:'Mes demandes', 'de
 const BOTTOMNAV_MATCH = {dashboard:'dashboard', demandes:'demandes', 'demande-detail':'demandes', livrables:'livrables'};
 let state = { params:{} };
 
+// ── APP MOBILE (Capacitor) ── Build séparé : uniquement connexion/compte, jamais le site public
+// (catalogue, configurateur, prestations...). Le web classique (IS_APP=false) est inchangé.
+const IS_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+if (IS_APP) document.body.classList.add('app-mode');
+const APP_ALLOWED_PUBLIC_VIEWS = ['connexion','inscription','mdp-oublie','nouveau-mdp','legal'];
+
 async function go(view, params={}){
+  if (IS_APP && !PORTAL_VIEWS.includes(view) && !APP_ALLOWED_PUBLIC_VIEWS.includes(view)){
+    view = isLoggedIn() ? 'dashboard' : 'connexion';
+    params = {};
+  }
   window.scrollTo(0,0);
   state.params = params;
   document.getElementById('mob-nav')?.classList.remove('on');

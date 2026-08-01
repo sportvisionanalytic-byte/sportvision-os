@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SportVision</string>
+    <string name="title_activity_main">SportVision</string>
+    <string name="package_name">com.sportvision.app</string>
+    <string name="custom_url_scheme">com.sportvision.app</string>
+</resources>
