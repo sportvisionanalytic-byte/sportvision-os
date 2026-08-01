@@ -10522,6 +10522,16 @@ let FORMATIONS_CATALOG=[
     {titre:'Postproduction',lecons:['Points essentiels']},
     {titre:'Clôture et bilan',lecons:['Points essentiels']},
   ],certification:{id:'prod-tournoi-01',nom:'CERT-TOURNOI — Production de tournoi sportif',validite_mois:12,badge:'🏆'},statut:'publiée'},
+  {id:'stab-gimbal-01',titre:'Maîtrise du stabilisateur',categorie:'Production',icone:'⚖️',niveau:'Intermédiaire',type:'hybride',duree:'4h',xp:70,formateur:'Fouka',obligatoire:false,description:'Configurer, équilibrer, calibrer et utiliser un stabilisateur (DJI RS 3 Mini, RS 4, RS 4 Pro, RS 4 Mini et équivalents validés) en toute sécurité sur le terrain sportif : équilibrage des trois axes, calibration, modes PF/PTF/FPV/verrouillage, mouvements (push-in, suivi, révélation, rotation), marche opérateur, sécurité en présence de joueurs et de public, orientation horizontale et verticale — jusqu\'à la certification CERT-STAB.',modules:[
+    {titre:'Préparer la configuration',lecons:['Points essentiels']},
+    {titre:'Équilibrer les trois axes',lecons:['Points essentiels']},
+    {titre:'Calibration',lecons:['Points essentiels']},
+    {titre:'Modes',lecons:['Points essentiels']},
+    {titre:'Mouvements',lecons:['Points essentiels']},
+    {titre:'Marche opérateur',lecons:['Points essentiels']},
+    {titre:'Sport et sécurité',lecons:['Points essentiels']},
+    {titre:'Horizontal et vertical',lecons:['Points essentiels']},
+  ],certification:{id:'stab-gimbal-01',nom:'CERT-STAB — Opérateur stabilisateur SportVision',validite_mois:18,badge:'⚖️'},statut:'publiée'},
 ];
 
 const FORMATION_QUIZ_CATALOG={
@@ -11272,14 +11282,31 @@ const FORMATION_QUIZ_CATALOG={
     {q:'Les contenus sponsors doivent-ils passer par le contrôle qualité ?',opts:['Oui','Non'],rep:0},
     {q:'Une production multisite doit-elle posséder une solution de communication de secours ?',opts:['Oui','Non'],rep:0},
   ],
+  'stab-gimbal-01':[
+    {q:'Avant de monter un stabilisateur, faut-il vérifier la compatibilité de charge avec tous les accessoires réellement utilisés ?',opts:['Oui','Non'],rep:0},
+    {q:'Quel est l\'ordre recommandé pour équilibrer les axes ?',opts:['Inclinaison → roulis → panoramique → test de maintien → calibration','Panoramique → calibration → roulis → inclinaison','Calibration puis équilibrage','Roulis → calibration → inclinaison'],rep:0},
+    {q:'Un équilibrage incorrect peut-il fatiguer les moteurs et réduire l\'autonomie ?',opts:['Oui','Non'],rep:0},
+    {q:'Où faut-il placer le stabilisateur avant de lancer la calibration ?',opts:['Sur une surface stable','Sur l\'épaule de l\'opérateur','En mouvement','Dans le sac de transport'],rep:0},
+    {q:'Que signifie le mode PF ?',opts:['Suivi panoramique','Verrouillage complet','Mode vertical','Mode particules'],rep:0},
+    {q:'Que signifie le mode PTF ?',opts:['Suivi panoramique et inclinaison','Suivi complet 3 axes libres','Mode portrait fixe','Mode photo fixe'],rep:0},
+    {q:'Le mode FPV correspond à :',opts:['Des mouvements plus libres et immersifs','Un verrouillage total de la caméra','Un mode réservé au smartphone','Un mode disponible uniquement en 4K'],rep:0},
+    {q:'Le choix du mode doit-il dépendre du plan à réaliser plutôt que d\'une préférence permanente ?',opts:['Oui','Non'],rep:0},
+    {q:'Parmi les mouvements à maîtriser, lequel consiste à s\'approcher progressivement du sujet ?',opts:['Push-in','Pull-out','Rotation contrôlée','Passage bas'],rep:0},
+    {q:'Quelle posture est recommandée pour la marche opérateur ?',opts:['Genoux légèrement fléchis, pas courts, centre de gravité stable','Jambes tendues, pas longs','Course rapide constante','Appui sur une seule jambe'],rep:0},
+    {q:'Peut-on utiliser le stabilisateur sur l\'aire de jeu sans autorisation ?',opts:['Non','Oui'],rep:0},
+    {q:'Faut-il un assistant lorsqu\'on recule dans une zone risquée ?',opts:['Oui','Non'],rep:0},
+    {q:'Le passage d\'une orientation horizontale à verticale nécessite-t-il un nouvel équilibrage ?',opts:['Oui, si la configuration change','Non, jamais','Uniquement pour le smartphone','Uniquement en intérieur'],rep:0},
+    {q:'Peut-on transporter le stabilisateur avec des axes mal verrouillés ?',opts:['Non','Oui'],rep:0},
+    {q:'Quel est le seuil de réussite de l\'évaluation pratique ?',opts:['16/20','10/20','20/20','12/20'],rep:0},
+  ],
 };
 
 const FORMATION_ROLE_MAP={
-  photo:['photo-bases','content-sport-01','design-sport-01','mont-capcut-01','fusion-motion-sport-01','photo-ret-01','photo-ret-adv-01','lead-terrain-01','photo-sony-a7','cert-photo-video-complet'],
+  photo:['photo-bases','content-sport-01','design-sport-01','mont-capcut-01','fusion-motion-sport-01','photo-ret-01','photo-ret-adv-01','lead-terrain-01','stab-gimbal-01','photo-sony-a7','cert-photo-video-complet'],
   prod:['cert-responsable-production-complet','mont-capcut-01','fusion-motion-sport-01','photo-ret-adv-01','lead-terrain-01','prod-tournoi-01'],
   sec:['sv-comportement','cert-secretaire-complet','sec-crm-05'],
   compta:[],
-  cm:['cm-sport-01','content-sport-01','design-sport-01','mont-capcut-01'],
+  cm:['cm-sport-01','content-sport-01','design-sport-01','mont-capcut-01','stab-gimbal-01'],
   com:['cert-commercial-complet'],
   admin:['photo-bases'],
 };
@@ -12458,6 +12485,16 @@ const FORMATION_CONTENT={
   [['Avant le départ : toutes les cérémonies terminées, interviews terminées, sponsors couverts, médias identifiés, matériel compté, cartes sécurisées, incidents ouverts renseignés, client informé, planning du lendemain confirmé.','Pour un tournoi de plusieurs jours, ne pas laisser sur place sans contrôle : cartes, batteries, ordinateurs, disques, caméras, documents sensibles.']],
   [['Créer des lots : galerie générale, galerie par équipe, sélection sponsor, contenu social, aftermovie, interviews, photos héro, livrables urgents.','Priorisation : jour J → contenus immédiats ; J+1 → premières sélections ; J+2 à J+5 → livrables principaux ; après validation → archives et livrables secondaires.','Les délais exacts restent ceux validés dans le devis et le briefing.']],
   [['Clôture opérationnelle : matériel retourné, médias sauvegardés, incidents traités, équipes renseignées, heures saisies, frais ajoutés, livrables remis.','Bilan : nombre de collaborateurs, nombre d\'heures, volume de médias, contenus produits, ventes, sponsors couverts, incidents, satisfaction, budget réel, rentabilité, recommandations.','Comparaison prévision vs réalité : le bilan doit améliorer le prochain événement.']],
+],
+'stab-gimbal-01':[
+  [{d:'Vérifier avant montage : poids du boîtier, objectif, filtre, microphone, câble, poignée, compatibilité, charge du stabilisateur.',p:['La configuration doit être équilibrée avec tous les accessoires qui seront réellement utilisés sur le tournage.'],v:[{t:'Gimbal : les bases pour stabiliser ses vidéos',id:'TVxi6rNU-5Y'}]}],
+  [{d:'Ordre recommandé : axe d\'inclinaison → axe de roulis → axe panoramique → test de maintien → calibration.',p:['Un équilibrage incorrect peut fatiguer les moteurs, réduire l\'autonomie, produire des vibrations, provoquer des mouvements imprécis.'],v:[{t:'Équilibrage DJI RS 4 et RS 4 Pro',id:'B5NNrqmOLGQ'},{t:'Équilibrage DJI RS 3 Mini',id:'8jWzxrUxj5g'}]}],
+  [['Après équilibrage : placer le stabilisateur sur une surface stable, lancer la calibration, effectuer le test de balance, régler la puissance des moteurs, vérifier l\'absence de vibration.']],
+  [['PF : suivi panoramique. PTF : suivi panoramique et inclinaison. FPV : mouvements plus libres et immersifs. Verrouillage : caméra conservant une direction précise.','Le mode doit être choisi selon le plan à réaliser, pas selon une préférence permanente.']],
+  [['Mouvements à maîtriser : push-in, pull-out, suivi arrière, suivi latéral, révélation, rotation contrôlée, passage bas, plan circulaire, travelling d\'entrée, suivi d\'échauffement.']],
+  [['Marche opérateur : genoux légèrement fléchis, pas courts, centre de gravité stable, bras souples, vitesse constante, trajectoire préparée, assistant lorsque le déplacement est risqué.']],
+  [['Ne pas utiliser le stabilisateur : sur l\'aire de jeu sans autorisation, dans une trajectoire de joueur, en reculant sans assistant, au milieu d\'une foule dense, sous la pluie si le matériel n\'est pas prévu, avec des axes mal verrouillés pendant le transport.']],
+  [{d:'Chaque orientation (horizontale ou verticale) nécessite : une installation adaptée, un nouvel équilibrage si la configuration change, une vérification des câbles, un test de cadrage, une calibration éventuelle.',v:[{t:'Passer le DJI RS 3 Mini en mode portrait',id:'imqsT5gnDNE'}]}],
 ]
 };
 
