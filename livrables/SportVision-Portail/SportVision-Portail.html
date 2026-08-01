@@ -2,10 +2,26 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>SportVision Portail</title>
+<title>SportVision Portail — Photo, vidéo et communication sportive</title>
+<meta name="description" content="SportVision accompagne joueurs, clubs, académies, organisateurs et coachs dans la production de contenus photo, vidéo et communication sportive. Livraison express, devis clairs, suivi centralisé.">
+<link rel="canonical" href="https://portail.sportvision.fr/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SportVision">
+<meta property="og:title" content="SportVision — Photo, vidéo et communication sportive">
+<meta property="og:description" content="Suivi de vos demandes, devis, factures et livrables au même endroit. Livraison express, tarifs transparents.">
+<meta property="og:image" content="https://portail.sportvision.fr/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://portail.sportvision.fr/">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SportVision — Photo, vidéo et communication sportive">
+<meta name="twitter:description" content="Suivi de vos demandes, devis, factures et livrables au même endroit. Livraison express, tarifs transparents.">
+<meta name="twitter:image" content="https://portail.sportvision.fr/og-image.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06111F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -936,6 +952,21 @@ body.app-mode .app-only{display:block!important}
 // ── SUPABASE (même projet que SportVision OS, pas de duplication de données) ──
 const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
 const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
+
+// ── ANALYTICS (Google Analytics 4, désactivé tant que GA_MEASUREMENT_ID est vide) ──
+// Créer la propriété sur analytics.google.com (gratuit), coller l'ID "G-XXXXXXXXXX" ici.
+const GA_MEASUREMENT_ID = '';
+function initAnalytics(){
+  if (!GA_MEASUREMENT_ID || (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) return;
+  const s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID;
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function(){ window.dataLayer.push(arguments); };
+  gtag('js', new Date());
+  gtag('config', GA_MEASUREMENT_ID);
+}
 
 function svSave(tok, ref, uid){
   localStorage.setItem('svp_tok', tok);
@@ -2336,6 +2367,7 @@ async function saveOrganisation(){
 
 // ── INIT ──
 (async function init(){
+  initAnalytics();
   const params = new URLSearchParams(window.location.search);
 
   try{
@@ -2362,6 +2394,10 @@ async function saveOrganisation(){
     await go(loggedIn ? 'dashboard' : 'home');
   }catch(e){
     await go('home').catch(()=>{});
+  }
+
+  if ('serviceWorker' in navigator && !IS_APP){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
 })();
 </script>
