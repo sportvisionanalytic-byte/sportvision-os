@@ -11019,6 +11019,7 @@ function openFormationPlayer(formId,mi,li){
 function closeFormationPlayer(){
   document.getElementById('fp-overlay')?.remove();
   _fpState=null;
+  if(document.getElementById('form-grade-content'))loadForm();
 }
 
 function _fpRender(){
@@ -11064,6 +11065,17 @@ function _fpRender(){
     </div>`;
   }).join('');
 
+  const hasQuiz=!!FORMATION_QUIZ_CATALOG[formId];
+  const quizUnlocked=pct===100;
+  const quizPassed=!!fp.quiz_passe;
+  const quizRow=hasQuiz?`<div style="margin-top:8px;border-top:1px solid var(--b1);padding-top:8px">
+      <div onclick="${quizUnlocked?`closeFormationPlayer();lancerQuiz('${formId}')`:''}" style="display:flex;align-items:center;gap:9px;padding:10px 16px;cursor:${quizUnlocked?'pointer':'default'};opacity:${quizUnlocked?'1':'.55'}">
+        <div style="width:16px;height:16px;border-radius:5px;border:1.5px solid ${quizPassed?'var(--ok)':'var(--b2)'};background:${quizPassed?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px">${quizPassed?'<svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':quizUnlocked?'📝':'🔒'}</div>
+        <span style="font-size:12.5px;color:${quizPassed?'var(--t3)':'var(--t1)'};font-weight:700;${quizPassed?'text-decoration:line-through':''}">Quiz final${quizPassed?' · '+fp.score_quiz+'%':''}</span>
+      </div>
+      ${!quizUnlocked?`<div style="padding:0 16px 8px;font-size:10.5px;color:var(--t3)">Terminez toutes les leçons pour débloquer</div>`:''}
+    </div>`:'';
+
   el.innerHTML=`
     <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--b1);background:var(--s1);flex-shrink:0">
       <button onclick="closeFormationPlayer()" style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;color:var(--t2);font-size:13px;cursor:pointer;flex-shrink:0">✕ Quitter</button>
@@ -11075,10 +11087,9 @@ function _fpRender(){
           <span style="font-size:11px;color:var(--t3);white-space:nowrap">${doneCount}/${total} · ${pct}%</span>
         </div>
       </div>
-      ${fp.statut&&pct===100&&FORMATION_QUIZ_CATALOG[formId]?`<button onclick="closeFormationPlayer();lancerQuiz('${formId}')" style="padding:9px 14px;background:rgba(124,77,255,.12);border:1px solid rgba(124,77,255,.3);border-radius:8px;color:#9C6FFF;font-size:12.5px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap">📝 Quiz</button>`:''}
     </div>
     <div style="flex:1;display:flex;overflow:hidden;position:relative">
-      <div id="fp-sidebar" style="width:300px;flex-shrink:0;border-right:1px solid var(--b1);background:var(--s1);overflow-y:auto;padding:10px 0">${sidebarHtml}</div>
+      <div id="fp-sidebar" style="width:300px;flex-shrink:0;border-right:1px solid var(--b1);background:var(--s1);overflow-y:auto;padding:10px 0">${sidebarHtml}${quizRow}</div>
       <div style="flex:1;overflow-y:auto;padding:28px 32px" id="fp-main">
         <div style="max-width:820px;margin:0 auto">
           <div style="font-size:10.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${mod?.titre||''}</div>
@@ -11135,6 +11146,7 @@ async function enrollForm(id){
 }
 
 async function lancerQuiz(id){
+  openModal('<div style="padding:40px;text-align:center;color:var(--t3)">Chargement du quiz…</div>');
   let qs=null;
   try{
     const dbQs=await sbFetch('formations_quiz_custom?formation_id=eq.'+id+'&order=ordre.asc').catch(()=>[]);
@@ -11182,6 +11194,7 @@ async function soumettreQuiz(id){
     }
   }
   if(_formProgCache[id]){_formProgCache[id].score_quiz=score;_formProgCache[id].quiz_passe=pass;}
+  if(document.getElementById('form-grade-content'))await loadForm();
   document.getElementById('sv-modal-ct').innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
     <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid var(--b1);margin-bottom:20px">
       <div style="font-size:52px;margin-bottom:10px">${pass?'🎉':'📖'}</div>
