@@ -289,6 +289,12 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   .l-mob-hero{display:block}
   .l-form-wrap{gap:20px}
 }
+@media(max-width:900px){
+  /* Page de formation plein écran : sommaire en tiroir sur mobile */
+  #fp-sidebar{position:fixed!important;top:0;left:0;bottom:0;z-index:10;transform:translateX(-100%);transition:transform .22s cubic-bezier(.4,0,.2,1);box-shadow:8px 0 32px rgba(0,0,0,.5)}
+  #fp-sidebar.fp-open{transform:translateX(0)}
+  #fp-sidebar-toggle{display:inline-flex!important}
+}
 @media(max-width:768px){
   /* Messagerie mobile : contacts panel plein écran par défaut */
   #msg-contacts-panel{width:100%!important;min-width:0!important;border-right:none!important}
@@ -10629,7 +10635,7 @@ function modalFormDetail(id){
           </div>
           ${mod.lecons.map((lecon,li)=>{
             const key=mi+'_'+li;const done=!!lessons[key];
-            return`<div onclick="modalLeconDetail('${id}',${mi},${li})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+            return`<div onclick="closeModal();openFormationPlayer('${id}',${mi},${li})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .12s" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
               <div style="width:20px;height:20px;border-radius:6px;border:1.5px solid ${done?'var(--ok)':'var(--b2)'};background:${done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;flex-shrink:0">
                 ${done?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}
               </div>
@@ -10640,7 +10646,7 @@ function modalFormDetail(id){
         </div>`;
       }).join('')}
     </div>
-    ${!fp.statut?`<button onclick="enrollForm('${id}')" style="width:100%;padding:14px;background:var(--acc);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Commencer cette formation</button>`:isTerminée?`<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:12px"><span style="font-size:18px">🎉</span><span style="font-size:14px;font-weight:700;color:var(--ok)">Formation terminée · +${f.xp} XP gagnés</span></div>`:`<button onclick="closeModal();setFormTab('mes-formations')" style="width:100%;padding:14px;background:var(--s2);border:1px solid var(--b1);border-radius:12px;color:var(--t1);font-size:14px;font-weight:600;cursor:pointer">Continuer (${pct}%)</button>`}
+    ${!fp.statut?`<button onclick="enrollForm('${id}')" style="width:100%;padding:14px;background:var(--acc);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Commencer cette formation</button>`:isTerminée?`<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:12px"><span style="font-size:18px">🎉</span><span style="font-size:14px;font-weight:700;color:var(--ok)">Formation terminée · +${f.xp} XP gagnés</span></div>`:`<button onclick="closeModal();openFormationPlayer('${id}')" style="width:100%;padding:14px;background:var(--s2);border:1px solid var(--b1);border-radius:12px;color:var(--t1);font-size:14px;font-weight:600;cursor:pointer">Continuer (${pct}%)</button>`}
     ${fp.statut&&pct===100&&FORMATION_QUIZ_CATALOG[id]?`<div style="margin-top:12px;padding:14px;background:var(--s1);border:1px solid var(--b1);border-radius:12px">
       <div style="display:flex;align-items:center;gap:10px;justify-content:space-between">
         <div>
@@ -10826,7 +10832,7 @@ const FORMATION_CONTENT={
     {d:'Le workflow SportVision suit les étapes suivantes : mission proposée, acceptation, brief, attribution éventuelle d\'un kit, préparation, déplacement, arrivée et confirmation, captation, sauvegarde, postproduction, contrôle, transfert et clôture. Chaque étape doit laisser une trace dans SportVision OS ou dans le canal prévu par le Responsable Production. Un oubli en début de chaîne devient souvent un problème à la fin : batterie non chargée, carte non formatée, mauvais format vidéo, absence de plan vertical ou fichiers mal classés. Le collaborateur apprend à utiliser des check-lists plutôt qu\'à compter sur sa mémoire.'},
     {d:'Avant de commencer les missions régulières, le collaborateur doit disposer d\'un ordinateur suffisamment performant, d\'un lecteur ou adaptateur de carte SD et d\'un disque dur externe. Une connexion internet stable est nécessaire pour les livraisons. Posséder son propre boîtier, ses objectifs, son stabilisateur ou son micro est un avantage, mais SportVision peut attribuer un kit selon la mission et le niveau. Le disque dur n\'est pas un simple accessoire : il permet d\'effectuer une seconde copie avant toute suppression de carte. Aucun fichier client ne doit exister en un seul exemplaire pendant la phase de production.'},
     {d:'Être vif d\'esprit signifie observer, anticiper et prévenir rapidement. Si l\'accès au terrain change, si un joueur important est absent, si la météo se dégrade ou si une batterie présente un problème, le collaborateur ne reste pas silencieux. Il sécurise ce qui peut l\'être, avertit le Responsable Production et propose une solution réaliste. Le bon réflexe est : constater, sécuriser, informer, résoudre, documenter. Il ne faut jamais cacher une erreur ou attendre la fin de la prestation pour signaler un incident qui pouvait être corrigé sur place.'},
-    {d:'Vidéos YouTube en français : "5 conseils pour filmer et photographier du sport", "Comment réaliser un documentaire de sport". Vidéo interne à produire : "Le standard terrain SportVision" (10 à 12 min) — présenter le rôle polyvalent photo-vidéo, la tenue et le comportement attendu, dérouler une mission dans SportVision OS, présenter le matériel personnel obligatoire, jouer trois scénarios d\'imprévu, conclure par la check-list avant départ. Cas pratique autonome : créer sa check-list personnelle de départ et simuler la préparation d\'une mission prévue samedi à 15h, avec arrivée exigée à 13h45. Déposer la check-list dans SportVision OS.'},
+    {d:'Vidéo interne à produire : "Le standard terrain SportVision" (10 à 12 min) — présenter le rôle polyvalent photo-vidéo, la tenue et le comportement attendu, dérouler une mission dans SportVision OS, présenter le matériel personnel obligatoire, jouer trois scénarios d\'imprévu, conclure par la check-list avant départ.\n\nCas pratique autonome : créer sa check-list personnelle de départ et simuler la préparation d\'une mission prévue samedi à 15h, avec arrivée exigée à 13h45. Déposer la check-list dans SportVision OS.',v:[{t:'5 conseils pour filmer et photographier du sport',id:'WH1-oBfGiaQ'},{t:'Comment réaliser un documentaire de sport',id:'L2_GHOxSEMs'}]},
   ],
   [
     {d:'La vitesse d\'obturation contrôle le mouvement, l\'ouverture contrôle la quantité de lumière et la profondeur de champ, tandis que les ISO amplifient le signal. En sport, la priorité est généralement de préserver une vitesse suffisante pour figer ou rendre le mouvement lisible. Pour la photographie d\'action, une base de 1/800e à 1/1600e est fréquente en extérieur, mais le réglage dépend du sport, de la lumière, de la distance et de l\'intention. L\'ouverture la plus grande permet de gagner de la lumière et d\'isoler le sujet, mais réduit la zone nette. Les ISO ne sont pas interdits : une image nette à ISO élevé est souvent plus utile qu\'une image propre mais floue.'},
@@ -10834,7 +10840,7 @@ const FORMATION_CONTENT={
     {d:'Le RAW conserve davantage d\'informations et facilite la récupération des ombres, des hautes lumières et de la balance des blancs. Il est le format privilégié pour les prestations photo avec postproduction. Le JPEG peut servir à une livraison très rapide ou en sauvegarde, mais offre moins de latitude. En vidéo, le collaborateur distingue résolution, fréquence d\'images, débit, profondeur de couleur et profil d\'image. Un profil Log n\'est utile que si l\'exposition, la gestion des couleurs et l\'étalonnage sont maîtrisés. Pour une mission express, un profil standard ou cinématique bien réglé peut être plus sûr.'},
     {d:'La fréquence d\'images détermine la fluidité et les possibilités de ralenti. 25 i/s convient à une lecture classique en Europe ; 50 i/s permet un ralenti à 50% sur une timeline 25 i/s. La vitesse d\'obturation suit souvent une base proche du double de la fréquence, par exemple 1/50e pour 25 i/s ou 1/100e pour 50 i/s, mais le sport peut nécessiter un rendu plus net. Le collaborateur évite de mélanger sans raison des fréquences incompatibles. Avant le match, il vérifie la timeline cible et le format final demandé.'},
     {d:'Les modes personnalisés du boîtier permettent de passer rapidement d\'une configuration photo à une configuration vidéo. Une configuration type peut prévoir : C1 photo action, C2 vidéo 4K 50p, C3 interview 4K 25p. Les noms et réglages sont documentés pour éviter les différences entre les kits. Chaque changement important doit être remis au standard avant restitution du kit. Un boîtier rendu dans une configuration inconnue peut faire perdre les premières minutes de la mission suivante.'},
-    {d:'Vidéos YouTube en français : "Les 8 paramètres Sony à connaître", "Sony A7 IV : réglages complets photo et vidéo". Vidéo interne à produire : "Configurer un kit SportVision en 15 minutes" (12 à 15 min). Cas pratique autonome : configurer un boîtier en trois profils : photo action, vidéo ralenti et interview. Photographier puis filmer un sujet en mouvement et justifier les réglages.'},
+    {d:'Vidéo interne à produire : "Configurer un kit SportVision en 15 minutes" (12 à 15 min).\n\nCas pratique autonome : configurer un boîtier en trois profils : photo action, vidéo ralenti et interview. Photographier puis filmer un sujet en mouvement et justifier les réglages.',v:[{t:'Les 8 paramètres Sony à connaître',id:'04R5TK9GT-g'},{t:'Sony A7 IV : réglages complets photo et vidéo',id:'272bvkucfYA'}]},
   ],
   [
     {d:'Pour un sujet en mouvement, l\'autofocus continu est la base. Le suivi large facilite la réactivité lorsque le fond est propre, tandis qu\'une zone plus restreinte aide à éviter que l\'appareil accroche un autre joueur. La reconnaissance du sujet améliore le suivi, mais ne remplace pas la compréhension de la scène. Le collaborateur teste les réglages avant le match et observe la manière dont le boîtier réagit aux croisements, aux grillages, aux arbitres et aux joueurs qui entrent dans le cadre.'},
@@ -10842,7 +10848,7 @@ const FORMATION_CONTENT={
     {d:'Le photographe sportif ne poursuit pas toujours le ballon. Il lit le jeu, se place en fonction de l\'angle et anticipe les zones où l\'action va se terminer. En football, il surveille la surface, les duels, les célébrations et les transitions. Dans d\'autres sports, il identifie les points de passage, les gestes décisifs et les réactions. Une bonne anticipation permet de déclencher moins, de mieux cadrer et de conserver de l\'espace dans la direction du mouvement.'},
     {d:'La rafale augmente les chances de capturer l\'instant, mais produit rapidement des centaines d\'images similaires. Le collaborateur déclenche sur les séquences clés, suit le geste et relâche dès que l\'action perd son intérêt. Il évite de saturer le buffer ou de remplir la carte avant la fin. La sélection finale doit rechercher le pic d\'action, une expression lisible, un ballon visible lorsque pertinent et une composition propre.'},
     {d:'Une galerie complète alterne plans larges, moyens et serrés. Elle inclut action, émotions, banc, coach, public, détails, sponsors et moments collectifs. Le fond doit être contrôlé autant que possible : déplacer légèrement sa position peut éviter un poteau, une poubelle ou une personne coupée derrière le sujet. Les cadrages verticaux sont anticipés dès la prise de vue pour les réseaux sociaux. Le recadrage ne doit pas être la seule stratégie.'},
-    {d:'Vidéos YouTube en français : "5 réglages de mise au point pour les sujets en mouvement", "Comment faire des photos de sport". Vidéo interne à produire : "Suivre un joueur sans perdre l\'action" (10 à 12 min). Cas pratique autonome : photographier une séquence d\'entraînement avec trois zones AF différentes. Produire une planche-contact de 20 images et expliquer les 5 images retenues.'},
+    {d:'Vidéo interne à produire : "Suivre un joueur sans perdre l\'action" (10 à 12 min).\n\nCas pratique autonome : photographier une séquence d\'entraînement avec trois zones AF différentes. Produire une planche-contact de 20 images et expliquer les 5 images retenues.',v:[{t:'5 réglages de mise au point pour les sujets en mouvement',id:'dZKDeYU0Cfc'},{t:'Comment faire des photos de sport',id:'P_iNPmXQLvg'}]},
   ],
   [
     {d:'La préparation commence par le brief : équipes, catégorie, couleurs, joueur ou sponsor prioritaire, moments attendus, autorisations et délai. Le collaborateur étudie l\'orientation du terrain, la météo, les accès et le temps de trajet. Il prépare deux batteries minimum, des cartes formatées après sauvegarde, un chiffon, une protection pluie et un plan de secours. Il arrive suffisamment tôt pour réaliser les installations, portraits, échauffements et contenus d\'ambiance. Les premières images servent aussi à vérifier l\'exposition et la colorimétrie.'},
@@ -10850,7 +10856,7 @@ const FORMATION_CONTENT={
     {d:'Le collaborateur respecte les zones autorisées et ne gêne jamais le jeu. Il protège son matériel, évite les trajectoires dangereuses et ne traverse pas le terrain sans autorisation. Il garde une distance adaptée avec les mineurs et suit les règles du club. Le placement évolue en fonction de la lumière et du sens de l\'action. Rester au même endroit tout le match produit une galerie répétitive.'},
     {d:'Sous projecteurs, la vitesse et la mise au point restent prioritaires. Il faut accepter une montée en ISO, exposer correctement le sujet et utiliser une réduction de bruit raisonnable en postproduction. Sous la pluie, le collaborateur protège le boîtier, essuie régulièrement la lentille et vérifie les gouttes sur les images. Une balance des blancs cohérente facilite le traitement. Lorsque plusieurs températures de couleur se mélangent, le RAW permet une correction plus souple.'},
     {d:'La première passe retire les images floues, doublons, expressions défavorables et erreurs techniques. La deuxième construit une narration équilibrée. La troisième vérifie la diversité des joueurs et des situations. Pour une livraison express, le collaborateur commence par une sélection courte de 10 à 20 images fortes, puis traite le reste selon le délai prévu. Il ne livre jamais une galerie non contrôlée pour gagner quelques minutes.'},
-    {d:'Vidéos YouTube en français : "Photographie sportive : équipement et méthode", "Les meilleurs réglages pour le sport". Vidéo interne à produire : "La couverture photo SportVision de A à Z" (12 à 15 min). Cas pratique autonome : à partir d\'un match d\'entraînement, produire une galerie de 35 images comprenant au moins 8 actions, 5 émotions, 5 ambiances, 4 plans sponsor et 3 portraits.'},
+    {d:'Vidéo interne à produire : "La couverture photo SportVision de A à Z" (12 à 15 min).\n\nCas pratique autonome : à partir d\'un match d\'entraînement, produire une galerie de 35 images comprenant au moins 8 actions, 5 émotions, 5 ambiances, 4 plans sponsor et 3 portraits.',v:[{t:'Photographie sportive : équipement et méthode',id:'CsiIKrChxqk'},{t:'Les meilleurs réglages pour le sport',id:'0-QXz-YLvpc'}]},
   ],
   [
     {d:'Une captation 4K offre une meilleure définition et une marge de recadrage, mais augmente le poids des fichiers et la charge de montage. Le collaborateur choisit 25 ou 50 i/s selon le rendu. Il vérifie le débit de la carte, la chauffe, l\'autonomie et la durée maximale d\'enregistrement. La vitesse doit préserver un mouvement naturel. Une vitesse trop rapide donne un rendu sec ; trop lente, elle rend le ballon et les gestes illisibles. Les tests avant match sont obligatoires.'},
@@ -10858,7 +10864,7 @@ const FORMATION_CONTENT={
     {d:'Le focus joueur suit une personne déterminée sans oublier le contexte. Le cadre alterne plans serrés, plans moyens et séquences où l\'on voit le placement du joueur. Il faut capturer les actions avec et sans ballon, la communication, les appels, les réactions et les duels. Le collaborateur confirme le numéro, la tenue et la position du joueur avant le match. En cas de remplacement, il note la minute et adapte la couverture.'},
     {d:'Le montage sportif gagne en qualité grâce aux plans de coupe : chaussures, ballon, maillot, tribunes, mains, panneaux, échauffement, coach, filet, score et réactions. Ces plans masquent les coupes, installent l\'ambiance et permettent de respirer entre deux actions. Le collaborateur capture des plans courts mais stables, avec un début et une fin propres. Il pense aux formats vertical et horizontal.'},
     {d:'Une captation longue est divisée en clips en fonction du boîtier. Le collaborateur vérifie que l\'enregistrement a réellement démarré, surveille la batterie et les cartes, et note les incidents. À la mi-temps, il contrôle les premières séquences sans formater ni déplacer la carte. Après le match, il crée immédiatement deux copies avant de lancer le montage ou de restituer le kit.'},
-    {d:'Vidéos YouTube en français : "Apprendre à filmer du sport de manière originale", "Tout comprendre au slow motion". Vidéo interne à produire : "Filmer un match et un focus joueur" (15 min). Cas pratique autonome : filmer 20 minutes d\'un entraînement : 5 minutes de jeu large, 5 minutes de focus joueur, 10 plans de coupe et 5 ralentis. Livrer les rushs classés.'},
+    {d:'Vidéo interne à produire : "Filmer un match et un focus joueur" (15 min).\n\nCas pratique autonome : filmer 20 minutes d\'un entraînement : 5 minutes de jeu large, 5 minutes de focus joueur, 10 plans de coupe et 5 ralentis. Livrer les rushs classés.',v:[{t:'Apprendre à filmer du sport de manière originale',id:'WH1-oBfGiaQ'},{t:'Tout comprendre au slow motion',id:'8a98MqCVEQE'}]},
   ],
   [
     {d:'Une interview réussie commence par l\'objectif : témoignage après match, présentation d\'un joueur, parole de coach, sponsor ou retour de stage. Les questions sont courtes, ouvertes et ordonnées. Le collaborateur vérifie le nom, la fonction et la prononciation avant l\'enregistrement. Le lieu doit limiter le bruit, éviter un fond gênant et offrir une lumière stable. En extérieur, le vent peut rendre un son inutilisable même lorsque l\'image est parfaite.'},
@@ -10866,7 +10872,7 @@ const FORMATION_CONTENT={
     {d:'Le micro cravate est proche de la bouche et protégé du frottement. Un micro canon doit être placé aussi près que possible, hors cadre. Le niveau est contrôlé au casque ; les crêtes ne doivent pas saturer. Une piste de sécurité plus basse est utile lorsque le matériel le permet. Le collaborateur enregistre quelques secondes d\'ambiance seule pour faciliter le montage et la réduction de bruit.'},
     {d:'Un Inside raconte une expérience depuis l\'arrivée jusqu\'à la fin. Il combine contexte, gestes, paroles, émotions et transitions. La narration peut suivre : préparation, montée en tension, moment central, réaction et conclusion. Le vidéaste ne filme pas tout sans discernement. Il respecte les zones privées, les consignes du club et les moments où la caméra doit rester à distance.'},
     {d:'Le reportage doit répondre à une question claire : que s\'est-il passé, qui était concerné et pourquoi cela compte ? Les plans sont collectés avec une logique de montage. Les interviews servent la narration, elles ne sont pas ajoutées uniquement parce qu\'elles sont disponibles. Les noms, scores, dates et informations factuelles sont vérifiés avant export. Une erreur de texte peut diminuer la crédibilité de tout le contenu.'},
-    {d:'Vidéos YouTube en français : "Comment filmer une interview professionnelle", "Prendre le son avec un enregistreur numérique". Vidéo interne à produire : "Interview SportVision : image, son et narration" (12 min). Cas pratique autonome : réaliser une interview de 60 à 90 secondes avec un plan principal, 5 plans de coupe, un son contrôlé et des sous-titres. Livrer une version 16:9 et 9:16.'},
+    {d:'Vidéo interne à produire : "Interview SportVision : image, son et narration" (12 min).\n\nCas pratique autonome : réaliser une interview de 60 à 90 secondes avec un plan principal, 5 plans de coupe, un son contrôlé et des sous-titres. Livrer une version 16:9 et 9:16.',v:[{t:'Comment filmer une interview professionnelle',id:'JyhLta1a3EU'},{t:'Prendre le son avec un enregistreur numérique',id:'LN2N4nxL6lU'}]},
   ],
   [
     {d:'La caméra Veo est positionnée sur un axe central avec une vue dégagée de la totalité du terrain. Le trépied est stabilisé, la zone est sécurisée et la hauteur est ajustée selon le matériel. Avant de lever le trépied, le collaborateur vérifie la fixation, la batterie, le stockage, la connexion et l\'application. L\'installation doit être terminée avant l\'échauffement lorsque le brief le demande. Une caméra mal orientée peut enregistrer tout le match sans fournir une image exploitable.'},
@@ -10874,7 +10880,7 @@ const FORMATION_CONTENT={
     {d:'Avant tout vol, le télépilote vérifie la réglementation, les zones géographiques, la météo, les personnes présentes, la batterie, les hélices, le firmware et le point de décollage. Le Responsable Production doit valider l\'utilisation. Le fait que le client demande un drone ne rend pas le vol automatiquement autorisé. Le télépilote peut et doit refuser un vol lorsqu\'il estime que les conditions sont dangereuses, interdites ou non conformes.'},
     {d:'Les plans utiles sont courts, stables et lisibles : révélation du terrain, montée verticale, translation latérale, recul progressif et plan d\'établissement. Le drone ne doit pas remplacer toutes les images au sol. Il apporte une ouverture ou une respiration visuelle. Les mouvements sont préparés à faible vitesse, avec une marge de sécurité. Le télépilote garde le drone en vue et surveille l\'autonomie.'},
     {d:'Les fichiers drone sont sauvegardés comme les autres rushs et identifiés clairement. Le collaborateur note la zone, l\'heure, les conditions, le matériel et tout incident. Les captures Veo sont rattachées au bon client et au bon événement. Une mission technique n\'est terminée que lorsque le fichier ou le téléversement est vérifié, pas lorsque le matériel est simplement rangé.'},
-    {d:'Vidéos YouTube en français : "Veo Camera Football : comment ça marche", "Réglages photo et vidéo du DJI Mini". Vidéo interne à produire : "Installer Veo et réaliser cinq plans drone sûrs" (15 min). Cas pratique autonome : réaliser une installation Veo complète à blanc et une simulation de préparation drone. Produire la check-list signée et cinq plans courts dans une zone autorisée.'},
+    {d:'Vidéo interne à produire : "Installer Veo et réaliser cinq plans drone sûrs" (15 min).\n\nCas pratique autonome : réaliser une installation Veo complète à blanc et une simulation de préparation drone. Produire la check-list signée et cinq plans courts dans une zone autorisée.',v:[{t:'Veo Camera Football : comment ça marche',id:'4st54_TNSyY'},{t:'Réglages photo et vidéo du DJI Mini',id:'ZEd7ADbnt0k'}]},
   ],
   [
     {d:'Au retour ou directement après le match, le collaborateur copie les cartes sur l\'ordinateur ou le disque de travail, puis réalise une seconde copie sur le disque externe. Les cartes ne sont formatées qu\'après vérification des deux copies et validation du workflow. La règle 3-2-1 reste une référence : trois copies, sur deux types de support, avec une copie hors du lieu principal lorsque la conservation le nécessite. Pour une livraison express, au minimum deux copies distinctes sont créées avant le tri.'},
@@ -10882,7 +10888,7 @@ const FORMATION_CONTENT={
     {d:'Les fichiers peuvent être renommés avec la date, le client, l\'événement et un numéro séquentiel. Les photos livrées reçoivent un nom compréhensible plutôt qu\'un simple DSC0001. Les métadonnées de copyright et les mots-clés sont appliqués lorsque le workflow le prévoit. Le renommage n\'est jamais effectué directement sur une seule copie de carte sans sauvegarde.'},
     {d:'Le tri express se fait en plusieurs passes : erreurs techniques, doublons, sélection forte, sélection finale. Des raccourcis, étoiles ou couleurs accélèrent le processus. Le collaborateur ne retouche pas chaque image avant d\'avoir terminé la sélection. Pour la vidéo, il crée des chutiers par période, type de plan et joueur. Les marqueurs servent à identifier les actions fortes.'},
     {d:'Le dossier de livraison est séparé des rushs et du projet. Le collaborateur utilise le lien ou la plateforme définie, vérifie les droits d\'accès et informe le Responsable Production. SportVision OS indique le statut : fichiers reçus, postproduction, contrôle, livré. Une livraison n\'est pas validée uniquement parce qu\'un lien a été envoyé ; il faut vérifier que les fichiers sont lisibles et complets.'},
-    {d:'Vidéos YouTube en français : "Comment organiser et trier ses photos rapidement", "Quelles solutions de stockage choisir". Vidéo interne à produire : "Du terrain au dossier SportVision prêt à monter" (12 min). Cas pratique autonome : à partir d\'un lot fourni, construire l\'arborescence complète, renommer les fichiers, réaliser deux copies et préparer une sélection express de 15 photos et 10 clips.'},
+    {d:'Vidéo interne à produire : "Du terrain au dossier SportVision prêt à monter" (12 min).\n\nCas pratique autonome : à partir d\'un lot fourni, construire l\'arborescence complète, renommer les fichiers, réaliser deux copies et préparer une sélection express de 15 photos et 10 clips.',v:[{t:'Comment organiser et trier ses photos rapidement',id:'eH50kdPpwsY'},{t:'Quelles solutions de stockage choisir',id:'vukKlJzy0pU'}]},
   ],
   [
     {d:'Lightroom Classic fonctionne avec un catalogue qui référence les fichiers. Le collaborateur importe depuis le dossier de travail, applique un preset de métadonnées, choisit les aperçus adaptés et vérifie l\'emplacement. Les fichiers ne doivent pas être déplacés dans le Finder après import sans passer par Lightroom. Le catalogue de mission peut être séparé ou intégré au catalogue principal selon le standard SportVision, mais la sauvegarde doit être prévue.'},
@@ -10890,7 +10896,7 @@ const FORMATION_CONTENT={
     {d:'Le traitement commence par le profil, la balance des blancs, l\'exposition, les hautes lumières, les ombres, les blancs et les noirs. Les curseurs Texture, Clarté et Correction du voile sont utilisés avec mesure ; un excès crée une image dure et artificielle. L\'objectif est d\'obtenir une base propre avant d\'ajouter un style. Le collaborateur vérifie régulièrement la peau, le maillot blanc et le gazon.'},
     {d:'Les images prises sous une lumière identique peuvent partager un réglage. La synchronisation ne doit pas inclure le recadrage ou les masques lorsqu\'ils ne conviennent pas à toutes les photos. Après synchronisation, les images clés sont contrôlées individuellement. Quand les projecteurs ou le soleil varient, les photos sont regroupées par séquence lumineuse plutôt que traitées en un seul bloc.'},
     {d:'L\'export dépend de l\'usage : haute définition client, web, réseau social ou impression. Le collaborateur règle espace colorimétrique, dimensions, netteté de sortie, qualité et nommage. Pour le web, sRGB reste le choix courant. Avant export final, il vérifie les poussières visibles, les horizons, les recadrages et les doublons.'},
-    {d:'Vidéos YouTube en français : "Lightroom débutant : bases essentielles", "Une méthode d\'import Lightroom". Vidéo interne à produire : "Workflow Lightroom SportVision en 30 minutes" (15 min). Cas pratique autonome : importer 150 photos, réaliser une sélection de 30, traiter la série par groupes de lumière et livrer deux exports : web et haute définition.'},
+    {d:'Vidéo interne à produire : "Workflow Lightroom SportVision en 30 minutes" (15 min).\n\nCas pratique autonome : importer 150 photos, réaliser une sélection de 30, traiter la série par groupes de lumière et livrer deux exports : web et haute définition.',v:[{t:'Lightroom débutant : bases essentielles',id:'XB5_aQxc9S0'},{t:'Une méthode d\'import Lightroom',id:'tTjJ99jPLpE'}]},
   ],
   [
     {d:'La correction vise une image techniquement juste : exposition, balance des blancs, contraste et neutralisation des dominantes. Le style vient ensuite. Cette séparation évite de compenser une erreur d\'exposition avec une saturation excessive. Le collaborateur compare plusieurs images de la série afin de conserver une cohérence. Une photo isolée peut sembler réussie mais jurer dans le carrousel.'},
@@ -10898,7 +10904,7 @@ const FORMATION_CONTENT={
     {d:'Les masques de sujet, arrière-plan, dégradé et pinceau permettent de guider le regard. Le sujet peut être légèrement éclairci, le fond calmé et le visage équilibré. Le masque ne doit pas créer un halo visible. Les corrections locales sont copiées avec prudence, car la position du joueur change d\'une image à l\'autre.'},
     {d:'La réduction de bruit agit sur la luminance et la chrominance. Un traitement trop fort produit des visages plastiques et efface la texture du maillot. La netteté doit être évaluée à 100%, avec masquage pour éviter d\'accentuer le fond et le bruit. La réduction de bruit IA peut être utile sur les matchs nocturnes, mais elle augmente le temps de calcul et la taille des fichiers. Elle est réservée aux images qui le justifient.'},
     {d:'Un preset constitue un point de départ, pas un résultat automatique. Il doit être adapté à la lumière, au boîtier et au profil. Le collaborateur contrôle les couleurs officielles, la peau, les blancs et la densité globale. Le contrôle final se fait sur plusieurs images affichées ensemble, puis sur les images clés à 100%. Le rendu doit rester dynamique, propre et naturel.'},
-    {d:'Vidéos YouTube en français : "Exercice de retouche photo sportive", "Maîtriser le panneau HSL". Vidéo interne à produire : "Créer un look SportVision sans dénaturer les couleurs" (15 min). Cas pratique autonome : retoucher une série de 20 photos de nuit. Produire un avant/après, expliquer les choix HSL et livrer une série cohérente avec réduction de bruit sélective.'},
+    {d:'Vidéo interne à produire : "Créer un look SportVision sans dénaturer les couleurs" (15 min).\n\nCas pratique autonome : retoucher une série de 20 photos de nuit. Produire un avant/après, expliquer les choix HSL et livrer une série cohérente avec réduction de bruit sélective.',v:[{t:'Exercice de retouche photo sportive',id:'Md6sqB5n3Lc'},{t:'Maîtriser le panneau HSL',id:'PUmt5rPkLHw'}]},
   ],
   [
     {d:'Le projet reprend l\'arborescence SportVision et utilise des chutiers clairs : match, b-roll, interviews, audio, musique, graphismes et exports. Les paramètres de séquence correspondent au format principal. Les fichiers ne sont pas laissés en vrac dans le panneau projet. Le collaborateur active les sauvegardes automatiques et vérifie l\'emplacement des fichiers cache et des proxies.'},
@@ -10906,7 +10912,7 @@ const FORMATION_CONTENT={
     {d:'Le montage commence par une structure : ouverture, contexte, progression, moment fort et conclusion. Pour un résumé de match, le monteur peut suivre la chronologie ; pour un Reel, il peut ouvrir sur le meilleur moment puis revenir au contexte. Les coupes doivent répondre au rythme et au sens, pas uniquement aux temps de la musique. La lisibilité de l\'action reste prioritaire.'},
     {d:'Le raccord de mouvement, de regard, de son et de composition aide à passer d\'un plan à l\'autre. Les transitions graphiques sont utilisées avec modération. Une coupe simple bien placée est souvent plus professionnelle qu\'un effet complexe. Les plans de coupe masquent une hésitation d\'interview, une différence de cadre ou un saut temporel.'},
     {d:'Les titres respectent la charte SportVision et restent lisibles sur mobile. Les sous-titres sont relus, synchronisés et divisés en groupes courts. Les noms, scores et sponsors sont vérifiés. Le collaborateur garde des marges de sécurité pour éviter que les interfaces Instagram ou TikTok recouvrent les informations.'},
-    {d:'Vidéos YouTube en français : "Premiere Pro : formation complète", "DaVinci Resolve : tutoriel complet". Vidéo interne à produire : "Monter un résumé sportif propre et transmissible" (18 min). Cas pratique autonome : monter un résumé de 60 à 90 secondes à partir de rushs fournis. Le projet doit être propre, nommé, sauvegardé et transmissible à un autre monteur.'},
+    {d:'Vidéo interne à produire : "Monter un résumé sportif propre et transmissible" (18 min).\n\nCas pratique autonome : monter un résumé de 60 à 90 secondes à partir de rushs fournis. Le projet doit être propre, nommé, sauvegardé et transmissible à un autre monteur.',v:[{t:'Premiere Pro : formation complète',id:'lTfagJJB-SA'},{t:'DaVinci Resolve : tutoriel complet',id:'4EkjNoUMG6k'}]},
   ],
   [
     {d:'Un highlight n\'est pas une compilation interminable. Il sélectionne les actions qui racontent le niveau, la personnalité et l\'impact du joueur ou de l\'équipe. Pour un CV sportif, la lisibilité de l\'action et l\'identification du joueur sont prioritaires. Pour un Reel émotionnel, le rythme et les réactions peuvent prendre plus de place. Le brief détermine la durée, le public et l\'objectif : recruteur, club, parents, sponsor ou communauté.'},
@@ -10914,7 +10920,7 @@ const FORMATION_CONTENT={
     {d:'Le ralenti met en valeur un geste, un contact ou une émotion. Il fonctionne mieux lorsque le plan a été tourné à une fréquence adaptée. Le speed ramp accélère l\'entrée ou la sortie d\'un plan, mais doit suivre le mouvement et rester lisible. Les effets ne doivent pas masquer une action mal filmée. Une transition de vitesse utilisée partout devient une distraction.'},
     {d:'La musique structure le rythme, mais elle doit être autorisée pour l\'usage prévu. Le monteur utilise la bibliothèque ou la licence validée par SportVision. Les coupes peuvent suivre les accents, les changements de section ou les silences. Le volume musical est abaissé sous les voix et contrôlé au casque ainsi que sur haut-parleur de téléphone.'},
     {d:'Les sons de ballon, chaussures, sifflet, public, respiration et impacts renforcent l\'immersion. Ils doivent être crédibles, synchronisés et discrets. Le son direct du terrain est conservé lorsqu\'il apporte de l\'authenticité. Le montage final alterne musique, son réel et effets sans créer une saturation permanente.'},
-    {d:'Vidéos YouTube en français : "Maîtriser le speed ramping dans Premiere Pro", "Réussir une vidéo highlights sportive". Vidéo interne à produire : "Construire un highlight joueur de 45 secondes" (15 min). Cas pratique autonome : créer un highlight joueur de 45 à 60 secondes, avec identification visuelle, 8 actions, 2 ralentis, un sound design léger et une version sans musique protégée.'},
+    {d:'Vidéo interne à produire : "Construire un highlight joueur de 45 secondes" (15 min).\n\nCas pratique autonome : créer un highlight joueur de 45 à 60 secondes, avec identification visuelle, 8 actions, 2 ralentis, un sound design léger et une version sans musique protégée.',v:[{t:'Maîtriser le speed ramping dans Premiere Pro',id:'YjMSIBSho0s'},{t:'Réussir une vidéo highlights sportive',id:'EKbtmEguCqA'}]},
   ],
   [
     {d:'La correction rend les plans techniquement cohérents : exposition, balance des blancs, contraste et saturation. L\'étalonnage créatif ajoute ensuite une intention visuelle. Travailler dans cet ordre permet de comparer les plans avant d\'appliquer un look. Un LUT ne corrige pas automatiquement une mauvaise exposition ou une dominante. Il doit être utilisé dans le bon espace colorimétrique.'},
@@ -10922,7 +10928,7 @@ const FORMATION_CONTENT={
     {d:'Une source Log conserve une dynamique plus large mais apparaît plate. Elle doit être interprétée dans le bon espace de travail à l\'aide d\'une transformation, d\'un color space transform ou d\'une gestion automatique correctement configurée. Le projet final destiné aux réseaux est généralement exporté en SDR Rec.709, sauf brief différent. Mélanger Log, profil standard, smartphone et drone exige un workflow explicite ; sinon les plans réagissent différemment aux corrections.'},
     {d:'Le matching commence par un plan de référence. Le monteur aligne exposition, balance et contraste avant de régler la saturation. Les plans d\'une même séquence doivent donner l\'impression d\'appartenir au même moment. Les scopes aident à comparer, mais l\'œil contrôle les visages, le gazon et les couleurs du club.'},
     {d:'Le look SportVision peut renforcer le contraste, les bleus et violets de la marque dans les éléments graphiques, mais les couleurs réelles du client doivent rester justes. Le style ne doit pas transformer un maillot rouge en orange ou une peau en magenta. Le contrôle final s\'effectue sur un écran fiable, puis sur téléphone. Le collaborateur vérifie les plans sombres, les transitions et la cohérence du début à la fin.'},
-    {d:'Vidéos YouTube en français : "Réussir sa correction colorimétrique dans Premiere Pro", "DaVinci Resolve : la page Color pour débutants". Vidéo interne à produire : "Étalonner un montage sportif multi-caméras" (18 min). Cas pratique autonome : étalonner une séquence de 30 secondes composée de trois caméras. Livrer les captures de scopes avant/après et expliquer le workflow de gestion des couleurs.'},
+    {d:'Vidéo interne à produire : "Étalonner un montage sportif multi-caméras" (18 min).\n\nCas pratique autonome : étalonner une séquence de 30 secondes composée de trois caméras. Livrer les captures de scopes avant/après et expliquer le workflow de gestion des couleurs.',v:[{t:'Réussir sa correction colorimétrique dans Premiere Pro',id:'UoG2yYQwGzI'},{t:'DaVinci Resolve : la page Color pour débutants',id:'WApNdmrbIV8'}]},
   ],
   [
     {d:'Les pistes sont séparées par rôle : dialogue, ambiance, musique, effets et voix off. Les clips sont nommés et les canaux vérifiés. Un enregistrement stéréo contenant une seule voix peut nécessiter un remappage ou une conversion appropriée. Le monteur écoute au casque pour détecter les défauts puis sur haut-parleurs courants pour vérifier l\'équilibre réel.'},
@@ -10930,7 +10936,7 @@ const FORMATION_CONTENT={
     {d:'La voix reste compréhensible sans effort. La musique est abaissée sous les paroles, éventuellement avec automation ou ducking. Les transitions de niveau sont progressives. Le monteur évite de pousser le master jusqu\'à la saturation. Les crêtes et le niveau perçu sont contrôlés avant export.'},
     {d:'Les ambiances relient les plans et donnent une continuité. Les effets servent les gestes importants sans devenir caricaturaux. Un impact de ballon doit être synchronisé et crédible. Les bibliothèques utilisées doivent être autorisées pour l\'usage commercial.'},
     {d:'Le mix est écouté du début à la fin sans regarder l\'écran afin de repérer les ruptures. Il est ensuite testé sur téléphone, casque et haut-parleurs. Les sous-titres ne remplacent pas un son propre, même si beaucoup d\'utilisateurs regardent sans le son. Le collaborateur exporte un master et vérifie le fichier final, car certains problèmes apparaissent après encodage.'},
-    {d:'Vidéos YouTube en français : "Fairlight de A à Z", "Montage sonore dans DaVinci Resolve". Vidéo interne à produire : "Nettoyer et mixer une interview de bord de terrain" (14 min). Cas pratique autonome : nettoyer et mixer une interview avec bruit de public. Livrer une version avec musique et une version voix seule, sans saturation.'},
+    {d:'Vidéo interne à produire : "Nettoyer et mixer une interview de bord de terrain" (14 min).\n\nCas pratique autonome : nettoyer et mixer une interview avec bruit de public. Livrer une version avec musique et une version voix seule, sans saturation.',v:[{t:'Fairlight de A à Z',id:'QY8Rfiu1icA'},{t:'Montage sonore dans DaVinci Resolve',id:'YuG21TYH13Y'}]},
   ],
   [
     {d:'Le format dépend du canal : 16:9 pour YouTube et certaines présentations, 9:16 pour Reels, TikTok et Shorts, 4:5 pour certains posts Instagram. Le recadrage vertical doit suivre le sujet et conserver les informations essentielles. Le collaborateur vérifie les zones de sécurité afin que les interfaces des plateformes ne masquent ni le score, ni le nom, ni les sous-titres.'},
@@ -10938,7 +10944,7 @@ const FORMATION_CONTENT={
     {d:'Les photos sont exportées en sRGB pour le web, avec des dimensions et une qualité adaptées. La haute définition destinée au client est séparée des fichiers optimisés Instagram. Le nommage, les métadonnées et les éventuels filigranes suivent le brief. Le collaborateur ne livre pas les fichiers RAW ou les projets sources sauf demande contractuelle validée.'},
     {d:'Le délai express est indiqué dans le bon de mission : sélection le soir même, Reel dans les heures suivant le match ou livraison sous 24 heures. Pour réussir, le collaborateur prépare le projet, les presets, les dossiers et les modèles avant le match. La vitesse ne justifie pas l\'absence de contrôle. Une faute de nom ou un export noir impose une nouvelle livraison et fait perdre davantage de temps.'},
     {d:'Avant envoi, vérifier : durée, format, résolution, son, colorimétrie, orthographe, logos, nom du client, score, sous-titres, image de couverture, droits musicaux et lecture complète du fichier. Pour la photo : netteté, doublons, recadrage, couleurs, poussières, export et nombre de fichiers. Le lien de livraison est testé en navigation privée ou depuis un autre appareil. Le Responsable Production est informé du statut.'},
-    {d:'Vidéos YouTube en français : "Créer des vidéos 9:16 pour TikTok, Reels et Shorts", "Créer des Reels comme un pro". Vidéo interne à produire : "Livrer en express sans sacrifier la qualité" (12 min). Cas pratique autonome : à partir d\'un montage master, livrer une version 16:9, une version 9:16 et une miniature. Livrer également 15 photos web et HD dans une arborescence propre.'},
+    {d:'Vidéo interne à produire : "Livrer en express sans sacrifier la qualité" (12 min).\n\nCas pratique autonome : à partir d\'un montage master, livrer une version 16:9, une version 9:16 et une miniature. Livrer également 15 photos web et HD dans une arborescence propre.',v:[{t:'Créer des vidéos 9:16 pour TikTok, Reels et Shorts',id:'1zzZIG0ewnI'},{t:'Créer des Reels comme un pro',id:'MHOvOPP7WZA'}]},
   ],
   [
     {d:'Le collaborateur compare le brief à la livraison : contenu attendu, nombre, formats, délai, joueurs prioritaires, sponsor, musique, logo et nomenclature. Il ne se contente pas de juger si le montage lui plaît. L\'auto-contrôle s\'appuie sur une grille. Les erreurs critiques sont corrigées avant transmission au Responsable Production.'},
@@ -10946,69 +10952,160 @@ const FORMATION_CONTENT={
     {d:'Un feedback est traité comme une information de progression. Le collaborateur demande un exemple précis, corrige dans le délai et met à jour sa méthode. Il ne répète pas la même erreur sur les missions suivantes. Une correction mineure prévue fait partie du workflow. Les modifications hors brief sont signalées au Responsable Production avant d\'être réalisées.'},
     {d:'Après avoir maîtrisé la polyvalence, le collaborateur peut se spécialiser : photo sportive premium, focus joueur, montage, colorimétrie, interviews, drone, Veo, contenu vertical ou reportage. Il peut aussi évoluer vers référent terrain ou Responsable Production. La spécialisation ne dispense pas des standards de base : organisation, sauvegarde, posture et respect du brief.'},
     {d:'La certification combine un quiz, une préparation de mission, une captation photo-vidéo, une sauvegarde, une postproduction photo, un montage vidéo, un contrôle qualité et une soutenance. La réussite exige au moins 80% au quiz, aucun manquement critique de sécurité ou de sauvegarde et une livraison conforme. La certification initiale attribue un niveau d\'entrée. La progression réelle est confirmée par les missions suivantes.'},
-    {d:'Vidéos YouTube en français : "Comment faire des photos de sport : méthode complète", "Comment réaliser un documentaire de sport". Vidéo interne à produire : "L\'épreuve finale Photographe-Vidéaste SportVision" (10 min). Cas pratique autonome : épreuve finale — couvrir une séquence sportive, livrer 20 photos retouchées, un Reel de 45 secondes, un dossier de rushs organisé et un rapport de mission. Présenter les choix techniques lors d\'une soutenance de 15 minutes.'},
+    {d:'Vidéo interne à produire : "L\'épreuve finale Photographe-Vidéaste SportVision" (10 min).\n\nCas pratique autonome : épreuve finale — couvrir une séquence sportive, livrer 20 photos retouchées, un Reel de 45 secondes, un dossier de rushs organisé et un rapport de mission. Présenter les choix techniques lors d\'une soutenance de 15 minutes.',v:[{t:'Comment faire des photos de sport : méthode complète',id:'P_iNPmXQLvg'},{t:'Comment réaliser un documentaire de sport',id:'L2_GHOxSEMs'}]},
   ],
 ]
 };
 
-function modalLeconDetail(formId,mi,li){
-  const f=FORMATIONS_CATALOG.find(x=>x.id===formId);
-  if(!f)return;
-  const mod=f.modules[mi];
-  if(!mod)return;
-  const lecon=mod.lecons[li];
-  const lessons=_formProgCache[formId]||{};
-  const done=!!lessons[mi+'_'+li];
-  const entry=(FORMATION_CONTENT[formId]||[])[mi]?.[li]||{};
-  const typeLabel=f.type==='en_ligne'?'📖 Formation en ligne — auto-apprentissage'
-    :f.type==='hybride'?'🤝 Formation hybride — session avec formateur'
-    :'📍 Formation terrain — présence obligatoire';
+// ── Page de formation plein écran (sommaire + contenu + vidéos + navigation) ──
+let _fpState=null; // {formId, mi, li}
 
-  const contenuHtml=entry.d
-    ?`${entry.d?`<p style="font-size:13px;color:var(--t2);line-height:1.65;margin:14px 0 0">${entry.d}</p>`:''}
-      ${entry.p&&entry.p.length?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px;margin:12px 0">
+function _fpContentHtml(formId,mi,li){
+  const entry=(FORMATION_CONTENT[formId]||[])[mi]?.[li]||{};
+  const videosHtml=entry.v&&entry.v.length?`<div style="margin-bottom:22px">
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">📺 Vidéos recommandées</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+        ${entry.v.map(vid=>`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:12px;overflow:hidden">
+          <div style="position:relative;padding-top:56.25%;background:#000">
+            <iframe src="https://www.youtube.com/embed/${vid.id}" title="${vid.t}" style="position:absolute;inset:0;width:100%;height:100%;border:0" allowfullscreen loading="lazy"></iframe>
+          </div>
+          <div style="padding:10px 12px;font-size:12.5px;color:var(--t1);font-weight:600;line-height:1.4">${vid.t}</div>
+        </div>`).join('')}
+      </div>
+    </div>`:'';
+  const textHtml=entry.d
+    ?`<p style="font-size:14px;color:var(--t2);line-height:1.7;margin:0 0 16px;white-space:pre-line">${entry.d}</p>
+      ${entry.p&&entry.p.length?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:18px;margin-bottom:16px">
         <div style="font-size:10px;font-weight:700;color:var(--acc);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">À savoir</div>
         <div style="display:flex;flex-direction:column;gap:10px">
-          ${entry.p.map(b=>`<div style="display:flex;gap:10px;align-items:flex-start"><div style="width:5px;height:5px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:6px"></div><span style="font-size:12.5px;color:var(--t2);line-height:1.6">${b}</span></div>`).join('')}
+          ${entry.p.map(b=>`<div style="display:flex;gap:10px;align-items:flex-start"><div style="width:5px;height:5px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:7px"></div><span style="font-size:13px;color:var(--t2);line-height:1.6">${b}</span></div>`).join('')}
         </div>
       </div>`:''}
-      ${entry.t?`<div style="background:rgba(255,193,7,.07);border:1px solid rgba(255,193,7,.22);border-radius:8px;padding:11px 14px;margin-bottom:4px;display:flex;gap:10px;align-items:flex-start">
-        <span style="font-size:15px;flex-shrink:0">💡</span>
-        <span style="font-size:12px;color:var(--t2);line-height:1.55">${entry.t}</span>
+      ${entry.t?`<div style="background:rgba(255,193,7,.07);border:1px solid rgba(255,193,7,.22);border-radius:8px;padding:12px 15px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:16px;flex-shrink:0">💡</span>
+        <span style="font-size:13px;color:var(--t2);line-height:1.55">${entry.t}</span>
       </div>`:''}`
     :Array.isArray(entry)&&entry.length
-      ?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px;margin:14px 0">
+      ?`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:18px">
           <div style="font-size:10px;font-weight:700;color:var(--acc);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">À savoir</div>
           <div style="display:flex;flex-direction:column;gap:10px">
-            ${entry.map(b=>`<div style="display:flex;gap:10px;align-items:flex-start"><div style="width:5px;height:5px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:6px"></div><span style="font-size:12.5px;color:var(--t2);line-height:1.6">${b}</span></div>`).join('')}
+            ${entry.map(b=>`<div style="display:flex;gap:10px;align-items:flex-start"><div style="width:5px;height:5px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:7px"></div><span style="font-size:13px;color:var(--t2);line-height:1.6">${b}</span></div>`).join('')}
           </div>
         </div>`
-      :`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:16px;margin:14px 0">
-          <p style="font-size:13px;color:var(--t2);line-height:1.6;margin:0">Contenu transmis lors de la session de formation encadrée par votre formateur.</p>
-        </div>`;
+      :`<div style="padding:40px 20px;text-align:center;color:var(--t3);font-size:13px;background:var(--s2);border:1px solid var(--b1);border-radius:10px">Contenu transmis lors de la session de formation encadrée par votre formateur.</div>`;
+  return videosHtml+textHtml;
+}
 
-  const actionHtml=done
-    ?`<div style="display:flex;gap:10px;margin-top:14px">
-        <div style="flex:1;display:flex;align-items:center;gap:8px;padding:12px 16px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:10px">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#2ECC8A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5 7-7"/></svg>
-          <span style="font-size:13px;font-weight:600;color:var(--ok)">Leçon complétée</span>
-        </div>
-        <button onclick="toggleFormLesson('${formId}',${mi},${li});closeModal();setTimeout(()=>modalFormDetail('${formId}'),80)" style="padding:12px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t3);font-size:12px;cursor:pointer;white-space:nowrap">Décocher</button>
-      </div>`
-    :`<button onclick="toggleFormLesson('${formId}',${mi},${li});closeModal();setTimeout(()=>modalFormDetail('${formId}'),80)" style="width:100%;margin-top:14px;padding:14px;background:var(--acc);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">✓ Marquer comme lu</button>`;
+function openFormationPlayer(formId,mi,li){
+  const f=FORMATIONS_CATALOG.find(x=>x.id===formId);
+  if(!f)return;
+  if(mi===undefined||li===undefined){
+    const uid=localStorage.getItem('sv_uid')||'x';
+    const lessons=(getFormProg(uid)[formId]||{}).lessons||{};
+    mi=0;li=0;
+    outer: for(let m=0;m<f.modules.length;m++){
+      for(let l=0;l<f.modules[m].lecons.length;l++){
+        if(!lessons[m+'_'+l]){mi=m;li=l;break outer;}
+      }
+    }
+  }
+  _fpState={formId,mi,li};
+  if(!document.getElementById('fp-overlay')){
+    document.body.insertAdjacentHTML('beforeend','<div id="fp-overlay" style="position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;flex-direction:column"></div>');
+  }
+  _fpRender();
+}
 
-  openModal(`<div style="padding:20px 24px 24px;max-height:80vh;overflow-y:auto">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
-      <button onclick="closeModal();setTimeout(()=>modalFormDetail('${formId}'),80)" style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:6px 10px;color:var(--t2);font-size:12px;cursor:pointer;flex-shrink:0">← Retour</button>
-      <div>
-        <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">${f.titre} · ${mod.titre}</div>
-        <div style="font-size:16px;font-weight:700;color:var(--t1);margin-top:2px">${lecon}</div>
+function closeFormationPlayer(){
+  document.getElementById('fp-overlay')?.remove();
+  _fpState=null;
+}
+
+function _fpRender(){
+  const el=document.getElementById('fp-overlay');
+  if(!el||!_fpState)return;
+  const {formId,mi,li}=_fpState;
+  const f=FORMATIONS_CATALOG.find(x=>x.id===formId);
+  if(!f)return;
+  const uid=localStorage.getItem('sv_uid')||'x';
+  const fp=getFormProg(uid)[formId]||{};
+  const lessons=fp.lessons||{};
+  const total=f.modules.reduce((s,m)=>s+m.lecons.length,0);
+  const doneCount=Object.keys(lessons).length;
+  const pct=total?Math.round(doneCount/total*100):0;
+  const mod=f.modules[mi];
+  const lecon=mod?.lecons?.[li];
+  const key=mi+'_'+li;
+  const isDone=!!lessons[key];
+
+  const flat=[];
+  f.modules.forEach((m,mIdx)=>m.lecons.forEach((l,lIdx)=>flat.push({mIdx,lIdx})));
+  const curIdx=flat.findIndex(x=>x.mIdx===mi&&x.lIdx===li);
+  const prevItem=curIdx>0?flat[curIdx-1]:null;
+  const nextItem=curIdx<flat.length-1?flat[curIdx+1]:null;
+
+  const sidebarHtml=f.modules.map((m,mIdx)=>{
+    const modDone=m.lecons.filter((_,lIdx)=>lessons[mIdx+'_'+lIdx]).length;
+    return`<div style="margin-bottom:4px">
+      <div style="padding:12px 16px 6px;font-size:11px;font-weight:700;color:var(--t2);display:flex;justify-content:space-between;gap:8px">
+        <span>${m.titre}</span><span style="color:var(--t3);font-weight:500;flex-shrink:0">${modDone}/${m.lecons.length}</span>
       </div>
+      ${m.lecons.map((l,lIdx)=>{
+        const k=mIdx+'_'+lIdx;
+        const done=!!lessons[k];
+        const active=mIdx===mi&&lIdx===li;
+        return`<div onclick="_fpGoTo(${mIdx},${lIdx})" style="display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;background:${active?'rgba(54,107,255,.12)':'transparent'};border-left:3px solid ${active?'var(--acc)':'transparent'}">
+          <div style="width:16px;height:16px;border-radius:5px;border:1.5px solid ${done?'var(--ok)':'var(--b2)'};background:${done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${done?'<svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}
+          </div>
+          <span style="font-size:12.5px;color:${active?'var(--t1)':done?'var(--t3)':'var(--t2)'};font-weight:${active?'700':'500'};${done&&!active?'text-decoration:line-through':''}">${l}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--b1);background:var(--s1);flex-shrink:0">
+      <button onclick="closeFormationPlayer()" style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;color:var(--t2);font-size:13px;cursor:pointer;flex-shrink:0">✕ Quitter</button>
+      <button id="fp-sidebar-toggle" onclick="document.getElementById('fp-sidebar')?.classList.toggle('fp-open')" style="display:none;background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;color:var(--t2);font-size:13px;cursor:pointer;flex-shrink:0">☰</button>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.icone} ${f.titre}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <div class="pg" style="width:140px"><div class="pg-f" style="width:${pct}%;background:${pct===100?'var(--ok)':'var(--acc)'}"></div></div>
+          <span style="font-size:11px;color:var(--t3);white-space:nowrap">${doneCount}/${total} · ${pct}%</span>
+        </div>
+      </div>
+      ${fp.statut&&pct===100&&FORMATION_QUIZ_CATALOG[formId]?`<button onclick="closeFormationPlayer();lancerQuiz('${formId}')" style="padding:9px 14px;background:rgba(124,77,255,.12);border:1px solid rgba(124,77,255,.3);border-radius:8px;color:#9C6FFF;font-size:12.5px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap">📝 Quiz</button>`:''}
     </div>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:2px">${typeLabel}</div>
-    ${contenuHtml}
-    ${actionHtml}
-  </div>`);
+    <div style="flex:1;display:flex;overflow:hidden;position:relative">
+      <div id="fp-sidebar" style="width:300px;flex-shrink:0;border-right:1px solid var(--b1);background:var(--s1);overflow-y:auto;padding:10px 0">${sidebarHtml}</div>
+      <div style="flex:1;overflow-y:auto;padding:28px 32px" id="fp-main">
+        <div style="max-width:820px;margin:0 auto">
+          <div style="font-size:10.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${mod?.titre||''}</div>
+          <div style="font-size:21px;font-weight:800;color:var(--t1);margin-bottom:20px">${lecon||''}</div>
+          ${_fpContentHtml(formId,mi,li)}
+          <div style="display:flex;gap:10px;margin-top:26px;padding-top:20px;border-top:1px solid var(--b1)">
+            <button onclick="${prevItem?`_fpGoTo(${prevItem.mIdx},${prevItem.lIdx})`:''}" ${prevItem?'':'disabled'} style="padding:12px 18px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:${prevItem?'var(--t1)':'var(--t3)'};font-size:13px;font-weight:600;cursor:${prevItem?'pointer':'default'};opacity:${prevItem?'1':'.4'};flex-shrink:0">← Précédent</button>
+            <button onclick="_fpToggleDone()" style="flex:1;padding:12px 18px;background:${isDone?'rgba(46,204,138,.12)':'var(--acc)'};border:${isDone?'1px solid rgba(46,204,138,.3)':'none'};border-radius:10px;color:${isDone?'var(--ok)':'#fff'};font-size:13px;font-weight:700;cursor:pointer">${isDone?'✓ Leçon terminée':'Marquer comme lu'}</button>
+            <button onclick="${nextItem?`_fpGoTo(${nextItem.mIdx},${nextItem.lIdx})`:''}" ${nextItem?'':'disabled'} style="padding:12px 18px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:${nextItem?'var(--t1)':'var(--t3)'};font-size:13px;font-weight:600;cursor:${nextItem?'pointer':'default'};opacity:${nextItem?'1':'.4'};flex-shrink:0">Suivant →</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function _fpGoTo(mi,li){
+  if(!_fpState)return;
+  _fpState.mi=mi;_fpState.li=li;
+  _fpRender();
+  document.getElementById('fp-main')?.scrollTo(0,0);
+  document.getElementById('fp-sidebar')?.classList.remove('fp-open');
+}
+
+async function _fpToggleDone(){
+  if(!_fpState)return;
+  await toggleFormLesson(_fpState.formId,_fpState.mi,_fpState.li);
+  _fpRender();
 }
 
 async function enrollForm(id){
@@ -11032,7 +11129,8 @@ async function enrollForm(id){
     if(!_formProgCache[id]){
       _formProgCache[id]={statut:'en_cours',lessons:{},enrolled_at:new Date().toISOString(),_insId:insId};
     }
-    modalFormDetail(id);
+    closeModal();
+    openFormationPlayer(id);
   }catch(e){toast('Erreur lors de l\'inscription.','er');}
 }
 
@@ -11167,7 +11265,7 @@ async function toggleFormLesson(id,mi,li){
     }
   }
   _formProgCache[id]=fp;
-  modalFormDetail(id);
+  if(!_fpState)modalFormDetail(id);
   // Refresh grade panel si visible
   if(document.getElementById('form-grade-content'))await loadForm();
 }
