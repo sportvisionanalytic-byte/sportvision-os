@@ -4179,16 +4179,17 @@ function renderProdBriefList(){
     const date=p.date_prestation?new Date(p.date_prestation+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';
     const ok=p._briefOk;
     const consulte=p._briefConsulte;
+    const vuDate=p.briefing_vu_at?new Date(p.briefing_vu_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):null;
     return`<div class="cd" style="padding:0;overflow:hidden;cursor:pointer" onclick="modalDetailById('${p.id}')">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--b1)">
         <div style="flex:1;min-width:0">
           <div style="font-size:13.5px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
           <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · ${p.lieu||'—'}</div>
         </div>
-        <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${ok?'rgba(46,204,138,.1)':'rgba(245,165,36,.1)'};border:1px solid ${ok?'rgba(46,204,138,.25)':'rgba(245,165,36,.25)'};border-radius:20px;color:${ok?'var(--ok)':'var(--wa)'};flex-shrink:0;margin-left:10px">${ok?'✓ Complet':'Incomplet'}</span>
+        <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${ok?'rgba(46,204,138,.1)':'rgba(245,165,36,.1)'};border:1px solid ${ok?'rgba(46,204,138,.25)':'rgba(245,165,36,.25)'};border-radius:20px;color:${ok?'var(--ok)':'var(--wa)'};flex-shrink:0;margin-left:10px">${ok?'✓ Complet':'⚠ Incomplet'}</span>
       </div>
       <div style="display:flex;gap:16px;padding:10px 18px;font-size:11px;color:var(--t3)">
-        <span>${consulte?'✓ Consulté':'⚠ Non consulté'}</span>
+        <span>${consulte?'✓ Consulté le '+vuDate:'⚠ Non consulté'}</span>
         <span>${(p._briefEquipe||0)} collab. assignés</span>
         <span style="margin-left:auto;color:var(--acc);font-weight:600">Voir →</span>
       </div>
@@ -4200,12 +4201,12 @@ async function loadProdBriefings(){
   const el=document.getElementById('prod-brief-real');
   if(!el)return;
   try{
-    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,clients(nom),prestations_equipe(statut)&statut=not.in.(annulée,refusée,livrée,clôturée)&order=date_prestation.asc&limit=50');
+    const raw=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,lieu,description_besoin,livrables_demandes,briefing_vu_at,clients(nom),prestations_equipe(statut)&statut=not.in.(annulée,refusée,livrée,clôturée)&order=date_prestation.asc&limit=50');
     const pre=Array.isArray(raw)?raw:[];
     _prodBriefData=pre.map(p=>({
       ...p,
-      _briefOk:['prête','équipe_affectée','production_démarrée','production_terminée','livrée'].includes(p.statut),
-      _briefConsulte:['prête','production_démarrée','production_terminée','livrée'].includes(p.statut),
+      _briefOk:!!(p.description_besoin&&p.description_besoin.trim())&&!!(p.livrables_demandes&&p.livrables_demandes.trim()),
+      _briefConsulte:!!p.briefing_vu_at,
       _briefEquipe:(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').length,
     }));
     _prodBriefFilter='all';
@@ -14425,7 +14426,7 @@ async function loadKanban(){
 
 async function modalDetailById(id){
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,clients(nom)&id=eq.'+id);
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,briefing_vu_at,clients(nom)&id=eq.'+id);
     if(!data||!data[0])return;
     if(S.role==='prod'){modalProdFiche(data[0]);return;}
     if(S.role==='photo'){
@@ -14433,6 +14434,9 @@ async function modalDetailById(id){
       const eq=await sbFetch('prestations_equipe?select=id,remuneration,heures_declarees&collaborateur_id=eq.'+uid+'&prestation_id=eq.'+id+'&limit=1');
       const p=data[0];
       if(eq&&eq[0]){p._equipeId=eq[0].id;p._remuneration=eq[0].remuneration||0;p._heuresDec=eq[0].heures_declarees||null;}
+      if(!p.briefing_vu_at){
+        sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{briefing_vu_at:new Date().toISOString()}}).catch(()=>{});
+      }
       modalPhotoBriefing(p);
       return;
     }
