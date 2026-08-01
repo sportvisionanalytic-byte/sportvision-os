@@ -6525,21 +6525,28 @@ async function creerTache(){
   if(!titre){if(err)err.textContent='Donnez un nom à la tâche.';return;}
   const uid=localStorage.getItem('sv_uid');
   try{
-    await sbFetch('notifications',{method:'POST',body:{
+    const r=await sbFetch('notifications',{method:'POST',body:{
       type:'tache',titre,message:msg||null,lue:false,destinataire_id:uid
     }});
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'Création impossible.');return;}
     closeModal();toast('Tâche créée.','ok');loadTaches();
   }catch(e){if(err)err.textContent='Erreur lors de la création.';}
 }
 
 async function toggleTache(id,estFaite){
-  try{await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:!estFaite}});loadTaches();}
-  catch(e){}
+  try{
+    const r=await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:!estFaite}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+    loadTaches();
+  }catch(e){}
 }
 
 async function supprimerTache(id){
-  try{await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});loadTaches();}
-  catch(e){}
+  try{
+    const r=await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Suppression impossible.'),'er');return;}
+    loadTaches();
+  }catch(e){}
 }
 
 async function loadSettings(){
@@ -6619,7 +6626,8 @@ async function sauvegarderProfil(uid){
       permis:document.getElementById('set-permis')?.checked||false,
     };
     if(window._pendingAvatar){body.avatar_url=window._pendingAvatar;window._pendingAvatar=null;}
-    await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body});
+    const r=await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body});
+    if(sbErr(r)){if(err){err.style.color='var(--er)';err.textContent='Erreur : '+(r.message||'Modification impossible.');}return;}
     toast('Profil mis à jour.','ok');
     if(err)err.style.color='var(--ok)',err.textContent='Profil mis à jour.';
     const prenom=body.prenom||'';const nom=body.nom||'';
@@ -6764,7 +6772,8 @@ async function ajouterMembreEquipe(prestationId,ref){
   try{
     const rem=document.getElementById('eq-rem').value;
     const rdv=document.getElementById('eq-rdv').value;
-    await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
+    const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
+    if(sbErr(rAdd)){err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');return;}
     sbFetch('notifications',{method:'POST',body:{destinataire_id:colId,type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId}}).catch(()=>{});
     document.getElementById('eq-col').value='';
     document.getElementById('eq-fonc').value='';
@@ -6777,7 +6786,8 @@ async function ajouterMembreEquipe(prestationId,ref){
 function retirerMembreEquipe(equipeId,prestationId,ref){
   confirmerAction('Retirer ce collaborateur de la prestation ?',async()=>{
     try{
-      await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'DELETE'});
+      const r=await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'DELETE'});
+      if(sbErr(r)){toast('Erreur : '+(r.message||'Retrait impossible.'),'er');return;}
       toast('Collaborateur retiré.','ok');
       await chargerEquipe(prestationId,ref);
     }catch(e){toast('Erreur lors du retrait.');}
