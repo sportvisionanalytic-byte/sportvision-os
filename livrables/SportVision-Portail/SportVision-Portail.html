@@ -1758,7 +1758,7 @@ async function submitDemande(){
 
 function resetCfgAndGo(view){
   const draftEmail = cfg.email;
-  cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:draftEmail||'', telephone:'', profil:'joueur', retractationRenoncee:false, siteWeb:'' };
+  cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:draftEmail||'', telephone:'', profil:'joueur', retractationRenoncee:false, siteWeb:'', distanceKm:null, fraisDeplacementHt:null, horsIdf:false };
   CFG_EXTRA_FIELDS.forEach(f=>{ cfg[f] = ''; });
   if (view === 'inscription' && draftEmail) document.addEventListener('DOMContentLoaded', ()=>{});
   go(view);
