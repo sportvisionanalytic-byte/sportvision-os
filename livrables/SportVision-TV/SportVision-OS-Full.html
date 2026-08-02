@@ -2313,6 +2313,26 @@ async function sbFetch(path,opts={}){
 // ni ignorer silencieusement un objet d'erreur comme si c'était un succès.
 function sbErr(r){return !!(r&&typeof r==='object'&&!Array.isArray(r)&&(r.code||r.message));}
 
+// Échappe le texte libre injecté dans du HTML via template literal (innerHTML).
+// Nécessaire partout où une donnée saisie par un utilisateur (client, collaborateur,
+// visiteur du portail) est réaffichée à un AUTRE utilisateur : sans ça, un nom de
+// client ou une note contenant "<img onerror=...>" s'exécute comme du JS dans la
+// session de la personne qui consulte la fiche (XSS stocké).
+function esc(s){
+  if(s===null||s===undefined)return '';
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Échappe une donnée destinée à être injectée comme argument JS entre guillemets
+// simples dans un attribut HTML entre guillemets doubles (ex: onclick="fn('${escJs(x)}')").
+// Contrairement à esc(), protège aussi contre l'évasion du guillemet double de
+// l'attribut lui-même (une simple quote-JS-escape ne suffit pas : un "  dans la
+// donnée referme prématurément l'attribut onclick="...").
+function escJs(s){
+  if(s===null||s===undefined)return '';
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 // Upload d'un fichier vers Supabase Storage (bucket public, écriture protégée par RLS storage.objects).
 // Retourne l'URL publique du fichier, ou null en cas d'échec.
 async function sbUpload(bucket, path, file){
@@ -2471,11 +2491,10 @@ function filtrerClientsSelect(q){
   dd.style.display='block';
   const stC={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw','partenaire':'ba','client':'ba','inactif':'bn','bloqué':'br','perdu':'br'};
   dd.innerHTML=list.map(c=>{
-    const safId=c.id.replace(/'/g,"\\'");
-    const safNom=(c.nom||'').replace(/</g,'&lt;').replace(/'/g,"\\'");
-    const nomHtml=(c.nom||'').replace(/</g,'&lt;');
+    const safId=escJs(c.id);
+    const safNom=escJs(c.nom||'');
     const badge=c.statut&&c.statut!=='client'?`<span class="bd ${stC[c.statut]||'bn'}" style="font-size:10px;margin-left:4px"><span class="bd-d"></span>${c.statut}</span>`:'';
-    return`<div onmousedown="selectClientNP('${safId}','${safNom}')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--t1);border-bottom:1px solid var(--b1)" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">${nomHtml}${badge}</div>`;
+    return`<div onmousedown="selectClientNP('${safId}','${safNom}')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--t1);border-bottom:1px solid var(--b1)" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">${esc(c.nom||'')}${badge}</div>`;
   }).join('');
 }
 function selectClientNP(id,nom){
@@ -2935,7 +2954,7 @@ function modalDetailPrestation(idx){
           <input id="pd-date" type="date" class="l-inp" value="${p.date_prestation||''}" style="height:38px" ${ro}>
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Lieu</label>
-          <input id="pd-lieu" type="text" class="l-inp" value="${p.lieu||''}" style="height:38px" ${ro}>
+          <input id="pd-lieu" type="text" class="l-inp" value="${esc(p.lieu||'')}" style="height:38px" ${ro}>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
@@ -2950,11 +2969,11 @@ function modalDetailPrestation(idx){
         </div>
       </div>
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Adresse complète</label>
-        <input id="pd-adr" type="text" class="l-inp" value="${p.adresse_complete||''}" style="height:38px" placeholder="Rue, code postal, ville…" ${ro}>
+        <input id="pd-adr" type="text" class="l-inp" value="${esc(p.adresse_complete||'')}" style="height:38px" placeholder="Rue, code postal, ville…" ${ro}>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Contact sur place</label>
-          <input id="pd-csp" type="text" class="l-inp" value="${p.contact_sur_place||''}" style="height:38px" placeholder="Nom du contact" ${ro}>
+          <input id="pd-csp" type="text" class="l-inp" value="${esc(p.contact_sur_place||'')}" style="height:38px" placeholder="Nom du contact" ${ro}>
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Tél. sur place</label>
           <input id="pd-tsp" type="tel" class="l-inp" value="${p.telephone_sur_place||''}" style="height:38px" placeholder="06 …" ${ro}>
@@ -2971,14 +2990,14 @@ function modalDetailPrestation(idx){
       ${(p.description_besoin||p.livrables_demandes||['admin','sec','prod'].includes(S.role))?`<div style="background:rgba(54,107,255,.05);border:1px solid rgba(54,107,255,.15);border-radius:var(--rb);padding:12px 14px;display:flex;flex-direction:column;gap:10px">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--acc)">Brief prestation</div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Description du besoin</label>
-          <textarea id="pd-desc" class="l-inp" style="height:56px;padding-top:10px;resize:none" placeholder="Que souhaite le client ?">${p.description_besoin||''}</textarea>
+          <textarea id="pd-desc" class="l-inp" style="height:56px;padding-top:10px;resize:none" placeholder="Que souhaite le client ?">${esc(p.description_besoin||'')}</textarea>
         </div>
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Livrables attendus</label>
-          <textarea id="pd-livr" class="l-inp" style="height:56px;padding-top:10px;resize:none" placeholder="Photos, vidéos, délais…">${p.livrables_demandes||''}</textarea>
+          <textarea id="pd-livr" class="l-inp" style="height:56px;padding-top:10px;resize:none" placeholder="Photos, vidéos, délais…">${esc(p.livrables_demandes||'')}</textarea>
         </div>
       </div>`:''}
       <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Notes internes</label>
-        <textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none" placeholder="Informations internes…" ${ro}>${p.notes_internes||''}</textarea>
+        <textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none" placeholder="Informations internes…" ${ro}>${esc(p.notes_internes||'')}</textarea>
       </div>
       ${['admin','sec','prod'].includes(S.role)?`<div id="pd-equipe-block" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
         <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Équipe affectée</div>
@@ -3113,21 +3132,21 @@ function renderClientsTable(){
   </div>
   ${list.length?'<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Email / Tél.</th><th>Statut</th><th></th></tr></thead><tbody>'+
     list.map(c=>{const i=_clientsCache.indexOf(c);
-      const ct=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'—';
-      const emailBtn=c.email?`<span onclick="copier('${c.email.replace(/'/g,"\\'")}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${c.email}</span>`:'—';
-      const telBtn=c.telephone?`<span onclick="copier('${c.telephone.replace(/'/g,"\\'")}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${c.telephone}</span>`:'';
+      const ct=esc([c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'—');
+      const emailBtn=c.email?`<span onclick="copier('${escJs(c.email)}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${esc(c.email)}</span>`:'—';
+      const telBtn=c.telephone?`<span onclick="copier('${escJs(c.telephone)}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${esc(c.telephone)}</span>`:'';
       const crmNext={'prospect':{lb:'✓ Qualifier',st:'qualifié',clr:'var(--ok)'},'qualifié':{lb:'→ Devis',st:'devis_envoyé',clr:'var(--acc)'},'devis_envoyé':{lb:'→ Négo',st:'négociation',clr:'var(--wa)'},'négociation':{lb:'✓ Partenaire',st:'partenaire',clr:'var(--ok)'}}[c.statut];
       return`<tr>
-        <td class="tp" style="cursor:pointer" onclick="modalModifierClient(${i})">${c.nom}</td>
+        <td class="tp" style="cursor:pointer" onclick="modalModifierClient(${i})">${esc(c.nom)}</td>
         <td>${c.type_client||'—'}</td>
-        <td>${c.sport||'—'}</td>
-        <td>${c.ville||'—'}</td>
+        <td>${esc(c.sport||'—')}</td>
+        <td>${esc(c.ville||'—')}</td>
         <td>${ct}</td>
         <td style="font-size:12px">${emailBtn}${telBtn}</td>
         <td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${scLb[c.statut]||c.statut}</span></td>
         <td><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
           ${crmNext?`<button onclick="crmAvancerStatut('${c.id}','${crmNext.st}')" style="padding:4px 8px;font-size:11px;background:transparent;border:1px solid ${crmNext.clr}55;border-radius:var(--rp);color:${crmNext.clr};cursor:pointer;white-space:nowrap;font-weight:600">${crmNext.lb}</button>`:''}
-          ${c.email?`<a href="mailto:${c.email.replace(/'/g,'%27')}" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;text-decoration:none;white-space:nowrap" title="${c.email}">✉</a>`:''}
+          ${c.email?`<a href="mailto:${encodeURIComponent(c.email)}" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;text-decoration:none;white-space:nowrap" title="${esc(c.email)}">✉</a>`:''}
           <button onclick="modalNouvellePrestation('${c.id}')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">+ Presta</button>
           <button onclick="modalModifierClient(${i})" style="padding:4px 8px;font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rp);color:var(--t2);cursor:pointer">Modifier</button>
         </div></td>
@@ -3151,11 +3170,11 @@ function modalModifierClient(idx){
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Modifier le client</div>
-    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${c.nom}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${esc(c.nom)}</div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px">
         <div><label style="${lbl}">Nom *</label>
-          <input id="fce-nom" type="text" class="l-inp" value="${c.nom}" style="height:38px" ${ro}>
+          <input id="fce-nom" type="text" class="l-inp" value="${esc(c.nom)}" style="height:38px" ${ro}>
         </div>
         <div><label style="${lbl}">Type</label>
           <select id="fce-type" class="l-inp" style="height:38px" ${ro}>
@@ -3170,33 +3189,33 @@ function modalModifierClient(idx){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${lbl}">Prénom contact</label>
-          <input id="fce-prenom" type="text" class="l-inp" value="${c.prenom_contact||''}" style="height:38px" ${ro}>
+          <input id="fce-prenom" type="text" class="l-inp" value="${esc(c.prenom_contact||'')}" style="height:38px" ${ro}>
         </div>
         <div><label style="${lbl}">Nom contact</label>
-          <input id="fce-nomct" type="text" class="l-inp" value="${c.nom_contact||''}" style="height:38px" ${ro}>
+          <input id="fce-nomct" type="text" class="l-inp" value="${esc(c.nom_contact||'')}" style="height:38px" ${ro}>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${lbl}">Email</label>
-          <input id="fce-email" type="email" class="l-inp" value="${c.email||''}" style="height:38px" ${ro}>
+          <input id="fce-email" type="email" class="l-inp" value="${esc(c.email||'')}" style="height:38px" ${ro}>
         </div>
         <div><label style="${lbl}">Téléphone</label>
-          <input id="fce-tel" type="tel" class="l-inp" value="${c.telephone||''}" style="height:38px" ${ro}>
+          <input id="fce-tel" type="tel" class="l-inp" value="${esc(c.telephone||'')}" style="height:38px" ${ro}>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
         <div><label style="${lbl}">Sport</label>
-          <input id="fce-sport" type="text" class="l-inp" value="${c.sport||''}" style="height:38px" ${ro}>
+          <input id="fce-sport" type="text" class="l-inp" value="${esc(c.sport||'')}" style="height:38px" ${ro}>
         </div>
         <div><label style="${lbl}">Ville</label>
-          <input id="fce-ville" type="text" class="l-inp" value="${c.ville||''}" style="height:38px" ${ro}>
+          <input id="fce-ville" type="text" class="l-inp" value="${esc(c.ville||'')}" style="height:38px" ${ro}>
         </div>
         <div><label style="${lbl}">Division / Ligue</label>
           <input id="fce-division" type="text" class="l-inp" value="${c.division||''}" placeholder="R1, Dept…" style="height:38px" ${ro}>
         </div>
       </div>
       <div><label style="${lbl}">Notes internes</label>
-        <textarea id="fce-notes" class="l-inp" style="height:72px;resize:vertical;padding-top:8px" ${ro}>${c.notes||''}</textarea>
+        <textarea id="fce-notes" class="l-inp" style="height:72px;resize:vertical;padding-top:8px" ${ro}>${esc(c.notes||'')}</textarea>
       </div>
       <div id="fce-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div id="fce-tabs" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
@@ -3277,7 +3296,7 @@ async function chargerEquipeModal(prestationId){
   try{
     const data=await sbFetch('prestations_equipe?select=collaborateur_id,fonction,est_responsable,statut,profiles(prenom,nom,telephone)&prestation_id=eq.'+prestationId);
     if(!data||!data.length){
-      const pid=prestationId.replace(/'/g,"\\'");
+      const pid=escJs(prestationId);
       el.innerHTML=`<span style="color:var(--t3)">Aucun membre assigné.</span><button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${pid}',''),150)" style="margin-left:8px;font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Assigner →</button>`;
       return;
     }
@@ -3364,7 +3383,7 @@ async function loadClientMedias(clientId){
   const TYPE_IC={photo:'📷',video:'🎬',mixte:'🎞️'};
   el.innerHTML=`<div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Médias (${list.length})</div>
     <div style="display:flex;flex-direction:column;gap:4px">
-      ${list.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;font-size:12px;cursor:pointer" onclick="window.open('${(m.url||'').replace(/'/g,"\\'")}','_blank')">
+      ${list.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;font-size:12px;cursor:pointer" onclick="window.open('${escJs(m.url||'')}','_blank')">
         <span style="flex-shrink:0">${TYPE_IC[m.type_media]||'📎'}</span>
         <span style="font-weight:600;color:var(--t1);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.nom||m.categorie||'Média'}</span>
         <span style="color:var(--t3);white-space:nowrap">${m.prestations?.reference||''}</span>
@@ -3762,16 +3781,16 @@ async function loadAdminDash(){
           return`<div style="display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid var(--b1)${i===list.length-1?';border-bottom:none':''}">
             <div style="flex:1;min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
-                <span style="font-size:13px;font-weight:600;color:var(--t1)">${c.nom}</span>
+                <span style="font-size:13px;font-weight:600;color:var(--t1)">${esc(c.nom)}</span>
                 <span class="bd ${SCC[c.statut]||'bw'}" style="flex-shrink:0"><span class="bd-d"></span>${SCL[c.statut]||c.statut}</span>
               </div>
               <div style="font-size:10.5px;color:var(--t3);margin-top:1px">${meta||'—'}</div>
               ${nextAct}
             </div>
             <div style="display:flex;gap:5px;flex-shrink:0">
-              ${c.email?`<a href="mailto:${c.email}?subject=Partenariat SportVision" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);text-decoration:none">✉</a>`:''}
-              ${c.telephone?`<a href="tel:${c.telephone}" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);text-decoration:none">📞</a>`:''}
-              <button onclick="modalCreerDevisRapide('${c.id}','${(c.nom||'').replace(/'/g,"\\'")}')" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:var(--wa);cursor:pointer">Devis</button>
+              ${c.email?`<a href="mailto:${esc(c.email)}?subject=Partenariat SportVision" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);text-decoration:none">✉</a>`:''}
+              ${c.telephone?`<a href="tel:${esc(c.telephone)}" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);text-decoration:none">📞</a>`:''}
+              <button onclick="modalCreerDevisRapide('${c.id}','${escJs(c.nom||'')}')" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:var(--wa);cursor:pointer">Devis</button>
               <button onclick="modalAjouterContact('${c.id}')" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Contact</button>
             </div>
           </div>`;
@@ -3879,7 +3898,7 @@ async function loadProdDash(){
             <div style="width:4px;background:${clr};flex-shrink:0;border-radius:0"></div>
             <div style="flex:1;min-width:0;padding:11px 14px">
               <div style="font-size:13px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
-              <div style="font-size:11px;color:var(--t3);margin-top:2px">${heures} · ${p.lieu||'—'} · ${equipe.length} collab.</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:2px">${heures} · ${esc(p.lieu||'—')} · ${equipe.length} collab.</div>
             </div>
             <div style="flex-shrink:0;padding:10px 14px;display:flex;align-items:center">
               <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${clr}22;border:1px solid ${clr}55;color:${clr};white-space:nowrap">${lb}</span>
@@ -4069,7 +4088,7 @@ async function loadProdPlanning(){
             <div style="font-size:13px;font-weight:700;color:${isTod?'var(--acc)':'var(--t1)'}">${hDeb||'—'}</div>
           </div>
           <div style="flex:1;min-width:0;padding:12px 14px">
-            <div style="font-size:13.5px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'} — ${p.lieu||p.type_prestation||'—'}</div>
+            <div style="font-size:13.5px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.clients?.nom||'—')} — ${esc(p.lieu||p.type_prestation||'—')}</div>
             ${extraInfo||(!teamNames?'<div style="font-size:10.5px;color:var(--wa);margin-top:3px">⚠ Aucun collaborateur affecté</div>':'')}
           </div>
           <div style="flex-shrink:0;padding:12px 16px;display:flex;align-items:center">
@@ -4135,7 +4154,7 @@ function renderProdPreList(){
       </div>
       <div style="flex:1;min-width:0;padding:12px 14px">
         <div style="font-size:13.5px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'}</div>
-        <div style="font-size:11.5px;color:var(--t2);margin-top:1px">${p.type_prestation||'—'} · ${p.lieu||'—'}</div>
+        <div style="font-size:11.5px;color:var(--t2);margin-top:1px">${p.type_prestation||'—'} · ${esc(p.lieu||'—')}</div>
         ${noEquipe?'<div style="font-size:10.5px;color:var(--wa);margin-top:3px">⚠ Aucun collaborateur affecté</div>':'<div style="font-size:10.5px;color:var(--t3);margin-top:3px">'+equipe.length+' collab. · <span style="font-family:monospace">'+( p.reference||'—')+'</span></div>'}
       </div>
       <div style="flex-shrink:0;padding:12px 14px;display:flex;align-items:center">
@@ -4203,7 +4222,7 @@ async function loadProdJourJ(){
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
             <div>
               <div style="font-size:15px;font-weight:800;color:var(--t1)">${p.clients?.nom||'—'}</div>
-              <div style="font-size:12px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'} · ${p.lieu||'—'} · ${heures}</div>
+              <div style="font-size:12px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'} · ${esc(p.lieu||'—')} · ${heures}</div>
             </div>
             <span style="font-size:11px;font-weight:700;padding:4px 10px;background:${brd}22;border:1px solid ${brd}55;border-radius:20px;color:${brd};flex-shrink:0;${isLive?'animation:prodPulse 2s ease-in-out infinite':''}">${ST_LB[p.statut]||p.statut}</span>
           </div>
@@ -4225,9 +4244,9 @@ async function loadProdJourJ(){
                 <div class="av" style="width:28px;height:28px;font-size:10px;background:${col}">${ini}</div>
                 <div style="flex:1;min-width:0">
                   <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${name}</div>
-                  ${c.telephone?`<div style="font-size:11px;color:var(--t3)">${c.telephone}</div>`:''}
+                  ${c.telephone?`<div style="font-size:11px;color:var(--t3)">${esc(c.telephone)}</div>`:''}
                 </div>
-                ${c.telephone?`<a href="tel:${c.telephone}" style="padding:5px 10px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;text-decoration:none">📞 Appeler</a>`:''}
+                ${c.telephone?`<a href="tel:${esc(c.telephone)}" style="padding:5px 10px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;text-decoration:none">📞 Appeler</a>`:''}
               </div>`;
             }).join(''):'<div style="font-size:12px;color:var(--wa)">⚠ Aucun collaborateur affecté</div>'}
           </div>
@@ -4273,7 +4292,7 @@ function renderProdBriefList(){
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--b1)">
         <div style="flex:1;min-width:0">
           <div style="font-size:13.5px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · ${p.lieu||'—'}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · ${esc(p.lieu||'—')}</div>
         </div>
         <span style="font-size:10.5px;font-weight:700;padding:3px 9px;background:${ok?'rgba(46,204,138,.1)':'rgba(245,165,36,.1)'};border:1px solid ${ok?'rgba(46,204,138,.25)':'rgba(245,165,36,.25)'};border-radius:20px;color:${ok?'var(--ok)':'var(--wa)'};flex-shrink:0;margin-left:10px">${ok?'✓ Complet':'⚠ Incomplet'}</span>
       </div>
@@ -5806,7 +5825,7 @@ async function modalAffecterCollab(collabId,collabName){
             <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
             <div style="font-size:11px;color:var(--t3);margin-top:2px">${date} · <span class="bd bw"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span></div>
           </div>
-          <button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${p.id}','${(p.reference||'').replace(/'/g,"\\'")}'),150)" style="flex-shrink:0;padding:8px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:700;cursor:pointer">Affecter</button>
+          <button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${p.id}','${escJs(p.reference||'')}'),150)" style="flex-shrink:0;padding:8px 14px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:700;cursor:pointer">Affecter</button>
         </div>`;
       }).join('')+'</div>';
   }catch(e){const el=document.getElementById('aff-pre-list');if(el)el.innerHTML='<div style="color:var(--er);font-size:13px;padding:10px">Erreur.</div>';}
@@ -5827,7 +5846,7 @@ async function loadEquipes(){
         <div><div class="cd-t">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div><div class="cd-s" style="font-family:monospace;font-size:10.5px">${p.reference||'—'}</div></div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="bd ${sCl[p.statut]||'bw'}"><span class="bd-d"></span>${sLb[p.statut]||p.statut}</span>
-          <button class="btn bg2 bs" onclick="modalEquipePrestation('${p.id}','${(p.reference||'').replace(/'/g,"\\'")}')">Gérer</button>
+          <button class="btn bg2 bs" onclick="modalEquipePrestation('${p.id}','${escJs(p.reference||'')}')">Gérer</button>
         </div>
       </div><div class="cd-b" style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 18px">
         ${equipe.length?equipe.map(m=>{
@@ -6014,7 +6033,7 @@ async function loadPhotoDash(){
             <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
               <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>${dateStr}</span>
               <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>${hdeb}${hfin!=='—'?' → '+hfin:''}</span>
-              ${p.lieu?`<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${p.lieu}</span>`:''}
+              ${p.lieu?`<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(p.lieu)}</span>`:''}
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button onclick="modalDetailById('${p.id}')" style="padding:9px 16px;font-size:12px;font-weight:600;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;cursor:pointer">Ouvrir la fiche</button>
@@ -6068,11 +6087,11 @@ async function loadPhotoDash(){
           return`<div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.04)">
             <div style="flex:1;cursor:pointer;min-width:0" onclick="modalDetailById('${p.id}')">
               <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.clients?.nom||'—'} — ${p.type_prestation||'—'}</div>
-              <div style="font-size:11px;color:var(--t3);margin-top:2px">${p.reference||'—'} · ${d} · ${p.lieu||'Lieu TBD'}</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:2px">${p.reference||'—'} · ${d} · ${esc(p.lieu||'Lieu TBD')}</div>
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0">
               <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;min-height:40px">✓ Accepter</button>
-              <button onclick="modalRefuserInvitation('${row.id}','${(p.clients?.nom||'').replace(/'/g,"\\'")} — ${(p.type_prestation||'').replace(/'/g,"\\'")}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;min-height:40px">✗ Refuser</button>
+              <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;min-height:40px">✗ Refuser</button>
             </div>
           </div>`;
         }).join('');
@@ -6134,7 +6153,7 @@ async function loadPhotoDash(){
                   <div style="font-size:13px;font-weight:600;color:var(--t1)">${nom}</div>
                   <div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mTxt||'Missions à venir'}</div>
                 </div>
-                <button onclick="ouvrirConvAvec('${p?.id}','${nom.replace(/'/g,"\\'")}')
+                <button onclick="ouvrirConvAvec('${p?.id}','${escJs(nom)}')
 " style="padding:7px 12px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);white-space:nowrap">💬 Message</button>
               </div>`;
             }).join('');
@@ -6212,13 +6231,13 @@ function renderPhotoPre(){
             <div style="font-size:12px;color:var(--t2);margin-bottom:6px">${p.type_prestation||'—'} · ${p.reference||'—'}</div>
             <div style="display:flex;gap:12px;flex-wrap:wrap">
               <span style="font-size:11px;color:var(--t3)">${d}${hdeb?' · RDV '+hdeb:''}</span>
-              ${p.lieu?`<span style="font-size:11px;color:var(--t3)">📍 ${p.lieu}</span>`:''}
+              ${p.lieu?`<span style="font-size:11px;color:var(--t3)">📍 ${esc(p.lieu)}</span>`:''}
               ${row.remuneration?`<span style="font-size:11px;font-weight:600;color:var(--ok)">${row.remuneration.toLocaleString('fr-FR')} €</span>`:''}
             </div>
           </div>
           ${row.statut==='invitation_envoyée'?`<div style="display:flex;flex-direction:column;gap:5px" onclick="event.stopPropagation()">
             <button onclick="repondreInvitation('${row.id}','acceptée')" style="padding:10px 14px;font-size:12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer;font-weight:600;white-space:nowrap;min-height:40px">✓ Accepter</button>
-            <button onclick="modalRefuserInvitation('${row.id}','${(p.clients?.nom||'').replace(/'/g,"\\'")} — ${(p.type_prestation||'').replace(/'/g,"\\'")}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
+            <button onclick="modalRefuserInvitation('${row.id}','${escJs(p.clients?.nom||'')} — ${escJs(p.type_prestation||'')}')" style="padding:10px 12px;font-size:12px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;white-space:nowrap;min-height:40px">✗ Refuser</button>
           </div>`:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:4px"><path d="M9 18l6-6-6-6"/></svg>'}
         </div>
       </div>
@@ -7463,7 +7482,7 @@ async function kitsModalAttribuer(kitId){
       <div class="fg"><label class="fl">Responsable du kit</label>
         <select id="attr-resp" class="fi">
           <option value="">— Responsable —</option>
-          ${(Array.isArray(colls)?colls:[]).map(c=>`<option value="${c.id}">${c.prenom||''} ${c.nom||''}</option>`).join('')}
+          ${(Array.isArray(colls)?colls:[]).map(c=>`<option value="${c.id}">${c.prenom||''} ${esc(c.nom||'')}</option>`).join('')}
         </select>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -7532,7 +7551,7 @@ async function kitsModalAttribuerCollab(kitId){
       <div class="fg"><label class="fl">Collaborateur</label>
         <select id="akc-collab" class="fi">
           <option value="">— Sélectionner —</option>
-          ${list.map(c=>`<option value="${c.id}">${c.prenom||''} ${c.nom||''}</option>`).join('')}
+          ${list.map(c=>`<option value="${c.id}">${c.prenom||''} ${esc(c.nom||'')}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -8649,7 +8668,7 @@ function dvOpenWide(){const w=document.querySelector('#sv-modal > div');if(w)w.s
 function modalNouveauDevis(){
   sbFetch('clients?select=id,nom,promo_bienvenue_disponible&order=nom.asc').then(clients=>{
     window._dvClientsPromoMap=Object.fromEntries((clients||[]).map(c=>[c.id,!!c.promo_bienvenue_disponible]));
-    const opts=(clients||[]).map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+    const opts=(clients||[]).map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
     const today=new Date().toISOString().slice(0,10);
     _dvLignes=[{libelle:'',details:'',qte:1,pu:0}];
     openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()">✕</button></div>
@@ -8675,7 +8694,7 @@ function modalNouveauDevis(){
 async function modalCreerDevisRapide(clientId,clientNom){
   const clients=await sbFetch('clients?select=id,nom,promo_bienvenue_disponible&order=nom.asc').catch(()=>[]);
   window._dvClientsPromoMap=Object.fromEntries((clients||[]).map(c=>[c.id,!!c.promo_bienvenue_disponible]));
-  const opts=(clients||[]).map(c=>`<option value="${c.id}"${c.id===clientId?' selected':''}>${c.nom}</option>`).join('');
+  const opts=(clients||[]).map(c=>`<option value="${c.id}"${c.id===clientId?' selected':''}>${esc(c.nom)}</option>`).join('');
   const today=new Date().toISOString().slice(0,10);
   const templates=[
     {lb:'Couverture match (1 rencontre)',desc:'Couverture photographique + vidéo d\'une rencontre sportive. Livraison sous 48h.',qte:1,pu:250},
@@ -8782,7 +8801,7 @@ async function creerDevis(){
 
 async function modalNouveauDevisFromPrestation(prestId,clientNom,montantHT){
   const clients=await sbFetch('clients?select=id,nom&order=nom.asc').catch(()=>[]);
-  const opts=(clients||[]).map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+  const opts=(clients||[]).map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
   const matchedId=(clients||[]).find(c=>c.nom===clientNom)?.id||'';
   const today=new Date().toISOString().slice(0,10);
   _dvLignes=[{libelle:'Prestation SportVision',details:'',qte:1,pu:parseFloat(montantHT)||0}];
@@ -8958,7 +8977,7 @@ async function imprimerDevis(id){
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision</div>
     <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Destinataire</div>
-    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${c.nom||'—'}</div>
+    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${esc(c.nom||'—')}</div>
     <div style="font-size:12px;color:#555E73;line-height:1.7">${[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||''}${c.email?'<br>'+c.email:''}${c.telephone?'<br>'+c.telephone:''}${c.ville?'<br>'+c.ville:''}</div></div>
 </div>
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:28px">
@@ -9008,10 +9027,10 @@ async function envoyerDevisParEmail(id){
       <div class="mb">
         <div style="background:rgba(14,165,255,.07);border:1px solid rgba(14,165,255,.18);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:var(--t2);display:flex;gap:16px;flex-wrap:wrap">
           <span><span style="color:var(--t3);font-size:11px">DEVIS</span><br><span style="font-weight:700;color:var(--acc)">${num}</span></span>
-          <span><span style="color:var(--t3);font-size:11px">CLIENT</span><br><span style="font-weight:600">${c.nom||'—'}</span></span>
+          <span><span style="color:var(--t3);font-size:11px">CLIENT</span><br><span style="font-weight:600">${esc(c.nom||'—')}</span></span>
           <span><span style="color:var(--t3);font-size:11px">MONTANT TTC</span><br><span style="font-weight:700;color:var(--ok)">${montant}</span></span>
         </div>
-        <div class="fg"><label class="fl">Destinataire *</label><input id="em-to" class="fi" type="email" value="${c.email||''}" placeholder="email@club.fr"></div>
+        <div class="fg"><label class="fl">Destinataire *</label><input id="em-to" class="fi" type="email" value="${esc(c.email||'')}" placeholder="email@club.fr"></div>
         <div class="fg"><label class="fl">Objet</label><input id="em-subj" class="fi" type="text" value="Devis ${num} — SportVision"></div>
         <div class="fg"><label class="fl">Message</label><textarea id="em-msg" class="fi" rows="7" style="font-family:inherit;white-space:pre-wrap">${msgDefaut}</textarea></div>
         ${d.statut==='brouillon'?`<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2);cursor:pointer;margin-top:2px"><input type="checkbox" id="em-markSent" checked style="width:15px;height:15px;accent-color:var(--acc2)"> Marquer comme "Envoyé" après l'envoi</label>`:''}
@@ -9104,7 +9123,7 @@ async function imprimerFacture(id){
     const lignesHtml=lignes.length?lignes.map(l=>{
       const qte=l.quantite||l.qte||1;const pu=l.prix_unitaire||l.pu||0;
       return`<tr><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;font-weight:600;font-size:13px">${l.description||l.libelle||'—'}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:center">${qte}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right">${fmt(pu)}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right;font-weight:600">${fmt(qte*pu)}</td></tr>`;
-    }).join(''):`<tr><td colspan="4" style="padding:16px 14px;color:#555E73;font-size:12.5px"><div style="font-weight:600">${p.description_besoin||'Prestation sportive'}</div>${p.livrables_demandes?`<div style="margin-top:3px;color:#8891A8">${p.livrables_demandes}</div>`:''}</td></tr>`;
+    }).join(''):`<tr><td colspan="4" style="padding:16px 14px;color:#555E73;font-size:12.5px"><div style="font-weight:600">${esc(p.description_besoin||'Prestation sportive')}</div>${p.livrables_demandes?`<div style="margin-top:3px;color:#8891A8">${esc(p.livrables_demandes)}</div>`:''}</td></tr>`;
     const sfLbl={payée:'Payée',facturée:'Facturée',partiellement_payée:'Part. payée',en_retard:'En retard',non_facturée:'Non facturée'};
     const sfClr={payée:'#2ECC8A',facturée:'#366BFF',partiellement_payée:'#F5A524',en_retard:'#F0445E',non_facturée:'#8891A8'};
     const sf=p.statut_financier||'non_facturée';
@@ -9135,13 +9154,13 @@ async function imprimerFacture(id){
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision</div>
     <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Client</div>
-    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${c.nom||'—'}</div>
+    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${esc(c.nom||'—')}</div>
     <div style="font-size:12px;color:#555E73;line-height:1.7">${[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||''}${c.email?'<br>'+c.email:''}${c.telephone?'<br>'+c.telephone:''}${c.ville?'<br>'+c.ville:''}</div></div>
 </div>
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:28px">
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:4px">Réf. prestation</div><div style="font-size:12.5px;font-weight:600;color:#1a1a2e;font-family:monospace">${p.reference||'—'}</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:4px">Date prestation</div><div style="font-size:12.5px;font-weight:600;color:#1a1a2e">${fd(p.date_prestation)}</div></div>
-  <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:4px">Lieu</div><div style="font-size:12.5px;font-weight:600;color:#1a1a2e">${p.lieu||'—'}</div></div>
+  <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:4px">Lieu</div><div style="font-size:12.5px;font-weight:600;color:#1a1a2e">${esc(p.lieu||'—')}</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:4px">Date de facturation</div><div style="font-size:12.5px;font-weight:600;color:#1a1a2e">${fd(fact?.date_emission||new Date().toISOString())}</div></div>
 </div>
 <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
@@ -9181,10 +9200,10 @@ async function envoyerFactureParEmail(prestationId){
       <div class="mb">
         <div style="background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.18);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:var(--t2);display:flex;gap:16px;flex-wrap:wrap">
           <span><span style="color:var(--t3);font-size:11px">FACTURE</span><br><span style="font-weight:700;color:#2ECC8A">${num}</span></span>
-          <span><span style="color:var(--t3);font-size:11px">CLIENT</span><br><span style="font-weight:600">${c.nom||'—'}</span></span>
+          <span><span style="color:var(--t3);font-size:11px">CLIENT</span><br><span style="font-weight:600">${esc(c.nom||'—')}</span></span>
           <span><span style="color:var(--t3);font-size:11px">MONTANT TTC</span><br><span style="font-weight:700;color:var(--ok)">${montant}</span></span>
         </div>
-        <div class="fg"><label class="fl">Destinataire *</label><input id="em-to" class="fi" type="email" value="${c.email||''}" placeholder="email@club.fr"></div>
+        <div class="fg"><label class="fl">Destinataire *</label><input id="em-to" class="fi" type="email" value="${esc(c.email||'')}" placeholder="email@club.fr"></div>
         <div class="fg"><label class="fl">Objet</label><input id="em-subj" class="fi" type="text" value="Facture ${num} — SportVision"></div>
         <div class="fg"><label class="fl">Message</label><textarea id="em-msg" class="fi" rows="7" style="font-family:inherit;white-space:pre-wrap">${msgDefaut}</textarea></div>
         <div id="em-err" style="color:var(--er);font-size:12px;min-height:16px;margin-top:6px"></div>
@@ -9467,7 +9486,7 @@ async function loadCmDash(){
       const cl_actifs=list.filter(c=>['client','partenaire'].includes(c.statut)).slice(0,6);
       ec.innerHTML=cl_actifs.length?'<div class="cd-b">'+cl_actifs.map(c=>`
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClientById('${c.id}')">
-          <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${c.nom}</div>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div>
             <div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div>
           </div>
           <span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Client ›</span>
@@ -9750,7 +9769,7 @@ function renderPipeline(){
     else{lcHtml='<div style="font-size:10px;color:rgba(240,68,94,.55);margin-top:3px">Pas encore contacté</div>';}
     return`<div class="pip-card" onclick="modalModifierClient(${idx})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
-        <div class="pip-cn">${c.nom}</div>
+        <div class="pip-cn">${esc(c.nom)}</div>
         ${score>0?`<span style="font-size:9px;font-weight:700;color:#F5A524;background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.3);border-radius:4px;padding:1px 5px;flex-shrink:0">${score}</span>`:''}
       </div>
       <div class="pip-det">${[c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div>
@@ -9759,7 +9778,7 @@ function renderPipeline(){
       ${hasDv?`<div style="margin-top:4px"><span style="font-size:9px;background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.25);border-radius:4px;padding:1px 6px;color:#7C4DFF">${dvList.length} devis</span></div>`:''}
       <div class="pip-qa" onclick="event.stopPropagation()">
         <button onclick="modalAjouterContact('${c.id}')" style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);color:var(--acc)">+ Contact</button>
-        ${!hasDv&&['prospect','qualifié','devis_envoyé'].includes(c.statut)?`<button onclick="modalCreerDevisRapide('${c.id}','${c.nom.replace(/'/g,"\\'")}') " style="background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);color:#7C4DFF">Devis</button>`:''}
+        ${!hasDv&&['prospect','qualifié','devis_envoyé'].includes(c.statut)?`<button onclick="modalCreerDevisRapide('${c.id}','${escJs(c.nom)}') " style="background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);color:#7C4DFF">Devis</button>`:''}
         ${nxt?`<button onclick="avancerPipeline('${c.id}','${nxt}')" style="background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);color:var(--ok)">${nxtLb}</button>`:''}
       </div>
     </div>`;
@@ -9782,7 +9801,7 @@ function renderPipeline(){
       <span class="pip-ht" style="color:var(--t3)">Perdus</span>
       <span class="kb-cnt">${perdu.length}</span>
     </div>
-    <div class="pip-b">${perdu.map(c=>`<div style="font-size:11px;color:var(--t3);padding:6px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:7px;cursor:pointer" onclick="modalModifierClient(${list.indexOf(c)})">${c.nom}</div>`).join('')}</div>
+    <div class="pip-b">${perdu.map(c=>`<div style="font-size:11px;color:var(--t3);padding:6px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:7px;cursor:pointer" onclick="modalModifierClient(${list.indexOf(c)})">${esc(c.nom)}</div>`).join('')}</div>
   </div>`:'' ;
 
   el.innerHTML='<div class="pip">'+mainCols+perduCol+'</div>';
@@ -9944,7 +9963,7 @@ async function _renderMsgConv(myUid){
       const clr=ROLE_COLORS[who?.role]||'var(--acc)';
       const sep=dayKey!==lastDay?`<div style="text-align:center;margin:12px 0"><span style="font-size:10px;color:var(--t3);background:var(--s2);padding:3px 12px;border-radius:20px;border:1px solid var(--b1)">${dayKey}</span></div>`:'';
       lastDay=dayKey;
-      const msgTxt=(m.contenu||'').replace(/'/g,"\\'");
+      const msgTxt=escJs(m.contenu||'');
       const rowAv=who?.av&&!isMe?`<img src="${who.av}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-bottom:2px">`:`<div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--acc)':clr+'22'};border:${isMe?'none':'1px solid '+clr+'44'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-bottom:2px;color:${isMe?'#fff':clr}">${ini}</div>`;
       return sep+`<div class="msg-row" style="display:flex;gap:9px;padding:4px 16px;align-items:flex-end;${isMe?'flex-direction:row-reverse':''}" onmouseenter="this.querySelector('.msg-acts')?.style.setProperty('opacity','1')" onmouseleave="this.querySelector('.msg-acts')?.style.setProperty('opacity','0')">
         ${rowAv}
@@ -11462,7 +11481,7 @@ function renderFormCatalogue(el,prog){
       ${filtered.map(f=>{
         const sl=getSlb(f);const fp=prog[f.id];const ld=Object.keys(fp?.lessons||{}).length;const tl=f.modules.reduce((s,m)=>s+m.lecons.length,0);const pct=tl&&fp?Math.round(ld/tl*100):0;
         const lockLbl=_formLockLabel(f);
-        return`<div onclick="${lockLbl?`toast('${lockLbl.replace(/'/g,"\\'")}','wa')`:`modalFormDetail('${f.id}')`}" style="background:var(--s1);border:1px solid ${lockLbl?'var(--b1)':f.obligatoire&&!fp?'rgba(240,68,94,.3)':'var(--b1)'};border-radius:12px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:8px;${lockLbl?'opacity:.55':''}">
+        return`<div onclick="${lockLbl?`toast('${escJs(lockLbl)}','wa')`:`modalFormDetail('${f.id}')`}" style="background:var(--s1);border:1px solid ${lockLbl?'var(--b1)':f.obligatoire&&!fp?'rgba(240,68,94,.3)':'var(--b1)'};border-radius:12px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:8px;${lockLbl?'opacity:.55':''}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start">
             <div style="font-size:30px;line-height:1">${f.icone}</div>
             ${lockLbl?`<span style="font-size:9px;font-weight:700;color:var(--t3);background:var(--s2);padding:2px 7px;border-radius:20px;flex-shrink:0">🔒 ${f.minGrade}⭐</span>`:f.obligatoire?`<span style="font-size:9px;font-weight:700;color:var(--er);background:rgba(240,68,94,.12);padding:2px 7px;border-radius:20px;flex-shrink:0">Oblig.</span>`:f.certification?`<span style="font-size:9px;font-weight:700;color:#9C6FFF;background:rgba(124,77,255,.12);padding:2px 7px;border-radius:20px;flex-shrink:0">🏅</span>`:''}
@@ -12962,7 +12981,7 @@ async function loadAdminFormCertifs(){
       const exp=c.date_expiration?new Date(c.date_expiration):null;
       return`<tr>
         <td class="tm">${c.profiles?.prenom||''} ${c.profiles?.nom||''}<div style="font-size:10px;color:var(--t3)">${ROLE_LABELS[c.profiles?.role]||c.profiles?.role||''}</div></td>
-        <td class="tm">${c.badge||'🏅'} ${c.nom}</td>
+        <td class="tm">${c.badge||'🏅'} ${esc(c.nom)}</td>
         <td style="font-size:11px;color:var(--t3)">${f?.titre||c.formation_id||'—'}</td>
         <td style="font-size:11.5px">${dt?dt.toLocaleDateString('fr-FR'):'—'}</td>
         <td style="font-size:11.5px;color:${c.statut==='expiree'?'var(--er)':c.daysLeft!==null&&c.daysLeft<=60?'var(--wa)':'var(--t2)'}">${exp?exp.toLocaleDateString('fr-FR')+(c.daysLeft!==null?' ('+c.daysLeft+'j)':''):'—'}</td>
@@ -13024,7 +13043,7 @@ async function loadAdminFormCatalogue(){
         <button onclick="window.open('https://supabase.com/dashboard/project/lulgezzpvrlbftbykzrc/sql/new','_blank')" class="btn bp bs" style="margin-left:8px;font-size:11px">SQL Editor →</button>
       </div>`:''}
       <div class="tw"><table><thead><tr><th>Formation</th><th>Catégorie</th><th>Niveau</th><th>XP</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
-        ${allForms.map(f=>{const tS=(f.titre||'').replace(/'/g,"\\'");return`<tr>
+        ${allForms.map(f=>{const tS=escJs(f.titre||'');return`<tr>
           <td class="tm"><span style="margin-right:6px">${f.icone||'📚'}</span>${f.titre}${f.obligatoire?' <span style="font-size:9px;color:var(--er);font-weight:700;vertical-align:middle">●</span>':''}</td>
           <td style="font-size:11.5px;color:var(--t3)">${f.categorie||'—'}</td>
           <td style="font-size:11.5px">${f.niveau||'—'}</td>
@@ -13187,7 +13206,7 @@ async function supprimerFormationCustom(id){
 }
 
 async function modalGererQuizFormation(formId,formTitre){
-  const titleSafe=formTitre.replace(/'/g,"\\'");
+  const titleSafe=escJs(formTitre);
   openModal(`<div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:4px">Quiz — ${formTitre}</div>
     <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Gérer les questions (remplacent les questions intégrées si présentes)</div>
     <div id="quiz-admin-content"><div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
@@ -13229,7 +13248,7 @@ async function _reloadQuizAdmin(formId,formTitre){
       </div>`).join('');
     } else {
       html=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${list.length} question${list.length>1?'s':''} (base de données)</div>`;
-      const titleSafe=formTitre.replace(/'/g,"\\'");
+      const titleSafe=escJs(formTitre);
       html+=list.map((q,i)=>{
         const opts=Array.isArray(q.options)?q.options:[];
         return`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;gap:10px;align-items:flex-start">
@@ -13898,7 +13917,7 @@ async function loadComDash(){
       const scl={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis envoyé','négociation':'Négociation'};
       ep.innerHTML=prox.length?'<div class="cd-b">'+prox.map(c=>{const i=list.indexOf(c);return`
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
-          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${c.nom}</div><div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div><div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
           <span class="bd ${scc[c.statut]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${scl[c.statut]||c.statut}</span>
         </div>`;}).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun prospect. Ajoutez des contacts via le Pipeline.</div>';
@@ -13908,7 +13927,7 @@ async function loadComDash(){
       const clients_signes=list.filter(c=>['partenaire','client'].includes(c.statut)).slice(0,5);
       ec.innerHTML=clients_signes.length?'<div class="cd-b">'+clients_signes.map(c=>{const i=list.indexOf(c);return`
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalModifierClient(${i})">
-          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${c.nom}</div><div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</div><div style="font-size:11px;color:var(--t3)">${[c.type_client,c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
           <span class="bd ${c.statut==='partenaire'?'bn':'ba'}" style="font-size:10px"><span class="bd-d"></span>${c.statut==='partenaire'?'Partenaire':'Client'}</span>
         </div>`;}).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun client signé pour l\'instant.</div>';
@@ -14635,8 +14654,8 @@ async function loadSecDash(){
       const scl={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis envoyé','négociation':'Négociation','partenaire':'Partenaire','client':'Client','inactif':'Inactif','bloqué':'Bloqué','perdu':'Perdu'};
       ec.innerHTML=(recents||[]).length?'<div class="tw"><table><thead><tr><th>Client</th><th>Ville</th><th>Statut</th><th></th></tr></thead><tbody>'+
         (recents||[]).map(c=>`<tr>
-          <td class="tp">${c.nom}</td>
-          <td>${c.ville||'—'}</td>
+          <td class="tp">${esc(c.nom)}</td>
+          <td>${esc(c.ville||'—')}</td>
           <td><span class="bd ${scc[c.statut]||'bw'}"><span class="bd-d"></span>${scl[c.statut]||c.statut}</span></td>
           <td><button class="btn bg2 bs" onclick="modalModifierClientById('${c.id}')">Ouvrir</button></td>
         </tr>`).join('')+'</tbody></table></div>':
@@ -15095,15 +15114,15 @@ async function loadJourJ(){
               ${p.lieu?`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
                 <span style="font-size:18px;flex-shrink:0">📍</span>
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.lieu}</div>
-                  ${p.adresse_complete?`<div style="font-size:11px;color:var(--t3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.adresse_complete}</div>`:''}
+                  <div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.lieu)}</div>
+                  ${p.adresse_complete?`<div style="font-size:11px;color:var(--t3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.adresse_complete)}</div>`:''}
                 </div>
                 ${mapsUrl?`<a href="${mapsUrl}" target="_blank" style="flex-shrink:0;padding:7px 14px;background:rgba(54,107,255,.15);border:1px solid rgba(54,107,255,.3);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:700;text-decoration:none">GPS</a>`:''}
               </div>`:''}
               ${p.contact_sur_place?`<div style="display:flex;align-items:center;gap:10px;padding:10px 0">
                 <span style="font-size:18px;flex-shrink:0">👤</span>
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:13px;font-weight:600;color:var(--t1)">${p.contact_sur_place}</div>
+                  <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(p.contact_sur_place)}</div>
                   ${p.telephone_sur_place?`<div style="font-size:11px;color:var(--t3);margin-top:1px">${p.telephone_sur_place}</div>`:''}
                 </div>
                 ${telUrl?`<a href="${telUrl}" style="flex-shrink:0;padding:7px 14px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;text-decoration:none">📞 Appeler</a>`:''}
@@ -15338,7 +15357,7 @@ function modalPhotoBriefing(p){
   const d=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'—';
   const rdv=(p.heure_rdv||p.heure_debut||'').slice(0,5);
   const hasBrief=p.description_besoin||p.livrables_demandes;
-  const decBtn=p._equipeId?`<button class="btn bp" onclick="closeModal();modalDeclarerHeures('${p._equipeId}','${(p.reference||'').replace(/'/g,"\\'")}')" >Déclarer mes heures</button>`:'';
+  const decBtn=p._equipeId?`<button class="btn bp" onclick="closeModal();modalDeclarerHeures('${p._equipeId}','${escJs(p.reference||'')}')" >Déclarer mes heures</button>`:'';
   const decNote=p._heuresDec?`<div style="margin-top:2px;font-size:11px;color:var(--ok)">✓ ${p._heuresDec}h déclarées</div>`:'';
   openModal(`<div class="mh">
     <div>
@@ -15362,14 +15381,14 @@ function modalPhotoBriefing(p){
     ${p.lieu?`<div style="background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:12px;display:flex;align-items:flex-start;gap:10px">
       <span style="font-size:20px">📍</span>
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--t1)">${p.lieu}</div>
-        ${p.adresse_complete?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${p.adresse_complete}</div>`:''}
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(p.lieu)}</div>
+        ${p.adresse_complete?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(p.adresse_complete)}</div>`:''}
       </div>
     </div>`:''}
     ${p.contact_sur_place?`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s1);border:1px solid var(--b1);border-radius:10px">
       <span style="font-size:18px">👤</span>
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--t1)">${p.contact_sur_place}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--t1)">${esc(p.contact_sur_place)}</div>
         ${p.telephone_sur_place?`<div style="font-size:11px;color:var(--t3)">${p.telephone_sur_place}</div>`:''}
       </div>
       ${p.telephone_sur_place?`<a href="tel:${p.telephone_sur_place.replace(/[\s\-\(\)]/g,'')}" style="padding:7px 12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;text-decoration:none">📞</a>`:''}
@@ -15379,17 +15398,17 @@ function modalPhotoBriefing(p){
       ${hasBrief?`
         ${p.description_besoin?`<div style="margin-bottom:10px">
           <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Besoin client</div>
-          <div style="font-size:13px;color:var(--t1);white-space:pre-wrap;line-height:1.5">${p.description_besoin}</div>
+          <div style="font-size:13px;color:var(--t1);white-space:pre-wrap;line-height:1.5">${esc(p.description_besoin)}</div>
         </div>`:''}
         ${p.livrables_demandes?`<div>
           <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Livrables attendus</div>
-          <div style="font-size:13px;color:var(--t1);white-space:pre-wrap;line-height:1.5">${p.livrables_demandes}</div>
+          <div style="font-size:13px;color:var(--t1);white-space:pre-wrap;line-height:1.5">${esc(p.livrables_demandes)}</div>
         </div>`:''}
       `:'<div style="text-align:center;padding:14px;color:var(--t3);font-size:12px">Aucun brief renseigné pour cette mission.</div>'}
     </div>
     ${p.notes_internes?`<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:10px 12px">
       <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Notes</div>
-      <div style="font-size:12px;color:var(--t2);white-space:pre-wrap">${p.notes_internes}</div>
+      <div style="font-size:12px;color:var(--t2);white-space:pre-wrap">${esc(p.notes_internes)}</div>
     </div>`:''}
   </div>
   <div class="mf">
@@ -15483,28 +15502,28 @@ function modalProdFiche(p){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Date</label><input id="pd-date" type="date" class="l-inp" value="${p.date_prestation||''}" style="height:38px"></div>
-        <div><label style="${L}">Lieu</label><input id="pd-lieu" type="text" class="l-inp" value="${p.lieu||''}" style="height:38px"></div>
+        <div><label style="${L}">Lieu</label><input id="pd-lieu" type="text" class="l-inp" value="${esc(p.lieu||'')}" style="height:38px"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
         <div><label style="${L}">RDV équipe</label><input id="pd-hrdv" type="time" class="l-inp" value="${p.heure_rdv?p.heure_rdv.slice(0,5):''}" style="height:38px"></div>
         <div><label style="${L}">Heure début</label><input id="pd-hdeb" type="time" class="l-inp" value="${p.heure_debut?p.heure_debut.slice(0,5):''}" style="height:38px"></div>
         <div><label style="${L}">Heure fin</label><input id="pd-hfin" type="time" class="l-inp" value="${p.heure_fin?p.heure_fin.slice(0,5):''}" style="height:38px"></div>
       </div>
-      <div><label style="${L}">Adresse complète</label><input id="pd-adr" type="text" class="l-inp" value="${p.adresse_complete||''}" style="height:38px" placeholder="Rue, code postal, ville…"></div>
+      <div><label style="${L}">Adresse complète</label><input id="pd-adr" type="text" class="l-inp" value="${esc(p.adresse_complete||'')}" style="height:38px" placeholder="Rue, code postal, ville…"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="${L}">Contact sur place</label><input id="pd-csp" type="text" class="l-inp" value="${p.contact_sur_place||''}" style="height:38px"></div>
+        <div><label style="${L}">Contact sur place</label><input id="pd-csp" type="text" class="l-inp" value="${esc(p.contact_sur_place||'')}" style="height:38px"></div>
         <div><label style="${L}">Tél. sur place</label><input id="pd-tsp" type="tel" class="l-inp" value="${p.telephone_sur_place||''}" style="height:38px" placeholder="06 …"></div>
       </div>
-      <div><label style="${L}">Notes internes</label><textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none">${p.notes_internes||''}</textarea></div>
+      <div><label style="${L}">Notes internes</label><textarea id="pd-notes" class="l-inp" style="height:60px;padding-top:10px;resize:none">${esc(p.notes_internes||'')}</textarea></div>
       ${nextSt?`<div><button onclick="pdAvancer()" style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;background:rgba(54,107,255,.12);border:1px solid rgba(54,107,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;font-size:12px;font-weight:600"><span style="opacity:.7">→</span> Étape suivante : ${SL[nextSt]||nextSt}</button></div>`:''}
     </div>
     <div id="pf-panel-equipe" style="display:none;flex-direction:column;gap:10px">
       <div id="pd-equipe-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
-      <button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${pref}','${(p.reference||'').replace(/'/g,"\\'")}'),150)" style="align-self:flex-start;padding:8px 14px;font-size:12px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Gérer l'équipe</button>
+      <button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${pref}','${escJs(p.reference||'')}'),150)" style="align-self:flex-start;padding:8px 14px;font-size:12px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Gérer l'équipe</button>
     </div>
     <div id="pf-panel-brief" style="display:none;flex-direction:column;gap:11px">
-      <div><label style="${L}">Description du besoin</label><textarea id="pd-desc" class="l-inp" style="height:90px;padding-top:10px;resize:none" placeholder="Que souhaite le client ?">${p.description_besoin||''}</textarea></div>
-      <div><label style="${L}">Livrables attendus</label><textarea id="pd-livr" class="l-inp" style="height:90px;padding-top:10px;resize:none" placeholder="Photos, vidéos, délais…">${p.livrables_demandes||''}</textarea></div>
+      <div><label style="${L}">Description du besoin</label><textarea id="pd-desc" class="l-inp" style="height:90px;padding-top:10px;resize:none" placeholder="Que souhaite le client ?">${esc(p.description_besoin||'')}</textarea></div>
+      <div><label style="${L}">Livrables attendus</label><textarea id="pd-livr" class="l-inp" style="height:90px;padding-top:10px;resize:none" placeholder="Photos, vidéos, délais…">${esc(p.livrables_demandes||'')}</textarea></div>
     </div>
     <div id="pf-panel-budget" style="display:none;flex-direction:column;gap:11px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -15621,7 +15640,7 @@ async function loadPlanning(){
           const isWE=dow===0||dow===6;
           const isToday=key===today;
           const pres=byDay[key]||[];
-          const dayStr=key.replace(/'/g,"\\'");
+          const dayStr=escJs(key);
           const evs=pres.slice(0,3).map(p=>{
             const clr=STATUS_COLOR[p.statut]||'#6B7CFF';
             const lbl=(p.clients?.nom||p.type_prestation||'Prestation').slice(0,20);
@@ -15660,7 +15679,7 @@ async function loadPlanning(){
               const brd=sc==='ba'?'var(--ok)':sc==='bl'?'var(--er)':'var(--acc)';
               const h=p.heure_debut?p.heure_debut.slice(0,5):'';
               const hf=p.heure_fin?'→'+p.heure_fin.slice(0,5):'';
-              const gcT=(p.clients?.nom||p.type_prestation||'Prestation').replace(/'/g,"\\'");
+              const gcT=escJs(p.clients?.nom||p.type_prestation||'Prestation');
               return `<div style="background:${clr};border-left:3px solid ${brd};border-radius:0 6px 6px 0;padding:6px 10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px" onclick="modalDetailById('${p.id}')">
                 <div style="min-width:0">
                   <div style="font-size:12px;font-weight:600;color:var(--t1)">${p.reference||'—'} · ${p.clients?.nom||'—'}</div>
@@ -16320,7 +16339,7 @@ async function runSearch(q){
         rows:(cli||[]).map(c=>({
           title:c.nom||'—',
           sub:[c.ville,c.sport].filter(Boolean).join(' · ')||c.statut,
-          action:`closeModal();_crmFiltre='${c.nom.replace(/'/g,"\\'")}';_crmStFiltre='';switchView('${dest}')`,
+          action:`closeModal();_crmFiltre='${escJs(c.nom)}';_crmStFiltre='';switchView('${dest}')`,
         })),
       });
     }
@@ -16978,8 +16997,8 @@ async function loadPhotoPlan(){
                 const p=r.prestations;
                 const rdv=(r.heure_rdv||p.heure_rdv||p.heure_debut||'').slice(0,5);
                 const clr=SC_C[p.statut]||'#366BFF';
-                const gcalTitre=(p.clients?.nom||p.type_prestation||'Prestation').replace(/'/g,"\\'");
-                const gcalLieu=(p.lieu||'').replace(/'/g,"\\'");
+                const gcalTitre=escJs(p.clients?.nom||p.type_prestation||'Prestation');
+                const gcalLieu=escJs(p.lieu||'');
                 return`<div onclick="modalDetailById('${p.id}')" style="background:${clr};border-radius:4px;padding:2px 4px;margin-bottom:3px;cursor:pointer;overflow:hidden" title="${p.clients?.nom||''}${rdv?' — '+rdv:''}">
                   ${rdv?`<div style="font-size:8px;font-weight:700;color:rgba(255,255,255,.8);line-height:1.2">${rdv}</div>`:''}
                   <div style="font-size:9px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3">${p.clients?.nom||p.type_prestation||'—'}</div>
@@ -17039,7 +17058,7 @@ async function loadRapport(){
     setH('rp-clients',topCli.length===0?'<div style="padding:24px;text-align:center;color:var(--t3);font-size:12px">Aucune prestation ce mois.</div>':
       topCli.map((c,i)=>`<div style="padding:10px 0;${i<topCli.length-1?'border-bottom:1px solid var(--b1)':''}">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
-          <span style="font-size:13px;font-weight:500;color:var(--t1)">${c.nom}</span>
+          <span style="font-size:13px;font-weight:500;color:var(--t1)">${esc(c.nom)}</span>
           <span style="font-size:12px;font-weight:600;color:var(--ok);font-variant-numeric:tabular-nums">${fmt(c.ca)}</span>
         </div>
         <div style="height:4px;border-radius:2px;background:var(--b1)"><div style="height:4px;border-radius:2px;width:${Math.round(c.ca/maxCa*100)}%;background:var(--gr)"></div></div>
@@ -17214,7 +17233,7 @@ function modalNouveauContrat(){
   sbFetch('clients?select=id,nom&order=nom.asc').then(r=>{
     const sel=document.getElementById('nc-client');if(!sel)return;
     const list=Array.isArray(r)?r:[];
-    sel.innerHTML=`<option value="">Sélectionner un client...</option>${list.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('')}`;
+    sel.innerHTML=`<option value="">Sélectionner un client...</option>${list.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('')}`;
   });
 }
 
@@ -17361,7 +17380,7 @@ async function modalEditerContrat(id){
         <label for="ec-auto" style="font-size:13px;color:var(--t2);cursor:pointer">Renouvellement automatique</label>
       </div>
       <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES</label>
-        <textarea id="ec-notes" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box">${c.notes||''}</textarea></div>
+        <textarea id="ec-notes" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(c.notes||'')}</textarea></div>
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:20px">
       <button onclick="supprimerContrat('${c.id}')" style="padding:8px 14px;font-size:12px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>
@@ -17427,7 +17446,7 @@ async function loadUsers(){
             <select onchange="changerRoleUser('${u.id}',this.value)" style="flex:1;height:30px;font-size:11px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);padding:0 8px">
               ${Object.entries(RL).map(([k,v])=>`<option value="${k}"${u.role===k?' selected':''}>${v}</option>`).join('')}
             </select>
-            <button onclick="confirmerSupprimerUser('${u.id}','${(u.prenom||'').replace(/'/g,"\\'")}','${(u.nom||'').replace(/'/g,"\\'")}')" style="padding:0 10px;height:30px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer" title="Supprimer">✕</button>
+            <button onclick="confirmerSupprimerUser('${u.id}','${escJs(u.prenom||'')}','${escJs(u.nom||'')}')" style="padding:0 10px;height:30px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer" title="Supprimer">✕</button>
           </div>`:`<div style="font-size:11px;color:var(--t3);font-style:italic">Votre compte — non modifiable ici</div>`}
         </div>`;
       }).join('')}
@@ -17498,7 +17517,7 @@ async function loadGrades(){
         <div style="width:22px;text-align:center;font-size:12px;font-weight:700;color:${i===0?'#F5A524':i===1?'#8891A8':i===2?'#FF6B35':'var(--t3)'}">${i+1}</div>
         <div style="width:32px;height:32px;border-radius:50%;background:${c.grade.color}22;border:1px solid ${c.grade.color}44;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${c.grade.color};flex-shrink:0">${(c.prenom||'?')[0].toUpperCase()}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:500;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.prenom||''} ${c.nom||''}</div>
+          <div style="font-size:13px;font-weight:500;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.prenom||''} ${esc(c.nom||'')}</div>
           <div style="font-size:11px;color:${c.grade.color}">${c.grade.ic} ${c.grade.nom}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
@@ -17515,7 +17534,7 @@ async function loadGrades(){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px">
         <div style="display:flex;align-items:center;gap:8px;min-width:0">
           <span style="font-size:15px">${c.grade.ic}</span>
-          <span style="font-size:13px;font-weight:500;color:var(--t1);white-space:nowrap">${c.prenom||''} ${c.nom||''}</span>
+          <span style="font-size:13px;font-weight:500;color:var(--t1);white-space:nowrap">${c.prenom||''} ${esc(c.nom||'')}</span>
           <span style="font-size:11px;padding:1px 7px;border-radius:20px;background:${c.grade.color}22;color:${c.grade.color};font-weight:600">${c.grade.nom}</span>
         </div>
         <div style="font-size:12px;font-weight:600;color:var(--t1);font-variant-numeric:tabular-nums;flex-shrink:0">${c.xp.toLocaleString('fr')} XP${c.nextGrade?' / '+c.nextGrade.xp.toLocaleString('fr'):'  MAX'}</div>
@@ -18982,7 +19001,7 @@ function annuaireCard(p){
       </div>
     </div>
     <div style="padding:10px 14px;border-top:1px solid var(--b1);display:flex;gap:8px">
-      <button onclick="ouvrirConvAvec('${p.id}','${(p.prenom||'').replace(/'/g,"\\'")} ${(p.nom||'').replace(/'/g,"\\'")}')" style="flex:1;padding:8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">💬 Message</button>
+      <button onclick="ouvrirConvAvec('${p.id}','${escJs(p.prenom||'')} ${escJs(p.nom||'')}')" style="flex:1;padding:8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">💬 Message</button>
       ${canSeePhone?(p.telephone
         ?`<a href="tel:${p.telephone}" style="flex:1;padding:8px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px">📞 Appeler</a>`
         :`<span title="Numéro non renseigné" style="flex:1;padding:8px;background:rgba(46,204,138,.03);border:1px solid rgba(46,204,138,.1);border-radius:var(--rp);color:var(--t3);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:4px;opacity:.5;cursor:default">📞 Appeler</span>`)
@@ -19093,11 +19112,11 @@ async function loadEquipeEnDirect(){
       </div>
       <div style="margin-bottom:10px">${statusHtml}</div>
       <div style="display:flex;gap:6px;margin-bottom:6px">
-        <button onclick="ouvrirConvAvec('${c.id}','${nom.replace(/'/g,"\\'")}')" style="flex:1;padding:7px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff)">💬 Message</button>
+        <button onclick="ouvrirConvAvec('${c.id}','${escJs(nom)}')" style="flex:1;padding:7px;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff)">💬 Message</button>
         ${tel?`<a href="tel:${tel}" style="flex:1;padding:7px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);text-decoration:none;text-align:center;display:block">📞 Appeler</a>`:''}
         ${email?`<a href="mailto:${email}" style="flex:1;padding:7px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff);text-decoration:none;text-align:center;display:block">✉ Email</a>`:''}
       </div>
-      <button onclick="modalAffecterCollab('${c.id}','${nom.replace(/'/g,"\\'")}')" style="width:100%;padding:7px;background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#9C6FFF;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff)">+ Affecter à une mission</button>
+      <button onclick="modalAffecterCollab('${c.id}','${escJs(nom)}')" style="width:100%;padding:7px;background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#9C6FFF;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ff)">+ Affecter à une mission</button>
     </div>`;
   }).join('');
 
@@ -19691,7 +19710,7 @@ async function mobSearch(q){
         html+=`<div class="mso-sec-ttl">Clients</div>`;
         html+=(clients).map(c=>`<div class="mso-row" onclick="closeMobSearch();modalModifierClientById('${c.id}')">
           <div class="mso-row-ic">👥</div>
-          <div><div class="mso-row-t">${c.nom}</div><div class="mso-row-s">${c.statut||'—'}</div></div>
+          <div><div class="mso-row-t">${esc(c.nom)}</div><div class="mso-row-s">${c.statut||'—'}</div></div>
         </div>`).join('');
       }
       if((pres||[]).length){
@@ -19764,9 +19783,9 @@ function renderJourJ(){
     <div class="jj-m-step">
       <div class="jj-m-step-ttl">📋 Infos terrain</div>
       ${rdv?`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:20px">🕐</span><div><div style="font-size:11px;color:var(--t3)">RDV équipe</div><div style="font-size:18px;font-weight:700;color:var(--t1)">${rdv}</div></div></div>`:''}
-      ${p.lieu?`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:20px">📍</span><div><div style="font-size:11px;color:var(--t3)">Lieu</div><div style="font-size:15px;font-weight:600;color:var(--t1)">${p.lieu}</div></div></div>`:''}
+      ${p.lieu?`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:20px">📍</span><div><div style="font-size:11px;color:var(--t3)">Lieu</div><div style="font-size:15px;font-weight:600;color:var(--t1)">${esc(p.lieu)}</div></div></div>`:''}
       ${p.contact_sur_place?`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)">
-        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px">👤</span><div><div style="font-size:11px;color:var(--t3)">Contact</div><div style="font-size:15px;font-weight:600;color:var(--t1)">${p.contact_sur_place}</div></div></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:20px">👤</span><div><div style="font-size:11px;color:var(--t3)">Contact</div><div style="font-size:15px;font-weight:600;color:var(--t1)">${esc(p.contact_sur_place)}</div></div></div>
         ${p.telephone_sur_place?`<a href="tel:${p.telephone_sur_place}" style="background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);padding:8px 14px;color:var(--ok);font-size:13px;font-weight:600;text-decoration:none">📞</a>`:''}
       </div>`:''}
       ${p.adresse_complete?`<a href="https://maps.google.com/?q=${encodeURIComponent(p.adresse_complete)}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:12px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:10px;color:var(--acc);font-size:13px;font-weight:600;text-decoration:none">🗺 Ouvrir l'itinéraire</a>`:''}
@@ -19787,7 +19806,7 @@ function renderJourJ(){
     </div>
     ${p.description_besoin?`<div class="jj-m-step">
       <div class="jj-m-step-ttl">📝 Brief</div>
-      <div style="font-size:14px;color:var(--t2);line-height:1.6">${p.description_besoin}</div>
+      <div style="font-size:14px;color:var(--t2);line-height:1.6">${esc(p.description_besoin)}</div>
     </div>`:''}
     <div class="jj-m-step">
       <div class="jj-m-step-ttl">⚡ Actions rapides</div>
@@ -19902,7 +19921,7 @@ async function loadMobilePhotoDash(ct){
         <div style="font-size:13px;color:rgba(255,255,255,.7)">${date}${rdv?' · RDV '+rdv:''}</div>
         <div class="mhero-actions">
           <button class="mhero-btn primary" onclick="enterJourJ('${p.id}')">🎯 Mode Jour J</button>
-          ${p.adresse_complete?`<button class="mhero-btn" onclick="window.open('https://maps.google.com/?q='+encodeURIComponent('${(p.adresse_complete||'').replace(/'/g,"\\'")}'),'_blank')">🗺 Itinéraire</button>`:''}
+          ${p.adresse_complete?`<button class="mhero-btn" onclick="window.open('https://maps.google.com/?q='+encodeURIComponent('${escJs(p.adresse_complete||'')}'),'_blank')">🗺 Itinéraire</button>`:''}
         </div>
       </div>`;
     } else {
@@ -19928,7 +19947,7 @@ async function loadMobilePhotoDash(ct){
                 <div style="font-size:10px;font-weight:600;color:var(--acc);margin-bottom:4px;text-transform:uppercase;letter-spacing:.07em">${date}${rdv?' · '+rdv:''}</div>
                 <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:3px">${p.clients?.nom||'—'}</div>
                 <div style="font-size:13px;color:var(--t2)">${p.type_prestation||'—'}</div>
-                ${p.lieu?`<div style="font-size:12px;color:var(--t3);margin-top:4px">📍 ${p.lieu}</div>`:''}
+                ${p.lieu?`<div style="font-size:12px;color:var(--t3);margin-top:4px">📍 ${esc(p.lieu)}</div>`:''}
               </div>
               <div style="text-align:right;flex-shrink:0">
                 <span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
@@ -19990,7 +20009,7 @@ async function loadMobileProdDash(ct){
                 <div style="font-size:13px;font-weight:700;color:var(--acc);margin-bottom:3px">${h}</div>
                 <div style="font-size:16px;font-weight:700;color:var(--t1)">${p.clients?.nom||'—'}</div>
                 <div style="font-size:13px;color:var(--t2);margin-top:2px">${p.type_prestation||'—'}</div>
-                <div style="display:flex;gap:10px;margin-top:5px">${p.lieu?`<span style="font-size:11px;color:var(--t3)">📍 ${p.lieu}</span>`:''}
+                <div style="display:flex;gap:10px;margin-top:5px">${p.lieu?`<span style="font-size:11px;color:var(--t3)">📍 ${esc(p.lieu)}</span>`:''}
                 <span style="font-size:11px;color:var(--t3)">👥 ${eq} conf.</span></div>
               </div>
               <span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
@@ -20272,7 +20291,7 @@ async function loadMobileComDash(ct){
     html+=recents.map(c=>{const sc={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw','partenaire':'bn','client':'ba','inactif':'bn','bloqué':'bb','perdu':'bb'};const sl={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis','négociation':'Nég.','partenaire':'Partenaire','client':'Client','inactif':'Inactif','bloqué':'Bloqué','perdu':'Perdu'};
       return`<div class="mc" onclick="modalModifierClientById('${c.id}')" style="cursor:pointer">
         <div class="mc-top" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-          <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nom}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${[c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
+          <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.nom)}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${[c.sport,c.ville].filter(Boolean).join(' · ')||'—'}</div></div>
           <span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${sl[c.statut]||c.statut}</span>
         </div>
       </div>`;}).join('');
