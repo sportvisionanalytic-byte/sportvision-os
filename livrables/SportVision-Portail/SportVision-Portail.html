@@ -1450,15 +1450,31 @@ function renderFaqList(){
 
 // ── AIDE ──
 const AIDE_CATEGORIES = [
-  {title:'Demandes', items:['Comment suivre ma demande ?', 'Comment annuler une demande ?']},
-  {title:'Devis et contrats', items:['Comment accepter un devis ?', 'Comment signer un contrat ?']},
-  {title:'Paiements', items:['Comment payer mon acompte ?', 'Où trouver mes factures ?']},
-  {title:'Livrables', items:['Comment ouvrir mon livrable ?', 'Mon lien a expiré, que faire ?']},
+  {title:'Demandes', items:[
+    {q:'Comment suivre ma demande ?', a:'Depuis votre espace client, section "Mes demandes" : chaque demande affiche son statut actuel (reçue, en étude, devis envoyé, validée...) et son historique.'},
+    {q:'Comment annuler une demande ?', a:'Ouvrez la demande concernée dans "Mes demandes" et cliquez sur "Annuler". Possible tant qu\'aucun acompte n\'a été réglé.'},
+  ]},
+  {title:'Devis et contrats', items:[
+    {q:'Comment accepter un devis ?', a:'Section "Devis" de votre espace client : ouvrez le devis reçu, boutons "Accepter" ou "Refuser" en bas de page.'},
+    {q:'Comment signer un contrat ?', a:'Section "Contrats" : quand un contrat est prêt pour signature, un bouton "Signer" apparaît sur sa fiche.'},
+  ]},
+  {title:'Paiements', items:[
+    {q:'Comment payer mon acompte ?', a:'Depuis un devis accepté ou une facture, cliquez sur "Payer" : vous êtes redirigé vers une page de paiement sécurisée (Stripe), aucune donnée bancaire ne transite par SportVision.'},
+    {q:'Où trouver mes factures ?', a:'Section "Factures" de votre espace client : toutes vos factures y sont listées avec leur statut (émise, payée...).'},
+  ]},
+  {title:'Livrables', items:[
+    {q:'Comment ouvrir mon livrable ?', a:'Section "Livrables" : cliquez sur le lien associé à votre prestation, il ouvre une page externe sécurisée pour visionner/télécharger vos contenus.'},
+    {q:'Mon lien a expiré, que faire ?', a:'Écrivez-nous via la Messagerie de votre espace client en précisant la prestation concernée, un nouveau lien vous sera envoyé.'},
+  ]},
 ];
 function renderAide(){
   document.getElementById('aide-grid').innerHTML = AIDE_CATEGORIES.map(c=>
     '<div class="card"><span style="font-weight:700;display:block;margin-bottom:10px">'+c.title+'</span>'
-    + c.items.map(it=>'<div class="muted" style="font-size:13.5px;margin-top:6px">'+it+'</div>').join('')
+    + c.items.map(it=>
+        '<div class="aide-item" style="margin-top:10px;cursor:pointer" onclick="this.querySelector(\'.aide-a\').style.display = this.querySelector(\'.aide-a\').style.display===\'block\'?\'none\':\'block\'">'
+        +'<div class="muted" style="font-size:13.5px;font-weight:600;color:var(--t1)">'+it.q+'</div>'
+        +'<div class="aide-a faint" style="display:none;margin-top:6px;font-size:12.5px;line-height:1.6">'+it.a+'</div></div>'
+      ).join('')
     +'</div>'
   ).join('');
 }
