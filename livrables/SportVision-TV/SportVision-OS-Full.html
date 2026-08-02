@@ -16529,6 +16529,7 @@ function updateBottomNav(viewId){
 });
 if(NAV['admin']){
   NAV['admin'].push({id:'realisations',lb:'Réalisations (photos/vidéos)',ic:'pre'});
+  NAV['admin'].push({id:'comptesportail',lb:'Comptes Portail',ic:'cli'});
 }
 
 function tplMsgClients(){
@@ -16549,6 +16550,7 @@ function tplCataloguePortail(){
   VIEWS[role+'.catalogue']=tplCataloguePortail;
 });
 VIEWS['admin.realisations']=tplRealisationsPortail;
+VIEWS['admin.comptesportail']=tplComptesPortail;
 
 const _svp_origLoadViewData=loadViewData;
 loadViewData=async function(role,view){
@@ -16557,6 +16559,7 @@ loadViewData=async function(role,view){
   if((role==='admin'||role==='sec')&&view==='rdvclients') await loadRdvClients();
   if((role==='admin'||role==='sec')&&view==='catalogue') await loadCatalogueOffres();
   if(role==='admin'&&view==='realisations') await loadRealisations();
+  if(role==='admin'&&view==='comptesportail') await loadComptesPortail();
 };
 
 // ── Messages clients ──
@@ -16829,6 +16832,64 @@ async function deleteRealisation(id){
   if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
   toast('Réalisation supprimée.','ok');
   await loadRealisations();
+}
+
+// ── Comptes Portail (client_users) — réservé admin ──
+function tplComptesPortail(){
+  return `<div class="sh"><div class="sh-t">Comptes Portail</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Comptes de connexion des clients au Portail — supprimer ici ne supprime pas la fiche client ni son historique</div></div>
+    <div id="comptesportail-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+let _comptesPortailCache=[];
+async function loadComptesPortail(){
+  const data=await sbFetch('client_users?select=id,prenom,nom,telephone,created_at,clients(nom,email)&order=created_at.desc');
+  _comptesPortailCache=Array.isArray(data)?data:[];
+  renderComptesPortail();
+}
+function renderComptesPortail(){
+  const el=document.getElementById('comptesportail-list');
+  if(!el)return;
+  if(!_comptesPortailCache.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun compte Portail pour le moment.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Client (fiche)</th><th>Prénom</th><th>Nom</th><th>Téléphone</th><th>E-mail de connexion</th><th></th></tr></thead><tbody>'+
+    _comptesPortailCache.map(cu=>`<tr>
+      <td class="tp">${cu.clients?.nom||'—'}</td>
+      <td><input class="l-inp" style="width:110px" id="cp-prenom-${cu.id}" value="${(cu.prenom||'').replace(/"/g,'&quot;')}"></td>
+      <td><input class="l-inp" style="width:110px" id="cp-nom-${cu.id}" value="${(cu.nom||'').replace(/"/g,'&quot;')}"></td>
+      <td><input class="l-inp" style="width:120px" id="cp-tel-${cu.id}" value="${(cu.telephone||'').replace(/"/g,'&quot;')}"></td>
+      <td class="tm">${cu.clients?.email||'—'}</td>
+      <td style="white-space:nowrap"><button class="btn bg2 bs" onclick="saveComptePortail('${cu.id}')">Enregistrer</button> <button class="btn bg2 bs" style="color:var(--er)" onclick="deleteComptePortail('${cu.id}')">Supprimer</button></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+async function saveComptePortail(id){
+  const body={
+    prenom:document.getElementById('cp-prenom-'+id).value.trim()||null,
+    nom:document.getElementById('cp-nom-'+id).value.trim()||null,
+    telephone:document.getElementById('cp-tel-'+id).value.trim()||null,
+  };
+  const r=await sbFetch('client_users?id=eq.'+id,{method:'PATCH',body});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
+  toast('Compte mis à jour.','ok');
+  await loadComptesPortail();
+}
+async function deleteComptePortail(id){
+  const cu=_comptesPortailCache.find(x=>x.id===id);
+  if(!confirm('Supprimer l\'accès Portail de '+(cu?.clients?.nom||'ce client')+' ? La fiche client et son historique (prestations, devis, factures) sont conservés — seule la connexion au Portail est supprimée.'))return;
+  try{
+    const res=await fetch(SB_URL+'/functions/v1/admin-delete-portal-account',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')},
+      body:JSON.stringify({target_user_id:id})
+    });
+    let json={};
+    try{json=await res.json();}catch(e2){}
+    if(!res.ok){
+      if(res.status===404)throw new Error('Edge Function admin-delete-portal-account non déployée.');
+      throw new Error(json.error||('Erreur serveur ('+res.status+')'));
+    }
+    toast('Compte Portail supprimé.','ok');
+    await loadComptesPortail();
+  }catch(e){
+    toast(e.message);
+  }
 }
 // ══════════════════════════════════════════════════════════════════════════
 

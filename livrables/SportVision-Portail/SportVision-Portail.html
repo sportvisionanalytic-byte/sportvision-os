@@ -858,13 +858,19 @@ body.app-mode .app-only{display:block!important}
             <div id="cpt-msg" class="faint" style="font-size:12.5px"></div>
           </div>
         </div>
-        <div class="card" style="max-width:480px">
+        <div class="card" style="max-width:480px;margin-bottom:20px">
           <h3 style="font-size:15px;margin-bottom:16px">Sécurité</h3>
           <div class="field-col" style="margin-top:0">
             <label>Nouveau mot de passe<input type="password" id="cpt-pass" placeholder="Laisser vide pour ne pas changer"></label>
             <button class="btn btn-o" onclick="changePassword()">Mettre à jour le mot de passe</button>
             <div id="cpt-pass-msg" class="err-msg"></div>
           </div>
+        </div>
+        <div class="card" style="max-width:480px;border-color:rgba(240,113,113,.3)">
+          <h3 style="font-size:15px;margin-bottom:8px;color:var(--er)">Supprimer mon compte</h3>
+          <p class="faint" style="font-size:12.5px;margin-bottom:16px">Ferme définitivement votre accès au Portail (connexion, e-mail, mot de passe). Vos demandes, devis, factures et livrables restent conservés conformément à nos obligations légales — contactez-nous si vous souhaitez leur suppression complète.</p>
+          <button class="btn btn-o" style="border-color:var(--er);color:var(--er)" onclick="deleteMyAccount()">Supprimer mon compte</button>
+          <div id="cpt-del-msg" class="err-msg"></div>
         </div>
       </div>
 
@@ -2337,6 +2343,17 @@ async function changePassword(){
   if (!res.ok){ msgEl.textContent = 'Impossible de mettre à jour le mot de passe.'; return; }
   document.getElementById('cpt-pass').value = '';
   toast('Mot de passe mis à jour.');
+}
+
+async function deleteMyAccount(){
+  const msgEl = document.getElementById('cpt-del-msg');
+  msgEl.textContent = '';
+  if (!confirm('Supprimer définitivement votre compte Portail ? Cette action est irréversible.')) return;
+  const res = await sbFunction('delete-account', {});
+  if (!res.ok){ msgEl.textContent = res.data?.error || 'Impossible de supprimer le compte.'; return; }
+  svClear();
+  toast('Compte supprimé.');
+  await go('home');
 }
 
 // ── RÉCUPÉRATION DE MOT DE PASSE ──
