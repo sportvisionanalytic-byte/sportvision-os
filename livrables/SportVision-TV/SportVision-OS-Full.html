@@ -4507,8 +4507,8 @@ async function loadMediaBibliotheque(el){
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--acc);margin-bottom:10px">${cat.replace(/_/g,' ')}</div>
       <div style="display:flex;flex-direction:column;gap:6px">
       ${items.map(b=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:6px">
-        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">${b.nom}</div>
-        ${b.description?`<div style="font-size:10px;color:var(--t3)">${b.description}</div>`:''}
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(b.nom)}</div>
+        ${b.description?`<div style="font-size:10px;color:var(--t3)">${esc(b.description)}</div>`:''}
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0">
           <button onclick="ouvrirLien('${encodeURIComponent(b.url)}')" style="padding:4px 10px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗ Ouvrir</button>
@@ -5040,9 +5040,9 @@ async function modalPostprodDetail(id){
         ${corrs.map(c=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:9px 11px;background:rgba(240,68,94,.05);border:1px solid rgba(240,68,94,.15);border-radius:7px">
           <span style="font-size:13px;flex-shrink:0">${COR_PRIO[c.priorite]||'🟡'}</span>
           <div style="flex:1;min-width:0">
-            <div style="font-size:12px;color:var(--t1)">${c.description}</div>
-            ${c.timecode?`<div style="font-size:10px;color:var(--acc);margin-top:2px">⏱ ${c.timecode}</div>`:''}
-            <div style="font-size:10px;color:var(--t3);margin-top:2px">${[c.auteur?.prenom,c.auteur?.nom].filter(Boolean).join(' ')||'—'} · ${new Date(c.created_at).toLocaleDateString('fr-FR')}</div>
+            <div style="font-size:12px;color:var(--t1)">${esc(c.description)}</div>
+            ${c.timecode?`<div style="font-size:10px;color:var(--acc);margin-top:2px">⏱ ${esc(c.timecode)}</div>`:''}
+            <div style="font-size:10px;color:var(--t3);margin-top:2px">${esc([c.auteur?.prenom,c.auteur?.nom].filter(Boolean).join(' ')||'—')} · ${new Date(c.created_at).toLocaleDateString('fr-FR')}</div>
           </div>
         </div>`).join('')}
         <button onclick="modalAjouterCorrection('${id}')" style="display:block;width:100%;padding:7px;background:rgba(240,68,94,.06);border:1px dashed rgba(240,68,94,.25);border-radius:7px;color:var(--er);font-size:12px;font-weight:600;cursor:pointer;text-align:center">+ Ajouter une correction</button>
@@ -5784,8 +5784,8 @@ async function loadProdRapport(type){
         <div class="cd-h"><div class="cd-t">${titles[type]} — ${open} ouverts / ${list.length} total</div></div>
         <div class="tw"><table><thead><tr><th>Description</th><th>Prestation</th><th>Niveau</th><th>Date</th><th>Statut</th></tr></thead><tbody>
           ${list.map(i=>`<tr>
-            <td class="tp">${i.description||i.type_incident||'—'}</td>
-            <td class="tm">${i.prestations?.reference||'—'} ${i.prestations?.clients?.nom?'· '+i.prestations.clients.nom:''}</td>
+            <td class="tp">${esc(i.description||i.type_incident||'—')}</td>
+            <td class="tm">${esc(i.prestations?.reference||'—')} ${i.prestations?.clients?.nom?'· '+esc(i.prestations.clients.nom):''}</td>
             <td><span style="font-weight:700;color:${i.niveau==='critique'?'var(--er)':i.niveau==='important'?'var(--wa)':'var(--t2)'}">${i.niveau||'—'}</span></td>
             <td>${i.created_at?new Date(i.created_at).toLocaleDateString('fr-FR'):'—'}</td>
             <td><span class="bd ${i.cloture?'ba':'br'}"><span class="bd-d"></span>${i.cloture?'Clôturé':'Ouvert'}</span></td>
@@ -7097,8 +7097,8 @@ async function kitsRenderIncidents(){
                 <span style="font-size:11px;color:var(--t3)">${typeLabel}</span>
                 <span style="font-size:10px;color:${isOpen?'var(--wa)':'var(--ok)'}">● ${isOpen?'Ouvert':'Résolu'}</span>
               </div>
-              <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${i.materiels?.nom||i.kits?.nom||'—'}</div>
-              ${i.description?`<div style="font-size:12px;color:var(--t2);margin-top:3px">${i.description}</div>`:''}
+              <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(i.materiels?.nom||i.kits?.nom||'—')}</div>
+              ${i.description?`<div style="font-size:12px;color:var(--t2);margin-top:3px">${esc(i.description)}</div>`:''}
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-size:11px;color:var(--t3)">${new Date(i.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</div>
@@ -7135,9 +7135,9 @@ async function kitsRenderMaintenance(){
                 <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid var(--b1);color:${PRI_C[m.priorite]||'var(--t3)'}">${m.priorite||'normale'}</span>
                 <span style="font-size:11px;color:${stc.c};font-weight:600">${stc.lb}</span>
               </div>
-              <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${m.materiels?.nom||m.kits?.nom||'—'}</div>
-              ${m.description?`<div style="font-size:12px;color:var(--t2);margin-top:3px">${m.description}</div>`:''}
-              ${m.prestataire?`<div style="font-size:11px;color:var(--t3);margin-top:2px">Prestataire : ${m.prestataire}</div>`:''}
+              <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${esc(m.materiels?.nom||m.kits?.nom||'—')}</div>
+              ${m.description?`<div style="font-size:12px;color:var(--t2);margin-top:3px">${esc(m.description)}</div>`:''}
+              ${m.prestataire?`<div style="font-size:11px;color:var(--t3);margin-top:2px">Prestataire : ${esc(m.prestataire)}</div>`:''}
             </div>
             <div style="text-align:right;flex-shrink:0">
               ${m.devis?`<div style="font-size:12px;font-weight:600;color:var(--t1)">${m.devis.toLocaleString('fr-FR')} €</div>`:''}
@@ -7189,7 +7189,7 @@ async function kitsOpenFiche(kitId){
     <div class="mb" style="max-height:70vh;overflow-y:auto;padding:0 24px 24px">
       ${inc.length?`<div style="background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px">
         <div style="font-size:12px;font-weight:700;color:var(--er);margin-bottom:4px">⚠ ${inc.length} incident${inc.length>1?'s':''} en cours</div>
-        ${inc.map(i=>`<div style="font-size:12px;color:var(--t2)">${INCIDENT_TYPES.find(t=>t[0]===i.type_incident)?.[1]||i.type_incident} — ${i.description||''}</div>`).join('')}
+        ${inc.map(i=>`<div style="font-size:12px;color:var(--t2)">${esc(INCIDENT_TYPES.find(t=>t[0]===i.type_incident)?.[1]||i.type_incident)} — ${esc(i.description||'')}</div>`).join('')}
       </div>`:''}
 
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Composition (${comp.length} éléments)</div>
@@ -8414,7 +8414,7 @@ async function genererContratPDF(id){
     <tr><td style="padding:10px 0;font-weight:600">Renouvellement auto</td><td style="padding:10px 0;color:#555E73">${c.renouvellement_auto?'Oui — reconduction tacite':'Non'}</td></tr>
   </table>
 </div>
-${c.description?`<div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:28px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Prestations incluses</div><div style="font-size:12.5px;color:#555E73;line-height:1.7">${c.description}</div></div>`:''}
+${c.description?`<div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:28px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Prestations incluses</div><div style="font-size:12.5px;color:#555E73;line-height:1.7">${esc(c.description)}</div></div>`:''}
 <div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:32px">
   <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Conditions générales</div>
   <div style="font-size:11.5px;color:#555E73;line-height:1.8">1. Le présent contrat prend effet à la date de signature par les deux parties.<br>2. Le paiement est dû selon la fréquence indiquée ci-dessus, par virement bancaire.<br>3. En cas de résiliation, un préavis de 30 jours est requis par lettre recommandée avec AR.<br>4. SportVision se réserve le droit de sous-traiter certaines prestations à des partenaires qualifiés.<br>5. Les droits sur les productions restent la propriété de SportVision jusqu'au paiement intégral.</div>
@@ -8947,10 +8947,10 @@ async function imprimerDevis(id){
     const lignesHtml=lignes.length?lignes.map(l=>{
       const qte=l.quantite||l.qte||1;
       const pu=l.prix_unitaire||l.pu||0;
-      return`<tr><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;vertical-align:top"><div style="font-weight:600;font-size:13px">${l.description||l.libelle||'—'}</div>${l.details?`<div style="font-size:11.5px;color:#555E73;margin-top:2px">${l.details}</div>`:''}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:center">${qte}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right">${fmt(pu)}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right;font-weight:600">${fmt(qte*pu)}</td></tr>`;
+      return`<tr><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;vertical-align:top"><div style="font-weight:600;font-size:13px">${esc(l.description||l.libelle||'—')}</div>${l.details?`<div style="font-size:11.5px;color:#555E73;margin-top:2px">${esc(l.details)}</div>`:''}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:center">${qte}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right">${fmt(pu)}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right;font-weight:600">${fmt(qte*pu)}</td></tr>`;
     }).join(''):`<tr><td colspan="4" style="padding:20px 14px;color:#8891A8;font-size:12.5px">
-      <div style="font-weight:600">${d.prestation?.description_besoin||'Prestation sportive SportVision'}</div>
-      ${d.prestation?.livrables_demandes?`<div style="margin-top:4px;color:#8891A8">${d.prestation.livrables_demandes}</div>`:''}
+      <div style="font-weight:600">${esc(d.prestation?.description_besoin||'Prestation sportive SportVision')}</div>
+      ${d.prestation?.livrables_demandes?`<div style="margin-top:4px;color:#8891A8">${esc(d.prestation.livrables_demandes)}</div>`:''}
     </td></tr>`;
     const win=window.open('','_blank','width=900,height=800');
     if(!win){toast('Autorisez les popups pour générer le PDF.');return;}
@@ -9122,7 +9122,7 @@ async function imprimerFacture(id){
     const lignes=Array.isArray(dv?.lignes)?dv.lignes:[];
     const lignesHtml=lignes.length?lignes.map(l=>{
       const qte=l.quantite||l.qte||1;const pu=l.prix_unitaire||l.pu||0;
-      return`<tr><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;font-weight:600;font-size:13px">${l.description||l.libelle||'—'}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:center">${qte}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right">${fmt(pu)}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right;font-weight:600">${fmt(qte*pu)}</td></tr>`;
+      return`<tr><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;font-weight:600;font-size:13px">${esc(l.description||l.libelle||'—')}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:center">${qte}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right">${fmt(pu)}</td><td style="padding:10px 14px;border-bottom:1px solid #E8EBF4;text-align:right;font-weight:600">${fmt(qte*pu)}</td></tr>`;
     }).join(''):`<tr><td colspan="4" style="padding:16px 14px;color:#555E73;font-size:12.5px"><div style="font-weight:600">${esc(p.description_besoin||'Prestation sportive')}</div>${p.livrables_demandes?`<div style="margin-top:3px;color:#8891A8">${esc(p.livrables_demandes)}</div>`:''}</td></tr>`;
     const sfLbl={payée:'Payée',facturée:'Facturée',partiellement_payée:'Part. payée',en_retard:'En retard',non_facturée:'Non facturée'};
     const sfClr={payée:'#2ECC8A',facturée:'#366BFF',partiellement_payée:'#F5A524',en_retard:'#F0445E',non_facturée:'#8891A8'};
@@ -9596,11 +9596,11 @@ async function loadIncidents(){
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
             <span class="bd ${niv_cls[inc.niveau]||'bw'}" style="font-size:10px"><span class="bd-d"></span>${niv_lbl[inc.niveau]||inc.niveau}</span>
             ${inc.cloture?'<span class="bd ba" style="font-size:10px"><span class="bd-d"></span>Clôturé</span>':'<span class="bd bl" style="font-size:10px"><span class="bd-d"></span>Ouvert</span>'}
-            ${inc.prestations?.reference?`<span style="font-size:10px;color:var(--acc);font-family:monospace;cursor:pointer;text-decoration:underline" onclick="modalDetailById('${inc.prestation_id}')">${inc.prestations.reference}</span>`:''}
+            ${inc.prestations?.reference?`<span style="font-size:10px;color:var(--acc);font-family:monospace;cursor:pointer;text-decoration:underline" onclick="modalDetailById('${inc.prestation_id}')">${esc(inc.prestations.reference)}</span>`:''}
           </div>
-          <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">${inc.type_incident}</div>
-          <div style="font-size:12px;color:var(--t2)">${inc.description}</div>
-          <div style="font-size:10.5px;color:var(--t3);margin-top:5px">Signalé par ${inc.profiles?.prenom||''} ${inc.profiles?.nom||'—'} · ${new Date(inc.date_incident).toLocaleDateString('fr-FR')}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">${esc(inc.type_incident)}</div>
+          <div style="font-size:12px;color:var(--t2)">${esc(inc.description)}</div>
+          <div style="font-size:10.5px;color:var(--t3);margin-top:5px">Signalé par ${esc(inc.profiles?.prenom||'')} ${esc(inc.profiles?.nom||'—')} · ${new Date(inc.date_incident).toLocaleDateString('fr-FR')}</div>
         </div>
         ${!inc.cloture?`<button onclick="cloreIncident('${inc.id}')" style="padding:5px 12px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap;flex-shrink:0">Clôturer</button>`:''}
       </div>`).join('');
@@ -13637,7 +13637,7 @@ async function loadCmCal(){
         return`<div style="background:${isToday?'rgba(54,107,255,.08)':'var(--s1)'};border:1px solid ${isToday?'rgba(54,107,255,.3)':'var(--bd)'};border-radius:10px;padding:10px;min-height:120px">
           <div style="font-size:11px;font-weight:700;color:${isToday?'var(--ac)':'var(--t2)'};margin-bottom:8px">${JOURS[i]} ${d.getDate()}</div>
           ${dayPre.map(p=>`<div style="background:rgba(54,107,255,.15);border-left:2px solid var(--ac);padding:4px 6px;border-radius:4px;margin-bottom:4px;font-size:10px;color:var(--ac);cursor:pointer" onclick="modalDetailById('${p.id}')" title="${p.clients?.nom||''}">${(p.clients?.nom||'').slice(0,14)||p.reference}</div>`).join('')}
-          ${dayCont.map((c,ci)=>{let info={};try{info=JSON.parse(c.message);}catch(e){}return`<div style="background:${c.lue?'rgba(46,204,138,.12)':'rgba(245,165,36,.1)'};border-left:2px solid ${c.lue?'var(--ok)':'var(--wa)'};padding:4px 6px;border-radius:4px;margin-bottom:4px;font-size:10px;color:${c.lue?'var(--ok)':'var(--wa)'};cursor:pointer" onclick="modalEditContenu('${c.id}')" title="${c.titre}">${c.titre.slice(0,14)} · ${info.plateforme||'?'}</div>`;}).join('')}
+          ${dayCont.map((c,ci)=>{let info={};try{info=JSON.parse(c.message);}catch(e){}return`<div style="background:${c.lue?'rgba(46,204,138,.12)':'rgba(245,165,36,.1)'};border-left:2px solid ${c.lue?'var(--ok)':'var(--wa)'};padding:4px 6px;border-radius:4px;margin-bottom:4px;font-size:10px;color:${c.lue?'var(--ok)':'var(--wa)'};cursor:pointer" onclick="modalEditContenu('${c.id}')" title="${esc(c.titre)}">${esc(c.titre.slice(0,14))} · ${esc(info.plateforme||'?')}</div>`;}).join('')}
           <button onclick="modalNouveauContenu(null,'${ds}')" style="width:100%;margin-top:4px;padding:3px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:5px;color:var(--t3);font-size:10px;cursor:pointer">+</button>
         </div>`;
       }).join('')}
@@ -13667,7 +13667,7 @@ async function loadCmContenus(){
         const st_cls=published?'ba':info.statut==='programmé'?'bw':'bn';
         const st_lbl=published?'Publié':info.statut==='programmé'?'Programmé':'Brouillon';
         return`<tr>
-          <td class="tp">${c.titre}</td>
+          <td class="tp">${esc(c.titre)}</td>
           <td>${info.plateforme||'—'}</td>
           <td>${info.club||'—'}</td>
           <td>${info.type||'—'}</td>
@@ -13744,7 +13744,7 @@ async function modalEditContenu(id){
   const stOpts=[['brouillon','Brouillon'],['programmé','Programmé'],['publié','Publié']];
   openModal(`<div class="mh"><div class="mt">Modifier contenu</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
-      <div class="fg"><label class="fl">Titre</label><input type="text" id="cte-ti" class="fi" value="${c.titre}"></div>
+      <div class="fg"><label class="fl">Titre</label><input type="text" id="cte-ti" class="fi" value="${esc(c.titre)}"></div>
       <div class="g2">
         <div class="fg"><label class="fl">Plateforme</label><select id="cte-pl" class="fi">${plats.map(p=>`<option${p===info.plateforme?' selected':''}>${p}</option>`).join('')}</select></div>
         <div class="fg"><label class="fl">Type</label><select id="cte-ty" class="fi">${types.map(t=>`<option${t===info.type?' selected':''}>${t}</option>`).join('')}</select></div>
@@ -13816,7 +13816,7 @@ async function loadCmPublications(){
       data.map(c=>{
         let info={};try{info=JSON.parse(c.message);}catch(e){}
         return`<tr>
-          <td class="tp">${c.titre}</td>
+          <td class="tp">${esc(c.titre)}</td>
           <td>${info.plateforme||'—'}</td>
           <td>${info.club||'—'}</td>
           <td>${info.type||'—'}</td>
@@ -16581,9 +16581,9 @@ function renderMsgClients(){
   el.innerHTML=list.map((g,i)=>{
     const last5=g.msgs.slice(-5);
     return `<div class="cd" style="margin-bottom:12px">
-      <div class="cd-h"><div class="cd-t">${g.clientNom} — ${g.ref}</div></div>
+      <div class="cd-h"><div class="cd-t">${esc(g.clientNom)} — ${esc(g.ref)}</div></div>
       <div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px">
-        ${last5.map(m=>`<div style="align-self:${m.auteur_type==='staff'?'flex-end':'flex-start'};max-width:75%;background:${m.auteur_type==='staff'?'var(--acc)':'var(--s1)'};color:${m.auteur_type==='staff'?'#fff':'var(--t1)'};padding:8px 12px;border-radius:10px;font-size:13px">${m.contenu}</div>`).join('')}
+        ${last5.map(m=>`<div style="align-self:${m.auteur_type==='staff'?'flex-end':'flex-start'};max-width:75%;background:${m.auteur_type==='staff'?'var(--acc)':'var(--s1)'};color:${m.auteur_type==='staff'?'#fff':'var(--t1)'};padding:8px 12px;border-radius:10px;font-size:13px">${esc(m.contenu)}</div>`).join('')}
       </div>
       <div style="display:flex;gap:8px;padding:0 18px 16px">
         <input type="text" id="msgcl-input-${i}" placeholder="Répondre..." style="flex:1;background:var(--s1);border:1px solid var(--b1);border-radius:8px;padding:10px;color:var(--t1);font-size:13px">
