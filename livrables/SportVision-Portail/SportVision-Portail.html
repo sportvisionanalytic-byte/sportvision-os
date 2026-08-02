@@ -1075,9 +1075,15 @@ async function handleLogin(){
       // Filet de sécurité : si l'inscription n'a pas pu créer la fiche client (ex : confirmation
       // d'e-mail obligatoire sur le projet, session absente au moment de l'inscription), on la
       // crée maintenant, à la première connexion réussie. portal-onboarding est idempotent.
-      const onboard = await sbFunction('portal-onboarding', { prenom: '', nom: '', telephone: '', profil: '' });
+      // Les infos saisies à l'inscription (prénom/nom/tél/profil) sont récupérées depuis les
+      // métadonnées du compte Supabase (enregistrées dès le signup), pas perdues.
+      const meta = (d.user && d.user.user_metadata) || {};
+      const onboard = await sbFunction('portal-onboarding', {
+        prenom: meta.prenom || '', nom: meta.nom || '', telephone: meta.telephone || '', profil: meta.profil || '',
+      });
       if (onboard.ok){
         localStorage.setItem('svp_client_id', onboard.data.client_id);
+        if (meta.prenom) localStorage.setItem('svp_prenom', meta.prenom);
       }
     }
     await go('dashboard');
@@ -1102,7 +1108,7 @@ async function handleSignup(){
   if (pass.length < 6){ errEl.textContent='Le mot de passe doit contenir au moins 6 caractères.'; return; }
   btn.disabled = true; btn.textContent = 'Création…';
   try{
-    const res = await fetch(SB_URL+'/auth/v1/signup', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, password:pass, data:{prenom,nom}})});
+    const res = await fetch(SB_URL+'/auth/v1/signup', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, password:pass, data:{prenom,nom,telephone:tel,profil}})});
     const d = await res.json();
     if (!res.ok) throw new Error(d.msg || d.error_description || 'Inscription impossible, cet e-mail est peut-être déjà utilisé.');
     if (!d.access_token){
