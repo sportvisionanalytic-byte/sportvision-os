@@ -868,7 +868,7 @@ body.app-mode .app-only{display:block!important}
         </div>
         <div class="card" style="max-width:480px;border-color:rgba(240,113,113,.3)">
           <h3 style="font-size:15px;margin-bottom:8px;color:var(--er)">Supprimer mon compte</h3>
-          <p class="faint" style="font-size:12.5px;margin-bottom:16px">Ferme définitivement votre accès au Portail (connexion, e-mail, mot de passe). Vos demandes, devis, factures et livrables restent conservés conformément à nos obligations légales — contactez-nous si vous souhaitez leur suppression complète.</p>
+          <p class="faint" style="font-size:12.5px;margin-bottom:16px">Ferme définitivement votre accès au Portail (connexion, e-mail, mot de passe). Si vous n'avez encore aucune prestation ou devis en cours, votre fiche client est aussi supprimée entièrement. Sinon, elle est conservée conformément à nos obligations comptables — contactez-nous si vous souhaitez sa suppression complète.</p>
           <button class="btn btn-o" style="border-color:var(--er);color:var(--er)" onclick="deleteMyAccount()">Supprimer mon compte</button>
           <div id="cpt-del-msg" class="err-msg"></div>
         </div>
@@ -2352,7 +2352,7 @@ async function deleteMyAccount(){
   const res = await sbFunction('delete-account', {});
   if (!res.ok){ msgEl.textContent = res.data?.error || 'Impossible de supprimer le compte.'; return; }
   svClear();
-  toast('Compte supprimé.');
+  toast(res.data?.client_deleted ? 'Compte et fiche client supprimés.' : 'Compte supprimé.');
   await go('home');
 }
 

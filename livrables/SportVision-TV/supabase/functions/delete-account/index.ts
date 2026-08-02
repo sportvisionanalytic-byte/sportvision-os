@@ -1,9 +1,12 @@
 // Supabase Edge Function — delete-account
-// Permet à un client connecté de supprimer lui-même son compte Portail (accès + connexion).
-// Ne supprime PAS la fiche client ni son historique (prestations, devis, factures, messages) :
-// ces données restent liées à la relation commerciale et aux obligations comptables (10 ans),
-// conformément à la page Confidentialité du Portail. Seul l'accès au Portail est coupé —
-// client_users est supprimé automatiquement par la contrainte "on delete cascade" vers auth.users.
+// Permet à un client connecté de supprimer lui-même son compte Portail.
+// Supprime toujours l'accès (connexion) ; supprime aussi la fiche client si, et
+// seulement si, elle n'a aucun historique commercial (prestations, devis...).
+// prestations.client_id et devis.client_id n'ont pas de "on delete cascade" (contrainte
+// par défaut = bloquante), donc la suppression de la fiche échoue automatiquement et
+// sans risque s'il existe le moindre historique — pas besoin de vérifier nous-mêmes
+// chaque table liée. C'est cette contrainte SQL qui protège les obligations comptables
+// (10 ans), pas une logique applicative qu'on pourrait oublier de mettre à jour.
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: delete-account)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (déjà présents par défaut)
 
@@ -42,10 +45,25 @@ serve(async (req) => {
     if (userErr || !userData?.user) return json({ error: "Session invalide" }, 401);
 
     const admin = createClient(supabaseUrl, serviceKey);
+
+    const { data: cu } = await admin
+      .from("client_users")
+      .select("client_id")
+      .eq("id", userData.user.id)
+      .maybeSingle();
+
     const { error: delErr } = await admin.auth.admin.deleteUser(userData.user.id);
     if (delErr) return json({ error: delErr.message }, 500);
 
-    return json({ deleted: true });
+    let clientDeleted = false;
+    if (cu?.client_id) {
+      const { error: clientDelErr } = await admin.from("clients").delete().eq("id", cu.client_id);
+      // Échec attendu et normal si la fiche a un historique (prestations, devis...) :
+      // la contrainte de clé étrangère bloque la suppression, on la laisse en place.
+      clientDeleted = !clientDelErr;
+    }
+
+    return json({ deleted: true, client_deleted: clientDeleted });
   } catch (e) {
     return json({ error: e.message }, 500);
   }

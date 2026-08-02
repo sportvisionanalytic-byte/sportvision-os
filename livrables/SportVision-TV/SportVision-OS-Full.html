@@ -16872,7 +16872,7 @@ async function saveComptePortail(id){
 }
 async function deleteComptePortail(id){
   const cu=_comptesPortailCache.find(x=>x.id===id);
-  if(!confirm('Supprimer l\'accès Portail de '+(cu?.clients?.nom||'ce client')+' ? La fiche client et son historique (prestations, devis, factures) sont conservés — seule la connexion au Portail est supprimée.'))return;
+  if(!confirm('Supprimer l\'accès Portail de '+(cu?.clients?.nom||'ce client')+' ? Si la fiche n\'a aucune prestation ni devis, elle sera aussi supprimée entièrement. Sinon, seule la connexion au Portail saute, la fiche et son historique restent.'))return;
   try{
     const res=await fetch(SB_URL+'/functions/v1/admin-delete-portal-account',{
       method:'POST',
@@ -16885,7 +16885,7 @@ async function deleteComptePortail(id){
       if(res.status===404)throw new Error('Edge Function admin-delete-portal-account non déployée.');
       throw new Error(json.error||('Erreur serveur ('+res.status+')'));
     }
-    toast('Compte Portail supprimé.','ok');
+    toast(json.client_deleted?'Compte et fiche client supprimés.':'Accès Portail supprimé (fiche conservée).','ok');
     await loadComptesPortail();
   }catch(e){
     toast(e.message);
