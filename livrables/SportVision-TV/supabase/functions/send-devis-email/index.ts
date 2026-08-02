@@ -17,6 +17,31 @@ serve(async (req) => {
   }
 
   try {
+    // Vérifie que l'appelant est un membre du staff SportVision authentifié
+    // (aucune confiance dans une simple présence d'apikey : n'importe qui peut lire
+    // la clé anon publique dans le code source de la page).
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Authentification requise" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Session invalide" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { devis_id, to, subject, message } = await req.json();
 
     if (!devis_id || !to) {
@@ -27,10 +52,21 @@ serve(async (req) => {
     }
 
     // Admin client for fetching devis data
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+
+    // Seul un membre du staff (ligne dans `profiles`, distinct des comptes Portail
+    // client dans `client_users`) peut envoyer un devis par e-mail.
+    const { data: staffProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userData.user.id)
+      .maybeSingle();
+    if (!staffProfile) {
+      return new Response(JSON.stringify({ error: "Non autorisé" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Fetch devis + client + lignes
     const { data: devisArr, error: devisErr } = await supabase

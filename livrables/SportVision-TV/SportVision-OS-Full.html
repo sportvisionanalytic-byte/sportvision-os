@@ -9038,7 +9038,7 @@ async function _sendDevisEmailConfirm(id,statutActuel){
   try{
     const res=await fetch(SB_URL+'/functions/v1/send-devis-email',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY},
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')},
       body:JSON.stringify({devis_id:id,to,subject:subj||('Devis — SportVision'),message:msg})
     });
     let json={};
@@ -9209,7 +9209,7 @@ async function _sendFactureEmailConfirm(factureId){
   try{
     const res=await fetch(SB_URL+'/functions/v1/send-facture-email',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY},
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')},
       body:JSON.stringify({facture_id:factureId,to,subject:subj||('Facture — SportVision'),message:msg})
     });
     let json={};
