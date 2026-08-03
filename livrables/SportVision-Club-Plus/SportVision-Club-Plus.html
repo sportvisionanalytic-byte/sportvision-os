@@ -475,10 +475,11 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
         <div id="auth-connexion">
           <div class="auth-title">Se connecter</div>
           <div class="auth-sub">Accédez à l'espace de communication de votre club.</div>
-          <div class="field"><label>Adresse e-mail</label><input type="email"></div>
-          <div class="field"><label>Mot de passe</label><input type="password"></div>
+          <div id="lg-err" style="font-size:12.5px;color:var(--er);min-height:16px;margin-bottom:4px"></div>
+          <div class="field"><label>Adresse e-mail</label><input id="lg-email" type="email"></div>
+          <div class="field"><label>Mot de passe</label><input id="lg-pass" type="password"></div>
           <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--t2);margin-bottom:18px"><input type="checkbox" checked style="width:auto"> Se souvenir de moi</label>
-          <button class="btn btn-p btn-block" style="margin-bottom:10px" onclick="showToast('La connexion sera activée une fois Supabase Auth connecté.')">Se connecter</button>
+          <button class="btn btn-p btn-block" id="lg-btn" style="margin-bottom:10px" onclick="handleLogin()">Se connecter</button>
           <button class="btn btn-o btn-block" style="margin-bottom:16px" onclick="showToast('Lien de connexion envoyé (simulation).')">Recevoir un lien de connexion</button>
           <div style="text-align:center;font-size:12.5px" class="muted"><a onclick="authShow('mdp')">Mot de passe oublié</a> · Pas encore de compte ? <a onclick="authShow('inscription')">Créer un compte</a></div>
           <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid #24415E"><a href="app.html" style="font-size:12px">Explorer l'application en mode démonstration →</a></div>
@@ -500,26 +501,26 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
 
           <div id="signup-1">
             <div class="row2">
-              <div class="field"><label>Prénom</label><input type="text"></div>
-              <div class="field"><label>Nom</label><input type="text"></div>
+              <div class="field"><label>Prénom</label><input id="ins-prenom" type="text"></div>
+              <div class="field"><label>Nom</label><input id="ins-nom" type="text"></div>
             </div>
-            <div class="field"><label>E-mail professionnel</label><input type="email"></div>
-            <div class="field"><label>Téléphone</label><input type="text"></div>
+            <div class="field"><label>E-mail professionnel</label><input id="ins-email" type="email"></div>
+            <div class="field"><label>Téléphone</label><input id="ins-tel" type="text"></div>
             <div class="row2">
-              <div class="field"><label>Mot de passe</label><input type="password"></div>
-              <div class="field"><label>Confirmation</label><input type="password"></div>
+              <div class="field"><label>Mot de passe</label><input id="ins-pass" type="password"></div>
+              <div class="field"><label>Confirmation</label><input id="ins-pass2" type="password"></div>
             </div>
-            <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--t2)"><input type="checkbox" style="width:auto;margin-top:2px"> J'accepte les CGU et la politique de confidentialité</label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--t2)"><input id="ins-cgu" type="checkbox" style="width:auto;margin-top:2px"> J'accepte les CGU et la politique de confidentialité</label>
           </div>
 
           <div id="signup-2" style="display:none">
-            <div class="field"><label>Nom du club</label><input type="text"></div>
+            <div class="field"><label>Nom du club</label><input id="ins-club-nom" type="text"></div>
             <div class="row2">
-              <div class="field"><label>Discipline</label><input type="text"></div>
+              <div class="field"><label>Discipline</label><input id="ins-club-discipline" type="text"></div>
               <div class="field"><label>Nombre d'équipes</label><input type="text"></div>
             </div>
             <div class="row2">
-              <div class="field"><label>Ville</label><input type="text"></div>
+              <div class="field"><label>Ville</label><input id="ins-club-ville" type="text"></div>
               <div class="field"><label>Code postal</label><input type="text"></div>
             </div>
             <div class="field"><label>Votre rôle</label><input type="text" placeholder="ex: Président, Responsable communication"></div>
@@ -527,8 +528,8 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
 
           <div id="signup-3" style="display:none">
             <div class="muted" style="font-size:13px;margin-bottom:16px">Choisissez la formule de votre club — modifiable à tout moment.</div>
-            <button class="opt-btn on"><b>Club+</b> <span style="color:var(--cyan)">49 €/mois</span><div class="muted" style="font-size:11.5px;margin-top:4px">5 crédits mensuels, Newsroom, Match Center, calendrier, sponsors, 5 % de réduction.</div></button>
-            <button class="opt-btn"><b>Club+ Performance</b> <span style="color:var(--cyan)">129 €/mois</span><div class="muted" style="font-size:11.5px;margin-top:4px">20 crédits mensuels, traitement prioritaire, rapports avancés, 10 % de réduction.</div></button>
+            <button class="opt-btn on" data-plan="club"><b>Club+</b> <span style="color:var(--cyan)">49 €/mois</span><div class="muted" style="font-size:11.5px;margin-top:4px">5 crédits mensuels, Newsroom, Match Center, calendrier, sponsors, 5 % de réduction.</div></button>
+            <button class="opt-btn" data-plan="performance"><b>Club+ Performance</b> <span style="color:var(--cyan)">129 €/mois</span><div class="muted" style="font-size:11.5px;margin-top:4px">20 crédits mensuels, traitement prioritaire, rapports avancés, 10 % de réduction.</div></button>
           </div>
 
           <div id="signup-4" style="display:none">
@@ -552,6 +553,7 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
             </div>
           </div>
 
+          <div id="ins-err" style="font-size:12.5px;color:var(--er);min-height:16px;margin-top:14px"></div>
           <div class="step-actions">
             <button class="btn btn-o" id="signupBack" style="visibility:hidden" onclick="signupPrev()">← Retour</button>
             <button class="btn btn-p" id="signupNext" onclick="signupNext()">Continuer</button>
@@ -652,9 +654,50 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
 </section>
 
 <script>
-// ── SUPABASE (même projet que SportVision OS et Portail — à câbler en phase 2) ──
-// const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
-// const SB_KEY = '__A_RENSEIGNER__';
+// ── SUPABASE (même projet que SportVision OS et Portail — mêmes clé/URL publiques) ──
+const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
+const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
+
+function svSave(tok, ref, uid){
+  localStorage.setItem('svcp_tok', tok);
+  localStorage.setItem('svcp_ref', ref);
+  localStorage.setItem('svcp_uid', uid);
+}
+function svClear(){ ['svcp_tok','svcp_ref','svcp_uid'].forEach(k=>localStorage.removeItem(k)); }
+function isLoggedIn(){ return !!localStorage.getItem('svcp_tok'); }
+
+async function sbFetch(path, opts={}){
+  const _do = async (tok) => fetch(SB_URL+'/rest/v1/'+path, {
+    method: opts.method || 'GET',
+    headers: {
+      apikey: SB_KEY,
+      Authorization: 'Bearer ' + (tok || SB_KEY),
+      'Content-Type': 'application/json',
+      ...((opts.method==='POST'||opts.method==='PATCH') ? {Prefer:'return=representation'} : {}),
+      ...(opts.headers||{}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let tok = localStorage.getItem('svcp_tok') || '';
+  let res = await _do(tok);
+  if (res.status === 401 && tok){
+    const ref = localStorage.getItem('svcp_ref');
+    if (ref){
+      const r2 = await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:ref})});
+      const d = await r2.json();
+      if (d.access_token){ svSave(d.access_token, d.refresh_token, localStorage.getItem('svcp_uid')); tok = d.access_token; res = await _do(tok); }
+      else { svClear(); }
+    }
+  }
+  const txt = await res.text();
+  return { ok: res.ok, status: res.status, data: txt ? JSON.parse(txt) : null };
+}
+async function sbFunction(name, body){
+  const tok = localStorage.getItem('svcp_tok') || SB_KEY;
+  const res = await fetch(SB_URL+'/functions/v1/'+name, {method:'POST', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const txt = await res.text();
+  return { ok: res.ok, data: txt ? JSON.parse(txt) : null };
+}
 
 function nav(screen){
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
@@ -709,26 +752,101 @@ function authShow(which){
   if(which==='inscription') signupStep=1, signupRender();
 }
 let signupStep=1;
+let selectedPlan='club';
 function signupRender(){
   for(let i=1;i<=5;i++) document.getElementById('signup-'+i).style.display = (i===signupStep?'block':'none');
   document.getElementById('signupStepLabel').textContent = 'Étape '+signupStep+'/5';
   document.getElementById('signupProgress').style.width = (signupStep/5*100)+'%';
   document.getElementById('signupBack').style.visibility = signupStep===1?'hidden':'visible';
-  document.getElementById('signupNext').textContent = signupStep===5?'Payer et créer mon club':(signupStep===4?'Continuer vers le paiement':'Continuer');
+  document.getElementById('signupNext').textContent = signupStep===5?'Créer mon club':(signupStep===4?'Continuer vers le paiement':'Continuer');
+  document.getElementById('ins-err').textContent='';
 }
 function signupPrev(){ signupStep=Math.max(1,signupStep-1); signupRender(); }
 function signupNext(){
-  if(signupStep===5){
-    document.getElementById('auth-inscription').style.display='none';
-    document.getElementById('auth-success').style.display='block';
-    return;
+  const errEl=document.getElementById('ins-err'); errEl.style.color='var(--er)'; errEl.textContent='';
+  if(signupStep===1){
+    const prenom=document.getElementById('ins-prenom').value.trim();
+    const email=document.getElementById('ins-email').value.trim();
+    const pass=document.getElementById('ins-pass').value;
+    const pass2=document.getElementById('ins-pass2').value;
+    if(!prenom||!email||!pass){ errEl.textContent='Merci de compléter tous les champs obligatoires.'; return; }
+    if(pass.length<6){ errEl.textContent='Le mot de passe doit contenir au moins 6 caractères.'; return; }
+    if(pass!==pass2){ errEl.textContent='Les mots de passe ne correspondent pas.'; return; }
+    if(!document.getElementById('ins-cgu').checked){ errEl.textContent="Merci d'accepter les CGU pour continuer."; return; }
   }
+  if(signupStep===2 && !document.getElementById('ins-club-nom').value.trim()){ errEl.textContent='Le nom du club est obligatoire.'; return; }
+  if(signupStep===5){ handleSignupFinish(); return; }
   signupStep=Math.min(5,signupStep+1); signupRender();
 }
 document.querySelectorAll('#signup-3 .opt-btn').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#signup-3 .opt-btn').forEach(x=>x.classList.remove('on'));
   b.classList.add('on');
+  selectedPlan = b.dataset.plan;
 }));
+
+async function handleLogin(){
+  const email=document.getElementById('lg-email').value.trim();
+  const pass=document.getElementById('lg-pass').value;
+  const errEl=document.getElementById('lg-err'); errEl.textContent='';
+  const btn=document.getElementById('lg-btn');
+  if(!email||!pass){ errEl.textContent='Renseignez votre e-mail et votre mot de passe.'; return; }
+  btn.disabled=true; btn.textContent='Connexion…';
+  try{
+    const res=await fetch(SB_URL+'/auth/v1/token?grant_type=password', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email,password:pass})});
+    const d=await res.json();
+    if(!d.access_token) throw new Error('E-mail ou mot de passe incorrect.');
+    svSave(d.access_token, d.refresh_token, d.user.id);
+    const cm=await sbFetch('club_members?user_id=eq.'+d.user.id+'&select=id');
+    if(!cm.data || !cm.data.length){
+      // Filet de sécurité : confirmation e-mail activée sur le projet, ou onboarding
+      // interrompu au signup. On le complète maintenant depuis les métadonnées du
+      // compte (enregistrées dès le signup) — clubplus-onboarding est idempotent.
+      const meta=(d.user && d.user.user_metadata) || {};
+      if(meta.club_nom){
+        await sbFunction('clubplus-onboarding', {prenom:meta.prenom||'', nom:meta.nom||'', telephone:meta.telephone||'', club:{nom:meta.club_nom, ville:meta.club_ville||'', discipline:meta.club_discipline||''}, plan:meta.plan||'club'});
+      }
+    }
+    window.location.href='app.html';
+  }catch(e){
+    errEl.textContent=e.message;
+  }finally{
+    btn.disabled=false; btn.textContent='Se connecter';
+  }
+}
+
+async function handleSignupFinish(){
+  const errEl=document.getElementById('ins-err'); errEl.style.color='var(--er)'; errEl.textContent='';
+  const btn=document.getElementById('signupNext');
+  const prenom=document.getElementById('ins-prenom').value.trim();
+  const nom=document.getElementById('ins-nom').value.trim();
+  const email=document.getElementById('ins-email').value.trim();
+  const tel=document.getElementById('ins-tel').value.trim();
+  const pass=document.getElementById('ins-pass').value;
+  const clubNom=document.getElementById('ins-club-nom').value.trim();
+  const clubVille=document.getElementById('ins-club-ville').value.trim();
+  const clubDiscipline=document.getElementById('ins-club-discipline').value.trim();
+  btn.disabled=true; btn.textContent='Création…';
+  try{
+    const res=await fetch(SB_URL+'/auth/v1/signup', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, password:pass, data:{prenom,nom,telephone:tel,club_nom:clubNom,club_ville:clubVille,club_discipline:clubDiscipline,plan:selectedPlan}})});
+    const d=await res.json();
+    if(!res.ok) throw new Error(d.msg || d.error_description || 'Inscription impossible, cet e-mail est peut-être déjà utilisé.');
+    if(!d.access_token){
+      errEl.style.color='var(--ok)';
+      errEl.textContent='Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse avant de vous connecter.';
+      btn.disabled=false; btn.textContent='Créer mon club';
+      return;
+    }
+    svSave(d.access_token, d.refresh_token, d.user.id);
+    const onboard=await sbFunction('clubplus-onboarding', {prenom, nom, telephone:tel, club:{nom:clubNom, ville:clubVille, discipline:clubDiscipline}, plan:selectedPlan});
+    if(!onboard.ok) throw new Error(onboard.data?.error || 'Erreur lors de la création de votre club.');
+    document.getElementById('auth-inscription').style.display='none';
+    document.getElementById('auth-success').style.display='block';
+  }catch(e){
+    errEl.textContent=e.message;
+  }finally{
+    btn.disabled=false; btn.textContent='Créer mon club';
+  }
+}
 
 // ── Activation ──
 function actShow(which){

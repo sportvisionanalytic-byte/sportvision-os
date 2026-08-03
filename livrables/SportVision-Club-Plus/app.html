@@ -200,8 +200,8 @@ td{font-size:12px;padding:8px;border-bottom:1px solid var(--bd)}
     <div class="sb-top">
       <div class="sb-brand"><div class="sb-brand-ic">SV</div><div class="sb-brand-t"><b>SportVision</b><span>CLUB+</span></div></div>
       <button class="club-sw" onclick="toast('Un seul club dans cette démonstration.')">
-        <div class="club-crest">FC</div>
-        <div class="club-meta"><b>FC Clairval</b><span>Saison 2026-2027</span></div>
+        <div class="club-crest" id="clubCrestSb">FC</div>
+        <div class="club-meta"><b id="clubNameSb">FC Clairval</b><span id="clubSeasonSb">Saison 2026-2027</span></div>
         <span class="muted">▾</span>
       </button>
     </div>
@@ -218,7 +218,7 @@ td{font-size:12px;padding:8px;border-bottom:1px solid var(--bd)}
 
   <div class="main-col">
     <header class="tb">
-      <div class="tb-title"><b id="tbTitle">Tableau de bord</b><span>FC Clairval · Toutes équipes</span></div>
+      <div class="tb-title"><b id="tbTitle">Tableau de bord</b><span id="tbSub">FC Clairval · Toutes équipes</span></div>
       <div class="tb-act">
         <input class="tb-search" placeholder="Rechercher…">
         <div style="position:relative">
@@ -234,7 +234,7 @@ td{font-size:12px;padding:8px;border-bottom:1px solid var(--bd)}
           <div class="dd" id="notifDD" style="display:none;width:320px;max-height:400px;overflow-y:auto"></div>
         </div>
         <select class="role-sel" id="roleSel" onchange="onRoleChange(this.value)"></select>
-        <span class="demo-badge">Mode démonstration</span>
+        <span class="demo-badge" id="demoBadge">Mode démonstration</span>
         <span class="ro-badge" id="roBadge" style="display:none">Lecture seule</span>
       </div>
     </header>
@@ -532,35 +532,95 @@ function openProfileModal(){
 }
 function initials(name){ return name.split(' ').map(w=>w[0]).join(''); }
 
+/* ── SESSION RÉELLE (Supabase, même projet que OS/Portail) ── */
+const SB_URL='https://lulgezzpvrlbftbykzrc.supabase.co';
+const SB_KEY='sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
+let REAL=null; // {userId, role, person, clubId, clubName, clubSeason} une fois authentifié pour de vrai
+
+async function sbFetch(path, opts={}){
+  const _do=async(tok)=>fetch(SB_URL+'/rest/v1/'+path, {
+    method: opts.method||'GET',
+    headers:{apikey:SB_KEY, Authorization:'Bearer '+(tok||SB_KEY), 'Content-Type':'application/json',
+      ...((opts.method==='POST'||opts.method==='PATCH')?{Prefer:'return=representation'}:{}), ...(opts.headers||{})},
+    body: opts.body?JSON.stringify(opts.body):undefined,
+  });
+  let tok=localStorage.getItem('svcp_tok')||'';
+  let res=await _do(tok);
+  if(res.status===401 && tok){
+    const ref=localStorage.getItem('svcp_ref');
+    if(ref){
+      const r2=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:ref})});
+      const d=await r2.json();
+      if(d.access_token){ localStorage.setItem('svcp_tok',d.access_token); localStorage.setItem('svcp_ref',d.refresh_token); tok=d.access_token; res=await _do(tok); }
+    }
+  }
+  const txt=await res.text();
+  return {ok:res.ok, status:res.status, data: txt?JSON.parse(txt):null};
+}
+async function checkRealSession(){
+  const tok=localStorage.getItem('svcp_tok');
+  if(!tok) return false;
+  try{
+    const ures=await fetch(SB_URL+'/auth/v1/user', {headers:{apikey:SB_KEY, Authorization:'Bearer '+tok}});
+    if(!ures.ok){ ['svcp_tok','svcp_ref','svcp_uid'].forEach(k=>localStorage.removeItem(k)); return false; }
+    const user=await ures.json();
+    const cm=await sbFetch('club_members?user_id=eq.'+user.id+'&status=eq.actif&select=role,prenom,nom,clubs(id,nom,saison,credits_balance,credits_monthly,credits_reserved)&limit=1');
+    if(!cm.ok || !cm.data || !cm.data.length) return false;
+    const m=cm.data[0];
+    REAL={userId:user.id, role:m.role, person:`${m.prenom||''} ${m.nom||''}`.trim()||user.email, clubId:m.clubs.id, clubName:m.clubs.nom, clubSeason:m.clubs.saison};
+    wallet.balance=m.clubs.credits_balance; wallet.monthly=m.clubs.credits_monthly; wallet.reserved=m.clubs.credits_reserved;
+    S.role=REAL.role; S.view='dashboard';
+    document.getElementById('s-login').classList.remove('on');
+    document.getElementById('s-app').classList.add('on');
+    boot();
+    return true;
+  }catch(e){ return false; }
+}
+
 /* ── LOGIN / BOOT ── */
 function renderRoleGrid(){
   document.getElementById('roleGrid').innerHTML = Object.entries(ROLES).map(([key,r])=>
     `<button class="role-pick" onclick="doDemoLogin('${key}')"><b>${r.label}</b><span>${r.person}</span></button>`).join('');
 }
 function doDemoLogin(role){
-  S.role=role; S.view='dashboard';
+  REAL=null; S.role=role; S.view='dashboard';
   document.getElementById('s-login').classList.remove('on');
   document.getElementById('s-app').classList.add('on');
   boot();
 }
-function doLogout(){
+async function doLogout(){
+  if(REAL){
+    await fetch(SB_URL+'/auth/v1/logout', {method:'POST', headers:{apikey:SB_KEY, Authorization:'Bearer '+(localStorage.getItem('svcp_tok')||'')}}).catch(()=>{});
+    ['svcp_tok','svcp_ref','svcp_uid'].forEach(k=>localStorage.removeItem(k));
+    REAL=null;
+  }
   document.getElementById('s-app').classList.remove('on');
   document.getElementById('s-login').classList.add('on');
 }
 function onRoleChange(role){
+  if(REAL) return; // rôle réel = déterminé par club_members, pas modifiable ici
   S.role=role;
   const allowed=allowedKeys(role);
   if(!allowed.includes(S.view)) S.view='dashboard';
   boot();
 }
 function boot(){
-  const r=ROLES[S.role];
-  document.getElementById('uAv').textContent=initials(r.person);
-  document.getElementById('uName').textContent=r.person;
-  document.getElementById('uRole').textContent=r.label;
+  const person = REAL ? REAL.person : ROLES[S.role].person;
+  const label = ROLES[S.role] ? ROLES[S.role].label : REAL.role;
+  document.getElementById('uAv').textContent=initials(person||'?');
+  document.getElementById('uName').textContent=person;
+  document.getElementById('uRole').textContent=label;
   document.getElementById('roBadge').style.display = S.role==='lecture_seule' ? 'inline-block' : 'none';
+  document.getElementById('demoBadge').style.display = REAL ? 'none' : 'inline-block';
   const sel=document.getElementById('roleSel');
+  sel.style.display = REAL ? 'none' : '';
   sel.innerHTML = Object.entries(ROLES).map(([k,r2])=>`<option value="${k}" ${k===S.role?'selected':''}>${r2.label}</option>`).join('');
+  if(REAL){
+    document.getElementById('clubNameSb').textContent=REAL.clubName;
+    document.getElementById('clubSeasonSb').textContent='Saison '+(REAL.clubSeason||'');
+    document.getElementById('clubCrestSb').textContent=initials(REAL.clubName||'C');
+    document.getElementById('tbSub').textContent=REAL.clubName+' · Toutes équipes';
+  }
   renderSidebarNav();
   renderMobBnav();
   renderNotifDD();
@@ -570,6 +630,7 @@ function checkMobile(){ S.mobile = window.innerWidth<=768; }
 window.addEventListener('resize', checkMobile);
 checkMobile();
 renderRoleGrid();
+checkRealSession();
 
 /* ══════════════ TABLEAU DE BORD ══════════════ */
 function tplDashboard(){
