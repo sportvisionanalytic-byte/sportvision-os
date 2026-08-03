@@ -1022,6 +1022,14 @@ function svClear(){
 }
 function isLoggedIn(){ return !!localStorage.getItem('svp_tok'); }
 
+// Échappe le texte libre (saisi par un client ou un visiteur non connecté) avant
+// de l'injecter dans du HTML — sans ça, un commentaire/message/ville contenant
+// "<img onerror=...>" s'exécute comme du JS chez quiconque le consulte ensuite.
+function esc(s){
+  if(s===null||s===undefined)return '';
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 async function sbFetch(path, opts={}){
   const _do = async (tok) => fetch(SB_URL+'/rest/v1/'+path, {
     method: opts.method || 'GET',
@@ -1215,7 +1223,7 @@ let state = { params:{} };
 // (catalogue, configurateur, prestations...). Le web classique (IS_APP=false) est inchangé.
 const IS_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 if (IS_APP) document.body.classList.add('app-mode');
-const APP_ALLOWED_PUBLIC_VIEWS = ['connexion','inscription','mdp-oublie','nouveau-mdp','legal'];
+const APP_ALLOWED_PUBLIC_VIEWS = ['connexion','inscription','mdp-oublie','nouveau-mdp','legal','aide'];
 
 async function go(view, params={}){
   if (IS_APP && !PORTAL_VIEWS.includes(view) && !APP_ALLOWED_PUBLIC_VIEWS.includes(view)){
@@ -1264,8 +1272,8 @@ function priceLabel(o){
 function offerCardHtml(o){
   return '<div class="offer-card" onclick="go(\'offre\',{slug:\''+o.slug+'\'})">'
     +(o.image_url ? '<div class="offer-thumb" style="background:url(\''+o.image_url+'\') center/cover"></div>' : '<div class="offer-thumb"></div>')
-    +'<div class="offer-body"><h3 style="font-size:16px">'+o.nom+'</h3>'
-    +'<p class="muted" style="font-size:13px;flex:1">'+(o.description||'')+'</p>'
+    +'<div class="offer-body"><h3 style="font-size:16px">'+esc(o.nom)+'</h3>'
+    +'<p class="muted" style="font-size:13px;flex:1">'+esc(o.description||'')+'</p>'
     +'<span class="price">'+priceLabel(o)+'</span></div></div>';
 }
 
@@ -1324,8 +1332,8 @@ async function renderPublicView(view, params){
     const el = document.getElementById('offre-content');
     if (!o){ el.innerHTML = '<div class="empty">Prestation introuvable.</div>'; return; }
     el.innerHTML = (o.image_url ? '<div style="width:100%;height:260px;border-radius:14px;background:url(\''+o.image_url+'\') center/cover;margin-top:20px"></div>' : '')
-      +'<h1 style="font-size:30px;margin:20px 0 12px">'+o.nom+'</h1>'
-      +'<p class="muted" style="font-size:15.5px;margin-bottom:20px">'+(o.description_longue||o.description||'')+'</p>'
+      +'<h1 style="font-size:30px;margin:20px 0 12px">'+esc(o.nom)+'</h1>'
+      +'<p class="muted" style="font-size:15.5px;margin-bottom:20px">'+esc(o.description_longue||o.description||'')+'</p>'
       +'<div class="card" style="margin-bottom:22px"><div style="font-size:22px;font-weight:700;color:var(--cyan);font-family:var(--ff-h)">'+priceLabel(o)+'</div>'
       +'<div class="faint" style="margin-top:4px">'+(o.duree_estimee?('Délai estimé : '+o.duree_estimee):'Estimation selon la date, le lieu et les options.')+'</div></div>'
       +(o.livrables_inclus?('<div style="margin-bottom:20px"><span class="faint" style="font-weight:700;font-size:12.5px">LIVRABLES INCLUS</span><p style="margin-top:8px">'+o.livrables_inclus+'</p></div>'):'')
@@ -1444,8 +1452,8 @@ function renderRealisationsGrid(){
     + (it.type === 'video'
         ? '<video src="'+it.media_url+'" class="offer-thumb" style="width:100%;object-fit:cover" controls preload="metadata"></video>'
         : '<div class="offer-thumb" style="background:url(\''+it.media_url+'\') center/cover"></div>')
-    + '<div class="offer-body"><h3 style="font-size:16px">'+it.titre+'</h3>'
-    + (it.description ? '<p class="muted" style="font-size:13px;flex:1">'+it.description+'</p>' : '')
+    + '<div class="offer-body"><h3 style="font-size:16px">'+esc(it.titre)+'</h3>'
+    + (it.description ? '<p class="muted" style="font-size:13px;flex:1">'+esc(it.description)+'</p>' : '')
     + '</div></div>'
   ).join('');
 }
@@ -1477,7 +1485,7 @@ const AIDE_CATEGORIES = [
   ]},
   {title:'Devis et contrats', items:[
     {q:'Comment accepter un devis ?', a:'Section "Devis" de votre espace client : ouvrez le devis reçu, boutons "Accepter" ou "Refuser" en bas de page.'},
-    {q:'Comment signer un contrat ?', a:'Section "Contrats" : quand un contrat est prêt pour signature, un bouton "Signer" apparaît sur sa fiche.'},
+    {q:'Comment signer un contrat ?', a:'Quand un contrat ou un devis est prêt pour signature, vous recevez un e-mail de notre partenaire de signature électronique Youtrust avec un lien pour signer directement en ligne.'},
   ]},
   {title:'Paiements', items:[
     {q:'Comment payer mon acompte ?', a:'Depuis un devis accepté ou une facture, cliquez sur "Payer" : vous êtes redirigé vers une page de paiement sécurisée (Stripe), aucune donnée bancaire ne transite par SportVision.'},
@@ -1688,16 +1696,16 @@ async function renderCfgStep(){
   if (key === 'offre'){
     body.innerHTML = '<h2 style="font-size:24px;margin-bottom:20px">Votre prestation</h2><div id="cfg-offer-list"></div>';
     document.getElementById('cfg-offer-list').innerHTML = (CATALOGUE_CACHE||[]).map(o=>
-      '<div class="opt-row'+(cfg.offreId===o.id?' sel':'')+'" onclick="cfgSelectOffer(\''+o.id+'\')"><div><b>'+o.nom+'</b><div class="faint" style="font-size:12.5px">'+(o.description||'')+'</div></div><span class="price">'+priceLabel(o)+'</span></div>'
+      '<div class="opt-row'+(cfg.offreId===o.id?' sel':'')+'" onclick="cfgSelectOffer(\''+o.id+'\')"><div><b>'+esc(o.nom)+'</b><div class="faint" style="font-size:12.5px">'+esc(o.description||'')+'</div></div><span class="price">'+priceLabel(o)+'</span></div>'
     ).join('');
   }
 
   if (key === 'details'){
     const o = cfgCurrentOffer();
     body.innerHTML = '<h2 style="font-size:24px;margin-bottom:6px">Date, lieu et détails</h2>'
-      +(o?('<p class="muted" style="margin-bottom:20px">Prestation : <b style="color:var(--t1)">'+o.nom+'</b></p>'):'')
+      +(o?('<p class="muted" style="margin-bottom:20px">Prestation : <b style="color:var(--t1)">'+esc(o.nom)+'</b></p>'):'')
       +'<div class="grid g2" style="margin-bottom:14px">'
-      +'<label>Date souhaitée<input type="date" id="cfg-date" value="'+cfg.date+'"></label>'
+      +'<label>Date souhaitée<input type="date" id="cfg-date" min="'+new Date().toISOString().slice(0,10)+'" value="'+cfg.date+'"></label>'
       +'<label>Heure souhaitée<input type="time" id="cfg-heure" value="'+cfg.heure+'"></label>'
       +'<label>Ville<input type="text" id="cfg-ville" value="'+cfg.ville+'"></label>'
       +'<label>Code postal<input type="text" id="cfg-cp" value="'+cfg.cp+'"></label>'
@@ -1869,7 +1877,6 @@ function resetCfgAndGo(view){
   const draftEmail = cfg.email;
   cfg = { step:0, offreId:null, date:'', heure:'', ville:'', adresse:'', cp:'', sport:'', equipes:'', commentaire:'', options:[], prenom:'', nom:'', email:draftEmail||'', telephone:'', profil:'joueur', retractationRenoncee:false, siteWeb:'', distanceKm:null, fraisDeplacementHt:null, horsIdf:false };
   CFG_EXTRA_FIELDS.forEach(f=>{ cfg[f] = ''; });
-  if (view === 'inscription' && draftEmail) document.addEventListener('DOMContentLoaded', ()=>{});
   go(view);
   if (view === 'inscription' && draftEmail) setTimeout(()=>{ const el=document.getElementById('ins-email'); if(el) el.value = draftEmail; }, 50);
 }
@@ -1907,6 +1914,13 @@ function statutBadge(statut){
     'prête_à_livrer':['b-blue','Prête à livrer'],'livrée':['b-green','Livrée'],'facturée':['b-blue','Facturée'],
     'partiellement_payée':['b-orange','Partiellement payée'],'payée':['b-green','Payée'],'clôturée':['b-grey','Clôturée'],
     'annulée':['b-red','Annulée'],'refusée':['b-red','Refusée'],
+    // Devis (client_devis.statut)
+    'brouillon':['b-grey','Brouillon'],'envoyé':['b-blue','Envoyé'],'en_attente':['b-orange','En attente'],
+    'accepté':['b-green','Accepté'],'refusé':['b-red','Refusé'],'expiré':['b-grey','Expiré'],
+    // Factures (client_factures.statut)
+    'emise':['b-blue','Émise'],'en_retard':['b-red','En retard'],'annulee':['b-red','Annulée'],'remboursee':['b-grey','Remboursée'],
+    // Contrats (contrats.statut)
+    'actif':['b-green','Actif'],'suspendu':['b-orange','Suspendu'],'résilié':['b-red','Résilié'],
   };
   const [cls,label] = map[statut] || ['b-grey', statut||'—'];
   return '<span class="badge '+cls+'">'+label+'</span>';
@@ -1933,7 +1947,7 @@ async function renderDashboard(){
   document.getElementById('dash-next-card').innerHTML = n
     ? '<div class="card flex-between"><div><span class="faint" style="font-size:12px;font-weight:700">PROCHAINE PRESTATION</span>'
       +'<h3 style="font-size:18px;margin:8px 0 4px">'+(n.type_prestation||'Prestation')+'</h3>'
-      +'<div class="muted" style="font-size:13.5px">'+fmtDate(n.date_prestation)+' · '+(n.lieu||'—')+'</div></div>'
+      +'<div class="muted" style="font-size:13.5px">'+fmtDate(n.date_prestation)+' · '+esc(n.lieu||'—')+'</div></div>'
       +'<button class="btn btn-p" onclick="go(\'demande-detail\',{id:\''+n.id+'\'})">Voir le détail</button></div>'
     : '';
 
@@ -1946,7 +1960,7 @@ async function renderDashboard(){
 
   const ml = msgs.data || [];
   document.getElementById('dash-messages').innerHTML = ml.length
-    ? ml.map(m=>'<div class="row-item" onclick="go(\'messagerie\')">'+((m.contenu||'').slice(0,70))+'</div>').join('')
+    ? ml.map(m=>'<div class="row-item" onclick="go(\'messagerie\')">'+esc((m.contenu||'').slice(0,70))+'</div>').join('')
     : '<div class="empty" style="padding:20px">Aucun message récent.</div>';
 }
 
@@ -1960,7 +1974,7 @@ async function renderDemandes(){
     '<div class="row-item flex-between" onclick="go(\'demande-detail\',{id:\''+d.id+'\'})">'
     +'<div><div class="faint" style="font-family:monospace;font-size:11.5px">'+(d.reference||'')+'</div>'
     +'<div style="font-weight:700;margin-top:2px">'+(d.type_prestation||'Prestation')+'</div>'
-    +'<div class="faint" style="font-size:13px;margin-top:2px">'+fmtDate(d.date_prestation)+' · '+(d.lieu||'—')+'</div></div>'
+    +'<div class="faint" style="font-size:13px;margin-top:2px">'+fmtDate(d.date_prestation)+' · '+esc(d.lieu||'—')+'</div></div>'
     +statutBadge(d.statut)+'</div>'
   ).join('');
 }
@@ -1974,10 +1988,10 @@ async function renderDemandeDetail(id){
   const cancelable = ['demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse'].includes(d.statut);
   el.innerHTML = '<div class="flex-between" style="margin:16px 0"><h1 style="font-size:24px">'+(d.type_prestation||'Prestation')+'</h1>'+statutBadge(d.statut)+'</div>'
     +'<div class="grid g2">'
-    +'<div class="card"><span class="faint" style="font-size:12px;font-weight:700">DATE ET LIEU</span><p style="margin-top:8px">'+fmtDate(d.date_prestation)+' · '+(d.lieu||'—')+'</p></div>'
+    +'<div class="card"><span class="faint" style="font-size:12px;font-weight:700">DATE ET LIEU</span><p style="margin-top:8px">'+fmtDate(d.date_prestation)+' · '+esc(d.lieu||'—')+'</p></div>'
     +'<div class="card"><span class="faint" style="font-size:12px;font-weight:700">MONTANT</span><p style="margin-top:8px;font-size:20px;font-weight:700;color:var(--cyan)">'+(d.montant_ttc ? fmtEUR(d.montant_ttc) : 'En cours de chiffrage')+'</p></div>'
     +'</div>'
-    +(d.description_besoin ? '<div class="card" style="margin-top:16px"><span class="faint" style="font-size:12px;font-weight:700">DESCRIPTION</span><p style="margin-top:8px">'+d.description_besoin+'</p></div>' : '')
+    +(d.description_besoin ? '<div class="card" style="margin-top:16px"><span class="faint" style="font-size:12px;font-weight:700">DESCRIPTION</span><p style="margin-top:8px">'+esc(d.description_besoin)+'</p></div>' : '')
     +'<div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">'
     +'<button class="btn btn-o" onclick="go(\'messagerie\')">Contacter SportVision</button>'
     + (cancelable ? '<button class="btn btn-d" onclick="cancelDemande(\''+d.id+'\')">Annuler la demande</button>' : '')
@@ -1996,7 +2010,7 @@ async function renderAvisZone(prestationId){
     zone.innerHTML = '<div class="card">'
       +'<span class="faint" style="font-size:12px;font-weight:700">VOTRE AVIS</span>'
       +'<div class="star-rating" style="margin-top:10px;pointer-events:none">'+[1,2,3,4,5].map(n=>'<span class="'+(n<=existing.note?'on':'')+'">★</span>').join('')+'</div>'
-      + (existing.commentaire ? '<p style="margin-top:10px;font-size:13.5px">'+existing.commentaire+'</p>' : '')
+      + (existing.commentaire ? '<p style="margin-top:10px;font-size:13.5px">'+esc(existing.commentaire)+'</p>' : '')
       + (existing.video_url ? '<video src="'+existing.video_url+'" controls style="width:100%;max-width:360px;border-radius:10px;margin-top:12px"></video>' : '')
       +'<p class="faint" style="font-size:12px;margin-top:10px">Merci pour votre avis !</p>'
       +'</div>';
@@ -2114,7 +2128,7 @@ async function renderNotifications(){
   const items = [
     ...(devis.data||[]).map(d=>({title:'Devis disponible', detail:d.numero+' est en attente de votre réponse', date:d.created_at, cls:'b-blue', onClick:"go('devis')"})),
     ...(factures.data||[]).map(f=>({title:'Facture à régler', detail:f.numero+' — '+fmtEUR(f.montant_ttc), date:f.created_at, cls:'b-orange', onClick:"go('factures')"})),
-    ...(messages.data||[]).map(m=>({title:'Nouveau message', detail:(m.contenu||'').slice(0,60), date:m.created_at, cls:'b-blue', onClick:"go('messagerie')"})),
+    ...(messages.data||[]).map(m=>({title:'Nouveau message', detail:esc((m.contenu||'').slice(0,60)), date:m.created_at, cls:'b-blue', onClick:"go('messagerie')"})),
     ...(livrables.data||[]).map(l=>({title:'Livrable disponible', detail:l.nom, date:l.created_at, cls:'b-green', onClick:"go('livrables')"})),
   ].sort((a,b)=> new Date(b.date) - new Date(a.date));
   const el = document.getElementById('notifications-list');
@@ -2203,7 +2217,7 @@ function renderConvList(){
   document.getElementById('msg-conversations').innerHTML = msgConversations.map(c=>
     '<div class="msg-conv-item'+(c.id===msgActiveConv?' active':'')+'" onclick="selectConversation('+(c.id===null?'null':"'"+c.id+"'")+')">'
     +'<div style="font-weight:700;font-size:14px">'+c.label+(c.unread?(' <span class="badge b-blue" style="margin-left:6px">'+c.unread+'</span>'):'')+'</div>'
-    +'<div class="faint" style="font-size:12.5px;margin-top:4px">'+(c.last ? (c.last.contenu||'').slice(0,40) : 'Aucun message')+'</div></div>'
+    +'<div class="faint" style="font-size:12.5px;margin-top:4px">'+(c.last ? esc((c.last.contenu||'').slice(0,40)) : 'Aucun message')+'</div></div>'
   ).join('');
 }
 
@@ -2229,7 +2243,7 @@ async function renderThread(){
   const list = r.data || [];
   const el = document.getElementById('msg-thread');
   el.innerHTML = list.length ? list.map(m=>
-    '<div class="msg-bubble '+(m.auteur_type==='client'?'msg-mine':'msg-theirs')+'">'+m.contenu+'</div>'
+    '<div class="msg-bubble '+(m.auteur_type==='client'?'msg-mine':'msg-theirs')+'">'+esc(m.contenu)+'</div>'
   ).join('') : '<div class="empty">Aucun message pour le moment. Écrivez à SportVision ci-dessous.</div>';
   el.scrollTop = el.scrollHeight;
 
@@ -2261,7 +2275,7 @@ async function renderMesRdv(){
   const rdvBadge = {a_confirmer:['b-orange','À confirmer'], confirme:['b-green','Confirmé'], annule:['b-red','Annulé'], realise:['b-grey','Réalisé']};
   el.innerHTML = list.map(r2=>{
     const [cls,label] = rdvBadge[r2.statut] || ['b-grey', r2.statut];
-    return '<div class="row-item flex-between"><div><div style="font-weight:700">'+(r2.objet||'Rendez-vous')+'</div>'
+    return '<div class="row-item flex-between"><div><div style="font-weight:700">'+esc(r2.objet||'Rendez-vous')+'</div>'
       +'<div class="faint" style="font-size:13px">'+(r2.type_rdv==='appel'?'Appel téléphonique':'Rendez-vous physique')+' · '+fmtDate(r2.date_demandee)+'</div></div>'
       +'<span class="badge '+cls+'">'+label+'</span></div>';
   }).join('') || '<div class="empty">Aucun rendez-vous pour le moment.<br><br><button class="btn btn-p" onclick="go(\'rdv\')">Prendre rendez-vous</button></div>';
@@ -2296,7 +2310,7 @@ function renderRdvForm(){
     +'<span style="font-size:13px;font-weight:700;color:var(--t2);letter-spacing:.3px">DATE ET HORAIRE SOUHAITÉS</span>'
     +'<p class="faint" style="font-size:12.5px;margin:6px 0 14px">Choisissez librement votre date et un horaire entre 7h et 22h. SportVision confirmera la disponibilité.</p>'
     +'<div class="grid g2" style="margin-bottom:20px">'
-    +'<label>Date<input type="date" id="rdv-date" value="'+rdvForm.date+'"></label>'
+    +'<label>Date<input type="date" id="rdv-date" min="'+new Date().toISOString().slice(0,10)+'" value="'+rdvForm.date+'"></label>'
     +'<label>Horaire (entre 7h et 22h)<input type="time" id="rdv-heure" min="07:00" max="22:00" value="'+rdvForm.heure+'"></label>'
     +'</div>'
     +'<label>Objet (facultatif)<input type="text" id="rdv-objet" value="'+rdvForm.objet+'" placeholder="Ex : Étude accompagnement club" style="margin-bottom:20px"></label>'
