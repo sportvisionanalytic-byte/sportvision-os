@@ -8,6 +8,12 @@
 -- Portée de cette v1 : authentification + création de club + adhésion (club_members).
 -- Les autres modules (demandes, newsroom, sponsors...) restent en données de démo
 -- côté app.html tant qu'ils n'ont pas leur propre migration.
+--
+-- Ordre important : les tables sont TOUTES créées avant la fonction is_club_member,
+-- et les policies qui l'utilisent sont créées APRÈS elle. Une fonction `language sql`
+-- est validée contre le catalogue au moment de sa création (contrairement à plpgsql) :
+-- la définir avant que club_members existe échoue avec "relation club_members does not
+-- exist" (erreur rencontrée en pratique lors du premier passage de cette migration).
 -- ============================================================
 
 -- Réutilise la fonction générique déjà créée par migration-portail-v1.sql ; recréée
@@ -37,30 +43,6 @@ create table if not exists clubs (
 drop trigger if exists trg_clubs_upd on clubs;
 create trigger trg_clubs_upd before update on clubs
   for each row execute procedure update_updated_at_generic();
-
-alter table clubs enable row level security;
-
--- ── Fonction non-récursive de vérification d'appartenance à un club ──
--- SECURITY DEFINER : contourne le RLS de club_members lors de son évaluation interne,
--- ce qui évite la boucle infinie qu'aurait une sous-requête club_members directement
--- dans une policy de club_members elle-même (cf. migration-fix-recursion-profiles.sql
--- pour l'incident équivalent déjà rencontré sur `profiles`).
-create or replace function is_club_member(target_club_id uuid)
-returns boolean language sql security definer stable as $$
-  select exists (
-    select 1 from club_members
-    where club_id = target_club_id and user_id = auth.uid() and status = 'actif'
-  );
-$$;
-
-drop policy if exists "clubs_member_select" on clubs;
-create policy "clubs_member_select" on clubs for select using (is_club_member(id));
-
-drop policy if exists "clubs_staff_all" on clubs;
-create policy "clubs_staff_all" on clubs for all using (
-  exists (select 1 from profiles where id = auth.uid() and role in ('admin','com','sec'))
-);
--- (staff OS géré via `profiles`, table distincte de `club_members` : pas de récursion ici)
 
 -- ── 2. CLUB_MEMBERS ──
 -- Table séparée de `profiles` (staff OS) et de `client_users` (clients Portail), sur le
@@ -92,6 +74,52 @@ drop trigger if exists trg_club_members_upd on club_members;
 create trigger trg_club_members_upd before update on club_members
   for each row execute procedure update_updated_at_generic();
 
+create index if not exists idx_cm_user on club_members(user_id);
+create index if not exists idx_cm_club on club_members(club_id);
+
+-- ── 3. Historique des crédits (amorce — table seule, pas encore alimentée par l'app) ──
+
+create table if not exists club_credit_transactions (
+  id uuid default gen_random_uuid() primary key,
+  club_id uuid references clubs(id) on delete cascade not null,
+  label text not null,
+  amount integer not null,
+  created_by uuid references auth.users,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_cct_club on club_credit_transactions(club_id, created_at desc);
+
+-- ── 4. Fonction non-récursive de vérification d'appartenance à un club ──
+-- SECURITY DEFINER : contourne le RLS de club_members lors de son évaluation interne,
+-- ce qui évite la boucle infinie qu'aurait une sous-requête club_members directement
+-- dans une policy de club_members elle-même (cf. migration-fix-recursion-profiles.sql
+-- pour l'incident équivalent déjà rencontré sur `profiles`). Définie ici, après que
+-- club_members existe (cf. note d'ordre en tête de fichier).
+
+create or replace function is_club_member(target_club_id uuid)
+returns boolean language sql security definer stable as $$
+  select exists (
+    select 1 from club_members
+    where club_id = target_club_id and user_id = auth.uid() and status = 'actif'
+  );
+$$;
+
+-- ── 5. RLS — CLUBS ──
+
+alter table clubs enable row level security;
+
+drop policy if exists "clubs_member_select" on clubs;
+create policy "clubs_member_select" on clubs for select using (is_club_member(id));
+
+drop policy if exists "clubs_staff_all" on clubs;
+create policy "clubs_staff_all" on clubs for all using (
+  exists (select 1 from profiles where id = auth.uid() and role in ('admin','com','sec'))
+);
+-- (staff OS géré via `profiles`, table distincte de `club_members` : pas de récursion ici)
+
+-- ── 6. RLS — CLUB_MEMBERS ──
+
 alter table club_members enable row level security;
 
 drop policy if exists "cm_self_select" on club_members;
@@ -108,19 +136,7 @@ create policy "cm_staff_all" on club_members for all using (
   exists (select 1 from profiles where id = auth.uid() and role in ('admin','com','sec'))
 );
 
-create index if not exists idx_cm_user on club_members(user_id);
-create index if not exists idx_cm_club on club_members(club_id);
-
--- ── 3. Historique des crédits (amorce — table seule, pas encore alimentée par l'app) ──
-
-create table if not exists club_credit_transactions (
-  id uuid default gen_random_uuid() primary key,
-  club_id uuid references clubs(id) on delete cascade not null,
-  label text not null,
-  amount integer not null,
-  created_by uuid references auth.users,
-  created_at timestamptz default now()
-);
+-- ── 7. RLS — CLUB_CREDIT_TRANSACTIONS ──
 
 alter table club_credit_transactions enable row level security;
 
@@ -132,9 +148,7 @@ create policy "cct_staff_all" on club_credit_transactions for all using (
   exists (select 1 from profiles where id = auth.uid() and role in ('admin','com','sec'))
 );
 
-create index if not exists idx_cct_club on club_credit_transactions(club_id, created_at desc);
-
--- ── 4. Empêcher le trigger handle_new_user() (staff OS) de créer une fiche
+-- ── 8. Empêcher le trigger handle_new_user() (staff OS) de créer une fiche
 --      `profiles` fantôme pour un compte Club+ ──
 -- Le trigger existant (corrigé par migration-fix-portail-cree-profil-staff.sql) ne crée
 -- déjà une ligne `profiles` QUE si raw_user_meta_data->>'role' est fourni à l'inscription.
