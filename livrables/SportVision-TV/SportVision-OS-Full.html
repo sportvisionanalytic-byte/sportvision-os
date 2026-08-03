@@ -8101,7 +8101,7 @@ async function docsLoadAll(){
     const [devisData,contratsData,facturesData,avoirsData]=await Promise.all([
       sbFetch('devis?select=id,numero,statut,signature_statut,signature_demandee_at,signature_confirmee_at,total_ttc,date_envoi,date_expiration,clients(id,nom),created_at&order=created_at.desc&limit=200'),
       sbFetch('contrats?select=id,type_contrat,statut,signature_statut,signature_demandee_at,signature_confirmee_at,montant_mensuel,frequence,date_debut,date_fin,clients(nom),created_at&order=created_at.desc&limit=200').catch(()=>[]),
-      sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom),updated_at&statut_financier=neq.non_facturée&order=date_prestation.desc&limit=200').catch(()=>[]),
+      sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom),updated_at,factures(pennylane_invoice_number,pennylane_public_url)&statut_financier=neq.non_facturée&order=date_prestation.desc&limit=200').catch(()=>[]),
       sbFetch('avoirs?select=*,clients(nom),prestation:prestations(reference,date_prestation)&order=created_at.desc&limit=200').catch(()=>[]),
     ]);
     _docsCache.devis=devisData||[];
@@ -8261,10 +8261,33 @@ function docsRenderFactures(){
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
         <button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">Facture</button>
         <button onclick="envoyerFactureParEmail('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);border-radius:var(--rp);color:var(--acc2);cursor:pointer" title="Envoyer par email">✉</button>
+        ${p.factures?.[0]?.pennylane_invoice_number
+          ?`<a href="${p.factures[0].pennylane_public_url||'#'}" target="_blank" style="padding:3px 9px;font-size:11px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.2);border-radius:var(--rp);color:#14B8A6;text-decoration:none" title="Facture électronique Pennylane">✓ ${p.factures[0].pennylane_invoice_number}</a>`
+          :`<button onclick="envoyerFacturePennylane('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.2);border-radius:var(--rp);color:#14B8A6;cursor:pointer" title="Envoyer en facturation électronique (Pennylane)">Pennylane</button>`}
         <button onclick="docsModalNouvelAvoir('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.18);border-radius:var(--rp);color:var(--er);cursor:pointer">+ Avoir</button>
       </td>
     </tr>`).join('')}
   </tbody></table></div></div>`;
+}
+async function envoyerFacturePennylane(prestationId){
+  if(!confirm('Envoyer cette facture en facturation électronique via Pennylane ? Cette action crée un vrai document, non annulable (seul un avoir permet de le corriger).'))return;
+  try{
+    const fact=await getOrCreateFacture(prestationId);
+    if(!fact){toast('Impossible de générer la facture.','er');return;}
+    const res=await fetch(SB_URL+'/functions/v1/send-facture-pennylane',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')},
+      body:JSON.stringify({facture_id:fact.id})
+    });
+    let json={};
+    try{json=await res.json();}catch(e2){}
+    if(!res.ok){
+      if(res.status===404)throw new Error('Edge Function send-facture-pennylane non déployée.');
+      throw new Error(json.error||('Erreur serveur ('+res.status+')'));
+    }
+    toast('Facture envoyée à Pennylane — '+(json.pennylane_invoice_number||''),'ok');
+    await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
+  }catch(e){toast('Erreur : '+e.message,'er');}
 }
 
 function docsRenderAvoirs(){
