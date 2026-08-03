@@ -557,6 +557,12 @@ async function sbFetch(path, opts={}){
   const txt=await res.text();
   return {ok:res.ok, status:res.status, data: txt?JSON.parse(txt):null};
 }
+async function sbFunction(name, body){
+  const tok=localStorage.getItem('svcp_tok')||SB_KEY;
+  const res=await fetch(SB_URL+'/functions/v1/'+name, {method:'POST', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const txt=await res.text();
+  return {ok:res.ok, data: txt?JSON.parse(txt):null};
+}
 async function checkRealSession(){
   const tok=localStorage.getItem('svcp_tok');
   if(!tok) return false;
@@ -1306,13 +1312,50 @@ function submitEquipeForm(){
 }
 
 /* ══════════════ UTILISATEURS ══════════════ */
+/* Réel quand REAL est actif (session Supabase) : realMembers est un cache
+   chargé depuis club_members, invalidé (=null) après toute action d'écriture
+   pour forcer un rechargement propre. En mode démo, DATA.users reste inchangé. */
+let realMembers=null;
+async function loadRealMembers(){
+  if(!REAL) return;
+  const res=await sbFetch('club_members?club_id=eq.'+REAL.clubId+'&select=id,role,prenom,nom,telephone,teams,status&order=created_at.asc');
+  realMembers = res.ok ? (res.data||[]) : [];
+  if(S.view==='membres') renderContent();
+}
 function tplMembres(){
+  if(REAL){
+    if(realMembers===null){ loadRealMembers(); return `<div class="sh"><b>Utilisateurs</b></div><div class="empty-state">Chargement…</div>`; }
+    return `<div class="sh"><b>Utilisateurs</b><button class="btn bp" onclick="guard(openInviteWizard)()">+ Inviter un utilisateur</button></div>
+      <div class="list-host">${realMembers.length?realMembers.map(u=>{
+        const sm=statusMeta(u.status);
+        const name=`${u.prenom||''} ${u.nom||''}`.trim()||'(sans nom)';
+        const roleLabel=(ROLES[u.role]&&ROLES[u.role].label)||u.role;
+        return `<button class="list-row" onclick="openUserDrawer('${u.id}')">
+          <div><div style="font-weight:700;font-size:14px">${esc(name)}</div><div class="muted" style="font-size:12px;margin-top:2px">${roleLabel}${u.teams&&u.teams.length?' · '+u.teams.join(', '):''}</div></div>
+          <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;
+      }).join(''):'<div class="empty-state">Aucun utilisateur pour le moment.</div>'}</div>`;
+  }
   return `<div class="sh"><b>Utilisateurs</b><button class="btn bp" onclick="guard(openInviteWizard)()">+ Inviter un utilisateur</button></div>
     <div class="list-host">${DATA.users.map(u=>{const sm=statusMeta(u.status); return `<button class="list-row" onclick="openUserDrawer('${u.id}')">
       <div><div style="font-weight:700;font-size:14px">${u.name}</div><div class="muted" style="font-size:12px;margin-top:2px">${u.email} · ${u.role} · ${u.teams.join(', ')}</div></div>
       <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;}).join('')}</div>`;
 }
 function openUserDrawer(id){
+  if(REAL){
+    const u=realMembers.find(x=>x.id===id); if(!u) return;
+    const sm=statusMeta(u.status);
+    const name=`${u.prenom||''} ${u.nom||''}`.trim()||'(sans nom)';
+    const roleLabel=(ROLES[u.role]&&ROLES[u.role].label)||u.role;
+    openDrawer(`<div class="sh"><b>${esc(name)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+      <div class="muted" style="font-size:12.5px;margin-bottom:16px">${roleLabel}</div>
+      <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:18px;display:inline-block">${sm.label}</span>
+      <div class="muted" style="font-size:12.5px;margin-bottom:20px">Équipes autorisées : ${u.teams&&u.teams.length?u.teams.join(', '):'Toutes'}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn bo" onclick="userToggleSuspend('${id}')">${u.status==='suspendu'?"Réactiver l'accès":"Suspendre l'accès"}</button>
+        <button class="btn bd" onclick="userRemove('${id}')">Supprimer l'accès</button>
+      </div>`);
+    return;
+  }
   const u=DATA.users.find(x=>x.id===id); const sm=statusMeta(u.status);
   openDrawer(`<div class="sh"><b>${u.name}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="muted" style="font-size:12.5px;margin-bottom:16px">${u.email} · ${u.role}</div>
@@ -1324,10 +1367,33 @@ function openUserDrawer(id){
       <button class="btn bd" onclick="userRemove('${id}')">Supprimer l'accès</button>
     </div>`);
 }
-function userToggleSuspend(id){ const u=DATA.users.find(x=>x.id===id); u.status = u.status==='suspendu'?'actif':'suspendu'; closeDrawer(); renderContent(); toast(u.status==='suspendu'?'Accès suspendu.':'Accès réactivé.'); }
-function userRemove(id){ const idx=DATA.users.findIndex(x=>x.id===id); DATA.users.splice(idx,1); closeDrawer(); renderContent(); toast('Accès supprimé.'); }
+async function userToggleSuspend(id){
+  if(REAL){
+    const u=realMembers.find(x=>x.id===id); if(!u) return;
+    const next = u.status==='suspendu'?'actif':'suspendu';
+    const res=await sbFetch('club_members?id=eq.'+id, {method:'PATCH', body:{status:next}});
+    if(res.ok){ u.status=next; closeDrawer(); renderContent(); toast(next==='suspendu'?'Accès suspendu.':'Accès réactivé.'); }
+    else toast("Action impossible (droits administrateur requis).");
+    return;
+  }
+  const u=DATA.users.find(x=>x.id===id); u.status = u.status==='suspendu'?'actif':'suspendu'; closeDrawer(); renderContent(); toast(u.status==='suspendu'?'Accès suspendu.':'Accès réactivé.');
+}
+async function userRemove(id){
+  if(REAL){
+    const res=await sbFetch('club_members?id=eq.'+id, {method:'DELETE'});
+    if(res.ok){ realMembers=realMembers.filter(x=>x.id!==id); closeDrawer(); renderContent(); toast('Accès supprimé.'); }
+    else toast("Action impossible (droits administrateur requis).");
+    return;
+  }
+  const idx=DATA.users.findIndex(x=>x.id===id); DATA.users.splice(idx,1); closeDrawer(); renderContent(); toast('Accès supprimé.');
+}
 let iw={step:1,prenom:'',nom:'',email:'',role:'Éducateur',teams:[]};
 function openInviteWizard(){ iw={step:1,prenom:'',nom:'',email:'',role:'Éducateur',teams:[]}; renderInviteWizard(); }
+const ROLE_LABEL_TO_CODE={
+  'Administrateur du club':'admin','Président':'president','Secrétaire':'secretaire','Community Manager':'comm',
+  'Éducateur':'coach',"Responsable d'équipe":'resp_equipe','Responsable sponsors':'sponsor_mgr',
+  'Trésorier':'tresorier','Membre du bureau':'membre_bureau','Lecture seule':'lecture_seule'
+};
 const ROLE_DESC={
   'Administrateur du club':'Accès complet au club : équipes, utilisateurs, sponsors, créations, abonnement et paramètres.',
   'Président':'Vue stratégique : validations, sponsors, rapports, abonnement.',
@@ -1368,10 +1434,17 @@ function inviteSync(){
   if(document.getElementById('iw-email')) iw.email=document.getElementById('iw-email').value;
 }
 function inviteBack(){ inviteSync(); iw.step=Math.max(1,iw.step-1); renderInviteWizard(); }
-function inviteNext(){
+async function inviteNext(){
   inviteSync();
   if(iw.step===1){ if(!iw.prenom.trim()||!iw.email.trim()){ toast("Le prénom et l'e-mail sont obligatoires."); return; } }
   if(iw.step<3){ iw.step++; renderInviteWizard(); return; }
+  if(REAL){
+    const res=await sbFunction('clubplus-invite', {email:iw.email, prenom:iw.prenom, nom:iw.nom, club_id:REAL.clubId, role:ROLE_LABEL_TO_CODE[iw.role]||'coach', teams:iw.teams});
+    if(!res.ok){ toast((res.data && res.data.error) || "Erreur lors de l'envoi de l'invitation."); return; }
+    closeModal(); realMembers=null; switchView('membres');
+    toast(res.data && res.data.already_invited ? `${iw.email} est déjà membre de ce club.` : `Invitation envoyée à ${iw.email}.`);
+    return;
+  }
   DATA.users.push({id:uid('u'),name:`${iw.prenom} ${iw.nom}`.trim(),email:iw.email,role:iw.role,teams:iw.teams.length?iw.teams:['Toutes'],status:'invitation'});
   closeModal(); switchView('membres'); toast(`Invitation envoyée à ${iw.email}.`);
 }

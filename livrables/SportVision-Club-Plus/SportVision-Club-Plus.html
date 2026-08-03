@@ -400,6 +400,15 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
           <button class="btn btn-p btn-block" onclick="showToast('E-mail envoyé (simulation).')">Envoyer le lien</button>
         </div>
 
+        <div id="auth-setpass" style="display:none">
+          <div class="auth-title">Bienvenue sur SportVision Club+</div>
+          <div class="auth-sub" id="setpass-sub">Choisissez votre mot de passe pour activer votre accès.</div>
+          <div id="setpass-err" style="font-size:12.5px;color:var(--er);min-height:16px;margin-bottom:4px"></div>
+          <div class="field"><label>Mot de passe</label><input id="sp-pass" type="password"></div>
+          <div class="field"><label>Confirmation</label><input id="sp-pass2" type="password"></div>
+          <button class="btn btn-p btn-block" id="sp-btn" onclick="handleSetPassword()">Activer mon compte</button>
+        </div>
+
         <div id="auth-inscription" style="display:none">
           <div style="display:flex;justify-content:space-between;margin-bottom:6px">
             <div class="auth-title" style="margin:0">Créer un compte</div>
@@ -625,9 +634,51 @@ function showToast(msg){
 
 // ── Auth ──
 function authShow(which){
-  ['connexion','mdp','inscription','success'].forEach(k=>document.getElementById('auth-'+k).style.display='none');
+  ['connexion','mdp','setpass','inscription','success'].forEach(k=>document.getElementById('auth-'+k).style.display='none');
   document.getElementById('auth-'+which).style.display='block';
   if(which==='inscription') signupStep=1, signupRender();
+}
+
+// ── Acceptation d'invitation (lien envoyé par clubplus-invite) ──
+// Supabase ajoute #access_token=...&refresh_token=...&type=invite (ou recovery)
+// au retour de redirectTo. On l'intercepte avant le routage par #/chemin habituel.
+let inviteAccessToken=null, inviteRefreshToken=null;
+function checkInviteHash(){
+  const h=window.location.hash;
+  if(!h.includes('access_token=') || !(h.includes('type=invite') || h.includes('type=recovery'))) return false;
+  const params=new URLSearchParams(h.replace('#',''));
+  inviteAccessToken=params.get('access_token');
+  inviteRefreshToken=params.get('refresh_token');
+  if(!inviteAccessToken) return false;
+  document.getElementById('setpass-sub').textContent = h.includes('type=recovery')
+    ? 'Choisissez votre nouveau mot de passe.'
+    : 'Un administrateur vous a invité à rejoindre son club. Choisissez votre mot de passe pour activer votre accès.';
+  nav('auth'); authShow('setpass');
+  history.replaceState(null, '', window.location.pathname);
+  return true;
+}
+async function handleSetPassword(){
+  const errEl=document.getElementById('setpass-err'); errEl.textContent='';
+  const pass=document.getElementById('sp-pass').value;
+  const pass2=document.getElementById('sp-pass2').value;
+  const btn=document.getElementById('sp-btn');
+  if(!pass || pass.length<6){ errEl.textContent='Le mot de passe doit contenir au moins 6 caractères.'; return; }
+  if(pass!==pass2){ errEl.textContent='Les mots de passe ne correspondent pas.'; return; }
+  if(!inviteAccessToken){ errEl.textContent='Lien invalide ou expiré. Demandez un nouveau lien à votre administrateur.'; return; }
+  btn.disabled=true; btn.textContent='Activation…';
+  try{
+    const res=await fetch(SB_URL+'/auth/v1/user', {method:'PUT', headers:{apikey:SB_KEY, Authorization:'Bearer '+inviteAccessToken, 'Content-Type':'application/json'}, body:JSON.stringify({password:pass})});
+    const d=await res.json();
+    if(!res.ok) throw new Error(d.msg || d.error_description || 'Impossible de définir le mot de passe.');
+    svSave(inviteAccessToken, inviteRefreshToken, d.id);
+    // Passe le club_members correspondant en 'actif' (autorisé : cm_self_update, auth.uid()=user_id).
+    await sbFetch('club_members?user_id=eq.'+d.id+'&status=eq.invitation', {method:'PATCH', body:{status:'actif'}});
+    window.location.href='app.html';
+  }catch(e){
+    errEl.textContent=e.message;
+  }finally{
+    btn.disabled=false; btn.textContent='Activer mon compte';
+  }
 }
 let signupStep=1;
 let selectedPlan='club';
@@ -761,7 +812,7 @@ function routeFromHash(){
   else if(h==='partenaires'){ nav('vitrine'); }
 }
 window.addEventListener('hashchange', routeFromHash);
-routeFromHash();
+if(!checkInviteHash()) routeFromHash();
 </script>
 </body>
 </html>
