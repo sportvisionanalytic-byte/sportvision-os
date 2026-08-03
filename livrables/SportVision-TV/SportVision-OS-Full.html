@@ -2333,6 +2333,56 @@ function escJs(s){
   return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── Préférences de notification ──────────────────────────────────────────────
+// Chaque collaborateur peut désactiver certaines catégories de notifications
+// (profiles.notification_prefs, jsonb — voir migration-notification-prefs.sql).
+// Catégories : invitations, rappels, materiel, taches. Les messages ne sont pas
+// filtrés à la création (ce sont de vraies conversations, pas des alertes) —
+// seul l'affichage du badge "non lus" est gaté par la préférence "messages".
+const NOTIF_CATEGORIES=[
+  {id:'invitations',lb:'Nouvelles missions',d:'Invitation à intervenir sur une prestation'},
+  {id:'rappels',lb:'Rappels de prestation',d:'Rappel automatique avant une mission à venir'},
+  {id:'messages',lb:'Messages',d:'Badge de message non lu'},
+  {id:'materiel',lb:'Matériel & kits',d:'Attribution de kit, incident ou contrôle bloquant'},
+  {id:'taches',lb:'Tâches & alertes',d:'Tâche assignée par un collègue, alerte système'},
+];
+let _myNotifPrefs=null;
+async function _fetchNotifPrefsMap(ids){
+  const uniq=[...new Set((ids||[]).filter(Boolean))];
+  if(!uniq.length)return{};
+  const r=await sbFetch('profiles?select=id,notification_prefs&id=in.('+uniq.join(',')+')').catch(()=>[]);
+  const map={};
+  (Array.isArray(r)?r:[]).forEach(p=>{map[p.id]=p.notification_prefs||{};});
+  return map;
+}
+function _notifEnabled(prefs,categorie){
+  return !prefs||prefs[categorie]!==false; // activé par défaut si absent
+}
+async function getMyNotifPrefs(){
+  const uid=localStorage.getItem('sv_uid');
+  if(!uid)return{};
+  if(_myNotifPrefs)return _myNotifPrefs;
+  const map=await _fetchNotifPrefsMap([uid]);
+  _myNotifPrefs=map[uid]||{};
+  return _myNotifPrefs;
+}
+// Crée une notification pour UN destinataire, seulement si sa préférence pour
+// cette catégorie n'est pas désactivée.
+async function creerNotifSiActive(destinataire_id,categorie,body){
+  try{
+    const map=await _fetchNotifPrefsMap([destinataire_id]);
+    if(!_notifEnabled(map[destinataire_id],categorie))return null;
+    return await sbFetch('notifications',{method:'POST',body:{...body,destinataire_id}}).catch(()=>null);
+  }catch(e){return null;}
+}
+// Filtre un tableau de notifications déjà construites (plusieurs destinataires)
+// pour ne garder que celles dont le destinataire a la catégorie activée.
+async function filtrerNotifsParPrefs(notifs,categorie){
+  if(!notifs.length)return notifs;
+  const map=await _fetchNotifPrefsMap(notifs.map(n=>n.destinataire_id));
+  return notifs.filter(n=>_notifEnabled(map[n.destinataire_id],categorie));
+}
+
 // Upload d'un fichier vers Supabase Storage (bucket public, écriture protégée par RLS storage.objects).
 // Retourne l'URL publique du fichier, ou null en cas d'échec.
 async function sbUpload(bucket, path, file){
@@ -6573,7 +6623,7 @@ async function loadSettings(){
   if(!uid){el.innerHTML='';return;}
   try{
     const [data,authR]=await Promise.all([
-      sbFetch('profiles?select=prenom,nom,telephone,role,avatar_url,bio,adresse,ville,code_postal,vehicule,permis&id=eq.'+uid),
+      sbFetch('profiles?select=prenom,nom,telephone,role,avatar_url,bio,adresse,ville,code_postal,vehicule,permis,notification_prefs&id=eq.'+uid),
       fetch(SB_URL+'/auth/v1/user',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok}}).then(r=>r.json()).catch(()=>({}))
     ]);
     const p=data?.[0]||{};
@@ -6623,8 +6673,34 @@ async function loadSettings(){
         <div id="set-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
         <div style="display:flex;justify-content:flex-end"><button class="btn bp" onclick="sauvegarderProfil('${uid}')">Enregistrer le profil</button></div>
       </div>
+    </div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Notifications</div></div>
+      <div style="padding:8px 18px 18px;display:flex;flex-direction:column">
+        ${NOTIF_CATEGORIES.map(cat=>{
+          const enabled=_notifEnabled(p.notification_prefs,cat.id);
+          return`<label style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer">
+            <input type="checkbox" class="set-notif-cb" data-cat="${cat.id}" ${enabled?'checked':''} onchange="toggleNotifPref('${uid}','${cat.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--acc);flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1)">${cat.lb}</div>
+              <div style="font-size:11.5px;color:var(--t3);margin-top:1px">${cat.d}</div>
+            </div>
+          </label>`;
+        }).join('')}
+        <div id="set-notif-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:4px"></div>
+      </div>
     </div>`;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+async function toggleNotifPref(uid,categorie,actif){
+  const err=document.getElementById('set-notif-err');
+  try{
+    const prefs={...(_myNotifPrefs||{}),[categorie]:actif};
+    const r=await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{notification_prefs:prefs}});
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'Modification impossible.');return;}
+    _myNotifPrefs=prefs;
+    if(err)err.textContent='';
+  }catch(e){if(err)err.textContent='Erreur lors de la sauvegarde.';}
 }
 async function sauvegarderProfil(uid){
   const err=document.getElementById('set-err');
@@ -6790,7 +6866,7 @@ async function ajouterMembreEquipe(prestationId,ref){
     const rdv=document.getElementById('eq-rdv').value;
     const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
     if(sbErr(rAdd)){err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');return;}
-    sbFetch('notifications',{method:'POST',body:{destinataire_id:colId,type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId}}).catch(()=>{});
+    creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
     document.getElementById('eq-col').value='';
     document.getElementById('eq-fonc').value='';
     document.getElementById('eq-rem').value='';
@@ -7527,10 +7603,10 @@ async function kitsAttribuerSubmit(kitId){
     // Notifier le responsable
     const respId=document.getElementById('attr-resp')?.value;
     if(respId){
-      await sbFetch('notifications',{method:'POST',body:{
-        destinataire_id:respId,type:'kit_attribue',titre:'Kit attribué',
+      await creerNotifSiActive(respId,'materiel',{
+        type:'kit_attribue',titre:'Kit attribué',
         message:'Un kit vous a été attribué pour une prestation.',source_type:'kits',source_id:kitId,
-      }}).catch(()=>{});
+      });
     }
     closeModal();toast('Kit attribué.','ok');kitsLoadAll();updateNavBadges(S.role);
   }catch(e){toast('Erreur lors de l\'attribution.','er');}
@@ -7656,11 +7732,11 @@ async function kitsIncidentSubmit(materielId){
       await dispatchSVEvent('prestation.confirmed',{prestation_id:null}).catch(()=>{});
       const prods=await sbFetch('profiles?select=id&role=in.(admin,prod)').catch(()=>[]);
       for(const p of (prods||[])){
-        await sbFetch('notifications',{method:'POST',body:{
-          destinataire_id:p.id,type:'incident_critique',priorite:'high',titre:'Incident critique matériel',
+        await creerNotifSiActive(p.id,'materiel',{
+          type:'incident_critique',priorite:'high',titre:'Incident critique matériel',
           message:'Incident critique matériel signalé : '+desc.slice(0,80),
           source_type:'materiels',source_id:materielId,
-        }}).catch(()=>{});
+        });
       }
     }
     closeModal();toast('Incident déclaré.','ok');kitsLoadAll();
@@ -7760,11 +7836,11 @@ async function kitsControleSubmit(controleId){
       // Notifier prod
       const prods=await sbFetch('profiles?select=id&role=in.(admin,prod)').catch(()=>[]);
       for(const p of (prods||[])){
-        await sbFetch('notifications',{method:'POST',body:{
-          destinataire_id:p.id,type:'controle_bloquant',priorite:'high',titre:'Contrôle bloquant',
+        await creerNotifSiActive(p.id,'materiel',{
+          type:'controle_bloquant',priorite:'high',titre:'Contrôle bloquant',
           message:`Contrôle bloquant — ${absent} absent(s), ${def} défectueux`,
           source_type:'kit_controles',source_id:controleId,
-        }}).catch(()=>{});
+        });
       }
       closeModal();toast('Contrôle validé avec anomalie bloquante. Production alertée.','er');
     }else{
@@ -8254,14 +8330,23 @@ function _sigBadge(st){
 }
 
 async function demanderSignatureDoc(docType,id,ref){
-  const table=docType==='devis'?'devis':'contrats';
+  if(!confirm('Envoyer "'+ref+'" en signature électronique réelle via Youtrust ? Le client recevra un e-mail avec un lien pour signer.'))return;
   try{
-    const r=await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:{signature_statut:'demandee',signature_demandee_at:new Date().toISOString()}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'demande impossible.'),'er');return;}
-    await logDocEvent('envoi',ref,docType,'Signature demandée — '+ref);
-    toast('Signature demandée — suivez-la dans l\'onglet Signatures.','ok');
+    const res=await fetch(SB_URL+'/functions/v1/send-signature-request',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')},
+      body:JSON.stringify({doc_type:docType,doc_id:id})
+    });
+    let json={};
+    try{json=await res.json();}catch(e2){}
+    if(!res.ok){
+      if(res.status===404)throw new Error('Edge Function send-signature-request non déployée.');
+      throw new Error(json.error||('Erreur serveur ('+res.status+')'));
+    }
+    await logDocEvent('envoi',ref,docType,'Signature Youtrust envoyée — '+ref);
+    toast('Signature envoyée via Youtrust — le client va recevoir un e-mail.','ok');
     await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
-  }catch(e){toast('Erreur lors de la demande de signature.','er');}
+  }catch(e){toast('Erreur : '+e.message,'er');}
 }
 
 async function confirmerSignatureDoc(docType,id,ref){
@@ -8350,15 +8435,14 @@ async function creerTachesAuto(eventType,data){
       const profiles=await sbFetch('profiles?select=id&role=eq.'+t.role+'&limit=10').catch(()=>[]);
       for(const p of (profiles||[])){
         if(p.id===uid)continue;
-        await sbFetch('notifications',{method:'POST',body:{
+        await creerNotifSiActive(p.id,'taches',{
           type:'tache',
           titre:t.titre+(data?.label?' — '+data.label:''),
           message:t.msg,lue:false,
-          destinataire_id:p.id,
           priorite:t.priorite||'normale',
           source_type:data?.source_type||null,
           source_id:data?.source_id||null,
-        }});
+        });
       }
     }
   }catch(e){console.warn('creerTachesAuto',e);}
@@ -10098,13 +10182,16 @@ async function msgSubmitCrTache(){
   const uid=localStorage.getItem('sv_uid');
   const dest=document.getElementById('mct-dest')?.value||uid;
   const prio=document.getElementById('mct-prio')?.value||'medium';
+  const destFinal=dest||uid;
+  const body={
+    type:'tache',titre,message:'Tâche créée depuis un message.',
+    expediteur_id:uid,priorite:prio,lue:false,created_at:new Date().toISOString(),
+  };
   try{
-    const r=await sbFetch('notifications',{method:'POST',body:{
-      type:'tache',titre,message:'Tâche créée depuis un message.',
-      destinataire_id:dest||uid,expediteur_id:uid,
-      priorite:prio,lue:false,created_at:new Date().toISOString(),
-    }});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
+    const r=destFinal===uid
+      ?await sbFetch('notifications',{method:'POST',body:{...body,destinataire_id:destFinal}})
+      :await creerNotifSiActive(destFinal,'taches',body);
+    if(r&&sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
     closeModal();toast('Tâche créée.','ok');
     updateNavBadges(S.role);
   }catch(e){toast('Erreur lors de la création.','er');}
@@ -16202,7 +16289,8 @@ async function updateNavBadges(role){
     if(uid){
       const notifs=await sbFetch('notifications?select=id&destinataire_id=eq.'+uid+'&lue=eq.false&type=not.in.(tache,contenu,message)');
       setDot((notifs||[]).length);
-      const unreadMsgs=await sbFetch('messages?select=id&destinataire_id=eq.'+uid+'&lue=eq.false').catch(()=>[]);
+      const myPrefs=await getMyNotifPrefs();
+      const unreadMsgs=_notifEnabled(myPrefs,'messages')?await sbFetch('messages?select=id&destinataire_id=eq.'+uid+'&lue=eq.false').catch(()=>[]):[];
       setBadge('msg',(unreadMsgs||[]).length,'nb-r');
     }
     if(['admin','sec','prod'].includes(role)){
@@ -19525,10 +19613,11 @@ async function dispatchSVEvent(type, data){
       });
     }
   }
-  // Insertion en batch
-  if(notifs.length){
+  // Insertion en batch, après filtrage des destinataires ayant désactivé les alertes système
+  const notifsFiltres=await filtrerNotifsParPrefs(notifs,'taches');
+  if(notifsFiltres.length){
     try{
-      await sbFetch('notifications',{method:'POST',body:notifs});
+      await sbFetch('notifications',{method:'POST',body:notifsFiltres});
     }catch(e){console.warn('dispatchSVEvent error:',e);}
   }
 }

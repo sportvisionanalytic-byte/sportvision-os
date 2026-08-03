@@ -2019,24 +2019,15 @@ async function renderContrats(){
   el.innerHTML = list.map(c=>{
     const sig = c.signature_statut && c.signature_statut !== 'non_demandee' ? c.signature_statut : null;
     const [cls,label] = sig ? (sigBadge[sig] || ['b-grey', sig]) : ['b-grey', 'Aucune signature requise'];
-    const canSign = sig === 'demandee';
+    const awaitingSignature = sig === 'demandee';
     return '<div class="row-item">'
       +'<div class="flex-between"><div><div style="font-weight:700">'+(c.type_contrat||'Contrat')+'</div>'
       +'<div class="faint" style="font-size:13px;margin-top:2px">'+statutBadge(c.statut)+'</div></div>'
       +'<span class="badge '+cls+'">'+label+'</span></div>'
-      + (canSign ? '<button class="btn btn-p" style="margin-top:14px" onclick="signContrat(\''+c.id+'\')">Signer le contrat</button>' : '')
+      + (awaitingSignature ? '<p class="faint" style="font-size:12.5px;margin-top:14px">Un e-mail de notre partenaire de signature électronique (Youtrust) vous a été envoyé avec un lien pour signer. Vérifiez votre boîte mail, y compris les spams.</p>' : '')
       + (sig==='signee' ? '<div class="faint" style="font-size:12.5px;margin-top:10px">Signé le '+fmtDate(c.signature_confirmee_at)+'</div>' : '')
       +'</div>';
-  }).join('') + '<p class="faint" style="font-size:12px;margin-top:6px">La signature électronique est simulée pour le moment.</p>';
-}
-
-async function signContrat(contratId){
-  const nom = prompt('Merci de taper votre nom complet pour valider la signature :');
-  if (!nom || !nom.trim()) return;
-  const r = await sbRpc('client_sign_contrat', { p_contrat_id: contratId, p_signataire_nom: nom.trim() });
-  if (!r.ok){ toast((r.data && r.data.message) || 'Impossible de signer ce contrat.'); return; }
-  toast('Contrat signé.');
-  renderContrats();
+  }).join('');
 }
 
 async function renderNotifications(){
