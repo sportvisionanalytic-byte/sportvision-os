@@ -54,6 +54,7 @@ Liste des projets ou chantiers actifs :
 - Améliorer le modèle économique
 - Développer la base clients (clubs, joueurs, familles)
 - Structurer et optimiser la communication de SportVision
+- **SportVision Portail** (site public + espace client connecté à SportVision OS) : lancement officiel prévu **mi-septembre 2026**. L'app mobile (iOS/Android) et l'achat du nom de domaine personnalisé sont volontairement calés fin août pour arriver prêts au lancement.
 
 ---
 

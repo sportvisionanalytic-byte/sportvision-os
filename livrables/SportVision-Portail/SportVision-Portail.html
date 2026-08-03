@@ -106,6 +106,9 @@ section{padding:60px 24px}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
 .chip{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--t2);border:1px solid var(--bd2)}
 .chip.active{background:rgba(22,139,255,.15);color:var(--pri);border-color:rgba(22,139,255,.4)}
+.star-rating{display:flex;gap:6px}
+.star-rating span{font-size:30px;line-height:1;cursor:pointer;color:var(--bd2);transition:color .1s}
+.star-rating span.on{color:var(--wa)}
 #pub-footer{border-top:1px solid var(--bd);padding:44px 24px 26px;background:var(--bg2);color:var(--t3);font-size:12.5px}
 .footer-grid{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:28px}
 @media(max-width:760px){.footer-grid{grid-template-columns:1fr 1fr}}
@@ -1060,6 +1063,18 @@ async function sbFunction(name, body){
   return { ok: res.ok, data: txt ? JSON.parse(txt) : null };
 }
 
+// Upload d'un fichier vers Supabase Storage (bucket portail-media, écriture protégée par RLS).
+async function sbUpload(bucket, path, file){
+  const tok = localStorage.getItem('svp_tok') || '';
+  const res = await fetch(SB_URL+'/storage/v1/object/'+bucket+'/'+path, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: 'Bearer '+tok, 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' },
+    body: file,
+  });
+  if (!res.ok) return null;
+  return SB_URL+'/storage/v1/object/public/'+bucket+'/'+path;
+}
+
 // ── AUTH ──
 async function handleLogin(){
   const email = document.getElementById('lg-email').value.trim();
@@ -1966,7 +1981,65 @@ async function renderDemandeDetail(id){
     +'<div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">'
     +'<button class="btn btn-o" onclick="go(\'messagerie\')">Contacter SportVision</button>'
     + (cancelable ? '<button class="btn btn-d" onclick="cancelDemande(\''+d.id+'\')">Annuler la demande</button>' : '')
+    +'</div>'
+    +'<div id="avis-zone" style="margin-top:20px"></div>';
+  if (d.statut === 'livrée') await renderAvisZone(d.id);
+}
+
+let avisNote = 0;
+async function renderAvisZone(prestationId){
+  const zone = document.getElementById('avis-zone');
+  const clientId = localStorage.getItem('svp_client_id');
+  const r = await sbFetch('avis_clients?prestation_id=eq.'+prestationId+'&client_id=eq.'+clientId);
+  const existing = r.data && r.data[0];
+  if (existing){
+    zone.innerHTML = '<div class="card">'
+      +'<span class="faint" style="font-size:12px;font-weight:700">VOTRE AVIS</span>'
+      +'<div class="star-rating" style="margin-top:10px;pointer-events:none">'+[1,2,3,4,5].map(n=>'<span class="'+(n<=existing.note?'on':'')+'">★</span>').join('')+'</div>'
+      + (existing.commentaire ? '<p style="margin-top:10px;font-size:13.5px">'+existing.commentaire+'</p>' : '')
+      + (existing.video_url ? '<video src="'+existing.video_url+'" controls style="width:100%;max-width:360px;border-radius:10px;margin-top:12px"></video>' : '')
+      +'<p class="faint" style="font-size:12px;margin-top:10px">Merci pour votre avis !</p>'
+      +'</div>';
+    return;
+  }
+  avisNote = 0;
+  zone.innerHTML = '<div class="card">'
+    +'<span class="faint" style="font-size:12px;font-weight:700">VOTRE PRESTATION EST LIVRÉE — LAISSEZ UN AVIS</span>'
+    +'<div class="star-rating" id="avis-stars" style="margin-top:12px">'+[1,2,3,4,5].map(n=>'<span data-n="'+n+'" onclick="setAvisNote('+n+')">★</span>').join('')+'</div>'
+    +'<label style="margin-top:14px">Votre commentaire (facultatif)<textarea id="avis-commentaire" rows="3" placeholder="Qu\'avez-vous pensé de la prestation ?"></textarea></label>'
+    +'<label style="margin-top:10px">Une vidéo à partager ? (facultatif)<input type="file" id="avis-video" accept="video/*"></label>'
+    +'<div id="avis-err" class="err-msg"></div>'
+    +'<button class="btn btn-p" style="margin-top:12px" onclick="submitAvis(\''+prestationId+'\')">Envoyer mon avis</button>'
     +'</div>';
+}
+function setAvisNote(n){
+  avisNote = n;
+  document.querySelectorAll('#avis-stars span').forEach(s=>s.classList.toggle('on', Number(s.dataset.n) <= n));
+}
+async function submitAvis(prestationId){
+  const errEl = document.getElementById('avis-err');
+  errEl.textContent = '';
+  if (!avisNote){ errEl.textContent = 'Merci de choisir une note.'; return; }
+  const clientId = localStorage.getItem('svp_client_id');
+  const commentaire = document.getElementById('avis-commentaire').value.trim();
+  const fileInput = document.getElementById('avis-video');
+  const btn = document.querySelector('#avis-zone .btn-p');
+  let videoUrl = null;
+  if (fileInput.files && fileInput.files[0]){
+    btn.disabled = true; btn.textContent = 'Envoi de la vidéo…';
+    const f = fileInput.files[0];
+    const path = 'avis/'+prestationId+'/'+Date.now()+'-'+f.name.replace(/[^a-zA-Z0-9.\-_]/g,'_');
+    videoUrl = await sbUpload('portail-media', path, f);
+    btn.disabled = false; btn.textContent = 'Envoyer mon avis';
+    if (!videoUrl){ errEl.textContent = 'Échec de l\'envoi de la vidéo.'; return; }
+  }
+  const r = await sbFetch('avis_clients', {method:'POST', body:{
+    prestation_id: prestationId, client_id: clientId, note: avisNote,
+    commentaire: commentaire || null, video_url: videoUrl,
+  }});
+  if (!r.ok){ errEl.textContent = 'Impossible d\'envoyer votre avis.'; return; }
+  toast('Merci pour votre avis !');
+  await renderAvisZone(prestationId);
 }
 
 async function cancelDemande(id){

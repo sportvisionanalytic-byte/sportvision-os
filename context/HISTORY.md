@@ -7,6 +7,15 @@
 
 ---
 
+## 2026-08-03
+
+### Lancement officiel de SportVision Portail fixé à mi-septembre 2026
+
+- Le Portail (site public + espace client) est en développement avancé : catalogue, paiements Stripe, messagerie, signature électronique (Youtrust) et facturation électronique conforme (Pennylane) déjà intégrés et déployés
+- L'app mobile (iOS/Android) et l'achat du domaine personnalisé (`portail.sportvision.fr`) sont volontairement repoussés à fin août, pour arriver prêts pile pour le lancement de mi-septembre plutôt que d'être faits dans la précipitation maintenant
+
+---
+
 ## 2026-06-27
 
 ### Installation initiale du Jarvis

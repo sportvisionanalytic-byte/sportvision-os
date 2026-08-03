@@ -16642,6 +16642,10 @@ if(NAV['admin']){
   NAV['admin'].push({id:'realisations',lb:'Réalisations (photos/vidéos)',ic:'pre'});
   NAV['admin'].push({id:'comptesportail',lb:'Comptes Portail',ic:'cli'});
 }
+['admin','sec','com'].forEach(role=>{
+  if(!NAV[role])return;
+  NAV[role].push({id:'avisclients',lb:'Avis clients',ic:'doc'});
+});
 
 function tplMsgClients(){
   return `<div class="sh"><div class="sh-t">Messages clients</div></div>
@@ -16662,6 +16666,9 @@ function tplCataloguePortail(){
 });
 VIEWS['admin.realisations']=tplRealisationsPortail;
 VIEWS['admin.comptesportail']=tplComptesPortail;
+['admin','sec','com'].forEach(role=>{
+  if(NAV[role]) VIEWS[role+'.avisclients']=tplAvisClients;
+});
 
 const _svp_origLoadViewData=loadViewData;
 loadViewData=async function(role,view){
@@ -16671,6 +16678,7 @@ loadViewData=async function(role,view){
   if((role==='admin'||role==='sec')&&view==='catalogue') await loadCatalogueOffres();
   if(role==='admin'&&view==='realisations') await loadRealisations();
   if(role==='admin'&&view==='comptesportail') await loadComptesPortail();
+  if(['admin','sec','com'].includes(role)&&view==='avisclients') await loadAvisClients();
 };
 
 // ── Messages clients ──
@@ -17001,6 +17009,45 @@ async function deleteComptePortail(id){
   }catch(e){
     toast(e.message);
   }
+}
+
+// ── Avis clients ──
+function tplAvisClients(){
+  return `<div class="sh"><div class="sh-t">Avis clients</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Laissés par les clients après livraison de leur prestation</div></div>
+    <div id="avisclients-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+let _avisClientsCache=[];
+async function loadAvisClients(){
+  const data=await sbFetch('avis_clients?select=*,clients(nom),prestations(reference,type_prestation)&order=created_at.desc');
+  _avisClientsCache=Array.isArray(data)?data:[];
+  renderAvisClients();
+}
+function renderAvisClients(){
+  const el=document.getElementById('avisclients-list');
+  if(!el)return;
+  if(!_avisClientsCache.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun avis pour le moment.</div>';return;}
+  const stars=n=>'<span style="color:var(--wa);letter-spacing:1px">'+'★'.repeat(n)+'</span><span style="color:var(--t3);letter-spacing:1px">'+'★'.repeat(5-n)+'</span>';
+  const moyenne=(_avisClientsCache.reduce((s,a)=>s+a.note,0)/_avisClientsCache.length).toFixed(1);
+  el.innerHTML='<div style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center">'
+    +'<div style="font-size:13px;color:var(--t2)">Moyenne : <b style="color:var(--t1)">'+moyenne+' / 5</b> sur '+_avisClientsCache.length+' avis</div>'
+    +'</div>'
+    +'<div class="tw"><table><thead><tr><th>Note</th><th>Client</th><th>Prestation</th><th>Commentaire</th><th>Vidéo</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'
+    +_avisClientsCache.map(a=>`<tr style="${a.statut==='masque'?'opacity:.5':''}">
+      <td style="white-space:nowrap">${stars(a.note)}</td>
+      <td class="tp">${a.clients?.nom||'—'}</td>
+      <td>${a.prestations?.reference||a.prestations?.type_prestation||'—'}</td>
+      <td style="max-width:260px;font-size:12.5px;color:var(--t2)">${a.commentaire||'—'}</td>
+      <td>${a.video_url?`<a href="${a.video_url}" target="_blank" style="color:var(--acc)">▶ Voir</a>`:'—'}</td>
+      <td class="tm" style="font-size:11px">${new Date(a.created_at).toLocaleDateString('fr-FR')}</td>
+      <td><span class="bd ${a.statut==='visible'?'ba':'bn'}"><span class="bd-d"></span>${a.statut==='visible'?'Visible':'Masqué'}</span></td>
+      <td><button class="btn bg2 bs" onclick="toggleAvisStatut('${a.id}','${a.statut==='visible'?'masque':'visible'}')">${a.statut==='visible'?'Masquer':'Afficher'}</button></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+async function toggleAvisStatut(id,statut){
+  const r=await sbFetch('avis_clients?id=eq.'+id,{method:'PATCH',body:{statut}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  toast(statut==='visible'?'Avis affiché.':'Avis masqué.','ok');
+  await loadAvisClients();
 }
 // ══════════════════════════════════════════════════════════════════════════
 
