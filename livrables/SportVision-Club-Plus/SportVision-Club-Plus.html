@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>SportVision Club+ — La plateforme de communication des clubs sportifs</title>
+<meta name="description" content="SportVision Club+ centralise la communication de votre club : résultats, équipes, contenus, médias, sponsors et prestations SportVision, dans un seul espace.">
+<link rel="canonical" href="https://clubplus.sportvision.fr/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SportVision Club+">
+<meta property="og:title" content="SportVision Club+ — La plateforme de communication des clubs sportifs">
+<meta property="og:description" content="Résultats, équipes, contenus, médias, sponsors et prestations SportVision réunis dans un seul espace.">
+<meta property="og:url" content="https://clubplus.sportvision.fr/">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="logo.png">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050F20">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050F20;--bg2:#09182D;--card:#102742;--card2:#142E4D;
+  --blue:#168EFF;--cyan:#2DD4E3;--violet:#7455FF;
+  --t1:#F5F7FB;--t2:#A7B6C9;
+  --bd:#24415E;
+  --ok:#28C995;--wa:#F5A623;--er:#EF5B67;
+  --grad:linear-gradient(135deg,#168EFF,#2DD4E3);
+  --ff:'Plus Jakarta Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--ff);background:var(--bg);color:var(--t1);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--cyan);text-decoration:none;cursor:pointer}
+a:hover{color:var(--blue)}
+h1,h2,h3{font-weight:800}
+button{font-family:var(--ff);cursor:pointer}
+input,select,textarea{font-family:var(--ff);background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:11px 12px;color:var(--t1);font-size:14px;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:1px}
+label{display:block;font-size:12px;color:var(--t2);margin-bottom:5px;font-weight:600}
+img{max-width:100%;display:block}
+.scr{display:none}
+.scr.on{display:block}
+.wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+.wrap-sm{max-width:640px;margin:0 auto;padding:0 24px}
+.wrap-md{max-width:1000px;margin:0 auto;padding:0 24px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g5{grid-template-columns:repeat(5,1fr)}
+@media(max-width:900px){.g3,.g5{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.g2,.g3,.g5{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:22px}
+.btn{border:none;border-radius:10px;padding:12px 22px;font-size:13.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.btn-p{background:var(--grad);color:#06182B}
+.btn-p:hover{filter:brightness(1.08)}
+.btn-o{background:transparent;color:var(--t1);border:1px solid var(--bd)}
+.btn-o:hover{border-color:var(--t2)}
+.btn-d{background:transparent;color:var(--er);border:1px solid #EF5B6755}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-block{width:100%}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px}
+.b-blue{background:#168EFF22;color:var(--blue)}
+.b-cyan{background:#2DD4E322;color:var(--cyan)}
+.b-violet{background:#7455FF22;color:var(--violet)}
+.b-ok{background:#28C99522;color:var(--ok)}
+.b-wa{background:#F5A62322;color:var(--wa)}
+.b-er{background:#EF5B6722;color:var(--er)}
+.muted{color:var(--t2)}
+.toast-host{position:fixed;bottom:24px;right:24px;z-index:400;display:flex;flex-direction:column;gap:8px}
+@media(max-width:640px){.toast-host{left:16px;right:16px;bottom:16px}}
+.toast{background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:13px 16px;font-size:13px;box-shadow:0 20px 40px rgba(0,0,0,.4);animation:toastIn .2s ease}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── header public ── */
+#pub-header{position:sticky;top:0;z-index:40;background:rgba(5,15,32,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd)}
+.hdr-inner{max-width:1280px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;cursor:pointer}
+.brand img{width:28px;height:28px;object-fit:contain;border-radius:6px}
+.brand b{font-size:14px;font-weight:800}
+.brand b span{color:var(--cyan)}
+.pub-nav{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.pub-nav a{font-size:13px;color:var(--t2)}
+.hdr-actions{display:flex;gap:10px}
+@media(max-width:820px){.pub-nav{display:none}}
+
+/* ── hero ── */
+.hero{max-width:1280px;margin:44px auto 0;padding:0 24px;display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
+@media(max-width:900px){.hero{grid-template-columns:1fr}}
+.hero h1{font-size:40px;line-height:1.15;margin-bottom:18px}
+@media(max-width:640px){.hero h1{font-size:29px}}
+.hero p{font-size:15.5px;color:var(--t2);line-height:1.65;margin-bottom:26px;max-width:520px}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+.mock{position:relative}
+.mock-card{background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:14px;box-shadow:0 30px 60px rgba(0,0,0,.4)}
+.mock-dots{display:flex;gap:6px;margin-bottom:12px}
+.mock-dots span{width:8px;height:8px;border-radius:4px}
+.mock-inner{background:var(--bg);border-radius:10px;padding:16px}
+.mock-stat{background:var(--card);border-radius:10px;padding:12px}
+.mock-stat b{font-size:18px;display:block}
+.mock-stat small{font-size:10px;color:var(--t2)}
+.mock-todo{background:var(--card);border-radius:10px;padding:12px;margin-top:10px}
+.mock-todo .lbl{font-size:10px;color:var(--t2);letter-spacing:.06em;margin-bottom:8px}
+.mock-todo .row{display:flex;justify-content:space-between;font-size:11px;padding:6px 0;border-bottom:1px solid var(--bd)}
+.mock-todo .row:last-child{border:none}
+.mock-float{position:absolute;bottom:-26px;right:-20px;width:120px;background:var(--bg2);border:1px solid var(--bd);border-radius:20px;padding:10px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+@media(max-width:640px){.mock-float{display:none}}
+.mock-float-inner{background:var(--bg);border-radius:14px;padding:8px}
+
+/* sections */
+.section{max-width:1100px;margin:100px auto 0;padding:0 24px}
+@media(max-width:640px){.section{margin-top:64px}}
+.eyebrow{text-align:center;font-size:12px;font-weight:700;color:var(--t2);letter-spacing:.08em;margin-bottom:20px}
+.h2c{text-align:center;font-size:22px;margin-bottom:30px}
+.pillar{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:22px 16px;text-align:center}
+.pillar .num{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;margin:0 auto 12px}
+.feat{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:22px}
+.feat b{display:block;font-size:15px;margin-bottom:8px}
+.feat p{font-size:13.5px;color:var(--t2);line-height:1.6}
+.step{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:24px}
+.step .tag{font-size:12px;font-weight:700;margin-bottom:10px;letter-spacing:.02em}
+.price-card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:28px}
+.price-card.hi{background:linear-gradient(135deg,var(--card),var(--card2));border-color:var(--blue)}
+.price-card h3{font-size:18px;margin-bottom:6px}
+.price-card .amt{font-size:28px;font-weight:800}
+.price-card .amt small{font-size:13px;color:var(--t2);font-weight:500}
+.price-card .sub{font-size:12px;color:var(--t2);margin:4px 0 18px}
+.price-card ul{list-style:none;font-size:13px;line-height:2}
+.testi{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:24px}
+.testi p{font-size:14px;line-height:1.7;margin-bottom:14px}
+.testi span{font-size:12px;color:var(--t2)}
+.faq{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:8px 24px}
+.faq-item{padding:16px 0;border-bottom:1px solid var(--bd)}
+.faq-item:last-child{border:none}
+.faq-item b{display:block;font-size:14px;margin-bottom:6px}
+.faq-item p{font-size:13px;color:var(--t2);line-height:1.6}
+.contact-card{background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:32px}
+footer{max-width:1200px;margin:80px auto 0;padding:32px 24px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--t2)}
+footer .links{display:flex;gap:18px;flex-wrap:wrap}
+
+/* ── auth / demo / activation shells ── */
+.centered{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+.auth-box{width:440px;max-width:100%}
+.auth-box.wide{width:560px}
+.auth-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:28px}
+.auth-logo img{width:26px;height:26px;object-fit:contain;border-radius:6px}
+.auth-logo b{font-size:14px;font-weight:800}
+.auth-card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:32px}
+.auth-title{font-size:19px;font-weight:800;margin-bottom:6px}
+.auth-sub{font-size:13px;color:var(--t2);margin-bottom:22px}
+.field{margin-bottom:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.row2{grid-template-columns:1fr}}
+.progress{height:4px;background:var(--bd);border-radius:2px;overflow:hidden;margin-bottom:22px}
+.progress i{display:block;height:100%;background:var(--grad)}
+.step-actions{display:flex;justify-content:space-between;margin-top:22px}
+.pill-nav{display:flex;gap:6px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+.pill{background:var(--card);color:var(--t2);border:1px solid var(--bd);border-radius:999px;padding:6px 12px;font-size:11px;cursor:pointer}
+.pill.on{background:var(--blue);color:#06182B}
+.recap-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12.5px}
+.recap-row:last-child{border:none}
+.recap-row span:first-child{color:var(--t2)}
+.recap-row span:last-child{font-weight:600}
+.recap-box{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:20px}
+.check-list label{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2);cursor:pointer;margin-bottom:0}
+.opt-btn{display:block;width:100%;text-align:left;background:var(--bg2);border:2px solid var(--bd);border-radius:12px;padding:14px;cursor:pointer;color:var(--t1);margin-bottom:10px}
+.opt-btn.on{border-color:var(--blue)}
+.state-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 16px}
+
+/* vitrine */
+.vit-hdr{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;max-width:1100px;margin:0 auto;flex-wrap:wrap;gap:12px}
+.vit-crest{width:36px;height:36px;border-radius:10px;background:var(--card2);flex-shrink:0}
+.sponsor-card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:26px}
+.sponsor-logo{width:56px;height:56px;border-radius:10px;background:var(--card2);flex-shrink:0}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER PUBLIC ═══════════════ -->
+<header id="pub-header">
+  <div class="hdr-inner">
+    <div class="brand" onclick="nav('home')">
+      <img src="logo.png" alt="SportVision">
+      <b>SportVision <span>Club+</span></b>
+    </div>
+    <nav class="pub-nav">
+      <a href="#fonctionnalites" onclick="nav('home')">Fonctionnalités</a>
+      <a href="#comment" onclick="nav('home')">Comment ça marche</a>
+      <a href="#tarifs" onclick="nav('home')">Tarifs</a>
+      <a onclick="nav('demo')">Démonstration</a>
+      <a href="#faq" onclick="nav('home')">FAQ</a>
+    </nav>
+    <div class="hdr-actions">
+      <button class="btn btn-o" onclick="nav('auth');authShow('connexion')">Se connecter</button>
+      <button class="btn btn-p" onclick="nav('demo')">Demander une démonstration</button>
+    </div>
+  </div>
+</header>
+
+<div class="toast-host" id="toastHost"></div>
+
+<!-- ═══════════════ PRÉSENTATION ═══════════════ -->
+<section class="scr on" id="scr-home">
+
+  <div class="hero">
+    <div>
+      <h1>Pilotez toute la communication de votre club depuis un seul espace.</h1>
+      <p>Résultats, équipes, contenus, médias, sponsors et prestations SportVision réunis dans une plateforme pensée pour les clubs amateurs et les académies.</p>
+      <div class="hero-actions">
+        <button class="btn btn-p" onclick="nav('demo')">Demander une démonstration</button>
+        <button class="btn btn-o" onclick="window.location.href='app.html'">Voir la plateforme</button>
+      </div>
+    </div>
+    <div class="mock">
+      <div class="mock-card">
+        <div class="mock-dots"><span style="background:#EF5B67"></span><span style="background:#F5A623"></span><span style="background:#28C995"></span></div>
+        <div class="mock-inner">
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px">Bonjour Isabelle, voici l'activité de FC Clairval.</div>
+          <div class="grid g2" style="margin-bottom:10px">
+            <div class="mock-stat"><b>6</b><small>Contenus à préparer</small></div>
+            <div class="mock-stat"><b style="color:var(--cyan)">16/20</b><small>Crédits ce mois-ci</small></div>
+          </div>
+          <div class="mock-todo">
+            <div class="lbl">À FAIRE AUJOURD'HUI</div>
+            <div class="row"><span>Valider l'affiche avant-match</span><span style="color:var(--wa)">Urgent</span></div>
+            <div class="row"><span>Compléter le score U15</span><span style="color:var(--er)">En retard</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="mock-float">
+        <div class="mock-float-inner">
+          <div style="font-size:8px;font-weight:700;margin-bottom:6px">Match Center</div>
+          <div style="background:var(--card);border-radius:6px;padding:6px;margin-bottom:4px"><div style="font-size:7px;color:var(--t2)">U18 vs FC Réville</div></div>
+          <div style="background:var(--blue);color:#06182B;border-radius:6px;padding:5px;text-align:center;font-size:7px;font-weight:700">+ Résultat express</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="max-width:1100px">
+    <div class="grid g2">
+      <div>
+        <div class="eyebrow" style="text-align:left;color:var(--er)">LE PROBLÈME DES CLUBS</div>
+        <h2 style="font-size:24px;margin-bottom:14px">Les informations se perdent entre les groupes WhatsApp.</h2>
+        <p class="muted" style="line-height:1.7">Résultats transmis en retard, photos éparpillées, sponsors oubliés : le Community Manager passe plus de temps à chercher l'information qu'à la valoriser.</p>
+      </div>
+      <div>
+        <div class="eyebrow" style="text-align:left;color:var(--ok)">LA SOLUTION CLUB+</div>
+        <h2 style="font-size:24px;margin-bottom:14px">Un seul espace pour transmettre, organiser et publier.</h2>
+        <p class="muted" style="line-height:1.7">Les éducateurs transmettent les informations dans Club+, le Community Manager les organise et les transforme, SportVision intervient pour les créations et prestations demandées.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="eyebrow">CINQ PILIERS</div>
+    <div class="grid g5">
+      <div class="pillar"><div class="num" style="background:#168EFF22;color:var(--blue)">1</div>Centraliser</div>
+      <div class="pillar"><div class="num" style="background:#2DD4E322;color:var(--cyan)">2</div>Collaborer</div>
+      <div class="pillar"><div class="num" style="background:#7455FF22;color:var(--violet)">3</div>Créer</div>
+      <div class="pillar"><div class="num" style="background:#F5A62322;color:var(--wa)">4</div>Valoriser</div>
+      <div class="pillar"><div class="num" style="background:#28C99522;color:var(--ok)">5</div>Produire</div>
+    </div>
+  </div>
+
+  <div class="section" id="fonctionnalites">
+    <div class="eyebrow">FONCTIONNALITÉS</div>
+    <div class="grid g3">
+      <div class="feat"><b>Newsroom du club</b><p>Toutes les informations transmises par les équipes, centralisées et prêtes à transformer.</p></div>
+      <div class="feat"><b>Match Center</b><p>Transmettez un résultat en moins d'une minute, express ou complet.</p></div>
+      <div class="feat"><b>Studio de création</b><p>Des modèles contrôlés pour vos affiches, résultats et compositions, à l'image de votre club.</p></div>
+      <div class="feat"><b>Calendrier éditorial</b><p>Matchs, contenus et publications réunis dans un même agenda, équipe par équipe.</p></div>
+      <div class="feat"><b>Banque média</b><p>Toutes vos photos, vidéos et liens externes centralisés et organisés.</p></div>
+      <div class="feat"><b>Espace sponsors</b><p>Suivez vos contreparties et valorisez vos partenaires tout au long de la saison.</p></div>
+    </div>
+  </div>
+
+  <div class="section" id="comment">
+    <div class="eyebrow">COMMENT ÇA MARCHE</div>
+    <div class="grid g3">
+      <div class="step"><div class="tag" style="color:var(--cyan)">PARCOURS ÉDUCATEUR</div>Transmet un résultat ou une actualité depuis son téléphone en quelques secondes, avec ou sans photo.</div>
+      <div class="step"><div class="tag" style="color:var(--violet)">PARCOURS COMMUNITY MANAGER</div>Reçoit l'information dans la Newsroom, la transforme en publication ou en demande de création, puis programme.</div>
+      <div class="step"><div class="tag" style="color:var(--wa)">SPONSORS &amp; SPORTVISION</div>Les contreparties sponsors sont suivies automatiquement ; SportVision intervient pour les créations et prestations terrain.</div>
+    </div>
+  </div>
+
+  <div class="section" id="tarifs">
+    <div class="eyebrow">TARIFS</div>
+    <div class="grid g2" style="max-width:1000px;margin:0 auto">
+      <div class="price-card">
+        <h3>Club+</h3>
+        <div class="amt">49 € <small>TTC/mois</small></div>
+        <div class="sub">avec engagement 12 mois · 59 € sans engagement</div>
+        <ul>
+          <li>Plateforme Club+ et accès éducateurs</li>
+          <li>Newsroom, Match Center, équipes, calendrier</li>
+          <li>Banque média, sponsors</li>
+          <li>Demandes de création</li>
+          <li>5 crédits mensuels</li>
+          <li>5 % de réduction sur les prestations éligibles</li>
+        </ul>
+      </div>
+      <div class="price-card hi">
+        <h3>Club+ Performance</h3>
+        <div class="amt">129 € <small>TTC/mois</small></div>
+        <div class="sub">avec engagement 12 mois · 149 € sans engagement</div>
+        <ul>
+          <li>Toutes les fonctionnalités Club+</li>
+          <li>20 crédits mensuels (report de 5 max)</li>
+          <li>Traitement prioritaire</li>
+          <li>Rapports avancés</li>
+          <li>Espace sponsors avancé</li>
+          <li>10 % de réduction sur les prestations</li>
+        </ul>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:20px;font-size:13px" class="muted">Besoin de déléguer toute votre communication ? <a onclick="nav('demo')">Découvrir Full Communication</a>.</div>
+  </div>
+
+  <div class="section">
+    <div class="eyebrow">CLUBS PILOTES</div>
+    <div class="grid g2">
+      <div class="testi"><p>« Nos éducateurs transmettent enfin les résultats à temps, sans passer par dix groupes WhatsApp. »</p><span>Responsable communication, club pilote football</span></div>
+      <div class="testi"><p>« Nos sponsors voient enfin où en sont leurs contreparties, sans qu'on ait à leur envoyer un tableau. »</p><span>Président, club pilote basket</span></div>
+    </div>
+  </div>
+
+  <div class="section" id="faq" style="max-width:800px">
+    <div class="eyebrow">FAQ</div>
+    <div class="faq">
+      <div class="faq-item"><b>Faut-il un compte SportVision Portail séparé ?</b><p>Non, votre compte Club+ vous donne automatiquement accès à votre espace Portail SportVision.</p></div>
+      <div class="faq-item"><b>Comment fonctionnent les crédits ?</b><p>Chaque création consomme un nombre de crédits selon sa complexité, débité une fois la demande acceptée par SportVision.</p></div>
+      <div class="faq-item"><b>Puis-je changer de formule plus tard ?</b><p>Oui, à tout moment depuis votre espace Abonnement &amp; crédits.</p></div>
+    </div>
+  </div>
+
+  <div class="section" style="max-width:700px;text-align:center">
+    <h2 style="font-size:26px;margin-bottom:14px">Prêt à structurer la communication de votre club ?</h2>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-p" onclick="nav('demo')">Rejoindre les clubs pilotes</button>
+      <button class="btn btn-o" onclick="nav('demo')">Demander une démonstration</button>
+    </div>
+  </div>
+
+  <div class="section" style="max-width:640px" id="form">
+    <div class="contact-card">
+      <div id="contactSuccess" style="display:none;text-align:center;padding:20px 0">
+        <div style="font-size:18px;font-weight:800;margin-bottom:8px">Merci, votre demande est bien reçue.</div>
+        <div class="muted" style="font-size:13.5px">Un membre de l'équipe SportVision vous contactera prochainement.</div>
+      </div>
+      <div id="contactForm">
+        <div class="auth-title">Parlons de votre club</div>
+        <div class="auth-sub">Réponse sous 24h ouvrées.</div>
+        <div class="row2">
+          <div class="field"><label>Nom du club</label><input type="text"></div>
+          <div class="field"><label>Discipline</label><input type="text"></div>
+          <div class="field"><label>Ville</label><input type="text"></div>
+          <div class="field"><label>Nombre d'équipes</label><input type="text"></div>
+          <div class="field"><label>Nom du contact</label><input type="text"></div>
+          <div class="field"><label>Rôle</label><input type="text"></div>
+          <div class="field"><label>E-mail</label><input type="email"></div>
+          <div class="field"><label>Téléphone</label><input type="text"></div>
+        </div>
+        <div class="field"><label>Besoin principal</label><textarea rows="3"></textarea></div>
+        <button class="btn btn-p btn-block" onclick="document.getElementById('contactForm').style.display='none';document.getElementById('contactSuccess').style.display='block'">Envoyer ma demande</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div>© 2026 SportVision. Tous droits réservés.</div>
+    <div class="links">
+      <a>Mentions légales</a><a>Confidentialité</a><a>CGU</a><a>Conditions d'abonnement</a>
+    </div>
+  </footer>
+</section>
+
+<!-- ═══════════════ DÉMONSTRATION ═══════════════ -->
+<section class="scr" id="scr-demo">
+  <div class="centered">
+    <div class="auth-box wide">
+      <div class="auth-logo"><img src="logo.png"><b>SportVision <span style="color:var(--cyan)">Club+</span></b></div>
+      <div class="auth-card">
+
+        <div id="demoStep1">
+          <div class="auth-title">Découvrons comment Club+ peut s'adapter à votre club.</div>
+          <div class="auth-sub">Présentation de 20 à 30 minutes, sans engagement. Étape 1/2</div>
+          <div class="field"><label>Nom du club</label><input id="d1-club" type="text"></div>
+          <div class="row2">
+            <div class="field"><label>Discipline</label><input type="text"></div>
+            <div class="field"><label>Niveau / championnat</label><input type="text"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Ville</label><input type="text"></div>
+            <div class="field"><label>Code postal</label><input type="text"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Nombre d'équipes</label><input type="text"></div>
+            <div class="field"><label>Nombre d'éducateurs</label><input type="text"></div>
+          </div>
+          <div class="step-actions">
+            <span></span>
+            <button class="btn btn-p" onclick="demoGoto2()">Continuer</button>
+          </div>
+        </div>
+
+        <div id="demoStep2" style="display:none">
+          <div class="auth-title">Vos coordonnées</div>
+          <div class="auth-sub">Étape 2/2</div>
+          <div class="row2">
+            <div class="field"><label>Prénom</label><input type="text"></div>
+            <div class="field"><label>Nom</label><input type="text"></div>
+          </div>
+          <div class="field"><label>Rôle dans le club</label><input type="text"></div>
+          <div class="row2">
+            <div class="field"><label>E-mail</label><input type="email"></div>
+            <div class="field"><label>Téléphone</label><input type="text"></div>
+          </div>
+          <div class="field"><label>Formule envisagée</label>
+            <select><option>Club+</option><option>Club+ Performance</option><option>Je ne sais pas encore</option></select>
+          </div>
+          <div class="field"><label>Commentaire</label><textarea rows="2"></textarea></div>
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--t2);margin-bottom:0"><input type="checkbox" style="width:auto;margin-top:2px"> J'accepte d'être contacté par SportVision au sujet de ma demande.</label>
+          <div class="step-actions">
+            <button class="btn btn-o" onclick="demoGoto1()">← Retour</button>
+            <button class="btn btn-p" onclick="demoSuccess()">Envoyer ma demande</button>
+          </div>
+        </div>
+
+        <div id="demoSuccess" style="display:none;text-align:center;padding:6px 0">
+          <div class="state-icon" style="background:#28C99522;color:var(--ok)">✓</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:10px">Votre demande a bien été transmise.</div>
+          <div class="muted" style="font-size:13px;margin-bottom:24px">Un membre de l'équipe SportVision reviendra vers vous rapidement.</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <button class="btn btn-p" onclick="demoGotoSlots()">Choisir un créneau maintenant</button>
+            <button class="btn btn-o" onclick="nav('home')">Retourner à l'accueil</button>
+          </div>
+        </div>
+
+        <div id="demoSlots" style="display:none">
+          <div class="auth-title" style="margin-bottom:16px">Choisissez un créneau</div>
+          <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px" id="daysGrid"></div>
+          <div class="grid g3" style="margin-bottom:18px" id="slotsGrid"></div>
+          <div class="grid g2" style="margin-bottom:18px" id="modeGrid"></div>
+          <div class="field"><label>Numéro de téléphone</label><input type="text"></div>
+          <button class="btn btn-p btn-block" onclick="demoConfirmed()">Confirmer ce créneau</button>
+        </div>
+
+        <div id="demoConfirmed" style="display:none">
+          <div style="text-align:center;padding:6px 0 16px">
+            <div class="state-icon" style="background:#168EFF22;color:var(--blue)">📅</div>
+            <div style="font-size:18px;font-weight:800">Rendez-vous confirmé</div>
+          </div>
+          <div class="recap-box">
+            <div class="recap-row"><span>Date</span><span id="confDate">—</span></div>
+            <div class="recap-row"><span>Heure</span><span id="confSlot">—</span></div>
+            <div class="recap-row"><span>Format</span><span id="confMode">—</span></div>
+            <div class="recap-row"><span>Interlocuteur SportVision</span><span>Camille Verdier</span></div>
+          </div>
+          <button class="btn btn-p btn-block" style="margin-bottom:8px" onclick="showToast('Ajouté au calendrier.')">Ajouter au calendrier</button>
+          <button class="btn btn-o btn-block" onclick="nav('home')">Retourner à l'accueil</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ AUTH ═══════════════ -->
+<section class="scr" id="scr-auth">
+  <div class="centered">
+    <div class="auth-box">
+      <div class="auth-logo"><img src="logo.png"><b>SportVision <span style="color:var(--cyan)">Club+</span></b></div>
+      <div class="auth-card">
+
+        <div id="auth-connexion">
+          <div class="auth-title">Se connecter</div>
+          <div class="auth-sub">Accédez à l'espace de communication de votre club.</div>
+          <div class="field"><label>Adresse e-mail</label><input type="email"></div>
+          <div class="field"><label>Mot de passe</label><input type="password"></div>
+          <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--t2);margin-bottom:18px"><input type="checkbox" checked style="width:auto"> Se souvenir de moi</label>
+          <button class="btn btn-p btn-block" style="margin-bottom:10px" onclick="showToast('La connexion sera activée une fois Supabase Auth connecté.')">Se connecter</button>
+          <button class="btn btn-o btn-block" style="margin-bottom:16px" onclick="showToast('Lien de connexion envoyé (simulation).')">Recevoir un lien de connexion</button>
+          <div style="text-align:center;font-size:12.5px" class="muted"><a onclick="authShow('mdp')">Mot de passe oublié</a> · Pas encore de compte ? <a onclick="authShow('inscription')">Créer un compte</a></div>
+          <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid #24415E"><a href="app.html" style="font-size:12px">Explorer l'application en mode démonstration →</a></div>
+        </div>
+
+        <div id="auth-mdp" style="display:none">
+          <div class="auth-title">Mot de passe oublié</div>
+          <div class="auth-sub">Recevez un lien pour créer un nouveau mot de passe.</div>
+          <div class="field"><label>Adresse e-mail</label><input type="email"></div>
+          <button class="btn btn-p btn-block" onclick="showToast('E-mail envoyé (simulation).')">Envoyer le lien</button>
+        </div>
+
+        <div id="auth-inscription" style="display:none">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <div class="auth-title" style="margin:0">Créer un compte</div>
+            <div class="muted" style="font-size:11.5px" id="signupStepLabel">Étape 1/5</div>
+          </div>
+          <div class="progress"><i id="signupProgress" style="width:20%"></i></div>
+
+          <div id="signup-1">
+            <div class="row2">
+              <div class="field"><label>Prénom</label><input type="text"></div>
+              <div class="field"><label>Nom</label><input type="text"></div>
+            </div>
+            <div class="field"><label>E-mail professionnel</label><input type="email"></div>
+            <div class="field"><label>Téléphone</label><input type="text"></div>
+            <div class="row2">
+              <div class="field"><label>Mot de passe</label><input type="password"></div>
+              <div class="field"><label>Confirmation</label><input type="password"></div>
+            </div>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--t2)"><input type="checkbox" style="width:auto;margin-top:2px"> J'accepte les CGU et la politique de confidentialité</label>
+          </div>
+
+          <div id="signup-2" style="display:none">
+            <div class="field"><label>Nom du club</label><input type="text"></div>
+            <div class="row2">
+              <div class="field"><label>Discipline</label><input type="text"></div>
+              <div class="field"><label>Nombre d'équipes</label><input type="text"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Ville</label><input type="text"></div>
+              <div class="field"><label>Code postal</label><input type="text"></div>
+            </div>
+            <div class="field"><label>Votre rôle</label><input type="text" placeholder="ex: Président, Responsable communication"></div>
+          </div>
+
+          <div id="signup-3" style="display:none">
+            <div class="muted" style="font-size:13px;margin-bottom:16px">Choisissez la formule de votre club — modifiable à tout moment.</div>
+            <button class="opt-btn on"><b>Club+</b> <span style="color:var(--cyan)">49 €/mois</span><div class="muted" style="font-size:11.5px;margin-top:4px">5 crédits mensuels, Newsroom, Match Center, calendrier, sponsors, 5 % de réduction.</div></button>
+            <button class="opt-btn"><b>Club+ Performance</b> <span style="color:var(--cyan)">129 €/mois</span><div class="muted" style="font-size:11.5px;margin-top:4px">20 crédits mensuels, traitement prioritaire, rapports avancés, 10 % de réduction.</div></button>
+          </div>
+
+          <div id="signup-4" style="display:none">
+            <div style="font-size:13.5px;font-weight:700;margin-bottom:14px">Résumé de commande</div>
+            <div class="recap-box">
+              <div class="recap-row"><span>Formule</span><span>Club+ Performance</span></div>
+              <div class="recap-row"><span>Engagement</span><span>12 mois</span></div>
+              <div class="recap-row"><span>Prix TTC</span><span>129 €/mois</span></div>
+              <div class="recap-row"><span>Premier prélèvement</span><span>après le mois offert</span></div>
+            </div>
+          </div>
+
+          <div id="signup-5" style="display:none">
+            <div style="font-size:13.5px;font-weight:700;margin-bottom:14px">Enregistrer le moyen de paiement</div>
+            <div style="color:var(--cyan);font-size:12px;margin-bottom:16px">Aucun prélèvement immédiat pendant votre mois offert.</div>
+            <div class="field"><label>Titulaire de la carte</label><input type="text"></div>
+            <div class="field"><label>Numéro de carte</label><input type="text" placeholder="4242 4242 4242 4242"></div>
+            <div class="row2">
+              <div class="field"><label>Expiration</label><input type="text" placeholder="MM/AA"></div>
+              <div class="field"><label>CVC</label><input type="text"></div>
+            </div>
+          </div>
+
+          <div class="step-actions">
+            <button class="btn btn-o" id="signupBack" style="visibility:hidden" onclick="signupPrev()">← Retour</button>
+            <button class="btn btn-p" id="signupNext" onclick="signupNext()">Continuer</button>
+          </div>
+        </div>
+
+        <div id="auth-success" style="display:none;text-align:center;padding:6px 0">
+          <div class="state-icon" style="background:#28C99522;color:var(--ok)">✓</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:14px">Bienvenue dans SportVision Club+</div>
+          <div class="muted" style="font-size:12px;margin-bottom:20px">Votre compte est prêt. L'application sera connectée à vos vraies données une fois Supabase branché — en attendant, explorez-la en mode démonstration.</div>
+          <button class="btn btn-p btn-block" style="margin-bottom:10px" onclick="window.location.href='app.html'">Accéder à mon espace Club+</button>
+          <button class="btn btn-o btn-block" onclick="nav('home')">Retour à l'accueil</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ ACTIVATION ═══════════════ -->
+<section class="scr" id="scr-activation">
+  <div class="centered">
+    <div class="auth-box">
+      <div class="auth-card">
+
+        <div id="act-valid">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+            <div class="vit-crest"></div>
+            <div><b style="font-size:16px">FC Clairval</b><div class="muted" style="font-size:11.5px">Vous êtes invité à activer Club+</div></div>
+          </div>
+          <div class="recap-box">
+            <div class="recap-row"><span>Formule proposée</span><span>Club+ Performance</span></div>
+            <div class="recap-row"><span>Prix</span><span>129 € TTC/mois</span></div>
+            <div class="recap-row"><span>Engagement</span><span>12 mois</span></div>
+            <div class="recap-row"><span>Mois offert</span><span>1 mois</span></div>
+            <div class="recap-row"><span>Crédits inclus</span><span>20 / mois</span></div>
+            <div class="recap-row"><span>Responsable SportVision</span><span>Camille Verdier</span></div>
+          </div>
+          <div style="font-size:12px;color:var(--cyan);margin-bottom:20px">Aucun prélèvement aujourd'hui. Votre premier paiement aura lieu à la fin du mois offert.</div>
+          <button class="btn btn-p btn-block" style="margin-bottom:8px" onclick="nav('auth');authShow('inscription')">Accepter et créer mon compte</button>
+          <button class="btn btn-o btn-block" style="margin-bottom:8px" onclick="showToast('Un conseiller SportVision va vous recontacter.')">Poser une question</button>
+          <button class="btn btn-d btn-block" onclick="actShow('withdrawn')">Refuser l'offre</button>
+        </div>
+
+        <div id="act-expired" style="display:none;text-align:center">
+          <div style="font-size:17px;font-weight:800;margin-bottom:10px">Ce lien a expiré</div>
+          <div class="muted" style="font-size:13px;margin-bottom:20px">Les liens d'activation sont valables 7 jours. Demandez-en un nouveau à SportVision.</div>
+          <button class="btn btn-p" onclick="showToast('Nouvelle demande envoyée à SportVision.')">Demander un nouveau lien</button>
+        </div>
+
+        <div id="act-used" style="display:none;text-align:center">
+          <div style="font-size:17px;font-weight:800;margin-bottom:10px">Ce lien a déjà été utilisé</div>
+          <div class="muted" style="font-size:13px;margin-bottom:20px">Le club FC Clairval est déjà inscrit sur SportVision Club+.</div>
+          <a onclick="nav('auth');authShow('connexion')">Se connecter →</a>
+        </div>
+
+        <div id="act-withdrawn" style="display:none;text-align:center">
+          <div style="font-size:17px;font-weight:800;margin-bottom:10px">Cette offre n'est plus disponible</div>
+          <div class="muted" style="font-size:13px;margin-bottom:20px">L'offre associée à ce lien a été retirée par SportVision.</div>
+          <button class="btn btn-o" onclick="showToast('Un conseiller SportVision va vous recontacter.')">Contacter SportVision</button>
+        </div>
+
+        <div class="pill-nav" style="margin-top:20px">
+          <button class="pill" onclick="actShow('valid')">Lien valide</button>
+          <button class="pill" onclick="actShow('expired')">Expiré</button>
+          <button class="pill" onclick="actShow('used')">Déjà utilisé</button>
+          <button class="pill" onclick="actShow('withdrawn')">Offre retirée</button>
+        </div>
+        <div class="muted" style="font-size:10.5px;text-align:center;margin-top:6px">Sélecteur de démonstration — sera remplacé par le token réel de l'URL.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ VITRINE PARTENAIRES ═══════════════ -->
+<section class="scr" id="scr-vitrine">
+  <div class="vit-hdr">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="vit-crest"></div>
+      <div><b style="font-size:15px">FC Clairval</b><div class="muted" style="font-size:11px">Saison 2026-2027</div></div>
+    </div>
+    <span class="badge b-blue" style="border:1px solid var(--bd);background:transparent;color:var(--t2)">Propulsé par SportVision Club+</span>
+  </div>
+  <div class="wrap-sm" style="margin-top:40px;text-align:center">
+    <h1 style="font-size:32px;margin-bottom:14px">Nos partenaires</h1>
+    <p class="muted">Ils accompagnent le FC Clairval tout au long de la saison. Merci à eux pour leur engagement auprès du club et de ses équipes.</p>
+  </div>
+  <div class="wrap-md" style="margin-top:60px">
+    <div class="grid g2" id="sponsorsList"></div>
+  </div>
+  <div class="wrap-sm" style="margin:80px auto 100px;text-align:center">
+    <div class="sponsor-card">
+      <div style="font-size:16px;font-weight:800;margin-bottom:8px">Votre entreprise souhaite s'associer au club ?</div>
+      <div class="muted" style="font-size:13px;margin-bottom:18px">Contactez le FC Clairval pour découvrir les offres de partenariat disponibles.</div>
+      <button class="btn btn-p" onclick="showToast('Formulaire de contact bientôt disponible.')">Devenir partenaire</button>
+    </div>
+  </div>
+</section>
+
+<script>
+// ── SUPABASE (même projet que SportVision OS et Portail — à câbler en phase 2) ──
+// const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
+// const SB_KEY = '__A_RENSEIGNER__';
+
+function nav(screen){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById('scr-'+screen).classList.add('on');
+  window.scrollTo(0,0);
+  if(screen==='vitrine') renderSponsors();
+}
+
+function showToast(msg){
+  const host = document.getElementById('toastHost');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  host.appendChild(t);
+  setTimeout(()=>t.remove(), 3200);
+}
+
+// ── Démonstration ──
+function demoGoto1(){ document.getElementById('demoStep2').style.display='none'; document.getElementById('demoStep1').style.display='block'; }
+function demoGoto2(){
+  if(!document.getElementById('d1-club').value.trim()){ showToast('Le nom du club est obligatoire.'); return; }
+  document.getElementById('demoStep1').style.display='none'; document.getElementById('demoStep2').style.display='block';
+}
+function demoSuccess(){
+  document.getElementById('demoStep2').style.display='none';
+  document.getElementById('demoSuccess').style.display='block';
+}
+let selDay=null, selSlot=null, selMode=null;
+function demoGotoSlots(){
+  document.getElementById('demoSuccess').style.display='none';
+  document.getElementById('demoSlots').style.display='block';
+  const days=['Lun 3 août','Mar 4 août','Mer 5 août','Jeu 6 août'];
+  const slots=['9h00','10h30','14h00','15h30','17h00','18h00'];
+  const modes=['Visioconférence','Appel téléphonique'];
+  document.getElementById('daysGrid').innerHTML = days.map(d=>`<button class="btn btn-o" style="padding:10px 4px;font-size:11.5px" onclick="selDay='${d}';demoGotoSlots()">${d}</button>`).join('');
+  document.getElementById('slotsGrid').innerHTML = slots.map(s=>`<button class="btn btn-o" onclick="selSlot='${s}';demoGotoSlots()">${s}</button>`).join('');
+  document.getElementById('modeGrid').innerHTML = modes.map(m=>`<button class="btn btn-o" onclick="selMode='${m}';demoGotoSlots()">${m}</button>`).join('');
+}
+function demoConfirmed(){
+  if(!selDay||!selSlot||!selMode){ showToast('Choisissez un jour, un créneau et un format.'); return; }
+  document.getElementById('demoSlots').style.display='none';
+  document.getElementById('demoConfirmed').style.display='block';
+  document.getElementById('confDate').textContent=selDay;
+  document.getElementById('confSlot').textContent=selSlot;
+  document.getElementById('confMode').textContent=selMode;
+}
+
+// ── Auth ──
+function authShow(which){
+  ['connexion','mdp','inscription','success'].forEach(k=>document.getElementById('auth-'+k).style.display='none');
+  document.getElementById('auth-'+which).style.display='block';
+  if(which==='inscription') signupStep=1, signupRender();
+}
+let signupStep=1;
+function signupRender(){
+  for(let i=1;i<=5;i++) document.getElementById('signup-'+i).style.display = (i===signupStep?'block':'none');
+  document.getElementById('signupStepLabel').textContent = 'Étape '+signupStep+'/5';
+  document.getElementById('signupProgress').style.width = (signupStep/5*100)+'%';
+  document.getElementById('signupBack').style.visibility = signupStep===1?'hidden':'visible';
+  document.getElementById('signupNext').textContent = signupStep===5?'Payer et créer mon club':(signupStep===4?'Continuer vers le paiement':'Continuer');
+}
+function signupPrev(){ signupStep=Math.max(1,signupStep-1); signupRender(); }
+function signupNext(){
+  if(signupStep===5){
+    document.getElementById('auth-inscription').style.display='none';
+    document.getElementById('auth-success').style.display='block';
+    return;
+  }
+  signupStep=Math.min(5,signupStep+1); signupRender();
+}
+document.querySelectorAll('#signup-3 .opt-btn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#signup-3 .opt-btn').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+}));
+
+// ── Activation ──
+function actShow(which){
+  ['valid','expired','used','withdrawn'].forEach(k=>document.getElementById('act-'+k).style.display='none');
+  document.getElementById('act-'+which).style.display='block';
+}
+
+// ── Vitrine partenaires ──
+const sponsorsDemo = [
+  {name:'Atlantide BTP', secteur:'BTP', niveau:'Or', color:'#F5A623', desc:"Partenaire majeur du club depuis 2025, présent sur les affiches et les publications officielles des Féminines et des Seniors R1."},
+  {name:'Nova Motors', secteur:'Automobile', niveau:'Argent', color:'#A7B6C9', desc:"Partenaire de l'équipe Seniors R1, présent sur les affiches avant-match et les publications résultats."},
+  {name:'Pharmacie du Stade', secteur:'Santé', niveau:'Bronze', color:'#7455FF', desc:"Partenaire de proximité, présent auprès des jeunes équipes U18 et U15."},
+  {name:'Café des Sports', secteur:'Restauration', niveau:'Bronze', color:'#7455FF', desc:"Lieu de rendez-vous des supporters, partenaire de convivialité du club."}
+];
+function renderSponsors(){
+  document.getElementById('sponsorsList').innerHTML = sponsorsDemo.map(sp=>`
+    <div class="sponsor-card">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div class="sponsor-logo"></div>
+        <div><div style="font-size:16px;font-weight:700">${sp.name}</div><div class="muted" style="font-size:12px">${sp.secteur}</div></div>
+        <span class="badge" style="margin-left:auto;background:${sp.color}22;color:${sp.color}">${sp.niveau}</span>
+      </div>
+      <div style="font-size:13px;line-height:1.6;margin-bottom:14px">${sp.desc}</div>
+      <a>Site internet →</a>
+    </div>`).join('');
+}
+
+// ── routage simple par hash (#/demonstration, #/connexion, #/inscription, #/activation, #/partenaires) ──
+function routeFromHash(){
+  const h = window.location.hash.replace('#/','');
+  if(h==='demonstration') nav('demo');
+  else if(h==='connexion'){ nav('auth'); authShow('connexion'); }
+  else if(h==='inscription'){ nav('auth'); authShow('inscription'); }
+  else if(h==='activation'){ nav('activation'); }
+  else if(h==='partenaires'){ nav('vitrine'); }
+}
+window.addEventListener('hashchange', routeFromHash);
+routeFromHash();
+</script>
+</body>
+</html>

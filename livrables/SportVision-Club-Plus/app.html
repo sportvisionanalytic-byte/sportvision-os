@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>SportVision Club+ — Espace club</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="logo.png">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050F20">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050F20;--bg2:#09182D;--card:#102742;--card2:#142E4D;
+  --blue:#168EFF;--cyan:#2DD4E3;--violet:#7455FF;
+  --t1:#F5F7FB;--t2:#A7B6C9;--bd:#24415E;
+  --ok:#28C995;--wa:#F5A623;--er:#EF5B67;
+  --grad:linear-gradient(135deg,#168EFF,#2DD4E3);
+  --ff:'Plus Jakarta Sans',sans-serif;--sw:264px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--ff);background:var(--bg);color:var(--t1);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--cyan);text-decoration:none;cursor:pointer}
+a:hover{color:var(--blue)}
+button{font-family:var(--ff);cursor:pointer}
+input,select,textarea{font-family:var(--ff);background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:10px 11px;color:var(--t1);font-size:13.5px;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:1px}
+label{display:block;font-size:12px;color:var(--t2);margin-bottom:5px;font-weight:600}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+
+.scr{display:none}
+.scr.on{display:flex}
+
+/* ── LOGIN ── */
+#s-login{min-height:100vh;align-items:center;justify-content:center;padding:40px 20px}
+.login-box{width:420px;max-width:100%}
+.login-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:26px}
+.login-logo img{width:28px;height:28px;border-radius:6px;object-fit:contain}
+.login-logo b{font-size:14px;font-weight:800}
+.login-card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:30px}
+.login-title{font-size:19px;font-weight:800;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--t2);margin-bottom:20px}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.role-pick{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:left;color:var(--t1);cursor:pointer}
+.role-pick:hover{border-color:var(--blue)}
+.role-pick b{display:block;font-size:12px}
+.role-pick span{font-size:10.5px;color:var(--t2)}
+.demo-hr{display:flex;align-items:center;gap:10px;margin:20px 0 6px;color:var(--t2);font-size:11px}
+.demo-hr::before,.demo-hr::after{content:'';flex:1;height:1px;background:var(--bd)}
+
+/* ── APP SHELL ── */
+#s-app{height:100vh;width:100%;overflow:hidden}
+.sb{width:var(--sw);min-width:var(--sw);height:100%;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0}
+.sb-top{padding:18px 16px 14px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.sb-brand{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.sb-brand-ic{width:32px;height:32px;border-radius:9px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#06182B;flex-shrink:0}
+.sb-brand-t b{display:block;font-size:14px;font-weight:800}
+.sb-brand-t span{font-size:10.5px;font-weight:700;color:var(--cyan);letter-spacing:.07em}
+.club-sw{display:flex;align-items:center;gap:10px;width:100%;padding:9px;background:var(--card);border:1px solid var(--bd);border-radius:12px;cursor:pointer;text-align:left;color:var(--t1)}
+.club-crest{width:32px;height:32px;border-radius:9px;background:var(--bd);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0}
+.club-meta{flex:1;min-width:0}
+.club-meta b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.club-meta span{font-size:10.5px;color:var(--t2)}
+.sb-nav{flex:1;overflow-y:auto;padding:14px 12px}
+.nav-grp{margin-bottom:14px}
+.nav-grp-t{font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--t2);padding:0 8px 7px}
+.ni{display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;border:none;background:transparent;color:var(--t2);border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;text-align:left;margin-bottom:1px}
+.ni:hover{background:var(--card)}
+.ni.on{background:var(--card2);color:var(--t1);font-weight:700}
+.ni-tile{width:24px;height:24px;border-radius:6px;background:var(--bd);color:var(--t2);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;flex-shrink:0}
+.ni.on .ni-tile{background:var(--blue);color:#06182B}
+.sb-foot{padding:12px 14px;border-top:1px solid var(--bd);flex-shrink:0}
+.u-row{display:flex;align-items:center;gap:9px;width:100%;background:transparent;border:none;cursor:pointer;text-align:left;padding:4px;border-radius:8px;margin-bottom:8px}
+.u-av{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--blue),var(--violet));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+.u-meta b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-meta span{font-size:10.5px;color:var(--t2)}
+.sb-link{display:block;width:100%;text-align:left;background:transparent;border:1px solid var(--bd);color:var(--t2);border-radius:9px;padding:7px 10px;font-size:11.5px;cursor:pointer;margin-bottom:5px}
+.sb-logout{background:transparent;border:none;color:var(--t2);font-size:11.5px;padding:5px 10px;cursor:pointer}
+
+.main-col{flex:1;min-width:0;display:flex;flex-direction:column;height:100%}
+.tb{min-height:68px;flex-shrink:0;border-bottom:1px solid var(--bd);background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:12px 28px;gap:18px;flex-wrap:wrap;row-gap:8px;position:relative;z-index:30}
+.tb-title b{display:block;font-size:16px;font-weight:800;white-space:nowrap}
+.tb-title span{font-size:11.5px;color:var(--t2);white-space:nowrap}
+.tb-act{display:flex;align-items:center;gap:10px;flex-wrap:wrap;row-gap:8px}
+.tb-search{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:9px 13px;color:var(--t1);font-size:12.5px;width:220px}
+.ib{width:36px;height:36px;border-radius:10px;background:var(--card);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t1);position:relative;flex-shrink:0;font-size:14px}
+.ndot{position:absolute;top:-3px;right:-3px;width:15px;height:15px;border-radius:8px;background:var(--er);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.role-sel{background:var(--card);border:1px solid var(--bd);color:var(--t1);border-radius:10px;padding:8px 10px;font-size:12px}
+.demo-badge{background:var(--violet);color:#fff;font-size:10px;font-weight:700;padding:6px 10px;border-radius:999px;white-space:nowrap}
+.ro-badge{background:#A7B6C922;color:var(--t2);font-size:10px;font-weight:700;padding:6px 10px;border-radius:999px}
+.dd{position:absolute;top:46px;right:0;width:260px;background:var(--card2);border:1px solid var(--bd);border-radius:14px;padding:8px;box-shadow:0 20px 40px rgba(0,0,0,.4);z-index:60}
+.dd-item{display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--t1);padding:9px 10px;font-size:12.5px;border-radius:8px;cursor:pointer}
+.dd-item:hover{background:var(--card)}
+.ct{flex:1;overflow-y:auto;padding:26px 28px 64px}
+@media(max-width:768px){.ct{padding:16px 16px 84px}.tb{padding:12px 16px}.tb-search,.role-sel,.demo-badge{display:none}}
+
+/* ── shared ui ── */
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:20px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.btn{border:none;border-radius:10px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.bp{background:var(--grad);color:#06182B}
+.bo{background:transparent;color:var(--t1);border:1px solid var(--bd)}
+.bd{background:transparent;color:var(--er);border:1px solid #EF5B6755}
+.btn:hover{filter:brightness(1.08)}
+.pill{background:var(--card);color:var(--t2);border:1px solid var(--bd);border-radius:999px;padding:6px 13px;font-size:11.5px;font-weight:700;cursor:pointer}
+.pill.on{background:var(--blue);color:#06182B}
+.pillbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.badge{display:inline-block;font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.stat{background:var(--card2);border-radius:12px;padding:14px}
+.stat b{display:block;font-size:22px;font-weight:800}
+.stat span{font-size:11.5px;color:var(--t2)}
+.muted{color:var(--t2)}
+.sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.sh b{font-size:19px;font-weight:800}
+.list-row{display:flex;width:100%;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--bd);background:transparent;border-left:none;border-right:none;border-top:none;text-align:left;cursor:pointer;color:var(--t1)}
+.list-row:last-child{border-bottom:none}
+.list-host{background:var(--card);border:1px solid var(--bd);border-radius:16px;overflow:hidden}
+.empty-state{padding:40px;text-align:center;color:var(--t2);font-size:13px}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-size:10.5px;color:var(--t2);font-weight:700;padding:8px;border-bottom:1px solid var(--bd)}
+td{font-size:12px;padding:8px;border-bottom:1px solid var(--bd)}
+.tile-card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;cursor:pointer;text-align:left;color:var(--t1)}
+.thumb{width:100%;height:100px;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:11px;text-align:center;padding:6px}
+.progress{height:7px;background:var(--bd);border-radius:4px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--grad)}
+.field{margin-bottom:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.row2{grid-template-columns:1fr}}
+.opt-btn{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:11px 13px;cursor:pointer;color:var(--t1);margin-bottom:8px}
+.opt-btn.on{border-color:var(--blue);background:var(--card2)}
+.kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
+.kan-col{min-width:220px;flex-shrink:0}
+.kan-card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-day{text-align:left;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:7px;min-height:80px;cursor:pointer;color:var(--t1)}
+.cal-day.today{border-color:var(--blue)}
+.cal-ev{font-size:9.5px;font-weight:600;border-radius:5px;padding:2px 5px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wizard-steps{font-size:11.5px;color:var(--t2);margin-bottom:4px}
+
+/* modal / drawer / toast */
+#modalHost,#drawerHost{display:none;position:fixed;inset:0;z-index:200}
+#modalHost{background:rgba(5,15,32,.7);align-items:center;justify-content:center;padding:20px}
+.modal-box{width:560px;max-width:100%;max-height:90vh;overflow-y:auto;background:var(--card2);border:1px solid var(--bd);border-radius:16px;padding:26px}
+#drawerHost{background:rgba(5,15,32,.6)}
+.drawer-panel{position:fixed;top:0;right:0;height:100%;width:440px;max-width:92vw;background:var(--bg2);border-left:1px solid var(--bd);overflow-y:auto;padding:24px}
+.close-x{background:transparent;border:none;color:var(--t2);font-size:18px;cursor:pointer}
+.toast-host{position:fixed;bottom:24px;right:24px;z-index:400;display:flex;flex-direction:column;gap:8px}
+@media(max-width:640px){.toast-host{left:16px;right:16px;bottom:80px}}
+.toast{background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:13px 16px;font-size:13px;box-shadow:0 20px 40px rgba(0,0,0,.4);max-width:340px;animation:tin .2s ease}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* mobile */
+#mobBnav{display:none}
+@media(max-width:768px){
+  .sb{display:none}
+  #mobBnav{display:flex;position:fixed;bottom:0;left:0;right:0;height:64px;background:var(--bg2);border-top:1px solid var(--bd);z-index:150}
+  .mbn-i{flex:1;background:transparent;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--t2);min-height:44px}
+  .mbn-i.on{color:var(--t1)}
+  .mbn-tile{width:24px;height:24px;border-radius:7px;background:var(--bd);color:var(--t2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
+  .mbn-i.on .mbn-tile{background:var(--blue);color:#06182B}
+  .mbn-i span{font-size:9.5px;font-weight:600}
+}
+#mobMore{display:none;position:fixed;inset:0;z-index:170}
+.mob-sheet{position:fixed;bottom:0;left:0;right:0;max-height:75vh;overflow-y:auto;background:var(--bg2);border-top:1px solid var(--bd);border-radius:18px 18px 0 0;padding:20px}
+.qa-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px}
+.qa-chip{flex-shrink:0;background:var(--card);border:1px solid var(--bd);color:var(--t1);border-radius:12px;padding:12px 15px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div class="toast-host" id="toastHost"></div>
+
+<!-- ═══════════ LOGIN ═══════════ -->
+<section class="scr on" id="s-login">
+  <div class="login-box">
+    <div class="login-logo"><img src="logo.png"><b>SportVision <span style="color:var(--cyan)">Club+</span></b></div>
+    <div class="login-card">
+      <div class="login-title">Se connecter</div>
+      <div class="login-sub">Accédez à l'espace de communication de votre club.</div>
+      <div class="field"><label>Adresse e-mail</label><input id="li-email" type="email"></div>
+      <div class="field"><label>Mot de passe</label><input id="li-pass" type="password"></div>
+      <button class="btn bp" style="width:100%;justify-content:center;padding:11px" onclick="toast('Authentification Supabase à venir — utilisez le mode démonstration ci-dessous.')">Se connecter</button>
+      <div class="demo-hr">MODE DÉMONSTRATION</div>
+      <div class="muted" style="font-size:11.5px;margin-bottom:4px">Choisissez un rôle pour explorer l'application avec des données fictives (FC Clairval).</div>
+      <div class="role-grid" id="roleGrid"></div>
+      <div style="text-align:center;margin-top:18px"><a href="SportVision-Club-Plus.html">← Retour au site public</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ APP ═══════════ -->
+<section class="scr" id="s-app" style="display:flex">
+  <aside class="sb">
+    <div class="sb-top">
+      <div class="sb-brand"><div class="sb-brand-ic">SV</div><div class="sb-brand-t"><b>SportVision</b><span>CLUB+</span></div></div>
+      <button class="club-sw" onclick="toast('Un seul club dans cette démonstration.')">
+        <div class="club-crest">FC</div>
+        <div class="club-meta"><b>FC Clairval</b><span>Saison 2026-2027</span></div>
+        <span class="muted">▾</span>
+      </button>
+    </div>
+    <nav class="sb-nav" id="sbNav"></nav>
+    <div class="sb-foot">
+      <button class="u-row" onclick="openProfileModal()">
+        <div class="u-av" id="uAv"></div>
+        <div class="u-meta"><b id="uName"></b><span id="uRole"></span></div>
+      </button>
+      <button class="sb-link" onclick="toast('SportVision Portail sera accessible depuis ce raccourci une fois connecté.')">← SportVision Portail</button>
+      <button class="sb-logout" onclick="doLogout()">Déconnexion</button>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <header class="tb">
+      <div class="tb-title"><b id="tbTitle">Tableau de bord</b><span>FC Clairval · Toutes équipes</span></div>
+      <div class="tb-act">
+        <input class="tb-search" placeholder="Rechercher…">
+        <div style="position:relative">
+          <button class="btn bp" onclick="toggleDD('createDD')">+ Créer</button>
+          <div class="dd" id="createDD" style="display:none">
+            <button class="dd-item" onclick="closeAllDD();switchView('creations')">Créer un visuel</button>
+            <button class="dd-item" onclick="closeAllDD();openRequestWizard('resultat')">Transmettre une info match</button>
+            <button class="dd-item" onclick="closeAllDD();switchView('dashboard')">Voir ce qu'il faut faire aujourd'hui</button>
+          </div>
+        </div>
+        <div style="position:relative">
+          <button class="ib" onclick="toggleDD('notifDD')">🔔<span class="ndot" id="notifCount"></span></button>
+          <div class="dd" id="notifDD" style="display:none;width:320px;max-height:400px;overflow-y:auto"></div>
+        </div>
+        <select class="role-sel" id="roleSel" onchange="onRoleChange(this.value)"></select>
+        <span class="demo-badge">Mode démonstration</span>
+        <span class="ro-badge" id="roBadge" style="display:none">Lecture seule</span>
+      </div>
+    </header>
+    <div class="ct" id="appCt"></div>
+  </div>
+</section>
+
+<nav id="mobBnav"></nav>
+<div id="mobMore"><div class="mob-sheet" id="mobSheet"></div></div>
+
+<div id="modalHost"><div class="modal-box" id="modalCt"></div></div>
+<div id="drawerHost"><div class="drawer-panel" id="drawerCt"></div></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   SportVision Club+ — Application (scaffold visuel)
+   Données 100% locales pour l'instant. Câblage Supabase (même
+   projet que OS/Portail — lulgezzpvrlbftbykzrc) à faire en phase 2 :
+   remplacer DATA par des appels sbFetch('rest/v1/...') et S.role
+   par le rôle réel de club_members pour l'utilisateur connecté.
+   ══════════════════════════════════════════════════════════ */
+
+function toast(msg){
+  const host=document.getElementById('toastHost');
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  host.appendChild(t); setTimeout(()=>t.remove(),3200);
+}
+function esc(s){ if(s===null||s===undefined) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function uid(p){ return p+Math.random().toString(36).slice(2,9); }
+function openModal(html){ document.getElementById('modalCt').innerHTML=html; document.getElementById('modalHost').style.display='flex'; }
+function closeModal(){ document.getElementById('modalHost').style.display='none'; document.getElementById('modalCt').innerHTML=''; }
+function openDrawer(html){ document.getElementById('drawerCt').innerHTML=html; document.getElementById('drawerHost').style.display='block'; }
+function closeDrawer(){ document.getElementById('drawerHost').style.display='none'; document.getElementById('drawerCt').innerHTML=''; }
+function toggleDD(id){
+  const el=document.getElementById(id); const willOpen = el.style.display==='none';
+  closeAllDD(); if(willOpen) el.style.display='block';
+}
+function closeAllDD(){ ['createDD','notifDD'].forEach(id=>{const e=document.getElementById(id); if(e) e.style.display='none';}); }
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.dd') && !e.target.closest('.tb-act .btn') && !e.target.closest('.ib')) closeAllDD();
+});
+function fmtDate(iso){
+  const [y,m,d]=iso.split('-').map(Number); const dt=new Date(y,m-1,d);
+  return dt.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+}
+
+/* ── ROLES ── */
+const ROLES={
+  admin:{label:'Administrateur du club',person:'Isabelle Faure'},
+  president:{label:'Président',person:'Marc Delattre'},
+  secretaire:{label:'Secrétaire',person:'Chantal Rousseau'},
+  comm:{label:'Community Manager',person:'Lucas Perrin'},
+  cm_externe:{label:'Community Manager externe',person:'Amandine Roze'},
+  coach:{label:'Coach U18',person:'Sophie Marchand'},
+  resp_equipe:{label:"Responsable d'équipe",person:'Karim Youssfi'},
+  sponsor_mgr:{label:'Responsable sponsors',person:'Julien Fabre'},
+  tresorier:{label:'Trésorier',person:'Henri Coulon'},
+  membre_bureau:{label:'Membre du bureau',person:'Nadia Ben Salah'},
+  lecture_seule:{label:'Lecture seule',person:'Invité Club'}
+};
+
+/* ── DONNÉES DE DÉMO (FC Clairval) ── */
+const DATA={
+  teams:['Seniors R1','U18','U15','U13','Féminines'],
+  sponsors:[
+    {id:'sp1',name:'Atlantide BTP',secteur:'BTP',niveau:'Or',color:'#F5A623',teams:['Féminines','Seniors R1'],contact:'M. Lefranc',debut:'2025-07-01',fin:'2027-06-30',montant:4000,
+      commitments:[{id:'k1',type:'Logo sur les affiches',due:'Permanent',status:'realise'},{id:'k2',type:'Publication mensuelle',due:'2026-08-15',status:'a_faire'},{id:'k3',type:'Story dédiée',due:'2026-08-05',status:'realise'}]},
+    {id:'sp2',name:'Nova Motors',secteur:'Automobile',niveau:'Argent',color:'#A7B6C9',teams:['Seniors R1'],contact:'Mme Blanc',debut:'2025-09-01',fin:'2026-08-31',montant:2000,
+      commitments:[{id:'k4',type:'Logo sur les affiches',due:'Permanent',status:'realise'},{id:'k5',type:'Vidéo sponsor',due:'2026-08-20',status:'a_faire'}]},
+    {id:'sp3',name:'Pharmacie du Stade',secteur:'Santé',niveau:'Bronze',color:'#7455FF',teams:['U18','U15'],contact:'M. Costa',debut:'2025-09-01',fin:'2026-08-31',montant:800,
+      commitments:[{id:'k6',type:'Publication de remerciement',due:'2026-08-10',status:'a_faire'}]},
+    {id:'sp4',name:'Café des Sports',secteur:'Restauration',niveau:'Bronze',color:'#7455FF',teams:['Club'],contact:'Mme Ferreira',debut:'2026-06-01',fin:'2027-05-31',montant:600,
+      commitments:[{id:'k7',type:'Logo sur les affiches',due:'Permanent',status:'a_faire'}]}
+  ],
+  requests:[
+    {id:'r1',type:'avant_match',team:'Seniors R1',requester:'Karim Youssfi',created:'2026-07-26',status:'en_traitement',urgency:'normale',detail:'Adversaire : AS Berville · 02/08/2026 · Domicile',missing:['Photo joueur vedette'],comments:[{author:'Lucas Perrin',text:"Je m'en occupe cet après-midi.",date:'26/07'}],creditsReserved:5},
+    {id:'r2',type:'resultat',team:'U15',requester:'Thomas Lambert',created:'2026-07-26',status:'info_manquante',urgency:'haute',detail:'Adversaire : US Vallée · 25/07/2026',missing:['Score','Buteurs','Homme du match'],comments:[],creditsReserved:2},
+    {id:'r3',type:'composition',team:'Seniors R1',requester:'Karim Youssfi',created:'2026-07-24',status:'prete_a_creer',urgency:'normale',detail:'Adversaire : AS Berville · 02/08/2026',missing:[],comments:[],creditsReserved:5},
+    {id:'r4',type:'publication_sponsor',team:'Féminines',requester:'Claire Dubosc',created:'2026-07-20',status:'terminee',urgency:'normale',detail:'Sponsor : Atlantide BTP',missing:[],comments:[],creditsReserved:0},
+    {id:'r5',type:'recrutement_joueur',team:'U13',requester:'Nadia Ben Salah',created:'2026-07-18',status:'recues',urgency:'normale',detail:'Milieu de terrain U13',missing:[],comments:[],creditsReserved:5},
+    {id:'r6',type:'anniversaire',team:'U18',requester:'Sophie Marchand',created:'2026-07-10',status:'refusee',urgency:'normale',detail:'Anniversaire club',missing:[],comments:[{author:'Lucas Perrin',text:'Doublon avec une publication déjà prévue.',date:'11/07'}],creditsReserved:0},
+    {id:'r7',type:'homme_du_match',team:'Seniors R1',requester:'Karim Youssfi',created:'2026-07-27',status:'recues',urgency:'haute',detail:'Adversaire : AS Berville · 25/07/2026',missing:['Nom du joueur'],comments:[],creditsReserved:2}
+  ],
+  creations:[
+    {id:'c1',title:'Affiche avant-match — Seniors R1 vs AS Berville',type:'avant_match',team:'Seniors R1',status:'a_valider',date:'2026-07-27',sponsor:'Nova Motors'},
+    {id:'c2',title:'Story matchday — U18',type:'matchday',team:'U18',status:'publie',date:'2026-07-20',sponsor:''},
+    {id:'c3',title:'Recrutement joueur — U13',type:'recrutement',team:'U13',status:'brouillon',date:'2026-07-18',sponsor:''},
+    {id:'c4',title:'Publication sponsor — Féminines',type:'annonce_sponsor',team:'Féminines',status:'valide',date:'2026-07-15',sponsor:'Atlantide BTP'},
+    {id:'c5',title:'Composition — Seniors R1 vs AS Berville',type:'composition',team:'Seniors R1',status:'brouillon',date:'2026-07-26',sponsor:''},
+    {id:'c6',title:'Résultat — U15 vs US Vallée',type:'resultat',team:'U15',status:'a_valider',date:'2026-07-25',sponsor:''},
+    {id:'c7',title:'Anniversaire club — 40 ans',type:'anniversaire',team:'Club',status:'publie',date:'2026-07-01',sponsor:''}
+  ],
+  matchItems:[
+    {id:'m1',team:'Seniors R1',opp:'AS Berville',date:'2026-08-02',status:'a_venir',lieu:'Stade Municipal'},
+    {id:'m2',team:'U18',opp:'FC Réville',date:'2026-08-02',status:'a_venir',lieu:'Terrain annexe'},
+    {id:'m3',team:'U15',opp:'US Vallée',date:'2026-07-25',status:'a_transmettre',lieu:'Extérieur'},
+    {id:'m4',team:'Féminines',opp:'Olympique Ravel',date:'2026-07-20',status:'recu',score:'3-1',scorers:'Camille Roy (2), Léa Fontaine',motm:'Camille Roy',contents:['Affiche résultat']},
+    {id:'m5',team:'U13',opp:'Plateau régional',date:'2026-07-09',status:'recu',score:'—',contents:[]},
+    {id:'m6',team:'Seniors R1',opp:'FC Réville',date:'2026-07-12',status:'recu',score:'2-2',scorers:'Yanis Cottreau, Enzo Marty',motm:'Yanis Cottreau',contents:['Affiche résultat','Story matchday']}
+  ],
+  newsroomItems:[
+    {id:'n1',type:'Résultat',team:'U15',author:'Thomas Lambert',date:'2026-07-25',priority:'haute',media:0,sponsor:'',status:'infos_manquantes',title:'Résultat U15 vs US Vallée',desc:'Score et buteurs à confirmer par l’éducateur.'},
+    {id:'n2',type:'Actualité',team:'Seniors R1',author:'Karim Youssfi',date:'2026-07-26',priority:'normale',media:3,sponsor:'Nova Motors',status:'pret_a_transformer',title:'Reprise de la préparation physique',desc:'Photos du premier entraînement collectif de la saison.'},
+    {id:'n3',type:'Résultat',team:'Féminines',author:'Claire Dubosc',date:'2026-07-20',priority:'normale',media:2,sponsor:'Atlantide BTP',status:'publie',title:'Victoire face à l’Olympique Ravel',desc:'3-1, doublé de la capitaine.'},
+    {id:'n4',type:'Actualité',team:'U13',author:'Nadia Ben Salah',date:'2026-07-18',priority:'basse',media:1,sponsor:'',status:'recu',title:'Nouveau partenariat équipementier',desc:'À vérifier avant transformation en publication.'},
+    {id:'n5',type:'Actualité',team:'U18',author:'Sophie Marchand',date:'2026-07-27',priority:'haute',media:4,sponsor:'',status:'en_creation',title:'Portrait du capitaine U18',desc:'Interview et photos réalisées, en cours de montage.'},
+    {id:'n6',type:'Résultat',team:'Seniors R1',author:'Karim Youssfi',date:'2026-07-12',priority:'normale',media:5,sponsor:'Nova Motors',status:'archive',title:'Résultat vs FC Réville (aller)',desc:'Publication archivée en fin de mois.'}
+  ],
+  equipes:[
+    {id:'t1',name:'Seniors R1',cat:'Seniors',coach:'Karim Youssfi',respComm:'Lucas Perrin',members:22,next:'02/08 vs AS Berville',openReq:2,toPrep:3,contribution:88},
+    {id:'t2',name:'U18',cat:'U18',coach:'Sophie Marchand',respComm:'Lucas Perrin',members:18,next:'02/08 vs FC Réville',openReq:1,toPrep:1,contribution:95},
+    {id:'t3',name:'U15',cat:'U15',coach:'Thomas Lambert',respComm:'Lucas Perrin',members:16,next:'Reprise le 30/07',openReq:1,toPrep:2,contribution:62},
+    {id:'t4',name:'U13',cat:'U13',coach:'Nadia Ben Salah',respComm:'Lucas Perrin',members:14,next:'Plateau régional le 09/08',openReq:1,toPrep:0,contribution:90},
+    {id:'t5',name:'Féminines',cat:'Seniors F',coach:'Claire Dubosc',respComm:'Lucas Perrin',members:20,next:'22/08 vs Olympique Ravel',openReq:0,toPrep:1,contribution:97}
+  ],
+  users:[
+    {id:'u1',name:'Isabelle Faure',email:'i.faure@fcclairval.fr',role:'Administrateur du club',teams:['Toutes'],status:'actif'},
+    {id:'u2',name:'Lucas Perrin',email:'l.perrin@fcclairval.fr',role:'Community Manager',teams:['Toutes'],status:'actif'},
+    {id:'u3',name:'Karim Youssfi',email:'k.youssfi@fcclairval.fr',role:'Éducateur',teams:['Seniors R1'],status:'actif'},
+    {id:'u4',name:'Sophie Marchand',email:'s.marchand@fcclairval.fr',role:'Éducateur',teams:['U18'],status:'actif'},
+    {id:'u5',name:'Thomas Lambert',email:'t.lambert@fcclairval.fr',role:'Éducateur',teams:['U15'],status:'actif'},
+    {id:'u6',name:'Nadia Ben Salah',email:'n.bensalah@fcclairval.fr',role:'Membre du bureau',teams:['Toutes'],status:'invitation'}
+  ],
+  bookings:[
+    {id:'b1',service:'Couverture tournoi',team:'U13',date:'2026-08-09',duree:'1 jour',status:'operateur_affecte',price:'600 € (-5% Club+)'},
+    {id:'b2',service:'Vidéo highlights',team:'Seniors R1',date:'2026-08-02',duree:'2h',status:'confirmee',price:'250 € (-5% Club+)'},
+    {id:'b3',service:"Shooting d'équipe",team:'Féminines',date:'2026-07-15',duree:'1h30',status:'livree',price:'180 € (-5% Club+)'}
+  ],
+  serviceCatalog:[
+    {key:'photo_match',label:'Photographie match',desc:'Couverture photo complète de votre match ou entraînement.',delai:'48h',price:'150 €',adv:'-5% Club+'},
+    {key:'video_highlights',label:'Vidéo highlights',desc:'Captation et montage des temps forts du match.',delai:'5 jours',price:'250 €',adv:'-5% Club+'},
+    {key:'drone',label:'Drone',desc:'Plans aériens pour vos affiches et vidéos.',delai:'5 jours',price:'à partir de 200 €',adv:'Sur devis Full Communication'},
+    {key:'veo',label:'Veo',desc:'Captation automatisée installée pour vos matchs.',delai:'24h',price:'80 €/match',adv:'-10% Performance'},
+    {key:'tournoi',label:'Couverture tournoi',desc:'Reportage complet sur une journée de tournoi.',delai:'7 jours',price:'à partir de 600 €',adv:'Prioritaire Full Communication'},
+    {key:'shooting_equipe',label:"Shooting d'équipe",desc:'Photos officielles de votre équipe pour la saison.',delai:'5 jours',price:'180 €',adv:'-5% Club+'}
+  ],
+  calEvents:[
+    {id:'e1',date:'2026-07-30',type:'entrainement',title:'Reprise physique Seniors',team:'Seniors R1'},
+    {id:'e2',date:'2026-08-01',type:'contenu',title:"Affiche avant-match à préparer",team:'Seniors R1'},
+    {id:'e3',date:'2026-08-02',type:'match',title:'Seniors R1 vs AS Berville',team:'Seniors R1'},
+    {id:'e4',date:'2026-08-02',type:'match',title:'U18 vs FC Réville',team:'U18'},
+    {id:'e5',date:'2026-08-09',type:'tournoi',title:'Plateau régional U13',team:'U13'},
+    {id:'e6',date:'2026-08-09',type:'prestation',title:'Reportage photo SportVision',team:'U13'},
+    {id:'e7',date:'2026-08-15',type:'sponsor',title:'Publication mensuelle Nova Motors',team:''},
+    {id:'e8',date:'2026-08-22',type:'match',title:'Féminines vs Olympique Ravel',team:'Féminines'},
+    {id:'e9',date:'2026-07-25',type:'match',title:'U15 vs US Vallée',team:'U15'},
+    {id:'e10',date:'2026-08-29',type:'sponsor',title:'Échéance contrat Atlantide BTP',team:''}
+  ],
+  notifications:[
+    {id:'no1',title:"Nouvelle demande envoyée par l'éducateur U18",date:'Il y a 2h',read:false},
+    {id:'no2',title:"L'affiche du prochain match attend votre validation",date:'Il y a 3h',read:false},
+    {id:'no3',title:'Une information est manquante pour la publication U15',date:'Hier',read:false},
+    {id:'no4',title:'Un engagement sponsor doit être réalisé avant vendredi',date:'Hier',read:true},
+    {id:'no5',title:'Il vous reste 2 crédits ce mois-ci',date:'Il y a 3 jours',read:true},
+    {id:'no6',title:'Facture de juillet disponible dans Documents',date:'Il y a 6 jours',read:true}
+  ],
+  documents:[
+    {id:'doc1',type:'devis',numero:'DEV-2026-014',title:'Reportage photo — Tournoi U13',date:'2026-07-20',status:'en_attente',amount:180},
+    {id:'doc2',type:'facture',numero:'FAC-2026-041',title:'Abonnement Club+ Performance — Juillet',date:'2026-07-01',status:'payee',amount:129},
+    {id:'doc3',type:'contrat',numero:'CTR-2025-009',title:'Convention partenariat — Atlantide BTP',date:'2025-07-01',status:'signe',amount:4000},
+    {id:'doc4',type:'facture',numero:'FAC-2026-038',title:'Reportage photo — Match du 12 juillet',date:'2026-07-14',status:'payee',amount:220}
+  ],
+  creditTx:[
+    {id:'tx1',date:'2026-07-20',label:'Renouvellement mensuel',amount:20},
+    {id:'tx2',date:'2026-07-22',label:'Affiche avant-match — Seniors R1',amount:-5},
+    {id:'tx3',date:'2026-07-25',label:'Résultat — U15',amount:-2}
+  ]
+};
+
+/* ── STATE ── */
+const S={role:'admin',view:'dashboard',mobile:false};
+const wallet={balance:16,monthly:20,reserved:2};
+const subscription={plan:'Club+ Performance',price:'129 € TTC/mois',engagement:'12 mois',nextBilling:'01/08/2026',paymentMethod:'Carte •••• 4242'};
+
+function creditCost(type){
+  return {avant_match:5,composition:5,resultat:2,homme_du_match:2,recrutement_joueur:5,recrutement_educateur:5,anniversaire:5,publication_sponsor:5,annonce_tournoi:5,annonce_importante:2}[type] ?? null;
+}
+function typeLabel(type){
+  return {avant_match:'Affiche avant-match',composition:"Composition d'équipe",resultat:'Affiche résultat',homme_du_match:'Homme du match',recrutement_joueur:'Recrutement joueur',recrutement_educateur:'Recrutement éducateur',anniversaire:'Anniversaire',publication_sponsor:'Publication sponsor',annonce_tournoi:'Annonce tournoi',annonce_importante:'Annonce importante',matchday:'Matchday',annonce_sponsor:'Annonce sponsor',autre:'Autre besoin'}[type] || type;
+}
+function statusMeta(status){
+  return {
+    recues:{label:'Reçue',color:'#168EFF'}, info_manquante:{label:'Informations manquantes',color:'#F5A623'},
+    en_traitement:{label:'En traitement',color:'#7455FF'}, prete_a_creer:{label:'Prête à créer',color:'#2DD4E3'},
+    terminee:{label:'Terminée',color:'#28C995'}, refusee:{label:'Refusée',color:'#EF5B67'},
+    brouillon:{label:'Brouillon',color:'#A7B6C9'}, a_valider:{label:'À valider',color:'#F5A623'},
+    valide:{label:'Validé',color:'#28C995'}, publie:{label:'Publié',color:'#168EFF'},
+    recu:{label:'Reçu',color:'#168EFF'}, infos_manquantes:{label:'Informations manquantes',color:'#F5A623'},
+    pret_a_transformer:{label:'Prêt à transformer',color:'#7455FF'}, en_creation:{label:'En création',color:'#F5A623'},
+    archive:{label:'Archivé',color:'#A7B6C9'}, a_venir:{label:'À venir',color:'#168EFF'},
+    a_transmettre:{label:'À transmettre',color:'#F5A623'}, actif:{label:'Actif',color:'#28C995'},
+    invitation:{label:'Invitation en attente',color:'#F5A623'}, en_attente:{label:'En attente',color:'#F5A623'},
+    payee:{label:'Payée',color:'#28C995'}, signe:{label:'Signé',color:'#28C995'},
+    a_faire:{label:'À faire',color:'#F5A623'}, realise:{label:'Réalisé',color:'#28C995'},
+    operateur_affecte:{label:'Opérateur affecté',color:'#F5A623'}, confirmee:{label:'Confirmée',color:'#7455FF'},
+    livree:{label:'Livrée',color:'#28C995'}
+  }[status] || {label:status,color:'#A7B6C9'};
+}
+function eventColor(type){ return {match:'#168EFF',entrainement:'#A7B6C9',tournoi:'#7455FF',contenu:'#2DD4E3',sponsor:'#F5A623',prestation:'#28C995'}[type] || '#A7B6C9'; }
+
+/* ── PERMISSIONS ── */
+function allowedKeys(role){
+  const all=['dashboard','newsroom','matchcenter','mediatheque','sponsors','services','equipes','membres','rapports','docsfinance','abonnement','parametres','demandes','creations','calendrier','aide'];
+  const map={
+    coach:['dashboard','matchcenter','calendrier','creations','demandes','services','aide'],
+    comm:['dashboard','newsroom','matchcenter','calendrier','creations','mediatheque','sponsors','demandes','services','equipes','membres','rapports','docsfinance','aide'],
+    president:['dashboard','calendrier','sponsors','creations','services','rapports','equipes','membres','abonnement','parametres','aide'],
+    secretaire:['dashboard','calendrier','matchcenter','newsroom','equipes','membres','mediatheque','docsfinance','services','parametres','aide'],
+    sponsor_mgr:['dashboard','sponsors','mediatheque','demandes','rapports','services','aide'],
+    tresorier:['dashboard','abonnement','docsfinance','services','rapports','aide'],
+    cm_externe:['dashboard','newsroom','matchcenter','calendrier','creations','mediatheque','sponsors','demandes','services','mesacces','aide'],
+    resp_equipe:['dashboard','matchcenter','calendrier','creations','demandes','equipes','services','aide'],
+    membre_bureau:['dashboard','calendrier','sponsors','rapports','services','mesacces','aide'],
+    lecture_seule:['dashboard','calendrier','sponsors','rapports','services','aide']
+  };
+  return map[role] || all;
+}
+function guard(fn){
+  return function(){
+    if(S.role==='lecture_seule'){ toast('Votre rôle ne vous permet pas d’effectuer cette action. Contactez l’administrateur du club pour demander un accès supplémentaire.'); return; }
+    fn.apply(null,arguments);
+  };
+}
+
+/* ── NAVIGATION ── */
+const NAV_TITLES={dashboard:'Tableau de bord',newsroom:'Newsroom du club',matchcenter:'Match Center',calendrier:'Calendrier',creations:'Studio de création',mediatheque:'Banque média',sponsors:'Sponsors',demandes:'Demandes de création',services:'Prestations SportVision',equipes:'Équipes & éducateurs',membres:'Utilisateurs',rapports:'Rapports',docsfinance:'Documents',abonnement:'Abonnement & crédits',parametres:'Paramètres',mesacces:'Mes accès',aide:'Aide'};
+const NAV_DEFS=[
+  {title:'Pilotage',items:[{id:'dashboard',label:'Accueil',letter:'A'},{id:'newsroom',label:'Newsroom du club',letter:'N'},{id:'matchcenter',label:'Match Center',letter:'MC'},{id:'calendrier',label:'Calendrier',letter:'Ca'}]},
+  {title:'Communication',items:[{id:'creations',label:'Studio de création',letter:'Co'},{id:'mediatheque',label:'Banque média',letter:'BM'},{id:'sponsors',label:'Sponsors',letter:'Sp'},{id:'demandes',label:'Demandes de création',letter:'D'}]},
+  {title:'SportVision',items:[{id:'services',label:'Prestations SportVision',letter:'SV'}]},
+  {title:'Club',items:[{id:'equipes',label:'Équipes & éducateurs',letter:'É'},{id:'membres',label:'Utilisateurs',letter:'U'},{id:'rapports',label:'Rapports',letter:'Ra'},{id:'docsfinance',label:'Documents',letter:'Do'},{id:'abonnement',label:'Abonnement & crédits',letter:'Ab'},{id:'parametres',label:'Paramètres',letter:'Pa'},{id:'mesacces',label:'Mes accès',letter:'MA'},{id:'aide',label:'Aide',letter:'?'}]}
+];
+function renderSidebarNav(){
+  const allowed=allowedKeys(S.role);
+  document.getElementById('sbNav').innerHTML = NAV_DEFS.map(grp=>{
+    const items=grp.items.filter(i=>allowed.includes(i.id));
+    if(!items.length) return '';
+    return `<div class="nav-grp"><div class="nav-grp-t">${grp.title.toUpperCase()}</div>${items.map(i=>`
+      <button class="ni${S.view===i.id?' on':''}" data-id="${i.id}" onclick="switchView('${i.id}')">
+        <span class="ni-tile">${i.letter}</span>${i.label}
+      </button>`).join('')}</div>`;
+  }).join('');
+}
+function renderMobBnav(){
+  const items=[{id:'dashboard',label:'Accueil',letter:'A'},{id:'calendrier',label:'Calendrier',letter:'Ca'},{id:'creations',label:'Créer',letter:'+'},{id:'demandes',label:'Demandes',letter:'D'}];
+  document.getElementById('mobBnav').innerHTML = items.map(i=>`
+    <button class="mbn-i${S.view===i.id?' on':''}" onclick="switchView('${i.id}')"><span class="mbn-tile">${i.letter}</span><span>${i.label}</span></button>`).join('')+
+    `<button class="mbn-i" onclick="openMobMore()"><span class="mbn-tile">⋯</span><span>Plus</span></button>`;
+}
+function openMobMore(){
+  const allowed=allowedKeys(S.role).filter(k=>!['dashboard','calendrier','creations','demandes'].includes(k));
+  const all=NAV_DEFS.flatMap(g=>g.items);
+  document.getElementById('mobSheet').innerHTML = `<div style="width:36px;height:4px;background:var(--bd);border-radius:2px;margin:0 auto 18px"></div>
+    <div class="grid g2" style="margin-bottom:16px">${allowed.map(k=>{const it=all.find(x=>x.id===k); if(!it) return ''; return `<button class="tile-card" style="display:flex;align-items:center;gap:10px;padding:12px" onclick="closeMobMore();switchView('${it.id}')"><span class="ni-tile">${it.letter}</span>${it.label}</button>`;}).join('')}</div>
+    <button class="sb-link" onclick="closeMobMore();toast('SportVision Portail sera accessible depuis ce raccourci une fois connecté.')">← SportVision Portail</button>
+    <button class="btn bd" style="width:100%;justify-content:center" onclick="closeMobMore();doLogout()">Déconnexion</button>`;
+  document.getElementById('mobMore').style.display='block';
+}
+function closeMobMore(){ document.getElementById('mobMore').style.display='none'; }
+
+function switchView(id){
+  S.view=id; closeAllDD(); closeMobMore();
+  document.getElementById('tbTitle').textContent = NAV_TITLES[id] || id;
+  document.querySelectorAll('.ni[data-id]').forEach(n=>n.classList.toggle('on', n.dataset.id===id));
+  renderMobBnav();
+  renderContent();
+  document.getElementById('appCt').scrollTop=0;
+}
+function renderContent(){
+  const ct=document.getElementById('appCt');
+  ct.innerHTML = (VIEWS[S.view] || (()=>'<div class="empty-state">Module en préparation.</div>'))();
+}
+
+/* ── NOTIFICATIONS ── */
+function renderNotifDD(){
+  const unread=DATA.notifications.filter(n=>!n.read).length;
+  const cnt=document.getElementById('notifCount');
+  cnt.textContent = unread || ''; cnt.style.display = unread ? 'flex' : 'none';
+  document.getElementById('notifDD').innerHTML = `
+    <div style="display:flex;justify-content:space-between;padding:8px 10px"><b style="font-size:13px">Notifications</b><a onclick="markAllRead()" style="font-size:11.5px">Tout marquer lu</a></div>
+    ${DATA.notifications.map(n=>`<button class="dd-item" style="background:${n.read?'transparent':'var(--card)'}" onclick="markRead('${n.id}')">
+      <div style="font-size:12px;font-weight:${n.read?500:700}">${esc(n.title)}</div><div class="muted" style="font-size:10.5px;margin-top:2px">${n.date}</div></button>`).join('')}`;
+}
+function markRead(id){ const n=DATA.notifications.find(x=>x.id===id); if(n) n.read=true; renderNotifDD(); }
+function markAllRead(){ DATA.notifications.forEach(n=>n.read=true); renderNotifDD(); }
+
+/* ── PROFIL ── */
+function openProfileModal(){
+  const r=ROLES[S.role];
+  openModal(`<div class="sh"><b>Mon profil</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px"><div class="u-av" style="width:56px;height:56px;font-size:16px">${initials(r.person)}</div><div><div style="font-weight:700">${r.person}</div><div class="muted" style="font-size:12px">${r.label}</div></div></div>
+    <div class="field"><label>E-mail</label><input type="email" value="${r.person.toLowerCase().replace(' ','.')}@fcclairval.fr"></div>
+    <div class="row2"><div class="field"><label>Téléphone</label><input type="text" value="06 12 34 56 78"></div><div class="field"><label>Date de naissance</label><input type="date"></div></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="closeModal();toast('Profil mis à jour.')">Enregistrer</button>`);
+}
+function initials(name){ return name.split(' ').map(w=>w[0]).join(''); }
+
+/* ── LOGIN / BOOT ── */
+function renderRoleGrid(){
+  document.getElementById('roleGrid').innerHTML = Object.entries(ROLES).map(([key,r])=>
+    `<button class="role-pick" onclick="doDemoLogin('${key}')"><b>${r.label}</b><span>${r.person}</span></button>`).join('');
+}
+function doDemoLogin(role){
+  S.role=role; S.view='dashboard';
+  document.getElementById('s-login').classList.remove('on');
+  document.getElementById('s-app').classList.add('on');
+  boot();
+}
+function doLogout(){
+  document.getElementById('s-app').classList.remove('on');
+  document.getElementById('s-login').classList.add('on');
+}
+function onRoleChange(role){
+  S.role=role;
+  const allowed=allowedKeys(role);
+  if(!allowed.includes(S.view)) S.view='dashboard';
+  boot();
+}
+function boot(){
+  const r=ROLES[S.role];
+  document.getElementById('uAv').textContent=initials(r.person);
+  document.getElementById('uName').textContent=r.person;
+  document.getElementById('uRole').textContent=r.label;
+  document.getElementById('roBadge').style.display = S.role==='lecture_seule' ? 'inline-block' : 'none';
+  const sel=document.getElementById('roleSel');
+  sel.innerHTML = Object.entries(ROLES).map(([k,r2])=>`<option value="${k}" ${k===S.role?'selected':''}>${r2.label}</option>`).join('');
+  renderSidebarNav();
+  renderMobBnav();
+  renderNotifDD();
+  switchView(S.view);
+}
+function checkMobile(){ S.mobile = window.innerWidth<=768; }
+window.addEventListener('resize', checkMobile);
+checkMobile();
+renderRoleGrid();
+
+/* ══════════════ TABLEAU DE BORD ══════════════ */
+function tplDashboard(){
+  const r=ROLES[S.role];
+  const chips=`<div style="display:flex;gap:8px;flex-wrap:wrap">
+    <span class="badge" style="background:var(--card);border:1px solid var(--bd);color:var(--t2)">Saison 2026-2027</span>
+    <span class="badge" style="background:var(--card);border:1px solid var(--bd);color:var(--t2)">${subscription.plan}</span>
+    <span class="badge" style="background:var(--card);border:1px solid var(--bd);color:var(--cyan)">${Math.max(0,wallet.balance-wallet.reserved)}/${wallet.monthly} crédits ce mois</span>
+  </div>`;
+  const qa = S.mobile ? `<div class="qa-row">${mobileQuickActions().map(q=>`<button class="qa-chip" onclick="${q.action}">${q.label}</button>`).join('')}</div>` : '';
+  let body='';
+  if(S.role==='president') body=dashPresident();
+  else if(S.role==='secretaire') body=dashSecretaire();
+  else if(S.role==='sponsor_mgr') body=dashSponsorMgr();
+  else if(S.role==='tresorier') body=dashTresorier();
+  else if(S.role==='resp_equipe') body=dashRespEquipe();
+  else body=dashGeneric();
+  return `<div class="sh"><div><b>Bonjour ${r.person.split(' ')[0]}, voici l'activité communication de FC Clairval.</b><div class="muted" style="font-size:12.5px;margin-top:4px">Mardi 28 juillet 2026</div></div>${chips}</div>${qa}${body}`;
+}
+function mobileQuickActions(){
+  const defs={
+    coach:[['Ajouter un résultat',"switchView('matchcenter')"],['Envoyer une actualité',"switchView('newsroom')"]],
+    comm:[['Contenus à préparer',"switchView('creations')"],['Newsroom',"switchView('newsroom')"]],
+    resp_equipe:[['Ajouter un résultat',"switchView('matchcenter')"],['Créer une demande',"openRequestWizard()"]]
+  };
+  return (defs[S.role]||[['Sponsors',"switchView('sponsors')"],['Abonnement',"switchView('abonnement')"]]).map(([label,action])=>({label,action}));
+}
+function dashGeneric(){
+  const todos=[
+    {t:"Valider l'affiche avant-match — Seniors R1 vs AS Berville",team:'Seniors R1',due:"Aujourd'hui 18:00",color:'var(--er)'},
+    {t:'Compléter le score et les buteurs — U15 vs US Vallée',team:'U15',due:'En retard',color:'var(--er)'},
+    {t:'Répondre à la demande de recrutement — U13',team:'U13',due:'Demain',color:'var(--wa)'},
+    {t:'Ajouter le logo du sponsor Café des Sports',team:'Club',due:'Cette semaine',color:'var(--wa)'}
+  ];
+  const week=[...DATA.calEvents].filter(e=>e.date>='2026-07-28'&&e.date<='2026-08-03').sort((a,b)=>a.date.localeCompare(b.date));
+  return `<div class="grid g2" style="margin:20px 0">
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">À faire aujourd'hui</b>
+      ${todos.map(t=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)"><div style="display:flex;gap:9px;align-items:flex-start"><span style="width:7px;height:7px;border-radius:4px;background:${t.color};margin-top:6px;flex-shrink:0"></span><div><div style="font-weight:600">${t.t}</div><div class="muted" style="font-size:11.5px">${t.team} · ${t.due}</div></div></div></div>`).join('')}
+    </div>
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Cette semaine</b>
+      ${week.map(e=>`<div style="display:flex;gap:9px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${e.type[0].toUpperCase()}</span><div><div style="font-weight:600;font-size:12.5px">${esc(e.title)}</div><div class="muted" style="font-size:11px">${fmtDate(e.date)}</div></div></div>`).join('')||'<div class="muted">Aucun événement.</div>'}
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:20px"><b style="font-size:15px;display:block;margin-bottom:12px">Communication</b>
+    <div class="grid g4">
+      <div class="stat"><b>6</b><span>Contenus à préparer</span></div>
+      <div class="stat"><b>3</b><span>Contenus à valider</span></div>
+      <div class="stat"><b>5</b><span>Publications programmées</span></div>
+      <div class="stat"><b>2</b><span>Informations manquantes</span></div>
+    </div>
+  </div>
+  <div class="grid g2" style="margin-bottom:20px">
+    <div class="card"><div class="sh" style="margin-bottom:12px"><b style="font-size:15px">Demandes de création</b><a onclick="switchView('demandes')">Tout voir →</a></div>
+      ${DATA.requests.slice(0,3).map(r=>{const sm=statusMeta(r.status); return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><div><div style="font-weight:600;font-size:12.5px">${typeLabel(r.type)} · ${r.team}</div><div class="muted" style="font-size:11px">${r.requester}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join('')}
+    </div>
+    <div class="card"><div class="sh" style="margin-bottom:12px"><b style="font-size:15px">Sponsors</b><a onclick="switchView('sponsors')">Voir les sponsors →</a></div>
+      <div class="muted" style="font-size:12.5px;margin-bottom:12px">2 activations réalisées sur 3 prévues ce mois-ci.</div>
+      <div style="display:flex;gap:10px">${DATA.sponsors.map(sp=>`<div class="club-crest" title="${sp.name}">${initials(sp.name)}</div>`).join('')}</div>
+    </div>
+  </div>
+  <div class="card"><b style="font-size:15px;display:block;margin-bottom:10px">SportVision</b>
+    <div style="font-size:12.5px;margin-bottom:6px"><span class="muted">Prochaine prestation : </span>Reportage photo — Tournoi U13 · 9 août 2026</div>
+    <div style="font-size:12.5px;margin-bottom:14px"><span class="muted">Crédit mensuel restant : </span>${Math.max(0,wallet.balance-wallet.reserved)} crédits sur ${wallet.monthly}</div>
+    <button class="btn" style="background:linear-gradient(135deg,#168EFF,#7455FF);color:#fff" onclick="switchView('services')">Demander une prestation</button>
+  </div>`;
+}
+function dashPresident(){
+  return `<div class="grid g2" style="margin:20px 0">
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Résumé du mois</b>
+      <div class="grid g3" style="margin-bottom:16px"><div class="stat"><b>19</b><span>Contenus publiés</span></div><div class="stat"><b>${DATA.sponsors.length}</b><span>Sponsors actifs</span></div><div class="stat"><b>${DATA.equipes.length}</b><span>Équipes actives</span></div></div>
+      <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">CONTENUS EN ATTENTE DE VALIDATION</div>
+      ${DATA.creations.filter(c=>c.status==='a_valider').map(c=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">${esc(c.title)}</span><span class="badge" style="background:#F5A62322;color:var(--wa)">À valider</span></div>`).join('')}
+    </div>
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Alertes importantes</b>
+      <div style="padding:8px 0;border-bottom:1px solid var(--bd);font-size:12.5px">2 contreparties sponsors à réaliser ce mois-ci.</div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--bd);font-size:12.5px">${wallet.balance} crédits disponibles sur ${wallet.monthly}.</div>
+      <div style="padding:8px 0;font-size:12.5px">Prochaine échéance d'abonnement le ${subscription.nextBilling}.</div>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:10px">Sponsors et partenariats</b><div class="muted" style="font-size:12.5px;margin-bottom:14px">${DATA.sponsors.length} sponsors actifs · contreparties suivies dans l'Espace Sponsors.</div><button class="btn bo" onclick="switchView('sponsors')">Voir les sponsors</button></div>
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:10px">Abonnement et crédits</b><div class="muted" style="font-size:12.5px;margin-bottom:14px">${subscription.plan} · ${wallet.balance}/${wallet.monthly} crédits disponibles</div><button class="btn" style="background:linear-gradient(135deg,#168EFF,#7455FF);color:#fff" onclick="switchView('services')">Demander une prestation</button></div>
+  </div>`;
+}
+function dashSecretaire(){
+  return `<div class="grid g2" style="margin:20px 0">
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">À traiter</b>
+      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">Résultats manquants</span><span class="badge" style="background:#EF5B6722;color:var(--er)">${DATA.requests.filter(r=>r.status==='info_manquante').length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">Invitations en attente</span><span class="badge" style="background:#F5A62322;color:var(--wa)">${DATA.users.filter(u=>u.status==='invitation').length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-weight:600;font-size:12.5px">Documents à compléter</span><span class="badge" style="background:#F5A62322;color:var(--wa)">${DATA.documents.filter(d=>d.status==='en_attente').length}</span></div>
+    </div>
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Invitations en attente</b>
+      ${DATA.users.filter(u=>u.status==='invitation').map(u=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${u.name}</span><span class="muted">${u.role}</span></div>`).join('')||'<div class="muted">Aucune invitation en attente.</div>'}
+      <button class="btn bo" style="margin-top:10px" onclick="switchView('membres')">Gérer les utilisateurs</button>
+    </div>
+  </div>`;
+}
+function dashSponsorMgr(){
+  const pending=DATA.sponsors.flatMap(sp=>sp.commitments.filter(c=>c.status==='a_faire').map(c=>({...c,sponsorName:sp.name})));
+  return `<div class="grid g4" style="margin:20px 0">
+    <div class="stat"><b>${DATA.sponsors.length}</b><span>Sponsors actifs</span></div>
+    <div class="stat"><b>${pending.length}</b><span>Contreparties à réaliser</span></div>
+    <div class="stat"><b>1</b><span>Contrats proches échéance</span></div>
+    <div class="stat"><b>${DATA.sponsors.filter(sp=>!sp.hasLogo).length}</b><span>Partenaires sans logo</span></div>
+  </div>
+  <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Contreparties à réaliser</b>
+    ${pending.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)"><div><div style="font-weight:600;font-size:12.5px">${c.type}</div><div class="muted" style="font-size:11.5px">${c.sponsorName}</div></div><button class="btn bo" style="padding:6px 12px" onclick="switchView('sponsors')">Traiter</button></div>`).join('')}
+  </div>`;
+}
+function dashTresorier(){
+  return `<div class="grid g2" style="margin:20px 0">
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Abonnement</b>
+      <div class="muted" style="font-size:12.5px;margin-bottom:6px">Formule : ${subscription.plan}</div>
+      <div class="muted" style="font-size:12.5px;margin-bottom:6px">Prochaine échéance : ${subscription.nextBilling}</div>
+      <div class="muted" style="font-size:12.5px;margin-bottom:16px">Crédits disponibles : ${wallet.balance}/${wallet.monthly}</div>
+      <button class="btn bp" onclick="switchView('abonnement')">Voir l'abonnement</button>
+    </div>
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Documents financiers récents</b>
+      ${DATA.documents.slice(0,3).map(d=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${esc(d.title)}</span><span class="muted">${d.amount} €</span></div>`).join('')}
+      <button class="btn bo" style="margin-top:10px" onclick="switchView('docsfinance')">Voir les documents</button>
+    </div>
+  </div>`;
+}
+/* ══════════════ NEWSROOM ══════════════ */
+let nsView='liste', nsTeam='toutes', nsStatus='toutes';
+function tplNewsroom(){
+  const items=DATA.newsroomItems.filter(n=>(nsTeam==='toutes'||n.team===nsTeam)&&(nsStatus==='toutes'||n.status===nsStatus));
+  const statuses=['recu','a_verifier','infos_manquantes','pret_a_transformer','en_creation','programme','publie','archive'];
+  let content='';
+  if(nsView==='liste'){
+    content = items.length ? `<div class="list-host">${items.map(n=>{const sm=statusMeta(n.status); return `
+      <button class="list-row" onclick="openNewsroomDrawer('${n.id}')">
+        <div style="display:flex;gap:10px;align-items:center"><span style="width:7px;height:7px;border-radius:4px;background:${n.priority==='haute'?'var(--er)':n.priority==='basse'?'var(--t2)':'var(--wa)'}"></span>
+        <div><div style="font-weight:700;font-size:13.5px">${esc(n.title)}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${n.type} · ${n.team} · ${n.author} · ${fmtDate(n.date)} · ${n.media} média(s)</div></div></div>
+        <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
+      </button>`;}).join('')}</div>` : `<div class="empty-state">Aucune information dans ce filtre pour le moment.</div>`;
+  } else if(nsView==='cartes'){
+    content = `<div class="grid g3">${items.map(n=>{const sm=statusMeta(n.status); return `
+      <button class="tile-card" onclick="openNewsroomDrawer('${n.id}')">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span class="muted" style="font-size:11px;font-weight:700">${n.type}</span><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">${esc(n.title)}</div>
+        <div class="muted" style="font-size:11.5px">${n.team} · ${n.author}</div></button>`;}).join('')}</div>`;
+  } else {
+    content = `<div class="kanban">${statuses.map(st=>{const sm=statusMeta(st); const col=items.filter(n=>n.status===st);
+      return `<div class="kan-col"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="width:7px;height:7px;border-radius:4px;background:${sm.color}"></span><span class="muted" style="font-size:12px;font-weight:700">${sm.label}</span></div>
+      ${col.map(n=>`<div class="kan-card" onclick="openNewsroomDrawer('${n.id}')"><div style="font-weight:700;font-size:12.5px;margin-bottom:4px">${esc(n.title)}</div><div class="muted" style="font-size:11px">${n.team} · ${fmtDate(n.date)}</div></div>`).join('')}
+      </div>`;}).join('')}</div>`;
+  }
+  return `<div class="sh"><b>Newsroom du club</b><button class="btn bp" onclick="guard(openNewsroomForm)()">+ Envoyer une information</button></div>
+    <div class="pillbar">${[['liste','Liste'],['cartes','Cartes'],['kanban','Kanban']].map(([k,l])=>`<button class="pill${nsView===k?' on':''}" onclick="nsView='${k}';renderContent()">${l}</button>`).join('')}</div>
+    <div class="pillbar">${['toutes',...DATA.teams].map(t=>`<button class="pill${nsTeam===t?' on':''}" onclick="nsTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
+    <div class="pillbar">${['toutes',...statuses].map(st=>`<button class="pill${nsStatus===st?' on':''}" onclick="nsStatus='${st}';renderContent()">${st==='toutes'?'Tous les statuts':statusMeta(st).label}</button>`).join('')}</div>
+    ${content}`;
+}
+function openNewsroomDrawer(id){
+  const n=DATA.newsroomItems.find(x=>x.id===id); const sm=statusMeta(n.status);
+  openDrawer(`<div class="sh"><b>${esc(n.title)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <div class="muted" style="font-size:12px;margin-bottom:14px">${n.type} · ${n.team} · ${n.author} · ${fmtDate(n.date)}</div>
+    <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:16px;display:inline-block">${sm.label}</span>
+    <div class="card" style="margin-bottom:16px"><div style="margin-bottom:8px">${esc(n.desc)}</div><div class="muted" style="font-size:11.5px">${n.media} média(s) joint(s) · Sponsor : ${n.sponsor||'Aucun'}</div></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn bp" onclick="nsAction('${id}','pret_a_transformer','Transformé en publication — retrouvez-le dans Studio de création.')">Transformer en publication</button>
+      <button class="btn" style="background:var(--violet);color:#fff" onclick="closeDrawer();switchView('demandes');toast('Créez la demande liée à cette information.')">Créer une demande</button>
+      <button class="btn bo" onclick="nsAction('${id}','infos_manquantes','Complément demandé à ${esc(n.author)}.')">Demander un complément</button>
+      <button class="btn bo" onclick="nsAction('${id}','archive','Information archivée.')">Archiver</button>
+    </div>`);
+}
+function nsAction(id,status,msg){ const n=DATA.newsroomItems.find(x=>x.id===id); n.status=status; closeDrawer(); renderContent(); toast(msg); }
+function openNewsroomForm(){
+  openModal(`<div class="sh"><b>Envoyer une information</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="row2"><div class="field"><label>Type</label><select id="nf-type"><option>Résultat</option><option>Actualité</option></select></div>
+    <div class="field"><label>Équipe</label><select id="nf-team">${DATA.teams.map(t=>`<option>${t}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Titre</label><input id="nf-title" type="text"></div>
+    <div class="field"><label>Description</label><textarea id="nf-desc" rows="3"></textarea></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitNewsroomForm()">Envoyer</button>`);
+}
+function submitNewsroomForm(){
+  const title=document.getElementById('nf-title').value.trim();
+  if(!title){ toast('Le titre est obligatoire.'); return; }
+  DATA.newsroomItems.unshift({id:uid('n'),type:document.getElementById('nf-type').value,team:document.getElementById('nf-team').value,author:ROLES[S.role].person,date:'2026-07-28',priority:'normale',media:0,sponsor:'',status:'recu',title,desc:document.getElementById('nf-desc').value});
+  closeModal(); renderContent(); toast('Information envoyée à la Newsroom.');
+}
+
+/* ══════════════ MATCH CENTER ══════════════ */
+let mcView='a_venir';
+function tplMatchCenter(){
+  const tabs=[['a_venir','À venir'],['a_transmettre','À transmettre'],['recus','Reçus'],['contenus','Contenus créés']];
+  let content='';
+  if(mcView==='a_venir'){
+    const list=DATA.matchItems.filter(m=>m.status==='a_venir');
+    content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)} · ${m.lieu}</div></div><span class="badge" style="background:#168EFF22;color:var(--blue)">À venir</span></div>`).join('')||'<div class="empty-state">Aucun match à venir.</div>'}</div>`;
+  } else if(mcView==='a_transmettre'){
+    const list=DATA.matchItems.filter(m=>m.status==='a_transmettre');
+    content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)}</div></div><button class="btn" style="background:var(--wa);color:#06182B" onclick="guard(openMatchExpress)()">Transmettre</button></div>`).join('')||'<div class="empty-state">Rien à transmettre.</div>'}</div>`;
+  } else if(mcView==='recus'){
+    const list=DATA.matchItems.filter(m=>m.status==='recu');
+    content=`<div class="grid g3">${list.map(m=>`<button class="tile-card" onclick="openMatchDrawer('${m.id}')"><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div style="font-size:20px;font-weight:800;color:var(--cyan);margin:8px 0">${m.score}</div><div class="muted" style="font-size:11.5px">${fmtDate(m.date)}</div></button>`).join('')}</div>`;
+  } else {
+    const list=DATA.matchItems.filter(m=>m.status==='recu'&&m.contents&&m.contents.length);
+    content=`<div class="list-host">${list.flatMap(m=>m.contents.map(c=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${c}</div><div class="muted" style="font-size:11.5px">${m.team} vs ${m.opp} · ${fmtDate(m.date)}</div></div></div>`)).join('')||'<div class="empty-state">Aucun contenu créé pour le moment.</div>'}</div>`;
+  }
+  return `<div class="sh"><b>Match Center</b><div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn bo" onclick="guard(openMatchExpress)()">+ Résultat express</button>
+    <button class="btn bp" onclick="guard(openMatchExpress)()">+ Résultat complet</button></div></div>
+    <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${mcView===k?' on':''}" onclick="mcView='${k}';renderContent()">${l}</button>`).join('')}</div>
+    ${content}`;
+}
+function openMatchDrawer(id){
+  const m=DATA.matchItems.find(x=>x.id===id);
+  openDrawer(`<div class="sh"><b>${m.team} vs ${m.opp}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <div class="muted" style="font-size:12px;margin-bottom:16px">${fmtDate(m.date)}</div>
+    <div style="font-size:26px;font-weight:800;color:var(--cyan);margin-bottom:16px">${m.score}</div>
+    <div style="font-size:13px;margin-bottom:6px">Homme du match : ${m.motm||'—'}</div>
+    <div class="muted" style="font-size:13px;margin-bottom:20px">Buteurs : ${m.scorers||'—'}</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn bp" onclick="closeDrawer();switchView('creations');toast('Affiche résultat créée en brouillon.')">Créer une affiche résultat</button>
+      <button class="btn bo" onclick="toast('Story créée en brouillon.')">Créer une story</button>
+      <button class="btn bo" onclick="mcSendNewsroom('${id}')">Envoyer à la Newsroom</button>
+    </div>`);
+}
+function mcSendNewsroom(id){
+  const m=DATA.matchItems.find(x=>x.id===id);
+  DATA.newsroomItems.unshift({id:uid('n'),type:'Résultat',team:m.team,author:ROLES[S.role].person,date:'2026-07-28',priority:'normale',media:0,sponsor:'',status:'recu',title:`Résultat ${m.team} vs ${m.opp}`,desc:`Score : ${m.score||'—'}`});
+  closeDrawer(); toast('Envoyé à la Newsroom.');
+}
+function openMatchExpress(){
+  openModal(`<div class="sh"><b>Résultat express</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="row2"><div class="field"><label>Équipe</label><select id="me-team">${DATA.teams.map(t=>`<option>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Domicile / extérieur</label><select id="me-de"><option>Domicile</option><option>Extérieur</option></select></div></div>
+    <div class="field"><label>Adversaire</label><input id="me-opp" type="text"></div>
+    <div class="field"><label>Score</label><input id="me-score" type="text" placeholder="2-1"></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitMatchExpress()">Envoyer</button>`);
+}
+function submitMatchExpress(){
+  const opp=document.getElementById('me-opp').value.trim(), score=document.getElementById('me-score').value.trim();
+  if(!opp||!score){ toast('Adversaire et score sont obligatoires.'); return; }
+  DATA.matchItems.unshift({id:uid('m'),team:document.getElementById('me-team').value,opp,date:'2026-07-28',status:'recu',score,contents:[]});
+  closeModal(); renderContent(); toast('Résultat envoyé.');
+}
+
+/* ══════════════ CALENDRIER ══════════════ */
+let calFilterTeam='toutes', calFilterType='tous', calView='mois';
+function tplCalendrier(){
+  const filtered=DATA.calEvents.filter(e=>(calFilterTeam==='toutes'||e.team===calFilterTeam||!e.team)&&(calFilterType==='tous'||e.type===calFilterType));
+  let content='';
+  if(calView==='mois'){
+    const weeks=monthGrid(2026,7,filtered);
+    content=`<div class="card"><div class="cal-grid" style="margin-bottom:6px">${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d=>`<div class="muted" style="text-align:center;font-size:11px;font-weight:700">${d}</div>`).join('')}</div>
+      ${weeks.map(week=>`<div class="cal-grid" style="margin-bottom:6px">${week.map(day=>`<button class="cal-day${day.today?' today':''}" style="opacity:${day.inMonth?1:.4}" onclick="openDayDrawer('${day.iso}')">
+        <div style="font-size:11px;font-weight:700;margin-bottom:4px">${day.label}</div>
+        ${day.events.slice(0,2).map(ev=>`<div class="cal-ev" style="background:${eventColor(ev.type)}22;color:${eventColor(ev.type)}">${esc(ev.title)}</div>`).join('')}
+        ${day.events.length>2?`<div class="muted" style="font-size:10px">+${day.events.length-2}</div>`:''}
+      </button>`).join('')}</div>`).join('')}
+    </div>`;
+  } else {
+    content=`<div class="list-host">${[...filtered].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<div class="list-row" style="cursor:default"><div style="display:flex;gap:10px;align-items:center"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${e.type[0].toUpperCase()}</span><div><div style="font-weight:600;font-size:13px">${esc(e.title)}</div><div class="muted" style="font-size:11.5px">${fmtDate(e.date)} · ${e.team||'Club'}</div></div></div></div>`).join('')}</div>`;
+  }
+  return `<div class="sh"><b>Calendrier éditorial — Août 2026</b><span class="pill">Saison 2026-2027</span></div>
+    <div class="pillbar">${[['mois','Mois'],['agenda','Agenda']].map(([k,l])=>`<button class="pill${calView===k?' on':''}" onclick="calView='${k}';renderContent()">${l}</button>`).join('')}</div>
+    <div class="pillbar">${['toutes',...DATA.teams].map(t=>`<button class="pill${calFilterTeam===t?' on':''}" onclick="calFilterTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
+    <div class="pillbar">${[['tous','Tous les types'],['match','Matchs'],['contenu','Contenus'],['sponsor','Sponsors'],['prestation','Prestations'],['entrainement','Entraînements'],['tournoi','Tournois']].map(([k,l])=>`<button class="pill${calFilterType===k?' on':''}" onclick="calFilterType='${k}';renderContent()">${l}</button>`).join('')}</div>
+    ${content}`;
+}
+function monthGrid(y,m,events){
+  const first=new Date(y,m-1,1); const startWd=(first.getDay()+6)%7;
+  const weeks=[]; let day=1-startWd;
+  for(let w=0;w<5;w++){
+    const week=[];
+    for(let d=0;d<7;d++){
+      const dt=new Date(y,m-1,day); const iso=dt.toISOString().slice(0,10);
+      week.push({label:String(dt.getDate()),iso,inMonth:dt.getMonth()===m-1,today:iso==='2026-07-28',events:events.filter(e=>e.date===iso)});
+      day++;
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}
+function openDayDrawer(iso){
+  const evs=DATA.calEvents.filter(e=>e.date===iso);
+  openDrawer(`<div class="sh"><b>${fmtDate(iso)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    ${evs.map(e=>`<div class="card" style="margin-bottom:10px"><div style="display:flex;gap:8px;align-items:center"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${e.type[0].toUpperCase()}</span><b style="font-size:13.5px">${esc(e.title)}</b></div><div class="muted" style="font-size:12px;margin-top:4px">${e.team||'Club'}</div></div>`).join('') || '<div class="muted" style="margin-bottom:16px">Aucun événement ce jour-là pour l’instant.</div>'}
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="guard(()=>openAddEvent('${iso}'))()">+ Ajouter un événement</button>`);
+}
+function openAddEvent(iso){
+  openModal(`<div class="sh"><b>Ajouter un événement — ${fmtDate(iso)}</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Type</label><select id="ae-type"><option value="match">Match</option><option value="entrainement">Entraînement important</option><option value="tournoi">Tournoi</option><option value="contenu">Contenu à préparer</option><option value="sponsor">Échéance sponsor</option><option value="prestation">Prestation SportVision</option></select></div>
+    <div class="field"><label>Titre</label><input id="ae-title" type="text" placeholder="ex: Match vs AS Berville"></div>
+    <div class="field"><label>Équipe</label><select id="ae-team">${DATA.teams.map(t=>`<option>${t}</option>`).join('')}</select></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitAddEvent('${iso}')">Ajouter</button>`);
+}
+function submitAddEvent(iso){
+  DATA.calEvents.push({id:uid('e'),date:iso,type:document.getElementById('ae-type').value,title:document.getElementById('ae-title').value||'Nouvel événement',team:document.getElementById('ae-team').value});
+  closeModal(); closeDrawer(); renderContent(); toast('Événement ajouté au calendrier.');
+}
+
+/* ══════════════ STUDIO DE CRÉATION ══════════════ */
+let crView='creer';
+const CREATION_TYPES=['avant_match','composition','resultat','homme_du_match','matchday','recrutement','anniversaire','annonce_sponsor','tournoi'];
+function tplCreations(){
+  const tabs=[['creer','Créer un visuel'],['brouillons','Mes brouillons'],['a_valider','À valider'],['valides','Validés'],['modeles','Modèles du club'],['historique','Historique']];
+  let content='';
+  if(crView==='creer'){
+    const drafts=DATA.creations.filter(c=>c.status==='brouillon').slice(0,3);
+    content=`<div class="card" style="background:linear-gradient(135deg,var(--card),var(--card2));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:22px">
+      <div><b style="font-size:15px;display:block;margin-bottom:6px">Créer un nouveau visuel</b><div class="muted" style="font-size:12.5px;max-width:440px">Choisissez un type de contenu, un modèle contrôlé et laissez le studio préparer votre visuel aux couleurs du club.</div></div>
+      <button class="btn bp" onclick="guard(openCreationWizard)()">Démarrer →</button></div>
+      <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:10px">BROUILLONS RÉCENTS</div>
+      <div class="grid g3">${drafts.map(c=>`<button class="tile-card" onclick="openCreationDrawer('${c.id}')"><div class="thumb">${esc(c.title)}</div><div style="font-weight:600;font-size:12.5px;margin-top:8px">${esc(c.title)}</div></button>`).join('')||'<div class="muted">Aucun brouillon.</div>'}</div>`;
+  } else if(crView==='modeles'){
+    const templates=[['Affiche avant-match — Classique','Accessible'],['Affiche avant-match — Premium','Premium'],['Résultat — Classique','Accessible'],['Composition — Classique','Accessible'],['Story matchday','Accessible'],['Carrousel sponsor — Premium','Premium'],['Annonce recrutement','Accessible'],['Anniversaire club','Accessible']];
+    content=`<div class="grid g4">${templates.map(([label,badge])=>`<div class="tile-card"><div class="thumb">${label}</div><div style="font-weight:600;font-size:12px;margin-top:8px">${label}</div><span class="badge" style="background:${badge==='Premium'?'#7455FF22':'#28C99522'};color:${badge==='Premium'?'var(--violet)':'var(--ok)'};margin-top:6px">${badge}</span></div>`).join('')}</div>`;
+  } else if(crView==='historique'){
+    const hist=DATA.creations.filter(c=>['publie','valide'].includes(c.status));
+    content=`<div class="list-host">${hist.map(c=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:600;font-size:13.5px">${esc(c.title)}</div><div class="muted" style="font-size:11.5px">${fmtDate(c.date)}</div></div><span class="badge" style="background:${c.status==='publie'?'#168EFF22':'#28C99522'};color:${c.status==='publie'?'var(--blue)':'var(--ok)'}">${c.status==='publie'?'Publiée':'Validée'}</span></div>`).join('')}</div>`;
+  } else {
+    const map={brouillons:'brouillon',a_valider:'a_valider',valides:'valide'};
+    const list=DATA.creations.filter(c=>c.status===map[crView]);
+    content = list.length ? `<div class="grid g3">${list.map(c=>{const sm=statusMeta(c.status); return `<button class="tile-card" onclick="openCreationDrawer('${c.id}')"><div class="thumb">${esc(c.title)}</div><div style="font-weight:600;font-size:12.5px;margin-top:8px">${esc(c.title)}</div><div class="muted" style="font-size:11px;margin-top:2px">${c.team} · ${fmtDate(c.date)}</div><span class="badge" style="background:${sm.color}22;color:${sm.color};margin-top:6px">${sm.label}</span></button>`;}).join('')}</div>` : `<div class="empty-state">Aucun visuel dans cette catégorie pour le moment.</div>`;
+  }
+  return `<div class="sh"><b>Studio de création</b><button class="btn bp" onclick="guard(openCreationWizard)()">+ Nouveau visuel</button></div>
+    <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${crView===k?' on':''}" onclick="crView='${k}';renderContent()">${l}</button>`).join('')}</div>
+    ${content}`;
+}
+function openCreationDrawer(id){
+  const c=DATA.creations.find(x=>x.id===id); const sm=statusMeta(c.status);
+  openDrawer(`<div class="sh"><b>${typeLabel(c.type)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <div class="muted" style="font-size:12px;margin-bottom:14px">${c.team} · ${fmtDate(c.date)}</div>
+    <div class="thumb" style="height:200px;margin-bottom:16px">${esc(c.title)}</div>
+    <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:16px;display:inline-block">${sm.label}</span>
+    <div class="muted" style="font-size:12.5px;margin-bottom:20px">Sponsor associé : ${c.sponsor||'Aucun'}</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${c.status==='brouillon'?`<button class="btn" style="background:var(--wa);color:#06182B" onclick="crStatus('${id}','a_valider','Validation demandée.')">Demander une validation</button>`:''}
+      ${c.status==='a_valider'?`<button class="btn bp" onclick="crStatus('${id}','valide','Visuel validé.')">Valider</button>`:''}
+      ${c.status==='valide'?`<button class="btn" style="background:linear-gradient(135deg,#168EFF,#7455FF);color:#fff" onclick="crStatus('${id}','publie','Publication programmée.')">Programmer la publication</button>`:''}
+      <button class="btn bo" onclick="crDuplicate('${id}')">Dupliquer</button>
+      <button class="btn bo" onclick="toast('Le téléchargement sera disponible au lancement de SportVision Club+.')">Télécharger</button>
+    </div>`);
+}
+function crStatus(id,status,msg){ const c=DATA.creations.find(x=>x.id===id); c.status=status; closeDrawer(); renderContent(); toast(msg); }
+function crDuplicate(id){ const c=DATA.creations.find(x=>x.id===id); DATA.creations.unshift({...c,id:uid('c'),title:c.title+' (copie)',status:'brouillon'}); closeDrawer(); renderContent(); toast('Visuel dupliqué en brouillon.'); }
+
+let cw={step:1,type:null,team:'Seniors R1',title:'',detail:'',sponsor:'Aucun'};
+function openCreationWizard(){ cw={step:1,type:null,team:'Seniors R1',title:'',detail:'',sponsor:'Aucun'}; renderCreationWizard(); }
+function renderCreationWizard(){
+  let body='';
+  if(cw.step===1){
+    body=`<div class="muted" style="font-size:12.5px;margin-bottom:12px">Choisissez un type de contenu</div><div class="grid g2">${CREATION_TYPES.map(t=>`<button class="opt-btn" onclick="cw.type='${t}';cw.step=2;renderCreationWizard()">${typeLabel(t)}</button>`).join('')}</div>`;
+  } else if(cw.step===2){
+    body=`<div class="field"><label>Équipe</label><select id="cw-team">${DATA.teams.map(t=>`<option ${t===cw.team?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Titre</label><input id="cw-title" type="text" value="${esc(cw.title)}"></div>
+      <div class="field"><label>Détail (score, adversaire, message…)</label><textarea id="cw-detail" rows="2">${esc(cw.detail)}</textarea></div>`;
+  } else if(cw.step===3){
+    body=`<div class="field"><label>Sponsor à valoriser</label><select id="cw-sponsor"><option>Aucun</option>${DATA.sponsors.map(sp=>`<option>${sp.name}</option>`).join('')}</select></div>
+      <div class="thumb" style="height:200px">Aperçu du visuel</div>`;
+  } else {
+    body=`<div class="card"><b style="font-size:14px;display:block;margin-bottom:8px">${typeLabel(cw.type)}</b><div class="muted" style="font-size:13px;line-height:1.7">Équipe : ${cw.team}<br>Titre : ${esc(cw.title)}<br>Sponsor : ${cw.sponsor}</div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+        <button class="btn bo" onclick="finalizeCreation('brouillon')">Enregistrer en brouillon</button>
+        <button class="btn" style="background:var(--wa);color:#06182B" onclick="finalizeCreation('a_valider')">Demander une validation</button>
+        <button class="btn bp" onclick="finalizeCreation('valide')">Valider directement</button>
+      </div>`;
+  }
+  const nextLabel = cw.step===3?'Voir la finalisation →':'Continuer →';
+  openModal(`<div class="sh"><b>Nouveau visuel — étape ${cw.step}/4</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    ${body}
+    <div style="display:flex;justify-content:space-between;margin-top:22px">
+      <button class="btn bo" style="visibility:${cw.step===1?'hidden':'visible'}" onclick="creationWizardBack()">← Retour</button>
+      ${cw.step<4?`<button class="btn bp" onclick="creationWizardNext()">${nextLabel}</button>`:'<span></span>'}
+    </div>`);
+}
+function creationWizardBack(){ creationWizardSync(); cw.step=Math.max(1,cw.step-1); renderCreationWizard(); }
+function creationWizardNext(){ creationWizardSync(); cw.step=Math.min(4,cw.step+1); renderCreationWizard(); }
+function creationWizardSync(){
+  if(document.getElementById('cw-team')) cw.team=document.getElementById('cw-team').value;
+  if(document.getElementById('cw-title')) cw.title=document.getElementById('cw-title').value;
+  if(document.getElementById('cw-detail')) cw.detail=document.getElementById('cw-detail').value;
+  if(document.getElementById('cw-sponsor')) cw.sponsor=document.getElementById('cw-sponsor').value;
+}
+function finalizeCreation(status){
+  creationWizardSync();
+  DATA.creations.unshift({id:uid('c'),title:cw.title||`${typeLabel(cw.type)} — ${cw.team}`,type:cw.type,team:cw.team,status,date:'2026-07-28',sponsor:cw.sponsor==='Aucun'?'':cw.sponsor});
+  closeModal(); crView = status==='brouillon'?'brouillons':'a_valider'; renderContent();
+  toast(status==='brouillon'?'Visuel enregistré en brouillon.':(status==='valide'?'Visuel validé et enregistré.':'Visuel envoyé pour validation.'));
+}
+
+/* ══════════════ BANQUE MÉDIA ══════════════ */
+const MEDIA_DEMO=[
+  {id:'m1',title:'Galerie match Seniors R1 vs US Vallée',type:'photo',team:'Seniors R1',source:'Google Drive',expired:false},
+  {id:'m2',title:'Vidéo highlights U18',type:'video',team:'U18',source:'Livré par SportVision',expired:false},
+  {id:'m3',title:'Logo Atlantide BTP',type:'logo',team:'',source:'Stockage Club+',expired:false},
+  {id:'m4',title:'Shooting équipe Féminines',type:'photo',team:'Féminines',source:'Livré par SportVision',expired:false},
+  {id:'m5',title:'Reportage tournoi U13 (brut)',type:'video',team:'U13',source:'Lien externe',expired:true},
+  {id:'m6',title:'Story matchday U18',type:'creation',team:'U18',source:'Stockage Club+',expired:false}
+];
+let mtTeam='toutes', mtType='tous';
+function tplMediatheque(){
+  const list=MEDIA_DEMO.filter(m=>(mtTeam==='toutes'||m.team===mtTeam||!m.team)&&(mtType==='tous'||m.type===mtType));
+  const typeLbl={photo:'Photo',video:'Vidéo',logo:'Logo',document:'Document',creation:'Création'};
+  return `<div class="sh"><b>Banque média</b><button class="btn bp" onclick="guard(()=>toast('Import de médias disponible au lancement.'))()">+ Importer</button></div>
+    <div class="pillbar">${['toutes',...DATA.teams].map(t=>`<button class="pill${mtTeam===t?' on':''}" onclick="mtTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
+    <div class="pillbar">${[['tous','Tous les types'],['photo','Photos'],['video','Vidéos'],['logo','Logos'],['creation','Créations']].map(([k,l])=>`<button class="pill${mtType===k?' on':''}" onclick="mtType='${k}';renderContent()">${l}</button>`).join('')}</div>
+    <div class="grid g4">${list.map(m=>`<button class="tile-card" onclick="openMediaDrawer('${m.id}')"><div class="thumb">${esc(m.title)}</div><div style="font-weight:600;font-size:12px;margin-top:8px">${esc(m.title)}</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"><span class="badge" style="background:#168EFF22;color:var(--blue)">${typeLbl[m.type]}</span><span class="badge" style="background:${m.expired?'#EF5B6722':'#28C99522'};color:${m.expired?'var(--er)':'var(--ok)'}">${m.expired?'Lien expiré':m.source}</span></div></button>`).join('')||'<div class="empty-state">Aucun média pour ces filtres.</div>'}</div>`;
+}
+function openMediaDrawer(id){
+  const m=MEDIA_DEMO.find(x=>x.id===id);
+  openDrawer(`<div class="sh"><b>${esc(m.title)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <div class="thumb" style="height:200px;margin-bottom:16px">${esc(m.title)}</div>
+    ${m.expired?`<div class="card" style="border-color:#EF5B6755;margin-bottom:16px;color:var(--er);font-size:12.5px">Ce lien externe est expiré ou indisponible. Demandez un nouveau lien à son auteur.</div>`:''}
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn bp" onclick="toast('Lien copié dans le presse-papiers.')">Copier le lien</button>
+      <button class="btn bo" onclick="closeDrawer();switchView('creations');toast('Média prêt à être utilisé dans une création.')">Utiliser dans une création</button>
+      <button class="btn bo" onclick="toast('Signalement transmis à SportVision.')">Signaler un problème</button>
+    </div>`);
+}
+
+/* ══════════════ SPONSORS ══════════════ */
+let spView='overview';
+function tplSponsors(){
+  const tabs=[['overview',"Vue d'ensemble"],['partenaires','Partenaires'],['vitrine','Vitrine partenaires']];
+  let content='';
+  if(spView==='overview'){
+    const pending=DATA.sponsors.flatMap(sp=>sp.commitments.filter(c=>c.status==='a_faire').map(c=>({...c,sponsorName:sp.name})));
+    content=`<div class="grid g4" style="margin-bottom:20px">
+      <div class="stat"><b>${DATA.sponsors.length}</b><span>Sponsors actifs</span></div>
+      <div class="stat"><b>${pending.length}</b><span>Contreparties à réaliser</span></div>
+      <div class="stat"><b>1</b><span>Contrats proches échéance</span></div>
+      <div class="stat"><b>0</b><span>Partenaires sans logo</span></div>
+    </div>
+    <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:10px">ALERTES</div>
+    <div class="card">${pending.map(c=>`<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd);font-size:13px"><span style="width:7px;height:7px;border-radius:4px;background:var(--wa);flex-shrink:0"></span>${c.sponsorName} : "${c.type}" à réaliser${c.due!=='Permanent'?' avant le '+fmtDate(c.due):''}.</div>`).join('')}</div>`;
+  } else if(spView==='partenaires'){
+    content=`<div class="grid g3">${DATA.sponsors.map(sp=>{const done=sp.commitments.filter(c=>c.status==='realise').length;
+      return `<button class="tile-card" onclick="openSponsorDrawer('${sp.id}')">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><div class="club-crest" style="border-radius:10px">${initials(sp.name)}</div><div><div style="font-weight:700;font-size:14px">${sp.name}</div><div class="muted" style="font-size:11.5px">${sp.secteur}</div></div></div>
+        <span class="badge" style="background:${sp.color}22;color:${sp.color};margin-bottom:8px">${sp.niveau}</span>
+        <div class="muted" style="font-size:11.5px">${sp.teams.join(', ')}</div>
+        <div style="font-size:11.5px;color:var(--cyan);font-weight:600;margin-top:4px">${done}/${sp.commitments.length} contreparties réalisées</div></button>`;}).join('')}</div>`;
+  } else {
+    content=`<div class="card" style="background:linear-gradient(135deg,var(--card),var(--card2));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div class="muted" style="font-size:13px">Aperçu de la page publique des partenaires du club.</div>
+      <a href="SportVision-Club-Plus.html#/partenaires" target="_blank" class="btn bp">Voir la page publique →</a></div>
+      <div class="grid g4">${DATA.sponsors.map(sp=>`<div class="tile-card" style="text-align:center"><div class="club-crest" style="border-radius:10px;margin:0 auto 10px">${initials(sp.name)}</div><div style="font-weight:700;font-size:13px">${sp.name}</div><div class="muted" style="font-size:11.5px">${sp.secteur}</div></div>`).join('')}</div>`;
+  }
+  return `<div class="sh"><b>Espace Sponsors</b><button class="btn bp" onclick="guard(openSponsorForm)()">+ Ajouter un sponsor</button></div>
+    <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${spView===k?' on':''}" onclick="spView='${k}';renderContent()">${l}</button>`).join('')}</div>
+    ${content}`;
+}
+function openSponsorDrawer(id){
+  const sp=DATA.sponsors.find(x=>x.id===id);
+  openDrawer(`<div class="sh"><div style="display:flex;align-items:center;gap:12px"><div class="club-crest" style="border-radius:10px">${initials(sp.name)}</div><div><b>${sp.name}</b><div class="muted" style="font-size:12px">${sp.secteur}</div></div></div><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <span class="badge" style="background:${sp.color}22;color:${sp.color};margin:14px 0;display:inline-block">Partenaire ${sp.niveau}</span>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Contrat</span><span style="font-weight:600">${fmtDate(sp.debut)} — ${fmtDate(sp.fin)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Montant annuel</span><span style="font-weight:600">${sp.montant} €</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px"><span class="muted">Contact</span><span style="font-weight:600">${sp.contact}</span></div>
+    </div>
+    <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">CONTREPARTIES</div>
+    ${sp.commitments.map(c=>{const sm=statusMeta(c.status); return `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:6px"><div><div style="font-weight:600;font-size:12.5px">${c.type}</div><div class="muted" style="font-size:11px">${c.due==='Permanent'?'Permanent':fmtDate(c.due)}</div></div>${c.status==='a_faire'?`<button class="btn bo" style="padding:5px 10px" onclick="sponsorMarkDone('${sp.id}','${c.id}')">Marquer réalisé</button>`:`<span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>`}</div>`;}).join('')}
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+      <button class="btn" style="background:linear-gradient(135deg,#168EFF,#7455FF);color:#fff" onclick="toast('Le rapport de partenariat PDF sera disponible au lancement.')">Générer le rapport</button>
+      <button class="btn bo" onclick="toast('Renouvellement en préparation.')">Préparer le renouvellement</button>
+    </div>`);
+}
+function sponsorMarkDone(spId,cId){
+  const sp=DATA.sponsors.find(x=>x.id===spId); const c=sp.commitments.find(x=>x.id===cId); c.status='realise';
+  openSponsorDrawer(spId); renderContent();
+}
+function openSponsorForm(){
+  openModal(`<div class="sh"><b>Ajouter un sponsor</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Nom</label><input id="sf-name" type="text"></div>
+    <div class="row2"><div class="field"><label>Secteur</label><input id="sf-sector" type="text"></div><div class="field"><label>Niveau</label><select id="sf-level"><option>Or</option><option>Argent</option><option selected>Bronze</option></select></div></div>
+    <div class="field"><label>Contact</label><input id="sf-contact" type="text"></div>
+    <div class="field"><label>Montant annuel (€)</label><input id="sf-amount" type="text"></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitSponsorForm()">Ajouter</button>`);
+}
+function submitSponsorForm(){
+  const name=document.getElementById('sf-name').value.trim();
+  if(!name){ toast('Le nom du sponsor est obligatoire.'); return; }
+  const level=document.getElementById('sf-level').value;
+  DATA.sponsors.unshift({id:uid('sp'),name,secteur:document.getElementById('sf-sector').value||'Non précisé',niveau:level,color:level==='Or'?'#F5A623':level==='Argent'?'#A7B6C9':'#7455FF',teams:[],contact:document.getElementById('sf-contact').value,debut:'2026-07-28',fin:'2027-07-28',montant:Number(document.getElementById('sf-amount').value)||0,commitments:[]});
+  closeModal(); renderContent(); toast('Sponsor ajouté avec succès.');
+}
+
+/* ══════════════ DEMANDES DE CRÉATION ══════════════ */
+let reqStatus='toutes';
+const REQ_STATUSES=['recues','info_manquante','en_traitement','prete_a_creer','terminee','refusee'];
+function tplDemandes(){
+  const list=DATA.requests.filter(r=>reqStatus==='toutes'||r.status===reqStatus);
+  return `<div class="sh"><b>Demandes de création</b><button class="btn bp" onclick="guard(openRequestWizard)()">+ Nouvelle demande</button></div>
+    <div class="pillbar">${['toutes',...REQ_STATUSES].map(st=>`<button class="pill${reqStatus===st?' on':''}" onclick="reqStatus='${st}';renderContent()">${st==='toutes'?'Toutes':statusMeta(st).label}</button>`).join('')}</div>
+    <div class="list-host">${list.length?list.map(r=>{const sm=statusMeta(r.status); return `
+      <button class="list-row" onclick="openRequestDrawer('${r.id}')">
+        <div style="display:flex;gap:10px;align-items:center"><span style="width:7px;height:7px;border-radius:4px;background:${r.urgency==='haute'?'var(--er)':'var(--bd)'}"></span>
+        <div><div style="font-weight:700;font-size:14px">${typeLabel(r.type)}</div><div class="muted" style="font-size:12px;margin-top:2px">${r.team} · ${r.requester} · ${fmtDate(r.created)}</div></div></div>
+        <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
+      </button>`;}).join(''):'<div class="empty-state">Aucune demande dans ce statut pour le moment.</div>'}</div>`;
+}
+function openRequestDrawer(id){
+  const r=DATA.requests.find(x=>x.id===id);
+  openDrawer(`<div class="sh"><b>${typeLabel(r.type)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:18px">${r.team} · ${r.requester} · ${fmtDate(r.created)}</div>
+    <div class="field"><label>Statut</label><select onchange="changeRequestStatus('${id}',this.value)">${REQ_STATUSES.map(st=>`<option value="${st}" ${st===r.status?'selected':''}>${statusMeta(st).label}</option>`).join('')}</select></div>
+    ${r.creditsReserved?`<div class="card" style="border-color:#F5A62355;margin-bottom:16px;font-size:12.5px">${r.creditsReserved} crédit(s) réservé(s) — débités seulement si SportVision accepte la demande, sinon restitués.</div>`:''}
+    ${r.missing&&r.missing.length?`<div class="card" style="border-color:#F5A62355;margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--wa);margin-bottom:6px">Informations manquantes</div>${r.missing.map(m=>`<div style="font-size:12.5px">• ${m}</div>`).join('')}</div>`:''}
+    <div class="card" style="margin-bottom:16px"><div class="muted" style="font-size:11.5px;margin-bottom:6px">DÉTAIL</div><div style="font-size:12.5px">${esc(r.detail)}</div></div>
+    <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">COMMENTAIRES</div>
+    ${r.comments.map(c=>`<div class="card" style="margin-bottom:8px;padding:10px 12px"><div style="font-size:12px;font-weight:700">${c.author} <span class="muted" style="font-weight:400">· ${c.date}</span></div><div style="font-size:12.5px;margin-top:3px">${esc(c.text)}</div></div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:8px"><input id="req-comment" type="text" placeholder="Ajouter un commentaire…" style="flex:1"><button class="btn bp" onclick="addRequestComment('${id}')">Envoyer</button></div>`);
+}
+function addRequestComment(id){
+  const el=document.getElementById('req-comment'); const text=el.value.trim(); if(!text) return;
+  DATA.requests.find(x=>x.id===id).comments.push({author:ROLES[S.role].person,text,date:'à l’instant'});
+  openRequestDrawer(id);
+}
+function changeRequestStatus(id,newStatus){
+  const r=DATA.requests.find(x=>x.id===id); const old=r.status; r.status=newStatus;
+  if(r.creditsReserved){
+    if(newStatus==='terminee'&&old!=='terminee'){
+      wallet.balance=Math.max(0,wallet.balance-r.creditsReserved); wallet.reserved=Math.max(0,wallet.reserved-r.creditsReserved);
+      DATA.creditTx.unshift({id:uid('tx'),date:'2026-07-28',label:typeLabel(r.type)+' — '+r.team,amount:-r.creditsReserved});
+      r.creditsReserved=0; toast('Statut mis à jour — crédits débités.');
+    } else if(newStatus==='refusee'&&old!=='refusee'){
+      wallet.reserved=Math.max(0,wallet.reserved-r.creditsReserved); r.creditsReserved=0; toast('Statut mis à jour — crédits réservés restitués.');
+    } else toast('Statut mis à jour.');
+  } else toast('Statut mis à jour.');
+  openRequestDrawer(id); renderContent();
+}
+let rw={step:1,type:null,team:'Seniors R1',urgency:'normale',comment:''};
+function openRequestWizard(){ rw={step:1,type:null,team:'Seniors R1',urgency:'normale',comment:''}; renderRequestWizard(); }
+const REQ_TYPES=['avant_match','composition','resultat','homme_du_match','recrutement_joueur','recrutement_educateur','anniversaire','publication_sponsor','annonce_tournoi','annonce_importante'];
+function renderRequestWizard(){
+  let body='';
+  if(rw.step===1){
+    body=`<div class="grid g2">${REQ_TYPES.map(t=>{const c=creditCost(t); return `<button class="opt-btn" onclick="rw.type='${t}';rw.step=2;renderRequestWizard()"><div>${typeLabel(t)}<div style="color:var(--cyan);font-size:11px;font-weight:600;margin-top:4px">${c==null?'Sur devis':c+' crédit'+(c>1?'s':'')}</div></div></button>`;}).join('')}</div>`;
+  } else if(rw.step===2){
+    body=`<div class="field"><label>Équipe</label><select id="rw-team">${DATA.teams.map(t=>`<option ${t===rw.team?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Commentaire</label><textarea id="rw-comment" rows="2">${esc(rw.comment)}</textarea></div>
+      <div class="field"><label>Niveau d'urgence</label><select id="rw-urgency"><option value="normale" ${rw.urgency==='normale'?'selected':''}>Normale</option><option value="haute" ${rw.urgency==='haute'?'selected':''}>Haute</option></select></div>`;
+  } else {
+    const c=creditCost(rw.type);
+    body=`<div class="card"><b style="font-size:14px;display:block;margin-bottom:8px">${typeLabel(rw.type)}</b><div class="muted" style="font-size:13px;line-height:1.7">Équipe : ${rw.team}<br>Commentaire : ${esc(rw.comment)}<br>Urgence : ${rw.urgency}</div><div style="color:var(--cyan);font-weight:700;font-size:13px;margin-top:10px">Coût estimé : ${c==null?'Sur devis':c+' crédit'+(c>1?'s':'')}</div></div>
+      <div class="muted" style="font-size:12px;margin-top:12px">La demande sera envoyée au responsable communication pour vérification puis création.</div>`;
+  }
+  openModal(`<div class="sh"><b>Nouvelle demande — étape ${rw.step}/3</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    ${body}
+    <div style="display:flex;justify-content:space-between;margin-top:22px">
+      <button class="btn bo" style="visibility:${rw.step===1?'hidden':'visible'}" onclick="requestWizardBack()">← Retour</button>
+      ${rw.step===2?`<button class="btn bp" onclick="requestWizardNext()">Continuer →</button>`:''}
+      ${rw.step===3?`<button class="btn bp" onclick="submitRequestWizard()">Envoyer la demande</button>`:''}
+    </div>`);
+}
+function requestWizardSync(){
+  if(document.getElementById('rw-team')) rw.team=document.getElementById('rw-team').value;
+  if(document.getElementById('rw-comment')) rw.comment=document.getElementById('rw-comment').value;
+  if(document.getElementById('rw-urgency')) rw.urgency=document.getElementById('rw-urgency').value;
+}
+function requestWizardBack(){ requestWizardSync(); rw.step=Math.max(1,rw.step-1); renderRequestWizard(); }
+function requestWizardNext(){ requestWizardSync(); rw.step=3; renderRequestWizard(); }
+function submitRequestWizard(){
+  const cost=creditCost(rw.type);
+  const newReq={id:uid('r'),type:rw.type,team:rw.team,requester:ROLES[S.role].person,created:'2026-07-28',status:'recues',urgency:rw.urgency,detail:rw.comment||'—',missing:[],comments:[],creditsReserved:cost||0};
+  DATA.requests.unshift(newReq);
+  if(cost!=null) wallet.reserved+=cost;
+  closeModal(); switchView('demandes');
+  toast(cost==null?'Demande envoyée avec succès. Cette prestation sera transmise sur devis.':`Demande envoyée. ${cost} crédit${cost>1?'s':''} réservé${cost>1?'s':''} en attente d'acceptation par SportVision.`);
+}
+
+/* ══════════════ PRESTATIONS SPORTVISION ══════════════ */
+let svView='catalogue';
+function tplServices(){
+  const selfFunded=['coach','cm_externe','resp_equipe','sponsor_mgr','tresorier','membre_bureau','lecture_seule'].includes(S.role);
+  let content='';
+  if(svView==='catalogue'){
+    content=`<div class="grid g2">${DATA.serviceCatalog.map(sv=>`<div class="card">
+      <b style="font-size:14.5px;display:block;margin-bottom:6px">${sv.label}</b>
+      <div class="muted" style="font-size:12.5px;margin-bottom:10px;line-height:1.5">${sv.desc}</div>
+      <div class="muted" style="font-size:11.5px;margin-bottom:10px">Délai : ${sv.delai}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div><div style="font-size:15px;font-weight:800">${sv.price}</div><div style="font-size:10.5px;color:var(--cyan);font-weight:600">${sv.adv}</div></div>
+        <button class="btn bp" onclick="guard(()=>openBookingWizard('${sv.key}'))()">Réserver</button>
+      </div>${selfFunded?`<div class="muted" style="font-size:10.5px;margin-top:8px">Facturé à vos frais</div>`:''}
+    </div>`).join('')}</div>`;
+  } else {
+    content = DATA.bookings.length ? `<div class="list-host">${DATA.bookings.map(bk=>{const sm=statusMeta(bk.status); return `<button class="list-row" onclick="openBookingDrawer('${bk.id}')"><div><div style="font-weight:700;font-size:14px">${bk.service}</div><div class="muted" style="font-size:12px;margin-top:2px">${bk.team} · ${fmtDate(bk.date)} · ${bk.duree} · ${bk.price}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;}).join('')}</div>` : `<div class="empty-state">Aucune réservation pour le moment.</div>`;
+  }
+  return `<div class="sh"><b>Prestations SportVision</b><button class="btn bp" onclick="guard(()=>openBookingWizard(null))()">+ Réserver une présence</button></div>
+    <div class="pillbar">${[['catalogue','Catalogue'],['reservations','Mes réservations']].map(([k,l])=>`<button class="pill${svView===k?' on':''}" onclick="svView='${k}';renderContent()">${l}</button>`).join('')}</div>
+    ${content}`;
+}
+function openBookingDrawer(id){
+  const bk=DATA.bookings.find(x=>x.id===id); const sm=statusMeta(bk.status);
+  const steps=['recue','qualifiee','confirmee','operateur_affecte','mission_realisee','livree']; const idx=steps.indexOf(bk.status)>=0?steps.indexOf(bk.status):2;
+  openDrawer(`<div class="sh"><b>${bk.service}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:18px">${bk.team} · ${fmtDate(bk.date)} · ${bk.duree}</div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:20px">${bk.price}</div>
+    <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">PIPELINE TERRAIN</div>
+    ${['Reçue','Besoin qualifié','Confirmée','Opérateur affecté','Mission réalisée','Livrée'].map((l,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="width:8px;height:8px;border-radius:4px;background:${i<=idx?'var(--cyan)':'var(--bd)'}"></span><span style="font-size:12px;color:${i<=idx?'var(--t1)':'var(--t2)'};font-weight:${i===idx?700:500}">${l}</span></div>`).join('')}
+    <button class="btn bo" style="width:100%;justify-content:center;margin-top:20px" onclick="toast('Le support SportVision sera joignable directement au lancement.')">Contacter le support</button>`);
+}
+let bw={step:1,type:null,team:'Seniors R1',date:'',heure:'',adresse:'',contact:''};
+function openBookingWizard(type){ bw={step:1,type,team:'Seniors R1',date:'',heure:'',adresse:'',contact:''}; renderBookingWizard(); }
+function renderBookingWizard(){
+  const svInfo=DATA.serviceCatalog.find(sv=>sv.key===bw.type) || {label:'Prestation SportVision',price:'Sur devis',adv:''};
+  let body='';
+  if(bw.step===1){
+    body=`<div class="field"><label>Type de prestation</label><select id="bw-type">${DATA.serviceCatalog.map(sv=>`<option value="${sv.key}" ${sv.key===bw.type?'selected':''}>${sv.label}</option>`).join('')}</select></div>
+      <div class="field"><label>Équipe</label><select id="bw-team">${DATA.teams.map(t=>`<option ${t===bw.team?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="row2"><div class="field"><label>Date</label><input id="bw-date" type="date"></div><div class="field"><label>Heure</label><input id="bw-heure" type="text" placeholder="15:00"></div></div>
+      <div class="field"><label>Adresse</label><input id="bw-adresse" type="text" placeholder="Stade Municipal, Sens"></div>`;
+  } else {
+    body=`<div class="card"><b style="font-size:14px;display:block;margin-bottom:8px">${svInfo.label}</b><div class="muted" style="font-size:13px;line-height:1.7">Équipe : ${bw.team}<br>Date : ${bw.date||'—'} à ${bw.heure||'—'}<br>Lieu : ${bw.adresse||'—'}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px"><span style="font-size:18px;font-weight:800">${svInfo.price}</span><span style="font-size:11.5px;color:var(--cyan);font-weight:700">${svInfo.adv}</span></div></div>
+      <div class="muted" style="font-size:12px;margin-top:10px">Tarif indicatif, sous réserve de disponibilité. Vous recevrez une confirmation ou un devis de SportVision.</div>`;
+  }
+  openModal(`<div class="sh"><b>Réserver une présence — étape ${bw.step}/2</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    ${body}
+    <div style="display:flex;justify-content:space-between;margin-top:22px">
+      <button class="btn bo" style="visibility:${bw.step===1?'hidden':'visible'}" onclick="bookingSync();bw.step=1;renderBookingWizard()">← Retour</button>
+      ${bw.step===1?`<button class="btn bp" onclick="bookingSync();bw.step=2;renderBookingWizard()">Continuer →</button>`:`<button class="btn bp" onclick="submitBooking()">Envoyer la demande</button>`}
+    </div>`);
+}
+function bookingSync(){
+  if(document.getElementById('bw-type')) bw.type=document.getElementById('bw-type').value;
+  if(document.getElementById('bw-team')) bw.team=document.getElementById('bw-team').value;
+  if(document.getElementById('bw-date')) bw.date=document.getElementById('bw-date').value;
+  if(document.getElementById('bw-heure')) bw.heure=document.getElementById('bw-heure').value;
+  if(document.getElementById('bw-adresse')) bw.adresse=document.getElementById('bw-adresse').value;
+}
+function submitBooking(){
+  const svInfo=DATA.serviceCatalog.find(sv=>sv.key===bw.type);
+  DATA.bookings.unshift({id:uid('b'),service:svInfo?svInfo.label:'Prestation',team:bw.team,date:bw.date||'2026-08-15',duree:'2h',status:'recue',price:svInfo?svInfo.price+' (-5% Club+)':'Sur devis'});
+  closeModal(); svView='reservations'; switchView('services');
+  toast('Demande de présence envoyée — en attente de confirmation SportVision.');
+}
+
+/* ══════════════ ÉQUIPES & ÉDUCATEURS ══════════════ */
+function tplEquipes(){
+  return `<div class="sh"><b>Équipes & éducateurs</b><button class="btn bp" onclick="guard(openEquipeForm)()">+ Ajouter une équipe</button></div>
+    <div class="grid g2">${DATA.equipes.map(t=>`<button class="tile-card" onclick="openEquipeDrawer('${t.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div><div style="font-size:15px;font-weight:700">${t.name}</div><div class="muted" style="font-size:11.5px">${t.cat} · ${t.members} membres</div></div><span class="badge" style="background:#168EFF22;color:var(--blue)">${t.contribution}% régularité</span></div>
+      <div class="muted" style="font-size:12px;margin-bottom:4px">Éducateur : ${t.coach}</div>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">Prochain : ${t.next}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge" style="background:#F5A62322;color:var(--wa)">${t.openReq} demandes ouvertes</span><span class="badge" style="background:#2DD4E322;color:var(--cyan)">${t.toPrep} contenus à préparer</span></div>
+    </button>`).join('')}</div>`;
+}
+function openEquipeDrawer(id){
+  const t=DATA.equipes.find(x=>x.id===id);
+  openDrawer(`<div class="sh"><b>${t.name}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:18px">${t.cat} · ${t.members} membres</div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Éducateur</span><span style="font-weight:600">${t.coach}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Responsable communication</span><span style="font-weight:600">${t.respComm}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px"><span class="muted">Prochain</span><span style="font-weight:600">${t.next}</span></div>
+    </div>
+    <div class="muted" style="font-size:11.5px;margin-bottom:6px">SCORE DE CONTRIBUTION</div>
+    <div class="progress" style="margin-bottom:6px"><i style="width:${t.contribution}%"></i></div>
+    <div class="muted" style="font-size:12px;margin-bottom:16px">${t.contribution} % de régularité de transmission</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px"><span class="badge" style="background:#F5A62322;color:var(--wa)">${t.openReq} demandes ouvertes</span><span class="badge" style="background:#2DD4E322;color:var(--cyan)">${t.toPrep} contenus à préparer</span></div>
+    <button class="btn bo" style="width:100%;justify-content:center" onclick="toast('Relance envoyée à l\\'équipe ${t.name}.')">Relancer l'équipe</button>`);
+}
+function openEquipeForm(){
+  openModal(`<div class="sh"><b>Ajouter une équipe</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Nom</label><input id="tf-name" type="text" placeholder="ex: U17"></div>
+    <div class="row2"><div class="field"><label>Catégorie</label><input id="tf-cat" type="text"></div><div class="field"><label>Éducateur principal</label><input id="tf-coach" type="text"></div></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitEquipeForm()">Ajouter</button>`);
+}
+function submitEquipeForm(){
+  const name=document.getElementById('tf-name').value.trim();
+  if(!name){ toast("Le nom de l'équipe est obligatoire."); return; }
+  DATA.equipes.push({id:uid('t'),name,cat:document.getElementById('tf-cat').value||'Non précisé',coach:document.getElementById('tf-coach').value||'À définir',respComm:'Lucas Perrin',members:0,next:'À planifier',openReq:0,toPrep:0,contribution:0});
+  closeModal(); renderContent(); toast('Équipe ajoutée avec succès.');
+}
+
+/* ══════════════ UTILISATEURS ══════════════ */
+function tplMembres(){
+  return `<div class="sh"><b>Utilisateurs</b><button class="btn bp" onclick="guard(openInviteWizard)()">+ Inviter un utilisateur</button></div>
+    <div class="list-host">${DATA.users.map(u=>{const sm=statusMeta(u.status); return `<button class="list-row" onclick="openUserDrawer('${u.id}')">
+      <div><div style="font-weight:700;font-size:14px">${u.name}</div><div class="muted" style="font-size:12px;margin-top:2px">${u.email} · ${u.role} · ${u.teams.join(', ')}</div></div>
+      <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;}).join('')}</div>`;
+}
+function openUserDrawer(id){
+  const u=DATA.users.find(x=>x.id===id); const sm=statusMeta(u.status);
+  openDrawer(`<div class="sh"><b>${u.name}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:16px">${u.email} · ${u.role}</div>
+    <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:18px;display:inline-block">${sm.label}</span>
+    <div class="muted" style="font-size:12.5px;margin-bottom:20px">Équipes autorisées : ${u.teams.join(', ')}</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${u.status==='invitation'?`<button class="btn" style="background:var(--wa);color:#06182B" onclick="toast('Invitation renvoyée à ${u.email}.')">Renvoyer l'invitation</button>`:''}
+      <button class="btn bo" onclick="userToggleSuspend('${id}')">${u.status==='suspendu'?"Réactiver l'accès":"Suspendre l'accès"}</button>
+      <button class="btn bd" onclick="userRemove('${id}')">Supprimer l'accès</button>
+    </div>`);
+}
+function userToggleSuspend(id){ const u=DATA.users.find(x=>x.id===id); u.status = u.status==='suspendu'?'actif':'suspendu'; closeDrawer(); renderContent(); toast(u.status==='suspendu'?'Accès suspendu.':'Accès réactivé.'); }
+function userRemove(id){ const idx=DATA.users.findIndex(x=>x.id===id); DATA.users.splice(idx,1); closeDrawer(); renderContent(); toast('Accès supprimé.'); }
+let iw={step:1,prenom:'',nom:'',email:'',role:'Éducateur',teams:[]};
+function openInviteWizard(){ iw={step:1,prenom:'',nom:'',email:'',role:'Éducateur',teams:[]}; renderInviteWizard(); }
+const ROLE_DESC={
+  'Administrateur du club':'Accès complet au club : équipes, utilisateurs, sponsors, créations, abonnement et paramètres.',
+  'Président':'Vue stratégique : validations, sponsors, rapports, abonnement.',
+  'Secrétaire':'Gestion administrative : équipes, utilisateurs, calendrier, documents.',
+  'Community Manager':'Newsroom, Match Center, calendrier éditorial, Studio de création, médiathèque, sponsors, demandes.',
+  'Éducateur':'Accès à son équipe : Match Center, actualités, médias, demandes simples.',
+  "Responsable d'équipe":'Gestion de son équipe : éducateurs, calendrier, résultats, médias, demandes et validations.',
+  'Responsable sponsors':'Espace partenaires complet : fiches sponsors, contreparties, échéances, rapports.',
+  'Trésorier':'Vue financière restreinte : abonnement, factures, crédits, prestations commandées.',
+  'Membre du bureau':'Accès consultatif configurable par l’administrateur.',
+  'Lecture seule':'Consultation uniquement, sans possibilité de modification.'
+};
+function renderInviteWizard(){
+  let body='';
+  if(iw.step===1){
+    body=`<div class="row2"><div class="field"><label>Prénom</label><input id="iw-prenom" type="text" value="${esc(iw.prenom)}"></div><div class="field"><label>Nom</label><input id="iw-nom" type="text" value="${esc(iw.nom)}"></div></div>
+      <div class="field"><label>E-mail</label><input id="iw-email" type="email" value="${esc(iw.email)}"></div>`;
+  } else if(iw.step===2){
+    body=`<div class="field"><label>Rôle principal</label><select id="iw-role" onchange="iwRoleDesc(this.value)">${Object.keys(ROLE_DESC).map(r=>`<option ${r===iw.role?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="card" id="iw-desc" style="font-size:12px;color:var(--t2);line-height:1.6">${ROLE_DESC[iw.role]}</div>`;
+  } else {
+    body=`<div class="muted" style="font-size:12px;margin-bottom:8px">Équipes concernées</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${DATA.teams.map(t=>`<button class="pill${iw.teams.includes(t)?' on':''}" onclick="iwToggleTeam('${t}')">${t}</button>`).join('')}</div>
+      <div class="muted" style="font-size:11.5px">Permissions recommandées appliquées automatiquement selon le rôle — personnalisables ensuite dans Paramètres.</div>`;
+  }
+  openModal(`<div class="sh"><b>Inviter un utilisateur — étape ${iw.step}/3</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    ${body}
+    <div style="display:flex;justify-content:space-between;margin-top:22px">
+      <button class="btn bo" style="visibility:${iw.step===1?'hidden':'visible'}" onclick="inviteBack()">← Retour</button>
+      <button class="btn bp" onclick="inviteNext()">${iw.step===3?"Envoyer l'invitation":'Continuer'}</button>
+    </div>`);
+}
+function iwRoleDesc(role){ iw.role=role; document.getElementById('iw-desc').textContent=ROLE_DESC[role]; }
+function iwToggleTeam(t){ const i=iw.teams.indexOf(t); if(i>=0) iw.teams.splice(i,1); else iw.teams.push(t); renderInviteWizard(); }
+function inviteSync(){
+  if(document.getElementById('iw-prenom')) iw.prenom=document.getElementById('iw-prenom').value;
+  if(document.getElementById('iw-nom')) iw.nom=document.getElementById('iw-nom').value;
+  if(document.getElementById('iw-email')) iw.email=document.getElementById('iw-email').value;
+}
+function inviteBack(){ inviteSync(); iw.step=Math.max(1,iw.step-1); renderInviteWizard(); }
+function inviteNext(){
+  inviteSync();
+  if(iw.step===1){ if(!iw.prenom.trim()||!iw.email.trim()){ toast("Le prénom et l'e-mail sont obligatoires."); return; } }
+  if(iw.step<3){ iw.step++; renderInviteWizard(); return; }
+  DATA.users.push({id:uid('u'),name:`${iw.prenom} ${iw.nom}`.trim(),email:iw.email,role:iw.role,teams:iw.teams.length?iw.teams:['Toutes'],status:'invitation'});
+  closeModal(); switchView('membres'); toast(`Invitation envoyée à ${iw.email}.`);
+}
+
+/* ══════════════ ABONNEMENT & CRÉDITS ══════════════ */
+function tplAbonnement(){
+  const available=Math.max(0,wallet.balance-wallet.reserved);
+  const pct=Math.round(available/wallet.monthly*100);
+  const barColor=pct<=10?'var(--er)':pct<=25?'var(--wa)':'var(--cyan)';
+  return `<div class="sh"><b>Abonnement & crédits</b></div>
+    <div class="card" style="background:linear-gradient(135deg,var(--card),var(--card2));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div class="muted" style="font-size:12px;margin-bottom:4px">Formule actuelle</div><div style="font-size:18px;font-weight:800">${subscription.plan}</div><div class="muted" style="font-size:12.5px;margin-top:4px">${subscription.price} · Prochaine échéance : ${subscription.nextBilling} · ${subscription.paymentMethod}</div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn bp" onclick="openPlanChange()">Changer de formule</button><button class="btn bo" onclick="toast('Le téléchargement des factures sera disponible au lancement.')">Télécharger les factures</button></div>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <div class="sh" style="margin-bottom:14px"><b style="font-size:15px">Crédits</b><button class="btn bp" onclick="openCreditPack()">Acheter un pack</button></div>
+        <div style="font-size:28px;font-weight:800;margin-bottom:6px">${available} <span style="font-size:14px;color:var(--t2);font-weight:600">/ ${wallet.monthly} crédits disponibles</span></div>
+        <div class="progress" style="margin-bottom:10px"><i style="width:${pct}%;background:${barColor}"></i></div>
+        ${wallet.reserved?`<div style="font-size:12px;color:var(--wa);margin-bottom:16px">${wallet.reserved} crédit(s) réservé(s) pour des demandes en attente d'acceptation par SportVision.</div>`:''}
+        <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">HISTORIQUE</div>
+        ${DATA.creditTx.map(tx=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)"><div><div style="font-weight:600;font-size:12.5px">${esc(tx.label)}</div><div class="muted" style="font-size:11px">${fmtDate(tx.date)}</div></div><span style="font-weight:700;font-size:13px;color:${tx.amount>0?'var(--ok)':'var(--t1)'}">${tx.amount>0?'+':''}${tx.amount}</span></div>`).join('')}
+      </div>
+      <div class="card">
+        <b style="font-size:15px;display:block;margin-bottom:14px">Quotas de la formule</b>
+        ${[['Utilisateurs',DATA.users.length,10],['Équipes',DATA.equipes.length,8],['Modèles premium',2,5]].map(([l,used,total])=>`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span>${l}</span><span class="muted">${used} / ${total}</span></div><div class="progress"><i style="width:${Math.min(100,used/total*100)}%"></i></div></div>`).join('')}
+        <button class="btn bo" style="width:100%;justify-content:center;margin-top:6px" onclick="toast('Un conseiller SportVision vous recontactera prochainement.')">Contacter SportVision</button>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:4px;background:transparent;color:var(--er)" onclick="toast('La résiliation sera disponible au lancement.')">Résilier mon abonnement</button>
+      </div>
+    </div>`;
+}
+function openPlanChange(){
+  const plans=[
+    {name:'Club+',price:'49 €/mois engagé · 59 € sans engagement',desc:'5 crédits/mois, fonctionnalités essentielles, 5 % de réduction.',credits:5},
+    {name:'Club+ Performance',price:'129 €/mois engagé · 149 € sans engagement',desc:'20 crédits/mois, traitement prioritaire, rapports avancés, 10 % de réduction.',credits:20}
+  ];
+  openModal(`<div class="sh"><b>Changer de formule</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    ${plans.map(p=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+      <div><div style="font-size:14px;font-weight:700">${p.name} <span style="color:var(--cyan);font-weight:600">${p.price}</span></div><div class="muted" style="font-size:12px;margin-top:4px;max-width:340px">${p.desc}</div></div>
+      <button class="btn bp" onclick="applyPlan('${p.name}',${p.credits})">Choisir</button></div>`).join('')}
+    <div style="text-align:center;font-size:12.5px" class="muted">Besoin de déléguer toute votre communication ? <a onclick="closeModal();toast('Un conseiller SportVision vous recontactera prochainement.')">Découvrir Full Communication</a>.</div>`);
+}
+function applyPlan(name,credits){
+  if(name===subscription.plan){ closeModal(); return; }
+  subscription.plan=name; wallet.monthly=credits;
+  closeModal(); renderContent(); toast(`Passage à ${name} confirmé.`);
+}
+function openCreditPack(){
+  const packs=[['10 crédits','19 €',10],['25 crédits','39 €',25],['50 crédits','69 €',50]];
+  openModal(`<div class="sh"><b>Acheter un pack de crédits</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="grid g3">${packs.map(([label,price,amt])=>`<button class="tile-card" style="text-align:center" onclick="buyCreditPack(${amt},'${label}')"><div style="font-size:15px;font-weight:800">${label}</div><div style="font-size:13px;color:var(--cyan);font-weight:700;margin-top:6px">${price}</div></button>`).join('')}</div>`);
+}
+function buyCreditPack(amt,label){
+  wallet.balance+=amt; DATA.creditTx.unshift({id:uid('tx'),date:'2026-07-28',label:`Achat pack ${label}`,amount:amt});
+  closeModal(); renderContent(); toast(`Pack de ${label} ajouté à votre solde.`);
+}
+
+/* ══════════════ PARAMÈTRES ══════════════ */
+let paView='identite';
+function tplParametres(){
+  const tabs=[['identite','Identité du club'],['preferences','Préférences'],['integrations','Intégrations'],['permissions','Rôles et permissions']];
+  let content='';
+  if(paView==='identite'){
+    content=`<div class="grid g2" style="margin-bottom:16px">
+      <div class="card"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:12px">LOGO ET ÉCUSSON</div>
+        <div class="grid g2" style="margin-bottom:12px"><div class="thumb" style="height:90px">Logo principal</div><div class="thumb" style="height:90px">Écusson</div></div>
+        <button class="btn bo" style="width:100%;justify-content:center" onclick="toast('Validation demandée à SportVision.')">Validation SportVision</button></div>
+      <div class="card"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:12px">COULEURS</div>
+        ${[['Principale','#168EFF'],['Secondaire','#2DD4E3'],['Tertiaire','#7455FF'],['Alerte','#F5A623']].map(([l,hex])=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd)"><span style="width:22px;height:22px;border-radius:6px;background:${hex};border:1px solid var(--bd)"></span><span style="font-size:12.5px;flex:1">${l}</span><span class="muted" style="font-family:monospace;font-size:11.5px">${hex}</span></div>`).join('')}
+        <div style="font-size:12.5px;margin-top:12px">Titres et texte : Plus Jakarta Sans</div></div>
+    </div>
+    <div class="card"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:12px">ÉTAT DE CONFIGURATION</div>
+      <div class="progress" style="margin-bottom:14px"><i style="width:82%"></i></div>
+      ${[['Logo et écusson',true],['Couleurs du club',true],['Maillots',false],['Règles de marque',true],['Validation SportVision du logo',false]].map(([l,done])=>`<div style="display:flex;justify-content:space-between;padding:6px 0"><span style="font-size:12.5px">${l}</span><span class="badge" style="background:${done?'#28C99522':'#F5A62322'};color:${done?'var(--ok)':'var(--wa)'}">${done?'Complet':'À compléter'}</span></div>`).join('')}
+    </div>`;
+  } else if(paView==='preferences'){
+    content=`<div class="card">${['Résumé quotidien par e-mail','Résumé hebdomadaire par e-mail','Mode sombre'].map(l=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--bd)"><span style="font-size:13.5px">${l}</span><button class="btn bo" style="padding:5px 12px" onclick="toast('Préférence mise à jour.')">Activé</button></div>`).join('')}</div>`;
+  } else if(paView==='integrations'){
+    const list=[['SportVision Portail','Suivi des demandes, devis, factures et livrables SportVision.','Connecté','#28C995'],['SportVision OS','Synchronisation interne des missions et de la production.','Connecté','#28C995'],['Supabase','Base de données et authentification de la plateforme.','À venir','#F5A623'],['Stripe','Paiements des abonnements et packs de crédits.','À venir','#F5A623']];
+    content=list.map(([n,d,s2,c])=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px"><div><div style="font-weight:700;font-size:14px">${n}</div><div class="muted" style="font-size:12px;margin-top:2px">${d}</div></div><span class="badge" style="background:${c}22;color:${c}">${s2}</span></div>`).join('');
+  } else {
+    const roles=['Admin','Président','Secrétaire','Comm. Manager','Coach','Resp. sponsors','Trésorier'];
+    const rows=[
+      ['Gérer les équipes',[1,0,1,0,0,0,0]],['Gérer les utilisateurs',[1,0,1,0,0,0,0]],['Envoyer un résultat',[1,0,1,1,1,0,0]],
+      ['Valider une publication',[1,1,0,1,0,0,0]],['Gérer les sponsors',[1,0,0,1,0,1,0]],['Créer une demande / consommer crédits',[1,0,0,1,1,1,0]],
+      ["Gérer l'abonnement / factures",[1,0,0,0,0,0,1]],['Modifier les paramètres',[1,0,0,0,0,0,0]]
+    ];
+    content=`<div class="card" style="overflow-x:auto"><table><thead><tr><th>Permission</th>${roles.map(r=>`<th style="text-align:center">${r}</th>`).join('')}</tr></thead><tbody>
+      ${rows.map(([label,vals])=>`<tr><td>${label}</td>${vals.map(v=>`<td style="text-align:center">${v?'<span style="color:var(--ok)">✓</span>':''}</td>`).join('')}</tr>`).join('')}
+      </tbody></table></div>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn bp" onclick="toast('Permissions enregistrées.')">Enregistrer les permissions</button><button class="btn bo" onclick="toast('Permissions réinitialisées.')">Réinitialiser</button><button class="btn bo" onclick="toast('La création de rôles personnalisés sera disponible au lancement.')">Créer un rôle personnalisé</button></div>`;
+  }
+  return `<div class="sh"><b>Paramètres</b></div>
+    <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${paView===k?' on':''}" onclick="paView='${k}';renderContent()">${l}</button>`).join('')}</div>
+    ${content}`;
+}
+
+/* ══════════════ AIDE ══════════════ */
+let aideCategory=null, aideSearch='';
+const AIDE_ARTICLES=[
+  ['demarrage','Bien démarrer avec Club+','Guide'],['equipes','Ajouter et organiser vos équipes','Guide'],
+  ['resultats',"Transmettre un résultat en moins d'une minute",'Vidéo'],['creations','Préparer une affiche avant-match','Guide'],
+  ['sponsors','Ajouter un sponsor et ses contreparties','Guide'],['prestations','Réserver une prestation SportVision','Guide'],
+  ['abonnement','Changer de formule ou acheter des crédits','Guide'],['securite','Gérer les rôles et permissions','Guide']
+];
+function tplAide(){
+  const cats=[['demarrage','Démarrage'],['equipes','Équipes'],['resultats','Résultats'],['creations','Créations'],['sponsors','Sponsors'],['prestations','Prestations'],['abonnement','Abonnement'],['securite','Sécurité']];
+  const filtered=AIDE_ARTICLES.filter(a=>(!aideCategory||a[0]===aideCategory)&&(!aideSearch.trim()||a[1].toLowerCase().includes(aideSearch.trim().toLowerCase())));
+  return `<div class="sh"><b>Aide et ressources</b></div>
+    <input type="text" placeholder="Rechercher dans l'aide…" value="${esc(aideSearch)}" oninput="aideSearch=this.value;renderContent()" style="margin-bottom:16px">
+    <div class="grid g4" style="margin-bottom:20px">${cats.map(([k,l])=>`<button class="pill${aideCategory===k?' on':''}" style="text-align:center;padding:12px" onclick="aideCategory=aideCategory==='${k}'?null:'${k}';renderContent()">${l}</button>`).join('')}</div>
+    <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:10px">GUIDES ET VIDÉOS</div>
+    <div class="list-host" style="margin-bottom:22px">${filtered.map(([c,title,type])=>`<div class="list-row" style="cursor:default"><span style="font-weight:600;font-size:13.5px">${title}</span><button class="btn bo" style="padding:6px 12px" onclick="toast('Cet article sera disponible au lancement de SportVision Club+.')">${type} →</button></div>`).join('')||'<div class="empty-state">Aucun résultat pour cette recherche.</div>'}</div>
+    <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:10px">FAQ</div>
+    <div class="card" style="margin-bottom:22px">
+      <div style="padding:12px 0;border-bottom:1px solid var(--bd)"><b style="font-size:13.5px;display:block;margin-bottom:6px">Comment fonctionnent les crédits ?</b><div class="muted" style="font-size:12.5px">Chaque création consomme un nombre de crédits défini selon sa complexité. Le crédit est débité lorsque SportVision accepte la demande.</div></div>
+      <div style="padding:12px 0"><b style="font-size:13.5px;display:block;margin-bottom:6px">Puis-je changer de formule à tout moment ?</b><div class="muted" style="font-size:12.5px">Oui, depuis Abonnement & crédits.</div></div>
+    </div>
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:14px">Contacter le support</b>
+      <div class="field"><label>Sujet</label><input id="sup-subject" type="text"></div>
+      <div class="field"><label>Catégorie</label><select><option>Démarrage</option><option>Équipes</option><option>Résultats</option><option>Créations</option><option>Sponsors</option><option>Prestations</option><option>Abonnement</option><option>Sécurité</option></select></div>
+      <div class="field"><label>Décrivez votre besoin…</label><textarea rows="3"></textarea></div>
+      <button class="btn bp" onclick="submitSupport()">Envoyer au support</button></div>`;
+}
+function submitSupport(){
+  if(!document.getElementById('sup-subject').value.trim()){ toast('Le sujet est obligatoire.'); return; }
+  toast('Votre demande a été envoyée à SportVision. Réponse sous 24h ouvrées.');
+}
+
+/* ══════════════ DOCUMENTS ══════════════ */
+let dfFilter='tous';
+function tplDocsFinance(){
+  const typeLbl={devis:'Devis',facture:'Facture',contrat:'Contrat',convention:'Convention sponsor'};
+  const list=DATA.documents.filter(d=>dfFilter==='tous'||d.type===dfFilter);
+  return `<div class="sh"><b>Documents</b></div>
+    <div class="pillbar">${[['tous','Tous'],['devis','Devis'],['facture','Factures'],['contrat','Contrats'],['convention','Conventions sponsors']].map(([k,l])=>`<button class="pill${dfFilter===k?' on':''}" onclick="dfFilter='${k}';renderContent()">${l}</button>`).join('')}</div>
+    <div class="list-host">${list.map(d=>{const sm=statusMeta(d.status); return `<div class="list-row" style="cursor:default;flex-wrap:wrap">
+      <div><div style="font-weight:700;font-size:13.5px">${esc(d.title)}</div><div class="muted" style="font-size:12px;margin-top:2px">${typeLbl[d.type]} · ${d.numero} · ${fmtDate(d.date)} · ${d.amount} €</div></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
+      <button class="btn bo" style="padding:6px 12px" onclick="toast('Ouverture du document.')">Ouvrir</button>
+      <button class="btn bo" style="padding:6px 12px" onclick="toast('Téléchargement simulé.')">Télécharger</button>
+      ${d.status==='en_attente'?`<button class="btn bp" style="padding:6px 12px" onclick="payDoc('${d.id}')">Payer</button>`:''}</div></div>`;}).join('')}</div>
+    <div class="muted" style="font-size:11.5px;margin-top:12px">Les devis et factures SportVision redirigent vers SportVision Portail pour la signature et le paiement.</div>`;
+}
+function payDoc(id){ const d=DATA.documents.find(x=>x.id===id); d.status='payee'; renderContent(); toast('Redirection vers SportVision Portail pour le paiement.'); }
+
+/* ══════════════ RAPPORTS ══════════════ */
+let rapView='equipes';
+function tplRapports(){
+  const tabs=[['equipes','Activité des équipes'],['communication','Communication'],['sponsors','Sponsors'],['utilisation','Utilisation Club+']];
+  let content='';
+  if(rapView==='equipes'){
+    content=`<div class="grid g4" style="margin-bottom:20px"><div class="stat"><b>18/20</b><span>Résultats transmis</span></div><div class="stat"><b>${DATA.equipes.length}/5</b><span>Équipes actives</span></div><div class="stat"><b>${Math.round(DATA.equipes.reduce((a,t)=>a+t.contribution,0)/DATA.equipes.length)}%</b><span>Régularité moyenne</span></div><div class="stat"><b>2</b><span>Retards ce mois-ci</span></div></div>
+      <div class="card"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:14px">RÉGULARITÉ PAR ÉQUIPE</div>
+      ${[...DATA.equipes].sort((a,b)=>b.contribution-a.contribution).map(t=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span>${t.name}</span><span class="muted">${t.contribution}%</span></div><div class="progress"><i style="width:${t.contribution}%"></i></div></div>`).join('')}</div>`;
+  } else if(rapView==='communication'){
+    content=`<div class="grid g4" style="margin-bottom:20px"><div class="stat"><b>24</b><span>Contenus créés</span></div><div class="stat"><b>19</b><span>Contenus publiés</span></div><div class="stat"><b>1,4 j</b><span>Délai moyen</span></div><div class="stat"><b>${DATA.requests.length}</b><span>Demandes ce mois-ci</span></div></div>
+      <div class="card"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:14px">FORMATS UTILISÉS</div>
+      ${[['Affiches',45],['Stories',25],['Carrousels',18],['Vidéos',12]].map(([l,p])=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span>${l}</span><span class="muted">${p}%</span></div><div class="progress"><i style="width:${p}%;background:var(--violet)"></i></div></div>`).join('')}</div>`;
+  } else if(rapView==='sponsors'){
+    content=`<div class="grid g4"><div class="stat"><b>9/13</b><span>Contreparties réalisées</span></div><div class="stat"><b>32</b><span>Publications sponsorisées</span></div><div class="stat"><b>${DATA.sponsors.length}</b><span>Sponsors valorisés</span></div><div class="stat"><b>2</b><span>Engagements en retard</span></div></div>`;
+  } else {
+    content=`<div class="grid g4"><div class="stat"><b>${DATA.users.filter(u=>u.status==='actif').length}</b><span>Utilisateurs actifs</span></div><div class="stat"><b>86</b><span>Connexions ce mois-ci</span></div><div class="stat"><b>${wallet.monthly-wallet.balance}/${wallet.monthly}</b><span>Crédits consommés</span></div><div class="stat"><b>${DATA.bookings.length}</b><span>Prestations commandées</span></div></div>`;
+  }
+  return `<div class="sh"><b>Rapports</b><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bp" onclick="toast('Le rapport PDF sera disponible au lancement.')">Exporter en PDF</button><button class="btn bo" onclick="toast('Envoi par e-mail simulé.')">Envoyer par e-mail</button></div></div>
+    <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${rapView===k?' on':''}" onclick="rapView='${k}';renderContent()">${l}</button>`).join('')}</div>
+    ${content}`;
+}
+
+/* ══════════════ MES ACCÈS ══════════════ */
+function tplMesAcces(){
+  const ext=S.role==='cm_externe';
+  return `<div class="sh"><b>Mes accès</b></div>
+    ${ext?`<span class="badge" style="background:#7455FF22;color:var(--violet);margin-bottom:18px;display:inline-block">Community Manager externe</span>`:''}
+    <div class="card" style="max-width:520px">
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px"><span class="muted">Club</span><span style="font-weight:600">FC Clairval</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px"><span class="muted">Équipes visibles</span><span style="font-weight:600">${ext?'Seniors R1, U18':'Toutes'}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px"><span class="muted">Début</span><span style="font-weight:600">01/07/2026</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span class="muted">Administrateur responsable</span><span style="font-weight:600">Isabelle Faure</span></div>
+    </div>`;
+}
+
+function dashRespEquipe(){
+  const team=DATA.equipes.find(t=>t.name==='Seniors R1');
+  return `<div class="grid g2" style="margin:20px 0">
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Mon équipe — ${team.name}</b>
+      <div class="grid g3" style="margin-bottom:16px"><div class="stat"><b>${team.members}</b><span>Membres</span></div><div class="stat"><b>${team.openReq}</b><span>Demandes ouvertes</span></div><div class="stat"><b>${team.contribution}%</b><span>Régularité</span></div></div>
+      <div class="muted" style="font-size:12.5px;margin-bottom:6px">Éducateur : ${team.coach}</div>
+      <div class="muted" style="font-size:12.5px;margin-bottom:16px">Prochain : ${team.next}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bp" onclick="openRequestWizard()">Créer une demande</button><button class="btn bo" onclick="switchView('calendrier')">Voir le calendrier</button></div>
+    </div>
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Demandes de l'équipe</b>
+      ${DATA.requests.filter(r=>r.team==='Seniors R1').map(r=>{const sm=statusMeta(r.status); return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${typeLabel(r.type)}</span><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join('')}
+    </div>
+  </div>`;
+}
+
+/* ══════════════ REGISTRE DES VUES ══════════════ */
+const VIEWS={
+  dashboard:tplDashboard, newsroom:tplNewsroom, matchcenter:tplMatchCenter, calendrier:tplCalendrier,
+  creations:tplCreations, mediatheque:tplMediatheque, sponsors:tplSponsors, demandes:tplDemandes,
+  services:tplServices, equipes:tplEquipes, membres:tplMembres, rapports:tplRapports,
+  docsfinance:tplDocsFinance, abonnement:tplAbonnement, parametres:tplParametres,
+  mesacces:tplMesAcces, aide:tplAide
+};
+</script>
+</body>
+</html>
