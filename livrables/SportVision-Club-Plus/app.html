@@ -762,8 +762,20 @@ function dashTresorier(){
 }
 /* ══════════════ NEWSROOM ══════════════ */
 let nsView='liste', nsTeam='toutes', nsStatus='toutes';
+let realNewsroom=null;
+async function loadRealNewsroom(){
+  if(!REAL) return;
+  const res=await sbFetch('club_newsroom_items?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
+  realNewsroom = res.ok ? (res.data||[]) : [];
+  if(S.view==='newsroom') renderContent();
+}
+function normNewsItem(r){
+  return {id:r.id, title:r.title, desc:r.description||'', team:r.team||'', type:r.type, priority:r.priority||'normale', media:r.media_count||0, sponsor:r.sponsor||'', status:r.status, author:r.author_name||'—', date:(r.created_at||'').slice(0,10)};
+}
 function tplNewsroom(){
-  const items=DATA.newsroomItems.filter(n=>(nsTeam==='toutes'||n.team===nsTeam)&&(nsStatus==='toutes'||n.status===nsStatus));
+  if(REAL && realNewsroom===null){ loadRealNewsroom(); return `<div class="sh"><b>Newsroom du club</b></div><div class="empty-state">Chargement…</div>`; }
+  const source = REAL ? realNewsroom.map(normNewsItem) : DATA.newsroomItems;
+  const items=source.filter(n=>(nsTeam==='toutes'||n.team===nsTeam)&&(nsStatus==='toutes'||n.status===nsStatus));
   const statuses=['recu','a_verifier','infos_manquantes','pret_a_transformer','en_creation','programme','publie','archive'];
   let content='';
   if(nsView==='liste'){
@@ -792,7 +804,9 @@ function tplNewsroom(){
     ${content}`;
 }
 function openNewsroomDrawer(id){
-  const n=DATA.newsroomItems.find(x=>x.id===id); const sm=statusMeta(n.status);
+  const n = REAL ? normNewsItem(realNewsroom.find(x=>x.id===id)||{}) : DATA.newsroomItems.find(x=>x.id===id);
+  if(!n || !n.id){ toast('Information introuvable.'); return; }
+  const sm=statusMeta(n.status);
   openDrawer(`<div class="sh"><b>${esc(n.title)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="muted" style="font-size:12px;margin-bottom:14px">${n.type} · ${n.team} · ${n.author} · ${fmtDate(n.date)}</div>
     <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:16px;display:inline-block">${sm.label}</span>
@@ -804,7 +818,15 @@ function openNewsroomDrawer(id){
       <button class="btn bo" onclick="nsAction('${id}','archive','Information archivée.')">Archiver</button>
     </div>`);
 }
-function nsAction(id,status,msg){ const n=DATA.newsroomItems.find(x=>x.id===id); n.status=status; closeDrawer(); renderContent(); toast(msg); }
+async function nsAction(id,status,msg){
+  if(REAL){
+    const res=await sbFetch('club_newsroom_items?id=eq.'+id, {method:'PATCH', body:{status}});
+    if(!res.ok){ toast('Action impossible.'); return; }
+    const row=realNewsroom.find(x=>x.id===id); if(row) row.status=status;
+    closeDrawer(); renderContent(); toast(msg); return;
+  }
+  const n=DATA.newsroomItems.find(x=>x.id===id); n.status=status; closeDrawer(); renderContent(); toast(msg);
+}
 function openNewsroomForm(){
   openModal(`<div class="sh"><b>Envoyer une information</b><button class="close-x" onclick="closeModal()">✕</button></div>
     <div class="row2"><div class="field"><label>Type</label><select id="nf-type"><option>Résultat</option><option>Actualité</option></select></div>
@@ -813,29 +835,48 @@ function openNewsroomForm(){
     <div class="field"><label>Description</label><textarea id="nf-desc" rows="3"></textarea></div>
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitNewsroomForm()">Envoyer</button>`);
 }
-function submitNewsroomForm(){
+async function submitNewsroomForm(){
   const title=document.getElementById('nf-title').value.trim();
   if(!title){ toast('Le titre est obligatoire.'); return; }
-  DATA.newsroomItems.unshift({id:uid('n'),type:document.getElementById('nf-type').value,team:document.getElementById('nf-team').value,author:ROLES[S.role].person,date:'2026-07-28',priority:'normale',media:0,sponsor:'',status:'recu',title,desc:document.getElementById('nf-desc').value});
+  const type=document.getElementById('nf-type').value, team=document.getElementById('nf-team').value, desc=document.getElementById('nf-desc').value;
+  if(REAL){
+    const res=await sbFetch('club_newsroom_items', {method:'POST', body:{club_id:REAL.clubId, type, team, title, description:desc, status:'recu', author_id:REAL.userId, author_name:REAL.person}});
+    if(!res.ok){ toast("Erreur lors de l'envoi."); return; }
+    realNewsroom=null; closeModal(); switchView('newsroom'); toast('Information envoyée à la Newsroom.');
+    return;
+  }
+  DATA.newsroomItems.unshift({id:uid('n'),type,team,author:ROLES[S.role].person,date:'2026-07-28',priority:'normale',media:0,sponsor:'',status:'recu',title,desc});
   closeModal(); renderContent(); toast('Information envoyée à la Newsroom.');
 }
 
 /* ══════════════ MATCH CENTER ══════════════ */
 let mcView='a_venir';
+let realMatches=null;
+async function loadRealMatches(){
+  if(!REAL) return;
+  const res=await sbFetch('club_matches?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
+  realMatches = res.ok ? (res.data||[]) : [];
+  if(S.view==='matchcenter') renderContent();
+}
+function normMatchItem(r){
+  return {id:r.id, team:r.team, opp:r.opponent, date:r.match_date||(r.created_at||'').slice(0,10), status:r.status, lieu:r.lieu||'', score:r.score||'', scorers:r.scorers||'', motm:r.man_of_match||'', contents:r.contents||[]};
+}
 function tplMatchCenter(){
+  if(REAL && realMatches===null){ loadRealMatches(); return `<div class="sh"><b>Match Center</b></div><div class="empty-state">Chargement…</div>`; }
+  const source = REAL ? realMatches.map(normMatchItem) : DATA.matchItems;
   const tabs=[['a_venir','À venir'],['a_transmettre','À transmettre'],['recus','Reçus'],['contenus','Contenus créés']];
   let content='';
   if(mcView==='a_venir'){
-    const list=DATA.matchItems.filter(m=>m.status==='a_venir');
+    const list=source.filter(m=>m.status==='a_venir');
     content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)} · ${m.lieu}</div></div><span class="badge" style="background:#168EFF22;color:var(--blue)">À venir</span></div>`).join('')||'<div class="empty-state">Aucun match à venir.</div>'}</div>`;
   } else if(mcView==='a_transmettre'){
-    const list=DATA.matchItems.filter(m=>m.status==='a_transmettre');
+    const list=source.filter(m=>m.status==='a_transmettre');
     content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)}</div></div><button class="btn" style="background:var(--wa);color:#06182B" onclick="guard(openMatchExpress)()">Transmettre</button></div>`).join('')||'<div class="empty-state">Rien à transmettre.</div>'}</div>`;
   } else if(mcView==='recus'){
-    const list=DATA.matchItems.filter(m=>m.status==='recu');
+    const list=source.filter(m=>m.status==='recu');
     content=`<div class="grid g3">${list.map(m=>`<button class="tile-card" onclick="openMatchDrawer('${m.id}')"><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div style="font-size:20px;font-weight:800;color:var(--cyan);margin:8px 0">${m.score}</div><div class="muted" style="font-size:11.5px">${fmtDate(m.date)}</div></button>`).join('')}</div>`;
   } else {
-    const list=DATA.matchItems.filter(m=>m.status==='recu'&&m.contents&&m.contents.length);
+    const list=source.filter(m=>m.status==='recu'&&m.contents&&m.contents.length);
     content=`<div class="list-host">${list.flatMap(m=>m.contents.map(c=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${c}</div><div class="muted" style="font-size:11.5px">${m.team} vs ${m.opp} · ${fmtDate(m.date)}</div></div></div>`)).join('')||'<div class="empty-state">Aucun contenu créé pour le moment.</div>'}</div>`;
   }
   return `<div class="sh"><b>Match Center</b><div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -845,7 +886,8 @@ function tplMatchCenter(){
     ${content}`;
 }
 function openMatchDrawer(id){
-  const m=DATA.matchItems.find(x=>x.id===id);
+  const m = REAL ? normMatchItem(realMatches.find(x=>x.id===id)||{}) : DATA.matchItems.find(x=>x.id===id);
+  if(!m || !m.id){ toast('Match introuvable.'); return; }
   openDrawer(`<div class="sh"><b>${m.team} vs ${m.opp}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="muted" style="font-size:12px;margin-bottom:16px">${fmtDate(m.date)}</div>
     <div style="font-size:26px;font-weight:800;color:var(--cyan);margin-bottom:16px">${m.score}</div>
@@ -857,8 +899,14 @@ function openMatchDrawer(id){
       <button class="btn bo" onclick="mcSendNewsroom('${id}')">Envoyer à la Newsroom</button>
     </div>`);
 }
-function mcSendNewsroom(id){
-  const m=DATA.matchItems.find(x=>x.id===id);
+async function mcSendNewsroom(id){
+  const m = REAL ? normMatchItem(realMatches.find(x=>x.id===id)||{}) : DATA.matchItems.find(x=>x.id===id);
+  if(!m || !m.id) return;
+  if(REAL){
+    const res=await sbFetch('club_newsroom_items', {method:'POST', body:{club_id:REAL.clubId, type:'Résultat', team:m.team, title:`Résultat ${m.team} vs ${m.opp}`, description:`Score : ${m.score||'—'}`, status:'recu', author_id:REAL.userId, author_name:REAL.person}});
+    if(res.ok){ realNewsroom=null; closeDrawer(); toast('Envoyé à la Newsroom.'); } else toast('Action impossible.');
+    return;
+  }
   DATA.newsroomItems.unshift({id:uid('n'),type:'Résultat',team:m.team,author:ROLES[S.role].person,date:'2026-07-28',priority:'normale',media:0,sponsor:'',status:'recu',title:`Résultat ${m.team} vs ${m.opp}`,desc:`Score : ${m.score||'—'}`});
   closeDrawer(); toast('Envoyé à la Newsroom.');
 }
@@ -870,10 +918,17 @@ function openMatchExpress(){
     <div class="field"><label>Score</label><input id="me-score" type="text" placeholder="2-1"></div>
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitMatchExpress()">Envoyer</button>`);
 }
-function submitMatchExpress(){
+async function submitMatchExpress(){
   const opp=document.getElementById('me-opp').value.trim(), score=document.getElementById('me-score').value.trim();
   if(!opp||!score){ toast('Adversaire et score sont obligatoires.'); return; }
-  DATA.matchItems.unshift({id:uid('m'),team:document.getElementById('me-team').value,opp,date:'2026-07-28',status:'recu',score,contents:[]});
+  const team=document.getElementById('me-team').value;
+  if(REAL){
+    const res=await sbFetch('club_matches', {method:'POST', body:{club_id:REAL.clubId, team, opponent:opp, status:'recu', score, created_by:REAL.userId}});
+    if(!res.ok){ toast("Erreur lors de l'envoi."); return; }
+    realMatches=null; closeModal(); switchView('matchcenter'); toast('Résultat envoyé.');
+    return;
+  }
+  DATA.matchItems.unshift({id:uid('m'),team,opp,date:'2026-07-28',status:'recu',score,contents:[]});
   closeModal(); renderContent(); toast('Résultat envoyé.');
 }
 
