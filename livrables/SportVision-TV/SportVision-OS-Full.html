@@ -17700,19 +17700,50 @@ async function supprimerUser(id){
 async function loadGrades(){
   const d=document.getElementById('grades-real');
   const GRADES=GRADES_DEF;
-  const rProf=await sbFetch('profiles?select=*&order=created_at.asc');
+  const [rProf,rRecos]=await Promise.all([
+    sbFetch('profiles?select=*&order=created_at.asc'),
+    sbFetch('grade_recommendations?select=id,collaborateur_id,grade_actuel,grade_propose,created_at&statut=eq.en_attente&order=created_at.desc').catch(()=>[]),
+  ]);
   if(sbErr(rProf)){d.innerHTML=`<div style="padding:40px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement</div>`;return;}
   const profiles=Array.isArray(rProf)?rProf:[];
+  const recos=Array.isArray(rRecos)?rRecos:[];
+  const recoByCollab={};
+  recos.forEach(r=>{recoByCollab[r.collaborateur_id]=r;});
   // Le système Grades & XP ne concerne que les photographes/vidéastes — seul rôle
   // avec des missions terrain notées et un parcours d'évolution.
+  // IMPORTANT : le grade AFFICHÉ (badge, classement) est le grade OFFICIEL validé
+  // par l'admin (profiles.grade), jamais une projection depuis l'XP brut — un XP
+  // suffisant ne fait que proposer une recommandation, il ne promeut jamais seul.
   const collab=profiles.filter(p=>p.role==='photo').map(p=>{
     const xp=p.xp||0;
-    const grade=[...GRADES].reverse().find(g=>xp>=g.xp)||GRADES[0];
+    const grade=GRADES[p.grade||0]||GRADES[0];
     const nextGrade=GRADES[GRADES.indexOf(grade)+1];
     const pct=nextGrade?Math.min(100,Math.round((xp-grade.xp)/(nextGrade.xp-grade.xp)*100)):100;
-    return{...p,xp,grade,nextGrade,pct};
+    const recoEnAttente=recoByCollab[p.id]||null;
+    return{...p,xp,grade,nextGrade,pct,recoEnAttente};
   }).sort((a,b)=>b.xp-a.xp);
-  d.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+  const recoHtml=recos.length?`<div style="background:rgba(245,165,36,.05);border:1px solid rgba(245,165,36,.25);border-radius:var(--r);padding:20px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:14px">⏳ Recommandations de grade en attente (${recos.length})</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${recos.map(r=>{
+        const c=collab.find(x=>x.id===r.collaborateur_id);
+        const nom=c?(c.prenom||'')+' '+esc(c.nom||''):'—';
+        const gActuel=GRADES[r.grade_actuel]||GRADES[0];
+        const gPropose=GRADES[r.grade_propose]||null;
+        return`<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:8px">
+          <div style="flex:1">
+            <div style="font-size:13.5px;font-weight:600;color:var(--t1)">${nom}</div>
+            <div style="font-size:12px;color:var(--t3)">${gActuel.nom} → ${gPropose?gPropose.nom:'—'}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onclick="centreValiderGrade('${r.id}','valide')" style="padding:6px 12px;border-radius:var(--rp);background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓ Valider</button>
+            <button onclick="centreValiderGrade('${r.id}','refuse')" style="padding:6px 12px;border-radius:var(--rp);background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);color:var(--er);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✕ Refuser</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`:'';
+  d.innerHTML=recoHtml+`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
     <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:20px">
       <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:14px">Niveaux de grade</div>
       <div style="display:flex;flex-direction:column;gap:10px">
@@ -17737,7 +17768,7 @@ async function loadGrades(){
         <div style="width:32px;height:32px;border-radius:50%;background:${c.grade.color}22;border:1px solid ${c.grade.color}44;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${c.grade.color};flex-shrink:0">${(c.prenom||'?')[0].toUpperCase()}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:500;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.prenom||''} ${esc(c.nom||'')}</div>
-          <div style="font-size:11px;color:${c.grade.color}">${c.grade.ic} ${c.grade.nom}</div>
+          <div style="font-size:11px;color:${c.grade.color}">${c.grade.ic} ${c.grade.nom}${c.recoEnAttente?' <span style="color:var(--wa)">· ⏳ en attente</span>':''}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:13px;font-weight:600;color:var(--t1);font-variant-numeric:tabular-nums">${c.xp.toLocaleString('fr')}</div>
@@ -17755,6 +17786,7 @@ async function loadGrades(){
           <span style="font-size:15px">${c.grade.ic}</span>
           <span style="font-size:13px;font-weight:500;color:var(--t1);white-space:nowrap">${c.prenom||''} ${esc(c.nom||'')}</span>
           <span style="font-size:11px;padding:1px 7px;border-radius:20px;background:${c.grade.color}22;color:${c.grade.color};font-weight:600">${c.grade.nom}</span>
+          ${c.recoEnAttente?'<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:rgba(245,165,36,.15);color:var(--wa);font-weight:600">⏳ Validation en attente</span>':''}
         </div>
         <div style="font-size:12px;font-weight:600;color:var(--t1);font-variant-numeric:tabular-nums;flex-shrink:0">${c.xp.toLocaleString('fr')} XP${c.nextGrade?' / '+c.nextGrade.xp.toLocaleString('fr'):'  MAX'}</div>
       </div>
