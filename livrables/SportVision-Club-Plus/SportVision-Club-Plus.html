@@ -71,25 +71,34 @@ img{max-width:100%;display:block}
 .toast{background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:13px 16px;font-size:13px;box-shadow:0 20px 40px rgba(0,0,0,.4);animation:toastIn .2s ease}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── header public ── */
-#pub-header{position:sticky;top:0;z-index:40;background:rgba(5,15,32,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd)}
-.hdr-inner{max-width:1280px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+/* ── header public : transparent au-dessus du hero, opaque au scroll ── */
+#pub-header{position:fixed;top:0;left:0;right:0;z-index:100;background:transparent;border-bottom:1px solid transparent;transition:background .25s ease,border-color .25s ease}
+#pub-header.scrolled{background:rgba(5,15,32,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd)}
+.hdr-inner{max-width:1320px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px;cursor:pointer}
 .brand img{width:28px;height:28px;object-fit:contain;border-radius:6px}
 .brand b{font-size:14px;font-weight:800}
 .brand b span{color:var(--cyan)}
 .pub-nav{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
-.pub-nav a{font-size:13px;color:var(--t2)}
+.pub-nav a{font-size:13px;color:var(--t2);transition:color .15s ease}
+.pub-nav a:hover{color:var(--t1)}
 .hdr-actions{display:flex;gap:10px}
-@media(max-width:820px){.pub-nav{display:none}}
+@media(max-width:960px){.pub-nav{display:none}}
+/* écrans sans hero : le header fixed ne pousse plus le contenu, on compense */
+#scr-auth .centered,#scr-activation .centered{padding-top:96px}
+.vit-hdr{padding-top:96px}
 
-/* ── hero ── */
-.hero{max-width:1280px;margin:44px auto 0;padding:0 24px;display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
-@media(max-width:900px){.hero{grid-template-columns:1fr}}
-.hero h1{font-size:40px;line-height:1.15;margin-bottom:18px}
-@media(max-width:640px){.hero h1{font-size:29px}}
-.hero p{font-size:15.5px;color:var(--t2);line-height:1.65;margin-bottom:26px;max-width:520px}
+/* ── hero v2 ── */
+.hero2{position:relative;min-height:86vh;display:flex;align-items:center;padding:150px 24px 60px;overflow:hidden}
+.hero2::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 75% 55% at 25% 0%,#168EFF16,transparent),radial-gradient(ellipse 55% 45% at 92% 15%,#7455FF16,transparent);pointer-events:none}
+.hero2-inner{position:relative;max-width:1320px;margin:0 auto;width:100%;display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center}
+@media(max-width:960px){.hero2-inner{grid-template-columns:1fr}.hero2{padding-top:120px;min-height:auto}}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:700;color:var(--cyan);margin-bottom:22px}
+.hero2 h1{font-size:44px;line-height:1.14;margin-bottom:20px;letter-spacing:-.01em}
+@media(max-width:640px){.hero2 h1{font-size:29px}}
+.hero2 > div > p{font-size:16px;color:var(--t2);line-height:1.65;margin-bottom:28px;max-width:480px}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+.hero2-note{font-size:12.5px;color:var(--t2);margin-top:16px}
 .mock{position:relative}
 .mock-card{background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:14px;box-shadow:0 30px 60px rgba(0,0,0,.4)}
 .mock-dots{display:flex;gap:6px;margin-bottom:12px}
@@ -102,9 +111,99 @@ img{max-width:100%;display:block}
 .mock-todo .lbl{font-size:10px;color:var(--t2);letter-spacing:.06em;margin-bottom:8px}
 .mock-todo .row{display:flex;justify-content:space-between;font-size:11px;padding:6px 0;border-bottom:1px solid var(--bd)}
 .mock-todo .row:last-child{border:none}
-.mock-float{position:absolute;bottom:-26px;right:-20px;width:120px;background:var(--bg2);border:1px solid var(--bd);border-radius:20px;padding:10px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
-@media(max-width:640px){.mock-float{display:none}}
-.mock-float-inner{background:var(--bg);border-radius:14px;padding:8px}
+
+/* ── vidéos réutilisables : VideoHero / ProductDemoVideo / FeatureVideoSection ──
+   Un <video> pointe vers assets/video/*.mp4|webm (à fournir). Tant qu'aucun
+   fichier n'existe, onerror ajoute .video-fallback et révèle le mockup CSS
+   (.video-mockup) — dès qu'un vrai fichier est déposé au bon chemin, il se
+   charge normalement et le mockup reste caché. */
+.video-frame{position:relative;border-radius:20px;overflow:hidden;background:var(--bg2);border:1px solid var(--bd);box-shadow:0 40px 80px rgba(0,0,0,.45);aspect-ratio:16/10}
+.video-frame-lg{aspect-ratio:16/7.4}
+@media(max-width:640px){.video-frame,.video-frame-lg{aspect-ratio:4/5}}
+.video-frame video{width:100%;height:100%;object-fit:cover;display:block}
+.video-frame .video-mockup{display:none;width:100%;height:100%;padding:22px;overflow:hidden}
+.video-frame.video-fallback video{display:none}
+.video-frame.video-fallback .video-mockup{display:flex;flex-direction:column}
+.video-play-btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:rgba(5,15,32,.55);border:1.5px solid rgba(255,255,255,.5);color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);transition:transform .15s ease;z-index:2}
+.video-play-btn:hover{transform:translate(-50%,-50%) scale(1.06)}
+.float-chip{position:absolute;background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:10px 14px;box-shadow:0 16px 32px rgba(0,0,0,.4);font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;z-index:3}
+.float-chip .dot{width:7px;height:7px;border-radius:4px;flex-shrink:0}
+@media(max-width:640px){.float-chip{display:none}}
+#videoModalHost{position:fixed;inset:0;background:rgba(2,6,16,.88);z-index:500;display:none;align-items:center;justify-content:center;padding:24px}
+#videoModalHost.on{display:flex}
+.video-modal-box{width:100%;max-width:980px;position:relative}
+.video-modal-box .video-frame{aspect-ratio:16/9;box-shadow:0 50px 100px rgba(0,0,0,.65)}
+.video-modal-close{position:absolute;top:-44px;right:0;background:none;border:none;color:#fff;font-size:26px;cursor:pointer;line-height:1}
+
+/* ── mockups d'écran réutilisés dans les vidéos de secours ── */
+.mockup-screen{background:var(--bg);border-radius:12px;padding:16px;flex:1;display:flex;flex-direction:column;gap:10px}
+.mockup-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border-radius:9px;padding:9px 12px;font-size:11px}
+.mockup-badge{font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:999px}
+
+/* ── bande rôles ── */
+.role-strip{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.role-chip{background:var(--card);border:1px solid var(--bd);border-radius:999px;padding:9px 18px;font-size:13px;font-weight:600;color:var(--t2)}
+
+/* ── blocs fonctionnalités alternés (FeatureVideoSection) ── */
+.feature-row{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+@media(max-width:900px){.feature-row{grid-template-columns:1fr;gap:26px}.feature-row .video-frame{order:1}.feature-row .feature-text{order:2}}
+@media(min-width:901px){.feature-row.rev{direction:rtl}.feature-row.rev>*{direction:ltr}}
+.feature-eyebrow{font-size:12px;font-weight:700;color:var(--cyan);letter-spacing:.06em;margin-bottom:12px}
+.feature-row h3{font-size:25px;margin-bottom:14px;line-height:1.22}
+.feature-row .feature-text > p{color:var(--t2);font-size:14.5px;line-height:1.65;margin-bottom:24px;max-width:440px}
+.benefit-list{display:flex;flex-direction:column;gap:16px;margin-bottom:26px}
+.benefit{display:flex;gap:14px;align-items:flex-start}
+.benefit .bn{width:30px;height:30px;border-radius:8px;background:var(--card2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;color:var(--cyan);flex-shrink:0}
+.benefit b{display:block;font-size:14px;margin-bottom:2px}
+
+/* ── onglets par rôle (RoleDemoTabs) ── */
+.role-tabs-nav{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:30px;scrollbar-width:none}
+.role-tabs-nav::-webkit-scrollbar{display:none}
+.role-tab-btn{flex-shrink:0;background:var(--card);border:1px solid var(--bd);border-radius:999px;padding:10px 18px;font-size:13px;font-weight:700;color:var(--t2)}
+.role-tab-btn.on{background:var(--grad);color:#06182B;border-color:transparent}
+.role-panel{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
+@media(max-width:900px){.role-panel{grid-template-columns:1fr}}
+.role-quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.role-quick span{background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--t2)}
+
+/* ── maquettes mobiles (MobileAppShowcase) ── */
+.phones-row{display:flex;justify-content:center;align-items:flex-end;gap:26px;flex-wrap:wrap}
+.phone{width:220px;background:#06121F;border:6px solid #0B1B2E;border-radius:36px;box-shadow:0 30px 60px rgba(0,0,0,.5);overflow:hidden;flex-shrink:0}
+.phone-screen{aspect-ratio:9/19;background:var(--bg);padding:14px;display:flex;flex-direction:column;gap:8px}
+@media(max-width:640px){.phone{width:150px}}
+
+/* ── parcours complet ── */
+.journey-steps{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:34px}
+.journey-step{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:11px 15px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.journey-arrow{color:var(--t2);font-size:13px}
+
+/* ── pour qui ── */
+.forwhom-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:900px){.forwhom-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.forwhom-grid{grid-template-columns:1fr}}
+.forwhom-item{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px 18px;font-size:13.5px;font-weight:600}
+
+/* ── pourquoi Club+ ── */
+.why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 20px}
+@media(max-width:900px){.why-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.why-grid{grid-template-columns:1fr}}
+.why-item{padding:26px 6px}
+.why-item .num{font-size:13px;font-weight:800;color:var(--cyan);margin-bottom:10px}
+.why-item b{display:block;font-size:15.5px;margin-bottom:8px}
+.why-item p{font-size:13px;color:var(--t2);line-height:1.6}
+
+/* ── CTA final ── */
+.final-cta{position:relative;background:linear-gradient(180deg,#050F20,#020610);border-radius:28px;padding:84px 40px;text-align:center;overflow:hidden}
+.final-cta::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 0%,#168EFF22,transparent)}
+.final-cta::after{content:'';position:absolute;left:0;right:0;bottom:0;height:40%;background:linear-gradient(180deg,transparent,#020610cc),repeating-linear-gradient(100deg,#0B1B2E 0 3px,transparent 3px 26px);opacity:.5}
+.final-cta-inner{position:relative;max-width:640px;margin:0 auto}
+.final-cta h2{font-size:32px;margin-bottom:16px}
+@media(max-width:640px){.final-cta{padding:56px 22px;border-radius:20px}.final-cta h2{font-size:23px}}
+
+@media(prefers-reduced-motion:reduce){
+  .video-frame video{display:none}
+  .video-frame .video-mockup{display:flex !important}
+}
 
 /* sections */
 .section{max-width:1100px;margin:100px auto 0;padding:0 24px}
@@ -184,105 +283,333 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
     </div>
     <nav class="pub-nav">
       <a href="#fonctionnalites" onclick="nav('home')">Fonctionnalités</a>
+      <a href="#pour-qui" onclick="nav('home')">Pour qui&nbsp;?</a>
       <a href="#comment" onclick="nav('home')">Comment ça marche</a>
+      <a href="#espace-joueur-famille" onclick="nav('home')">Espace Joueur &amp; Famille</a>
       <a href="#tarifs" onclick="nav('home')">Tarifs</a>
-      <a href="#faq" onclick="nav('home')">FAQ</a>
     </nav>
     <div class="hdr-actions">
       <button class="btn btn-o" onclick="nav('auth');authShow('connexion')">Se connecter</button>
-      <button class="btn btn-p" onclick="nav('auth');authShow('inscription')">Créer un compte</button>
+      <button class="btn btn-p" onclick="scrollToDemoForm()">Demander une démonstration</button>
     </div>
   </div>
 </header>
 
 <div class="toast-host" id="toastHost"></div>
 
+<!-- ═══ VideoModal (partagée par tous les CTA vidéo) ═══ -->
+<div id="videoModalHost" onclick="if(event.target===this) closeVideoModal()">
+  <div class="video-modal-box">
+    <button class="video-modal-close" onclick="closeVideoModal()" aria-label="Fermer">✕</button>
+    <div class="video-frame" id="videoModalFrame"></div>
+  </div>
+</div>
+
 <!-- ═══════════════ PRÉSENTATION ═══════════════ -->
 <section class="scr on" id="scr-home">
 
-  <div class="hero">
-    <div>
-      <h1>Pilotez toute la communication de votre club depuis un seul espace.</h1>
-      <p>Résultats, équipes, contenus, médias, sponsors et prestations SportVision réunis dans une plateforme pensée pour les clubs amateurs et les académies.</p>
-      <div class="hero-actions">
-        <button class="btn btn-p" onclick="nav('auth');authShow('inscription')">Créer un compte</button>
-        <button class="btn btn-o" onclick="nav('auth');authShow('connexion')">Se connecter</button>
-      </div>
-    </div>
-    <div class="mock">
-      <div class="mock-card">
-        <div class="mock-dots"><span style="background:#EF5B67"></span><span style="background:#F5A623"></span><span style="background:#28C995"></span></div>
-        <div class="mock-inner">
-          <div style="font-size:13px;font-weight:700;margin-bottom:12px">Bonjour Isabelle, voici l'activité de FC Clairval.</div>
-          <div class="grid g2" style="margin-bottom:10px">
-            <div class="mock-stat"><b>6</b><small>Contenus à préparer</small></div>
-            <div class="mock-stat"><b style="color:var(--cyan)">16/20</b><small>Crédits ce mois-ci</small></div>
-          </div>
-          <div class="mock-todo">
-            <div class="lbl">À FAIRE AUJOURD'HUI</div>
-            <div class="row"><span>Valider l'affiche avant-match</span><span style="color:var(--wa)">Urgent</span></div>
-            <div class="row"><span>Compléter le score U15</span><span style="color:var(--er)">En retard</span></div>
-          </div>
+  <!-- ═══ HERO (VideoHero) ═══ -->
+  <div class="hero2">
+    <div class="hero2-inner">
+      <div>
+        <div class="hero-badge">La plateforme de communication des clubs sportifs</div>
+        <h1>Toute la communication de votre club. Dans un seul espace.</h1>
+        <p>Centralisez vos équipes, résultats, contenus, médias, sponsors, prestations et livrables dans une plateforme pensée pour les clubs sportifs.</p>
+        <div class="hero-actions">
+          <button class="btn btn-p" onclick="scrollToDemoForm()">Demander une démonstration</button>
+          <button class="btn btn-o" onclick="openVideoModal('hero')">Voir Club+ en action</button>
         </div>
+        <div class="hero2-note">Démonstration personnalisée de 20 à 30 minutes.</div>
       </div>
-      <div class="mock-float">
-        <div class="mock-float-inner">
-          <div style="font-size:8px;font-weight:700;margin-bottom:6px">Match Center</div>
-          <div style="background:var(--card);border-radius:6px;padding:6px;margin-bottom:4px"><div style="font-size:7px;color:var(--t2)">U18 vs FC Réville</div></div>
-          <div style="background:var(--blue);color:#06182B;border-radius:6px;padding:5px;text-align:center;font-size:7px;font-weight:700">+ Résultat express</div>
+      <div class="mock">
+        <div class="video-frame">
+          <video class="demo-video" muted loop playsinline preload="metadata" onerror="this.parentElement.classList.add('video-fallback')">
+            <source src="assets/video/hero.mp4" type="video/mp4">
+            <source src="assets/video/hero.webm" type="video/webm">
+          </video>
+          <div class="video-mockup" data-mockup="hero"></div>
+          <button class="video-play-btn" onclick="openVideoModal('hero')" aria-label="Voir la vidéo">▶</button>
         </div>
+        <div class="float-chip" style="top:-16px;left:-16px"><span class="dot" style="background:var(--ok)"></span>Résultat U18 reçu</div>
+        <div class="float-chip" style="top:38%;right:-30px"><span class="dot" style="background:var(--wa)"></span>Création prête à valider</div>
+        <div class="float-chip" style="bottom:-18px;left:8%"><span class="dot" style="background:var(--cyan)"></span>Nouvelle galerie disponible</div>
       </div>
     </div>
   </div>
 
-  <div class="section" style="max-width:1100px">
-    <div class="grid g2">
-      <div>
-        <div class="eyebrow" style="text-align:left;color:var(--er)">LE PROBLÈME DES CLUBS</div>
-        <h2 style="font-size:24px;margin-bottom:14px">Les informations se perdent entre les groupes WhatsApp.</h2>
-        <p class="muted" style="line-height:1.7">Résultats transmis en retard, photos éparpillées, sponsors oubliés : le Community Manager passe plus de temps à chercher l'information qu'à la valoriser.</p>
-      </div>
-      <div>
-        <div class="eyebrow" style="text-align:left;color:var(--ok)">LA SOLUTION CLUB+</div>
-        <h2 style="font-size:24px;margin-bottom:14px">Un seul espace pour transmettre, organiser et publier.</h2>
-        <p class="muted" style="line-height:1.7">Les éducateurs transmettent les informations dans Club+, le Community Manager les organise et les transforme, SportVision intervient pour les créations et prestations demandées.</p>
-      </div>
-    </div>
-  </div>
-
+  <!-- ═══ BANDE UTILISATEURS ═══ -->
   <div class="section">
-    <div class="eyebrow">CINQ PILIERS</div>
-    <div class="grid g5">
-      <div class="pillar"><div class="num" style="background:#168EFF22;color:var(--blue)">1</div>Centraliser</div>
-      <div class="pillar"><div class="num" style="background:#2DD4E322;color:var(--cyan)">2</div>Collaborer</div>
-      <div class="pillar"><div class="num" style="background:#7455FF22;color:var(--violet)">3</div>Créer</div>
-      <div class="pillar"><div class="num" style="background:#F5A62322;color:var(--wa)">4</div>Valoriser</div>
-      <div class="pillar"><div class="num" style="background:#28C99522;color:var(--ok)">5</div>Produire</div>
+    <div class="h2c" style="max-width:640px;margin-left:auto;margin-right:auto">Conçu pour connecter toutes les personnes qui font vivre le club.</div>
+    <div class="role-strip">
+      <span class="role-chip">Président</span>
+      <span class="role-chip">Secrétaire</span>
+      <span class="role-chip">Community Manager</span>
+      <span class="role-chip">Éducateur</span>
+      <span class="role-chip">Responsable sponsors</span>
+      <span class="role-chip">Joueur</span>
+      <span class="role-chip">Parent</span>
     </div>
   </div>
 
-  <div class="section" id="fonctionnalites">
-    <div class="eyebrow">FONCTIONNALITÉS</div>
-    <div class="grid g3">
-      <div class="feat"><b>Newsroom du club</b><p>Toutes les informations transmises par les équipes, centralisées et prêtes à transformer.</p></div>
-      <div class="feat"><b>Match Center</b><p>Transmettez un résultat en moins d'une minute, express ou complet.</p></div>
-      <div class="feat"><b>Studio de création</b><p>Des modèles contrôlés pour vos affiches, résultats et compositions, à l'image de votre club.</p></div>
-      <div class="feat"><b>Calendrier éditorial</b><p>Matchs, contenus et publications réunis dans un même agenda, équipe par équipe.</p></div>
-      <div class="feat"><b>Banque média</b><p>Toutes vos photos, vidéos et liens externes centralisés et organisés.</p></div>
-      <div class="feat"><b>Espace sponsors</b><p>Suivez vos contreparties et valorisez vos partenaires tout au long de la saison.</p></div>
+  <!-- ═══ PRÉSENTATION GÉNÉRALE (ProductDemoVideo) ═══ -->
+  <div class="section" style="max-width:1180px">
+    <div class="eyebrow">VUE D'ENSEMBLE</div>
+    <div class="h2c">Que pouvez-vous faire avec SportVision Club+&nbsp;?</div>
+    <p class="muted" style="max-width:640px;margin:-10px auto 34px;text-align:center;line-height:1.7">De la remontée des résultats à la livraison des photos et vidéos, Club+ connecte les dirigeants, éducateurs, communicants, joueurs et familles dans un même environnement.</p>
+    <div class="video-frame video-frame-lg">
+      <video class="demo-video" muted loop playsinline preload="metadata" onerror="this.parentElement.classList.add('video-fallback')">
+        <source src="assets/video/presentation.mp4" type="video/mp4">
+        <source src="assets/video/presentation.webm" type="video/webm">
+      </video>
+      <div class="video-mockup" data-mockup="presentation"></div>
+      <button class="video-play-btn" onclick="openVideoModal('presentation')" aria-label="Voir la vidéo">▶</button>
+    </div>
+    <div style="text-align:center;margin-top:26px">
+      <button class="btn btn-o" onclick="document.getElementById('fonctionnalites').scrollIntoView({behavior:'smooth'})">Découvrir toutes les fonctionnalités</button>
     </div>
   </div>
 
-  <div class="section" id="comment">
-    <div class="eyebrow">COMMENT ÇA MARCHE</div>
-    <div class="grid g3">
-      <div class="step"><div class="tag" style="color:var(--cyan)">PARCOURS ÉDUCATEUR</div>Transmet un résultat ou une actualité depuis son téléphone en quelques secondes, avec ou sans photo.</div>
-      <div class="step"><div class="tag" style="color:var(--violet)">PARCOURS COMMUNITY MANAGER</div>Reçoit l'information dans la Newsroom, la transforme en publication ou en demande de création, puis programme.</div>
-      <div class="step"><div class="tag" style="color:var(--wa)">SPONSORS &amp; SPORTVISION</div>Les contreparties sponsors sont suivies automatiquement ; SportVision intervient pour les créations et prestations terrain.</div>
+  <!-- ═══ BLOCS FONCTIONNALITÉS (FeatureVideoSection × 6) ═══ -->
+  <div class="section" id="fonctionnalites" style="max-width:1180px;display:flex;flex-direction:column;gap:110px">
+
+    <div class="feature-row">
+      <div class="video-frame">
+        <video class="demo-video" muted loop playsinline preload="metadata" onerror="this.parentElement.classList.add('video-fallback')">
+          <source src="assets/video/bloc1.mp4" type="video/mp4"><source src="assets/video/bloc1.webm" type="video/webm">
+        </video>
+        <div class="video-mockup" data-mockup="bloc1"></div>
+        <button class="video-play-btn" onclick="openVideoModal('bloc1')" aria-label="Voir la vidéo">▶</button>
+      </div>
+      <div class="feature-text">
+        <div class="feature-eyebrow">ORGANISATION</div>
+        <h3>Toute l'organisation du club réunie au même endroit</h3>
+        <div class="benefit-list">
+          <div class="benefit"><span class="bn">01</span><div><b>Organisez vos équipes et catégories</b></div></div>
+          <div class="benefit"><span class="bn">02</span><div><b>Invitez les éducateurs et responsables</b></div></div>
+          <div class="benefit"><span class="bn">03</span><div><b>Centralisez les calendriers</b></div></div>
+          <div class="benefit"><span class="bn">04</span><div><b>Adaptez les accès à chaque rôle</b></div></div>
+        </div>
+        <button class="btn btn-o" onclick="showToast('Détail disponible après connexion.')">En savoir plus</button>
+      </div>
+    </div>
+
+    <div class="feature-row rev">
+      <div class="video-frame">
+        <video class="demo-video" muted loop playsinline preload="metadata" onerror="this.parentElement.classList.add('video-fallback')">
+          <source src="assets/video/bloc2.mp4" type="video/mp4"><source src="assets/video/bloc2.webm" type="video/webm">
+        </video>
+        <div class="video-mockup" data-mockup="bloc2"></div>
+        <button class="video-play-btn" onclick="openVideoModal('bloc2')" aria-label="Voir la vidéo">▶</button>
+      </div>
+      <div class="feature-text">
+        <div class="feature-eyebrow">MATCH CENTER</div>
+        <h3>Un résultat envoyé en moins d'une minute</h3>
+        <div class="benefit-list">
+          <div class="benefit"><span class="bn">01</span><div><b>Résultat express</b></div></div>
+          <div class="benefit"><span class="bn">02</span><div><b>Photos et vidéos depuis le téléphone</b></div></div>
+          <div class="benefit"><span class="bn">03</span><div><b>Rappels automatiques</b></div></div>
+          <div class="benefit"><span class="bn">04</span><div><b>Informations classées par équipe</b></div></div>
+        </div>
+        <button class="btn btn-o" onclick="showToast('Détail disponible après connexion.')">En savoir plus</button>
+      </div>
+    </div>
+
+    <div class="feature-row">
+      <div class="video-frame">
+        <video class="demo-video" muted loop playsinline preload="metadata" onerror="this.parentElement.classList.add('video-fallback')">
+          <source src="assets/video/bloc3.mp4" type="video/mp4"><source src="assets/video/bloc3.webm" type="video/webm">
+        </video>
+        <div class="video-mockup" data-mockup="bloc3"></div>
+        <button class="video-play-btn" onclick="openVideoModal('bloc3')" aria-label="Voir la vidéo">▶</button>
+      </div>
+      <div class="feature-text">
+        <div class="feature-eyebrow">NEWSROOM &amp; STUDIO</div>
+        <h3>De l'information reçue au contenu publié</h3>
+        <div class="benefit-list">
+          <div class="benefit"><span class="bn">01</span><div><b>Newsroom centralisée</b></div></div>
+          <div class="benefit"><span class="bn">02</span><div><b>Studio de création</b></div></div>
+          <div class="benefit"><span class="bn">03</span><div><b>Validation des contenus</b></div></div>
+          <div class="benefit"><span class="bn">04</span><div><b>Calendrier éditorial</b></div></div>
+        </div>
+        <button class="btn btn-o" onclick="showToast('Détail disponible après connexion.')">En savoir plus</button>
+      </div>
+    </div>
+
+    <div class="feature-row rev">
+      <div class="video-frame">
+        <video class="demo-video" muted loop playsinline preload="metadata" onerror="this.parentElement.classList.add('video-fallback')">
+          <source src="assets/video/bloc4.mp4" type="video/mp4"><source src="assets/video/bloc4.webm" type="video/webm">
+        </video>
+        <div class="video-mockup" data-mockup="bloc4"></div>
+        <button class="video-play-btn" onclick="openVideoModal('bloc4')" aria-label="Voir la vidéo">▶</button>
+      </div>
+      <div class="feature-text">
+        <div class="feature-eyebrow">SPONSORS</div>
+        <h3>Montrez concrètement la valeur apportée aux sponsors</h3>
+        <div class="benefit-list">
+          <div class="benefit"><span class="bn">01</span><div><b>Fiches partenaires</b></div></div>
+          <div class="benefit"><span class="bn">02</span><div><b>Contreparties et échéances</b></div></div>
+          <div class="benefit"><span class="bn">03</span><div><b>Preuves de visibilité</b></div></div>
+          <div class="benefit"><span class="bn">04</span><div><b>Rapports personnalisés</b></div></div>
+        </div>
+        <button class="btn btn-o" onclick="showToast('Détail disponible après connexion.')">En savoir plus</button>
+      </div>
+    </div>
+
+    <div class="feature-row" id="espace-joueur-famille">
+      <div class="video-frame">
+        <video class="demo-video" muted loop playsinline preload="metadata" onerror="this.parentElement.classList.add('video-fallback')">
+          <source src="assets/video/bloc5.mp4" type="video/mp4"><source src="assets/video/bloc5.webm" type="video/webm">
+        </video>
+        <div class="video-mockup" data-mockup="bloc5"></div>
+        <button class="video-play-btn" onclick="openVideoModal('bloc5')" aria-label="Voir la vidéo">▶</button>
+      </div>
+      <div class="feature-text">
+        <div class="feature-eyebrow">ESPACE JOUEUR &amp; FAMILLE</div>
+        <h3>Les photos et vidéos accessibles directement par l'équipe</h3>
+        <div class="benefit-list">
+          <div class="benefit"><span class="bn">01</span><div><b>Accès limité à l'équipe</b></div></div>
+          <div class="benefit"><span class="bn">02</span><div><b>Galeries photo et vidéo</b></div></div>
+          <div class="benefit"><span class="bn">03</span><div><b>Favoris et téléchargements autorisés</b></div></div>
+          <div class="benefit"><span class="bn">04</span><div><b>Espace Parent multi-enfants</b></div></div>
+        </div>
+        <button class="btn btn-o" onclick="showToast('Détail disponible après connexion.')">En savoir plus</button>
+      </div>
+    </div>
+
+    <div class="feature-row rev">
+      <div class="video-frame">
+        <video class="demo-video" muted loop playsinline preload="metadata" onerror="this.parentElement.classList.add('video-fallback')">
+          <source src="assets/video/bloc6.mp4" type="video/mp4"><source src="assets/video/bloc6.webm" type="video/webm">
+        </video>
+        <div class="video-mockup" data-mockup="bloc6"></div>
+        <button class="video-play-btn" onclick="openVideoModal('bloc6')" aria-label="Voir la vidéo">▶</button>
+      </div>
+      <div class="feature-text">
+        <div class="feature-eyebrow">PRESTATIONS SPORTVISION</div>
+        <h3>Commandez une prestation sans quitter votre environnement</h3>
+        <div class="benefit-list">
+          <div class="benefit"><span class="bn">01</span><div><b>Photo et vidéo de match</b></div></div>
+          <div class="benefit"><span class="bn">02</span><div><b>Shooting et création de contenu</b></div></div>
+          <div class="benefit"><span class="bn">03</span><div><b>Tournois, stages, drone et Veo</b></div></div>
+          <div class="benefit"><span class="bn">04</span><div><b>Suivi jusqu'à la livraison</b></div></div>
+        </div>
+        <button class="btn btn-o" onclick="showToast('Détail disponible après connexion.')">En savoir plus</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ INTERFACES PAR RÔLE (RoleDemoTabs) ═══ -->
+  <div class="section" style="max-width:1180px">
+    <div class="h2c">Une seule plateforme. Une interface pour chaque rôle.</div>
+    <div class="role-tabs-nav" id="roleTabsNav"></div>
+    <div class="role-panel">
+      <div class="video-frame" id="roleMockupHost" data-mockup="role-president">
+        <div class="video-mockup" data-mockup="role-president" style="display:flex"></div>
+      </div>
+      <div>
+        <h3 id="roleTitle" style="font-size:24px;margin-bottom:12px">Une vue d'ensemble pour piloter le club</h3>
+        <p id="roleDesc" class="muted" style="line-height:1.65;margin-bottom:20px"></p>
+        <div class="benefit-list" id="roleFeatures" style="margin-bottom:0"></div>
+        <div class="role-quick" id="roleQuick"></div>
+      </div>
     </div>
   </div>
 
-  <div class="section" id="tarifs">
+  <!-- ═══ APPLICATION MOBILE (MobileAppShowcase) ═══ -->
+  <div class="section" style="max-width:1180px">
+    <div class="grid g2" style="align-items:center;margin-bottom:50px">
+      <div>
+        <div class="eyebrow" style="text-align:left">APPLICATION MOBILE</div>
+        <h2 style="font-size:26px;margin-bottom:14px">Club+ vous accompagne jusqu'au bord du terrain</h2>
+        <p class="muted" style="line-height:1.7;max-width:460px">Une application web installable pensée pour les actions rapides : envoyer un résultat, ajouter une photo, valider un contenu ou consulter les derniers livrables.</p>
+      </div>
+      <div class="role-strip" style="justify-content:flex-start">
+        <span class="role-chip">Application installable</span>
+        <span class="role-chip">Appareil photo</span>
+        <span class="role-chip">Sauvegarde automatique</span>
+        <span class="role-chip">Notifications</span>
+        <span class="role-chip">Interfaces selon le rôle</span>
+      </div>
+    </div>
+    <div class="phones-row">
+      <div class="phone"><div class="phone-screen">
+        <div style="font-size:9px;font-weight:700;color:var(--t2)">TABLEAU DE BORD</div>
+        <div class="mockup-row"><span>Contenus à préparer</span><span class="mockup-badge" style="background:#168EFF22;color:var(--blue)">6</span></div>
+        <div class="mockup-row"><span>Crédits ce mois-ci</span><span class="mockup-badge" style="background:#2DD4E322;color:var(--cyan)">16/20</span></div>
+        <div class="mockup-row"><span>Affiche avant-match</span><span class="mockup-badge" style="background:#F5A62322;color:var(--wa)">Urgent</span></div>
+      </div></div>
+      <div class="phone" style="margin-bottom:26px"><div class="phone-screen">
+        <div style="font-size:9px;font-weight:700;color:var(--t2)">RÉSULTAT EXPRESS</div>
+        <div class="mockup-row"><span>U18 vs FC Réville</span><span class="mockup-badge" style="background:#28C99522;color:var(--ok)">2 - 1</span></div>
+        <div class="mockup-row"><span>Photo depuis le mobile</span><span class="mockup-badge" style="background:#2DD4E322;color:var(--cyan)">envoyée</span></div>
+        <div style="background:var(--grad);color:#06182B;border-radius:8px;padding:9px;text-align:center;font-size:9px;font-weight:800;margin-top:4px">Envoyer le résultat</div>
+      </div></div>
+      <div class="phone"><div class="phone-screen">
+        <div style="font-size:9px;font-weight:700;color:var(--t2)">GALERIE JOUEUR</div>
+        <div class="mockup-row"><span>Galerie dernier match</span><span class="mockup-badge" style="background:#168EFF22;color:var(--blue)">12 photos</span></div>
+        <div class="mockup-row"><span>Vidéo highlights</span><span class="mockup-badge" style="background:#28C99522;color:var(--ok)">disponible</span></div>
+        <div class="mockup-row"><span>Mes favoris</span><span class="mockup-badge" style="background:#7455FF22;color:var(--violet)">4</span></div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ═══ PARCOURS COMPLET ═══ -->
+  <div class="section" id="comment" style="max-width:1180px">
+    <div class="h2c">Du terrain jusqu'aux joueurs, sans perdre une seule information</div>
+    <div class="video-frame video-frame-lg">
+      <video class="demo-video" muted loop playsinline preload="metadata" onerror="this.parentElement.classList.add('video-fallback')">
+        <source src="assets/video/parcours.mp4" type="video/mp4"><source src="assets/video/parcours.webm" type="video/webm">
+      </video>
+      <div class="video-mockup" data-mockup="parcours"></div>
+      <button class="video-play-btn" onclick="openVideoModal('parcours')" aria-label="Voir la vidéo">▶</button>
+    </div>
+    <div class="journey-steps">
+      <div class="journey-step">Match terminé</div><span class="journey-arrow">→</span>
+      <div class="journey-step">Résultat du coach</div><span class="journey-arrow">→</span>
+      <div class="journey-step">Newsroom</div><span class="journey-arrow">→</span>
+      <div class="journey-step">Création</div><span class="journey-arrow">→</span>
+      <div class="journey-step">Validation</div><span class="journey-arrow">→</span>
+      <div class="journey-step">Publication</div><span class="journey-arrow">→</span>
+      <div class="journey-step">Livraison SportVision</div><span class="journey-arrow">→</span>
+      <div class="journey-step">Consultation joueur &amp; parent</div>
+    </div>
+    <div style="text-align:center;margin-top:30px">
+      <button class="btn btn-p" onclick="scrollToDemoForm()">Voir Club+ en démonstration</button>
+    </div>
+  </div>
+
+  <!-- ═══ POUR QUI ═══ -->
+  <div class="section" id="pour-qui" style="max-width:1000px">
+    <div class="h2c">Pensé pour les clubs qui veulent mieux s'organiser et mieux communiquer</div>
+    <div class="forwhom-grid">
+      <div class="forwhom-item">Clubs amateurs</div>
+      <div class="forwhom-item">Académies</div>
+      <div class="forwhom-item">Écoles de football</div>
+      <div class="forwhom-item">Clubs multisports</div>
+      <div class="forwhom-item">Associations sportives</div>
+      <div class="forwhom-item">Centres de formation</div>
+      <div class="forwhom-item">Organisateurs de stages</div>
+      <div class="forwhom-item">Structures multiéquipes</div>
+    </div>
+  </div>
+
+  <!-- ═══ POURQUOI CLUB+ ═══ -->
+  <div class="section" style="max-width:1180px">
+    <div class="h2c">Pourquoi SportVision Club+</div>
+    <div class="why-grid">
+      <div class="why-item"><div class="num">01</div><b>Simple à utiliser</b><p>Une interface claire, pensée pour être prise en main sans formation, par des dirigeants comme par des éducateurs pressés.</p></div>
+      <div class="why-item"><div class="num">02</div><b>Tout-en-un</b><p>Équipes, contenus, médias, sponsors et prestations réunis, plutôt que dispersés entre outils et groupes de discussion.</p></div>
+      <div class="why-item"><div class="num">03</div><b>Pensé pour le terrain</b><p>Les actions les plus fréquentes — transmettre un résultat, ajouter une photo — se font en quelques secondes depuis un mobile.</p></div>
+      <div class="why-item"><div class="num">04</div><b>Connecté à SportVision</b><p>Les prestations, créations et livrables SportVision arrivent directement dans le même espace, sans ressaisie.</p></div>
+      <div class="why-item"><div class="num">05</div><b>Sécurisé par équipe</b><p>Chaque rôle, chaque équipe et chaque famille n'accède qu'à ce qui la concerne — jamais plus.</p></div>
+      <div class="why-item"><div class="num">06</div><b>Accompagnement humain</b><p>Une équipe SportVision reste disponible pour vous accompagner dans la prise en main et le suivi.</p></div>
+    </div>
+  </div>
+
+  <!-- ═══ TARIFS ═══ -->
+  <div class="section" id="tarifs" style="max-width:1180px">
     <div class="eyebrow">TARIFS</div>
     <div class="grid g2" style="max-width:1000px;margin:0 auto">
       <div class="price-card">
@@ -297,6 +624,7 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
           <li>5 crédits mensuels</li>
           <li>5 % de réduction sur les prestations éligibles</li>
         </ul>
+        <button class="btn btn-p btn-block" style="margin-top:6px" onclick="scrollToDemoForm()">Demander une démonstration</button>
       </div>
       <div class="price-card hi">
         <h3>Club+ Performance</h3>
@@ -310,11 +638,19 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
           <li>Espace sponsors avancé</li>
           <li>10 % de réduction sur les prestations</li>
         </ul>
+        <button class="btn btn-p btn-block" style="margin-top:6px" onclick="scrollToDemoForm()">Découvrir Performance</button>
       </div>
     </div>
-    <div style="text-align:center;margin-top:20px;font-size:13px" class="muted">Besoin de déléguer toute votre communication ? <a onclick="document.getElementById('form').scrollIntoView({behavior:'smooth'})">Découvrir Full Communication</a>.</div>
+    <div class="wrap-sm" style="margin-top:26px;padding:0">
+      <div class="contact-card" style="text-align:center">
+        <b style="font-size:15px;display:block;margin-bottom:6px">Besoin de déléguer toute votre communication ?</b>
+        <div class="muted" style="font-size:13px;margin-bottom:16px">Full Communication : une équipe SportVision prend en charge la production de vos contenus, de bout en bout.</div>
+        <button class="btn btn-o" onclick="scrollToDemoForm()">Découvrir Full Communication</button>
+      </div>
+    </div>
   </div>
 
+  <!-- ═══ TÉMOIGNAGES ═══ -->
   <div class="section">
     <div class="eyebrow">CLUBS PILOTES</div>
     <div class="grid g2">
@@ -323,23 +659,21 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
     </div>
   </div>
 
-  <div class="section" id="faq" style="max-width:800px">
-    <div class="eyebrow">FAQ</div>
-    <div class="faq">
-      <div class="faq-item"><b>Faut-il un compte SportVision Portail séparé ?</b><p>Non, votre compte Club+ vous donne automatiquement accès à votre espace Portail SportVision.</p></div>
-      <div class="faq-item"><b>Comment fonctionnent les crédits ?</b><p>Chaque création consomme un nombre de crédits selon sa complexité, débité une fois la demande acceptée par SportVision.</p></div>
-      <div class="faq-item"><b>Puis-je changer de formule plus tard ?</b><p>Oui, à tout moment depuis votre espace Abonnement &amp; crédits.</p></div>
+  <!-- ═══ CTA FINAL (FinalVideoCTA) ═══ -->
+  <div class="section" style="max-width:1180px">
+    <div class="final-cta">
+      <div class="final-cta-inner">
+        <h2>Faites circuler les informations. Faites vivre votre club.</h2>
+        <p class="muted" style="margin-bottom:28px">Découvrez comment SportVision Club+ peut s'adapter à votre organisation, vos équipes et votre communication.</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-p" onclick="scrollToDemoForm()">Demander une démonstration</button>
+          <button class="btn btn-o" onclick="nav('auth');authShow('connexion')">Se connecter</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="section" style="max-width:700px;text-align:center">
-    <h2 style="font-size:26px;margin-bottom:14px">Prêt à structurer la communication de votre club ?</h2>
-    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-      <button class="btn btn-p" onclick="nav('auth');authShow('inscription')">Rejoindre les clubs pilotes</button>
-      <button class="btn btn-o" onclick="nav('auth');authShow('connexion')">Se connecter</button>
-    </div>
-  </div>
-
+  <!-- ═══ FORMULAIRE (cible de « Demander une démonstration ») ═══ -->
   <div class="section" style="max-width:640px" id="form">
     <div class="contact-card">
       <div id="contactSuccess" style="display:none;text-align:center;padding:20px 0">
@@ -348,7 +682,7 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
       </div>
       <div id="contactForm">
         <div class="auth-title">Parlons de votre club</div>
-        <div class="auth-sub">Réponse sous 24h ouvrées.</div>
+        <div class="auth-sub">Démonstration personnalisée de 20 à 30 minutes. Réponse sous 24h ouvrées.</div>
         <div class="row2">
           <div class="field"><label>Nom du club</label><input type="text"></div>
           <div class="field"><label>Discipline</label><input type="text"></div>
@@ -813,6 +1147,198 @@ function routeFromHash(){
 }
 window.addEventListener('hashchange', routeFromHash);
 if(!checkInviteHash()) routeFromHash();
+
+// ══════════════════════════════════════════════════════════════════
+// LANDING PAGE — header au scroll, vidéos (VideoHero/ProductDemoVideo/
+// FeatureVideoSection/VideoModal), onglets par rôle (RoleDemoTabs).
+//
+// Aucun fichier vidéo réel n'existe encore (assets/video/*.mp4|webm) : le
+// onerror sur chaque <video> ajoute .video-fallback et révèle le mockup
+// CSS (.video-mockup, contenu généré par renderVideoMockups()). Dès que
+// de vrais fichiers sont déposés aux chemins attendus (voir la liste des
+// clés VIDEO_MOCKUPS ci-dessous), ils se chargent normalement et le
+// mockup reste caché — aucune autre modification n'est nécessaire.
+// Formats attendus par vidéo : <clé>.mp4 (H.264) + <clé>.webm, une
+// version desktop 16:9 et, idéalement, une version mobile 9:16.
+// ══════════════════════════════════════════════════════════════════
+
+// ── header transparent → opaque au scroll ──
+window.addEventListener('scroll', ()=>{
+  document.getElementById('pub-header').classList.toggle('scrolled', window.scrollY > 40);
+});
+
+// ── contenus de secours des vidéos (VideoPoster) ──
+const VIDEO_MOCKUPS = {
+  hero: {title:"Match Center — U18 vs FC Réville", rows:[
+    ["Résultat transmis par Sophie Marchand","reçu","#168EFF"],
+    ["Newsroom — prêt à transformer","à traiter","#F5A623"],
+    ["Studio de création — affiche résultat","brouillon","#7455FF"],
+    ["Validation du président","en attente","#F5A623"],
+    ["Galerie joueur — U18","publiée","#28C995"]
+  ]},
+  presentation: {title:"FC Clairval — Saison 2026-2027", rows:[
+    ["8 équipes actives","organisées","#168EFF"],
+    ["Newsroom — 3 informations reçues","à traiter","#F5A623"],
+    ["2 sponsors — contreparties suivies","à jour","#28C995"],
+    ["Prestation SportVision programmée","confirmée","#7455FF"]
+  ]},
+  bloc1: {title:"Organisation du club", rows:[
+    ["Équipes & catégories","8 équipes","#168EFF"],
+    ["Éducateurs et responsables","12 invités","#2DD4E3"],
+    ["Calendrier centralisé","à jour","#28C995"],
+    ["Accès par rôle","configurés","#7455FF"]
+  ]},
+  bloc2: {title:"Match Center — U18 vs FC Réville", rows:[
+    ["Score","2 - 1","#168EFF"],
+    ["Buteurs","Yanis C., Enzo M.","#2DD4E3"],
+    ["Photo ajoutée depuis le mobile","envoyée","#28C995"],
+    ["Rappel automatique","programmé","#F5A623"]
+  ]},
+  bloc3: {title:"Newsroom du club", rows:[
+    ["Résultat U15 vs US Vallée","à transformer","#F5A623"],
+    ["Actualité — reprise physique","prêt à publier","#7455FF"],
+    ["Composition Seniors R1","en création","#F5A623"],
+    ["Calendrier éditorial","3 publications prévues","#28C995"]
+  ]},
+  bloc4: {title:"Espace Sponsors — Atlantide BTP", rows:[
+    ["Contrepartie — logo affiches","réalisée","#28C995"],
+    ["Publication mensuelle","à faire","#F5A623"],
+    ["Preuve de visibilité","3 publications","#168EFF"],
+    ["Rapport partenaire","généré","#7455FF"]
+  ]},
+  bloc5: {title:"Espace Joueur — U18", rows:[
+    ["Galerie photo — dernier match","12 photos","#168EFF"],
+    ["Vidéo highlights","disponible","#28C995"],
+    ["Mes favoris","4 éléments","#7455FF"],
+    ["Ma famille — 2 enfants","connectés","#2DD4E3"]
+  ]},
+  bloc6: {title:"Prestations SportVision", rows:[
+    ["Shooting d'équipe — Féminines","livré","#28C995"],
+    ["Vidéo highlights — Seniors R1","confirmée","#7455FF"],
+    ["Couverture tournoi U13","opérateur affecté","#F5A623"],
+    ["-10 % Club+ Performance","actif","#2DD4E3"]
+  ]},
+  parcours: {title:"Du terrain à la famille", rows:[
+    ["Match terminé","18:42","#A7B6C9"],
+    ["Résultat du coach","reçu","#168EFF"],
+    ["Newsroom → création","en cours","#F5A623"],
+    ["Validation → publication","publié","#7455FF"],
+    ["Livraison SportVision","livrée","#28C995"],
+    ["Consultation joueur & parent","consulté","#2DD4E3"]
+  ]},
+  'role-president': {title:"Tableau de bord — Président", rows:[
+    ["Sponsors actifs","3","#168EFF"],["Contenus en attente de validation","2","#F5A623"],
+    ["Crédits disponibles","16/20","#2DD4E3"],["Prochaine échéance abonnement","01/08","#7455FF"]
+  ]},
+  'role-secretaire': {title:"Tableau de bord — Secrétaire", rows:[
+    ["Invitations en attente","2","#F5A623"],["Documents à compléter","3","#F5A623"],
+    ["Équipes actives","8","#168EFF"],["Utilisateurs du club","14","#2DD4E3"]
+  ]},
+  'role-cm': {title:"Newsroom — Community Manager", rows:[
+    ["Résultat U15","à transformer","#F5A623"],["Story matchday U18","publiée","#28C995"],
+    ["Carrousel sponsor","en création","#7455FF"],["Calendrier éditorial","3 prévues","#168EFF"]
+  ]},
+  'role-coach': {title:"Match Center — Coach U18", rows:[
+    ["Prochain match","U18 vs FC Réville","#168EFF"],["Résultat express","1 min","#28C995"],
+    ["Photo ajoutée","envoyée","#2DD4E3"],["Rappel automatique","activé","#F5A623"]
+  ]},
+  'role-sponsor': {title:"Sponsors — Atlantide BTP", rows:[
+    ["Contrepartie logo","réalisée","#28C995"],["Publication mensuelle","à faire","#F5A623"],
+    ["Story dédiée","réalisée","#28C995"],["Rapport partenaire","généré","#7455FF"]
+  ]},
+  'role-joueur': {title:"Espace Joueur — U18", rows:[
+    ["Galerie dernier match","12 photos","#168EFF"],["Vidéo highlights","disponible","#28C995"],
+    ["Mes favoris","4","#7455FF"],["Prochain match","dans 3 jours","#2DD4E3"]
+  ]},
+  'role-parent': {title:"Ma famille", rows:[
+    ["Lucas — U15","actif","#28C995"],["Emma — U13","actif","#28C995"],
+    ["Autorisation en attente","1","#F5A623"],["Dernier livrable","hier","#2DD4E3"]
+  ]}
+};
+function renderVideoMockups(){
+  document.querySelectorAll('.video-mockup[data-mockup]').forEach(el=>{
+    const d = VIDEO_MOCKUPS[el.dataset.mockup];
+    if(!d){ return; }
+    el.innerHTML = `<div style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--t2)">${d.title}</div>
+      <div class="mockup-screen">${d.rows.map(([l,b,c])=>`<div class="mockup-row"><span>${l}</span><span class="mockup-badge" style="background:${c}22;color:${c}">${b}</span></div>`).join('')}</div>`;
+  });
+}
+
+// ── VideoModal ──
+function openVideoModal(key){
+  const box = document.getElementById('videoModalFrame');
+  box.className = 'video-frame';
+  box.innerHTML = `<video class="demo-video" controls autoplay playsinline preload="metadata"
+      onerror="this.parentElement.classList.add('video-fallback')">
+      <source src="assets/video/${key}.mp4" type="video/mp4">
+      <source src="assets/video/${key}.webm" type="video/webm">
+    </video>
+    <div class="video-mockup" data-mockup="${key}"></div>`;
+  renderVideoMockups();
+  document.getElementById('videoModalHost').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+function closeVideoModal(){
+  document.getElementById('videoModalHost').classList.remove('on');
+  document.getElementById('videoModalFrame').innerHTML = '';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeVideoModal(); });
+
+// ── lecture des vidéos déclenchée par le viewport (pause hors écran) ──
+function setupVideoObservers(){
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const observer = new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      const v = entry.target.querySelector('video.demo-video');
+      if(!v) return;
+      if(entry.isIntersecting) v.play().catch(()=>{});
+      else v.pause();
+    });
+  }, {threshold:0.35});
+  document.querySelectorAll('.video-frame').forEach(f=>observer.observe(f));
+}
+
+// ── scroll vers le formulaire depuis n'importe quel CTA "Demander une démonstration" ──
+function scrollToDemoForm(){
+  const target = ()=>document.getElementById('form') && document.getElementById('form').scrollIntoView({behavior:'smooth'});
+  if(document.getElementById('scr-home').classList.contains('on')){ target(); }
+  else { nav('home'); setTimeout(target, 60); }
+}
+
+// ── RoleDemoTabs ──
+const ROLE_TABS = [
+  {key:'president', label:'Président', title:"Une vue d'ensemble pour piloter le club", desc:"Suivez les sponsors, les rapports d'activité et les décisions stratégiques sans avoir à demander un point à chaque responsable.", features:["Sponsors et partenariats","Rapports d'activité","Abonnement et crédits","Validation des contenus stratégiques"], quick:["Voir les sponsors","Consulter les rapports"]},
+  {key:'secretaire', label:'Secrétaire', title:"La gestion administrative centralisée", desc:"Équipes, utilisateurs, documents et calendrier réunis, pour ne plus courir après une information dispersée.", features:["Équipes et utilisateurs","Calendrier du club","Documents et factures","Invitations en attente"], quick:["Gérer les utilisateurs","Voir les documents"]},
+  {key:'cm', label:'Community Manager', title:"De l'information reçue au contenu publié", desc:"La Newsroom centralise ce que remontent les équipes, le Studio de création transforme en quelques clics.", features:["Newsroom du club","Studio de création","Calendrier éditorial","Banque média"], quick:["Ouvrir la Newsroom","Créer un visuel"]},
+  {key:'coach', label:'Coach', title:"Transmettre un résultat en quelques secondes", desc:"Depuis le bord du terrain, un résultat part vers le club en moins d'une minute, avec ou sans photo.", features:["Match Center express","Photos et vidéos depuis le mobile","Calendrier de l'équipe","Demandes de création simples"], quick:["Envoyer un résultat","Voir mon équipe"]},
+  {key:'sponsor', label:'Responsable sponsors', title:"Valoriser chaque partenaire", desc:"Chaque contrepartie est suivie, chaque échéance est visible — et chaque sponsor reçoit un vrai rapport.", features:["Fiches partenaires","Contreparties et échéances","Preuves de visibilité","Rapports personnalisés"], quick:["Ajouter un sponsor","Voir les échéances"]},
+  {key:'joueur', label:'Joueur', title:"Son équipe, ses contenus, sans rien demander", desc:"Le joueur retrouve directement les photos et vidéos de son équipe, sans solliciter l'éducateur ou le club.", features:["Galerie photo et vidéo de l'équipe","Calendrier des matchs","Favoris et téléchargements autorisés","Services personnels"], quick:["Voir mes livrables","Découvrir les services"]},
+  {key:'parent', label:'Parent', title:"Toute la famille, un seul compte", desc:"Plusieurs enfants, un seul espace : livrables, calendrier et autorisations gérés simplement, enfant par enfant.", features:["Plusieurs enfants dans un seul espace","Autorisations gérées simplement","Livrables par enfant","Commandes et paiements"], quick:["Voir Ma famille","Gérer les autorisations"]}
+];
+function renderRoleTabsNav(){
+  document.getElementById('roleTabsNav').innerHTML = ROLE_TABS.map(r=>
+    `<button class="role-tab-btn${r.key==='president'?' on':''}" data-role="${r.key}" onclick="showRoleTab('${r.key}')">${r.label}</button>`).join('');
+}
+function showRoleTab(key){
+  const d = ROLE_TABS.find(r=>r.key===key);
+  if(!d) return;
+  document.querySelectorAll('.role-tab-btn').forEach(b=>b.classList.toggle('on', b.dataset.role===key));
+  document.getElementById('roleTitle').textContent = d.title;
+  document.getElementById('roleDesc').textContent = d.desc;
+  document.getElementById('roleFeatures').innerHTML = d.features.map(f=>`<div class="benefit"><span class="bn">✓</span><div><b>${f}</b></div></div>`).join('');
+  document.getElementById('roleQuick').innerHTML = d.quick.map(q=>`<span>${q}</span>`).join('');
+  const host = document.getElementById('roleMockupHost');
+  host.classList.remove('video-fallback');
+  const mockupEl = host.querySelector('.video-mockup');
+  mockupEl.dataset.mockup = 'role-'+key;
+  renderVideoMockups();
+}
+
+renderRoleTabsNav();
+showRoleTab('president');
+renderVideoMockups();
+setupVideoObservers();
 </script>
 </body>
 </html>
