@@ -429,9 +429,9 @@ create table player_access_events (
 
 ---
 
-## 3. Notifications — dépendance non couverte par l'existant
+## 3. Notifications — in-app v1, par choix de périmètre (pas par contrainte technique)
 
-Aucune table de notifications n'existe dans Club+/Portail/OS aujourd'hui (l'app actuelle n'a que des badges statiques côté démo). §23 du prompt demande des notifications joueur/parent/éducateur/admin. Proposition minimale pour ce module (in-app uniquement, pas d'e-mail/push en v1, ce qui reste cohérent avec le fait que le seul e-mail transactionnel existant passe par Supabase Auth pour les invitations) :
+La table `notifications` existante (`supabase-schema-v2.sql`) est strictement staff (`destinataire_id references profiles(id)`, alimentée par `notify_staff_by_role()`) : inutilisable telle quelle pour des joueurs/parents, qui n'ont jamais de ligne `profiles`. §23 du prompt demande des notifications joueur/parent/éducateur/admin — décision (§9.3) : v1 en in-app uniquement via une table dédiée, l'infrastructure e-mail (Resend, déjà utilisée par `stripe-webhook` pour les reçus de paiement) restant disponible pour une v2 sans nouveau fournisseur à intégrer :
 
 ```sql
 create table family_notifications (
@@ -571,21 +571,30 @@ Nouvelles vues app.html, réutilisant le patron `tplX()`/`realX`/`loadRealX()`/`
 
 ---
 
-## 9. Risques et dépendances à trancher avant migration
+## 9. Décisions prises (2026-08-04)
 
-1. **Commande personnelle self-service vers Portail (§18 du prompt) n'a pas d'équivalent côté Portail aujourd'hui.** Le Portail actuel ne permet au client que d'*accepter/refuser* un devis déjà créé par un membre du staff (`client_decide_devis`) — il n'existe aucun flux où un client crée lui-même un devis/une commande. Deux options :
-   - **(a)** Construire un vrai flux self-service côté Portail (nouvelle RPC `client_create_prestation_request` ou équivalent) — travail Portail, hors périmètre Club+, à cadrer séparément.
-   - **(b)** Réutiliser tel quel le circuit **`club_bookings`** déjà existant côté Club+ (staff-driven : `recue → qualifiee → confirmee → ...`), en l'ouvrant simplement aux joueurs/parents comme demandeurs (au lieu des seuls dirigeants), sans passer par Portail du tout. Plus rapide, cohérent avec l'existant, mais dévie du texte du prompt (« Club+ → Portail → formulaire prérempli »).
-   Recommandation : démarrer avec **(b)** en phase 10 (déjà l'infrastructure existe), basculer vers **(a)** si le volume le justifie. À valider avec toi avant la phase 10.
-2. **Paiement des projets collectifs et prestations mineures** : `team_project_contributions.portail_paiement_ref` suppose un moyen de paiement déjà branché (Stripe via Portail ?). Aucun module de paiement direct n'a été identifié dans l'inventaire Club+/Portail lu ici — à confirmer où vit réellement l'intégration Stripe avant la phase 11.
-3. **Notifications e-mail/push** : v1 proposée en in-app uniquement (`family_notifications`). Les mentions « e-mail envoyé », « relance au parent » du prompt supposent un envoi réel — à confirmer si Supabase Auth (déjà utilisé pour les invitations) suffit ou s'il faut un fournisseur transactionnel dédié (le repo a un `SETUP-EMAIL.md`, à vérifier).
-4. **Textes juridiques des autorisations** : `authorization_types`/`authorization_versions` sont prêtes à recevoir un texte, mais le texte lui-même doit être validé juridiquement avant toute activation en production — la structure ne préjuge pas du contenu.
-5. **`media_access_rules` doit être peuplée rétroactivement** pour tout `club_media`/`club_creations` existant, sinon aucune galerie actuelle ne devient visible côté joueur/famille au déploiement (comportement fail-closed voulu, mais implique une action de rattrapage — soit un outil admin de « publier vers Espace Joueur », soit une règle par défaut par équipe à la première consultation).
-6. **`role_permissions` (v12)** reste non appliqué (documenté comme tel dans la migration v12) : les nouvelles fonctions `is_team_educateur`/`is_club_admin` de ce module n'en tiennent pas compte non plus, cohérent avec l'état actuel — mais si un jour la matrice est appliquée, il faudra revoir toutes les fonctions RLS de ce module en même temps que celles de l'existant.
+1. **Commande personnelle (§18 du prompt) → réutilise `club_bookings`**, déjà existant côté Club+ (staff-driven : `recue → qualifiee → confirmee → operateur_affecte → mission_realisee → livree`), simplement ouvert aux joueurs/parents comme demandeurs en plus des dirigeants. Pas de nouveau flux Portail. Phase 10.
+
+2. **Paiement des projets collectifs → Stripe existe déjà, mais côté Portail exclusivement, et pas directement réutilisable tel quel.** Vérification faite sur `supabase/functions/create-checkout-session/index.ts` et `stripe-webhook/index.ts` : le flux actuel est entièrement charpenté autour de `client_users → clients → prestations/devis → paiements`, avec un contrôle d'autorisation `clientUser.client_id === prestation.client_id`. Un joueur majeur ou un parent qui contribue à un `team_projects` n'est **jamais** un `client_users` (ce serait à nouveau le mélanger avec l'univers Portail/OS pour de mauvaises raisons, même risque de fuite qu'en §0). Décision : dupliquer le *pattern*, pas la fonction.
+   - Nouvelle Edge Function `create-team-contribution-checkout`, même charpente que `create-checkout-session` (vérifie le JWT, résout `team_projects` + valide montant contre `contribution_min`/`part_conseillee`, jamais un montant transmis tel quel par le client), mais écrit dans `team_project_contributions` (statut `en_attente`) au lieu de `paiements`, avec `metadata: { contribution_id }` sur la session Stripe (au lieu de `paiement_id`).
+   - **`stripe-webhook` existant est étendu**, pas dupliqué : sur `checkout.session.completed`, brancher sur `session.metadata.paiement_id` (chemin Portail actuel, inchangé) **ou** `session.metadata.contribution_id` (nouveau chemin), pour rester sur un seul endpoint/`STRIPE_WEBHOOK_SECRET` déjà enregistré côté Stripe Dashboard — pas de second webhook à configurer.
+   - `team_project_contributions.portail_paiement_ref` devient donc `stripe_checkout_session_id`/`stripe_payment_intent_id` en miroir direct des colonnes déjà présentes sur `paiements`, pour rester cohérent avec la table sœur.
+   - Recalcul de `team_projects.montant_collecte` et passage à `objectif_atteint` : trigger `after update on team_project_contributions` (même idée que le webhook qui met à jour `prestations.statut_financier`), pas une écriture manuelle côté client.
+   Phase 11, débloquée.
+
+3. **Notifications → in-app uniquement (`family_notifications`) pour la v1**, confirmé. Point vérifié en creusant `stripe-webhook` : un vrai envoi d'e-mail transactionnel existe déjà (Resend, fonction `sendPaymentReceiptEmail`), donc l'infrastructure e-mail existe et pourra être réutilisée plus tard sans nouveau fournisseur à intégrer — juste hors périmètre v1 par choix, pas par contrainte technique.
+   Autre point confirmé en creusant : la table `notifications` existante (`supabase-schema-v2.sql`) est **strictement staff** — `destinataire_id references profiles(id)`, alimentée par `notify_staff_by_role()`. Un joueur/parent n'a jamais de ligne `profiles`, donc `family_notifications` (table séparée, `recipient_user_id references auth.users`) est la bonne conception, pas une réutilisation de `notifications` avec une contrainte assouplie.
+
+4. **Rattrapage des galeries existantes → outil admin « Publier vers Espace Joueur »**, confirmé (pas de règle automatique par défaut). Aucune nouvelle table nécessaire pour ça : c'est une interface au-dessus de `media_access_rules` en phase 8, où l'admin/éducateur choisit explicitement quelles galeries `club_media`/`club_creations` existantes rendre visibles, à quelle équipe, avec quels droits (téléchargement/partage). Tant qu'une règle n'est pas créée pour un média donné, il reste invisible côté joueur/famille (fail-closed inchangé).
+
+## 10. Points restants, non bloquants pour démarrer
+
+- **Textes juridiques des autorisations** : `authorization_types`/`authorization_versions` sont prêtes à recevoir un texte, mais le texte lui-même doit être validé juridiquement avant toute activation en production — la structure ne préjuge pas du contenu. Ne bloque pas les phases 1-9 (le mécanisme de statut fonctionne avec un texte provisoire), seulement la mise en production réelle.
+- **`role_permissions` (v12)** reste non appliqué (documenté comme tel dans la migration v12) : les nouvelles fonctions `is_team_educateur`/`is_club_admin` de ce module n'en tiennent pas compte non plus, cohérent avec l'état actuel — mais si un jour la matrice est appliquée, il faudra revoir toutes les fonctions RLS de ce module en même temps que celles de l'existant.
 
 ---
 
-## 10. Phases de développement (reprend l'ordre du prompt, ajusté aux dépendances identifiées)
+## 11. Phases de développement (reprend l'ordre du prompt, ajusté aux dépendances identifiées — toutes tranchées, §9)
 
 1. Tables `player_profiles`/`parent_profiles`/`parent_player_relationships`/`team_memberships` + fonction `sv_age_bracket`.
 2. Fonctions RLS (`is_own_player`, `is_confirmed_parent_of`, `is_family_of_team`, `is_team_educateur`) + policies sur les tables de la phase 1.
@@ -594,15 +603,11 @@ Nouvelles vues app.html, réutilisant le patron `tplX()`/`realX`/`loadRealX()`/`
 5. Interfaces éducateur (`tplFamillesDemandes`) et admin (`tplJoueursEtFamilles`).
 6. Espace joueur mobile (`tplEspaceJoueurAccueil` + nav bas).
 7. Espace parent multi-enfants (`tplMaFamille` + sélecteur).
-8. `media_access_rules`, extension policies `club_media`/`club_creations`, `player_favorites`/`favorite_collections`, vue calendrier/livrables filtrée.
+8. `media_access_rules` + outil admin « Publier vers Espace Joueur », extension policies `club_media`/`club_creations`, `player_favorites`/`favorite_collections`, vue calendrier/livrables filtrée.
 9. `media_reports` + interface de signalement/masquage.
-10. Décision §9.1 tranchée, connexion services personnels (`club_bookings` élargi ou nouveau flux Portail).
-11. `team_projects`, `team_project_contributions`, `team_project_events` (après décision paiement §9.2).
+10. `club_bookings` élargi aux demandeurs joueur/parent (§9.1).
+11. `team_projects`, `team_project_contributions`, `team_project_events`, Edge Function `create-team-contribution-checkout` + extension de `stripe-webhook` (§9.2).
 12. `season_membership_renewals` + interface « Préparer la nouvelle saison ».
 13. Tests RLS croisés (club A / club B, U15 / U18, mineur sans autorisation) + revue de conformité avant mise en production.
 
----
-
-## 11. Ce que ce document ne tranche pas
-
-Les points 1 et 2 de la section « Risques » ci-dessus (flux de commande Portail, paiement des projets collectifs) sont des décisions produit, pas seulement techniques — je propose de les trancher avec toi avant de commencer la phase 10/11, le reste (phases 1 à 9) peut démarrer sans attendre puisqu'il ne dépend d'aucun système externe non confirmé.
+Toutes les dépendances identifiées en §9 sont tranchées — les 13 phases peuvent s'enchaîner sans nouvelle pause décisionnelle prévue à ce stade.
