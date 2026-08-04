@@ -690,11 +690,11 @@ function dashGeneric(){
   </div>
   <div class="grid g2" style="margin-bottom:20px">
     <div class="card"><div class="sh" style="margin-bottom:12px"><b style="font-size:15px">Demandes de création</b><a onclick="switchView('demandes')">Tout voir →</a></div>
-      ${DATA.requests.slice(0,3).map(r=>{const sm=statusMeta(r.status); return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><div><div style="font-weight:600;font-size:12.5px">${typeLabel(r.type)} · ${r.team}</div><div class="muted" style="font-size:11px">${r.requester}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join('')}
+      ${requestsSource().slice(0,3).map(r=>{const sm=statusMeta(r.status); return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><div><div style="font-weight:600;font-size:12.5px">${typeLabel(r.type)} · ${r.team}</div><div class="muted" style="font-size:11px">${r.requester}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join('')||'<div class="muted" style="padding:10px 0">Aucune demande pour le moment.</div>'}
     </div>
     <div class="card"><div class="sh" style="margin-bottom:12px"><b style="font-size:15px">Sponsors</b><a onclick="switchView('sponsors')">Voir les sponsors →</a></div>
       <div class="muted" style="font-size:12.5px;margin-bottom:12px">2 activations réalisées sur 3 prévues ce mois-ci.</div>
-      <div style="display:flex;gap:10px">${DATA.sponsors.map(sp=>`<div class="club-crest" title="${sp.name}">${initials(sp.name)}</div>`).join('')}</div>
+      <div style="display:flex;gap:10px">${sponsorsSource().map(sp=>`<div class="club-crest" title="${sp.name}">${initials(sp.name)}</div>`).join('')||'<span class="muted" style="font-size:12px">Aucun sponsor pour le moment.</span>'}</div>
     </div>
   </div>
   <div class="card"><b style="font-size:15px;display:block;margin-bottom:10px">SportVision</b>
@@ -706,7 +706,7 @@ function dashGeneric(){
 function dashPresident(){
   return `<div class="grid g2" style="margin:20px 0">
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Résumé du mois</b>
-      <div class="grid g3" style="margin-bottom:16px"><div class="stat"><b>19</b><span>Contenus publiés</span></div><div class="stat"><b>${DATA.sponsors.length}</b><span>Sponsors actifs</span></div><div class="stat"><b>${DATA.equipes.length}</b><span>Équipes actives</span></div></div>
+      <div class="grid g3" style="margin-bottom:16px"><div class="stat"><b>19</b><span>Contenus publiés</span></div><div class="stat"><b>${sponsorsSource().length}</b><span>Sponsors actifs</span></div><div class="stat"><b>${teamsSource().length}</b><span>Équipes actives</span></div></div>
       <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">CONTENUS EN ATTENTE DE VALIDATION</div>
       ${DATA.creations.filter(c=>c.status==='a_valider').map(c=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">${esc(c.title)}</span><span class="badge" style="background:#F5A62322;color:var(--wa)">À valider</span></div>`).join('')}
     </div>
@@ -717,30 +717,32 @@ function dashPresident(){
     </div>
   </div>
   <div class="grid g2">
-    <div class="card"><b style="font-size:15px;display:block;margin-bottom:10px">Sponsors et partenariats</b><div class="muted" style="font-size:12.5px;margin-bottom:14px">${DATA.sponsors.length} sponsors actifs · contreparties suivies dans l'Espace Sponsors.</div><button class="btn bo" onclick="switchView('sponsors')">Voir les sponsors</button></div>
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:10px">Sponsors et partenariats</b><div class="muted" style="font-size:12.5px;margin-bottom:14px">${sponsorsSource().length} sponsors actifs · contreparties suivies dans l'Espace Sponsors.</div><button class="btn bo" onclick="switchView('sponsors')">Voir les sponsors</button></div>
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:10px">Abonnement et crédits</b><div class="muted" style="font-size:12.5px;margin-bottom:14px">${subscription.plan} · ${wallet.balance}/${wallet.monthly} crédits disponibles</div><button class="btn" style="background:linear-gradient(135deg,#168EFF,#7455FF);color:#fff" onclick="switchView('services')">Demander une prestation</button></div>
   </div>`;
 }
 function dashSecretaire(){
+  const memSrc=membersSource();
   return `<div class="grid g2" style="margin:20px 0">
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">À traiter</b>
-      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">Résultats manquants</span><span class="badge" style="background:#EF5B6722;color:var(--er)">${DATA.requests.filter(r=>r.status==='info_manquante').length}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">Invitations en attente</span><span class="badge" style="background:#F5A62322;color:var(--wa)">${DATA.users.filter(u=>u.status==='invitation').length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">Résultats manquants</span><span class="badge" style="background:#EF5B6722;color:var(--er)">${requestsSource().filter(r=>r.status==='info_manquante').length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">Invitations en attente</span><span class="badge" style="background:#F5A62322;color:var(--wa)">${memSrc.filter(u=>u.status==='invitation').length}</span></div>
       <div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-weight:600;font-size:12.5px">Documents à compléter</span><span class="badge" style="background:#F5A62322;color:var(--wa)">${DATA.documents.filter(d=>d.status==='en_attente').length}</span></div>
     </div>
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Invitations en attente</b>
-      ${DATA.users.filter(u=>u.status==='invitation').map(u=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${u.name}</span><span class="muted">${u.role}</span></div>`).join('')||'<div class="muted">Aucune invitation en attente.</div>'}
+      ${memSrc.filter(u=>u.status==='invitation').map(u=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${u.name}</span><span class="muted">${u.role}</span></div>`).join('')||'<div class="muted">Aucune invitation en attente.</div>'}
       <button class="btn bo" style="margin-top:10px" onclick="switchView('membres')">Gérer les utilisateurs</button>
     </div>
   </div>`;
 }
 function dashSponsorMgr(){
-  const pending=DATA.sponsors.flatMap(sp=>sp.commitments.filter(c=>c.status==='a_faire').map(c=>({...c,sponsorName:sp.name})));
+  const spSrc=sponsorsSource();
+  const pending=spSrc.flatMap(sp=>sp.commitments.filter(c=>c.status==='a_faire').map(c=>({...c,sponsorName:sp.name})));
   return `<div class="grid g4" style="margin:20px 0">
-    <div class="stat"><b>${DATA.sponsors.length}</b><span>Sponsors actifs</span></div>
+    <div class="stat"><b>${spSrc.length}</b><span>Sponsors actifs</span></div>
     <div class="stat"><b>${pending.length}</b><span>Contreparties à réaliser</span></div>
-    <div class="stat"><b>1</b><span>Contrats proches échéance</span></div>
-    <div class="stat"><b>${DATA.sponsors.filter(sp=>!sp.hasLogo).length}</b><span>Partenaires sans logo</span></div>
+    <div class="stat"><b>${REAL?'—':'1'}</b><span>Contrats proches échéance</span></div>
+    <div class="stat"><b>0</b><span>Partenaires sans logo</span></div>
   </div>
   <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Contreparties à réaliser</b>
     ${pending.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)"><div><div style="font-weight:600;font-size:12.5px">${c.type}</div><div class="muted" style="font-size:11.5px">${c.sponsorName}</div></div><button class="btn bo" style="padding:6px 12px" onclick="switchView('sponsors')">Traiter</button></div>`).join('')}
@@ -1060,7 +1062,7 @@ function renderCreationWizard(){
       <div class="field"><label>Titre</label><input id="cw-title" type="text" value="${esc(cw.title)}"></div>
       <div class="field"><label>Détail (score, adversaire, message…)</label><textarea id="cw-detail" rows="2">${esc(cw.detail)}</textarea></div>`;
   } else if(cw.step===3){
-    body=`<div class="field"><label>Sponsor à valoriser</label><select id="cw-sponsor"><option>Aucun</option>${DATA.sponsors.map(sp=>`<option>${sp.name}</option>`).join('')}</select></div>
+    body=`<div class="field"><label>Sponsor à valoriser</label><select id="cw-sponsor"><option>Aucun</option>${sponsorsSource().map(sp=>`<option>${sp.name}</option>`).join('')}</select></div>
       <div class="thumb" style="height:200px">Aperçu du visuel</div>`;
   } else {
     body=`<div class="card"><b style="font-size:14px;display:block;margin-bottom:8px">${typeLabel(cw.type)}</b><div class="muted" style="font-size:13px;line-height:1.7">Équipe : ${cw.team}<br>Titre : ${esc(cw.title)}<br>Sponsor : ${cw.sponsor}</div></div>
@@ -1126,53 +1128,79 @@ function openMediaDrawer(id){
 
 /* ══════════════ SPONSORS ══════════════ */
 let spView='overview';
+let realSponsors=null;
+const NIVEAU_COLOR={Or:'#F5A623',Argent:'#A7B6C9',Bronze:'#7455FF'};
+function normSponsor(r){
+  return {id:r.id, name:r.name, secteur:r.secteur||'', niveau:r.niveau||'Bronze', color:NIVEAU_COLOR[r.niveau]||'#7455FF', teams:r.teams||[], contact:r.contact||'', debut:r.date_debut||'', fin:r.date_fin||'', montant:r.montant||0, commitments:r.commitments||[]};
+}
+async function loadRealSponsors(){
+  if(!REAL) return;
+  const res=await sbFetch('club_sponsors?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
+  realSponsors = res.ok ? (res.data||[]).map(normSponsor) : [];
+  if(['sponsors','dashboard','creations','rapports'].includes(S.view)) renderContent();
+}
+function sponsorsSource(){
+  if(!REAL) return DATA.sponsors;
+  if(realSponsors===null){ loadRealSponsors(); return []; }
+  return realSponsors;
+}
 function tplSponsors(){
+  if(REAL && realSponsors===null){ loadRealSponsors(); return `<div class="sh"><b>Espace Sponsors</b></div><div class="empty-state">Chargement…</div>`; }
+  const src=sponsorsSource();
   const tabs=[['overview',"Vue d'ensemble"],['partenaires','Partenaires'],['vitrine','Vitrine partenaires']];
   let content='';
   if(spView==='overview'){
-    const pending=DATA.sponsors.flatMap(sp=>sp.commitments.filter(c=>c.status==='a_faire').map(c=>({...c,sponsorName:sp.name})));
+    const pending=src.flatMap(sp=>sp.commitments.filter(c=>c.status==='a_faire').map(c=>({...c,sponsorName:sp.name})));
     content=`<div class="grid g4" style="margin-bottom:20px">
-      <div class="stat"><b>${DATA.sponsors.length}</b><span>Sponsors actifs</span></div>
+      <div class="stat"><b>${src.length}</b><span>Sponsors actifs</span></div>
       <div class="stat"><b>${pending.length}</b><span>Contreparties à réaliser</span></div>
-      <div class="stat"><b>1</b><span>Contrats proches échéance</span></div>
+      <div class="stat"><b>${REAL?'—':'1'}</b><span>Contrats proches échéance</span></div>
       <div class="stat"><b>0</b><span>Partenaires sans logo</span></div>
     </div>
     <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:10px">ALERTES</div>
-    <div class="card">${pending.map(c=>`<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd);font-size:13px"><span style="width:7px;height:7px;border-radius:4px;background:var(--wa);flex-shrink:0"></span>${c.sponsorName} : "${c.type}" à réaliser${c.due!=='Permanent'?' avant le '+fmtDate(c.due):''}.</div>`).join('')}</div>`;
+    <div class="card">${pending.map(c=>`<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd);font-size:13px"><span style="width:7px;height:7px;border-radius:4px;background:var(--wa);flex-shrink:0"></span>${c.sponsorName} : "${c.type}" à réaliser${c.due!=='Permanent'?' avant le '+fmtDate(c.due):''}.</div>`).join('')||'<div style="padding:10px 0" class="muted">Aucune alerte pour le moment.</div>'}</div>`;
   } else if(spView==='partenaires'){
-    content=`<div class="grid g3">${DATA.sponsors.map(sp=>{const done=sp.commitments.filter(c=>c.status==='realise').length;
+    content = src.length ? `<div class="grid g3">${src.map(sp=>{const done=sp.commitments.filter(c=>c.status==='realise').length;
       return `<button class="tile-card" onclick="openSponsorDrawer('${sp.id}')">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><div class="club-crest" style="border-radius:10px">${initials(sp.name)}</div><div><div style="font-weight:700;font-size:14px">${sp.name}</div><div class="muted" style="font-size:11.5px">${sp.secteur}</div></div></div>
         <span class="badge" style="background:${sp.color}22;color:${sp.color};margin-bottom:8px">${sp.niveau}</span>
-        <div class="muted" style="font-size:11.5px">${sp.teams.join(', ')}</div>
-        <div style="font-size:11.5px;color:var(--cyan);font-weight:600;margin-top:4px">${done}/${sp.commitments.length} contreparties réalisées</div></button>`;}).join('')}</div>`;
+        <div class="muted" style="font-size:11.5px">${sp.teams.join(', ')||'—'}</div>
+        <div style="font-size:11.5px;color:var(--cyan);font-weight:600;margin-top:4px">${done}/${sp.commitments.length} contreparties réalisées</div></button>`;}).join('')}</div>` : `<div class="empty-state">Aucun sponsor pour le moment.</div>`;
   } else {
     content=`<div class="card" style="background:linear-gradient(135deg,var(--card),var(--card2));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px">
       <div class="muted" style="font-size:13px">Aperçu de la page publique des partenaires du club.</div>
       <a href="SportVision-Club-Plus.html#/partenaires" target="_blank" class="btn bp">Voir la page publique →</a></div>
-      <div class="grid g4">${DATA.sponsors.map(sp=>`<div class="tile-card" style="text-align:center"><div class="club-crest" style="border-radius:10px;margin:0 auto 10px">${initials(sp.name)}</div><div style="font-weight:700;font-size:13px">${sp.name}</div><div class="muted" style="font-size:11.5px">${sp.secteur}</div></div>`).join('')}</div>`;
+      <div class="grid g4">${src.map(sp=>`<div class="tile-card" style="text-align:center"><div class="club-crest" style="border-radius:10px;margin:0 auto 10px">${initials(sp.name)}</div><div style="font-weight:700;font-size:13px">${sp.name}</div><div class="muted" style="font-size:11.5px">${sp.secteur}</div></div>`).join('')||'<div class="empty-state">Aucun sponsor pour le moment.</div>'}</div>`;
   }
   return `<div class="sh"><b>Espace Sponsors</b><button class="btn bp" onclick="guard(openSponsorForm)()">+ Ajouter un sponsor</button></div>
     <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${spView===k?' on':''}" onclick="spView='${k}';renderContent()">${l}</button>`).join('')}</div>
     ${content}`;
 }
 function openSponsorDrawer(id){
-  const sp=DATA.sponsors.find(x=>x.id===id);
+  const sp=sponsorsSource().find(x=>x.id===id);
+  if(!sp){ toast('Sponsor introuvable.'); return; }
   openDrawer(`<div class="sh"><div style="display:flex;align-items:center;gap:12px"><div class="club-crest" style="border-radius:10px">${initials(sp.name)}</div><div><b>${sp.name}</b><div class="muted" style="font-size:12px">${sp.secteur}</div></div></div><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <span class="badge" style="background:${sp.color}22;color:${sp.color};margin:14px 0;display:inline-block">Partenaire ${sp.niveau}</span>
     <div class="card" style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Contrat</span><span style="font-weight:600">${fmtDate(sp.debut)} — ${fmtDate(sp.fin)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Contrat</span><span style="font-weight:600">${sp.debut?fmtDate(sp.debut):'—'} — ${sp.fin?fmtDate(sp.fin):'—'}</span></div>
       <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Montant annuel</span><span style="font-weight:600">${sp.montant} €</span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px"><span class="muted">Contact</span><span style="font-weight:600">${sp.contact}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px"><span class="muted">Contact</span><span style="font-weight:600">${sp.contact||'—'}</span></div>
     </div>
     <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">CONTREPARTIES</div>
-    ${sp.commitments.map(c=>{const sm=statusMeta(c.status); return `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:6px"><div><div style="font-weight:600;font-size:12.5px">${c.type}</div><div class="muted" style="font-size:11px">${c.due==='Permanent'?'Permanent':fmtDate(c.due)}</div></div>${c.status==='a_faire'?`<button class="btn bo" style="padding:5px 10px" onclick="sponsorMarkDone('${sp.id}','${c.id}')">Marquer réalisé</button>`:`<span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>`}</div>`;}).join('')}
+    ${sp.commitments.map(c=>{const sm=statusMeta(c.status); return `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:6px"><div><div style="font-weight:600;font-size:12.5px">${c.type}</div><div class="muted" style="font-size:11px">${c.due==='Permanent'?'Permanent':fmtDate(c.due)}</div></div>${c.status==='a_faire'?`<button class="btn bo" style="padding:5px 10px" onclick="sponsorMarkDone('${sp.id}','${c.id}')">Marquer réalisé</button>`:`<span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>`}</div>`;}).join('')||'<div class="muted" style="font-size:12.5px">Aucune contrepartie enregistrée.</div>'}
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
       <button class="btn" style="background:linear-gradient(135deg,#168EFF,#7455FF);color:#fff" onclick="toast('Le rapport de partenariat PDF sera disponible au lancement.')">Générer le rapport</button>
       <button class="btn bo" onclick="toast('Renouvellement en préparation.')">Préparer le renouvellement</button>
     </div>`);
 }
-function sponsorMarkDone(spId,cId){
+async function sponsorMarkDone(spId,cId){
+  if(REAL){
+    const sp=realSponsors.find(x=>x.id===spId); if(!sp) return;
+    const commitments=sp.commitments.map(c=>c.id===cId?{...c,status:'realise'}:c);
+    const res=await sbFetch('club_sponsors?id=eq.'+spId, {method:'PATCH', body:{commitments}});
+    if(res.ok){ sp.commitments=commitments; openSponsorDrawer(spId); renderContent(); } else toast('Action impossible.');
+    return;
+  }
   const sp=DATA.sponsors.find(x=>x.id===spId); const c=sp.commitments.find(x=>x.id===cId); c.status='realise';
   openSponsorDrawer(spId); renderContent();
 }
@@ -1184,11 +1212,20 @@ function openSponsorForm(){
     <div class="field"><label>Montant annuel (€)</label><input id="sf-amount" type="text"></div>
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitSponsorForm()">Ajouter</button>`);
 }
-function submitSponsorForm(){
+async function submitSponsorForm(){
   const name=document.getElementById('sf-name').value.trim();
   if(!name){ toast('Le nom du sponsor est obligatoire.'); return; }
   const level=document.getElementById('sf-level').value;
-  DATA.sponsors.unshift({id:uid('sp'),name,secteur:document.getElementById('sf-sector').value||'Non précisé',niveau:level,color:level==='Or'?'#F5A623':level==='Argent'?'#A7B6C9':'#7455FF',teams:[],contact:document.getElementById('sf-contact').value,debut:'2026-07-28',fin:'2027-07-28',montant:Number(document.getElementById('sf-amount').value)||0,commitments:[]});
+  const secteur=document.getElementById('sf-sector').value||'Non précisé';
+  const contact=document.getElementById('sf-contact').value;
+  const montant=Number(document.getElementById('sf-amount').value)||0;
+  if(REAL){
+    const res=await sbFetch('club_sponsors', {method:'POST', body:{club_id:REAL.clubId, name, secteur, niveau:level, contact, montant, teams:[], commitments:[]}});
+    if(!res.ok){ toast("Erreur lors de l'ajout."); return; }
+    realSponsors=null; closeModal(); switchView('sponsors'); toast('Sponsor ajouté avec succès.');
+    return;
+  }
+  DATA.sponsors.unshift({id:uid('sp'),name,secteur,niveau:level,color:NIVEAU_COLOR[level]||'#7455FF',teams:[],contact,debut:'2026-07-28',fin:'2027-07-28',montant,commitments:[]});
   closeModal(); renderContent(); toast('Sponsor ajouté avec succès.');
 }
 
@@ -1200,10 +1237,15 @@ async function loadRealRequests(){
   if(!REAL) return;
   const res=await sbFetch('club_requests?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
   realRequests = res.ok ? (res.data||[]) : [];
-  if(S.view==='demandes') renderContent();
+  if(['demandes','dashboard','rapports'].includes(S.view)) renderContent();
 }
 function normRequestItem(r){
   return {id:r.id, type:r.type, team:r.team||'', requester:r.requester_name||'—', created:(r.created_at||'').slice(0,10), status:r.status, urgency:r.urgency||'normale', detail:r.detail||'', missing:r.missing||[], comments:r.comments||[], creditsReserved:r.credits_reserved||0};
+}
+function requestsSource(){
+  if(!REAL) return DATA.requests;
+  if(realRequests===null){ loadRealRequests(); return []; }
+  return realRequests.map(normRequestItem);
 }
 async function refreshClubCredits(){
   if(!REAL) return;
@@ -1388,17 +1430,35 @@ function submitBooking(){
 }
 
 /* ══════════════ ÉQUIPES & ÉDUCATEURS ══════════════ */
+let realTeams=null;
+function normTeam(r){
+  return {id:r.id, name:r.name, cat:r.categorie||'Non précisé', coach:r.coach||'À définir', respComm:r.resp_comm||'—', members:r.members||0, next:r.next_match||'À planifier', openReq:0, toPrep:0, contribution:0};
+}
+async function loadRealTeams(){
+  if(!REAL) return;
+  const res=await sbFetch('club_teams?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.asc');
+  realTeams = res.ok ? (res.data||[]).map(normTeam) : [];
+  if(['equipes','dashboard','rapports','abonnement'].includes(S.view)) renderContent();
+}
+function teamsSource(){
+  if(!REAL) return DATA.equipes;
+  if(realTeams===null){ loadRealTeams(); return []; }
+  return realTeams;
+}
 function tplEquipes(){
+  if(REAL && realTeams===null){ loadRealTeams(); return `<div class="sh"><b>Équipes & éducateurs</b></div><div class="empty-state">Chargement…</div>`; }
+  const src=teamsSource();
   return `<div class="sh"><b>Équipes & éducateurs</b><button class="btn bp" onclick="guard(openEquipeForm)()">+ Ajouter une équipe</button></div>
-    <div class="grid g2">${DATA.equipes.map(t=>`<button class="tile-card" onclick="openEquipeDrawer('${t.id}')">
+    <div class="grid g2">${src.map(t=>`<button class="tile-card" onclick="openEquipeDrawer('${t.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div><div style="font-size:15px;font-weight:700">${t.name}</div><div class="muted" style="font-size:11.5px">${t.cat} · ${t.members} membres</div></div><span class="badge" style="background:#168EFF22;color:var(--blue)">${t.contribution}% régularité</span></div>
       <div class="muted" style="font-size:12px;margin-bottom:4px">Éducateur : ${t.coach}</div>
       <div class="muted" style="font-size:12px;margin-bottom:10px">Prochain : ${t.next}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge" style="background:#F5A62322;color:var(--wa)">${t.openReq} demandes ouvertes</span><span class="badge" style="background:#2DD4E322;color:var(--cyan)">${t.toPrep} contenus à préparer</span></div>
-    </button>`).join('')}</div>`;
+    </button>`).join('')||'<div class="empty-state">Aucune équipe pour le moment.</div>'}</div>`;
 }
 function openEquipeDrawer(id){
-  const t=DATA.equipes.find(x=>x.id===id);
+  const t=teamsSource().find(x=>x.id===id);
+  if(!t){ toast('Équipe introuvable.'); return; }
   openDrawer(`<div class="sh"><b>${t.name}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="muted" style="font-size:12.5px;margin-bottom:18px">${t.cat} · ${t.members} membres</div>
     <div class="card" style="margin-bottom:16px">
@@ -1418,10 +1478,18 @@ function openEquipeForm(){
     <div class="row2"><div class="field"><label>Catégorie</label><input id="tf-cat" type="text"></div><div class="field"><label>Éducateur principal</label><input id="tf-coach" type="text"></div></div>
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitEquipeForm()">Ajouter</button>`);
 }
-function submitEquipeForm(){
+async function submitEquipeForm(){
   const name=document.getElementById('tf-name').value.trim();
   if(!name){ toast("Le nom de l'équipe est obligatoire."); return; }
-  DATA.equipes.push({id:uid('t'),name,cat:document.getElementById('tf-cat').value||'Non précisé',coach:document.getElementById('tf-coach').value||'À définir',respComm:'Lucas Perrin',members:0,next:'À planifier',openReq:0,toPrep:0,contribution:0});
+  const categorie=document.getElementById('tf-cat').value||'Non précisé';
+  const coach=document.getElementById('tf-coach').value||'À définir';
+  if(REAL){
+    const res=await sbFetch('club_teams', {method:'POST', body:{club_id:REAL.clubId, name, categorie, coach}});
+    if(!res.ok){ toast("Erreur lors de l'ajout."); return; }
+    realTeams=null; closeModal(); switchView('equipes'); toast('Équipe ajoutée avec succès.');
+    return;
+  }
+  DATA.equipes.push({id:uid('t'),name,cat:categorie,coach,respComm:'Lucas Perrin',members:0,next:'À planifier',openReq:0,toPrep:0,contribution:0});
   closeModal(); renderContent(); toast('Équipe ajoutée avec succès.');
 }
 
@@ -1434,7 +1502,12 @@ async function loadRealMembers(){
   if(!REAL) return;
   const res=await sbFetch('club_members?club_id=eq.'+REAL.clubId+'&select=id,role,prenom,nom,telephone,teams,status&order=created_at.asc');
   realMembers = res.ok ? (res.data||[]) : [];
-  if(S.view==='membres') renderContent();
+  if(['membres','dashboard'].includes(S.view)) renderContent();
+}
+function membersSource(){
+  if(!REAL) return DATA.users;
+  if(realMembers===null){ loadRealMembers(); return []; }
+  return realMembers.map(u=>({id:u.id, name:(`${u.prenom||''} ${u.nom||''}`.trim())||'(sans nom)', role:(ROLES[u.role]&&ROLES[u.role].label)||u.role, status:u.status}));
 }
 function tplMembres(){
   if(REAL){
@@ -1584,7 +1657,7 @@ function tplAbonnement(){
       </div>
       <div class="card">
         <b style="font-size:15px;display:block;margin-bottom:14px">Quotas de la formule</b>
-        ${[['Utilisateurs',DATA.users.length,10],['Équipes',DATA.equipes.length,8],['Modèles premium',2,5]].map(([l,used,total])=>`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span>${l}</span><span class="muted">${used} / ${total}</span></div><div class="progress"><i style="width:${Math.min(100,used/total*100)}%"></i></div></div>`).join('')}
+        ${[['Utilisateurs',REAL?(realMembers||[]).length:DATA.users.length,10],['Équipes',teamsSource().length,8],['Modèles premium',2,5]].map(([l,used,total])=>`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span>${l}</span><span class="muted">${used} / ${total}</span></div><div class="progress"><i style="width:${Math.min(100,used/total*100)}%"></i></div></div>`).join('')}
         <button class="btn bo" style="width:100%;justify-content:center;margin-top:6px" onclick="toast('Un conseiller SportVision vous recontactera prochainement.')">Contacter SportVision</button>
         <button class="btn" style="width:100%;justify-content:center;margin-top:4px;background:transparent;color:var(--er)" onclick="toast('La résiliation sera disponible au lancement.')">Résilier mon abonnement</button>
       </div>
@@ -1711,15 +1784,17 @@ function tplRapports(){
   const tabs=[['equipes','Activité des équipes'],['communication','Communication'],['sponsors','Sponsors'],['utilisation','Utilisation Club+']];
   let content='';
   if(rapView==='equipes'){
-    content=`<div class="grid g4" style="margin-bottom:20px"><div class="stat"><b>18/20</b><span>Résultats transmis</span></div><div class="stat"><b>${DATA.equipes.length}/5</b><span>Équipes actives</span></div><div class="stat"><b>${Math.round(DATA.equipes.reduce((a,t)=>a+t.contribution,0)/DATA.equipes.length)}%</b><span>Régularité moyenne</span></div><div class="stat"><b>2</b><span>Retards ce mois-ci</span></div></div>
+    const teamSrc=teamsSource();
+    const avgContrib=teamSrc.length?Math.round(teamSrc.reduce((a,t)=>a+t.contribution,0)/teamSrc.length):0;
+    content=`<div class="grid g4" style="margin-bottom:20px"><div class="stat"><b>18/20</b><span>Résultats transmis</span></div><div class="stat"><b>${teamSrc.length}</b><span>Équipes actives</span></div><div class="stat"><b>${avgContrib}%</b><span>Régularité moyenne</span></div><div class="stat"><b>2</b><span>Retards ce mois-ci</span></div></div>
       <div class="card"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:14px">RÉGULARITÉ PAR ÉQUIPE</div>
-      ${[...DATA.equipes].sort((a,b)=>b.contribution-a.contribution).map(t=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span>${t.name}</span><span class="muted">${t.contribution}%</span></div><div class="progress"><i style="width:${t.contribution}%"></i></div></div>`).join('')}</div>`;
+      ${[...teamSrc].sort((a,b)=>b.contribution-a.contribution).map(t=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span>${t.name}</span><span class="muted">${t.contribution}%</span></div><div class="progress"><i style="width:${t.contribution}%"></i></div></div>`).join('')||'<div class="muted" style="font-size:12.5px">Aucune équipe pour le moment.</div>'}</div>`;
   } else if(rapView==='communication'){
-    content=`<div class="grid g4" style="margin-bottom:20px"><div class="stat"><b>24</b><span>Contenus créés</span></div><div class="stat"><b>19</b><span>Contenus publiés</span></div><div class="stat"><b>1,4 j</b><span>Délai moyen</span></div><div class="stat"><b>${DATA.requests.length}</b><span>Demandes ce mois-ci</span></div></div>
+    content=`<div class="grid g4" style="margin-bottom:20px"><div class="stat"><b>24</b><span>Contenus créés</span></div><div class="stat"><b>19</b><span>Contenus publiés</span></div><div class="stat"><b>1,4 j</b><span>Délai moyen</span></div><div class="stat"><b>${requestsSource().length}</b><span>Demandes ce mois-ci</span></div></div>
       <div class="card"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:14px">FORMATS UTILISÉS</div>
       ${[['Affiches',45],['Stories',25],['Carrousels',18],['Vidéos',12]].map(([l,p])=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span>${l}</span><span class="muted">${p}%</span></div><div class="progress"><i style="width:${p}%;background:var(--violet)"></i></div></div>`).join('')}</div>`;
   } else if(rapView==='sponsors'){
-    content=`<div class="grid g4"><div class="stat"><b>9/13</b><span>Contreparties réalisées</span></div><div class="stat"><b>32</b><span>Publications sponsorisées</span></div><div class="stat"><b>${DATA.sponsors.length}</b><span>Sponsors valorisés</span></div><div class="stat"><b>2</b><span>Engagements en retard</span></div></div>`;
+    content=`<div class="grid g4"><div class="stat"><b>9/13</b><span>Contreparties réalisées</span></div><div class="stat"><b>32</b><span>Publications sponsorisées</span></div><div class="stat"><b>${sponsorsSource().length}</b><span>Sponsors valorisés</span></div><div class="stat"><b>2</b><span>Engagements en retard</span></div></div>`;
   } else {
     content=`<div class="grid g4"><div class="stat"><b>${DATA.users.filter(u=>u.status==='actif').length}</b><span>Utilisateurs actifs</span></div><div class="stat"><b>86</b><span>Connexions ce mois-ci</span></div><div class="stat"><b>${wallet.monthly-wallet.balance}/${wallet.monthly}</b><span>Crédits consommés</span></div><div class="stat"><b>${DATA.bookings.length}</b><span>Prestations commandées</span></div></div>`;
   }
@@ -1742,7 +1817,12 @@ function tplMesAcces(){
 }
 
 function dashRespEquipe(){
-  const team=DATA.equipes.find(t=>t.name==='Seniors R1');
+  const teamSrc=teamsSource();
+  const team = REAL ? teamSrc[0] : teamSrc.find(t=>t.name==='Seniors R1');
+  if(!team){
+    return `<div class="card" style="margin:20px 0"><b style="font-size:15px;display:block;margin-bottom:8px">Mon équipe</b><div class="muted" style="font-size:13px;margin-bottom:14px">Aucune équipe n'est encore enregistrée pour ce club.</div><button class="btn bp" onclick="switchView('equipes')">Ajouter une équipe</button></div>`;
+  }
+  const teamRequests = requestsSource().filter(r=>r.team===team.name);
   return `<div class="grid g2" style="margin:20px 0">
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Mon équipe — ${team.name}</b>
       <div class="grid g3" style="margin-bottom:16px"><div class="stat"><b>${team.members}</b><span>Membres</span></div><div class="stat"><b>${team.openReq}</b><span>Demandes ouvertes</span></div><div class="stat"><b>${team.contribution}%</b><span>Régularité</span></div></div>
@@ -1751,7 +1831,7 @@ function dashRespEquipe(){
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bp" onclick="openRequestWizard()">Créer une demande</button><button class="btn bo" onclick="switchView('calendrier')">Voir le calendrier</button></div>
     </div>
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Demandes de l'équipe</b>
-      ${DATA.requests.filter(r=>r.team==='Seniors R1').map(r=>{const sm=statusMeta(r.status); return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${typeLabel(r.type)}</span><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join('')}
+      ${teamRequests.map(r=>{const sm=statusMeta(r.status); return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${typeLabel(r.type)}</span><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join('')||'<div class="muted" style="font-size:12.5px">Aucune demande pour cette équipe.</div>'}
     </div>
   </div>`;
 }
