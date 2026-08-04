@@ -1933,9 +1933,21 @@ const AIDE_ARTICLES=[
   ['sponsors','Ajouter un sponsor et ses contreparties','Guide'],['prestations','Réserver une prestation SportVision','Guide'],
   ['abonnement','Changer de formule ou acheter des crédits','Guide'],['securite','Gérer les rôles et permissions','Guide']
 ];
+let realTickets=null;
+async function loadRealTickets(){
+  if(!REAL) return;
+  const res=await sbFetch('club_support_tickets?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
+  realTickets = res.ok ? (res.data||[]) : [];
+  if(S.view==='aide') renderContent();
+}
+function ticketStatusMeta(status){
+  return {ouvert:{label:'Ouvert',color:'#F5A623'}, en_cours:{label:'En cours',color:'#168EFF'}, resolu:{label:'Résolu',color:'#28C995'}}[status] || {label:status,color:'#A7B6C9'};
+}
 function tplAide(){
   const cats=[['demarrage','Démarrage'],['equipes','Équipes'],['resultats','Résultats'],['creations','Créations'],['sponsors','Sponsors'],['prestations','Prestations'],['abonnement','Abonnement'],['securite','Sécurité']];
   const filtered=AIDE_ARTICLES.filter(a=>(!aideCategory||a[0]===aideCategory)&&(!aideSearch.trim()||a[1].toLowerCase().includes(aideSearch.trim().toLowerCase())));
+  if(REAL && realTickets===null) loadRealTickets();
+  const tickets = REAL ? (realTickets||[]) : [];
   return `<div class="sh"><b>Aide et ressources</b></div>
     <input type="text" placeholder="Rechercher dans l'aide…" value="${esc(aideSearch)}" oninput="aideSearch=this.value;renderContent()" style="margin-bottom:16px">
     <div class="grid g4" style="margin-bottom:20px">${cats.map(([k,l])=>`<button class="pill${aideCategory===k?' on':''}" style="text-align:center;padding:12px" onclick="aideCategory=aideCategory==='${k}'?null:'${k}';renderContent()">${l}</button>`).join('')}</div>
@@ -1946,14 +1958,25 @@ function tplAide(){
       <div style="padding:12px 0;border-bottom:1px solid var(--bd)"><b style="font-size:13.5px;display:block;margin-bottom:6px">Comment fonctionnent les crédits ?</b><div class="muted" style="font-size:12.5px">Chaque création consomme un nombre de crédits défini selon sa complexité. Le crédit est débité lorsque SportVision accepte la demande.</div></div>
       <div style="padding:12px 0"><b style="font-size:13.5px;display:block;margin-bottom:6px">Puis-je changer de formule à tout moment ?</b><div class="muted" style="font-size:12.5px">Oui, depuis Abonnement & crédits.</div></div>
     </div>
+    ${REAL?`<div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:10px">MES TICKETS</div>
+    <div class="list-host" style="margin-bottom:22px">${tickets.map(t=>{const sm=ticketStatusMeta(t.status); return `<div class="list-row" style="cursor:default"><div><div style="font-weight:600;font-size:13px">${esc(t.subject)}</div><div class="muted" style="font-size:11px;margin-top:2px">${t.category||'—'} · ${fmtDate((t.created_at||'').slice(0,10))}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join('')||'<div class="empty-state">Aucun ticket envoyé pour le moment.</div>'}</div>`:''}
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:14px">Contacter le support</b>
       <div class="field"><label>Sujet</label><input id="sup-subject" type="text"></div>
-      <div class="field"><label>Catégorie</label><select><option>Démarrage</option><option>Équipes</option><option>Résultats</option><option>Créations</option><option>Sponsors</option><option>Prestations</option><option>Abonnement</option><option>Sécurité</option></select></div>
-      <div class="field"><label>Décrivez votre besoin…</label><textarea rows="3"></textarea></div>
+      <div class="field"><label>Catégorie</label><select id="sup-category"><option>Démarrage</option><option>Équipes</option><option>Résultats</option><option>Créations</option><option>Sponsors</option><option>Prestations</option><option>Abonnement</option><option>Sécurité</option></select></div>
+      <div class="field"><label>Décrivez votre besoin…</label><textarea id="sup-message" rows="3"></textarea></div>
       <button class="btn bp" onclick="submitSupport()">Envoyer au support</button></div>`;
 }
-function submitSupport(){
-  if(!document.getElementById('sup-subject').value.trim()){ toast('Le sujet est obligatoire.'); return; }
+async function submitSupport(){
+  const subject=document.getElementById('sup-subject').value.trim();
+  if(!subject){ toast('Le sujet est obligatoire.'); return; }
+  const category=document.getElementById('sup-category').value, message=document.getElementById('sup-message').value;
+  if(REAL){
+    const res=await sbFetch('club_support_tickets', {method:'POST', body:{club_id:REAL.clubId, subject, category, message, created_by:REAL.userId, author_name:REAL.person}});
+    if(!res.ok){ toast("Erreur lors de l'envoi."); return; }
+    realTickets=null; renderContent();
+    toast('Votre demande a été envoyée à SportVision. Réponse sous 24h ouvrées.');
+    return;
+  }
   toast('Votre demande a été envoyée à SportVision. Réponse sous 24h ouvrées.');
 }
 
