@@ -2403,6 +2403,68 @@ async function famVerifyAuth(id,decision){
   realFamAuthorizations=null; realFamRequests=null; renderContent(); toast(decision==='valide'?'Autorisation validée.':'Autorisation refusée.');
 }
 
+/* ── SIGNALEMENT DE MÉDIA (phase 9) — media_reports ──
+   Passer un signalement à 'media_masque' coupe réellement la visibilité
+   familiale du média (is_media_visible_to_family redéfinie en v19), pas
+   seulement un badge affiché — le club garde sa propre visibilité (is_club_
+   member n'est pas concerné par cette fonction) pour pouvoir l'instruire. */
+const MEDIA_REPORT_MOTIF_LABEL={
+  joueur_present_retrait:'Je suis présent, retrait souhaité', enfant_present:'Mon enfant est présent',
+  mauvaise_equipe:'Mauvaise équipe', contenu_inapproprie:'Contenu inapproprié',
+  droit_image:"Problème de droit à l'image", erreur:'Erreur', autre:'Autre'
+};
+const MEDIA_REPORT_STATUS_META={
+  recu:{label:'Reçu',color:'#168EFF'}, a_verifier:{label:'À vérifier',color:'#F5A623'},
+  media_masque:{label:'Média masqué',color:'#7455FF'}, infos_demandees:{label:'Infos demandées',color:'#F5A623'},
+  retrait_accepte:{label:'Retrait accepté',color:'#28C995'}, retrait_refuse:{label:'Retrait refusé',color:'#EF5B67'},
+  termine:{label:'Terminé',color:'#A7B6C9'}
+};
+let realFamReports=null;
+async function loadFamReports(){
+  if(!REAL) return;
+  const res=await sbFetch('media_reports?club_id=eq.'+REAL.clubId+'&select=*,player_profiles(prenom,nom)&order=created_at.desc');
+  realFamReports = res.ok ? (res.data||[]) : [];
+  if(S.view==='joueursfamilles') renderContent();
+}
+function famReportRowHtml(r){
+  const player=r.player_profiles||{};
+  const sm=MEDIA_REPORT_STATUS_META[r.statut]||{label:r.statut,color:'#A7B6C9'};
+  return `<div class="list-row" style="cursor:default;flex-wrap:wrap;gap:8px">
+    <div><div style="font-weight:700;font-size:13.5px">${esc(MEDIA_REPORT_MOTIF_LABEL[r.motif]||r.motif)}</div>
+    <div class="muted" style="font-size:12px;margin-top:2px">${player.prenom?esc(`${player.prenom} ${player.nom||''}`.trim())+' · ':''}${(r.created_at||'').slice(0,10)}</div>
+    ${r.message?`<div class="muted" style="font-size:12px;margin-top:4px">${esc(r.message)}</div>`:''}</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
+      <select onchange="famChangeReportStatus('${r.id}',this.value)" style="width:auto;padding:5px 8px;font-size:12px">
+        ${Object.keys(MEDIA_REPORT_STATUS_META).map(st=>`<option value="${st}" ${st===r.statut?'selected':''}>${MEDIA_REPORT_STATUS_META[st].label}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
+}
+async function famChangeReportStatus(id,statut){
+  const res=await sbFetch('media_reports?id=eq.'+id, {method:'PATCH', body:{statut}});
+  if(!res.ok){ toast('Action impossible (droits administrateur requis).'); return; }
+  realFamReports=null; renderContent(); toast('Statut mis à jour.');
+}
+function openFamReportModal(refType,refId){
+  openModal(`<div class="sh"><b>Signaler ce contenu</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Motif</label><select id="rp-motif">${Object.entries(MEDIA_REPORT_MOTIF_LABEL).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></div>
+    <div class="field"><label>Message (optionnel)</label><textarea id="rp-message" rows="3"></textarea></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitFamReport('${refType}','${refId}')">Envoyer le signalement</button>`);
+}
+async function submitFamReport(refType,refId){
+  const motif=document.getElementById('rp-motif').value;
+  const message=document.getElementById('rp-message').value.trim();
+  const cid=famCurrentClubId();
+  if(!cid){ toast('Aucun club identifié.'); return; }
+  const res=await sbFetch('media_reports', {method:'POST', body:{
+    club_id:cid, media_ref_type:refType, media_ref_id:refId, reported_by:REAL.userId,
+    player_concerned_id:famCurrentPlayerId()||null, motif, message:message||null
+  }});
+  if(!res.ok){ toast("Erreur lors de l'envoi du signalement."); return; }
+  closeModal(); toast('Signalement transmis au club.');
+}
+
 function famCodesTabHtml(){
   if(realFamCodes===null){ loadFamCodes(); return '<div class="empty-state">Chargement…</div>'; }
   return `<div class="grid g2">${teamsSource().map(t=>{
@@ -2485,7 +2547,7 @@ function tplFamillesDemandes(){
 
 function tplJoueursFamilles(){
   if(!REAL) return `<div class="sh"><b>Joueurs & Familles</b></div><div class="empty-state">Ce module utilise des comptes joueur/parent réels — non disponible en mode démo.</div>`;
-  const tabs=[['overview','Vue d’ensemble'],['demandes','Demandes'],['joueurs','Joueurs'],['parents','Parents'],['invitations','Invitations'],['autorisations','Autorisations'],['codes','Codes équipe']];
+  const tabs=[['overview','Vue d’ensemble'],['demandes','Demandes'],['joueurs','Joueurs'],['parents','Parents'],['invitations','Invitations'],['autorisations','Autorisations'],['signalements','Signalements'],['codes','Codes équipe']];
   let content='';
   if(famAdminTab==='overview'){
     if(realFamRequests===null) loadFamRequests();
@@ -2530,6 +2592,9 @@ function tplJoueursFamilles(){
       const relevant=(realFamAuthorizations||[]).filter(a=>a.statut!=='non_transmise');
       content=`<div class="list-host">${relevant.length?relevant.map(famAuthRowHtml).join(''):'<div class="empty-state">Aucune autorisation transmise pour le moment.</div>'}</div>`;
     }
+  } else if(famAdminTab==='signalements'){
+    if(realFamReports===null){ loadFamReports(); content='<div class="empty-state">Chargement…</div>'; }
+    else content=`<div class="list-host">${(realFamReports||[]).length?realFamReports.map(famReportRowHtml).join(''):'<div class="empty-state">Aucun signalement pour le moment.</div>'}</div>`;
   } else {
     content=famCodesTabHtml();
   }
@@ -2729,6 +2794,7 @@ function famLivrableTileHtml(m){
   const fav=famIsFavorite(m.refType,m.id);
   const openAction = m.link ? `window.open('${esc(m.link)}','_blank')` : "toast('Aperçu disponible directement dans l’application bientôt.')";
   return `<div class="tile-card" style="position:relative;cursor:pointer" onclick="${openAction}">
+    <button style="position:absolute;top:8px;right:36px;background:rgba(0,0,0,.45);border:none;border-radius:6px;padding:2px 7px;color:#fff;font-size:13px;cursor:pointer" onclick="event.stopPropagation();openFamReportModal('${m.refType}','${m.id}')" title="Signaler">⚑</button>
     <button style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);border:none;border-radius:6px;padding:2px 7px;color:#fff;font-size:14px;cursor:pointer" onclick="event.stopPropagation();famToggleFavorite('${m.refType}','${m.id}')">${fav?'★':'☆'}</button>
     <div class="thumb">${esc(m.title)}</div>
     <div style="font-weight:600;font-size:12px;margin-top:8px">${esc(m.title)}</div>
