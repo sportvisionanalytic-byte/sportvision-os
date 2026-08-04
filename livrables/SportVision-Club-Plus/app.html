@@ -934,8 +934,17 @@ async function submitMatchExpress(){
 
 /* ══════════════ CALENDRIER ══════════════ */
 let calFilterTeam='toutes', calFilterType='tous', calView='mois';
+let realEvents=null;
+async function loadRealEvents(){
+  if(!REAL) return;
+  const res=await sbFetch('club_calendar_events?club_id=eq.'+REAL.clubId+'&select=id,event_date,type,title,team&order=event_date.asc');
+  realEvents = res.ok ? (res.data||[]).map(r=>({id:r.id, date:r.event_date, type:r.type, title:r.title, team:r.team||''})) : [];
+  if(S.view==='calendrier') renderContent();
+}
 function tplCalendrier(){
-  const filtered=DATA.calEvents.filter(e=>(calFilterTeam==='toutes'||e.team===calFilterTeam||!e.team)&&(calFilterType==='tous'||e.type===calFilterType));
+  if(REAL && realEvents===null){ loadRealEvents(); return `<div class="sh"><b>Calendrier éditorial</b></div><div class="empty-state">Chargement…</div>`; }
+  const source = REAL ? realEvents : DATA.calEvents;
+  const filtered=source.filter(e=>(calFilterTeam==='toutes'||e.team===calFilterTeam||!e.team)&&(calFilterType==='tous'||e.type===calFilterType));
   let content='';
   if(calView==='mois'){
     const weeks=monthGrid(2026,7,filtered);
@@ -970,7 +979,7 @@ function monthGrid(y,m,events){
   return weeks;
 }
 function openDayDrawer(iso){
-  const evs=DATA.calEvents.filter(e=>e.date===iso);
+  const evs=(REAL?realEvents:DATA.calEvents).filter(e=>e.date===iso);
   openDrawer(`<div class="sh"><b>${fmtDate(iso)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     ${evs.map(e=>`<div class="card" style="margin-bottom:10px"><div style="display:flex;gap:8px;align-items:center"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${e.type[0].toUpperCase()}</span><b style="font-size:13.5px">${esc(e.title)}</b></div><div class="muted" style="font-size:12px;margin-top:4px">${e.team||'Club'}</div></div>`).join('') || '<div class="muted" style="margin-bottom:16px">Aucun événement ce jour-là pour l’instant.</div>'}
     <button class="btn bp" style="width:100%;justify-content:center" onclick="guard(()=>openAddEvent('${iso}'))()">+ Ajouter un événement</button>`);
@@ -982,8 +991,15 @@ function openAddEvent(iso){
     <div class="field"><label>Équipe</label><select id="ae-team">${DATA.teams.map(t=>`<option>${t}</option>`).join('')}</select></div>
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitAddEvent('${iso}')">Ajouter</button>`);
 }
-function submitAddEvent(iso){
-  DATA.calEvents.push({id:uid('e'),date:iso,type:document.getElementById('ae-type').value,title:document.getElementById('ae-title').value||'Nouvel événement',team:document.getElementById('ae-team').value});
+async function submitAddEvent(iso){
+  const type=document.getElementById('ae-type').value, title=document.getElementById('ae-title').value||'Nouvel événement', team=document.getElementById('ae-team').value;
+  if(REAL){
+    const res=await sbFetch('club_calendar_events', {method:'POST', body:{club_id:REAL.clubId, event_date:iso, type, title, team, created_by:REAL.userId}});
+    if(!res.ok){ toast("Erreur lors de l'ajout."); return; }
+    realEvents=null; closeModal(); closeDrawer(); switchView('calendrier'); toast('Événement ajouté au calendrier.');
+    return;
+  }
+  DATA.calEvents.push({id:uid('e'),date:iso,type,title,team});
   closeModal(); closeDrawer(); renderContent(); toast('Événement ajouté au calendrier.');
 }
 
@@ -1179,8 +1195,27 @@ function submitSponsorForm(){
 /* ══════════════ DEMANDES DE CRÉATION ══════════════ */
 let reqStatus='toutes';
 const REQ_STATUSES=['recues','info_manquante','en_traitement','prete_a_creer','terminee','refusee'];
+let realRequests=null;
+async function loadRealRequests(){
+  if(!REAL) return;
+  const res=await sbFetch('club_requests?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
+  realRequests = res.ok ? (res.data||[]) : [];
+  if(S.view==='demandes') renderContent();
+}
+function normRequestItem(r){
+  return {id:r.id, type:r.type, team:r.team||'', requester:r.requester_name||'—', created:(r.created_at||'').slice(0,10), status:r.status, urgency:r.urgency||'normale', detail:r.detail||'', missing:r.missing||[], comments:r.comments||[], creditsReserved:r.credits_reserved||0};
+}
+async function refreshClubCredits(){
+  if(!REAL) return;
+  const res=await sbFetch('clubs?id=eq.'+REAL.clubId+'&select=credits_balance,credits_monthly,credits_reserved');
+  if(res.ok && res.data && res.data[0]){
+    wallet.balance=res.data[0].credits_balance; wallet.monthly=res.data[0].credits_monthly; wallet.reserved=res.data[0].credits_reserved;
+  }
+}
 function tplDemandes(){
-  const list=DATA.requests.filter(r=>reqStatus==='toutes'||r.status===reqStatus);
+  if(REAL && realRequests===null){ loadRealRequests(); return `<div class="sh"><b>Demandes de création</b></div><div class="empty-state">Chargement…</div>`; }
+  const source = REAL ? realRequests.map(normRequestItem) : DATA.requests;
+  const list=source.filter(r=>reqStatus==='toutes'||r.status===reqStatus);
   return `<div class="sh"><b>Demandes de création</b><button class="btn bp" onclick="guard(openRequestWizard)()">+ Nouvelle demande</button></div>
     <div class="pillbar">${['toutes',...REQ_STATUSES].map(st=>`<button class="pill${reqStatus===st?' on':''}" onclick="reqStatus='${st}';renderContent()">${st==='toutes'?'Toutes':statusMeta(st).label}</button>`).join('')}</div>
     <div class="list-host">${list.length?list.map(r=>{const sm=statusMeta(r.status); return `
@@ -1191,7 +1226,8 @@ function tplDemandes(){
       </button>`;}).join(''):'<div class="empty-state">Aucune demande dans ce statut pour le moment.</div>'}</div>`;
 }
 function openRequestDrawer(id){
-  const r=DATA.requests.find(x=>x.id===id);
+  const r = REAL ? normRequestItem(realRequests.find(x=>x.id===id)||{}) : DATA.requests.find(x=>x.id===id);
+  if(!r || !r.id){ toast('Demande introuvable.'); return; }
   openDrawer(`<div class="sh"><b>${typeLabel(r.type)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="muted" style="font-size:12.5px;margin-bottom:18px">${r.team} · ${r.requester} · ${fmtDate(r.created)}</div>
     <div class="field"><label>Statut</label><select onchange="changeRequestStatus('${id}',this.value)">${REQ_STATUSES.map(st=>`<option value="${st}" ${st===r.status?'selected':''}>${statusMeta(st).label}</option>`).join('')}</select></div>
@@ -1202,12 +1238,27 @@ function openRequestDrawer(id){
     ${r.comments.map(c=>`<div class="card" style="margin-bottom:8px;padding:10px 12px"><div style="font-size:12px;font-weight:700">${c.author} <span class="muted" style="font-weight:400">· ${c.date}</span></div><div style="font-size:12.5px;margin-top:3px">${esc(c.text)}</div></div>`).join('')}
     <div style="display:flex;gap:8px;margin-top:8px"><input id="req-comment" type="text" placeholder="Ajouter un commentaire…" style="flex:1"><button class="btn bp" onclick="addRequestComment('${id}')">Envoyer</button></div>`);
 }
-function addRequestComment(id){
+async function addRequestComment(id){
   const el=document.getElementById('req-comment'); const text=el.value.trim(); if(!text) return;
+  if(REAL){
+    const row=realRequests.find(x=>x.id===id); if(!row) return;
+    const comments=[...(row.comments||[]), {author:REAL.person, text, date:'à l’instant'}];
+    const res=await sbFetch('club_requests?id=eq.'+id, {method:'PATCH', body:{comments}});
+    if(res.ok){ row.comments=comments; openRequestDrawer(id); } else toast('Action impossible.');
+    return;
+  }
   DATA.requests.find(x=>x.id===id).comments.push({author:ROLES[S.role].person,text,date:'à l’instant'});
   openRequestDrawer(id);
 }
-function changeRequestStatus(id,newStatus){
+async function changeRequestStatus(id,newStatus){
+  if(REAL){
+    const res=await sbFetch('rpc/update_club_request_status', {method:'POST', body:{p_request_id:id, p_status:newStatus}});
+    if(!res.ok){ toast('Action impossible.'); return; }
+    await refreshClubCredits();
+    realRequests=null; closeDrawer(); switchView('demandes');
+    toast(newStatus==='terminee'?'Statut mis à jour — crédits débités.':(newStatus==='refusee'?'Statut mis à jour — crédits réservés restitués.':'Statut mis à jour.'));
+    return;
+  }
   const r=DATA.requests.find(x=>x.id===id); const old=r.status; r.status=newStatus;
   if(r.creditsReserved){
     if(newStatus==='terminee'&&old!=='terminee'){
@@ -1251,8 +1302,16 @@ function requestWizardSync(){
 }
 function requestWizardBack(){ requestWizardSync(); rw.step=Math.max(1,rw.step-1); renderRequestWizard(); }
 function requestWizardNext(){ requestWizardSync(); rw.step=3; renderRequestWizard(); }
-function submitRequestWizard(){
+async function submitRequestWizard(){
   const cost=creditCost(rw.type);
+  if(REAL){
+    const res=await sbFetch('rpc/submit_club_request', {method:'POST', body:{p_club_id:REAL.clubId, p_team:rw.team, p_type:rw.type, p_urgency:rw.urgency, p_detail:rw.comment||'—', p_credits:cost}});
+    if(!res.ok){ toast("Erreur lors de l'envoi de la demande."); return; }
+    await refreshClubCredits();
+    realRequests=null; closeModal(); switchView('demandes');
+    toast(cost==null?'Demande envoyée avec succès. Cette prestation sera transmise sur devis.':`Demande envoyée. ${cost} crédit${cost>1?'s':''} réservé${cost>1?'s':''} en attente d'acceptation par SportVision.`);
+    return;
+  }
   const newReq={id:uid('r'),type:rw.type,team:rw.team,requester:ROLES[S.role].person,created:'2026-07-28',status:'recues',urgency:rw.urgency,detail:rw.comment||'—',missing:[],comments:[],creditsReserved:cost||0};
   DATA.requests.unshift(newReq);
   if(cost!=null) wallet.reserved+=cost;
