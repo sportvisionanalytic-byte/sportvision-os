@@ -729,6 +729,7 @@ const NAV={
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
+    {id:'form',lb:'Centre de formation',ic:'form'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -833,6 +834,7 @@ const NAV={
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
+    {id:'form',lb:'Centre de formation',ic:'form'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
@@ -1428,6 +1430,32 @@ const VIEWS={
     <div id="form-real"></div>`,
 
   'cm.form':()=>`
+    <div class="cd" style="margin-bottom:14px">
+      <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:2px">
+      <button data-tab="dashboard" onclick="setFormTab('dashboard')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--acc);background:var(--acc);color:#fff;flex-shrink:0">Tableau de bord</button>
+      <button data-tab="catalogue" onclick="setFormTab('catalogue')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Catalogue</button>
+      <button data-tab="mes-formations" onclick="setFormTab('mes-formations')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Mes formations</button>
+      <button data-tab="certifications" onclick="setFormTab('certifications')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Certifications</button>
+      <button data-tab="sessions" onclick="setFormTab('sessions')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Sessions</button>
+    </div>
+    <div id="form-real"></div>`,
+
+  'sec.form':()=>`
+    <div class="cd" style="margin-bottom:14px">
+      <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:2px">
+      <button data-tab="dashboard" onclick="setFormTab('dashboard')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--acc);background:var(--acc);color:#fff;flex-shrink:0">Tableau de bord</button>
+      <button data-tab="catalogue" onclick="setFormTab('catalogue')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Catalogue</button>
+      <button data-tab="mes-formations" onclick="setFormTab('mes-formations')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Mes formations</button>
+      <button data-tab="certifications" onclick="setFormTab('certifications')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Certifications</button>
+      <button data-tab="sessions" onclick="setFormTab('sessions')" class="form-tab" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid var(--b1);background:var(--s2);color:var(--t2);flex-shrink:0">Sessions</button>
+    </div>
+    <div id="form-real"></div>`,
+
+  'com.form':()=>`
     <div class="cd" style="margin-bottom:14px">
       <div style="padding:18px 20px" id="form-grade-content"><div style="color:var(--t3);font-size:13px;text-align:center;padding:20px">Chargement…</div></div>
     </div>
@@ -2832,6 +2860,8 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='form') await loadAdminForm();
   if(role==='prod'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='cm'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
+  if(role==='sec'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
+  if(role==='com'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(['prod','admin','sec','photo','cm','compta','com'].includes(role)&&view==='msg') await loadMsg();
   if(role==='compta'&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
@@ -19110,12 +19140,12 @@ function closeMobFilter(){
 // ── More Menu ─────────────────────────────────────────────────────────────
 const MOB_MORE_ITEMS={
   admin:[{id:'crm',lb:'Clients',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipes',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'}],
-  sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'}],
+  sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
-  com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
 };
 function openMobMore(){
   const el=document.getElementById('mob-more-overlay');
