@@ -2609,7 +2609,7 @@ function tplJoueursFamilles(){
    is_club_member. Tant que media_access_rules n'existe pas (phase 8),
    Livrables/Favoris/Projets restent des états d'attente honnêtes plutôt
    que des écrans vides silencieux ou des données inventées. */
-let realFamMyTeams=null, realFamMyEvents=null, realFamMyMatches=null, realFamCatalog=null, realFamMyAuthorizations=null, realFamMyLivrables=null, realFamFavorites=null;
+let realFamMyTeams=null, realFamMyEvents=null, realFamMyMatches=null, realFamCatalog=null, realFamMyAuthorizations=null, realFamMyLivrables=null, realFamFavorites=null, realFamMyBookings=null;
 let famActiveChildId=null; // parent uniquement : player_id de l'enfant actuellement sélectionné
 
 /* Identité "active" pour les vues partagées joueur/parent : le joueur lui-même
@@ -2628,7 +2628,7 @@ function famCurrentClubId(){
 }
 function famSetActiveChild(id){
   famActiveChildId=id;
-  realFamMyTeams=null; realFamMyEvents=null; realFamMyMatches=null; realFamMyAuthorizations=null; realFamMyLivrables=null;
+  realFamMyTeams=null; realFamMyEvents=null; realFamMyMatches=null; realFamMyAuthorizations=null; realFamMyLivrables=null; realFamMyBookings=null;
   updateFamParentHeader(); renderContent();
 }
 function famChildSwitcherHtml(){
@@ -2673,6 +2673,50 @@ async function loadFamCatalog(){
   const res=await sbFetch('catalogue_offres?actif=eq.true&select=id,nom,description,tarif_type,prix_ht,duree_estimee&order=ordre.asc');
   realFamCatalog = res.ok ? (res.data||[]) : [];
   if(S.view==='famservices') renderContent();
+}
+/* Estimation client de la tranche d'âge, pour l'affichage uniquement — le
+   vrai blocage est côté serveur (cbk_family_insert, v20 : sv_age_bracket
+   sur player_profiles.date_naissance), jamais seulement ce calcul-ci. */
+function famAgeBracketClient(dateNaissance){
+  if(!dateNaissance) return null;
+  const years=(Date.now()-new Date(dateNaissance).getTime())/(365.25*24*3600*1000);
+  if(years<14) return 'moins_14';
+  if(years<18) return '14_17';
+  return 'majeur';
+}
+async function loadFamMyBookings(){
+  if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  const pid=famCurrentPlayerId(); if(!pid){ realFamMyBookings=[]; if(S.view==='famcommandes') renderContent(); return; }
+  const res=await sbFetch('club_bookings?player_id=eq.'+pid+'&select=*&order=created_at.desc');
+  realFamMyBookings = res.ok ? (res.data||[]) : [];
+  if(S.view==='famcommandes') renderContent();
+}
+/* serviceId (uuid, sans caractère spécial) est le seul argument passé par
+   l'attribut onclick — le libellé/prix sont relus depuis realFamCatalog à
+   l'intérieur, pour ne jamais avoir à injecter un titre arbitraire (donc
+   potentiellement porteur d'apostrophes) dans une chaîne JS via le HTML. */
+function openFamBookingModal(serviceId){
+  const o=(realFamCatalog||[]).find(x=>x.id===serviceId);
+  if(!o){ toast('Service introuvable.'); return; }
+  openModal(`<div class="sh"><b>Commander — ${esc(o.nom)}</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Date souhaitée</label><input id="fb-date" type="date"></div>
+    <div class="field"><label>Précisions (optionnel)</label><textarea id="fb-objectif" rows="3"></textarea></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitFamBooking('${serviceId}')">Envoyer la demande</button>`);
+}
+async function submitFamBooking(serviceId){
+  const o=(realFamCatalog||[]).find(x=>x.id===serviceId);
+  if(!o){ toast('Service introuvable.'); return; }
+  const cid=famCurrentClubId(), pid=famCurrentPlayerId();
+  if(!cid || !pid){ toast('Aucun club ou enfant identifié.'); return; }
+  const eventDate=document.getElementById('fb-date').value||null;
+  const objectif=document.getElementById('fb-objectif').value.trim()||null;
+  const priceLabel = o.tarif_type==='sur_devis' ? 'Sur devis' : (o.prix_ht+' € HT');
+  const res=await sbFetch('club_bookings', {method:'POST', body:{
+    club_id:cid, player_id:pid, service_id:serviceId, service_label:o.nom, price_label:priceLabel,
+    event_date:eventDate, objectif, created_by:REAL.userId
+  }});
+  if(!res.ok){ toast((res.data&&res.data.message)||"Erreur lors de l'envoi de la demande."); return; }
+  closeModal(); realFamMyBookings=null; toast('Demande envoyée au club.');
 }
 async function loadFamMyAuthorizations(){
   if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
@@ -2810,10 +2854,15 @@ function tplEspaceJoueurLivrables(){
     <div class="grid g3">${items.length?items.map(famLivrableTileHtml).join(''):'<div class="empty-state">Aucun livrable publié par le club pour le moment.</div>'}</div>`;
 }
 function tplEspaceJoueurServices(){
+  if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Services pour moi</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour commander un service.</div>`;
   if(realFamCatalog===null){ loadFamCatalog(); return `<div class="sh"><b>Services pour moi</b></div><div class="empty-state">Chargement…</div>`; }
+  let childDob = REAL.space==='joueur' ? REAL.dateNaissance : ((REAL.children||[]).find(c=>c.playerId===famCurrentPlayerId())||{}).dateNaissance;
+  const bracket=famAgeBracketClient(childDob);
+  const canOrder = REAL.space==='parent' || bracket==='majeur';
   return `<div class="sh"><b>Services pour moi</b></div>
-    <div class="muted" style="font-size:12.5px;margin-bottom:14px">La commande directe depuis Club+ arrive bientôt — contactez le club en attendant pour réserver une prestation personnelle.</div>
-    <div class="grid g2">${(realFamCatalog||[]).length?realFamCatalog.map(o=>`<div class="card"><b style="font-size:14px;display:block;margin-bottom:6px">${esc(o.nom)}</b><div class="muted" style="font-size:12px;margin-bottom:8px">${esc(o.description||'')}</div><div style="font-size:12.5px;font-weight:700;color:var(--cyan)">${o.tarif_type==='sur_devis'?'Sur devis':(o.prix_ht+' € HT')}</div></div>`).join(''):'<div class="empty-state">Aucun service disponible pour le moment.</div>'}</div>`;
+    ${!canOrder?`<div class="card" style="border-color:#F5A62355;margin-bottom:14px;font-size:12.5px">En tant que mineur, vous ne pouvez pas commander directement — demandez à votre parent de le faire pour vous depuis son propre compte.</div>`:''}
+    <div class="grid g2">${(realFamCatalog||[]).length?realFamCatalog.map(o=>`<div class="card"><b style="font-size:14px;display:block;margin-bottom:6px">${esc(o.nom)}</b><div class="muted" style="font-size:12px;margin-bottom:8px">${esc(o.description||'')}</div><div style="font-size:12.5px;font-weight:700;color:var(--cyan);margin-bottom:10px">${o.tarif_type==='sur_devis'?'Sur devis':(o.prix_ht+' € HT')}</div>${canOrder?`<button class="btn bp" style="padding:6px 12px" onclick="openFamBookingModal('${o.id}')">Commander</button>`:''}</div>`).join(''):'<div class="empty-state">Aucun service disponible pour le moment.</div>'}</div>
+    <button class="btn bo" style="margin-top:16px" onclick="switchView('famcommandes')">Voir mes commandes</button>`;
 }
 function tplEspaceJoueurFavoris(){
   if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Mes favoris</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour voir ses favoris.</div>`;
@@ -2834,7 +2883,11 @@ function tplEspaceJoueurProjets(){
   return `<div class="sh"><b>${REAL.space==='parent'?'Projets d’équipe':'Mes projets'}</b></div><div class="empty-state">Les projets collectifs de l'équipe apparaîtront ici. Cette fonctionnalité arrive bientôt.</div>`;
 }
 function tplFamCommandes(){
-  return `<div class="sh"><b>Commandes</b></div><div class="empty-state">Vos commandes de prestations SportVision apparaîtront ici une fois la commande directe disponible depuis Club+. Cette fonctionnalité arrive bientôt.</div>`;
+  if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Commandes</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour voir ses commandes.</div>`;
+  if(realFamMyBookings===null){ loadFamMyBookings(); return `<div class="sh"><b>Commandes</b></div>${famChildSwitcherHtml()}<div class="empty-state">Chargement…</div>`; }
+  const items=realFamMyBookings||[];
+  return `<div class="sh"><b>Commandes</b></div>${famChildSwitcherHtml()}
+    <div class="list-host">${items.length?items.map(b=>{const sm=statusMeta(b.status); return `<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${esc(b.service_label)}</div><div class="muted" style="font-size:12px;margin-top:2px">${b.event_date||'Date à définir'}${b.price_label?' · '+esc(b.price_label):''}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join(''):'<div class="empty-state">Aucune commande pour le moment.</div>'}</div>`;
 }
 function famAuthorizationRowHtml(a){
   const m=FAM_AUTH_STATUS_META[a.statut]||{label:a.statut,color:'#A7B6C9'};
