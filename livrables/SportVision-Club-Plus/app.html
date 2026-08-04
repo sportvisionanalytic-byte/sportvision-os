@@ -811,7 +811,7 @@ function tplNewsroom(){
   }
   return `<div class="sh"><b>Newsroom du club</b><button class="btn bp" onclick="guard(openNewsroomForm)()">+ Envoyer une information</button></div>
     <div class="pillbar">${[['liste','Liste'],['cartes','Cartes'],['kanban','Kanban']].map(([k,l])=>`<button class="pill${nsView===k?' on':''}" onclick="nsView='${k}';renderContent()">${l}</button>`).join('')}</div>
-    <div class="pillbar">${['toutes',...DATA.teams].map(t=>`<button class="pill${nsTeam===t?' on':''}" onclick="nsTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
+    <div class="pillbar">${['toutes',...teamNames()].map(t=>`<button class="pill${nsTeam===t?' on':''}" onclick="nsTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
     <div class="pillbar">${['toutes',...statuses].map(st=>`<button class="pill${nsStatus===st?' on':''}" onclick="nsStatus='${st}';renderContent()">${st==='toutes'?'Tous les statuts':statusMeta(st).label}</button>`).join('')}</div>
     ${content}`;
 }
@@ -842,7 +842,7 @@ async function nsAction(id,status,msg){
 function openNewsroomForm(){
   openModal(`<div class="sh"><b>Envoyer une information</b><button class="close-x" onclick="closeModal()">✕</button></div>
     <div class="row2"><div class="field"><label>Type</label><select id="nf-type"><option>Résultat</option><option>Actualité</option></select></div>
-    <div class="field"><label>Équipe</label><select id="nf-team">${DATA.teams.map(t=>`<option>${t}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Équipe</label><select id="nf-team">${teamNames().map(t=>`<option>${t}</option>`).join('')}</select></div></div>
     <div class="field"><label>Titre</label><input id="nf-title" type="text"></div>
     <div class="field"><label>Description</label><textarea id="nf-desc" rows="3"></textarea></div>
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitNewsroomForm()">Envoyer</button>`);
@@ -924,7 +924,7 @@ async function mcSendNewsroom(id){
 }
 function openMatchExpress(){
   openModal(`<div class="sh"><b>Résultat express</b><button class="close-x" onclick="closeModal()">✕</button></div>
-    <div class="row2"><div class="field"><label>Équipe</label><select id="me-team">${DATA.teams.map(t=>`<option>${t}</option>`).join('')}</select></div>
+    <div class="row2"><div class="field"><label>Équipe</label><select id="me-team">${teamNames().map(t=>`<option>${t}</option>`).join('')}</select></div>
     <div class="field"><label>Domicile / extérieur</label><select id="me-de"><option>Domicile</option><option>Extérieur</option></select></div></div>
     <div class="field"><label>Adversaire</label><input id="me-opp" type="text"></div>
     <div class="field"><label>Score</label><input id="me-score" type="text" placeholder="2-1"></div>
@@ -972,7 +972,7 @@ function tplCalendrier(){
   }
   return `<div class="sh"><b>Calendrier éditorial — Août 2026</b><span class="pill">Saison 2026-2027</span></div>
     <div class="pillbar">${[['mois','Mois'],['agenda','Agenda']].map(([k,l])=>`<button class="pill${calView===k?' on':''}" onclick="calView='${k}';renderContent()">${l}</button>`).join('')}</div>
-    <div class="pillbar">${['toutes',...DATA.teams].map(t=>`<button class="pill${calFilterTeam===t?' on':''}" onclick="calFilterTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
+    <div class="pillbar">${['toutes',...teamNames()].map(t=>`<button class="pill${calFilterTeam===t?' on':''}" onclick="calFilterTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
     <div class="pillbar">${[['tous','Tous les types'],['match','Matchs'],['contenu','Contenus'],['sponsor','Sponsors'],['prestation','Prestations'],['entrainement','Entraînements'],['tournoi','Tournois']].map(([k,l])=>`<button class="pill${calFilterType===k?' on':''}" onclick="calFilterType='${k}';renderContent()">${l}</button>`).join('')}</div>
     ${content}`;
 }
@@ -1000,7 +1000,7 @@ function openAddEvent(iso){
   openModal(`<div class="sh"><b>Ajouter un événement — ${fmtDate(iso)}</b><button class="close-x" onclick="closeModal()">✕</button></div>
     <div class="field"><label>Type</label><select id="ae-type"><option value="match">Match</option><option value="entrainement">Entraînement important</option><option value="tournoi">Tournoi</option><option value="contenu">Contenu à préparer</option><option value="sponsor">Échéance sponsor</option><option value="prestation">Prestation SportVision</option></select></div>
     <div class="field"><label>Titre</label><input id="ae-title" type="text" placeholder="ex: Match vs AS Berville"></div>
-    <div class="field"><label>Équipe</label><select id="ae-team">${DATA.teams.map(t=>`<option>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Équipe</label><select id="ae-team">${teamNames().map(t=>`<option>${t}</option>`).join('')}</select></div>
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitAddEvent('${iso}')">Ajouter</button>`);
 }
 async function submitAddEvent(iso){
@@ -1104,7 +1104,7 @@ function renderCreationWizard(){
   if(cw.step===1){
     body=`<div class="muted" style="font-size:12.5px;margin-bottom:12px">Choisissez un type de contenu</div><div class="grid g2">${CREATION_TYPES.map(t=>`<button class="opt-btn" onclick="cw.type='${t}';cw.step=2;renderCreationWizard()">${typeLabel(t)}</button>`).join('')}</div>`;
   } else if(cw.step===2){
-    body=`<div class="field"><label>Équipe</label><select id="cw-team">${DATA.teams.map(t=>`<option ${t===cw.team?'selected':''}>${t}</option>`).join('')}</select></div>
+    body=`<div class="field"><label>Équipe</label><select id="cw-team">${teamNames().map(t=>`<option ${t===cw.team?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="field"><label>Titre</label><input id="cw-title" type="text" value="${esc(cw.title)}"></div>
       <div class="field"><label>Détail (score, adversaire, message…)</label><textarea id="cw-detail" rows="2">${esc(cw.detail)}</textarea></div>`;
   } else if(cw.step===3){
@@ -1181,7 +1181,7 @@ function tplMediatheque(){
   const list=mediaSource().filter(m=>(mtTeam==='toutes'||m.team===mtTeam||!m.team)&&(mtType==='tous'||m.type===mtType));
   const typeLbl={photo:'Photo',video:'Vidéo',logo:'Logo',document:'Document',creation:'Création'};
   return `<div class="sh"><b>Banque média</b><button class="btn bp" onclick="guard(openMediaForm)()">+ Importer</button></div>
-    <div class="pillbar">${['toutes',...DATA.teams].map(t=>`<button class="pill${mtTeam===t?' on':''}" onclick="mtTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
+    <div class="pillbar">${['toutes',...teamNames()].map(t=>`<button class="pill${mtTeam===t?' on':''}" onclick="mtTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
     <div class="pillbar">${[['tous','Tous les types'],['photo','Photos'],['video','Vidéos'],['logo','Logos'],['creation','Créations']].map(([k,l])=>`<button class="pill${mtType===k?' on':''}" onclick="mtType='${k}';renderContent()">${l}</button>`).join('')}</div>
     <div class="grid g4">${list.map(m=>`<button class="tile-card" onclick="openMediaDrawer('${m.id}')"><div class="thumb">${esc(m.title)}</div><div style="font-weight:600;font-size:12px;margin-top:8px">${esc(m.title)}</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"><span class="badge" style="background:#168EFF22;color:var(--blue)">${typeLbl[m.type]}</span><span class="badge" style="background:${m.expired?'#EF5B6722':'#28C99522'};color:${m.expired?'var(--er)':'var(--ok)'}">${m.expired?'Lien expiré':m.source}</span></div></button>`).join('')||'<div class="empty-state">Aucun média pour ces filtres.</div>'}</div>`;
@@ -1202,7 +1202,7 @@ function openMediaForm(){
   openModal(`<div class="sh"><b>Importer un média</b><button class="close-x" onclick="closeModal()">✕</button></div>
     <div class="field"><label>Titre</label><input id="mf-title" type="text"></div>
     <div class="row2"><div class="field"><label>Type</label><select id="mf-type"><option value="photo">Photo</option><option value="video">Vidéo</option><option value="logo">Logo</option><option value="document">Document</option><option value="creation">Création</option></select></div>
-    <div class="field"><label>Équipe</label><select id="mf-team">${DATA.teams.map(t=>`<option>${t}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Équipe</label><select id="mf-team">${teamNames().map(t=>`<option>${t}</option>`).join('')}</select></div></div>
     <div class="field"><label>Source</label><select id="mf-source"><option value="externe">Lien externe</option><option value="interne">Stockage Club+</option></select></div>
     <div class="field"><label>Lien (si externe)</label><input id="mf-link" type="text" placeholder="https://…"></div>
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitMediaForm()">Importer</button>`);
@@ -1416,7 +1416,7 @@ function renderRequestWizard(){
   if(rw.step===1){
     body=`<div class="grid g2">${REQ_TYPES.map(t=>{const c=creditCost(t); return `<button class="opt-btn" onclick="rw.type='${t}';rw.step=2;renderRequestWizard()"><div>${typeLabel(t)}<div style="color:var(--cyan);font-size:11px;font-weight:600;margin-top:4px">${c==null?'Sur devis':c+' crédit'+(c>1?'s':'')}</div></div></button>`;}).join('')}</div>`;
   } else if(rw.step===2){
-    body=`<div class="field"><label>Équipe</label><select id="rw-team">${DATA.teams.map(t=>`<option ${t===rw.team?'selected':''}>${t}</option>`).join('')}</select></div>
+    body=`<div class="field"><label>Équipe</label><select id="rw-team">${teamNames().map(t=>`<option ${t===rw.team?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="field"><label>Commentaire</label><textarea id="rw-comment" rows="2">${esc(rw.comment)}</textarea></div>
       <div class="field"><label>Niveau d'urgence</label><select id="rw-urgency"><option value="normale" ${rw.urgency==='normale'?'selected':''}>Normale</option><option value="haute" ${rw.urgency==='haute'?'selected':''}>Haute</option></select></div>`;
   } else {
@@ -1536,7 +1536,7 @@ function renderBookingWizard(){
   let body='';
   if(bw.step===1){
     body=`<div class="field"><label>Type de prestation</label><select id="bw-type">${cat.map(sv=>`<option value="${sv.key}" ${sv.key===bw.type?'selected':''}>${sv.label}</option>`).join('')}</select></div>
-      <div class="field"><label>Équipe</label><select id="bw-team">${DATA.teams.map(t=>`<option ${t===bw.team?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Équipe</label><select id="bw-team">${teamNames().map(t=>`<option ${t===bw.team?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="row2"><div class="field"><label>Date</label><input id="bw-date" type="date"></div><div class="field"><label>Heure</label><input id="bw-heure" type="text" placeholder="15:00"></div></div>
       <div class="field"><label>Adresse</label><input id="bw-adresse" type="text" placeholder="Stade Municipal, Sens"></div>`;
   } else {
@@ -1592,6 +1592,11 @@ function teamsSource(){
   if(!REAL) return DATA.equipes;
   if(realTeams===null){ loadRealTeams(); return []; }
   return realTeams;
+}
+function teamNames(){
+  if(!REAL) return DATA.teams;
+  const names=teamsSource().map(t=>t.name);
+  return names.length ? names : DATA.teams;
 }
 function tplEquipes(){
   if(REAL && realTeams===null){ loadRealTeams(); return `<div class="sh"><b>Équipes & éducateurs</b></div><div class="empty-state">Chargement…</div>`; }
@@ -1751,7 +1756,7 @@ function renderInviteWizard(){
       <div class="card" id="iw-desc" style="font-size:12px;color:var(--t2);line-height:1.6">${ROLE_DESC[iw.role]}</div>`;
   } else {
     body=`<div class="muted" style="font-size:12px;margin-bottom:8px">Équipes concernées</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${DATA.teams.map(t=>`<button class="pill${iw.teams.includes(t)?' on':''}" onclick="iwToggleTeam('${t}')">${t}</button>`).join('')}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${teamNames().map(t=>`<button class="pill${iw.teams.includes(t)?' on':''}" onclick="iwToggleTeam('${t}')">${t}</button>`).join('')}</div>
       <div class="muted" style="font-size:11.5px">Permissions recommandées appliquées automatiquement selon le rôle — personnalisables ensuite dans Paramètres.</div>`;
   }
   openModal(`<div class="sh"><b>Inviter un utilisateur — étape ${iw.step}/3</b><button class="close-x" onclick="closeModal()">✕</button></div>
