@@ -2573,6 +2573,57 @@ async function submitFamContribution(projectId){
   window.location.href=res.data.url;
 }
 
+/* ── NOUVELLE SAISON (phase 12) — season_membership_renewals ──
+   Aucun accès n'est reconduit silencieusement : un rattachement actif
+   (team_memberships.statut='active') le reste tant qu'un admin ne traite
+   pas explicitement ce joueur pour la saison suivante. renew_season_
+   membership (v22) archive l'ancien rattachement et, pour renouveler/
+   déplacer, en crée un nouveau sur la saison de destination — jamais une
+   simple réécriture, pour garder l'historique par saison. */
+let realFamActiveMemberships=null, famNewSaison='';
+async function loadFamActiveMemberships(){
+  if(!REAL) return;
+  const res=await sbFetch('team_memberships?club_id=eq.'+REAL.clubId+'&statut=eq.active&select=id,saison,player_id,team_id,player_profiles(prenom,nom),club_teams(name)&order=created_at.asc');
+  realFamActiveMemberships = res.ok ? (res.data||[]) : [];
+  if(famAdminTab==='saison') renderContent();
+}
+function famRenewalRowHtml(m){
+  const teams=teamsSource();
+  const name=`${(m.player_profiles&&m.player_profiles.prenom)||''} ${(m.player_profiles&&m.player_profiles.nom)||''}`.trim()||'—';
+  return `<div class="list-row" style="cursor:default;flex-wrap:wrap;gap:8px">
+    <div><div style="font-weight:700;font-size:13.5px">${esc(name)}</div><div class="muted" style="font-size:12px;margin-top:2px">${esc((m.club_teams&&m.club_teams.name)||'')} · Saison ${esc(m.saison)}</div></div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <select id="ra-action-${m.id}" onchange="famToggleRenewalTeam('${m.id}')" style="width:auto;padding:5px 8px;font-size:12px">
+        <option value="renouvele">Renouveler</option>
+        <option value="deplace">Déplacer</option>
+        <option value="mis_en_attente">Mettre en attente</option>
+        <option value="archive">Archiver</option>
+        <option value="quitte_club">A quitté le club</option>
+      </select>
+      <select id="ra-team-${m.id}" style="width:auto;padding:5px 8px;font-size:12px;display:none">
+        ${teams.map(t=>`<option value="${t.id}" ${t.id===m.team_id?'selected':''}>${esc(t.name)}</option>`).join('')}
+      </select>
+      <button class="btn bp" style="padding:5px 10px" onclick="applyFamRenewal('${m.id}')">Appliquer</button>
+    </div>
+  </div>`;
+}
+function famToggleRenewalTeam(membershipId){
+  const action=document.getElementById('ra-action-'+membershipId).value;
+  document.getElementById('ra-team-'+membershipId).style.display = action==='deplace' ? '' : 'none';
+}
+async function applyFamRenewal(membershipId){
+  const action=document.getElementById('ra-action-'+membershipId).value;
+  const needsSaison = action==='renouvele' || action==='deplace';
+  const toSaison=document.getElementById('fam-new-saison').value.trim();
+  if(needsSaison && !toSaison){ toast('Indiquez la nouvelle saison (ex : 2027-2028).'); return; }
+  const newTeamId = action==='deplace' ? document.getElementById('ra-team-'+membershipId).value : null;
+  const res=await sbFetch('rpc/renew_season_membership', {method:'POST', body:{
+    p_membership_id:membershipId, p_action:action, p_new_team_id:newTeamId, p_to_saison:needsSaison?toSaison:null
+  }});
+  if(!res.ok){ toast((res.data&&res.data.message)||'Action impossible.'); return; }
+  realFamActiveMemberships=null; renderContent(); toast('Traité.');
+}
+
 function famCodesTabHtml(){
   if(realFamCodes===null){ loadFamCodes(); return '<div class="empty-state">Chargement…</div>'; }
   return `<div class="grid g2">${teamsSource().map(t=>{
@@ -2655,7 +2706,7 @@ function tplFamillesDemandes(){
 
 function tplJoueursFamilles(){
   if(!REAL) return `<div class="sh"><b>Joueurs & Familles</b></div><div class="empty-state">Ce module utilise des comptes joueur/parent réels — non disponible en mode démo.</div>`;
-  const tabs=[['overview','Vue d’ensemble'],['demandes','Demandes'],['joueurs','Joueurs'],['parents','Parents'],['invitations','Invitations'],['autorisations','Autorisations'],['signalements','Signalements'],['projets','Projets d’équipe'],['codes','Codes équipe']];
+  const tabs=[['overview','Vue d’ensemble'],['demandes','Demandes'],['joueurs','Joueurs'],['parents','Parents'],['invitations','Invitations'],['autorisations','Autorisations'],['signalements','Signalements'],['projets','Projets d’équipe'],['saison','Nouvelle saison'],['codes','Codes équipe']];
   let content='';
   if(famAdminTab==='overview'){
     if(realFamRequests===null) loadFamRequests();
@@ -2706,6 +2757,15 @@ function tplJoueursFamilles(){
   } else if(famAdminTab==='projets'){
     if(realFamProjects===null){ loadFamProjects(); content='<div class="empty-state">Chargement…</div>'; }
     else content=(realFamProjects||[]).length?realFamProjects.map(famProjectAdminRowHtml).join(''):'<div class="empty-state">Aucun projet d’équipe pour le moment.</div>';
+  } else if(famAdminTab==='saison'){
+    if(realFamActiveMemberships===null){ loadFamActiveMemberships(); content='<div class="empty-state">Chargement…</div>'; }
+    else {
+      content=`<div class="card" style="margin-bottom:16px">
+        <div class="field" style="margin-bottom:8px"><label>Nouvelle saison</label><input id="fam-new-saison" type="text" placeholder="ex : 2027-2028" value="${esc(famNewSaison)}" onchange="famNewSaison=this.value"></div>
+        <div class="muted" style="font-size:11.5px">Saisissez la saison de destination puis traitez chaque joueur ci-dessous. Une fois terminé, mettez à jour la saison affichée du club dans Paramètres → Identité du club.</div>
+      </div>
+      <div class="list-host">${(realFamActiveMemberships||[]).length?realFamActiveMemberships.map(famRenewalRowHtml).join(''):'<div class="empty-state">Aucun joueur actif à traiter pour le moment.</div>'}</div>`;
+    }
   } else {
     content=famCodesTabHtml();
   }
