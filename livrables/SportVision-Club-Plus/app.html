@@ -708,7 +708,7 @@ function dashPresident(){
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Résumé du mois</b>
       <div class="grid g3" style="margin-bottom:16px"><div class="stat"><b>19</b><span>Contenus publiés</span></div><div class="stat"><b>${sponsorsSource().length}</b><span>Sponsors actifs</span></div><div class="stat"><b>${teamsSource().length}</b><span>Équipes actives</span></div></div>
       <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">CONTENUS EN ATTENTE DE VALIDATION</div>
-      ${DATA.creations.filter(c=>c.status==='a_valider').map(c=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">${esc(c.title)}</span><span class="badge" style="background:#F5A62322;color:var(--wa)">À valider</span></div>`).join('')}
+      ${creationsSource().filter(c=>c.status==='a_valider').map(c=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">${esc(c.title)}</span><span class="badge" style="background:#F5A62322;color:var(--wa)">À valider</span></div>`).join('')||'<div class="muted" style="padding:9px 0;font-size:12.5px">Rien en attente de validation.</div>'}
     </div>
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Alertes importantes</b>
       <div style="padding:8px 0;border-bottom:1px solid var(--bd);font-size:12.5px">2 contreparties sponsors à réaliser ce mois-ci.</div>
@@ -1008,11 +1008,28 @@ async function submitAddEvent(iso){
 /* ══════════════ STUDIO DE CRÉATION ══════════════ */
 let crView='creer';
 const CREATION_TYPES=['avant_match','composition','resultat','homme_du_match','matchday','recrutement','anniversaire','annonce_sponsor','tournoi'];
+let realCreations=null;
+function normCreation(r){
+  return {id:r.id, title:r.title, type:r.type, team:r.team||'', status:r.status, sponsor:r.sponsor||'', date:(r.created_at||'').slice(0,10)};
+}
+async function loadRealCreations(){
+  if(!REAL) return;
+  const res=await sbFetch('club_creations?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
+  realCreations = res.ok ? (res.data||[]) : [];
+  if(['creations','dashboard'].includes(S.view)) renderContent();
+}
+function creationsSource(){
+  if(!REAL) return DATA.creations;
+  if(realCreations===null){ loadRealCreations(); return []; }
+  return realCreations.map(normCreation);
+}
 function tplCreations(){
+  if(REAL && realCreations===null){ loadRealCreations(); return `<div class="sh"><b>Studio de création</b></div><div class="empty-state">Chargement…</div>`; }
+  const src=creationsSource();
   const tabs=[['creer','Créer un visuel'],['brouillons','Mes brouillons'],['a_valider','À valider'],['valides','Validés'],['modeles','Modèles du club'],['historique','Historique']];
   let content='';
   if(crView==='creer'){
-    const drafts=DATA.creations.filter(c=>c.status==='brouillon').slice(0,3);
+    const drafts=src.filter(c=>c.status==='brouillon').slice(0,3);
     content=`<div class="card" style="background:linear-gradient(135deg,var(--card),var(--card2));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:22px">
       <div><b style="font-size:15px;display:block;margin-bottom:6px">Créer un nouveau visuel</b><div class="muted" style="font-size:12.5px;max-width:440px">Choisissez un type de contenu, un modèle contrôlé et laissez le studio préparer votre visuel aux couleurs du club.</div></div>
       <button class="btn bp" onclick="guard(openCreationWizard)()">Démarrer →</button></div>
@@ -1022,11 +1039,11 @@ function tplCreations(){
     const templates=[['Affiche avant-match — Classique','Accessible'],['Affiche avant-match — Premium','Premium'],['Résultat — Classique','Accessible'],['Composition — Classique','Accessible'],['Story matchday','Accessible'],['Carrousel sponsor — Premium','Premium'],['Annonce recrutement','Accessible'],['Anniversaire club','Accessible']];
     content=`<div class="grid g4">${templates.map(([label,badge])=>`<div class="tile-card"><div class="thumb">${label}</div><div style="font-weight:600;font-size:12px;margin-top:8px">${label}</div><span class="badge" style="background:${badge==='Premium'?'#7455FF22':'#28C99522'};color:${badge==='Premium'?'var(--violet)':'var(--ok)'};margin-top:6px">${badge}</span></div>`).join('')}</div>`;
   } else if(crView==='historique'){
-    const hist=DATA.creations.filter(c=>['publie','valide'].includes(c.status));
-    content=`<div class="list-host">${hist.map(c=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:600;font-size:13.5px">${esc(c.title)}</div><div class="muted" style="font-size:11.5px">${fmtDate(c.date)}</div></div><span class="badge" style="background:${c.status==='publie'?'#168EFF22':'#28C99522'};color:${c.status==='publie'?'var(--blue)':'var(--ok)'}">${c.status==='publie'?'Publiée':'Validée'}</span></div>`).join('')}</div>`;
+    const hist=src.filter(c=>['publie','valide'].includes(c.status));
+    content=`<div class="list-host">${hist.map(c=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:600;font-size:13.5px">${esc(c.title)}</div><div class="muted" style="font-size:11.5px">${fmtDate(c.date)}</div></div><span class="badge" style="background:${c.status==='publie'?'#168EFF22':'#28C99522'};color:${c.status==='publie'?'var(--blue)':'var(--ok)'}">${c.status==='publie'?'Publiée':'Validée'}</span></div>`).join('')||'<div class="empty-state">Rien dans l’historique pour le moment.</div>'}</div>`;
   } else {
     const map={brouillons:'brouillon',a_valider:'a_valider',valides:'valide'};
-    const list=DATA.creations.filter(c=>c.status===map[crView]);
+    const list=src.filter(c=>c.status===map[crView]);
     content = list.length ? `<div class="grid g3">${list.map(c=>{const sm=statusMeta(c.status); return `<button class="tile-card" onclick="openCreationDrawer('${c.id}')"><div class="thumb">${esc(c.title)}</div><div style="font-weight:600;font-size:12.5px;margin-top:8px">${esc(c.title)}</div><div class="muted" style="font-size:11px;margin-top:2px">${c.team} · ${fmtDate(c.date)}</div><span class="badge" style="background:${sm.color}22;color:${sm.color};margin-top:6px">${sm.label}</span></button>`;}).join('')}</div>` : `<div class="empty-state">Aucun visuel dans cette catégorie pour le moment.</div>`;
   }
   return `<div class="sh"><b>Studio de création</b><button class="btn bp" onclick="guard(openCreationWizard)()">+ Nouveau visuel</button></div>
@@ -1034,7 +1051,9 @@ function tplCreations(){
     ${content}`;
 }
 function openCreationDrawer(id){
-  const c=DATA.creations.find(x=>x.id===id); const sm=statusMeta(c.status);
+  const c=creationsSource().find(x=>x.id===id);
+  if(!c){ toast('Visuel introuvable.'); return; }
+  const sm=statusMeta(c.status);
   openDrawer(`<div class="sh"><b>${typeLabel(c.type)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="muted" style="font-size:12px;margin-bottom:14px">${c.team} · ${fmtDate(c.date)}</div>
     <div class="thumb" style="height:200px;margin-bottom:16px">${esc(c.title)}</div>
@@ -1048,8 +1067,25 @@ function openCreationDrawer(id){
       <button class="btn bo" onclick="toast('Le téléchargement sera disponible au lancement de SportVision Club+.')">Télécharger</button>
     </div>`);
 }
-function crStatus(id,status,msg){ const c=DATA.creations.find(x=>x.id===id); c.status=status; closeDrawer(); renderContent(); toast(msg); }
-function crDuplicate(id){ const c=DATA.creations.find(x=>x.id===id); DATA.creations.unshift({...c,id:uid('c'),title:c.title+' (copie)',status:'brouillon'}); closeDrawer(); renderContent(); toast('Visuel dupliqué en brouillon.'); }
+async function crStatus(id,status,msg){
+  if(REAL){
+    const res=await sbFetch('club_creations?id=eq.'+id, {method:'PATCH', body:{status}});
+    if(!res.ok){ toast('Action impossible.'); return; }
+    realCreations=null; closeDrawer(); switchView('creations'); toast(msg);
+    return;
+  }
+  const c=DATA.creations.find(x=>x.id===id); c.status=status; closeDrawer(); renderContent(); toast(msg);
+}
+async function crDuplicate(id){
+  if(REAL){
+    const c=creationsSource().find(x=>x.id===id); if(!c) return;
+    const res=await sbFetch('club_creations', {method:'POST', body:{club_id:REAL.clubId, title:c.title+' (copie)', type:c.type, team:c.team, status:'brouillon', sponsor:c.sponsor||null, created_by:REAL.userId}});
+    if(!res.ok){ toast('Action impossible.'); return; }
+    realCreations=null; closeDrawer(); switchView('creations'); toast('Visuel dupliqué en brouillon.');
+    return;
+  }
+  const c=DATA.creations.find(x=>x.id===id); DATA.creations.unshift({...c,id:uid('c'),title:c.title+' (copie)',status:'brouillon'}); closeDrawer(); renderContent(); toast('Visuel dupliqué en brouillon.');
+}
 
 let cw={step:1,type:null,team:'Seniors R1',title:'',detail:'',sponsor:'Aucun'};
 function openCreationWizard(){ cw={step:1,type:null,team:'Seniors R1',title:'',detail:'',sponsor:'Aucun'}; renderCreationWizard(); }
@@ -1088,9 +1124,18 @@ function creationWizardSync(){
   if(document.getElementById('cw-detail')) cw.detail=document.getElementById('cw-detail').value;
   if(document.getElementById('cw-sponsor')) cw.sponsor=document.getElementById('cw-sponsor').value;
 }
-function finalizeCreation(status){
+async function finalizeCreation(status){
   creationWizardSync();
-  DATA.creations.unshift({id:uid('c'),title:cw.title||`${typeLabel(cw.type)} — ${cw.team}`,type:cw.type,team:cw.team,status,date:'2026-07-28',sponsor:cw.sponsor==='Aucun'?'':cw.sponsor});
+  const title=cw.title||`${typeLabel(cw.type)} — ${cw.team}`;
+  const sponsor=cw.sponsor==='Aucun'?'':cw.sponsor;
+  if(REAL){
+    const res=await sbFetch('club_creations', {method:'POST', body:{club_id:REAL.clubId, title, type:cw.type, team:cw.team, status, sponsor:sponsor||null, created_by:REAL.userId}});
+    if(!res.ok){ toast("Erreur lors de l'enregistrement."); return; }
+    realCreations=null; closeModal(); crView = status==='brouillon'?'brouillons':'a_valider'; switchView('creations');
+    toast(status==='brouillon'?'Visuel enregistré en brouillon.':(status==='valide'?'Visuel validé et enregistré.':'Visuel envoyé pour validation.'));
+    return;
+  }
+  DATA.creations.unshift({id:uid('c'),title,type:cw.type,team:cw.team,status,date:'2026-07-28',sponsor});
   closeModal(); crView = status==='brouillon'?'brouillons':'a_valider'; renderContent();
   toast(status==='brouillon'?'Visuel enregistré en brouillon.':(status==='valide'?'Visuel validé et enregistré.':'Visuel envoyé pour validation.'));
 }
