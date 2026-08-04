@@ -1166,6 +1166,7 @@ function openCreationDrawer(id){
       ${c.status==='brouillon'?`<button class="btn" style="background:var(--wa);color:#06182B" onclick="crStatus('${id}','a_valider','Validation demandée.')">Demander une validation</button>`:''}
       ${c.status==='a_valider'?`<button class="btn bp" onclick="crStatus('${id}','valide','Visuel validé.')">Valider</button>`:''}
       ${c.status==='valide'?`<button class="btn" style="background:linear-gradient(135deg,#168EFF,#7455FF);color:#fff" onclick="crStatus('${id}','publie','Publication programmée.')">Programmer la publication</button>`:''}
+      ${REAL && ['valide','publie'].includes(c.status)?`<button class="btn bo" onclick="openPublishToFamilyModal('club_creations','${id}')">Publier vers l'Espace Joueur</button>`:''}
       <button class="btn bo" onclick="crDuplicate('${id}')">Dupliquer</button>
       <button class="btn bo" onclick="toast('Le téléchargement sera disponible au lancement de SportVision Club+.')">Télécharger</button>
     </div>`);
@@ -1287,6 +1288,7 @@ function openMediaDrawer(id){
     ${m.expired?`<div class="card" style="border-color:#EF5B6755;margin-bottom:16px;color:var(--er);font-size:12.5px">Ce lien externe est expiré ou indisponible. Demandez un nouveau lien à son auteur.</div>`:''}
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="btn bp" onclick="${m.link?`window.open('${esc(m.link)}','_blank')`:"toast('Lien copié dans le presse-papiers.')"}">${m.link?'Ouvrir le lien':'Copier le lien'}</button>
+      ${REAL?`<button class="btn bo" onclick="openPublishToFamilyModal('club_media','${id}')">Publier vers l'Espace Joueur</button>`:''}
       <button class="btn bo" onclick="closeDrawer();switchView('creations');toast('Média prêt à être utilisé dans une création.')">Utiliser dans une création</button>
       <button class="btn bo" onclick="toast('Signalement transmis à SportVision.')">Signaler un problème</button>
     </div>`);
@@ -1312,6 +1314,49 @@ async function submitMediaForm(){
   }
   MEDIA_DEMO.unshift({id:uid('m'),title,type,team,source:source==='interne'?'Stockage Club+':'Lien externe',expired:false});
   closeModal(); renderContent(); toast('Média ajouté à la médiathèque.');
+}
+
+/* ── PUBLIER VERS ESPACE JOUEUR (phase 8) — media_access_rules ──
+   Un club_media/club_creations reste invisible côté joueur/famille tant
+   qu'aucune règle n'existe pour lui (fail-closed, v18) : c'est l'action
+   qui crée cette règle, équipe par équipe, jamais automatique. */
+function openPublishToFamilyModal(mediaRefType, mediaId){
+  const teams=teamsSource();
+  if(!teams.length){ toast('Ajoutez au moins une équipe avant de publier vers l’Espace Joueur.'); return; }
+  openModal(`<div class="sh"><b>Publier vers l'Espace Joueur</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Équipe autorisée</label><select id="pf-team">${teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin:14px 0">
+      <label style="display:flex;gap:8px;align-items:center;font-size:12.5px"><input type="checkbox" id="pf-joueur" checked style="width:auto"> Visible par le joueur</label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:12.5px"><input type="checkbox" id="pf-parent" checked style="width:auto"> Visible par le(s) parent(s)</label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:12.5px"><input type="checkbox" id="pf-dl" checked style="width:auto"> Téléchargement autorisé</label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:12.5px"><input type="checkbox" id="pf-share" style="width:auto"> Partage autorisé</label>
+    </div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitPublishToFamily('${mediaRefType}','${mediaId}')">Publier</button>
+    <button class="btn bd" style="width:100%;justify-content:center;margin-top:8px" onclick="unpublishFromFamily('${mediaRefType}','${mediaId}')">Retirer de l'Espace Joueur</button>`);
+}
+async function submitPublishToFamily(mediaRefType, mediaId){
+  const teamId=document.getElementById('pf-team').value;
+  if(!teamId){ toast('Choisissez une équipe.'); return; }
+  const body={
+    club_id:REAL.clubId, media_ref_type:mediaRefType, media_ref_id:mediaId, team_id:teamId,
+    visible_joueur:document.getElementById('pf-joueur').checked,
+    visible_parent:document.getElementById('pf-parent').checked,
+    telechargement_autorise:document.getElementById('pf-dl').checked,
+    partage_autorise:document.getElementById('pf-share').checked,
+  };
+  const existing=await sbFetch('media_access_rules?media_ref_type=eq.'+mediaRefType+'&media_ref_id=eq.'+mediaId+'&select=id');
+  const res = (existing.ok && existing.data && existing.data.length)
+    ? await sbFetch('media_access_rules?id=eq.'+existing.data[0].id, {method:'PATCH', body})
+    : await sbFetch('media_access_rules', {method:'POST', body});
+  if(!res.ok){ toast("Action impossible (droits d'administrateur ou d'éducateur requis)."); return; }
+  closeModal(); toast('Publié vers l’Espace Joueur.');
+}
+async function unpublishFromFamily(mediaRefType, mediaId){
+  const existing=await sbFetch('media_access_rules?media_ref_type=eq.'+mediaRefType+'&media_ref_id=eq.'+mediaId+'&select=id');
+  if(!existing.ok || !existing.data || !existing.data.length){ toast("Ce média n'est pas publié vers l'Espace Joueur."); return; }
+  const res=await sbFetch('media_access_rules?id=eq.'+existing.data[0].id, {method:'DELETE'});
+  if(!res.ok){ toast('Action impossible.'); return; }
+  closeModal(); toast('Retiré de l’Espace Joueur.');
 }
 
 /* ══════════════ SPONSORS ══════════════ */
@@ -2499,7 +2544,7 @@ function tplJoueursFamilles(){
    is_club_member. Tant que media_access_rules n'existe pas (phase 8),
    Livrables/Favoris/Projets restent des états d'attente honnêtes plutôt
    que des écrans vides silencieux ou des données inventées. */
-let realFamMyTeams=null, realFamMyEvents=null, realFamMyMatches=null, realFamCatalog=null, realFamMyAuthorizations=null;
+let realFamMyTeams=null, realFamMyEvents=null, realFamMyMatches=null, realFamCatalog=null, realFamMyAuthorizations=null, realFamMyLivrables=null, realFamFavorites=null;
 let famActiveChildId=null; // parent uniquement : player_id de l'enfant actuellement sélectionné
 
 /* Identité "active" pour les vues partagées joueur/parent : le joueur lui-même
@@ -2518,7 +2563,7 @@ function famCurrentClubId(){
 }
 function famSetActiveChild(id){
   famActiveChildId=id;
-  realFamMyTeams=null; realFamMyEvents=null; realFamMyMatches=null; realFamMyAuthorizations=null;
+  realFamMyTeams=null; realFamMyEvents=null; realFamMyMatches=null; realFamMyAuthorizations=null; realFamMyLivrables=null;
   updateFamParentHeader(); renderContent();
 }
 function famChildSwitcherHtml(){
@@ -2570,6 +2615,38 @@ async function loadFamMyAuthorizations(){
   const res=await sbFetch('parental_authorizations?player_id=eq.'+pid+'&select=*,authorization_types(label)&order=created_at.asc');
   realFamMyAuthorizations = res.ok ? (res.data||[]) : [];
   if(S.view==='famautorisations') renderContent();
+}
+/* club_media/club_creations ne retournent, pour cette identité, QUE les
+   lignes couvertes par une media_access_rules (RLS additive, v18) — pas
+   besoin de filtrer côté client, le fail-closed est déjà appliqué serveur. */
+async function loadFamMyLivrables(){
+  if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  const cid=famCurrentClubId(); if(!cid){ realFamMyLivrables=[]; if(S.view==='famlivrables') renderContent(); return; }
+  const [cm,cc]=await Promise.all([
+    sbFetch('club_media?club_id=eq.'+cid+'&select=*&order=created_at.desc'),
+    sbFetch('club_creations?club_id=eq.'+cid+'&select=*&order=created_at.desc'),
+  ]);
+  realFamMyLivrables = [
+    ...(cm.ok?(cm.data||[]):[]).map(r=>({id:r.id, refType:'club_media', title:r.title, team:r.team||'', link:r.link||'', date:(r.created_at||'').slice(0,10)})),
+    ...(cc.ok?(cc.data||[]):[]).map(r=>({id:r.id, refType:'club_creations', title:r.title, team:r.team||'', link:null, date:(r.created_at||'').slice(0,10)})),
+  ].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(S.view==='famlivrables') renderContent();
+}
+async function loadFamFavorites(){
+  if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  const res=await sbFetch('player_favorites?owner_user_id=eq.'+REAL.userId+'&select=*');
+  realFamFavorites = res.ok ? (res.data||[]) : [];
+  if(['famlivrables','famfavoris'].includes(S.view)) renderContent();
+}
+function famIsFavorite(refType,refId){ return (realFamFavorites||[]).some(f=>f.media_ref_type===refType && f.media_ref_id===refId); }
+async function famToggleFavorite(refType,refId){
+  const pid=famCurrentPlayerId(); if(!pid){ toast('Aucun enfant sélectionné.'); return; }
+  const existing=(realFamFavorites||[]).find(f=>f.media_ref_type===refType && f.media_ref_id===refId);
+  const res = existing
+    ? await sbFetch('player_favorites?id=eq.'+existing.id, {method:'DELETE'})
+    : await sbFetch('player_favorites', {method:'POST', body:{owner_user_id:REAL.userId, player_id:pid, media_ref_type:refType, media_ref_id:refId}});
+  if(!res.ok){ toast('Action impossible.'); return; }
+  realFamFavorites=null; loadFamFavorites();
 }
 
 function tplFamEnAttente(){
@@ -2648,9 +2725,23 @@ function tplEspaceJoueurCalendrier(){
   return `<div class="sh"><b>Calendrier</b></div>${famChildSwitcherHtml()}
     <div class="list-host">${items.length?items.map(e=>`<div class="list-row" style="cursor:default"><div style="display:flex;gap:9px;align-items:center"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${(e.type||'?')[0].toUpperCase()}</span><div><div style="font-weight:600;font-size:13px">${esc(e.title)}</div><div class="muted" style="font-size:11.5px">${esc(e.team||'')}</div></div></div><span class="muted" style="font-size:12px">${e.event_date||''}</span></div>`).join(''):'<div class="empty-state">Aucun événement pour cette équipe.</div>'}</div>`;
 }
+function famLivrableTileHtml(m){
+  const fav=famIsFavorite(m.refType,m.id);
+  const openAction = m.link ? `window.open('${esc(m.link)}','_blank')` : "toast('Aperçu disponible directement dans l’application bientôt.')";
+  return `<div class="tile-card" style="position:relative;cursor:pointer" onclick="${openAction}">
+    <button style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);border:none;border-radius:6px;padding:2px 7px;color:#fff;font-size:14px;cursor:pointer" onclick="event.stopPropagation();famToggleFavorite('${m.refType}','${m.id}')">${fav?'★':'☆'}</button>
+    <div class="thumb">${esc(m.title)}</div>
+    <div style="font-weight:600;font-size:12px;margin-top:8px">${esc(m.title)}</div>
+    <div class="muted" style="font-size:11px;margin-top:2px">${esc(m.team)} · ${m.date}</div>
+  </div>`;
+}
 function tplEspaceJoueurLivrables(){
-  return `<div class="sh"><b>Livrables</b></div>
-    <div class="empty-state">Les photos, vidéos et highlights de l'équipe apparaîtront ici dès que le club les aura publiés vers l'Espace Joueur. Cette fonctionnalité arrive bientôt.</div>`;
+  if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Livrables</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour voir ses livrables.</div>`;
+  if(realFamFavorites===null) loadFamFavorites();
+  if(realFamMyLivrables===null){ loadFamMyLivrables(); return `<div class="sh"><b>Livrables</b></div>${famChildSwitcherHtml()}<div class="empty-state">Chargement…</div>`; }
+  const items=realFamMyLivrables||[];
+  return `<div class="sh"><b>Livrables</b></div>${famChildSwitcherHtml()}
+    <div class="grid g3">${items.length?items.map(famLivrableTileHtml).join(''):'<div class="empty-state">Aucun livrable publié par le club pour le moment.</div>'}</div>`;
 }
 function tplEspaceJoueurServices(){
   if(realFamCatalog===null){ loadFamCatalog(); return `<div class="sh"><b>Services pour moi</b></div><div class="empty-state">Chargement…</div>`; }
@@ -2659,7 +2750,12 @@ function tplEspaceJoueurServices(){
     <div class="grid g2">${(realFamCatalog||[]).length?realFamCatalog.map(o=>`<div class="card"><b style="font-size:14px;display:block;margin-bottom:6px">${esc(o.nom)}</b><div class="muted" style="font-size:12px;margin-bottom:8px">${esc(o.description||'')}</div><div style="font-size:12.5px;font-weight:700;color:var(--cyan)">${o.tarif_type==='sur_devis'?'Sur devis':(o.prix_ht+' € HT')}</div></div>`).join(''):'<div class="empty-state">Aucun service disponible pour le moment.</div>'}</div>`;
 }
 function tplEspaceJoueurFavoris(){
-  return `<div class="sh"><b>Mes favoris</b></div><div class="empty-state">Vous pourrez ajouter des photos et vidéos à vos favoris dès que la Banque média sera disponible dans l'Espace Joueur. Cette fonctionnalité arrive bientôt.</div>`;
+  if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Mes favoris</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour voir ses favoris.</div>`;
+  if(realFamFavorites===null){ loadFamFavorites(); return `<div class="sh"><b>Mes favoris</b></div><div class="empty-state">Chargement…</div>`; }
+  if(realFamMyLivrables===null){ loadFamMyLivrables(); return `<div class="sh"><b>Mes favoris</b></div><div class="empty-state">Chargement…</div>`; }
+  const items=(realFamMyLivrables||[]).filter(m=>famIsFavorite(m.refType,m.id));
+  return `<div class="sh"><b>Mes favoris</b></div>
+    <div class="grid g3">${items.length?items.map(famLivrableTileHtml).join(''):'<div class="empty-state">Aucun favori pour le moment — ajoutez-en depuis Livrables.</div>'}</div>`;
 }
 function tplEspaceJoueurMonEquipe(){
   if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Équipe</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour voir son équipe.</div>`;
