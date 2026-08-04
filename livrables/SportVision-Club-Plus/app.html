@@ -563,6 +563,16 @@ async function sbFunction(name, body){
   const txt=await res.text();
   return {ok:res.ok, data: txt?JSON.parse(txt):null};
 }
+async function sbUpload(bucket, path, file){
+  const tok=localStorage.getItem('svcp_tok')||'';
+  const res=await fetch(SB_URL+'/storage/v1/object/'+bucket+'/'+path, {
+    method:'POST',
+    headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':file.type||'application/octet-stream', 'x-upsert':'true'},
+    body:file,
+  });
+  if(!res.ok) return null;
+  return SB_URL+'/storage/v1/object/public/'+bucket+'/'+path;
+}
 async function checkRealSession(){
   const tok=localStorage.getItem('svcp_tok');
   if(!tok) return false;
@@ -570,10 +580,10 @@ async function checkRealSession(){
     const ures=await fetch(SB_URL+'/auth/v1/user', {headers:{apikey:SB_KEY, Authorization:'Bearer '+tok}});
     if(!ures.ok){ ['svcp_tok','svcp_ref','svcp_uid'].forEach(k=>localStorage.removeItem(k)); return false; }
     const user=await ures.json();
-    const cm=await sbFetch('club_members?user_id=eq.'+user.id+'&status=eq.actif&select=role,prenom,nom,clubs(id,nom,ville,discipline,saison,credits_balance,credits_monthly,credits_reserved)&limit=1');
+    const cm=await sbFetch('club_members?user_id=eq.'+user.id+'&status=eq.actif&select=role,prenom,nom,clubs(id,nom,ville,discipline,saison,logo_url,ecusson_url,credits_balance,credits_monthly,credits_reserved)&limit=1');
     if(!cm.ok || !cm.data || !cm.data.length) return false;
     const m=cm.data[0];
-    REAL={userId:user.id, role:m.role, person:`${m.prenom||''} ${m.nom||''}`.trim()||user.email, clubId:m.clubs.id, clubName:m.clubs.nom, clubVille:m.clubs.ville, clubDiscipline:m.clubs.discipline, clubSeason:m.clubs.saison};
+    REAL={userId:user.id, role:m.role, person:`${m.prenom||''} ${m.nom||''}`.trim()||user.email, clubId:m.clubs.id, clubName:m.clubs.nom, clubVille:m.clubs.ville, clubDiscipline:m.clubs.discipline, clubSeason:m.clubs.saison, logoUrl:m.clubs.logo_url, ecussonUrl:m.clubs.ecusson_url};
     wallet.balance=m.clubs.credits_balance; wallet.monthly=m.clubs.credits_monthly; wallet.reserved=m.clubs.credits_reserved;
     S.role=REAL.role; S.view='dashboard';
     document.getElementById('s-login').classList.remove('on');
@@ -624,8 +634,8 @@ function boot(){
   if(REAL){
     document.getElementById('clubNameSb').textContent=REAL.clubName;
     document.getElementById('clubSeasonSb').textContent='Saison '+(REAL.clubSeason||'');
-    document.getElementById('clubCrestSb').textContent=initials(REAL.clubName||'C');
     document.getElementById('tbSub').textContent=REAL.clubName+' · Toutes équipes';
+    updateClubCrestSb();
   }
   renderSidebarNav();
   renderMobBnav();
@@ -1841,7 +1851,7 @@ function tplParametres(){
     </div>`:''}
     <div class="grid g2" style="margin-bottom:16px">
       <div class="card"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:12px">LOGO ET ÉCUSSON</div>
-        <div class="grid g2" style="margin-bottom:12px"><div class="thumb" style="height:90px">Logo principal</div><div class="thumb" style="height:90px">Écusson</div></div>
+        <div class="grid g2" style="margin-bottom:12px">${mediaBoxHtml('logo','Logo principal',REAL?REAL.logoUrl:null)}${mediaBoxHtml('ecusson','Écusson',REAL?REAL.ecussonUrl:null)}</div>
         <button class="btn bo" style="width:100%;justify-content:center" onclick="toast('Validation demandée à SportVision.')">Validation SportVision</button></div>
       <div class="card"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:12px">COULEURS</div>
         ${[['Principale','#168EFF'],['Secondaire','#2DD4E3'],['Tertiaire','#7455FF'],['Alerte','#F5A623']].map(([l,hex])=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd)"><span style="width:22px;height:22px;border-radius:6px;background:${hex};border:1px solid var(--bd)"></span><span style="font-size:12.5px;flex:1">${l}</span><span class="muted" style="font-family:monospace;font-size:11.5px">${hex}</span></div>`).join('')}
@@ -1871,6 +1881,31 @@ function tplParametres(){
   return `<div class="sh"><b>Paramètres</b></div>
     <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${paView===k?' on':''}" onclick="paView='${k}';renderContent()">${l}</button>`).join('')}</div>
     ${content}`;
+}
+function updateClubCrestSb(){
+  const el=document.getElementById('clubCrestSb'); if(!el || !REAL) return;
+  if(REAL.ecussonUrl){ el.style.backgroundImage=`url('${REAL.ecussonUrl}')`; el.style.backgroundSize='cover'; el.style.backgroundPosition='center'; el.textContent=''; }
+  else { el.style.backgroundImage=''; el.textContent=initials(REAL.clubName||'C'); }
+}
+function mediaBoxHtml(kind,label,url){
+  const bg = url ? `background-image:url('${esc(url)}');background-size:cover;background-position:center;` : '';
+  return `<div><div class="thumb" style="height:90px;${bg}cursor:${REAL?'pointer':'default'}" ${REAL?`onclick="document.getElementById('${kind}File').click()"`:''}>${url?'':label}</div>
+    <input type="file" id="${kind}File" accept="image/*" style="display:none" onchange="uploadClubImage(this,'${kind}')"></div>`;
+}
+async function uploadClubImage(input,kind){
+  const file=input.files && input.files[0];
+  if(!file || !REAL) return;
+  toast('Import en cours…');
+  const ext=(file.name.split('.').pop()||'png').toLowerCase();
+  const path=REAL.clubId+'/'+kind+'.'+ext;
+  const url=await sbUpload('clubplus-media', path, file);
+  if(!url){ toast("Échec de l'import."); return; }
+  const bustedUrl=url+'?t='+Date.now();
+  const col = kind==='logo' ? 'logo_url' : 'ecusson_url';
+  const res=await sbFetch('clubs?id=eq.'+REAL.clubId, {method:'PATCH', body:{[col]:bustedUrl}});
+  if(!res.ok){ toast("Échec de l'enregistrement."); return; }
+  if(kind==='logo') REAL.logoUrl=bustedUrl; else { REAL.ecussonUrl=bustedUrl; updateClubCrestSb(); }
+  renderContent(); toast('Image mise à jour.');
 }
 async function saveClubIdentity(){
   const nom=document.getElementById('pi-nom').value.trim();
