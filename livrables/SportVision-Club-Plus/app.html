@@ -580,10 +580,10 @@ async function checkRealSession(){
     const ures=await fetch(SB_URL+'/auth/v1/user', {headers:{apikey:SB_KEY, Authorization:'Bearer '+tok}});
     if(!ures.ok){ ['svcp_tok','svcp_ref','svcp_uid'].forEach(k=>localStorage.removeItem(k)); return false; }
     const user=await ures.json();
-    const cm=await sbFetch('club_members?user_id=eq.'+user.id+'&status=eq.actif&select=role,prenom,nom,clubs(id,nom,ville,discipline,saison,logo_url,ecusson_url,credits_balance,credits_monthly,credits_reserved)&limit=1');
+    const cm=await sbFetch('club_members?user_id=eq.'+user.id+'&status=eq.actif&select=role,prenom,nom,clubs(id,nom,ville,discipline,saison,logo_url,ecusson_url,portail_client_id,role_permissions,credits_balance,credits_monthly,credits_reserved)&limit=1');
     if(!cm.ok || !cm.data || !cm.data.length) return false;
     const m=cm.data[0];
-    REAL={userId:user.id, role:m.role, person:`${m.prenom||''} ${m.nom||''}`.trim()||user.email, clubId:m.clubs.id, clubName:m.clubs.nom, clubVille:m.clubs.ville, clubDiscipline:m.clubs.discipline, clubSeason:m.clubs.saison, logoUrl:m.clubs.logo_url, ecussonUrl:m.clubs.ecusson_url};
+    REAL={userId:user.id, role:m.role, person:`${m.prenom||''} ${m.nom||''}`.trim()||user.email, clubId:m.clubs.id, clubName:m.clubs.nom, clubVille:m.clubs.ville, clubDiscipline:m.clubs.discipline, clubSeason:m.clubs.saison, logoUrl:m.clubs.logo_url, ecussonUrl:m.clubs.ecusson_url, portailClientId:m.clubs.portail_client_id, rolePermissions:m.clubs.role_permissions||{}};
     wallet.balance=m.clubs.credits_balance; wallet.monthly=m.clubs.credits_monthly; wallet.reserved=m.clubs.credits_reserved;
     S.role=REAL.role; S.view='dashboard';
     document.getElementById('s-login').classList.remove('on');
@@ -737,7 +737,7 @@ function dashSecretaire(){
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">À traiter</b>
       <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">Résultats manquants</span><span class="badge" style="background:#EF5B6722;color:var(--er)">${requestsSource().filter(r=>r.status==='info_manquante').length}</span></div>
       <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-weight:600;font-size:12.5px">Invitations en attente</span><span class="badge" style="background:#F5A62322;color:var(--wa)">${memSrc.filter(u=>u.status==='invitation').length}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-weight:600;font-size:12.5px">Documents à compléter</span><span class="badge" style="background:#F5A62322;color:var(--wa)">${DATA.documents.filter(d=>d.status==='en_attente').length}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-weight:600;font-size:12.5px">Documents à compléter</span><span class="badge" style="background:#F5A62322;color:var(--wa)">${(docsSource()||[]).filter(d=>['en_attente','brouillon','emise','envoye'].includes(d.status)).length}</span></div>
     </div>
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Invitations en attente</b>
       ${memSrc.filter(u=>u.status==='invitation').map(u=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${u.name}</span><span class="muted">${u.role}</span></div>`).join('')||'<div class="muted">Aucune invitation en attente.</div>'}
@@ -767,7 +767,7 @@ function dashTresorier(){
       <button class="btn bp" onclick="switchView('abonnement')">Voir l'abonnement</button>
     </div>
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Documents financiers récents</b>
-      ${DATA.documents.slice(0,3).map(d=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${esc(d.title)}</span><span class="muted">${d.amount} €</span></div>`).join('')}
+      ${(docsSource()||[]).slice(0,3).map(d=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${esc(d.title)}</span><span class="muted">${d.amount!=null?d.amount+' €':'—'}</span></div>`).join('')||'<div class="muted" style="font-size:12.5px">Aucun document pour le moment.</div>'}
       <button class="btn bo" style="margin-top:10px" onclick="switchView('docsfinance')">Voir les documents</button>
     </div>
   </div>`;
@@ -1844,6 +1844,48 @@ function buyCreditPack(amt,label){
 
 /* ══════════════ PARAMÈTRES ══════════════ */
 let paView='identite';
+const PERM_ROLE_COLS=['admin','president','secretaire','comm','coach','sponsor_mgr','tresorier'];
+const PERM_KEYS=[
+  ['gerer_equipes','Gérer les équipes'], ['gerer_utilisateurs','Gérer les utilisateurs'],
+  ['envoyer_resultat','Envoyer un résultat'], ['valider_publication','Valider une publication'],
+  ['gerer_sponsors','Gérer les sponsors'], ['creer_demande',"Créer une demande / consommer crédits"],
+  ['gerer_abonnement',"Gérer l'abonnement / factures"], ['modifier_parametres','Modifier les paramètres']
+];
+const DEFAULT_PERM_VALUES={
+  gerer_equipes:[1,0,1,0,0,0,0], gerer_utilisateurs:[1,0,1,0,0,0,0], envoyer_resultat:[1,0,1,1,1,0,0],
+  valider_publication:[1,1,0,1,0,0,0], gerer_sponsors:[1,0,0,1,0,1,0], creer_demande:[1,0,0,1,1,1,0],
+  gerer_abonnement:[1,0,0,0,0,0,1], modifier_parametres:[1,0,0,0,0,0,0]
+};
+let permMatrix=null;
+function defaultPermMatrix(){
+  const m={};
+  PERM_KEYS.forEach(([k])=>{ m[k]={}; PERM_ROLE_COLS.forEach((r,i)=>{ m[k][r]=!!DEFAULT_PERM_VALUES[k][i]; }); });
+  return m;
+}
+function currentPermMatrix(){
+  if(permMatrix) return permMatrix;
+  if(REAL && REAL.rolePermissions && Object.keys(REAL.rolePermissions).length) permMatrix=JSON.parse(JSON.stringify(REAL.rolePermissions));
+  else permMatrix=defaultPermMatrix();
+  return permMatrix;
+}
+function togglePerm(permKey,roleKey){
+  const m=currentPermMatrix();
+  m[permKey][roleKey]=!m[permKey][roleKey];
+  renderContent();
+}
+async function saveMatrixPermissions(){
+  if(!REAL){ toast('Permissions enregistrées (démonstration).'); return; }
+  const res=await sbFetch('clubs?id=eq.'+REAL.clubId, {method:'PATCH', body:{role_permissions:currentPermMatrix()}});
+  if(!res.ok){ toast("Erreur lors de l'enregistrement (droits administrateur requis)."); return; }
+  REAL.rolePermissions=currentPermMatrix();
+  toast('Permissions enregistrées.');
+}
+function resetMatrixPermissions(){
+  permMatrix=defaultPermMatrix();
+  if(REAL) REAL.rolePermissions=permMatrix;
+  renderContent();
+  toast('Permissions réinitialisées.');
+}
 function tplParametres(){
   const tabs=[['identite','Identité du club'],['preferences','Préférences'],['integrations','Intégrations'],['permissions','Rôles et permissions']];
   let content='';
@@ -1872,16 +1914,13 @@ function tplParametres(){
     const list=[['SportVision Portail','Suivi des demandes, devis, factures et livrables SportVision.','À venir','#F5A623'],['SportVision OS','Synchronisation interne des missions et de la production.','À venir','#F5A623'],['Supabase',REAL?'Base de données et authentification — connecté à ce club.':'Base de données et authentification de la plateforme.',REAL?'Connecté':'À venir',REAL?'#28C995':'#F5A623'],['Stripe','Paiements des abonnements et packs de crédits.','À venir','#F5A623']];
     content=list.map(([n,d,s2,c])=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px"><div><div style="font-weight:700;font-size:14px">${n}</div><div class="muted" style="font-size:12px;margin-top:2px">${d}</div></div><span class="badge" style="background:${c}22;color:${c}">${s2}</span></div>`).join('');
   } else {
-    const roles=['Admin','Président','Secrétaire','Comm. Manager','Coach','Resp. sponsors','Trésorier'];
-    const rows=[
-      ['Gérer les équipes',[1,0,1,0,0,0,0]],['Gérer les utilisateurs',[1,0,1,0,0,0,0]],['Envoyer un résultat',[1,0,1,1,1,0,0]],
-      ['Valider une publication',[1,1,0,1,0,0,0]],['Gérer les sponsors',[1,0,0,1,0,1,0]],['Créer une demande / consommer crédits',[1,0,0,1,1,1,0]],
-      ["Gérer l'abonnement / factures",[1,0,0,0,0,0,1]],['Modifier les paramètres',[1,0,0,0,0,0,0]]
-    ];
-    content=`<div class="card" style="overflow-x:auto"><table><thead><tr><th>Permission</th>${roles.map(r=>`<th style="text-align:center">${r}</th>`).join('')}</tr></thead><tbody>
-      ${rows.map(([label,vals])=>`<tr><td>${label}</td>${vals.map(v=>`<td style="text-align:center">${v?'<span style="color:var(--ok)">✓</span>':''}</td>`).join('')}</tr>`).join('')}
+    const roleLabels=PERM_ROLE_COLS.map(k=>(ROLES[k]&&ROLES[k].label)||k);
+    const m=currentPermMatrix();
+    content=`<div class="card" style="overflow-x:auto"><table><thead><tr><th>Permission</th>${roleLabels.map(r=>`<th style="text-align:center">${r}</th>`).join('')}</tr></thead><tbody>
+      ${PERM_KEYS.map(([key,label])=>`<tr><td>${label}</td>${PERM_ROLE_COLS.map(rk=>`<td style="text-align:center"><input type="checkbox" style="width:auto" ${m[key][rk]?'checked':''} onchange="togglePerm('${key}','${rk}')"></td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
-      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn bp" onclick="toast('Permissions enregistrées.')">Enregistrer les permissions</button><button class="btn bo" onclick="toast('Permissions réinitialisées.')">Réinitialiser</button><button class="btn bo" onclick="toast('La création de rôles personnalisés sera disponible au lancement.')">Créer un rôle personnalisé</button></div>`;
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn bp" onclick="guard(saveMatrixPermissions)()">Enregistrer les permissions</button><button class="btn bo" onclick="resetMatrixPermissions()">Réinitialiser</button><button class="btn bo" onclick="toast('La création de rôles personnalisés sera disponible au lancement.')">Créer un rôle personnalisé</button></div>
+      <div class="muted" style="font-size:11px;margin-top:10px">Cette matrice est enregistrée pour le club mais n'est pas encore appliquée pour restreindre réellement les actions dans l'application.</div>`;
   }
   return `<div class="sh"><b>Paramètres</b></div>
     <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${paView===k?' on':''}" onclick="paView='${k}';renderContent()">${l}</button>`).join('')}</div>
@@ -1982,20 +2021,52 @@ async function submitSupport(){
 
 /* ══════════════ DOCUMENTS ══════════════ */
 let dfFilter='tous';
-function tplDocsFinance(){
-  const typeLbl={devis:'Devis',facture:'Facture',contrat:'Contrat',convention:'Convention sponsor'};
-  const list=DATA.documents.filter(d=>dfFilter==='tous'||d.type===dfFilter);
-  return `<div class="sh"><b>Documents</b></div>
-    <div class="pillbar">${[['tous','Tous'],['devis','Devis'],['facture','Factures'],['contrat','Contrats'],['convention','Conventions sponsors']].map(([k,l])=>`<button class="pill${dfFilter===k?' on':''}" onclick="dfFilter='${k}';renderContent()">${l}</button>`).join('')}</div>
-    <div class="list-host">${list.map(d=>{const sm=statusMeta(d.status); return `<div class="list-row" style="cursor:default;flex-wrap:wrap">
-      <div><div style="font-weight:700;font-size:13.5px">${esc(d.title)}</div><div class="muted" style="font-size:12px;margin-top:2px">${typeLbl[d.type]} · ${d.numero} · ${fmtDate(d.date)} · ${d.amount} €</div></div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
-      <button class="btn bo" style="padding:6px 12px" onclick="toast('Ouverture du document.')">Ouvrir</button>
-      <button class="btn bo" style="padding:6px 12px" onclick="toast('Téléchargement simulé.')">Télécharger</button>
-      ${d.status==='en_attente'?`<button class="btn bp" style="padding:6px 12px" onclick="payDoc('${d.id}')">Payer</button>`:''}</div></div>`;}).join('')}</div>
-    <div class="muted" style="font-size:11.5px;margin-top:12px">Les devis et factures SportVision redirigent vers SportVision Portail pour la signature et le paiement.</div>`;
+const DOC_STATUS_LABEL={
+  brouillon:{label:'Brouillon',color:'#A7B6C9'}, emise:{label:'Émise',color:'#F5A623'}, envoye:{label:'Envoyé',color:'#F5A623'},
+  payee:{label:'Payée',color:'#28C995'}, accepte:{label:'Accepté',color:'#28C995'}, signe:{label:'Signé',color:'#28C995'},
+  en_retard:{label:'En retard',color:'#EF5B67'}, refuse:{label:'Refusé',color:'#EF5B67'}, annulee:{label:'Annulée',color:'#EF5B67'},
+  expire:{label:'Expiré',color:'#EF5B67'}, remboursee:{label:'Remboursée',color:'#A7B6C9'}
+};
+function docStatusMeta(status){ return DOC_STATUS_LABEL[status] || {label:(status||'—').replace(/_/g,' '), color:'#A7B6C9'}; }
+let realDocuments=null;
+async function loadRealDocuments(){
+  if(!REAL) return;
+  if(!REAL.portailClientId){ realDocuments=[]; if(S.view==='docsfinance') renderContent(); return; }
+  const [fac,dev,con]=await Promise.all([
+    sbFetch('client_factures?select=*&order=created_at.desc'),
+    sbFetch('client_devis?select=*&order=created_at.desc'),
+    sbFetch('client_contrats?select=*&order=created_at.desc'),
+  ]);
+  realDocuments=[
+    ...(fac.ok?fac.data||[]:[]).map(f=>({id:f.id, type:'facture', numero:f.numero, title:'Facture '+(f.numero||''), date:(f.date_emission||f.created_at||'').slice(0,10), status:f.statut, amount:f.montant_ttc, pdfUrl:f.pdf_url})),
+    ...(dev.ok?dev.data||[]:[]).map(d=>({id:d.id, type:'devis', numero:d.numero, title:'Devis '+(d.numero||''), date:(d.date_envoi||d.created_at||'').slice(0,10), status:d.statut, amount:d.total_ttc, pdfUrl:null})),
+    ...(con.ok?con.data||[]:[]).map(c=>({id:c.id, type:'contrat', numero:c.type_contrat, title:'Contrat '+(c.type_contrat||''), date:(c.date_debut||c.created_at||'').slice(0,10), status:c.statut, amount:c.montant_mensuel, pdfUrl:null})),
+  ];
+  if(S.view==='docsfinance') renderContent();
 }
-function payDoc(id){ const d=DATA.documents.find(x=>x.id===id); d.status='payee'; renderContent(); toast('Redirection vers SportVision Portail pour le paiement.'); }
+function docsSource(){
+  if(!REAL) return DATA.documents;
+  if(realDocuments===null){ loadRealDocuments(); return null; }
+  return realDocuments;
+}
+function tplDocsFinance(){
+  const src=docsSource();
+  if(src===null) return `<div class="sh"><b>Documents</b></div><div class="empty-state">Chargement…</div>`;
+  if(REAL && !REAL.portailClientId){
+    return `<div class="sh"><b>Documents</b></div>
+      <div class="card"><div class="muted" style="font-size:13px;line-height:1.6">SportVision n'a pas encore relié votre club à votre espace Portail — vos devis, factures et contrats n'apparaîtront ici qu'une fois ce lien fait. Contactez votre interlocuteur SportVision.</div></div>`;
+  }
+  const typeLbl={devis:'Devis',facture:'Facture',contrat:'Contrat',convention:'Convention sponsor'};
+  const list=src.filter(d=>dfFilter==='tous'||d.type===dfFilter);
+  return `<div class="sh"><b>Documents</b></div>
+    <div class="pillbar">${[['tous','Tous'],['devis','Devis'],['facture','Factures'],['contrat','Contrats']].map(([k,l])=>`<button class="pill${dfFilter===k?' on':''}" onclick="dfFilter='${k}';renderContent()">${l}</button>`).join('')}</div>
+    <div class="list-host">${list.map(d=>{const sm=REAL?docStatusMeta(d.status):statusMeta(d.status); return `<div class="list-row" style="cursor:default;flex-wrap:wrap">
+      <div><div style="font-weight:700;font-size:13.5px">${esc(d.title)}</div><div class="muted" style="font-size:12px;margin-top:2px">${typeLbl[d.type]||d.type} · ${d.numero||''} · ${d.date?fmtDate(d.date):'—'}${d.amount!=null?' · '+d.amount+' €':''}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
+      ${d.pdfUrl?`<button class="btn bo" style="padding:6px 12px" onclick="window.open('${esc(d.pdfUrl)}','_blank')">Télécharger</button>`:`<button class="btn bo" style="padding:6px 12px" onclick="toast('Ce document sera consultable directement depuis SportVision Portail.')">Ouvrir</button>`}
+      </div></div>`;}).join('')||'<div class="empty-state">Aucun document pour le moment.</div>'}</div>
+    <div class="muted" style="font-size:11.5px;margin-top:12px">Les devis et factures SportVision se signent et se paient depuis SportVision Portail.</div>`;
+}
 
 /* ══════════════ RAPPORTS ══════════════ */
 let rapView='equipes';

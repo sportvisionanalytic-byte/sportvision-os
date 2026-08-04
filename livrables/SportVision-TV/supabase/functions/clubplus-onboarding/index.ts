@@ -100,6 +100,32 @@ serve(async (req) => {
     });
     if (cmErr) return json({ error: cmErr.message }, 500);
 
+    // Pont Documents ↔ Portail (best-effort, ne bloque jamais la création du club) :
+    // si un `clients` Portail existe déjà pour cet e-mail (club déjà suivi
+    // commercialement par SportVision avant son inscription à Club+), relie
+    // clubs.portail_client_id et fait de l'admin un client_users pour ce
+    // client — il peut alors lire ses vrais devis/factures/contrats via les
+    // vues client_devis/client_factures/client_contrats (migration-portail-
+    // v1.sql), sans aucune donnée dupliquée ni nouvelle policy Portail.
+    if (user.email) {
+      try {
+        const { data: matchedClient } = await admin
+          .from("clients")
+          .select("id")
+          .ilike("email", user.email)
+          .limit(1)
+          .maybeSingle();
+        if (matchedClient) {
+          await admin.from("clubs").update({ portail_client_id: matchedClient.id }).eq("id", createdClub.id);
+          await admin
+            .from("client_users")
+            .upsert({ id: user.id, client_id: matchedClient.id, prenom: prenom || null, nom: nom || null, telephone: telephone || null }, { onConflict: "id" });
+        }
+      } catch (_e) {
+        // best-effort : une erreur ici ne doit pas empêcher la création du club
+      }
+    }
+
     return json({ club_id: createdClub.id, role: "admin", already_onboarded: false });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
