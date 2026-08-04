@@ -461,7 +461,7 @@ function guard(fn){
 
 /* ── NAVIGATION ── */
 const NAV_TITLES={dashboard:'Tableau de bord',newsroom:'Newsroom du club',matchcenter:'Match Center',calendrier:'Calendrier',creations:'Studio de création',mediatheque:'Banque média',sponsors:'Sponsors',demandes:'Demandes de création',services:'Prestations SportVision',equipes:'Équipes & éducateurs',membres:'Utilisateurs',rapports:'Rapports',docsfinance:'Documents',abonnement:'Abonnement & crédits',parametres:'Paramètres',mesacces:'Mes accès',joueursfamilles:'Joueurs & Familles',famillesdemandes:'Demandes Joueurs & Familles',aide:'Aide',
-  famaccueil:'Accueil',famcalendrier:'Calendrier',famlivrables:'Livrables',famservices:'Services pour moi',famfavoris:'Mes favoris',fammonequipe:'Mon équipe',famprojets:'Mes projets',famautorisations:'Autorisations',famprofil:'Mon profil',famaide:'Aide',famenattente:'Bienvenue'};
+  famaccueil:'Accueil',famcalendrier:'Calendrier',famlivrables:'Livrables',famservices:'Services pour moi',famfavoris:'Mes favoris',fammonequipe:'Mon équipe',famprojets:'Mes projets',famautorisations:'Autorisations',famprofil:'Mon profil',famcommandes:'Commandes',famaide:'Aide',famenattente:'Bienvenue'};
 const NAV_DEFS=[
   {title:'Pilotage',items:[{id:'dashboard',label:'Accueil',letter:'A'},{id:'newsroom',label:'Newsroom du club',letter:'N'},{id:'matchcenter',label:'Match Center',letter:'MC'},{id:'calendrier',label:'Calendrier',letter:'Ca'}]},
   {title:'Communication',items:[{id:'creations',label:'Studio de création',letter:'Co'},{id:'mediatheque',label:'Banque média',letter:'BM'},{id:'sponsors',label:'Sponsors',letter:'Sp'},{id:'demandes',label:'Demandes de création',letter:'D'}]},
@@ -482,10 +482,24 @@ const NAV_DEFS_FAMILY=[
   ]}
 ];
 const MOBBNAV_FAMILY=[{id:'famaccueil',label:'Accueil',letter:'A'},{id:'famcalendrier',label:'Calendrier',letter:'Ca'},{id:'famlivrables',label:'Livrables',letter:'Li'},{id:'famservices',label:'Services',letter:'SV'}];
+/* Nav dédiée Espace Parent (phase 7) : "Accueil" est la vue "Ma famille"
+   (tplFamAccueilParent), pas de "Mes enfants" séparé — c'est le même écran. */
+const NAV_DEFS_PARENT=[
+  {title:'Ma famille',items:[
+    {id:'famaccueil',label:'Accueil',letter:'A'},{id:'famlivrables',label:'Livrables',letter:'Li'},
+    {id:'famcalendrier',label:'Calendrier',letter:'Ca'},{id:'famservices',label:'Services',letter:'SV'},
+    {id:'famautorisations',label:'Autorisations',letter:'Au'},{id:'famprojets',label:'Projets d’équipe',letter:'Pr'},
+    {id:'famcommandes',label:'Commandes',letter:'Co'},{id:'famprofil',label:'Mon profil',letter:'Pf'},
+    {id:'famaide',label:'Aide',letter:'?'}
+  ]}
+];
+const MOBBNAV_PARENT=[{id:'famaccueil',label:'Accueil',letter:'A'},{id:'famlivrables',label:'Livrables',letter:'Li'},{id:'famcalendrier',label:'Calendrier',letter:'Ca'},{id:'famservices',label:'Services',letter:'SV'}];
+function famNavDefs(){ return REAL.space==='joueur' ? NAV_DEFS_FAMILY : NAV_DEFS_PARENT; }
+function famMobDefs(){ return REAL.space==='joueur' ? MOBBNAV_FAMILY : MOBBNAV_PARENT; }
 function renderSidebarNav(){
-  if(REAL && REAL.space==='joueur'){
-    if(REAL.accountStatus!=='actif'){ document.getElementById('sbNav').innerHTML=''; return; }
-    document.getElementById('sbNav').innerHTML = NAV_DEFS_FAMILY.map(grp=>`<div class="nav-grp"><div class="nav-grp-t">${grp.title.toUpperCase()}</div>${grp.items.map(i=>`
+  if(REAL && (REAL.space==='joueur'||REAL.space==='parent')){
+    if(REAL.space==='joueur' && REAL.accountStatus!=='actif'){ document.getElementById('sbNav').innerHTML=''; return; }
+    document.getElementById('sbNav').innerHTML = famNavDefs().map(grp=>`<div class="nav-grp"><div class="nav-grp-t">${grp.title.toUpperCase()}</div>${grp.items.map(i=>`
       <button class="ni${S.view===i.id?' on':''}" data-id="${i.id}" onclick="switchView('${i.id}')">
         <span class="ni-tile">${i.letter}</span>${i.label}
       </button>`).join('')}</div>`).join('');
@@ -502,9 +516,9 @@ function renderSidebarNav(){
   }).join('');
 }
 function renderMobBnav(){
-  if(REAL && REAL.space==='joueur'){
-    if(REAL.accountStatus!=='actif'){ document.getElementById('mobBnav').innerHTML=''; return; }
-    document.getElementById('mobBnav').innerHTML = MOBBNAV_FAMILY.map(i=>`
+  if(REAL && (REAL.space==='joueur'||REAL.space==='parent')){
+    if(REAL.space==='joueur' && REAL.accountStatus!=='actif'){ document.getElementById('mobBnav').innerHTML=''; return; }
+    document.getElementById('mobBnav').innerHTML = famMobDefs().map(i=>`
       <button class="mbn-i${S.view===i.id?' on':''}" onclick="switchView('${i.id}')"><span class="mbn-tile">${i.letter}</span><span>${i.label}</span></button>`).join('')+
       `<button class="mbn-i" onclick="openMobMore()"><span class="mbn-tile">⋯</span><span>Plus</span></button>`;
     return;
@@ -515,9 +529,10 @@ function renderMobBnav(){
     `<button class="mbn-i" onclick="openMobMore()"><span class="mbn-tile">⋯</span><span>Plus</span></button>`;
 }
 function openMobMore(){
-  if(REAL && REAL.space==='joueur'){
-    if(REAL.accountStatus!=='actif'){ return; }
-    const extra=NAV_DEFS_FAMILY[0].items.filter(i=>!MOBBNAV_FAMILY.some(m=>m.id===i.id));
+  if(REAL && (REAL.space==='joueur'||REAL.space==='parent')){
+    if(REAL.space==='joueur' && REAL.accountStatus!=='actif'){ return; }
+    const mob=famMobDefs();
+    const extra=famNavDefs()[0].items.filter(i=>!mob.some(m=>m.id===i.id));
     document.getElementById('mobSheet').innerHTML = `<div style="width:36px;height:4px;background:var(--bd);border-radius:2px;margin:0 auto 18px"></div>
       <div class="grid g2" style="margin-bottom:16px">${extra.map(it=>`<button class="tile-card" style="display:flex;align-items:center;gap:10px;padding:12px" onclick="closeMobMore();switchView('${it.id}')"><span class="ni-tile">${it.letter}</span>${it.label}</button>`).join('')}</div>
       <button class="btn bd" style="width:100%;justify-content:center" onclick="closeMobMore();doLogout()">Déconnexion</button>`;
@@ -562,7 +577,7 @@ function markAllRead(){ DATA.notifications.forEach(n=>n.read=true); renderNotifD
 
 /* ── PROFIL ── */
 function openProfileModal(){
-  if(REAL && REAL.space==='joueur'){ switchView('famprofil'); return; }
+  if(REAL && (REAL.space==='joueur'||REAL.space==='parent')){ switchView('famprofil'); return; }
   const r=ROLES[S.role];
   openModal(`<div class="sh"><b>Mon profil</b><button class="close-x" onclick="closeModal()">✕</button></div>
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px"><div class="u-av" style="width:56px;height:56px;font-size:16px">${initials(r.person)}</div><div><div style="font-weight:700">${r.person}</div><div class="muted" style="font-size:12px">${r.label}</div></div></div>
@@ -632,13 +647,33 @@ async function checkRealSession(){
       return true;
     }
     // Aucun rattachement dirigeant (club_members) : ce compte est peut-être un
-    // joueur (Espace Joueur, phase 6). Un parent sera géré en phase 7.
+    // joueur (Espace Joueur, phase 6).
     const pp=await sbFetch('player_profiles?user_id=eq.'+user.id+'&select=id,prenom,nom,date_naissance,account_status,club_id,clubs(id,nom,ville,discipline,saison,logo_url,ecusson_url)&limit=1');
     if(pp.ok && pp.data && pp.data.length){
       const m=pp.data[0];
       REAL={userId:user.id, space:'joueur', spaceLabel:'Joueur', playerId:m.id, accountStatus:m.account_status, dateNaissance:m.date_naissance,
         person:`${m.prenom||''} ${m.nom||''}`.trim()||user.email, clubId:m.clubs.id, clubName:m.clubs.nom, clubVille:m.clubs.ville, clubDiscipline:m.clubs.discipline, clubSeason:m.clubs.saison, logoUrl:m.clubs.logo_url, ecussonUrl:m.clubs.ecusson_url};
       S.role=null; S.view = m.account_status==='actif' ? 'famaccueil' : 'famenattente';
+      document.getElementById('s-login').classList.remove('on');
+      document.getElementById('s-app').classList.add('on');
+      boot();
+      return true;
+    }
+    // Ni dirigeant ni joueur : ce compte est peut-être un parent (Espace
+    // Parent, phase 7) — un parent peut avoir des enfants dans plusieurs
+    // clubs, REAL n'a donc pas de clubId unique, contrairement aux deux
+    // autres espaces (cf. famCurrentClubId/famActiveChildId).
+    const pa=await sbFetch('parent_profiles?user_id=eq.'+user.id+'&select=id,prenom,nom,parent_player_relationships(statut,player_profiles(id,prenom,nom,date_naissance,account_status,club_id,clubs(id,nom,saison,logo_url)))&limit=1');
+    if(pa.ok && pa.data && pa.data.length){
+      const m=pa.data[0];
+      const rels=(m.parent_player_relationships||[]).filter(r=>r.statut==='confirme' && r.player_profiles);
+      const children=rels.map(r=>{
+        const p=r.player_profiles, c=p.clubs||{};
+        return {playerId:p.id, prenom:p.prenom, nom:p.nom, dateNaissance:p.date_naissance, accountStatus:p.account_status, clubId:p.club_id, clubName:c.nom, clubSeason:c.saison, logoUrl:c.logo_url};
+      });
+      REAL={userId:user.id, space:'parent', spaceLabel:'Parent', parentId:m.id, person:`${m.prenom||''} ${m.nom||''}`.trim()||user.email, children};
+      famActiveChildId = children.length ? children[0].playerId : null;
+      S.role=null; S.view='famaccueil';
       document.getElementById('s-login').classList.remove('on');
       document.getElementById('s-app').classList.add('on');
       boot();
@@ -686,7 +721,9 @@ function boot(){
   const sel=document.getElementById('roleSel');
   sel.style.display = REAL ? 'none' : '';
   sel.innerHTML = Object.entries(ROLES).map(([k,r2])=>`<option value="${k}" ${k===S.role?'selected':''}>${r2.label}</option>`).join('');
-  if(REAL){
+  if(REAL && REAL.space==='parent'){
+    updateFamParentHeader();
+  } else if(REAL){
     document.getElementById('clubNameSb').textContent=REAL.clubName;
     document.getElementById('clubSeasonSb').textContent='Saison '+(REAL.clubSeason||'');
     document.getElementById('tbSub').textContent = REAL.space==='joueur' ? REAL.clubName : REAL.clubName+' · Toutes équipes';
@@ -2463,23 +2500,62 @@ function tplJoueursFamilles(){
    Livrables/Favoris/Projets restent des états d'attente honnêtes plutôt
    que des écrans vides silencieux ou des données inventées. */
 let realFamMyTeams=null, realFamMyEvents=null, realFamMyMatches=null, realFamCatalog=null, realFamMyAuthorizations=null;
+let famActiveChildId=null; // parent uniquement : player_id de l'enfant actuellement sélectionné
+
+/* Identité "active" pour les vues partagées joueur/parent : le joueur lui-même
+   pour un compte joueur, l'enfant sélectionné pour un compte parent. */
+function famCurrentPlayerId(){
+  if(!REAL) return null;
+  if(REAL.space==='joueur') return REAL.playerId;
+  if(REAL.space==='parent') return famActiveChildId;
+  return null;
+}
+function famCurrentClubId(){
+  if(!REAL) return null;
+  if(REAL.space==='joueur') return REAL.clubId;
+  if(REAL.space==='parent'){ const c=(REAL.children||[]).find(x=>x.playerId===famActiveChildId); return c?c.clubId:null; }
+  return null;
+}
+function famSetActiveChild(id){
+  famActiveChildId=id;
+  realFamMyTeams=null; realFamMyEvents=null; realFamMyMatches=null; realFamMyAuthorizations=null;
+  updateFamParentHeader(); renderContent();
+}
+function famChildSwitcherHtml(){
+  if(!REAL || REAL.space!=='parent') return '';
+  const children=REAL.children||[];
+  if(children.length<2) return '';
+  return `<div class="pillbar">${children.map(c=>`<button class="pill${famActiveChildId===c.playerId?' on':''}" onclick="famSetActiveChild('${c.playerId}')">${esc(c.prenom||'')}</button>`).join('')}</div>`;
+}
+function updateFamParentHeader(){
+  const child=(REAL.children||[]).find(c=>c.playerId===famActiveChildId);
+  document.getElementById('clubNameSb').textContent = child ? child.clubName : 'Ma famille';
+  document.getElementById('clubSeasonSb').textContent = child ? ('Saison '+(child.clubSeason||'')) : '';
+  document.getElementById('tbSub').textContent = child ? (`${child.prenom||''} — ${child.clubName||''}`) : 'Sélectionnez un enfant';
+  const el=document.getElementById('clubCrestSb');
+  if(child && child.logoUrl){ el.style.backgroundImage=`url('${child.logoUrl}')`; el.style.backgroundSize='cover'; el.style.backgroundPosition='center'; el.textContent=''; }
+  else { el.style.backgroundImage=''; el.textContent = child?initials(child.clubName||'C'):'F'; }
+}
 
 async function loadFamMyTeams(){
-  if(!REAL || REAL.space!=='joueur') return;
-  const res=await sbFetch('team_memberships?player_id=eq.'+REAL.playerId+'&statut=eq.active&select=id,saison,club_teams(id,name,categorie,coach)');
+  if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  const pid=famCurrentPlayerId(); if(!pid){ realFamMyTeams=[]; return; }
+  const res=await sbFetch('team_memberships?player_id=eq.'+pid+'&statut=eq.active&select=id,saison,club_teams(id,name,categorie,coach)');
   realFamMyTeams = res.ok ? (res.data||[]) : [];
   if(['famaccueil','famcalendrier','fammonequipe'].includes(S.view)) renderContent();
 }
 function famMyTeamNames(){ return (realFamMyTeams||[]).map(t=>t.club_teams&&t.club_teams.name).filter(Boolean); }
 async function loadFamMyEvents(){
-  if(!REAL || REAL.space!=='joueur') return;
-  const res=await sbFetch('club_calendar_events?club_id=eq.'+REAL.clubId+'&select=*&order=event_date.asc');
+  if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  const cid=famCurrentClubId(); if(!cid){ realFamMyEvents=[]; return; }
+  const res=await sbFetch('club_calendar_events?club_id=eq.'+cid+'&select=*&order=event_date.asc');
   realFamMyEvents = res.ok ? (res.data||[]) : [];
   if(['famaccueil','famcalendrier'].includes(S.view)) renderContent();
 }
 async function loadFamMyMatches(){
-  if(!REAL || REAL.space!=='joueur') return;
-  const res=await sbFetch('club_matches?club_id=eq.'+REAL.clubId+'&select=*&order=match_date.asc');
+  if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  const cid=famCurrentClubId(); if(!cid){ realFamMyMatches=[]; return; }
+  const res=await sbFetch('club_matches?club_id=eq.'+cid+'&select=*&order=match_date.asc');
   realFamMyMatches = res.ok ? (res.data||[]) : [];
   if(S.view==='famaccueil') renderContent();
 }
@@ -2489,8 +2565,9 @@ async function loadFamCatalog(){
   if(S.view==='famservices') renderContent();
 }
 async function loadFamMyAuthorizations(){
-  if(!REAL || REAL.space!=='joueur') return;
-  const res=await sbFetch('parental_authorizations?player_id=eq.'+REAL.playerId+'&select=*,authorization_types(label)&order=created_at.asc');
+  if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  const pid=famCurrentPlayerId(); if(!pid){ realFamMyAuthorizations=[]; return; }
+  const res=await sbFetch('parental_authorizations?player_id=eq.'+pid+'&select=*,authorization_types(label)&order=created_at.asc');
   realFamMyAuthorizations = res.ok ? (res.data||[]) : [];
   if(S.view==='famautorisations') renderContent();
 }
@@ -2537,40 +2614,123 @@ function tplEspaceJoueurAccueil(){
       <button class="btn bo" onclick="switchView('famservices')">Découvrir les services</button>
     </div>`;
 }
+/* ── ESPACE PARENT (multi-enfants) — phase 7 ──
+   "Ma famille" : une carte par enfant confirmé (parent_player_relationships.
+   statut='confirme'). famActiveChildId détermine quel enfant les vues
+   partagées (calendrier/mon équipe/autorisations) affichent — cf.
+   famCurrentPlayerId/famCurrentClubId/famChildSwitcherHtml plus haut. */
+function tplFamAccueilParent(){
+  const children=REAL.children||[];
+  return `<div class="sh"><b>Ma famille</b></div>
+    ${children.length?`<div class="grid g2">${children.map(c=>{
+      const age = c.dateNaissance ? Math.floor((Date.now()-new Date(c.dateNaissance).getTime())/(365.25*24*3600*1000)) : null;
+      const asMeta=FAM_ACCOUNT_STATUS_META[c.accountStatus]||{label:c.accountStatus,color:'#A7B6C9'};
+      return `<div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div class="u-av">${initials(c.prenom||'?')}</div>
+          <div><b style="font-size:15px">${esc(c.prenom||'')} ${esc(c.nom||'')}</b><div class="muted" style="font-size:12px">${esc(c.clubName||'')}${age!=null?' · '+age+' ans':''}</div></div>
+        </div>
+        <span class="badge" style="background:${asMeta.color}22;color:${asMeta.color};margin-bottom:12px;display:inline-block">${asMeta.label}</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn bp" style="padding:6px 12px" onclick="famSetActiveChild('${c.playerId}');switchView('famcalendrier')">Voir l'espace</button>
+          <button class="btn bo" style="padding:6px 12px" onclick="famSetActiveChild('${c.playerId}');switchView('famautorisations')">Autorisations</button>
+        </div>
+      </div>`;
+    }).join('')}</div>`:'<div class="empty-state">Aucun enfant confirmé pour le moment. Contactez le club de votre enfant pour recevoir une invitation.</div>'}`;
+}
+function tplFamAccueil(){
+  return (REAL && REAL.space==='parent') ? tplFamAccueilParent() : tplEspaceJoueurAccueil();
+}
 function tplEspaceJoueurCalendrier(){
-  if(realFamMyEvents===null){ loadFamMyEvents(); return `<div class="sh"><b>Calendrier</b></div><div class="empty-state">Chargement…</div>`; }
+  if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Calendrier</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour voir son calendrier.</div>`;
+  if(realFamMyEvents===null){ loadFamMyEvents(); return `<div class="sh"><b>Calendrier</b></div>${famChildSwitcherHtml()}<div class="empty-state">Chargement…</div>`; }
   const items=[...(realFamMyEvents||[])].sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||''));
-  return `<div class="sh"><b>Calendrier</b></div>
-    <div class="list-host">${items.length?items.map(e=>`<div class="list-row" style="cursor:default"><div style="display:flex;gap:9px;align-items:center"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${(e.type||'?')[0].toUpperCase()}</span><div><div style="font-weight:600;font-size:13px">${esc(e.title)}</div><div class="muted" style="font-size:11.5px">${esc(e.team||'')}</div></div></div><span class="muted" style="font-size:12px">${e.event_date||''}</span></div>`).join(''):'<div class="empty-state">Aucun événement pour votre équipe.</div>'}</div>`;
+  return `<div class="sh"><b>Calendrier</b></div>${famChildSwitcherHtml()}
+    <div class="list-host">${items.length?items.map(e=>`<div class="list-row" style="cursor:default"><div style="display:flex;gap:9px;align-items:center"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${(e.type||'?')[0].toUpperCase()}</span><div><div style="font-weight:600;font-size:13px">${esc(e.title)}</div><div class="muted" style="font-size:11.5px">${esc(e.team||'')}</div></div></div><span class="muted" style="font-size:12px">${e.event_date||''}</span></div>`).join(''):'<div class="empty-state">Aucun événement pour cette équipe.</div>'}</div>`;
 }
 function tplEspaceJoueurLivrables(){
   return `<div class="sh"><b>Livrables</b></div>
-    <div class="empty-state">Les photos, vidéos et highlights de votre équipe apparaîtront ici dès que le club les aura publiés vers l'Espace Joueur. Cette fonctionnalité arrive bientôt.</div>`;
+    <div class="empty-state">Les photos, vidéos et highlights de l'équipe apparaîtront ici dès que le club les aura publiés vers l'Espace Joueur. Cette fonctionnalité arrive bientôt.</div>`;
 }
 function tplEspaceJoueurServices(){
   if(realFamCatalog===null){ loadFamCatalog(); return `<div class="sh"><b>Services pour moi</b></div><div class="empty-state">Chargement…</div>`; }
   return `<div class="sh"><b>Services pour moi</b></div>
-    <div class="muted" style="font-size:12.5px;margin-bottom:14px">La commande directe depuis Club+ arrive bientôt — contactez votre club pour réserver une prestation personnelle en attendant.</div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:14px">La commande directe depuis Club+ arrive bientôt — contactez le club en attendant pour réserver une prestation personnelle.</div>
     <div class="grid g2">${(realFamCatalog||[]).length?realFamCatalog.map(o=>`<div class="card"><b style="font-size:14px;display:block;margin-bottom:6px">${esc(o.nom)}</b><div class="muted" style="font-size:12px;margin-bottom:8px">${esc(o.description||'')}</div><div style="font-size:12.5px;font-weight:700;color:var(--cyan)">${o.tarif_type==='sur_devis'?'Sur devis':(o.prix_ht+' € HT')}</div></div>`).join(''):'<div class="empty-state">Aucun service disponible pour le moment.</div>'}</div>`;
 }
 function tplEspaceJoueurFavoris(){
   return `<div class="sh"><b>Mes favoris</b></div><div class="empty-state">Vous pourrez ajouter des photos et vidéos à vos favoris dès que la Banque média sera disponible dans l'Espace Joueur. Cette fonctionnalité arrive bientôt.</div>`;
 }
 function tplEspaceJoueurMonEquipe(){
-  if(realFamMyTeams===null){ loadFamMyTeams(); return `<div class="sh"><b>Mon équipe</b></div><div class="empty-state">Chargement…</div>`; }
+  if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Équipe</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour voir son équipe.</div>`;
+  if(realFamMyTeams===null){ loadFamMyTeams(); return `<div class="sh"><b>Équipe</b></div>${famChildSwitcherHtml()}<div class="empty-state">Chargement…</div>`; }
   const teams=realFamMyTeams||[];
-  return `<div class="sh"><b>Mon équipe</b></div>
-    <div class="grid g2">${teams.length?teams.map(t=>{const ct=t.club_teams||{}; return `<div class="card"><b style="font-size:15px;display:block;margin-bottom:6px">${esc(ct.name||'')}</b><div class="muted" style="font-size:12.5px">${esc(ct.categorie||'')}</div><div class="muted" style="font-size:12.5px;margin-top:6px">Éducateur : ${esc(ct.coach||'—')}</div></div>`;}).join(''):'<div class="empty-state">Vous n’êtes rattaché à aucune équipe pour le moment.</div>'}</div>`;
+  return `<div class="sh"><b>${REAL.space==='parent'?'Équipe':'Mon équipe'}</b></div>${famChildSwitcherHtml()}
+    <div class="grid g2">${teams.length?teams.map(t=>{const ct=t.club_teams||{}; return `<div class="card"><b style="font-size:15px;display:block;margin-bottom:6px">${esc(ct.name||'')}</b><div class="muted" style="font-size:12.5px">${esc(ct.categorie||'')}</div><div class="muted" style="font-size:12.5px;margin-top:6px">Éducateur : ${esc(ct.coach||'—')}</div></div>`;}).join(''):'<div class="empty-state">Aucun rattachement à une équipe pour le moment.</div>'}</div>`;
 }
 function tplEspaceJoueurProjets(){
-  return `<div class="sh"><b>Mes projets</b></div><div class="empty-state">Les projets collectifs de votre équipe apparaîtront ici. Cette fonctionnalité arrive bientôt.</div>`;
+  return `<div class="sh"><b>${REAL.space==='parent'?'Projets d’équipe':'Mes projets'}</b></div><div class="empty-state">Les projets collectifs de l'équipe apparaîtront ici. Cette fonctionnalité arrive bientôt.</div>`;
+}
+function tplFamCommandes(){
+  return `<div class="sh"><b>Commandes</b></div><div class="empty-state">Vos commandes de prestations SportVision apparaîtront ici une fois la commande directe disponible depuis Club+. Cette fonctionnalité arrive bientôt.</div>`;
+}
+function famAuthorizationRowHtml(a){
+  const m=FAM_AUTH_STATUS_META[a.statut]||{label:a.statut,color:'#A7B6C9'};
+  const canSubmit = REAL.space==='parent' && ['non_transmise','en_attente','incomplete','refusee'].includes(a.statut);
+  return `<div class="list-row" style="cursor:default;flex-wrap:wrap;gap:8px">
+    <span style="font-size:13px">${esc((a.authorization_types&&a.authorization_types.label)||'')}</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="badge" style="background:${m.color}22;color:${m.color}">${m.label}</span>
+      ${canSubmit?`<button class="btn bp" style="padding:5px 10px" onclick="openFamAuthSubmitModal('${a.id}')">Transmettre</button>`:''}
+    </div>
+  </div>`;
 }
 function tplEspaceJoueurAutorisations(){
-  if(realFamMyAuthorizations===null){ loadFamMyAuthorizations(); return `<div class="sh"><b>Autorisations</b></div><div class="empty-state">Chargement…</div>`; }
+  if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Autorisations</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour voir ses autorisations.</div>`;
+  if(realFamMyAuthorizations===null){ loadFamMyAuthorizations(); return `<div class="sh"><b>Autorisations</b></div>${famChildSwitcherHtml()}<div class="empty-state">Chargement…</div>`; }
   const list=realFamMyAuthorizations||[];
-  return `<div class="sh"><b>Autorisations</b></div>
-    <div class="muted" style="font-size:12.5px;margin-bottom:14px">Statut des autorisations transmises par votre parent ou représentant légal.</div>
-    <div class="list-host">${list.length?list.map(a=>{const m=FAM_AUTH_STATUS_META[a.statut]||{label:a.statut,color:'#A7B6C9'}; return `<div class="list-row" style="cursor:default"><span style="font-size:13px">${esc((a.authorization_types&&a.authorization_types.label)||'')}</span><span class="badge" style="background:${m.color}22;color:${m.color}">${m.label}</span></div>`;}).join(''):'<div class="empty-state">Aucune autorisation à afficher.</div>'}</div>`;
+  return `<div class="sh"><b>Autorisations</b></div>${famChildSwitcherHtml()}
+    <div class="muted" style="font-size:12.5px;margin-bottom:14px">${REAL.space==='parent'?'Transmettez et suivez les autorisations de votre enfant.':'Statut des autorisations transmises par votre parent ou représentant légal.'}</div>
+    <div class="list-host">${list.length?list.map(famAuthorizationRowHtml).join(''):'<div class="empty-state">Aucune autorisation à afficher.</div>'}</div>`;
+}
+function openFamAuthSubmitModal(authId){
+  const a=(realFamMyAuthorizations||[]).find(x=>x.id===authId);
+  if(!a) return;
+  const label=(a.authorization_types&&a.authorization_types.label)||'';
+  openModal(`<div class="sh"><b>${esc(label)}</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:16px">Choisissez comment transmettre cette autorisation.</div>
+    <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;margin-bottom:14px"><input type="checkbox" id="fa-consent" style="width:auto;margin-top:2px"> Je confirme avoir lu et j'autorise « ${esc(label)} » pour mon enfant.</label>
+    <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:14px" onclick="submitFamAuthDigital('${authId}')">Signer électroniquement</button>
+    <div class="muted" style="font-size:11px;text-align:center;margin-bottom:10px">— ou —</div>
+    <div class="field"><label>Importer un document déjà signé</label><input type="file" id="fa-file" accept="image/*,application/pdf"></div>
+    <button class="btn bo" style="width:100%;justify-content:center" onclick="submitFamAuthDocument('${authId}')">Envoyer le document</button>`);
+}
+async function submitFamAuthDigital(authId){
+  const chk=document.getElementById('fa-consent');
+  if(!chk || !chk.checked){ toast('Veuillez cocher la case de confirmation.'); return; }
+  const res=await sbFetch('rpc/submit_parental_authorization', {method:'POST', body:{
+    p_authorization_id:authId, p_methode:'signature_numerique',
+    p_preuve:{consented_at:new Date().toISOString(), user_agent:navigator.userAgent}
+  }});
+  if(!res.ok){ toast((res.data&&res.data.message)||'Action impossible.'); return; }
+  closeModal(); realFamMyAuthorizations=null; renderContent(); toast('Autorisation transmise — en attente de vérification par le club.');
+}
+async function submitFamAuthDocument(authId){
+  const input=document.getElementById('fa-file');
+  const file=input && input.files && input.files[0];
+  if(!file){ toast('Sélectionnez un fichier.'); return; }
+  const pid=famCurrentPlayerId();
+  if(!pid){ toast('Aucun enfant sélectionné.'); return; }
+  const ext=(file.name.split('.').pop()||'pdf').toLowerCase();
+  const path='family-docs/'+pid+'/'+authId+'.'+ext;
+  toast('Import en cours…');
+  const url=await sbUpload('clubplus-media', path, file);
+  if(!url){ toast("Échec de l'import."); return; }
+  const res=await sbFetch('rpc/submit_parental_authorization', {method:'POST', body:{
+    p_authorization_id:authId, p_methode:'import_document', p_document_url:url+'?t='+Date.now()
+  }});
+  if(!res.ok){ toast((res.data&&res.data.message)||"Échec de l'enregistrement."); return; }
+  closeModal(); realFamMyAuthorizations=null; renderContent(); toast('Document transmis — en attente de vérification par le club.');
 }
 function tplEspaceJoueurProfil(){
   return `<div class="sh"><b>Mon profil</b></div>
@@ -2580,6 +2740,17 @@ function tplEspaceJoueurProfil(){
       <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span class="muted">Date de naissance</span><span style="font-weight:600">${REAL.dateNaissance||'—'}</span></div>
     </div>
     <button class="btn bd" style="margin-top:16px" onclick="doLogout()">Déconnexion</button>`;
+}
+function tplFamProfilParent(){
+  return `<div class="sh"><b>Mon profil</b></div>
+    <div class="card" style="max-width:480px">
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px"><span class="muted">Nom</span><span style="font-weight:600">${esc(REAL.person||'')}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span class="muted">Enfant(s)</span><span style="font-weight:600">${esc((REAL.children||[]).map(c=>c.prenom).join(', ')||'—')}</span></div>
+    </div>
+    <button class="btn bd" style="margin-top:16px" onclick="doLogout()">Déconnexion</button>`;
+}
+function tplFamProfil(){
+  return (REAL && REAL.space==='parent') ? tplFamProfilParent() : tplEspaceJoueurProfil();
 }
 function tplEspaceJoueurAide(){
   return `<div class="sh"><b>Aide</b></div><div class="empty-state">Besoin d'aide ? Contactez votre club directement, ou écrivez à support@sportvision.fr.</div>`;
@@ -2592,10 +2763,10 @@ const VIEWS={
   services:tplServices, equipes:tplEquipes, membres:tplMembres, rapports:tplRapports,
   docsfinance:tplDocsFinance, abonnement:tplAbonnement, parametres:tplParametres,
   mesacces:tplMesAcces, joueursfamilles:tplJoueursFamilles, famillesdemandes:tplFamillesDemandes, aide:tplAide,
-  famaccueil:tplEspaceJoueurAccueil, famcalendrier:tplEspaceJoueurCalendrier, famlivrables:tplEspaceJoueurLivrables,
+  famaccueil:tplFamAccueil, famcalendrier:tplEspaceJoueurCalendrier, famlivrables:tplEspaceJoueurLivrables,
   famservices:tplEspaceJoueurServices, famfavoris:tplEspaceJoueurFavoris, fammonequipe:tplEspaceJoueurMonEquipe,
-  famprojets:tplEspaceJoueurProjets, famautorisations:tplEspaceJoueurAutorisations, famprofil:tplEspaceJoueurProfil,
-  famaide:tplEspaceJoueurAide, famenattente:tplFamEnAttente
+  famprojets:tplEspaceJoueurProjets, famautorisations:tplEspaceJoueurAutorisations, famprofil:tplFamProfil,
+  famcommandes:tplFamCommandes, famaide:tplEspaceJoueurAide, famenattente:tplFamEnAttente
 };
 </script>
 </body>
