@@ -1,0 +1,4 @@
+# Les vidéos brutes sont régénérables via scripts/product-videos/record-*.js
+# et volontairement exclues du dépôt (cf. docs/CLUBPLUS_VIDEO_PRODUCTION.md §3/§9).
+*.webm
+*.mp4

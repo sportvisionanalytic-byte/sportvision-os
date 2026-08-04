@@ -1,0 +1,14 @@
+{
+  "name": "clubplus-product-videos",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Scripts Playwright pour produire les vidéos de démonstration de SportVision Club+ (données fictives, environnement local uniquement).",
+  "type": "commonjs",
+  "scripts": {
+    "record:coach": "node record-coach-result.js",
+    "record:hero": "node record-hero.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}
