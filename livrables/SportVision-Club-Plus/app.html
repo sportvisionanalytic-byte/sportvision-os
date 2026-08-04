@@ -1363,11 +1363,47 @@ async function submitRequestWizard(){
 
 /* ══════════════ PRESTATIONS SPORTVISION ══════════════ */
 let svView='catalogue';
+let realCatalog=null, realBookings=null;
+function reductionPct(){ return subscription.plan==='Club+ Performance' ? 10 : 5; }
+function normCatalogItem(r){
+  const pct=reductionPct();
+  const price = r.tarif_type==='sur_devis' ? 'Sur devis' : `${r.prix_ht} € HT`;
+  const adv = r.tarif_type==='sur_devis' ? '' : `-${pct}% ${subscription.plan}`;
+  return {key:r.id, label:r.nom, desc:r.description||'', delai:r.duree_estimee||'—', price, adv};
+}
+async function loadRealCatalog(){
+  // catalogue_offres est la même table que SportVision Portail (pas de duplication) :
+  // gérée par le staff SportVision, lue en lecture seule ici.
+  const res=await sbFetch('catalogue_offres?actif=eq.true&select=id,nom,description,tarif_type,prix_ht,duree_estimee&order=ordre.asc');
+  realCatalog = res.ok ? (res.data||[]) : [];
+  if(S.view==='services') renderContent();
+}
+function catalogSource(){
+  if(!REAL) return DATA.serviceCatalog;
+  if(realCatalog===null){ loadRealCatalog(); return []; }
+  return realCatalog.map(normCatalogItem);
+}
+function normBooking(r){
+  return {id:r.id, service:r.service_label, team:r.team||'', date:r.event_date||(r.created_at||'').slice(0,10), duree:r.duree||'—', status:r.status, price:r.price_label||'—'};
+}
+async function loadRealBookings(){
+  if(!REAL) return;
+  const res=await sbFetch('club_bookings?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
+  realBookings = res.ok ? (res.data||[]) : [];
+  if(['services','rapports'].includes(S.view)) renderContent();
+}
+function bookingsSource(){
+  if(!REAL) return DATA.bookings;
+  if(realBookings===null){ loadRealBookings(); return []; }
+  return realBookings.map(normBooking);
+}
 function tplServices(){
   const selfFunded=['coach','cm_externe','resp_equipe','sponsor_mgr','tresorier','membre_bureau','lecture_seule'].includes(S.role);
   let content='';
   if(svView==='catalogue'){
-    content=`<div class="grid g2">${DATA.serviceCatalog.map(sv=>`<div class="card">
+    if(REAL && realCatalog===null){ loadRealCatalog(); return `<div class="sh"><b>Prestations SportVision</b></div><div class="empty-state">Chargement…</div>`; }
+    const cat=catalogSource();
+    content = cat.length ? `<div class="grid g2">${cat.map(sv=>`<div class="card">
       <b style="font-size:14.5px;display:block;margin-bottom:6px">${sv.label}</b>
       <div class="muted" style="font-size:12.5px;margin-bottom:10px;line-height:1.5">${sv.desc}</div>
       <div class="muted" style="font-size:11.5px;margin-bottom:10px">Délai : ${sv.delai}</div>
@@ -1375,16 +1411,20 @@ function tplServices(){
         <div><div style="font-size:15px;font-weight:800">${sv.price}</div><div style="font-size:10.5px;color:var(--cyan);font-weight:600">${sv.adv}</div></div>
         <button class="btn bp" onclick="guard(()=>openBookingWizard('${sv.key}'))()">Réserver</button>
       </div>${selfFunded?`<div class="muted" style="font-size:10.5px;margin-top:8px">Facturé à vos frais</div>`:''}
-    </div>`).join('')}</div>`;
+    </div>`).join('')}</div>` : `<div class="empty-state">Catalogue en cours de préparation par SportVision.</div>`;
   } else {
-    content = DATA.bookings.length ? `<div class="list-host">${DATA.bookings.map(bk=>{const sm=statusMeta(bk.status); return `<button class="list-row" onclick="openBookingDrawer('${bk.id}')"><div><div style="font-weight:700;font-size:14px">${bk.service}</div><div class="muted" style="font-size:12px;margin-top:2px">${bk.team} · ${fmtDate(bk.date)} · ${bk.duree} · ${bk.price}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;}).join('')}</div>` : `<div class="empty-state">Aucune réservation pour le moment.</div>`;
+    if(REAL && realBookings===null){ loadRealBookings(); return `<div class="sh"><b>Prestations SportVision</b></div><div class="empty-state">Chargement…</div>`; }
+    const bks=bookingsSource();
+    content = bks.length ? `<div class="list-host">${bks.map(bk=>{const sm=statusMeta(bk.status); return `<button class="list-row" onclick="openBookingDrawer('${bk.id}')"><div><div style="font-weight:700;font-size:14px">${bk.service}</div><div class="muted" style="font-size:12px;margin-top:2px">${bk.team} · ${fmtDate(bk.date)} · ${bk.duree} · ${bk.price}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;}).join('')}</div>` : `<div class="empty-state">Aucune réservation pour le moment.</div>`;
   }
   return `<div class="sh"><b>Prestations SportVision</b><button class="btn bp" onclick="guard(()=>openBookingWizard(null))()">+ Réserver une présence</button></div>
     <div class="pillbar">${[['catalogue','Catalogue'],['reservations','Mes réservations']].map(([k,l])=>`<button class="pill${svView===k?' on':''}" onclick="svView='${k}';renderContent()">${l}</button>`).join('')}</div>
     ${content}`;
 }
 function openBookingDrawer(id){
-  const bk=DATA.bookings.find(x=>x.id===id); const sm=statusMeta(bk.status);
+  const bk=bookingsSource().find(x=>x.id===id);
+  if(!bk){ toast('Réservation introuvable.'); return; }
+  const sm=statusMeta(bk.status);
   const steps=['recue','qualifiee','confirmee','operateur_affecte','mission_realisee','livree']; const idx=steps.indexOf(bk.status)>=0?steps.indexOf(bk.status):2;
   openDrawer(`<div class="sh"><b>${bk.service}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="muted" style="font-size:12.5px;margin-bottom:18px">${bk.team} · ${fmtDate(bk.date)} · ${bk.duree}</div>
@@ -1396,10 +1436,11 @@ function openBookingDrawer(id){
 let bw={step:1,type:null,team:'Seniors R1',date:'',heure:'',adresse:'',contact:''};
 function openBookingWizard(type){ bw={step:1,type,team:'Seniors R1',date:'',heure:'',adresse:'',contact:''}; renderBookingWizard(); }
 function renderBookingWizard(){
-  const svInfo=DATA.serviceCatalog.find(sv=>sv.key===bw.type) || {label:'Prestation SportVision',price:'Sur devis',adv:''};
+  const cat=catalogSource();
+  const svInfo=cat.find(sv=>sv.key===bw.type) || {label:'Prestation SportVision',price:'Sur devis',adv:''};
   let body='';
   if(bw.step===1){
-    body=`<div class="field"><label>Type de prestation</label><select id="bw-type">${DATA.serviceCatalog.map(sv=>`<option value="${sv.key}" ${sv.key===bw.type?'selected':''}>${sv.label}</option>`).join('')}</select></div>
+    body=`<div class="field"><label>Type de prestation</label><select id="bw-type">${cat.map(sv=>`<option value="${sv.key}" ${sv.key===bw.type?'selected':''}>${sv.label}</option>`).join('')}</select></div>
       <div class="field"><label>Équipe</label><select id="bw-team">${DATA.teams.map(t=>`<option ${t===bw.team?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="row2"><div class="field"><label>Date</label><input id="bw-date" type="date"></div><div class="field"><label>Heure</label><input id="bw-heure" type="text" placeholder="15:00"></div></div>
       <div class="field"><label>Adresse</label><input id="bw-adresse" type="text" placeholder="Stade Municipal, Sens"></div>`;
@@ -1422,8 +1463,20 @@ function bookingSync(){
   if(document.getElementById('bw-heure')) bw.heure=document.getElementById('bw-heure').value;
   if(document.getElementById('bw-adresse')) bw.adresse=document.getElementById('bw-adresse').value;
 }
-function submitBooking(){
-  const svInfo=DATA.serviceCatalog.find(sv=>sv.key===bw.type);
+async function submitBooking(){
+  const cat=catalogSource();
+  const svInfo=cat.find(sv=>sv.key===bw.type);
+  if(REAL){
+    const res=await sbFetch('club_bookings', {method:'POST', body:{
+      club_id:REAL.clubId, service_id:svInfo?bw.type:null, service_label:svInfo?svInfo.label:'Prestation',
+      team:bw.team, event_date:bw.date||null, heure:bw.heure||null, adresse:bw.adresse||null,
+      status:'recue', price_label:svInfo?(svInfo.price+(svInfo.adv?' ('+svInfo.adv+')':'')):'Sur devis', created_by:REAL.userId
+    }});
+    if(!res.ok){ toast("Erreur lors de l'envoi de la demande."); return; }
+    realBookings=null; closeModal(); svView='reservations'; switchView('services');
+    toast('Demande de présence envoyée — en attente de confirmation SportVision.');
+    return;
+  }
   DATA.bookings.unshift({id:uid('b'),service:svInfo?svInfo.label:'Prestation',team:bw.team,date:bw.date||'2026-08-15',duree:'2h',status:'recue',price:svInfo?svInfo.price+' (-5% Club+)':'Sur devis'});
   closeModal(); svView='reservations'; switchView('services');
   toast('Demande de présence envoyée — en attente de confirmation SportVision.');
@@ -1796,7 +1849,7 @@ function tplRapports(){
   } else if(rapView==='sponsors'){
     content=`<div class="grid g4"><div class="stat"><b>9/13</b><span>Contreparties réalisées</span></div><div class="stat"><b>32</b><span>Publications sponsorisées</span></div><div class="stat"><b>${sponsorsSource().length}</b><span>Sponsors valorisés</span></div><div class="stat"><b>2</b><span>Engagements en retard</span></div></div>`;
   } else {
-    content=`<div class="grid g4"><div class="stat"><b>${DATA.users.filter(u=>u.status==='actif').length}</b><span>Utilisateurs actifs</span></div><div class="stat"><b>86</b><span>Connexions ce mois-ci</span></div><div class="stat"><b>${wallet.monthly-wallet.balance}/${wallet.monthly}</b><span>Crédits consommés</span></div><div class="stat"><b>${DATA.bookings.length}</b><span>Prestations commandées</span></div></div>`;
+    content=`<div class="grid g4"><div class="stat"><b>${membersSource().filter(u=>u.status==='actif').length}</b><span>Utilisateurs actifs</span></div><div class="stat"><b>${REAL?'—':'86'}</b><span>Connexions ce mois-ci</span></div><div class="stat"><b>${wallet.monthly-wallet.balance}/${wallet.monthly}</b><span>Crédits consommés</span></div><div class="stat"><b>${bookingsSource().length}</b><span>Prestations commandées</span></div></div>`;
   }
   return `<div class="sh"><b>Rapports</b><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bp" onclick="toast('Le rapport PDF sera disponible au lancement.')">Exporter en PDF</button><button class="btn bo" onclick="toast('Envoi par e-mail simulé.')">Envoyer par e-mail</button></div></div>
     <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${rapView===k?' on':''}" onclick="rapView='${k}';renderContent()">${l}</button>`).join('')}</div>
