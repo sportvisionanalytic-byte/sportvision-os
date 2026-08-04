@@ -1104,26 +1104,66 @@ const MEDIA_DEMO=[
   {id:'m5',title:'Reportage tournoi U13 (brut)',type:'video',team:'U13',source:'Lien externe',expired:true},
   {id:'m6',title:'Story matchday U18',type:'creation',team:'U18',source:'Stockage Club+',expired:false}
 ];
+const MEDIA_SOURCE_LABEL={externe:'Lien externe',interne:'Stockage Club+',sportvision:'Livré par SportVision'};
 let mtTeam='toutes', mtType='tous';
+let realMedia=null;
+function normMedia(r){
+  return {id:r.id, title:r.title, type:r.type, team:r.team||'', source:MEDIA_SOURCE_LABEL[r.source]||r.source, link:r.link||'', expired:!!r.expired};
+}
+async function loadRealMedia(){
+  if(!REAL) return;
+  const res=await sbFetch('club_media?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
+  realMedia = res.ok ? (res.data||[]).map(normMedia) : [];
+  if(S.view==='mediatheque') renderContent();
+}
+function mediaSource(){
+  if(!REAL) return MEDIA_DEMO;
+  if(realMedia===null){ loadRealMedia(); return []; }
+  return realMedia;
+}
 function tplMediatheque(){
-  const list=MEDIA_DEMO.filter(m=>(mtTeam==='toutes'||m.team===mtTeam||!m.team)&&(mtType==='tous'||m.type===mtType));
+  if(REAL && realMedia===null){ loadRealMedia(); return `<div class="sh"><b>Banque média</b></div><div class="empty-state">Chargement…</div>`; }
+  const list=mediaSource().filter(m=>(mtTeam==='toutes'||m.team===mtTeam||!m.team)&&(mtType==='tous'||m.type===mtType));
   const typeLbl={photo:'Photo',video:'Vidéo',logo:'Logo',document:'Document',creation:'Création'};
-  return `<div class="sh"><b>Banque média</b><button class="btn bp" onclick="guard(()=>toast('Import de médias disponible au lancement.'))()">+ Importer</button></div>
+  return `<div class="sh"><b>Banque média</b><button class="btn bp" onclick="guard(openMediaForm)()">+ Importer</button></div>
     <div class="pillbar">${['toutes',...DATA.teams].map(t=>`<button class="pill${mtTeam===t?' on':''}" onclick="mtTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
     <div class="pillbar">${[['tous','Tous les types'],['photo','Photos'],['video','Vidéos'],['logo','Logos'],['creation','Créations']].map(([k,l])=>`<button class="pill${mtType===k?' on':''}" onclick="mtType='${k}';renderContent()">${l}</button>`).join('')}</div>
     <div class="grid g4">${list.map(m=>`<button class="tile-card" onclick="openMediaDrawer('${m.id}')"><div class="thumb">${esc(m.title)}</div><div style="font-weight:600;font-size:12px;margin-top:8px">${esc(m.title)}</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"><span class="badge" style="background:#168EFF22;color:var(--blue)">${typeLbl[m.type]}</span><span class="badge" style="background:${m.expired?'#EF5B6722':'#28C99522'};color:${m.expired?'var(--er)':'var(--ok)'}">${m.expired?'Lien expiré':m.source}</span></div></button>`).join('')||'<div class="empty-state">Aucun média pour ces filtres.</div>'}</div>`;
 }
 function openMediaDrawer(id){
-  const m=MEDIA_DEMO.find(x=>x.id===id);
+  const m=mediaSource().find(x=>x.id===id);
+  if(!m){ toast('Média introuvable.'); return; }
   openDrawer(`<div class="sh"><b>${esc(m.title)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="thumb" style="height:200px;margin-bottom:16px">${esc(m.title)}</div>
     ${m.expired?`<div class="card" style="border-color:#EF5B6755;margin-bottom:16px;color:var(--er);font-size:12.5px">Ce lien externe est expiré ou indisponible. Demandez un nouveau lien à son auteur.</div>`:''}
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn bp" onclick="toast('Lien copié dans le presse-papiers.')">Copier le lien</button>
+      <button class="btn bp" onclick="${m.link?`window.open('${esc(m.link)}','_blank')`:"toast('Lien copié dans le presse-papiers.')"}">${m.link?'Ouvrir le lien':'Copier le lien'}</button>
       <button class="btn bo" onclick="closeDrawer();switchView('creations');toast('Média prêt à être utilisé dans une création.')">Utiliser dans une création</button>
       <button class="btn bo" onclick="toast('Signalement transmis à SportVision.')">Signaler un problème</button>
     </div>`);
+}
+function openMediaForm(){
+  openModal(`<div class="sh"><b>Importer un média</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Titre</label><input id="mf-title" type="text"></div>
+    <div class="row2"><div class="field"><label>Type</label><select id="mf-type"><option value="photo">Photo</option><option value="video">Vidéo</option><option value="logo">Logo</option><option value="document">Document</option><option value="creation">Création</option></select></div>
+    <div class="field"><label>Équipe</label><select id="mf-team">${DATA.teams.map(t=>`<option>${t}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Source</label><select id="mf-source"><option value="externe">Lien externe</option><option value="interne">Stockage Club+</option></select></div>
+    <div class="field"><label>Lien (si externe)</label><input id="mf-link" type="text" placeholder="https://…"></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitMediaForm()">Importer</button>`);
+}
+async function submitMediaForm(){
+  const title=document.getElementById('mf-title').value.trim();
+  if(!title){ toast('Le titre est obligatoire.'); return; }
+  const type=document.getElementById('mf-type').value, team=document.getElementById('mf-team').value, source=document.getElementById('mf-source').value, link=document.getElementById('mf-link').value;
+  if(REAL){
+    const res=await sbFetch('club_media', {method:'POST', body:{club_id:REAL.clubId, title, type, team, source, link, author_id:REAL.userId, author_name:REAL.person}});
+    if(!res.ok){ toast("Erreur lors de l'import."); return; }
+    realMedia=null; closeModal(); switchView('mediatheque'); toast('Média ajouté à la médiathèque.');
+    return;
+  }
+  MEDIA_DEMO.unshift({id:uid('m'),title,type,team,source:source==='interne'?'Stockage Club+':'Lien externe',expired:false});
+  closeModal(); renderContent(); toast('Média ajouté à la médiathèque.');
 }
 
 /* ══════════════ SPONSORS ══════════════ */
