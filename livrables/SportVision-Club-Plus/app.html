@@ -2465,6 +2465,114 @@ async function submitFamReport(refType,refId){
   closeModal(); toast('Signalement transmis au club.');
 }
 
+/* ── PROJETS D'ÉQUIPE (phase 11) — team_projects/team_project_contributions ──
+   Un seul chargeur pour les deux contextes (admin/éducateur ET famille) : le
+   RLS (is_club_member vs is_family_of_team, v21) fait déjà le tri de ce que
+   chaque identité peut voir sur le même club_id. Le paiement lui-même ne
+   passe jamais par un insert direct côté client : create-team-contribution-
+   checkout (Edge Function, service role) vérifie l'appartenance à l'équipe
+   et crée la session Stripe, montant_collecte se recalcule tout seul via
+   trigger quand stripe-webhook marque une contribution 'paye'. */
+const TEAM_PROJECT_STATUS_META={
+  brouillon:{label:'Brouillon',color:'#A7B6C9'}, attente_validation_club:{label:'En attente de validation',color:'#F5A623'},
+  ouvert:{label:'Ouvert',color:'#168EFF'}, objectif_atteint:{label:'Objectif atteint',color:'#28C995'},
+  paiement_complementaire_necessaire:{label:'Paiement complémentaire nécessaire',color:'#F5A623'},
+  confirme:{label:'Confirmé',color:'#28C995'}, annule:{label:'Annulé',color:'#EF5B67'},
+  rembourse:{label:'Remboursé',color:'#A7B6C9'}, prestation_realisee:{label:'Prestation réalisée',color:'#28C995'},
+  livre:{label:'Livré',color:'#28C995'}
+};
+let realFamProjects=null;
+async function loadFamProjects(){
+  if(!REAL) return;
+  const cid = REAL.space==='parent' ? famCurrentClubId() : (REAL.clubId || null);
+  if(!cid){ realFamProjects=[]; if(['joueursfamilles','famprojets'].includes(S.view)) renderContent(); return; }
+  const res=await sbFetch('team_projects?club_id=eq.'+cid+'&select=*,club_teams(name),catalogue_offres(nom)&order=created_at.desc');
+  realFamProjects = res.ok ? (res.data||[]) : [];
+  if(['joueursfamilles','famprojets'].includes(S.view)) renderContent();
+}
+function famProjectAdminRowHtml(p){
+  const sm=TEAM_PROJECT_STATUS_META[p.statut]||{label:p.statut,color:'#A7B6C9'};
+  const pct=p.montant_cible>0?Math.min(100,Math.round(p.montant_collecte/p.montant_cible*100)):0;
+  return `<div class="card" style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+      <div><b style="font-size:14px">${esc(p.titre)}</b><div class="muted" style="font-size:12px;margin-top:2px">${esc((p.club_teams&&p.club_teams.name)||'')}${p.catalogue_offres?' · '+esc(p.catalogue_offres.nom):''}</div></div>
+      <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
+    </div>
+    <div class="progress" style="margin-bottom:6px"><i style="width:${pct}%"></i></div>
+    <div class="muted" style="font-size:12px;margin-bottom:10px">${p.montant_collecte} € / ${p.montant_cible} €</div>
+    <select onchange="famChangeProjectStatus('${p.id}',this.value)" style="width:auto;padding:5px 8px;font-size:12px">
+      ${Object.keys(TEAM_PROJECT_STATUS_META).map(st=>`<option value="${st}" ${st===p.statut?'selected':''}>${TEAM_PROJECT_STATUS_META[st].label}</option>`).join('')}
+    </select>
+  </div>`;
+}
+async function famChangeProjectStatus(id,statut){
+  const res=await sbFetch('team_projects?id=eq.'+id, {method:'PATCH', body:{statut}});
+  if(!res.ok){ toast('Action impossible (droits requis).'); return; }
+  realFamProjects=null; renderContent(); toast('Statut mis à jour.');
+}
+function openCreateProjectModal(){
+  const teams=teamsSource();
+  if(!teams.length){ toast('Ajoutez au moins une équipe avant de créer un projet.'); return; }
+  if(realFamCatalog===null) loadFamCatalog();
+  openModal(`<div class="sh"><b>Nouveau projet d'équipe</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Titre</label><input id="tp-titre" type="text"></div>
+    <div class="row2"><div class="field"><label>Équipe</label><select id="tp-team">${teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select></div>
+    <div class="field"><label>Prestation</label><select id="tp-offre">${(realFamCatalog||[]).map(o=>`<option value="${o.id}">${esc(o.nom)}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Objectif (description)</label><textarea id="tp-objectif" rows="2"></textarea></div>
+    <div class="row2"><div class="field"><label>Montant cible (€)</label><input id="tp-montant" type="number" min="1" step="1"></div>
+    <div class="field"><label>Contribution minimum (€, optionnel)</label><input id="tp-min" type="number" min="1" step="1"></div></div>
+    <div class="row2"><div class="field"><label>Date de l'événement</label><input id="tp-date-evt" type="date"></div>
+    <div class="field"><label>Date limite</label><input id="tp-date-limite" type="date"></div></div>
+    <div class="field"><label>Conditions si objectif non atteint (optionnel)</label><textarea id="tp-conditions" rows="2"></textarea></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitCreateProject()">Créer et soumettre au club</button>`);
+}
+async function submitCreateProject(){
+  const titre=document.getElementById('tp-titre').value.trim();
+  const montant=Number(document.getElementById('tp-montant').value);
+  if(!titre || !montant || montant<=0){ toast('Titre et montant cible sont obligatoires.'); return; }
+  const offreId=document.getElementById('tp-offre').value;
+  if(!offreId){ toast('Choisissez une prestation.'); return; }
+  const body={
+    club_id:REAL.clubId, team_id:document.getElementById('tp-team').value, catalogue_offre_id:offreId, titre,
+    objectif:document.getElementById('tp-objectif').value.trim()||null,
+    montant_cible:montant,
+    contribution_min:Number(document.getElementById('tp-min').value)||null,
+    date_evenement:document.getElementById('tp-date-evt').value||null,
+    date_limite:document.getElementById('tp-date-limite').value||null,
+    conditions_non_atteint:document.getElementById('tp-conditions').value.trim()||null,
+    responsable_id:REAL.userId, created_by:REAL.userId, statut:'attente_validation_club'
+  };
+  const res=await sbFetch('team_projects', {method:'POST', body});
+  if(!res.ok){ toast("Erreur lors de la création (droits d'éducateur ou d'administrateur requis)."); return; }
+  closeModal(); realFamProjects=null; renderContent(); toast('Projet créé et soumis au club pour validation.');
+}
+function famProjectFamilyCardHtml(p){
+  const sm=TEAM_PROJECT_STATUS_META[p.statut]||{label:p.statut,color:'#A7B6C9'};
+  const pct=p.montant_cible>0?Math.min(100,Math.round(p.montant_collecte/p.montant_cible*100)):0;
+  const canContribute = p.statut==='ouvert';
+  return `<div class="card" style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+      <div><b style="font-size:15px">${esc(p.titre)}</b><div class="muted" style="font-size:12px;margin-top:2px">${esc(p.objectif||'')}</div></div>
+      <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
+    </div>
+    <div class="progress" style="margin-bottom:6px"><i style="width:${pct}%"></i></div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:12px">${p.montant_collecte} € collectés sur ${p.montant_cible} €${p.date_limite?' · avant le '+p.date_limite:''}</div>
+    ${canContribute?`<button class="btn bp" onclick="openFamContributeModal('${p.id}',${p.contribution_min||0})">Participer</button>`:''}
+  </div>`;
+}
+function openFamContributeModal(projectId, minAmount){
+  openModal(`<div class="sh"><b>Participer au projet</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Montant (€)${minAmount?' — minimum '+minAmount+' €':''}</label><input id="fc-montant" type="number" min="${minAmount||1}" step="1"></div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitFamContribution('${projectId}')">Continuer vers le paiement</button>`);
+}
+async function submitFamContribution(projectId){
+  const montant=Number(document.getElementById('fc-montant').value);
+  if(!montant || montant<=0){ toast('Indiquez un montant.'); return; }
+  const res=await sbFunction('create-team-contribution-checkout', {project_id:projectId, montant});
+  if(!res.ok || !res.data || !res.data.url){ toast((res.data&&res.data.error)||'Impossible de démarrer le paiement.'); return; }
+  window.location.href=res.data.url;
+}
+
 function famCodesTabHtml(){
   if(realFamCodes===null){ loadFamCodes(); return '<div class="empty-state">Chargement…</div>'; }
   return `<div class="grid g2">${teamsSource().map(t=>{
@@ -2547,7 +2655,7 @@ function tplFamillesDemandes(){
 
 function tplJoueursFamilles(){
   if(!REAL) return `<div class="sh"><b>Joueurs & Familles</b></div><div class="empty-state">Ce module utilise des comptes joueur/parent réels — non disponible en mode démo.</div>`;
-  const tabs=[['overview','Vue d’ensemble'],['demandes','Demandes'],['joueurs','Joueurs'],['parents','Parents'],['invitations','Invitations'],['autorisations','Autorisations'],['signalements','Signalements'],['codes','Codes équipe']];
+  const tabs=[['overview','Vue d’ensemble'],['demandes','Demandes'],['joueurs','Joueurs'],['parents','Parents'],['invitations','Invitations'],['autorisations','Autorisations'],['signalements','Signalements'],['projets','Projets d’équipe'],['codes','Codes équipe']];
   let content='';
   if(famAdminTab==='overview'){
     if(realFamRequests===null) loadFamRequests();
@@ -2595,10 +2703,16 @@ function tplJoueursFamilles(){
   } else if(famAdminTab==='signalements'){
     if(realFamReports===null){ loadFamReports(); content='<div class="empty-state">Chargement…</div>'; }
     else content=`<div class="list-host">${(realFamReports||[]).length?realFamReports.map(famReportRowHtml).join(''):'<div class="empty-state">Aucun signalement pour le moment.</div>'}</div>`;
+  } else if(famAdminTab==='projets'){
+    if(realFamProjects===null){ loadFamProjects(); content='<div class="empty-state">Chargement…</div>'; }
+    else content=(realFamProjects||[]).length?realFamProjects.map(famProjectAdminRowHtml).join(''):'<div class="empty-state">Aucun projet d’équipe pour le moment.</div>';
   } else {
     content=famCodesTabHtml();
   }
-  return `<div class="sh"><b>Joueurs & Familles</b><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bo" onclick="guard(()=>openFamilyInviteWizard('parent'))()">+ Inviter un parent</button><button class="btn bp" onclick="guard(()=>openFamilyInviteWizard('joueur'))()">+ Inviter un joueur</button></div></div>
+  const headerActions = famAdminTab==='projets'
+    ? `<button class="btn bp" onclick="guard(openCreateProjectModal)()">+ Nouveau projet</button>`
+    : `<button class="btn bo" onclick="guard(()=>openFamilyInviteWizard('parent'))()">+ Inviter un parent</button><button class="btn bp" onclick="guard(()=>openFamilyInviteWizard('joueur'))()">+ Inviter un joueur</button>`;
+  return `<div class="sh"><b>Joueurs & Familles</b><div style="display:flex;gap:8px;flex-wrap:wrap">${headerActions}</div></div>
     <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${famAdminTab===k?' on':''}" onclick="famAdminTab='${k}';renderContent()">${l}</button>`).join('')}</div>
     ${content}`;
 }
@@ -2610,6 +2724,7 @@ function tplJoueursFamilles(){
    Livrables/Favoris/Projets restent des états d'attente honnêtes plutôt
    que des écrans vides silencieux ou des données inventées. */
 let realFamMyTeams=null, realFamMyEvents=null, realFamMyMatches=null, realFamCatalog=null, realFamMyAuthorizations=null, realFamMyLivrables=null, realFamFavorites=null, realFamMyBookings=null;
+// realFamProjects est déclaré plus haut (section Projets d'équipe), partagé entre l'admin et la famille.
 let famActiveChildId=null; // parent uniquement : player_id de l'enfant actuellement sélectionné
 
 /* Identité "active" pour les vues partagées joueur/parent : le joueur lui-même
@@ -2628,7 +2743,7 @@ function famCurrentClubId(){
 }
 function famSetActiveChild(id){
   famActiveChildId=id;
-  realFamMyTeams=null; realFamMyEvents=null; realFamMyMatches=null; realFamMyAuthorizations=null; realFamMyLivrables=null; realFamMyBookings=null;
+  realFamMyTeams=null; realFamMyEvents=null; realFamMyMatches=null; realFamMyAuthorizations=null; realFamMyLivrables=null; realFamMyBookings=null; realFamProjects=null;
   updateFamParentHeader(); renderContent();
 }
 function famChildSwitcherHtml(){
@@ -2880,7 +2995,11 @@ function tplEspaceJoueurMonEquipe(){
     <div class="grid g2">${teams.length?teams.map(t=>{const ct=t.club_teams||{}; return `<div class="card"><b style="font-size:15px;display:block;margin-bottom:6px">${esc(ct.name||'')}</b><div class="muted" style="font-size:12.5px">${esc(ct.categorie||'')}</div><div class="muted" style="font-size:12.5px;margin-top:6px">Éducateur : ${esc(ct.coach||'—')}</div></div>`;}).join(''):'<div class="empty-state">Aucun rattachement à une équipe pour le moment.</div>'}</div>`;
 }
 function tplEspaceJoueurProjets(){
-  return `<div class="sh"><b>${REAL.space==='parent'?'Projets d’équipe':'Mes projets'}</b></div><div class="empty-state">Les projets collectifs de l'équipe apparaîtront ici. Cette fonctionnalité arrive bientôt.</div>`;
+  if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Projets d’équipe</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour voir ses projets d'équipe.</div>`;
+  if(realFamProjects===null){ loadFamProjects(); return `<div class="sh"><b>${REAL.space==='parent'?'Projets d’équipe':'Mes projets'}</b></div>${famChildSwitcherHtml()}<div class="empty-state">Chargement…</div>`; }
+  const items=(realFamProjects||[]).filter(p=>['ouvert','objectif_atteint','paiement_complementaire_necessaire','confirme','prestation_realisee','livre'].includes(p.statut));
+  return `<div class="sh"><b>${REAL.space==='parent'?'Projets d’équipe':'Mes projets'}</b></div>${famChildSwitcherHtml()}
+    ${items.length?items.map(famProjectFamilyCardHtml).join(''):'<div class="empty-state">Aucun projet collectif pour le moment.</div>'}`;
 }
 function tplFamCommandes(){
   if(REAL.space==='parent' && !famCurrentPlayerId()) return `<div class="sh"><b>Commandes</b></div><div class="empty-state">Sélectionnez un enfant depuis « Ma famille » pour voir ses commandes.</div>`;

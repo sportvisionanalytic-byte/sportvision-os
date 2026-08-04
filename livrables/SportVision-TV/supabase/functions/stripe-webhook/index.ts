@@ -40,7 +40,35 @@ serve(async (req) => {
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      const paiementId = (session.metadata?.paiement_id as string) || (session.client_reference_id as string) || null;
+      // Un projet collectif (team_project_contributions, migration-clubplus-v21.sql)
+      // utilise aussi client_reference_id (même convention que paiement_id ci-dessous),
+      // d'où le branchement explicite sur contribution_id AVANT le repli sur
+      // client_reference_id : sans ça, une contribution serait interprétée à tort
+      // comme un paiement_id Portail.
+      const contributionId = (session.metadata?.contribution_id as string) || null;
+      const paiementId = contributionId ? null : ((session.metadata?.paiement_id as string) || (session.client_reference_id as string) || null);
+
+      if (contributionId) {
+        const { data: contribution } = await admin
+          .from("team_project_contributions")
+          .select("id, project_id, montant, statut")
+          .eq("id", contributionId)
+          .maybeSingle();
+
+        if (contribution && contribution.statut !== "paye") {
+          await admin
+            .from("team_project_contributions")
+            .update({ statut: "paye", stripe_payment_intent_id: session.payment_intent as string })
+            .eq("id", contributionId);
+          // team_projects.montant_collecte et le passage à 'objectif_atteint' se
+          // recalculent automatiquement via le trigger trg_tpc_recompute (v21).
+          await admin.from("team_project_events").insert({
+            project_id: contribution.project_id,
+            event_type: "contribution_payee",
+            note: `${contribution.montant} € reçus via Stripe`,
+          });
+        }
+      }
 
       if (paiementId) {
         const { data: paiement } = await admin.from("paiements").select("*").eq("id", paiementId).maybeSingle();
@@ -138,6 +166,7 @@ serve(async (req) => {
     if (event.type === "payment_intent.payment_failed") {
       const intent = event.data.object as Stripe.PaymentIntent;
       await admin.from("paiements").update({ statut: "echoue" }).eq("stripe_payment_intent_id", intent.id);
+      await admin.from("team_project_contributions").update({ statut: "echoue" }).eq("stripe_payment_intent_id", intent.id);
     }
   } catch (e) {
     // On accuse toujours réception à Stripe (200) pour éviter des re-livraisons en boucle ;
