@@ -437,16 +437,16 @@ function eventColor(type){ return {match:'#168EFF',entrainement:'#A7B6C9',tourno
 
 /* ── PERMISSIONS ── */
 function allowedKeys(role){
-  const all=['dashboard','newsroom','matchcenter','mediatheque','sponsors','services','equipes','membres','rapports','docsfinance','abonnement','parametres','demandes','creations','calendrier','aide'];
+  const all=['dashboard','newsroom','matchcenter','mediatheque','sponsors','services','equipes','membres','rapports','docsfinance','abonnement','parametres','demandes','creations','calendrier','joueursfamilles','aide'];
   const map={
-    coach:['dashboard','matchcenter','calendrier','creations','demandes','services','aide'],
+    coach:['dashboard','matchcenter','calendrier','creations','demandes','famillesdemandes','services','aide'],
     comm:['dashboard','newsroom','matchcenter','calendrier','creations','mediatheque','sponsors','demandes','services','equipes','membres','rapports','docsfinance','aide'],
     president:['dashboard','calendrier','sponsors','creations','services','rapports','equipes','membres','abonnement','parametres','aide'],
-    secretaire:['dashboard','calendrier','matchcenter','newsroom','equipes','membres','mediatheque','docsfinance','services','parametres','aide'],
+    secretaire:['dashboard','calendrier','matchcenter','newsroom','equipes','membres','mediatheque','docsfinance','services','parametres','joueursfamilles','aide'],
     sponsor_mgr:['dashboard','sponsors','mediatheque','demandes','rapports','services','aide'],
     tresorier:['dashboard','abonnement','docsfinance','services','rapports','aide'],
     cm_externe:['dashboard','newsroom','matchcenter','calendrier','creations','mediatheque','sponsors','demandes','services','mesacces','aide'],
-    resp_equipe:['dashboard','matchcenter','calendrier','creations','demandes','equipes','services','aide'],
+    resp_equipe:['dashboard','matchcenter','calendrier','creations','demandes','famillesdemandes','equipes','services','aide'],
     membre_bureau:['dashboard','calendrier','sponsors','rapports','services','mesacces','aide'],
     lecture_seule:['dashboard','calendrier','sponsors','rapports','services','aide']
   };
@@ -460,12 +460,12 @@ function guard(fn){
 }
 
 /* ── NAVIGATION ── */
-const NAV_TITLES={dashboard:'Tableau de bord',newsroom:'Newsroom du club',matchcenter:'Match Center',calendrier:'Calendrier',creations:'Studio de création',mediatheque:'Banque média',sponsors:'Sponsors',demandes:'Demandes de création',services:'Prestations SportVision',equipes:'Équipes & éducateurs',membres:'Utilisateurs',rapports:'Rapports',docsfinance:'Documents',abonnement:'Abonnement & crédits',parametres:'Paramètres',mesacces:'Mes accès',aide:'Aide'};
+const NAV_TITLES={dashboard:'Tableau de bord',newsroom:'Newsroom du club',matchcenter:'Match Center',calendrier:'Calendrier',creations:'Studio de création',mediatheque:'Banque média',sponsors:'Sponsors',demandes:'Demandes de création',services:'Prestations SportVision',equipes:'Équipes & éducateurs',membres:'Utilisateurs',rapports:'Rapports',docsfinance:'Documents',abonnement:'Abonnement & crédits',parametres:'Paramètres',mesacces:'Mes accès',joueursfamilles:'Joueurs & Familles',famillesdemandes:'Demandes Joueurs & Familles',aide:'Aide'};
 const NAV_DEFS=[
   {title:'Pilotage',items:[{id:'dashboard',label:'Accueil',letter:'A'},{id:'newsroom',label:'Newsroom du club',letter:'N'},{id:'matchcenter',label:'Match Center',letter:'MC'},{id:'calendrier',label:'Calendrier',letter:'Ca'}]},
   {title:'Communication',items:[{id:'creations',label:'Studio de création',letter:'Co'},{id:'mediatheque',label:'Banque média',letter:'BM'},{id:'sponsors',label:'Sponsors',letter:'Sp'},{id:'demandes',label:'Demandes de création',letter:'D'}]},
   {title:'SportVision',items:[{id:'services',label:'Prestations SportVision',letter:'SV'}]},
-  {title:'Club',items:[{id:'equipes',label:'Équipes & éducateurs',letter:'É'},{id:'membres',label:'Utilisateurs',letter:'U'},{id:'rapports',label:'Rapports',letter:'Ra'},{id:'docsfinance',label:'Documents',letter:'Do'},{id:'abonnement',label:'Abonnement & crédits',letter:'Ab'},{id:'parametres',label:'Paramètres',letter:'Pa'},{id:'mesacces',label:'Mes accès',letter:'MA'},{id:'aide',label:'Aide',letter:'?'}]}
+  {title:'Club',items:[{id:'equipes',label:'Équipes & éducateurs',letter:'É'},{id:'membres',label:'Utilisateurs',letter:'U'},{id:'joueursfamilles',label:'Joueurs & Familles',letter:'JF'},{id:'famillesdemandes',label:'Demandes Joueurs & Familles',letter:'DF'},{id:'rapports',label:'Rapports',letter:'Ra'},{id:'docsfinance',label:'Documents',letter:'Do'},{id:'abonnement',label:'Abonnement & crédits',letter:'Ab'},{id:'parametres',label:'Paramètres',letter:'Pa'},{id:'mesacces',label:'Mes accès',letter:'MA'},{id:'aide',label:'Aide',letter:'?'}]}
 ];
 function renderSidebarNav(){
   const allowed=allowedKeys(S.role);
@@ -690,6 +690,7 @@ function dashGeneric(){
       ${week.map(e=>`<div style="display:flex;gap:9px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${e.type[0].toUpperCase()}</span><div><div style="font-weight:600;font-size:12.5px">${esc(e.title)}</div><div class="muted" style="font-size:11px">${fmtDate(e.date)}</div></div></div>`).join('')||'<div class="muted">Aucun événement.</div>'}
     </div>
   </div>
+  ${famDashCardHtml()}
   <div class="card" style="margin-bottom:20px"><b style="font-size:15px;display:block;margin-bottom:12px">Communication</b>
     <div class="grid g4">
       <div class="stat"><b>6</b><span>Contenus à préparer</span></div>
@@ -2123,7 +2124,281 @@ function dashRespEquipe(){
     <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Demandes de l'équipe</b>
       ${teamRequests.map(r=>{const sm=statusMeta(r.status); return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span>${typeLabel(r.type)}</span><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join('')||'<div class="muted" style="font-size:12.5px">Aucune demande pour cette équipe.</div>'}
     </div>
+  </div>
+  ${famDashCardHtml()}`;
+}
+
+/* ══════════════ ESPACE JOUEUR & FAMILLE — INTERFACES ÉDUCATEUR / ADMIN ══════════════
+   Phase 5 (cf. CLUBPLUS_PLAYER_FAMILY_ARCHITECTURE.md). Aucune donnée de démo : ce
+   module n'existe qu'en session réelle (REAL), les tables/RPC datent des migrations
+   v13-v15. Pas de cache par écriture optimiste : chaque action invalide le cache
+   concerné (=null) et laisse le prochain rendu recharger, même patron que le reste
+   de l'app (loadRealX/xSource). */
+let famAdminTab='overview', famReqFilter='toutes';
+let realFamRequests=null, realFamPlayers=null, realFamParents=null, realFamInvitations=null, realFamAuthorizations=null, realFamCodes=null;
+
+function famReqStatusMeta(status){
+  return {
+    a_verifier:{label:'À vérifier',color:'#168EFF'}, autorisation_manquante:{label:'Autorisation manquante',color:'#EF5B67'},
+    en_attente_parent:{label:'En attente du parent',color:'#F5A623'}, pret_a_valider:{label:'Prête à valider',color:'#2DD4E3'},
+    validee:{label:'Validée',color:'#28C995'}, refusee:{label:'Refusée',color:'#EF5B67'},
+    doublon_signale:{label:'Doublon signalé',color:'#EF5B67'}, transferee_admin:{label:'Transférée à l’administrateur',color:'#7455FF'}
+  }[status] || {label:status,color:'#A7B6C9'};
+}
+const FAM_ACCOUNT_STATUS_META={
+  sans_compte:{label:'Sans compte',color:'#A7B6C9'}, invite:{label:'Invité',color:'#F5A623'},
+  en_attente_activation:{label:'En attente d’activation',color:'#F5A623'}, actif:{label:'Actif',color:'#28C995'},
+  suspendu:{label:'Suspendu',color:'#EF5B67'}, retire:{label:'Retiré',color:'#A7B6C9'}
+};
+const FAM_AUTH_STATUS_META={
+  non_transmise:{label:'Non transmise',color:'#A7B6C9'}, en_attente:{label:'En attente',color:'#F5A623'},
+  transmise:{label:'Transmise',color:'#F5A623'}, a_verifier:{label:'À vérifier',color:'#F5A623'},
+  valide:{label:'Valide',color:'#28C995'}, incomplete:{label:'Incomplète',color:'#EF5B67'},
+  refusee:{label:'Refusée',color:'#EF5B67'}, expiree:{label:'Expirée',color:'#EF5B67'},
+  retiree:{label:'Retirée',color:'#A7B6C9'}, remplacee:{label:'Remplacée',color:'#A7B6C9'}
+};
+
+async function loadFamRequests(){
+  if(!REAL) return;
+  const res=await sbFetch('membership_requests?club_id=eq.'+REAL.clubId+'&select=*,player_profiles(prenom,nom,date_naissance),club_teams(name)&order=created_at.desc');
+  realFamRequests = res.ok ? (res.data||[]) : [];
+  if(['joueursfamilles','famillesdemandes','dashboard'].includes(S.view)) renderContent();
+}
+async function loadFamPlayers(){
+  if(!REAL) return;
+  const res=await sbFetch('player_profiles?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
+  realFamPlayers = res.ok ? (res.data||[]) : [];
+  if(S.view==='joueursfamilles') renderContent();
+}
+async function loadFamParents(){
+  if(!REAL) return;
+  const res=await sbFetch('parent_profiles?select=*,parent_player_relationships(statut,player_id,player_profiles(prenom,nom))&order=created_at.desc');
+  realFamParents = res.ok ? (res.data||[]) : [];
+  if(S.view==='joueursfamilles') renderContent();
+}
+async function loadFamInvitations(){
+  if(!REAL) return;
+  const [p,pa]=await Promise.all([
+    sbFetch('player_invitations?club_id=eq.'+REAL.clubId+'&statut=eq.envoyee&select=*&order=created_at.desc'),
+    sbFetch('parent_invitations?club_id=eq.'+REAL.clubId+'&statut=eq.envoyee&select=*&order=created_at.desc'),
+  ]);
+  realFamInvitations = { joueurs: p.ok?(p.data||[]):[], parents: pa.ok?(pa.data||[]):[] };
+  if(S.view==='joueursfamilles') renderContent();
+}
+async function loadFamAuthorizations(){
+  if(!REAL) return;
+  const res=await sbFetch('parental_authorizations?select=*,player_profiles(prenom,nom),authorization_types(code,label)&order=created_at.desc');
+  realFamAuthorizations = res.ok ? (res.data||[]) : [];
+  if(S.view==='joueursfamilles') renderContent();
+}
+async function loadFamCodes(){
+  if(!REAL) return;
+  const res=await sbFetch('team_invite_codes?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
+  realFamCodes = res.ok ? (res.data||[]) : [];
+  if(['joueursfamilles','famillesdemandes'].includes(S.view)) renderContent();
+}
+
+function famRequestRowHtml(r){
+  const player=r.player_profiles||{};
+  const teamName=(r.club_teams&&r.club_teams.name)||'—';
+  const sm=famReqStatusMeta(r.statut);
+  const name=`${player.prenom||''} ${player.nom||''}`.trim()||'—';
+  const canAccept = ['a_verifier','pret_a_valider'].includes(r.statut) && !(r.validation_mode==='double' && !r.educateur_confirme_at);
+  const canConfirmEducateur = r.validation_mode==='double' && !r.educateur_confirme_at && ['a_verifier','pret_a_valider'].includes(r.statut);
+  const canReject = !['validee','refusee'].includes(r.statut);
+  return `<div class="list-row" style="cursor:default;flex-wrap:wrap;gap:8px">
+    <div><div style="font-weight:700;font-size:14px">${esc(name)}</div><div class="muted" style="font-size:12px;margin-top:2px">${esc(teamName)} · ${r.source} · ${(r.created_at||'').slice(0,10)}</div></div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
+      ${canConfirmEducateur?`<button class="btn bo" style="padding:5px 10px" onclick="famConfirmEducateur('${r.id}')">Confirmer</button>`:''}
+      ${canAccept?`<button class="btn bp" style="padding:5px 10px" onclick="famAcceptRequest('${r.id}')">Accepter</button>`:''}
+      ${canReject?`<button class="btn bd" style="padding:5px 10px" onclick="openFamRejectModal('${r.id}')">Refuser</button>`:''}
+    </div>
   </div>`;
+}
+async function famAcceptRequest(id){
+  const res=await sbFetch('rpc/validate_team_membership', {method:'POST', body:{p_request_id:id}});
+  if(!res.ok){ toast((res.data&&res.data.message)||'Impossible de valider — vérifiez les autorisations parentales.'); realFamRequests=null; renderContent(); return; }
+  realFamRequests=null; renderContent(); toast('Demande validée — accès ouvert.');
+}
+async function famConfirmEducateur(id){
+  const res=await sbFetch('rpc/confirm_request_educateur', {method:'POST', body:{p_request_id:id}});
+  if(!res.ok){ toast('Action impossible.'); return; }
+  realFamRequests=null; renderContent(); toast('Confirmé — en attente de validation par un administrateur.');
+}
+function openFamRejectModal(id){
+  openModal(`<div class="sh"><b>Refuser la demande</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>Motif (optionnel)</label><textarea id="fr-motif" rows="3"></textarea></div>
+    <button class="btn bd" style="width:100%;justify-content:center" onclick="famRejectRequest('${id}')">Confirmer le refus</button>`);
+}
+async function famRejectRequest(id){
+  const motifEl=document.getElementById('fr-motif');
+  const motif=motifEl?motifEl.value.trim():'';
+  const res=await sbFetch('rpc/reject_team_membership', {method:'POST', body:{p_request_id:id, p_motif:motif||null}});
+  if(!res.ok){ toast('Action impossible.'); return; }
+  closeModal(); realFamRequests=null; renderContent(); toast('Demande refusée.');
+}
+
+function famPlayerRowHtml(p){
+  const name=`${p.prenom||''} ${p.nom||''}`.trim()||'—';
+  const asMeta=FAM_ACCOUNT_STATUS_META[p.account_status]||{label:p.account_status,color:'#A7B6C9'};
+  return `<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:14px">${esc(name)}</div><div class="muted" style="font-size:12px;margin-top:2px">${p.date_naissance||'—'}</div></div><span class="badge" style="background:${asMeta.color}22;color:${asMeta.color}">${asMeta.label}</span></div>`;
+}
+function famParentRowHtml(pp){
+  const name=`${pp.prenom||''} ${pp.nom||''}`.trim()||'—';
+  const rels=(pp.parent_player_relationships||[]).filter(r=>r.player_profiles);
+  const children=rels.map(r=>`${(r.player_profiles.prenom||'')} ${(r.player_profiles.nom||'')}`.trim()).join(', ')||'—';
+  return `<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:14px">${esc(name)}</div><div class="muted" style="font-size:12px;margin-top:2px">Enfant(s) : ${esc(children)}</div></div></div>`;
+}
+function famAuthRowHtml(a){
+  const player=a.player_profiles||{};
+  const name=`${player.prenom||''} ${player.nom||''}`.trim()||'—';
+  const type=(a.authorization_types&&a.authorization_types.label)||'—';
+  const asMeta=FAM_AUTH_STATUS_META[a.statut]||{label:a.statut,color:'#A7B6C9'};
+  const canVerify = a.statut==='a_verifier';
+  return `<div class="list-row" style="cursor:default;flex-wrap:wrap;gap:8px"><div><div style="font-weight:700;font-size:13.5px">${esc(name)} — ${esc(type)}</div><div class="muted" style="font-size:12px;margin-top:2px">${a.methode||'—'}</div></div>
+    <div style="display:flex;align-items:center;gap:8px"><span class="badge" style="background:${asMeta.color}22;color:${asMeta.color}">${asMeta.label}</span>
+    ${canVerify?`<button class="btn bp" style="padding:5px 10px" onclick="famVerifyAuth('${a.id}','valide')">Valider</button><button class="btn bd" style="padding:5px 10px" onclick="famVerifyAuth('${a.id}','refusee')">Refuser</button>`:''}</div></div>`;
+}
+async function famVerifyAuth(id,decision){
+  const res=await sbFetch('rpc/verify_parental_authorization', {method:'POST', body:{p_authorization_id:id, p_decision:decision}});
+  if(!res.ok){ toast('Action impossible (droits administrateur requis).'); return; }
+  realFamAuthorizations=null; realFamRequests=null; renderContent(); toast(decision==='valide'?'Autorisation validée.':'Autorisation refusée.');
+}
+
+function famCodesTabHtml(){
+  if(realFamCodes===null){ loadFamCodes(); return '<div class="empty-state">Chargement…</div>'; }
+  return `<div class="grid g2">${teamsSource().map(t=>{
+    const code=realFamCodes.find(c=>c.team_id===t.id && c.actif);
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:13.5px">${esc(t.name)}</b>${code?`<span class="badge" style="background:#28C99522;color:var(--ok)">Actif</span>`:''}</div>
+      ${code?`<div style="font-family:monospace;font-size:16px;font-weight:700;margin-bottom:10px">${esc(code.code)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bo" style="padding:6px 10px" onclick="famRotateCode('${code.id}')">Renouveler</button><button class="btn bo" style="padding:6px 10px" onclick="famToggleCode('${code.id}',false)">Désactiver</button></div>`
+      :`<div class="muted" style="font-size:12px;margin-bottom:10px">Aucun code actif.</div><button class="btn bp" style="padding:6px 10px" onclick="famCreateCode('${t.id}')">Générer un code</button>`}
+    </div>`;
+  }).join('')||'<div class="empty-state">Aucune équipe pour le moment.</div>'}</div>`;
+}
+async function famCreateCode(teamId){
+  const res=await sbFetch('rpc/create_team_invite_code', {method:'POST', body:{p_team_id:teamId}});
+  if(!res.ok){ toast('Action impossible (droits requis).'); return; }
+  realFamCodes=null; renderContent(); toast('Code généré.');
+}
+async function famRotateCode(codeId){
+  const res=await sbFetch('rpc/rotate_team_invite_code', {method:'POST', body:{p_code_id:codeId}});
+  if(!res.ok){ toast('Action impossible.'); return; }
+  realFamCodes=null; renderContent(); toast('Code renouvelé.');
+}
+async function famToggleCode(codeId,activate){
+  const res=await sbFetch('team_invite_codes?id=eq.'+codeId, {method:'PATCH', body:{actif:activate}});
+  if(!res.ok){ toast('Action impossible.'); return; }
+  realFamCodes=null; renderContent(); toast(activate?'Code réactivé.':'Code désactivé.');
+}
+
+let fiw={target_type:'joueur',prenom:'',nom:'',email:'',team_id:'',date_naissance:''};
+function openFamilyInviteWizard(targetType){
+  const firstTeam=teamsSource()[0];
+  fiw={target_type:targetType, prenom:'', nom:'', email:'', team_id:firstTeam?firstTeam.id:'', date_naissance:''};
+  renderFamilyInviteWizard();
+}
+function renderFamilyInviteWizard(){
+  const isJoueur = fiw.target_type==='joueur';
+  openModal(`<div class="sh"><b>Inviter un ${isJoueur?'joueur':'parent'}</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="row2"><div class="field"><label>Prénom</label><input id="fiw-prenom" type="text" value="${esc(fiw.prenom)}"></div><div class="field"><label>Nom</label><input id="fiw-nom" type="text" value="${esc(fiw.nom)}"></div></div>
+    <div class="field"><label>E-mail</label><input id="fiw-email" type="email" value="${esc(fiw.email)}"></div>
+    ${isJoueur?`<div class="row2"><div class="field"><label>Équipe</label><select id="fiw-team">${teamsSource().map(t=>`<option value="${t.id}" ${t.id===fiw.team_id?'selected':''}>${esc(t.name)}</option>`).join('')}</select></div><div class="field"><label>Date de naissance</label><input id="fiw-dob" type="date" value="${fiw.date_naissance}"></div></div>`:''}
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="submitFamilyInvite()">Envoyer l'invitation</button>`);
+}
+async function submitFamilyInvite(){
+  fiw.prenom=document.getElementById('fiw-prenom').value.trim();
+  fiw.nom=document.getElementById('fiw-nom').value.trim();
+  fiw.email=document.getElementById('fiw-email').value.trim();
+  if(fiw.target_type==='joueur'){
+    fiw.team_id=document.getElementById('fiw-team').value;
+    fiw.date_naissance=document.getElementById('fiw-dob').value;
+  }
+  if(!fiw.email || !fiw.prenom){ toast("Le prénom et l'e-mail sont obligatoires."); return; }
+  if(fiw.target_type==='joueur' && (!fiw.team_id || !fiw.date_naissance)){ toast('Équipe et date de naissance sont obligatoires pour un joueur.'); return; }
+  const res=await sbFunction('clubplus-family-invite', {
+    target_type:fiw.target_type, email:fiw.email, prenom:fiw.prenom, nom:fiw.nom, club_id:REAL.clubId,
+    team_id: fiw.target_type==='joueur' ? fiw.team_id : null,
+    date_naissance: fiw.target_type==='joueur' ? fiw.date_naissance : null,
+  });
+  if(!res.ok){ toast((res.data&&res.data.error)||"Erreur lors de l'envoi de l'invitation."); return; }
+  closeModal(); realFamInvitations=null; renderContent();
+  toast(res.data && res.data.already_invited ? `${fiw.email} a déjà une invitation en attente.` : `Invitation envoyée à ${fiw.email}.`);
+}
+
+function famDashCardHtml(){
+  if(!REAL) return '';
+  if(realFamRequests===null) loadFamRequests();
+  const pending=(realFamRequests||[]).filter(r=>!['validee','refusee'].includes(r.statut));
+  const target = ['admin','secretaire'].includes(S.role) ? 'joueursfamilles' : 'famillesdemandes';
+  return `<div class="card" style="margin-bottom:20px"><div class="sh" style="margin-bottom:12px"><b style="font-size:15px">Demandes Joueurs & Familles</b><a onclick="switchView('${target}')">Tout voir →</a></div>
+    ${pending.length?pending.slice(0,3).map(famRequestRowHtml).join(''):'<div class="muted" style="font-size:12.5px">Aucune demande en attente.</div>'}
+  </div>`;
+}
+
+function tplFamillesDemandes(){
+  if(!REAL) return `<div class="sh"><b>Demandes Joueurs & Familles</b></div><div class="empty-state">Ce module utilise des comptes joueur/parent réels — non disponible en mode démo.</div>`;
+  if(realFamRequests===null){ loadFamRequests(); return `<div class="sh"><b>Demandes Joueurs & Familles</b></div><div class="empty-state">Chargement…</div>`; }
+  const list=(realFamRequests||[]).filter(r=>famReqFilter==='toutes'||r.statut===famReqFilter);
+  return `<div class="sh"><b>Demandes Joueurs & Familles</b></div>
+    <div class="pillbar">${['toutes','a_verifier','autorisation_manquante','en_attente_parent','pret_a_valider','validee','refusee'].map(st=>`<button class="pill${famReqFilter===st?' on':''}" onclick="famReqFilter='${st}';renderContent()">${st==='toutes'?'Toutes':famReqStatusMeta(st).label}</button>`).join('')}</div>
+    <div class="list-host">${list.length?list.map(famRequestRowHtml).join(''):'<div class="empty-state">Aucune demande pour vos équipes.</div>'}</div>`;
+}
+
+function tplJoueursFamilles(){
+  if(!REAL) return `<div class="sh"><b>Joueurs & Familles</b></div><div class="empty-state">Ce module utilise des comptes joueur/parent réels — non disponible en mode démo.</div>`;
+  const tabs=[['overview','Vue d’ensemble'],['demandes','Demandes'],['joueurs','Joueurs'],['parents','Parents'],['invitations','Invitations'],['autorisations','Autorisations'],['codes','Codes équipe']];
+  let content='';
+  if(famAdminTab==='overview'){
+    if(realFamRequests===null) loadFamRequests();
+    if(realFamPlayers===null) loadFamPlayers();
+    const pending=(realFamRequests||[]).filter(r=>!['validee','refusee'].includes(r.statut));
+    const missingAuth=(realFamRequests||[]).filter(r=>r.statut==='autorisation_manquante');
+    content=`<div class="grid g4" style="margin-bottom:20px">
+      <div class="stat"><b>${(realFamPlayers||[]).length}</b><span>Joueurs suivis</span></div>
+      <div class="stat"><b>${pending.length}</b><span>Demandes en attente</span></div>
+      <div class="stat"><b>${missingAuth.length}</b><span>Autorisations manquantes</span></div>
+      <div class="stat"><b>${(realFamPlayers||[]).filter(p=>p.account_status==='suspendu').length}</b><span>Comptes suspendus</span></div>
+    </div>
+    <div class="card"><b style="font-size:15px;display:block;margin-bottom:12px">Demandes récentes</b>
+      ${pending.length?pending.slice(0,5).map(famRequestRowHtml).join(''):'<div class="muted">Aucune demande en attente.</div>'}
+    </div>`;
+  } else if(famAdminTab==='demandes'){
+    if(realFamRequests===null){ loadFamRequests(); content='<div class="empty-state">Chargement…</div>'; }
+    else {
+      const list=(realFamRequests||[]).filter(r=>famReqFilter==='toutes'||r.statut===famReqFilter);
+      content=`<div class="pillbar">${['toutes','a_verifier','autorisation_manquante','en_attente_parent','pret_a_valider','validee','refusee'].map(st=>`<button class="pill${famReqFilter===st?' on':''}" onclick="famReqFilter='${st}';renderContent()">${st==='toutes'?'Toutes':famReqStatusMeta(st).label}</button>`).join('')}</div>
+      <div class="list-host">${list.length?list.map(famRequestRowHtml).join(''):'<div class="empty-state">Aucune demande dans ce statut.</div>'}</div>`;
+    }
+  } else if(famAdminTab==='joueurs'){
+    if(realFamPlayers===null){ loadFamPlayers(); content='<div class="empty-state">Chargement…</div>'; }
+    else content=`<div class="list-host">${(realFamPlayers||[]).length?realFamPlayers.map(famPlayerRowHtml).join(''):'<div class="empty-state">Aucun joueur pour le moment.</div>'}</div>`;
+  } else if(famAdminTab==='parents'){
+    if(realFamParents===null){ loadFamParents(); content='<div class="empty-state">Chargement…</div>'; }
+    else content=`<div class="list-host">${(realFamParents||[]).length?realFamParents.map(famParentRowHtml).join(''):'<div class="empty-state">Aucun parent pour le moment.</div>'}</div>`;
+  } else if(famAdminTab==='invitations'){
+    if(realFamInvitations===null){ loadFamInvitations(); content='<div class="empty-state">Chargement…</div>'; }
+    else {
+      const j=realFamInvitations.joueurs||[], p=realFamInvitations.parents||[];
+      const invRow=i=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${esc(i.prenom||'')} ${esc(i.nom||'')}</div><div class="muted" style="font-size:12px;margin-top:2px">${esc(i.email)}</div></div><span class="badge" style="background:#F5A62322;color:var(--wa)">Envoyée</span></div>`;
+      content=`<div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">JOUEURS</div>
+        <div class="list-host" style="margin-bottom:20px">${j.length?j.map(invRow).join(''):'<div class="empty-state">Aucune invitation joueur en attente.</div>'}</div>
+        <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">PARENTS</div>
+        <div class="list-host">${p.length?p.map(invRow).join(''):'<div class="empty-state">Aucune invitation parent en attente.</div>'}</div>`;
+    }
+  } else if(famAdminTab==='autorisations'){
+    if(realFamAuthorizations===null){ loadFamAuthorizations(); content='<div class="empty-state">Chargement…</div>'; }
+    else {
+      const relevant=(realFamAuthorizations||[]).filter(a=>a.statut!=='non_transmise');
+      content=`<div class="list-host">${relevant.length?relevant.map(famAuthRowHtml).join(''):'<div class="empty-state">Aucune autorisation transmise pour le moment.</div>'}</div>`;
+    }
+  } else {
+    content=famCodesTabHtml();
+  }
+  return `<div class="sh"><b>Joueurs & Familles</b><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bo" onclick="guard(()=>openFamilyInviteWizard('parent'))()">+ Inviter un parent</button><button class="btn bp" onclick="guard(()=>openFamilyInviteWizard('joueur'))()">+ Inviter un joueur</button></div></div>
+    <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${famAdminTab===k?' on':''}" onclick="famAdminTab='${k}';renderContent()">${l}</button>`).join('')}</div>
+    ${content}`;
 }
 
 /* ══════════════ REGISTRE DES VUES ══════════════ */
@@ -2132,7 +2407,7 @@ const VIEWS={
   creations:tplCreations, mediatheque:tplMediatheque, sponsors:tplSponsors, demandes:tplDemandes,
   services:tplServices, equipes:tplEquipes, membres:tplMembres, rapports:tplRapports,
   docsfinance:tplDocsFinance, abonnement:tplAbonnement, parametres:tplParametres,
-  mesacces:tplMesAcces, aide:tplAide
+  mesacces:tplMesAcces, joueursfamilles:tplJoueursFamilles, famillesdemandes:tplFamillesDemandes, aide:tplAide
 };
 </script>
 </body>
