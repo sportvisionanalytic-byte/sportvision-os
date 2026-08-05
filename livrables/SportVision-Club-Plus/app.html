@@ -189,6 +189,11 @@ td{font-size:12px;padding:8px;border-bottom:1px solid var(--bd)}
       <div class="demo-hr">MODE DÉMONSTRATION</div>
       <div class="muted" style="font-size:11.5px;margin-bottom:4px">Choisissez un rôle pour explorer l'application avec des données fictives (FC Clairval).</div>
       <div class="role-grid" id="roleGrid"></div>
+      <div class="muted" style="font-size:11.5px;margin:14px 0 4px">Espace Joueur &amp; Famille (données fictives)</div>
+      <div class="role-grid">
+        <button class="role-pick" onclick="doDemoLoginFamily('joueur')"><b>Joueur</b><span>Lucas Martin — U15</span></button>
+        <button class="role-pick" onclick="doDemoLoginFamily('parent')"><b>Parent</b><span>Sophie Martin</span></button>
+      </div>
       <div style="text-align:center;margin-top:18px"><a href="SportVision-Club-Plus.html">← Retour au site public</a></div>
     </div>
   </div>
@@ -690,6 +695,89 @@ function renderRoleGrid(){
 }
 function doDemoLogin(role){
   REAL=null; S.role=role; S.view='dashboard';
+  document.getElementById('s-login').classList.remove('on');
+  document.getElementById('s-app').classList.add('on');
+  boot();
+}
+
+/* ── DÉMONSTRATION ESPACE JOUEUR & FAMILLE ──
+   L'Espace Joueur/Parent (phases 6/7) n'a, contrairement au reste de
+   l'app, jamais eu de mode démonstration : REAL n'y est peuplé QUE par
+   checkRealSession() (vraie session Supabase). doDemoLoginFamily()
+   construit un REAL "fictif" (REAL.demo=true, aucun id réel, aucune
+   trace en base) pour permettre l'exploration commerciale et
+   l'enregistrement de vidéos sans jamais toucher la production. Les
+   loadFamXxx() vérifient REAL.demo en tout premier et servent des
+   données fixes (FAMILY_DEMO) au lieu d'un sbFetch — jamais les deux à
+   la fois pour un même REAL. */
+const FAMILY_DEMO = {
+  'demo-player-lucas': {
+    team: { id: 'demo-team-u15', name: 'U15', categorie: 'U15', coach: 'Thomas Lambert' },
+    saison: '2026-2027',
+    events: [
+      { id: 'fe1', event_date: '2026-08-02', type: 'match', title: 'U15 vs FC Réville', team: 'U15' },
+      { id: 'fe2', event_date: '2026-08-09', type: 'tournoi', title: 'Plateau régional U15', team: 'U15' },
+    ],
+    matches: [
+      { id: 'fm1', team: 'U15', opponent: 'US Vallée', match_date: '2026-07-25', status: 'recu', score: '2-1', lieu: 'Extérieur' },
+      { id: 'fm2', team: 'U15', opponent: 'FC Réville', match_date: '2026-08-02', status: 'a_venir', lieu: 'Stade Municipal' },
+    ],
+    livrables: [
+      { id: 'fl1', refType: 'club_media', title: 'Galerie match U15 vs US Vallée', team: 'U15', link: null, date: '2026-07-25' },
+      { id: 'fl2', refType: 'club_media', title: 'Vidéo highlights U15', team: 'U15', link: null, date: '2026-07-26' },
+      { id: 'fl3', refType: 'club_creations', title: 'Story matchday U15', team: 'U15', link: null, date: '2026-07-26' },
+    ],
+    authorizations: [
+      { id: 'fa1', statut: 'valide', authorization_types: { label: 'Création du compte joueur' } },
+      { id: 'fa2', statut: 'valide', authorization_types: { label: 'Accès à Club+' } },
+      { id: 'fa3', statut: 'valide', authorization_types: { label: 'Traitement des données' } },
+      { id: 'fa4', statut: 'valide', authorization_types: { label: "Droit à l'image" } },
+    ],
+  },
+  'demo-player-emma': {
+    team: { id: 'demo-team-u13', name: 'U13', categorie: 'U13', coach: 'Nadia Ben Salah' },
+    saison: '2026-2027',
+    events: [
+      { id: 'fe3', event_date: '2026-08-09', type: 'tournoi', title: 'Plateau régional U13', team: 'U13' },
+    ],
+    matches: [
+      { id: 'fm3', team: 'U13', opponent: 'Plateau régional', match_date: '2026-07-09', status: 'recu', score: '—', lieu: '' },
+    ],
+    livrables: [
+      { id: 'fl4', refType: 'club_media', title: 'Photos plateau U13', team: 'U13', link: null, date: '2026-07-09' },
+    ],
+    authorizations: [
+      { id: 'fa5', statut: 'valide', authorization_types: { label: 'Création du compte joueur' } },
+      { id: 'fa6', statut: 'valide', authorization_types: { label: 'Accès à Club+' } },
+      { id: 'fa7', statut: 'valide', authorization_types: { label: 'Traitement des données' } },
+      { id: 'fa8', statut: 'en_attente', authorization_types: { label: "Droit à l'image" } },
+    ],
+  },
+};
+function buildDemoFamilyReal(space){
+  if(space==='joueur'){
+    return {
+      userId: 'demo-joueur', space: 'joueur', spaceLabel: 'Joueur', demo: true,
+      playerId: 'demo-player-lucas', accountStatus: 'actif', dateNaissance: '2011-03-14',
+      person: 'Lucas Martin', clubId: 'demo-club', clubName: 'FC Clairval', clubVille: 'Sens',
+      clubDiscipline: 'Football', clubSeason: '2026-2027', logoUrl: null, ecussonUrl: null,
+    };
+  }
+  return {
+    userId: 'demo-parent', space: 'parent', spaceLabel: 'Parent', demo: true,
+    parentId: 'demo-parent-sophie', person: 'Sophie Martin',
+    children: [
+      { playerId: 'demo-player-lucas', prenom: 'Lucas', nom: 'Martin', dateNaissance: '2011-03-14', accountStatus: 'actif', clubId: 'demo-club', clubName: 'FC Clairval', clubSeason: '2026-2027', logoUrl: null },
+      { playerId: 'demo-player-emma', prenom: 'Emma', nom: 'Martin', dateNaissance: '2013-09-02', accountStatus: 'actif', clubId: 'demo-club', clubName: 'FC Clairval', clubSeason: '2026-2027', logoUrl: null },
+    ],
+  };
+}
+function doDemoLoginFamily(space){
+  REAL = buildDemoFamilyReal(space);
+  famActiveChildId = space==='parent' ? REAL.children[0].playerId : null;
+  realFamMyTeams = realFamMyEvents = realFamMyMatches = realFamMyLivrables = realFamMyAuthorizations = null;
+  realFamFavorites = []; realFamMyBookings = null;
+  S.role = null; S.view = 'famaccueil';
   document.getElementById('s-login').classList.remove('on');
   document.getElementById('s-app').classList.add('on');
   boot();
@@ -2484,6 +2572,7 @@ const TEAM_PROJECT_STATUS_META={
 let realFamProjects=null;
 async function loadFamProjects(){
   if(!REAL) return;
+  if(REAL.demo){ await Promise.resolve(); realFamProjects=[]; if(['joueursfamilles','famprojets'].includes(S.view)) renderContent(); return; }
   const cid = REAL.space==='parent' ? famCurrentClubId() : (REAL.clubId || null);
   if(!cid){ realFamProjects=[]; if(['joueursfamilles','famprojets'].includes(S.view)) renderContent(); return; }
   const res=await sbFetch('team_projects?club_id=eq.'+cid+'&select=*,club_teams(name),catalogue_offres(nom)&order=created_at.desc');
@@ -2825,6 +2914,13 @@ function updateFamParentHeader(){
 async function loadFamMyTeams(){
   if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
   const pid=famCurrentPlayerId(); if(!pid){ realFamMyTeams=[]; return; }
+  if(REAL.demo){
+    await Promise.resolve(); // laisse tplXxx() poser l'état "Chargement…" avant de le remplacer
+    const d=FAMILY_DEMO[pid];
+    realFamMyTeams = d ? [{id:'demo-tm-'+pid, saison:d.saison, club_teams:d.team}] : [];
+    if(['famaccueil','famcalendrier','fammonequipe'].includes(S.view)) renderContent();
+    return;
+  }
   const res=await sbFetch('team_memberships?player_id=eq.'+pid+'&statut=eq.active&select=id,saison,club_teams(id,name,categorie,coach)');
   realFamMyTeams = res.ok ? (res.data||[]) : [];
   if(['famaccueil','famcalendrier','fammonequipe'].includes(S.view)) renderContent();
@@ -2832,6 +2928,14 @@ async function loadFamMyTeams(){
 function famMyTeamNames(){ return (realFamMyTeams||[]).map(t=>t.club_teams&&t.club_teams.name).filter(Boolean); }
 async function loadFamMyEvents(){
   if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  const pid=famCurrentPlayerId();
+  if(REAL.demo){
+    await Promise.resolve();
+    const d=pid&&FAMILY_DEMO[pid];
+    realFamMyEvents = d ? d.events : [];
+    if(['famaccueil','famcalendrier'].includes(S.view)) renderContent();
+    return;
+  }
   const cid=famCurrentClubId(); if(!cid){ realFamMyEvents=[]; return; }
   const res=await sbFetch('club_calendar_events?club_id=eq.'+cid+'&select=*&order=event_date.asc');
   realFamMyEvents = res.ok ? (res.data||[]) : [];
@@ -2839,6 +2943,14 @@ async function loadFamMyEvents(){
 }
 async function loadFamMyMatches(){
   if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  const pid=famCurrentPlayerId();
+  if(REAL.demo){
+    await Promise.resolve();
+    const d=pid&&FAMILY_DEMO[pid];
+    realFamMyMatches = d ? d.matches : [];
+    if(S.view==='famaccueil') renderContent();
+    return;
+  }
   const cid=famCurrentClubId(); if(!cid){ realFamMyMatches=[]; return; }
   const res=await sbFetch('club_matches?club_id=eq.'+cid+'&select=*&order=match_date.asc');
   realFamMyMatches = res.ok ? (res.data||[]) : [];
@@ -2862,6 +2974,7 @@ function famAgeBracketClient(dateNaissance){
 async function loadFamMyBookings(){
   if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
   const pid=famCurrentPlayerId(); if(!pid){ realFamMyBookings=[]; if(S.view==='famcommandes') renderContent(); return; }
+  if(REAL.demo){ await Promise.resolve(); realFamMyBookings=[]; if(S.view==='famcommandes') renderContent(); return; }
   const res=await sbFetch('club_bookings?player_id=eq.'+pid+'&select=*&order=created_at.desc');
   realFamMyBookings = res.ok ? (res.data||[]) : [];
   if(S.view==='famcommandes') renderContent();
@@ -2896,6 +3009,13 @@ async function submitFamBooking(serviceId){
 async function loadFamMyAuthorizations(){
   if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
   const pid=famCurrentPlayerId(); if(!pid){ realFamMyAuthorizations=[]; return; }
+  if(REAL.demo){
+    await Promise.resolve();
+    const d=FAMILY_DEMO[pid];
+    realFamMyAuthorizations = d ? d.authorizations : [];
+    if(S.view==='famautorisations') renderContent();
+    return;
+  }
   const res=await sbFetch('parental_authorizations?player_id=eq.'+pid+'&select=*,authorization_types(label)&order=created_at.asc');
   realFamMyAuthorizations = res.ok ? (res.data||[]) : [];
   if(S.view==='famautorisations') renderContent();
@@ -2905,6 +3025,14 @@ async function loadFamMyAuthorizations(){
    besoin de filtrer côté client, le fail-closed est déjà appliqué serveur. */
 async function loadFamMyLivrables(){
   if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  const pid=famCurrentPlayerId();
+  if(REAL.demo){
+    await Promise.resolve();
+    const d=pid&&FAMILY_DEMO[pid];
+    realFamMyLivrables = d ? d.livrables : [];
+    if(S.view==='famlivrables') renderContent();
+    return;
+  }
   const cid=famCurrentClubId(); if(!cid){ realFamMyLivrables=[]; if(S.view==='famlivrables') renderContent(); return; }
   const [cm,cc]=await Promise.all([
     sbFetch('club_media?club_id=eq.'+cid+'&select=*&order=created_at.desc'),
@@ -2918,6 +3046,7 @@ async function loadFamMyLivrables(){
 }
 async function loadFamFavorites(){
   if(!REAL || !['joueur','parent'].includes(REAL.space)) return;
+  if(REAL.demo){ await Promise.resolve(); realFamFavorites = realFamFavorites||[]; if(['famlivrables','famfavoris'].includes(S.view)) renderContent(); return; }
   const res=await sbFetch('player_favorites?owner_user_id=eq.'+REAL.userId+'&select=*');
   realFamFavorites = res.ok ? (res.data||[]) : [];
   if(['famlivrables','famfavoris'].includes(S.view)) renderContent();
@@ -2926,6 +3055,12 @@ function famIsFavorite(refType,refId){ return (realFamFavorites||[]).some(f=>f.m
 async function famToggleFavorite(refType,refId){
   const pid=famCurrentPlayerId(); if(!pid){ toast('Aucun enfant sélectionné.'); return; }
   const existing=(realFamFavorites||[]).find(f=>f.media_ref_type===refType && f.media_ref_id===refId);
+  if(REAL.demo){
+    if(existing) realFamFavorites=realFamFavorites.filter(f=>f!==existing);
+    else (realFamFavorites=realFamFavorites||[]).push({id:'demo-fav-'+refId, media_ref_type:refType, media_ref_id:refId, player_id:pid});
+    renderContent();
+    return;
+  }
   const res = existing
     ? await sbFetch('player_favorites?id=eq.'+existing.id, {method:'DELETE'})
     : await sbFetch('player_favorites', {method:'POST', body:{owner_user_id:REAL.userId, player_id:pid, media_ref_type:refType, media_ref_id:refId}});
