@@ -2,7 +2,7 @@
 
 Pipeline pour produire les vidéos d'interface de la landing page publique de Club+ : Playwright enregistre de vrais parcours dans `app.html` (mode démonstration, données fictives, aucun appel réseau), FFmpeg encode les exports finaux.
 
-**État à la date de ce document** : **Coach, Hero, Community Manager, Sponsors, Prestation SportVision et Joueur & Famille** produits et vérifiés. Seule **Overview** (assemblage des meilleurs extraits, cf. §7) reste à produire.
+**État à la date de ce document** : les **7 vidéos individuelles** (Coach, Hero, Community Manager, Sponsors, Prestation SportVision, Joueur & Famille) et la vidéo **Overview** sont produites et vérifiées. L'intégration au site (§10) reste à faire.
 
 ---
 
@@ -74,6 +74,28 @@ Deux enregistrements (desktop 1920×1080 et mobile 430×932, mission §8) dans u
 
 **Écarts assumés** : (1) « notification de nouvelle galerie » n'est pas un geste séparé dans le produit réel — le mode démo Joueur place directement une galerie déjà publiée dans Livrables ; représenté par la consultation réelle de Livrables plutôt qu'un événement de notification simulé. (2) « lecture du highlight » : les livrables de démonstration n'ont pas de lien de lecture (aucun média réel à streamer sans données de production) — représenté par le geste réel le plus proche, l'ajout aux favoris puis sa consultation dans Mes favoris.
 
+### Overview — assemblage FFmpeg (pas de script Playwright dédié)
+Vidéo générale de 44,0 s (cible mission : 40-55 s), montage cul-à-cul (sans fondu enchaîné entre plans — un fondu enchaîné entre deux captures d'écran différentes produit un flou illisible ; seul un fondu d'ouverture de 0,3 s est appliqué) à partir d'extraits des 6 autres exports finaux déjà produits, dans cet ordre : Hero (ouverture, tableau de bord Président, 4,5 s) → Coach mobile (résultat express, 6,0 s, recadré en pilier 1920×1080 couleur marque `#050F20` pour rester dans un format desktop unique) → Community Manager (Newsroom, 7,0 s) → Sponsors (Espace Sponsors, 7,0 s) → Joueur & Famille (Livrables, 7,5 s) → Prestation SportVision (réservation, 7,5 s) → Hero (clôture, Banque média + fondu de sortie déjà présent dans le fichier source, 4,5 s). Chaque point de coupe évite les 0,3-0,4 s de fondu déjà présents en tête/queue de chaque export source, pour ne récupérer que des images nettes. Vérifié visuellement (frames extraites à chaque jonction) avant export final.
+
+```bash
+ffmpeg -y \
+  -i hero/clubplus-hero-desktop.mp4 -i features/coach-result-mobile.mp4 \
+  -i features/community-manager.mp4 -i features/sponsors.mp4 \
+  -i features/player-family-desktop.mp4 -i features/service-booking.mp4 \
+  -filter_complex "
+[0:v]trim=start=0.5:end=5.0,setpts=PTS-STARTPTS,setsar=1[v0];
+[1:v]trim=start=1.0:end=7.0,setpts=PTS-STARTPTS,scale=608:1080:flags=lanczos,pad=1920:1080:(1920-608)/2:0:color=0x050F20,setsar=1[v1];
+[2:v]trim=start=1.0:end=8.0,setpts=PTS-STARTPTS,setsar=1[v2];
+[3:v]trim=start=1.0:end=8.0,setpts=PTS-STARTPTS,setsar=1[v3];
+[4:v]trim=start=1.0:end=8.5,setpts=PTS-STARTPTS,setsar=1[v4];
+[5:v]trim=start=1.0:end=8.5,setpts=PTS-STARTPTS,setsar=1[v5];
+[0:v]trim=start=13.5:end=18.04,setpts=PTS-STARTPTS,setsar=1[v6];
+[v0][v1][v2][v3][v4][v5][v6]concat=n=7:v=1:a=0[vcat];
+[vcat]fade=t=in:st=0:d=0.3[vout]
+" -map "[vout]" -an -c:v libx264 -profile:v high -pix_fmt yuv420p -crf 20 -preset slow -movflags +faststart \
+  overview/clubplus-overview-desktop.mp4
+```
+
 ## 5. Commandes d'enregistrement
 
 ```bash
@@ -101,7 +123,8 @@ Règles appliquées pendant l'enregistrement (mission §3) : navigateur Chromium
 
 - `coach-result-desktop.mp4` (même script, `device:'desktop'`) — variante optionnelle, non demandée par la mission
 - `clubplus-hero-mobile.mp4` (même script `record-hero.js`, `device:'mobile'` — le script est déjà paramétrable, pas testé à ce jour)
-- **Overview** (assemblage FFmpeg des meilleurs extraits des 7 autres vidéos, cf. mission §10) — seule vidéo individuelle encore manquante ; dépend des exports finaux des 7 autres, tous désormais disponibles
+
+Toutes les vidéos demandées par la mission sont produites. Reste uniquement l'**intégration au site** (§10, volontairement différée) et les tests cross-navigateur/appareil (mission §13, non commencés — nécessitent des appareils réels ou un outil type BrowserStack non mis en place).
 
 ## 8. Commandes FFmpeg (pipeline post-production)
 
@@ -162,6 +185,9 @@ rm posters/coach-result-poster.png
 | `features/player-family-mobile.mp4` | 1080×1920 | 16,3 s | 1,13 Mo | — |
 | `features/player-family.webm` | 1920×1080 | 15,0 s | 463 Ko | — |
 | `posters/player-family-poster.webp` | — | — | 27 Ko | < 250 Ko ✅ |
+| `overview/clubplus-overview-desktop.mp4` | 1920×1080 | 44,0 s | 2,95 Mo | — |
+| `overview/clubplus-overview-desktop.webm` | 1920×1080 | 44,0 s | 2,17 Mo | — |
+| `posters/overview-poster.webp` | — | — | 40 Ko | < 250 Ko ✅ |
 
 Tous les exports sont nettement sous les budgets de poids fixés par la mission — la qualité (`-crf`) peut être resserrée (valeurs plus basses) sans risquer de dépasser les objectifs si le rendu doit être encore affiné visuellement.
 
