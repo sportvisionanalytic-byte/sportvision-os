@@ -2421,6 +2421,7 @@ async function changePassword(){
   if (!res.ok){ msgEl.textContent = 'Impossible de mettre à jour le mot de passe.'; return; }
   document.getElementById('cpt-pass').value = '';
   toast('Mot de passe mis à jour.');
+  sbFunction('notify-account-change', {type:'password_changed'}).catch(()=>{});
 }
 
 async function deleteMyAccount(){
@@ -2444,8 +2445,8 @@ async function handleRequestRecovery(){
   btn.disabled = true; btn.textContent = 'Envoi…';
   try{
     const redirectTo = window.location.origin + window.location.pathname;
-    await fetch(SB_URL+'/auth/v1/recover?redirect_to='+encodeURIComponent(redirectTo), {
-      method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email}),
+    await fetch(SB_URL+'/functions/v1/request-password-reset', {
+      method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, redirect_url: redirectTo}),
     });
     // Réponse volontairement identique que l'e-mail existe ou non (pas de fuite d'information sur les comptes existants).
     document.getElementById('mdp-oublie-body').innerHTML =
@@ -2470,6 +2471,7 @@ async function handleSetNewPassword(){
   const res = await fetch(SB_URL+'/auth/v1/user', {method:'PUT', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':'application/json'}, body:JSON.stringify({password:p1})});
   if (!res.ok){ errEl.textContent = 'Le lien a peut-être expiré. Redemandez un nouveau lien.'; btn.disabled = false; btn.textContent = 'Enregistrer'; return; }
   toast('Mot de passe enregistré. Vous êtes connecté.');
+  sbFunction('notify-account-change', {type:'password_changed'}).catch(()=>{});
   await go('dashboard');
 }
 

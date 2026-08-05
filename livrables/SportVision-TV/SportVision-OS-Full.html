@@ -2757,16 +2757,13 @@ function modalInviterCollaborateur(){
           <option value="com">Commercial</option>
         </select>
       </div>
-      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Mot de passe provisoire *</label>
-        <input id="fi-pass" type="text" class="l-inp" placeholder="Min. 8 caractères" style="height:38px" value="SportVision2026!">
-      </div>
       <div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rb);padding:10px 14px;font-size:11.5px;color:var(--t2)">
-        Le collaborateur devra se connecter avec cet email et ce mot de passe. Pense à le lui communiquer.
+        Un e-mail d'invitation SportVision sera envoyé automatiquement à cette adresse, avec un lien à usage unique pour définir son mot de passe. Rien à communiquer à la main.
       </div>
       <div id="fi-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
         <button class="btn bg2" onclick="closeModal()">Annuler</button>
-        <button class="btn bp" onclick="creerCollaborateur()">Créer le compte</button>
+        <button class="btn bp" onclick="creerCollaborateur()">Envoyer l'invitation</button>
       </div>
     </div>`);
 }
@@ -2776,21 +2773,19 @@ async function creerCollaborateur(){
   const nom=document.getElementById('fi-nom').value.trim();
   const email=document.getElementById('fi-email').value.trim();
   const role=document.getElementById('fi-role').value;
-  const pass=document.getElementById('fi-pass').value;
-  if(!prenom||!nom||!email||!pass){err.textContent='Tous les champs sont obligatoires.';return;}
-  if(pass.length<8){err.textContent='Le mot de passe doit faire au moins 8 caractères.';return;}
-  err.textContent='Création du compte…';
+  if(!prenom||!nom||!email){err.textContent='Tous les champs sont obligatoires.';return;}
+  err.textContent='Envoi de l\'invitation…';
   try{
-    const r=await fetch(SB_URL+'/auth/v1/signup',{
+    const tok=localStorage.getItem('sv_tok');
+    const r=await fetch(SB_URL+'/functions/v1/invite-collaborateur',{
       method:'POST',
-      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({email,password:pass,data:{role,prenom,nom}})
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
+      body:JSON.stringify({email,prenom,nom,role})
     });
     const d=await r.json();
-    if(d.error||d.error_description){err.textContent=d.error_description||d.error||'Erreur.';return;}
-    if(!d.id&&!d.user?.id){err.textContent='Compte non créé. Vérifie que l\'email n\'est pas déjà utilisé.';return;}
+    if(!r.ok||d.error){err.textContent=d.error||'Erreur.';return;}
     closeModal();
-    toast('Collaborateur invité.','ok');
+    toast('Invitation envoyée par e-mail.','ok');
     if(document.getElementById('users-real')) await loadUsers();
     else if(document.getElementById('col-real')) loadCollaborateurs();
     updateNavBadges(S.role);
@@ -6779,6 +6774,7 @@ async function sauvegarderMdp(){
       if(err){err.style.color='var(--ok)';err.textContent='Mot de passe mis à jour.';}
       document.getElementById('set-mdp1').value='';
       document.getElementById('set-mdp2').value='';
+      fetch(SB_URL+'/functions/v1/notify-account-change',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({type:'password_changed'})}).catch(()=>{});
     }else{
       const d=await r.json();
       if(err){err.style.color='var(--er)';err.textContent=d.message||d.msg||'Erreur lors du changement.';}
@@ -6801,6 +6797,7 @@ async function changerEmail(){
     });
     if(r.ok){
       if(err){err.style.color='var(--ok)';err.textContent='Email mis à jour. Confirme via le lien envoyé à ton ancienne adresse.';}
+      fetch(SB_URL+'/functions/v1/notify-account-change',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({type:'email_changed',new_email:newEmail})}).catch(()=>{});
       const inp=document.getElementById('set-email-new');if(inp)inp.value='';
     }else{
       const d=await r.json().catch(()=>({}));
@@ -15447,9 +15444,60 @@ async function supprimerCollaborateur(id){
   });
 }
 
+// ── RÉCUPÉRATION DE MOT DE PASSE (lien e-mail Supabase #access_token=...&type=recovery) ──
+// Jusqu'ici l'OS ne gérait pas du tout ce lien (contrairement au Portail) :
+// un collaborateur qui cliquait sur "Mot de passe oublié" recevait un e-mail,
+// mais cliquer sur son lien ne menait à rien d'utilisable. Corrigé en
+// reprenant le même mécanisme que le Portail (consumeRecoveryHash).
+async function consumeRecoveryHashOS(){
+  if(!window.location.hash.includes('type=recovery'))return false;
+  const params=new URLSearchParams(window.location.hash.slice(1));
+  const accessToken=params.get('access_token');
+  const refreshToken=params.get('refresh_token');
+  if(!accessToken)return false;
+  history.replaceState({},'',window.location.pathname);
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/profiles?select=id,role,prenom',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+accessToken}});
+    const profs=await r.json();
+    const prof=Array.isArray(profs)?profs[0]:null;
+    if(!prof)return false;
+    svSave(accessToken,refreshToken||'',prof.id,prof.role);
+    if(prof.prenom)localStorage.setItem('sv_prenom',prof.prenom);
+  }catch(e){return false;}
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:16px">Définir un nouveau mot de passe</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Nouveau mot de passe</label>
+        <input id="rec-pass1" type="password" class="l-inp" style="height:38px" placeholder="••••••••">
+      </div>
+      <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Confirmer</label>
+        <input id="rec-pass2" type="password" class="l-inp" style="height:38px" placeholder="••••••••">
+      </div>
+      <div id="rec-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <button class="btn bp" style="width:100%;justify-content:center;height:44px" onclick="validerNouveauMdpOS()">Enregistrer et me connecter</button>
+    </div>`);
+  return true;
+}
+async function validerNouveauMdpOS(){
+  const err=document.getElementById('rec-err');
+  const p1=document.getElementById('rec-pass1').value;
+  const p2=document.getElementById('rec-pass2').value;
+  if(!p1||p1.length<6){err.textContent='Minimum 6 caractères requis.';return;}
+  if(p1!==p2){err.textContent='Les mots de passe ne correspondent pas.';return;}
+  err.textContent='Enregistrement…';
+  try{
+    const tok=localStorage.getItem('sv_tok');
+    const r=await fetch(SB_URL+'/auth/v1/user',{method:'PUT',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({password:p1})});
+    if(!r.ok){const d=await r.json().catch(()=>({}));err.textContent=d.message||d.msg||'Erreur lors de l\'enregistrement.';return;}
+    fetch(SB_URL+'/functions/v1/notify-account-change',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({type:'password_changed'})}).catch(()=>{});
+    closeModal();
+    goApp(localStorage.getItem('sv_role'));
+  }catch(e){err.textContent='Erreur réseau.';}
+}
+
 // ── STATE ────────────────────────────────
 let S={screen:'login',role:null,view:null,obStep:1,obRole:null};
-checkSession();
+consumeRecoveryHashOS().then(handled=>{if(!handled)checkSession();});
 
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();if(S.screen==='app')openSearch();}
@@ -15485,12 +15533,12 @@ async function envoyerResetMdp(){
   if(!email){if(msg){msg.style.color='var(--er)';msg.textContent='Entre ton adresse email.';}return;}
   if(msg){msg.style.color='var(--t3)';msg.textContent='Envoi en cours…';}
   try{
-    await fetch(SB_URL+'/auth/v1/recover',{
+    await fetch(SB_URL+'/functions/v1/request-password-reset',{
       method:'POST',
       headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({email})
     });
-    if(msg){msg.style.color='var(--ok)';msg.textContent='Email envoyé ! Vérifie ta boîte mail (et les spams).';}
+    if(msg){msg.style.color='var(--ok)';msg.textContent='Si un compte existe avec cette adresse, un email vient d\'être envoyé. Vérifie ta boîte (et les spams).';}
     setTimeout(closeModal,2800);
   }catch(e){
     if(msg){msg.style.color='var(--er)';msg.textContent='Erreur réseau. Réessaie.';}
@@ -18402,6 +18450,7 @@ function _integrationsView(){
     <div style="display:flex;gap:2px;padding:3px;background:var(--s2);border-radius:var(--rp);width:max-content">
       <button id="int-tab-connecteurs" onclick="intSetTab('connecteurs')" style="padding:6px 18px;border:none;border-radius:calc(var(--rp) - 2px);background:var(--s1);color:var(--t1);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">Connecteurs</button>
       <button id="int-tab-templates" onclick="intSetTab('templates')" style="padding:6px 18px;border:none;border-radius:calc(var(--rp) - 2px);background:transparent;color:var(--t3);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">Templates email</button>
+      <button id="int-tab-hub" onclick="intSetTab('hub')" style="padding:6px 18px;border:none;border-radius:calc(var(--rp) - 2px);background:transparent;color:var(--t3);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">Communication Hub</button>
     </div>
   </div>
   <div id="int-grid" class="g3" style="gap:12px">
@@ -18409,20 +18458,67 @@ function _integrationsView(){
   </div>
   <div id="int-templates-grid" style="display:none">
     <div style="padding:32px;text-align:center;color:var(--t3)">Chargement…</div>
+  </div>
+  <div id="int-hub-grid" style="display:none">
+    <div style="padding:32px;text-align:center;color:var(--t3)">Chargement…</div>
   </div>`;
 }
 
 let _intTab='connecteurs';
 function intSetTab(tab){
   _intTab=tab;
-  const tabs=['connecteurs','templates'];
+  const tabs=['connecteurs','templates','hub'];
   tabs.forEach(t=>{
     const btn=document.getElementById('int-tab-'+t);
     if(btn){btn.style.background=t===tab?'var(--s1)':'transparent';btn.style.color=t===tab?'var(--t1)':'var(--t3)';}
   });
   document.getElementById('int-grid').style.display=tab==='connecteurs'?'':'none';
   document.getElementById('int-templates-grid').style.display=tab==='templates'?'':'none';
+  document.getElementById('int-hub-grid').style.display=tab==='hub'?'':'none';
   if(tab==='templates')loadEmailTemplates();
+  if(tab==='hub')loadCommunicationHub();
+}
+
+// ── Communication Hub — statut réel du moteur d'envoi (outbox, connecteurs) ──
+async function loadCommunicationHub(){
+  const el=document.getElementById('int-hub-grid');
+  if(!el)return;
+  el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3)">Chargement…</div>';
+  try{
+    const [statsRaw,recentRaw]=await Promise.all([
+      sbFetch('notification_outbox?select=status&limit=1000').catch(()=>[]),
+      sbFetch('notification_outbox?select=id,event_type,channel,recipient_email,status,last_error,attempt_count,created_at&order=created_at.desc&limit=15').catch(()=>[]),
+    ]);
+    const stats=Array.isArray(statsRaw)?statsRaw:[];
+    const recent=Array.isArray(recentRaw)?recentRaw:[];
+    const count=st=>stats.filter(s=>s.status===st).length;
+    const brevoManquant=recent.some(r=>(r.last_error||'').includes('BREVO_API_KEY'));
+    el.innerHTML=`
+      <div class="g3" style="gap:12px;margin-bottom:16px">
+        <div class="fs"><div class="fs-l">En attente</div><div class="fs-v" style="color:var(--wa)">${count('PENDING')+count('QUEUED')}</div></div>
+        <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Envoyés</div><div class="fs-v" style="color:var(--ok)">${count('SENT')+count('DELIVERED')}</div></div>
+        <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Échoués</div><div class="fs-v" style="color:var(--er)">${count('FAILED')}</div></div>
+      </div>
+      ${brevoManquant?`<div style="background:rgba(240,68,94,.06);border:1px solid rgba(240,68,94,.25);border-radius:var(--rb);padding:14px 16px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;color:var(--er);margin-bottom:4px">⚠ Fournisseur e-mail non configuré</div>
+        <div style="font-size:12px;color:var(--t2)">La clé BREVO_API_KEY n'est pas définie dans les secrets de la fonction dispatch-notifications (Supabase → Edge Functions). Tant que ce n'est pas fait, aucun e-mail automatique ne part réellement — ils restent en attente puis échouent.</div>
+      </div>`:''}
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">Derniers envois</div></div>
+        <div class="tw"><table><thead><tr><th>Événement</th><th>Destinataire</th><th>Statut</th><th>Tentatives</th><th>Date</th></tr></thead><tbody>
+        ${recent.length?recent.map(r=>{
+          const stCl={SENT:'ba',DELIVERED:'ba',PENDING:'bw',QUEUED:'bw',FAILED:'br',CANCELLED:'bn',SUPPRESSED:'bn'}[r.status]||'bn';
+          return`<tr>
+            <td class="tp">${esc(r.event_type)}</td>
+            <td class="tm">${esc(r.recipient_email||'—')}</td>
+            <td><span class="bd ${stCl}"><span class="bd-d"></span>${esc(r.status)}</span>${r.last_error?`<div style="font-size:10px;color:var(--t3);margin-top:2px;max-width:220px;white-space:normal">${esc(r.last_error)}</div>`:''}</td>
+            <td class="tm">${r.attempt_count||0}</td>
+            <td class="tm">${new Date(r.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+          </tr>`;
+        }).join(''):'<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--t3)">Aucun envoi pour l\'instant.</td></tr>'}
+        </tbody></table></div>
+      </div>`;
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er)">Erreur de chargement — la migration migration-communication-hub.sql a-t-elle été exécutée ?</div>';}
 }
 
 // ── RÔLES LABELS ─────────────────────────────────────────────────────────
