@@ -2,7 +2,7 @@
 
 Pipeline pour produire les vidéos d'interface de la landing page publique de Club+ : Playwright enregistre de vrais parcours dans `app.html` (mode démonstration, données fictives, aucun appel réseau), FFmpeg encode les exports finaux.
 
-**État à la date de ce document** : prototypes **Coach** et **Hero** produits et vérifiés (captures ci-dessous). Les 6 autres vidéos (Community Manager, Sponsors, Joueur & Famille, Prestation, Overview) ne sont pas encore produites — cf. §7.
+**État à la date de ce document** : **Coach, Hero, Community Manager, Sponsors, Prestation SportVision et Joueur & Famille** produits et vérifiés. Seule **Overview** (assemblage des meilleurs extraits, cf. §7) reste à produire.
 
 ---
 
@@ -26,7 +26,7 @@ L'enregistrement vidéo lui-même utilise le **context recording natif de Playwr
 2. Injecter la persona de cette campagne (`lib/demo-persona.js`, exécuté via `page.evaluate()`) — mute les objets `ROLES`/`DATA` déjà déclarés par l'app (ils sont `const`, jamais réassignés, seulement leurs propriétés) pour remplacer les identités de démo par défaut par celles demandées : FC Clairval, équipes Seniors R1/U18 R2/U15/U13/Féminines, Marc Lefèvre (président), Sarah Martin (secrétaire), Lina Robert (CM), Thomas Bernard (coach U18 R2), Julien Morel (sponsors), sponsors Nova Énergie/BatiPro/Horizon Automobile.
 3. Cliquer sur un rôle de la grille de connexion démo (`doDemoLogin`), ou changer de rôle en cours d'enregistrement via le sélecteur `#roleSel` (`onRoleChange`) — c'est ce qui permet de filmer plusieurs personas dans un seul enregistrement continu pour la vidéo Hero.
 
-**Espace Joueur & Parent : non couvert par le mode démonstration.** `app.html` n'active ces espaces que derrière une vraie session Supabase authentifiée (`REAL.space==='joueur'|'parent'`, cf. phases 6/7 du module Joueur & Famille) — `doDemoLogin` ne les couvre pas. Créer un compte réel pour filmer aurait écrit dans la base de production, ce que la mission interdit explicitement. Impact documenté §6/§7.
+**Espace Joueur & Parent : mode démonstration dédié construit** (décision produit validée, cf. §6 point 2, option (c)). `app.html` n'active normalement ces espaces que derrière une vraie session Supabase authentifiée (`REAL.space==='joueur'|'parent'`) — créer un compte réel pour filmer aurait écrit dans la base de production, ce que la mission interdit explicitement. Deux boutons de connexion démo dédiés (« Joueur — Lucas Martin U15 », « Parent — Sophie Martin ») ont donc été ajoutés à l'écran de connexion : ils construisent un objet `REAL` fabriqué (`REAL.demo === true`) et servent des fixtures en mémoire (`FAMILY_DEMO`, deux enfants : Lucas U15 et Emma U13) au lieu d'appeler Supabase — mêmes garanties qu'ailleurs (aucune donnée réelle, aucun appel réseau). Chaque loader du module Joueur & Famille (`loadFamMyTeams`, `loadFamMyEvents`, etc.) vérifie `REAL.demo` avant son appel `sbFetch` normal.
 
 ## 3. Structure des dossiers
 
@@ -38,11 +38,15 @@ scripts/product-videos/          # scripts Playwright (Node, dépendances locale
     record-utils.js              # launchDemoPage, naturalClick, naturalFill, pause...
   record-coach-result.js
   record-hero.js
+  record-community-manager.js
+  record-sponsors.js
+  record-service-booking.js
+  record-player-family.js        # paramétrable : node record-player-family.js [desktop|mobile]
 
 public/videos/clubplus/
   raw/                           # sorties brutes Playwright (.webm), jamais publiées telles quelles
   hero/                          # exports finaux de la vidéo hero
-  features/                      # exports finaux des vidéos de fonctionnalité (coach, CM, sponsors...)
+  features/                      # exports finaux des vidéos de fonctionnalité (coach, CM, sponsors, prestation, joueur & famille...)
   overview/                      # export final de la vidéo générale (à produire, §7)
   posters/                       # .webp, une image par vidéo
 ```
@@ -60,7 +64,15 @@ Président (Marc Lefèvre) → tableau de bord → **Coach** (Thomas Bernard) �
 
 **Écarts assumés** (détail §6) :
 - "Coach sur mobile" filmé sur le même viewport desktop que le reste (pas de changement de viewport en cours d'enregistrement — le vrai clip mobile existe séparément, cf. `coach-result-mobile-raw.webm`, composable en incrustation lors d'un montage humain).
-- "Galerie disponible dans l'Espace Joueur" remplacé par la Banque média (dirigeants) — l'Espace Joueur n'est pas accessible en mode démonstration (§2).
+- "Galerie disponible dans l'Espace Joueur" remplacé par la Banque média (dirigeants) — l'Espace Joueur n'est pas accessible en mode démonstration (§2), au moment où ce script a été écrit (le mode démo Joueur/Famille n'existait pas encore).
+
+### Community Manager, Sponsors, Prestation SportVision — `record-community-manager.js`, `record-sponsors.js`, `record-service-booking.js`
+Desktop (1920×1080), même patron que Hero (connexion démo d'un rôle dirigeant puis parcours réel). Écarts assumés documentés en commentaire d'en-tête de chaque script (ex. "choisir un modèle" représenté par le choix de type dans le Studio de création, "Pack Match Photo + Vidéo" remplacé par "Vidéo highlights", la plus proche entrée réelle du catalogue).
+
+### Joueur et Parent — `record-player-family.js`
+Deux enregistrements (desktop 1920×1080 et mobile 430×932, mission §8) dans un seul script paramétrable. Partie 1 (Lucas Martin, U15, mode démo Joueur) : Accueil → Livrables (galerie déjà publiée par le club) → ajout de « Vidéo highlights U15 » aux favoris → Mes favoris (confirmation). Déconnexion. Partie 2 (Sophie Martin, mode démo Parent) : Ma famille (cartes Lucas + Emma) → « Voir l'espace » de Lucas (bascule l'enfant actif + calendrier) → bascule vers Emma via le sélecteur d'enfant → Autorisations d'Emma (une autorisation *Droit à l'image* encore « En attente », avec l'action « Transmettre » visible — cas concret).
+
+**Écarts assumés** : (1) « notification de nouvelle galerie » n'est pas un geste séparé dans le produit réel — le mode démo Joueur place directement une galerie déjà publiée dans Livrables ; représenté par la consultation réelle de Livrables plutôt qu'un événement de notification simulé. (2) « lecture du highlight » : les livrables de démonstration n'ont pas de lien de lecture (aucun média réel à streamer sans données de production) — représenté par le geste réel le plus proche, l'ajout aux favoris puis sa consultation dans Mes favoris.
 
 ## 5. Commandes d'enregistrement
 
@@ -71,6 +83,10 @@ npx playwright install chromium  # une seule fois
 
 npm run record:coach             # -> public/videos/clubplus/raw/coach-result-mobile-raw.webm
 npm run record:hero              # -> public/videos/clubplus/raw/hero-desktop-raw.webm
+npm run record:cm                # -> public/videos/clubplus/raw/community-manager-raw.webm
+npm run record:sponsors          # -> public/videos/clubplus/raw/sponsors-raw.webm
+npm run record:service           # -> public/videos/clubplus/raw/service-booking-raw.webm
+npm run record:player-family     # -> public/videos/clubplus/raw/player-family-desktop-raw.webm + player-family-mobile-raw.webm
 ```
 
 Règles appliquées pendant l'enregistrement (mission §3) : navigateur Chromium headless fraîchement lancé à chaque script (pas de profil persistant, aucune extension, aucune notification système possible en headless), `page.fill()` plutôt que la frappe caractère par caractère pour les champs (évite un rendu haché), un `hover()` avant chaque clic pour un mouvement de curseur réaliste, des pauses courtes (200-1400 ms) calibrées action par action plutôt qu'une attente réseau (il n'y en a pas, tout est en mémoire). `deviceScaleFactor`/`isMobile`/`hasTouch` réglés selon le device pour un rendu responsive réel, pas un desktop réduit.
@@ -78,15 +94,14 @@ Règles appliquées pendant l'enregistrement (mission §3) : navigateur Chromium
 ## 6. Décisions produit à valider avant d'aller plus loin
 
 1. **Formulaire Résultat express sans champ photo** (coach) — ajouter le champ réellement, ou retirer l'étape du script définitivement ?
-2. **Espace Joueur/Parent non démontrable sans vraie session** — trois options : (a) laisser la vidéo Hero se terminer sur la Banque média (dirigeants) comme actuellement, (b) créer un compte de test dans un projet Supabase de **staging séparé** (si vous en créez un — le projet actuel est le seul, partagé en production avec OS/Portail), (c) construire un mode démonstration dédié à l'Espace Joueur/Parent dans `app.html` (changement de produit, hors périmètre de cette mission vidéo).
+2. **Espace Joueur/Parent non démontrable sans vraie session** — ✅ résolu : option (c) retenue et construite (mode démonstration dédié dans `app.html`, cf. §2 et §4). Options (a)/(b) écartées.
 3. **Incrustation mobile dans le Hero** — le clip `coach-result-mobile-raw.webm` peut être composé en incrustation (picture-in-picture) dans le Hero desktop lors d'un montage plus poussé ; pas fait pour ce prototype (simple juxtaposition/alternance serait le prochain pas, avant un vrai compositing).
 
-## 7. Reste à produire (après validation des deux prototypes)
+## 7. Reste à produire
 
-- `coach-result-desktop.mp4` (même script, `device:'desktop'`)
+- `coach-result-desktop.mp4` (même script, `device:'desktop'`) — variante optionnelle, non demandée par la mission
 - `clubplus-hero-mobile.mp4` (même script `record-hero.js`, `device:'mobile'` — le script est déjà paramétrable, pas testé à ce jour)
-- Community Manager, Sponsors, Joueur & Famille, Prestation SportVision (nouveaux scripts, même patron que `record-hero.js`)
-- Overview (assemblage FFmpeg des meilleurs extraits des autres vidéos, cf. mission §10)
+- **Overview** (assemblage FFmpeg des meilleurs extraits des 7 autres vidéos, cf. mission §10) — seule vidéo individuelle encore manquante ; dépend des exports finaux des 7 autres, tous désormais disponibles
 
 ## 8. Commandes FFmpeg (pipeline post-production)
 
@@ -106,6 +121,12 @@ ffmpeg -y -i raw/hero-desktop-raw.webm \
   -vf "setpts=PTS/1.2644,fade=t=in:st=0:d=0.35,fade=t=out:st=17.6:d=0.4" \
   -an -c:v libx264 -profile:v high -pix_fmt yuv420p -crf 20 -preset slow -movflags +faststart \
   hero/clubplus-hero-desktop.mp4
+
+# Desktop déjà à la durée cible (15s dans [12,18]) : pas de setpts, juste les fondus
+ffmpeg -y -i raw/player-family-desktop-raw.webm \
+  -vf "fade=t=in:st=0:d=0.3,fade=t=out:st=14.6:d=0.4" \
+  -an -c:v libx264 -profile:v high -pix_fmt yuv420p -crf 21 -preset slow -movflags +faststart \
+  features/player-family-desktop.mp4
 ```
 
 Le facteur `setpts=PTS/<facteur>` se calcule à partir de la durée brute réelle (`ffprobe -v error -show_entries format=duration -of csv=p=0 fichier.webm`) et de la durée cible : `facteur = durée_brute / durée_cible`.
@@ -137,6 +158,10 @@ rm posters/coach-result-poster.png
 | `hero/clubplus-hero-desktop.mp4` | 1920×1080 | 18,0 s | 1,39 Mo | 4-8 Mo ✅ (bien en dessous) |
 | `hero/clubplus-hero-desktop.webm` | 1920×1080 | 18,0 s | 1,23 Mo | — |
 | `posters/clubplus-hero-poster.webp` | — | — | 51 Ko | < 250 Ko ✅ |
+| `features/player-family-desktop.mp4` | 1920×1080 | 15,0 s | 487 Ko | — |
+| `features/player-family-mobile.mp4` | 1080×1920 | 16,3 s | 1,13 Mo | — |
+| `features/player-family.webm` | 1920×1080 | 15,0 s | 463 Ko | — |
+| `posters/player-family-poster.webp` | — | — | 27 Ko | < 250 Ko ✅ |
 
 Tous les exports sont nettement sous les budgets de poids fixés par la mission — la qualité (`-crf`) peut être resserrée (valeurs plus basses) sans risquer de dépasser les objectifs si le rendu doit être encore affiné visuellement.
 

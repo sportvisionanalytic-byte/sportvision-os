@@ -9,7 +9,8 @@
     "record:hero": "node record-hero.js",
     "record:cm": "node record-community-manager.js",
     "record:sponsors": "node record-sponsors.js",
-    "record:service": "node record-service-booking.js"
+    "record:service": "node record-service-booking.js",
+    "record:player-family": "node record-player-family.js desktop && node record-player-family.js mobile"
   },
   "devDependencies": {
     "playwright": "^1.48.0"
