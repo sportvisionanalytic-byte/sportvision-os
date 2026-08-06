@@ -701,6 +701,7 @@ const NAV={
     {id:'resultat',lb:'Compte de résultat',ic:'fin'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
     {id:'commissions',lb:'Commissions',ic:'fin'},
+    {id:'immobilisations',lb:'Immobilisations',ic:'kits'},
     {id:'budgets',lb:'Budgets & prévisions',ic:'fin'},
     {id:'tva',lb:'TVA & provisions',ic:'fin'},
     {id:'rapprochement',lb:'Rapprochement',ic:'check'},
@@ -824,6 +825,7 @@ const NAV={
     {id:'rapprochement',lb:'Rapprochement',ic:'check'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
     {id:'commissions',lb:'Commissions',ic:'fin'},
+    {id:'immobilisations',lb:'Immobilisations',ic:'kits'},
     {id:'budgets',lb:'Budgets & prévisions',ic:'fin'},
     {type:'sep',lb:'Facturation'},
     {id:'factures',lb:'Factures',ic:'doc'},
@@ -876,6 +878,7 @@ const NAV={
     {id:'resultat',lb:'Compte de résultat',ic:'fin'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
     {id:'commissions',lb:'Commissions',ic:'fin'},
+    {id:'immobilisations',lb:'Immobilisations',ic:'kits'},
     {id:'budgets',lb:'Budgets & prévisions',ic:'fin'},
     {id:'tva',lb:'TVA & provisions',ic:'fin'},
     {type:'sep',lb:'Facturation'},
@@ -898,6 +901,7 @@ const NAV={
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
     {id:'resultat',lb:'Compte de résultat',ic:'fin'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
+    {id:'immobilisations',lb:'Immobilisations',ic:'kits'},
     {id:'budgets',lb:'Budgets & prévisions',ic:'fin'},
     {id:'tva',lb:'TVA & provisions',ic:'fin'},
     {type:'sep',lb:'Facturation'},
@@ -2195,6 +2199,15 @@ const VIEWS={
     </div>
     <div id="commissions-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  'compta.immobilisations':()=>`
+    <div class="sh"><div><div class="sh-t">Immobilisations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Matériel de valeur (caméras, drones, ordinateurs…) avec amortissement linéaire estimé — à confirmer avec ton expert-comptable</div></div></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Valeur brute totale</div><div class="kpi-v" id="immo-kpi-brut" style="font-size:18px">—</div><span class="kpi-d dnt">prix d'achat cumulé</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Amortissements cumulés</div><div class="kpi-v" id="immo-kpi-amort" style="font-size:18px">—</div><span class="kpi-d dnt">estimation linéaire</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Valeur nette comptable</div><div class="kpi-v" id="immo-kpi-vnc" style="font-size:18px">—</div><span class="kpi-d dnt">brut - amortissements</span></div>
+    </div>
+    <div id="immobilisations-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   'compta.clotures':()=>`
     <div class="sh"><div class="sh-t">Clôtures mensuelles</div></div>
     <div class="g3" style="margin-bottom:13px">
@@ -3082,6 +3095,7 @@ async function loadViewData(role,view){
   if(_isComptaLike&&view==='tva') await loadComptaTva();
   if(_isComptaLike&&view==='fec') await loadComptaFec();
   if(_isComptaLike&&view==='audit') await loadComptaAuditLog();
+  if(_isComptaLike&&view==='immobilisations') await loadComptaImmobilisations();
   // Admin a aussi accès aux écrans compta détaillés (cf. NAV.admin) — gardé
   // séparé de _isComptaLike pour ne pas dupliquer les dispatches 'dash'/'docs'
   // déjà gérés plus haut pour admin (loadAdminDash, loadDocuments).
@@ -3103,6 +3117,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='tva') await loadComptaTva();
   if(role==='admin'&&view==='fec') await loadComptaFec();
   if(role==='admin'&&view==='audit') await loadComptaAuditLog();
+  if(role==='admin'&&view==='immobilisations') await loadComptaImmobilisations();
   if((role==='prod'||role==='admin')&&view==='incidents') await loadIncidents();
   if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
   if(role==='com'&&view==='dash') await loadComDash();
@@ -14845,6 +14860,42 @@ function renderAuditLog(){
     </tr>`).join('')+'</tbody></table></div>';
 }
 
+// ── Immobilisations ───────────────────────────────────────────────────────
+// Réutilise materiels.valeur/date_achat (déjà suivis opérationnellement,
+// migration-kits-v2.sql) — amortissement linéaire estimé sur
+// duree_amortissement_mois (migration-finance-immobilisations.sql, défaut
+// 36 mois). Estimation de pilotage, pas un tableau d'amortissement légal.
+async function loadComptaImmobilisations(){
+  const el=document.getElementById('immobilisations-real');if(!el)return;
+  try{
+    const data=await sbFetch('materiels?select=nom,categorie,valeur,date_achat,duree_amortissement_mois,statut&valeur=not.is.null&valeur=gt.0&order=date_achat.desc&limit=300');
+    const list=Array.isArray(data)?data:[];
+    const now=new Date();
+    const withCalc=list.map(m=>{
+      const achat=new Date(m.date_achat||now);
+      const moisEcoules=Math.max(0,(now.getFullYear()-achat.getFullYear())*12+(now.getMonth()-achat.getMonth()));
+      const duree=m.duree_amortissement_mois||36;
+      const amorti=Math.min(m.valeur||0,(m.valeur||0)*moisEcoules/duree);
+      return{...m,amorti,vnc:(m.valeur||0)-amorti};
+    });
+    const brut=withCalc.reduce((s,m)=>s+(m.valeur||0),0);
+    const amort=withCalc.reduce((s,m)=>s+m.amorti,0);
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+    set('immo-kpi-brut',fmt(brut));set('immo-kpi-amort',fmt(amort));set('immo-kpi-vnc',fmt(brut-amort));
+    el.innerHTML=withCalc.length?'<div class="tw"><table><thead><tr><th>Matériel</th><th>Catégorie</th><th>Achat</th><th>Valeur brute</th><th>VNC estimée</th><th>Statut</th></tr></thead><tbody>'+
+      withCalc.map(m=>`<tr>
+        <td class="tp">${esc(m.nom||'—')}</td>
+        <td>${esc(m.categorie||'—')}</td>
+        <td>${m.date_achat?new Date(m.date_achat).toLocaleDateString('fr-FR'):'—'}</td>
+        <td class="tm">${fmt(m.valeur)}</td>
+        <td class="tm" style="font-weight:600;color:${m.vnc>0?'var(--ok)':'var(--t3)'}">${fmt(m.vnc)}</td>
+        <td>${esc(m.statut||'—')}</td>
+      </tr>`).join('')+'</tbody></table></div>':
+      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun matériel avec valeur d\'achat renseignée.</div>';
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement (migration-finance-immobilisations.sql à exécuter).</div>';console.error(e);}
+}
+
 async function loadComptaClotures(){
   const el=document.getElementById('compta-clotures-real');if(!el)return;
   const now=new Date();
@@ -17273,7 +17324,7 @@ function tplExpertComptableDash(){
 // écrans compta tels quels (lecture seule imposée par RLS, pas de duplication
 // de template).
 ['expert_comptable','auditeur'].forEach(role=>{
-  ['dash','resultat','rentabilite','budgets','factures','avoirs','depenses','frais','rem','clotures','tva','audit'].forEach(v=>{
+  ['dash','resultat','rentabilite','budgets','factures','avoirs','depenses','frais','rem','clotures','tva','audit','immobilisations'].forEach(v=>{
     if(VIEWS['compta.'+v]) VIEWS[role+'.'+v]=VIEWS['compta.'+v];
   });
 });
@@ -17289,7 +17340,7 @@ VIEWS['expert_comptable.fec']=VIEWS['compta.fec'];
 // détaillés compta (rentabilité, dépenses, clôtures…) — Fouka (toujours
 // connecté en admin) doit voir tout ça directement, pas seulement via un
 // compte compta séparé.
-['resultat','rentabilite','commissions','budgets','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export','tva','fec','audit'].forEach(v=>{
+['resultat','rentabilite','commissions','budgets','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export','tva','fec','audit','immobilisations'].forEach(v=>{
   if(VIEWS['compta.'+v]) VIEWS['admin.'+v]=VIEWS['compta.'+v];
 });
 
