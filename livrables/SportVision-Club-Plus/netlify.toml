@@ -15,9 +15,12 @@
 # n'est pas une requête fetch/connect ni un script chargé côté client, donc
 # aucun domaine Stripe n'est nécessaire dans cette CSP. Le site utilise des
 # gestionnaires d'évènements inline (onclick=...) et des <script> inline,
-# d'où 'unsafe-inline' sur script-src et style-src. Pas de HSTS ajouté
-# volontairement (à activer seulement après confirmation que tous les
-# sous-domaines sont bien en HTTPS).
+# d'où 'unsafe-inline' sur script-src et style-src.
+# HSTS ajouté le 2026-08-07 : tout est servi par Netlify, donc HTTPS par
+# défaut sur le domaine exact visité, sans risque. Volontairement SANS
+# includeSubDomains (on ne connaît pas encore tous les sous-domaines
+# éventuels du domaine définitif) ni preload (engagement long à ne pas
+# prendre à la légère) : uniquement max-age sur le domaine exact.
 [[headers]]
   for = "/*"
   [headers.values]
@@ -25,4 +28,5 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     X-Frame-Options = "SAMEORIGIN"
+    Strict-Transport-Security = "max-age=31536000"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'"
