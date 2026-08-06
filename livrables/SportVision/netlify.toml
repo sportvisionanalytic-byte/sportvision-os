@@ -139,3 +139,22 @@
   from = "/prestations/coachs"
   to = "/prestation-coachs.html"
   status = 200
+
+# En-têtes de sécurité HTTP (2026-08-06). CSP construite à partir des seuls
+# domaines externes réellement appelés par ce site : Google Fonts (feuille de
+# style + fichiers de police) et le projet Supabase (fetch vers
+# /functions/v1/create-guest-request et /functions/v1/check-disponibilite
+# depuis reserver.html et demande-de-devis.html). Le site utilise des
+# gestionnaires d'évènements inline (onclick=...) et des <script> inline,
+# d'où 'unsafe-inline' sur script-src et style-src : durcir davantage
+# nécessiterait une refonte du HTML, hors périmètre ici. Pas de HSTS ajouté
+# volontairement (à activer seulement après confirmation que tous les
+# sous-domaines sont bien en HTTPS).
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    X-Frame-Options = "SAMEORIGIN"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'"

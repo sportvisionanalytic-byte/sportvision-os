@@ -16,3 +16,21 @@
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
+
+# En-têtes de sécurité HTTP (2026-08-06). CSP construite à partir des domaines
+# externes réellement appelés : le projet Supabase (fetch REST/auth/functions,
+# tous les modules/*.js passent par SB_URL) et l'API adresse gouvernementale
+# (autocomplétion d'adresse dans projet-configurateur.js). Aucun Google Fonts
+# ni police externe : l'app n'utilise que la pile de polices système. Le site
+# utilise des <script> inline (index.html) et des gestionnaires d'évènements
+# construits en JS, d'où 'unsafe-inline' sur script-src et style-src. Pas de
+# HSTS ajouté volontairement (à activer seulement après confirmation que tous
+# les sous-domaines sont bien en HTTPS).
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    X-Frame-Options = "SAMEORIGIN"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co https://api-adresse.data.gouv.fr; frame-src 'none'; object-src 'none'; base-uri 'self'"
