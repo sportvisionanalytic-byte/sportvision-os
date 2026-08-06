@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Accompagnement Joueur — Valorisez votre image sportive avec SportVision</title>
-<meta name="description" content="Shootings, matchs, highlights et suivi de saison pour les joueurs. Réservez une prestation ponctuelle ou créez votre accompagnement joueur avec SportVision.">
+<title>Pack Match Complet — 160€ TTC | Prestation SportVision</title>
+<meta name="description" content="Pack Match Complet SportVision : 160€ TTC, sans abonnement. Photo, vidéo et highlight réunis pour votre match, livraison groupée sous 3 à 5 jours ouvrés.">
 <meta name="robots" content="index, follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,15 +16,10 @@
    fondateur). Vanilla HTML/CSS/JS, aucun framework, aucune
    étape de build — même convention que le reste de l'écosystème.
 
-   Rééquilibrage v3 (retour du fondateur) : la v2 mélangeait tout
-   (prestations, Connect, Club+, Full Communication, accompagnements
-   par profil) dans un seul parcours confus. Cette version fait de
-   la home un simple AIGUILLEUR : chaque famille d'offre a maintenant
-   sa page dédiée (prestations.html, club-plus.html,
-   full-communication.html, connect.html, accompagnements*.html),
-   la home ne montre qu'un teaser + un CTA par famille. Design,
-   hero, couleurs et sections Réalisations/Études de cas/Témoignages
-   conservés à l'identique, sur demande du fondateur.
+   Page fiche produit : scindée depuis prestations.html (catalogue)
+   pour donner à chaque prestation sa propre page dédiée (SEO +
+   discours plus riche). Chrome (header, footer, modal devis,
+   cookies, script) copié à l'identique depuis prestations.html.
    ============================================================ */
 :root{
   --navy-900:#070A17; --navy-800:#10162F;
@@ -335,6 +330,18 @@ section{position:relative}
   .gallery-grid{grid-template-columns:1fr 1fr}
   .footer-grid{grid-template-columns:1fr}
 }
+
+/* ── Fiche prestation (page individuelle) ── */
+.back-link{display:inline-flex;align-items:center;gap:6px;color:rgba(255,255,255,.55);font-size:13.5px;font-weight:600;margin-bottom:18px}
+.back-link:hover{color:#fff}
+.price-hero{display:inline-flex;align-items:baseline;gap:9px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:16px 26px;margin-top:28px}
+.price-hero .amount{font-family:var(--font-head);font-weight:800;font-size:32px;color:#fff}
+.price-hero .ttc{font-size:12.5px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.05em}
+.delay-card{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #e9ecf5;border-radius:var(--radius-lg);padding:24px 28px;max-width:520px;margin:0 auto}
+.delay-card .icon{width:46px;height:46px;border-radius:12px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;flex-shrink:0}
+.delay-card b{font-size:16px;display:block;color:var(--navy-900)}
+.delay-card span{font-size:13.5px;color:#5b6478}
+.compare-note{max-width:620px;margin:24px auto 0;text-align:center;font-size:14.5px;font-weight:700;color:var(--success);background:rgba(18,183,106,.08);border:1px solid rgba(18,183,106,.25);border-radius:12px;padding:14px 18px}
 </style>
 </head>
 <body>
@@ -344,7 +351,7 @@ section{position:relative}
     <a href="index.html" class="brand"><span class="mark">S</span>SportVision</a>
     <nav class="main-nav">
       <div class="nav-item">
-        <a href="prestations.html">Prestations <span class="nav-caret">▾</span></a>
+        <a href="prestations.html" class="active">Prestations <span class="nav-caret">▾</span></a>
         <div class="nav-dropdown">
           <a href="prestation-match-photo.html">Match photo</a>
           <a href="prestation-match-video.html">Match vidéo</a>
@@ -361,7 +368,7 @@ section{position:relative}
       <a href="club-plus.html">Club+</a>
       <a href="full-communication.html">Full Communication</a>
       <div class="nav-item">
-        <a href="accompagnements.html" class="active">Accompagnements <span class="nav-caret">▾</span></a>
+        <a href="accompagnements.html">Accompagnements <span class="nav-caret">▾</span></a>
         <div class="nav-dropdown">
           <a href="club-plus.html">Clubs</a>
           <a href="accompagnements-academies.html">Académies</a>
@@ -422,51 +429,50 @@ section{position:relative}
 </div>
 
 <!-- ══════════════ HERO ══════════════ -->
-<section class="hero" id="joueur">
+<section class="hero">
   <div class="container">
     <div class="hero-copy">
-      <span class="eyebrow">Accompagnement Joueur</span>
-      <h1>Construisez une image à la hauteur de votre <span>parcours</span>.</h1>
-      <p class="subtitle">Shootings, matchs, highlights et contenus personnels pour valoriser votre identité sportive.</p>
+      <a href="prestations.html" class="back-link">← Toutes les prestations</a>
+      <span class="eyebrow">Prestation · Sans abonnement</span>
+      <h1>Photo et vidéo réunies pour votre <span>match</span>.</h1>
+      <p class="subtitle">Le pack le plus complet : photos, vidéo et highlight, en une seule prestation.</p>
+      <div class="price-hero"><span class="amount">160 €</span><span class="ttc">TTC</span></div>
       <div class="hero-ctas">
-        <a href="#devis" class="btn btn-grad" data-action="open-devis">Réserver mon shooting</a>
-        <a href="#regulier" class="btn btn-ghost-dark">Créer mon accompagnement joueur</a>
+        <a href="#devis" class="btn btn-grad" data-action="open-devis">Réserver ce pack</a>
       </div>
-      <p class="hero-micro">Pour tout joueur ou toute famille, avec ou sans club — aucun abonnement club n'est nécessaire.</p>
+      <p class="hero-micro">Sans abonnement ni engagement.</p>
     </div>
+  </div>
+</section>
 
-    <div class="reveal" style="max-width:960px;margin:56px auto 0;position:relative">
-      <div class="float-card f1">
-        <div class="k">Prestation réservée</div>
-        <div class="v">Shooting joueur — Sam. 10h</div>
+<!-- ══════════════ CE QUI EST INCLUS ══════════════ -->
+<section class="section-light">
+  <div class="container">
+    <div class="feature-row reveal">
+      <div class="feature-copy">
+        <span class="eyebrow">Ce qui est inclus</span>
+        <h3>Toute la couverture de votre match, en une prestation.</h3>
+        <p class="desc">Le pack réunit l'intégralité de la prestation Match Photo et de la prestation Match Vidéo.</p>
+        <ul class="feature-list">
+          <li>Présence d'un photographe et d'un opérateur vidéo SportVision pendant tout le match</li>
+          <li>Captation des temps forts et des moments clés, en photo et en vidéo</li>
+          <li>Sélection des meilleurs clichés et légère retouche (lumière, cadrage)</li>
+          <li>Montage highlight simple (format prêt pour réseaux sociaux)</li>
+          <li>Livraison numérique groupée en haute définition</li>
+          <li>Galerie et highlight accessibles depuis votre espace SportVision Connect</li>
+        </ul>
       </div>
-      <div class="float-card f2">
-        <div class="k"><span class="badge-dot"></span>Contenu prêt</div>
-        <div class="v">Highlight disponible</div>
-      </div>
-      <div class="app-frame">
-        <div class="bar"><span></span><span></span><span></span></div>
-        <div class="app-body">
-          <div class="app-grid">
-            <div class="gcard">
-              <div class="k">Mon shooting</div>
-              <div class="v">Portraits + contenus personnels</div>
-              <div class="sub">Statut : en production · SportVision</div>
-            </div>
-            <div class="gcard">
-              <div class="k">Devis</div>
-              <div class="v">Accepté et signé</div>
-              <div class="sub">Sans abonnement</div>
-            </div>
-            <div class="gcard">
-              <div class="k">Livraison</div>
-              <div class="v">Sous 3 à 5 jours ouvrés</div>
-            </div>
-            <div class="gcard">
-              <div class="k">Galerie privée</div>
-              <div class="v">Connect</div>
-              <div class="sub">Photos · Vidéos · Highlights</div>
-            </div>
+      <div class="feature-visual">
+        <div class="app-grid">
+          <div class="gcard">
+            <div class="k">Pack Match Complet</div>
+            <div class="v">160 € TTC</div>
+            <div class="sub">Sans abonnement ni engagement</div>
+          </div>
+          <div class="gcard">
+            <div class="k">Livraison</div>
+            <div class="v">3 à 5 jours ouvrés</div>
+            <div class="sub">Photos + highlight sur SportVision Connect</div>
           </div>
         </div>
       </div>
@@ -474,69 +480,53 @@ section{position:relative}
   </div>
 </section>
 
-<!-- ══════════════ BESOIN PONCTUEL ══════════════ -->
-<section class="section-light" id="ponctuel">
+<!-- ══════════════ DÉLAI ══════════════ -->
+<section class="section-tint">
   <div class="container">
-    <div class="feature-row reveal">
-      <div class="feature-copy">
-        <span class="eyebrow">Besoin ponctuel</span>
-        <h3>Un shooting, un match, un highlight.</h3>
-        <p class="desc">Vous n'avez besoin d'aucun abonnement pour valoriser un moment clé de votre parcours. Réservez la prestation qu'il vous faut, quand vous en avez besoin.</p>
-        <ul class="feature-list">
-          <li>Shooting portrait et contenus personnels</li>
-          <li>Match photo ou match vidéo</li>
-          <li>Highlight de match ou de séquence</li>
-          <li>Contenus prêts pour vos réseaux personnels</li>
-        </ul>
-        <span style="display:block;margin-top:16px;color:var(--success);font-weight:800;font-size:12.5px">✓ Sans abonnement nécessaire</span>
-        <div class="hero-ctas" style="justify-content:flex-start;margin-top:22px">
-          <a href="#devis" class="btn btn-grad" data-action="open-devis">Réserver mon shooting</a>
-        </div>
-      </div>
-      <div class="feature-visual">
-        <div class="gcard" style="margin-bottom:12px"><div class="k">Prestation</div><div class="v">Shooting joueur</div><div class="sub">Portraits + contenus personnels</div></div>
-        <div class="gcard"><div class="k"><span class="badge-dot"></span>Sans abonnement</div><div class="v">Réservation en quelques minutes</div></div>
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Délai</span>
+      <h2>Photos et highlight, rapidement.</h2>
+    </div>
+    <div class="delay-card reveal">
+      <div class="icon">⏱️</div>
+      <div>
+        <b>Livraison groupée sous 3 à 5 jours ouvrés</b>
+        <span>À compter de la date du match, directement dans votre espace SportVision Connect.</span>
       </div>
     </div>
+    <p class="compare-note reveal">Le pack le plus économique si vous souhaitez photo ET vidéo : 160€ TTC pour les deux, au lieu de 120€ + 120€ séparément.</p>
   </div>
 </section>
 
-<!-- ══════════════ ACCOMPAGNEMENT RÉGULIER ══════════════ -->
-<section class="section-tint" id="regulier">
+<!-- ══════════════ OPTIONS ══════════════ -->
+<section class="section-light">
   <div class="container">
-    <div class="feature-row rev reveal">
-      <div class="feature-copy">
-        <span class="eyebrow">Accompagnement régulier</span>
-        <h3>Un suivi sur toute la saison.</h3>
-        <p class="desc">Pour les joueurs qui veulent construire une image dans la durée : matchs réguliers, contenus personnels, communication autour de vos performances, et un espace dédié pour tout centraliser.</p>
-        <ul class="feature-list">
-          <li>Couverture régulière de vos matchs</li>
-          <li>Contenus personnels tout au long de la saison</li>
-          <li>Communication autour de vos performances</li>
-          <li>Mise en avant possible auprès de sponsors</li>
-          <li>Validations et galerie privée dans SportVision Connect</li>
-        </ul>
-        <div class="hero-ctas" style="justify-content:flex-start;margin-top:22px">
-          <a href="#devis" class="btn btn-grad" data-action="open-devis">Créer mon accompagnement joueur</a>
-        </div>
-      </div>
-      <div class="feature-visual">
-        <div class="gcard" style="margin-bottom:12px"><div class="k">Espace Joueur</div><div class="v">Suivi de saison</div><div class="sub">Matchs, contenus, validations</div></div>
-        <div class="gcard"><div class="k"><span class="badge-dot"></span>Galerie privée</div><div class="v">Accessible dans Connect</div></div>
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Options</span>
+      <h2>Personnalisez votre pack.</h2>
+      <p>À ajouter à votre Pack Match Complet.</p>
+    </div>
+    <div class="prestation-grid reveal" style="max-width:520px;margin-left:auto;margin-right:auto">
+      <div class="prestation-card">
+        <div class="top-row"><div class="icon">🚁</div><span class="sans-abo">En option</span></div>
+        <h4>Drone</h4>
+        <p class="desc">Plans aériens en complément, sous réserve de la réglementation, de la météo et de la zone survolée.</p>
+        <div class="price-row"><span class="price">+25 € <small>en option</small></span></div>
+        <a href="#devis" class="btn btn-grad btn-sm" data-action="open-devis" style="margin-top:14px;width:100%">Ajouter le drone</a>
       </div>
     </div>
+    <p style="text-align:center;margin-top:40px;color:var(--text-secondary);font-size:13px" class="reveal">Déplacement calculé selon la distance depuis notre siège (Montereau-Fault-Yonne).</p>
   </div>
 </section>
 
 <!-- ══════════════ FAQ ══════════════ -->
-<section class="section-light" id="faq">
+<section class="section-tint" id="faq">
   <div class="container">
     <div class="section-head reveal"><h2>Questions fréquentes</h2></div>
     <div class="faq-list reveal" id="faq-list">
-      <div class="faq-item"><button class="faq-q"><span>Dois-je avoir un club pour réserver un shooting ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non. Un shooting joueur, un match photo ou un highlight se réservent sans club et sans abonnement, directement en tant que joueur ou famille.</p></div></div>
-      <div class="faq-item"><button class="faq-q"><span>Comment recevoir mes highlights ?</span><span class="chev">+</span></button><div class="faq-a"><p>Vos highlights sont livrés numériquement, généralement sous quelques jours, et restent accessibles dans votre galerie privée sur SportVision Connect.</p></div></div>
-      <div class="faq-item"><button class="faq-q"><span>Puis-je demander un suivi sur toute la saison ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui. L'accompagnement régulier vous permet un suivi de vos matchs et de vos contenus personnels tout au long de la saison. Demandez un devis pour en discuter.</p></div></div>
-      <div class="faq-item"><button class="faq-q"><span>Dois-je m'engager sur la durée ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non. L'accompagnement régulier est mis en place selon vos besoins et peut être ajusté saison après saison.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Le pack inclut-il un seul intervenant ou deux ?</span><span class="chev">+</span></button><div class="faq-a"><p>Un photographe et un opérateur vidéo SportVision sont présents pendant tout le match, pour couvrir les deux formats en parallèle.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Puis-je choisir l'heure du match ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui, indiquez la date et l'heure de votre match dans le formulaire de demande. Nous confirmons la disponibilité de notre équipe avant validation.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Comment je reçois mes photos et ma vidéo ?</span><span class="chev">+</span></button><div class="faq-a"><p>Vos photos et votre highlight sont livrés en numérique haute définition, de façon groupée, accessibles depuis votre espace SportVision Connect, sous 3 à 5 jours ouvrés après le match.</p></div></div>
     </div>
   </div>
 </section>
@@ -544,16 +534,13 @@ section{position:relative}
 <!-- ══════════════ CTA FINAL ══════════════ -->
 <section class="cta-final">
   <div class="container">
-    <h2 class="reveal">Prêt à valoriser votre parcours ?</h2>
-    <p class="reveal">Réservez un shooting ponctuel ou créez votre accompagnement joueur sur toute la saison.</p>
+    <h2 class="reveal">Prêt à réserver votre pack match complet ?</h2>
+    <p class="reveal">160€ TTC, sans abonnement. Décrivez votre besoin, nous revenons vers vous rapidement.</p>
     <div class="hero-ctas reveal">
-      <a href="#devis" class="btn btn-grad" data-action="open-devis">Réserver mon shooting</a>
-      <a href="#devis" class="btn btn-ghost-dark" data-action="open-devis">Créer mon accompagnement joueur</a>
+      <a href="#devis" class="btn btn-grad" data-action="open-devis">Réserver ce pack</a>
     </div>
   </div>
 </section>
-
-<p style="text-align:center;color:var(--text-secondary);font-size:13px;padding:36px 24px;background:var(--white)">Vous êtes dirigeant de club ? Découvrez <a href="club-plus.html" style="color:var(--blue);font-weight:700">Club+</a>.</p>
 
 <footer class="site-footer">
   <div class="container">
@@ -617,7 +604,6 @@ section{position:relative}
   </div>
 </div>
 
-<!-- ══════════════ MODAL DEMANDE DE DEVIS ══════════════ -->
 <div class="sv-overlay" id="devis-overlay">
   <div class="sv-modal">
     <button class="sv-close" id="devis-close" aria-label="Fermer">✕</button>
@@ -655,7 +641,6 @@ section{position:relative}
 </div>
 
 <div class="toast" id="toast"></div>
-
 
 <script>
 /* ============================================================
@@ -790,6 +775,5 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
   }
 });
 </script>
-
 </body>
 </html>

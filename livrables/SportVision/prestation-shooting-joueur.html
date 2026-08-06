@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Accompagnement Joueur — Valorisez votre image sportive avec SportVision</title>
-<meta name="description" content="Shootings, matchs, highlights et suivi de saison pour les joueurs. Réservez une prestation ponctuelle ou créez votre accompagnement joueur avec SportVision.">
+<title>Shooting Joueur — Portraits & contenus personnels | SportVision</title>
+<meta name="description" content="Shooting joueur SportVision : portraits professionnels et contenus pour vos réseaux, sans abonnement ni engagement. Sur devis.">
 <meta name="robots" content="index, follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -335,6 +335,10 @@ section{position:relative}
   .gallery-grid{grid-template-columns:1fr 1fr}
   .footer-grid{grid-template-columns:1fr}
 }
+
+/* ── Ajouts propres à la page prestation détaillée (fiche individuelle) ── */
+.back-link{display:inline-flex;align-items:center;gap:6px;color:rgba(255,255,255,.55);font-size:13.5px;font-weight:600;margin-bottom:18px}
+.back-link:hover{color:#fff}
 </style>
 </head>
 <body>
@@ -344,7 +348,7 @@ section{position:relative}
     <a href="index.html" class="brand"><span class="mark">S</span>SportVision</a>
     <nav class="main-nav">
       <div class="nav-item">
-        <a href="prestations.html">Prestations <span class="nav-caret">▾</span></a>
+        <a href="prestations.html" class="active">Prestations <span class="nav-caret">▾</span></a>
         <div class="nav-dropdown">
           <a href="prestation-match-photo.html">Match photo</a>
           <a href="prestation-match-video.html">Match vidéo</a>
@@ -361,7 +365,7 @@ section{position:relative}
       <a href="club-plus.html">Club+</a>
       <a href="full-communication.html">Full Communication</a>
       <div class="nav-item">
-        <a href="accompagnements.html" class="active">Accompagnements <span class="nav-caret">▾</span></a>
+        <a href="accompagnements.html">Accompagnements <span class="nav-caret">▾</span></a>
         <div class="nav-dropdown">
           <a href="club-plus.html">Clubs</a>
           <a href="accompagnements-academies.html">Académies</a>
@@ -422,107 +426,65 @@ section{position:relative}
 </div>
 
 <!-- ══════════════ HERO ══════════════ -->
-<section class="hero" id="joueur">
+<section class="hero">
   <div class="container">
     <div class="hero-copy">
-      <span class="eyebrow">Accompagnement Joueur</span>
-      <h1>Construisez une image à la hauteur de votre <span>parcours</span>.</h1>
-      <p class="subtitle">Shootings, matchs, highlights et contenus personnels pour valoriser votre identité sportive.</p>
+      <a href="prestations.html" class="back-link">← Toutes les prestations</a>
+      <span class="eyebrow">Prestation · Sans abonnement</span>
+      <h1>Un shooting pour valoriser votre image de <span>joueur</span>.</h1>
+      <p class="subtitle">Portraits professionnels, contenus pour vos réseaux, sans abonnement ni engagement.</p>
       <div class="hero-ctas">
-        <a href="#devis" class="btn btn-grad" data-action="open-devis">Réserver mon shooting</a>
-        <a href="#regulier" class="btn btn-ghost-dark">Créer mon accompagnement joueur</a>
+        <a href="#devis" class="btn btn-grad" data-action="open-devis">Organiser mon shooting</a>
       </div>
-      <p class="hero-micro">Pour tout joueur ou toute famille, avec ou sans club — aucun abonnement club n'est nécessaire.</p>
-    </div>
-
-    <div class="reveal" style="max-width:960px;margin:56px auto 0;position:relative">
-      <div class="float-card f1">
-        <div class="k">Prestation réservée</div>
-        <div class="v">Shooting joueur — Sam. 10h</div>
-      </div>
-      <div class="float-card f2">
-        <div class="k"><span class="badge-dot"></span>Contenu prêt</div>
-        <div class="v">Highlight disponible</div>
-      </div>
-      <div class="app-frame">
-        <div class="bar"><span></span><span></span><span></span></div>
-        <div class="app-body">
-          <div class="app-grid">
-            <div class="gcard">
-              <div class="k">Mon shooting</div>
-              <div class="v">Portraits + contenus personnels</div>
-              <div class="sub">Statut : en production · SportVision</div>
-            </div>
-            <div class="gcard">
-              <div class="k">Devis</div>
-              <div class="v">Accepté et signé</div>
-              <div class="sub">Sans abonnement</div>
-            </div>
-            <div class="gcard">
-              <div class="k">Livraison</div>
-              <div class="v">Sous 3 à 5 jours ouvrés</div>
-            </div>
-            <div class="gcard">
-              <div class="k">Galerie privée</div>
-              <div class="v">Connect</div>
-              <div class="sub">Photos · Vidéos · Highlights</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <p class="hero-micro">Sans abonnement ni engagement.</p>
     </div>
   </div>
 </section>
 
-<!-- ══════════════ BESOIN PONCTUEL ══════════════ -->
-<section class="section-light" id="ponctuel">
+<!-- ══════════════ CE QUI EST INCLUS ══════════════ -->
+<section class="section-light">
   <div class="container">
     <div class="feature-row reveal">
       <div class="feature-copy">
-        <span class="eyebrow">Besoin ponctuel</span>
-        <h3>Un shooting, un match, un highlight.</h3>
-        <p class="desc">Vous n'avez besoin d'aucun abonnement pour valoriser un moment clé de votre parcours. Réservez la prestation qu'il vous faut, quand vous en avez besoin.</p>
+        <span class="eyebrow">Ce qui est inclus</span>
+        <h3>Une séance pensée pour votre image.</h3>
+        <p class="desc">Chaque shooting joueur est organisé individuellement, pour des contenus qui vous ressemblent — sans abonnement ni engagement.</p>
         <ul class="feature-list">
-          <li>Shooting portrait et contenus personnels</li>
-          <li>Match photo ou match vidéo</li>
-          <li>Highlight de match ou de séquence</li>
-          <li>Contenus prêts pour vos réseaux personnels</li>
+          <li>Séance photo individuelle</li>
+          <li>Mise en scène (studio ou terrain, selon disponibilité)</li>
+          <li>Sélection des meilleurs clichés</li>
+          <li>Retouche professionnelle</li>
+          <li>Livraison numérique HD</li>
+          <li>Contenus prêts pour Instagram et vos réseaux personnels</li>
         </ul>
-        <span style="display:block;margin-top:16px;color:var(--success);font-weight:800;font-size:12.5px">✓ Sans abonnement nécessaire</span>
         <div class="hero-ctas" style="justify-content:flex-start;margin-top:22px">
-          <a href="#devis" class="btn btn-grad" data-action="open-devis">Réserver mon shooting</a>
+          <a href="#devis" class="btn btn-grad" data-action="open-devis">Organiser mon shooting</a>
         </div>
       </div>
       <div class="feature-visual">
-        <div class="gcard" style="margin-bottom:12px"><div class="k">Prestation</div><div class="v">Shooting joueur</div><div class="sub">Portraits + contenus personnels</div></div>
-        <div class="gcard"><div class="k"><span class="badge-dot"></span>Sans abonnement</div><div class="v">Réservation en quelques minutes</div></div>
+        <div class="gcard" style="margin-bottom:12px"><div class="k">Tarif</div><div class="v">Sur devis</div><div class="sub">Adapté à votre formule, aucun tarif fixe imposé</div></div>
+        <div class="gcard"><div class="k">Délai</div><div class="v">Variable selon la formule</div><div class="sub">Communiqué avec le devis</div></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ══════════════ ACCOMPAGNEMENT RÉGULIER ══════════════ -->
-<section class="section-tint" id="regulier">
+<!-- ══════════════ OPTIONS ══════════════ -->
+<section class="section-tint">
   <div class="container">
     <div class="feature-row rev reveal">
       <div class="feature-copy">
-        <span class="eyebrow">Accompagnement régulier</span>
-        <h3>Un suivi sur toute la saison.</h3>
-        <p class="desc">Pour les joueurs qui veulent construire une image dans la durée : matchs réguliers, contenus personnels, communication autour de vos performances, et un espace dédié pour tout centraliser.</p>
+        <span class="eyebrow">Options</span>
+        <h3>À ajouter selon votre besoin.</h3>
+        <p class="desc">Complétez votre shooting selon vos objectifs de communication.</p>
         <ul class="feature-list">
-          <li>Couverture régulière de vos matchs</li>
-          <li>Contenus personnels tout au long de la saison</li>
-          <li>Communication autour de vos performances</li>
-          <li>Mise en avant possible auprès de sponsors</li>
-          <li>Validations et galerie privée dans SportVision Connect</li>
+          <li>Ajout d'une vidéo courte (interview / présentation)</li>
+          <li>Déplacement selon votre zone</li>
         </ul>
-        <div class="hero-ctas" style="justify-content:flex-start;margin-top:22px">
-          <a href="#devis" class="btn btn-grad" data-action="open-devis">Créer mon accompagnement joueur</a>
-        </div>
       </div>
       <div class="feature-visual">
-        <div class="gcard" style="margin-bottom:12px"><div class="k">Espace Joueur</div><div class="v">Suivi de saison</div><div class="sub">Matchs, contenus, validations</div></div>
-        <div class="gcard"><div class="k"><span class="badge-dot"></span>Galerie privée</div><div class="v">Accessible dans Connect</div></div>
+        <div class="gcard" style="margin-bottom:12px"><div class="k"><span class="badge-dot"></span>Sans abonnement</div><div class="v">Prestation ponctuelle</div><div class="sub">Aucun engagement nécessaire</div></div>
+        <div class="gcard"><div class="k">Livraison</div><div class="v">Galerie privée SportVision Connect</div></div>
       </div>
     </div>
   </div>
@@ -533,10 +495,9 @@ section{position:relative}
   <div class="container">
     <div class="section-head reveal"><h2>Questions fréquentes</h2></div>
     <div class="faq-list reveal" id="faq-list">
-      <div class="faq-item"><button class="faq-q"><span>Dois-je avoir un club pour réserver un shooting ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non. Un shooting joueur, un match photo ou un highlight se réservent sans club et sans abonnement, directement en tant que joueur ou famille.</p></div></div>
-      <div class="faq-item"><button class="faq-q"><span>Comment recevoir mes highlights ?</span><span class="chev">+</span></button><div class="faq-a"><p>Vos highlights sont livrés numériquement, généralement sous quelques jours, et restent accessibles dans votre galerie privée sur SportVision Connect.</p></div></div>
-      <div class="faq-item"><button class="faq-q"><span>Puis-je demander un suivi sur toute la saison ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui. L'accompagnement régulier vous permet un suivi de vos matchs et de vos contenus personnels tout au long de la saison. Demandez un devis pour en discuter.</p></div></div>
-      <div class="faq-item"><button class="faq-q"><span>Dois-je m'engager sur la durée ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non. L'accompagnement régulier est mis en place selon vos besoins et peut être ajusté saison après saison.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Dois-je avoir un club pour réserver un shooting ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non. Le shooting joueur est ouvert à tout joueur, licencié ou non, avec ou sans club. Aucun abonnement n'est nécessaire.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Où se déroule le shooting ?</span><span class="chev">+</span></button><div class="faq-a"><p>En studio ou sur un terrain, selon la formule choisie et les disponibilités. Le lieu est convenu ensemble au moment du devis.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Puis-je demander un style particulier ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui. Décrivez le style souhaité (portrait sobre, dynamique, mise en situation sportive...) dans le formulaire de devis, nous l'adaptons à votre séance.</p></div></div>
     </div>
   </div>
 </section>
@@ -544,17 +505,13 @@ section{position:relative}
 <!-- ══════════════ CTA FINAL ══════════════ -->
 <section class="cta-final">
   <div class="container">
-    <h2 class="reveal">Prêt à valoriser votre parcours ?</h2>
-    <p class="reveal">Réservez un shooting ponctuel ou créez votre accompagnement joueur sur toute la saison.</p>
+    <h2 class="reveal">Prêt à organiser votre shooting ?</h2>
+    <p class="reveal">Sans abonnement, sans engagement. Décrivez votre besoin, nous revenons vers vous rapidement.</p>
     <div class="hero-ctas reveal">
-      <a href="#devis" class="btn btn-grad" data-action="open-devis">Réserver mon shooting</a>
-      <a href="#devis" class="btn btn-ghost-dark" data-action="open-devis">Créer mon accompagnement joueur</a>
+      <a href="#devis" class="btn btn-grad" data-action="open-devis">Organiser mon shooting</a>
     </div>
   </div>
 </section>
-
-<p style="text-align:center;color:var(--text-secondary);font-size:13px;padding:36px 24px;background:var(--white)">Vous êtes dirigeant de club ? Découvrez <a href="club-plus.html" style="color:var(--blue);font-weight:700">Club+</a>.</p>
-
 <footer class="site-footer">
   <div class="container">
     <div class="footer-grid">
@@ -617,7 +574,6 @@ section{position:relative}
   </div>
 </div>
 
-<!-- ══════════════ MODAL DEMANDE DE DEVIS ══════════════ -->
 <div class="sv-overlay" id="devis-overlay">
   <div class="sv-modal">
     <button class="sv-close" id="devis-close" aria-label="Fermer">✕</button>
@@ -655,7 +611,6 @@ section{position:relative}
 </div>
 
 <div class="toast" id="toast"></div>
-
 
 <script>
 /* ============================================================
@@ -790,6 +745,5 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
   }
 });
 </script>
-
 </body>
 </html>

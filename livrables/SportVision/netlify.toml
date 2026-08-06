@@ -85,3 +85,52 @@
   from = "/accompagnements/evenements"
   to = "/accompagnements-evenements.html"
   status = 200
+
+# Fiches individuelles par prestation (2026-08-06), scindées depuis les
+# sections ancrées de prestations.html pour un discours plus riche et un
+# meilleur référencement par prestation.
+
+[[redirects]]
+  from = "/prestations/match-photo"
+  to = "/prestation-match-photo.html"
+  status = 200
+
+[[redirects]]
+  from = "/prestations/match-video"
+  to = "/prestation-match-video.html"
+  status = 200
+
+[[redirects]]
+  from = "/prestations/pack-match"
+  to = "/prestation-pack-match.html"
+  status = 200
+
+[[redirects]]
+  from = "/prestations/shooting-joueur"
+  to = "/prestation-shooting-joueur.html"
+  status = 200
+
+[[redirects]]
+  from = "/prestations/shooting-equipe"
+  to = "/prestation-shooting-equipe.html"
+  status = 200
+
+[[redirects]]
+  from = "/prestations/media-day"
+  to = "/prestation-media-day.html"
+  status = 200
+
+[[redirects]]
+  from = "/prestations/tournois"
+  to = "/prestation-tournois.html"
+  status = 200
+
+[[redirects]]
+  from = "/prestations/creations"
+  to = "/prestation-creations.html"
+  status = 200
+
+[[redirects]]
+  from = "/prestations/coachs"
+  to = "/prestation-coachs.html"
+  status = 200
