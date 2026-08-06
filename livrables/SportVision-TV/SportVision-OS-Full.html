@@ -3276,6 +3276,31 @@ async function avancerStatutPrestation(id,statut){
       dispatchSVEvent(evMap[next],{prestation_id:id});
       creerTachesAuto(evMap[next],{source_type:'prestation',source_id:id}).catch(()=>{});
     }
+    // Avant, la fin de prestation créait seulement une tâche "Émettre la
+    // facture" pour compta — la facture elle-même n'existait qu'au moment où
+    // quelqu'un cliquait "Imprimer"/"Envoyer". On la génère désormais tout de
+    // suite (getOrCreateFacture est déjà idempotent, ne recrée rien si une
+    // facture existe déjà) : au moment de la relance, il ne reste plus qu'à
+    // vérifier et envoyer, pas à créer depuis zéro. Best-effort.
+    if(next==='production_terminée'){
+      getOrCreateFacture(id).then(fact=>{
+        if(fact) sbFetch('prestations?id=eq.'+id+'&statut_financier=eq.non_facturée',{method:'PATCH',body:{statut_financier:'facturée'}}).catch(()=>{});
+      }).catch(()=>{});
+      // Contrôle "après" : même correctif que le contrôle "avant" (voir
+      // kitsAttribuerSubmit) — crée le contrôle retour dès que la prestation
+      // est terminée, pour tout kit qui lui était réservé et n'a pas encore
+      // de contrôle après. Best-effort, ne bloque jamais l'avancement.
+      sbFetch('kit_reservations?select=id,kit_id,collaborateur_id,responsable_id&prestation_id=eq.'+id).then(resas=>{
+        (Array.isArray(resas)?resas:[]).forEach(async resa=>{
+          const already=await sbFetch('kit_controles?select=id&kit_reservation_id=eq.'+resa.id+'&type=eq.apres&limit=1').catch(()=>[]);
+          if(Array.isArray(already)&&already.length)return;
+          await sbFetch('kit_controles',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
+            kit_id:resa.kit_id,kit_reservation_id:resa.id,prestation_id:id,
+            collaborateur_id:resa.responsable_id||resa.collaborateur_id,type:'apres',statut:'en_cours',
+          }}).catch(()=>{});
+        });
+      }).catch(()=>{});
+    }
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
@@ -7914,12 +7939,24 @@ async function kitsAttribuerSubmit(kitId){
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'attribution impossible.'),'er');return;}
     await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'reserve'}}).catch(()=>{});
+    // Contrôle "avant" : jusqu'ici, aucune ligne kit_controles n'était jamais
+    // créée nulle part (ni trigger SQL, ni appel JS) — l'onglet Contrôles
+    // affichait "Aucun contrôle à réaliser" en permanence, le filet de
+    // sécurité matériel n'était jamais alimenté. On la crée dès l'attribution.
+    const resa=Array.isArray(r)?r[0]:null;
+    if(resa?.id){
+      const respId=document.getElementById('attr-resp')?.value||uid;
+      await sbFetch('kit_controles',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
+        kit_id:kitId,kit_reservation_id:resa.id,prestation_id:preId,
+        collaborateur_id:respId,type:'avant',statut:'en_cours',
+      }}).catch(()=>{});
+    }
     // Notifier le responsable
     const respId=document.getElementById('attr-resp')?.value;
     if(respId){
       await creerNotifSiActive(respId,'materiel',{
         type:'kit_attribue',titre:'Kit attribué',
-        message:'Un kit vous a été attribué pour une prestation.',source_type:'kits',source_id:kitId,
+        message:'Un kit vous a été attribué pour une prestation. Pensez au contrôle avant départ.',source_type:'kits',source_id:kitId,
       });
     }
     closeModal();toast('Kit attribué.','ok');kitsLoadAll();updateNavBadges(S.role);
