@@ -416,7 +416,12 @@ const DATA={
 /* ── STATE ── */
 const S={role:'admin',view:'dashboard',mobile:false};
 const wallet={balance:16,monthly:20,reserved:2};
-const subscription={plan:'Club+ Performance',price:'129 € TTC/mois',engagement:'12 mois',nextBilling:'01/08/2026',paymentMethod:'Carte •••• 4242'};
+/* Abonnement Club+. Les valeurs ci-dessous ne servent QU'au mode démonstration
+   (!REAL) : en session réelle, hydrateSubscription() les remplace par la fiche
+   `clubs` du club connecté (plan, engagement, subscription_status, stripe_*),
+   seule source de vérité — ces colonnes ne sont écrites que par le webhook
+   Stripe en service_role (migration-clubplus-v25). */
+const subscription={plan:'Club+ Performance',planCode:'performance',price:'129 € TTC/mois',engagement:'12 mois',engagementCode:'12mois',nextBilling:'01/08/2026',paymentMethod:'Carte •••• 4242',status:null,stripeCustomerId:null,stripeSubscriptionId:null,pilotMode:false};
 
 function creditCost(type){
   return {avant_match:5,composition:5,resultat:2,homme_du_match:2,recrutement_joueur:5,recrutement_educateur:5,anniversaire:5,publication_sponsor:5,annonce_tournoi:5,annonce_importante:2}[type] ?? null;
@@ -843,7 +848,15 @@ function checkMobile(){ S.mobile = window.innerWidth<=768; }
 window.addEventListener('resize', checkMobile);
 checkMobile();
 renderRoleGrid();
-checkRealSession();
+// Abonnement Club+ : dès qu'une session dirigeant réelle est rétablie, on relit
+// la formule réellement facturée (fiche `clubs`) pour que l'app n'affiche nulle
+// part la formule de démonstration, puis on traite un éventuel retour de Stripe
+// Checkout (?abonnement=…) — cf. section ABONNEMENT & CRÉDITS.
+checkRealSession().then(ok=>{
+  if(!ok) return;
+  if(REAL && !REAL.space) loadRealSubscription();
+  handleAbonnementReturn();
+});
 
 /* ══════════════ TABLEAU DE BORD ══════════════ */
 function tplDashboard(){
@@ -2076,16 +2089,82 @@ async function inviteNext(){
   closeModal(); switchView('membres'); toast(`Invitation envoyée à ${iw.email}.`);
 }
 
-/* ══════════════ ABONNEMENT & CRÉDITS ══════════════ */
+/* ══════════════ ABONNEMENT & CRÉDITS ══════════════
+   L'abonnement Club+ est un VRAI abonnement Stripe récurrent depuis le
+   2026-08-06 (migration-clubplus-v25 + edge functions create-clubplus-
+   subscription-checkout / clubplus-billing-portal / stripe-webhook).
+   Règles :
+   * l'app n'écrit JAMAIS plan/engagement/subscription_status/credits_* —
+     ces colonnes sont verrouillées par trg_protect_sensitive_club_fields et
+     seul le webhook Stripe (service_role) les met à jour après encaissement ;
+   * tout ce qui touche aux factures, au moyen de paiement, au changement de
+     formule et à la résiliation passe par le Portail de facturation hébergé
+     par Stripe — cette UI n'est pas réimplémentée ici ;
+   * la date de prochaine échéance et le moyen de paiement ne sont connus que
+     de Stripe (aucune colonne côté SportVision) : ils sont consultables dans
+     le Portail plutôt qu'affichés ici — jamais de valeur inventée. */
+/* Libellés et tarifs publics (identiques au wizard d'inscription). Affichage
+   uniquement : le tarif réellement facturé et les crédits réellement accordés
+   sont recalculés côté serveur (CLUBPLUS_TARIFS dans create-clubplus-
+   subscription-checkout, CLUBPLUS_PLAN_CREDITS dans stripe-webhook). */
+const CLUBPLUS_PLANS={
+  club:{label:'Club+',credits:5,prix:{'12mois':49,'sans':59}},
+  performance:{label:'Club+ Performance',credits:20,prix:{'12mois':129,'sans':149}}
+};
+const SUB_STATUS_META={actif:{label:'Actif',color:'#28C995'},impaye:{label:'Impayé',color:'#EF5B67'},annule:{label:'Résilié',color:'#EF5B67'}};
+let realSubscription=null;
+async function loadRealSubscription(){
+  if(!REAL) return;
+  const res=await sbFetch('clubs?id=eq.'+REAL.clubId+'&select=plan,engagement,subscription_status,stripe_customer_id,stripe_subscription_id,pilot_mode,credits_balance,credits_monthly,credits_reserved');
+  realSubscription = (res.ok && res.data && res.data[0]) ? res.data[0] : {};
+  hydrateSubscription(realSubscription);
+  renderContent();
+}
+function hydrateSubscription(c){
+  const planCode = CLUBPLUS_PLANS[c.plan] ? c.plan : 'club';
+  const eng = c.engagement==='sans' ? 'sans' : '12mois';
+  const p = CLUBPLUS_PLANS[planCode];
+  subscription.planCode=planCode; subscription.plan=p.label;
+  subscription.engagementCode=eng; subscription.engagement = eng==='sans' ? 'sans engagement' : '12 mois';
+  subscription.price = p.prix[eng]+' € TTC/mois';
+  subscription.status = c.subscription_status || null;
+  subscription.stripeCustomerId = c.stripe_customer_id || null;
+  subscription.stripeSubscriptionId = c.stripe_subscription_id || null;
+  subscription.pilotMode = !!c.pilot_mode;
+  subscription.nextBilling='—';
+  subscription.paymentMethod='Moyen de paiement géré par Stripe';
+  if(c.credits_monthly!=null){ wallet.balance=c.credits_balance||0; wallet.monthly=c.credits_monthly; wallet.reserved=c.credits_reserved||0; }
+}
 function tplAbonnement(){
+  if(REAL && realSubscription===null){ loadRealSubscription(); return `<div class="sh"><b>Abonnement & crédits</b></div><div class="empty-state">Chargement…</div>`; }
   const available=Math.max(0,wallet.balance-wallet.reserved);
-  const pct=Math.round(available/wallet.monthly*100);
+  const pct=wallet.monthly?Math.round(available/wallet.monthly*100):0;
   const barColor=pct<=10?'var(--er)':pct<=25?'var(--wa)':'var(--cyan)';
+  const sm=SUB_STATUS_META[subscription.status];
+  const smColor = sm ? sm.color : '#A7B6C9';
+  // En démonstration (!REAL), l'écran garde son allure "club abonné" : c'est un
+  // support commercial, aucune action Stripe n'y est possible de toute façon.
+  const abonne = REAL ? !!subscription.stripeSubscriptionId : true;
+  const badge = REAL
+    ? `<span class="badge" style="background:${smColor}22;color:${smColor};margin-left:8px">${sm?sm.label:'Sans abonnement'}</span>`
+    : '';
+  const detail = REAL
+    ? `${subscription.price} · ${subscription.engagement}`
+    : `${subscription.price} · Prochaine échéance : ${subscription.nextBilling} · ${subscription.paymentMethod}`;
+  const action = abonne
+    ? `<button class="btn bp" onclick="guard(openBillingPortal,'gerer_abonnement')()">Gérer mon abonnement</button>`
+    : `<button class="btn bp" onclick="guard(startSubscriptionCheckout,'gerer_abonnement')()">Activer mon abonnement</button>`;
+  const note = REAL
+    ? (abonne
+      ? `<div class="muted" style="font-size:11.5px;margin-top:6px">Factures, moyen de paiement, changement de formule et résiliation sont gérés dans le Portail de facturation Stripe.</div>`
+      : `<div class="muted" style="font-size:11.5px;margin-top:6px">${subscription.pilotMode?'Club en phase pilote : ':''}aucun prélèvement récurrent n'est en place pour ce club. L'activation ouvre un paiement sécurisé Stripe pour la formule ci-dessus.</div>`)
+    : '';
   return `<div class="sh"><b>Abonnement & crédits</b></div>
     <div class="card" style="background:linear-gradient(135deg,var(--card),var(--card2));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px">
-      <div><div class="muted" style="font-size:12px;margin-bottom:4px">Formule actuelle</div><div style="font-size:18px;font-weight:800">${subscription.plan}</div><div class="muted" style="font-size:12.5px;margin-top:4px">${subscription.price} · Prochaine échéance : ${subscription.nextBilling} · ${subscription.paymentMethod}</div></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn bp" onclick="guard(openPlanChange,'gerer_abonnement')()">Changer de formule</button><button class="btn bo" onclick="toast('Le téléchargement des factures sera disponible au lancement.')">Télécharger les factures</button></div>
+      <div><div class="muted" style="font-size:12px;margin-bottom:4px">Formule actuelle</div><div style="font-size:18px;font-weight:800">${subscription.plan}${badge}</div><div class="muted" style="font-size:12.5px;margin-top:4px">${detail}</div>${note}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${action}</div>
     </div>
+    ${subscription.status==='impaye'?`<div class="card" style="border-color:var(--er);margin-bottom:20px"><b style="font-size:14px;color:var(--er)">Dernier prélèvement refusé</b><div class="muted" style="font-size:12.5px;margin-top:6px">Mettez à jour votre moyen de paiement depuis « Gérer mon abonnement » pour éviter la suspension de votre espace Club+.</div></div>`:''}
     <div class="grid g2">
       <div class="card">
         <div class="sh" style="margin-bottom:14px"><b style="font-size:15px">Crédits</b><button class="btn bp" onclick="guard(openCreditPack,'gerer_abonnement')()">Acheter un pack</button></div>
@@ -2099,25 +2178,47 @@ function tplAbonnement(){
         <b style="font-size:15px;display:block;margin-bottom:14px">Quotas de la formule</b>
         ${[['Utilisateurs',REAL?(realMembers||[]).length:DATA.users.length,10],['Équipes',teamsSource().length,8],['Modèles premium',2,5]].map(([l,used,total])=>`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px"><span>${l}</span><span class="muted">${used} / ${total}</span></div><div class="progress"><i style="width:${Math.min(100,used/total*100)}%"></i></div></div>`).join('')}
         <button class="btn bo" style="width:100%;justify-content:center;margin-top:6px" onclick="toast('Un conseiller SportVision vous recontactera prochainement.')">Contacter SportVision</button>
-        <button class="btn" style="width:100%;justify-content:center;margin-top:4px;background:transparent;color:var(--er)" onclick="toast('La résiliation sera disponible au lancement.')">Résilier mon abonnement</button>
       </div>
     </div>`;
 }
-function openPlanChange(){
-  const plans=[
-    {name:'Club+',price:'49 €/mois engagé · 59 € sans engagement',desc:'5 crédits/mois, fonctionnalités essentielles, 5 % de réduction.',credits:5},
-    {name:'Club+ Performance',price:'129 €/mois engagé · 149 € sans engagement',desc:'20 crédits/mois, traitement prioritaire, rapports avancés, 10 % de réduction.',credits:20}
-  ];
-  openModal(`<div class="sh"><b>Changer de formule</b><button class="close-x" onclick="closeModal()">✕</button></div>
-    ${plans.map(p=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px">
-      <div><div style="font-size:14px;font-weight:700">${p.name} <span style="color:var(--cyan);font-weight:600">${p.price}</span></div><div class="muted" style="font-size:12px;margin-top:4px;max-width:340px">${p.desc}</div></div>
-      <button class="btn bp" onclick="applyPlan('${p.name}',${p.credits})">Choisir</button></div>`).join('')}
-    <div style="text-align:center;font-size:12.5px" class="muted">Besoin de déléguer toute votre communication ? <a onclick="closeModal();toast('Un conseiller SportVision vous recontactera prochainement.')">Découvrir Full Communication</a>.</div>`);
+/* Toute URL renvoyée par une edge function est validée avant redirection (même
+   règle que SportVision Connect, isSafeHttpUrl) : ces URLs viennent de Stripe
+   via nos propres fonctions, mais on ne redirige jamais vers une chaîne non
+   vérifiée. */
+function isSafeHttpUrl(u){ return typeof u==='string' && /^https?:\/\//i.test(u.trim()); }
+/* Le Portail de facturation Stripe remplace les anciens boutons "Changer de
+   formule" / "Télécharger les factures" / "Résilier mon abonnement", qui ne
+   faisaient que modifier une variable JS locale ou afficher un toast. */
+async function openBillingPortal(){
+  if(!REAL){ toast("Le portail de facturation Stripe s'ouvre depuis un compte club réel."); return; }
+  const res=await sbFunction('clubplus-billing-portal', {club_id:REAL.clubId});
+  const url=res.data&&res.data.url;
+  if(!res.ok || !isSafeHttpUrl(url)){ toast((res.data&&res.data.error)||'Portail de facturation indisponible pour le moment.'); return; }
+  window.location.href=url;
 }
-function applyPlan(name,credits){
-  if(name===subscription.plan){ closeModal(); return; }
-  subscription.plan=name; wallet.monthly=credits;
-  closeModal(); renderContent(); toast(`Passage à ${name} confirmé.`);
+/* Souscription initiale : la formule envoyée est celle enregistrée sur la fiche
+   du club (choisie à l'inscription) — le PRIX n'est jamais transmis, il est
+   recalculé côté serveur par l'edge function. */
+async function startSubscriptionCheckout(){
+  if(!REAL){ toast("L'activation de l'abonnement s'effectue depuis un compte club réel."); return; }
+  const res=await sbFunction('create-clubplus-subscription-checkout', {club_id:REAL.clubId, plan:subscription.planCode, engagement:subscription.engagementCode});
+  const url=res.data&&res.data.url;
+  if(!res.ok || !isSafeHttpUrl(url)){ toast((res.data&&res.data.error)||'Paiement indisponible pour le moment.'); return; }
+  window.location.href=url;
+}
+/* Retour depuis Stripe Checkout (?abonnement=succes|annule). L'abonnement n'est
+   activé en base que par le webhook : au retour, la fiche `clubs` peut ne pas
+   encore être à jour (quelques secondes). On force donc une relecture de l'état
+   réel plutôt que d'afficher un état optimiste, et on nettoie l'URL. */
+function handleAbonnementReturn(){
+  const r=new URLSearchParams(location.search).get('abonnement');
+  if(!r) return;
+  history.replaceState(null,'',location.pathname);
+  if(r==='annule'){ toast("Souscription annulée — aucun prélèvement n'a été effectué."); return; }
+  if(r!=='succes') return;
+  realSubscription=null;
+  toast("Paiement enregistré. L'activation de votre abonnement peut prendre quelques secondes.");
+  if(REAL && !REAL.space) switchView('abonnement');
 }
 function openCreditPack(){
   const packs=[['10 crédits','19 €',10],['25 crédits','39 €',25],['50 crédits','69 €',50]];
