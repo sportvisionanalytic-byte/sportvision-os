@@ -138,6 +138,9 @@ td{font-size:12px;padding:8px;border-bottom:1px solid var(--bd)}
 @media(max-width:480px){.row2{grid-template-columns:1fr}}
 .opt-btn{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:11px 13px;cursor:pointer;color:var(--t1);margin-bottom:8px}
 .opt-btn.on{border-color:var(--blue);background:var(--card2)}
+.tag-list-box{max-height:220px;overflow-y:auto;border:1px solid var(--bd);border-radius:10px;padding:6px 10px;margin-top:6px}
+.tag-chk-row{display:flex;gap:8px;align-items:center;font-size:12.5px;padding:5px 2px}
+.tag-chk-row input{width:auto}
 .kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
 .kan-col{min-width:220px;flex-shrink:0}
 .kan-card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer}
@@ -1282,6 +1285,7 @@ async function loadRealCreations(){
   const res=await sbFetch('club_creations?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
   realCreations = res.ok ? (res.data||[]) : [];
   if(['creations','dashboard'].includes(S.view)) renderContent();
+  refreshMediaTagBadges('club_creations', realCreations.map(c=>c.id));
 }
 function creationsSource(){
   if(!REAL) return DATA.creations;
@@ -1309,7 +1313,7 @@ function tplCreations(){
   } else {
     const map={brouillons:'brouillon',a_valider:'a_valider',valides:'valide'};
     const list=src.filter(c=>c.status===map[crView]);
-    content = list.length ? `<div class="grid g3">${list.map(c=>{const sm=statusMeta(c.status); return `<button class="tile-card" onclick="openCreationDrawer('${c.id}')"><div class="thumb">${esc(c.title)}</div><div style="font-weight:600;font-size:12.5px;margin-top:8px">${esc(c.title)}</div><div class="muted" style="font-size:11px;margin-top:2px">${c.team} · ${fmtDate(c.date)}</div><span class="badge" style="background:${sm.color}22;color:${sm.color};margin-top:6px">${sm.label}</span></button>`;}).join('')}</div>` : `<div class="empty-state">Aucun visuel dans cette catégorie pour le moment.</div>`;
+    content = list.length ? `<div class="grid g3">${list.map(c=>{const sm=statusMeta(c.status); return `<button class="tile-card" onclick="openCreationDrawer('${c.id}')"><div class="thumb">${esc(c.title)}</div><div style="font-weight:600;font-size:12.5px;margin-top:8px">${esc(c.title)}</div><div class="muted" style="font-size:11px;margin-top:2px">${c.team} · ${fmtDate(c.date)}</div><span class="badge" style="background:${sm.color}22;color:${sm.color};margin-top:6px">${sm.label}</span>${mediaWarnBadgeHtml('club_creations',c.id,'6px')}</button>`;}).join('')}</div>` : `<div class="empty-state">Aucun visuel dans cette catégorie pour le moment.</div>`;
   }
   return `<div class="sh"><b>Studio de création</b><button class="btn bp" onclick="guard(openCreationWizard)()">+ Nouveau visuel</button></div>
     <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${crView===k?' on':''}" onclick="crView='${k}';renderContent()">${l}</button>`).join('')}</div>
@@ -1323,6 +1327,7 @@ function openCreationDrawer(id){
     <div class="muted" style="font-size:12px;margin-bottom:14px">${c.team} · ${fmtDate(c.date)}</div>
     <div class="thumb" style="height:200px;margin-bottom:16px">${esc(c.title)}</div>
     <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:16px;display:inline-block">${sm.label}</span>
+    ${REAL && mediaTagBadge['club_creations:'+id]?`<div class="card" style="border-color:#EF5B6755;margin-bottom:16px;color:var(--er);font-size:12.5px">⚠ Autorisation manquante — au moins un joueur tagué sur ce média n'a pas de droit à l'image valide. Le média reste invisible pour les familles concernées.</div>`:''}
     <div class="muted" style="font-size:12.5px;margin-bottom:20px">Sponsor associé : ${c.sponsor||'Aucun'}</div>
     <div style="display:flex;flex-direction:column;gap:8px">
       ${c.status==='brouillon'?`<button class="btn" style="background:var(--wa);color:#06182B" onclick="crStatus('${id}','a_valider','Validation demandée.')">Demander une validation</button>`:''}
@@ -1331,7 +1336,9 @@ function openCreationDrawer(id){
       ${REAL && ['valide','publie'].includes(c.status)?`<button class="btn bo" onclick="openPublishToFamilyModal('club_creations','${id}')">Publier vers l'Espace Joueur</button>`:''}
       <button class="btn bo" onclick="crDuplicate('${id}')">Dupliquer</button>
       <button class="btn bo" onclick="toast('Le téléchargement sera disponible au lancement de SportVision Club+.')">Télécharger</button>
-    </div>`);
+    </div>
+    ${REAL?`<div id="mpt-section"></div>`:''}`);
+  if(REAL) renderMediaTagsSection('club_creations', id);
 }
 async function crStatus(id,status,msg){
   if(REAL){
@@ -1353,21 +1360,34 @@ async function crDuplicate(id){
   const c=DATA.creations.find(x=>x.id===id); DATA.creations.unshift({...c,id:uid('c'),title:c.title+' (copie)',status:'brouillon'}); closeDrawer(); renderContent(); toast('Visuel dupliqué en brouillon.');
 }
 
-let cw={step:1,type:null,team:'Seniors R1',title:'',detail:'',sponsor:'Aucun'};
-function openCreationWizard(){ cw={step:1,type:null,team:'Seniors R1',title:'',detail:'',sponsor:'Aucun'}; renderCreationWizard(); }
+let cw={step:1,type:null,team:'Seniors R1',title:'',detail:'',sponsor:'Aucun',playerIds:[]};
+let cwTagPlayers=[];
+async function openCreationWizard(){
+  cw={step:1,type:null,team:'Seniors R1',title:'',detail:'',sponsor:'Aucun',playerIds:[]};
+  if(REAL){
+    cwTagPlayers=await loadTagPlayers();
+    await loadTagMemberships();
+    cw.playerIds=tagIdsForTeamName(cw.team);
+  } else cwTagPlayers=[];
+  renderCreationWizard();
+}
 function renderCreationWizard(){
   let body='';
   if(cw.step===1){
     body=`<div class="muted" style="font-size:12.5px;margin-bottom:12px">Choisissez un type de contenu</div><div class="grid g2">${CREATION_TYPES.map(t=>`<button class="opt-btn" onclick="cw.type='${t}';cw.step=2;renderCreationWizard()">${typeLabel(t)}</button>`).join('')}</div>`;
   } else if(cw.step===2){
-    body=`<div class="field"><label>Équipe</label><select id="cw-team">${teamNames().map(t=>`<option ${t===cw.team?'selected':''}>${t}</option>`).join('')}</select></div>
+    body=`<div class="field"><label>Équipe</label><select id="cw-team" onchange="tagPrecheckByTeam('cw-team','cw-players-list')">${teamNames().map(t=>`<option ${t===cw.team?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="field"><label>Titre</label><input id="cw-title" type="text" value="${esc(cw.title)}"></div>
-      <div class="field"><label>Détail (score, adversaire, message…)</label><textarea id="cw-detail" rows="2">${esc(cw.detail)}</textarea></div>`;
+      <div class="field"><label>Détail (score, adversaire, message…)</label><textarea id="cw-detail" rows="2">${esc(cw.detail)}</textarea></div>
+      ${REAL?`<div class="field"><label>Joueurs apparaissant sur ce média (optionnel)</label>
+        <input type="text" placeholder="Rechercher un joueur…" oninput="tagFilterList(this,'cw-players-list')">
+        <div id="cw-players-list" class="tag-list-box">${tagPlayersListHtml(cwTagPlayers, new Set(cw.playerIds))}</div>
+      </div>`:''}`;
   } else if(cw.step===3){
     body=`<div class="field"><label>Sponsor à valoriser</label><select id="cw-sponsor"><option>Aucun</option>${sponsorsSource().map(sp=>`<option>${sp.name}</option>`).join('')}</select></div>
       <div class="thumb" style="height:200px">Aperçu du visuel</div>`;
   } else {
-    body=`<div class="card"><b style="font-size:14px;display:block;margin-bottom:8px">${typeLabel(cw.type)}</b><div class="muted" style="font-size:13px;line-height:1.7">Équipe : ${cw.team}<br>Titre : ${esc(cw.title)}<br>Sponsor : ${cw.sponsor}</div></div>
+    body=`<div class="card"><b style="font-size:14px;display:block;margin-bottom:8px">${typeLabel(cw.type)}</b><div class="muted" style="font-size:13px;line-height:1.7">Équipe : ${cw.team}<br>Titre : ${esc(cw.title)}<br>Sponsor : ${cw.sponsor}<br>Joueurs tagués : ${cw.playerIds.length?esc(cw.playerIds.map(id=>tagPlayerName(cwTagPlayers.find(p=>p.id===id))).join(', ')):'Aucun'}</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
         <button class="btn bo" onclick="finalizeCreation('brouillon')">Enregistrer en brouillon</button>
         <button class="btn" style="background:var(--wa);color:#06182B" onclick="finalizeCreation('a_valider')">Demander une validation</button>
@@ -1389,6 +1409,7 @@ function creationWizardSync(){
   if(document.getElementById('cw-title')) cw.title=document.getElementById('cw-title').value;
   if(document.getElementById('cw-detail')) cw.detail=document.getElementById('cw-detail').value;
   if(document.getElementById('cw-sponsor')) cw.sponsor=document.getElementById('cw-sponsor').value;
+  if(document.getElementById('cw-players-list')) cw.playerIds=tagCheckedIds('cw-players-list');
 }
 async function finalizeCreation(status){
   creationWizardSync();
@@ -1397,6 +1418,8 @@ async function finalizeCreation(status){
   if(REAL){
     const res=await sbFetch('club_creations', {method:'POST', body:{club_id:REAL.clubId, title, type:cw.type, team:cw.team, status, sponsor:sponsor||null, created_by:REAL.userId}});
     if(!res.ok){ toast("Erreur lors de l'enregistrement."); return; }
+    const mediaId=res.data && res.data[0] && res.data[0].id;
+    if(mediaId) await createMediaPlayerTags('club_creations', mediaId, cw.playerIds);
     realCreations=null; closeModal(); crView = status==='brouillon'?'brouillons':'a_valider'; switchView('creations');
     toast(status==='brouillon'?'Visuel enregistré en brouillon.':(status==='valide'?'Visuel validé et enregistré.':'Visuel envoyé pour validation.'));
     return;
@@ -1426,6 +1449,7 @@ async function loadRealMedia(){
   const res=await sbFetch('club_media?club_id=eq.'+REAL.clubId+'&select=*&order=created_at.desc');
   realMedia = res.ok ? (res.data||[]).map(normMedia) : [];
   if(S.view==='mediatheque') renderContent();
+  refreshMediaTagBadges('club_media', realMedia.map(m=>m.id));
 }
 function mediaSource(){
   if(!REAL) return MEDIA_DEMO;
@@ -1440,7 +1464,7 @@ function tplMediatheque(){
     <div class="pillbar">${['toutes',...teamNames()].map(t=>`<button class="pill${mtTeam===t?' on':''}" onclick="mtTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
     <div class="pillbar">${[['tous','Tous les types'],['photo','Photos'],['video','Vidéos'],['logo','Logos'],['creation','Créations']].map(([k,l])=>`<button class="pill${mtType===k?' on':''}" onclick="mtType='${k}';renderContent()">${l}</button>`).join('')}</div>
     <div class="grid g4">${list.map(m=>`<button class="tile-card" onclick="openMediaDrawer('${m.id}')"><div class="thumb">${esc(m.title)}</div><div style="font-weight:600;font-size:12px;margin-top:8px">${esc(m.title)}</div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"><span class="badge" style="background:#168EFF22;color:var(--blue)">${typeLbl[m.type]}</span><span class="badge" style="background:${m.expired?'#EF5B6722':'#28C99522'};color:${m.expired?'var(--er)':'var(--ok)'}">${m.expired?'Lien expiré':m.source}</span></div></button>`).join('')||'<div class="empty-state">Aucun média pour ces filtres.</div>'}</div>`;
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"><span class="badge" style="background:#168EFF22;color:var(--blue)">${typeLbl[m.type]}</span><span class="badge" style="background:${m.expired?'#EF5B6722':'#28C99522'};color:${m.expired?'var(--er)':'var(--ok)'}">${m.expired?'Lien expiré':m.source}</span>${mediaWarnBadgeHtml('club_media',m.id)}</div></button>`).join('')||'<div class="empty-state">Aucun média pour ces filtres.</div>'}</div>`;
 }
 function openMediaDrawer(id){
   const m=mediaSource().find(x=>x.id===id);
@@ -1448,20 +1472,31 @@ function openMediaDrawer(id){
   openDrawer(`<div class="sh"><b>${esc(m.title)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="thumb" style="height:200px;margin-bottom:16px">${esc(m.title)}</div>
     ${m.expired?`<div class="card" style="border-color:#EF5B6755;margin-bottom:16px;color:var(--er);font-size:12.5px">Ce lien externe est expiré ou indisponible. Demandez un nouveau lien à son auteur.</div>`:''}
+    ${REAL && mediaTagBadge['club_media:'+id]?`<div class="card" style="border-color:#EF5B6755;margin-bottom:16px;color:var(--er);font-size:12.5px">⚠ Autorisation manquante — au moins un joueur tagué sur ce média n'a pas de droit à l'image valide. Le média reste invisible pour les familles concernées.</div>`:''}
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="btn bp" onclick="${m.link?`window.open('${esc(m.link)}','_blank')`:"toast('Lien copié dans le presse-papiers.')"}">${m.link?'Ouvrir le lien':'Copier le lien'}</button>
       ${REAL?`<button class="btn bo" onclick="openPublishToFamilyModal('club_media','${id}')">Publier vers l'Espace Joueur</button>`:''}
       <button class="btn bo" onclick="closeDrawer();switchView('creations');toast('Média prêt à être utilisé dans une création.')">Utiliser dans une création</button>
       <button class="btn bo" onclick="toast('Signalement transmis à SportVision.')">Signaler un problème</button>
-    </div>`);
+    </div>
+    ${REAL?`<div id="mpt-section"></div>`:''}`);
+  if(REAL) renderMediaTagsSection('club_media', id);
 }
-function openMediaForm(){
+async function openMediaForm(){
+  let players=[];
+  if(REAL){ players=await loadTagPlayers(); await loadTagMemberships(); }
+  const defaultTeam=teamNames()[0];
+  const precheckedIds=REAL?new Set(tagIdsForTeamName(defaultTeam)):new Set();
   openModal(`<div class="sh"><b>Importer un média</b><button class="close-x" onclick="closeModal()">✕</button></div>
     <div class="field"><label>Titre</label><input id="mf-title" type="text"></div>
     <div class="row2"><div class="field"><label>Type</label><select id="mf-type"><option value="photo">Photo</option><option value="video">Vidéo</option><option value="logo">Logo</option><option value="document">Document</option><option value="creation">Création</option></select></div>
-    <div class="field"><label>Équipe</label><select id="mf-team">${teamNames().map(t=>`<option>${t}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Équipe</label><select id="mf-team" onchange="tagPrecheckByTeam('mf-team','mf-players-list')">${teamNames().map(t=>`<option>${t}</option>`).join('')}</select></div></div>
     <div class="field"><label>Source</label><select id="mf-source"><option value="externe">Lien externe</option><option value="interne">Stockage Club+</option></select></div>
     <div class="field"><label>Lien (si externe)</label><input id="mf-link" type="text" placeholder="https://…"></div>
+    ${REAL?`<div class="field"><label>Joueurs apparaissant sur ce média (optionnel)</label>
+      <input type="text" placeholder="Rechercher un joueur…" oninput="tagFilterList(this,'mf-players-list')">
+      <div id="mf-players-list" class="tag-list-box">${tagPlayersListHtml(players, precheckedIds)}</div>
+    </div>`:''}
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitMediaForm()">Importer</button>`);
 }
 async function submitMediaForm(){
@@ -1471,6 +1506,8 @@ async function submitMediaForm(){
   if(REAL){
     const res=await sbFetch('club_media', {method:'POST', body:{club_id:REAL.clubId, title, type, team, source, link, author_id:REAL.userId, author_name:REAL.person}});
     if(!res.ok){ toast("Erreur lors de l'import."); return; }
+    const mediaId=res.data && res.data[0] && res.data[0].id;
+    if(mediaId) await createMediaPlayerTags('club_media', mediaId, tagCheckedIds('mf-players-list'));
     realMedia=null; closeModal(); switchView('mediatheque'); toast('Média ajouté à la médiathèque.');
     return;
   }
@@ -1519,6 +1556,120 @@ async function unpublishFromFamily(mediaRefType, mediaId){
   const res=await sbFetch('media_access_rules?id=eq.'+existing.data[0].id, {method:'DELETE'});
   if(!res.ok){ toast('Action impossible.'); return; }
   closeModal(); toast('Retiré de l’Espace Joueur.');
+}
+
+/* ── TAGGING DE JOUEURS SUR LES MÉDIAS (droit à l'image, v30) — media_player_tags ──
+   Le tag est volontaire (cf. migration) : aucun joueur coché = aucun tag créé =
+   comportement inchangé, jamais bloquant pour publier. is_media_visible_to_family
+   applique le blocage tout seul côté base dès qu'un tag existe — rien à faire ici
+   côté logique, seulement construire/lister/retirer les tags. */
+let realTagPlayers=null, realTagMemberships=null;
+async function loadTagPlayers(){
+  if(!REAL) return [];
+  if(realTagPlayers) return realTagPlayers;
+  const res=await sbFetch('player_profiles?club_id=eq.'+REAL.clubId+'&select=id,prenom,nom&order=nom.asc');
+  realTagPlayers = res.ok ? (res.data||[]) : [];
+  return realTagPlayers;
+}
+async function loadTagMemberships(){
+  if(!REAL) return [];
+  if(realTagMemberships) return realTagMemberships;
+  const res=await sbFetch('team_memberships?club_id=eq.'+REAL.clubId+'&statut=eq.active&select=player_id,team_id');
+  realTagMemberships = res.ok ? (res.data||[]) : [];
+  return realTagMemberships;
+}
+function tagPlayerName(p){ return `${(p&&p.prenom)||''} ${(p&&p.nom)||''}`.trim()||'—'; }
+function tagPlayersListHtml(players, checkedIds){
+  if(!players.length) return '<div class="muted" style="font-size:12px;padding:4px 2px">Aucun joueur enregistré pour ce club.</div>';
+  return players.map(p=>`<label class="tag-chk-row" data-name="${esc(tagPlayerName(p).toLowerCase())}"><input type="checkbox" value="${p.id}" ${checkedIds.has(p.id)?'checked':''}> ${esc(tagPlayerName(p))}</label>`).join('');
+}
+function tagFilterList(inputEl, listId){
+  const q=inputEl.value.trim().toLowerCase(), host=document.getElementById(listId);
+  if(!host) return;
+  host.querySelectorAll('.tag-chk-row').forEach(row=>{ row.style.display = row.dataset.name.includes(q) ? '' : 'none'; });
+}
+function tagCheckedIds(listId){
+  const host=document.getElementById(listId);
+  if(!host) return [];
+  return Array.from(host.querySelectorAll('input[type=checkbox]:checked')).map(el=>el.value);
+}
+// Pré-coche la liste sur les joueurs de l'équipe sélectionnée (si résolue vers un
+// club_teams.id) — s'appuie sur realTagMemberships déjà chargé avant l'ouverture du
+// formulaire/wizard, donc synchrone (pas de round-trip réseau au changement d'équipe).
+function tagPrecheckByTeam(teamSelectId, listId){
+  const teamEl=document.getElementById(teamSelectId), host=document.getElementById(listId);
+  if(!teamEl || !host || !realTagMemberships) return;
+  const team=teamsSource().find(t=>t.name===teamEl.value);
+  const ids = team ? new Set(realTagMemberships.filter(m=>m.team_id===team.id).map(m=>m.player_id)) : new Set();
+  host.querySelectorAll('input[type=checkbox]').forEach(el=>{ el.checked = ids.has(el.value); });
+}
+function tagIdsForTeamName(teamName){
+  if(!realTagMemberships) return [];
+  const team=teamsSource().find(t=>t.name===teamName);
+  return team ? realTagMemberships.filter(m=>m.team_id===team.id).map(m=>m.player_id) : [];
+}
+async function createMediaPlayerTags(mediaRefType, mediaId, playerIds){
+  if(!playerIds || !playerIds.length) return;
+  const body=playerIds.map(pid=>({media_ref_type:mediaRefType, media_ref_id:mediaId, player_id:pid, tagged_by:REAL.userId}));
+  const res=await sbFetch('media_player_tags', {method:'POST', body});
+  if(!res.ok) toast('Média enregistré, mais certains joueurs n’ont pas pu être tagués (droits insuffisants).');
+  delete mediaTagBadge[mediaRefType+':'+mediaId];
+}
+async function renderMediaTagsSection(mediaRefType, mediaId){
+  const [tagsRes, players] = await Promise.all([
+    sbFetch('media_player_tags?media_ref_type=eq.'+mediaRefType+'&media_ref_id=eq.'+mediaId+'&select=id,player_id,player_profiles(prenom,nom)'),
+    loadTagPlayers()
+  ]);
+  const host=document.getElementById('mpt-section');
+  if(!host) return; // le tiroir a pu être refermé entre-temps
+  const tags = tagsRes.ok ? (tagsRes.data||[]) : [];
+  const taggedIds=new Set(tags.map(t=>t.player_id));
+  const available=players.filter(p=>!taggedIds.has(p.id));
+  host.innerHTML = `<div class="muted" style="font-size:11.5px;font-weight:700;margin:18px 0 8px">JOUEURS TAGUÉS</div>
+    ${tags.length?tags.map(t=>`<div class="list-row" style="cursor:default;padding:8px 2px"><span style="font-size:12.5px">${esc(tagPlayerName(t.player_profiles))}</span><button class="btn bd" style="padding:4px 9px" onclick="removeMediaPlayerTag('${mediaRefType}','${mediaId}','${t.id}')">Retirer</button></div>`).join(''):'<div class="muted" style="font-size:12px">Aucun joueur tagué sur ce média.</div>'}
+    ${available.length?`<div style="display:flex;gap:8px;margin-top:10px">
+      <select id="mpt-add-select" style="flex:1">${available.map(p=>`<option value="${p.id}">${esc(tagPlayerName(p))}</option>`).join('')}</select>
+      <button class="btn bo" onclick="addMediaPlayerTag('${mediaRefType}','${mediaId}')">Ajouter</button>
+    </div>`:''}`;
+}
+async function addMediaPlayerTag(mediaRefType, mediaId){
+  const sel=document.getElementById('mpt-add-select');
+  if(!sel || !sel.value) return;
+  const res=await sbFetch('media_player_tags', {method:'POST', body:{media_ref_type:mediaRefType, media_ref_id:mediaId, player_id:sel.value, tagged_by:REAL.userId}});
+  if(!res.ok){ toast("Action impossible (droits d'administrateur ou d'éducateur requis)."); return; }
+  toast('Joueur tagué.');
+  delete mediaTagBadge[mediaRefType+':'+mediaId];
+  renderMediaTagsSection(mediaRefType, mediaId);
+}
+async function removeMediaPlayerTag(mediaRefType, mediaId, tagId){
+  const res=await sbFetch('media_player_tags?id=eq.'+tagId, {method:'DELETE'});
+  if(!res.ok){ toast('Action impossible.'); return; }
+  toast('Tag retiré.');
+  delete mediaTagBadge[mediaRefType+':'+mediaId];
+  renderMediaTagsSection(mediaRefType, mediaId);
+}
+/* ── Badge « autorisation manquante » (indicateur visuel club, PAS la sécurité) ──
+   Appelle la fonction SQL security definer media_has_unauthorized_tagged_player
+   (v30) au lieu de dupliquer son calcul : elle tourne avec les droits de son
+   propriétaire et voit donc parental_authorizations même pour un éducateur — un
+   calcul client sur les tables brutes serait, lui, bloqué par la RLS restreinte
+   de parental_authorizations (admin/parent/joueur seulement, pas éducateur, cf.
+   migration v15) et donnerait un faux "rien à signaler" pour ce rôle. Si l'appel
+   RPC échoue (droits, réseau…) on n'affiche simplement pas le badge — jamais de
+   blocage, jamais de fausse alerte. */
+let mediaTagBadge={};
+async function refreshMediaTagBadges(mediaRefType, ids){
+  if(!REAL || !ids || !ids.length) return;
+  const pending=ids.filter(id=>!((mediaRefType+':'+id) in mediaTagBadge));
+  if(!pending.length) return;
+  await Promise.all(pending.map(async id=>{
+    const res=await sbFetch('rpc/media_has_unauthorized_tagged_player', {method:'POST', body:{p_media_ref_type:mediaRefType, p_media_ref_id:id}});
+    mediaTagBadge[mediaRefType+':'+id] = res.ok ? !!res.data : null;
+  }));
+  if(['mediatheque','creations','dashboard'].includes(S.view)) renderContent();
+}
+function mediaWarnBadgeHtml(mediaRefType, id, marginTop){
+  return mediaTagBadge[mediaRefType+':'+id] ? `<span class="badge" style="background:#EF5B6722;color:var(--er);${marginTop?'margin-top:'+marginTop+';':''}">⚠ Autorisation manquante</span>` : '';
 }
 
 /* ══════════════ SPONSORS ══════════════ */
