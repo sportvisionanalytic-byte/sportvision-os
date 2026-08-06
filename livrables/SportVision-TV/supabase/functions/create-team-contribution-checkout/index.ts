@@ -69,13 +69,24 @@ serve(async (req) => {
 
     const { data: project } = await admin
       .from("team_projects")
-      .select("id, club_id, team_id, titre, statut, contribution_min")
+      .select("id, club_id, team_id, titre, statut, contribution_min, montant_cible, montant_collecte")
       .eq("id", project_id)
       .maybeSingle();
     if (!project) return json({ error: "Projet introuvable" }, 404);
     if (project.statut !== "ouvert") return json({ error: "Ce projet n'accepte plus de contributions pour le moment." }, 400);
     if (project.contribution_min != null && Number(montant) < Number(project.contribution_min)) {
       return json({ error: `Le montant minimum est de ${project.contribution_min} €.` }, 400);
+    }
+    // Plafond serveur : le montant ne doit jamais dépasser ce qu'il reste à
+    // collecter. Sans cette borne, le client contrôlait entièrement `montant`
+    // (utilisé tel quel comme unit_amount Stripe) — un appel direct à l'Edge
+    // Function pouvait faire créer une session Stripe pour n'importe quel prix.
+    const montantRestant = Number(project.montant_cible) - Number(project.montant_collecte || 0);
+    if (montantRestant <= 0) {
+      return json({ error: "L'objectif de ce projet est déjà atteint." }, 400);
+    }
+    if (Number(montant) > montantRestant) {
+      return json({ error: `Le montant dépasse ce qu'il reste à collecter (${montantRestant.toFixed(2)} €).` }, 400);
     }
 
     // Résout l'identité de l'appelant dans CETTE équipe — jamais un

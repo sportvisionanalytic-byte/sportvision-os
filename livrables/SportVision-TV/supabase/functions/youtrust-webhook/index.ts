@@ -62,6 +62,17 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // Idempotence : Youtrust ne garantit pas une livraison unique (retries en
+    // cas de timeout). Certains événements n'ont pas d'`id` de niveau événement
+    // distinct du signature_request — on retombe alors sur une clé composée
+    // stable, qui reste unique par (type d'événement, demande de signature).
+    const eventId: string = event.id || event.event_id || `${eventType}:${signatureRequestId}`;
+    const { data: already } = await admin.from("youtrust_events").select("id").eq("id", eventId).maybeSingle();
+    if (already) {
+      return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 });
+    }
+    await admin.from("youtrust_events").insert({ id: eventId, type: eventType });
+
     const statutMap: Record<string, string> = {
       "signature_request.done": "signee",
       "signature_request.declined": "refusee",
