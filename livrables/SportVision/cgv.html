@@ -30,7 +30,7 @@
   --font-body:'Inter',-apple-system,sans-serif;
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
 @media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important} }
 body{margin:0;font-family:var(--font-body);color:var(--navy-900);background:var(--white);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 h1,h2,h3,h4{font-family:var(--font-head);font-weight:800;line-height:1.12;margin:0;letter-spacing:-.01em}
@@ -65,7 +65,7 @@ section{position:relative}
 .burger span::after{position:absolute;top:6px}
 .mobile-nav{display:none;position:fixed;inset:0;z-index:999;background:var(--navy-900);padding:90px 24px 24px;flex-direction:column;gap:6px}
 .mobile-nav.on{display:flex}
-.mobile-nav a{color:#fff;font-size:19px;font-weight:700;padding:14px 4px;border-bottom:1px solid rgba(255,255,255,.08)}
+.mobile-nav>a{color:#fff;font-size:19px;font-weight:700;padding:14px 4px;border-bottom:1px solid rgba(255,255,255,.08)}
 .mobile-nav .mobile-ctas{display:flex;flex-direction:column;gap:10px;margin-top:20px}
 
 /* ── Contenu légal ── */
@@ -99,7 +99,7 @@ section{position:relative}
 
 /* ── Responsive ── */
 @media (max-width:980px){
-  .main-nav,.header-actions .btn-ghost-dark{display:none}
+  .main-nav,.header-actions{display:none}
   .burger{display:flex}
   .footer-grid{grid-template-columns:1fr 1fr}
 }
@@ -117,6 +117,23 @@ section{position:relative}
 .cookie-banner-inner a{color:var(--cyan);text-decoration:underline}
 .cookie-banner-actions{display:flex;gap:10px;flex-shrink:0}
 @media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}}
+.nav-item{position:relative}
+.nav-item>a{display:flex;align-items:center;gap:5px}
+.nav-caret{font-size:9px;opacity:.55;transition:transform .15s}
+.nav-item:hover .nav-caret,.nav-item:focus-within .nav-caret{transform:rotate(180deg)}
+.nav-dropdown{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(6px);min-width:240px;background:rgba(7,10,23,.98);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px;box-shadow:0 24px 48px rgba(0,0,0,.45);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease, transform .15s ease;display:flex;flex-direction:column;gap:1px;z-index:1100}
+.nav-item:hover .nav-dropdown,.nav-item:focus-within .nav-dropdown{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(-50%) translateY(2px)}
+.nav-dropdown a{padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;color:rgba(255,255,255,.75);white-space:nowrap}
+.nav-dropdown a:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-dropdown-all{border-top:1px solid rgba(255,255,255,.1);margin-top:5px;padding-top:11px !important;color:var(--cyan) !important;font-weight:700 !important}
+.main-nav>a.active,.main-nav .nav-item>a.active{color:#fff}
+.mobile-nav-group{border-bottom:1px solid rgba(255,255,255,.08)}
+.mobile-nav-group summary{color:#fff;font-size:18px;font-weight:700;padding:13px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none}
+.mobile-nav-group summary::-webkit-details-marker{display:none}
+.mobile-nav-group summary::after{content:'+';font-weight:400;color:rgba(255,255,255,.5);font-size:20px}
+.mobile-nav-group[open] summary::after{content:'\2013'}
+.mobile-nav-group .sub-links{display:flex;flex-direction:column;padding:0 4px 14px 12px}
+.mobile-nav-group .sub-links a{font-size:15px;font-weight:600;padding:9px 0;color:rgba(255,255,255,.68)}
 </style>
 </head>
 <body>
@@ -126,33 +143,81 @@ section{position:relative}
   <div class="container">
     <a href="index.html" class="brand"><span class="mark">S</span>SportVision</a>
     <nav class="main-nav">
-      <a href="index.html#prestations">Prestations</a>
-      <a href="index.html#connect">Connect</a>
-      <a href="index.html#solutions">Solutions</a>
-      <a href="index.html#offres">Accompagnements</a>
+      <div class="nav-item">
+        <a href="prestations.html">Prestations <span class="nav-caret">▾</span></a>
+        <div class="nav-dropdown">
+          <a href="prestations.html#match-photo">Match photo</a>
+          <a href="prestations.html#match-video">Match vidéo</a>
+          <a href="prestations.html#pack-match">Pack match complet</a>
+          <a href="prestations.html#shooting-joueur">Shooting joueur</a>
+          <a href="prestations.html#shooting-equipe">Shooting d'équipe</a>
+          <a href="prestations.html#media-day">Media Day</a>
+          <a href="prestations.html#tournois">Tournois et stages</a>
+          <a href="prestations.html#creations">Créations graphiques</a>
+          <a href="prestations.html#coachs">Coachs et préparateurs</a>
+          <a href="prestations.html" class="nav-dropdown-all">Toutes les prestations →</a>
+        </div>
+      </div>
+      <a href="club-plus.html">Club+</a>
+      <a href="full-communication.html">Full Communication</a>
+      <div class="nav-item">
+        <a href="accompagnements.html">Accompagnements <span class="nav-caret">▾</span></a>
+        <div class="nav-dropdown">
+          <a href="club-plus.html">Clubs</a>
+          <a href="accompagnements-academies.html">Académies</a>
+          <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
+          <a href="accompagnements-joueurs.html">Joueurs</a>
+          <a href="accompagnements-evenements.html">Tournois et événements</a>
+          <a href="accompagnements.html" class="nav-dropdown-all">Tous les accompagnements →</a>
+        </div>
+      </div>
+      <a href="connect.html">Connect</a>
       <a href="index.html#realisations">Réalisations</a>
-      <a href="offres.html">Tarifs</a>
       <a href="a-propos.html">À propos</a>
     </nav>
     <div class="header-actions">
       <a href="../SportVision-Connect/app/index.html" class="btn btn-ghost-dark">Se connecter</a>
-      <a href="index.html#prestations" class="btn btn-grad">Réserver une prestation</a>
+      <a href="prestations.html" class="btn btn-grad">Réserver une prestation</a>
     </div>
     <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
   </div>
 </header>
 
 <div class="mobile-nav" id="mobile-nav">
-  <a href="index.html#prestations">Prestations</a>
-  <a href="index.html#connect">Connect</a>
-  <a href="index.html#solutions">Solutions</a>
-  <a href="index.html#offres">Accompagnements</a>
+  <details class="mobile-nav-group">
+    <summary>Prestations</summary>
+    <div class="sub-links">
+      <a href="prestations.html#match-photo">Match photo</a>
+      <a href="prestations.html#match-video">Match vidéo</a>
+      <a href="prestations.html#pack-match">Pack match complet</a>
+      <a href="prestations.html#shooting-joueur">Shooting joueur</a>
+      <a href="prestations.html#shooting-equipe">Shooting d'équipe</a>
+      <a href="prestations.html#media-day">Media Day</a>
+      <a href="prestations.html#tournois">Tournois et stages</a>
+      <a href="prestations.html#creations">Créations graphiques</a>
+      <a href="prestations.html#coachs">Coachs et préparateurs</a>
+      <a href="prestations.html">Toutes les prestations →</a>
+    </div>
+  </details>
+  <a href="club-plus.html">Club+</a>
+  <a href="full-communication.html">Full Communication</a>
+  <details class="mobile-nav-group">
+    <summary>Accompagnements</summary>
+    <div class="sub-links">
+      <a href="club-plus.html">Clubs</a>
+      <a href="accompagnements-academies.html">Académies</a>
+      <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
+      <a href="accompagnements-joueurs.html">Joueurs</a>
+      <a href="accompagnements-evenements.html">Tournois et événements</a>
+      <a href="accompagnements.html">Tous les accompagnements →</a>
+    </div>
+  </details>
+  <a href="connect.html">Connect</a>
   <a href="index.html#realisations">Réalisations</a>
-  <a href="offres.html">Tarifs</a>
   <a href="a-propos.html">À propos</a>
   <div class="mobile-ctas">
     <a href="../SportVision-Connect/app/index.html" class="btn btn-ghost-dark">Se connecter</a>
-    <a href="index.html#prestations" class="btn btn-grad">Réserver une prestation</a>
+    <a href="prestations.html" class="btn btn-grad">Réserver une prestation</a>
   </div>
 </div>
 
@@ -262,22 +327,22 @@ section{position:relative}
         <p>La plateforme de communication du sport amateur — par ELKANA GROUP.</p>
       </div>
       <div class="footer-col"><h5>Prestations</h5><ul>
-        <li><a href="index.html#prestations">Match photo</a></li>
-        <li><a href="index.html#prestations">Match vidéo</a></li>
-        <li><a href="index.html#prestations">Shootings</a></li>
-        <li><a href="index.html#prestations">Tournois &amp; stages</a></li>
-        <li><a href="offres.html">Voir les tarifs</a></li>
+        <li><a href="prestations.html#match-photo">Match photo</a></li>
+        <li><a href="prestations.html#match-video">Match vidéo</a></li>
+        <li><a href="prestations.html#shooting-joueur">Shootings</a></li>
+        <li><a href="prestations.html#tournois">Tournois &amp; stages</a></li>
+        <li><a href="prestations.html">Toutes les prestations</a></li>
       </ul></div>
-      <div class="footer-col"><h5>Solutions</h5><ul>
-        <li><a href="index.html#solutions">Clubs</a></li>
-        <li><a href="index.html#solutions">Académies</a></li>
-        <li><a href="index.html#solutions">Coachs</a></li>
-        <li><a href="index.html#solutions">Joueurs</a></li>
-        <li><a href="index.html#solutions">Tournois</a></li>
+      <div class="footer-col"><h5>Accompagnements</h5><ul>
+        <li><a href="club-plus.html">Club+</a></li>
+        <li><a href="full-communication.html">Full Communication</a></li>
+        <li><a href="accompagnements-academies.html">Académies</a></li>
+        <li><a href="accompagnements-coachs.html">Coachs</a></li>
+        <li><a href="accompagnements-joueurs.html">Joueurs</a></li>
+        <li><a href="accompagnements-evenements.html">Tournois &amp; événements</a></li>
       </ul></div>
       <div class="footer-col"><h5>Connect</h5><ul>
-        <li><a href="index.html#connect">Fonctionnement</a></li>
-        <li><a href="index.html#offres">Accompagnements</a></li>
+        <li><a href="connect.html">Fonctionnement</a></li>
         <li><a href="../SportVision-Connect/app/index.html">Connexion</a></li>
         <li><a href="demande-de-devis.html">Démonstration</a></li>
       </ul></div>
@@ -289,7 +354,6 @@ section{position:relative}
       <div class="footer-col"><h5>Entreprise</h5><ul>
         <li><a href="a-propos.html">À propos</a></li>
         <li><a href="demande-de-devis.html">Contact</a></li>
-        <li><a href="index.html#solutions">Partenaires</a></li>
       </ul></div>
     </div>
     <div class="footer-bottom">

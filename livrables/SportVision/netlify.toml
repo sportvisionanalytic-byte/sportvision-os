@@ -9,8 +9,8 @@
 
 [[redirects]]
   from = "/offres"
-  to = "/offres.html"
-  status = 200
+  to = "/prestations.html"
+  status = 301
 
 [[redirects]]
   from = "/demande-de-devis"
@@ -35,4 +35,53 @@
 [[redirects]]
   from = "/confidentialite"
   to = "/confidentialite.html"
+  status = 200
+
+# Architecture commerciale séparée (2026-08-06) : prestations ponctuelles,
+# Club+, Full Communication et accompagnements par profil ont chacun leur
+# page dédiée au lieu d'une seule page "offres" mélangée.
+
+[[redirects]]
+  from = "/prestations"
+  to = "/prestations.html"
+  status = 200
+
+[[redirects]]
+  from = "/club-plus"
+  to = "/club-plus.html"
+  status = 200
+
+[[redirects]]
+  from = "/full-communication"
+  to = "/full-communication.html"
+  status = 200
+
+[[redirects]]
+  from = "/connect"
+  to = "/connect.html"
+  status = 200
+
+[[redirects]]
+  from = "/accompagnements"
+  to = "/accompagnements.html"
+  status = 200
+
+[[redirects]]
+  from = "/accompagnements/academies"
+  to = "/accompagnements-academies.html"
+  status = 200
+
+[[redirects]]
+  from = "/accompagnements/coachs"
+  to = "/accompagnements-coachs.html"
+  status = 200
+
+[[redirects]]
+  from = "/accompagnements/joueurs"
+  to = "/accompagnements-joueurs.html"
+  status = 200
+
+[[redirects]]
+  from = "/accompagnements/evenements"
+  to = "/accompagnements-evenements.html"
   status = 200
