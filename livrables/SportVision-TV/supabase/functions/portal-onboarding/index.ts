@@ -150,7 +150,7 @@ async function sendWelcomeEmail(to: string, prenom: string | undefined, isNewCli
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) return; // optionnel : pas d'e-mail si le secret n'est pas configuré
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
-  const portalUrl = Deno.env.get("PORTAL_URL") || "https://portail.sportvision.fr";
+  const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
 
   const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"></head>
@@ -158,13 +158,13 @@ async function sendWelcomeEmail(to: string, prenom: string | undefined, isNewCli
   <div style="max-width:520px;margin:32px auto;background:#10243E;border-radius:14px;overflow:hidden">
     <div style="background:#0B1B33;padding:26px 32px">
       <div style="font-size:20px;font-weight:800;color:#fff">SPORTVISION</div>
-      <div style="font-size:10px;color:#32D8E6;letter-spacing:.1em;margin-top:2px">PORTAIL</div>
+      <div style="font-size:10px;color:#32D8E6;letter-spacing:.1em;margin-top:2px">CONNECT</div>
     </div>
     <div style="padding:28px 32px">
       <p style="font-size:15px;line-height:1.6">Bonjour ${prenom || ""},</p>
-      <p style="font-size:14px;line-height:1.7;color:#9DAEC3">Votre espace client SportVision est prêt. Vous pouvez désormais suivre vos demandes, devis, factures et livrables directement depuis votre Portail.</p>
+      <p style="font-size:14px;line-height:1.7;color:#9DAEC3">Votre espace client SportVision est prêt. Vous pouvez désormais suivre vos demandes, devis, factures et livrables directement depuis votre espace Connect.</p>
       ${isNewClient ? `<div style="margin-top:16px;background:#0B1B33;border-radius:10px;padding:14px 18px;font-size:13.5px;color:#32D8E6;font-weight:700">🎁 -10% offerts sur votre première prestation, appliqués automatiquement sur votre devis.</div>` : ""}
-      <a href="${portalUrl}" style="display:inline-block;margin-top:16px;background:#168BFF;color:#fff;text-decoration:none;padding:12px 22px;border-radius:9px;font-size:14px;font-weight:700">Accéder à mon espace</a>
+      <a href="${connectUrl}" style="display:inline-block;margin-top:16px;background:#168BFF;color:#fff;text-decoration:none;padding:12px 22px;border-radius:9px;font-size:14px;font-weight:700">Accéder à mon espace</a>
     </div>
   </div>
 </body></html>`;

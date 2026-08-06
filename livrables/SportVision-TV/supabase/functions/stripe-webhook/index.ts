@@ -769,7 +769,7 @@ async function sendPaymentReceiptEmail(
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) return;
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
-  const portalUrl = Deno.env.get("PORTAL_URL") || "https://portail.sportvision.fr";
+  const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
   const montantFmt = (info.montant || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
   const typeLbl = info.type_paiement === "acompte" ? "Acompte" : info.type_paiement === "solde" ? "Solde" : "Paiement total";
 
@@ -779,7 +779,7 @@ async function sendPaymentReceiptEmail(
   <div style="max-width:520px;margin:32px auto;background:#10243E;border-radius:14px;overflow:hidden">
     <div style="background:#0B1B33;padding:26px 32px">
       <div style="font-size:20px;font-weight:800;color:#fff">SPORTVISION</div>
-      <div style="font-size:10px;color:#32D8E6;letter-spacing:.1em;margin-top:2px">PORTAIL</div>
+      <div style="font-size:10px;color:#32D8E6;letter-spacing:.1em;margin-top:2px">CONNECT</div>
     </div>
     <div style="padding:28px 32px">
       <p style="font-size:15px;line-height:1.6">Bonjour,</p>
@@ -788,7 +788,7 @@ async function sendPaymentReceiptEmail(
         <div style="font-size:12px;color:#9DAEC3">${typeLbl}</div>
         <div style="font-size:22px;font-weight:800;color:#32D8E6;margin-top:4px">${montantFmt}</div>
       </div>
-      <a href="${portalUrl}" style="display:inline-block;background:#168BFF;color:#fff;text-decoration:none;padding:12px 22px;border-radius:9px;font-size:14px;font-weight:700">Voir mon espace</a>
+      <a href="${connectUrl}" style="display:inline-block;background:#168BFF;color:#fff;text-decoration:none;padding:12px 22px;border-radius:9px;font-size:14px;font-weight:700">Voir mon espace</a>
     </div>
   </div>
 </body></html>`;
