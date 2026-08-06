@@ -2146,9 +2146,13 @@ function planIncludes(feature){
   return (PLAN_FEATURES[code]||[]).includes(feature);
 }
 function tplFonctionnaliteVerrouillee(nomFonctionnalite){
+  const offreActuelle=(subscription && subscription.plan) || 'Club+';
   return `<div class="sh"><b>Fonctionnalité incluse dans une offre supérieure</b><button class="close-x" onclick="closeModal()">✕</button></div>
-    <div class="muted" style="font-size:13.5px;line-height:1.7;margin-bottom:20px">« ${esc(nomFonctionnalite)} » fait partie d'une formule Club+ que votre club n'a pas actuellement. Découvrez les offres disponibles pour en profiter.</div>
-    <button class="btn bp" style="width:100%;justify-content:center" onclick="closeModal();switchView('abonnement')">Découvrir les offres</button>`;
+    <div class="muted" style="font-size:13.5px;line-height:1.7;margin-bottom:20px">« ${esc(nomFonctionnalite)} » n'est pas activé sur votre contrat actuel (${esc(offreActuelle)}). Votre interlocuteur SportVision peut l'ajouter à tout moment.</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn bo" style="flex:1;justify-content:center" onclick="closeModal();switchView('aide')">Parler à mon conseiller</button>
+      <button class="btn bp" style="flex:1;justify-content:center" onclick="closeModal();switchView('abonnement')">Découvrir les offres</button>
+    </div>`;
 }
 
 const SUB_STATUS_META={actif:{label:'Actif',color:'#28C995'},impaye:{label:'Impayé',color:'#EF5B67'},annule:{label:'Résilié',color:'#EF5B67'}};
