@@ -817,6 +817,7 @@ const NAV={
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
     {id:'charge',lb:'Ma charge',ic:'col'},
+    {id:'rapports',lb:'Rapports clients',ic:'doc'},
     {type:'sep',lb:'Communication'},
     {id:'clients',lb:'Mes clients',ic:'cli'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
@@ -1780,6 +1781,17 @@ const VIEWS={
       <div id="ch-jauge" style="padding:16px 18px"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>
     <div id="ch-equipe-wrap"></div>`,
+
+  'cm.rapports':()=>`
+    <div class="sh"><div class="sh-t">Rapports clients</div></div>
+    <div class="cd" style="margin-bottom:16px">
+      <div style="padding:16px 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:200px"><label class="fl">Client</label><select id="rap-client" class="fi"><option value="">Chargement…</option></select></div>
+        <div><label class="fl">Mois</label><input type="month" id="rap-mois" class="fi" value="${new Date().toISOString().slice(0,7)}"></div>
+        <button class="btn bp" onclick="genererRapportClient()">Générer</button>
+      </div>
+    </div>
+    <div id="rap-result"></div>`,
 
   // ── COMPTABLE ───────────────────────────
   'compta.dash':()=>`
@@ -3182,6 +3194,7 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='contenus') await loadCmContenus();
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
   if(role==='cm'&&view==='charge') await loadCmCharge();
+  if(role==='cm'&&view==='rapports') await loadCmRapports();
   if(role==='cm'&&view==='publications') await loadCmPublications();
   if(role==='photo'&&view==='medias') await loadPhotoMedias();
   if(role==='photo'&&view==='kits') await loadPhotoKits();
@@ -14393,6 +14406,77 @@ async function _renderChargeEquipe(wrap){
   }catch(e){listEl.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
 }
 
+// ── CM — Rapports clients ─────────────────────────────────────────────────────
+// Résumé mensuel généré depuis les contenus réels de l'OS (pas de saisie
+// manuelle, contrairement à Analytics). L'accès au client sélectionnable
+// vient de _cmVisibleClients() (même règle de périmètre que partout ailleurs
+// côté CM) ; les contenus interrogés restent scopés par contenus_select.
+let _rapportTexteActuel='';
+async function loadCmRapports(){
+  const sel=document.getElementById('rap-client');
+  if(!sel)return;
+  const clients=await _cmVisibleClients();
+  sel.innerHTML=clients.length?clients.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join(''):'<option value="">Aucun client</option>';
+  document.getElementById('rap-result').innerHTML='';
+}
+
+function copierRapport(){
+  if(!_rapportTexteActuel)return;
+  navigator.clipboard.writeText(_rapportTexteActuel).then(()=>toast('Rapport copié dans le presse-papier.','ok')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=_rapportTexteActuel;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Rapport copié.','ok');
+  });
+}
+
+async function genererRapportClient(){
+  const clientId=document.getElementById('rap-client')?.value;
+  const mois=document.getElementById('rap-mois')?.value;
+  const resEl=document.getElementById('rap-result');
+  if(!clientId||!mois||!resEl)return;
+  resEl.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Génération…</div>';
+  try{
+    const monthStart=mois+'-01';
+    const monthEndDate=new Date(mois+'-01T00:00:00');monthEndDate.setMonth(monthEndDate.getMonth()+1);
+    const monthEnd=monthEndDate.toISOString().slice(0,10);
+    const clientNom=document.getElementById('rap-client').selectedOptions[0]?.textContent||'Client';
+    const moisLabel=new Date(mois+'-01T00:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    const [publies,enCoursData]=await Promise.all([
+      sbFetch('contenus?select=id,titre,plateforme,type_contenu,date_publication&client_id=eq.'+clientId+'&statut=eq.publie&date_publication=gte.'+monthStart+'&date_publication=lt.'+monthEnd+'&order=date_publication.asc'),
+      sbFetch('contenus?select=id,titre,statut,date_prevue&client_id=eq.'+clientId+'&statut=not.in.(publie,archive)&order=date_prevue.asc.nullslast'),
+    ]);
+    const pub=Array.isArray(publies)?publies:[];
+    const enCours=Array.isArray(enCoursData)?enCoursData:[];
+    const today=new Date().toISOString().slice(0,10);
+    const enRetard=enCours.filter(c=>c.date_prevue&&c.date_prevue<today);
+    const parPlat={};
+    pub.forEach(p=>{const pl=p.plateforme||'Autre';parPlat[pl]=(parPlat[pl]||0)+1;});
+    resEl.innerHTML=`<div class="g3" style="margin-bottom:13px">
+        <div class="fs"><div class="fs-l">Publications du mois</div><div class="fs-v">${pub.length}</div></div>
+        <div class="fs"><div class="fs-l">En cours de production</div><div class="fs-v">${enCours.length}</div></div>
+        <div class="fs" style="${enRetard.length?'border-color:rgba(240,68,94,.25)':''}"><div class="fs-l">En retard</div><div class="fs-v" style="${enRetard.length?'color:var(--er)':''}">${enRetard.length}</div></div>
+      </div>
+      <div class="cd" style="margin-bottom:16px">
+        <div class="cd-h"><div class="cd-t">Répartition par plateforme</div></div>
+        <div style="padding:14px 18px">${Object.keys(parPlat).length?Object.entries(parPlat).sort((a,b)=>b[1]-a[1]).map(([pl,n])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span>${esc(pl)}</span><span style="color:var(--t3)">${n}</span></div>`).join(''):'<div style="color:var(--t3);font-size:13px">Aucune publication ce mois.</div>'}</div>
+      </div>
+      <div class="cd" style="margin-bottom:16px">
+        <div class="cd-h"><div class="cd-t">Publications du mois</div></div>
+        <div>${pub.length?pub.map(p=>`<div style="display:flex;justify-content:space-between;padding:9px 18px;border-bottom:1px solid var(--bd)"><span>${esc(p.titre)}</span><span style="color:var(--t3);font-size:12px">${esc(p.plateforme||'—')} · ${p.date_publication?new Date(p.date_publication).toLocaleDateString('fr-FR'):'—'}</span></div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune publication ce mois.</div>'}</div>
+      </div>
+      ${enCours.length?`<div class="cd" style="margin-bottom:16px">
+        <div class="cd-h"><div class="cd-t">En cours / à venir</div></div>
+        <div>${enCours.map(c=>{const st=CONTENU_STATUTS[c.statut]||CONTENU_STATUTS.brouillon;const retard=c.date_prevue&&c.date_prevue<today;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bd)"><span>${esc(c.titre)}</span><span style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--t3)">${retard?'<span style="color:var(--er);font-weight:600">En retard</span>':''}<span class="bd ${st.cls}"><span class="bd-d"></span>${st.lb}</span></span></div>`;}).join('')}</div>
+      </div>`:''}
+      <button class="btn bg2" onclick="copierRapport()">Copier le résumé</button>`;
+    let t=`Rapport ${clientNom} — ${moisLabel}\n\nPublications du mois : ${pub.length}\n`;
+    Object.entries(parPlat).forEach(([pl,n])=>{t+='  - '+pl+' : '+n+'\n';});
+    t+='\nDétail :\n';
+    pub.forEach(p=>{t+='  - '+p.titre+' ('+(p.plateforme||'—')+', '+(p.date_publication?new Date(p.date_publication).toLocaleDateString('fr-FR'):'—')+')\n';});
+    t+='\nEn cours de production : '+enCours.length+'\n';
+    if(enRetard.length)t+='Dont en retard : '+enRetard.length+'\n';
+    _rapportTexteActuel=t;
+  }catch(e){resEl.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de génération.</div>';console.error(e);}
+}
+
 function modalSaisirStats(){
   const k='sv_an_stats';
   const s=JSON.parse(localStorage.getItem(k)||'{}');
@@ -21532,7 +21616,7 @@ const MOB_MORE_ITEMS={
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
-  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
 };
 function openMobMore(){
