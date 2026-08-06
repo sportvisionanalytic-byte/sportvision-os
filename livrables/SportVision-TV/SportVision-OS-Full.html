@@ -698,6 +698,18 @@ const NAV={
     {id:'incidents',lb:'Incidents',ic:'alert'},
     {type:'sep',lb:'Finances & Documents'},
     {id:'fin',lb:'Finances',ic:'fin'},
+    {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
+    {id:'rapprochement',lb:'Rapprochement',ic:'check'},
+    {id:'factures',lb:'Factures',ic:'doc'},
+    {id:'acomptes',lb:'Acomptes',ic:'fin'},
+    {id:'impayes',lb:'Impayés',ic:'alert'},
+    {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
+    {id:'depenses',lb:'Dépenses',ic:'fin'},
+    {id:'frais',lb:'Frais & km',ic:'fin'},
+    {id:'paiements',lb:'Paiements équipe',ic:'fin'},
+    {id:'rem',lb:'Rémunérations',ic:'col'},
+    {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
+    {id:'export',lb:'Exports comptables',ic:'export'},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
     {id:'documents',lb:'Centre documentaire',ic:'doc'},
     {type:'sep',lb:'Équipe & Espace'},
@@ -2895,6 +2907,20 @@ async function loadViewData(role,view){
   if(_isComptaLike&&view==='rem') await loadComptaRem();
   if(_isComptaLike&&view==='rentabilite') await loadComptaRentabilite();
   if(_isComptaLike&&view==='clotures') await loadComptaClotures();
+  // Admin a aussi accès aux écrans compta détaillés (cf. NAV.admin) — gardé
+  // séparé de _isComptaLike pour ne pas dupliquer les dispatches 'dash'/'docs'
+  // déjà gérés plus haut pour admin (loadAdminDash, loadDocuments).
+  if(role==='admin'&&view==='factures') await loadComptaFactures();
+  if(role==='admin'&&view==='acomptes') await loadComptaAcomptes();
+  if(role==='admin'&&view==='impayes') await loadComptaImpayes();
+  if(role==='admin'&&view==='avoirs') await loadComptaAvoirs();
+  if(role==='admin'&&view==='depenses') await loadComptaDepenses();
+  if(role==='admin'&&view==='frais') await loadComptaFrais();
+  if(role==='admin'&&view==='rem') await loadComptaRem();
+  if(role==='admin'&&view==='rentabilite') await loadComptaRentabilite();
+  if(role==='admin'&&view==='clotures') await loadComptaClotures();
+  if(role==='admin'&&view==='paiements') await loadPaiements();
+  if(role==='admin'&&view==='rapprochement') await loadRapprochement();
   if((role==='prod'||role==='admin')&&view==='incidents') await loadIncidents();
   if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
   if(role==='com'&&view==='dash') await loadComDash();
@@ -16165,6 +16191,13 @@ VIEWS['admin.comptesportail']=tplComptesPortail;
 });
 VIEWS['expert_comptable.documents']=()=>_documentsView('expert_comptable');
 VIEWS['expert_comptable.export']=VIEWS['compta.export'];
+// Admin voyait uniquement un résumé ("Finances") sans accès aux écrans
+// détaillés compta (rentabilité, dépenses, clôtures…) — Fouka (toujours
+// connecté en admin) doit voir tout ça directement, pas seulement via un
+// compte compta séparé.
+['rentabilite','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export'].forEach(v=>{
+  if(VIEWS['compta.'+v]) VIEWS['admin.'+v]=VIEWS['compta.'+v];
+});
 
 const _svp_origLoadViewData=loadViewData;
 loadViewData=async function(role,view){
@@ -19434,7 +19467,7 @@ function closeMobFilter(){
 
 // ── More Menu ─────────────────────────────────────────────────────────────
 const MOB_MORE_ITEMS={
-  admin:[{id:'crm',lb:'Clients',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipes',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'}],
+  admin:[{id:'crm',lb:'Clients',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipes',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
