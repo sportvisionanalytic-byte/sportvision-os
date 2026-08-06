@@ -2344,6 +2344,39 @@ async function loadNotifPrefs(){
   realNotifPrefs=map;
   if(S.view==='parametres') renderContent();
 }
+
+/* Heures calmes (migration-clubplus-v29) : réglage par utilisateur, pas par
+   catégorie — une seule ligne dans notification_quiet_hours. Comme pour les
+   préférences par catégorie, ce réglage n'a aucun effet sur SECURITY/LEGAL/
+   BILLING ni sur les templates mandatory : dispatch-notifications les envoie
+   toujours, quelle que soit l'heure. Défauts (08:00–21:00, dimanche urgences
+   uniquement) affichés tant qu'aucune ligne n'existe en base. */
+let realQuietHours=null;
+async function loadQuietHours(){
+  if(!REAL) return;
+  const res=await sbFetch('notification_quiet_hours?user_id=eq.'+REAL.userId+'&select=not_before,not_after,sunday_urgent_only');
+  const row=(res.ok && res.data && res.data[0]) || null;
+  realQuietHours={
+    not_before:(row?.not_before||'08:00:00').slice(0,5),
+    not_after:(row?.not_after||'21:00:00').slice(0,5),
+    sunday_urgent_only: row ? row.sunday_urgent_only!==false : true
+  };
+  if(S.view==='parametres') renderContent();
+}
+async function saveQuietHours(){
+  if(!REAL){ toast('Heures calmes mises à jour (démonstration).'); return; }
+  const notBefore=document.getElementById('qh-before')?.value||'08:00';
+  const notAfter=document.getElementById('qh-after')?.value||'21:00';
+  const sundayUrgentOnly=!!document.getElementById('qh-sunday')?.checked;
+  const res=await sbFetch('notification_quiet_hours?on_conflict=user_id', {
+    method:'POST',
+    headers:{Prefer:'resolution=merge-duplicates,return=representation'},
+    body:{user_id:REAL.userId, not_before:notBefore, not_after:notAfter, sunday_urgent_only:sundayUrgentOnly}
+  });
+  if(!res.ok){ toast('Erreur lors de l\'enregistrement des heures calmes.'); return; }
+  realQuietHours={not_before:notBefore, not_after:notAfter, sunday_urgent_only:sundayUrgentOnly};
+  toast('Heures calmes enregistrées.');
+}
 async function toggleNotifPref(category,enabled){
   if(!REAL){ toast('Préférence mise à jour (démonstration).'); return; }
   realNotifPrefs=realNotifPrefs||{};
@@ -2389,10 +2422,13 @@ function tplParametres(){
   } else if(paView==='preferences'){
     content=`<div class="card">${['Résumé quotidien par e-mail','Résumé hebdomadaire par e-mail','Mode sombre'].map(l=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--bd)"><span style="font-size:13.5px">${l}</span><button class="btn bo" style="padding:5px 12px" onclick="toast('Préférence mise à jour.')">Activé</button></div>`).join('')}</div>`;
   } else if(paView==='notifications'){
-    if(REAL && realNotifPrefs===null){ loadNotifPrefs(); content=`<div class="empty-state">Chargement…</div>`; }
-    else {
+    if(REAL && (realNotifPrefs===null || realQuietHours===null)){
+      loadNotifPrefs(); loadQuietHours();
+      content=`<div class="empty-state">Chargement…</div>`;
+    } else {
       const prefs = REAL ? (realNotifPrefs||{}) : {};
-      content=`<div class="card">
+      const qh = realQuietHours || {not_before:'08:00', not_after:'21:00', sunday_urgent_only:true};
+      content=`<div class="card" style="margin-bottom:16px">
         <div class="muted" style="font-size:12px;margin-bottom:14px">Choisissez les e-mails que vous souhaitez recevoir de SportVision Club+. Les notifications de sécurité, obligations légales et facturation restent toujours envoyées, quelle que soit votre choix ci-dessous.</div>
         ${NOTIF_PREF_CATEGORIES.map(([cat,label,desc])=>{
           const checked = prefs[cat]!==false;
@@ -2401,6 +2437,16 @@ function tplParametres(){
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0"><input type="checkbox" style="width:auto" ${checked?'checked':''} onchange="toggleNotifPref('${cat}',this.checked)"><span class="muted" style="font-size:11.5px">${checked?'Activé':'Désactivé'}</span></label>
           </div>`;
         }).join('')}
+      </div>
+      <div class="card">
+        <div style="font-weight:600;font-size:13.5px;margin-bottom:4px">Heures calmes</div>
+        <div class="muted" style="font-size:12px;margin-bottom:14px">En dehors de cette plage, les e-mails non critiques attendent l'heure d'ouverture plutôt que d'être envoyés. Les notifications de sécurité, obligations légales et facturation ne sont jamais concernées.</div>
+        <div class="row2" style="margin-bottom:12px">
+          <div class="field"><label>Pas de notification avant</label><input id="qh-before" type="time" value="${esc(qh.not_before)}"></div>
+          <div class="field"><label>Pas de notification après</label><input id="qh-after" type="time" value="${esc(qh.not_after)}"></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:14px"><input id="qh-sunday" type="checkbox" style="width:auto" ${qh.sunday_urgent_only?'checked':''}><span style="font-size:13px">Le dimanche, urgences uniquement</span></label>
+        <button class="btn bp" onclick="saveQuietHours()">Enregistrer les heures calmes</button>
       </div>`;
     }
   } else if(paView==='integrations'){

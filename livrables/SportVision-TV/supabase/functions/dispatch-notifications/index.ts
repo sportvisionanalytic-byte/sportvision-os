@@ -28,6 +28,16 @@
 // enregistrée), on vérifie notification_preferences pour le destinataire ;
 // si désactivée, la ligne est marquée SKIPPED_PREFERENCE au lieu d'être
 // envoyée ou laissée PENDING indéfiniment.
+//
+// Heures calmes (migration-clubplus-v29) : même règle de non-désactivabilité
+// que ci-dessus — s'applique uniquement aux catégories déjà soumises aux
+// préférences, jamais à SECURITY/LEGAL/BILLING ni aux templates mandatory.
+// Hors de la plage notification_quiet_hours.not_before/not_after (heure de
+// Paris), ou le dimanche si sunday_urgent_only, la ligne n'est PAS marquée
+// en échec : on repousse next_attempt_at de 30 minutes et on la laisse
+// PENDING, pour qu'elle soit réévaluée au prochain passage du cron plutôt
+// que de calculer précisément le prochain instant autorisé (plus simple,
+// et sans piège de fuseau horaire à l'approche de minuit).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -73,6 +83,21 @@ function parseFromHeader(fromEmail: string): { email: string; name?: string } {
   const m = fromEmail.match(/^(.*)<(.+)>$/);
   if (m) return { name: m[1].trim(), email: m[2].trim() };
   return { email: fromEmail.trim() };
+}
+
+// Heure et jour de la semaine à Paris, pour la comparaison aux heures calmes
+// (notification_quiet_hours). Le "HH:MM" est comparable lexicographiquement
+// à not_before/not_after, tous deux zéro-paddés.
+function parisNow(): { hm: string; isSunday: boolean } {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Paris",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    weekday: "short",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value || "";
+  return { hm: get("hour") + ":" + get("minute"), isSunday: get("weekday") === "Sun" };
 }
 
 serve(async (req) => {
@@ -194,6 +219,25 @@ serve(async (req) => {
           await admin.from("notification_outbox").update({
             status: "SKIPPED_PREFERENCE",
             last_error: "Catégorie " + category + " désactivée par le destinataire (notification_preferences).",
+            updated_at: new Date().toISOString(),
+          }).eq("id", row.id);
+          continue;
+        }
+
+        const { data: qh } = await admin
+          .from("notification_quiet_hours")
+          .select("not_before,not_after,sunday_urgent_only")
+          .eq("user_id", row.recipient_user_id)
+          .maybeSingle();
+        const notBefore = (qh?.not_before || "08:00:00").slice(0, 5);
+        const notAfter = (qh?.not_after || "21:00:00").slice(0, 5);
+        const sundayUrgentOnly = qh ? qh.sunday_urgent_only !== false : true;
+        const { hm, isSunday } = parisNow();
+        const outsideWindow = hm < notBefore || hm >= notAfter;
+        const sundayBlocked = isSunday && sundayUrgentOnly;
+        if (outsideWindow || sundayBlocked) {
+          await admin.from("notification_outbox").update({
+            next_attempt_at: new Date(Date.now() + 30 * 60000).toISOString(),
             updated_at: new Date().toISOString(),
           }).eq("id", row.id);
           continue;
