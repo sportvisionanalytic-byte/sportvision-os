@@ -812,6 +812,7 @@ const NAV={
   cm:[
     {type:'sep',lb:'Éditorial'},
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
+    {id:'demandes',lb:'Demandes reçues',ic:'doc'},
     {id:'cal',lb:'Calendrier éditorial',ic:'cal'},
     {id:'contenus',lb:'Contenus',ic:'pre'},
     {id:'publications',lb:'Publications',ic:'pub'},
@@ -1733,6 +1734,15 @@ const VIEWS={
         <div id="cm-dash-cl"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
     </div>`,
+
+  'cm.demandes':()=>`
+    <div class="sh"><div class="sh-t">Demandes reçues</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Nouvelles</div><div class="fs-v" id="dem-kpi-nouv">—</div></div>
+      <div class="fs"><div class="fs-l">En traitement</div><div class="fs-v" id="dem-kpi-enc">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Urgentes</div><div class="fs-v" id="dem-kpi-urg" style="color:var(--er)">—</div></div>
+    </div>
+    <div id="dem-list"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.clients':()=>`
     <div class="sh"><div class="sh-t">Mes clients</div></div>
@@ -3189,6 +3199,7 @@ async function loadViewData(role,view){
   if(role==='com'&&view==='commissions') await loadMyCommissions();
   if(['com','admin','sec'].includes(role)&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
+  if(role==='cm'&&view==='demandes') await loadCmDemandes();
   if(role==='cm'&&view==='clients') await loadCmClients();
   if(role==='cm'&&view==='cal') await loadCmCal();
   if(role==='cm'&&view==='contenus') await loadCmContenus();
@@ -14029,6 +14040,64 @@ function getWeekDates(offset){
 // (migration-cm-tiers.sql) applique déjà ces règles côté base — les requêtes
 // ci-dessous n'ont pas besoin de dupliquer le filtre, sauf pour choisir la
 // bonne forme de requête (clients directs vs contrats joints).
+// ── CM — Demandes reçues (pont club_requests / Club+) ─────────────────────
+// club_requests appartient au produit Club+ (auth séparée, table clubs) —
+// la RLS (migration-clubplus-cm-bridge.sql) ne renvoie que les demandes des
+// clubs liés (clubs.client_id) à un client visible par le CM courant, donc
+// aucun filtre supplémentaire n'est nécessaire ici.
+const DEMANDE_STATUT_LBL={recues:'Reçue',info_manquante:'Info manquante',en_traitement:'En traitement',prete_a_creer:'Prête à créer',terminee:'Terminée',refusee:'Refusée'};
+const DEMANDE_STATUT_CLS={recues:'bw',info_manquante:'br',en_traitement:'bb',prete_a_creer:'ba',terminee:'ba',refusee:'bn'};
+const DEMANDE_NEXT={
+  recues:[{st:'en_traitement',lb:'Accepter'},{st:'info_manquante',lb:'Infos manquantes'},{st:'refusee',lb:'Refuser'}],
+  info_manquante:[{st:'en_traitement',lb:'Reprendre'},{st:'refusee',lb:'Refuser'}],
+  en_traitement:[{st:'prete_a_creer',lb:'Prête à créer'},{st:'refusee',lb:'Refuser'}],
+  prete_a_creer:[{st:'terminee',lb:'Terminer'}],
+  terminee:[],refusee:[],
+};
+
+async function loadCmDemandes(){
+  const el=document.getElementById('dem-list');
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  if(!el)return;
+  try{
+    const data=await sbFetch('club_requests?select=id,type,team,status,urgency,detail,credits_reserved,created_at,clubs(nom,client_id)&order=created_at.desc&limit=200');
+    const list=Array.isArray(data)?data:[];
+    set('dem-kpi-nouv',list.filter(d=>d.status==='recues').length);
+    set('dem-kpi-enc',list.filter(d=>['en_traitement','info_manquante'].includes(d.status)).length);
+    set('dem-kpi-urg',list.filter(d=>d.urgency==='haute'&&!['terminee','refusee'].includes(d.status)).length);
+    if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📥</div><div>Aucune demande reçue pour l\'instant.</div></div>';return;}
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Club</th><th>Type</th><th>Équipe</th><th>Urgence</th><th>Crédits</th><th>Statut</th><th></th></tr></thead><tbody>'+
+      list.map(d=>{
+        const stLbl=DEMANDE_STATUT_LBL[d.status]||d.status;
+        const stCls=DEMANDE_STATUT_CLS[d.status]||'bn';
+        const nextActions=DEMANDE_NEXT[d.status]||[];
+        return`<tr>
+          <td class="tp">${esc(d.clubs?.nom||'—')}</td>
+          <td title="${esc(d.detail||'')}">${esc(d.type||'—')}</td>
+          <td>${esc(d.team||'—')}</td>
+          <td>${d.urgency==='haute'?'<span style="color:var(--er);font-weight:600">Haute</span>':'Normale'}</td>
+          <td class="tm">${d.credits_reserved||0}</td>
+          <td><span class="bd ${stCls}"><span class="bd-d"></span>${stLbl}</span></td>
+          <td style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+            ${nextActions.map(a=>`<button class="btn bg2 bs" onclick="avancerDemande('${d.id}','${a.st}')">${a.lb}</button>`).join('')}
+            ${d.clubs?.client_id?`<button class="btn bp bs" onclick="creerContenuDepuisDemande('${d.clubs.client_id}','${escJs(d.type||'Demande')}')" title="Créer un contenu à partir de cette demande">+ Contenu</button>`:''}
+          </td>
+        </tr>`;
+      }).join('')+'</tbody></table></div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';console.error(e);}
+}
+
+async function avancerDemande(id,statut){
+  const r=await sbFetch('rpc/staff_update_club_request_status',{method:'POST',body:{p_request_id:id,p_status:statut}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  toast('Demande mise à jour.','ok');
+  loadCmDemandes();
+}
+
+function creerContenuDepuisDemande(clientId,titre){
+  modalNouveauContenu(null,null,{clientId,titre});
+}
+
 async function loadCmClients(){
   const el=document.getElementById('cm-clubs-real');
   if(!el)return;
@@ -21678,7 +21747,7 @@ const MOB_MORE_ITEMS={
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
-  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
 };
 function openMobMore(){
