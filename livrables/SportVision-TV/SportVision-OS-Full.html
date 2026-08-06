@@ -701,6 +701,8 @@ const NAV={
     {id:'resultat',lb:'Compte de résultat',ic:'fin'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
     {id:'commissions',lb:'Commissions',ic:'fin'},
+    {id:'budgets',lb:'Budgets & prévisions',ic:'fin'},
+    {id:'tva',lb:'TVA & provisions',ic:'fin'},
     {id:'rapprochement',lb:'Rapprochement',ic:'check'},
     {id:'factures',lb:'Factures',ic:'doc'},
     {id:'acomptes',lb:'Acomptes',ic:'fin'},
@@ -712,6 +714,7 @@ const NAV={
     {id:'rem',lb:'Rémunérations',ic:'col'},
     {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
     {id:'export',lb:'Exports comptables',ic:'export'},
+    {id:'fec',lb:'Export FEC',ic:'export'},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
     {id:'documents',lb:'Centre documentaire',ic:'doc'},
     {type:'sep',lb:'Équipe & Espace'},
@@ -820,6 +823,7 @@ const NAV={
     {id:'rapprochement',lb:'Rapprochement',ic:'check'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
     {id:'commissions',lb:'Commissions',ic:'fin'},
+    {id:'budgets',lb:'Budgets & prévisions',ic:'fin'},
     {type:'sep',lb:'Facturation'},
     {id:'factures',lb:'Factures',ic:'doc'},
     {id:'acomptes',lb:'Acomptes',ic:'fin'},
@@ -835,6 +839,9 @@ const NAV={
     {type:'sep',lb:'Clôture & Export'},
     {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
     {id:'export',lb:'Exports comptables',ic:'export'},
+    {id:'fec',lb:'Export FEC',ic:'export'},
+    {type:'sep',lb:'Finances'},
+    {id:'tva',lb:'TVA & provisions',ic:'fin'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
@@ -866,6 +873,8 @@ const NAV={
     {id:'resultat',lb:'Compte de résultat',ic:'fin'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
     {id:'commissions',lb:'Commissions',ic:'fin'},
+    {id:'budgets',lb:'Budgets & prévisions',ic:'fin'},
+    {id:'tva',lb:'TVA & provisions',ic:'fin'},
     {type:'sep',lb:'Facturation'},
     {id:'factures',lb:'Factures',ic:'doc'},
     {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
@@ -877,6 +886,7 @@ const NAV={
     {type:'sep',lb:'Clôture & Export'},
     {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
     {id:'export',lb:'Exports comptables',ic:'export'},
+    {id:'fec',lb:'Export FEC',ic:'export'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   auditeur:[
@@ -884,6 +894,8 @@ const NAV={
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
     {id:'resultat',lb:'Compte de résultat',ic:'fin'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
+    {id:'budgets',lb:'Budgets & prévisions',ic:'fin'},
+    {id:'tva',lb:'TVA & provisions',ic:'fin'},
     {type:'sep',lb:'Facturation'},
     {id:'factures',lb:'Factures',ic:'doc'},
     {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
@@ -1806,6 +1818,32 @@ const VIEWS={
       </div>
     </div>`,
 
+  'compta.fec':()=>`
+    <div class="sh"><div><div class="sh-t">Export FEC (brouillon)</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Fichier des Écritures Comptables — préparation de travail, pas un document légalement certifié</div></div>
+      ${['admin','compta'].includes(S.role)?`<button class="btn bg2 bs" onclick="modalMappingPCG()">⚙ Mapping des comptes</button>`:''}</div>
+    <div style="background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.25);border-radius:var(--rb);padding:12px 16px;font-size:12.5px;color:var(--t1);margin-bottom:16px">
+      ⚠️ Les numéros de compte utilisés (table de correspondance ci-dessous) sont <strong>indicatifs</strong>, pas certifiés. Ce fichier respecte la structure technique du FEC (18 colonnes, arrêté du 29/07/2013) mais doit être <strong>validé par votre expert-comptable</strong> avant toute transmission — SportVision OS n'est pas votre système officiel de tenue comptable.
+    </div>
+    <div class="cd">
+      <div class="cd-h"><div class="cd-t">Générer un export</div></div>
+      <div style="padding:16px 17px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+        <div>
+          <label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Période clôturée</label>
+          <select id="fec-periode" class="fi" style="min-width:220px"><option value="">Chargement…</option></select>
+        </div>
+        <div>
+          <label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Numéro SIREN</label>
+          <input id="fec-siren" class="fi" placeholder="123456789" maxlength="9" style="width:140px" value="${localStorage.getItem('sv_siren')||''}">
+        </div>
+        <button class="btn bp bs" id="fec-generer-btn" onclick="genererExportFEC()" disabled>Générer l'export FEC</button>
+      </div>
+      <div id="fec-msg" style="padding:0 17px 14px;font-size:12px;color:var(--t3)"></div>
+    </div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Historique des exports générés</div></div>
+      <div id="fec-historique-real"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
+
   // ── COMMERCIAL ──────────────────────────
   'com.dash':()=>`
     <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px">
@@ -2100,6 +2138,31 @@ const VIEWS={
       <div id="res-tendance-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
+  'compta.budgets':()=>`
+    <div class="sh"><div><div class="sh-t">Budgets & prévisions</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Projection à partir du run-rate des 3 derniers mois complets — outil de pilotage, pas un engagement</div></div>
+      <div class="sh-a" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;gap:6px" id="bud-horizon-pills">
+          <button class="btn bg2 bs" onclick="budgetsSetHorizon(3)" id="bud-h-3">3 mois</button>
+          <button class="btn bg2 bs" onclick="budgetsSetHorizon(6)" id="bud-h-6">6 mois</button>
+          <button class="btn bg2 bs" onclick="budgetsSetHorizon(12)" id="bud-h-12" style="background:rgba(54,107,255,.15);color:var(--acc)">12 mois</button>
+          <button class="btn bg2 bs" onclick="budgetsSetHorizon(24)" id="bud-h-24">24 mois</button>
+        </div>
+        <button class="btn bg2 bs" onclick="exportCSV('budget-previsionnel')">Export CSV</button>
+      </div>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA run-rate mensuel</div><div class="kpi-v" id="bud-kpi-ca" style="font-size:18px">—</div><span class="kpi-d dnt">moyenne 3 derniers mois complets</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Charges run-rate mensuel</div><div class="kpi-v" id="bud-kpi-ch" style="font-size:18px">—</div><span class="kpi-d dnt">missions + masse salariale + commissions</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Résultat run-rate mensuel</div><div class="kpi-v" id="bud-kpi-res" style="font-size:18px">—</div><span class="kpi-d dnt">point de départ des projections</span></div>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:13px" id="bud-cards">
+      <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div>
+    </div>
+    <div class="cd">
+      <div class="cd-h"><div class="cd-t">Comparaison mensuelle</div><div style="display:flex;gap:6px" id="bud-scenario-pills"></div></div>
+      <div id="bud-table-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
+
   'compta.commissions':()=>`
     <div class="sh"><div class="sh-t">Commissions commerciales</div>${['admin','compta'].includes(S.role)?`<button class="btn bp bs" onclick="modalNouvelleCommission()">+ Commission</button>`:''}</div>
     <div class="g3" style="margin-bottom:13px">
@@ -2117,6 +2180,33 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Mois courant</div><div class="fs-v" id="clo-kpi-cur" style="color:var(--acc)">—</div></div>
     </div>
     <div id="compta-clotures-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'compta.tva':()=>`
+    <div class="sh"><div><div class="sh-t">TVA & provisions</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Estimation de pilotage interne</div></div></div>
+    <div class="cd" style="margin-bottom:13px;border-left:3px solid var(--wa)">
+      <div style="padding:14px 18px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px;line-height:1">⚠️</span>
+        <div style="font-size:12.5px;color:var(--t2)"><strong style="color:var(--wa)">Estimation de pilotage interne</strong> — à confirmer avec votre expert-comptable avant toute déclaration de TVA. Ceci n'est pas un document officiel et ne remplace pas votre régime fiscal réel.</div>
+      </div>
+    </div>
+    <div class="cd" style="margin-bottom:13px">
+      <div class="cd-h"><div class="cd-t">Période</div></div>
+      <div style="padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3)">Mois</label>
+        <select id="tva-mois-sel" class="fi" style="max-width:220px" onchange="loadComptaTva()"></select>
+      </div>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">TVA collectée</div><div class="kpi-v" id="tva-kpi-collectee" style="font-size:18px">—</div><span class="kpi-d dnt">factures payées</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">TVA déductible</div><div class="kpi-v" id="tva-kpi-deductible" style="font-size:18px">—</div><span class="kpi-d dnt">dépenses payées/comptabilisées</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">TVA nette à provisionner</div><div class="kpi-v" id="tva-kpi-nette" style="font-size:18px">—</div><span class="kpi-d dnt">collectée moins déductible</span></div>
+      <div class="kpi" style="--kl:#E8A33D"><div class="kpi-ey">Masse salariale chargée</div><div class="kpi-v" id="tva-kpi-sal" style="font-size:18px">—</div><span class="kpi-d dnt">référence, hors calcul TVA</span></div>
+    </div>
+    ${['admin','compta'].includes(S.role)?`<div style="display:flex;justify-content:flex-end;margin-bottom:13px"><button class="btn bp bs" onclick="provisionnerTva()">Provisionner ce mois</button></div>`:''}
+    <div class="cd">
+      <div class="cd-h"><div class="cd-t">Historique des provisions</div></div>
+      <div id="tva-historique-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
 
   'com.objectifs':()=>`
     <div class="sh"><div class="sh-t">Objectifs commerciaux</div></div>
@@ -2940,6 +3030,9 @@ async function loadViewData(role,view){
   if(_isComptaLike&&view==='clotures') await loadComptaClotures();
   if(_isComptaLike&&view==='resultat') await loadComptaResultat();
   if(_isComptaLike&&view==='commissions') await loadComptaCommissions();
+  if(_isComptaLike&&view==='budgets') await loadComptaBudgets();
+  if(_isComptaLike&&view==='tva') await loadComptaTva();
+  if(_isComptaLike&&view==='fec') await loadComptaFec();
   // Admin a aussi accès aux écrans compta détaillés (cf. NAV.admin) — gardé
   // séparé de _isComptaLike pour ne pas dupliquer les dispatches 'dash'/'docs'
   // déjà gérés plus haut pour admin (loadAdminDash, loadDocuments).
@@ -2956,6 +3049,9 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='rapprochement') await loadRapprochement();
   if(role==='admin'&&view==='resultat') await loadComptaResultat();
   if(role==='admin'&&view==='commissions') await loadComptaCommissions();
+  if(role==='admin'&&view==='budgets') await loadComptaBudgets();
+  if(role==='admin'&&view==='tva') await loadComptaTva();
+  if(role==='admin'&&view==='fec') await loadComptaFec();
   if((role==='prod'||role==='admin')&&view==='incidents') await loadIncidents();
   if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
   if(role==='com'&&view==='dash') await loadComDash();
@@ -9829,6 +9925,21 @@ async function exportCSV(type){
       (data||[]).forEach(r=>rows.push([r.reference||'',r.client_nom||'',r.type_prestation||'',r.date_prestation||'',r.revenu_ht||0,r.cout_remunerations||0,r.cout_frais||0,r.cout_depenses_directes||0,r.cout_indirect_alloue||0,r.marge_nette||0]));
       downloadCSV(rows,'SportVision-Rentabilite-'+new Date().toISOString().slice(0,10)+'.csv');
     }
+    else if(type==='budget-previsionnel'){
+      if(!_budgetsData.ready){toast('Ouvre d\'abord l\'écran Budgets & prévisions.','er');return;}
+      const rows=[['Scénario','Mois','CA projeté (€)','Charges projetées (€)','Résultat projeté (€)']];
+      const now=new Date();
+      ['prudent','central','ambitieux','stress'].forEach(t=>{
+        const sc=_budgetsData.scenarios.find(s=>s.type===t);
+        if(!sc)return;
+        budgetsProjection(sc,_budgetsHorizon).forEach(r=>{
+          const d=new Date(now.getFullYear(),now.getMonth()+r.n,1);
+          const label=d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+          rows.push([BUDGET_SCENARIOS_META[t].lb,label,r.ca.toFixed(2),r.ch.toFixed(2),r.res.toFixed(2)]);
+        });
+      });
+      downloadCSV(rows,'SportVision-Budget-Previsionnel-'+new Date().toISOString().slice(0,10)+'.csv');
+    }
   }catch(e){toast('Erreur export : '+(e.message||'inconnue'));}
 }
 
@@ -14151,6 +14262,175 @@ async function loadComptaResultat(){
   }
 }
 
+// ── Budgets & prévisions ─────────────────────────────────────────────────
+// Projection simple (mois n = run-rate × (1+taux/100)^n) sur 4 scénarios
+// paramétrables (forecast_scenarios, migration-finance-budgets.sql). Le
+// run-rate de base est la moyenne des 3 derniers mois COMPLETS (mois en
+// cours exclu, car incomplet) : CA/coûts missions depuis v_rentabilite_missions,
+// + masse salariale chargée actuelle (flat, non historisée par mois) +
+// moyenne des commissions sur 3 mois.
+let _budgetsData={scenarios:[],runRateCA:0,runRateCharges:0,ready:false};
+let _budgetsHorizon=12;
+let _budgetsScenarioSel='central';
+const BUDGET_SCENARIOS_META={
+  prudent:{lb:'Prudent',cls:'bw'},
+  central:{lb:'Central',cls:'bb'},
+  ambitieux:{lb:'Ambitieux',cls:'ba'},
+  stress:{lb:'Stress',cls:'bl'},
+};
+async function loadComptaBudgets(){
+  const cardsEl=document.getElementById('bud-cards');if(!cardsEl)return;
+  try{
+    const now=new Date();
+    const curStart=new Date(now.getFullYear(),now.getMonth(),1);
+    const threeAgo=new Date(now.getFullYear(),now.getMonth()-3,1);
+    const curStartStr=curStart.toISOString().slice(0,10);
+    const threeAgoStr=threeAgo.toISOString().slice(0,10);
+    const [missions,employeeCosts,commissionsData,scenarios]=await Promise.all([
+      sbFetch('v_rentabilite_missions?select=revenu_ht,cout_remunerations,cout_frais,cout_depenses_directes,cout_indirect_alloue,date_prestation&date_prestation=gte.'+threeAgoStr+'&date_prestation=lt.'+curStartStr),
+      sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct').catch(()=>[]),
+      sbFetch('commissions?select=montant_commission,date_calcul&date_calcul=gte.'+threeAgoStr+'&date_calcul=lt.'+curStartStr).catch(()=>[]),
+      sbFetch('forecast_scenarios?select=*'),
+    ]);
+    // Agrégation par mois calendaire ('YYYY-MM'), moyenne sur les 3 mois
+    // attendus (même si une mission/commission manque un mois, on divise
+    // quand même par 3 — c'est bien un run-rate glissant sur 3 mois).
+    const moisAttendus=[1,2,3].map(i=>{const d=new Date(now.getFullYear(),now.getMonth()-i,1);return d.toISOString().slice(0,7);});
+    const byMonthCA={},byMonthCharges={},byMonthCom={};
+    (Array.isArray(missions)?missions:[]).forEach(p=>{
+      const m=(p.date_prestation||'').slice(0,7);
+      byMonthCA[m]=(byMonthCA[m]||0)+(p.revenu_ht||0);
+      byMonthCharges[m]=(byMonthCharges[m]||0)+(p.cout_remunerations||0)+(p.cout_frais||0)+(p.cout_depenses_directes||0)+(p.cout_indirect_alloue||0);
+    });
+    (Array.isArray(commissionsData)?commissionsData:[]).forEach(c=>{
+      const m=(c.date_calcul||'').slice(0,7);
+      byMonthCom[m]=(byMonthCom[m]||0)+(c.montant_commission||0);
+    });
+    const sum3=obj=>moisAttendus.reduce((s,m)=>s+(obj[m]||0),0)/3;
+    const masseSalariale=(Array.isArray(employeeCosts)?employeeCosts:[]).reduce((s,e)=>s+(e.salaire_brut_mensuel||0)*(1+(e.charges_patronales_pct||0)/100),0);
+    const runRateCA=sum3(byMonthCA);
+    const runRateCharges=sum3(byMonthCharges)+masseSalariale+sum3(byMonthCom);
+    _budgetsData={scenarios:Array.isArray(scenarios)?scenarios:[],runRateCA,runRateCharges,ready:true};
+    const fmt=n=>Math.round(n||0).toLocaleString('fr-FR')+' €';
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
+    set('bud-kpi-ca',fmt(runRateCA));
+    set('bud-kpi-ch',fmt(runRateCharges));
+    const resEl=document.getElementById('bud-kpi-res');
+    if(resEl){const res=runRateCA-runRateCharges;resEl.textContent=fmt(res);resEl.style.color=res>=0?'var(--ok)':'var(--er)';}
+    budgetsRenderCards();
+    const pillsEl=document.getElementById('bud-scenario-pills');
+    if(pillsEl){
+      pillsEl.innerHTML=['prudent','central','ambitieux','stress'].map(t=>`<button class="btn bg2 bs" onclick="budgetsSetScenario('${t}')" id="bud-sc-${t}" style="${_budgetsScenarioSel===t?'background:rgba(54,107,255,.15);color:var(--acc)':''}">${BUDGET_SCENARIOS_META[t].lb}</button>`).join('');
+    }
+    budgetsRenderTable();
+  }catch(e){
+    cardsEl.innerHTML='<div style="grid-column:1/-1;padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement (migration-finance-budgets.sql à exécuter).</div>';
+    console.error(e);
+  }
+}
+function budgetsProjection(scenario,horizon){
+  const rows=[];
+  const tauxCA=(scenario?.taux_croissance_ca_pct||0)/100;
+  const tauxCh=(scenario?.taux_evolution_charges_pct||0)/100;
+  for(let n=1;n<=horizon;n++){
+    const ca=_budgetsData.runRateCA*Math.pow(1+tauxCA,n);
+    const ch=_budgetsData.runRateCharges*Math.pow(1+tauxCh,n);
+    rows.push({n,ca,ch,res:ca-ch});
+  }
+  return rows;
+}
+function budgetsRenderCards(){
+  const el=document.getElementById('bud-cards');if(!el)return;
+  const canManage=['admin','compta'].includes(S.role);
+  const fmt=n=>Math.round(n||0).toLocaleString('fr-FR')+' €';
+  el.innerHTML=['prudent','central','ambitieux','stress'].map(t=>{
+    const meta=BUDGET_SCENARIOS_META[t];
+    const sc=_budgetsData.scenarios.find(s=>s.type===t);
+    if(!sc){
+      return `<div class="cd" style="margin-bottom:0"><div style="padding:16px 17px">
+        <span class="bd ${meta.cls}"><span class="bd-d"></span>${meta.lb}</span>
+        <div style="margin-top:10px;font-size:12px;color:var(--t3)">Scénario non configuré (migration-finance-budgets.sql).</div>
+      </div></div>`;
+    }
+    const rows=budgetsProjection(sc,_budgetsHorizon);
+    const last=rows[rows.length-1];
+    return `<div class="cd" style="margin-bottom:0">
+      <div style="padding:16px 17px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span class="bd ${meta.cls}"><span class="bd-d"></span>${meta.lb}</span>
+          ${canManage?`<button style="background:none;border:none;color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;padding:0" onclick="modalEditerScenario('${t}')">Modifier</button>`:''}
+        </div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:2px">Croissance CA / mois</div>
+        <div style="font-size:14px;font-weight:650;color:var(--t1);margin-bottom:8px">${sc.taux_croissance_ca_pct>=0?'+':''}${sc.taux_croissance_ca_pct}%</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:2px">Évolution charges / mois</div>
+        <div style="font-size:14px;font-weight:650;color:var(--t1);margin-bottom:8px">${sc.taux_evolution_charges_pct>=0?'+':''}${sc.taux_evolution_charges_pct}%</div>
+        <div style="border-top:1px solid var(--b1);padding-top:8px;margin-top:4px">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">Résultat projeté (mois ${_budgetsHorizon})</div>
+          <div style="font-size:16px;font-weight:700;color:${last.res>=0?'var(--ok)':'var(--er)'}">${fmt(last.res)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function budgetsSetHorizon(n){
+  _budgetsHorizon=n;
+  [3,6,12,24].forEach(h=>{const b=document.getElementById('bud-h-'+h);if(b){b.style.background=h===n?'rgba(54,107,255,.15)':'';b.style.color=h===n?'var(--acc)':'';}});
+  if(_budgetsData.ready){budgetsRenderCards();budgetsRenderTable();}
+}
+function budgetsSetScenario(t){
+  _budgetsScenarioSel=t;
+  ['prudent','central','ambitieux','stress'].forEach(s=>{const b=document.getElementById('bud-sc-'+s);if(b){b.style.background=s===t?'rgba(54,107,255,.15)':'';b.style.color=s===t?'var(--acc)':'';}});
+  budgetsRenderTable();
+}
+function budgetsRenderTable(){
+  const el=document.getElementById('bud-table-real');if(!el)return;
+  const sc=_budgetsData.scenarios.find(s=>s.type===_budgetsScenarioSel);
+  if(!sc){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Scénario non configuré.</div>';return;}
+  const rows=budgetsProjection(sc,_budgetsHorizon);
+  const fmt=n=>Math.round(n||0).toLocaleString('fr-FR')+' €';
+  const now=new Date();
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Mois</th><th>CA projeté</th><th>Charges projetées</th><th>Résultat</th></tr></thead><tbody>'+
+    rows.map(r=>{
+      const d=new Date(now.getFullYear(),now.getMonth()+r.n,1);
+      const label=d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+      return `<tr><td style="text-transform:capitalize">${label}</td><td class="tm" style="color:var(--ok)">${fmt(r.ca)}</td><td class="tm" style="color:var(--er)">${fmt(r.ch)}</td><td class="tm" style="font-weight:600;color:${r.res>=0?'var(--ok)':'var(--er)'}">${fmt(r.res)}</td></tr>`;
+    }).join('')+'</tbody></table></div>';
+}
+async function modalEditerScenario(type){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const sc=_budgetsData.scenarios.find(s=>s.type===type)||{};
+  const meta=BUDGET_SCENARIOS_META[type];
+  openModal(`<div class="mh"><div class="mt">Modifier le scénario — ${meta.lb}</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Taux mensuels composés appliqués au run-rate actuel pour projeter le CA et les charges sur l'horizon choisi.</div>
+      <div><label style="${L}">Croissance CA (%/mois)</label>
+        <input id="bes-ca" type="number" step="0.1" class="fi" value="${sc.taux_croissance_ca_pct??0}">
+      </div>
+      <div style="margin-top:10px"><label style="${L}">Évolution charges (%/mois)</label>
+        <input id="bes-ch" type="number" step="0.1" class="fi" value="${sc.taux_evolution_charges_pct??0}">
+      </div>
+      <div style="margin-top:10px"><label style="${L}">Notes</label>
+        <textarea id="bes-notes" class="fi" style="min-height:70px;resize:vertical">${esc(sc.notes||'')}</textarea>
+      </div>
+      <div id="bes-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:8px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="sauvegarderScenario('${type}')">Enregistrer</button>
+    </div>`);
+}
+async function sauvegarderScenario(type){
+  const err=document.getElementById('bes-err');
+  const ca=parseFloat(document.getElementById('bes-ca')?.value||'0');
+  const ch=parseFloat(document.getElementById('bes-ch')?.value||'0');
+  const notes=document.getElementById('bes-notes')?.value||'';
+  try{
+    const r=await sbFetch('forecast_scenarios?type=eq.'+type,{method:'PATCH',body:{taux_croissance_ca_pct:ca,taux_evolution_charges_pct:ch,notes,updated_at:new Date().toISOString()}});
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+  }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
+  closeModal();toast('Scénario mis à jour.','ok');loadComptaBudgets();
+}
+
 let _commissionsCache=[];
 async function loadComptaCommissions(){
   const el=document.getElementById('commissions-real');if(!el)return;
@@ -14243,6 +14523,163 @@ async function sauvegarderCommission(){
   closeModal();toast('Commission enregistrée.','ok');loadComptaCommissions();
 }
 
+// ── Export FEC (brouillon) ───────────────────────────────────────────────
+// Structure technique conforme au FEC (18 colonnes, arrêté du 29/07/2013,
+// article A47 A-1 LPF), vérifiée via recherche avant implémentation. Les
+// numéros de compte (pcg_mapping) sont indicatifs — à valider avec un
+// expert-comptable, jamais présentés comme certifiés dans l'UI.
+const FEC_COLUMNS=['JournalCode','JournalLib','EcritureNum','EcritureDate','CompteNum','CompteLib','CompAuxNum','CompAuxLib','PieceRef','PieceDate','EcritureLib','Debit','Credit','EcritureLet','DateLet','ValidDate','Montantdevise','Idevise'];
+let _fecMapping={};
+function fecDate(d){return (d||'').replace(/-/g,'');}
+function fecAmt(n){return n?Math.abs(n).toFixed(2):'';}
+function downloadFEC(rows,filename){
+  const txt=rows.map(r=>r.join('\t')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain;charset=utf-8'}));
+  a.download=filename;a.click();URL.revokeObjectURL(a.href);
+}
+async function loadComptaFec(){
+  const sel=document.getElementById('fec-periode');
+  const histEl=document.getElementById('fec-historique-real');
+  if(!sel)return;
+  try{
+    const [periodes,mapping,historique]=await Promise.all([
+      sbFetch('accounting_periods?select=periode&statut=eq.cloturee&order=periode.desc&limit=24'),
+      sbFetch('pcg_mapping?select=*'),
+      sbFetch('fec_exports?select=*,profiles(prenom,nom)&order=genere_le.desc&limit=20').catch(()=>[]),
+    ]);
+    _fecMapping={};
+    (Array.isArray(mapping)?mapping:[]).forEach(m=>_fecMapping[m.type_operation]=m);
+    const list=Array.isArray(periodes)?periodes:[];
+    sel.innerHTML=list.length?list.map(p=>`<option value="${p.periode}">${new Date(p.periode+'-01').toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}</option>`).join(''):'<option value="">Aucune période clôturée</option>';
+    const btn=document.getElementById('fec-generer-btn');
+    const msg=document.getElementById('fec-msg');
+    if(btn){
+      btn.disabled=!list.length;
+      if(msg)msg.textContent=list.length?'':'Aucune période clôturée pour le moment — clôture un mois depuis l\'écran Clôtures mensuelles avant de pouvoir générer un export.';
+    }
+    if(histEl){
+      histEl.innerHTML=(Array.isArray(historique)&&historique.length)?'<div class="tw"><table><thead><tr><th>Période</th><th>Généré le</th><th>Par</th><th>Lignes</th></tr></thead><tbody>'+
+        historique.map(h=>`<tr>
+          <td class="tm">${esc(h.periode||'—')}</td>
+          <td>${h.genere_le?new Date(h.genere_le).toLocaleString('fr-FR'):'—'}</td>
+          <td class="tp">${esc((h.profiles?.prenom||'')+' '+(h.profiles?.nom||''))}</td>
+          <td class="tm">${h.nb_lignes||'—'}</td>
+        </tr>`).join('')+'</tbody></table></div>':
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucun export généré pour le moment.</div>';
+    }
+  }catch(e){
+    if(histEl)histEl.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement (migration-finance-fec.sql à exécuter).</div>';
+    console.error(e);
+  }
+}
+async function genererExportFEC(){
+  const periode=document.getElementById('fec-periode')?.value;
+  const siren=(document.getElementById('fec-siren')?.value||'').replace(/\D/g,'');
+  const msg=document.getElementById('fec-msg');
+  if(!periode){toast('Choisis une période clôturée.','er');return;}
+  if(!siren||siren.length!==9){if(msg)msg.textContent='Le numéro SIREN (9 chiffres) est requis pour nommer le fichier.';return;}
+  localStorage.setItem('sv_siren',siren);
+  const mStart=periode+'-01';
+  const [y,m]=periode.split('-').map(Number);
+  const mNext=new Date(y,m,1).toISOString().slice(0,10);
+  try{
+    const [factures,expenses,remunerations,employeeCosts,commissionsData]=await Promise.all([
+      sbFetch('factures?select=numero,montant_ht,montant_ttc,date_emission,clients(nom)&statut=eq.payee&date_emission=gte.'+mStart+'&date_emission=lt.'+mNext),
+      sbFetch('expenses?select=libelle,montant_ht,montant_ttc,date_depense,categorie,vendors(nom)&statut=in.(payee,comptabilisee)&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext),
+      sbFetch('prestations_equipe?select=remuneration,prestations(reference,date_prestation),profiles!collaborateur_id(prenom,nom)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct,profiles(prenom,nom)').catch(()=>[]),
+      sbFetch('commissions?select=montant_commission,date_paiement,profiles!commercial_id(prenom,nom)&statut=eq.payee&date_paiement=gte.'+mStart+'&date_paiement=lt.'+mNext).catch(()=>[]),
+    ]);
+    const rows=[FEC_COLUMNS];
+    let num=1;
+    const mapCompte=type=>_fecMapping[type]||{compte_numero:'???',compte_libelle:'Compte non mappé — '+type};
+    const ecritureDate=fecDate(mStart);
+    const ligne=(journalCode,journalLib,compteType,pieceRef,pieceDate,lib,debit,credit)=>{
+      const c=mapCompte(compteType);
+      rows.push([journalCode,journalLib,String(num),ecritureDate,c.compte_numero,c.compte_libelle,'','',pieceRef||'',fecDate(pieceDate||mStart),lib,fecAmt(debit),fecAmt(credit),'','',ecritureDate,'','']);
+    };
+    (Array.isArray(factures)?factures:[]).forEach(f=>{
+      const tva=(f.montant_ttc||0)-(f.montant_ht||0);
+      const lib='Vente '+(f.clients?.nom||'');
+      ligne('VE','Ventes','client_tiers',f.numero,f.date_emission,lib,f.montant_ttc,0);
+      ligne('VE','Ventes','vente_prestation',f.numero,f.date_emission,lib,0,f.montant_ht);
+      if(tva>0.001)ligne('VE','Ventes','tva_collectee',f.numero,f.date_emission,lib,0,tva);
+      num++;
+    });
+    (Array.isArray(expenses)?expenses:[]).forEach(e=>{
+      const tva=(e.montant_ttc||0)-(e.montant_ht||0);
+      const catType='depense_'+(e.categorie||'autre');
+      const lib=(e.libelle||'')+(e.vendors?.nom?' — '+e.vendors.nom:'');
+      ligne('AC','Achats',catType,'',e.date_depense,lib,e.montant_ht,0);
+      if(tva>0.001)ligne('AC','Achats','tva_deductible','',e.date_depense,lib,tva,0);
+      ligne('AC','Achats','fournisseur_tiers','',e.date_depense,lib,0,e.montant_ttc);
+      num++;
+    });
+    (Array.isArray(remunerations)?remunerations:[]).forEach(r=>{
+      const lib='Rémunération '+((r.profiles?.prenom||'')+' '+(r.profiles?.nom||''))+' — '+(r.prestations?.reference||'');
+      const d=r.prestations?.date_prestation||mStart;
+      ligne('HO','Honoraires','remuneration_freelance',r.prestations?.reference,d,lib,r.remuneration,0);
+      ligne('HO','Honoraires','fournisseur_tiers',r.prestations?.reference,d,lib,0,r.remuneration);
+      num++;
+    });
+    (Array.isArray(employeeCosts)?employeeCosts:[]).forEach(ec=>{
+      const brut=ec.salaire_brut_mensuel||0;
+      const charges=brut*(ec.charges_patronales_pct||0)/100;
+      const lib='Paie '+((ec.profiles?.prenom||'')+' '+(ec.profiles?.nom||''))+' — '+periode;
+      ligne('PA','Paie','salaire_net','',mStart,lib,brut,0);
+      if(charges>0.001)ligne('PA','Paie','charges_patronales','',mStart,lib,charges,0);
+      ligne('PA','Paie','personnel_du','',mStart,lib,0,brut+charges);
+      num++;
+    });
+    (Array.isArray(commissionsData)?commissionsData:[]).forEach(c=>{
+      const lib='Commission '+((c.profiles?.prenom||'')+' '+(c.profiles?.nom||''));
+      ligne('HO','Honoraires','commission_commerciale','',c.date_paiement,lib,c.montant_commission,0);
+      ligne('HO','Honoraires','fournisseur_tiers','',c.date_paiement,lib,0,c.montant_commission);
+      num++;
+    });
+    if(rows.length===1){toast('Aucune écriture trouvée pour cette période.','er');return;}
+    const clotureDate=new Date(y,m,0); // dernier jour du mois
+    const filename=siren+'FEC'+clotureDate.toISOString().slice(0,10).replace(/-/g,'')+'.txt';
+    downloadFEC(rows,filename);
+    await sbFetch('fec_exports',{method:'POST',body:{periode,genere_par:localStorage.getItem('sv_uid')||null,nb_lignes:rows.length-1}});
+    toast('Export FEC généré ('+(rows.length-1)+' lignes) — à valider avec ton expert-comptable.','ok');
+    loadComptaFec();
+  }catch(e){toast('Erreur : '+(e.message||'génération impossible.'),'er');console.error(e);}
+}
+async function modalMappingPCG(){
+  let rows=[];
+  try{rows=await sbFetch('pcg_mapping?select=*&order=type_operation.asc')||[];}catch(e){}
+  openModal(`<div class="mh"><div class="mt">Mapping des comptes (indicatif)</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Ces numéros de compte servent uniquement à préremplir le brouillon FEC — fais-les valider par ton expert-comptable.</div>
+      <div style="max-height:360px;overflow-y:auto">
+        ${rows.map(r=>`<div style="display:grid;grid-template-columns:1.4fr 0.5fr 1.3fr;gap:8px;margin-bottom:6px;align-items:center">
+          <span style="font-size:11.5px;color:var(--t2)">${esc(r.type_operation)}</span>
+          <input class="fi pcg-num" data-id="${r.id}" value="${esc(r.compte_numero)}" style="height:32px;font-size:12px">
+          <input class="fi pcg-lib" data-id="${r.id}" value="${esc(r.compte_libelle)}" style="height:32px;font-size:12px">
+        </div>`).join('')}
+      </div>
+      <div id="pcg-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:8px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="sauvegarderMappingPCG()">Enregistrer</button>
+    </div>`);
+}
+async function sauvegarderMappingPCG(){
+  const err=document.getElementById('pcg-err');
+  const nums=document.querySelectorAll('.pcg-num');
+  try{
+    for(const inp of nums){
+      const id=inp.dataset.id;
+      const lib=document.querySelector(`.pcg-lib[data-id="${id}"]`)?.value||'';
+      await sbFetch('pcg_mapping?id=eq.'+id,{method:'PATCH',body:{compte_numero:inp.value.trim(),compte_libelle:lib.trim()}});
+    }
+  }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
+  closeModal();toast('Mapping mis à jour.','ok');loadComptaFec();
+}
+
 async function loadComptaClotures(){
   const el=document.getElementById('compta-clotures-real');if(!el)return;
   const now=new Date();
@@ -14311,6 +14748,97 @@ async function reouvrirPeriode(periode){
   const r=await sbFetch('accounting_periods?periode=eq.'+periode,{method:'PATCH',body:{statut:'ouverte',cloturee_par:null,cloturee_le:null}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Réouverture impossible.'),'er');return;}
   toast('Période rouverte.','ok');loadComptaClotures();
+}
+
+// ── TVA & provisions (estimation de pilotage interne — migration-finance-tva.sql) ──
+let _tvaCalc={periode:null,collectee:0,deductible:0,nette:0,sal:0};
+let _tvaReservesCache=[];
+async function loadComptaTva(){
+  const selEl=document.getElementById('tva-mois-sel');
+  if(!selEl)return;
+  if(!selEl.options.length){
+    const now=new Date();
+    for(let i=0;i<=5;i++){
+      const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      let label=d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+      label=label.charAt(0).toUpperCase()+label.slice(1);
+      const opt=document.createElement('option');
+      opt.value=key;opt.textContent=label;
+      selEl.appendChild(opt);
+    }
+  }
+  const moisKey=selEl.value;
+  const [y,m]=moisKey.split('-').map(Number);
+  const mStart=moisKey+'-01';
+  const mNext=new Date(y,m,1).toISOString().slice(0,10);
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+  try{
+    const [facturesData,expensesData,employeeCosts,reserves]=await Promise.all([
+      sbFetch('factures?select=montant_ht,montant_ttc,statut,date_emission&statut=eq.payee&date_emission=gte.'+mStart+'&date_emission=lt.'+mNext+'&limit=1000'),
+      sbFetch('expenses?select=montant_ht,montant_ttc,statut,date_depense&statut=in.(payee,comptabilisee)&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext+'&limit=1000'),
+      sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct').catch(()=>[]),
+      sbFetch('tax_reserves?select=*&order=periode.desc&limit=24').catch(()=>[]),
+    ]);
+    const collectee=(Array.isArray(facturesData)?facturesData:[]).reduce((s,f)=>s+((f.montant_ttc||0)-(f.montant_ht||0)),0);
+    const deductible=(Array.isArray(expensesData)?expensesData:[]).reduce((s,e)=>s+((e.montant_ttc||0)-(e.montant_ht||0)),0);
+    const nette=collectee-deductible;
+    const masseSalariale=(Array.isArray(employeeCosts)?employeeCosts:[]).reduce((s,e)=>s+(e.salaire_brut_mensuel||0)*(1+(e.charges_patronales_pct||0)/100),0);
+    _tvaCalc={periode:moisKey,collectee,deductible,nette,sal:masseSalariale};
+    set('tva-kpi-collectee',fmt(collectee));
+    set('tva-kpi-deductible',fmt(deductible));
+    const netteEl=document.getElementById('tva-kpi-nette');
+    if(netteEl){netteEl.textContent=fmt(nette);netteEl.style.color=nette>=0?'var(--t1)':'var(--er)';}
+    set('tva-kpi-sal',fmt(masseSalariale));
+    _tvaReservesCache=Array.isArray(reserves)?reserves:[];
+    renderTvaHistorique();
+  }catch(e){
+    console.error(e);
+    const el=document.getElementById('tva-historique-real');
+    if(el)el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement (migration-finance-tva.sql à exécuter).</div>';
+  }
+}
+function renderTvaHistorique(){
+  const el=document.getElementById('tva-historique-real');if(!el)return;
+  const canManage=['admin','compta'].includes(S.role);
+  const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+  const badgeCls={provisionnee:'bw',declaree:'bb',payee:'ba'};
+  const stLabel={provisionnee:'Provisionnée',declaree:'Déclarée',payee:'Payée'};
+  const nextStatut={provisionnee:'declaree',declaree:'payee'};
+  const nextLabel={provisionnee:'Marquer déclarée',declaree:'Marquer payée'};
+  el.innerHTML=_tvaReservesCache.length?'<div class="tw"><table><thead><tr><th>Période</th><th>TVA collectée</th><th>TVA déductible</th><th>TVA nette</th><th>Statut</th><th>Actions</th></tr></thead><tbody>'+
+    _tvaReservesCache.map(r=>{
+      const label=new Date(r.periode+'-01').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+      return `<tr>
+        <td style="text-transform:capitalize">${esc(label)}</td>
+        <td class="tm">${fmt(r.tva_collectee)}</td>
+        <td class="tm">${fmt(r.tva_deductible)}</td>
+        <td class="tm" style="font-weight:600">${fmt(r.tva_nette)}</td>
+        <td><span class="bd ${badgeCls[r.statut]||'bw'}"><span class="bd-d"></span>${esc(stLabel[r.statut]||r.statut)}</span></td>
+        <td>${canManage&&nextStatut[r.statut]?`<button class="btn bg2 bs" onclick="changerStatutTva('${r.id}','${nextStatut[r.statut]}')">${nextLabel[r.statut]}</button>`:''}</td>
+      </tr>`;
+    }).join('')+'</tbody></table></div>':
+    '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune provision enregistrée.</div>';
+}
+async function provisionnerTva(){
+  if(!_tvaCalc.periode){toast('Sélectionnez un mois.','er');return;}
+  const body={
+    periode:_tvaCalc.periode,
+    tva_collectee:_tvaCalc.collectee,
+    tva_deductible:_tvaCalc.deductible,
+    tva_nette:_tvaCalc.nette,
+  };
+  const r=await sbFetch('tax_reserves?on_conflict=periode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Provisionnement impossible.'),'er');return;}
+  toast('Provision enregistrée pour ce mois.','ok');
+  loadComptaTva();
+}
+async function changerStatutTva(id,statut){
+  const r=await sbFetch('tax_reserves?id=eq.'+id,{method:'PATCH',body:{statut}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+  toast('Statut mis à jour.','ok');
+  loadComptaTva();
 }
 
 async function exportComptaMois(moisKey){
@@ -16430,18 +16958,19 @@ VIEWS['admin.comptesportail']=tplComptesPortail;
 // écrans compta tels quels (lecture seule imposée par RLS, pas de duplication
 // de template).
 ['expert_comptable','auditeur'].forEach(role=>{
-  ['dash','resultat','rentabilite','factures','avoirs','depenses','frais','rem','clotures'].forEach(v=>{
+  ['dash','resultat','rentabilite','budgets','factures','avoirs','depenses','frais','rem','clotures','tva'].forEach(v=>{
     if(VIEWS['compta.'+v]) VIEWS[role+'.'+v]=VIEWS['compta.'+v];
   });
 });
 VIEWS['expert_comptable.commissions']=VIEWS['compta.commissions'];
 VIEWS['expert_comptable.documents']=()=>_documentsView('expert_comptable');
 VIEWS['expert_comptable.export']=VIEWS['compta.export'];
+VIEWS['expert_comptable.fec']=VIEWS['compta.fec'];
 // Admin voyait uniquement un résumé ("Finances") sans accès aux écrans
 // détaillés compta (rentabilité, dépenses, clôtures…) — Fouka (toujours
 // connecté en admin) doit voir tout ça directement, pas seulement via un
 // compte compta séparé.
-['resultat','rentabilite','commissions','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export'].forEach(v=>{
+['resultat','rentabilite','commissions','budgets','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export','tva','fec'].forEach(v=>{
   if(VIEWS['compta.'+v]) VIEWS['admin.'+v]=VIEWS['compta.'+v];
 });
 
