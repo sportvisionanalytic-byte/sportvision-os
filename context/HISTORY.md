@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-08-07
+
+### Retrait du Portail exécuté (pas juste décidé)
+
+- Les 3 priorités actées le 2026-08-06 sont closes : backlog de sécurité Connect corrigé, recette fonctionnelle complète de l'espace Projet faite, icônes PWA et edge function `org-invite` déployées et vérifiées
+- Rédaction (par Claude, non relue par un juriste à ce jour) des 6 textes de conditions particulières manquants dans la Banque de contrats (Coach/Académie, Événement, Joueur, Sponsoring, Contrat pilote, Autre), sur le même modèle que les 3 textes déjà fournis par le fondateur
+- Bascule effective des e-mails automatiques (bienvenue, reçu de paiement) et de l'app Club+ : ce qui pointait encore vers le Portail pointe maintenant vers Connect
+- Connect complété avec les deux capacités qui lui manquaient encore par rapport au Portail : mot de passe oublié, suppression de compte
+- Suppression définitive du dossier `SportVision-Portail` (site) et `SportVision-Portail-App` (app mobile iOS/Android) du repo — aucun client n'a jamais utilisé ces deux produits, tout était en phase de test. Les migrations SQL historiques `migration-portail-v*.sql` sont conservées : elles décrivent le schéma DB (clients, devis...) toujours utilisé par Connect
+- Reste un point cosmétique non bloquant : quelques commentaires dans la vitrine et les `netlify.toml` mentionnent encore "le Portail" pour expliquer une fonction technique partagée (`create-guest-request`) — aucun lien cassé, juste du texte à rafraîchir un jour
+
+---
+
 ## 2026-08-06
 
 ### Décision stratégique : retrait du Portail au profit de SportVision Connect
