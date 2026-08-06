@@ -162,11 +162,13 @@
           sbFetch('club_sponsors?sponsor_organization_id=eq.' + orgId + '&select=*'),
           sbFetch('requests?organization_id=eq.' + orgId + '&select=*&order=created_at.desc&limit=5')
         ]);
+        if (!spRes.ok) toast('Erreur de chargement.');
         sponsorships = spRes.ok ? (spRes.data || []) : [];
         pendingCommitments = sponsorships.reduce(function (acc, sp) {
           const commitments = Array.isArray(sp.commitments) ? sp.commitments : [];
           return acc + commitments.filter(function (c) { return c.status !== 'realise'; }).length;
         }, 0);
+        if (!reqRes.ok) toast('Erreur de chargement.');
         recentRequests = reqRes.ok ? (reqRes.data || []) : [];
         openRequestsCount = recentRequests.filter(function (r) { return r.status !== 'terminee' && r.status !== 'refusee'; }).length;
         loaded = true;
@@ -239,6 +241,7 @@
 
       async function load() {
         const res = await sbFetch('club_sponsors?sponsor_organization_id=eq.' + orgId + '&select=*&order=name.asc');
+        if (!res.ok) toast('Erreur de chargement.');
         sponsorships = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -326,6 +329,7 @@
 
       async function load() {
         const res = await sbFetch('club_creations?sponsor_organization_id=eq.' + orgId + '&select=*&order=created_at.desc');
+        if (!res.ok) toast('Erreur de chargement.');
         creations = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -402,6 +406,7 @@
 
       async function load() {
         const res = await sbFetch('requests?organization_id=eq.' + orgId + '&select=*&order=created_at.desc');
+        if (!res.ok) toast('Erreur de chargement.');
         items = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -609,7 +614,9 @@
           sbFetch('memberships?organization_id=eq.' + orgId + '&select=*&order=created_at.asc'),
           sbFetch('organization_role_catalog?organization_type=eq.sponsor&select=role_key,label,is_admin,is_default')
         ]);
+        if (!mRes.ok) toast('Erreur de chargement.');
         members = mRes.ok ? (mRes.data || []) : [];
+        if (!rcRes.ok) toast('Erreur de chargement.');
         roleCatalog = rcRes.ok ? (rcRes.data || []) : [];
         loaded = true;
       }

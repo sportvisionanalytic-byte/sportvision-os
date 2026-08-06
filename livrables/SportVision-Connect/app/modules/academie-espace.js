@@ -175,8 +175,10 @@
           sbFetch('academie_groups?organization_id=eq.' + orgId + '&select=*&order=nom.asc'),
           sbFetch('academie_participants?organization_id=eq.' + orgId + '&select=id,group_id')
         ]);
+        if (!gRes.ok) toast('Erreur de chargement.');
         groups = gRes.ok ? (gRes.data || []) : [];
         participantCounts = {};
+        if (!pRes.ok) toast('Erreur de chargement.');
         (pRes.ok ? (pRes.data || []) : []).forEach(function (p) {
           if (!p.group_id) return;
           participantCounts[p.group_id] = (participantCounts[p.group_id] || 0) + 1;
@@ -300,7 +302,9 @@
           sbFetch('academie_groups?organization_id=eq.' + orgId + '&select=id,nom&order=nom.asc'),
           sbFetch('academie_participants?organization_id=eq.' + orgId + '&select=*&order=nom.asc')
         ]);
+        if (!gRes.ok) toast('Erreur de chargement.');
         groups = gRes.ok ? (gRes.data || []) : [];
+        if (!pRes.ok) toast('Erreur de chargement.');
         participants = pRes.ok ? (pRes.data || []) : [];
         loaded = true;
       }
@@ -460,6 +464,7 @@
 
       async function load() {
         const res = await sbFetch('calendar_events?organization_id=eq.' + orgId + '&select=*&order=event_date.asc');
+        if (!res.ok) toast('Erreur de chargement.');
         events = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -552,6 +557,7 @@
 
       async function load() {
         const res = await sbFetch('requests?organization_id=eq.' + orgId + '&select=*&order=created_at.desc');
+        if (!res.ok) toast('Erreur de chargement.');
         items = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -780,7 +786,9 @@
             ? sbFetch('organization_role_catalog?organization_type=eq.academie&select=role_key,label,is_admin,is_default')
             : Promise.resolve({ ok: true, data: [] })
         ]);
+        if (!mRes.ok) toast('Erreur de chargement.');
         members = mRes.ok ? (mRes.data || []) : [];
+        if (!rcRes.ok) toast('Erreur de chargement.');
         roleCatalog = rcRes.ok ? (rcRes.data || []) : [];
         loaded = true;
       }

@@ -156,6 +156,7 @@
         ]);
         playersCount = playersRes.ok ? (playersRes.data || []).length : 0;
         nextEvent = eventsRes.ok && eventsRes.data && eventsRes.data[0] ? eventsRes.data[0] : null;
+        if (!requestsRes.ok) toast('Erreur de chargement.');
         recentRequests = requestsRes.ok ? (requestsRes.data || []) : [];
         openRequestsCount = recentRequests.filter(function (r) { return r.status !== 'terminee' && r.status !== 'refusee'; }).length;
         loaded = true;
@@ -225,6 +226,7 @@
 
       async function load() {
         const res = await sbFetch('coach_players?organization_id=eq.' + orgId + '&select=*&order=nom.asc');
+        if (!res.ok) toast('Erreur de chargement.');
         players = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -353,6 +355,7 @@
 
       async function load() {
         const res = await sbFetch('calendar_events?organization_id=eq.' + orgId + '&select=*&order=event_date.asc');
+        if (!res.ok) toast('Erreur de chargement.');
         events = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -438,6 +441,7 @@
 
       async function load() {
         const res = await sbFetch('requests?organization_id=eq.' + orgId + '&select=*&order=created_at.desc');
+        if (!res.ok) toast('Erreur de chargement.');
         items = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -652,6 +656,7 @@
 
       async function load() {
         const res = await sbFetch('memberships?organization_id=eq.' + orgId + '&select=*&order=created_at.asc');
+        if (!res.ok) toast('Erreur de chargement.');
         members = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -659,6 +664,7 @@
       async function loadRoleCatalog() {
         if (!canInvite) return; // seul un admin voit/utilise ce catalogue ici
         const res = await sbFetch('organization_role_catalog?organization_type=eq.coach&select=role_key,label,is_default');
+        if (!res.ok) toast('Erreur de chargement.');
         roleCatalog = res.ok ? (res.data || []) : [];
       }
 

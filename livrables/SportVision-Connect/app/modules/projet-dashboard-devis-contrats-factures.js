@@ -162,7 +162,11 @@
   async function goToPayment(body, btn, resetLabel) {
     if (btn) { btn.disabled = true; btn.textContent = 'Redirection…'; }
     try {
-      var r = await sbFunction('create-checkout-session', body);
+      // "caller" indique à create-checkout-session de rediriger vers Connect
+      // après paiement plutôt que vers le Portail (comportement par défaut de
+      // la fonction) — sans ça, un client payant depuis Connect atterrissait
+      // sur le Portail après Stripe. Corrigé le 2026-08-06.
+      var r = await sbFunction('create-checkout-session', Object.assign({ caller: 'connect' }, body));
       var url = r && r.data && r.data.url;
       if (!r.ok || !isSafeHttpUrl(url)) {
         toast((r && r.data && r.data.error) || 'Paiement indisponible pour le moment.');
@@ -191,6 +195,26 @@
       var devisR = await sbFetch('client_devis?client_id=eq.' + orgId + '&order=created_at.desc');
       var facturesR = await sbFetch('client_factures?client_id=eq.' + orgId + '&order=created_at.desc');
       var contratsR = await sbFetch('client_contrats?client_id=eq.' + orgId + '&order=created_at.desc');
+
+      // Avant le 2026-08-06 : si les 3 requêtes échouaient (offline, 500...),
+      // on tombait silencieusement sur des tableaux vides et l'écran affichait
+      // "Rien en attente, tout est à jour." — indiscernable d'un dossier
+      // réellement à jour. Ici, c'est le tableau de bord financier du client :
+      // ne jamais laisser croire qu'il n'y a aucune facture/devis en attente
+      // simplement parce que le réseau a fauté.
+      if (!devisR.ok && !facturesR.ok && !contratsR.ok) {
+        container.innerHTML = '<div class="empty-state">Impossible de charger vos informations pour le moment.'
+          + '<div style="margin-top:10px"><button class="btn btn-ghost" data-action="retry-dashboard">Réessayer</button></div></div>';
+        container.onclick = function (e) {
+          if (e.target.closest('[data-action="retry-dashboard"]')) {
+            window.ProjetModules.dashboard.render(container, orgId, ctx);
+          }
+        };
+        return;
+      }
+      if (!devisR.ok || !facturesR.ok || !contratsR.ok) {
+        toast('Certaines informations n\'ont pas pu être chargées — les chiffres ci-dessous peuvent être incomplets.');
+      }
 
       var devis = devisR.ok ? (devisR.data || []) : [];
       var factures = facturesR.ok ? (facturesR.data || []) : [];
@@ -276,9 +300,11 @@
     render: async function (container, orgId, ctx) {
       ensureStyles();
       var list = [];
+      var loadFailed = false;
 
       async function load() {
         var r = await sbFetch('client_devis?client_id=eq.' + orgId + '&order=created_at.desc');
+        loadFailed = !r.ok;
         list = r.ok ? (r.data || []) : [];
       }
 
@@ -307,7 +333,9 @@
 
       function paint() {
         container.innerHTML = '<div class="pj-wrap">'
-          + (list.length ? '<div class="pj-list">' + list.map(row).join('') + '</div>' : '<div class="empty-state">Aucun devis pour le moment.</div>')
+          + (loadFailed
+            ? '<div class="empty-state">Impossible de charger vos devis pour le moment.<div style="margin-top:10px"><button class="btn btn-ghost" data-action="retry">Réessayer</button></div></div>'
+            : (list.length ? '<div class="pj-list">' + list.map(row).join('') + '</div>' : '<div class="empty-state">Aucun devis pour le moment.</div>'))
           + '</div>';
       }
 
@@ -316,7 +344,10 @@
         if (!btn) return;
         var action = btn.getAttribute('data-action');
         var id = btn.getAttribute('data-id');
-        if (action === 'accept' || action === 'refuse') {
+        if (action === 'retry') {
+          await load();
+          paint();
+        } else if (action === 'accept' || action === 'refuse') {
           btn.disabled = true;
           var r = await sbRpc('client_decide_devis', { p_devis_id: id, p_decision: action === 'accept' ? 'accepté' : 'refusé' });
           if (!r.ok) { toast('Action impossible sur ce devis.'); btn.disabled = false; return; }
@@ -344,7 +375,15 @@
     render: async function (container, orgId, ctx) {
       ensureStyles();
       var r = await sbFetch('client_contrats?client_id=eq.' + orgId + '&order=created_at.desc');
-      var list = r.ok ? (r.data || []) : [];
+      if (!r.ok) {
+        container.innerHTML = '<div class="empty-state">Impossible de charger vos contrats pour le moment.'
+          + '<div style="margin-top:10px"><button class="btn btn-ghost" data-action="retry-contrats">Réessayer</button></div></div>';
+        container.onclick = function (e) {
+          if (e.target.closest('[data-action="retry-contrats"]')) window.ProjetModules.contrats.render(container, orgId, ctx);
+        };
+        return;
+      }
+      var list = r.data || [];
 
       function row(c) {
         var sig = c.signature_statut && c.signature_statut !== 'non_demandee' ? c.signature_statut : null;
@@ -382,9 +421,11 @@
     render: async function (container, orgId, ctx) {
       ensureStyles();
       var list = [];
+      var loadFailed = false;
 
       async function load() {
         var r = await sbFetch('client_factures?client_id=eq.' + orgId + '&order=created_at.desc');
+        loadFailed = !r.ok;
         list = r.ok ? (r.data || []) : [];
       }
 
@@ -408,11 +449,15 @@
 
       function paint() {
         container.innerHTML = '<div class="pj-wrap">'
-          + (list.length ? '<div class="pj-list">' + list.map(row).join('') + '</div>' : '<div class="empty-state">Aucune facture pour le moment.</div>')
+          + (loadFailed
+            ? '<div class="empty-state">Impossible de charger vos factures pour le moment.<div style="margin-top:10px"><button class="btn btn-ghost" data-action="retry">Réessayer</button></div></div>'
+            : (list.length ? '<div class="pj-list">' + list.map(row).join('') + '</div>' : '<div class="empty-state">Aucune facture pour le moment.</div>'))
           + '</div>';
       }
 
       container.onclick = async function (e) {
+        var retryBtn = e.target.closest('[data-action="retry"]');
+        if (retryBtn) { await load(); paint(); return; }
         var btn = e.target.closest('[data-action="pay"]');
         if (!btn) return;
         var body = { prestation_id: btn.getAttribute('data-prestation'), type_paiement: btn.getAttribute('data-type') };

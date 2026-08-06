@@ -127,23 +127,13 @@
   function money(n) { return (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
   function localUid(prefix) { return prefix + Math.random().toString(36).slice(2, 10); }
 
-  /* ── Appel Edge Function (le shell ne fournit pas sbFunction) ── */
-  async function sbFunctionCall(name, body) {
-    const tok = localStorage.getItem('svc_tok') || SB_KEY;
-    try {
-      const res = await fetch(SB_URL + '/functions/v1/' + name, {
-        method: 'POST',
-        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body || {})
-      });
-      const txt = await res.text();
-      let data = null;
-      if (txt) { try { data = JSON.parse(txt); } catch (e) { data = null; } }
-      return { ok: res.ok, status: res.status, data };
-    } catch (e) {
-      return { ok: false, status: 0, data: { error: e.message } };
-    }
-  }
+  // sbFunctionCall a été retiré : c'était une redéfinition locale identique
+  // à sbFunction du shell (index.html), avec un commentaire erroné affirmant
+  // que le shell ne la fournissait pas. Risque de divergence si l'une des
+  // deux copies était corrigée sans l'autre (ex: le fix du refresh token du
+  // 2026-08-06, qui n'aurait profité qu'au shell). Tous les appels ci-dessous
+  // utilisent désormais sbFunction directement.
+  const sbFunctionCall = sbFunction;
 
   window.ClubModules = window.ClubModules || {};
 
@@ -181,6 +171,7 @@
 
       async function load() {
         const res = await sbFetch('club_requests?club_id=eq.' + orgId + '&select=*&order=created_at.desc');
+        if (!res.ok) toast('Erreur de chargement.');
         items = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -402,7 +393,9 @@
           sbFetch('club_media?club_id=eq.' + orgId + '&select=*&order=created_at.desc'),
           sbFetch('club_creations?club_id=eq.' + orgId + '&select=*&order=created_at.desc')
         ]);
+        if (!mRes.ok) toast('Erreur de chargement.');
         media = mRes.ok ? (mRes.data || []) : [];
+        if (!cRes.ok) toast('Erreur de chargement.');
         creations = cRes.ok ? (cRes.data || []) : [];
         loaded = true;
       }
@@ -411,6 +404,7 @@
         const key = mediaRefType + ':' + id;
         if (accessRules[key] !== undefined) return;
         const res = await sbFetch('media_access_rules?media_ref_type=eq.' + mediaRefType + '&media_ref_id=eq.' + id + '&select=*');
+        if (!res.ok) toast('Erreur de chargement.');
         accessRules[key] = res.ok ? (res.data || []) : [];
         paint();
       }
@@ -666,6 +660,7 @@
 
       async function load() {
         const res = await sbFetch('club_sponsors?club_id=eq.' + orgId + '&select=*&order=created_at.desc');
+        if (!res.ok) toast('Erreur de chargement.');
         sponsors = res.ok ? (res.data || []) : [];
         loaded = true;
       }
@@ -832,6 +827,7 @@
 
       async function load() {
         const res = await sbFetch('club_members?club_id=eq.' + orgId + '&select=id,role,prenom,nom,telephone,teams,status&order=created_at.asc');
+        if (!res.ok) toast('Erreur de chargement.');
         members = res.ok ? (res.data || []) : [];
         loaded = true;
       }
