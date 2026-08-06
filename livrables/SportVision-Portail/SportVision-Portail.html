@@ -1995,9 +1995,47 @@ async function renderDemandeDetail(id){
     +'<div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">'
     +'<button class="btn btn-o" onclick="go(\'messagerie\')">Contacter SportVision</button>'
     + (cancelable ? '<button class="btn btn-d" onclick="cancelDemande(\''+d.id+'\')">Annuler la demande</button>' : '')
+    +'<button class="btn btn-o" onclick="showRetractationForm(\''+d.id+'\')">Demander ma rétractation</button>'
     +'</div>'
+    +'<div id="retractation-zone" style="margin-top:20px"></div>'
     +'<div id="avis-zone" style="margin-top:20px"></div>';
   if (d.statut === 'livrée') await renderAvisZone(d.id);
+}
+
+// ── RÉTRACTATION ──
+// Mécanisme de collecte + traitement manuel humain uniquement : le Portail
+// ne qualifie jamais lui-même si le client a droit à la rétractation (sujet
+// légal, cf. migration-portail-v12-retractation.sql). Le formulaire se
+// contente de transmettre la demande au staff, qui l'accepte ou la refuse
+// depuis l'OS — jamais une décision ou une confirmation automatique ici.
+function showRetractationForm(prestationId){
+  const zone = document.getElementById('retractation-zone');
+  if (!zone) return;
+  zone.innerHTML = '<div class="card">'
+    +'<span class="faint" style="font-size:12px;font-weight:700">DEMANDE DE RÉTRACTATION</span>'
+    +'<label style="margin-top:10px">Motif (facultatif)<textarea id="retract-motif" rows="3" placeholder="Précisez si vous le souhaitez…"></textarea></label>'
+    +'<div id="retract-err" class="err-msg"></div>'
+    +'<button class="btn btn-p" style="margin-top:12px" onclick="submitRetractation(\''+prestationId+'\')">Envoyer ma demande</button>'
+    +'<p class="faint" style="font-size:12px;margin-top:10px">Votre demande sera examinée par notre équipe. Nous vous répondrons sous 48 heures.</p>'
+    +'</div>';
+}
+
+async function submitRetractation(prestationId){
+  const errEl = document.getElementById('retract-err');
+  errEl.textContent = '';
+  const clientId = localStorage.getItem('svp_client_id');
+  const motif = document.getElementById('retract-motif').value.trim();
+  const btn = document.querySelector('#retractation-zone .btn-p');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  const r = await sbFetch('retractation_demandes', {method:'POST', body:{
+    client_id: clientId, prestation_id: prestationId || null, devis_id: null,
+    motif: motif || null,
+  }});
+  btn.disabled = false; btn.textContent = 'Envoyer ma demande';
+  if (!r.ok){ errEl.textContent = 'Impossible d\'envoyer votre demande pour le moment.'; return; }
+  toast('Votre demande de rétractation a été envoyée.');
+  document.getElementById('retractation-zone').innerHTML = '<div class="card"><span class="faint" style="font-size:12px;font-weight:700">DEMANDE DE RÉTRACTATION</span>'
+    +'<p style="margin-top:8px;font-size:13.5px">Votre demande a été transmise à notre équipe. Nous vous répondrons sous 48 heures.</p></div>';
 }
 
 let avisNote = 0;
