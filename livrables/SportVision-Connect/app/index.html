@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SportVision Connect</title>
+<meta name="robots" content="noindex">
+<link rel="manifest" href="/manifest.json">
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+<style>
+  :root{
+    --bg:#f4f6fa; --card:#ffffff; --navy:#0b1330; --navy-2:#131c42;
+    --text:#101425; --muted:#5b6478; --border:#e4e7ef;
+    --accent:#2f6bff; --accent-2:#06c2c2; --danger:#e14b4b; --ok:#1fa971;
+    --radius:14px; --shadow:0 8px 24px rgba(15,23,60,.08);
+    font-family:-apple-system,BlinkMacSystemFont,'Inter',Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);min-height:100vh}
+  .screen{display:none;min-height:100vh}
+  .screen.on{display:flex}
+  .center{align-items:center;justify-content:center;padding:24px}
+
+  /* ── Splash ── */
+  #scr-splash .box{display:flex;flex-direction:column;align-items:center;gap:14px;color:#fff}
+  #scr-splash{background:linear-gradient(160deg,var(--navy),var(--navy-2))}
+  .spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── Connexion ── */
+  #scr-login{background:linear-gradient(160deg,var(--navy),var(--navy-2))}
+  .auth-card{width:100%;max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 28px}
+  .auth-card h1{font-size:20px;margin:0 0 4px}
+  .auth-card p.sub{color:var(--muted);font-size:14px;margin:0 0 24px}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
+  input[type=email],input[type=password]{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px}
+  input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:10px;
+    padding:12px 18px;font-size:15px;font-weight:600;cursor:pointer;width:100%;margin-top:18px}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:disabled{opacity:.6;cursor:default}
+  .btn-ghost{background:transparent;color:var(--accent);width:auto;margin-top:0;padding:8px 4px}
+  .err{color:var(--danger);font-size:13px;min-height:18px;margin-top:10px}
+
+  /* ── Coque commune (post-login) ── */
+  #app-shell{flex-direction:column;width:100%}
+  header.topbar{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:12px 20px}
+  header.topbar .brand{font-weight:700;letter-spacing:.2px}
+  header.topbar .brand span{color:var(--accent-2)}
+  header.topbar .actions{display:flex;gap:10px;align-items:center}
+  header.topbar button{background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer}
+  header.topbar button:hover{background:rgba(255,255,255,.18)}
+  main{padding:28px 20px;max-width:920px;margin:0 auto;width:100%}
+
+  /* ── Sélecteur d'espace ── */
+  .org-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:18px}
+  .org-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;text-align:left;box-shadow:var(--shadow)}
+  .org-card:hover{border-color:var(--accent)}
+  .org-card .type{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+    color:var(--accent);background:#eaf0ff;border-radius:6px;padding:3px 8px;margin-bottom:10px}
+  .org-card h3{margin:0 0 4px;font-size:17px}
+  .org-card .statut{font-size:12px;color:var(--muted)}
+
+  /* ── Accueil ── */
+  .empty-state{background:var(--card);border:1px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;color:var(--muted)}
+  .modules-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:16px}
+  .module-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .module-card .lbl{font-weight:600;font-size:14px}
+  .module-card .meta{font-size:12px;color:var(--muted);margin-top:4px}
+  .badge{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px}
+  .badge.prioritaire{background:#fff1e0;color:#b56a00}
+  .badge.standard{background:#eef1f7;color:var(--muted)}
+
+  /* ── Espace de travail (onglets + contenu de module, générique à tous les espaces) ── */
+  #workspace{margin-top:28px;border-top:1px solid var(--border);padding-top:22px}
+  .workspace-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+  .workspace-tab{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:8px 16px;
+    font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+  .workspace-tab:hover{border-color:var(--accent)}
+  .workspace-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  #workspace-tab-content{min-height:120px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;
+    padding:10px 18px;border-radius:10px;font-size:14px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="scr-splash" class="screen on center">
+  <div class="box">
+    <div class="spinner"></div>
+    <div>SportVision Connect</div>
+  </div>
+</div>
+
+<div id="scr-login" class="screen center">
+  <div class="auth-card">
+    <h1>SportVision Connect</h1>
+    <p class="sub">Une seule connexion pour tous vos espaces SportVision.</p>
+    <label for="lg-email">E-mail</label>
+    <input id="lg-email" type="email" autocomplete="username">
+    <label for="lg-pass">Mot de passe</label>
+    <input id="lg-pass" type="password" autocomplete="current-password">
+    <div class="err" id="lg-err"></div>
+    <button class="btn btn-primary" id="lg-btn" onclick="handleLogin()">Se connecter</button>
+  </div>
+</div>
+
+<div id="app-shell" class="screen">
+  <header class="topbar">
+    <div class="brand">SportVision <span>Connect</span></div>
+    <div class="actions">
+      <button id="btn-switch" style="display:none" onclick="showSpaceSelector()">Changer d'espace</button>
+      <button onclick="handleLogout()">Déconnexion</button>
+    </div>
+  </header>
+  <main>
+    <div id="pane-selector" style="display:none">
+      <h2>Choisissez un espace</h2>
+      <p style="color:var(--muted)">Vous avez accès à plusieurs espaces SportVision Connect.</p>
+      <div class="org-grid" id="org-grid"></div>
+    </div>
+    <div id="pane-home" style="display:none">
+      <h2 id="home-org-name"></h2>
+      <div id="home-org-meta" style="color:var(--muted);font-size:14px;margin-top:-6px"></div>
+      <div id="home-empty" class="empty-state" style="display:none;margin-top:20px">
+        Aucun module actif sur cet espace pour le moment.
+      </div>
+      <div class="modules-grid" id="modules-grid"></div>
+
+      <div id="workspace" style="display:none">
+        <h3 style="margin:0 0 4px">Espace de travail</h3>
+        <div class="workspace-tabs" id="workspace-tabs"></div>
+        <div id="workspace-tab-content"></div>
+      </div>
+    </div>
+    <div id="pane-noorg" style="display:none">
+      <div class="empty-state">
+        Aucun espace n'est encore rattaché à ce compte.<br>
+        Contactez SportVision ou demandez un devis pour activer votre premier espace.
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Modules des différents espaces — chacun s'enregistre dans son registre global
+     (window.ClubModules, window.ProjetModules, window.JoueurModules, ...) au chargement.
+     Chargés AVANT le script principal ci-dessous pour que ces registres soient déjà
+     peuplés quand renderWorkspaceTabs() s'exécute après connexion. Un registre absent
+     (fichier pas encore livré) est traité comme "aucun module" par le shell, sans erreur. -->
+<script src="modules/club-equipes-matches.js"></script>
+<script src="modules/club-newsroom-communication.js"></script>
+<script src="modules/club-demandes-medias-sponsors-admin.js"></script>
+<script src="modules/projet-dashboard-devis-contrats-factures.js"></script>
+<script src="modules/projet-demandes-livrables-messagerie-compte.js"></script>
+<script src="modules/projet-configurateur.js"></script>
+<script src="modules/joueur-espace.js"></script>
+<script src="modules/famille-espace.js"></script>
+<script src="modules/coach-espace.js"></script>
+<script src="modules/academie-espace.js"></script>
+<script src="modules/sponsor-espace.js"></script>
+
+<script>
+// ── Connexion Supabase — mêmes constantes/projet que le reste de l'écosystème ──
+const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
+const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
+
+// Namespace de stockage dédié (svc_*) : cette page est un nouveau point d'entrée,
+// distinct du Portail (svp_*) et de Club+, tant que la bascule complète n'est pas faite.
+function svcSave(tok, ref, uid){
+  localStorage.setItem('svc_tok', tok);
+  localStorage.setItem('svc_ref', ref);
+  localStorage.setItem('svc_uid', uid);
+}
+function svcClear(){
+  ['svc_tok','svc_ref','svc_uid','svc_space_key'].forEach(k=>localStorage.removeItem(k));
+}
+function isLoggedIn(){ return !!localStorage.getItem('svc_tok'); }
+
+function esc(s){
+  if(s===null||s===undefined)return '';
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function sbFetch(path, opts={}){
+  const _do = async (tok) => fetch(SB_URL+'/rest/v1/'+path, {
+    method: opts.method || 'GET',
+    headers: {
+      apikey: SB_KEY,
+      Authorization: 'Bearer ' + (tok || SB_KEY),
+      'Content-Type': 'application/json',
+      ...((opts.method==='POST'||opts.method==='PATCH') ? {Prefer:'return=representation'} : {}),
+      ...(opts.headers||{}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let tok = localStorage.getItem('svc_tok') || '';
+  let res = await _do(tok);
+  if (res.status === 401 && tok){
+    const ref = localStorage.getItem('svc_ref');
+    if (ref){
+      const r2 = await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:ref})});
+      const d = await r2.json();
+      if (d.access_token){ svcSave(d.access_token, d.refresh_token, localStorage.getItem('svc_uid')); tok = d.access_token; res = await _do(tok); }
+      else { svcClear(); showScreen('login'); }
+    }
+  }
+  const txt = await res.text();
+  return { ok: res.ok, status: res.status, data: txt ? JSON.parse(txt) : null };
+}
+
+async function sbRpc(fn, body){
+  const tok = localStorage.getItem('svc_tok') || SB_KEY;
+  const res = await fetch(SB_URL+'/rest/v1/rpc/'+fn, {method:'POST', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const txt = await res.text();
+  return { ok: res.ok, status: res.status, data: txt ? JSON.parse(txt) : null };
+}
+
+async function sbFunction(name, body){
+  const tok = localStorage.getItem('svc_tok') || SB_KEY;
+  const res = await fetch(SB_URL+'/functions/v1/'+name, {method:'POST', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const txt = await res.text();
+  return { ok: res.ok, status: res.status, data: txt ? JSON.parse(txt) : null };
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'), 2600);
+}
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById(name==='login' ? 'scr-login' : name==='splash' ? 'scr-splash' : 'app-shell').classList.add('on');
+}
+function showPane(name){
+  ['pane-selector','pane-home','pane-noorg'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById(name).style.display='block';
+}
+
+// ── Auth ──
+async function handleLogin(){
+  const email = document.getElementById('lg-email').value.trim();
+  const pass = document.getElementById('lg-pass').value;
+  const errEl = document.getElementById('lg-err'); errEl.textContent='';
+  const btn = document.getElementById('lg-btn');
+  if (!email || !pass){ errEl.textContent='Renseignez votre e-mail et votre mot de passe.'; return; }
+  btn.disabled = true; btn.textContent = 'Connexion…';
+  try{
+    const res = await fetch(SB_URL+'/auth/v1/token?grant_type=password', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email,password:pass})});
+    const d = await res.json();
+    if (!d.access_token) throw new Error('E-mail ou mot de passe incorrect.');
+    svcSave(d.access_token, d.refresh_token, d.user.id);
+    await bootAfterLogin();
+  }catch(e){
+    errEl.textContent = e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Se connecter';
+  }
+}
+
+function handleLogout(){
+  svcClear();
+  showScreen('login');
+}
+
+// ── Cœur du nouveau socle : espaces → entitlements → modules ──
+// Un "espace" est soit une organisation (club/coach/académie/projet, accès via
+// memberships), soit un profil personnel (joueur/parent — PAS une organisation :
+// un joueur mineur peut exister sans jamais avoir de ligne dans `organizations`,
+// c'est une règle métier volontaire, cf. ARCHITECTURE-CONNECT.md §2/§5). Les deux
+// natures cohabitent dans un seul sélecteur, avec un contrat d'ouverture commun.
+let CURRENT_SPACES = [];
+let ACTIVE_WORKSPACE_TAB = null;
+
+const WORKSPACE_REGISTRY = {
+  club: 'ClubModules',
+  coach: 'CoachModules',
+  academie: 'AcademieModules',
+  projet: 'ProjetModules',
+  joueur: 'JoueurModules',
+  famille: 'FamilleModules',
+  sponsor: 'SponsorModules',
+};
+
+async function bootAfterLogin(){
+  showScreen('splash');
+  const uid = localStorage.getItem('svc_uid');
+
+  const [orgRes, playerRes, parentRes] = await Promise.all([
+    sbFetch('memberships?select=organization_id,role,status,organizations(id,nom,organization_type,statut)&user_id=eq.'+uid+'&status=eq.actif'),
+    sbFetch('player_profiles?select=id,prenom,nom,account_status&user_id=eq.'+uid),
+    sbFetch('parent_profiles?select=id,prenom,nom&user_id=eq.'+uid),
+  ]);
+
+  if (!orgRes.ok){ toast('Erreur de chargement de vos espaces.'); showScreen('login'); return; }
+
+  const orgSpaces = (orgRes.data || [])
+    .filter(m => m.organizations)
+    .map(m => ({
+      kind: 'organization', id: m.organizations.id, nom: m.organizations.nom,
+      organization_type: m.organizations.organization_type, statut: m.organizations.statut, role: m.role,
+    }));
+
+  const playerSpaces = (playerRes.ok ? (playerRes.data || []) : []).map(p => ({
+    kind: 'player', id: p.id, nom: [p.prenom, p.nom].filter(Boolean).join(' ') || 'Espace Joueur',
+    organization_type: 'joueur', statut: p.account_status || 'actif', role: 'joueur',
+  }));
+
+  const parentSpaces = (parentRes.ok ? (parentRes.data || []) : []).map(p => ({
+    kind: 'parent', id: p.id, nom: [p.prenom, p.nom].filter(Boolean).join(' ') || 'Espace Famille',
+    organization_type: 'famille', statut: 'actif', role: 'parent',
+  }));
+
+  CURRENT_SPACES = [...orgSpaces, ...playerSpaces, ...parentSpaces];
+
+  showScreen('app');
+  if (CURRENT_SPACES.length === 0){
+    document.getElementById('btn-switch').style.display = 'none';
+    showPane('pane-noorg');
+    return;
+  }
+
+  document.getElementById('btn-switch').style.display = CURRENT_SPACES.length > 1 ? 'inline-flex' : 'none';
+
+  const savedKey = localStorage.getItem('svc_space_key');
+  const saved = CURRENT_SPACES.find(s => (s.kind+':'+s.id) === savedKey);
+  if (saved){
+    openSpace(saved.kind, saved.id);
+  } else if (CURRENT_SPACES.length === 1){
+    openSpace(CURRENT_SPACES[0].kind, CURRENT_SPACES[0].id);
+  } else {
+    showSpaceSelector();
+  }
+}
+
+function showSpaceSelector(){
+  const grid = document.getElementById('org-grid');
+  grid.innerHTML = CURRENT_SPACES.map(s => `
+    <button class="org-card" onclick="openSpace('${s.kind}','${s.id}')">
+      <span class="type">${esc(s.organization_type)}</span>
+      <h3>${esc(s.nom)}</h3>
+      <div class="statut">${esc(s.statut)} · rôle : ${esc(s.role)}</div>
+    </button>
+  `).join('');
+  showPane('pane-selector');
+}
+
+async function openSpace(kind, id){
+  localStorage.setItem('svc_space_key', kind+':'+id);
+  const space = CURRENT_SPACES.find(s => s.kind === kind && s.id === id);
+  if (!space){ showSpaceSelector(); return; }
+
+  document.getElementById('home-org-name').textContent = space.nom;
+  document.getElementById('home-org-meta').textContent =
+    space.organization_type + ' · statut ' + space.statut + ' · votre rôle : ' + space.role;
+  showPane('pane-home');
+
+  const grid = document.getElementById('modules-grid');
+  const empty = document.getElementById('home-empty');
+
+  if (kind === 'organization'){
+    // Les entitlements (crédits, modules payants) n'existent que pour les organisations —
+    // un espace personnel Joueur/Famille n'a pas de contrat/abonnement propre.
+    const res = await sbFetch(
+      'organization_entitlements?select=module_key,actif,quota_credits,priorite,connect_modules(label,espace)'
+      + '&organization_id=eq.' + id + '&actif=eq.true'
+    );
+    const modules = (res.data || []).filter(m => m.connect_modules);
+    if (!res.ok || modules.length === 0){
+      grid.innerHTML = ''; empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      grid.innerHTML = modules.map(m => `
+        <div class="module-card">
+          <div class="lbl">${esc(m.connect_modules.label)}</div>
+          <div class="meta">
+            <span class="badge ${m.priorite==='prioritaire'?'prioritaire':'standard'}">${esc(m.priorite)}</span>
+            ${m.quota_credits!=null ? ' · ' + m.quota_credits + ' crédits' : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+  } else {
+    grid.innerHTML = '';
+    empty.style.display = 'none';
+  }
+
+  const ws = document.getElementById('workspace');
+  const registryName = WORKSPACE_REGISTRY[space.organization_type];
+  if (registryName){
+    ws.style.display = 'block';
+    renderWorkspaceTabs(registryName, space.organization_type, id, space.role);
+  } else {
+    ws.style.display = 'none';
+  }
+}
+
+function renderWorkspaceTabs(registryName, spaceType, contextId, role){
+  const tabsEl = document.getElementById('workspace-tabs');
+  const modules = window[registryName] || {};
+  const entries = Object.entries(modules).filter(([,m]) => m.espace === spaceType);
+
+  if (entries.length === 0){
+    tabsEl.innerHTML = '';
+    const old = document.getElementById('workspace-tab-content');
+    const fresh = document.createElement('div');
+    fresh.id = 'workspace-tab-content';
+    fresh.innerHTML = '<div class="empty-state">Modules de cet espace en cours de déploiement.</div>';
+    old.replaceWith(fresh);
+    return;
+  }
+
+  tabsEl.innerHTML = entries.map(([key, m]) => `
+    <button class="workspace-tab" data-key="${esc(key)}" onclick="selectWorkspaceTab('${esc(registryName)}','${esc(key)}','${esc(contextId)}','${esc(role)}')">${esc(m.label)}</button>
+  `).join('');
+
+  const stillValid = ACTIVE_WORKSPACE_TAB && modules[ACTIVE_WORKSPACE_TAB] && modules[ACTIVE_WORKSPACE_TAB].espace === spaceType;
+  selectWorkspaceTab(registryName, stillValid ? ACTIVE_WORKSPACE_TAB : entries[0][0], contextId, role);
+}
+
+async function selectWorkspaceTab(registryName, key, contextId, role){
+  ACTIVE_WORKSPACE_TAB = key;
+  document.querySelectorAll('.workspace-tab').forEach(b => b.classList.toggle('active', b.dataset.key === key));
+
+  // Un noeud neuf à chaque bascule, quel que soit le registre : les écouteurs du module
+  // précédent partent avec lui (garbage collectés) plutôt que de rester accrochés
+  // indéfiniment sur un conteneur réutilisé.
+  const old = document.getElementById('workspace-tab-content');
+  const fresh = document.createElement('div');
+  fresh.id = 'workspace-tab-content';
+  fresh.innerHTML = '<div style="padding:24px 4px;color:var(--muted)">Chargement…</div>';
+  old.replaceWith(fresh);
+
+  const mod = (window[registryName] || {})[key];
+  if (!mod){ fresh.innerHTML = ''; return; }
+
+  try{
+    await mod.render(fresh, contextId, { role });
+  }catch(e){
+    fresh.innerHTML = '<div class="empty-state">Erreur de chargement de ce module. Détail en console.</div>';
+    console.error('['+registryName+'.'+key+']', e);
+  }
+}
+
+// ── Démarrage ──
+(async function init(){
+  if (isLoggedIn()){
+    await bootAfterLogin();
+  } else {
+    showScreen('login');
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "SportVision Connect",
+  "short_name": "Connect",
+  "description": "Espace unifié SportVision : joueurs, familles, coachs, clubs — demandes, livrables, messagerie et suivi en un seul endroit.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f6fa",
+  "theme_color": "#0b1330",
+  "lang": "fr",
+  "icons": [
+    { "src": "favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
