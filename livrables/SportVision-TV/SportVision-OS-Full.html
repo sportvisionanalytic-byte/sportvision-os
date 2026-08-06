@@ -2091,6 +2091,10 @@ const VIEWS={
     <div class="cd" style="margin-top:13px">
       <div class="cd-h"><div class="cd-t">Fournisseurs</div></div>
       <div id="compta-fournisseurs-real"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Prochaines échéances</div></div>
+      <div id="dep-echeances-real"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
   'compta.frais':()=>`
@@ -3052,11 +3056,12 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='fin') await loadFinances();
   const _isComptaLike=['compta','expert_comptable','auditeur'].includes(role);
   if(_isComptaLike&&view==='factures') await loadComptaFactures();
-  if(_isComptaLike&&view==='dash') await loadComptaDash();
+  if(role==='expert_comptable'&&view==='dash') await loadExpertComptableDash(); else if(_isComptaLike&&view==='dash') await loadComptaDash();
   if(_isComptaLike&&view==='acomptes') await loadComptaAcomptes();
   if(_isComptaLike&&view==='impayes') await loadComptaImpayes();
   if(_isComptaLike&&view==='avoirs') await loadComptaAvoirs();
   if(_isComptaLike&&view==='depenses') await loadComptaDepenses();
+  if(_isComptaLike&&view==='depenses') await loadEcheancesDepenses();
   if(_isComptaLike&&view==='frais') await loadComptaFrais();
   if(_isComptaLike&&view==='rem') await loadComptaRem();
   if(_isComptaLike&&view==='rentabilite') await loadComptaRentabilite();
@@ -3075,6 +3080,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='impayes') await loadComptaImpayes();
   if(role==='admin'&&view==='avoirs') await loadComptaAvoirs();
   if(role==='admin'&&view==='depenses') await loadComptaDepenses();
+  if(role==='admin'&&view==='depenses') await loadEcheancesDepenses();
   if(role==='admin'&&view==='frais') await loadComptaFrais();
   if(role==='admin'&&view==='rem') await loadComptaRem();
   if(role==='admin'&&view==='rentabilite') await loadComptaRentabilite();
@@ -13849,6 +13855,36 @@ async function loadComptaFournisseurs(){
   }catch(e){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';}
 }
 
+// ── Prochaines échéances de dépenses récurrentes (alertes) ─────────────────
+// Indépendant de loadComptaDepenses() : lit expenses.date_prochaine_echeance
+// (calculée dans sauvegarderNouvelleDepense()) pour afficher les échéances à
+// venir. Les rappels par e-mail correspondants sont envoyés côté serveur par
+// le job pg_cron "sportvision-check-echeances-depenses" (cf.
+// migration-finance-alertes-echeances.sql) — ce bloc est purement informatif.
+async function loadEcheancesDepenses(){
+  const el=document.getElementById('dep-echeances-real');if(!el)return;
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    const data=await sbFetch('expenses?select=libelle,montant_ttc,date_prochaine_echeance,categorie&date_prochaine_echeance=not.is.null&date_prochaine_echeance=gte.'+today+'&order=date_prochaine_echeance.asc&limit=20');
+    const list=Array.isArray(data)?data:[];
+    if(!list.length){el.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune échéance à venir.</div>';return;}
+    const now=new Date();
+    el.innerHTML='<div class="tw"><table><thead><tr><th>Libellé</th><th>Catégorie</th><th>Montant TTC</th><th>Échéance</th></tr></thead><tbody>'+
+      list.map(f=>{
+        const dEch=new Date(f.date_prochaine_echeance);
+        const diffJours=Math.round((dEch-now)/86400000);
+        const cls=diffJours<=7?'br':(diffJours<=30?'bw':'bn');
+        const label=diffJours<0?'En retard':diffJours===0?'Aujourd\'hui':diffJours===1?'Demain':'Dans '+diffJours+' j';
+        return`<tr>
+          <td class="tp">${esc(f.libelle||'—')}</td>
+          <td>${esc(f.categorie||'—')}</td>
+          <td class="tm" style="font-weight:600;color:var(--er)">${f.montant_ttc?f.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+          <td><span class="bd ${cls}"><span class="bd-d"></span>${dEch.toLocaleDateString('fr-FR')} — ${label}</span></td>
+        </tr>`;
+      }).join('')+'</tbody></table></div>';
+  }catch(e){el.innerHTML='<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement des échéances.</div>';console.error(e);}
+}
+
 async function loadComptaFrais(){
   const el=document.getElementById('compta-frais-real');if(!el)return;
   try{
@@ -14838,6 +14874,110 @@ async function reouvrirPeriode(periode){
   if(sbErr(r)){toast('Erreur : '+(r.message||'Réouverture impossible.'),'er');return;}
   logFinancialAudit('reouverture','accounting_periods',r?.[0]?.id,null,null,{periode});
   toast('Période rouverte.','ok');loadComptaClotures();
+}
+
+// ── Tableau de bord dédié expert-comptable (Lot 0 Finance & Comptabilité) ──
+// Vue de synthèse ponctuelle, distincte de loadComptaDash() (pensé pour un
+// usage quotidien type secrétaire/comptable) : statut des clôtures sur 6
+// mois, KPIs du dernier mois clôturé, accès rapides et aperçu du journal
+// d'audit. Lecture seule, aucune écriture ici.
+async function loadExpertComptableDash(){
+  const elPer=document.getElementById('ecd-periodes-real');
+  const elAud=document.getElementById('ecd-audit-real');
+  if(!elPer&&!elAud)return;
+  const now=new Date();
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    let lbl=d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    lbl=lbl.charAt(0).toUpperCase()+lbl.slice(1);
+    months.push({label:lbl,key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,current:i===0});
+  }
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
+  const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+  try{
+    const [periodsData,rentData,taxData,fecData,auditData]=await Promise.all([
+      // accounting_periods (migration-finance-lot0.sql) : une période absente
+      // de la table est considérée « ouverte » (même convention que loadComptaClotures()).
+      sbFetch('accounting_periods?select=periode,statut&periode=gte.'+months[0].key+'&order=periode.asc').catch(()=>[]),
+      sbFetch('v_rentabilite_missions?select=revenu_ht,marge_nette,date_prestation&order=date_prestation.desc&limit=500').catch(()=>[]),
+      sbFetch('tax_reserves?select=periode,tva_nette&order=periode.desc&limit=1').catch(()=>[]),
+      sbFetch('fec_exports?select=id&limit=1000').catch(()=>[]),
+      sbFetch('financial_audit_log?select=*,profiles(prenom,nom)&order=created_at.desc&limit=8').catch(()=>[]),
+    ]);
+
+    // ── Statut des périodes (avec repérage d'un retard de clôture) ──
+    const periodsByKey={};
+    (Array.isArray(periodsData)?periodsData:[]).forEach(p=>periodsByKey[p.periode]=p.statut);
+    const openFlags=months.map(m=>periodsByKey[m.key]!=='cloturee');
+    let maxConsecOpen=0,streak=0;
+    for(let i=0;i<months.length-1;i++){ // le mois en cours est exclu du calcul de retard (il est normalement encore ouvert)
+      if(openFlags[i]){streak++;maxConsecOpen=Math.max(maxConsecOpen,streak);}else streak=0;
+    }
+    const retard=maxConsecOpen>=2;
+    if(elPer){
+      elPer.innerHTML=(retard?`<div style="padding:10px 17px;background:rgba(240,68,94,.08);border-bottom:1px solid rgba(240,68,94,.2);font-size:12.5px;color:var(--er)">⚠ Plusieurs mois consécutifs sont restés ouverts — retard probable de clôture.</div>`:'')+
+        '<div class="tw"><table><thead><tr><th>Mois</th><th>Statut</th></tr></thead><tbody>'+
+        months.map((m,i)=>{
+          const cloturee=periodsByKey[m.key]==='cloturee';
+          const alerte=!cloturee&&i<months.length-1&&retard;
+          return `<tr>
+            <td style="font-weight:${m.current?700:400};color:${m.current?'var(--acc)':'var(--t1)'}">${esc(m.label)}</td>
+            <td><span class="bd ${cloturee?'ba':(alerte?'br':'bb')}"><span class="bd-d"></span>${cloturee?'Clôturé':(alerte?'Ouvert (retard)':'Ouvert')}</span></td>
+          </tr>`;
+        }).join('')+'</tbody></table></div>';
+    }
+
+    // ── KPIs du dernier mois clôturé ──
+    const lastCloturee=[...months].reverse().find(m=>periodsByKey[m.key]==='cloturee');
+    let lastPeriodKey=lastCloturee?lastCloturee.key:null;
+    let lastPeriodLabel=lastCloturee?lastCloturee.label:null;
+    if(!lastPeriodKey){
+      // aucun mois clôturé dans la fenêtre des 6 derniers mois : on cherche plus loin
+      const allCloturees=(Array.isArray(periodsData)?periodsData:[]).filter(p=>p.statut==='cloturee').sort((a,b)=>b.periode.localeCompare(a.periode));
+      if(allCloturees.length){
+        lastPeriodKey=allCloturees[0].periode;
+        let lbl=new Date(lastPeriodKey+'-01').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+        lastPeriodLabel=lbl.charAt(0).toUpperCase()+lbl.slice(1);
+      }
+    }
+    const rentList=Array.isArray(rentData)?rentData:[];
+    if(lastPeriodKey){
+      const inPeriod=rentList.filter(p=>p.date_prestation&&p.date_prestation.slice(0,7)===lastPeriodKey);
+      const ca=inPeriod.reduce((s,p)=>s+(p.revenu_ht||0),0);
+      const marge=inPeriod.reduce((s,p)=>s+(p.marge_nette||0),0);
+      set('ecd-kpi-ca',fmt(ca));set('ecd-kpi-ca-lbl',esc(lastPeriodLabel));
+      set('ecd-kpi-marge',fmt(marge));
+    } else {
+      set('ecd-kpi-ca','—');set('ecd-kpi-ca-lbl','aucun mois clôturé');set('ecd-kpi-marge','—');
+    }
+
+    // ── TVA nette du dernier provisionnement ──
+    const taxList=Array.isArray(taxData)?taxData:[];
+    if(taxList.length){
+      const t=taxList[0];
+      let tlbl=new Date(t.periode+'-01').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+      tlbl=tlbl.charAt(0).toUpperCase()+tlbl.slice(1);
+      set('ecd-kpi-tva',fmt(t.tva_nette));set('ecd-kpi-tva-lbl',esc(tlbl));
+    } else { set('ecd-kpi-tva','—');set('ecd-kpi-tva-lbl','aucune provision'); }
+
+    // ── Exports FEC déjà générés ──
+    set('ecd-kpi-fec',String(Array.isArray(fecData)?fecData.length:0));
+
+    // ── Activité récente (aperçu compact du journal d'audit) ──
+    if(elAud){
+      const list=Array.isArray(auditData)?auditData:[];
+      elAud.innerHTML=list.length?list.map(a=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
+        <div style="font-size:12px;color:var(--t2)">${esc(((a.profiles?.prenom||'')+' '+(a.profiles?.nom||'')).trim())||'—'} — ${esc(AUDIT_ACTION_LABELS[a.action]||a.action||'—')} <span style="color:var(--t3)">(${esc(a.table_cible||'—')})</span></div>
+        <div style="font-size:11px;color:var(--t3);white-space:nowrap">${a.created_at?new Date(a.created_at).toLocaleString('fr-FR'):'—'}</div>
+      </div>`).join(''):
+      '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucune activité récente.</div>';
+    }
+  }catch(e){
+    console.error('loadExpertComptableDash',e);
+    if(elPer)elPer.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement (migration-finance-lot0.sql à exécuter).</div>';
+    if(elAud)elAud.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';
+  }
 }
 
 // ── TVA & provisions (estimation de pilotage interne — migration-finance-tva.sql) ──
@@ -17048,6 +17188,46 @@ VIEWS['admin.comptesportail']=tplComptesPortail;
 ['admin','sec','com'].forEach(role=>{
   if(NAV[role]) VIEWS[role+'.avisclients']=tplAvisClients;
 });
+// Tableau de bord dédié à l'expert-comptable : quelqu'un qui vient
+// ponctuellement vérifier/exporter, pas au quotidien — donc pas le dashboard
+// générique de compta (loadComptaDash), mais une vraie vue de synthèse :
+// statut des clôtures, KPIs clés, accès rapides et aperçu de l'audit.
+function tplExpertComptableDash(){
+  return `<div class="sh"><div><div class="sh-t">Espace expert-comptable</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Vue de synthèse en lecture seule — statut des clôtures, chiffres clés du dernier mois clôturé et accès rapides</div></div></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('rentabilite')"><div class="kpi-ey">CA dernier mois clôturé</div><div class="kpi-v" id="ecd-kpi-ca" style="font-size:18px">—</div><span class="kpi-d dnt" id="ecd-kpi-ca-lbl">—</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('rentabilite')"><div class="kpi-ey">Marge nette dernier mois clôturé</div><div class="kpi-v" id="ecd-kpi-marge" style="font-size:18px">—</div><span class="kpi-d dnt">v_rentabilite_missions</span></div>
+      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('tva')"><div class="kpi-ey">TVA nette (dernier provisionnement)</div><div class="kpi-v" id="ecd-kpi-tva" style="font-size:18px">—</div><span class="kpi-d dnt" id="ecd-kpi-tva-lbl">—</span></div>
+      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('fec')"><div class="kpi-ey">Exports FEC générés</div><div class="kpi-v" id="ecd-kpi-fec">—</div><span class="kpi-d dnt">au total</span></div>
+    </div>
+    <div class="g32" style="margin-top:12px">
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">Statut des périodes (6 derniers mois)</div><button class="btn bg2 bs" onclick="switchView('clotures')">Voir clôtures</button></div>
+        <div id="ecd-periodes-real"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      </div>
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">Activité récente</div><button class="btn bg2 bs" onclick="switchView('audit')">Journal complet</button></div>
+        <div id="ecd-audit-real"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      </div>
+    </div>
+    <div class="cd" style="margin-top:12px">
+      <div class="cd-h"><div class="cd-t">Accès rapides</div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;padding:16px 17px">
+        ${[
+          {v:'rentabilite',ic:'📈',lb:'Rentabilité'},
+          {v:'resultat',ic:'📊',lb:'Compte de résultat'},
+          {v:'tva',ic:'💶',lb:'TVA & provisions'},
+          {v:'fec',ic:'📦',lb:'Export FEC'},
+          {v:'commissions',ic:'💼',lb:'Commissions'},
+          {v:'audit',ic:'🔎',lb:"Journal d'audit"},
+        ].map(x=>`<div class="cd" style="margin-bottom:0;padding:16px;cursor:pointer;text-align:center" onclick="switchView('${x.v}')">
+          <div style="font-size:22px;margin-bottom:6px">${x.ic}</div>
+          <div style="font-size:12.5px;font-weight:600;color:var(--t1)">${x.lb}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+}
+
 // Expert-comptable / auditeur (Lot 0 Finance & Comptabilité) : réutilisent les
 // écrans compta tels quels (lecture seule imposée par RLS, pas de duplication
 // de template).
@@ -17056,6 +17236,10 @@ VIEWS['admin.comptesportail']=tplComptesPortail;
     if(VIEWS['compta.'+v]) VIEWS[role+'.'+v]=VIEWS['compta.'+v];
   });
 });
+// Écrase l'alias posé ci-dessus par un vrai tableau de bord dédié (voir
+// tplExpertComptableDash ci-dessus) — ne concerne que expert_comptable, pas
+// auditeur qui garde le dashboard générique compta.
+VIEWS['expert_comptable.dash']=tplExpertComptableDash;
 VIEWS['expert_comptable.commissions']=VIEWS['compta.commissions'];
 VIEWS['expert_comptable.documents']=()=>_documentsView('expert_comptable');
 VIEWS['expert_comptable.export']=VIEWS['compta.export'];
