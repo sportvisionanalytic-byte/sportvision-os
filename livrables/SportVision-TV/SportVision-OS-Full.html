@@ -10335,7 +10335,7 @@ async function loadCmDash(){
     const uid=localStorage.getItem('sv_uid');
     const tier=await _ensureMyNiveauCm();
     const [contenus,preSoon,unread]=await Promise.all([
-      sbFetch('notifications?select=id,titre,message,lue,created_at&type=eq.contenu&order=created_at.desc&limit=200'),
+      sbFetch('contenus?select=id,titre,statut,plateforme,date_prevue,clients(nom)&statut=not.in.(publie,archive)&order=date_prevue.asc.nullslast&limit=100'),
       sbFetch(`prestations?select=id,reference,type_prestation,date_prestation,clients(nom,cm_id)&date_prestation=gte.${todayStr}&date_prestation=lte.${in14.toISOString().slice(0,10)}&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=20`),
       sbFetch('messages?select=expediteur_id&destinataire_id=eq.'+uid+'&lue=eq.false'),
     ]);
@@ -10343,11 +10343,9 @@ async function loadCmDash(){
     const presoonScoped=portfolioTiers.includes(tier)
       ?(preSoon||[]).filter(p=>p.clients?.cm_id===uid)
       :(preSoon||[]);
-    const items=(contenus||[]).map(c=>{
-      let info={};try{info=JSON.parse(c.message)||{};}catch(e){}
-      return{id:c.id,titre:c.titre,statut:info.statut||'brouillon',date:info.date||'',club:info.club||'',plateforme:info.plateforme||''};
-    });
-    const enAttente=items.filter(i=>i.statut!=='publié');
+    // La visibilité par portefeuille est déjà appliquée par le RLS de la
+    // table contenus (migration-contenus.sql) — pas besoin de re-filtrer ici.
+    const enAttente=(Array.isArray(contenus)?contenus:[]).map(c=>({id:c.id,titre:c.titre,statut:c.statut,date:c.date_prevue||'',club:c.clients?.nom||'',plateforme:c.plateforme||''}));
     const enRetard=enAttente.filter(i=>i.date&&i.date<todayStr);
     const s1=document.getElementById('cm-kpi-cl');if(s1)s1.textContent=enAttente.length;
     const s2=document.getElementById('cm-kpi-pre');if(s2)s2.textContent=enRetard.length;
@@ -10361,7 +10359,7 @@ async function loadCmDash(){
         <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalEditContenu('${i.id}')">
           <div style="width:8px;height:8px;border-radius:50%;background:${retardIds.has(i.id)?'var(--er)':'var(--wa)'};flex-shrink:0"></div>
           <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${esc(i.titre||'Sans titre')}${i.club?' · '+esc(i.club):''}</div>
-            <div style="font-size:11px;color:var(--t3)">${i.plateforme||'—'} · ${i.date?new Date(i.date).toLocaleDateString('fr-FR'):'sans date'}${retardIds.has(i.id)?' · en retard':''}</div>
+            <div style="font-size:11px;color:var(--t3)">${esc(i.plateforme||'—')} · ${i.date?new Date(i.date).toLocaleDateString('fr-FR'):'sans date'}${retardIds.has(i.id)?' · en retard':''}</div>
           </div>
           <span style="font-size:11px;color:var(--acc)">›</span>
         </div>`).join('')+'</div>':
@@ -13995,12 +13993,12 @@ async function loadCmCal(){
   try{
     const [pre,contenus,pubMois]=await Promise.all([
       sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&date_prestation=gte.'+start+'&date_prestation=lte.'+end+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc'),
-      sbFetch('notifications?select=id,titre,message,lue&type=eq.contenu&order=created_at.desc&limit=200'),
-      sbFetch('notifications?select=id&type=eq.contenu&lue=eq.true&created_at=gte.'+mStart+'T00:00:00'),
+      sbFetch('contenus?select=id,titre,statut,plateforme,date_prevue&date_prevue=gte.'+start+'&date_prevue=lte.'+end),
+      sbFetch('contenus?select=id&statut=eq.publie&date_publication=gte.'+mStart),
     ]);
     _contenuCache=contenus||[];
     const preWeek=(pre||[]).length;
-    const prog=(_contenuCache||[]).filter(c=>!c.lue&&(()=>{try{const info=JSON.parse(c.message);return info.statut==='programmé'&&info.date>=start&&info.date<=end;}catch(e){return false;}})()).length;
+    const prog=(_contenuCache||[]).filter(c=>c.statut==='programme').length;
     set('cal-kpi-pre',preWeek);set('cal-kpi-prog',prog);set('cal-kpi-pub',(pubMois||[]).length);
     const JOURS=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
     const today=new Date().toISOString().slice(0,10);
@@ -14009,11 +14007,11 @@ async function loadCmCal(){
         const ds=d.toISOString().slice(0,10);
         const isToday=ds===today;
         const dayPre=(pre||[]).filter(p=>p.date_prestation===ds);
-        const dayCont=_contenuCache.filter(c=>{try{return JSON.parse(c.message).date===ds;}catch(e){return false;}});
+        const dayCont=_contenuCache.filter(c=>c.date_prevue===ds);
         return`<div style="background:${isToday?'rgba(54,107,255,.08)':'var(--s1)'};border:1px solid ${isToday?'rgba(54,107,255,.3)':'var(--bd)'};border-radius:10px;padding:10px;min-height:120px">
           <div style="font-size:11px;font-weight:700;color:${isToday?'var(--ac)':'var(--t2)'};margin-bottom:8px">${JOURS[i]} ${d.getDate()}</div>
           ${dayPre.map(p=>`<div style="background:rgba(54,107,255,.15);border-left:2px solid var(--ac);padding:4px 6px;border-radius:4px;margin-bottom:4px;font-size:10px;color:var(--ac);cursor:pointer" onclick="modalDetailById('${p.id}')" title="${p.clients?.nom||''}">${(p.clients?.nom||'').slice(0,14)||p.reference}</div>`).join('')}
-          ${dayCont.map((c,ci)=>{let info={};try{info=JSON.parse(c.message);}catch(e){}return`<div style="background:${c.lue?'rgba(46,204,138,.12)':'rgba(245,165,36,.1)'};border-left:2px solid ${c.lue?'var(--ok)':'var(--wa)'};padding:4px 6px;border-radius:4px;margin-bottom:4px;font-size:10px;color:${c.lue?'var(--ok)':'var(--wa)'};cursor:pointer" onclick="modalEditContenu('${c.id}')" title="${esc(c.titre)}">${esc(c.titre.slice(0,14))} · ${esc(info.plateforme||'?')}</div>`;}).join('')}
+          ${dayCont.map(c=>{const published=c.statut==='publie';return`<div style="background:${published?'rgba(46,204,138,.12)':'rgba(245,165,36,.1)'};border-left:2px solid ${published?'var(--ok)':'var(--wa)'};padding:4px 6px;border-radius:4px;margin-bottom:4px;font-size:10px;color:${published?'var(--ok)':'var(--wa)'};cursor:pointer" onclick="modalEditContenu('${c.id}')" title="${esc(c.titre)}">${esc(c.titre.slice(0,14))} · ${esc(c.plateforme||'?')}</div>`;}).join('')}
           <button onclick="modalNouveauContenu(null,'${ds}')" style="width:100%;margin-top:4px;padding:3px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:5px;color:var(--t3);font-size:10px;cursor:pointer">+</button>
         </div>`;
       }).join('')}
@@ -14022,64 +14020,109 @@ async function loadCmCal(){
 }
 
 // ── CM — Contenus ─────────────────────────────────────────────────────────────
+// Statuts contenus : tableau + bouton "étape suivante" (même pattern que
+// crmAvancerStatut/crmNext pour clients.statut) — pas de Kanban drag-and-drop.
+const CONTENU_STATUTS={
+  brouillon:{lb:'Brouillon',cls:'bn'},
+  a_valider_interne:{lb:'Vérif. interne',cls:'bw'},
+  a_valider_client:{lb:'Validation client',cls:'bw'},
+  corrections:{lb:'Corrections',cls:'br'},
+  valide:{lb:'Validé',cls:'bb'},
+  programme:{lb:'Programmé',cls:'bb'},
+  publie:{lb:'Publié',cls:'ba'},
+  archive:{lb:'Archivé',cls:'bn'},
+};
+const CONTENU_NEXT={
+  brouillon:{st:'a_valider_interne',lb:'→ Vérification interne'},
+  a_valider_interne:{st:'a_valider_client',lb:'→ Validation client'},
+  a_valider_client:{st:'valide',lb:'✓ Valider'},
+  valide:{st:'programme',lb:'→ Programmer'},
+  programme:{st:'publie',lb:'✓ Publier'},
+  publie:{st:'archive',lb:'→ Archiver'},
+  corrections:{st:'brouillon',lb:'→ Reprendre en brouillon'},
+};
+
+// Clients visibles par le CM courant, pour peupler les select de création/
+// édition de contenu — même règle de périmètre par palier que loadCmClients().
+async function _cmVisibleClients(){
+  const tier=await _ensureMyNiveauCm();
+  if(tier==='cm_interne')return[];
+  try{
+    if(tier==='cm_club_plus_studio'||tier==='cm_evenement'){
+      const typeContrat=tier==='cm_club_plus_studio'?'club_plus':'evenement';
+      const data=await sbFetch('contrats?select=clients(id,nom)&type_contrat=eq.'+typeContrat+'&statut=eq.actif&order=created_at.desc&limit=200');
+      return(Array.isArray(data)?data:[]).map(c=>c.clients).filter(Boolean);
+    }
+    const data=await sbFetch('clients?select=id,nom&order=nom.asc&limit=200');
+    return Array.isArray(data)?data:[];
+  }catch(e){return[];}
+}
+
 async function loadCmContenus(){
   const el=document.getElementById('contenus-real');
   if(!el)return;
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   try{
-    const data=await sbFetch('notifications?select=id,titre,message,lue,created_at&type=eq.contenu&order=lue.asc,created_at.desc&limit=100');
-    _contenuCache=data||[];
-    const draft=_contenuCache.filter(c=>{try{return JSON.parse(c.message).statut==='brouillon';}catch(e){return true;}}).length;
-    const prog=_contenuCache.filter(c=>{try{return JSON.parse(c.message).statut==='programmé';}catch(e){return false;}}).length;
-    const pub=_contenuCache.filter(c=>c.lue).length;
-    set('cnt-kpi-draft',draft);set('cnt-kpi-prog',prog);set('cnt-kpi-pub',pub);
+    const data=await sbFetch('contenus?select=id,titre,statut,plateforme,type_contenu,date_prevue,clients(nom)&order=updated_at.desc&limit=100');
+    _contenuCache=Array.isArray(data)?data:[];
+    const draft=_contenuCache.filter(c=>['brouillon','corrections'].includes(c.statut)).length;
+    const enValidation=_contenuCache.filter(c=>['a_valider_interne','a_valider_client'].includes(c.statut)).length;
+    const pub=_contenuCache.filter(c=>c.statut==='publie').length;
+    set('cnt-kpi-draft',draft);set('cnt-kpi-prog',enValidation);set('cnt-kpi-pub',pub);
     if(!_contenuCache.length){
       el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucun contenu. Créez le premier.</div></div>';return;
     }
-    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Titre</th><th>Plateforme</th><th>Club</th><th>Type</th><th>Date prévue</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Titre</th><th>Client</th><th>Plateforme</th><th>Type</th><th>Date prévue</th><th>Statut</th><th></th></tr></thead><tbody>'+
       _contenuCache.map(c=>{
-        let info={};try{info=JSON.parse(c.message);}catch(e){}
-        const published=c.lue;
-        const st_cls=published?'ba':info.statut==='programmé'?'bw':'bn';
-        const st_lbl=published?'Publié':info.statut==='programmé'?'Programmé':'Brouillon';
+        const st=CONTENU_STATUTS[c.statut]||CONTENU_STATUTS.brouillon;
+        const next=CONTENU_NEXT[c.statut];
         return`<tr>
           <td class="tp">${esc(c.titre)}</td>
-          <td>${info.plateforme||'—'}</td>
-          <td>${info.club||'—'}</td>
-          <td>${info.type||'—'}</td>
-          <td>${info.date?new Date(info.date).toLocaleDateString('fr-FR'):'—'}</td>
-          <td><span class="bd ${st_cls}"><span class="bd-d"></span>${st_lbl}</span></td>
+          <td>${c.clients?.nom?esc(c.clients.nom):'<span style="color:var(--t3)">SportVision</span>'}</td>
+          <td>${esc(c.plateforme||'—')}</td>
+          <td>${esc(c.type_contenu||'—')}</td>
+          <td>${c.date_prevue?new Date(c.date_prevue).toLocaleDateString('fr-FR'):'—'}</td>
+          <td><span class="bd ${st.cls}"><span class="bd-d"></span>${st.lb}</span></td>
           <td style="display:flex;gap:4px">
-            ${!published?`<button class="btn bg2 bs" onclick="publierContenu('${c.id}')">Publier</button>`:''}
+            ${next?`<button class="btn bg2 bs" onclick="avancerContenu('${c.id}','${next.st}')">${next.lb}</button>`:''}
             <button class="btn bg2 bs" onclick="modalEditContenu('${c.id}')">Modifier</button>
           </td>
         </tr>`;
       }).join('')+'</tbody></table></div></div>';
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';console.error(e);}
 }
 
-function modalNouveauContenu(statutInit,dateInit){
-  const s=statutInit||'brouillon';
+async function avancerContenu(id,statut){
+  const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{statut,updated_at:new Date().toISOString(),...(statut==='publie'?{date_publication:new Date().toISOString().slice(0,10)}:{})}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  toast('Statut mis à jour.','ok');
+  loadViewData(S.role,S.view);
+}
+
+async function modalNouveauContenu(statutInit,dateInit){
   const d=dateInit||'';
+  const clients=await _cmVisibleClients();
   openModal(`<div class="mh"><div class="mt">Nouveau contenu</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Titre</label><input type="text" id="ct-ti" class="fi" placeholder="Ex: Résumé match Brunoy FC" autofocus></div>
+      <div class="fg"><label class="fl">Client</label>
+        <select id="ct-cl" class="fi"><option value="">Aucun client (SportVision)</option>${clients.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('')}</select></div>
       <div class="g2">
         <div class="fg"><label class="fl">Plateforme</label>
           <select id="ct-pl" class="fi"><option>Instagram</option><option>YouTube</option><option>Facebook</option><option>TikTok</option><option>Twitter/X</option></select></div>
         <div class="fg"><label class="fl">Type</label>
           <select id="ct-ty" class="fi"><option>Vidéo</option><option>Photo</option><option>Story</option><option>Reel</option><option>Article</option><option>Post</option></select></div>
       </div>
+      <div class="fg"><label class="fl">Date prévue</label><input type="date" id="ct-dt" class="fi" value="${d}"></div>
       <div class="g2">
-        <div class="fg"><label class="fl">Club / Client</label><input type="text" id="ct-cl" class="fi" placeholder="Ex: Brunoy FC"></div>
-        <div class="fg"><label class="fl">Date prévue</label><input type="date" id="ct-dt" class="fi" value="${d}"></div>
+        <div class="fg"><label class="fl">Hook</label><input type="text" id="ct-hook" class="fi" placeholder="Accroche"></div>
+        <div class="fg"><label class="fl">CTA</label><input type="text" id="ct-cta" class="fi" placeholder="Appel à l'action"></div>
       </div>
-      <div class="fg"><label class="fl">Statut</label>
-        <select id="ct-st" class="fi">
-          <option value="brouillon"${s==='brouillon'?' selected':''}>Brouillon</option>
-          <option value="programmé"${s==='programmé'?' selected':''}>Programmé</option>
-          <option value="publié"${s==='publié'?' selected':''}>Publié</option>
-        </select></div>
+      <div class="fg"><label class="fl">Légende</label><textarea id="ct-leg" class="fi" style="height:60px"></textarea></div>
+      <div class="g2">
+        <div class="fg"><label class="fl">Hashtags</label><input type="text" id="ct-hash" class="fi"></div>
+        <div class="fg"><label class="fl">Sponsor</label><input type="text" id="ct-spo" class="fi"></div>
+      </div>
       <div id="ct-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
     </div>
     <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerContenu()">Créer</button></div>`);
@@ -14088,20 +14131,23 @@ function modalNouveauContenu(statutInit,dateInit){
 
 async function creerContenu(){
   const ti=(document.getElementById('ct-ti')?.value||'').trim();
+  const clientId=document.getElementById('ct-cl')?.value||null;
   const pl=document.getElementById('ct-pl')?.value||'';
   const ty=document.getElementById('ct-ty')?.value||'';
-  const cl=(document.getElementById('ct-cl')?.value||'').trim();
-  const dt=document.getElementById('ct-dt')?.value||'';
-  const st=document.getElementById('ct-st')?.value||'brouillon';
+  const dt=document.getElementById('ct-dt')?.value||null;
+  const hook=(document.getElementById('ct-hook')?.value||'').trim();
+  const cta=(document.getElementById('ct-cta')?.value||'').trim();
+  const legende=(document.getElementById('ct-leg')?.value||'').trim();
+  const hashtags=(document.getElementById('ct-hash')?.value||'').trim();
+  const sponsor=(document.getElementById('ct-spo')?.value||'').trim();
   const err=document.getElementById('ct-err');
   if(!ti){if(err)err.textContent='Donnez un titre au contenu.';return;}
   const uid=localStorage.getItem('sv_uid');
-  const pub=st==='publié';
   try{
-    const r=await sbFetch('notifications',{method:'POST',body:{
-      type:'contenu',titre:ti,
-      message:JSON.stringify({plateforme:pl,type:ty,club:cl,date:dt,statut:st}),
-      lue:pub,destinataire_id:uid
+    const r=await sbFetch('contenus',{method:'POST',body:{
+      client_id:clientId||null,cm_id:uid,titre:ti,plateforme:pl,type_contenu:ty,
+      date_prevue:dt||null,hook:hook||null,cta:cta||null,legende:legende||null,
+      hashtags:hashtags||null,sponsor:sponsor||null
     }});
     if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');return;}
     closeModal();
@@ -14112,27 +14158,41 @@ async function creerContenu(){
 }
 
 async function modalEditContenu(id){
-  const c=_contenuCache.find(x=>x.id===id);
-  if(!c)return;
-  let info={};try{info=JSON.parse(c.message);}catch(e){}
+  const full=await sbFetch('contenus?id=eq.'+id+'&select=*').catch(()=>null);
+  if(!Array.isArray(full)||!full[0])return;
+  const info=full[0];
+  const clients=await _cmVisibleClients();
   const plats=['Instagram','YouTube','Facebook','TikTok','Twitter/X'];
   const types=['Vidéo','Photo','Story','Reel','Article','Post'];
-  const stOpts=[['brouillon','Brouillon'],['programmé','Programmé'],['publié','Publié']];
+  const uid=localStorage.getItem('sv_uid');
+  const canDelete=info.cm_id===uid||S.role==='admin'||(S.role==='cm'&&_myNiveauCm==='cm_lead');
+  const next=CONTENU_NEXT[info.statut];
+  const canCorrections=['a_valider_interne','a_valider_client'].includes(info.statut);
   openModal(`<div class="mh"><div class="mt">Modifier contenu</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
-      <div class="fg"><label class="fl">Titre</label><input type="text" id="cte-ti" class="fi" value="${esc(c.titre)}"></div>
+      <div class="fg"><label class="fl">Titre</label><input type="text" id="cte-ti" class="fi" value="${esc(info.titre)}"></div>
+      <div class="fg"><label class="fl">Client</label>
+        <select id="cte-cl" class="fi"><option value=""${!info.client_id?' selected':''}>Aucun client (SportVision)</option>${clients.map(cl=>`<option value="${cl.id}"${info.client_id===cl.id?' selected':''}>${esc(cl.nom)}</option>`).join('')}</select></div>
       <div class="g2">
         <div class="fg"><label class="fl">Plateforme</label><select id="cte-pl" class="fi">${plats.map(p=>`<option${p===info.plateforme?' selected':''}>${p}</option>`).join('')}</select></div>
-        <div class="fg"><label class="fl">Type</label><select id="cte-ty" class="fi">${types.map(t=>`<option${t===info.type?' selected':''}>${t}</option>`).join('')}</select></div>
+        <div class="fg"><label class="fl">Type</label><select id="cte-ty" class="fi">${types.map(t=>`<option${t===info.type_contenu?' selected':''}>${t}</option>`).join('')}</select></div>
       </div>
+      <div class="fg"><label class="fl">Date prévue</label><input type="date" id="cte-dt" class="fi" value="${info.date_prevue||''}"></div>
       <div class="g2">
-        <div class="fg"><label class="fl">Club</label><input type="text" id="cte-cl" class="fi" value="${info.club||''}"></div>
-        <div class="fg"><label class="fl">Date</label><input type="date" id="cte-dt" class="fi" value="${info.date||''}"></div>
+        <div class="fg"><label class="fl">Hook</label><input type="text" id="cte-hook" class="fi" value="${esc(info.hook||'')}"></div>
+        <div class="fg"><label class="fl">CTA</label><input type="text" id="cte-cta" class="fi" value="${esc(info.cta||'')}"></div>
       </div>
-      <div class="fg"><label class="fl">Statut</label><select id="cte-st" class="fi">${stOpts.map(([v,l])=>`<option value="${v}"${info.statut===v?' selected':''}>${l}</option>`).join('')}</select></div>
+      <div class="fg"><label class="fl">Légende</label><textarea id="cte-leg" class="fi" style="height:60px">${esc(info.legende||'')}</textarea></div>
+      <div class="g2">
+        <div class="fg"><label class="fl">Hashtags</label><input type="text" id="cte-hash" class="fi" value="${esc(info.hashtags||'')}"></div>
+        <div class="fg"><label class="fl">Sponsor</label><input type="text" id="cte-spo" class="fi" value="${esc(info.sponsor||'')}"></div>
+      </div>
+      <div class="fg"><label class="fl">Statut actuel</label><div><span class="bd ${(CONTENU_STATUTS[info.statut]||CONTENU_STATUTS.brouillon).cls}"><span class="bd-d"></span>${(CONTENU_STATUTS[info.statut]||CONTENU_STATUTS.brouillon).lb}</span></div></div>
     </div>
-    <div class="mf">
-      <button class="btn bb" onclick="supprimerContenu('${id}')">Supprimer</button>
+    <div class="mf" style="flex-wrap:wrap;gap:8px">
+      ${canDelete?`<button class="btn bb" onclick="supprimerContenu('${id}')">Supprimer</button>`:''}
+      ${canCorrections?`<button class="btn bg2" onclick="avancerContenu('${id}','corrections');closeModal()">Demander corrections</button>`:''}
+      ${next?`<button class="btn bg2" onclick="avancerContenu('${id}','${next.st}');closeModal()">${next.lb}</button>`:''}
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
       <button class="btn bp" onclick="sauvegarderContenu('${id}')">Sauvegarder</button>
     </div>`);
@@ -14140,13 +14200,21 @@ async function modalEditContenu(id){
 
 async function sauvegarderContenu(id){
   const ti=(document.getElementById('cte-ti')?.value||'').trim();
+  const clientId=document.getElementById('cte-cl')?.value||null;
   const pl=document.getElementById('cte-pl')?.value||'';
   const ty=document.getElementById('cte-ty')?.value||'';
-  const cl=(document.getElementById('cte-cl')?.value||'').trim();
-  const dt=document.getElementById('cte-dt')?.value||'';
-  const st=document.getElementById('cte-st')?.value||'brouillon';
+  const dt=document.getElementById('cte-dt')?.value||null;
+  const hook=(document.getElementById('cte-hook')?.value||'').trim();
+  const cta=(document.getElementById('cte-cta')?.value||'').trim();
+  const legende=(document.getElementById('cte-leg')?.value||'').trim();
+  const hashtags=(document.getElementById('cte-hash')?.value||'').trim();
+  const sponsor=(document.getElementById('cte-spo')?.value||'').trim();
   try{
-    const r=await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{titre:ti,message:JSON.stringify({plateforme:pl,type:ty,club:cl,date:dt,statut:st}),lue:st==='publié'}});
+    const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{
+      titre:ti,client_id:clientId||null,plateforme:pl,type_contenu:ty,date_prevue:dt||null,
+      hook:hook||null,cta:cta||null,legende:legende||null,hashtags:hashtags||null,sponsor:sponsor||null,
+      updated_at:new Date().toISOString()
+    }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
     closeModal();
     if(document.getElementById('contenus-real')) loadCmContenus();
@@ -14155,21 +14223,10 @@ async function sauvegarderContenu(id){
   }catch(e){}
 }
 
-async function publierContenu(id){
-  try{
-    const r=await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:true}});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'publication impossible.'),'er');return;}
-    const c=_contenuCache.find(x=>x.id===id);
-    if(c){let info={};try{info=JSON.parse(c.message);}catch(e){}info.statut='publié';await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{message:JSON.stringify(info)}}).catch(()=>{});}
-    if(document.getElementById('contenus-real')) loadCmContenus();
-    else if(document.getElementById('pub-real')) loadCmPublications();
-  }catch(e){}
-}
-
 function supprimerContenu(id){
   confirmerAction('Supprimer ce contenu ?',async()=>{
     try{
-      const r=await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
+      const r=await sbFetch('contenus?id=eq.'+id,{method:'DELETE'});
       if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
       closeModal();
       toast('Contenu supprimé.','ok');
@@ -14183,23 +14240,20 @@ async function loadCmPublications(){
   const el=document.getElementById('pub-real');
   if(!el)return;
   try{
-    const data=await sbFetch('notifications?select=id,titre,message,created_at&type=eq.contenu&lue=eq.true&order=created_at.desc&limit=50');
-    _contenuCache=(_contenuCache||[]);
-    if(!data||!data.length){
-      el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune publication enregistrée. Marquez vos contenus comme publiés depuis l\'onglet Contenus.</div></div>';return;
+    const data=await sbFetch('contenus?select=id,titre,plateforme,type_contenu,date_publication,clients(nom)&statut=eq.publie&order=date_publication.desc.nullslast,updated_at.desc&limit=50');
+    const list=Array.isArray(data)?data:[];
+    if(!list.length){
+      el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune publication enregistrée. Faites avancer vos contenus jusqu\'à « Publié » depuis l\'onglet Contenus.</div></div>';return;
     }
-    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Titre</th><th>Plateforme</th><th>Club</th><th>Type</th><th>Date</th><th></th></tr></thead><tbody>'+
-      data.map(c=>{
-        let info={};try{info=JSON.parse(c.message);}catch(e){}
-        return`<tr>
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Titre</th><th>Client</th><th>Plateforme</th><th>Type</th><th>Date</th><th></th></tr></thead><tbody>'+
+      list.map(c=>`<tr>
           <td class="tp">${esc(c.titre)}</td>
-          <td>${info.plateforme||'—'}</td>
-          <td>${info.club||'—'}</td>
-          <td>${info.type||'—'}</td>
-          <td>${new Date(c.created_at).toLocaleDateString('fr-FR')}</td>
+          <td>${c.clients?.nom?esc(c.clients.nom):'<span style="color:var(--t3)">SportVision</span>'}</td>
+          <td>${esc(c.plateforme||'—')}</td>
+          <td>${esc(c.type_contenu||'—')}</td>
+          <td>${c.date_publication?new Date(c.date_publication).toLocaleDateString('fr-FR'):'—'}</td>
           <td><button class="btn bg2 bs" onclick="modalEditContenu('${c.id}')">Détail</button></td>
-        </tr>`;
-      }).join('')+'</tbody></table></div></div>';
+        </tr>`).join('')+'</tbody></table></div></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
 }
 
@@ -14211,8 +14265,8 @@ async function loadCmAnalytics(){
     const [cli,preMois,pubTotal,byPlat]=await Promise.all([
       sbFetch('clients?select=id&statut=eq.client'),
       sbFetch('prestations?select=id&date_prestation=gte.'+mStart+'&statut=not.in.(annulée,refusée)'),
-      sbFetch('notifications?select=id,message&type=eq.contenu&lue=eq.true'),
-      sbFetch('notifications?select=message&type=eq.contenu&lue=eq.true&limit=200'),
+      sbFetch('contenus?select=id&statut=eq.publie'),
+      sbFetch('contenus?select=plateforme&statut=eq.publie&limit=200'),
     ]);
     set('an-pub',(pubTotal||[]).length);
     // Social stats from localStorage (manual input)
@@ -14223,7 +14277,7 @@ async function loadCmAnalytics(){
     set('an-yt-views',stats.yt_views?Number(stats.yt_views).toLocaleString('fr-FR'):'—');
     // By platform breakdown
     const platMap={};
-    (byPlat||[]).forEach(c=>{let info={};try{info=JSON.parse(c.message);}catch(e){}const pl=info.plateforme||'Autre';platMap[pl]=(platMap[pl]||0)+1;});
+    (byPlat||[]).forEach(c=>{const pl=c.plateforme||'Autre';platMap[pl]=(platMap[pl]||0)+1;});
     const elPlat=document.getElementById('an-by-plat');
     if(elPlat){
       if(!Object.keys(platMap).length){elPlat.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune publication enregistrée dans l\'OS.</div>';}
@@ -17693,7 +17747,7 @@ async function updateNavBadges(role){
       if(role==='admin')setBadge('pipeline',(await sbFetch('clients?select=id&statut=in.(prospect,qualifié)')||[]).length,'nb-o');
     }
     if(role==='cm'){
-      const prog=await sbFetch('notifications?select=id&type=eq.contenu&lue=eq.false');
+      const prog=await sbFetch('contenus?select=id&statut=not.in.(publie,archive)');
       setBadge('contenus',(prog||[]).length,'nb-o');
     }
     if(role==='com'){
