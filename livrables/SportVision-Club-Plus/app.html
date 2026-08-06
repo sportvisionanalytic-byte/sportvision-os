@@ -861,7 +861,51 @@ function tplDashboard(){
   else if(S.role==='tresorier') body=dashTresorier();
   else if(S.role==='resp_equipe') body=dashRespEquipe();
   else body=dashGeneric();
-  return `<div class="sh"><div><b>Bonjour ${r.person.split(' ')[0]}, voici l'activité communication de FC Clairval.</b><div class="muted" style="font-size:12.5px;margin-top:4px">Mardi 28 juillet 2026</div></div>${chips}</div>${qa}${body}`;
+  return `<div class="sh"><div><b>Bonjour ${r.person.split(' ')[0]}, voici l'activité communication de FC Clairval.</b><div class="muted" style="font-size:12.5px;margin-top:4px">Mardi 28 juillet 2026</div></div>${chips}</div>${onboardingChecklistHtml()}${qa}${body}`;
+}
+/* ══════════════ CHECKLIST "PREMIERS PAS" (onboarding tableau de bord) ══════════════
+   Affichée uniquement en session réelle (REAL). Chaque étape est dérivée d'une
+   vraie donnée club — jamais un drapeau stocké qui pourrait devenir faux :
+   - Profil    : clubs.logo_url renseigné (REAL.logoUrl, déjà chargé au login,
+                 identique à ce que lit tplParametres > Identité du club)
+   - Équipe    : au moins une ligne club_teams pour ce club (teamsSource())
+   - Bureau    : plus d'une ligne club_members au statut 'actif' pour ce club
+   Seul le choix de masquer la checklist est stocké (localStorage), jamais
+   l'état des étapes elles-mêmes. */
+function onboardingActiveMembersCount(){
+  if(!REAL) return 0;
+  if(realMembers===null){ loadRealMembers(); return 0; }
+  return realMembers.filter(u=>u.status==='actif').length;
+}
+function onboardingChecklistSteps(){
+  return [
+    {label:'Personnaliser le profil du club', done:!!(REAL&&REAL.logoUrl), action:"paView='identite';switchView('parametres')"},
+    {label:'Ajouter votre première équipe', done:teamsSource().length>0, action:"guard(openEquipeForm,'gerer_equipes')()"},
+    {label:'Inviter votre bureau', done:onboardingActiveMembersCount()>1, action:"guard(openInviteWizard,'gerer_utilisateurs')()"}
+  ];
+}
+function onboardingChecklistHtml(){
+  if(!REAL) return '';
+  if(localStorage.getItem('svcp_hide_onboarding_checklist')==='1') return '';
+  const steps=onboardingChecklistSteps();
+  const doneCount=steps.filter(s=>s.done).length;
+  const pct=Math.round(doneCount/steps.length*100);
+  if(pct>=100) return '';
+  return `<div class="card" style="margin-bottom:20px">
+    <div class="sh" style="margin-bottom:6px">
+      <div><b style="font-size:15px">Premiers pas avec Club+</b><div class="muted" style="font-size:12px;margin-top:2px">${doneCount}/${steps.length} étapes complétées</div></div>
+      <button class="btn bo" style="padding:6px 12px" onclick="hideOnboardingChecklist()">Masquer</button>
+    </div>
+    <div class="progress" style="margin-bottom:14px"><i style="width:${pct}%"></i></div>
+    ${steps.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;${s.done?'':'cursor:pointer'}" ${s.done?'':`onclick="${s.action}"`}>
+      <span style="font-size:12.5px;${s.done?'color:var(--t2);text-decoration:line-through':'font-weight:600'}">${s.label}</span>
+      <span class="badge" style="background:${s.done?'#28C99522':'#F5A62322'};color:${s.done?'var(--ok)':'var(--wa)'}">${s.done?'Fait':'À faire →'}</span>
+    </div>`).join('')}
+  </div>`;
+}
+function hideOnboardingChecklist(){
+  localStorage.setItem('svcp_hide_onboarding_checklist','1');
+  renderContent();
 }
 function mobileQuickActions(){
   const defs={
