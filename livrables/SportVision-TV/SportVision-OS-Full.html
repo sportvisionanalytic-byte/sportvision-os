@@ -813,6 +813,7 @@ const NAV={
     {type:'sep',lb:'Éditorial'},
     {id:'dash',lb:'Vue d\'ensemble',ic:'dash'},
     {id:'demandes',lb:'Demandes reçues',ic:'doc'},
+    {id:'briefs',lb:'Briefs production',ic:'pre'},
     {id:'cal',lb:'Calendrier éditorial',ic:'cal'},
     {id:'contenus',lb:'Contenus',ic:'pre'},
     {id:'publications',lb:'Publications',ic:'pub'},
@@ -1744,6 +1745,15 @@ const VIEWS={
       <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Urgentes</div><div class="fs-v" id="dem-kpi-urg" style="color:var(--er)">—</div></div>
     </div>
     <div id="dem-list"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'cm.briefs':()=>`
+    <div class="sh"><div class="sh-t">Briefs production</div><button class="btn bp" onclick="modalNouveauBriefCm()">+ Nouveau brief</button></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">En attente</div><div class="fs-v" id="brf-kpi-att" style="color:var(--er)">—</div></div>
+      <div class="fs"><div class="fs-l">En cours</div><div class="fs-v" id="brf-kpi-cours">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Livrées</div><div class="fs-v" id="brf-kpi-liv" style="color:var(--ok)">—</div></div>
+    </div>
+    <div id="brief-list"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.clients':()=>`
     <div class="sh"><div class="sh-t">Mes clients</div></div>
@@ -3201,6 +3211,7 @@ async function loadViewData(role,view){
   if(['com','admin','sec'].includes(role)&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
   if(role==='cm'&&view==='demandes') await loadCmDemandes();
+  if(role==='cm'&&view==='briefs') await loadCmBriefs();
   if(role==='cm'&&view==='clients') await loadCmClients();
   if(role==='cm'&&view==='cal') await loadCmCal();
   if(role==='cm'&&view==='contenus') await loadCmContenus();
@@ -14113,6 +14124,87 @@ function creerContenuDepuisDemande(clientId,titre){
   modalNouveauContenu(null,null,{clientId,titre});
 }
 
+// ── CM — Briefs de production ──────────────────────────────────────────────
+// Pas de nouvelle table : un brief est une prestations.type_prestation=
+// 'réseaux_sociaux', déjà consommée telle quelle par loadProdBriefings()
+// (rôle prod) avec tout le pipeline média/postproduction/livraison derrière.
+// La RLS (migration-cm-briefs.sql) scope automatiquement par portefeuille
+// CM — aucun filtre client à dupliquer ici. Réutilise SL/SC (labels/couleurs
+// de statut globaux) pour rester cohérent avec le reste de l'app plutôt que
+// d'inventer un vocabulaire de statuts propre au CM.
+async function loadCmBriefs(){
+  const el=document.getElementById('brief-list');
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  if(!el)return;
+  try{
+    const data=await sbFetch('prestations?select=id,reference,statut,date_prestation,lieu,description_besoin,livrables_demandes,briefing_vu_at,clients(nom)&type_prestation=eq.réseaux_sociaux&order=date_prestation.desc&limit=100');
+    const list=Array.isArray(data)?data:[];
+    const cloturees=['annulée','refusée','livrée','clôturée'];
+    set('brf-kpi-att',list.filter(p=>!cloturees.includes(p.statut)&&!p.briefing_vu_at).length);
+    set('brf-kpi-cours',list.filter(p=>!cloturees.includes(p.statut)&&p.briefing_vu_at).length);
+    set('brf-kpi-liv',list.filter(p=>['livrée','clôturée'].includes(p.statut)).length);
+    if(!list.length){el.innerHTML='<div class="cd"><div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🎬</div><div>Aucun brief envoyé à la production pour l\'instant.</div></div></div>';return;}
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Client</th><th>Besoin</th><th>Livrables attendus</th><th>Date</th><th>Lieu</th><th>Statut</th><th>Vu par prod</th></tr></thead><tbody>'+
+      list.map(p=>{
+        const stLbl=SL[p.statut]||p.statut;
+        const stCls=SC[p.statut]||'bn';
+        return`<tr>
+          <td class="tp">${esc(p.clients?.nom||'—')}</td>
+          <td style="max-width:220px" title="${esc(p.description_besoin||'')}">${esc((p.description_besoin||'—').slice(0,60))}</td>
+          <td style="max-width:220px" title="${esc(p.livrables_demandes||'')}">${esc((p.livrables_demandes||'—').slice(0,60))}</td>
+          <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+          <td>${esc(p.lieu||'—')}</td>
+          <td><span class="bd ${stCls}"><span class="bd-d"></span>${stLbl}</span></td>
+          <td>${p.briefing_vu_at?'<span style="color:var(--ok)">✓ '+new Date(p.briefing_vu_at).toLocaleDateString('fr-FR')+'</span>':'<span style="color:var(--t3)">Pas encore</span>'}</td>
+        </tr>`;
+      }).join('')+'</tbody></table></div></div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';console.error(e);}
+}
+
+async function modalNouveauBriefCm(prefill){
+  const pf=prefill||{};
+  const clients=await _cmVisibleClients();
+  openModal(`<div class="mh"><div class="mt">Nouveau brief production</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">Client</label>
+        <select id="brf-cl" class="fi"><option value="">— Sélectionner —</option>${clients.map(c=>`<option value="${c.id}"${pf.clientId===c.id?' selected':''}>${esc(c.nom)}</option>`).join('')}</select></div>
+      <div class="g2">
+        <div class="fg"><label class="fl">Date souhaitée</label><input type="date" id="brf-dt" class="fi"></div>
+        <div class="fg"><label class="fl">Lieu</label><input type="text" id="brf-lieu" class="fi" placeholder="Stade, salle..."></div>
+      </div>
+      <div class="fg"><label class="fl">Besoin client</label><textarea id="brf-besoin" class="fi" style="height:70px;resize:none" placeholder="Ex : captation entraînement + interviews joueurs">${esc(pf.besoin||'')}</textarea></div>
+      <div class="fg"><label class="fl">Livrables attendus</label><textarea id="brf-livr" class="fi" style="height:70px;resize:none" placeholder="Ex : 1 reel Instagram 30s + 5 photos HD"></textarea></div>
+      <div id="brf-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerBriefCm()">Envoyer à la production</button></div>`);
+}
+
+async function creerBriefCm(){
+  const err=document.getElementById('brf-err');
+  const clientId=document.getElementById('brf-cl')?.value||'';
+  const besoin=(document.getElementById('brf-besoin')?.value||'').trim();
+  const livrables=(document.getElementById('brf-livr')?.value||'').trim();
+  if(!clientId){if(err)err.textContent='Le client est obligatoire.';return;}
+  if(!besoin||!livrables){if(err)err.textContent='Besoin client et livrables attendus sont obligatoires.';return;}
+  if(err)err.textContent='Envoi...';
+  try{
+    const body={
+      client_id:clientId,
+      type_prestation:'réseaux_sociaux',
+      date_prestation:document.getElementById('brf-dt')?.value||null,
+      lieu:document.getElementById('brf-lieu')?.value||null,
+      description_besoin:besoin,
+      livrables_demandes:livrables,
+      created_by:localStorage.getItem('sv_uid')
+    };
+    const r=await sbFetch('prestations',{method:'POST',body});
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'envoi impossible.');return;}
+    closeModal();
+    toast('Brief envoyé à la production.','ok');
+    loadCmBriefs();
+  }catch(e){if(err)err.textContent='Erreur lors de l\'envoi.';}
+}
+
 async function loadCmClients(){
   const el=document.getElementById('cm-clients-real');
   if(!el)return;
@@ -21754,7 +21846,7 @@ const MOB_MORE_ITEMS={
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
-  cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
+  cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
 };
 function openMobMore(){
