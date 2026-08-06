@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mentions légales — SportVision</title>
+<meta name="description" content="Mentions légales du site SportVision : éditeur, directeur de publication, hébergement, propriété intellectuelle.">
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SportVision — page légale. Reprend le design system de la
+   page d'accueil (livrables/SportVision/index.html) : mêmes
+   variables, mêmes classes de header/footer/boutons. Contenu
+   sobre en colonne unique, sans hero ni animation.
+   Vanilla HTML/CSS, aucun framework, aucune étape de build.
+   ============================================================ */
+:root{
+  --navy-900:#070A17; --navy-800:#10162F;
+  --blue:#2454FF; --blue-electric:#1686FF; --cyan:#00C7FF;
+  --violet:#832DFF; --violet-bright:#C337FF;
+  --white:#FFFFFF; --bg-light:#F5F7FC; --text-secondary:#98A2B3;
+  --success:#12B76A;
+  --grad-brand: linear-gradient(135deg, var(--blue) 0%, var(--cyan) 50%, var(--violet-bright) 100%);
+  --radius:16px; --radius-lg:24px;
+  --shadow-lg: 0 24px 60px rgba(7,10,23,.35);
+  --font-head:'Manrope',-apple-system,sans-serif;
+  --font-body:'Inter',-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important} }
+body{margin:0;font-family:var(--font-body);color:var(--navy-900);background:var(--white);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,h4{font-family:var(--font-head);font-weight:800;line-height:1.12;margin:0;letter-spacing:-.01em}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+button{font-family:inherit;cursor:pointer}
+.container{max-width:1240px;margin:0 auto;padding:0 24px}
+section{position:relative}
+
+/* ── Boutons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:14px 26px;font-weight:700;font-size:15px;border:none;white-space:nowrap;transition:transform .18s ease, box-shadow .18s ease, background .18s ease}
+.btn-grad{background:var(--grad-brand);color:#fff;box-shadow:0 10px 30px rgba(101,60,255,.35)}
+.btn-grad:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(101,60,255,.45)}
+.btn-ghost-dark{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.22)}
+.btn-ghost-dark:hover{background:rgba(255,255,255,.16)}
+
+/* ── Header ── */
+.site-header{position:fixed;top:0;left:0;right:0;z-index:1000;padding:16px 0;transition:background .25s ease, box-shadow .25s ease, padding .25s ease;background:rgba(7,10,23,.86);backdrop-filter:blur(14px);box-shadow:0 1px 0 rgba(255,255,255,.06)}
+.site-header .container{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-head);font-weight:800;font-size:19px;color:#fff}
+.brand .mark{width:32px;height:32px;border-radius:9px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;flex-shrink:0}
+.main-nav{display:flex;gap:30px}
+.main-nav a{font-size:14.5px;font-weight:600;color:rgba(255,255,255,.82);transition:color .15s}
+.main-nav a:hover{color:#fff}
+.header-actions{display:flex;align-items:center;gap:10px}
+.header-actions .btn-ghost-dark{padding:11px 18px;font-size:13.5px}
+.header-actions .btn-grad{padding:11px 20px;font-size:13.5px}
+.burger{display:none;background:none;border:none;color:#fff;width:38px;height:38px;align-items:center;justify-content:center}
+.burger span,.burger span::before,.burger span::after{content:'';display:block;width:20px;height:2px;background:#fff;position:relative;transition:.2s}
+.burger span::before{position:absolute;top:-6px}
+.burger span::after{position:absolute;top:6px}
+.mobile-nav{display:none;position:fixed;inset:0;z-index:999;background:var(--navy-900);padding:90px 24px 24px;flex-direction:column;gap:6px}
+.mobile-nav.on{display:flex}
+.mobile-nav a{color:#fff;font-size:19px;font-weight:700;padding:14px 4px;border-bottom:1px solid rgba(255,255,255,.08)}
+.mobile-nav .mobile-ctas{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+
+/* ── Contenu légal ── */
+.legal-page{padding:158px 0 110px;background:var(--white)}
+.legal-wrap{max-width:760px;margin:0 auto;padding:0 24px}
+.legal-warning{background:var(--bg-light);border:1px solid #e4e7ef;border-left:4px solid var(--blue);border-radius:var(--radius);padding:18px 22px;margin-bottom:44px;font-size:13.5px;line-height:1.65;color:#4b5468}
+.legal-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--blue-electric);background:rgba(36,84,255,.1);border:1px solid rgba(36,84,255,.25);border-radius:999px;padding:7px 14px;margin-bottom:18px}
+.legal-title h1{font-size:clamp(28px,4vw,40px)}
+.legal-updated{color:var(--text-secondary);font-size:13px;margin-top:14px;margin-bottom:8px}
+.legal-body{margin-top:36px}
+.legal-body h2{font-family:var(--font-head);font-weight:800;font-size:19px;color:var(--navy-900);margin:38px 0 12px}
+.legal-body h2:first-child{margin-top:0}
+.legal-body p{color:#374151;font-size:15.5px;line-height:1.75;margin-bottom:14px}
+.legal-body ul{margin:0 0 14px;padding-left:20px;color:#374151;font-size:15.5px;line-height:1.75}
+.legal-body li{margin-bottom:6px}
+.legal-body a{color:var(--blue);text-decoration:underline}
+.legal-body strong{color:var(--navy-900)}
+
+/* ── Footer ── */
+.site-footer{background:var(--navy-900);color:rgba(255,255,255,.6);padding:70px 0 30px;border-top:1px solid rgba(255,255,255,.06)}
+.footer-grid{display:grid;grid-template-columns:1.6fr repeat(5,1fr);gap:30px}
+.footer-brand p{font-size:13.5px;line-height:1.6;margin-top:14px;max-width:220px}
+.footer-col h5{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.85);margin-bottom:16px}
+.footer-col ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.footer-col a{font-size:13.5px;color:rgba(255,255,255,.6)}
+.footer-col a:hover{color:#fff}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-top:1px solid rgba(255,255,255,.08);margin-top:54px;padding-top:24px;font-size:12.5px;color:rgba(255,255,255,.4)}
+.footer-legal{display:flex;gap:18px;flex-wrap:wrap}
+.footer-social{display:flex;gap:10px}
+.footer-social a{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:13px}
+
+/* ── Responsive ── */
+@media (max-width:980px){
+  .main-nav,.header-actions .btn-ghost-dark{display:none}
+  .burger{display:flex}
+  .footer-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .legal-page{padding:130px 0 70px}
+  .footer-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="site-header" id="site-header">
+  <div class="container">
+    <a href="index.html" class="brand"><span class="mark">S</span>SportVision</a>
+    <nav class="main-nav">
+      <a href="index.html#produit">Produit</a>
+      <a href="index.html#solutions">Solutions</a>
+      <a href="index.html#services">Services</a>
+      <a href="index.html#offres">Offres</a>
+      <a href="index.html#realisations">Réalisations</a>
+      <a href="index.html#faq">Ressources</a>
+      <a href="index.html#apropos">À propos</a>
+    </nav>
+    <div class="header-actions">
+      <a href="../SportVision-Connect/app/index.html" class="btn btn-ghost-dark">Se connecter</a>
+      <a href="index.html#devis" class="btn btn-grad">Demander une démonstration</a>
+    </div>
+    <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
+  </div>
+</header>
+
+<div class="mobile-nav" id="mobile-nav">
+  <a href="index.html#produit">Produit</a>
+  <a href="index.html#solutions">Solutions</a>
+  <a href="index.html#services">Services</a>
+  <a href="index.html#offres">Offres</a>
+  <a href="index.html#realisations">Réalisations</a>
+  <a href="index.html#faq">Ressources</a>
+  <a href="index.html#apropos">À propos</a>
+  <div class="mobile-ctas">
+    <a href="../SportVision-Connect/app/index.html" class="btn btn-ghost-dark">Se connecter</a>
+    <a href="index.html#devis" class="btn btn-grad">Demander une démonstration</a>
+  </div>
+</div>
+
+<!-- ══════════════ CONTENU ══════════════ -->
+<main class="legal-page">
+  <div class="legal-wrap">
+
+    <div class="legal-warning">
+      Ce document est un projet de base et doit être relu et validé par un professionnel du droit avant toute publication réelle — conformément à la règle du cahier des charges SportVision Connect sur les textes juridiques.
+    </div>
+
+    <div class="legal-title">
+      <span class="legal-eyebrow">Informations légales</span>
+      <h1>Mentions légales</h1>
+      <p class="legal-updated">Applicable au site SportVision (vitrine publique et SportVision Connect).</p>
+    </div>
+
+    <div class="legal-body">
+
+      <h2>Éditeur du site</h2>
+      <p>
+        Le site SportVision est édité par <strong>Elkana Group</strong>, société par actions simplifiée (SAS),
+        exploitant l'activité sous le nom commercial <strong>SportVision</strong>.
+      </p>
+      <ul>
+        <li>SIREN : 105 173 124</li>
+        <li>SIRET (siège) : 105 173 124 00014</li>
+        <li>TVA intracommunautaire : FR15 105 173 124</li>
+        <li>Code APE/NAF : 74.20Z — Activités photographiques</li>
+        <li>Siège social : 4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne</li>
+        <li>RCS : Melun</li>
+        <li>Contact : <a href="mailto:contact@sportvision.fr">contact@sportvision.fr</a></li>
+      </ul>
+
+      <h2>Directeur de la publication</h2>
+      <p>La direction de la publication est assurée par Elkana Group.</p>
+
+      <h2>Hébergement</h2>
+      <p>
+        Le site est hébergé par <strong>Netlify, Inc.</strong><br>
+        44 Montgomery Street, Suite 300, San Francisco, California 94104, USA.
+      </p>
+
+      <h2>Propriété intellectuelle</h2>
+      <p>
+        L'ensemble des contenus présents sur ce site (textes, visuels, photographies, vidéos, logos, éléments graphiques,
+        structure et code) est la propriété exclusive d'Elkana Group / SportVision, sauf mention contraire, et est protégé
+        par le droit de la propriété intellectuelle. Toute reproduction, représentation, modification ou diffusion, totale
+        ou partielle, de ces contenus, sur quelque support que ce soit, sans autorisation écrite préalable, est interdite
+        et constitutive d'une contrefaçon.
+      </p>
+
+      <h2>Liens hypertextes</h2>
+      <p>
+        Le site SportVision peut contenir des liens vers des sites tiers. SportVision n'exerce aucun contrôle sur ces sites
+        et décline toute responsabilité quant à leur contenu. La mise en place de liens vers le site SportVision est soumise
+        à autorisation préalable ; contactez-nous via le formulaire du site.
+      </p>
+
+      <h2>Crédits</h2>
+      <p>
+        Conception et développement : Elkana Group / SportVision. Polices utilisées : Manrope et Inter (Google Fonts).
+      </p>
+
+    </div>
+  </div>
+</main>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="brand" style="font-size:18px"><span class="mark" style="width:28px;height:28px;font-size:14px">S</span>SportVision</a>
+        <p>La plateforme de communication du sport amateur — par ELKANA GROUP.</p>
+      </div>
+      <div class="footer-col"><h5>Produit</h5><ul>
+        <li><a href="index.html#fonctionnalites">Fonctionnalités</a></li>
+        <li><a href="index.html#offres">Offres</a></li>
+        <li><a href="index.html#produit">Connect</a></li>
+        <li><a href="../SportVision-Connect/app/index.html">Connexion</a></li>
+        <li><a href="index.html#devis">Démonstration</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Solutions</h5><ul>
+        <li><a href="index.html#solutions">Clubs</a></li>
+        <li><a href="index.html#solutions">Académies</a></li>
+        <li><a href="index.html#solutions">Coachs</a></li>
+        <li><a href="index.html#solutions">Joueurs</a></li>
+        <li><a href="index.html#solutions">Tournois</a></li>
+        <li><a href="index.html#solutions">Partenaires</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Services</h5><ul>
+        <li><a href="index.html#services">Photo</a></li>
+        <li><a href="index.html#services">Vidéo</a></li>
+        <li><a href="index.html#services">Communication</a></li>
+        <li><a href="index.html#services">Media Day</a></li>
+        <li><a href="index.html#services">Tournois &amp; stages</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Ressources</h5><ul>
+        <li><a href="index.html#realisations">Réalisations</a></li>
+        <li><a href="index.html#realisations">Études de cas</a></li>
+        <li><a href="index.html#faq">Centre d'aide</a></li>
+        <li><a href="index.html#faq">Actualités</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Entreprise</h5><ul>
+        <li><a href="index.html#apropos">À propos</a></li>
+        <li><a href="index.html#devis">Contact</a></li>
+        <li><a href="index.html#devis">Recrutement</a></li>
+        <li><a href="index.html#solutions">Partenaires</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="sv-year"></span> ELKANA GROUP — SportVision. Tous droits réservés.</span>
+      <div class="footer-legal">
+        <a href="mentions-legales.html">Mentions légales</a>
+        <a href="confidentialite.html">Politique de confidentialité</a>
+        <a href="cgv.html">CGV</a>
+        <a href="#" id="cookie-manage">Gestion des cookies</a>
+      </div>
+      <div class="footer-social">
+        <a href="#" aria-label="Instagram">IG</a>
+        <a href="#" aria-label="TikTok">TT</a>
+        <a href="#" aria-label="LinkedIn">IN</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ── Header solide (fixe, style identique en permanence sur ces pages sobres) ── */
+/* ── Menu mobile ── */
+const burger = document.getElementById('burger-btn');
+const mobileNav = document.getElementById('mobile-nav');
+burger.addEventListener('click', () => mobileNav.classList.toggle('on'));
+mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mobileNav.classList.remove('on')));
+
+/* ── Année du footer ── */
+document.getElementById('sv-year').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
