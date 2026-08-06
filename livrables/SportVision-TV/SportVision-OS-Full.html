@@ -14063,9 +14063,11 @@ function getWeekDates(offset){
 // bonne forme de requête (clients directs vs contrats joints).
 // ── CM — Demandes reçues (pont club_requests / Club+) ─────────────────────
 // club_requests appartient au produit Club+ (auth séparée, table clubs) —
-// la RLS (migration-clubplus-cm-bridge.sql) ne renvoie que les demandes des
-// clubs liés (clubs.client_id) à un client visible par le CM courant, donc
-// aucun filtre supplémentaire n'est nécessaire ici.
+// la RLS (migration-clubplus-cm-bridge.sql + migration-cm-club-link-fix.sql)
+// ne renvoie que les demandes des clubs liés (clubs.portail_client_id,
+// posé automatiquement par clubplus-activate/onboarding) à un client
+// visible par le CM courant, donc aucun filtre supplémentaire n'est
+// nécessaire ici.
 const DEMANDE_STATUT_LBL={recues:'Reçue',info_manquante:'Info manquante',en_traitement:'En traitement',prete_a_creer:'Prête à créer',terminee:'Terminée',refusee:'Refusée'};
 const DEMANDE_STATUT_CLS={recues:'bw',info_manquante:'br',en_traitement:'bb',prete_a_creer:'ba',terminee:'ba',refusee:'bn'};
 const DEMANDE_NEXT={
@@ -14081,7 +14083,7 @@ async function loadCmDemandes(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   if(!el)return;
   try{
-    const data=await sbFetch('club_requests?select=id,type,team,status,urgency,detail,credits_reserved,created_at,clubs(nom,client_id,clients(nom))&order=created_at.desc&limit=200');
+    const data=await sbFetch('club_requests?select=id,type,team,status,urgency,detail,credits_reserved,created_at,clubs(nom,portail_client_id,clients(nom))&order=created_at.desc&limit=200');
     const list=Array.isArray(data)?data:[];
     set('dem-kpi-nouv',list.filter(d=>d.status==='recues').length);
     set('dem-kpi-enc',list.filter(d=>['en_traitement','info_manquante'].includes(d.status)).length);
@@ -14106,7 +14108,7 @@ async function loadCmDemandes(){
           <td><span class="bd ${stCls}"><span class="bd-d"></span>${stLbl}</span></td>
           <td style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
             ${nextActions.map(a=>`<button class="btn bg2 bs" onclick="avancerDemande('${d.id}','${a.st}')">${a.lb}</button>`).join('')}
-            ${d.clubs?.client_id?`<button class="btn bp bs" onclick="creerContenuDepuisDemande('${d.clubs.client_id}','${escJs(d.type||'Demande')}')" title="Créer un contenu à partir de cette demande">+ Contenu</button>`:''}
+            ${d.clubs?.portail_client_id?`<button class="btn bp bs" onclick="creerContenuDepuisDemande('${d.clubs.portail_client_id}','${escJs(d.type||'Demande')}')" title="Créer un contenu à partir de cette demande">+ Contenu</button>`:''}
           </td>
         </tr>`;
       }).join('')+'</tbody></table></div></div>';
