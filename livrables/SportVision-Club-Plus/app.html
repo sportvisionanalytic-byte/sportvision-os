@@ -2296,13 +2296,18 @@ function planIncludes(feature){
   const code=(subscription && subscription.planCode) || 'club';
   return (PLAN_FEATURES[code]||[]).includes(feature);
 }
-function tplFonctionnaliteVerrouillee(nomFonctionnalite){
+// asPage=true : rendu comme le contenu entier d'une vue (ex. tplRapports),
+// pas de bouton fermer ni de closeModal() (il n'y a pas de modale à fermer).
+// asPage=false (défaut) : usage historique, dans une modale (ex. tplServices).
+function tplFonctionnaliteVerrouillee(nomFonctionnalite, asPage){
   const offreActuelle=(subscription && subscription.plan) || 'Club+';
-  return `<div class="sh"><b>Fonctionnalité incluse dans une offre supérieure</b><button class="close-x" onclick="closeModal()">✕</button></div>
+  const closeBtn=asPage?'':'<button class="close-x" onclick="closeModal()">✕</button>';
+  const closePrefix=asPage?'':'closeModal();';
+  return `<div class="sh"><b>Fonctionnalité incluse dans une offre supérieure</b>${closeBtn}</div>
     <div class="muted" style="font-size:13.5px;line-height:1.7;margin-bottom:20px">« ${esc(nomFonctionnalite)} » n'est pas activé sur votre contrat actuel (${esc(offreActuelle)}). Votre interlocuteur SportVision peut l'ajouter à tout moment.</div>
     <div style="display:flex;gap:10px">
-      <button class="btn bo" style="flex:1;justify-content:center" onclick="closeModal();switchView('aide')">Parler à mon conseiller</button>
-      <button class="btn bp" style="flex:1;justify-content:center" onclick="closeModal();switchView('abonnement')">Découvrir les offres</button>
+      <button class="btn bo" style="flex:1;justify-content:center" onclick="${closePrefix}switchView('aide')">Parler à mon conseiller</button>
+      <button class="btn bp" style="flex:1;justify-content:center" onclick="${closePrefix}switchView('abonnement')">Découvrir les offres</button>
     </div>`;
 }
 
@@ -2761,6 +2766,13 @@ function tplDocsFinance(){
 /* ══════════════ RAPPORTS ══════════════ */
 let rapView='equipes';
 function tplRapports(){
+  // Deuxième exemple concret du pattern "module verrouillé" (le premier étant
+  // Couverture tournoi dans tplServices) : rapports_avances est déjà déclaré
+  // dans PLAN_FEATURES (performance uniquement) mais n'était encore branché
+  // nulle part. Toute la vue est gardée plutôt qu'un onglet à la fois : les
+  // 4 rapports (équipes/communication/sponsors/utilisation) forment un seul
+  // module commercial "Rapports avancés", pas 4 fonctionnalités séparées.
+  if(REAL && !planIncludes('rapports_avances')) return tplFonctionnaliteVerrouillee('Rapports avancés', true);
   const tabs=[['equipes','Activité des équipes'],['communication','Communication'],['sponsors','Sponsors'],['utilisation','Utilisation Club+']];
   let content='';
   if(rapView==='equipes'){
