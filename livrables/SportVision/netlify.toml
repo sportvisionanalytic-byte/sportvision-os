@@ -1,0 +1,38 @@
+[build]
+  publish = "."
+
+# Contrairement à Portail/Club+/Connect (redirection catch-all vers un seul
+# fichier), la vitrine a de vraies pages distinctes : chaque .html doit être
+# servi tel quel. Seules les URLs "propres" (sans .html) redirigent vers leur
+# fichier, pour permettre /offres plutôt que /offres.html une fois le domaine
+# définitif branché.
+
+[[redirects]]
+  from = "/offres"
+  to = "/offres.html"
+  status = 200
+
+[[redirects]]
+  from = "/demande-de-devis"
+  to = "/demande-de-devis.html"
+  status = 200
+
+[[redirects]]
+  from = "/a-propos"
+  to = "/a-propos.html"
+  status = 200
+
+[[redirects]]
+  from = "/mentions-legales"
+  to = "/mentions-legales.html"
+  status = 200
+
+[[redirects]]
+  from = "/cgv"
+  to = "/cgv.html"
+  status = 200
+
+[[redirects]]
+  from = "/confidentialite"
+  to = "/confidentialite.html"
+  status = 200
