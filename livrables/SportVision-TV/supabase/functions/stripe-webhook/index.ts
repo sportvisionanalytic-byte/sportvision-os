@@ -13,7 +13,17 @@
 // Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
 //                  PENNYLANE_API_KEY (pour l'avoir automatique sur remboursement — optionnel : si
 //                  absente, le remboursement est quand même resynchronisé, seul l'avoir Pennylane
-//                  n'est pas créé et le staff est notifié pour le faire manuellement)
+//                  n'est pas créé et le staff est notifié pour le faire manuellement),
+//                  CLUBPLUS_URL (optionnel — repli sur https://clubplus.sportvision.fr, même
+//                  variable que create-clubplus-subscription-checkout / clubplus-billing-portal ;
+//                  utilisée dans le lien "Gérer mon abonnement" de l'e-mail d'échec de paiement)
+//
+// E-mails CLIENT sur le cycle de vie de l'abonnement (migration-clubplus-v27, 2026-08-06) :
+// jusqu'ici, seul le STAFF SportVision était notifié (notify_staff_by_role) sur activation,
+// échec de prélèvement et résiliation — le club payeur ne recevait jamais rien. Les 3 branches
+// concernées appellent maintenant AUSSI enqueue_notification vers l'admin actif du club (voir
+// getClubAdminContact ci-dessous), en plus — jamais à la place — de la notification staff
+// existante, qui reste inchangée.
 //
 // Avoir Pennylane automatique (2026-08-06) : au moment d'écrire ce code, la documentation
 // publique de l'API Pennylane (pennylane.readme.io) ne confirme PAS explicitement le mécanisme
@@ -38,6 +48,12 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 const PENNYLANE_BASE = "https://app.pennylane.com/api/external/v2";
+
+// URL publique de l'app Club+ — utilisée dans l'e-mail d'échec de
+// prélèvement (lien vers le bouton "Gérer mon abonnement", qui ouvre le
+// Portail de facturation Stripe côté clubplus-billing-portal). Même
+// variable et même repli que create-clubplus-subscription-checkout.
+const CLUBPLUS_URL = Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision.fr";
 
 /* ── Abonnement Club+ (migration-clubplus-v25) ── */
 
@@ -137,6 +153,39 @@ async function createPennylaneAvoir(admin: any, facture: any): Promise<{ ok: boo
   }
 }
 
+// Résout le contact à notifier côté club pour les e-mails d'abonnement
+// (migration-clubplus-v27) : le membre role='admin' status='actif' le plus
+// ancien (généralement celui qui a souscrit/gère l'abonnement au quotidien —
+// même filtre que create-clubplus-subscription-checkout pour autoriser un
+// admin à agir sur l'abonnement). club_members ne stocke pas d'e-mail
+// (seulement user_id → auth.users) : on le résout via l'API Admin Auth,
+// jamais exposée au navigateur. Retourne null si aucun admin actif n'est
+// trouvé ou si l'e-mail est indisponible — appelant toujours en best-effort,
+// ne doit jamais faire échouer le traitement de l'événement Stripe.
+// deno-lint-ignore no-explicit-any
+async function getClubAdminContact(admin: any, clubId: string): Promise<{ email: string; userId: string; prenom: string } | null> {
+  try {
+    const { data: member } = await admin
+      .from("club_members")
+      .select("user_id, prenom")
+      .eq("club_id", clubId)
+      .eq("role", "admin")
+      .eq("status", "actif")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!member?.user_id) return null;
+
+    const { data: userRes } = await admin.auth.admin.getUserById(member.user_id);
+    const email = userRes?.user?.email;
+    if (!email) return null;
+
+    return { email, userId: member.user_id, prenom: member.prenom || "" };
+  } catch (_e) {
+    return null;
+  }
+}
+
 serve(async (req) => {
   const signature = req.headers.get("Stripe-Signature");
   const body = await req.text();
@@ -232,6 +281,33 @@ serve(async (req) => {
             p_prestation_id: null,
             p_client_id: null,
           });
+        } catch (_e) {
+          // ignoré volontairement
+        }
+
+        // E-mail au club lui-même (le payeur) — jusqu'ici seul le staff était
+        // notifié, cf. commentaire d'en-tête (migration-clubplus-v27). Best-effort :
+        // ne bloque jamais l'activation, déjà encaissée et déjà écrite ci-dessus.
+        try {
+          const contact = await getClubAdminContact(admin, abonnementClubId);
+          if (contact) {
+            const montantFmt = ((session.amount_total ?? 0) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+            await admin.rpc("enqueue_notification", {
+              p_event_type: "clubplus.abonnement_active",
+              p_template_key: "clubplus.abonnement_active",
+              p_channel: "EMAIL",
+              p_idempotency_key: "clubplus.abonnement_active:v1:" + (subscriptionId || session.id),
+              p_recipient_email: contact.email,
+              p_recipient_user_id: contact.userId,
+              p_entity_type: "club",
+              p_entity_id: abonnementClubId,
+              p_payload: {
+                first_name: contact.prenom,
+                plan_label: plan === "performance" ? "Club+ Performance" : "Club+",
+                montant: montantFmt,
+              },
+            });
+          }
         } catch (_e) {
           // ignoré volontairement
         }
@@ -588,6 +664,35 @@ serve(async (req) => {
           } catch (_e) {
             // ignoré volontairement
           }
+
+          // E-mail au club : un impayé nécessite une action du payeur (mettre à
+          // jour son moyen de paiement) — cf. commentaire d'en-tête, migration-
+          // clubplus-v27. Idempotency key sur l'ID de facture Stripe : un même
+          // abonnement peut échouer plusieurs fois (relances Stripe), chaque
+          // facture ne doit générer qu'un seul e-mail. Best-effort.
+          try {
+            const contact = await getClubAdminContact(admin, club.id);
+            if (contact) {
+              const montantFmt = ((invoice.amount_due || 0) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+              await admin.rpc("enqueue_notification", {
+                p_event_type: "clubplus.paiement_echoue",
+                p_template_key: "clubplus.paiement_echoue",
+                p_channel: "EMAIL",
+                p_idempotency_key: "clubplus.paiement_echoue:v1:" + invoice.id,
+                p_recipient_email: contact.email,
+                p_recipient_user_id: contact.userId,
+                p_entity_type: "club",
+                p_entity_id: club.id,
+                p_payload: {
+                  first_name: contact.prenom,
+                  montant: montantFmt,
+                  lien_gestion: CLUBPLUS_URL + "/app.html",
+                },
+              });
+            }
+          } catch (_e) {
+            // ignoré volontairement
+          }
         }
       }
     }
@@ -615,6 +720,34 @@ serve(async (req) => {
             p_prestation_id: null,
             p_client_id: null,
           });
+        } catch (_e) {
+          // ignoré volontairement
+        }
+
+        // E-mail au club : confirmation de résiliation, cf. commentaire d'en-tête
+        // (migration-clubplus-v27). date_effet = date de traitement de l'événement
+        // (sub.ended_at n'est pas toujours renseigné selon la cause de la
+        // résiliation ; à ce stade l'abonnement est de toute façon déjà terminé
+        // côté Stripe). Best-effort.
+        try {
+          const contact = await getClubAdminContact(admin, club.id);
+          if (contact) {
+            const dateEffet = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+            await admin.rpc("enqueue_notification", {
+              p_event_type: "clubplus.abonnement_resilie",
+              p_template_key: "clubplus.abonnement_resilie",
+              p_channel: "EMAIL",
+              p_idempotency_key: "clubplus.abonnement_resilie:v1:" + sub.id,
+              p_recipient_email: contact.email,
+              p_recipient_user_id: contact.userId,
+              p_entity_type: "club",
+              p_entity_id: club.id,
+              p_payload: {
+                first_name: contact.prenom,
+                date_effet: dateEffet,
+              },
+            });
+          }
         } catch (_e) {
           // ignoré volontairement
         }

@@ -8457,7 +8457,7 @@ async function kitsControleOuvrirDepuisResa(resaId){
 
 
 // ── Centre Documentaire ───────────────────────────────────────────────────────
-let _docsTab='tous',_docsCache={devis:[],contrats:[],factures:[],avoirs:[]};
+let _docsTab='tous',_docsCache={devis:[],contrats:[],factures:[],avoirs:[],retractations:[]};
 
 const DEVIS_STATUTS={
   brouillon:{lb:'Brouillon',cl:'#8891A8',bc:'rgba(136,145,168,.12)'},
@@ -8501,10 +8501,21 @@ const CONTRAT_TYPES_LB={
   forfait_saison:'Forfait saison',forfait_evenement:'Forfait événement',
   partenariat:'Partenariat',prestations_ponctuelles:'Ponctuel',
 };
+const RETRACT_STATUTS={
+  en_attente:{lb:'En attente',cl:'#F5A524',bc:'rgba(245,165,36,.12)'},
+  acceptee:{lb:'Acceptée',cl:'#2ECC8A',bc:'rgba(46,204,138,.12)'},
+  refusee:{lb:'Refusée',cl:'#F0445E',bc:'rgba(240,68,94,.12)'},
+};
 
 function _documentsView(role){
   const canCreateDevis=role==='admin'||role==='sec'||role==='com';
   const canCreateAvoir=role==='admin'||role==='compta';
+  // Traitement (accepter/refuser) réservé au staff admin/sec/compta — même
+  // filtre que la RLS de retractation_demandes (migration-portail-v12) : un
+  // rôle non listé (ex. expert_comptable, qui partage aussi cette vue) verrait
+  // un onglet vide plutôt qu'un accès refusé, donc autant ne pas l'afficher.
+  const canSeeRetractations=role==='admin'||role==='sec'||role==='compta';
+  const docsTabs=[['tous','Tous'],['devis','Devis'],['contrats','Contrats'],['factures','Factures'],['avoirs','Avoirs'],['signatures','Signatures'],...(canSeeRetractations?[['retractations','Rétractations']]:[]),['journal','Journal']];
   return`<div class="sh">
   <div class="sh-t">Centre documentaire</div>
   <div class="sh-r" style="display:flex;gap:6px">
@@ -8520,7 +8531,7 @@ function _documentsView(role){
 </div>
 <div style="overflow-x:auto;scrollbar-width:none;margin-bottom:16px">
   <div style="display:flex;gap:2px;padding:3px;background:var(--s2);border-radius:var(--rp);width:max-content">
-    ${[['tous','Tous'],['devis','Devis'],['contrats','Contrats'],['factures','Factures'],['avoirs','Avoirs'],['signatures','Signatures'],['journal','Journal']].map(([t,lb])=>`<button class="docs-tab-btn" data-tab="${t}" onclick="docsSetTab('${t}')" style="padding:6px 16px;border:none;border-radius:calc(var(--rp) - 2px);background:${t==='tous'?'var(--s1)':'transparent'};color:${t==='tous'?'var(--t1)':'var(--t3)'};font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap">${lb}</button>`).join('')}
+    ${docsTabs.map(([t,lb])=>`<button class="docs-tab-btn" data-tab="${t}" onclick="docsSetTab('${t}')" style="padding:6px 16px;border:none;border-radius:calc(var(--rp) - 2px);background:${t==='tous'?'var(--s1)':'transparent'};color:${t==='tous'?'var(--t1)':'var(--t3)'};font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap">${lb}</button>`).join('')}
   </div>
 </div>
 <div id="docs-content"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
@@ -8540,16 +8551,18 @@ async function loadDocuments(role){
 
 async function docsLoadAll(){
   try{
-    const [devisData,contratsData,facturesData,avoirsData]=await Promise.all([
+    const [devisData,contratsData,facturesData,avoirsData,retractationsData]=await Promise.all([
       sbFetch('devis?select=id,numero,statut,signature_statut,signature_demandee_at,signature_confirmee_at,total_ttc,date_envoi,date_expiration,clients(id,nom),created_at&order=created_at.desc&limit=200'),
       sbFetch('contrats?select=id,type_contrat,statut,signature_statut,signature_demandee_at,signature_confirmee_at,montant_mensuel,frequence,date_debut,date_fin,clients(nom),created_at&order=created_at.desc&limit=200').catch(()=>[]),
       sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom),updated_at,factures(pennylane_invoice_number,pennylane_public_url)&statut_financier=neq.non_facturée&order=date_prestation.desc&limit=200').catch(()=>[]),
       sbFetch('avoirs?select=*,clients(nom),prestation:prestations(reference,date_prestation)&order=created_at.desc&limit=200').catch(()=>[]),
+      sbFetch('retractation_demandes?select=*,clients(nom),prestations(reference),devis(numero)&order=demandee_at.desc&limit=200').catch(()=>[]),
     ]);
     _docsCache.devis=devisData||[];
     _docsCache.contrats=contratsData||[];
     _docsCache.factures=facturesData||[];
     _docsCache.avoirs=avoirsData||[];
+    _docsCache.retractations=retractationsData||[];
     _devisCache=_docsCache.devis;
   }catch(e){console.error('docsLoadAll',e);}
 }
@@ -8587,6 +8600,7 @@ async function docsRenderTab(){
   else if(_docsTab==='contrats')el.innerHTML=docsRenderContrats();
   else if(_docsTab==='factures')el.innerHTML=docsRenderFactures();
   else if(_docsTab==='avoirs')el.innerHTML=docsRenderAvoirs();
+  else if(_docsTab==='retractations')el.innerHTML=docsRenderRetractations();
   else if(_docsTab==='signatures')el.innerHTML=await docsRenderSignatures();
   else if(_docsTab==='journal')el.innerHTML=await docsRenderJournal();
 }
@@ -8747,6 +8761,55 @@ function docsRenderAvoirs(){
       <td><button onclick="genererAvoirPDF('${a.id}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer">PDF</button></td>
     </tr>`).join('')}
   </tbody></table></div></div>`;
+}
+
+// ── Rétractation ─────────────────────────────────────────────────────────
+// Collecte + traitement MANUEL uniquement (migration-portail-v12-
+// retractation.sql) : accepter/refuser est une décision humaine du staff,
+// jamais automatique. Aucune action financière n'est déclenchée depuis cet
+// écran — un remboursement éventuel après acceptation reste à faire par le
+// staff via le flux existant (avoir + remboursement Stripe).
+function docsRenderRetractations(){
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+  if(!_docsCache.retractations.length)return`<div class="cd"><div style="padding:60px;text-align:center;color:var(--t3);font-size:13px">Aucune demande de rétractation.</div></div>`;
+  return`<div class="cd"><div class="tw"><table><thead><tr><th>Client</th><th>Prestation / Devis</th><th>Motif</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${_docsCache.retractations.map(r=>`<tr>
+      <td class="tp">${esc(r.clients?.nom||'—')}</td>
+      <td class="tm">${esc(r.prestations?.reference||r.devis?.numero||'—')}</td>
+      <td style="font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escJs(r.motif||'')}">${esc(r.motif||'—')}</td>
+      <td style="color:var(--t3);font-size:11.5px">${fd(r.demandee_at)}</td>
+      <td>${_docsBadge(r.statut||'en_attente',RETRACT_STATUTS)}</td>
+      <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
+        ${r.statut==='en_attente'
+          ?`<button onclick="retractationTraiter('${r.id}','acceptee')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">Accepter</button><button onclick="retractationTraiter('${r.id}','refusee')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer">Refuser</button>`
+          :`<span style="font-size:11px;color:var(--t3);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escJs(r.note_staff||'')}">${esc(r.note_staff||'—')}</span>`}
+      </td>
+    </tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+function retractationTraiter(id,statut){
+  const label=statut==='acceptee'?'Accepter':'Refuser';
+  openModal(`<div class="mh"><div class="mt">${label} la demande de rétractation</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <label class="fl">Note interne (optionnel) <textarea id="rtr-note" class="inp" rows="3" placeholder="Précisez si besoin…"></textarea></label>
+      <div style="font-size:12px;color:var(--t3);margin-top:8px">Aucune action financière automatique : un éventuel remboursement reste à traiter manuellement via le flux existant (avoir + remboursement Stripe).</div>
+    </div>
+    <div class="mf"><button class="btn bg2 bs" onclick="closeModal()">Annuler</button><button class="btn bs" style="background:${statut==='acceptee'?'var(--ok)':'var(--er)'};color:#fff" onclick="retractationSubmit('${id}','${statut}')">${label}</button></div>
+  `);
+}
+
+async function retractationSubmit(id,statut){
+  const note=(document.getElementById('rtr-note')?.value||'').trim();
+  const r=await sbFetch('retractation_demandes?id=eq.'+id,{method:'PATCH',body:{
+    statut, traitee_par:S.uid, traitee_at:new Date().toISOString(), note_staff:note||null,
+  }});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
+  closeModal();
+  toast(statut==='acceptee'?'Demande de rétractation acceptée.':'Demande de rétractation refusée.','ok');
+  await docsLoadAll();
+  docsUpdateKPIs();
+  await docsRenderTab();
 }
 
 async function docsRenderJournal(){
