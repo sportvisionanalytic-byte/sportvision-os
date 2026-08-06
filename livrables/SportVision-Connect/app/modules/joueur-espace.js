@@ -284,17 +284,21 @@
     return state.events;
   }
   // club_media/club_creations : RLS additive "cmd_family_select"/"ccr_family_select"
-  // (migration v18, is_media_visible_to_family) fait tout le filtrage — fail-closed
-  // tant que le club n'a pas explicitement publié un média vers l'Espace Joueur via
-  // media_access_rules. On ne réimplémente aucune logique de permission ici.
+  // (migration v18, is_media_visible_to_family) fait le filtrage d'autorisation —
+  // fail-closed tant que le club n'a pas explicitement publié un média via
+  // media_access_rules. expired=eq.false / status=eq.publie ci-dessous ne sont PAS
+  // une permission (ça, c'est la RLS) : c'est un filtre d'état, ajouté le 2026-08-06
+  // pour rester cohérent avec famille-espace.js (qui les appliquait déjà) — sans ça,
+  // un contenu en brouillon ou expiré mais déjà autorisé par media_access_rules
+  // restait visible côté Joueur alors qu'il disparaissait côté Famille.
   async function loadMedia(clubId, force) {
     if (state.media !== null && !force) return state.media;
     state.errorMedia = null;
     var requested = clubId;
     try {
       var res = await Promise.all([
-        sbFetch('club_media?club_id=eq.' + requested + '&select=*&order=created_at.desc'),
-        sbFetch('club_creations?club_id=eq.' + requested + '&select=*&order=created_at.desc'),
+        sbFetch('club_media?club_id=eq.' + requested + '&expired=eq.false&select=*&order=created_at.desc'),
+        sbFetch('club_creations?club_id=eq.' + requested + '&status=eq.publie&select=*&order=created_at.desc'),
       ]);
       if ((state.profile && state.profile.club_id) !== requested) return state.media;
       var cm = res[0], cc = res[1];
