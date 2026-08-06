@@ -327,6 +327,34 @@ serve(async (req) => {
           } catch (_e) {
             // ignoré volontairement
           }
+        } else if (!paiement) {
+          // Pas un paiement Portail/Connect classique : peut être une
+          // contribution à un projet collectif Club+ (team_project_contributions,
+          // migration-clubplus-v21.sql), qui utilise aussi stripe_payment_intent_id
+          // mais n'était jusqu'ici jamais vérifiée sur remboursement — la ligne
+          // restait 'paye' indéfiniment et montant_collecte ne se recalculait
+          // jamais (recompute_team_project_amount ne compte que statut='paye').
+          // Découvert lors de l'audit du 2026-08-06.
+          const { data: contribution } = await admin
+            .from("team_project_contributions")
+            .select("*")
+            .eq("stripe_payment_intent_id", intentId)
+            .maybeSingle();
+
+          if (contribution && contribution.statut !== "rembourse" && estTotal) {
+            await admin.from("team_project_contributions").update({ statut: "rembourse" }).eq("id", contribution.id);
+            // recompute_team_project_amount() se déclenche automatiquement
+            // (trigger after update) et corrige team_projects.montant_collecte.
+            try {
+              await admin.from("team_project_events").insert({
+                project_id: contribution.project_id,
+                event_type: "contribution_remboursee",
+                note: `${contribution.montant} € remboursés via Stripe`,
+              });
+            } catch (_e) {
+              // ignoré volontairement
+            }
+          }
         }
       }
     }

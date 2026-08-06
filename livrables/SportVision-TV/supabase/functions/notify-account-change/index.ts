@@ -62,7 +62,7 @@ serve(async (req) => {
         p_event_type: "password.changed",
         p_template_key: "auth.password_changed",
         p_channel: "EMAIL",
-        p_idempotency_key: "auth.password_changed:v1:" + user.id + ":" + Date.now(),
+        p_idempotency_key: "auth.password_changed:v1:" + user.id + ":" + new Date().toISOString().slice(0, 13),
         p_recipient_email: user.email,
         p_recipient_user_id: user.id,
         p_payload: { first_name: firstName, changed_at_local: changedAt, security_url: supabaseUrl },
@@ -79,7 +79,7 @@ serve(async (req) => {
         p_event_type: "email.changed",
         p_template_key: "auth.email_changed",
         p_channel: "EMAIL",
-        p_idempotency_key: "auth.email_changed:v1:" + user.id + ":" + Date.now(),
+        p_idempotency_key: "auth.email_changed:v1:" + user.id + ":" + new Date().toISOString().slice(0, 13),
         p_recipient_email: user.email,
         p_recipient_user_id: user.id,
         p_payload: { masked_new_email: maskEmail(new_email || ""), changed_at_local: changedAt, dispute_url: supabaseUrl },
@@ -89,6 +89,6 @@ serve(async (req) => {
 
     return json({ error: "type invalide" }, 400);
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });
