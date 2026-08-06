@@ -1,9 +1,25 @@
 // Supabase Edge Function — stripe-webhook
-// Reçoit les événements Stripe (checkout.session.completed, payment_intent.payment_failed),
-// vérifie la signature, met à jour `paiements` puis `prestations`. Idempotent via `stripe_events`.
+// Reçoit les événements Stripe (checkout.session.completed, payment_intent.payment_failed,
+// charge.refunded), vérifie la signature, met à jour `paiements` puis `prestations`.
+// Idempotent via `stripe_events`.
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: stripe-webhook)
 // IMPORTANT : décocher "Verify JWT" pour cette fonction dans les settings (Stripe n'envoie pas de JWT Supabase).
-// Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+// IMPORTANT : ajouter charge.refunded aux événements écoutés côté dashboard Stripe (Webhooks).
+// Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+//                  PENNYLANE_API_KEY (pour l'avoir automatique sur remboursement — optionnel : si
+//                  absente, le remboursement est quand même resynchronisé, seul l'avoir Pennylane
+//                  n'est pas créé et le staff est notifié pour le faire manuellement)
+//
+// Avoir Pennylane automatique (2026-08-06) : au moment d'écrire ce code, la documentation
+// publique de l'API Pennylane (pennylane.readme.io) ne confirme PAS explicitement le mécanisme
+// exact de création d'un avoir via POST /customer_invoices (aucun champ "type"/"is_credit_note"
+// documenté) — seul le rapprochement via POST /customer_invoices/{id}/link_credit_note est
+// clairement documenté. L'implémentation ci-dessous crée un document via le même endpoint que
+// send-facture-pennylane avec des montants négatifs (convention courante sur ce type d'API), puis
+// le lie à la facture originale. À VÉRIFIER avec un vrai remboursement de faible montant avant de
+// faire confiance à cette automatisation sans supervision : en cas d'échec ou de résultat suspect
+// côté Pennylane, ne rien confirmer côté SportVision au-delà de ce qui est déjà fiable (statuts
+// resynchronisés) et notifier le staff pour vérification/création manuelle — jamais l'inverse.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -15,6 +31,63 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
 });
 
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
+
+const PENNYLANE_BASE = "https://app.pennylane.com/api/external/v2";
+
+function vatRateCode(tvaPct: number | null | undefined): string {
+  const map: Record<string, string> = { "20": "FR_200", "10": "FR_100", "5.5": "FR_055", "2.1": "FR_021", "0": "FR_0" };
+  return map[String(tvaPct ?? 20)] || "FR_200";
+}
+
+// deno-lint-ignore no-explicit-any
+async function createPennylaneAvoir(admin: any, facture: any): Promise<{ ok: boolean; reason?: string }> {
+  const pennylaneApiKey = Deno.env.get("PENNYLANE_API_KEY") ?? "";
+  if (!pennylaneApiKey) return { ok: false, reason: "PENNYLANE_API_KEY non configurée" };
+  if (!facture?.pennylane_invoice_id) return { ok: false, reason: "Facture non liée à Pennylane" };
+
+  const { data: client } = await admin.from("clients").select("pennylane_customer_id").eq("id", facture.client_id).maybeSingle();
+  const pennylaneCustomerId = client?.pennylane_customer_id;
+  if (!pennylaneCustomerId) return { ok: false, reason: "Client sans identifiant Pennylane" };
+
+  const pennylaneHeaders = { Authorization: `Bearer ${pennylaneApiKey}`, "Content-Type": "application/json" };
+
+  const lignes = Array.isArray(facture.lignes) ? facture.lignes : [];
+  const invoiceLines = (lignes.length ? lignes : [{ description: facture.type_facture || "Prestation SportVision", quantite: 1, prix_unitaire: facture.montant_ht }])
+    .map((l: { description?: string; libelle?: string; quantite?: number; qte?: number; prix_unitaire?: number; pu?: number }) => ({
+      label: "Avoir — " + (l.description || l.libelle || "Prestation SportVision"),
+      quantity: l.quantite ?? l.qte ?? 1,
+      unit: "unit",
+      raw_currency_unit_price: String(-Math.abs(Number(l.prix_unitaire ?? l.pu ?? 0))),
+      vat_rate: vatRateCode(facture.tva_pct),
+    }));
+
+  try {
+    const creRes = await fetch(`${PENNYLANE_BASE}/customer_invoices`, {
+      method: "POST",
+      headers: pennylaneHeaders,
+      body: JSON.stringify({
+        customer_id: Number(pennylaneCustomerId),
+        date: new Date().toISOString().slice(0, 10),
+        deadline: new Date().toISOString().slice(0, 10),
+        invoice_lines: invoiceLines,
+      }),
+    });
+    if (!creRes.ok) return { ok: false, reason: "Pennylane (création avoir) : " + (await creRes.text()) };
+    const credit = await creRes.json();
+
+    const linkRes = await fetch(`${PENNYLANE_BASE}/customer_invoices/${facture.pennylane_invoice_id}/link_credit_note`, {
+      method: "POST",
+      headers: pennylaneHeaders,
+      body: JSON.stringify({ credit_note_id: credit.id }),
+    });
+    if (!linkRes.ok) return { ok: false, reason: "Pennylane (liaison avoir) : " + (await linkRes.text()) };
+
+    await admin.from("factures").update({ pennylane_credit_note_id: String(credit.id) }).eq("id", facture.id);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+  }
+}
 
 serve(async (req) => {
   const signature = req.headers.get("Stripe-Signature");
@@ -198,6 +271,8 @@ serve(async (req) => {
           .maybeSingle();
 
         if (paiement && paiement.statut !== "rembourse") {
+          let avoirResult: { ok: boolean; reason?: string } | null = null;
+
           if (estTotal) {
             await admin.from("paiements").update({ statut: "rembourse" }).eq("id", paiement.id);
 
@@ -208,12 +283,19 @@ serve(async (req) => {
                 .eq("id", paiement.prestation_id);
 
               try {
-                await admin
+                const { data: facture } = await admin
                   .from("factures")
-                  .update({ statut: "remboursee" })
+                  .select("*")
                   .eq("prestation_id", paiement.prestation_id)
                   .eq("type_facture", paiement.type_paiement)
-                  .eq("statut", "payee");
+                  .eq("statut", "payee")
+                  .maybeSingle();
+                if (facture) {
+                  await admin.from("factures").update({ statut: "remboursee" }).eq("id", facture.id);
+                  if (facture.pennylane_invoice_id) {
+                    avoirResult = await createPennylaneAvoir(admin, facture);
+                  }
+                }
               } catch (_e) {
                 // ignoré volontairement
               }
@@ -222,15 +304,23 @@ serve(async (req) => {
 
           // Notifie toujours le staff, même en remboursement partiel — c'est
           // le seul filet de sécurité tant qu'il n'y a pas de reconciliation
-          // automatique pour les cas partiels.
+          // automatique pour les cas partiels, et le rattrapage nécessaire si
+          // l'avoir Pennylane n'a pas pu être créé automatiquement.
           try {
+            const avoirMsg = avoirResult
+              ? (avoirResult.ok
+                ? " Un avoir a été créé automatiquement chez Pennylane."
+                : ` ATTENTION : l'avoir Pennylane n'a pas pu être créé automatiquement (${avoirResult.reason}) — à créer manuellement.`)
+              : "";
             await admin.rpc("notify_staff_by_role", {
               p_roles: ["sec", "compta"],
-              p_titre: estTotal ? "Remboursement Stripe confirmé" : "Remboursement Stripe PARTIEL — vérification requise",
+              p_titre: estTotal
+                ? (avoirResult && !avoirResult.ok ? "Remboursement Stripe confirmé — avoir Pennylane à créer manuellement" : "Remboursement Stripe confirmé")
+                : "Remboursement Stripe PARTIEL — vérification requise",
               p_message: estTotal
-                ? `Le paiement de ${(paiement.montant || 0)} € a été intégralement remboursé. Le dossier a été mis à jour automatiquement.`
+                ? `Le paiement de ${(paiement.montant || 0)} € a été intégralement remboursé. Le dossier a été mis à jour automatiquement.${avoirMsg}`
                 : `Remboursement partiel détecté (${(charge.amount_refunded / 100).toFixed(2)} € sur ${(charge.amount / 100).toFixed(2)} €). Aucune mise à jour automatique du statut — à traiter manuellement.`,
-              p_priorite: estTotal ? "normale" : "haute",
+              p_priorite: estTotal && (!avoirResult || avoirResult.ok) ? "normale" : "haute",
               p_prestation_id: paiement.prestation_id,
               p_client_id: paiement.client_id,
             });
