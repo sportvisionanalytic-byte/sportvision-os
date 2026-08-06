@@ -857,6 +857,7 @@ const NAV={
     {id:'pipeline',lb:'Pipeline',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'objectifs',lb:'Objectifs',ic:'target'},
+    {id:'commissions',lb:'Mes commissions',ic:'fin'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
@@ -2234,6 +2235,15 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Objectifs commerciaux</div></div>
     <div id="obj-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  'com.commissions':()=>`
+    <div class="sh"><div class="sh-t">Mes commissions</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Dues (non payées)</div><div class="fs-v" id="mycom-kpi-dues" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Payées cette année</div><div class="fs-v" id="mycom-kpi-payees" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Total commissions</div><div class="fs-v" id="mycom-kpi-total">—</div></div>
+    </div>
+    <div id="mycommissions-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   // ── RAPPORT MENSUEL ──────────────────────
   'admin.rapport':()=>`
     <div class="sh">
@@ -3098,6 +3108,7 @@ async function loadViewData(role,view){
   if(role==='com'&&view==='dash') await loadComDash();
   if(role==='photo'&&view==='revenus') await loadPhotoRevenus();
   if(role==='com'&&view==='objectifs') await loadObjectifs();
+  if(role==='com'&&view==='commissions') await loadMyCommissions();
   if(['com','admin','sec'].includes(role)&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
   if(role==='cm'&&view==='cal') await loadCmCal();
@@ -9694,6 +9705,36 @@ async function loadObjectifs(){
           '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation ce mois.</div>'}
       </div>`;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ── Mes commissions (commercial) ─────────────────────────────────────────
+// RLS commissions_read_own autorise déjà un commercial à lire ses propres
+// lignes (commercial_id = auth.uid()) — cet écran manquait juste côté UI.
+async function loadMyCommissions(){
+  const el=document.getElementById('mycommissions-real');if(!el)return;
+  const uid=localStorage.getItem('sv_uid');
+  try{
+    const data=await sbFetch('commissions?select=id,base_calcul,taux_pct,montant_commission,statut,date_calcul,date_paiement,prestations(reference,date_prestation,clients(nom))&commercial_id=eq.'+uid+'&order=date_calcul.desc&limit=200');
+    const list=Array.isArray(data)?data:[];
+    const now=new Date();const yStart=now.getFullYear()+'-01-01';
+    const dues=list.filter(c=>c.statut!=='payee').reduce((s,c)=>s+(c.montant_commission||0),0);
+    const payeesAnnee=list.filter(c=>c.statut==='payee'&&c.date_paiement>=yStart).reduce((s,c)=>s+(c.montant_commission||0),0);
+    const total=list.reduce((s,c)=>s+(c.montant_commission||0),0);
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('mycom-kpi-dues',dues.toLocaleString('fr-FR')+' €');
+    set('mycom-kpi-payees',payeesAnnee.toLocaleString('fr-FR')+' €');
+    set('mycom-kpi-total',total.toLocaleString('fr-FR')+' €');
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Mission</th><th>Client</th><th>Base</th><th>Taux</th><th>Commission</th><th>Statut</th></tr></thead><tbody>'+
+      list.map(c=>`<tr>
+        <td class="tp">${esc(c.prestations?.reference||'—')}</td>
+        <td>${esc(c.prestations?.clients?.nom||'—')}</td>
+        <td class="tm">${(c.base_calcul||0).toLocaleString('fr-FR')} €</td>
+        <td class="tm">${c.taux_pct||0}%</td>
+        <td class="tm" style="font-weight:600">${(c.montant_commission||0).toLocaleString('fr-FR')} €</td>
+        <td><span class="bd ${c.statut==='payee'?'ba':c.statut==='validee'?'bb':'bw'}"><span class="bd-d"></span>${esc(c.statut||'—')}</span></td>
+      </tr>`).join('')+'</tbody></table></div>':
+      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune commission pour le moment.</div>';
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
 }
 
 // ── Kits photographe ─────────────────────────────────────────────────────────
@@ -20526,7 +20567,7 @@ const MOB_MORE_ITEMS={
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
-  com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
+  com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
 };
 function openMobMore(){
   const el=document.getElementById('mob-more-overlay');
