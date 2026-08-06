@@ -33,14 +33,18 @@
   .auth-card h1{font-size:20px;margin:0 0 4px}
   .auth-card p.sub{color:var(--muted);font-size:14px;margin:0 0 24px}
   label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
-  input[type=email],input[type=password]{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px}
-  input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  input[type=email],input[type=password],input[type=text],input[type=tel],select{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:10px;
     padding:12px 18px;font-size:15px;font-weight:600;cursor:pointer;width:100%;margin-top:18px}
   .btn-primary{background:var(--accent);color:#fff}
   .btn-primary:disabled{opacity:.6;cursor:default}
   .btn-ghost{background:transparent;color:var(--accent);width:auto;margin-top:0;padding:8px 4px}
   .err{color:var(--danger);font-size:13px;min-height:18px;margin-top:10px}
+  .ok-msg{color:var(--ok);font-size:13px;min-height:18px;margin-top:10px}
+  .auth-switch{text-align:center;margin-top:16px;font-size:13.5px;color:var(--muted)}
+  .field-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field-2col label{margin:14px 0 6px}
 
   /* ── Coque commune (post-login) ── */
   #app-shell{flex-direction:column;width:100%}
@@ -103,6 +107,35 @@
     <input id="lg-pass" type="password" autocomplete="current-password">
     <div class="err" id="lg-err"></div>
     <button class="btn btn-primary" id="lg-btn" onclick="handleLogin()">Se connecter</button>
+    <p class="auth-switch">Pas encore de compte ? <a href="#" class="btn-ghost" style="display:inline" onclick="event.preventDefault();showScreen('signup')">Créer un compte</a></p>
+  </div>
+</div>
+
+<div id="scr-signup" class="screen center">
+  <div class="auth-card">
+    <h1>Créer mon compte</h1>
+    <p class="sub">Suivez vos demandes, devis, factures et prestations au même endroit.</p>
+    <div class="field-2col">
+      <div><label for="su-prenom">Prénom</label><input id="su-prenom" type="text" autocomplete="given-name"></div>
+      <div><label for="su-nom">Nom</label><input id="su-nom" type="text" autocomplete="family-name"></div>
+    </div>
+    <label for="su-email">E-mail</label>
+    <input id="su-email" type="email" autocomplete="username">
+    <label for="su-tel">Téléphone (facultatif)</label>
+    <input id="su-tel" type="tel" autocomplete="tel" placeholder="06 00 00 00 00">
+    <label for="su-pass">Mot de passe</label>
+    <input id="su-pass" type="password" autocomplete="new-password">
+    <label for="su-profil">Vous êtes</label>
+    <select id="su-profil">
+      <option value="particulier">Joueur / Parent / Particulier</option>
+      <option value="club">Club ou académie</option>
+      <option value="organisateur">Organisateur d'événement</option>
+      <option value="entreprise">Entreprise ou partenaire</option>
+    </select>
+    <div class="err" id="su-err"></div>
+    <div class="ok-msg" id="su-ok"></div>
+    <button class="btn btn-primary" id="su-btn" onclick="handleSignup()">Créer mon compte</button>
+    <p class="auth-switch">Déjà un compte ? <a href="#" class="btn-ghost" style="display:inline" onclick="event.preventDefault();showScreen('login')">Se connecter</a></p>
   </div>
 </div>
 
@@ -233,7 +266,8 @@ function toast(msg){
 
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
-  document.getElementById(name==='login' ? 'scr-login' : name==='splash' ? 'scr-splash' : 'app-shell').classList.add('on');
+  const id = name==='login' ? 'scr-login' : name==='signup' ? 'scr-signup' : name==='splash' ? 'scr-splash' : 'app-shell';
+  document.getElementById(id).classList.add('on');
 }
 function showPane(name){
   ['pane-selector','pane-home','pane-noorg'].forEach(id=>document.getElementById(id).style.display='none');
@@ -253,6 +287,19 @@ async function handleLogin(){
     const d = await res.json();
     if (!d.access_token) throw new Error('E-mail ou mot de passe incorrect.');
     svcSave(d.access_token, d.refresh_token, d.user.id);
+    const cu = await sbFetch('client_users?id=eq.'+d.user.id+'&select=id');
+    if (!cu.data || !cu.data[0]){
+      // Filet de sécurité (même principe que le Portail) : si l'inscription n'a pas pu
+      // créer la fiche client (ex : confirmation d'e-mail obligatoire sur le projet,
+      // session absente au moment de l'inscription), on la crée maintenant, à la
+      // première connexion réussie. portal-onboarding est idempotent. Les infos
+      // saisies à l'inscription sont récupérées depuis les métadonnées du compte
+      // Supabase (enregistrées dès le signup), pas perdues.
+      const meta = (d.user && d.user.user_metadata) || {};
+      await sbFunction('portal-onboarding', {
+        prenom: meta.prenom || '', nom: meta.nom || '', telephone: meta.telephone || '', profil: meta.profil || '',
+      });
+    }
     await bootAfterLogin();
   }catch(e){
     errEl.textContent = e.message;
@@ -264,6 +311,47 @@ async function handleLogin(){
 function handleLogout(){
   svcClear();
   showScreen('login');
+}
+
+// ── Inscription (même principe que le Portail : signUp Supabase Auth direct,
+//    puis portal-onboarding pour créer/rattacher la fiche client — réutilisé
+//    tel quel, cette fonction ne fait rien de spécifique au Portail) ──
+async function handleSignup(){
+  const prenom = document.getElementById('su-prenom').value.trim();
+  const nom = document.getElementById('su-nom').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  const tel = document.getElementById('su-tel').value.trim();
+  const pass = document.getElementById('su-pass').value;
+  const profil = document.getElementById('su-profil').value;
+  const errEl = document.getElementById('su-err'); errEl.textContent = '';
+  const okEl = document.getElementById('su-ok'); okEl.textContent = '';
+  const btn = document.getElementById('su-btn');
+  if (!prenom || !nom || !email || !pass){ errEl.textContent = 'Merci de compléter tous les champs obligatoires.'; return; }
+  if (pass.length < 6){ errEl.textContent = 'Le mot de passe doit contenir au moins 6 caractères.'; return; }
+  btn.disabled = true; btn.textContent = 'Création…';
+  try{
+    const res = await fetch(SB_URL+'/auth/v1/signup', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, password:pass, data:{prenom,nom,telephone:tel,profil}})});
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.msg || d.error_description || 'Inscription impossible, cet e-mail est peut-être déjà utilisé.');
+    if (!d.access_token){
+      // Confirmation par e-mail activée sur ce projet : pas de session immédiate,
+      // donc pas d'onboarding tout de suite. Il aura lieu au premier login réussi
+      // (handleLogin appelle portal-onboarding si nécessaire — filet de sécurité
+      // identique au Portail).
+      okEl.textContent = 'Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse avant de vous connecter.';
+      btn.disabled = false; btn.textContent = 'Créer mon compte';
+      return;
+    }
+    svcSave(d.access_token, d.refresh_token, d.user.id);
+    const onboard = await sbFunction('portal-onboarding', {prenom, nom, telephone:tel, profil});
+    if (!onboard.ok) throw new Error(onboard.data?.error || 'Erreur lors de la création de votre compte client.');
+    toast('Compte créé avec succès.');
+    await bootAfterLogin();
+  }catch(e){
+    errEl.textContent = e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Créer mon compte';
+  }
 }
 
 // ── Cœur du nouveau socle : espaces → entitlements → modules ──
@@ -449,6 +537,16 @@ async function selectWorkspaceTab(registryName, key, contextId, role){
 (async function init(){
   if (isLoggedIn()){
     await bootAfterLogin();
+    return;
+  }
+  // Arrivée depuis la vitrine SportVision après une demande de prestation
+  // (?signup=1&email=...) : ouvre directement l'inscription, e-mail pré-rempli,
+  // pour enchaîner sans étape supplémentaire vers le paiement de l'acompte.
+  const params = new URLSearchParams(location.search);
+  if (params.get('signup') === '1'){
+    const email = params.get('email');
+    if (email) document.getElementById('su-email').value = email;
+    showScreen('signup');
   } else {
     showScreen('login');
   }

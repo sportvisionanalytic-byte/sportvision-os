@@ -12,6 +12,15 @@
 // Anti-abus : champ honeypot ("site_web", doit rester vide, un bot le remplit
 // généralement) + limite de fréquence par IP (5 demandes / heure max), via la
 // table guest_rate_limits (migration-portail-v11.sql).
+//
+// Tarification (2026-08-06, vitrine SportVision) : le corps accepte un
+// `offre_slug` optionnel (ex. "match-photo") résolu ici en `offre_id` par
+// lookup côté serveur dans `catalogue_offres` — jamais un `offre_id` brut
+// envoyé par le client, pour ne jamais laisser un visiteur choisir librement
+// à quelle offre (donc quel tarif) sa prestation est rattachée. Sans
+// correspondance, la prestation est créée sans offre catalogue, comme avant.
+// Ce `offre_id` est ensuite ce que create-checkout-session utilise pour
+// calculer automatiquement le montant à payer une fois le client authentifié.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -61,8 +70,8 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey);
 
     const {
-      prenom, nom, email, telephone, profil,
-      offre_id, options, date, heure, lieu, ville, adresse, cp, commentaire, sport, equipes,
+      prenom, nom, email, telephone, profil, origine,
+      offre_slug, options, date, heure, lieu, ville, adresse, cp, commentaire, sport, equipes,
       retractation_renoncee, site_web, distance_km, frais_deplacement_ht,
     } = await req.json();
 
@@ -99,7 +108,7 @@ serve(async (req) => {
           prenom_contact: prenom,
           email,
           telephone: telephone || null,
-          origine_prospect: "portail",
+          origine_prospect: origine === "vitrine" ? "vitrine" : "portail",
         })
         .select("id")
         .single();
@@ -109,12 +118,22 @@ serve(async (req) => {
 
     const adresseComplete = [adresse, cp, ville].filter(Boolean).join(", ") || null;
 
+    let offreId: string | null = null;
+    if (offre_slug) {
+      const { data: offre } = await admin
+        .from("catalogue_offres")
+        .select("id")
+        .eq("slug", offre_slug)
+        .maybeSingle();
+      if (offre) offreId = offre.id;
+    }
+
     const { data: prestation, error: prestationErr } = await admin
       .from("prestations")
       .insert({
         statut: "demande_reçue",
         client_id: clientId,
-        offre_id: offre_id || null,
+        offre_id: offreId,
         options_selectionnees: options || [],
         date_prestation: date || null,
         heure_debut: heure || null,
