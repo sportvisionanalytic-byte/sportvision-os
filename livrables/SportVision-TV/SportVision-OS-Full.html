@@ -9201,7 +9201,39 @@ function contratConditionsParticulieresHTML(type,x){
     return{ref:'SV-CL-003',titre:'Conditions particulières — Abonnement Club+',generique:false,html:
       p('L\'abonnement porte sur l\'offre logicielle Club+ (formule Club+ ou Club+ Performance selon le contrat signé), incluant un nombre d\'utilisateurs, de crédits mensuels et de fonctionnalités définis dans l\'annexe. Prix : '+x.PRICE_EXCL_TAX+' € HT/mois, soit '+x.PRICE_INCL_TAX+' € TTC/mois. Le Client est responsable des utilisateurs qu\'il invite et de la confidentialité de leurs identifiants. Les crédits sont consommés selon le barème de la plateforme ; ils ne sont ni remboursables ni convertibles en argent sauf disposition légale impérative contraire. SportVision peut réaliser des opérations de maintenance et faire évoluer le service sans supprimer les caractéristiques essentielles de l\'offre en cours. À la fin du contrat, les fonctionnalités premium sont désactivées et le Client dispose d\'un délai raisonnable pour exporter les données disponibles, sous réserve des règles de conservation légale.')};
   }
-  // Repli PROVISOIRE — reprise des 5 puces génériques de l'ancien PDF.
+  // ── SV-CL-004 à 009 : brouillons rédigés par Claude le 2026-08-08, sur demande
+  // explicite ("rédige un premier brouillon"), à la différence des SV-CL-001/002/003
+  // ci-dessus qui reprennent le texte fourni par le fondateur. JAMAIS validés
+  // juridiquement, JAMAIS à utiliser avec un client réel tels quels — voir le
+  // bandeau rouge distinct (brouillon:true) affiché sous ces conditions dans le PDF.
+  if(type==='coach_academie'){
+    return{ref:'SV-CL-004',titre:'Conditions particulières — Coach / Académie',generique:false,brouillon:true,html:
+      p('Le Client bénéficie d\'un accompagnement de captation et de valorisation de contenus pour son activité de coaching ou d\'académie, portant sur le suivi individuel des joueurs ou stagiaires inscrits (séances, stages, progression). Prix : '+x.PRICE_EXCL_TAX+' € HT/mois, soit '+x.PRICE_INCL_TAX+' € TTC/mois. Durée d\'engagement : '+x.COMMITMENT_MONTHS+' mois. Préavis de résiliation : '+x.NOTICE_DAYS+' jours avant l\'échéance. Le Client communique le calendrier des séances et stages concernés avant chaque période de captation ; SportVision organise ses interventions en conséquence, dans la limite du volume convenu en annexe. Les contenus individuels (portraits, séquences de progression, bilans) peuvent être remis séparément à chaque joueur ou représentant légal concerné, selon les modalités définies avec le Client. Le Client garantit avoir recueilli les autorisations nécessaires auprès des joueurs ou de leurs représentants légaux pour la captation et la diffusion de ces contenus individuels.')};
+  }
+  if(type==='evenement'){
+    return{ref:'SV-CL-005',titre:'Conditions particulières — Événement',generique:false,brouillon:true,html:
+      p('Le prestataire assure la couverture de l\'événement désigné en annexe (tournoi, stage, journée média ou manifestation équivalente), aux dates et sur la durée qui y sont précisées. Prix : '+x.PRICE_EXCL_TAX+' € HT, soit '+x.PRICE_INCL_TAX+' € TTC. Un acompte peut être demandé à la commande, le solde étant dû après livraison des contenus. Le Client communique le programme détaillé de l\'événement (horaires, lieux, intervenants) au plus tard 15 jours avant sa tenue ; toute modification tardive du programme peut entraîner un ajustement du périmètre ou des délais de livraison. En cas d\'annulation ou de report de l\'événement non imputable à SportVision, les frais déjà engagés et la mobilisation de l\'équipe sont dus au prorata du délai restant avant la date prévue. SportVision peut mobiliser plusieurs opérateurs selon l\'ampleur de l\'événement, dans la limite de ce qui est prévu en annexe.')};
+  }
+  if(type==='joueur'){
+    return{ref:'SV-CL-006',titre:'Conditions particulières — Joueur',generique:false,brouillon:true,html:
+      p('Le présent contrat porte sur une prestation individuelle réalisée pour le Client en tant que joueur ou représentant légal d\'un joueur mineur, sans rattachement à un club ou une structure tierce. Prix : '+x.PRICE_EXCL_TAX+' € HT, soit '+x.PRICE_INCL_TAX+' € TTC. Le moyen de paiement est collecté via Stripe. Les contenus produits (portraits, séquences de jeu, montages de mise en valeur) sont destinés à un usage personnel et à la mise en valeur sportive du joueur ; toute utilisation à des fins commerciales, publicitaires ou de recrutement par un tiers doit faire l\'objet d\'un accord écrit séparé. Lorsque le joueur est mineur, le Client atteste être son représentant légal et consent expressément, en cette qualité, à la captation et à l\'usage des contenus tels que définis au présent contrat ; ce consentement est révocable à tout moment par écrit, sans effet rétroactif sur les contenus déjà livrés et utilisés conformément au présent contrat avant la révocation.')};
+  }
+  if(type==='sponsoring'){
+    return{ref:'SV-CL-007',titre:'Conditions particulières — Sponsoring',generique:false,brouillon:true,html:
+      p('Le Client, en qualité de partenaire ou sponsor, bénéficie d\'une valorisation de sa marque dans les contenus produits par SportVision pour le compte du club ou de la structure désignée en annexe, selon les engagements de visibilité qui y sont précisés (nombre de mentions, emplacements, supports concernés). Montant : '+x.PRICE_EXCL_TAX+' € HT, soit '+x.PRICE_INCL_TAX+' € TTC, facturé selon l\'échéancier défini en annexe. Durée : '+x.COMMITMENT_MONTHS+' mois. SportVision rend compte périodiquement de la visibilité effectivement livrée au regard des engagements convenus. Le Client fournit les éléments de marque nécessaires (logo, chartes graphiques, consignes d\'usage) ; SportVision les utilise strictement dans le cadre des supports convenus et ne les cède à aucun tiers. Le présent contrat ne crée aucune exclusivité sectorielle au bénéfice du Client, sauf mention contraire expresse en annexe.')};
+  }
+  if(type==='pilote'){
+    return{ref:'SV-CL-008',titre:'Conditions particulières — Contrat pilote',generique:false,brouillon:true,html:
+      p('Le présent contrat constitue une phase pilote, destinée à permettre au Client de découvrir les services de SportVision avant tout engagement de plus longue durée. Il porte sur le périmètre, la durée et, le cas échéant, les conditions tarifaires réduites définis en annexe. Le contrat pilote ne se reconduit jamais tacitement : à son terme, il prend fin de plein droit, sauf signature d\'un nouveau contrat entre les parties portant sur une offre standard. Pendant la durée du pilote, chaque partie peut mettre fin au contrat par écrit, moyennant un préavis de '+x.NOTICE_DAYS+' jours, sans pénalité autre que le paiement des prestations déjà réalisées. Les conditions accordées dans le cadre du pilote (tarifs, volumes, modalités) sont propres à cette phase et ne constituent pas un engagement de SportVision pour tout contrat ultérieur.')};
+  }
+  if(type==='autre'){
+    return{ref:'SV-CL-009',titre:'Conditions particulières — Autre',generique:false,brouillon:true,html:
+      p('Ce contrat relève d\'un type de prestation ne correspondant à aucune des catégories standard de SportVision. Les conditions spécifiques (périmètre, prix, durée, modalités de résiliation) sont intégralement définies dans l\'annexe jointe au présent contrat, laquelle prévaut sur toute mention générale du socle commun en cas de contradiction. Il appartient à SportVision de s\'assurer, avant signature, que cette annexe couvre l\'ensemble des points nécessaires à la bonne exécution du contrat ; à défaut de précision sur un point donné, les règles du socle commun s\'appliquent.')};
+  }
+  // Repli PROVISOIRE — reprise des 5 puces génériques de l'ancien PDF. Ne devrait
+  // plus jamais être atteint pour les 9 valeurs du CHECK de type_contrat (toutes
+  // couvertes ci-dessus), gardé uniquement en filet de sécurité si une valeur
+  // imprévue arrivait malgré la contrainte SQL.
   return{ref:null,titre:'Conditions particulières',generique:true,html:
     `<div class="art-x" style="line-height:1.8">1. Le présent contrat prend effet à la date de signature par les deux parties.<br>2. Le paiement est dû selon la fréquence indiquée ci-dessus, par virement bancaire.<br>3. En cas de résiliation, un préavis de 30 jours est requis par lettre recommandée avec AR.<br>4. SportVision se réserve le droit de sous-traiter certaines prestations à des partenaires qualifiés.<br>5. Les droits sur les productions restent la propriété de SportVision jusqu'au paiement intégral.</div>`};
 }
@@ -9314,6 +9346,7 @@ async function genererContratPDF(id){
   ${c.description?`<div style="background:#F5F7FF;border-radius:10px;padding:14px 18px;margin-bottom:16px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:6px">Périmètre / prestations incluses</div><div style="font-size:12px;color:#555E73;line-height:1.7">${esc(c.description)}</div></div>`:''}
   ${cp.html}
   ${cp.generique?`<div style="margin-top:6px;padding:8px 12px;border-left:3px solid #F5A524;background:#FFF9EE;font-size:10.5px;color:#8A6A21;line-height:1.5">Conditions particulières génériques — modèle détaillé à venir pour ce type de contrat.</div>`:''}
+  ${cp.brouillon?`<div style="margin-top:6px;padding:8px 12px;border-left:3px solid #D0333E;background:#FDEDEE;font-size:10.5px;color:#8A1620;line-height:1.5;font-weight:600">⚠ BROUILLON NON VALIDÉ — ce texte a été rédigé par une IA le 2026-08-08 et n'a fait l'objet d'aucune relecture juridique. Ne jamais faire signer ce contrat tel quel : le faire valider par un professionnel du droit avant tout usage réel.</div>`:''}
 </div>
 
 <div class="sig" style="display:grid;grid-template-columns:1fr 1fr;gap:48px;border-top:1px solid #E8EBF4;padding-top:28px">
@@ -14155,14 +14188,15 @@ async function avancerContenu(id,statut){
   loadViewData(S.role,S.view);
 }
 
-async function modalNouveauContenu(statutInit,dateInit){
+async function modalNouveauContenu(statutInit,dateInit,prefill){
   const d=dateInit||'';
+  const pf=prefill||{};
   const clients=await _cmVisibleClients();
   openModal(`<div class="mh"><div class="mt">Nouveau contenu</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
-      <div class="fg"><label class="fl">Titre</label><input type="text" id="ct-ti" class="fi" placeholder="Ex: Résumé match Brunoy FC" autofocus></div>
+      <div class="fg"><label class="fl">Titre</label><input type="text" id="ct-ti" class="fi" placeholder="Ex: Résumé match Brunoy FC" value="${esc(pf.titre||'')}" autofocus></div>
       <div class="fg"><label class="fl">Client</label>
-        <select id="ct-cl" class="fi"><option value="">Aucun client (SportVision)</option>${clients.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('')}</select></div>
+        <select id="ct-cl" class="fi"><option value="">Aucun client (SportVision)</option>${clients.map(c=>`<option value="${c.id}"${pf.clientId===c.id?' selected':''}>${esc(c.nom)}</option>`).join('')}</select></div>
       <div class="g2">
         <div class="fg"><label class="fl">Plateforme</label>
           <select id="ct-pl" class="fi"><option>Instagram</option><option>YouTube</option><option>Facebook</option><option>TikTok</option><option>Twitter/X</option></select></div>
