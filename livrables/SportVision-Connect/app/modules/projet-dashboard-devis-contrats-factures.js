@@ -129,11 +129,23 @@
     signee: { label: 'Signé', color: '#1fa971' },
     refusee: { label: 'Refusé', color: '#e14b4b' },
   };
+  // Taxonomie de la Banque de contrats (migration-contrats-v2-types-banque.sql),
+  // identique à CONTRAT_TYPES_LB dans SportVision-OS-Full.html. Anciennes clés
+  // (abonnement_mensuel, abonnement_annuel, forfait_saison, partenariat) gardées
+  // en repli pour un contrat déjà ouvert au moment où la migration tourne côté serveur.
   var TYPE_CONTRAT_LABEL = {
+    ponctuel: 'Prestation ponctuelle',
+    full_communication: 'Full Communication',
+    club_plus: 'Abonnement Club+',
+    coach_academie: 'Coach / Académie',
+    evenement: 'Événement',
+    joueur: 'Joueur',
+    sponsoring: 'Sponsoring',
+    pilote: 'Contrat pilote',
+    autre: 'Autre',
     abonnement_mensuel: 'Abonnement mensuel',
     abonnement_annuel: 'Abonnement annuel',
     forfait_saison: 'Forfait saison',
-    ponctuel: 'Contrat ponctuel',
     partenariat: 'Partenariat',
   };
   function badge(map, key) {

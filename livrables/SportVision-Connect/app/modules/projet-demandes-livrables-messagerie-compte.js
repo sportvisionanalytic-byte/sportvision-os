@@ -249,9 +249,11 @@
         if (!c) return;
         const unread = c.messages.filter(function (m) { return m.auteur_type === 'staff' && !m.lu; });
         if (!unread.length) return;
-        await Promise.all(unread.map(function (m) { return sbRpc('client_mark_message_read', { p_message_id: m.id }); }));
-        unread.forEach(function (m) { m.lu = true; });
-        c.unread = 0;
+        const results = await Promise.all(unread.map(function (m) {
+          return sbRpc('client_mark_message_read', { p_message_id: m.id }).then(function (r) { return { m: m, ok: r.ok }; });
+        }));
+        results.forEach(function (r) { if (r.ok) r.m.lu = true; });
+        c.unread = c.messages.filter(function (m) { return m.auteur_type === 'staff' && !m.lu; }).length;
         paint();
       }
 
