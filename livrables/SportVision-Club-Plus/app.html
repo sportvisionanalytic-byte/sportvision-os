@@ -1798,15 +1798,27 @@ function tplServices(){
   if(svView==='catalogue'){
     if(REAL && realCatalog===null){ loadRealCatalog(); return `<div class="sh"><b>Prestations SportVision</b></div><div class="empty-state">Chargement…</div>`; }
     const cat=catalogSource();
-    content = cat.length ? `<div class="grid g2">${cat.map(sv=>`<div class="card">
+    // Exemple concret du pattern "fonctionnalité incluse dans une offre
+    // supérieure" (cf. PLAN_FEATURES/planIncludes plus haut) : la
+    // Couverture tournoi est annotée "Prioritaire" dans le catalogue —
+    // traitement prioritaire réservé aux clubs dont la formule l'inclut.
+    // Identifiée par libellé faute de colonne dédiée côté catalogue_offres
+    // (staff SportVision) ; à remplacer par un vrai tag si le pattern est
+    // étendu à d'autres prestations.
+    content = cat.length ? `<div class="grid g2">${cat.map(sv=>{
+      const locked = sv.label==='Couverture tournoi' && !planIncludes('traitement_prioritaire');
+      return `<div class="card">
       <b style="font-size:14.5px;display:block;margin-bottom:6px">${sv.label}</b>
       <div class="muted" style="font-size:12.5px;margin-bottom:10px;line-height:1.5">${sv.desc}</div>
       <div class="muted" style="font-size:11.5px;margin-bottom:10px">Délai : ${sv.delai}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <div><div style="font-size:15px;font-weight:800">${sv.price}</div><div style="font-size:10.5px;color:var(--cyan);font-weight:600">${sv.adv}</div></div>
-        <button class="btn bp" onclick="guard(()=>openBookingWizard('${sv.key}'),'creer_demande')()">Réserver</button>
+        ${locked
+          ? `<button class="btn bo" onclick="openModal(tplFonctionnaliteVerrouillee('Couverture tournoi — traitement prioritaire'))">🔒 Réserver</button>`
+          : `<button class="btn bp" onclick="guard(()=>openBookingWizard('${sv.key}'),'creer_demande')()">Réserver</button>`}
       </div>${selfFunded?`<div class="muted" style="font-size:10.5px;margin-top:8px">Facturé à vos frais</div>`:''}
-    </div>`).join('')}</div>` : `<div class="empty-state">Catalogue en cours de préparation par SportVision.</div>`;
+    </div>`;
+    }).join('')}</div>` : `<div class="empty-state">Catalogue en cours de préparation par SportVision.</div>`;
   } else {
     if(REAL && realBookings===null){ loadRealBookings(); return `<div class="sh"><b>Prestations SportVision</b></div><div class="empty-state">Chargement…</div>`; }
     const bks=bookingsSource();
@@ -2111,6 +2123,34 @@ const CLUBPLUS_PLANS={
   club:{label:'Club+',credits:5,prix:{'12mois':49,'sans':59}},
   performance:{label:'Club+ Performance',credits:20,prix:{'12mois':129,'sans':149}}
 };
+
+/* ══════════════ FONCTIONNALITÉS INCLUSES SELON LA FORMULE ══════════════
+   Pattern générique "fonctionnalité incluse dans une offre supérieure" :
+   PLAN_FEATURES associe à chaque formule Club+ les fonctionnalités
+   qu'elle inclut ; planIncludes() vérifie l'appartenance pour la formule
+   réellement facturée au club (subscription.planCode, hydraté par
+   hydrateSubscription() depuis `clubs.plan` — REAL, lui, ne porte pas le
+   plan) ; tplFonctionnaliteVerrouillee() est l'écran réutilisable à
+   afficher à la place d'une fonctionnalité non incluse.
+   Un seul exemple concret est branché sur ce pattern pour l'instant : la
+   prestation "Couverture tournoi" du catalogue (déjà annotée comme
+   traitement prioritaire réservé aux formules hautes dans les données de
+   démonstration, cf. DATA.serviceCatalog) — voir tplServices(). Le reste
+   de l'app n'est pas encore gardé, à étendre à la main au cas par cas. */
+const PLAN_FEATURES={
+  club:['visuels_standard'],
+  performance:['visuels_standard','traitement_prioritaire','rapports_avances']
+};
+function planIncludes(feature){
+  const code=(subscription && subscription.planCode) || 'club';
+  return (PLAN_FEATURES[code]||[]).includes(feature);
+}
+function tplFonctionnaliteVerrouillee(nomFonctionnalite){
+  return `<div class="sh"><b>Fonctionnalité incluse dans une offre supérieure</b><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="muted" style="font-size:13.5px;line-height:1.7;margin-bottom:20px">« ${esc(nomFonctionnalite)} » fait partie d'une formule Club+ que votre club n'a pas actuellement. Découvrez les offres disponibles pour en profiter.</div>
+    <button class="btn bp" style="width:100%;justify-content:center" onclick="closeModal();switchView('abonnement')">Découvrir les offres</button>`;
+}
+
 const SUB_STATUS_META={actif:{label:'Actif',color:'#28C995'},impaye:{label:'Impayé',color:'#EF5B67'},annule:{label:'Résilié',color:'#EF5B67'}};
 let realSubscription=null;
 async function loadRealSubscription(){
@@ -2274,8 +2314,54 @@ function resetMatrixPermissions(){
   renderContent();
   toast('Permissions réinitialisées.');
 }
+/* ══════════════ PRÉFÉRENCES DE NOTIFICATION ══════════════
+   Centre de préférences Club+ (migration-clubplus-v28). Seules les
+   catégories non obligatoires sont proposées ici : SECURITY et LEGAL ne
+   sont jamais listées (facturation BILLING critique = pas désactivable
+   non plus côté envoi, mais on l'affiche pour rester transparent avec le
+   club sur ce qu'il reçoit). L'application réelle de la règle "toujours
+   envoyé" se fait côté lecture dans dispatch-notifications, pas ici —
+   désactiver une case ici n'a donc aucun effet sur SECURITY/LEGAL. Tant
+   qu'aucune ligne n'existe pour une catégorie, l'e-mail est considéré
+   activé (comportement de la colonne DEFAULT côté SQL). */
+const NOTIF_PREF_CATEGORIES=[
+  ['BILLING','Facturation','Factures, paiements et abonnement Club+'],
+  ['OPERATIONS','Opérations','Rappels de prestations, échéances et suivi terrain'],
+  ['SUPPORT','Support','Réponses à vos demandes envoyées au support SportVision'],
+  ['PRODUCT','Produit','Nouveautés et évolutions de SportVision Club+'],
+  ['MARKETING','Actualités','Offres et actualités SportVision']
+];
+let realNotifPrefs=null;
+async function loadNotifPrefs(){
+  if(!REAL) return;
+  const res=await sbFetch('notification_preferences?user_id=eq.'+REAL.userId+'&select=category,email_enabled');
+  const map={};
+  (res.ok?res.data||[]:[]).forEach(p=>{ map[p.category]=p.email_enabled; });
+  realNotifPrefs=map;
+  if(S.view==='parametres') renderContent();
+}
+async function toggleNotifPref(category,enabled){
+  if(!REAL){ toast('Préférence mise à jour (démonstration).'); return; }
+  realNotifPrefs=realNotifPrefs||{};
+  const previous=realNotifPrefs[category];
+  realNotifPrefs[category]=enabled;
+  renderContent();
+  const res=await sbFetch('notification_preferences?on_conflict=user_id,category', {
+    method:'POST',
+    headers:{Prefer:'resolution=merge-duplicates,return=representation'},
+    body:{user_id:REAL.userId, category, email_enabled:enabled}
+  });
+  if(!res.ok){
+    realNotifPrefs[category]=previous;
+    renderContent();
+    toast("Erreur lors de l'enregistrement de la préférence.");
+    return;
+  }
+  toast('Préférence enregistrée.');
+}
+
 function tplParametres(){
-  const tabs=[['identite','Identité du club'],['preferences','Préférences'],['integrations','Intégrations'],['permissions','Rôles et permissions']];
+  const tabs=[['identite','Identité du club'],['preferences','Préférences'],['notifications','Notifications'],['integrations','Intégrations'],['permissions','Rôles et permissions']];
   let content='';
   if(paView==='identite'){
     content=`${REAL?`<div class="card" style="margin-bottom:16px">
@@ -2298,6 +2384,21 @@ function tplParametres(){
     </div>`;
   } else if(paView==='preferences'){
     content=`<div class="card">${['Résumé quotidien par e-mail','Résumé hebdomadaire par e-mail','Mode sombre'].map(l=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--bd)"><span style="font-size:13.5px">${l}</span><button class="btn bo" style="padding:5px 12px" onclick="toast('Préférence mise à jour.')">Activé</button></div>`).join('')}</div>`;
+  } else if(paView==='notifications'){
+    if(REAL && realNotifPrefs===null){ loadNotifPrefs(); content=`<div class="empty-state">Chargement…</div>`; }
+    else {
+      const prefs = REAL ? (realNotifPrefs||{}) : {};
+      content=`<div class="card">
+        <div class="muted" style="font-size:12px;margin-bottom:14px">Choisissez les e-mails que vous souhaitez recevoir de SportVision Club+. Les notifications de sécurité, obligations légales et facturation restent toujours envoyées, quelle que soit votre choix ci-dessous.</div>
+        ${NOTIF_PREF_CATEGORIES.map(([cat,label,desc])=>{
+          const checked = prefs[cat]!==false;
+          return `<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--bd)">
+            <div><div style="font-weight:600;font-size:13.5px">${label}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${desc}</div></div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0"><input type="checkbox" style="width:auto" ${checked?'checked':''} onchange="toggleNotifPref('${cat}',this.checked)"><span class="muted" style="font-size:11.5px">${checked?'Activé':'Désactivé'}</span></label>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
   } else if(paView==='integrations'){
     const list=[['SportVision Portail','Suivi des demandes, devis, factures et livrables SportVision.','À venir','#F5A623'],['SportVision OS','Synchronisation interne des missions et de la production.','À venir','#F5A623'],['Supabase',REAL?'Base de données et authentification — connecté à ce club.':'Base de données et authentification de la plateforme.',REAL?'Connecté':'À venir',REAL?'#28C995':'#F5A623'],['Stripe','Paiements des abonnements et packs de crédits.','À venir','#F5A623']];
     content=list.map(([n,d,s2,c])=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px"><div><div style="font-weight:700;font-size:14px">${n}</div><div class="muted" style="font-size:12px;margin-top:2px">${d}</div></div><span class="badge" style="background:${c}22;color:${c}">${s2}</span></div>`).join('');

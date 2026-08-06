@@ -21,6 +21,13 @@
 //   "dispatch_notifications_key" créé par migration-connect-v11)
 // Tant que BREVO_API_KEY n'est pas configurée, la fonction renvoie une erreur
 // claire par ligne au lieu d'échouer en silence ou de deviner un comportement.
+//
+// Préférences (migration-clubplus-v28) : avant d'envoyer une notification de
+// catégorie non obligatoire (ni mandatory=true, ni SECURITY/LEGAL/BILLING —
+// ces 3 catégories restent toujours envoyées, quelle que soit la préférence
+// enregistrée), on vérifie notification_preferences pour le destinataire ;
+// si désactivée, la ligne est marquée SKIPPED_PREFERENCE au lieu d'être
+// envoyée ou laissée PENDING indéfiniment.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -122,7 +129,7 @@ serve(async (req) => {
 
       const { data: tv } = await admin
         .from("communication_template_versions")
-        .select("*, communication_templates!inner(template_key)")
+        .select("*, communication_templates!inner(template_key,category,mandatory)")
         .eq("communication_templates.template_key", row.template_key)
         .lte("active_from", new Date().toISOString())
         .or("active_to.is.null,active_to.gt." + new Date().toISOString())
@@ -163,6 +170,34 @@ serve(async (req) => {
           status: "SUPPRESSED", updated_at: new Date().toISOString(),
         }).eq("id", row.id);
         continue;
+      }
+
+      // Centre de préférences (Club+, migration-clubplus-v28) : une notification de
+      // catégorie non obligatoire (ni mandatory=true côté template, ni catégorie
+      // SECURITY/LEGAL/BILLING — celles-là ne sont jamais désactivables, quelle que
+      // soit la préférence enregistrée) est ignorée si le destinataire a coupé
+      // l'e-mail pour cette catégorie. On la marque SKIPPED_PREFERENCE plutôt que de
+      // la laisser PENDING indéfiniment ou de la traiter comme un échec.
+      const templateMeta = tv.communication_templates;
+      const category = templateMeta && templateMeta.category;
+      const mandatory = !!(templateMeta && templateMeta.mandatory);
+      const nonDisablableCategories = ["SECURITY", "LEGAL", "BILLING"];
+      const preferenceApplies = !mandatory && !!category && !nonDisablableCategories.includes(category) && !!row.recipient_user_id;
+      if (preferenceApplies) {
+        const { data: pref } = await admin
+          .from("notification_preferences")
+          .select("email_enabled")
+          .eq("user_id", row.recipient_user_id)
+          .eq("category", category)
+          .maybeSingle();
+        if (pref && pref.email_enabled === false) {
+          await admin.from("notification_outbox").update({
+            status: "SKIPPED_PREFERENCE",
+            last_error: "Catégorie " + category + " désactivée par le destinataire (notification_preferences).",
+            updated_at: new Date().toISOString(),
+          }).eq("id", row.id);
+          continue;
+        }
       }
 
       const result = await sendViaBrevo(brevoApiKey, fromEmail, to, subject, html);
