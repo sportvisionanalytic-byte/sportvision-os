@@ -3673,6 +3673,7 @@ function modalModifierClient(idx){
           <button id="fce-tab-medias" onclick="fceShowTab('medias')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Médias</button>
           <button id="fce-tab-rel" onclick="fceShowTab('rel')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Suivi contacts</button>
           <button id="fce-tab-tl" onclick="fceShowTab('tl')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Historique</button>
+          <button id="fce-tab-equipe" onclick="fceShowTab('equipe')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Équipe</button>
         </div>
         <div id="fce-panel-pres">
           <div id="fce-hist"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
@@ -3685,6 +3686,9 @@ function modalModifierClient(idx){
         </div>
         <div id="fce-panel-tl" style="display:none">
           <div id="client-timeline"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+        </div>
+        <div id="fce-panel-equipe" style="display:none">
+          <div id="fce-equipe-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
         </div>
       </div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:12px">
@@ -3910,7 +3914,7 @@ async function chargerPresByClient(clientId){
 function fceShowTab(tab){
   const on='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
   const off='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
-  ['pres','medias','rel','tl'].forEach(t=>{
+  ['pres','medias','rel','tl','equipe'].forEach(t=>{
     const b=document.getElementById('fce-tab-'+t);const p=document.getElementById('fce-panel-'+t);
     if(b)b.style.cssText=t===tab?on:off;
     if(p)p.style.display=t===tab?'':'none';
@@ -3918,6 +3922,30 @@ function fceShowTab(tab){
   if(tab==='tl'&&window._fceClientId)loadClientTimeline(window._fceClientId);
   if(tab==='rel'&&window._fceClientId)loadClientContacts(window._fceClientId);
   if(tab==='medias'&&window._fceClientId)loadClientMedias(window._fceClientId);
+  if(tab==='equipe'&&window._fceClientId)loadClientEquipe(window._fceClientId);
+}
+
+// Onglet Équipe : rôster client_affiliations pour ce client — lecture seule
+// ici, l'attribution de rôles secondaires reste un futur écran dédié
+// admin/Lead CM (au-delà du champ "CM assigné" déjà géré ci-dessus).
+const AFFIL_ROLE_LBL={cm_principal:'CM principal',cm_secondaire:'CM secondaire',lead_cm:'Lead CM',graphiste:'Graphiste',photographe:'Photographe',videaste:'Vidéaste',responsable_production:'Resp. Production',administrateur:'Administrateur'};
+async function loadClientEquipe(clientId){
+  const el=document.getElementById('fce-equipe-list');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  try{
+    const data=await sbFetch('client_affiliations?select=id,role_on_client,is_primary,status,end_date,profiles(prenom,nom)&client_id=eq.'+clientId+'&order=is_primary.desc,role_on_client.asc');
+    const list=Array.isArray(data)?data:[];
+    if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Aucune affiliation enregistrée pour ce client.</div>';return;}
+    el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+list.map(a=>{
+      const expire=a.end_date&&a.end_date<new Date().toISOString().slice(0,10);
+      const st=a.status!=='actif'?a.status:(expire?'expiré':'actif');
+      return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border-radius:8px;font-size:12px">
+        <div><span style="font-weight:600;color:var(--t1)">${esc([a.profiles?.prenom,a.profiles?.nom].filter(Boolean).join(' ')||'—')}</span>
+          <span style="color:var(--t3)"> · ${AFFIL_ROLE_LBL[a.role_on_client]||a.role_on_client}${a.is_primary?' (principal)':''}</span></div>
+        <span class="bd ${st==='actif'?'ba':'bn'}"><span class="bd-d"></span>${st}${a.end_date?' · jusqu\'au '+new Date(a.end_date).toLocaleDateString('fr-FR'):''}</span>
+      </div>`;}).join('')+'</div>';
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 async function loadClientMedias(clientId){
