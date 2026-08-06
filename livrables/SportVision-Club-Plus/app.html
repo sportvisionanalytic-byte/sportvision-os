@@ -457,9 +457,22 @@ function allowedKeys(role){
   };
   return map[role] || all;
 }
-function guard(fn){
+// permKey optionnel : une des clés de PERM_KEYS (plus bas). Avant le
+// 2026-08-06, la matrice de permissions (Paramètres > Rôles et permissions,
+// personnalisable par club) n'était consultée QUE par l'écran qui l'édite —
+// aucune action réelle ne la vérifiait, seul le rôle 'lecture_seule' était
+// bloqué en dur ici. Un membre non-admin voyait donc des boutons d'action
+// qui échouaient ensuite côté RLS sans message clair. PERM_ROLE_COLS ne
+// couvre pas tous les rôles (ex: cm_externe, resp_equipe, membre_bureau) —
+// pour ceux-là, on ne change rien au comportement existant plutôt que
+// d'inventer une règle non demandée.
+function guard(fn,permKey){
   return function(){
     if(S.role==='lecture_seule'){ toast('Votre rôle ne vous permet pas d’effectuer cette action. Contactez l’administrateur du club pour demander un accès supplémentaire.'); return; }
+    if(permKey && PERM_ROLE_COLS.includes(S.role) && currentPermMatrix()[permKey] && !currentPermMatrix()[permKey][S.role]){
+      toast('Votre rôle ne vous permet pas d’effectuer cette action. Contactez l’administrateur du club pour demander un accès supplémentaire.');
+      return;
+    }
     fn.apply(null,arguments);
   };
 }
@@ -1064,7 +1077,7 @@ function tplMatchCenter(){
     content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)} · ${m.lieu}</div></div><span class="badge" style="background:#168EFF22;color:var(--blue)">À venir</span></div>`).join('')||'<div class="empty-state">Aucun match à venir.</div>'}</div>`;
   } else if(mcView==='a_transmettre'){
     const list=source.filter(m=>m.status==='a_transmettre');
-    content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)}</div></div><button class="btn" style="background:var(--wa);color:#06182B" onclick="guard(openMatchExpress)()">Transmettre</button></div>`).join('')||'<div class="empty-state">Rien à transmettre.</div>'}</div>`;
+    content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)}</div></div><button class="btn" style="background:var(--wa);color:#06182B" onclick="guard(openMatchExpress,'envoyer_resultat')()">Transmettre</button></div>`).join('')||'<div class="empty-state">Rien à transmettre.</div>'}</div>`;
   } else if(mcView==='recus'){
     const list=source.filter(m=>m.status==='recu');
     content=`<div class="grid g3">${list.map(m=>`<button class="tile-card" onclick="openMatchDrawer('${m.id}')"><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div style="font-size:20px;font-weight:800;color:var(--cyan);margin:8px 0">${m.score}</div><div class="muted" style="font-size:11.5px">${fmtDate(m.date)}</div></button>`).join('')}</div>`;
@@ -1073,8 +1086,8 @@ function tplMatchCenter(){
     content=`<div class="list-host">${list.flatMap(m=>m.contents.map(c=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${c}</div><div class="muted" style="font-size:11.5px">${m.team} vs ${m.opp} · ${fmtDate(m.date)}</div></div></div>`)).join('')||'<div class="empty-state">Aucun contenu créé pour le moment.</div>'}</div>`;
   }
   return `<div class="sh"><b>Match Center</b><div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn bo" onclick="guard(openMatchExpress)()">+ Résultat express</button>
-    <button class="btn bp" onclick="guard(openMatchExpress)()">+ Résultat complet</button></div></div>
+    <button class="btn bo" onclick="guard(openMatchExpress,'envoyer_resultat')()">+ Résultat express</button>
+    <button class="btn bp" onclick="guard(openMatchExpress,'envoyer_resultat')()">+ Résultat complet</button></div></div>
     <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${mcView===k?' on':''}" onclick="mcView='${k}';renderContent()">${l}</button>`).join('')}</div>
     ${content}`;
 }
@@ -1493,7 +1506,7 @@ function tplSponsors(){
       <a href="SportVision-Club-Plus.html#/partenaires" target="_blank" class="btn bp">Voir la page publique →</a></div>
       <div class="grid g4">${src.map(sp=>`<div class="tile-card" style="text-align:center"><div class="club-crest" style="border-radius:10px;margin:0 auto 10px">${initials(sp.name)}</div><div style="font-weight:700;font-size:13px">${sp.name}</div><div class="muted" style="font-size:11.5px">${sp.secteur}</div></div>`).join('')||'<div class="empty-state">Aucun sponsor pour le moment.</div>'}</div>`;
   }
-  return `<div class="sh"><b>Espace Sponsors</b><button class="btn bp" onclick="guard(openSponsorForm)()">+ Ajouter un sponsor</button></div>
+  return `<div class="sh"><b>Espace Sponsors</b><button class="btn bp" onclick="guard(openSponsorForm,'gerer_sponsors')()">+ Ajouter un sponsor</button></div>
     <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${spView===k?' on':''}" onclick="spView='${k}';renderContent()">${l}</button>`).join('')}</div>
     ${content}`;
 }
@@ -1579,7 +1592,7 @@ function tplDemandes(){
   if(REAL && realRequests===null){ loadRealRequests(); return `<div class="sh"><b>Demandes de création</b></div><div class="empty-state">Chargement…</div>`; }
   const source = REAL ? realRequests.map(normRequestItem) : DATA.requests;
   const list=source.filter(r=>reqStatus==='toutes'||r.status===reqStatus);
-  return `<div class="sh"><b>Demandes de création</b><button class="btn bp" onclick="guard(openRequestWizard)()">+ Nouvelle demande</button></div>
+  return `<div class="sh"><b>Demandes de création</b><button class="btn bp" onclick="guard(openRequestWizard,'creer_demande')()">+ Nouvelle demande</button></div>
     <div class="pillbar">${['toutes',...REQ_STATUSES].map(st=>`<button class="pill${reqStatus===st?' on':''}" onclick="reqStatus='${st}';renderContent()">${st==='toutes'?'Toutes':statusMeta(st).label}</button>`).join('')}</div>
     <div class="list-host">${list.length?list.map(r=>{const sm=statusMeta(r.status); return `
       <button class="list-row" onclick="openRequestDrawer('${r.id}')">
@@ -1730,7 +1743,7 @@ function tplServices(){
       <div class="muted" style="font-size:11.5px;margin-bottom:10px">Délai : ${sv.delai}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <div><div style="font-size:15px;font-weight:800">${sv.price}</div><div style="font-size:10.5px;color:var(--cyan);font-weight:600">${sv.adv}</div></div>
-        <button class="btn bp" onclick="guard(()=>openBookingWizard('${sv.key}'))()">Réserver</button>
+        <button class="btn bp" onclick="guard(()=>openBookingWizard('${sv.key}'),'creer_demande')()">Réserver</button>
       </div>${selfFunded?`<div class="muted" style="font-size:10.5px;margin-top:8px">Facturé à vos frais</div>`:''}
     </div>`).join('')}</div>` : `<div class="empty-state">Catalogue en cours de préparation par SportVision.</div>`;
   } else {
@@ -1738,7 +1751,7 @@ function tplServices(){
     const bks=bookingsSource();
     content = bks.length ? `<div class="list-host">${bks.map(bk=>{const sm=statusMeta(bk.status); return `<button class="list-row" onclick="openBookingDrawer('${bk.id}')"><div><div style="font-weight:700;font-size:14px">${bk.service}</div><div class="muted" style="font-size:12px;margin-top:2px">${bk.team} · ${fmtDate(bk.date)} · ${bk.duree} · ${bk.price}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;}).join('')}</div>` : `<div class="empty-state">Aucune réservation pour le moment.</div>`;
   }
-  return `<div class="sh"><b>Prestations SportVision</b><button class="btn bp" onclick="guard(()=>openBookingWizard(null))()">+ Réserver une présence</button></div>
+  return `<div class="sh"><b>Prestations SportVision</b><button class="btn bp" onclick="guard(()=>openBookingWizard(null),'creer_demande')()">+ Réserver une présence</button></div>
     <div class="pillbar">${[['catalogue','Catalogue'],['reservations','Mes réservations']].map(([k,l])=>`<button class="pill${svView===k?' on':''}" onclick="svView='${k}';renderContent()">${l}</button>`).join('')}</div>
     ${content}`;
 }
@@ -1827,7 +1840,7 @@ function teamNames(){
 function tplEquipes(){
   if(REAL && realTeams===null){ loadRealTeams(); return `<div class="sh"><b>Équipes & éducateurs</b></div><div class="empty-state">Chargement…</div>`; }
   const src=teamsSource();
-  return `<div class="sh"><b>Équipes & éducateurs</b><button class="btn bp" onclick="guard(openEquipeForm)()">+ Ajouter une équipe</button></div>
+  return `<div class="sh"><b>Équipes & éducateurs</b><button class="btn bp" onclick="guard(openEquipeForm,'gerer_equipes')()">+ Ajouter une équipe</button></div>
     <div class="grid g2">${src.map(t=>`<button class="tile-card" onclick="openEquipeDrawer('${t.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div><div style="font-size:15px;font-weight:700">${t.name}</div><div class="muted" style="font-size:11.5px">${t.cat} · ${t.members} membres</div></div><span class="badge" style="background:#168EFF22;color:var(--blue)">${t.contribution}% régularité</span></div>
       <div class="muted" style="font-size:12px;margin-bottom:4px">Éducateur : ${t.coach}</div>
@@ -1891,7 +1904,7 @@ function membersSource(){
 function tplMembres(){
   if(REAL){
     if(realMembers===null){ loadRealMembers(); return `<div class="sh"><b>Utilisateurs</b></div><div class="empty-state">Chargement…</div>`; }
-    return `<div class="sh"><b>Utilisateurs</b><button class="btn bp" onclick="guard(openInviteWizard)()">+ Inviter un utilisateur</button></div>
+    return `<div class="sh"><b>Utilisateurs</b><button class="btn bp" onclick="guard(openInviteWizard,'gerer_utilisateurs')()">+ Inviter un utilisateur</button></div>
       <div class="list-host">${realMembers.length?realMembers.map(u=>{
         const sm=statusMeta(u.status);
         const name=`${u.prenom||''} ${u.nom||''}`.trim()||'(sans nom)';
@@ -1901,7 +1914,7 @@ function tplMembres(){
           <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;
       }).join(''):'<div class="empty-state">Aucun utilisateur pour le moment.</div>'}</div>`;
   }
-  return `<div class="sh"><b>Utilisateurs</b><button class="btn bp" onclick="guard(openInviteWizard)()">+ Inviter un utilisateur</button></div>
+  return `<div class="sh"><b>Utilisateurs</b><button class="btn bp" onclick="guard(openInviteWizard,'gerer_utilisateurs')()">+ Inviter un utilisateur</button></div>
     <div class="list-host">${DATA.users.map(u=>{const sm=statusMeta(u.status); return `<button class="list-row" onclick="openUserDrawer('${u.id}')">
       <div><div style="font-weight:700;font-size:14px">${u.name}</div><div class="muted" style="font-size:12px;margin-top:2px">${u.email} · ${u.role} · ${u.teams.join(', ')}</div></div>
       <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;}).join('')}</div>`;
@@ -2023,11 +2036,11 @@ function tplAbonnement(){
   return `<div class="sh"><b>Abonnement & crédits</b></div>
     <div class="card" style="background:linear-gradient(135deg,var(--card),var(--card2));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px">
       <div><div class="muted" style="font-size:12px;margin-bottom:4px">Formule actuelle</div><div style="font-size:18px;font-weight:800">${subscription.plan}</div><div class="muted" style="font-size:12.5px;margin-top:4px">${subscription.price} · Prochaine échéance : ${subscription.nextBilling} · ${subscription.paymentMethod}</div></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn bp" onclick="openPlanChange()">Changer de formule</button><button class="btn bo" onclick="toast('Le téléchargement des factures sera disponible au lancement.')">Télécharger les factures</button></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn bp" onclick="guard(openPlanChange,'gerer_abonnement')()">Changer de formule</button><button class="btn bo" onclick="toast('Le téléchargement des factures sera disponible au lancement.')">Télécharger les factures</button></div>
     </div>
     <div class="grid g2">
       <div class="card">
-        <div class="sh" style="margin-bottom:14px"><b style="font-size:15px">Crédits</b><button class="btn bp" onclick="openCreditPack()">Acheter un pack</button></div>
+        <div class="sh" style="margin-bottom:14px"><b style="font-size:15px">Crédits</b><button class="btn bp" onclick="guard(openCreditPack,'gerer_abonnement')()">Acheter un pack</button></div>
         <div style="font-size:28px;font-weight:800;margin-bottom:6px">${available} <span style="font-size:14px;color:var(--t2);font-weight:600">/ ${wallet.monthly} crédits disponibles</span></div>
         <div class="progress" style="margin-bottom:10px"><i style="width:${pct}%;background:${barColor}"></i></div>
         ${wallet.reserved?`<div style="font-size:12px;color:var(--wa);margin-bottom:16px">${wallet.reserved} crédit(s) réservé(s) pour des demandes en attente d'acceptation par SportVision.</div>`:''}
@@ -2120,7 +2133,7 @@ function tplParametres(){
       <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:12px">INFORMATIONS DU CLUB</div>
       <div class="row2"><div class="field"><label>Nom du club</label><input id="pi-nom" type="text" value="${esc(REAL.clubName||'')}"></div><div class="field"><label>Saison</label><input id="pi-saison" type="text" value="${esc(REAL.clubSeason||'')}"></div></div>
       <div class="row2"><div class="field"><label>Ville</label><input id="pi-ville" type="text" value="${esc(REAL.clubVille||'')}"></div><div class="field"><label>Discipline</label><input id="pi-discipline" type="text" value="${esc(REAL.clubDiscipline||'')}"></div></div>
-      <button class="btn bp" onclick="guard(saveClubIdentity)()">Enregistrer</button>
+      <button class="btn bp" onclick="guard(saveClubIdentity,'modifier_parametres')()">Enregistrer</button>
     </div>`:''}
     <div class="grid g2" style="margin-bottom:16px">
       <div class="card"><div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:12px">LOGO ET ÉCUSSON</div>
@@ -2145,7 +2158,7 @@ function tplParametres(){
     content=`<div class="card" style="overflow-x:auto"><table><thead><tr><th>Permission</th>${roleLabels.map(r=>`<th style="text-align:center">${r}</th>`).join('')}</tr></thead><tbody>
       ${PERM_KEYS.map(([key,label])=>`<tr><td>${label}</td>${PERM_ROLE_COLS.map(rk=>`<td style="text-align:center"><input type="checkbox" style="width:auto" ${m[key][rk]?'checked':''} onchange="togglePerm('${key}','${rk}')"></td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
-      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn bp" onclick="guard(saveMatrixPermissions)()">Enregistrer les permissions</button><button class="btn bo" onclick="resetMatrixPermissions()">Réinitialiser</button><button class="btn bo" onclick="toast('La création de rôles personnalisés sera disponible au lancement.')">Créer un rôle personnalisé</button></div>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn bp" onclick="guard(saveMatrixPermissions,'modifier_parametres')()">Enregistrer les permissions</button><button class="btn bo" onclick="resetMatrixPermissions()">Réinitialiser</button><button class="btn bo" onclick="toast('La création de rôles personnalisés sera disponible au lancement.')">Créer un rôle personnalisé</button></div>
       <div class="muted" style="font-size:11px;margin-top:10px">Cette matrice est enregistrée pour le club mais n'est pas encore appliquée pour restreindre réellement les actions dans l'application.</div>`;
   }
   return `<div class="sh"><b>Paramètres</b></div>

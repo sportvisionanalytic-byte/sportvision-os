@@ -52,6 +52,52 @@ const TYPE_CLIENT_MAP: Record<string, string> = {
   entreprise: "entreprise",
 };
 
+// Recalcul serveur des frais de déplacement — même logique que
+// cfgComputeFraisDeplacement() côté Portail (SportVision-Portail.html),
+// dupliquée ici car auparavant distance_km/frais_deplacement_ht étaient
+// acceptés tels quels depuis le body JSON du visiteur (contrairement à
+// offre_id, déjà résolu côté serveur) : un visiteur pouvait faire
+// apparaître un trajet à 0 km dans la fiche que le staff consulte pour
+// chiffrer manuellement. Découvert lors de l'audit du 2026-08-06. Utilise
+// l'API Adresse du gouvernement (api-adresse.data.gouv.fr), publique et
+// sans clé, comme le fait déjà le Portail.
+const SIEGE_LAT = 48.380247;
+const SIEGE_LON = 2.943271;
+const TARIF_KM_TTC = 0.5; // €/km, aller-retour, hors Île-de-France uniquement
+
+function toRad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+async function computeFraisDeplacement(adresse: string, cp: string, ville: string): Promise<{ distance_km: number | null; frais_deplacement_ht: number | null }> {
+  const query = [adresse, cp, ville].filter(Boolean).join(" ");
+  if (!query) return { distance_km: null, frais_deplacement_ht: null };
+  try {
+    const url = "https://api-adresse.data.gouv.fr/search/?q=" + encodeURIComponent(query) + "&limit=1";
+    const r = await fetch(url).then((res) => res.json());
+    const f = r.features && r.features[0];
+    if (!f) return { distance_km: null, frais_deplacement_ht: null };
+    const context: string = f.properties?.context || "";
+    if (context.includes("Île-de-France")) return { distance_km: null, frais_deplacement_ht: null };
+    const [lon, lat] = f.geometry.coordinates;
+    const distanceAllerRetour = haversineKm(SIEGE_LAT, SIEGE_LON, lat, lon) * 2;
+    const distance_km = Math.round(distanceAllerRetour * 10) / 10;
+    const fraisTtc = distanceAllerRetour * TARIF_KM_TTC;
+    const frais_deplacement_ht = Math.round((fraisTtc / 1.2) * 100) / 100;
+    return { distance_km, frais_deplacement_ht };
+  } catch (_e) {
+    // Best-effort, comme côté Portail : en cas d'échec de géolocalisation,
+    // aucun frais plutôt que de bloquer l'envoi de la demande.
+    return { distance_km: null, frais_deplacement_ht: null };
+  }
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -72,7 +118,9 @@ serve(async (req) => {
     const {
       prenom, nom, email, telephone, profil, origine,
       offre_slug, options, date, heure, lieu, ville, adresse, cp, commentaire, sport, equipes,
-      retractation_renoncee, site_web, distance_km, frais_deplacement_ht,
+      retractation_renoncee, site_web,
+      // distance_km / frais_deplacement_ht ne sont plus lus depuis le body :
+      // recalculés côté serveur plus bas, jamais depuis une valeur visiteur.
     } = await req.json();
 
     // Honeypot : champ invisible pour un humain, rempli seulement par des bots.
@@ -128,6 +176,8 @@ serve(async (req) => {
       if (offre) offreId = offre.id;
     }
 
+    const { distance_km, frais_deplacement_ht } = await computeFraisDeplacement(adresse, cp, ville);
+
     const { data: prestation, error: prestationErr } = await admin
       .from("prestations")
       .insert({
@@ -153,6 +203,6 @@ serve(async (req) => {
 
     return json({ reference: prestation.reference, prestation_id: prestation.id, client_email: email });
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });

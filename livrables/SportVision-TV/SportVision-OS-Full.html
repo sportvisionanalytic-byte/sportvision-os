@@ -3343,9 +3343,9 @@ function modalDetailPrestation(idx){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant HT (€)</label>
-          <input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0" oninput="const ttc=document.getElementById('pd-ttc');if(ttc&&this.value)ttc.value=Math.round(Number(this.value)*1.2*100)/100" ${ro}>
+          <input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0" oninput="const ttc=document.getElementById('pd-ttc');if(ttc&&this.value)ttc.value=Math.round(Number(this.value)*${1+(p.tva_pct??20)/100}*100)/100" ${ro}>
         </div>
-        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant TTC (€) <span style="font-size:9px;opacity:.5">auto TVA 20%</span></label>
+        <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Montant TTC (€) <span style="font-size:9px;opacity:.5">auto TVA ${p.tva_pct??20}%</span></label>
           <input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0" ${ro}>
         </div>
       </div>
@@ -16318,8 +16318,8 @@ function modalProdFiche(p){
     </div>
     <div id="pf-panel-budget" style="display:none;flex-direction:column;gap:11px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="${L}">Montant HT (€)</label><input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0" oninput="const t=document.getElementById('pd-ttc');if(t&&this.value)t.value=Math.round(Number(this.value)*1.2*100)/100"></div>
-        <div><label style="${L}">Montant TTC (€) <span style="font-size:9px;opacity:.5">TVA 20%</span></label><input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0"></div>
+        <div><label style="${L}">Montant HT (€)</label><input id="pd-ht" type="number" class="l-inp" value="${p.montant_ht||''}" style="height:38px" placeholder="0" oninput="const t=document.getElementById('pd-ttc');if(t&&this.value)t.value=Math.round(Number(this.value)*${1+(p.tva_pct??20)/100}*100)/100"></div>
+        <div><label style="${L}">Montant TTC (€) <span style="font-size:9px;opacity:.5">TVA ${p.tva_pct??20}%</span></label><input id="pd-ttc" type="number" class="l-inp" value="${p.montant_ttc||''}" style="height:38px" placeholder="0"></div>
       </div>
       <div style="background:var(--s2);border-radius:var(--rb);padding:12px 14px">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3);margin-bottom:8px">Rémunérations équipe</div>

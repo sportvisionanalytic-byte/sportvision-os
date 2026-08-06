@@ -31,11 +31,20 @@ serve(async (req) => {
 
   const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-  const { data: already } = await admin.from("stripe_events").select("id").eq("id", event.id).maybeSingle();
-  if (already) {
-    return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 });
+  // Dédoublonnage atomique : on tente directement l'insert (id = clé primaire)
+  // plutôt qu'un select-puis-insert, qui laissait une fenêtre de course en cas
+  // de vraie concurrence sur le même event.id (Stripe peut renvoyer le même
+  // événement deux fois quasi simultanément après un timeout). Une violation
+  // de clé primaire (23505) signifie "déjà en cours de traitement ou traité" —
+  // on s'arrête proprement dans les deux cas plutôt que de retraiter.
+  const { error: insertEventErr } = await admin.from("stripe_events").insert({ id: event.id, type: event.type });
+  if (insertEventErr) {
+    if (insertEventErr.code === "23505") {
+      return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 });
+    }
+    // Erreur inattendue (pas un doublon) : on continue quand même le
+    // traitement plutôt que de perdre un paiement pour un souci de traçabilité.
   }
-  await admin.from("stripe_events").insert({ id: event.id, type: event.type });
 
   try {
     if (event.type === "checkout.session.completed") {
