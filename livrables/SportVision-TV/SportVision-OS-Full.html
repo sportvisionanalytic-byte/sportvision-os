@@ -8905,67 +8905,238 @@ async function creerTachesAuto(eventType,data){
 }
 
 // ── PDF Contrat ───────────────────────────────────────────────────────────────
+// Le texte contractuel généré ci-dessous provient de la « Banque de contrats
+// modulables SportVision OS » rédigée par le fondateur : socle commun de 25 articles
+// (commun à TOUS les types de contrat) + un bloc de conditions particulières par type.
+// Ce texte est retranscrit tel quel : ne pas le paraphraser, ne pas raccourcir les clauses.
+// ⚠️ Comme le document source le précise lui-même, ce texte reste À VALIDER PAR UN
+//    PROFESSIONNEL DU DROIT avant tout usage réel avec un client.
+
+// Identité légale SportVision — valeurs strictement identiques à celles utilisées par
+// les autres générateurs PDF de ce fichier (cf. bloc « Émetteur » de genererAvoirPDF).
+const SV_IDENTITE_CONTRAT={
+  nomCommercial:'SportVision',
+  raisonSociale:'Elkana Group',
+  formeJuridique:'SAS',
+  adresse:'4 Place Pierre Semard, 77130 Montereau-Fault-Yonne',
+  siren:'105 173 124',
+  siret:'105 173 124 00014',
+  rcs:'RCS Melun',
+  ape:'APE 74.20Z',
+  tvaIntra:'FR15 105 173 124',
+  email:'contact@sportvision.fr',
+};
+
+// Libellés des catégories de la Banque de contrats (migration-contrats-v2-types-banque.sql).
+// Volontairement local au générateur de contrat : CONTRAT_TYPES_LB reste inchangé.
+const CONTRAT_TYPES_BANQUE_LB={
+  ponctuel:'Prestation ponctuelle',
+  full_communication:'Full Communication',
+  club_plus:'Abonnement Club+',
+  coach_academie:'Coach / Académie',
+  evenement:'Événement',
+  joueur:'Joueur',
+  sponsoring:'Sponsoring',
+  pilote:'Contrat pilote',
+  autre:'Autre',
+};
+
+// Formes juridiques déduites de clients.type_client (pas de colonne « forme juridique »
+// dans la table clients — cf. supabase-schema-v2.sql).
+const CONTRAT_CLIENT_FORMES={
+  club:'club sportif',
+  association:'association',
+  entreprise:'société',
+  particulier:'particulier',
+  'fédération':'fédération',
+};
+
+// Helper de rendu des variables {{XXX}} du contrat : renvoie la valeur échappée,
+// ou un repli propre quand la donnée est absente (jamais « undefined » dans un
+// document contractuel).
+function vContrat(val,repli='—'){
+  if(val===null||val===undefined)return repli;
+  const s=String(val).trim();
+  return s?esc(s):repli;
+}
+
+// Socle commun — 25 articles, texte intégral de la Banque de contrats.
+// `x` contient les variables déjà substituées et échappées.
+function contratSocleCommunHTML(x){
+  const A=[
+    ['Article 1 - Définitions','« Contrat » désigne les Conditions particulières, le présent Socle, les annexes et tout avenant signé. « Prestations » désigne les services décrits dans le périmètre. « Livrables » désigne les fichiers, créations, rapports ou accès remis au Client. « Présence » désigne une intervention planifiée sur site selon la durée et le périmètre indiqués. « Plateforme » désigne SportVision OS, Club+ ou tout espace client mis à disposition. « Jour ouvré » désigne un jour normalement travaillé en France métropolitaine, hors samedi, dimanche et jour férié.'],
+    ['Article 2 - Objet et périmètre','SportVision fournit les Prestations définies dans les Conditions particulières et l\'annexe de périmètre. Toute prestation non expressément incluse fait l\'objet d\'un devis, d\'une commande complémentaire ou d\'un avenant.'],
+    ['Article 3 - Documents contractuels et hiérarchie','Les documents contractuels sont, par ordre de priorité : les avenants les plus récents ; les Conditions particulières ; l\'échéancier signé ; les annexes spécifiques ; le présent Socle. Les échanges commerciaux ne modifient pas le Contrat sauf accord écrit des personnes habilitées.'],
+    ['Article 4 - Entrée en vigueur et conditions','Le Contrat est conclu à la date de finalisation des signatures requises. Le démarrage opérationnel intervient à la date indiquée, sous réserve des conditions suivantes : signature complète, pièces et accès nécessaires, expiration ou traitement du délai applicable, et configuration du paiement lorsqu\'elle est requise.'],
+    ['Article 5 - Obligations de SportVision','SportVision s\'engage à exécuter les Prestations avec diligence, selon les usages professionnels et le périmètre convenu. Sauf engagement express de résultat, ses obligations sont des obligations de moyens.'],
+    ['Article 6 - Obligations du Client','Le Client fournit dans les délais les informations, validations, accès, autorisations, éléments de marque, plannings et contacts nécessaires. Tout retard ou blocage imputable au Client peut entraîner un report des délais sans engager la responsabilité de SportVision.'],
+    ['Article 7 - Planning, disponibilité et validation','Le planning est préparé conjointement. Les urgences, demandes hors calendrier ou modifications tardives sont traitées selon disponibilité et peuvent être facturées.'],
+    ['Article 8 - Modifications et corrections','Le nombre de corrections incluses est défini dans le périmètre. Les demandes supplémentaires font l\'objet d\'un devis ou consomment des crédits selon l\'offre.'],
+    ['Article 9 - Prix, taxes et facturation','Les prix et la TVA figurent dans les Conditions particulières. Les factures sont émises selon l\'échéancier. Le Client professionnel supporte les pénalités et indemnités légales mentionnées sur les factures et CGV.'],
+    ['Article 10 - Paiement Stripe et échéancier','Le moyen de paiement peut être enregistré sans débit immédiat. Les dates, montants et phases sont ceux de l\'échéancier signé.'],
+    ['Article 11 - Retard, impayé et suspension','En cas d\'impayé, SportVision adresse une notification et laisse au Client un délai de régularisation adapté. À défaut, SportVision peut suspendre tout ou partie des Prestations et accès, dans les limites du Contrat et de la loi.'],
+    ['Article 12 - Droit de rétractation et délai commercial','Le régime applicable est indiqué dans les Conditions particulières. Lorsque le Client bénéficie d\'un droit légal, les informations, le formulaire et la fonctionnalité en ligne sont fournis.'],
+    ['Article 13 - Exécution anticipée','Le commencement avant la fin d\'un délai de rétractation n\'a lieu qu\'après demande expresse du Client.'],
+    ['Article 14 - Annulation, report et indisponibilité','Les conditions d\'annulation et de report figurent dans le contrat spécifique. Les parties recherchent prioritairement un report en cas de force majeure.'],
+    ['Article 15 - Propriété intellectuelle','Sauf cession expresse, SportVision conserve ses méthodes, modèles, outils, fichiers sources, rushes, bibliothèques, savoir-faire et éléments antérieurs. Après paiement complet, le Client reçoit les droits d\'utilisation des Livrables définis dans l\'annexe.'],
+    ['Article 16 - Droit à l\'image et autorisations','Le Client informe les participants de la captation et obtient les autorisations nécessaires, notamment pour les mineurs, lorsque cette responsabilité lui incombe.'],
+    ['Article 17 - Accès aux réseaux et sécurité','Les accès aux comptes sont fournis par des moyens sécurisés. Le Client reste propriétaire de ses comptes. SportVision n\'utilise les accès que pour le périmètre autorisé.'],
+    ['Article 18 - Confidentialité','Chaque partie protège les informations confidentielles reçues et ne les utilise que pour exécuter le Contrat. Cette obligation survit pendant '+x.CONFIDENTIALITY_DURATION+' après la fin du contrat.'],
+    ['Article 19 - Données personnelles','Chaque partie respecte la réglementation applicable. SportVision met en œuvre des mesures appropriées et notifie les incidents.'],
+    ['Article 20 - Responsabilité et assurance','Chaque partie répond de ses manquements prouvés. SportVision ne répond pas des conséquences d\'informations erronées, d\'une absence d\'autorisation, d\'un accès retiré, d\'une décision de plateforme sociale, d\'une panne externe ou d\'un événement hors de son contrôle.'],
+    ['Article 21 - Absence de garantie de performance marketing','SportVision ne garantit ni un nombre de vues, ni un chiffre d\'affaires, ni une croissance d\'abonnés, ni un classement algorithmique.'],
+    ['Article 22 - Force majeure','Aucune partie n\'est responsable d\'un manquement causé par un événement de force majeure au sens du droit français.'],
+    ['Article 23 - Durée, résiliation et sortie','La durée, l\'engagement et le préavis sont indiqués dans les Conditions particulières. En cas de manquement remédiable, la résiliation intervient après mise en demeure et délai raisonnable.'],
+    ['Article 24 - Signature électronique et preuve','Les parties acceptent la signature électronique via Yousign et reconnaissent la valeur des documents, horodatages, journaux et certificats.'],
+    ['Article 25 - Notifications, droit applicable et litiges','Le Contrat est soumis au droit français. Le consommateur est informé du médiateur compétent. Entre professionnels, une clause attributive de compétence ne peut être utilisée que dans les conditions légales.'],
+  ];
+  return A.map(a=>`<div class="art"><div class="art-t">${a[0]}</div><div class="art-x">${a[1]}</div></div>`).join('');
+}
+
+// Conditions particulières par type de contrat (Banque de contrats modulables).
+// Textes disponibles dans ce lot : SV-CL-001 (ponctuel), SV-CL-002 (full_communication),
+// SV-CL-003 (club_plus).
+// ⚠️ PROVISOIRE : les types coach_academie, evenement, joueur, sponsoring, pilote et autre
+//    n'ont pas encore de conditions particulières rédigées. Ils retombent sur le bloc
+//    générique historique (les 5 puces de l'ancien PDF), qui n'a PAS de valeur juridique
+//    équivalente et doit être remplacé dès que le texte dédié sera disponible.
+function contratConditionsParticulieresHTML(type,x){
+  const p=t=>`<div class="art-x" style="margin-bottom:10px">${t}</div>`;
+  if(type==='ponctuel'){
+    return{ref:'SV-CL-001',titre:'Conditions particulières — Prestation ponctuelle',generique:false,html:
+      p('Le prix est fixé à '+x.PRICE_EXCL_TAX+' € HT, soit '+x.PRICE_INCL_TAX+' € TTC. Le moyen de paiement est collecté via Stripe. Un acompte peut être demandé, le solde étant dû après livraison. Après paiement complet, le Client bénéficie de la licence d\'utilisation définie en annexe. Toute utilisation publicitaire payante, revente, transmission à un diffuseur ou cession à un sponsor doit être expressément incluse ou fait l\'objet d\'un accord écrit séparé. En cas d\'annulation par le Client, les frais déjà engagés et la mobilisation de l\'équipe sont dus au prorata du préavis. Le prestataire exécute avec l\'équipe et le matériel nécessaires, dans les conditions météo et de sécurité permettant l\'intervention ; en cas d\'impossibilité (météo, sécurité, indisponibilité du lieu), un report est proposé prioritairement à une annulation.')};
+  }
+  if(type==='full_communication'){
+    return{ref:'SV-CL-002',titre:'Conditions particulières — Full Communication',generique:false,html:
+      p('Le Client souscrit un accompagnement récurrent de communication incluant production terrain et gestion éditoriale, selon le périmètre mensuel défini (présences, volume de publications, réseaux gérés). Prix : '+x.PRICE_EXCL_TAX+' € HT/mois, soit '+x.PRICE_INCL_TAX+' € TTC/mois. Durée d\'engagement : '+x.COMMITMENT_MONTHS+' mois. Préavis de résiliation : '+x.NOTICE_DAYS+' jours avant l\'échéance. Le Client transmet ses priorités éditoriales avant le brief mensuel ; SportVision propose un calendrier soumis à validation. Les contenus urgents, résultats, reports et annonces sensibles suivent un circuit de validation accéléré. Le Client fournit des accès sécurisés aux comptes concernés ; SportVision n\'utilise ces accès que pour les missions convenues et ne modifie jamais le propriétaire, les coordonnées de récupération ni les paramètres de facturation publicitaire des comptes sans autorisation expresse écrite.')};
+  }
+  if(type==='club_plus'){
+    return{ref:'SV-CL-003',titre:'Conditions particulières — Abonnement Club+',generique:false,html:
+      p('L\'abonnement porte sur l\'offre logicielle Club+ (formule Club+ ou Club+ Performance selon le contrat signé), incluant un nombre d\'utilisateurs, de crédits mensuels et de fonctionnalités définis dans l\'annexe. Prix : '+x.PRICE_EXCL_TAX+' € HT/mois, soit '+x.PRICE_INCL_TAX+' € TTC/mois. Le Client est responsable des utilisateurs qu\'il invite et de la confidentialité de leurs identifiants. Les crédits sont consommés selon le barème de la plateforme ; ils ne sont ni remboursables ni convertibles en argent sauf disposition légale impérative contraire. SportVision peut réaliser des opérations de maintenance et faire évoluer le service sans supprimer les caractéristiques essentielles de l\'offre en cours. À la fin du contrat, les fonctionnalités premium sont désactivées et le Client dispose d\'un délai raisonnable pour exporter les données disponibles, sous réserve des règles de conservation légale.')};
+  }
+  // Repli PROVISOIRE — reprise des 5 puces génériques de l'ancien PDF.
+  return{ref:null,titre:'Conditions particulières',generique:true,html:
+    `<div class="art-x" style="line-height:1.8">1. Le présent contrat prend effet à la date de signature par les deux parties.<br>2. Le paiement est dû selon la fréquence indiquée ci-dessus, par virement bancaire.<br>3. En cas de résiliation, un préavis de 30 jours est requis par lettre recommandée avec AR.<br>4. SportVision se réserve le droit de sous-traiter certaines prestations à des partenaires qualifiés.<br>5. Les droits sur les productions restent la propriété de SportVision jusqu'au paiement intégral.</div>`};
+}
+
 async function genererContratPDF(id){
   try{
     const cArr=await sbFetch(`contrats?id=eq.${id}&select=*,clients(*)`);
     const c=cArr?.[0];
     if(!c){toast('Contrat introuvable.');return;}
     const cl=c.clients||{};
-    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    const v=vContrat;
+    const fmtN=n=>(Number(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const fmt=n=>fmtN(n)+' €';
     const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
     const numContrat='CON-'+new Date().getFullYear()+'-'+id.substring(0,6).toUpperCase();
     const stCl=CONTRAT_STATUTS[c.statut||'brouillon']||{lb:'Brouillon',cl:'#8891A8',bc:'rgba(136,145,168,.12)'};
+    const SV=SV_IDENTITE_CONTRAT;
+    const typeC=c.type_contrat||'autre';
+    const typeLb=CONTRAT_TYPES_BANQUE_LB[typeC]||CONTRAT_TYPES_LB[typeC]||typeC;
+
+    // ── Variables {{XXX}} de la Banque de contrats ────────────────────────────
+    // montant_mensuel est stocké TTC (cf. affichage historique « TTC / mois ») :
+    // le HT est reconstitué avec contrats.tva_pct (défaut 20 %).
+    const tvaPct=(c.tva_pct===null||c.tva_pct===undefined||c.tva_pct==='')?20:Number(c.tva_pct);
+    const ttc=(c.montant_mensuel===null||c.montant_mensuel===undefined||c.montant_mensuel==='')?null:Number(c.montant_mensuel);
+    const ht=(ttc===null)?null:ttc/(1+tvaPct/100);
+    // Variables SANS colonne dédiée en base — valeurs de repli retenues :
+    //  {{CONFIDENTIALITY_DURATION}} → « 24 mois » (aucune colonne dédiée sur contrats)
+    //  {{SV_REPRESENTATIVE}}        → « son représentant légal » (aucune colonne dédiée,
+    //                                  le nom du dirigeant n'est stocké nulle part dans l'OS)
+    //  {{CLIENT_LEGAL_FORM}}        → déduit de clients.type_client (CONTRAT_CLIENT_FORMES)
+    //  {{CLIENT_REPRESENTATIVE}}    → clients.prenom_contact + nom_contact,
+    //                                  sinon « son représentant légal »
+    // Variables ALIMENTÉES par migration-contrats-v2-types-banque.sql :
+    //  {{COMMITMENT_MONTHS}} → contrats.engagement_mois (vide → « — »)
+    //  {{NOTICE_DAYS}}       → contrats.preavis_jours (défaut base : 60)
+    const CONFIDENTIALITY_DURATION='24 mois';
+    const clientAdresse=[cl.adresse,[cl.code_postal,cl.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    const clientRepresentant=[cl.prenom_contact,cl.nom_contact].filter(Boolean).join(' ');
+    const x={
+      SV_LEGAL_NAME:v(SV.raisonSociale),
+      SV_LEGAL_FORM:v(SV.formeJuridique),
+      SV_ADDRESS:v(SV.adresse),
+      SV_REGISTER_NUMBER:v(SV.siren+' '+SV.rcs),
+      SV_REPRESENTATIVE:v(null,'son représentant légal'),
+      CLIENT_NAME:v(cl.nom),
+      CLIENT_LEGAL_FORM:v(CONTRAT_CLIENT_FORMES[cl.type_client]),
+      CLIENT_ADDRESS:v(clientAdresse),
+      CLIENT_REPRESENTATIVE:v(clientRepresentant,'son représentant légal'),
+      PRICE_EXCL_TAX:v(ht===null?null:fmtN(ht)),
+      PRICE_INCL_TAX:v(ttc===null?null:fmtN(ttc)),
+      COMMITMENT_MONTHS:v(c.engagement_mois),
+      NOTICE_DAYS:v(c.preavis_jours),
+      CONFIDENTIALITY_DURATION:v(CONFIDENTIALITY_DURATION),
+    };
+    const cp=contratConditionsParticulieresHTML(typeC,x);
+    const signe=c.validite_signature===true||c.signature_statut==='signee'||c.statut_signature==='signe';
     const win=window.open('','_blank','width=900,height=800');
     if(!win){toast('Autorisez les popups pour générer le contrat.');return;}
-    win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Contrat ${numContrat} — SportVision</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5}.page{max-width:800px;margin:0 auto;padding:48px}@media print{.np{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+    win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Contrat ${numContrat} — SportVision</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5}.page{max-width:800px;margin:0 auto;padding:48px}.sec{margin-bottom:30px}.sec-t{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:12px}.art{margin-bottom:12px}.art-t{font-size:11.5px;font-weight:700;color:#1a1a2e;margin-bottom:3px}.art-x{font-size:11.5px;color:#3d445c;line-height:1.65;text-align:justify}@media print{.np{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.art,.sig{break-inside:avoid;page-break-inside:avoid}}</style></head><body>
 <div class="page">
 <div class="np" style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #E8EBF4">
   <button onclick="window.print()" style="padding:8px 18px;background:#7C4DFF;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer">Imprimer / PDF</button>
   <button onclick="window.close()" style="padding:8px 14px;background:#F0F2F7;color:#555E73;border:none;border-radius:7px;font-size:13px;cursor:pointer">Fermer</button>
 </div>
-<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:24px;border-bottom:2px solid #7C4DFF">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:24px;border-bottom:2px solid #7C4DFF">
   <div>
-    <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
-    <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Elkana Group</div>
-    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>contact@sportvision.fr</div>
+    <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">${esc(SV.nomCommercial)}</div>
+    <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">${esc(SV.raisonSociale)}</div>
+    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">${esc(SV.adresse)}<br>${esc(SV.email)}</div>
   </div>
   <div style="text-align:right">
     <div style="font-size:30px;font-weight:800;color:#7C4DFF;letter-spacing:-.01em">CONTRAT</div>
     <div style="font-size:12px;color:#8891A8;margin-top:4px">${numContrat}</div>
+    <div style="font-size:11.5px;color:#555E73;margin-top:2px">${esc(typeLb)}</div>
     <div style="margin-top:10px"><span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;background:${stCl.bc};color:${stCl.cl}">${stCl.lb}</span></div>
   </div>
 </div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px">
-  <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Prestataire</div>
-    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision</div>
-    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
-  <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Client / Partenaire</div>
-    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${cl.nom||'—'}</div>
-    <div style="font-size:12px;color:#555E73;line-height:1.7">${[cl.prenom_contact,cl.nom_contact].filter(Boolean).join(' ')||''}${cl.email?'<br>'+cl.email:''}${cl.telephone?'<br>'+cl.telephone:''}${cl.ville?'<br>'+cl.ville:''}</div></div>
+
+<div class="sec">
+  <div class="sec-t">Entre les soussignés</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:18px">
+    <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Prestataire</div>
+      <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${esc(SV.nomCommercial)}</div>
+      <div style="font-size:11.5px;color:#555E73;line-height:1.7">${esc(SV.raisonSociale)} — ${esc(SV.formeJuridique)}<br>${esc(SV.adresse)}<br>SIREN ${esc(SV.siren)} · SIRET ${esc(SV.siret)}<br>${esc(SV.rcs)} · ${esc(SV.ape)}<br>TVA intracommunautaire : ${esc(SV.tvaIntra)}<br>${esc(SV.email)}</div></div>
+    <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Client / Partenaire</div>
+      <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${x.CLIENT_NAME}</div>
+      <div style="font-size:11.5px;color:#555E73;line-height:1.7">${x.CLIENT_LEGAL_FORM}<br>${x.CLIENT_ADDRESS}${cl.email?'<br>'+esc(cl.email):''}${cl.telephone?'<br>'+esc(cl.telephone):''}<br>Représenté(e) par ${x.CLIENT_REPRESENTATIVE}</div></div>
+  </div>
+  <div class="art-x">Entre <strong>${x.SV_LEGAL_NAME}</strong>, ${x.SV_LEGAL_FORM}, dont le siège est situé ${x.SV_ADDRESS}, immatriculée sous le numéro ${x.SV_REGISTER_NUMBER}, représentée par ${x.SV_REPRESENTATIVE}, ci-après « SportVision », et <strong>${x.CLIENT_NAME}</strong>, ${x.CLIENT_LEGAL_FORM}, situé(e) ${x.CLIENT_ADDRESS}, représenté(e) par ${x.CLIENT_REPRESENTATIVE}, ci-après « le Client », il est convenu ce qui suit.</div>
 </div>
-<div style="margin-bottom:28px">
-  <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:12px">Modalités</div>
-  <table style="width:100%;border-collapse:collapse">
-    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:10px 0;font-weight:600;width:220px">Type de contrat</td><td style="padding:10px 0;color:#555E73">${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—'}</td></tr>
-    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:10px 0;font-weight:600">Montant mensuel</td><td style="padding:10px 0;color:#555E73">${c.montant_mensuel?fmt(c.montant_mensuel)+' TTC / mois':'—'}</td></tr>
-    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:10px 0;font-weight:600">Fréquence</td><td style="padding:10px 0;color:#555E73">${c.frequence||'Mensuelle'}</td></tr>
-    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:10px 0;font-weight:600">Date de début</td><td style="padding:10px 0;color:#555E73">${fd(c.date_debut)}</td></tr>
-    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:10px 0;font-weight:600">Date de fin</td><td style="padding:10px 0;color:#555E73">${fd(c.date_fin)||'Sans échéance'}</td></tr>
-    <tr><td style="padding:10px 0;font-weight:600">Renouvellement auto</td><td style="padding:10px 0;color:#555E73">${c.renouvellement_auto?'Oui — reconduction tacite':'Non'}</td></tr>
+
+<div class="sec">
+  <div class="sec-t">Socle commun — Conditions générales</div>
+  ${contratSocleCommunHTML(x)}
+</div>
+
+<div class="sec">
+  <div class="sec-t">${esc(cp.titre)}${cp.ref?' · '+esc(cp.ref):''}</div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:9px 0;font-weight:600;width:220px;font-size:12px">Type de contrat</td><td style="padding:9px 0;color:#555E73;font-size:12px">${esc(typeLb)}</td></tr>
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:9px 0;font-weight:600;font-size:12px">Montant</td><td style="padding:9px 0;color:#555E73;font-size:12px">${ttc===null?'—':fmt(ht)+' HT · '+fmt(ttc)+' TTC (TVA '+fmtN(tvaPct)+' %)'}</td></tr>
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:9px 0;font-weight:600;font-size:12px">Fréquence</td><td style="padding:9px 0;color:#555E73;font-size:12px">${esc(c.frequence||'Mensuelle')}</td></tr>
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:9px 0;font-weight:600;font-size:12px">Date de début</td><td style="padding:9px 0;color:#555E73;font-size:12px">${fd(c.date_debut)}</td></tr>
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:9px 0;font-weight:600;font-size:12px">Date de fin</td><td style="padding:9px 0;color:#555E73;font-size:12px">${c.date_fin?fd(c.date_fin):'Sans échéance'}</td></tr>
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:9px 0;font-weight:600;font-size:12px">Durée d'engagement</td><td style="padding:9px 0;color:#555E73;font-size:12px">${c.engagement_mois?x.COMMITMENT_MONTHS+' mois':'—'}</td></tr>
+    <tr style="border-bottom:1px solid #E8EBF4"><td style="padding:9px 0;font-weight:600;font-size:12px">Préavis de résiliation</td><td style="padding:9px 0;color:#555E73;font-size:12px">${c.preavis_jours?x.NOTICE_DAYS+' jours':'—'}</td></tr>
+    <tr><td style="padding:9px 0;font-weight:600;font-size:12px">Renouvellement auto</td><td style="padding:9px 0;color:#555E73;font-size:12px">${c.renouvellement_auto?'Oui — reconduction tacite':'Non'}</td></tr>
   </table>
+  ${c.description?`<div style="background:#F5F7FF;border-radius:10px;padding:14px 18px;margin-bottom:16px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:6px">Périmètre / prestations incluses</div><div style="font-size:12px;color:#555E73;line-height:1.7">${esc(c.description)}</div></div>`:''}
+  ${cp.html}
+  ${cp.generique?`<div style="margin-top:6px;padding:8px 12px;border-left:3px solid #F5A524;background:#FFF9EE;font-size:10.5px;color:#8A6A21;line-height:1.5">Conditions particulières génériques — modèle détaillé à venir pour ce type de contrat.</div>`:''}
 </div>
-${c.description?`<div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:28px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Prestations incluses</div><div style="font-size:12.5px;color:#555E73;line-height:1.7">${esc(c.description)}</div></div>`:''}
-<div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:32px">
-  <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Conditions générales</div>
-  <div style="font-size:11.5px;color:#555E73;line-height:1.8">1. Le présent contrat prend effet à la date de signature par les deux parties.<br>2. Le paiement est dû selon la fréquence indiquée ci-dessus, par virement bancaire.<br>3. En cas de résiliation, un préavis de 30 jours est requis par lettre recommandée avec AR.<br>4. SportVision se réserve le droit de sous-traiter certaines prestations à des partenaires qualifiés.<br>5. Les droits sur les productions restent la propriété de SportVision jusqu'au paiement intégral.</div>
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;border-top:1px solid #E8EBF4;padding-top:28px">
+
+<div class="sig" style="display:grid;grid-template-columns:1fr 1fr;gap:48px;border-top:1px solid #E8EBF4;padding-top:28px">
   <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:32px">Pour SportVision</div>
     <div style="width:180px;border-bottom:1px solid #1a1a2e"></div>
     <div style="font-size:10px;color:#8891A8;margin-top:4px">Date :</div></div>
-  <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:32px">Client — Bon pour accord</div>
+  <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:32px">${signe?'Client — Bon pour accord':'Pour le Client — signature'}</div>
     <div style="width:180px;border-bottom:1px solid #1a1a2e"></div>
-    <div style="font-size:10px;color:#8891A8;margin-top:4px">Date :</div></div>
+    <div style="font-size:10px;color:#8891A8;margin-top:4px">Date :${signe&&c.signe_at?' '+fd(c.signe_at):''}</div>
+    ${signe?`<div style="font-size:10px;color:#2ECC8A;margin-top:6px;font-weight:600">Signé électroniquement${c.signataire_nom?' par '+esc(c.signataire_nom):''}</div>`:''}</div>
 </div>
 </div></body></html>`);
     win.document.close();
