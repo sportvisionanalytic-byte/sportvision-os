@@ -11083,6 +11083,14 @@ const FORMATION_ROLE_MAP={
   admin:['photo-bases'],
 };
 
+const _FORM_ROLE_REVERSE=(()=>{
+  const m={};
+  Object.entries(FORMATION_ROLE_MAP).forEach(([role,ids])=>{
+    ids.forEach(id=>{(m[id]=m[id]||new Set()).add(role);});
+  });
+  return m;
+})();
+
 let _formTab='dashboard';
 let _formProgCache={};
 let _formInscIds={};
@@ -11102,10 +11110,16 @@ function _formLockLabel(f){
   return '🔒 Débloqué à partir de '+'⭐'.repeat(f.minGrade)+' ('+f.minGrade+' étoiles)';
 }
 
+const _FORM_COMMON_IDS=new Set(['sv-culture','sv-securite','sv-comportement']);
 function _visibleFormations(){
   const _r=localStorage.getItem('sv_role')||'';
   if(_r==='admin')return FORMATIONS_CATALOG;
-  return FORMATIONS_CATALOG.filter(f=>!f.onlyRole||f.onlyRole===_r);
+  return FORMATIONS_CATALOG.filter(f=>{
+    if(_FORM_COMMON_IDS.has(f.id))return true;
+    if(f.onlyRole)return f.onlyRole===_r;
+    const roles=_FORM_ROLE_REVERSE[f.id];
+    return roles?roles.has(_r):true;
+  });
 }
 
 async function _mergeCustomFormations(){
