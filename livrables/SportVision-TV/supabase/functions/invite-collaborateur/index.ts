@@ -26,6 +26,7 @@ const corsHeaders = {
 const ROLE_LABELS: Record<string, string> = {
   sec: "Secrétaire", prod: "Resp. Production", photo: "Photographe / Vidéaste",
   cm: "Community Manager", compta: "Comptable", com: "Commercial", admin: "Administrateur",
+  expert_comptable: "Expert-comptable", auditeur: "Auditeur",
 };
 
 function json(body: unknown, status = 200) {

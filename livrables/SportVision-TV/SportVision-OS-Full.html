@@ -673,6 +673,8 @@ const ROLES={
   cm:{r:'Community Manager',i:'?',c:'#366BFF',cta:'+ Nouveau contenu'},
   compta:{r:'Comptable',i:'?',c:'#FF6B35',cta:'+ Nouvelle facture'},
   com:{r:'Commercial',i:'?',c:'#F0445E',cta:'+ Nouveau prospect'},
+  expert_comptable:{r:'Expert-comptable',i:'?',c:'#FFB020',cta:'Exporter les données'},
+  auditeur:{r:'Auditeur',i:'?',c:'#9AA5B1',cta:'Consulter'},
 };
 
 const NAV={
@@ -836,6 +838,42 @@ const NAV={
     {type:'sep',lb:'Ressources'},
     {id:'form',lb:'Centre de formation',ic:'form'},
     {id:'centre',lb:'Centre SportVision',ic:'help'},
+    {id:'set',lb:'Paramètres',ic:'set'},
+  ],
+  // Espace lecture seule (Lot 0 Finance & Comptabilité) : l'expert-comptable et
+  // l'auditeur consultent les mêmes écrans que compta, RLS empêche toute
+  // écriture (policies "..._manage" limitées à admin/compta) — les boutons de
+  // création sont eux-mêmes masqués via S.role dans les templates concernés.
+  expert_comptable:[
+    {type:'sep',lb:'Pilotage'},
+    {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
+    {type:'sep',lb:'Facturation'},
+    {id:'factures',lb:'Factures',ic:'doc'},
+    {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
+    {id:'documents',lb:'Centre documentaire',ic:'doc'},
+    {type:'sep',lb:'Dépenses & paie'},
+    {id:'depenses',lb:'Dépenses',ic:'fin'},
+    {id:'frais',lb:'Frais & km',ic:'fin'},
+    {id:'rem',lb:'Rémunérations',ic:'col'},
+    {type:'sep',lb:'Clôture & Export'},
+    {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
+    {id:'export',lb:'Exports comptables',ic:'export'},
+    {id:'set',lb:'Paramètres',ic:'set'},
+  ],
+  auditeur:[
+    {type:'sep',lb:'Pilotage'},
+    {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
+    {type:'sep',lb:'Facturation'},
+    {id:'factures',lb:'Factures',ic:'doc'},
+    {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
+    {type:'sep',lb:'Dépenses & paie'},
+    {id:'depenses',lb:'Dépenses',ic:'fin'},
+    {id:'frais',lb:'Frais & km',ic:'fin'},
+    {id:'rem',lb:'Rémunérations',ic:'col'},
+    {type:'sep',lb:'Clôture'},
+    {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
 };
@@ -1742,6 +1780,11 @@ const VIEWS={
         <div><div style="font-size:13px;font-weight:650;color:var(--t1)">Export prestations complet</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">Toutes les prestations avec tous les champs</div></div>
         <button class="btn bp bs" style="align-self:flex-start" onclick="exportCSV('prestations')">Télécharger CSV</button>
       </div>
+      <div class="cd" style="margin-bottom:0;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:28px">📈</div>
+        <div><div style="font-size:13px;font-weight:650;color:var(--t1)">Export rentabilité</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">Revenu, coûts et marge nette par mission</div></div>
+        <button class="btn bp bs" style="align-self:flex-start" onclick="exportCSV('rentabilite-missions')">Télécharger CSV</button>
+      </div>
     </div>`,
 
   // ── COMMERCIAL ──────────────────────────
@@ -1952,22 +1995,28 @@ const VIEWS={
   'compta.documents':()=>_documentsView('compta'),
 
   'compta.depenses':()=>`
-    <div class="sh"><div><div class="sh-t">Dépenses</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Toutes les charges de l'entreprise, y compris les frais avancés par l'équipe</div></div><button class="btn bp bs" onclick="modalNouvelleDepense()">+ Nouvelle dépense</button></div>
+    <div class="sh"><div><div class="sh-t">Dépenses & fournisseurs</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Charges générales de l'entreprise (loyer, logiciels, assurance, sous-traitance…) — distinct des frais remboursés à l'équipe, cf. « Frais & km »</div></div>
+      ${['admin','compta'].includes(S.role)?`<div style="display:flex;gap:8px"><button class="btn bg2 bs" onclick="modalNouveauFournisseur()">+ Fournisseur</button><button class="btn bp bs" onclick="modalNouvelleDepense()">+ Nouvelle dépense</button></div>`:''}</div>
     <div class="g3" style="margin-bottom:13px">
       <div class="fs"><div class="fs-l">Dépenses ce mois</div><div class="fs-v" id="dep-kpi-mois" style="color:var(--er)">—</div></div>
-      <div class="fs"><div class="fs-l">Dépenses cette année</div><div class="fs-v" id="dep-kpi-pct" style="color:var(--wa)">—</div></div>
-      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">À rembourser</div><div class="fs-v" id="dep-kpi-rem" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Dépenses cette année</div><div class="fs-v" id="dep-kpi-annee" style="color:var(--wa)">—</div></div>
+      <div class="fs"><div class="fs-l">Récurrentes actives</div><div class="fs-v" id="dep-kpi-recur">—</div></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="filterComptaDepenses('all')" id="dep-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
       <button class="btn bg2 bs" onclick="filterComptaDepenses('materiel')" id="dep-f-materiel">Matériel</button>
-      <button class="btn bg2 bs" onclick="filterComptaDepenses('logistique')" id="dep-f-logistique">Logistique</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('logiciel')" id="dep-f-logiciel">Logiciel</button>
       <button class="btn bg2 bs" onclick="filterComptaDepenses('marketing')" id="dep-f-marketing">Marketing</button>
-      <button class="btn bg2 bs" onclick="filterComptaDepenses('repas')" id="dep-f-repas">Repas</button>
-      <button class="btn bg2 bs" onclick="filterComptaDepenses('km')" id="dep-f-km">Kilométrage</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('loyer')" id="dep-f-loyer">Loyer</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('assurance')" id="dep-f-assurance">Assurance</button>
+      <button class="btn bg2 bs" onclick="filterComptaDepenses('sous_traitance')" id="dep-f-sous_traitance">Sous-traitance</button>
       <button class="btn bg2 bs" onclick="filterComptaDepenses('autre')" id="dep-f-autre">Autres</button>
     </div>
-    <div id="compta-depenses-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="compta-depenses-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Fournisseurs</div></div>
+      <div id="compta-fournisseurs-real"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
 
   'compta.frais':()=>`
     <div class="sh"><div><div class="sh-t">Frais & remboursements km</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Vue filtrée des dépenses avancées par un collaborateur, à traiter pour remboursement</div></div></div>
@@ -2000,16 +2049,21 @@ const VIEWS={
     <div id="compta-rem-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.rentabilite':()=>`
-    <div class="sh"><div class="sh-t">Analyse de rentabilité</div></div>
-    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:13px">
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA ce mois</div><div class="kpi-v" id="rent-kpi-ca" style="font-size:18px">—</div><span class="kpi-d dnt">encaissé</span></div>
-      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Charges</div><div class="kpi-v" id="rent-kpi-ch" style="font-size:18px">—</div><span class="kpi-d dnt">ce mois</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Marge brute</div><div class="kpi-v" id="rent-kpi-marge" style="font-size:18px">—</div><span class="kpi-d dnt">CA - charges</span></div>
+    <div class="sh"><div class="sh-t">Analyse de rentabilité</div><div class="sh-a"><button class="btn bg2 bs" onclick="exportCSV('rentabilite-missions')">Export CSV</button></div></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(5,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA ce mois (HT)</div><div class="kpi-v" id="rent-kpi-ca" style="font-size:18px">—</div><span class="kpi-d dnt">missions du mois</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Coûts directs</div><div class="kpi-v" id="rent-kpi-ch" style="font-size:18px">—</div><span class="kpi-d dnt">rém. + frais + dépenses</span></div>
+      <div class="kpi" style="--kl:#E8A33D"><div class="kpi-ey">Coûts indirects alloués</div><div class="kpi-v" id="rent-kpi-ind" style="font-size:18px">—</div><span class="kpi-d dnt">cf. réglage admin</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Marge nette</div><div class="kpi-v" id="rent-kpi-marge" style="font-size:18px">—</div><span class="kpi-d dnt">CA - tous coûts</span></div>
       <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Taux de marge</div><div class="kpi-v" id="rent-kpi-tx">—</div><span class="kpi-d dnt">%</span></div>
     </div>
     <div class="cd">
-      <div class="cd-h"><div class="cd-t">Rentabilité par prestation (top 10)</div></div>
+      <div class="cd-h"><div class="cd-t">Rentabilité par mission (ce mois)</div></div>
       <div id="compta-rent-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div class="cd" style="margin-top:13px">
+      <div class="cd-h"><div class="cd-t">Rentabilité par client (6 derniers mois)</div></div>
+      <div id="compta-rent-client"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
   'compta.clotures':()=>`
@@ -2755,6 +2809,8 @@ function modalInviterCollaborateur(){
           <option value="cm">Community Manager</option>
           <option value="compta">Comptable</option>
           <option value="com">Commercial</option>
+          <option value="expert_comptable">Expert-comptable (lecture seule)</option>
+          <option value="auditeur">Auditeur (lecture seule)</option>
         </select>
       </div>
       <div style="background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rb);padding:10px 14px;font-size:11.5px;color:var(--t2)">
@@ -2828,16 +2884,17 @@ async function loadViewData(role,view){
   if(role==='sec'&&view==='rapports'){_secRapDate=new Date();await loadSecRapports();}
   if(role==='sec'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
   if(role==='admin'&&view==='fin') await loadFinances();
-  if(role==='compta'&&view==='factures') await loadComptaFactures();
-  if(role==='compta'&&view==='dash') await loadComptaDash();
-  if(role==='compta'&&view==='acomptes') await loadComptaAcomptes();
-  if(role==='compta'&&view==='impayes') await loadComptaImpayes();
-  if(role==='compta'&&view==='avoirs') await loadComptaAvoirs();
-  if(role==='compta'&&view==='depenses') await loadComptaDepenses();
-  if(role==='compta'&&view==='frais') await loadComptaFrais();
-  if(role==='compta'&&view==='rem') await loadComptaRem();
-  if(role==='compta'&&view==='rentabilite') await loadComptaRentabilite();
-  if(role==='compta'&&view==='clotures') await loadComptaClotures();
+  const _isComptaLike=['compta','expert_comptable','auditeur'].includes(role);
+  if(_isComptaLike&&view==='factures') await loadComptaFactures();
+  if(_isComptaLike&&view==='dash') await loadComptaDash();
+  if(_isComptaLike&&view==='acomptes') await loadComptaAcomptes();
+  if(_isComptaLike&&view==='impayes') await loadComptaImpayes();
+  if(_isComptaLike&&view==='avoirs') await loadComptaAvoirs();
+  if(_isComptaLike&&view==='depenses') await loadComptaDepenses();
+  if(_isComptaLike&&view==='frais') await loadComptaFrais();
+  if(_isComptaLike&&view==='rem') await loadComptaRem();
+  if(_isComptaLike&&view==='rentabilite') await loadComptaRentabilite();
+  if(_isComptaLike&&view==='clotures') await loadComptaClotures();
   if((role==='prod'||role==='admin')&&view==='incidents') await loadIncidents();
   if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
   if(role==='com'&&view==='dash') await loadComDash();
@@ -2858,10 +2915,10 @@ async function loadViewData(role,view){
   if(role==='sec'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='com'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(['prod','admin','sec','photo','cm','compta','com'].includes(role)&&view==='msg') await loadMsg();
-  if(role==='compta'&&view==='paiements') await loadPaiements();
+  if(_isComptaLike&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
-  if(view==='documents'||((role==='sec'||role==='admin'||role==='compta')&&view==='docs')) await loadDocuments(role);
-  if(role==='compta'&&view==='rapprochement') await loadRapprochement();
+  if(view==='documents'||((role==='sec'||role==='admin'||_isComptaLike)&&view==='docs')) await loadDocuments(role);
+  if(_isComptaLike&&view==='rapprochement') await loadRapprochement();
   if(view==='set') await loadSettings();
   if(role==='admin'&&view==='rapport'){_rapportOffset=0;await loadRapport();}
   if(role==='admin'&&view==='contrats') await loadContrats();
@@ -9705,6 +9762,12 @@ async function exportCSV(type){
       (data||[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.heure_debut||'',p.heure_fin||'',p.lieu||'',p.montant_ht||'',p.montant_ttc||'',p.statut||'',p.statut_financier||'',p.notes_internes||'']));
       downloadCSV(rows,'SportVision-Prestations-'+new Date().toISOString().slice(0,10)+'.csv');
     }
+    else if(type==='rentabilite-missions'){
+      const data=await sbFetch('v_rentabilite_missions?select=*&order=date_prestation.desc&limit=500');
+      const rows=[['Référence','Client','Type','Date','Revenu HT','Coût rém.','Coût frais','Coût dépenses','Coût indirect','Marge nette']];
+      (data||[]).forEach(r=>rows.push([r.reference||'',r.client_nom||'',r.type_prestation||'',r.date_prestation||'',r.revenu_ht||0,r.cout_remunerations||0,r.cout_frais||0,r.cout_depenses_directes||0,r.cout_indirect_alloue||0,r.marge_nette||0]));
+      downloadCSV(rows,'SportVision-Rentabilite-'+new Date().toISOString().slice(0,10)+'.csv');
+    }
   }catch(e){toast('Erreur export : '+(e.message||'inconnue'));}
 }
 
@@ -13404,7 +13467,7 @@ async function loadComptaDash(){
 }
 
 let _comptaAcData=[],_comptaAcFilter='all';
-let _comptaDepData=[],_comptaDepFilter='all';
+let _comptaDepData=[],_comptaDepFilter='all',_comptaVendorsCount=0;
 let _comptaFraData=[],_comptaFraFilter='all';
 let _comptaRemData=[],_comptaRemFilter='all';
 let _comptaFactData=[],_comptaFactFilter='all';
@@ -13524,38 +13587,59 @@ async function loadComptaAvoirs(){
 async function loadComptaDepenses(){
   const el=document.getElementById('compta-depenses-real');if(!el)return;
   try{
-    const data=await sbFetch('frais?select=id,type,montant,description,statut,date_frais,collaborateur_id,profiles(prenom,nom)&order=date_frais.desc&limit=200');
+    const [data,vendorsData]=await Promise.all([
+      sbFetch('expenses?select=id,categorie,libelle,montant_ht,montant_ttc,recurrence,statut,date_depense,vendors(nom)&order=date_depense.desc&limit=200'),
+      sbFetch('vendors?select=id&actif=eq.true').catch(()=>[]),
+    ]);
     _comptaDepData=Array.isArray(data)?data:[];
+    _comptaVendorsCount=Array.isArray(vendorsData)?vendorsData.length:0;
     const now=new Date();
     const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
     const yStart=now.getFullYear()+'-01-01';
-    const totMois=_comptaDepData.filter(f=>f.date_frais>=mStart).reduce((s,f)=>s+(f.montant||0),0);
-    const totAnnee=_comptaDepData.filter(f=>f.date_frais>=yStart).reduce((s,f)=>s+(f.montant||0),0);
-    const arem=_comptaDepData.filter(f=>f.statut==='en_attente').reduce((s,f)=>s+(f.montant||0),0);
+    const totMois=_comptaDepData.filter(f=>f.date_depense>=mStart).reduce((s,f)=>s+(f.montant_ttc||0),0);
+    const totAnnee=_comptaDepData.filter(f=>f.date_depense>=yStart).reduce((s,f)=>s+(f.montant_ttc||0),0);
+    const recur=_comptaDepData.filter(f=>f.recurrence!=='ponctuelle').length;
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-    set('dep-kpi-mois',totMois.toLocaleString('fr-FR')+' €');set('dep-kpi-pct',totAnnee.toLocaleString('fr-FR')+' €');set('dep-kpi-rem',arem.toLocaleString('fr-FR')+' €');
+    set('dep-kpi-mois',totMois.toLocaleString('fr-FR')+' €');set('dep-kpi-annee',totAnnee.toLocaleString('fr-FR')+' €');set('dep-kpi-recur',recur);
     renderComptaDepenses();
-  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table frais non disponible.</div>';console.error(e);}
+    loadComptaFournisseurs();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table expenses non disponible (migration-finance-lot0.sql à exécuter).</div>';console.error(e);}
 }
 function filterComptaDepenses(f){
   _comptaDepFilter=f;
-  ['all','materiel','logistique','marketing','repas','km','autre'].forEach(id=>{const b=document.getElementById('dep-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  ['all','materiel','logiciel','marketing','loyer','assurance','sous_traitance','autre'].forEach(id=>{const b=document.getElementById('dep-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
   renderComptaDepenses();
 }
 function renderComptaDepenses(){
   const el=document.getElementById('compta-depenses-real');if(!el)return;
   let list=_comptaDepData;
-  if(_comptaDepFilter!=='all')list=list.filter(f=>f.type===_comptaDepFilter);
+  if(_comptaDepFilter!=='all')list=list.filter(f=>f.categorie===_comptaDepFilter);
   if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune dépense dans cette catégorie.</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Montant</th><th>Statut</th><th></th></tr></thead><tbody>'+
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Date</th><th>Catégorie</th><th>Libellé</th><th>Fournisseur</th><th>Montant TTC</th><th>Récurrence</th><th>Statut</th></tr></thead><tbody>'+
     list.slice(0,30).map(f=>`<tr>
-      <td>${f.date_frais?new Date(f.date_frais).toLocaleDateString('fr-FR'):'—'}</td>
-      <td>${f.type||'—'}</td>
-      <td class="tp">${f.description||'—'}</td>
-      <td class="tm" style="font-weight:600;color:var(--er)">${f.montant?f.montant.toLocaleString('fr-FR')+' €':'—'}</td>
-      <td><span class="bd ${f.statut==='remboursé'?'ba':f.statut==='validé'?'bb':'bw'}"><span class="bd-d"></span>${f.statut||'—'}</span></td>
-      <td>${f.statut==='en_attente'?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="comptaRembourserFrais('${f.id}','dep')">✓ Rembourser</button>`:''}</td>
+      <td>${f.date_depense?new Date(f.date_depense).toLocaleDateString('fr-FR'):'—'}</td>
+      <td>${esc(f.categorie||'—')}</td>
+      <td class="tp">${esc(f.libelle||'—')}</td>
+      <td>${esc(f.vendors?.nom||'—')}</td>
+      <td class="tm" style="font-weight:600;color:var(--er)">${f.montant_ttc?f.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+      <td>${f.recurrence!=='ponctuelle'?`<span class="bd bb"><span class="bd-d"></span>${esc(f.recurrence)}</span>`:'—'}</td>
+      <td><span class="bd ${f.statut==='comptabilisee'?'ba':f.statut==='payee'?'bb':'bw'}"><span class="bd-d"></span>${esc(f.statut||'—')}</span></td>
     </tr>`).join('')+'</tbody></table></div>';
+}
+async function loadComptaFournisseurs(){
+  const el=document.getElementById('compta-fournisseurs-real');if(!el)return;
+  try{
+    const data=await sbFetch('vendors?select=id,nom,categorie,contact_email,actif&order=nom.asc&limit=100');
+    const list=Array.isArray(data)?data:[];
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Nom</th><th>Catégorie</th><th>Contact</th><th>Statut</th></tr></thead><tbody>'+
+      list.map(v=>`<tr>
+        <td class="tp">${esc(v.nom||'—')}</td>
+        <td>${esc(v.categorie||'—')}</td>
+        <td>${esc(v.contact_email||'—')}</td>
+        <td><span class="bd ${v.actif?'ba':'bw'}"><span class="bd-d"></span>${v.actif?'Actif':'Inactif'}</span></td>
+      </tr>`).join('')+'</tbody></table></div>':
+      '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Aucun fournisseur enregistré.</div>';
+  }catch(e){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';}
 }
 
 async function loadComptaFrais(){
@@ -13761,29 +13845,42 @@ async function comptaRembourserFrais(id,source){
   }catch(e){toast('Erreur lors du remboursement.','er');}
 }
 
-function modalNouvelleDepense(){
+async function modalNouvelleDepense(){
   const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
-  const types=[['materiel','Matériel'],['logistique','Logistique'],['marketing','Marketing'],['repas','Repas'],['km','Kilométrage'],['autre','Autre']];
+  const categories=[['materiel','Matériel'],['logiciel','Logiciel'],['marketing','Marketing'],['loyer','Loyer'],['assurance','Assurance'],['transport','Transport'],['sous_traitance','Sous-traitance'],['banque','Frais bancaires'],['autre','Autre']];
+  let vendors=[];
+  try{vendors=await sbFetch('vendors?select=id,nom&actif=eq.true&order=nom.asc')||[];}catch(e){}
   openModal(`<div class="mh"><div class="mt">Nouvelle dépense</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="${L}">Type *</label>
-          <select id="nd-type" class="fi">${types.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>
+        <div><label style="${L}">Catégorie *</label>
+          <select id="nd-cat" class="fi">${categories.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>
         </div>
-        <div><label style="${L}">Montant (€) *</label>
+        <div><label style="${L}">Fournisseur</label>
+          <select id="nd-vendor" class="fi"><option value="">— Aucun —</option>${vendors.map(v=>`<option value="${v.id}">${esc(v.nom)}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div style="margin-top:10px"><label style="${L}">Libellé *</label>
+        <input id="nd-libelle" class="fi" placeholder="Ex : Abonnement Adobe Creative Cloud">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px">
+        <div><label style="${L}">Montant HT (€) *</label>
           <input id="nd-montant" type="number" step="0.01" min="0" class="fi" placeholder="0.00">
         </div>
-      </div>
-      <div style="margin-top:10px"><label style="${L}">Description</label>
-        <input id="nd-desc" class="fi" placeholder="Détail de la dépense…">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+        <div><label style="${L}">TVA %</label>
+          <input id="nd-tva" type="number" step="0.1" min="0" class="fi" value="20">
+        </div>
         <div><label style="${L}">Date</label>
           <input id="nd-date" type="date" class="fi" value="${new Date().toISOString().slice(0,10)}">
         </div>
-        <div id="nd-km-wrap" style="display:none"><label style="${L}">Kilomètres</label>
-          <input id="nd-km" type="number" min="0" class="fi" placeholder="km">
-        </div>
+      </div>
+      <div style="margin-top:10px"><label style="${L}">Récurrence</label>
+        <select id="nd-recur" class="fi">
+          <option value="ponctuelle">Ponctuelle</option>
+          <option value="mensuelle">Mensuelle</option>
+          <option value="trimestrielle">Trimestrielle</option>
+          <option value="annuelle">Annuelle</option>
+        </select>
       </div>
       <div id="nd-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:8px"></div>
     </div>
@@ -13791,63 +13888,125 @@ function modalNouvelleDepense(){
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
       <button class="btn bp" onclick="sauvegarderNouvelleDepense()">Enregistrer</button>
     </div>`);
-  document.getElementById('nd-type')?.addEventListener('change',function(){
-    const kmWrap=document.getElementById('nd-km-wrap');
-    if(kmWrap)kmWrap.style.display=this.value==='km'?'':'none';
-  });
 }
 
 async function sauvegarderNouvelleDepense(){
   const err=document.getElementById('nd-err');
-  const montant=parseFloat(document.getElementById('nd-montant')?.value||'0');
-  if(!montant||montant<=0){err.textContent='Le montant est obligatoire.';return;}
-  const type=document.getElementById('nd-type')?.value||'autre';
+  const montantHt=parseFloat(document.getElementById('nd-montant')?.value||'0');
+  const libelle=document.getElementById('nd-libelle')?.value.trim();
+  if(!libelle){err.textContent='Le libellé est obligatoire.';return;}
+  if(!montantHt||montantHt<=0){err.textContent='Le montant est obligatoire.';return;}
+  const tva=parseFloat(document.getElementById('nd-tva')?.value||'20');
+  const vendorId=document.getElementById('nd-vendor')?.value||null;
   const body={
-    type,montant,
-    description:document.getElementById('nd-desc')?.value.trim()||null,
-    date_frais:document.getElementById('nd-date')?.value||new Date().toISOString().slice(0,10),
-    km:type==='km'?parseInt(document.getElementById('nd-km')?.value||'0')||null:null,
-    collaborateur_id:localStorage.getItem('sv_uid')||null,
-    statut:'en_attente',
+    categorie:document.getElementById('nd-cat')?.value||'autre',
+    libelle,
+    vendor_id:vendorId||null,
+    montant_ht:montantHt,
+    tva_pct:tva,
+    montant_ttc:Math.round(montantHt*(1+tva/100)*100)/100,
+    recurrence:document.getElementById('nd-recur')?.value||'ponctuelle',
+    date_depense:document.getElementById('nd-date')?.value||new Date().toISOString().slice(0,10),
+    statut:'engagee',
+    created_by:localStorage.getItem('sv_uid')||null,
   };
-  const r=await sbFetch('frais',{method:'POST',body});
+  const r=await sbFetch('expenses',{method:'POST',body});
   if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
   closeModal();toast('Dépense enregistrée.','ok');loadComptaDepenses();
 }
 
+function modalNouveauFournisseur(){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const categories=[['materiel','Matériel'],['logiciel','Logiciel'],['marketing','Marketing'],['loyer','Loyer'],['assurance','Assurance'],['transport','Transport'],['sous_traitance','Sous-traitance'],['banque','Banque'],['autre','Autre']];
+  openModal(`<div class="mh"><div class="mt">Nouveau fournisseur</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div style="margin-bottom:10px"><label style="${L}">Nom *</label>
+        <input id="nf-nom" class="fi" placeholder="Ex : Adobe, EDF, Bureau d'assurance…">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Catégorie</label>
+          <select id="nf-cat" class="fi">${categories.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>
+        </div>
+        <div><label style="${L}">Email contact</label>
+          <input id="nf-email" type="email" class="fi" placeholder="contact@fournisseur.fr">
+        </div>
+      </div>
+      <div id="nf-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:8px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="sauvegarderFournisseur()">Enregistrer</button>
+    </div>`);
+}
+
+async function sauvegarderFournisseur(){
+  const err=document.getElementById('nf-err');
+  const nom=document.getElementById('nf-nom')?.value.trim();
+  if(!nom){err.textContent='Le nom est obligatoire.';return;}
+  const body={
+    nom,
+    categorie:document.getElementById('nf-cat')?.value||'autre',
+    contact_email:document.getElementById('nf-email')?.value.trim()||null,
+    created_by:localStorage.getItem('sv_uid')||null,
+  };
+  const r=await sbFetch('vendors',{method:'POST',body});
+  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
+  closeModal();toast('Fournisseur ajouté.','ok');loadComptaDepenses();
+}
+
 async function loadComptaRentabilite(){
   const el=document.getElementById('compta-rent-real');if(!el)return;
+  const elClient=document.getElementById('compta-rent-client');
   try{
     const now=new Date();
     const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
     const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
-    const [data,remData,fraisData]=await Promise.all([
-      sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom)&statut_financier=in.(payée,partiellement_payée,facturée)&order=date_prestation.desc&limit=50'),
-      sbFetch('prestations_equipe?select=remuneration,statut,prestations(date_prestation)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
-      sbFetch('frais?select=montant,date_frais&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext).catch(()=>[]),
-    ]);
+    const sixMoisAgo=new Date(now.getFullYear(),now.getMonth()-5,1).toISOString().slice(0,10);
+    // Vue v_rentabilite_missions (migration-finance-lot0.sql) : calcule le vrai
+    // coût par mission (rémunérations acceptées + frais validés + dépenses
+    // rattachées + quote-part de coûts indirects), pas juste rémunérations+frais.
+    const data=await sbFetch('v_rentabilite_missions?select=*&date_prestation=gte.'+sixMoisAgo+'&order=date_prestation.desc&limit=300');
     const list=Array.isArray(data)?data:[];
-    const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart);
-    const enc=moisList.filter(p=>p.statut_financier==='payée').reduce((s,p)=>s+(p.montant_ttc||0),0);
-    // Une mission refusée/remplacée/annulée n'est pas une charge réelle.
-    const chargesRem=(Array.isArray(remData)?remData:[]).filter(r=>r.statut==='acceptée').reduce((s,r)=>s+(r.remuneration||0),0);
-    const chargesFrais=(Array.isArray(fraisData)?fraisData:[]).reduce((s,f)=>s+(f.montant||0),0);
-    const charges=chargesRem+chargesFrais;
-    const marge=enc-charges;
-    const tx=enc>0?Math.round((marge/enc)*100):0;
-    const fmt=n=>n.toLocaleString('fr-FR')+' €';
+    const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart&&p.date_prestation<mNext);
+    const ca=moisList.reduce((s,p)=>s+(p.revenu_ht||0),0);
+    const coutsDirects=moisList.reduce((s,p)=>s+(p.cout_remunerations||0)+(p.cout_frais||0)+(p.cout_depenses_directes||0),0);
+    const coutsIndirects=moisList.reduce((s,p)=>s+(p.cout_indirect_alloue||0),0);
+    const marge=moisList.reduce((s,p)=>s+(p.marge_nette||0),0);
+    const tx=ca>0?Math.round((marge/ca)*100):0;
+    const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
-    set('rent-kpi-ca',fmt(enc));set('rent-kpi-ch',fmt(charges));set('rent-kpi-marge',fmt(marge));set('rent-kpi-tx',tx+'%');
-    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant TTC</th><th>Date</th><th>Statut fin.</th></tr></thead><tbody>'+
-      list.slice(0,15).map(p=>`<tr>
-        <td class="tm">${p.reference||'—'}</td>
-        <td class="tp">${p.clients?.nom||'—'}</td>
-        <td class="tm" style="font-weight:600;color:var(--ok)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
-        <td><span class="bd ${p.statut_financier==='payée'?'ba':p.statut_financier==='facturée'?'bw':'bb'}"><span class="bd-d"></span>${p.statut_financier}</span></td>
-      </tr>`).join('')+'</tbody></table></div>':
-      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune donnée de rentabilité disponible.</div>';
-  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+    set('rent-kpi-ca',fmt(ca));set('rent-kpi-ch',fmt(coutsDirects));set('rent-kpi-ind',fmt(coutsIndirects));set('rent-kpi-marge',fmt(marge));set('rent-kpi-tx',tx+'%');
+    el.innerHTML=moisList.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Revenu HT</th><th>Coûts totaux</th><th>Marge nette</th><th>Statut fin.</th></tr></thead><tbody>'+
+      moisList.slice(0,15).map(p=>{
+        const coutTotal=(p.cout_remunerations||0)+(p.cout_frais||0)+(p.cout_depenses_directes||0)+(p.cout_indirect_alloue||0);
+        return `<tr>
+        <td class="tm">${esc(p.reference||'—')}</td>
+        <td class="tp">${esc(p.client_nom||'—')}</td>
+        <td class="tm" style="font-weight:600;color:var(--ok)">${fmt(p.revenu_ht)}</td>
+        <td class="tm" style="color:var(--er)">${fmt(coutTotal)}</td>
+        <td class="tm" style="font-weight:600;color:${(p.marge_nette||0)>=0?'var(--ok)':'var(--er)'}">${fmt(p.marge_nette)}</td>
+        <td><span class="bd ${p.statut_financier==='payée'?'ba':p.statut_financier==='facturée'?'bw':'bb'}"><span class="bd-d"></span>${esc(p.statut_financier||'—')}</span></td>
+      </tr>`;}).join('')+'</tbody></table></div>':
+      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune donnée de rentabilité disponible ce mois-ci.</div>';
+    if(elClient){
+      const byClient={};
+      list.forEach(p=>{
+        const k=p.client_nom||'Sans client';
+        if(!byClient[k])byClient[k]={ca:0,marge:0,nb:0};
+        byClient[k].ca+=(p.revenu_ht||0);byClient[k].marge+=(p.marge_nette||0);byClient[k].nb++;
+      });
+      const rows=Object.entries(byClient).sort((a,b)=>b[1].marge-a[1].marge).slice(0,10);
+      elClient.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Client</th><th>Missions</th><th>CA HT (6 mois)</th><th>Marge nette</th><th>Taux</th></tr></thead><tbody>'+
+        rows.map(([nom,v])=>`<tr>
+          <td class="tp">${esc(nom)}</td>
+          <td class="tm">${v.nb}</td>
+          <td class="tm">${fmt(v.ca)}</td>
+          <td class="tm" style="font-weight:600;color:${v.marge>=0?'var(--ok)':'var(--er)'}">${fmt(v.marge)}</td>
+          <td class="tm">${v.ca>0?Math.round((v.marge/v.ca)*100):0}%</td>
+        </tr>`).join('')+'</tbody></table></div>':
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Pas encore de données sur 6 mois.</div>';
+    }
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';if(elClient)elClient.innerHTML='';console.error(e);}
 }
 
 async function loadComptaClotures(){
@@ -13861,8 +14020,15 @@ async function loadComptaClotures(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   try{
     const firstMonth=months[0].key+'-01';
-    const data=await sbFetch('prestations?select=montant_ttc,statut_financier,date_prestation&date_prestation=gte.'+firstMonth+'&statut_financier=in.(payée,partiellement_payée,facturée)&limit=500');
+    const [data,periodsData]=await Promise.all([
+      sbFetch('prestations?select=montant_ttc,statut_financier,date_prestation&date_prestation=gte.'+firstMonth+'&statut_financier=in.(payée,partiellement_payée,facturée)&limit=500'),
+      // accounting_periods (migration-finance-lot0.sql) : source réelle du statut
+      // de clôture. Une période absente de la table est considérée « ouverte ».
+      sbFetch('accounting_periods?select=periode,statut&periode=gte.'+months[0].key).catch(()=>[]),
+    ]);
     const list=Array.isArray(data)?data:[];
+    const periodsByKey={};
+    (Array.isArray(periodsData)?periodsData:[]).forEach(p=>periodsByKey[p.periode]=p.statut);
     const byMonth={};
     list.forEach(p=>{
       const m=(p.date_prestation||'').slice(0,7);
@@ -13873,21 +14039,44 @@ async function loadComptaClotures(){
     const fmt=n=>n?n.toLocaleString('fr-FR')+' €':'—';
     const curKey=months[months.length-1].key;
     const encours=list.filter(p=>p.date_prestation&&p.date_prestation.slice(0,7)===curKey&&['facturée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
-    set('clo-kpi-clos',months.filter(m=>!m.current).length);
+    const nbClotures=months.filter(m=>periodsByKey[m.key]==='cloturee').length;
+    set('clo-kpi-clos',nbClotures);
     set('clo-kpi-enc',encours>0?encours.toLocaleString('fr-FR')+' €':'0 €');
     set('clo-kpi-cur',months[months.length-1].label);
     el.innerHTML='<div class="tw"><table><thead><tr><th>Mois</th><th>Statut</th><th>CA encaissé</th><th>Prestations</th><th>Actions</th></tr></thead><tbody>'+
-      months.map(m=>`<tr>
+      months.map(m=>{
+        const cloturee=periodsByKey[m.key]==='cloturee';
+        return `<tr>
         <td style="font-weight:${m.current?700:400};color:${m.current?'var(--acc)':'var(--t1)'}">${m.label}</td>
-        <td><span class="bd ${m.current?'bb':'ba'}"><span class="bd-d"></span>${m.current?'En cours':'Clôturé'}</span></td>
+        <td><span class="bd ${cloturee?'ba':'bb'}"><span class="bd-d"></span>${cloturee?'Clôturé':'Ouvert'}</span></td>
         <td class="tm" style="font-weight:600">${fmt(byMonth[m.key]?.ca)}</td>
         <td class="tm">${byMonth[m.key]?.nb||'—'}</td>
-        <td>${m.current?`<button class="btn bg2 bs" onclick="exportComptaMois('${m.key}')">Export mois</button>`:'<button class="btn bg2 bs" onclick="exportCSV(\'ca-mensuel\')">Export</button>'}</td>
-      </tr>`).join('')+'</tbody></table></div>';
+        <td style="display:flex;gap:6px">
+          <button class="btn bg2 bs" onclick="exportComptaMois('${m.key}')">Export</button>
+          ${['admin','compta'].includes(S.role)?(cloturee
+            ?`<button class="btn bg2 bs" onclick="reouvrirPeriode('${m.key}')">Rouvrir</button>`
+            :`<button class="btn bp bs" onclick="cloturerPeriode('${m.key}','${esc(m.label)}')">Clôturer</button>`):''}
+        </td>
+      </tr>`;}).join('')+'</tbody></table></div>';
   }catch(e){
-    set('clo-kpi-clos','5');set('clo-kpi-enc','0');set('clo-kpi-cur',months[months.length-1].label);
-    el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement des clôtures.</div>';
+    set('clo-kpi-clos','—');set('clo-kpi-enc','—');set('clo-kpi-cur',months[months.length-1].label);
+    el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement des clôtures (migration-finance-lot0.sql à exécuter).</div>';
   }
+}
+
+async function cloturerPeriode(periode,label){
+  if(!confirm(`Clôturer ${label} ? Aucune nouvelle dépense ou commission ne pourra plus être ajoutée sur cette période. Cette action est réversible via « Rouvrir ».`))return;
+  const uid=localStorage.getItem('sv_uid');
+  const r=await sbFetch('accounting_periods',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{periode,statut:'cloturee',cloturee_par:uid||null,cloturee_le:new Date().toISOString()}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Clôture impossible.'),'er');return;}
+  toast(`${label} clôturé.`,'ok');loadComptaClotures();
+}
+
+async function reouvrirPeriode(periode){
+  if(!confirm('Rouvrir cette période clôturée ?'))return;
+  const r=await sbFetch('accounting_periods?periode=eq.'+periode,{method:'PATCH',body:{statut:'ouverte',cloturee_par:null,cloturee_le:null}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Réouverture impossible.'),'er');return;}
+  toast('Période rouverte.','ok');loadComptaClotures();
 }
 
 async function exportComptaMois(moisKey){
@@ -15966,6 +16155,16 @@ VIEWS['admin.comptesportail']=tplComptesPortail;
 ['admin','sec','com'].forEach(role=>{
   if(NAV[role]) VIEWS[role+'.avisclients']=tplAvisClients;
 });
+// Expert-comptable / auditeur (Lot 0 Finance & Comptabilité) : réutilisent les
+// écrans compta tels quels (lecture seule imposée par RLS, pas de duplication
+// de template).
+['expert_comptable','auditeur'].forEach(role=>{
+  ['dash','rentabilite','factures','avoirs','depenses','frais','rem','clotures'].forEach(v=>{
+    if(VIEWS['compta.'+v]) VIEWS[role+'.'+v]=VIEWS['compta.'+v];
+  });
+});
+VIEWS['expert_comptable.documents']=()=>_documentsView('expert_comptable');
+VIEWS['expert_comptable.export']=VIEWS['compta.export'];
 
 const _svp_origLoadViewData=loadViewData;
 loadViewData=async function(role,view){
