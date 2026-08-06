@@ -386,6 +386,15 @@ section{position:relative}
   .gallery-grid{grid-template-columns:1fr 1fr}
   .footer-grid{grid-template-columns:1fr}
 }
+
+/* ── Bandeau cookies (RGPD) ── */
+.cookie-banner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2500;background:var(--navy-900);border-top:1px solid rgba(255,255,255,.12);padding:18px 24px;box-shadow:0 -8px 24px rgba(0,0,0,.35)}
+.cookie-banner.on{display:flex}
+.cookie-banner-inner{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.cookie-banner-inner p{flex:1;min-width:240px;font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.6;margin:0}
+.cookie-banner-inner a{color:var(--cyan);text-decoration:underline}
+.cookie-banner-actions{display:flex;gap:10px;flex-shrink:0}
+@media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}}
 </style>
 </head>
 <body>
@@ -1191,13 +1200,21 @@ section{position:relative}
         <a href="#" id="cookie-manage">Gestion des cookies</a>
       </div>
       <div class="footer-social">
-        <a href="#" aria-label="Instagram">IG</a>
-        <a href="#" aria-label="TikTok">TT</a>
-        <a href="#" aria-label="LinkedIn">IN</a>
+        <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
       </div>
     </div>
   </div>
 </footer>
+
+<div class="cookie-banner" id="cookie-banner">
+  <div class="cookie-banner-inner">
+    <p>Ce site utilise des cookies techniques nécessaires à son fonctionnement. Aucun cookie de mesure d'audience n'est déposé à ce jour. <a href="confidentialite.html">En savoir plus</a></p>
+    <div class="cookie-banner-actions">
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-refuse">Refuser</button>
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-accept">Accepter</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════ MODAL DEMANDE DE DEVIS ══════════════ -->
 <div class="sv-overlay" id="devis-overlay">
@@ -1311,6 +1328,15 @@ galleryFilters.addEventListener('click', (e) => {
   });
 });
 
+// ── Réalisations : ces vignettes sont des aperçus de style, pas de vrais
+//    médias — un clic ouvre le formulaire pour demander un rendu similaire
+//    plutôt que de simuler une lecture vidéo qui n'existe pas ──
+document.getElementById('gallery-grid').addEventListener('click', (e) => {
+  if (!e.target.closest('.gallery-item')) return;
+  openDevis();
+  toast('Envie d\'un rendu similaire ? Décrivez votre besoin ci-dessous.');
+});
+
 // ── FAQ accordéon ──
 document.getElementById('faq-list').addEventListener('click', (e) => {
   const q = e.target.closest('.faq-q');
@@ -1320,6 +1346,30 @@ document.getElementById('faq-list').addEventListener('click', (e) => {
 
 // ── Année du footer ──
 document.getElementById('sv-year').textContent = new Date().getFullYear();
+
+// ── Bandeau cookies (RGPD) ──
+const cookieBanner = document.getElementById('cookie-banner');
+function showCookieBanner(){
+  cookieBanner.classList.add('on');
+  document.body.style.paddingBottom = cookieBanner.offsetHeight + 'px';
+}
+function hideCookieBanner(){
+  cookieBanner.classList.remove('on');
+  document.body.style.paddingBottom = '';
+}
+if (!localStorage.getItem('sv_cookie_consent')) showCookieBanner();
+document.getElementById('cookie-accept').addEventListener('click', () => {
+  localStorage.setItem('sv_cookie_consent', 'accepted');
+  hideCookieBanner();
+});
+document.getElementById('cookie-refuse').addEventListener('click', () => {
+  localStorage.setItem('sv_cookie_consent', 'refused');
+  hideCookieBanner();
+});
+document.getElementById('cookie-manage').addEventListener('click', (e) => {
+  e.preventDefault();
+  showCookieBanner();
+});
 
 // ── Modal demande de devis / démonstration ──
 const devisOverlay = document.getElementById('devis-overlay');

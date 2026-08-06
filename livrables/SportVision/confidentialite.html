@@ -107,6 +107,16 @@ section{position:relative}
   .legal-page{padding:130px 0 70px}
   .footer-grid{grid-template-columns:1fr}
 }
+.btn-sm{padding:10px 18px;font-size:13.5px;border-radius:10px}
+
+/* ── Bandeau cookies (RGPD) ── */
+.cookie-banner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2500;background:var(--navy-900);border-top:1px solid rgba(255,255,255,.12);padding:18px 24px;box-shadow:0 -8px 24px rgba(0,0,0,.35)}
+.cookie-banner.on{display:flex}
+.cookie-banner-inner{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.cookie-banner-inner p{flex:1;min-width:240px;font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.6;margin:0}
+.cookie-banner-inner a{color:var(--cyan);text-decoration:underline}
+.cookie-banner-actions{display:flex;gap:10px;flex-shrink:0}
+@media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}}
 </style>
 </head>
 <body>
@@ -116,33 +126,33 @@ section{position:relative}
   <div class="container">
     <a href="index.html" class="brand"><span class="mark">S</span>SportVision</a>
     <nav class="main-nav">
-      <a href="index.html#produit">Produit</a>
+      <a href="index.html#prestations">Prestations</a>
+      <a href="index.html#connect">Connect</a>
       <a href="index.html#solutions">Solutions</a>
-      <a href="index.html#services">Services</a>
-      <a href="index.html#offres">Offres</a>
+      <a href="index.html#offres">Accompagnements</a>
       <a href="index.html#realisations">Réalisations</a>
-      <a href="index.html#faq">Ressources</a>
-      <a href="index.html#apropos">À propos</a>
+      <a href="offres.html">Tarifs</a>
+      <a href="a-propos.html">À propos</a>
     </nav>
     <div class="header-actions">
       <a href="../SportVision-Connect/app/index.html" class="btn btn-ghost-dark">Se connecter</a>
-      <a href="index.html#devis" class="btn btn-grad">Demander une démonstration</a>
+      <a href="index.html#prestations" class="btn btn-grad">Réserver une prestation</a>
     </div>
     <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
   </div>
 </header>
 
 <div class="mobile-nav" id="mobile-nav">
-  <a href="index.html#produit">Produit</a>
+  <a href="index.html#prestations">Prestations</a>
+  <a href="index.html#connect">Connect</a>
   <a href="index.html#solutions">Solutions</a>
-  <a href="index.html#services">Services</a>
-  <a href="index.html#offres">Offres</a>
+  <a href="index.html#offres">Accompagnements</a>
   <a href="index.html#realisations">Réalisations</a>
-  <a href="index.html#faq">Ressources</a>
-  <a href="index.html#apropos">À propos</a>
+  <a href="offres.html">Tarifs</a>
+  <a href="a-propos.html">À propos</a>
   <div class="mobile-ctas">
     <a href="../SportVision-Connect/app/index.html" class="btn btn-ghost-dark">Se connecter</a>
-    <a href="index.html#devis" class="btn btn-grad">Demander une démonstration</a>
+    <a href="index.html#prestations" class="btn btn-grad">Réserver une prestation</a>
   </div>
 </div>
 
@@ -256,12 +266,12 @@ section{position:relative}
         <a href="index.html" class="brand" style="font-size:18px"><span class="mark" style="width:28px;height:28px;font-size:14px">S</span>SportVision</a>
         <p>La plateforme de communication du sport amateur — par ELKANA GROUP.</p>
       </div>
-      <div class="footer-col"><h5>Produit</h5><ul>
-        <li><a href="index.html#fonctionnalites">Fonctionnalités</a></li>
-        <li><a href="index.html#offres">Offres</a></li>
-        <li><a href="index.html#produit">Connect</a></li>
-        <li><a href="../SportVision-Connect/app/index.html">Connexion</a></li>
-        <li><a href="index.html#devis">Démonstration</a></li>
+      <div class="footer-col"><h5>Prestations</h5><ul>
+        <li><a href="index.html#prestations">Match photo</a></li>
+        <li><a href="index.html#prestations">Match vidéo</a></li>
+        <li><a href="index.html#prestations">Shootings</a></li>
+        <li><a href="index.html#prestations">Tournois &amp; stages</a></li>
+        <li><a href="offres.html">Voir les tarifs</a></li>
       </ul></div>
       <div class="footer-col"><h5>Solutions</h5><ul>
         <li><a href="index.html#solutions">Clubs</a></li>
@@ -269,25 +279,21 @@ section{position:relative}
         <li><a href="index.html#solutions">Coachs</a></li>
         <li><a href="index.html#solutions">Joueurs</a></li>
         <li><a href="index.html#solutions">Tournois</a></li>
-        <li><a href="index.html#solutions">Partenaires</a></li>
       </ul></div>
-      <div class="footer-col"><h5>Services</h5><ul>
-        <li><a href="index.html#services">Photo</a></li>
-        <li><a href="index.html#services">Vidéo</a></li>
-        <li><a href="index.html#services">Communication</a></li>
-        <li><a href="index.html#services">Media Day</a></li>
-        <li><a href="index.html#services">Tournois &amp; stages</a></li>
+      <div class="footer-col"><h5>Connect</h5><ul>
+        <li><a href="index.html#connect">Fonctionnement</a></li>
+        <li><a href="index.html#offres">Accompagnements</a></li>
+        <li><a href="../SportVision-Connect/app/index.html">Connexion</a></li>
+        <li><a href="demande-de-devis.html">Démonstration</a></li>
       </ul></div>
       <div class="footer-col"><h5>Ressources</h5><ul>
         <li><a href="index.html#realisations">Réalisations</a></li>
-        <li><a href="index.html#realisations">Études de cas</a></li>
         <li><a href="index.html#faq">Centre d'aide</a></li>
-        <li><a href="index.html#faq">Actualités</a></li>
+        <li><a href="index.html#faq">FAQ</a></li>
       </ul></div>
       <div class="footer-col"><h5>Entreprise</h5><ul>
-        <li><a href="index.html#apropos">À propos</a></li>
-        <li><a href="index.html#devis">Contact</a></li>
-        <li><a href="index.html#devis">Recrutement</a></li>
+        <li><a href="a-propos.html">À propos</a></li>
+        <li><a href="demande-de-devis.html">Contact</a></li>
         <li><a href="index.html#solutions">Partenaires</a></li>
       </ul></div>
     </div>
@@ -300,13 +306,21 @@ section{position:relative}
         <a href="#" id="cookie-manage">Gestion des cookies</a>
       </div>
       <div class="footer-social">
-        <a href="#" aria-label="Instagram">IG</a>
-        <a href="#" aria-label="TikTok">TT</a>
-        <a href="#" aria-label="LinkedIn">IN</a>
+        <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
       </div>
     </div>
   </div>
 </footer>
+
+<div class="cookie-banner" id="cookie-banner">
+  <div class="cookie-banner-inner">
+    <p>Ce site utilise des cookies techniques nécessaires à son fonctionnement. Aucun cookie de mesure d'audience n'est déposé à ce jour. <a href="confidentialite.html">En savoir plus</a></p>
+    <div class="cookie-banner-actions">
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-refuse">Refuser</button>
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-accept">Accepter</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ── Menu mobile ── */
@@ -317,6 +331,30 @@ mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => m
 
 /* ── Année du footer ── */
 document.getElementById('sv-year').textContent = new Date().getFullYear();
+
+/* ── Bandeau cookies (RGPD) ── */
+const cookieBanner = document.getElementById('cookie-banner');
+function showCookieBanner(){
+  cookieBanner.classList.add('on');
+  document.body.style.paddingBottom = cookieBanner.offsetHeight + 'px';
+}
+function hideCookieBanner(){
+  cookieBanner.classList.remove('on');
+  document.body.style.paddingBottom = '';
+}
+if (!localStorage.getItem('sv_cookie_consent')) showCookieBanner();
+document.getElementById('cookie-accept').addEventListener('click', () => {
+  localStorage.setItem('sv_cookie_consent', 'accepted');
+  hideCookieBanner();
+});
+document.getElementById('cookie-refuse').addEventListener('click', () => {
+  localStorage.setItem('sv_cookie_consent', 'refused');
+  hideCookieBanner();
+});
+document.getElementById('cookie-manage').addEventListener('click', (e) => {
+  e.preventDefault();
+  showCookieBanner();
+});
 </script>
 </body>
 </html>

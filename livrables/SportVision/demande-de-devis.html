@@ -376,6 +376,15 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   .page-hero{padding:128px 0 44px}
   .devis-card{padding:24px}
 }
+
+/* -- Bandeau cookies (RGPD) -- */
+.cookie-banner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2500;background:var(--navy-900);border-top:1px solid rgba(255,255,255,.12);padding:18px 24px;box-shadow:0 -8px 24px rgba(0,0,0,.35)}
+.cookie-banner.on{display:flex}
+.cookie-banner-inner{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.cookie-banner-inner p{flex:1;min-width:240px;font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.6;margin:0}
+.cookie-banner-inner a{color:var(--cyan);text-decoration:underline}
+.cookie-banner-actions{display:flex;gap:10px;flex-shrink:0}
+@media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}}
 </style>
 </head>
 <body>
@@ -383,35 +392,35 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 <!-- ══════════════ HEADER ══════════════ -->
 <header class="site-header" id="site-header">
   <div class="container">
-    <a href="/" class="brand"><span class="mark">S</span>SportVision</a>
+    <a href="index.html" class="brand"><span class="mark">S</span>SportVision</a>
     <nav class="main-nav">
-      <a href="/#produit">Produit</a>
-      <a href="/#solutions">Solutions</a>
-      <a href="/#services">Services</a>
-      <a href="/#offres">Offres</a>
-      <a href="/#realisations">Réalisations</a>
-      <a href="/#faq">Ressources</a>
-      <a href="/#apropos">À propos</a>
+      <a href="index.html#prestations">Prestations</a>
+      <a href="index.html#connect">Connect</a>
+      <a href="index.html#solutions">Solutions</a>
+      <a href="index.html#offres">Accompagnements</a>
+      <a href="index.html#realisations">Réalisations</a>
+      <a href="offres.html">Tarifs</a>
+      <a href="a-propos.html">À propos</a>
     </nav>
     <div class="header-actions">
       <a href="../SportVision-Connect/app/index.html" class="btn btn-ghost-dark">Se connecter</a>
-      <a href="#devis" class="btn btn-grad">Demander une démonstration</a>
+      <a href="index.html#prestations" class="btn btn-grad">Réserver une prestation</a>
     </div>
     <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
   </div>
 </header>
 
 <div class="mobile-nav" id="mobile-nav">
-  <a href="/#produit">Produit</a>
-  <a href="/#solutions">Solutions</a>
-  <a href="/#services">Services</a>
-  <a href="/#offres">Offres</a>
-  <a href="/#realisations">Réalisations</a>
-  <a href="/#faq">Ressources</a>
-  <a href="/#apropos">À propos</a>
+  <a href="index.html#prestations">Prestations</a>
+  <a href="index.html#connect">Connect</a>
+  <a href="index.html#solutions">Solutions</a>
+  <a href="index.html#offres">Accompagnements</a>
+  <a href="index.html#realisations">Réalisations</a>
+  <a href="offres.html">Tarifs</a>
+  <a href="a-propos.html">À propos</a>
   <div class="mobile-ctas">
     <a href="../SportVision-Connect/app/index.html" class="btn btn-ghost-dark">Se connecter</a>
-    <a href="#devis" class="btn btn-grad">Demander une démonstration</a>
+    <a href="index.html#prestations" class="btn btn-grad">Réserver une prestation</a>
   </div>
 </div>
 
@@ -421,13 +430,13 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 <section class="hero page-hero">
   <div class="container">
     <div class="hero-copy">
-      <a href="/" class="back-link">← Retour à l'accueil</a>
+      <a href="index.html" class="back-link">← Retour à l'accueil</a>
       <span class="eyebrow">Contact</span>
       <h1>Demandez votre <span>devis</span> ou votre démonstration.</h1>
       <p class="subtitle">Présentez-nous votre structure, nous revenons vers vous rapidement. Un seul formulaire, que vous soyez un club, une académie, un coach, un joueur ou un partenaire.</p>
       <div class="hero-ctas">
         <a href="#devis" class="btn btn-grad">Aller au formulaire</a>
-        <a href="/#offres" class="btn btn-ghost-dark">Voir nos offres</a>
+        <a href="index.html#prestations" class="btn btn-ghost-dark">Voir les prestations</a>
       </div>
     </div>
   </div>
@@ -503,7 +512,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
             <h3 tabindex="-1" id="devis-ok-title">Demande envoyée</h3>
             <p class="sub">Merci ! Notre équipe revient vers vous très prochainement.<br>Référence : <b id="devis-ref"></b></p>
             <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-              <a href="/" class="btn btn-grad" style="flex:1">Retour à l'accueil</a>
+              <a href="index.html" class="btn btn-grad" style="flex:1">Retour à l'accueil</a>
               <button type="button" class="btn btn-ghost-light" style="flex:1" id="devis-again-btn">Envoyer une autre demande</button>
             </div>
           </div>
@@ -523,7 +532,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         </div>
         <div class="contact-card">
           <h4>En attendant notre réponse</h4>
-          <div class="contact-row" style="margin-bottom:0"><span class="ic">💬</span><span>Consultez notre <a href="/#faq">FAQ</a> ou <a href="/#offres">comparez nos offres</a>.</span></div>
+          <div class="contact-row" style="margin-bottom:0"><span class="ic">💬</span><span>Consultez notre <a href="index.html#faq">FAQ</a> ou <a href="offres.html">comparez nos offres</a>.</span></div>
         </div>
       </aside>
     </div>
@@ -537,60 +546,64 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a href="/" class="brand" style="font-size:18px"><span class="mark" style="width:28px;height:28px;font-size:14px">S</span>SportVision</a>
+        <a href="index.html" class="brand" style="font-size:18px"><span class="mark" style="width:28px;height:28px;font-size:14px">S</span>SportVision</a>
         <p>La plateforme de communication du sport amateur — par ELKANA GROUP.</p>
       </div>
-      <div class="footer-col"><h5>Produit</h5><ul>
-        <li><a href="/#fonctionnalites">Fonctionnalités</a></li>
-        <li><a href="/#offres">Offres</a></li>
-        <li><a href="/#produit">Connect</a></li>
-        <li><a href="../SportVision-Connect/app/index.html">Connexion</a></li>
-        <li><a href="#devis">Démonstration</a></li>
+      <div class="footer-col"><h5>Prestations</h5><ul>
+        <li><a href="index.html#prestations">Match photo</a></li>
+        <li><a href="index.html#prestations">Match vidéo</a></li>
+        <li><a href="index.html#prestations">Shootings</a></li>
+        <li><a href="index.html#prestations">Tournois &amp; stages</a></li>
+        <li><a href="offres.html">Voir les tarifs</a></li>
       </ul></div>
       <div class="footer-col"><h5>Solutions</h5><ul>
-        <li><a href="/#solutions">Clubs</a></li>
-        <li><a href="/#solutions">Académies</a></li>
-        <li><a href="/#solutions">Coachs</a></li>
-        <li><a href="/#solutions">Joueurs</a></li>
-        <li><a href="/#solutions">Tournois</a></li>
-        <li><a href="/#solutions">Partenaires</a></li>
+        <li><a href="index.html#solutions">Clubs</a></li>
+        <li><a href="index.html#solutions">Académies</a></li>
+        <li><a href="index.html#solutions">Coachs</a></li>
+        <li><a href="index.html#solutions">Joueurs</a></li>
+        <li><a href="index.html#solutions">Tournois</a></li>
       </ul></div>
-      <div class="footer-col"><h5>Services</h5><ul>
-        <li><a href="/#services">Photo</a></li>
-        <li><a href="/#services">Vidéo</a></li>
-        <li><a href="/#services">Communication</a></li>
-        <li><a href="/#services">Media Day</a></li>
-        <li><a href="/#services">Tournois &amp; stages</a></li>
+      <div class="footer-col"><h5>Connect</h5><ul>
+        <li><a href="index.html#connect">Fonctionnement</a></li>
+        <li><a href="index.html#offres">Accompagnements</a></li>
+        <li><a href="../SportVision-Connect/app/index.html">Connexion</a></li>
+        <li><a href="demande-de-devis.html">Démonstration</a></li>
       </ul></div>
       <div class="footer-col"><h5>Ressources</h5><ul>
-        <li><a href="/#realisations">Réalisations</a></li>
-        <li><a href="/#realisations">Études de cas</a></li>
-        <li><a href="/#faq">Centre d'aide</a></li>
-        <li><a href="/#faq">Actualités</a></li>
+        <li><a href="index.html#realisations">Réalisations</a></li>
+        <li><a href="index.html#faq">Centre d'aide</a></li>
+        <li><a href="index.html#faq">FAQ</a></li>
       </ul></div>
       <div class="footer-col"><h5>Entreprise</h5><ul>
-        <li><a href="/#apropos">À propos</a></li>
-        <li><a href="#devis">Contact</a></li>
-        <li><a href="#devis">Recrutement</a></li>
-        <li><a href="/#solutions">Partenaires</a></li>
+        <li><a href="a-propos.html">À propos</a></li>
+        <li><a href="demande-de-devis.html">Contact</a></li>
+        <li><a href="index.html#solutions">Partenaires</a></li>
       </ul></div>
     </div>
     <div class="footer-bottom">
       <span>© <span id="sv-year"></span> ELKANA GROUP — SportVision. Tous droits réservés.</span>
       <div class="footer-legal">
-        <a href="#">Mentions légales</a>
-        <a href="#">Politique de confidentialité</a>
-        <a href="#">CGV</a>
+        <a href="mentions-legales.html">Mentions légales</a>
+        <a href="confidentialite.html">Politique de confidentialité</a>
+        <a href="cgv.html">CGV</a>
         <a href="#" id="cookie-manage">Gestion des cookies</a>
       </div>
       <div class="footer-social">
-        <a href="#" aria-label="Instagram">IG</a>
-        <a href="#" aria-label="TikTok">TT</a>
-        <a href="#" aria-label="LinkedIn">IN</a>
+        <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
       </div>
     </div>
   </div>
 </footer>
+
+<div class="cookie-banner" id="cookie-banner">
+  <div class="cookie-banner-inner">
+    <p>Ce site utilise des cookies techniques necessaires a son fonctionnement. Aucun cookie de mesure d'audience n'est depose a ce jour. <a href="confidentialite.html">En savoir plus</a></p>
+    <div class="cookie-banner-actions">
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-refuse">Refuser</button>
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-accept">Accepter</button>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -701,6 +714,30 @@ document.getElementById('devis-again-btn').addEventListener('click', () => {
   document.getElementById('devis-form').reset();
   showDevisForm();
   document.getElementById('dv-prenom').focus();
+});
+
+// -- Bandeau cookies (RGPD) --
+const cookieBanner = document.getElementById('cookie-banner');
+function showCookieBanner(){
+  cookieBanner.classList.add('on');
+  document.body.style.paddingBottom = cookieBanner.offsetHeight + 'px';
+}
+function hideCookieBanner(){
+  cookieBanner.classList.remove('on');
+  document.body.style.paddingBottom = '';
+}
+if (!localStorage.getItem('sv_cookie_consent')) showCookieBanner();
+document.getElementById('cookie-accept').addEventListener('click', () => {
+  localStorage.setItem('sv_cookie_consent', 'accepted');
+  hideCookieBanner();
+});
+document.getElementById('cookie-refuse').addEventListener('click', () => {
+  localStorage.setItem('sv_cookie_consent', 'refused');
+  hideCookieBanner();
+});
+document.getElementById('cookie-manage').addEventListener('click', (e) => {
+  e.preventDefault();
+  showCookieBanner();
 });
 </script>
 </body>
