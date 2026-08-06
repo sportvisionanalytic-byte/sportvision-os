@@ -821,6 +821,7 @@ const NAV={
     {id:'rapports',lb:'Rapports clients',ic:'doc'},
     {type:'sep',lb:'Communication'},
     {id:'clients',lb:'Mes clients',ic:'cli'},
+    {id:'msgclients',lb:'Messages clients',ic:'msg'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
@@ -1747,11 +1748,11 @@ const VIEWS={
   'cm.clients':()=>`
     <div class="sh"><div class="sh-t">Mes clients</div></div>
     <div class="g3" style="margin-bottom:13px">
-      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Actifs</div><div class="fs-v" id="cmc-kpi-club" style="color:var(--ok)">—</div></div>
-      <div class="fs"><div class="fs-l">Prospects / qualifiés</div><div class="fs-v" id="cmc-kpi-fc">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Actifs</div><div class="fs-v" id="cmc-kpi-actifs" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Prospects / qualifiés</div><div class="fs-v" id="cmc-kpi-prospects">—</div></div>
       <div class="fs"><div class="fs-l">Total visible</div><div class="fs-v" id="cmc-kpi-tot">—</div></div>
     </div>
-    <div id="cm-clubs-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+    <div id="cm-clients-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.contenus':()=>`
     <div class="sh"><div class="sh-t">Contenus</div><button class="btn bp bs" onclick="modalNouveauContenu()">+ Nouveau</button></div>
@@ -1765,10 +1766,10 @@ const VIEWS={
   'cm.analytics':()=>`
     <div class="sh"><div class="sh-t">Analytics</div><button class="btn bg2 bs" onclick="modalSaisirStats()">Saisir stats</button></div>
     <div class="kpi-g">
-      <div class="kpi" style="--kl:#E1306C"><div class="kpi-ey">Instagram · Reach</div><div class="kpi-v" id="an-ig-reach">—</div><span class="kpi-d dnt" id="an-ig-s">ce mois</span></div>
-      <div class="kpi" style="--kl:#1877F2"><div class="kpi-ey">Facebook · Portée</div><div class="kpi-v" id="an-fb-reach">—</div><span class="kpi-d dnt" id="an-fb-s">ce mois</span></div>
-      <div class="kpi" style="--kl:#FF0000"><div class="kpi-ey">YouTube · Vues</div><div class="kpi-v" id="an-yt-views">—</div><span class="kpi-d dnt" id="an-yt-s">ce mois</span></div>
-      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Contenus publiés</div><div class="kpi-v" id="an-pub">—</div><span class="kpi-d dnt">via l'OS</span></div>
+      <div class="kpi" style="--kl:#E1306C"><div class="kpi-ey">Instagram · Reach</div><div class="kpi-v" id="an-ig-reach">—</div><span class="kpi-d dnt" id="an-ig-s" title="Saisi manuellement, pas synchronisé automatiquement">✍️ saisi manuellement</span></div>
+      <div class="kpi" style="--kl:#1877F2"><div class="kpi-ey">Facebook · Portée</div><div class="kpi-v" id="an-fb-reach">—</div><span class="kpi-d dnt" id="an-fb-s" title="Saisi manuellement, pas synchronisé automatiquement">✍️ saisi manuellement</span></div>
+      <div class="kpi" style="--kl:#FF0000"><div class="kpi-ey">YouTube · Vues</div><div class="kpi-v" id="an-yt-views">—</div><span class="kpi-d dnt" id="an-yt-s" title="Saisi manuellement, pas synchronisé automatiquement">✍️ saisi manuellement</span></div>
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Contenus publiés</div><div class="kpi-v" id="an-pub">—</div><span class="kpi-d dnt" title="Calculé depuis les contenus réellement publiés dans l'OS">✓ données réelles (OS)</span></div>
     </div>
     <div class="g2">
       <div class="cd"><div class="cd-h"><div class="cd-t">Contenus par plateforme</div></div>
@@ -10427,19 +10428,22 @@ async function loadCmDash(){
     const in14=new Date(now);in14.setDate(in14.getDate()+14);
     const uid=localStorage.getItem('sv_uid');
     const tier=await _ensureMyNiveauCm();
-    const [contenus,preSoon,unread]=await Promise.all([
+    const [contenus,preSoon,unread,demandes]=await Promise.all([
       sbFetch('contenus?select=id,titre,statut,plateforme,date_prevue,clients(nom)&statut=not.in.(publie,archive)&order=date_prevue.asc.nullslast&limit=100'),
       sbFetch(`prestations?select=id,reference,type_prestation,date_prestation,clients(nom,cm_id)&date_prestation=gte.${todayStr}&date_prestation=lte.${in14.toISOString().slice(0,10)}&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=20`),
       sbFetch('messages?select=expediteur_id&destinataire_id=eq.'+uid+'&lue=eq.false'),
+      sbFetch('club_requests?select=id,type,urgency,created_at,clubs(nom,clients(nom))&status=eq.recues&order=urgency.desc,created_at.asc&limit=20'),
     ]);
     const portfolioTiers=['cm_junior','cm_confirme','cm_full_communication'];
     const presoonScoped=portfolioTiers.includes(tier)
       ?(preSoon||[]).filter(p=>p.clients?.cm_id===uid)
       :(preSoon||[]);
-    // La visibilité par portefeuille est déjà appliquée par le RLS de la
-    // table contenus (migration-contenus.sql) — pas besoin de re-filtrer ici.
+    // La visibilité par portefeuille est déjà appliquée par le RLS des
+    // tables contenus/club_requests (migration-contenus.sql,
+    // migration-clubplus-cm-bridge.sql) — pas besoin de re-filtrer ici.
     const enAttente=(Array.isArray(contenus)?contenus:[]).map(c=>({id:c.id,titre:c.titre,statut:c.statut,date:c.date_prevue||'',club:c.clients?.nom||'',plateforme:c.plateforme||''}));
     const enRetard=enAttente.filter(i=>i.date&&i.date<todayStr);
+    const demandesEnAttente=Array.isArray(demandes)?demandes:[];
     const s1=document.getElementById('cm-kpi-cl');if(s1)s1.textContent=enAttente.length;
     const s2=document.getElementById('cm-kpi-pre');if(s2)s2.textContent=enRetard.length;
     const s3=document.getElementById('cm-kpi-soon');if(s3)s3.textContent=presoonScoped.slice(0,10).length;
@@ -10447,15 +10451,28 @@ async function loadCmDash(){
     const ep=document.getElementById('cm-dash-pre');
     if(ep){
       const retardIds=new Set(enRetard.map(i=>i.id));
-      const aTraiter=[...enRetard,...enAttente.filter(i=>!retardIds.has(i.id))].slice(0,8);
-      ep.innerHTML=aTraiter.length?'<div class="cd-b">'+aTraiter.map(i=>`
-        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalEditContenu('${i.id}')">
+      // Nouvelles demandes en tête (surtout urgentes), puis contenus en
+      // retard, puis le reste des contenus en attente.
+      const demandeItems=demandesEnAttente.map(d=>({demande:true,id:d.id,titre:(d.clubs?.clients?.nom||d.clubs?.nom||'Client')+' — '+(d.type||'Demande'),urgent:d.urgency==='haute',date:d.created_at}));
+      const aTraiter=[...demandeItems,...enRetard,...enAttente.filter(i=>!retardIds.has(i.id))].slice(0,8);
+      ep.innerHTML=aTraiter.length?'<div class="cd-b">'+aTraiter.map(i=>{
+        if(i.demande){
+          return`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="switchView('demandes')">
+            <div style="width:8px;height:8px;border-radius:50%;background:${i.urgent?'var(--er)':'var(--acc)'};flex-shrink:0"></div>
+            <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">📥 ${esc(i.titre)}</div>
+              <div style="font-size:11px;color:var(--t3)">Nouvelle demande${i.urgent?' · urgente':''}</div>
+            </div>
+            <span style="font-size:11px;color:var(--acc)">›</span>
+          </div>`;
+        }
+        return`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer" onclick="modalEditContenu('${i.id}')">
           <div style="width:8px;height:8px;border-radius:50%;background:${retardIds.has(i.id)?'var(--er)':'var(--wa)'};flex-shrink:0"></div>
           <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--t1)">${esc(i.titre||'Sans titre')}${i.club?' · '+esc(i.club):''}</div>
             <div style="font-size:11px;color:var(--t3)">${esc(i.plateforme||'—')} · ${i.date?new Date(i.date).toLocaleDateString('fr-FR'):'sans date'}${retardIds.has(i.id)?' · en retard':''}</div>
           </div>
           <span style="font-size:11px;color:var(--acc)">›</span>
-        </div>`).join('')+'</div>':
+        </div>`;
+      }).join('')+'</div>':
         '<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Rien à traiter — tout est publié.</div>';
     }
     const ec=document.getElementById('cm-dash-cl');
@@ -14053,19 +14070,24 @@ async function loadCmDemandes(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   if(!el)return;
   try{
-    const data=await sbFetch('club_requests?select=id,type,team,status,urgency,detail,credits_reserved,created_at,clubs(nom,client_id)&order=created_at.desc&limit=200');
+    const data=await sbFetch('club_requests?select=id,type,team,status,urgency,detail,credits_reserved,created_at,clubs(nom,client_id,clients(nom))&order=created_at.desc&limit=200');
     const list=Array.isArray(data)?data:[];
     set('dem-kpi-nouv',list.filter(d=>d.status==='recues').length);
     set('dem-kpi-enc',list.filter(d=>['en_traitement','info_manquante'].includes(d.status)).length);
     set('dem-kpi-urg',list.filter(d=>d.urgency==='haute'&&!['terminee','refusee'].includes(d.status)).length);
     if(!list.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📥</div><div>Aucune demande reçue pour l\'instant.</div></div>';return;}
-    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Club</th><th>Type</th><th>Équipe</th><th>Urgence</th><th>Crédits</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    el.innerHTML='<div class="cd"><div class="tw"><table><thead><tr><th>Client</th><th>Type</th><th>Équipe</th><th>Urgence</th><th>Crédits</th><th>Statut</th><th></th></tr></thead><tbody>'+
       list.map(d=>{
         const stLbl=DEMANDE_STATUT_LBL[d.status]||d.status;
         const stCls=DEMANDE_STATUT_CLS[d.status]||'bn';
         const nextActions=DEMANDE_NEXT[d.status]||[];
+        // Nom client (vocabulaire cohérent avec le reste de l'espace CM) en
+        // priorité ; le nom auto-déclaré côté Club+ (potentiellement
+        // différent) reste visible en tooltip pour traçabilité.
+        const clientNom=d.clubs?.clients?.nom;
+        const clubNom=d.clubs?.nom;
         return`<tr>
-          <td class="tp">${esc(d.clubs?.nom||'—')}</td>
+          <td class="tp" title="${clubNom&&clubNom!==clientNom?'Nom Club+ : '+esc(clubNom):''}">${esc(clientNom||clubNom||'—')}</td>
           <td title="${esc(d.detail||'')}">${esc(d.type||'—')}</td>
           <td>${esc(d.team||'—')}</td>
           <td>${d.urgency==='haute'?'<span style="color:var(--er);font-weight:600">Haute</span>':'Normale'}</td>
@@ -14092,27 +14114,19 @@ function creerContenuDepuisDemande(clientId,titre){
 }
 
 async function loadCmClients(){
-  const el=document.getElementById('cm-clubs-real');
+  const el=document.getElementById('cm-clients-real');
   if(!el)return;
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const tier=await _ensureMyNiveauCm();
   if(tier==='cm_interne'){
-    set('cmc-kpi-club','—');set('cmc-kpi-fc','—');set('cmc-kpi-tot','—');
+    set('cmc-kpi-actifs','—');set('cmc-kpi-prospects','—');set('cmc-kpi-tot','—');
     el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🏟️</div><div>Cette page ne s\'applique pas à votre profil (CM SportVision interne).</div></div>';
     return;
   }
   try{
-    let rows;
-    if(tier==='cm_club_plus_studio'||tier==='cm_evenement'){
-      const typeContrat=tier==='cm_club_plus_studio'?'club_plus':'evenement';
-      const data=await sbFetch('contrats?select=id,type_contrat,clients(id,nom,statut,type_client,sport,ville,email,telephone,prenom_contact,nom_contact)&type_contrat=eq.'+typeContrat+'&statut=eq.actif&order=created_at.desc&limit=200');
-      rows=(Array.isArray(data)?data:[]).map(c=>({...(c.clients||{}),offre:c.type_contrat}));
-    }else{
-      const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,prenom_contact,nom_contact&order=nom.asc&limit=200');
-      rows=(Array.isArray(data)?data:[]).map(c=>({...c,offre:null}));
-    }
-    set('cmc-kpi-club',rows.filter(c=>['client','partenaire'].includes(c.statut)).length);
-    set('cmc-kpi-fc',rows.filter(c=>['prospect','qualifié'].includes(c.statut)).length);
+    const rows=await _cmVisibleClients(true);
+    set('cmc-kpi-actifs',rows.filter(c=>['client','partenaire'].includes(c.statut)).length);
+    set('cmc-kpi-prospects',rows.filter(c=>['prospect','qualifié'].includes(c.statut)).length);
     set('cmc-kpi-tot',rows.length);
     el.innerHTML=rows.length?'<div class="tw"><table><thead><tr><th>Client / Organisation</th><th>Type</th><th>Offre</th><th>Sport</th><th>Ville</th><th>Contact</th></tr></thead><tbody>'+
       rows.map(cl=>{
@@ -14193,19 +14207,23 @@ const CONTENU_NEXT={
   corrections:{st:'brouillon',lb:'→ Reprendre en brouillon'},
 };
 
-// Clients visibles par le CM courant, pour peupler les select de création/
-// édition de contenu — même règle de périmètre par palier que loadCmClients().
-async function _cmVisibleClients(){
+// Clients visibles par le CM courant — utilisée à la fois pour peupler les
+// select de création/édition de contenu (colonnes minimales) et par
+// loadCmClients() (fullCols=true, colonnes complètes pour l'affichage
+// tableau) — même règle de périmètre par palier dans les deux cas, une
+// seule requête à maintenir au lieu de deux copies.
+async function _cmVisibleClients(fullCols){
   const tier=await _ensureMyNiveauCm();
   if(tier==='cm_interne')return[];
+  const cols=fullCols?'id,nom,statut,type_client,sport,ville,email,telephone,prenom_contact,nom_contact':'id,nom';
   try{
     if(tier==='cm_club_plus_studio'||tier==='cm_evenement'){
       const typeContrat=tier==='cm_club_plus_studio'?'club_plus':'evenement';
-      const data=await sbFetch('contrats?select=clients(id,nom)&type_contrat=eq.'+typeContrat+'&statut=eq.actif&order=created_at.desc&limit=200');
-      return(Array.isArray(data)?data:[]).map(c=>c.clients).filter(Boolean);
+      const data=await sbFetch('contrats?select=type_contrat,clients('+cols+')&type_contrat=eq.'+typeContrat+'&statut=eq.actif&order=created_at.desc&limit=200');
+      return(Array.isArray(data)?data:[]).map(c=>({...(c.clients||{}),offre:c.type_contrat})).filter(c=>c.id);
     }
-    const data=await sbFetch('clients?select=id,nom&order=nom.asc&limit=200');
-    return Array.isArray(data)?data:[];
+    const data=await sbFetch('clients?select='+cols+'&order=nom.asc&limit=200');
+    return(Array.isArray(data)?data:[]).map(c=>({...c,offre:null}));
   }catch(e){return[];}
 }
 
@@ -14414,9 +14432,7 @@ async function loadCmAnalytics(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const mStart=new Date().toISOString().slice(0,7)+'-01';
   try{
-    const [cli,preMois,pubTotal,byPlat]=await Promise.all([
-      sbFetch('clients?select=id&statut=eq.client'),
-      sbFetch('prestations?select=id&date_prestation=gte.'+mStart+'&statut=not.in.(annulée,refusée)'),
+    const [pubTotal,byPlat]=await Promise.all([
       sbFetch('contenus?select=id&statut=eq.publie'),
       sbFetch('contenus?select=plateforme&statut=eq.publie&limit=200'),
     ]);
@@ -18346,12 +18362,10 @@ if(NAV['admin']){
   if(!NAV[role])return;
   NAV[role].push({id:'avisclients',lb:'Avis clients',ic:'doc'});
 });
-// CM : messagerie client uniquement (pas rendez-vous/catalogue, hors de son
-// périmètre) — accès scopé par portefeuille via mc_cm_acces
-// (migration-cm-messages.sql), pas de filtre JS supplémentaire nécessaire.
-if(NAV['cm']){
-  NAV['cm'].push({type:'sep',lb:'Messagerie client'},{id:'msgclients',lb:'Messages clients',ic:'msg'});
-}
+// CM : l'entrée nav 'Messages clients' est définie directement dans NAV['cm']
+// (section Communication) plutôt que poussée ici — accès scopé par
+// portefeuille via mc_cm_acces (migration-cm-messages.sql), pas de filtre
+// JS supplémentaire nécessaire.
 
 function tplMsgClients(){
   return `<div class="sh"><div class="sh-t">Messages clients</div></div>
@@ -21740,7 +21754,7 @@ const MOB_MORE_ITEMS={
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
-  cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
 };
 function openMobMore(){
