@@ -715,6 +715,7 @@ const NAV={
     {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
     {id:'export',lb:'Exports comptables',ic:'export'},
     {id:'fec',lb:'Export FEC',ic:'export'},
+    {id:'audit',lb:"Journal d'audit",ic:'check'},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
     {id:'documents',lb:'Centre documentaire',ic:'doc'},
     {type:'sep',lb:'Équipe & Espace'},
@@ -840,6 +841,7 @@ const NAV={
     {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
     {id:'export',lb:'Exports comptables',ic:'export'},
     {id:'fec',lb:'Export FEC',ic:'export'},
+    {id:'audit',lb:"Journal d'audit",ic:'check'},
     {type:'sep',lb:'Finances'},
     {id:'tva',lb:'TVA & provisions',ic:'fin'},
     {type:'sep',lb:'Communication'},
@@ -887,6 +889,7 @@ const NAV={
     {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
     {id:'export',lb:'Exports comptables',ic:'export'},
     {id:'fec',lb:'Export FEC',ic:'export'},
+    {id:'audit',lb:"Journal d'audit",ic:'check'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
   auditeur:[
@@ -905,6 +908,7 @@ const NAV={
     {id:'rem',lb:'Rémunérations',ic:'col'},
     {type:'sep',lb:'Clôture'},
     {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
+    {id:'audit',lb:"Journal d'audit",ic:'check'},
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
 };
@@ -1844,6 +1848,20 @@ const VIEWS={
       <div id="fec-historique-real"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
 
+  'compta.audit':()=>`
+    <div class="sh"><div><div class="sh-t">Journal d'audit financier</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Historique des créations, modifications et validations sur les données financières — qui a fait quoi, et quand</div></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterAuditLog('all')" id="aud-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Tout</button>
+      <button class="btn bg2 bs" onclick="filterAuditLog('expenses')" id="aud-f-expenses">Dépenses</button>
+      <button class="btn bg2 bs" onclick="filterAuditLog('commissions')" id="aud-f-commissions">Commissions</button>
+      <button class="btn bg2 bs" onclick="filterAuditLog('accounting_periods')" id="aud-f-accounting_periods">Clôtures</button>
+      <button class="btn bg2 bs" onclick="filterAuditLog('employee_costs')" id="aud-f-employee_costs">Paie</button>
+      <button class="btn bg2 bs" onclick="filterAuditLog('tax_reserves')" id="aud-f-tax_reserves">TVA</button>
+      <button class="btn bg2 bs" onclick="filterAuditLog('cost_allocations')" id="aud-f-cost_allocations">Coûts indirects</button>
+      <button class="btn bg2 bs" onclick="filterAuditLog('forecast_scenarios')" id="aud-f-forecast_scenarios">Budgets</button>
+    </div>
+    <div id="audit-log-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   // ── COMMERCIAL ──────────────────────────
   'com.dash':()=>`
     <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px">
@@ -2548,6 +2566,21 @@ function escJs(s){
   return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// Journal d'audit financier (financial_audit_log, migration-finance-lot0.sql).
+// Best-effort : ne bloque jamais l'action principale si l'écriture échoue
+// (ex: RLS, réseau) — l'utilisateur ne doit pas perdre sa saisie pour ça.
+async function logFinancialAudit(action,tableCible,ligneId,montantAvant,montantApres,details){
+  try{
+    await sbFetch('financial_audit_log',{method:'POST',body:{
+      acteur_id:localStorage.getItem('sv_uid')||null,
+      action,table_cible:tableCible,ligne_id:ligneId||null,
+      montant_avant:(montantAvant===undefined?null:montantAvant),
+      montant_apres:(montantApres===undefined?null:montantApres),
+      details:details||{},
+    }});
+  }catch(e){console.error('logFinancialAudit failed',e);}
+}
+
 // ── Préférences de notification ──────────────────────────────────────────────
 // Chaque collaborateur peut désactiver certaines catégories de notifications
 // (profiles.notification_prefs, jsonb — voir migration-notification-prefs.sql).
@@ -3033,6 +3066,7 @@ async function loadViewData(role,view){
   if(_isComptaLike&&view==='budgets') await loadComptaBudgets();
   if(_isComptaLike&&view==='tva') await loadComptaTva();
   if(_isComptaLike&&view==='fec') await loadComptaFec();
+  if(_isComptaLike&&view==='audit') await loadComptaAuditLog();
   // Admin a aussi accès aux écrans compta détaillés (cf. NAV.admin) — gardé
   // séparé de _isComptaLike pour ne pas dupliquer les dispatches 'dash'/'docs'
   // déjà gérés plus haut pour admin (loadAdminDash, loadDocuments).
@@ -3052,6 +3086,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='budgets') await loadComptaBudgets();
   if(role==='admin'&&view==='tva') await loadComptaTva();
   if(role==='admin'&&view==='fec') await loadComptaFec();
+  if(role==='admin'&&view==='audit') await loadComptaAuditLog();
   if((role==='prod'||role==='admin')&&view==='incidents') await loadIncidents();
   if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
   if(role==='com'&&view==='dash') await loadComDash();
@@ -14070,6 +14105,17 @@ async function sauvegarderNouvelleDepense(){
   if(!montantHt||montantHt<=0){err.textContent='Le montant est obligatoire.';return;}
   const tva=parseFloat(document.getElementById('nd-tva')?.value||'20');
   const vendorId=document.getElementById('nd-vendor')?.value||null;
+  const recurrence=document.getElementById('nd-recur')?.value||'ponctuelle';
+  const dateDepense=document.getElementById('nd-date')?.value||new Date().toISOString().slice(0,10);
+  // Échéance suivante : nécessaire pour l'écran d'alertes (échéance-alertes.js).
+  const prochaineEcheance=(()=>{
+    if(recurrence==='ponctuelle')return null;
+    const d=new Date(dateDepense);
+    if(recurrence==='mensuelle')d.setMonth(d.getMonth()+1);
+    else if(recurrence==='trimestrielle')d.setMonth(d.getMonth()+3);
+    else if(recurrence==='annuelle')d.setFullYear(d.getFullYear()+1);
+    return d.toISOString().slice(0,10);
+  })();
   const body={
     categorie:document.getElementById('nd-cat')?.value||'autre',
     libelle,
@@ -14077,13 +14123,15 @@ async function sauvegarderNouvelleDepense(){
     montant_ht:montantHt,
     tva_pct:tva,
     montant_ttc:Math.round(montantHt*(1+tva/100)*100)/100,
-    recurrence:document.getElementById('nd-recur')?.value||'ponctuelle',
-    date_depense:document.getElementById('nd-date')?.value||new Date().toISOString().slice(0,10),
+    recurrence,
+    date_depense:dateDepense,
+    date_prochaine_echeance:prochaineEcheance,
     statut:'engagee',
     created_by:localStorage.getItem('sv_uid')||null,
   };
   const r=await sbFetch('expenses',{method:'POST',body});
   if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
+  logFinancialAudit('creation','expenses',r?.[0]?.id,null,body.montant_ttc,{libelle,categorie:body.categorie});
   closeModal();toast('Dépense enregistrée.','ok');loadComptaDepenses();
 }
 
@@ -14123,6 +14171,7 @@ async function sauvegarderFournisseur(){
   };
   const r=await sbFetch('vendors',{method:'POST',body});
   if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
+  logFinancialAudit('creation','vendors',r?.[0]?.id,null,null,{nom});
   closeModal();toast('Fournisseur ajouté.','ok');loadComptaDepenses();
 }
 
@@ -14213,6 +14262,7 @@ async function sauvegarderCoutsIndirects(){
     await sbFetch('cost_allocations?on_conflict=methode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{methode:'forfait_par_mission',valeur:forfait,actif:true}});
     await sbFetch('cost_allocations?on_conflict=methode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{methode:'pourcentage_ca',valeur:pct,actif:true}});
   }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
+  logFinancialAudit('modification','cost_allocations',null,null,forfait,{forfait_par_mission:forfait,pourcentage_ca:pct});
   closeModal();toast('Réglages enregistrés.','ok');loadComptaRentabilite();
 }
 
@@ -14427,6 +14477,7 @@ async function sauvegarderScenario(type){
   try{
     const r=await sbFetch('forecast_scenarios?type=eq.'+type,{method:'PATCH',body:{taux_croissance_ca_pct:ca,taux_evolution_charges_pct:ch,notes,updated_at:new Date().toISOString()}});
     if(sbErr(r)){err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+    logFinancialAudit('modification','forecast_scenarios',r?.[0]?.id,null,null,{type,taux_croissance_ca_pct:ca,taux_evolution_charges_pct:ch});
   }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
   closeModal();toast('Scénario mis à jour.','ok');loadComptaBudgets();
 }
@@ -14463,11 +14514,13 @@ async function loadComptaCommissions(){
 async function validerCommission(id){
   const r=await sbFetch('commissions?id=eq.'+id,{method:'PATCH',body:{statut:'validee'}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
+  logFinancialAudit('validation','commissions',id,null,r?.[0]?.montant_commission,{statut:'validee'});
   toast('Commission validée.','ok');loadComptaCommissions();
 }
 async function marquerCommissionPayee(id){
   const r=await sbFetch('commissions?id=eq.'+id,{method:'PATCH',body:{statut:'payee',date_paiement:new Date().toISOString().slice(0,10)}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+  logFinancialAudit('paiement','commissions',id,null,r?.[0]?.montant_commission,{statut:'payee'});
   toast('Commission marquée payée.','ok');loadComptaCommissions();
 }
 async function modalNouvelleCommission(){
@@ -14520,6 +14573,7 @@ async function sauvegarderCommission(){
   };
   const r=await sbFetch('commissions',{method:'POST',body});
   if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
+  logFinancialAudit('creation','commissions',r?.[0]?.id,null,body.montant_commission,{commercial_id:commercialId,prestation_id:prestationId});
   closeModal();toast('Commission enregistrée.','ok');loadComptaCommissions();
 }
 
@@ -14676,8 +14730,42 @@ async function sauvegarderMappingPCG(){
       const lib=document.querySelector(`.pcg-lib[data-id="${id}"]`)?.value||'';
       await sbFetch('pcg_mapping?id=eq.'+id,{method:'PATCH',body:{compte_numero:inp.value.trim(),compte_libelle:lib.trim()}});
     }
+    logFinancialAudit('modification','pcg_mapping',null,null,null,{});
   }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
   closeModal();toast('Mapping mis à jour.','ok');loadComptaFec();
+}
+
+// ── Journal d'audit financier (financial_audit_log) ─────────────────────
+let _auditLogCache=[],_auditLogFilter='all';
+const AUDIT_ACTION_LABELS={creation:'Création',modification:'Modification',cloture:'Clôture',reouverture:'Réouverture',validation:'Validation',paiement:'Paiement',provisionnement:'Provisionnement'};
+async function loadComptaAuditLog(){
+  const el=document.getElementById('audit-log-real');if(!el)return;
+  try{
+    const data=await sbFetch('financial_audit_log?select=*,profiles(prenom,nom)&order=created_at.desc&limit=300');
+    _auditLogCache=Array.isArray(data)?data:[];
+    renderAuditLog();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+}
+function filterAuditLog(f){
+  _auditLogFilter=f;
+  ['all','expenses','commissions','accounting_periods','employee_costs','tax_reserves','cost_allocations','forecast_scenarios'].forEach(id=>{const b=document.getElementById('aud-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  renderAuditLog();
+}
+function renderAuditLog(){
+  const el=document.getElementById('audit-log-real');if(!el)return;
+  let list=_auditLogCache;
+  if(_auditLogFilter!=='all')list=list.filter(a=>a.table_cible===_auditLogFilter);
+  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune entrée dans cette catégorie.</div>';return;}
+  const fmt=n=>n===null||n===undefined?'—':n.toLocaleString('fr-FR')+' €';
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Date</th><th>Acteur</th><th>Action</th><th>Table</th><th>Avant</th><th>Après</th></tr></thead><tbody>'+
+    list.slice(0,150).map(a=>`<tr>
+      <td style="color:var(--t3);font-size:11.5px">${a.created_at?new Date(a.created_at).toLocaleString('fr-FR'):'—'}</td>
+      <td class="tp">${esc((a.profiles?.prenom||'')+' '+(a.profiles?.nom||''))||'—'}</td>
+      <td><span class="bd bb"><span class="bd-d"></span>${esc(AUDIT_ACTION_LABELS[a.action]||a.action||'—')}</span></td>
+      <td class="tm" style="font-size:11.5px">${esc(a.table_cible||'—')}</td>
+      <td class="tm">${fmt(a.montant_avant)}</td>
+      <td class="tm" style="font-weight:600">${fmt(a.montant_apres)}</td>
+    </tr>`).join('')+'</tbody></table></div>';
 }
 
 async function loadComptaClotures(){
@@ -14740,6 +14828,7 @@ async function cloturerPeriode(periode,label){
   const uid=localStorage.getItem('sv_uid');
   const r=await sbFetch('accounting_periods',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{periode,statut:'cloturee',cloturee_par:uid||null,cloturee_le:new Date().toISOString()}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Clôture impossible.'),'er');return;}
+  logFinancialAudit('cloture','accounting_periods',r?.[0]?.id,null,null,{periode});
   toast(`${label} clôturé.`,'ok');loadComptaClotures();
 }
 
@@ -14747,6 +14836,7 @@ async function reouvrirPeriode(periode){
   if(!confirm('Rouvrir cette période clôturée ?'))return;
   const r=await sbFetch('accounting_periods?periode=eq.'+periode,{method:'PATCH',body:{statut:'ouverte',cloturee_par:null,cloturee_le:null}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Réouverture impossible.'),'er');return;}
+  logFinancialAudit('reouverture','accounting_periods',r?.[0]?.id,null,null,{periode});
   toast('Période rouverte.','ok');loadComptaClotures();
 }
 
@@ -14831,12 +14921,14 @@ async function provisionnerTva(){
   };
   const r=await sbFetch('tax_reserves?on_conflict=periode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Provisionnement impossible.'),'er');return;}
+  logFinancialAudit('provisionnement','tax_reserves',r?.[0]?.id,null,_tvaCalc.nette,{periode:_tvaCalc.periode});
   toast('Provision enregistrée pour ce mois.','ok');
   loadComptaTva();
 }
 async function changerStatutTva(id,statut){
   const r=await sbFetch('tax_reserves?id=eq.'+id,{method:'PATCH',body:{statut}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+  logFinancialAudit('modification','tax_reserves',id,null,null,{statut});
   toast('Statut mis à jour.','ok');
   loadComptaTva();
 }
@@ -16202,12 +16294,14 @@ async function modifierCollaborateur(id){
   if(typeContratEl){
     const salaireEl=document.getElementById('fco-salaire'),chargesEl=document.getElementById('fco-charges');
     if(typeContratEl.value==='salarie'&&salaireEl){
+      const nouveauSalaire=parseFloat(salaireEl.value||'0');
       const r2=await sbFetch('employee_costs?on_conflict=collaborateur_id',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{
         collaborateur_id:id,
-        salaire_brut_mensuel:parseFloat(salaireEl.value||'0'),
+        salaire_brut_mensuel:nouveauSalaire,
         charges_patronales_pct:parseFloat(chargesEl.value||'42'),
       }});
       if(sbErr(r2)){err.textContent='Collaborateur mis à jour, mais erreur sur la paie : '+(r2.message||'');return;}
+      logFinancialAudit('modification','employee_costs',id,null,nouveauSalaire,{collaborateur_id:id});
     }
   }
   closeModal();
@@ -16958,7 +17052,7 @@ VIEWS['admin.comptesportail']=tplComptesPortail;
 // écrans compta tels quels (lecture seule imposée par RLS, pas de duplication
 // de template).
 ['expert_comptable','auditeur'].forEach(role=>{
-  ['dash','resultat','rentabilite','budgets','factures','avoirs','depenses','frais','rem','clotures','tva'].forEach(v=>{
+  ['dash','resultat','rentabilite','budgets','factures','avoirs','depenses','frais','rem','clotures','tva','audit'].forEach(v=>{
     if(VIEWS['compta.'+v]) VIEWS[role+'.'+v]=VIEWS['compta.'+v];
   });
 });
@@ -16970,7 +17064,7 @@ VIEWS['expert_comptable.fec']=VIEWS['compta.fec'];
 // détaillés compta (rentabilité, dépenses, clôtures…) — Fouka (toujours
 // connecté en admin) doit voir tout ça directement, pas seulement via un
 // compte compta séparé.
-['resultat','rentabilite','commissions','budgets','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export','tva','fec'].forEach(v=>{
+['resultat','rentabilite','commissions','budgets','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export','tva','fec','audit'].forEach(v=>{
   if(VIEWS['compta.'+v]) VIEWS['admin.'+v]=VIEWS['compta.'+v];
 });
 
