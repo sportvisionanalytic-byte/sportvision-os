@@ -698,7 +698,9 @@ const NAV={
     {id:'incidents',lb:'Incidents',ic:'alert'},
     {type:'sep',lb:'Finances & Documents'},
     {id:'fin',lb:'Finances',ic:'fin'},
+    {id:'resultat',lb:'Compte de résultat',ic:'fin'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
+    {id:'commissions',lb:'Commissions',ic:'fin'},
     {id:'rapprochement',lb:'Rapprochement',ic:'check'},
     {id:'factures',lb:'Factures',ic:'doc'},
     {id:'acomptes',lb:'Acomptes',ic:'fin'},
@@ -814,8 +816,10 @@ const NAV={
   compta:[
     {type:'sep',lb:'Pilotage'},
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    {id:'resultat',lb:'Compte de résultat',ic:'fin'},
     {id:'rapprochement',lb:'Rapprochement',ic:'check'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
+    {id:'commissions',lb:'Commissions',ic:'fin'},
     {type:'sep',lb:'Facturation'},
     {id:'factures',lb:'Factures',ic:'doc'},
     {id:'acomptes',lb:'Acomptes',ic:'fin'},
@@ -859,7 +863,9 @@ const NAV={
   expert_comptable:[
     {type:'sep',lb:'Pilotage'},
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    {id:'resultat',lb:'Compte de résultat',ic:'fin'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
+    {id:'commissions',lb:'Commissions',ic:'fin'},
     {type:'sep',lb:'Facturation'},
     {id:'factures',lb:'Factures',ic:'doc'},
     {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
@@ -876,6 +882,7 @@ const NAV={
   auditeur:[
     {type:'sep',lb:'Pilotage'},
     {id:'dash',lb:'Tableau de bord',ic:'dash'},
+    {id:'resultat',lb:'Compte de résultat',ic:'fin'},
     {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
     {type:'sep',lb:'Facturation'},
     {id:'factures',lb:'Factures',ic:'doc'},
@@ -2061,7 +2068,7 @@ const VIEWS={
     <div id="compta-rem-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.rentabilite':()=>`
-    <div class="sh"><div class="sh-t">Analyse de rentabilité</div><div class="sh-a"><button class="btn bg2 bs" onclick="exportCSV('rentabilite-missions')">Export CSV</button></div></div>
+    <div class="sh"><div class="sh-t">Analyse de rentabilité</div><div class="sh-a" style="display:flex;gap:8px">${['admin','compta'].includes(S.role)?`<button class="btn bg2 bs" onclick="modalReglagesCoutsIndirects()">⚙ Réglages coûts indirects</button>`:''}<button class="btn bg2 bs" onclick="exportCSV('rentabilite-missions')">Export CSV</button></div></div>
     <div class="kpi-g" style="grid-template-columns:repeat(5,1fr);margin-bottom:13px">
       <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA ce mois (HT)</div><div class="kpi-v" id="rent-kpi-ca" style="font-size:18px">—</div><span class="kpi-d dnt">missions du mois</span></div>
       <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Coûts directs</div><div class="kpi-v" id="rent-kpi-ch" style="font-size:18px">—</div><span class="kpi-d dnt">rém. + frais + dépenses</span></div>
@@ -2077,6 +2084,30 @@ const VIEWS={
       <div class="cd-h"><div class="cd-t">Rentabilité par client (6 derniers mois)</div></div>
       <div id="compta-rent-client"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
+
+  'compta.resultat':()=>`
+    <div class="sh"><div><div class="sh-t">Compte de résultat</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Vue de pilotage interne — pas un document comptable légal</div></div></div>
+    <div class="kpi-g" style="grid-template-columns:repeat(5,1fr);margin-bottom:13px">
+      <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Revenus (mois)</div><div class="kpi-v" id="res-kpi-rev" style="font-size:18px">—</div><span class="kpi-d dnt">missions payées</span></div>
+      <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Coûts missions (mois)</div><div class="kpi-v" id="res-kpi-cm" style="font-size:18px">—</div><span class="kpi-d dnt">rém. + frais + dép. + indirects</span></div>
+      <div class="kpi" style="--kl:#E8A33D"><div class="kpi-ey">Masse salariale chargée</div><div class="kpi-v" id="res-kpi-sal" style="font-size:18px">—</div><span class="kpi-d dnt">salariés actifs, mensualisée</span></div>
+      <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Commissions (mois)</div><div class="kpi-v" id="res-kpi-com" style="font-size:18px">—</div><span class="kpi-d dnt">équipe commerciale</span></div>
+      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Résultat net (mois)</div><div class="kpi-v" id="res-kpi-net" style="font-size:18px">—</div><span class="kpi-d dnt">tous coûts déduits</span></div>
+    </div>
+    <div class="cd">
+      <div class="cd-h"><div class="cd-t">Tendance missions sur 6 mois</div></div>
+      <div style="font-size:11.5px;color:var(--t3);padding:0 0 8px 0">CA et coûts liés aux missions uniquement — hors masse salariale et commissions (KPIs ci-dessus, mois en cours seulement, la paie n'étant pas historisée par mois).</div>
+      <div id="res-tendance-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
+
+  'compta.commissions':()=>`
+    <div class="sh"><div class="sh-t">Commissions commerciales</div>${['admin','compta'].includes(S.role)?`<button class="btn bp bs" onclick="modalNouvelleCommission()">+ Commission</button>`:''}</div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Dues ce mois</div><div class="fs-v" id="com-kpi-dues" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Payées ce mois</div><div class="fs-v" id="com-kpi-payees" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">En attente de validation</div><div class="fs-v" id="com-kpi-attente">—</div></div>
+    </div>
+    <div id="commissions-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'compta.clotures':()=>`
     <div class="sh"><div class="sh-t">Clôtures mensuelles</div></div>
@@ -2907,6 +2938,8 @@ async function loadViewData(role,view){
   if(_isComptaLike&&view==='rem') await loadComptaRem();
   if(_isComptaLike&&view==='rentabilite') await loadComptaRentabilite();
   if(_isComptaLike&&view==='clotures') await loadComptaClotures();
+  if(_isComptaLike&&view==='resultat') await loadComptaResultat();
+  if(_isComptaLike&&view==='commissions') await loadComptaCommissions();
   // Admin a aussi accès aux écrans compta détaillés (cf. NAV.admin) — gardé
   // séparé de _isComptaLike pour ne pas dupliquer les dispatches 'dash'/'docs'
   // déjà gérés plus haut pour admin (loadAdminDash, loadDocuments).
@@ -2921,6 +2954,8 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='clotures') await loadComptaClotures();
   if(role==='admin'&&view==='paiements') await loadPaiements();
   if(role==='admin'&&view==='rapprochement') await loadRapprochement();
+  if(role==='admin'&&view==='resultat') await loadComptaResultat();
+  if(role==='admin'&&view==='commissions') await loadComptaCommissions();
   if((role==='prod'||role==='admin')&&view==='incidents') await loadIncidents();
   if((role==='com'||role==='admin')&&view==='pipeline') await loadPipeline();
   if(role==='com'&&view==='dash') await loadComDash();
@@ -14035,6 +14070,179 @@ async function loadComptaRentabilite(){
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';if(elClient)elClient.innerHTML='';console.error(e);}
 }
 
+async function modalReglagesCoutsIndirects(){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  let rows=[];
+  try{rows=await sbFetch('cost_allocations?select=*&actif=eq.true')||[];}catch(e){}
+  const forfait=rows.find(r=>r.methode==='forfait_par_mission')?.valeur??0;
+  const pct=rows.find(r=>r.methode==='pourcentage_ca')?.valeur??0;
+  openModal(`<div class="mh"><div class="mt">Réglages coûts indirects</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Ces montants sont ajoutés au coût de chaque mission dans le calcul de rentabilité, pour représenter les charges fixes non affectées directement (matériel, licences, structure…).</div>
+      <div><label style="${L}">Forfait fixe par mission (€)</label>
+        <input id="rci-forfait" type="number" step="0.01" min="0" class="fi" value="${forfait}">
+      </div>
+      <div style="margin-top:10px"><label style="${L}">Pourcentage du CA de la mission (%)</label>
+        <input id="rci-pct" type="number" step="0.1" min="0" class="fi" value="${pct}">
+      </div>
+      <div id="rci-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:8px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="sauvegarderCoutsIndirects()">Enregistrer</button>
+    </div>`);
+}
+async function sauvegarderCoutsIndirects(){
+  const err=document.getElementById('rci-err');
+  const forfait=parseFloat(document.getElementById('rci-forfait')?.value||'0');
+  const pct=parseFloat(document.getElementById('rci-pct')?.value||'0');
+  try{
+    // Upsert sur la contrainte unique (methode) — cost_allocations n'a qu'une
+    // ligne active par méthode (migration-finance-lot0b.sql).
+    await sbFetch('cost_allocations?on_conflict=methode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{methode:'forfait_par_mission',valeur:forfait,actif:true}});
+    await sbFetch('cost_allocations?on_conflict=methode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{methode:'pourcentage_ca',valeur:pct,actif:true}});
+  }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
+  closeModal();toast('Réglages enregistrés.','ok');loadComptaRentabilite();
+}
+
+async function loadComptaResultat(){
+  const elTend=document.getElementById('res-tendance-real');
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
+  const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+  try{
+    const now=new Date();
+    const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
+    const sixMoisAgo=new Date(now.getFullYear(),now.getMonth()-5,1).toISOString().slice(0,10);
+    const [missions,employeeCosts,commissionsData]=await Promise.all([
+      sbFetch('v_rentabilite_missions?select=*&date_prestation=gte.'+sixMoisAgo+'&order=date_prestation.asc&limit=500'),
+      sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct').catch(()=>[]),
+      sbFetch('commissions?select=montant_commission,statut,date_calcul&date_calcul=gte.'+mStart+'&date_calcul=lt.'+mNext).catch(()=>[]),
+    ]);
+    const list=Array.isArray(missions)?missions:[];
+    const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart&&p.date_prestation<mNext);
+    const revenus=moisList.reduce((s,p)=>s+(p.revenu_ht||0),0);
+    const coutsMissions=moisList.reduce((s,p)=>s+(p.cout_remunerations||0)+(p.cout_frais||0)+(p.cout_depenses_directes||0)+(p.cout_indirect_alloue||0),0);
+    const masseSalariale=(Array.isArray(employeeCosts)?employeeCosts:[]).reduce((s,e)=>s+(e.salaire_brut_mensuel||0)*(1+(e.charges_patronales_pct||0)/100),0);
+    const commissionsMois=(Array.isArray(commissionsData)?commissionsData:[]).reduce((s,c)=>s+(c.montant_commission||0),0);
+    const net=revenus-coutsMissions-masseSalariale-commissionsMois;
+    set('res-kpi-rev',fmt(revenus));set('res-kpi-cm',fmt(coutsMissions));set('res-kpi-sal',fmt(masseSalariale));set('res-kpi-com',fmt(commissionsMois));
+    const netEl=document.getElementById('res-kpi-net');if(netEl){netEl.textContent=fmt(net);netEl.style.color=net>=0?'var(--ok)':'var(--er)';}
+    if(elTend){
+      const byMonth={};
+      list.forEach(p=>{
+        const m=(p.date_prestation||'').slice(0,7);
+        if(!byMonth[m])byMonth[m]={ca:0,couts:0};
+        byMonth[m].ca+=(p.revenu_ht||0);
+        byMonth[m].couts+=(p.cout_remunerations||0)+(p.cout_frais||0)+(p.cout_depenses_directes||0)+(p.cout_indirect_alloue||0);
+      });
+      const mois=Object.keys(byMonth).sort();
+      elTend.innerHTML=mois.length?'<div class="tw"><table><thead><tr><th>Mois</th><th>CA missions HT</th><th>Coûts missions</th><th>Marge missions</th></tr></thead><tbody>'+
+        mois.map(m=>{
+          const v=byMonth[m];const marge=v.ca-v.couts;
+          const label=new Date(m+'-01').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+          return`<tr><td style="text-transform:capitalize">${label}</td><td class="tm">${fmt(v.ca)}</td><td class="tm" style="color:var(--er)">${fmt(v.couts)}</td><td class="tm" style="font-weight:600;color:${marge>=0?'var(--ok)':'var(--er)'}">${fmt(marge)}</td></tr>`;
+        }).join('')+'</tbody></table></div>':
+        '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Pas encore de données.</div>';
+    }
+  }catch(e){
+    if(elTend)elTend.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';
+    console.error(e);
+  }
+}
+
+let _commissionsCache=[];
+async function loadComptaCommissions(){
+  const el=document.getElementById('commissions-real');if(!el)return;
+  try{
+    const data=await sbFetch('commissions?select=id,base_calcul,taux_pct,montant_commission,statut,date_calcul,date_paiement,profiles!commercial_id(prenom,nom),prestations(reference,date_prestation)&order=date_calcul.desc&limit=200');
+    _commissionsCache=Array.isArray(data)?data:[];
+    const now=new Date();
+    const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const moisList=_commissionsCache.filter(c=>c.date_calcul>=mStart);
+    const dues=moisList.filter(c=>c.statut!=='payee').reduce((s,c)=>s+(c.montant_commission||0),0);
+    const payees=moisList.filter(c=>c.statut==='payee').reduce((s,c)=>s+(c.montant_commission||0),0);
+    const attente=_commissionsCache.filter(c=>c.statut==='calculee').length;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('com-kpi-dues',dues.toLocaleString('fr-FR')+' €');set('com-kpi-payees',payees.toLocaleString('fr-FR')+' €');set('com-kpi-attente',attente);
+    const canManage=['admin','compta'].includes(S.role);
+    el.innerHTML=_commissionsCache.length?'<div class="tw"><table><thead><tr><th>Commercial</th><th>Mission</th><th>Base</th><th>Taux</th><th>Commission</th><th>Statut</th><th></th></tr></thead><tbody>'+
+      _commissionsCache.slice(0,50).map(c=>`<tr>
+        <td class="tp">${esc((c.profiles?.prenom||'')+' '+(c.profiles?.nom||''))}</td>
+        <td>${esc(c.prestations?.reference||'—')}</td>
+        <td class="tm">${(c.base_calcul||0).toLocaleString('fr-FR')} €</td>
+        <td class="tm">${c.taux_pct||0}%</td>
+        <td class="tm" style="font-weight:600">${(c.montant_commission||0).toLocaleString('fr-FR')} €</td>
+        <td><span class="bd ${c.statut==='payee'?'ba':c.statut==='validee'?'bb':'bw'}"><span class="bd-d"></span>${esc(c.statut||'—')}</span></td>
+        <td>${canManage&&c.statut==='calculee'?`<button style="padding:4px 9px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:6px;color:var(--acc);font-size:11px;font-weight:600;cursor:pointer" onclick="validerCommission('${c.id}')">Valider</button>`:''}
+        ${canManage&&c.statut==='validee'?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer" onclick="marquerCommissionPayee('${c.id}')">Marquer payée</button>`:''}</td>
+      </tr>`).join('')+'</tbody></table></div>':
+      '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune commission enregistrée.</div>';
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table commissions non disponible (migration-finance-lot0.sql à exécuter).</div>';console.error(e);}
+}
+async function validerCommission(id){
+  const r=await sbFetch('commissions?id=eq.'+id,{method:'PATCH',body:{statut:'validee'}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Validation impossible.'),'er');return;}
+  toast('Commission validée.','ok');loadComptaCommissions();
+}
+async function marquerCommissionPayee(id){
+  const r=await sbFetch('commissions?id=eq.'+id,{method:'PATCH',body:{statut:'payee',date_paiement:new Date().toISOString().slice(0,10)}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+  toast('Commission marquée payée.','ok');loadComptaCommissions();
+}
+async function modalNouvelleCommission(){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  let commerciaux=[],prestations=[];
+  try{
+    [commerciaux,prestations]=await Promise.all([
+      sbFetch('profiles?select=id,prenom,nom&role=eq.com&order=nom.asc'),
+      sbFetch('prestations?select=id,reference,montant_ht,clients(nom)&statut_financier=in.(payée,facturée,partiellement_payée)&order=date_prestation.desc&limit=100'),
+    ]);
+  }catch(e){}
+  openModal(`<div class="mh"><div class="mt">Nouvelle commission</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div><label style="${L}">Commercial *</label>
+        <select id="nco-commercial" class="fi">${(commerciaux||[]).map(c=>`<option value="${c.id}">${esc((c.prenom||'')+' '+(c.nom||''))}</option>`).join('')}</select>
+      </div>
+      <div style="margin-top:10px"><label style="${L}">Mission *</label>
+        <select id="nco-prestation" class="fi">${(prestations||[]).map(p=>`<option value="${p.id}" data-montant="${p.montant_ht||0}">${esc(p.reference||'')} — ${esc(p.clients?.nom||'')} (${(p.montant_ht||0).toLocaleString('fr-FR')} € HT)</option>`).join('')}</select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+        <div><label style="${L}">Base de calcul (€ HT)</label><input id="nco-base" type="number" step="0.01" min="0" class="fi" value="${prestations?.[0]?.montant_ht||0}"></div>
+        <div><label style="${L}">Taux (%)</label><input id="nco-taux" type="number" step="0.1" min="0" class="fi" value="5"></div>
+      </div>
+      <div id="nco-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:8px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="sauvegarderCommission()">Enregistrer</button>
+    </div>`);
+  document.getElementById('nco-prestation')?.addEventListener('change',function(){
+    const montant=this.selectedOptions[0]?.dataset.montant||0;
+    const baseEl=document.getElementById('nco-base');if(baseEl)baseEl.value=montant;
+  });
+}
+async function sauvegarderCommission(){
+  const err=document.getElementById('nco-err');
+  const commercialId=document.getElementById('nco-commercial')?.value;
+  const prestationId=document.getElementById('nco-prestation')?.value;
+  const base=parseFloat(document.getElementById('nco-base')?.value||'0');
+  const taux=parseFloat(document.getElementById('nco-taux')?.value||'0');
+  if(!commercialId||!prestationId){err.textContent='Commercial et mission sont obligatoires.';return;}
+  const body={
+    commercial_id:commercialId,
+    prestation_id:prestationId,
+    base_calcul:base,
+    taux_pct:taux,
+    montant_commission:Math.round(base*taux/100*100)/100,
+    statut:'calculee',
+    created_by:localStorage.getItem('sv_uid')||null,
+  };
+  const r=await sbFetch('commissions',{method:'POST',body});
+  if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible d\'enregistrer.');return;}
+  closeModal();toast('Commission enregistrée.','ok');loadComptaCommissions();
+}
+
 async function loadComptaClotures(){
   const el=document.getElementById('compta-clotures-real');if(!el)return;
   const now=new Date();
@@ -15375,7 +15583,7 @@ async function loadCollaborateurs(){
   try{
     const _colRole=localStorage.getItem('sv_role');
     const _colFilter=_colRole==='prod'?'&role=in.(photo,cm)':'';
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal'+_colFilter+'&order=role.asc,nom.asc');
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat'+_colFilter+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
@@ -15398,11 +15606,16 @@ async function loadCollaborateurs(){
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
-function modalModifierCollaborateur(idx){
+async function modalModifierCollaborateur(idx){
   const t=_colsCache[idx];
   if(!t)return;
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   const rLabels={'admin':'Administrateur','sec':'Secrétaire','prod':'Resp. Production','photo':'Photographe','cm':'Community Manager','compta':'Comptable','com':'Commercial'};
+  // La paie (salaire, charges) vit dans employee_costs (RLS admin/compta
+  // uniquement) — pas sur profiles, lisible par tout collaborateur connecté.
+  const canSeePaie=['admin','compta'].includes(S.role);
+  let ec=null;
+  if(canSeePaie){try{const r=await sbFetch('employee_costs?select=*&collaborateur_id=eq.'+t.id);ec=Array.isArray(r)&&r[0]?r[0]:null;}catch(e){}}
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Modifier le collaborateur</div>
     <div style="font-size:12px;color:var(--t3);margin-bottom:20px">${rLabels[t.role]||t.role}</div>
@@ -15418,25 +15631,57 @@ function modalModifierCollaborateur(idx){
         <div><label style="${lbl}">Code postal</label><input id="fco-cp" class="l-inp" value="${t.code_postal||''}" placeholder="75000" style="height:38px"></div>
       </div>
       <div style="font-size:11px;color:var(--t3);background:rgba(255,255,255,.03);border:1px solid var(--b1);border-radius:8px;padding:8px 10px">Le rôle se change depuis <strong>Utilisateurs & accès</strong>.</div>
+      ${canSeePaie?`
+      <div style="border-top:1px solid var(--b1);padding-top:12px;margin-top:2px">
+        <div style="font-size:12px;font-weight:650;color:var(--t1);margin-bottom:10px">Paie & contrat <span style="font-weight:400;color:var(--t3);font-size:11px">(visible admin/comptable uniquement)</span></div>
+        <div><label style="${lbl}">Type de contrat</label>
+          <select id="fco-typecontrat" class="l-inp" style="height:38px">
+            <option value="freelance"${t.type_contrat==='freelance'||!t.type_contrat?' selected':''}>Freelance</option>
+            <option value="salarie"${t.type_contrat==='salarie'?' selected':''}>Salarié</option>
+            <option value="stagiaire"${t.type_contrat==='stagiaire'?' selected':''}>Stagiaire</option>
+          </select>
+        </div>
+        <div id="fco-paie-wrap" style="display:${t.type_contrat==='salarie'?'grid':'none'};grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+          <div><label style="${lbl}">Salaire brut mensuel (€)</label><input id="fco-salaire" type="number" step="0.01" min="0" class="l-inp" value="${ec?.salaire_brut_mensuel||''}" style="height:38px"></div>
+          <div><label style="${lbl}">Charges patronales (%)</label><input id="fco-charges" type="number" step="0.1" min="0" class="l-inp" value="${ec?.charges_patronales_pct??42}" style="height:38px"></div>
+        </div>
+      </div>`:''}
       <div id="fco-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
         <button class="btn bg2" onclick="closeModal()">Annuler</button>
         <button class="btn bp" onclick="modifierCollaborateur('${t.id}')">Enregistrer</button>
       </div>
     </div>`);
+  document.getElementById('fco-typecontrat')?.addEventListener('change',function(){
+    const w=document.getElementById('fco-paie-wrap');if(w)w.style.display=this.value==='salarie'?'grid':'none';
+  });
 }
 async function modifierCollaborateur(id){
   const err=document.getElementById('fco-err');
   err.textContent='Enregistrement…';
-  const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{
+  const body={
     prenom:document.getElementById('fco-prenom').value.trim()||null,
     nom:document.getElementById('fco-nom').value.trim()||null,
     telephone:document.getElementById('fco-tel').value.trim()||null,
     adresse:document.getElementById('fco-adresse').value.trim()||null,
     ville:document.getElementById('fco-ville').value.trim()||null,
     code_postal:document.getElementById('fco-cp').value.trim()||null,
-  }});
+  };
+  const typeContratEl=document.getElementById('fco-typecontrat');
+  if(typeContratEl)body.type_contrat=typeContratEl.value;
+  const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body});
   if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Impossible de modifier.');return;}
+  if(typeContratEl){
+    const salaireEl=document.getElementById('fco-salaire'),chargesEl=document.getElementById('fco-charges');
+    if(typeContratEl.value==='salarie'&&salaireEl){
+      const r2=await sbFetch('employee_costs?on_conflict=collaborateur_id',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{
+        collaborateur_id:id,
+        salaire_brut_mensuel:parseFloat(salaireEl.value||'0'),
+        charges_patronales_pct:parseFloat(chargesEl.value||'42'),
+      }});
+      if(sbErr(r2)){err.textContent='Collaborateur mis à jour, mais erreur sur la paie : '+(r2.message||'');return;}
+    }
+  }
   closeModal();
   toast('Collaborateur mis à jour.','ok');
   loadCollaborateurs();
@@ -16185,17 +16430,18 @@ VIEWS['admin.comptesportail']=tplComptesPortail;
 // écrans compta tels quels (lecture seule imposée par RLS, pas de duplication
 // de template).
 ['expert_comptable','auditeur'].forEach(role=>{
-  ['dash','rentabilite','factures','avoirs','depenses','frais','rem','clotures'].forEach(v=>{
+  ['dash','resultat','rentabilite','factures','avoirs','depenses','frais','rem','clotures'].forEach(v=>{
     if(VIEWS['compta.'+v]) VIEWS[role+'.'+v]=VIEWS['compta.'+v];
   });
 });
+VIEWS['expert_comptable.commissions']=VIEWS['compta.commissions'];
 VIEWS['expert_comptable.documents']=()=>_documentsView('expert_comptable');
 VIEWS['expert_comptable.export']=VIEWS['compta.export'];
 // Admin voyait uniquement un résumé ("Finances") sans accès aux écrans
 // détaillés compta (rentabilité, dépenses, clôtures…) — Fouka (toujours
 // connecté en admin) doit voir tout ça directement, pas seulement via un
 // compte compta séparé.
-['rentabilite','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export'].forEach(v=>{
+['resultat','rentabilite','commissions','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export'].forEach(v=>{
   if(VIEWS['compta.'+v]) VIEWS['admin.'+v]=VIEWS['compta.'+v];
 });
 
@@ -19467,10 +19713,10 @@ function closeMobFilter(){
 
 // ── More Menu ─────────────────────────────────────────────────────────────
 const MOB_MORE_ITEMS={
-  admin:[{id:'crm',lb:'Clients',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipes',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
+  admin:[{id:'crm',lb:'Clients',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipes',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
-  compta:[{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
+  compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
