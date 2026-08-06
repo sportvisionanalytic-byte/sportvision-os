@@ -8487,10 +8487,19 @@ const AVOIR_STATUTS={
   comptabilise:{lb:'Comptabilisé',cl:'#366BFF',bc:'rgba(54,107,255,.12)'},
   rembourse:{lb:'Remboursé',cl:'#2ECC8A',bc:'rgba(46,204,138,.12)'},
 };
+// Taxonomie Banque de contrats (migration-contrats-v2-types-banque.sql). Les anciennes
+// valeurs (abonnement_mensuel, abonnement_annuel, forfait_saison, forfait_evenement,
+// partenariat, prestations_ponctuelles) sont remappées par cette migration et ne doivent
+// plus apparaître en base — gardées en repli ici uniquement pour un contrat déjà ouvert
+// dans le navigateur au moment où la migration tourne côté serveur.
 const CONTRAT_TYPES_LB={
+  ponctuel:'Prestation ponctuelle',full_communication:'Full Communication',
+  club_plus:'Abonnement Club+',coach_academie:'Coach / Académie',
+  evenement:'Événement',joueur:'Joueur',sponsoring:'Sponsoring',
+  pilote:'Contrat pilote',autre:'Autre',
   abonnement_mensuel:'Abonnement mensuel',abonnement_annuel:'Abonnement annuel',
   forfait_saison:'Forfait saison',forfait_evenement:'Forfait événement',
-  partenariat:'Partenariat',prestations_ponctuelles:'Ponctuel',autre:'Autre',
+  partenariat:'Partenariat',prestations_ponctuelles:'Ponctuel',
 };
 
 function _documentsView(role){
@@ -15852,7 +15861,7 @@ async function loadSecContrats(){
     const SL2={'actif':'Actif','brouillon':'Brouillon','suspendu':'Suspendu','résilié':'Résilié','expiré':'Expiré'};
     el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Type</th><th>Client</th><th>Mensuel</th><th>Début</th><th>Fin</th><th>Statut</th><th></th></tr></thead><tbody>'+
       list.map(c=>`<tr>
-        <td>${c.type_contrat||'—'}</td>
+        <td>${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—'}</td>
         <td class="tp">${c.clients?.nom||'—'}</td>
         <td class="tm" style="font-weight:600">${c.montant_mensuel?c.montant_mensuel.toLocaleString('fr-FR')+' €/mois':'—'}</td>
         <td>${c.date_debut?new Date(c.date_debut).toLocaleDateString('fr-FR'):'—'}</td>
@@ -15868,7 +15877,7 @@ async function loadSecAbonnements(){
   const el=document.getElementById('sec-abonnements-real');
   if(!el)return;
   try{
-    const data=await sbFetch('contrats?select=id,type_contrat,statut,montant_mensuel,frequence,date_fin,renouvellement_auto,clients(nom)&type_contrat=in.(abonnement_mensuel,abonnement_annuel,forfait_saison)&order=date_fin.asc&limit=100');
+    const data=await sbFetch('contrats?select=id,type_contrat,statut,montant_mensuel,frequence,date_fin,renouvellement_auto,clients(nom)&type_contrat=in.(full_communication,club_plus)&order=date_fin.asc&limit=100');
     const list=Array.isArray(data)?data:[];
     const now=new Date();const in30=new Date(now);in30.setDate(in30.getDate()+30);
     const kact=list.filter(c=>c.statut==='actif').length;
@@ -15879,7 +15888,7 @@ async function loadSecAbonnements(){
     el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Club / Client</th><th>Type</th><th>Mensuel</th><th>Fin</th><th>Renouvellement</th><th>Statut</th></tr></thead><tbody>'+
       list.map(c=>`<tr>
         <td class="tp">${c.clients?.nom||'—'}</td>
-        <td>${c.type_contrat?.replace('_',' ')||'—'}</td>
+        <td>${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—'}</td>
         <td class="tm" style="font-weight:600">${c.montant_mensuel?c.montant_mensuel.toLocaleString('fr-FR')+' €':'—'}</td>
         <td ${c.date_fin&&new Date(c.date_fin)<=in30?'style="color:var(--wa);font-weight:600"':''}>${c.date_fin?new Date(c.date_fin).toLocaleDateString('fr-FR'):'—'}</td>
         <td>${c.renouvellement_auto?'<span style="color:var(--ok);font-size:11px;font-weight:600">Auto</span>':'<span style="color:var(--t3);font-size:11px">Manuel</span>'}</td>
@@ -18549,7 +18558,7 @@ async function loadContrats(){
     <thead><tr style="border-bottom:1px solid var(--b1)">${['Client','Type','Statut','Début','Fin','Montant/mois','Renouvellement','Actions'].map(h=>`<th style="text-align:left;padding:10px 12px;font-size:11px;color:var(--t3);font-weight:600;white-space:nowrap">${h}</th>`).join('')}</tr></thead>
     <tbody>${list.map(c=>`<tr style="border-bottom:1px solid rgba(255,255,255,.04)" onmouseover="this.style.background='rgba(255,255,255,.025)'" onmouseout="this.style.background=''">
       <td style="padding:10px 12px;font-weight:500;color:var(--t1)">${c.clients?.nom||'—'}</td>
-      <td style="padding:10px 12px;color:var(--t2)">${(c.type_contrat||'—').replace(/_/g,' ')}</td>
+      <td style="padding:10px 12px;color:var(--t2)">${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—'}</td>
       <td style="padding:10px 12px"><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${(SC[c.statut]||'var(--t3)')}22;color:${SC[c.statut]||'var(--t3)'}">${c.statut||'—'}</span></td>
       <td style="padding:10px 12px;color:var(--t3)">${c.date_debut?fd(c.date_debut):'—'}</td>
       <td style="padding:10px 12px;color:var(--t3)">${c.date_fin?fd(c.date_fin):'—'}</td>
@@ -18571,8 +18580,11 @@ function modalNouveauContrat(){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">TYPE</label>
           <select id="nc-type" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
-            <option value="abonnement_mensuel">Abonnement mensuel</option><option value="abonnement_annuel">Abonnement annuel</option>
-            <option value="forfait_saison">Forfait saison</option><option value="ponctuel">Prestation ponctuelle</option><option value="partenariat">Partenariat</option>
+            <option value="ponctuel">Prestation ponctuelle</option><option value="full_communication">Full Communication</option>
+            <option value="club_plus">Abonnement Club+</option><option value="coach_academie">Coach / Académie</option>
+            <option value="evenement">Événement</option><option value="joueur">Joueur</option>
+            <option value="sponsoring">Sponsoring</option><option value="pilote">Contrat pilote</option>
+            <option value="autre">Autre</option>
           </select></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">STATUT</label>
           <select id="nc-statut" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
@@ -18664,11 +18676,15 @@ async function modalContratFromDevis(devisId){
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">TYPE DE CONTRAT</label>
             <select id="nc-type" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
-              <option value="forfait_saison">Forfait saison</option>
-              <option value="partenariat">Partenariat</option>
-              <option value="abonnement_annuel">Abonnement annuel</option>
-              <option value="abonnement_mensuel">Abonnement mensuel</option>
               <option value="ponctuel">Prestation ponctuelle</option>
+              <option value="full_communication">Full Communication</option>
+              <option value="club_plus">Abonnement Club+</option>
+              <option value="coach_academie">Coach / Académie</option>
+              <option value="evenement">Événement</option>
+              <option value="joueur">Joueur</option>
+              <option value="sponsoring">Sponsoring</option>
+              <option value="pilote">Contrat pilote</option>
+              <option value="autre">Autre</option>
             </select>
           </div>
           <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">STATUT</label>
@@ -18726,11 +18742,15 @@ async function modalEditerContrat(id){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">TYPE</label>
           <select id="ec-type" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
-            <option value="abonnement_mensuel"${c.type_contrat==='abonnement_mensuel'?' selected':''}>Abonnement mensuel</option>
-            <option value="abonnement_annuel"${c.type_contrat==='abonnement_annuel'?' selected':''}>Abonnement annuel</option>
-            <option value="forfait_saison"${c.type_contrat==='forfait_saison'?' selected':''}>Forfait saison</option>
-            <option value="ponctuel"${c.type_contrat==='ponctuel'?' selected':''}>Ponctuelle</option>
-            <option value="partenariat"${c.type_contrat==='partenariat'?' selected':''}>Partenariat</option>
+            <option value="ponctuel"${c.type_contrat==='ponctuel'?' selected':''}>Prestation ponctuelle</option>
+            <option value="full_communication"${c.type_contrat==='full_communication'?' selected':''}>Full Communication</option>
+            <option value="club_plus"${c.type_contrat==='club_plus'?' selected':''}>Abonnement Club+</option>
+            <option value="coach_academie"${c.type_contrat==='coach_academie'?' selected':''}>Coach / Académie</option>
+            <option value="evenement"${c.type_contrat==='evenement'?' selected':''}>Événement</option>
+            <option value="joueur"${c.type_contrat==='joueur'?' selected':''}>Joueur</option>
+            <option value="sponsoring"${c.type_contrat==='sponsoring'?' selected':''}>Sponsoring</option>
+            <option value="pilote"${c.type_contrat==='pilote'?' selected':''}>Contrat pilote</option>
+            <option value="autre"${c.type_contrat==='autre'?' selected':''}>Autre</option>
           </select></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">STATUT</label>
           <select id="ec-statut" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
