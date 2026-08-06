@@ -215,12 +215,16 @@ section{position:relative}
           <a href="prestations.html" class="nav-dropdown-all">Toutes les prestations →</a>
         </div>
       </div>
-      <a href="club-plus.html">Club+</a>
-      <a href="full-communication.html">Full Communication</a>
+      <div class="nav-item">
+        <a href="club-plus.html">Solutions clubs <span class="nav-caret">▾</span></a>
+        <div class="nav-dropdown">
+          <a href="club-plus.html">Club+</a>
+          <a href="full-communication.html">Full Communication</a>
+        </div>
+      </div>
       <div class="nav-item">
         <a href="accompagnements.html">Accompagnements <span class="nav-caret">▾</span></a>
         <div class="nav-dropdown">
-          <a href="club-plus.html">Clubs</a>
           <a href="accompagnements-academies.html">Académies</a>
           <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
           <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -256,12 +260,16 @@ section{position:relative}
       <a href="prestations.html">Toutes les prestations →</a>
     </div>
   </details>
-  <a href="club-plus.html">Club+</a>
-  <a href="full-communication.html">Full Communication</a>
+  <details class="mobile-nav-group">
+    <summary>Solutions clubs</summary>
+    <div class="sub-links">
+      <a href="club-plus.html">Club+</a>
+      <a href="full-communication.html">Full Communication</a>
+    </div>
+  </details>
   <details class="mobile-nav-group">
     <summary>Accompagnements</summary>
     <div class="sub-links">
-      <a href="club-plus.html">Clubs</a>
       <a href="accompagnements-academies.html">Académies</a>
       <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
       <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -557,6 +565,20 @@ document.getElementById('need-grid').addEventListener('click', (e) => {
   document.getElementById('btn-step1-next').disabled = false;
 });
 document.getElementById('btn-step1-next').addEventListener('click', () => goToStep(2));
+
+// ── Arrivée depuis le sélecteur rapide de la home (?besoin=match-photo) :
+//    pré-sélectionne la carte correspondante et avance directement à
+//    l'étape 2, pour épargner un clic à quelqu'un qui a déjà précisé
+//    son besoin ──
+(function preselectFromQuery(){
+  const params = new URLSearchParams(location.search);
+  const besoin = params.get('besoin');
+  if (!besoin) return;
+  const card = document.querySelector('.need-card[data-slug="' + besoin + '"]');
+  if (!card) return;
+  card.click();
+  goToStep(2);
+})();
 
 // ── Étape 2 : où & quand + vérification de disponibilité ──
 let dispoTimer = null;
