@@ -545,24 +545,25 @@ section{position:relative}
   <div class="container">
     <div class="section-head reveal">
       <h2>Réalisations</h2>
-      <p>Un aperçu du type de contenus produits pour nos clubs, joueurs, académies et événements partenaires — en attendant la mise en ligne de vraies productions.</p>
+      <p>Photos réelles issues de nos shootings clubs et joueurs, aux côtés d'exemples de formats vidéo et supports graphiques que nous produisons.</p>
     </div>
     <div class="gallery-filters reveal">
       <button class="tab-btn on" data-filter="tous">Tous</button>
       <button class="tab-btn" data-filter="video">Vidéo</button>
       <button class="tab-btn" data-filter="photo">Photo</button>
       <button class="tab-btn" data-filter="affiche">Affiches</button>
-      <button class="tab-btn" data-filter="evenement">Événements</button>
     </div>
     <div class="gallery-grid reveal" id="gallery-grid">
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-action-sportvision.jpg);background-size:cover;background-position:center 20%"><div class="overlay"><div class="cap"><b>Entraînement</b><span>Captation terrain</span></div></div></div>
       <div class="gallery-item" data-cat="video"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Highlight match</b><span>Captation + montage vertical</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><div class="overlay"><div class="cap"><b>Media Day</b><span>Portraits d'équipe</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/tennis-action-01.jpg);background-size:cover;background-position:center 25%"><div class="overlay"><div class="cap"><b>Action de jeu</b><span>Tennis — shooting joueur</span></div></div></div>
       <div class="gallery-item" data-cat="affiche"><div class="overlay"><div class="cap"><b>Affiche Matchday</b><span>Création graphique</span></div></div></div>
-      <div class="gallery-item" data-cat="evenement"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Couverture tournoi</b><span>Photo + vidéo + stories</span></div></div></div>
-      <div class="gallery-item" data-cat="photo"><div class="overlay"><div class="cap"><b>Shooting joueur</b><span>Portraits individuels</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-01.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Portrait joueur</b><span>Séance shooting club</span></div></div></div>
       <div class="gallery-item" data-cat="video"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Reel réseaux sociaux</b><span>Format vertical</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/tennis-action-02.jpg);background-size:cover;background-position:center 20%"><div class="overlay"><div class="cap"><b>Action de jeu</b><span>Tennis — captation match</span></div></div></div>
       <div class="gallery-item" data-cat="affiche"><div class="overlay"><div class="cap"><b>Campagne digitale</b><span>Création graphique</span></div></div></div>
-      <div class="gallery-item" data-cat="evenement"><div class="overlay"><div class="cap"><b>Couverture stage</b><span>Photo + vidéo récap</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-02.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Portrait joueur</b><span>Séance shooting club</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/coaching-preparation.jpg);background-size:cover;background-position:center 15%"><div class="overlay"><div class="cap"><b>Coaching</b><span>Avant-séance, préparation</span></div></div></div>
     </div>
   </div>
 </section>
@@ -822,9 +823,8 @@ galleryFilters.addEventListener('click', (e) => {
   });
 });
 
-// ── Réalisations : ces vignettes sont des aperçus de style, pas de vrais
-//    médias — un clic ouvre le formulaire pour demander un rendu similaire
-//    plutôt que de simuler une lecture vidéo qui n'existe pas ──
+// ── Réalisations : un clic ouvre le formulaire pour demander un rendu
+//    similaire plutôt que de simuler une lecture vidéo qui n'existe pas ──
 document.getElementById('gallery-grid').addEventListener('click', (e) => {
   if (!e.target.closest('.gallery-item')) return;
   openDevis();
