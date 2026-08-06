@@ -110,6 +110,7 @@
     <input id="lg-pass" type="password" autocomplete="current-password">
     <div class="err" id="lg-err"></div>
     <button class="btn btn-primary" id="lg-btn" onclick="handleLogin()">Se connecter</button>
+    <p class="auth-switch"><a href="#" class="btn-ghost" style="display:inline" onclick="event.preventDefault();showScreen('forgot')">Mot de passe oublié ?</a></p>
     <p class="auth-switch">Pas encore de compte ? <a href="#" class="btn-ghost" style="display:inline" onclick="event.preventDefault();showScreen('signup')">Créer un compte</a></p>
   </div>
 </div>
@@ -139,6 +140,33 @@
     <div class="ok-msg" id="su-ok"></div>
     <button class="btn btn-primary" id="su-btn" onclick="handleSignup()">Créer mon compte</button>
     <p class="auth-switch">Déjà un compte ? <a href="#" class="btn-ghost" style="display:inline" onclick="event.preventDefault();showScreen('login')">Se connecter</a></p>
+  </div>
+</div>
+
+<div id="scr-forgot" class="screen center">
+  <div class="auth-card">
+    <div id="forgot-body">
+      <h1>Mot de passe oublié</h1>
+      <p class="sub">Indiquez votre e-mail, vous recevrez un lien pour choisir un nouveau mot de passe.</p>
+      <label for="forgot-email">E-mail</label>
+      <input id="forgot-email" type="email" autocomplete="username">
+      <div class="err" id="forgot-err"></div>
+      <button class="btn btn-primary" id="forgot-btn" onclick="handleRequestRecovery()">Envoyer le lien</button>
+    </div>
+    <p class="auth-switch"><a href="#" class="btn-ghost" style="display:inline" onclick="event.preventDefault();showScreen('login')">← Retour à la connexion</a></p>
+  </div>
+</div>
+
+<div id="scr-reset" class="screen center">
+  <div class="auth-card">
+    <h1>Choisir un nouveau mot de passe</h1>
+    <p class="sub">Ce lien est à usage unique, valable une durée limitée.</p>
+    <label for="reset-pass1">Nouveau mot de passe</label>
+    <input id="reset-pass1" type="password" autocomplete="new-password">
+    <label for="reset-pass2">Confirmer le mot de passe</label>
+    <input id="reset-pass2" type="password" autocomplete="new-password">
+    <div class="err" id="reset-err"></div>
+    <button class="btn btn-primary" id="reset-btn" onclick="handleSetNewPassword()">Enregistrer</button>
   </div>
 </div>
 
@@ -272,7 +300,7 @@ function toast(msg){
 
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
-  const id = name==='login' ? 'scr-login' : name==='signup' ? 'scr-signup' : name==='splash' ? 'scr-splash' : 'app-shell';
+  const id = name==='login' ? 'scr-login' : name==='signup' ? 'scr-signup' : name==='forgot' ? 'scr-forgot' : name==='reset' ? 'scr-reset' : name==='splash' ? 'scr-splash' : 'app-shell';
   document.getElementById(id).classList.add('on');
 }
 function showPane(name){
@@ -358,6 +386,57 @@ async function handleSignup(){
   }finally{
     btn.disabled = false; btn.textContent = 'Créer mon compte';
   }
+}
+
+// ── Récupération de mot de passe (portée depuis le Portail, logique inchangée :
+//    pas de token à ce stade, apikey seul, réponse toujours générique) ──
+async function handleRequestRecovery(){
+  const email = document.getElementById('forgot-email').value.trim();
+  const errEl = document.getElementById('forgot-err');
+  errEl.textContent = '';
+  if (!email){ errEl.textContent = 'Merci de renseigner votre e-mail.'; return; }
+  const btn = document.getElementById('forgot-btn');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    const redirectTo = window.location.origin + window.location.pathname;
+    await fetch(SB_URL+'/functions/v1/request-password-reset', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, redirect_url: redirectTo})});
+    // Réponse volontairement identique que l'e-mail existe ou non (pas de fuite d'information sur les comptes existants).
+    document.getElementById('forgot-body').innerHTML =
+      '<h1>Vérifiez votre boîte mail</h1>'
+      + '<p class="sub">Si un compte existe pour <b>'+esc(email)+'</b>, un lien pour choisir un nouveau mot de passe vient d\'être envoyé.</p>';
+  }catch(e){
+    errEl.textContent = 'Une erreur est survenue, réessayez.';
+    btn.disabled = false; btn.textContent = 'Envoyer le lien';
+  }
+}
+
+async function handleSetNewPassword(){
+  const p1 = document.getElementById('reset-pass1').value;
+  const p2 = document.getElementById('reset-pass2').value;
+  const errEl = document.getElementById('reset-err');
+  errEl.textContent = '';
+  if (p1.length < 6){ errEl.textContent = 'Le mot de passe doit contenir au moins 6 caractères.'; return; }
+  if (p1 !== p2){ errEl.textContent = 'Les deux mots de passe ne correspondent pas.'; return; }
+  const btn = document.getElementById('reset-btn');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  const tok = localStorage.getItem('svc_tok');
+  const res = await fetch(SB_URL+'/auth/v1/user', {method:'PUT', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok, 'Content-Type':'application/json'}, body:JSON.stringify({password:p1})});
+  if (!res.ok){ errEl.textContent = 'Le lien a peut-être expiré. Redemandez un nouveau lien.'; btn.disabled = false; btn.textContent = 'Enregistrer'; return; }
+  toast('Mot de passe enregistré. Vous êtes connecté.');
+  await bootAfterLogin();
+}
+
+// Détecte un lien de récupération Supabase (#access_token=...&type=recovery) au chargement.
+async function consumeRecoveryHash(){
+  if (!window.location.hash.includes('type=recovery')) return false;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (!accessToken) return false;
+  history.replaceState({}, '', window.location.pathname);
+  const userRes = await fetch(SB_URL+'/auth/v1/user', {headers:{apikey:SB_KEY, Authorization:'Bearer '+accessToken}}).then(r=>r.json()).catch(()=>null);
+  svcSave(accessToken, refreshToken || '', userRes?.id || '');
+  return true;
 }
 
 // ── Cœur du nouveau socle : espaces → entitlements → modules ──
@@ -561,6 +640,10 @@ function handlePaymentReturn(){
 
 // ── Démarrage ──
 (async function init(){
+  if (await consumeRecoveryHash()){
+    showScreen('reset');
+    return;
+  }
   if (isLoggedIn()){
     await bootAfterLogin();
     handlePaymentReturn();

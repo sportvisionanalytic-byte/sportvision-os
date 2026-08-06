@@ -448,6 +448,12 @@
           + '<button type="button" class="btn btn-primary pjc-btn-noshrink" data-action="cpt-save">Enregistrer</button>'
           + '</div>'
           + (org ? orgHtml() : '')
+          + '<div class="pjc-card" style="margin-top:20px;border-color:rgba(225,75,75,.3)">'
+          + '<div class="pjc-card-title" style="margin-bottom:8px;color:var(--danger)">Supprimer mon compte</div>'
+          + '<p class="pjc-faint" style="margin-bottom:16px">Ferme définitivement votre accès à SportVision Connect (connexion, e-mail, mot de passe). Si vous n\'avez encore aucune prestation ou devis en cours, votre fiche client est aussi supprimée entièrement. Sinon, elle est conservée conformément à nos obligations comptables — contactez-nous si vous souhaitez sa suppression complète.</p>'
+          + '<button type="button" class="btn btn-ghost pjc-btn-noshrink" style="border:1px solid var(--danger);color:var(--danger)" data-action="cpt-delete">Supprimer mon compte</button>'
+          + '<div class="pjc-err" id="cpt-del-msg"></div>'
+          + '</div>'
           + '</div>';
       }
 
@@ -473,12 +479,23 @@
         toast('Organisation mise à jour.');
       }
 
+      async function deleteAccount() {
+        const msgEl = container.querySelector('#cpt-del-msg');
+        if (msgEl) msgEl.textContent = '';
+        if (!confirm('Supprimer définitivement votre compte SportVision Connect ? Cette action est irréversible.')) return;
+        const res = await sbFunction('delete-account', {});
+        if (!res.ok) { if (msgEl) msgEl.textContent = (res.data && res.data.error) || 'Impossible de supprimer le compte.'; return; }
+        toast(res.data && res.data.client_deleted ? 'Compte et fiche client supprimés.' : 'Compte supprimé.');
+        handleLogout();
+      }
+
       container.onclick = function (e) {
         const btn = e.target.closest('[data-action]');
         if (!btn) return;
         const action = btn.getAttribute('data-action');
         if (action === 'cpt-save') saveProfile();
         else if (action === 'org-save') saveOrg();
+        else if (action === 'cpt-delete') deleteAccount();
       };
 
       paint();
