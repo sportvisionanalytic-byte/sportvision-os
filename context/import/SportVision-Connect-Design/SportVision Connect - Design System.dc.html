@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: Manrope, system-ui, sans-serif; background: #F5F7FB; color: #111827; -webkit-font-smoothing: antialiased; }
+  a { color: #244BFF; text-decoration: none; }
+  a:hover { color: #8A2EFF; }
+  input, select, textarea, button { font-family: inherit; }
+  @keyframes svshimmer { 0% { background-position: -420px 0; } 100% { background-position: 420px 0; } }
+  @keyframes svspin { to { transform: rotate(360deg); } }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #080B1A !important; color: #EDF1FB !important; }
+    a { color: #8FB4FF !important; }
+    [style*="background:#fff"], [style*="background: #fff"],
+    [style*="background:#FFFFFF"] { background: #111735 !important; }
+    [style*="background:#FAFBFE"], [style*="background:#FBFCFE"] { background: #0D1228 !important; }
+    [style*="background:#F5F7FB"], [style*="background:#EDF0F7"],
+    [style*="background:#F2F5FC"], [style*="background:#EFF2F8"] { background: #0A0E20 !important; }
+    [style*="border:1px solid #E8ECF4"], [style*="border:1px solid #DDE3EE"],
+    [style*="border:1px solid #E5E9F2"], [style*="border:1px solid #ECEFF6"],
+    [style*="border:1px solid #EEF1F7"], [style*="border:1px solid #E1E6F0"] { border-color: rgba(255,255,255,.1) !important; }
+    [style*="border-bottom:1px solid #F5F7FB"], [style*="border-bottom:1px solid #F0F3F9"],
+    [style*="border-bottom:1px solid #EEF1F7"], [style*="border-top:1px solid #F0F3F9"],
+    [style*="border-top:1px solid #EEF1F7"] { border-color: rgba(255,255,255,.07) !important; }
+    [style*="color:#111827"] { color: #EDF1FB !important; }
+    [style*="color:#344054"], [style*="color:#475467"] { color: #C3CEE6 !important; }
+    [style*="color:#667085"] { color: #A9B6D6 !important; }
+    [style*="color:#98A2B3"], [style*="color:#B4BECE"] { color: #8B9AC0 !important; }
+    h1, h2, h3 { color: #EDF1FB !important; }
+    input, select, textarea { background: rgba(255,255,255,.05) !important; color: #EDF1FB !important; border-color: rgba(255,255,255,.16) !important; }
+  }
+</style>
+</helmet>
+
+<div style="max-width:1180px;margin:0 auto;padding:44px 32px 96px">
+
+  <div style="display:flex;align-items:center;gap:13px">
+    <span style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#244BFF,#8A2EFF);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;letter-spacing:-.03em">SV</span>
+    <span style="line-height:1.1">
+      <span style="display:block;font-size:20px;font-weight:800;letter-spacing:-.025em">SportVision Connect</span>
+      <span style="display:block;font-size:11.5px;font-weight:700;color:#475467;letter-spacing:.09em;text-transform:uppercase">Design System</span>
+    </span>
+  </div>
+  <p style="margin:20px 0 0;font-size:15.5px;color:#667085;line-height:1.6;max-width:620px">Les fondations visuelles et les composants de l'interface. Chaque composant est présenté avec ses états : par défaut, survol, actif, focus, désactivé, erreur et chargement.</p>
+
+  <div style="margin-top:44px">
+    <div style="font-size:11.5px;font-weight:800;color:#8A2EFF;letter-spacing:.11em;text-transform:uppercase">01 — Fondations</div>
+    <h2 style="margin:10px 0 0;font-size:26px;font-weight:800;letter-spacing:-.032em">Couleurs</h2>
+
+    <div style="margin-top:20px;display:flex;flex-direction:column;gap:20px">
+      <sc-for list="{{ palettes }}" as="p" hint-placeholder-count="4">
+        <div>
+          <div style="font-size:12.5px;font-weight:800;color:#344054;margin-bottom:10px">{{ p.title }}</div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">
+            <sc-for list="{{ p.swatches }}" as="c" hint-placeholder-count="6">
+              <div style="background:#fff;border:1px solid #E8ECF4;border-radius:13px;overflow:hidden">
+                <div style="height:66px;background:{{ c.hex }};border-bottom:1px solid rgba(16,24,40,.06)"></div>
+                <div style="padding:10px 11px 12px">
+                  <div style="font-size:12px;font-weight:800;color:#111827">{{ c.name }}</div>
+                  <div style="margin-top:3px;font-size:11px;color:#98A2B3;font-family:'JetBrains Mono',monospace">{{ c.hex }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="margin-top:24px">
+      <div style="font-size:12.5px;font-weight:800;color:#344054;margin-bottom:10px">Dégradés — réservés aux boutons principaux, cartes premium et indicateurs</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <sc-for list="{{ gradients }}" as="g" hint-placeholder-count="4">
+          <div style="border-radius:13px;overflow:hidden;border:1px solid #E8ECF4">
+            <div style="height:56px;background:{{ g.css }}"></div>
+            <div style="padding:10px 11px 12px;background:#fff"><div style="font-size:12px;font-weight:800">{{ g.name }}</div><div style="margin-top:3px;font-size:10.5px;color:#98A2B3;font-family:'JetBrains Mono',monospace">{{ g.stops }}</div></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:52px">
+    <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.032em">Typographie</h2>
+    <div style="margin-top:16px;background:#fff;border:1px solid #E8ECF4;border-radius:18px;overflow:hidden">
+      <sc-for list="{{ typeScale }}" as="t" hint-placeholder-count="6">
+        <div style="display:flex;align-items:center;gap:24px;padding:18px 22px;border-bottom:1px solid #F5F7FB">
+          <span style="width:170px;flex:none;font-size:11.5px;color:#98A2B3;font-family:'JetBrains Mono',monospace;line-height:1.5">{{ t.spec }}</span>
+          <span style="flex:1;min-width:0;font-size:{{ t.size }}px;font-weight:{{ t.weight }};letter-spacing:{{ t.ls }};color:{{ t.color }};line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.sample }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="margin-top:52px">
+    <div style="font-size:11.5px;font-weight:800;color:#8A2EFF;letter-spacing:.11em;text-transform:uppercase">02 — Composants</div>
+    <h2 style="margin:10px 0 0;font-size:26px;font-weight:800;letter-spacing:-.032em">Button</h2>
+    <div style="margin-top:16px;background:#fff;border:1px solid #E8ECF4;border-radius:18px;padding:22px">
+      <sc-for list="{{ buttonRows }}" as="r" hint-placeholder-count="4">
+        <div style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid #F5F7FB;flex-wrap:wrap">
+          <span style="width:118px;flex:none;font-size:12px;font-weight:800;color:#344054">{{ r.label }}</span>
+          <span style="display:flex;align-items:center;gap:11px;flex-wrap:wrap">
+            <sc-for list="{{ r.items }}" as="b" hint-placeholder-count="7">
+              <span style="display:flex;flex-direction:column;align-items:center;gap:7px">
+                <button style="height:40px;padding:0 17px;border:{{ b.border }};border-radius:11px;background:{{ b.bg }};color:{{ b.fg }};font-size:13.5px;font-weight:700;cursor:{{ b.cursor }};opacity:{{ b.opacity }};box-shadow:{{ b.shadow }};display:flex;align-items:center;gap:8px">
+                  <sc-if value="{{ b.spinner }}" hint-placeholder-val="{{ false }}">
+                    <span style="width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:svspin .7s linear infinite"></span>
+                  </sc-if>
+                  {{ b.text }}
+                </button>
+                <span style="font-size:10.5px;color:#98A2B3;font-weight:700">{{ b.state }}</span>
+              </span>
+            </sc-for>
+          </span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="margin-top:36px">
+    <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.032em">Champs de formulaire</h2>
+    <div style="margin-top:16px;background:#fff;border:1px solid #E8ECF4;border-radius:18px;padding:22px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px">
+      <sc-for list="{{ inputs }}" as="i" hint-placeholder-count="6">
+        <label style="display:flex;flex-direction:column;gap:7px">
+          <span style="font-size:12.5px;font-weight:700;color:#344054">{{ i.label }}</span>
+          <input value="{{ i.value }}" placeholder="{{ i.placeholder }}" readOnly="{{ true }}" style="height:44px;border-radius:11px;border:1.5px solid {{ i.border }};background:{{ i.bg }};padding:0 13px;font-size:13.5px;color:{{ i.fg }};outline:none;box-shadow:{{ i.ring }}" />
+          <span style="font-size:11.5px;color:{{ i.hintColor }};font-weight:600">{{ i.hint }}</span>
+        </label>
+      </sc-for>
+    </div>
+    <div style="margin-top:14px;background:#fff;border:1px solid #E8ECF4;border-radius:18px;padding:22px;display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start">
+      <div>
+        <div style="font-size:12px;font-weight:800;color:#344054;margin-bottom:12px">Checkbox</div>
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <sc-for list="{{ checkboxes }}" as="c" hint-placeholder-count="4">
+            <span style="display:flex;align-items:center;gap:10px;opacity:{{ c.opacity }}">
+              <span style="width:19px;height:19px;border-radius:6px;border:1.5px solid {{ c.border }};background:{{ c.bg }};display:flex;align-items:center;justify-content:center;box-shadow:{{ c.ring }}">
+                <sc-if value="{{ c.on }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5" /></svg></sc-if>
+              </span>
+              <span style="font-size:13px;font-weight:600;color:#344054">{{ c.label }}</span>
+            </span>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:800;color:#344054;margin-bottom:12px">Radio</div>
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <sc-for list="{{ radios }}" as="r" hint-placeholder-count="3">
+            <span style="display:flex;align-items:center;gap:10px;opacity:{{ r.opacity }}">
+              <span style="width:19px;height:19px;border-radius:50%;border:2px solid {{ r.border }};display:flex;align-items:center;justify-content:center;box-shadow:{{ r.ring }}">
+                <sc-if value="{{ r.on }}" hint-placeholder-val="{{ false }}"><span style="width:9px;height:9px;border-radius:50%;background:#244BFF"></span></sc-if>
+              </span>
+              <span style="font-size:13px;font-weight:600;color:#344054">{{ r.label }}</span>
+            </span>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:800;color:#344054;margin-bottom:12px">Switch</div>
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <sc-for list="{{ switches }}" as="w" hint-placeholder-count="3">
+            <span style="display:flex;align-items:center;gap:10px;opacity:{{ w.opacity }}">
+              <span style="width:38px;height:22px;border-radius:99px;background:{{ w.track }};position:relative;display:block;box-shadow:{{ w.ring }}">
+                <span style="position:absolute;top:2px;left:{{ w.x }}px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.3)"></span>
+              </span>
+              <span style="font-size:13px;font-weight:600;color:#344054">{{ w.label }}</span>
+            </span>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:36px">
+    <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.032em">Badges et statuts</h2>
+    <div style="margin-top:16px;background:#fff;border:1px solid #E8ECF4;border-radius:18px;padding:22px">
+      <div style="font-size:12px;font-weight:800;color:#344054;margin-bottom:12px">StatusChip — prestations et demandes</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <sc-for list="{{ chips }}" as="c" hint-placeholder-count="12">
+          <span style="padding:5px 11px;border-radius:99px;background:{{ c.tint }};color:{{ c.color }};font-size:11.5px;font-weight:800">{{ c.label }}</span>
+        </sc-for>
+      </div>
+      <div style="margin-top:22px;font-size:12px;font-weight:800;color:#344054;margin-bottom:12px">ProgressBar</div>
+      <div style="display:flex;flex-direction:column;gap:13px;max-width:520px">
+        <sc-for list="{{ bars }}" as="b" hint-placeholder-count="3">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#344054"><span>{{ b.label }}</span><span style="color:#667085">{{ b.value }}</span></div>
+            <div style="margin-top:6px;height:6px;border-radius:99px;background:#EDF0F7;overflow:hidden"><div style="width:{{ b.pct }}%;height:100%;border-radius:99px;background:{{ b.bar }}"></div></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="margin-top:22px;font-size:12px;font-weight:800;color:#344054;margin-bottom:12px">Avatar</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <sc-for list="{{ avatars }}" as="a" hint-placeholder-count="5">
+          <span style="width:{{ a.s }}px;height:{{ a.s }}px;border-radius:50%;background:{{ a.bg }};color:#fff;font-size:{{ a.f }}px;font-weight:800;display:flex;align-items:center;justify-content:center">{{ a.i }}</span>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:36px">
+    <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.032em">Cartes</h2>
+    <div style="margin-top:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+      <div style="background:#fff;border:1px solid #E8ECF4;border-radius:16px;padding:17px;box-shadow:0 1px 2px rgba(16,24,40,.04)">
+        <div style="font-size:10.5px;font-weight:800;color:#98A2B3;letter-spacing:.08em;text-transform:uppercase">StatCard</div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:9px">
+          <span style="width:26px;height:26px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#244BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.2 5.5L20 10l-5.8 1.5L12 17l-2.2-5.5L4 10l5.8-1.5z" /></svg></span>
+          <span style="font-size:12px;font-weight:700;color:#667085">Demandes en cours</span>
+        </div>
+        <div style="margin-top:10px;font-size:27px;font-weight:800;letter-spacing:-.04em">5</div>
+        <div style="margin-top:2px;font-size:11.5px;color:#98A2B3;font-weight:600">2 en création</div>
+      </div>
+
+      <div style="background:#fff;border:1px solid #E8ECF4;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,.04)">
+        <div style="padding:14px 16px 0;font-size:10.5px;font-weight:800;color:#98A2B3;letter-spacing:.08em;text-transform:uppercase">MediaCard</div>
+        <div style="margin-top:10px;height:104px;background:repeating-linear-gradient(125deg,#DCE5FB 0 8px,#EBF0FC 8px 16px);display:flex;align-items:flex-end;padding:9px"><span style="padding:3px 7px;border-radius:7px;background:rgba(8,11,26,.72);color:#fff;font-size:10px;font-weight:800">AFFICHE</span></div>
+        <div style="padding:11px 16px 14px">
+          <div style="font-size:12.5px;font-weight:700">Affiche Matchday J1</div>
+          <div style="margin-top:4px;font-size:11px;color:#98A2B3">Livré le 4 août · 1:1</div>
+        </div>
+      </div>
+
+      <div style="border-radius:16px;padding:17px;background:linear-gradient(135deg,#111735 0%,#1B2A6B 55%,#4A1E9E 100%);color:#fff;position:relative;overflow:hidden">
+        <div style="position:absolute;right:-50px;top:-60px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,rgba(0,200,255,.3),transparent 65%)"></div>
+        <div style="position:relative">
+          <div style="font-size:10.5px;font-weight:800;color:#8FB4FF;letter-spacing:.08em;text-transform:uppercase">Card premium</div>
+          <div style="margin-top:11px;font-size:18px;font-weight:800;letter-spacing:-.03em">Club+ Performance</div>
+          <div style="margin-top:4px;font-size:11.5px;color:#B9C7EB">Renouvellement le 1er septembre</div>
+          <div style="margin-top:14px;display:flex;justify-content:space-between;font-size:11px;color:#B9C7EB;font-weight:600"><span>Crédits</span><span style="color:#fff;font-weight:800">8 / 20</span></div>
+          <div style="margin-top:6px;height:5px;border-radius:99px;background:rgba(255,255,255,.16);overflow:hidden"><div style="width:40%;height:100%;background:linear-gradient(90deg,#00C8FF,#C337FF)"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:36px">
+    <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.032em">États visuels</h2>
+    <div style="margin-top:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:14px">
+      <div style="background:#fff;border:1px solid #E8ECF4;border-radius:18px;padding:22px">
+        <div style="font-size:12px;font-weight:800;color:#344054;margin-bottom:14px">Skeleton — chargement</div>
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <sc-for list="{{ skeletons }}" as="k" hint-placeholder-count="4">
+            <span style="display:block;height:{{ k.h }}px;width:{{ k.w }};border-radius:{{ k.r }}px;background:linear-gradient(90deg,#EEF1F7 25%,#F7F9FC 50%,#EEF1F7 75%);background-size:420px 100%;animation:svshimmer 1.3s linear infinite"></span>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background:#fff;border:1px solid #E8ECF4;border-radius:18px;padding:36px 22px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div style="width:62px;height:62px;border-radius:18px;background:linear-gradient(135deg,#EEF2FF,#F6EEFF);display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#8A2EFF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.2 5.5L20 10l-5.8 1.5L12 17l-2.2-5.5L4 10l5.8-1.5z" /></svg>
+        </div>
+        <div style="margin-top:14px;font-size:16px;font-weight:800;letter-spacing:-.02em">EmptyState</div>
+        <div style="margin-top:6px;font-size:13.5px;color:#667085;max-width:320px;line-height:1.5">Vous n'avez encore créé aucune demande. Commencez par demander votre premier visuel.</div>
+        <button style="margin-top:16px;height:40px;padding:0 18px;border:0;border-radius:11px;background:linear-gradient(135deg,#244BFF,#8A2EFF);color:#fff;font-size:13.5px;font-weight:800;cursor:pointer">Demander un visuel</button>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px">
+      <sc-for list="{{ alerts }}" as="a" hint-placeholder-count="4">
+        <div style="display:flex;gap:12px;padding:14px 16px;border-radius:13px;background:{{ a.bg }};border:1px solid {{ a.border }}">
+          <span style="width:22px;height:22px;flex:none;border-radius:7px;background:{{ a.icoBg }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="{{ a.icoFg }}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{ a.icon }}" /></svg></span>
+          <span style="flex:1"><span style="display:block;font-size:13.5px;font-weight:800;color:{{ a.fg }}">{{ a.title }}</span><span style="display:block;margin-top:3px;font-size:12.5px;color:{{ a.fg }};opacity:.85;line-height:1.45">{{ a.body }}</span></span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="margin-top:36px">
+    <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.032em">Table</h2>
+    <div style="margin-top:16px;background:#fff;border:1px solid #E8ECF4;border-radius:18px;overflow:hidden">
+      <div style="padding:13px 18px;border-bottom:1px solid #F0F3F9;display:flex;align-items:center;gap:9px">
+        <div style="position:relative;width:250px">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#98A2B3" stroke-width="2" stroke-linecap="round" style="position:absolute;left:11px;top:10px"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4 4" /></svg>
+          <input placeholder="Rechercher" readOnly="{{ true }}" style="width:100%;height:36px;border-radius:10px;border:1px solid #E1E6F0;padding:0 12px 0 32px;font-size:13px;outline:none" />
+        </div>
+        <div style="flex:1"></div>
+        <button style="height:36px;padding:0 13px;border:1px solid #E1E6F0;border-radius:10px;background:#fff;font-size:12.5px;font-weight:700;color:#344054;cursor:pointer">Filtres</button>
+        <button style="height:36px;padding:0 13px;border:1px solid #E1E6F0;border-radius:10px;background:#fff;font-size:12.5px;font-weight:700;color:#344054;cursor:pointer">Colonnes</button>
+      </div>
+      <div style="display:grid;grid-template-columns:38px 2fr 1fr 1fr 1fr;gap:12px;padding:11px 18px;background:#FAFBFE;border-bottom:1px solid #F0F3F9;font-size:11px;font-weight:800;color:#667085;letter-spacing:.04em;text-transform:uppercase">
+        <span><span style="width:17px;height:17px;border-radius:5px;border:1.5px solid #C7CEDD;display:block"></span></span>
+        <span>Demande</span><span>Type</span><span>Statut</span><span>Délai</span>
+      </div>
+      <sc-for list="{{ tableRows }}" as="r" hint-placeholder-count="3">
+        <div style="display:grid;grid-template-columns:38px 2fr 1fr 1fr 1fr;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid #F5F7FB;background:{{ r.bg }}">
+          <span><span style="width:17px;height:17px;border-radius:5px;border:1.5px solid {{ r.cbBorder }};background:{{ r.cbBg }};display:flex;align-items:center;justify-content:center">
+            <sc-if value="{{ r.sel }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5" /></svg></sc-if>
+          </span></span>
+          <span style="font-size:13px;font-weight:700;color:#111827">{{ r.t }}</span>
+          <span style="font-size:12.5px;color:#667085">{{ r.type }}</span>
+          <span><span style="padding:4px 9px;border-radius:99px;background:{{ r.tint }};color:{{ r.color }};font-size:11px;font-weight:800">{{ r.st }}</span></span>
+          <span style="font-size:12.5px;color:#667085">{{ r.due }}</span>
+        </div>
+      </sc-for>
+      <div style="padding:12px 18px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12.5px;color:#667085">3 demandes sur 24</span>
+        <span style="display:flex;gap:6px">
+          <span style="width:30px;height:30px;border:1px solid #E1E6F0;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;color:#667085;font-weight:800">‹</span>
+          <span style="width:30px;height:30px;border:1px solid #244BFF;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;color:#244BFF;font-weight:800;font-size:12.5px">1</span>
+          <span style="width:30px;height:30px;border:1px solid #E1E6F0;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;color:#344054;font-weight:700;font-size:12.5px">2</span>
+          <span style="width:30px;height:30px;border:1px solid #E1E6F0;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;color:#667085;font-weight:800">›</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:52px">
+    <div style="font-size:11.5px;font-weight:800;color:#8A2EFF;letter-spacing:.11em;text-transform:uppercase">03 — Logique</div>
+    <h2 style="margin:10px 0 0;font-size:26px;font-weight:800;letter-spacing:-.032em">Permissions et abonnement</h2>
+    <p style="margin:12px 0 0;font-size:14.5px;color:#667085;line-height:1.6;max-width:640px">L'accès aux modules ne se teste jamais directement sur le nom de l'offre. Il passe par des fonctions centralisées, ce qui permet de faire évoluer les formules sans toucher aux écrans.</p>
+    <div style="margin-top:18px;background:#0B1024;border-radius:16px;padding:22px 24px;overflow-x:auto">
+      <pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.75;color:#C6D3F0">{{ permCode }}</pre>
+    </div>
+  </div>
+
+  <div style="margin-top:36px">
+    <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.032em">Arborescence</h2>
+    <div style="margin-top:16px;background:#0B1024;border-radius:16px;padding:22px 24px;overflow-x:auto">
+      <pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#C6D3F0">{{ treeCode }}</pre>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180}}">
+/* Bloc logique original — palettes, échelles, jeux de composants et exemples de code.
+   Conservé pour référence des valeurs exactes (voir README.md du dossier pour les tokens
+   déjà extraits). Voir SportVision Connect - Design System.dc.html original pour l'implémentation
+   complète de Component.renderVals() si besoin d'un détail non repris dans README/ACTIONS.md. */
+</script>
+</body>
+</html>

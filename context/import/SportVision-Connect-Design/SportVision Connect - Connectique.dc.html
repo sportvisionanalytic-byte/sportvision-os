@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: Manrope, system-ui, sans-serif; background: #080B1A; color: #EDF1FB; -webkit-font-smoothing: antialiased; }
+  a { color: #8FB4FF; text-decoration: none; }
+  a:hover { color: #C337FF; }
+  button { font-family: inherit; }
+</style>
+</helmet>
+
+<div style="max-width:1240px;margin:0 auto;padding:44px 32px 96px">
+
+  <div style="display:flex;align-items:center;gap:13px">
+    <span style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#244BFF,#8A2EFF);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;letter-spacing:-.03em">SV</span>
+    <span style="line-height:1.1">
+      <span style="display:block;font-size:20px;font-weight:800;letter-spacing:-.025em">SportVision Connect</span>
+      <span style="display:block;font-size:11.5px;font-weight:700;color:#A9B6D6;letter-spacing:.09em;text-transform:uppercase">Connectique et parcours</span>
+    </span>
+  </div>
+  <p style="margin:20px 0 0;font-size:15.5px;color:#A9B6D6;line-height:1.6;max-width:660px">Comment les écrans s'enchaînent, ce qui déclenche chaque transition, et ce qui se passe côté SportVision. Chaque flèche correspond à une action réelle dans la maquette.</p>
+
+  <div style="margin-top:36px;display:flex;gap:8px;flex-wrap:wrap">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+      <button onClick="{{ t.go }}" style="height:38px;padding:0 16px;border:1px solid {{ t.border }};border-radius:99px;background:{{ t.bg }};color:{{ t.fg }};font-size:13.5px;font-weight:700;cursor:pointer" style-hover="border-color:#8FB4FF">{{ t.label }}</button>
+    </sc-for>
+  </div>
+
+  <div style="margin-top:28px">
+    <div style="font-size:22px;font-weight:800;letter-spacing:-.03em">{{ flow.title }}</div>
+    <div style="margin-top:7px;font-size:14px;color:#A9B6D6;line-height:1.55;max-width:680px">{{ flow.intro }}</div>
+  </div>
+
+  <div style="margin-top:26px;display:flex;flex-direction:column;gap:0">
+    <sc-for list="{{ flow.steps }}" as="s" hint-placeholder-count="8">
+      <div style="display:flex;gap:20px;align-items:stretch">
+        <div style="width:52px;flex:none;display:flex;flex-direction:column;align-items:center">
+          <span style="width:38px;height:38px;flex:none;border-radius:12px;background:{{ s.badgeBg }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:{{ s.badgeFg }}">{{ s.n }}</span>
+          <sc-if value="{{ s.notLast }}" hint-placeholder-val="{{ true }}">
+            <span style="width:2px;flex:1;background:linear-gradient(180deg,rgba(143,180,255,.4),rgba(143,180,255,.08));min-height:24px"></span>
+          </sc-if>
+        </div>
+
+        <div style="flex:1;min-width:0;padding-bottom:20px">
+          <div style="border:1px solid rgba(255,255,255,.1);border-radius:16px;background:rgba(255,255,255,.035);overflow:hidden">
+            <div style="padding:16px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.07)">
+              <span style="padding:4px 10px;border-radius:99px;background:{{ s.tint }};color:{{ s.color }};font-size:10.5px;font-weight:800;letter-spacing:.05em">{{ s.zone }}</span>
+              <span style="font-size:16px;font-weight:800;letter-spacing:-.02em;color:#fff">{{ s.screen }}</span>
+              <div style="flex:1"></div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7E93C7">{{ s.route }}</span>
+            </div>
+
+            <div style="padding:16px 18px;display:grid;grid-template-columns:1fr 1fr;gap:22px">
+              <div>
+                <div style="font-size:10.5px;font-weight:800;color:#7E93C7;letter-spacing:.09em;text-transform:uppercase">Ce que voit l'utilisateur</div>
+                <div style="margin-top:8px;font-size:13.5px;color:#C3CEE6;line-height:1.55">{{ s.sees }}</div>
+                <div style="margin-top:14px;font-size:10.5px;font-weight:800;color:#7E93C7;letter-spacing:.09em;text-transform:uppercase">Sorties possibles</div>
+                <div style="margin-top:9px;display:flex;flex-direction:column;gap:7px">
+                  <sc-for list="{{ s.exits }}" as="e" hint-placeholder-count="2">
+                    <div style="display:flex;gap:9px;align-items:flex-start">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8FB4FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
+                      <span style="font-size:13px;color:#C3CEE6;line-height:1.45"><strong style="color:#fff;font-weight:800">{{ e.a }}</strong> {{ e.t }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div>
+                <div style="font-size:10.5px;font-weight:800;color:#7E93C7;letter-spacing:.09em;text-transform:uppercase">Ce qui se passe en coulisses</div>
+                <div style="margin-top:9px;display:flex;flex-direction:column;gap:7px">
+                  <sc-for list="{{ s.system }}" as="y" hint-placeholder-count="3">
+                    <div style="display:flex;gap:9px;align-items:flex-start">
+                      <span style="width:5px;height:5px;flex:none;margin-top:7px;border-radius:50%;background:{{ s.color }}"></span>
+                      <span style="font-size:13px;color:#A9B6D6;line-height:1.45">{{ y }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ s.mail }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:14px;padding:11px 13px;border-radius:11px;background:rgba(36,75,255,.14);border:1px solid rgba(143,180,255,.3);display:flex;gap:10px;align-items:flex-start">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#8FB4FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="M3 6h18v12H3zM3 7l9 6 9-6" /></svg>
+                    <span style="font-size:12.5px;color:#C3CEE6;line-height:1.45">E-mail envoyé — <strong style="color:#fff;font-weight:800">{{ s.mail }}</strong></span>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="margin-top:44px">
+    <div style="font-size:11.5px;font-weight:800;color:#8FB4FF;letter-spacing:.11em;text-transform:uppercase">Règles transverses</div>
+    <h2 style="margin:10px 0 0;font-size:24px;font-weight:800;letter-spacing:-.03em">Ce qui gouverne tous les parcours.</h2>
+    <div style="margin-top:20px;display:grid;grid-template-columns:repeat(2,1fr);gap:14px">
+      <sc-for list="{{ rules }}" as="r" hint-placeholder-count="6">
+        <div style="border:1px solid rgba(255,255,255,.1);border-radius:15px;background:rgba(255,255,255,.035);padding:18px 20px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:28px;height:28px;flex:none;border-radius:9px;background:{{ r.tint }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="{{ r.color }}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ r.icon }}" /></svg></span>
+            <span style="font-size:14.5px;font-weight:800;color:#fff;letter-spacing:-.015em">{{ r.t }}</span>
+          </div>
+          <div style="margin-top:11px;font-size:13.5px;color:#A9B6D6;line-height:1.6">{{ r.d }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="margin-top:44px">
+    <div style="font-size:11.5px;font-weight:800;color:#8FB4FF;letter-spacing:.11em;text-transform:uppercase">Statuts</div>
+    <h2 style="margin:10px 0 0;font-size:24px;font-weight:800;letter-spacing:-.03em">Les chaînes de statuts, bout à bout.</h2>
+    <div style="margin-top:20px;display:flex;flex-direction:column;gap:20px">
+      <sc-for list="{{ chains }}" as="c" hint-placeholder-count="4">
+        <div>
+          <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:11px">{{ c.n }}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <sc-for list="{{ c.steps }}" as="x" hint-placeholder-count="6">
+              <span style="display:flex;align-items:center;gap:6px">
+                <span style="padding:5px 11px;border-radius:99px;background:{{ x.bg }};color:{{ x.fg }};font-size:11.5px;font-weight:800;white-space:nowrap">{{ x.label }}</span>
+                <sc-if value="{{ x.arrow }}" hint-placeholder-val="{{ true }}">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#5B6B96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
+                </sc-if>
+              </span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240}}">
+const Z = {
+  auth: ['rgba(36,75,255,.2)', '#8FB4FF', 'ACCÈS'],
+  onb: ['rgba(138,46,255,.2)', '#C9A6FF', 'ONBOARDING'],
+  app: ['rgba(0,200,255,.18)', '#8FD4FF', 'APPLICATION'],
+  studio: ['rgba(195,55,255,.18)', '#E0A6FF', 'STUDIO SPORTVISION'],
+  fin: ['rgba(18,183,106,.2)', '#5BE59E', 'FINANCE'],
+  terrain: ['rgba(247,144,9,.2)', '#FFCF8F', 'TERRAIN']
+};
+
+const FLOWS = {
+  'Inscription': {
+    title: 'De la découverte au premier écran de travail',
+    intro: 'Un dirigeant de club arrive sur la page de connexion sans compte. Sept étapes plus tard, son espace est actif et son staff est invité.',
+    steps: [
+      { z: 'auth', screen: 'Connexion', route: '/auth/login', sees: 'Le formulaire de connexion, et sous le bloc Google, le lien « Créer mon espace ».', exits: [{ a: 'Créer mon espace →', t: 'lance le parcours d\'inscription' }, { a: 'Mot de passe oublié →', t: 'écran de réinitialisation' }], system: ['Aucune donnée écrite à ce stade.', 'La langue du navigateur pré-remplit le sélecteur.'], mail: '' },
+      { z: 'auth', screen: 'Inscription — étape 1 : type de structure', route: '/signup/type', sees: 'Cinq cartes : club, académie, coach, joueur, événement. Le choix conditionne toute la suite.', exits: [{ a: 'Continuer →', t: 'étape 2, avec les libellés adaptés au type choisi' }, { a: 'Revenir →', t: 'connexion' }], system: ['Le type détermine la navigation, les modules et le tableau de bord.', 'Un club ou une académie déclenche les champs équipes et licenciés.'], mail: '' },
+      { z: 'auth', screen: 'Inscription — étapes 2 et 3 : vous et votre organisation', route: '/signup/account · /signup/org', sees: 'Identité du responsable, mot de passe avec indicateur de robustesse, puis nom, adresse, logo et réseaux de la structure.', exits: [{ a: 'Continuer →', t: 'étape 4 · besoins' }, { a: 'Retour →', t: 'étape précédente, les saisies sont conservées' }], system: ['L\'utilisateur devient propriétaire de l\'organisation.', 'Le logo alimente les visuels, les documents et les e-mails.', 'L\'unicité de l\'adresse e-mail est vérifiée.'], mail: '' },
+      { z: 'auth', screen: 'Inscription — étapes 4 et 5 : besoins et offre', route: '/signup/needs · /signup/plan', sees: 'Huit besoins à cocher, puis quatre offres. L\'offre sélectionnée déplie ses inclusions.', exits: [{ a: 'Essentiel, Start ou Performance →', t: 'étape 6 avec paiement par carte' }, { a: 'Full Communication →', t: 'étape 6 en demande de devis, sans paiement' }], system: ['Les besoins déclenchés sont transmis au conseiller.', 'L\'offre fixe les crédits mensuels et les modules débloqués.'], mail: '' },
+      { z: 'fin', screen: 'Inscription — étape 6 : récapitulatif et paiement', route: '/signup/checkout', sees: 'Le récapitulatif complet, puis soit le formulaire de carte, soit le message de mise en relation pour Full Communication.', exits: [{ a: 'Valider et payer →', t: 'étape 7 · espace créé' }, { a: 'Envoyer ma demande de devis →', t: 'étape 7 sans prélèvement' }], system: ['Stripe encaisse la première mensualité et crée l\'abonnement.', 'Aucune donnée de carte n\'est stockée côté SportVision.', 'Le contrat est généré et envoyé pour signature.'], mail: 'Confirmation d\'abonnement et facture' },
+      { z: 'onb', screen: 'Inscription — étape 7 : espace prêt', route: '/signup/done', sees: 'Confirmation, puis les quatre prochaines actions : vérifier l\'e-mail, compléter l\'espace, créer une demande, être rappelé.', exits: [{ a: 'Accéder à mon espace →', t: 'onboarding guidé en 10 étapes' }], system: ['L\'organisation, l\'utilisateur propriétaire et l\'abonnement sont actifs.', 'Un conseiller SportVision est assigné au dossier.'], mail: 'Vérification de l\'adresse e-mail' },
+      { z: 'onb', screen: 'Onboarding guidé', route: '/onboarding', sees: 'Dix étapes avec barre de progression : bienvenue, informations, organisation, abonnement, logo, invitations, réseaux, tableau de bord, première demande, fin.', exits: [{ a: 'Terminer plus tard →', t: 'tableau de bord, reprise possible depuis le support' }, { a: 'Valider le tutoriel →', t: 'tableau de bord' }], system: ['Chaque étape est enregistrée pour permettre la reprise.', 'Les invitations envoyées créent des comptes en attente.'], mail: 'Invitation envoyée à chaque collaborateur ajouté' },
+      { z: 'app', screen: 'Tableau de bord', route: '/dashboard', sees: 'La formule active, les quotas, la section « À traiter », les prestations en cours et les derniers contenus.', exits: [{ a: 'Nouvelle demande →', t: 'formulaire de demande de visuel' }, { a: 'Demander une prestation →', t: 'tunnel en 5 étapes' }], system: ['Le contenu du tableau de bord dépend du type d\'organisation et du rôle.', 'Les modules non inclus affichent l\'écran « offre supérieure ».'], mail: '' }
+    ]
+  },
+  'Demande de visuel': {
+    title: 'Du besoin au visuel publié',
+    intro: 'Le cas le plus fréquent : une affiche d\'avant-match demandée le mardi pour le match du samedi.',
+    steps: [
+      { z: 'app', screen: 'Nouvelle demande de visuel', route: '/requests/new', sees: 'Type de visuel, équipe, événement, date, format, texte à intégrer, fichiers, urgence. Le panneau latéral affiche crédits et délai.', exits: [{ a: 'Envoyer la demande →', t: 'suivi des demandes, statut « à produire »' }, { a: 'Enregistrer en brouillon →', t: 'liste des brouillons' }], system: ['Le coût en crédits dépend de l\'urgence : 1, 2 ou 3.', 'Les crédits sont décomptés à l\'envoi, pas à la livraison.', 'Un numéro VIS-AAAA-NNNN est attribué.'], mail: 'Accusé de réception avec délai annoncé' },
+      { z: 'studio', screen: 'Prise en charge par le studio', route: 'SportVision OS', sees: 'Rien côté client : la demande passe en « en création » et le suivi se met à jour.', exits: [{ a: 'Studio livre →', t: 'statut « à valider », client notifié' }, { a: 'Studio demande une précision →', t: 'commentaire sur la demande' }], system: ['La demande est attribuée à un graphiste dans SportVision OS.', 'La charte graphique du club est chargée automatiquement.'], mail: '' },
+      { z: 'app', screen: 'Validation du contenu', route: '/content/:id', sees: 'L\'aperçu, les informations, les tags, et deux actions : valider ou demander une correction.', exits: [{ a: 'Valider →', t: 'contenu disponible en téléchargement et publiable' }, { a: 'Demander une correction →', t: 'retour au studio, compteur de corrections +1' }], system: ['Deux corrections sont incluses, la troisième est facturée.', 'Chaque version est conservée et consultable.'], mail: 'Contenu prêt à être validé' },
+      { z: 'app', screen: 'Planning éditorial', route: '/communication', sees: 'Le visuel validé apparaît à sa date de publication, avec sa plateforme et son sponsor associé.', exits: [{ a: 'Ouvrir la publication →', t: 'fiche avec texte, hashtags, historique' }, { a: 'Programmer →', t: 'statut « programmé »' }], system: ['La publication rejoint le calendrier partagé avec SportVision.', 'Le sponsor associé alimente sa jauge de visibilité.'], mail: '' },
+      { z: 'app', screen: 'Bibliothèque de contenus', route: '/content', sees: 'Le visuel rangé par équipe, match et saison, retrouvable par filtres et recherche.', exits: [{ a: 'Télécharger →', t: 'fichier haute définition' }, { a: 'Partager →', t: 'lien sécurisé à durée limitée' }], system: ['Les droits d\'usage et la date d\'expiration sont attachés au fichier.', 'Le stockage consommé est mis à jour dans les quotas.'], mail: '' }
+    ]
+  },
+  'Prestation terrain': {
+    title: 'Du devis à la livraison des contenus',
+    intro: 'Un Media Day pour l\'équipe U18 : cinq étapes de commande, puis le suivi jusqu\'à la médiathèque.',
+    steps: [
+      { z: 'app', screen: 'Tunnel de demande — 5 étapes', route: '/services/new', sees: 'Type de prestation, informations et lieu, options complémentaires, tarification détaillée, confirmation.', exits: [{ a: 'Confirmer la demande →', t: 'kanban, colonne « demande reçue »' }, { a: 'Annuler →', t: 'suivi des prestations' }], system: ['La remise liée à l\'offre est appliquée automatiquement.', 'Les frais de déplacement sont estimés selon l\'adresse.'], mail: 'Accusé de réception de la demande' },
+      { z: 'studio', screen: 'Devis et attribution', route: 'SportVision OS', sees: 'La carte passe en « devis envoyé » puis « contrat à signer ».', exits: [{ a: 'Client accepte →', t: 'paiement de l\'acompte' }, { a: 'Client demande une modification →', t: 'nouveau devis' }], system: ['Un opérateur est assigné selon la date et la zone.', 'Le devis est généré depuis la grille tarifaire du contrat.'], mail: 'Devis à valider' },
+      { z: 'fin', screen: 'Acompte et planification', route: '/services/:id', sees: 'La fiche prestation avec ses jalons : demande reçue, devis accepté, acompte réglé, confirmation des horaires.', exits: [{ a: 'Payer l\'acompte →', t: 'statut « planifiée »' }, { a: 'Confirmer les horaires →', t: 'jalon validé, opérateur notifié' }], system: ['Acompte de 30 % encaissé par Stripe, facture émise.', 'L\'événement est poussé dans le calendrier central.'], mail: 'Prestation confirmée avec les informations pratiques' },
+      { z: 'terrain', screen: 'Jour de la prestation', route: '/services/:id · onglet Planning', sees: 'Le déroulé heure par heure, l\'équipe assignée des deux côtés, le brief partagé.', exits: [{ a: 'Poser une question →', t: 'commentaire contextuel, opérateur notifié' }], system: ['L\'opérateur consulte le même brief dans SportVision OS.', 'Les autorisations d\'image manquantes sont signalées avant le tournage.'], mail: 'Rappel la veille de la prestation' },
+      { z: 'studio', screen: 'Postproduction', route: '/services/:id · onglet Livrables', sees: 'La progression passe en postproduction, la liste des livrables attendus est affichée.', exits: [{ a: 'Studio livre →', t: 'contenus dans la médiathèque, statut « livrée »' }], system: ['Livraison sous 7 jours ouvrés après la prestation.', 'Les livrables optionnels retenus au devis sont produits en priorité.'], mail: '' },
+      { z: 'fin', screen: 'Solde et clôture', route: '/billing', sees: 'La facture de solde, avec le détail des lignes et l\'acompte déjà réglé.', exits: [{ a: 'Payer le solde →', t: 'prestation « terminée »' }, { a: 'Télécharger la facture →', t: 'PDF' }], system: ['Le solde est prélevé après livraison, jamais avant.', 'La prestation reste consultable dans l\'historique.'], mail: 'Contenus disponibles, puis facture de solde' }
+    ]
+  },
+  'Contrat et facturation': {
+    title: 'Engagement, échéances et impayés',
+    intro: 'Comment un contrat naît, se renouvelle, et ce qui se passe quand une facture n\'est pas réglée.',
+    steps: [
+      { z: 'fin', screen: 'Contrat envoyé', route: '/contracts', sees: 'Le contrat en statut « envoyé », avec durée, mensualité, préavis et date de renouvellement mis en évidence.', exits: [{ a: 'Ouvrir le contrat →', t: 'fiche avec conditions, échéancier et annexes' }, { a: 'Signer avec Yousign →', t: 'signature électronique' }], system: ['Le statut passe à « consulté » dès la première ouverture.', 'Le lien de signature expire au bout de 8 jours.'], mail: 'Signature requise, avec date limite' },
+      { z: 'fin', screen: 'Contrat actif', route: '/contracts/:id', sees: 'Le contrat signé, l\'échéancier mois par mois, et la fenêtre de préavis signalée à l\'avance.', exits: [{ a: 'Voir l\'échéancier →', t: 'mensualités à venir et échéances clés' }, { a: 'Télécharger →', t: 'document signé et annexes' }], system: ['Les modules du contrat débloquent les entrées de navigation.', 'Les crédits mensuels sont attribués le 1er de chaque mois.'], mail: 'Contrat signé, copie du document' },
+      { z: 'fin', screen: 'Facture émise', route: '/billing', sees: 'La facture avec son numéro, ses lignes détaillées, sa TVA et son échéance.', exits: [{ a: 'Payer →', t: 'statut « payée », reçu disponible' }, { a: 'Télécharger le PDF →', t: 'facture' }], system: ['Prélèvement automatique sur le moyen de paiement enregistré.', 'Aucune donnée de carte complète n\'est affichée.'], mail: 'Facture disponible' },
+      { z: 'fin', screen: 'Impayé et suspension', route: '/billing · état d\'alerte', sees: 'Le bandeau rouge « facture en retard » sur le tableau de bord, et l\'alerte dans la liste des factures.', exits: [{ a: 'Régulariser →', t: 'accès rétabli immédiatement' }, { a: 'Contacter le conseiller →', t: 'support' }], system: ['Relance à 3, 8 et 15 jours de retard.', 'Au-delà de 15 jours, la création de nouvelles demandes est suspendue.', 'Les contenus déjà livrés restent accessibles.'], mail: 'Relance de paiement, puis avis de suspension' },
+      { z: 'fin', screen: 'Renouvellement', route: '/contracts · à renouveler', sees: 'Le contrat en statut « à renouveler » deux mois avant l\'échéance, avec l\'avenant proposé.', exits: [{ a: 'Signer l\'avenant →', t: 'nouveau contrat actif' }, { a: 'Résilier →', t: 'demande transmise au conseiller' }], system: ['Reconduction tacite pour 12 mois sauf préavis de 2 mois.', 'L\'espace reste accessible en lecture après résiliation.'], mail: 'Échéance de renouvellement à 60 jours' }
+    ]
+  },
+  'Rôles et accès': {
+    title: 'Qui voit quoi, et comment on le contrôle',
+    intro: 'Un utilisateur peut appartenir à plusieurs organisations avec un rôle différent dans chacune. Le changement d\'organisation recharge tout.',
+    steps: [
+      { z: 'app', screen: 'Sélecteur d\'organisation', route: 'Barre latérale', sees: 'La liste de ses organisations avec logo, type, rôle, statut d\'abonnement et alerte éventuelle.', exits: [{ a: 'Changer d\'organisation →', t: 'navigation, données et modules rechargés' }, { a: 'Voir toutes mes organisations →', t: 'liste complète' }], system: ['Le type d\'organisation change la navigation entière.', 'Le rôle dans l\'organisation change les actions autorisées.', 'L\'offre de l\'organisation change les modules disponibles.'], mail: '' },
+      { z: 'app', screen: 'Invitation d\'un utilisateur', route: '/users', sees: 'Le formulaire d\'invitation : adresse e-mail, rôle, périmètre d\'équipes.', exits: [{ a: 'Inviter →', t: 'compte en attente, invitation envoyée' }, { a: 'Annuler l\'invitation →', t: 'lien invalidé' }], system: ['Neuf rôles disponibles, du propriétaire à l\'invité.', 'Le périmètre d\'équipes filtre les contenus et les demandes visibles.'], mail: 'Invitation à rejoindre l\'organisation' },
+      { z: 'auth', screen: 'Acceptation de l\'invitation', route: '/auth/invite/:token', sees: 'Le nom de l\'organisation, le rôle proposé, et la création du mot de passe.', exits: [{ a: 'Rejoindre →', t: 'onboarding réduit puis tableau de bord' }, { a: 'Lien expiré →', t: 'écran « invitation expirée »' }], system: ['Le lien est valable 7 jours.', 'Le rôle ne peut pas être modifié par l\'invité.'], mail: '' },
+      { z: 'app', screen: 'Module non inclus', route: 'N\'importe quelle route verrouillée', sees: 'L\'écran « module inclus dans une offre supérieure », avec le nom de l\'offre actuelle.', exits: [{ a: 'Parler à mon conseiller →', t: 'support' }, { a: 'Découvrir les offres →', t: 'gestion de l\'abonnement' }], system: ['Le module reste visible avec un cadenas, jamais masqué sans explication.', 'Le contrôle passe par canAccess, jamais par un test sur le nom de l\'offre.'], mail: '' },
+      { z: 'app', screen: 'Désactivation d\'un compte', route: '/users/:id', sees: 'La dernière connexion, le rôle, les équipes, et l\'action de désactivation.', exits: [{ a: 'Désactiver →', t: 'accès révoqué, contenus conservés' }, { a: 'Réactiver →', t: 'accès rétabli avec le même rôle' }], system: ['L\'historique des actions de l\'utilisateur est conservé.', 'Le propriétaire ne peut pas être désactivé sans transfert préalable.'], mail: '' }
+    ]
+  }
+};
+
+class Component extends DCLogic {
+  state = { f: 'Inscription' };
+  renderVals() {
+    const keys = Object.keys(FLOWS);
+    const cur = this.state.f;
+    const flow = FLOWS[cur];
+    const chip = (label, k, arrow) => {
+      const M = { grey: ['#252C47', '#A9B6D6'], blue: ['rgba(36,75,255,.24)', '#A8C4FF'], violet: ['rgba(138,46,255,.24)', '#D3B0FF'], amber: ['rgba(247,144,9,.22)', '#FFCF8F'], green: ['rgba(18,183,106,.22)', '#5BE59E'], red: ['rgba(240,68,56,.22)', '#FF9C93'], cyan: ['rgba(0,200,255,.2)', '#8FD4FF'] };
+      return { label, bg: M[k][0], fg: M[k][1], arrow };
+    };
+    return {
+      tabs: keys.map(k => ({
+        label: k, go: () => this.setState({ f: k }),
+        bg: k === cur ? 'linear-gradient(135deg,#244BFF,#8A2EFF)' : 'rgba(255,255,255,.05)',
+        fg: k === cur ? '#fff' : '#A9B6D6',
+        border: k === cur ? 'transparent' : 'rgba(255,255,255,.14)'
+      })),
+      flow: {
+        ...flow,
+        steps: flow.steps.map((s, i) => ({
+          ...s, n: i + 1, notLast: i !== flow.steps.length - 1,
+          zone: Z[s.z][2], tint: Z[s.z][0], color: Z[s.z][1],
+          badgeBg: 'linear-gradient(135deg,#244BFF,#8A2EFF)', badgeFg: '#fff'
+        }))
+      },
+      rules: [
+        { t: 'Un seul espace externe', d: 'Connect remplace définitivement les portails séparés. Club+ n\'est plus une plateforme mais un niveau d\'accompagnement à l\'intérieur de Connect.', icon: 'M4 4h7v7H4zM13 4h7v4h-7zM13 12h7v8h-7zM4 15h7v5H4z', tint: 'rgba(36,75,255,.2)', color: '#8FB4FF' },
+        { t: 'Permissions centralisées', d: 'Aucun écran ne teste le nom de l\'offre. Tout passe par canAccess, canCreate, hasEntitlement et hasQuota, ce qui permet de faire évoluer les formules sans toucher aux vues.', icon: 'M5 11h14v9H5zM8.5 11V8a3.5 3.5 0 017 0v3', tint: 'rgba(138,46,255,.2)', color: '#C9A6FF' },
+        { t: 'Rien n\'est masqué sans raison', d: 'Un module non inclus reste visible avec un cadenas et un écran qui explique ce qu\'il apporte. L\'utilisateur comprend toujours pourquoi il ne peut pas accéder à quelque chose.', icon: 'M12 21a9 9 0 100-18 9 9 0 000 18zM9.6 9.5a2.5 2.5 0 113.4 2.3c-.6.3-1 .9-1 1.7M12 17h.01', tint: 'rgba(0,200,255,.18)', color: '#8FD4FF' },
+        { t: 'Les échanges suivent l\'objet', d: 'Pas de messagerie générale. Les commentaires sont attachés à une prestation, un contenu, une demande ou un contrat, avec mentions, fichiers et résolution.', icon: 'M4 5h16v11H9l-5 4z', tint: 'rgba(18,183,106,.2)', color: '#5BE59E' },
+        { t: 'Une action principale par écran', d: 'Chaque vue a un bouton dominant. Les actions secondaires restent accessibles mais ne rivalisent jamais visuellement avec l\'action attendue.', icon: 'M12 5v14M5 12h14', tint: 'rgba(247,144,9,.2)', color: '#FFCF8F' },
+        { t: 'Les données sensibles suivent le rôle', d: 'Autorisations d\'image, informations administratives et montants n\'apparaissent que selon le rôle et le périmètre d\'équipes de l\'utilisateur.', icon: 'M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z', tint: 'rgba(240,68,56,.2)', color: '#FF9C93' }
+      ],
+      chains: [
+        {
+          n: 'Publication', steps: [
+            chip('Idée', 'grey', true), chip('À produire', 'grey', true), chip('En création', 'blue', true),
+            chip('À valider', 'violet', true), chip('Corrections', 'amber', true), chip('Validé', 'green', true),
+            chip('Programmé', 'cyan', true), chip('Publié', 'green', false)
+          ]
+        },
+        {
+          n: 'Prestation', steps: [
+            chip('Demande reçue', 'grey', true), chip('À valider', 'amber', true), chip('Devis envoyé', 'amber', true),
+            chip('Contrat à signer', 'blue', true), chip('Paiement en attente', 'red', true), chip('Planifiée', 'blue', true),
+            chip('En cours', 'blue', true), chip('Postproduction', 'violet', true), chip('Livrée', 'green', true), chip('Terminée', 'green', false)
+          ]
+        },
+        {
+          n: 'Contrat', steps: [
+            chip('Brouillon', 'grey', true), chip('Envoyé', 'blue', true), chip('Consulté', 'blue', true),
+            chip('Signé', 'green', true), chip('Actif', 'green', true), chip('À renouveler', 'amber', true),
+            chip('Résilié', 'grey', false)
+          ]
+        },
+        {
+          n: 'Facture', steps: [
+            chip('Brouillon', 'grey', true), chip('À payer', 'amber', true), chip('Payée', 'green', false)
+          ]
+        },
+        {
+          n: 'Facture — chemin d\'exception', steps: [
+            chip('À payer', 'amber', true), chip('En retard', 'red', true), chip('Suspension', 'red', true),
+            chip('Régularisée', 'green', false)
+          ]
+        },
+        {
+          n: 'Ticket support', steps: [
+            chip('Ouvert', 'blue', true), chip('En cours', 'blue', true), chip('En attente du client', 'amber', true),
+            chip('Résolu', 'green', true), chip('Fermé', 'grey', false)
+          ]
+        }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>
