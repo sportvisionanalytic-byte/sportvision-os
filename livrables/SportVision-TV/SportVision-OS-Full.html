@@ -817,6 +817,7 @@ const NAV={
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
     {type:'sep',lb:'Communication'},
+    {id:'clubs',lb:'Clubs affiliés',ic:'cli'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
@@ -1730,6 +1731,15 @@ const VIEWS={
         <div id="cm-dash-cl"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
       </div>
     </div>`,
+
+  'cm.clubs':()=>`
+    <div class="sh"><div class="sh-t">Clubs affiliés</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Club+</div><div class="fs-v" id="cmc-kpi-club" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Full Communication</div><div class="fs-v" id="cmc-kpi-fc">—</div></div>
+      <div class="fs"><div class="fs-l">Total affiliés</div><div class="fs-v" id="cmc-kpi-tot">—</div></div>
+    </div>
+    <div id="cm-clubs-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.contenus':()=>`
     <div class="sh"><div class="sh-t">Contenus</div><button class="btn bp bs" onclick="modalNouveauContenu()">+ Nouveau</button></div>
@@ -3152,6 +3162,7 @@ async function loadViewData(role,view){
   if(role==='com'&&view==='commissions') await loadMyCommissions();
   if(['com','admin','sec'].includes(role)&&view==='devis') await loadDevis();
   if(role==='cm'&&view==='dash') await loadCmDash();
+  if(role==='cm'&&view==='clubs') await loadCmClubs();
   if(role==='cm'&&view==='cal') await loadCmCal();
   if(role==='cm'&&view==='contenus') await loadCmContenus();
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
@@ -13836,6 +13847,38 @@ function getWeekDates(offset){
   return Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d;});
 }
 
+// Vue lecture seule pour le CM : clubs/organisations affiliés (contrats Club+
+// ou Full Communication actifs), sans montants ni infos financières — un CM
+// a besoin de savoir pour qui il produit du contenu, pas de voir la marge.
+async function loadCmClubs(){
+  const el=document.getElementById('cm-clubs-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('contrats?select=id,type_contrat,statut,clients(nom,type_client,sport,ville,email,telephone,prenom_contact,nom_contact)&type_contrat=in.(full_communication,club_plus)&statut=eq.actif&order=created_at.desc&limit=200');
+    const list=Array.isArray(data)?data:[];
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('cmc-kpi-club',list.filter(c=>c.type_contrat==='club_plus').length);
+    set('cmc-kpi-fc',list.filter(c=>c.type_contrat==='full_communication').length);
+    set('cmc-kpi-tot',list.length);
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Club / Organisation</th><th>Type</th><th>Offre</th><th>Sport</th><th>Ville</th><th>Contact</th></tr></thead><tbody>'+
+      list.map(c=>{
+        const cl=c.clients||{};
+        const ct=esc([cl.prenom_contact,cl.nom_contact].filter(Boolean).join(' ')||'—');
+        const emailBtn=cl.email?`<span onclick="copier('${escJs(cl.email)}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${esc(cl.email)}</span>`:'—';
+        const telBtn=cl.telephone?`<span onclick="copier('${escJs(cl.telephone)}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${esc(cl.telephone)}</span>`:'';
+        return`<tr>
+          <td class="tp">${esc(cl.nom||'—')}</td>
+          <td>${cl.type_client||'—'}</td>
+          <td><span class="bd ${c.type_contrat==='club_plus'?'ba':'bb'}"><span class="bd-d"></span>${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat}</span></td>
+          <td>${esc(cl.sport||'—')}</td>
+          <td>${esc(cl.ville||'—')}</td>
+          <td style="font-size:12px">${emailBtn}${telBtn}</td>
+        </tr>`;}).join('')+
+      '</tbody></table></div>':
+      '<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🏟️</div><div>Aucun club affilié Club+ ou Full Communication pour l\'instant.</div></div>';
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table contrats non disponible (migration requise).</div>';console.error(e);}
+}
+
 async function loadCmCal(){
   const el=document.getElementById('cal-real');
   const titleEl=document.getElementById('cal-title');
@@ -21209,7 +21252,7 @@ const MOB_MORE_ITEMS={
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
-  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'clubs',lb:'Clubs affiliés',ic:'🏟️',sub:'Club+ / Full Comm'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
 };
 function openMobMore(){
