@@ -76,7 +76,13 @@ body{font-family:var(--ff);background:var(--bg);color:var(--t1);font-size:14px;l
 .sb-n{font-size:13px;font-weight:700;letter-spacing:-.01em}
 .sb-s{font-size:9.5px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
 .nav{padding:10px 10px 4px;flex-shrink:0}
-.nl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:0 7px;margin-bottom:4px;display:block}
+.nav-grp{margin-top:10px}
+.nav-grp:first-child{margin-top:0}
+.nl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:4px 7px;margin-bottom:2px;display:flex;align-items:center;justify-content:space-between;width:100%;border:none;background:transparent;cursor:pointer;font-family:var(--ff);border-radius:var(--rp)}
+.nl:hover{color:var(--t2)}
+.nl-chev{opacity:.5;transition:transform .15s;font-size:9px}
+.nav-grp.collapsed .nl-chev{transform:rotate(-90deg)}
+.nav-grp.collapsed .nav-grp-items{display:none}
 .ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rb);cursor:pointer;color:var(--t2);font-size:13px;font-weight:500;transition:background .12s,color .12s;margin-bottom:1px;border:none;background:transparent;width:100%;text-align:left;font-family:var(--ff)}
 .ni:hover{background:rgba(255,255,255,.05);color:var(--t1)}
 .ni.on{background:rgba(14,165,255,.1);color:var(--acc)}
@@ -16859,6 +16865,47 @@ async function envoyerResetMdp(){
   }
 }
 
+// ── Barre latérale : sections dépliables ──────────────────────────────────
+// Le nombre d'écrans par rôle a beaucoup grandi (module Finance & Comptabilité
+// notamment) — chaque grand axe (séparateur NAV) devient une section qu'on
+// peut replier, avec l'état mémorisé par rôle dans localStorage.
+function renderSidebarNav(role,activeId){
+  const nav=NAV[role]||[];
+  let collapsedSet;
+  try{collapsedSet=new Set(JSON.parse(localStorage.getItem('sv_nav_collapsed_'+role)||'[]'));}catch(e){collapsedSet=new Set();}
+  let html='<div class="nav">',inGroup=false,groupIdx=-1;
+  nav.forEach(item=>{
+    if(item.type==='sep'){
+      if(inGroup)html+='</div></div>';
+      groupIdx++;
+      const collapsed=collapsedSet.has(String(groupIdx));
+      html+=`<div class="nav-grp${collapsed?' collapsed':''}" data-grp="${groupIdx}">
+        <button type="button" class="nl" onclick="toggleNavGroup('${role}',${groupIdx})">
+          <span class="nl-txt">${esc(item.lb)}</span>
+          <span class="nl-chev">▾</span>
+        </button>
+        <div class="nav-grp-items">`;
+      inGroup=true;
+    }else{
+      html+=`<button class="ni${item.id===activeId?' on':''}" data-id="${item.id}" onclick="switchView('${item.id}')">
+        <span class="ni-ic">${IC[item.ic]||''}</span>
+        <span class="ni-lb">${item.lb}</span>
+        <span class="nb" id="nb-${item.id}" style="display:none"></span>
+      </button>`;
+    }
+  });
+  if(inGroup)html+='</div></div>';
+  return html+'</div>';
+}
+function toggleNavGroup(role,idx){
+  const key='sv_nav_collapsed_'+role;
+  let arr;try{arr=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){arr=[];}
+  const s=new Set(arr),k=String(idx);
+  if(s.has(k))s.delete(k);else s.add(k);
+  localStorage.setItem(key,JSON.stringify([...s]));
+  document.querySelector(`.nav-grp[data-grp="${idx}"]`)?.classList.toggle('collapsed');
+}
+
 // ── APP ──────────────────────────────────
 function goApp(role){
   S.role=role;
@@ -16872,14 +16919,7 @@ function goApp(role){
   document.getElementById('u-nm').textContent=cfg.r;
   document.getElementById('u-rl').textContent=cfg.r;
   document.getElementById('cta-btn').textContent=cfg.cta;
-  document.getElementById('sb-nav').innerHTML=`<div class="nav">`+
-    nav.map(item=>item.type==='sep'
-      ?`<span class="nl">${item.lb}</span>`
-      :`<button class="ni${item.id===S.view?' on':''}" data-id="${item.id}" onclick="switchView('${item.id}')">
-        <span class="ni-ic">${IC[item.ic]||''}</span>
-        <span class="ni-lb">${item.lb}</span>
-        <span class="nb" id="nb-${item.id}" style="display:none"></span>
-      </button>`).join('')+`</div>`;
+  document.getElementById('sb-nav').innerHTML=renderSidebarNav(role,S.view);
   show('app');
   renderBottomNav();
   updateCta();
@@ -17731,6 +17771,10 @@ function switchView(id){
   S.view=id;
   closeMobNav();
   document.querySelectorAll('.ni[data-id]').forEach(n=>n.classList.toggle('on',n.dataset.id===id));
+  // Si l'écran ciblé est dans une section repliée (ex: appelé par le bouton
+  // CTA plutôt qu'un clic direct dans la sidebar), la déplier automatiquement.
+  const activeGrp=document.querySelector(`.ni[data-id="${id}"]`)?.closest('.nav-grp.collapsed');
+  if(activeGrp)toggleNavGroup(S.role,activeGrp.dataset.grp);
   updateBottomNav(id);
   const cfg=NAV[S.role].find(n=>n.id===id);
   document.getElementById('pt').textContent=cfg?cfg.lb:'';
