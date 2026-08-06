@@ -816,6 +816,7 @@ const NAV={
     {id:'contenus',lb:'Contenus',ic:'pre'},
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
+    {id:'charge',lb:'Ma charge',ic:'col'},
     {type:'sep',lb:'Communication'},
     {id:'clients',lb:'Mes clients',ic:'cli'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
@@ -1766,6 +1767,19 @@ const VIEWS={
         <div id="an-pre-mois"><div style="padding:20px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
       </div>
     </div>`,
+
+  'cm.charge':()=>`
+    <div class="sh"><div class="sh-t">Ma charge</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs"><div class="fs-l">Clients (portefeuille)</div><div class="fs-v" id="ch-kpi-cl">—</div></div>
+      <div class="fs"><div class="fs-l">Contenus en cours</div><div class="fs-v" id="ch-kpi-enc">—</div></div>
+      <div class="fs" style="border-color:rgba(240,68,94,.25)"><div class="fs-l">Contenus en retard</div><div class="fs-v" id="ch-kpi-retard" style="color:var(--er)">—</div></div>
+    </div>
+    <div class="cd" style="margin-bottom:16px">
+      <div class="cd-h"><div class="cd-t">Niveau de charge</div></div>
+      <div id="ch-jauge" style="padding:16px 18px"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div id="ch-equipe-wrap"></div>`,
 
   // ── COMPTABLE ───────────────────────────
   'compta.dash':()=>`
@@ -3167,6 +3181,7 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='cal') await loadCmCal();
   if(role==='cm'&&view==='contenus') await loadCmContenus();
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
+  if(role==='cm'&&view==='charge') await loadCmCharge();
   if(role==='cm'&&view==='publications') await loadCmPublications();
   if(role==='photo'&&view==='medias') await loadPhotoMedias();
   if(role==='photo'&&view==='kits') await loadPhotoKits();
@@ -14305,6 +14320,79 @@ async function loadCmAnalytics(){
   }catch(e){}
 }
 
+// ── CM — Ma charge ────────────────────────────────────────────────────────────
+const CM_NIVEAU_LBL={cm_junior:'CM Junior',cm_confirme:'CM Confirmé',cm_full_communication:'CM Full Communication',cm_club_plus_studio:'CM Club+ / Studio',cm_evenement:'CM Événement',cm_interne:'CM SportVision interne',cm_lead:'Lead CM'};
+// Seuils volontairement simples pour une première version : basés sur le
+// nombre de contenus en cours (non publiés/archivés) et en retard. À ajuster
+// selon l'usage réel plutôt que deviner des seuils parfaits d'entrée.
+function _chargeNiveau(enCours,enRetard){
+  if(enRetard>=3||enCours>10)return{lb:'Surcharge',cls:'br'};
+  if(enRetard>=1||enCours>5)return{lb:'Charge élevée',cls:'bw'};
+  return{lb:'Charge normale',cls:'ba'};
+}
+
+async function loadCmCharge(){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const uid=localStorage.getItem('sv_uid');
+  const tier=await _ensureMyNiveauCm();
+  try{
+    const [myClients,myContenus]=await Promise.all([
+      sbFetch('clients?select=id&cm_id=eq.'+uid),
+      sbFetch('contenus?select=id,statut,date_prevue&cm_id=eq.'+uid),
+    ]);
+    const contenus=Array.isArray(myContenus)?myContenus:[];
+    const today=new Date().toISOString().slice(0,10);
+    const enCours=contenus.filter(c=>!['publie','archive'].includes(c.statut)).length;
+    const enRetard=contenus.filter(c=>!['publie','archive'].includes(c.statut)&&c.date_prevue&&c.date_prevue<today).length;
+    set('ch-kpi-cl',(myClients||[]).length);set('ch-kpi-enc',enCours);set('ch-kpi-retard',enRetard);
+    const jaugeEl=document.getElementById('ch-jauge');
+    if(jaugeEl){
+      const niv=_chargeNiveau(enCours,enRetard);
+      jaugeEl.innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="bd ${niv.cls}"><span class="bd-d"></span>${niv.lb}</span>
+        <span style="font-size:12px;color:var(--t3)">${enCours} contenu${enCours>1?'s':''} en cours${enRetard?', dont '+enRetard+' en retard':''}</span>
+      </div>`;
+    }
+    const wrap=document.getElementById('ch-equipe-wrap');
+    if(wrap){
+      if(tier==='cm_lead')await _renderChargeEquipe(wrap);
+      else wrap.innerHTML='';
+    }
+  }catch(e){console.error('loadCmCharge',e);}
+}
+
+async function _renderChargeEquipe(wrap){
+  wrap.innerHTML=`<div class="cd"><div class="cd-h"><div class="cd-t">Charge de l'équipe</div></div><div id="ch-equipe-list"><div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div></div>`;
+  const listEl=document.getElementById('ch-equipe-list');
+  if(!listEl)return;
+  try{
+    const [cms,clients,contenus]=await Promise.all([
+      sbFetch('profiles?select=id,prenom,nom,niveau_cm&role=eq.cm&order=prenom.asc'),
+      sbFetch('clients?select=id,cm_id&cm_id=not.is.null'),
+      sbFetch('contenus?select=id,cm_id,statut,date_prevue&cm_id=not.is.null'),
+    ]);
+    const list=Array.isArray(cms)?cms:[];
+    if(!list.length){listEl.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun CM.</div>';return;}
+    const today=new Date().toISOString().slice(0,10);
+    const rows=list.map(cm=>{
+      const nbCl=(clients||[]).filter(c=>c.cm_id===cm.id).length;
+      const myCont=(contenus||[]).filter(c=>c.cm_id===cm.id);
+      const enCours=myCont.filter(c=>!['publie','archive'].includes(c.statut)).length;
+      const enRetard=myCont.filter(c=>!['publie','archive'].includes(c.statut)&&c.date_prevue&&c.date_prevue<today).length;
+      return{cm,nbCl,enCours,enRetard,niv:_chargeNiveau(enCours,enRetard)};
+    });
+    listEl.innerHTML='<div class="tw"><table><thead><tr><th>CM</th><th>Palier</th><th>Portefeuille</th><th>En cours</th><th>En retard</th><th>Charge</th></tr></thead><tbody>'+
+      rows.map(r=>`<tr>
+        <td class="tp">${esc([r.cm.prenom,r.cm.nom].filter(Boolean).join(' ')||'—')}</td>
+        <td>${CM_NIVEAU_LBL[r.cm.niveau_cm]||'Non classé'}</td>
+        <td class="tm">${r.nbCl}</td>
+        <td class="tm">${r.enCours}</td>
+        <td class="tm" style="${r.enRetard?'color:var(--er);font-weight:700':''}">${r.enRetard}</td>
+        <td><span class="bd ${r.niv.cls}"><span class="bd-d"></span>${r.niv.lb}</span></td>
+      </tr>`).join('')+'</tbody></table></div>';
+  }catch(e){listEl.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+}
+
 function modalSaisirStats(){
   const k='sv_an_stats';
   const s=JSON.parse(localStorage.getItem(k)||'{}');
@@ -21444,7 +21532,7 @@ const MOB_MORE_ITEMS={
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
-  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
 };
 function openMobMore(){
