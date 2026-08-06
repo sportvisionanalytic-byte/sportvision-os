@@ -18050,6 +18050,12 @@ if(NAV['admin']){
   if(!NAV[role])return;
   NAV[role].push({id:'avisclients',lb:'Avis clients',ic:'doc'});
 });
+// CM : messagerie client uniquement (pas rendez-vous/catalogue, hors de son
+// périmètre) — accès scopé par portefeuille via mc_cm_acces
+// (migration-cm-messages.sql), pas de filtre JS supplémentaire nécessaire.
+if(NAV['cm']){
+  NAV['cm'].push({type:'sep',lb:'Messagerie client'},{id:'msgclients',lb:'Messages clients',ic:'msg'});
+}
 
 function tplMsgClients(){
   return `<div class="sh"><div class="sh-t">Messages clients</div></div>
@@ -18073,6 +18079,7 @@ VIEWS['admin.comptesportail']=tplComptesPortail;
 ['admin','sec','com'].forEach(role=>{
   if(NAV[role]) VIEWS[role+'.avisclients']=tplAvisClients;
 });
+if(NAV['cm']) VIEWS['cm.msgclients']=tplMsgClients;
 // Tableau de bord dédié à l'expert-comptable : quelqu'un qui vient
 // ponctuellement vérifier/exporter, pas au quotidien — donc pas le dashboard
 // générique de compta (loadComptaDash), mais une vraie vue de synthèse :
@@ -18146,6 +18153,7 @@ loadViewData=async function(role,view){
   if(role==='admin'&&view==='realisations') await loadRealisations();
   if(role==='admin'&&view==='comptesportail') await loadComptesPortail();
   if(['admin','sec','com'].includes(role)&&view==='avisclients') await loadAvisClients();
+  if(role==='cm'&&view==='msgclients') await loadMsgClients();
 };
 
 // ── Messages clients ──
@@ -21436,7 +21444,7 @@ const MOB_MORE_ITEMS={
   prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
-  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
+  cm:[{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
 };
 function openMobMore(){
