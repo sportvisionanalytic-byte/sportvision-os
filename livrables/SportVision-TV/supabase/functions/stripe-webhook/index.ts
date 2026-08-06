@@ -1,10 +1,15 @@
 // Supabase Edge Function — stripe-webhook
 // Reçoit les événements Stripe (checkout.session.completed, payment_intent.payment_failed,
-// charge.refunded), vérifie la signature, met à jour `paiements` puis `prestations`.
+// charge.refunded, customer.subscription.updated/deleted, invoice.paid,
+// invoice.payment_failed), vérifie la signature, met à jour `paiements` puis `prestations`,
+// et pilote l'abonnement récurrent Club+ sur `clubs` (plan, engagement, crédits, statut).
 // Idempotent via `stripe_events`.
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: stripe-webhook)
 // IMPORTANT : décocher "Verify JWT" pour cette fonction dans les settings (Stripe n'envoie pas de JWT Supabase).
 // IMPORTANT : ajouter charge.refunded aux événements écoutés côté dashboard Stripe (Webhooks).
+// IMPORTANT : ajouter aussi customer.subscription.updated, customer.subscription.deleted,
+//             invoice.paid et invoice.payment_failed (abonnement Club+, 2026-08-06) —
+//             sans ça, un impayé ou une résiliation ne serait jamais reflété côté SportVision.
 // Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
 //                  PENNYLANE_API_KEY (pour l'avoir automatique sur remboursement — optionnel : si
 //                  absente, le remboursement est quand même resynchronisé, seul l'avoir Pennylane
@@ -33,6 +38,49 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 const PENNYLANE_BASE = "https://app.pennylane.com/api/external/v2";
+
+/* ── Abonnement Club+ (migration-clubplus-v25) ── */
+
+// Crédits mensuels inclus par formule. Doit rester aligné avec CLUBPLUS_TARIFS
+// dans create-clubplus-subscription-checkout et avec les libellés publics du
+// wizard d'inscription (SportVision-Club-Plus.html).
+const CLUBPLUS_PLAN_CREDITS: Record<string, number> = { club: 5, performance: 20 };
+
+// Statut Stripe → clubs.subscription_status ('actif' | 'impaye' | 'annule').
+// `incomplete` (3-D Secure jamais confirmé) est traité comme un impayé : le
+// club ne doit pas être considéré abonné tant que rien n'est encaissé.
+function mapSubscriptionStatus(status: string): "actif" | "impaye" | "annule" | null {
+  if (status === "active" || status === "trialing") return "actif";
+  if (status === "past_due" || status === "unpaid" || status === "incomplete") return "impaye";
+  if (status === "canceled" || status === "incomplete_expired") return "annule";
+  return null;
+}
+
+// Formule réellement facturée : lue sur le Price de la ligne d'abonnement
+// (metadata posées à la création du Price par create-clubplus-subscription-
+// checkout), et NON sur subscription.metadata — ces dernières datent de la
+// souscription initiale et deviendraient fausses si le club change de formule
+// depuis le Portail de facturation Stripe. Repli sur le lookup_key si les
+// metadata manquent (Price créé à la main dans le dashboard, par exemple).
+function planFromSubscription(sub: Stripe.Subscription): { plan: string | null; engagement: string | null } {
+  const price = sub.items?.data?.[0]?.price;
+  const meta = price?.metadata || {};
+  let plan: string | null = meta.plan || null;
+  let engagement: string | null = meta.engagement || null;
+  if ((!plan || !engagement) && price?.lookup_key) {
+    const m = /^sportvision_clubplus_(club|performance)_(12mois|sans)$/.exec(price.lookup_key);
+    if (m) {
+      plan = plan || m[1];
+      engagement = engagement || m[2];
+    }
+  }
+  // `clubs.plan` et `clubs.engagement` ont des contraintes check en base : une
+  // valeur inattendue (Price bricolé à la main) est ignorée plutôt qu'écrite,
+  // sinon l'update entier échouerait et le statut ne serait pas mis à jour.
+  if (plan && !CLUBPLUS_PLAN_CREDITS[plan]) plan = null;
+  if (engagement !== "12mois" && engagement !== "sans") engagement = null;
+  return { plan, engagement };
+}
 
 function vatRateCode(tvaPct: number | null | undefined): string {
   const map: Record<string, string> = { "20": "FR_200", "10": "FR_100", "5.5": "FR_055", "2.1": "FR_021", "0": "FR_0" };
@@ -127,8 +175,67 @@ serve(async (req) => {
       // d'où le branchement explicite sur contribution_id AVANT le repli sur
       // client_reference_id : sans ça, une contribution serait interprétée à tort
       // comme un paiement_id Portail.
-      const contributionId = (session.metadata?.contribution_id as string) || null;
-      const paiementId = contributionId ? null : ((session.metadata?.paiement_id as string) || (session.client_reference_id as string) || null);
+      // L'abonnement Club+ (mode 'subscription', 2026-08-06) passe par le même
+      // événement et renseigne lui aussi client_reference_id (= club_id, pour
+      // le retrouver depuis le dashboard Stripe). Il est donc testé EN PREMIER,
+      // exactement pour la même raison que le branchement contribution_id →
+      // paiement_id ci-dessous : sans ça, le club_id serait interprété comme un
+      // paiement_id Portail et on chercherait un paiement qui n'existe pas.
+      const abonnementClubId = (session.mode === "subscription" && session.metadata?.club_id)
+        ? (session.metadata.club_id as string)
+        : null;
+      const contributionId = abonnementClubId ? null : ((session.metadata?.contribution_id as string) || null);
+      const paiementId = (abonnementClubId || contributionId)
+        ? null
+        : ((session.metadata?.paiement_id as string) || (session.client_reference_id as string) || null);
+
+      if (abonnementClubId) {
+        // Normalisés avant écriture : `clubs.plan` et `clubs.engagement` ont des
+        // contraintes check en base, une valeur inattendue ferait échouer TOUT
+        // l'update (et donc l'activation de l'abonnement déjà encaissé).
+        const rawPlan = (session.metadata?.plan as string) || "";
+        const plan = CLUBPLUS_PLAN_CREDITS[rawPlan] ? rawPlan : "club";
+        const engagement = session.metadata?.engagement === "sans" ? "sans" : "12mois";
+        const creditsMonthly = CLUBPLUS_PLAN_CREDITS[plan];
+        const subscriptionId = typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id ?? null;
+        const customerId = typeof session.customer === "string"
+          ? session.customer
+          : session.customer?.id ?? null;
+
+        // Seul le service_role écrit ces colonnes : elles sont verrouillées pour
+        // les admins de club par trg_protect_sensitive_club_fields (v24 + v25).
+        // credits_balance est remis au niveau du quota de la formule (le club
+        // démarre son premier mois avec la totalité de ses crédits) — même règle
+        // qu'à chaque renouvellement, cf. handler invoice.paid.
+        await admin
+          .from("clubs")
+          .update({
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscriptionId,
+            plan,
+            engagement,
+            subscription_status: "actif",
+            credits_monthly: creditsMonthly,
+            credits_balance: creditsMonthly,
+          })
+          .eq("id", abonnementClubId);
+
+        try {
+          const { data: club } = await admin.from("clubs").select("nom").eq("id", abonnementClubId).maybeSingle();
+          await admin.rpc("notify_staff_by_role", {
+            p_roles: ["admin", "compta"],
+            p_titre: "Nouvel abonnement Club+ activé",
+            p_message: `${club?.nom || "Un club"} vient d'activer son abonnement ${plan === "performance" ? "Club+ Performance" : "Club+"} (${engagement === "sans" ? "sans engagement" : "engagement 12 mois"}).`,
+            p_priorite: "normale",
+            p_prestation_id: null,
+            p_client_id: null,
+          });
+        } catch (_e) {
+          // ignoré volontairement
+        }
+      }
 
       if (contributionId) {
         const { data: contribution } = await admin
@@ -355,6 +462,161 @@ serve(async (req) => {
               // ignoré volontairement
             }
           }
+        }
+      }
+    }
+
+    /* ══════════════ ABONNEMENT CLUB+ (récurrent) ══════════════
+       Tous les handlers ci-dessous retrouvent le club par
+       clubs.stripe_subscription_id (posé au premier paiement, cf. la branche
+       "abonnement" de checkout.session.completed). Un événement qui ne
+       correspond à aucun club est ignoré silencieusement : le même compte
+       Stripe sert aussi aux paiements ponctuels du Portail/Connect. */
+
+    // Changement d'état de l'abonnement : statut de paiement, mais aussi
+    // changement de formule effectué par le club depuis le Portail de
+    // facturation Stripe (la formule est relue sur le Price réel de
+    // l'abonnement — cf. planFromSubscription).
+    // LIMITE CONNUE : le changement de formule n'apparaît dans le Portail que si
+    // "Customers can switch plans" est activé dans la configuration du Portail
+    // côté dashboard Stripe, avec les 2 produits Club+ et leurs 4 prix. Sans ça,
+    // le Portail se limite aux factures / moyen de paiement / résiliation, ce
+    // qui reste cohérent (rien de cassé silencieusement) — cf. le commentaire
+    // d'en-tête de clubplus-billing-portal.
+    // Les crédits déjà consommés du mois en cours ne sont PAS recalculés lors
+    // d'un changement de formule en cours de période : Stripe proratise la
+    // facturation, et credits_balance se réaligne sur la nouvelle formule au
+    // renouvellement suivant (invoice.paid). Seul credits_monthly change tout
+    // de suite, pour que le quota affiché corresponde à la formule payée.
+    if (event.type === "customer.subscription.updated") {
+      const sub = event.data.object as Stripe.Subscription;
+      const { data: club } = await admin
+        .from("clubs")
+        .select("id, nom, plan, engagement, subscription_status, credits_monthly")
+        .eq("stripe_subscription_id", sub.id)
+        .maybeSingle();
+
+      if (club) {
+        const updates: Record<string, unknown> = {};
+        const statut = mapSubscriptionStatus(sub.status);
+        if (statut && statut !== club.subscription_status) updates.subscription_status = statut;
+
+        const { plan, engagement } = planFromSubscription(sub);
+        if (plan && plan !== club.plan) {
+          updates.plan = plan;
+          updates.credits_monthly = CLUBPLUS_PLAN_CREDITS[plan];
+        }
+        if (engagement && engagement !== club.engagement) updates.engagement = engagement;
+
+        if (Object.keys(updates).length) {
+          await admin.from("clubs").update(updates).eq("id", club.id);
+
+          if (updates.plan) {
+            try {
+              await admin.rpc("notify_staff_by_role", {
+                p_roles: ["admin", "compta"],
+                p_titre: "Changement de formule Club+",
+                p_message: `${club.nom || "Un club"} est passé de ${club.plan === "performance" ? "Club+ Performance" : "Club+"} à ${plan === "performance" ? "Club+ Performance" : "Club+"} depuis le Portail de facturation Stripe.`,
+                p_priorite: "normale",
+                p_prestation_id: null,
+                p_client_id: null,
+              });
+            } catch (_e) {
+              // ignoré volontairement
+            }
+          }
+        }
+      }
+    }
+
+    // Renouvellement mensuel encaissé : le quota de crédits repart à neuf.
+    // HYPOTHÈSE PRODUIT (à confirmer) : les crédits ne sont PAS cumulatifs d'un
+    // mois sur l'autre — un club qui n'a rien consommé ne démarre pas le mois
+    // suivant avec le double. C'est ce que laisse entendre l'affichage de l'app
+    // ("X / Y crédits ce mois") et le libellé "crédits mensuels" du site public,
+    // mais ce n'est écrit dans aucun document contractuel. Si la règle voulue
+    // est le report, remplacer par credits_balance = credits_balance +
+    // credits_monthly (et prévoir un plafond, sinon un club inactif accumule
+    // indéfiniment). credits_reserved n'est jamais touché ici : ce sont des
+    // crédits engagés sur des demandes en attente d'acceptation.
+    if (event.type === "invoice.paid") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id ?? null;
+      if (subId) {
+        const { data: club } = await admin
+          .from("clubs")
+          .select("id, credits_monthly")
+          .eq("stripe_subscription_id", subId)
+          .maybeSingle();
+        if (club) {
+          await admin
+            .from("clubs")
+            .update({
+              credits_balance: club.credits_monthly ?? 0,
+              // Une facture payée après un incident remet aussi l'abonnement au vert.
+              subscription_status: "actif",
+            })
+            .eq("id", club.id);
+        }
+      }
+    }
+
+    // Échec de prélèvement sur un abonnement : le club reste utilisable (Stripe
+    // va retenter selon sa politique de relance) mais l'état est visible dans
+    // l'app et le staff est alerté pour relancer le club avant la résiliation
+    // automatique — même patron de notification que les remboursements.
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id ?? null;
+      if (subId) {
+        const { data: club } = await admin
+          .from("clubs")
+          .select("id, nom")
+          .eq("stripe_subscription_id", subId)
+          .maybeSingle();
+        if (club) {
+          await admin.from("clubs").update({ subscription_status: "impaye" }).eq("id", club.id);
+          try {
+            await admin.rpc("notify_staff_by_role", {
+              p_roles: ["admin", "compta"],
+              p_titre: "Abonnement Club+ impayé",
+              p_message: `Le prélèvement de l'abonnement de ${club.nom || "un club"} a échoué (${((invoice.amount_due || 0) / 100).toFixed(2)} €). Stripe va retenter automatiquement — à relancer si l'échec persiste.`,
+              p_priorite: "haute",
+              p_prestation_id: null,
+              p_client_id: null,
+            });
+          } catch (_e) {
+            // ignoré volontairement
+          }
+        }
+      }
+    }
+
+    // Résiliation effective (fin d'engagement, résiliation depuis le Portail,
+    // ou abandon après échecs de paiement répétés). stripe_subscription_id est
+    // volontairement CONSERVÉ : il reste la trace de l'abonnement résilié et
+    // permet de rattacher d'éventuels événements tardifs (avoir, litige). Une
+    // nouvelle souscription écrasera l'ancien identifiant.
+    if (event.type === "customer.subscription.deleted") {
+      const sub = event.data.object as Stripe.Subscription;
+      const { data: club } = await admin
+        .from("clubs")
+        .select("id, nom")
+        .eq("stripe_subscription_id", sub.id)
+        .maybeSingle();
+      if (club) {
+        await admin.from("clubs").update({ subscription_status: "annule" }).eq("id", club.id);
+        try {
+          await admin.rpc("notify_staff_by_role", {
+            p_roles: ["admin", "compta"],
+            p_titre: "Abonnement Club+ résilié",
+            p_message: `L'abonnement de ${club.nom || "un club"} a été résilié chez Stripe. Le club n'est plus prélevé — vérifier l'accès à l'espace Club+ et le solde de crédits.`,
+            p_priorite: "haute",
+            p_prestation_id: null,
+            p_client_id: null,
+          });
+        } catch (_e) {
+          // ignoré volontairement
         }
       }
     }
