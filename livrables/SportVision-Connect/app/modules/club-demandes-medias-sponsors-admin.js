@@ -818,7 +818,13 @@
       ensureStyles();
 
       const ROLE_CODES = ['admin', 'president', 'secretaire', 'comm', 'cm_externe', 'coach', 'resp_equipe', 'sponsor_mgr', 'tresorier', 'membre_bureau', 'lecture_seule'];
-      const canManage = !!(ctx && ['admin', 'president'].includes(ctx.role));
+      // Aligné strictement sur le backend (trouvé en recette du 2026-08-06) :
+      // is_club_admin() (migration-clubplus-v2.sql) et l'edge function
+      // clubplus-invite n'acceptent que role==='admin', jamais 'president'.
+      // Inclure 'president' ici affichait les actions d'administration à un
+      // rôle dont chaque appel échouait ensuite (invite/changement de rôle/
+      // suspension) sans que l'UI ne prévienne pourquoi.
+      const canManage = !!(ctx && ctx.role === 'admin');
 
       let members = [];
       let loaded = false;
