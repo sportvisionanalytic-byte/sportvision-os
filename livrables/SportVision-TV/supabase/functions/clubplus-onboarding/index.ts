@@ -15,6 +15,26 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Anti-abus : limite de fréquence PAR UTILISATEUR authentifié (10/heure), même
+// mécanisme que create-guest-request (table guest_rate_limits, migration-portail-v11.sql).
+// Un compte Supabase Auth gratuit et auto-créé suffisait jusqu'ici à appeler cette
+// fonction en boucle sans coût — audit du 2026-08-06 (AUDIT-RATE-LIMITING.md).
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+
+// deno-lint-ignore no-explicit-any
+async function checkRateLimit(admin: any, identifiant: string) {
+  const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  const { count } = await admin
+    .from("guest_rate_limits")
+    .select("id", { count: "exact", head: true })
+    .eq("identifiant", identifiant)
+    .gte("created_at", since);
+  if ((count || 0) >= RATE_LIMIT_MAX) return false;
+  await admin.from("guest_rate_limits").insert({ identifiant });
+  return true;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -58,6 +78,11 @@ serve(async (req) => {
     const plan: string = CREDITS_BY_PLAN[body.plan] ? body.plan : "club";
 
     const admin = createClient(supabaseUrl, serviceKey);
+
+    const rateOk = await checkRateLimit(admin, `clubplus-onboarding:${user.id}`);
+    if (!rateOk) {
+      return json({ error: "Trop de tentatives. Réessayez dans une heure." }, 429);
+    }
 
     // Idempotence : déjà onboardé (quel que soit le club) → ne rien recréer.
     const { data: existing } = await admin
