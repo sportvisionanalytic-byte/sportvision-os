@@ -54,7 +54,7 @@ Liste des projets ou chantiers actifs :
 - Améliorer le modèle économique
 - Développer la base clients (clubs, joueurs, familles)
 - Structurer et optimiser la communication de SportVision
-- **SportVision Portail** (site public + espace client connecté à SportVision OS) : lancement officiel prévu **mi-septembre 2026**. L'app mobile (iOS/Android) et l'achat du nom de domaine personnalisé sont volontairement calés fin août pour arriver prêts au lancement.
+- **Retrait du Portail au profit de SportVision Connect** (décidé le 2026-08-06) : le Portail (espace client historique) sera abandonné comme produit, remplacé par l'espace "Projet" de SportVision Connect, un chantier de refonte déjà entamé (coque commune + espaces Club/Coach/Académie/Projet/Sponsor/Joueur/Famille) mais jamais testé avec de vrais utilisateurs. Bascule décidée en confiance : aucun client réel n'est encore sur le Portail, tout est en phase de test, donc la structure peut encore changer librement. Priorité avant d'onboarder de vrais clients : corriger le backlog de sécurité connu de Connect (colonnes non protégées, 11 occurrences documentées) et faire une recette fonctionnelle complète de l'espace Projet. Le site public (catalogue, offres) reste séparé, sur `livrables/SportVision/`, non concerné par ce changement.
 
 ---
 
