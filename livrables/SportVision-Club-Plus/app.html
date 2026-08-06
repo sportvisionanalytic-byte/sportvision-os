@@ -223,7 +223,7 @@ td{font-size:12px;padding:8px;border-bottom:1px solid var(--bd)}
         <div class="u-av" id="uAv"></div>
         <div class="u-meta"><b id="uName"></b><span id="uRole"></span></div>
       </button>
-      <button class="sb-link" onclick="toast('SportVision Portail sera accessible depuis ce raccourci une fois connecté.')">← SportVision Portail</button>
+      <button class="sb-link" onclick="location.href='../SportVision-Connect/app/index.html'">← SportVision Connect</button>
       <button class="sb-logout" onclick="doLogout()">Déconnexion</button>
     </div>
   </aside>
@@ -573,7 +573,7 @@ function openMobMore(){
   const all=NAV_DEFS.flatMap(g=>g.items);
   document.getElementById('mobSheet').innerHTML = `<div style="width:36px;height:4px;background:var(--bd);border-radius:2px;margin:0 auto 18px"></div>
     <div class="grid g2" style="margin-bottom:16px">${allowed.map(k=>{const it=all.find(x=>x.id===k); if(!it) return ''; return `<button class="tile-card" style="display:flex;align-items:center;gap:10px;padding:12px" onclick="closeMobMore();switchView('${it.id}')"><span class="ni-tile">${it.letter}</span>${it.label}</button>`;}).join('')}</div>
-    <button class="sb-link" onclick="closeMobMore();toast('SportVision Portail sera accessible depuis ce raccourci une fois connecté.')">← SportVision Portail</button>
+    <button class="sb-link" onclick="closeMobMore();location.href='../SportVision-Connect/app/index.html'">← SportVision Connect</button>
     <button class="btn bd" style="width:100%;justify-content:center" onclick="closeMobMore();doLogout()">Déconnexion</button>`;
   document.getElementById('mobMore').style.display='block';
 }
@@ -2606,7 +2606,7 @@ function tplParametres(){
       </div>`;
     }
   } else if(paView==='integrations'){
-    const list=[['SportVision Portail','Suivi des demandes, devis, factures et livrables SportVision.','À venir','#F5A623'],['SportVision OS','Synchronisation interne des missions et de la production.','À venir','#F5A623'],['Supabase',REAL?'Base de données et authentification — connecté à ce club.':'Base de données et authentification de la plateforme.',REAL?'Connecté':'À venir',REAL?'#28C995':'#F5A623'],['Stripe','Paiements des abonnements et packs de crédits.','À venir','#F5A623']];
+    const list=[['SportVision Connect','Suivi des demandes, devis, factures et livrables SportVision.','Disponible','#28C995'],['SportVision OS','Synchronisation interne des missions et de la production.','À venir','#F5A623'],['Supabase',REAL?'Base de données et authentification — connecté à ce club.':'Base de données et authentification de la plateforme.',REAL?'Connecté':'À venir',REAL?'#28C995':'#F5A623'],['Stripe','Paiements des abonnements et packs de crédits.','À venir','#F5A623']];
     content=list.map(([n,d,s2,c])=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px"><div><div style="font-weight:700;font-size:14px">${n}</div><div class="muted" style="font-size:12px;margin-top:2px">${d}</div></div><span class="badge" style="background:${c}22;color:${c}">${s2}</span></div>`).join('');
   } else {
     const roleLabels=PERM_ROLE_COLS.map(k=>(ROLES[k]&&ROLES[k].label)||k);
@@ -2749,7 +2749,7 @@ function tplDocsFinance(){
   if(src===null) return `<div class="sh"><b>Documents</b></div><div class="empty-state">Chargement…</div>`;
   if(REAL && !REAL.portailClientId){
     return `<div class="sh"><b>Documents</b></div>
-      <div class="card"><div class="muted" style="font-size:13px;line-height:1.6">SportVision n'a pas encore relié votre club à votre espace Portail — vos devis, factures et contrats n'apparaîtront ici qu'une fois ce lien fait. Contactez votre interlocuteur SportVision.</div></div>`;
+      <div class="card"><div class="muted" style="font-size:13px;line-height:1.6">SportVision n'a pas encore relié votre club à votre espace Connect — vos devis, factures et contrats n'apparaîtront ici qu'une fois ce lien fait. Contactez votre interlocuteur SportVision.</div></div>`;
   }
   const typeLbl={devis:'Devis',facture:'Facture',contrat:'Contrat',convention:'Convention sponsor'};
   const list=src.filter(d=>dfFilter==='tous'||d.type===dfFilter);
@@ -2758,9 +2758,9 @@ function tplDocsFinance(){
     <div class="list-host">${list.map(d=>{const sm=REAL?docStatusMeta(d.status):statusMeta(d.status); return `<div class="list-row" style="cursor:default;flex-wrap:wrap">
       <div><div style="font-weight:700;font-size:13.5px">${esc(d.title)}</div><div class="muted" style="font-size:12px;margin-top:2px">${typeLbl[d.type]||d.type} · ${d.numero||''} · ${d.date?fmtDate(d.date):'—'}${d.amount!=null?' · '+d.amount+' €':''}</div></div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
-      ${d.pdfUrl?`<button class="btn bo" style="padding:6px 12px" onclick="window.open('${esc(d.pdfUrl)}','_blank')">Télécharger</button>`:`<button class="btn bo" style="padding:6px 12px" onclick="toast('Ce document sera consultable directement depuis SportVision Portail.')">Ouvrir</button>`}
+      ${d.pdfUrl?`<button class="btn bo" style="padding:6px 12px" onclick="window.open('${esc(d.pdfUrl)}','_blank')">Télécharger</button>`:`<button class="btn bo" style="padding:6px 12px" onclick="window.open('../SportVision-Connect/app/index.html','_blank')">Ouvrir</button>`}
       </div></div>`;}).join('')||'<div class="empty-state">Aucun document pour le moment.</div>'}</div>
-    <div class="muted" style="font-size:11.5px;margin-top:12px">Les devis et factures SportVision se signent et se paient depuis SportVision Portail.</div>`;
+    <div class="muted" style="font-size:11.5px;margin-top:12px">Les devis et factures SportVision se signent et se paient depuis SportVision Connect.</div>`;
 }
 
 /* ══════════════ RAPPORTS ══════════════ */
