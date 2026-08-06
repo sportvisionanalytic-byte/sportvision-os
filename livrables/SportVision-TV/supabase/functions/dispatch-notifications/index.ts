@@ -8,11 +8,17 @@
 // rendre le template versionné avec les variables du payload, envoyer via le
 // fournisseur transactionnel (Brevo), et tracer chaque tentative.
 //
-// Sécurité : appelée uniquement par pg_cron (avec le header d'auth défini
-// dans la migration via Vault, jamais en clair) — jamais depuis le navigateur.
+// Sécurité : appelée uniquement par pg_cron, avec un header Authorization
+// portant un secret partagé dédié (migration-connect-v11), vérifié ci-dessous
+// contre DISPATCH_NOTIFICATIONS_SECRET — jamais depuis le navigateur. Avant
+// le 2026-08-06, ce contrôle était uniquement décrit en commentaire mais
+// jamais réellement vérifié par le code : n'importe quel appelant pouvait
+// déclencher le traitement de la file à volonté.
 //
 // Secrets requis (Supabase → Edge Functions → dispatch-notifications → Secrets) :
-//   BREVO_API_KEY, FROM_EMAIL (ex: "SportVision <notifications@sportvision.fr>")
+//   BREVO_API_KEY, FROM_EMAIL (ex: "SportVision <notifications@sportvision.fr>"),
+//   DISPATCH_NOTIFICATIONS_SECRET (même valeur que le secret Vault
+//   "dispatch_notifications_key" créé par migration-connect-v11)
 // Tant que BREVO_API_KEY n'est pas configurée, la fonction renvoie une erreur
 // claire par ligne au lieu d'échouer en silence ou de deviner un comportement.
 
@@ -64,6 +70,13 @@ function parseFromHeader(fromEmail: string): { email: string; name?: string } {
 
 serve(async (req) => {
   try {
+    const expectedSecret = Deno.env.get("DISPATCH_NOTIFICATIONS_SECRET") ?? "";
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const providedSecret = authHeader.replace(/^Bearer\s+/i, "");
+    if (!expectedSecret || providedSecret !== expectedSecret) {
+      return new Response(JSON.stringify({ error: "Non autorisé" }), { status: 401 });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const brevoApiKey = Deno.env.get("BREVO_API_KEY");
@@ -184,6 +197,6 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ processed }), { status: 200, headers: { "Content-Type": "application/json" } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), { status: 500 });
   }
 });

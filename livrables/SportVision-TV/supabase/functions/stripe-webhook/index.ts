@@ -26,7 +26,7 @@ serve(async (req) => {
     if (!signature || !webhookSecret) throw new Error("Signature ou secret manquant");
     event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret, undefined, cryptoProvider);
   } catch (err) {
-    return new Response(`Signature invalide : ${err.message}`, { status: 400 });
+    return new Response(`Signature invalide : ${err instanceof Error ? err.message : String(err)}`, { status: 400 });
   }
 
   const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
@@ -118,7 +118,7 @@ serve(async (req) => {
                 p_roles: ["sec"],
                 p_titre: `Paiement reçu${ref}`,
                 p_message: "Le paiement a été confirmé via Stripe. Le dossier est financièrement à jour.",
-                p_priorite: "low",
+                p_priorite: "faible",
                 p_prestation_id: paiement.prestation_id,
                 p_client_id: paiement.client_id,
               });
@@ -128,7 +128,7 @@ serve(async (req) => {
                 p_message:
                   (paiement.type_paiement === "acompte" ? "L'acompte est reçu." : "Le solde est réglé.") +
                   " La prestation peut être planifiée.",
-                p_priorite: "medium",
+                p_priorite: "normale",
                 p_prestation_id: paiement.prestation_id,
                 p_client_id: paiement.client_id,
               });
@@ -168,10 +168,73 @@ serve(async (req) => {
       await admin.from("paiements").update({ statut: "echoue" }).eq("stripe_payment_intent_id", intent.id);
       await admin.from("team_project_contributions").update({ statut: "echoue" }).eq("stripe_payment_intent_id", intent.id);
     }
+
+    // Remboursement (manuel depuis le dashboard Stripe, ou via l'API) — jusqu'ici
+    // aucun événement de remboursement n'était géré : paiements.statut,
+    // prestations.statut_financier et factures.statut restaient à "payé(e)"
+    // indéfiniment après un remboursement réel. Un remboursement partiel n'est
+    // PAS reflété automatiquement (pas de statut intermédiaire fiable côté
+    // prestation/facture) — seul le staff est notifié pour traitement manuel ;
+    // un remboursement total met bien à jour tous les statuts.
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+      const intentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+      const estTotal = charge.amount_refunded >= charge.amount;
+
+      if (intentId) {
+        const { data: paiement } = await admin
+          .from("paiements")
+          .select("*")
+          .eq("stripe_payment_intent_id", intentId)
+          .maybeSingle();
+
+        if (paiement && paiement.statut !== "rembourse") {
+          if (estTotal) {
+            await admin.from("paiements").update({ statut: "rembourse" }).eq("id", paiement.id);
+
+            if (paiement.prestation_id) {
+              await admin
+                .from("prestations")
+                .update({ statut_financier: "remboursée" })
+                .eq("id", paiement.prestation_id);
+
+              try {
+                await admin
+                  .from("factures")
+                  .update({ statut: "remboursee" })
+                  .eq("prestation_id", paiement.prestation_id)
+                  .eq("type_facture", paiement.type_paiement)
+                  .eq("statut", "payee");
+              } catch (_e) {
+                // ignoré volontairement
+              }
+            }
+          }
+
+          // Notifie toujours le staff, même en remboursement partiel — c'est
+          // le seul filet de sécurité tant qu'il n'y a pas de reconciliation
+          // automatique pour les cas partiels.
+          try {
+            await admin.rpc("notify_staff_by_role", {
+              p_roles: ["sec", "compta"],
+              p_titre: estTotal ? "Remboursement Stripe confirmé" : "Remboursement Stripe PARTIEL — vérification requise",
+              p_message: estTotal
+                ? `Le paiement de ${(paiement.montant || 0)} € a été intégralement remboursé. Le dossier a été mis à jour automatiquement.`
+                : `Remboursement partiel détecté (${(charge.amount_refunded / 100).toFixed(2)} € sur ${(charge.amount / 100).toFixed(2)} €). Aucune mise à jour automatique du statut — à traiter manuellement.`,
+              p_priorite: estTotal ? "normale" : "haute",
+              p_prestation_id: paiement.prestation_id,
+              p_client_id: paiement.client_id,
+            });
+          } catch (_e) {
+            // ignoré volontairement
+          }
+        }
+      }
+    }
   } catch (e) {
     // On accuse toujours réception à Stripe (200) pour éviter des re-livraisons en boucle ;
     // l'erreur applicative reste tracée dans la réponse pour le debug via les logs Supabase.
-    return new Response(JSON.stringify({ received: true, error: e.message }), { status: 200 });
+    return new Response(JSON.stringify({ received: true, error: e instanceof Error ? e.message : String(e) }), { status: 200 });
   }
 
   return new Response(JSON.stringify({ received: true }), { status: 200 });

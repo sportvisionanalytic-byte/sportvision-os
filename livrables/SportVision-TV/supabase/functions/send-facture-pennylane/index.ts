@@ -75,67 +75,129 @@ serve(async (req) => {
       return json({ error: "Cette facture a déjà été envoyée à Pennylane" }, 409);
     }
 
+    // Réservation atomique : marque la facture "en cours d'envoi" avant tout
+    // appel Pennylane. Empêche un retry (double-clic, timeout réseau côté
+    // staff) de créer une SECONDE facture légale pendant qu'un premier envoi
+    // est encore en vol — bug identifié le 2026-08-06 : si l'update final
+    // (plus bas) échouait après une création Pennylane réussie, le garde-fou
+    // ci-dessus ne protégeait plus rien puisque pennylane_invoice_id restait
+    // null. En cas d'échec avant d'obtenir une vraie facture Pennylane, la
+    // réservation est relâchée dans le catch ci-dessous.
+    const { data: claimed, error: claimErr } = await admin
+      .from("factures")
+      .update({ pennylane_invoice_id: "pending" })
+      .eq("id", facture_id)
+      .is("pennylane_invoice_id", null)
+      .select("id")
+      .maybeSingle();
+    if (claimErr) return json({ error: claimErr.message }, 500);
+    if (!claimed) {
+      return json({ error: "Cette facture a déjà été envoyée à Pennylane (ou un envoi est déjà en cours)." }, 409);
+    }
+
     const pennylaneHeaders = {
       Authorization: `Bearer ${pennylaneApiKey}`,
       "Content-Type": "application/json",
     };
 
-    // 1. Trouver ou créer le client Pennylane (une seule fois par client SportVision)
-    let pennylaneCustomerId = client.pennylane_customer_id;
-    if (!pennylaneCustomerId) {
-      const custRes = await fetch(`${PENNYLANE_BASE}/company_customers`, {
-        method: "POST",
-        headers: pennylaneHeaders,
-        body: JSON.stringify({
-          name: client.nom,
-          emails: client.email ? [client.email] : [],
-          billing_address: {
-            address: client.adresse || "Non renseignée",
-            postal_code: client.code_postal || "00000",
-            city: client.ville || "Non renseignée",
-            country_alpha2: "FR",
-          },
-        }),
-      });
-      if (!custRes.ok) return json({ error: "Pennylane (client) : " + (await custRes.text()) }, 502);
-      const cust = await custRes.json();
-      pennylaneCustomerId = String(cust.id);
-      await admin.from("clients").update({ pennylane_customer_id: pennylaneCustomerId }).eq("id", client.id);
+    // Relâche la réservation "pending" pour permettre un futur retry légitime,
+    // utilisé sur tout chemin d'échec avant l'obtention d'une vraie facture
+    // Pennylane (sans quoi la facture resterait bloquée indéfiniment).
+    async function releaseClaim() {
+      await admin.from("factures").update({ pennylane_invoice_id: null }).eq("id", facture_id).eq("pennylane_invoice_id", "pending");
     }
 
-    // 2. Créer la facture
-    const lignes = Array.isArray(facture.lignes) ? facture.lignes : [];
-    const invoiceLines = (lignes.length ? lignes : [{ description: facture.type_facture || "Prestation SportVision", quantite: 1, prix_unitaire: facture.montant_ht }])
-      .map((l: any) => ({
-        label: l.description || l.libelle || "Prestation SportVision",
-        quantity: l.quantite ?? l.qte ?? 1,
-        unit: "unit",
-        raw_currency_unit_price: String(l.prix_unitaire ?? l.pu ?? 0),
-        vat_rate: vatRateCode(facture.tva_pct),
-      }));
+    let invoice: { id: number | string; invoice_number?: string; public_file_url?: string };
+    try {
+      // 1. Trouver ou créer le client Pennylane (une seule fois par client SportVision)
+      let pennylaneCustomerId = client.pennylane_customer_id;
+      if (!pennylaneCustomerId) {
+        const custRes = await fetch(`${PENNYLANE_BASE}/company_customers`, {
+          method: "POST",
+          headers: pennylaneHeaders,
+          body: JSON.stringify({
+            name: client.nom,
+            emails: client.email ? [client.email] : [],
+            billing_address: {
+              address: client.adresse || "Non renseignée",
+              postal_code: client.code_postal || "00000",
+              city: client.ville || "Non renseignée",
+              country_alpha2: "FR",
+            },
+          }),
+        });
+        if (!custRes.ok) {
+          await releaseClaim();
+          return json({ error: "Pennylane (client) : " + (await custRes.text()) }, 502);
+        }
+        const cust = await custRes.json();
+        pennylaneCustomerId = String(cust.id);
+        await admin.from("clients").update({ pennylane_customer_id: pennylaneCustomerId }).eq("id", client.id);
+      }
 
-    const invRes = await fetch(`${PENNYLANE_BASE}/customer_invoices`, {
-      method: "POST",
-      headers: pennylaneHeaders,
-      body: JSON.stringify({
-        customer_id: Number(pennylaneCustomerId),
-        date: facture.date_emission || new Date().toISOString().slice(0, 10),
-        deadline: facture.date_echeance || new Date().toISOString().slice(0, 10),
-        invoice_lines: invoiceLines,
-      }),
-    });
-    if (!invRes.ok) return json({ error: "Pennylane (facture) : " + (await invRes.text()) }, 502);
-    const invoice = await invRes.json();
+      // 2. Créer la facture. Idempotency-Key : protection best-effort si
+      // Pennylane la supporte (retry réseau identique ne recrée pas la
+      // facture) — sans garantie documentée, la réservation atomique
+      // ci-dessus reste la protection principale côté SportVision.
+      const lignes = Array.isArray(facture.lignes) ? facture.lignes : [];
+      const invoiceLines = (lignes.length ? lignes : [{ description: facture.type_facture || "Prestation SportVision", quantite: 1, prix_unitaire: facture.montant_ht }])
+        .map((l: any) => ({
+          label: l.description || l.libelle || "Prestation SportVision",
+          quantity: l.quantite ?? l.qte ?? 1,
+          unit: "unit",
+          raw_currency_unit_price: String(l.prix_unitaire ?? l.pu ?? 0),
+          vat_rate: vatRateCode(facture.tva_pct),
+        }));
 
-    const { error: updateErr } = await admin
-      .from("factures")
-      .update({
+      const invRes = await fetch(`${PENNYLANE_BASE}/customer_invoices`, {
+        method: "POST",
+        headers: { ...pennylaneHeaders, "Idempotency-Key": `facture-${facture_id}` },
+        body: JSON.stringify({
+          customer_id: Number(pennylaneCustomerId),
+          date: facture.date_emission || new Date().toISOString().slice(0, 10),
+          deadline: facture.date_echeance || new Date().toISOString().slice(0, 10),
+          invoice_lines: invoiceLines,
+        }),
+      });
+      if (!invRes.ok) {
+        await releaseClaim();
+        return json({ error: "Pennylane (facture) : " + (await invRes.text()) }, 502);
+      }
+      invoice = await invRes.json();
+    } catch (e) {
+      await releaseClaim();
+      return json({ error: "Pennylane : " + (e instanceof Error ? e.message : String(e)) }, 502);
+    }
+
+    // La facture existe désormais réellement chez Pennylane : on ne relâche
+    // plus jamais la réservation à partir d'ici, même si l'enregistrement
+    // échoue ci-dessous — un retry ne doit plus jamais recréer la facture.
+    let saved = false;
+    let lastErr: { message: string } | null = null;
+    for (let attempt = 0; attempt < 3 && !saved; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 300 * attempt));
+      const { error: updateErr } = await admin
+        .from("factures")
+        .update({
+          pennylane_invoice_id: String(invoice.id),
+          pennylane_invoice_number: invoice.invoice_number || null,
+          pennylane_public_url: invoice.public_file_url || null,
+        })
+        .eq("id", facture_id);
+      if (!updateErr) { saved = true; break; }
+      lastErr = updateErr;
+    }
+    if (!saved) {
+      // Échec d'enregistrement après succès Pennylane : on remonte les
+      // identifiants réels au staff pour renseignement manuel plutôt que
+      // de risquer un doublon si quelqu'un relance l'envoi plus tard.
+      return json({
+        error: "Facture créée chez Pennylane mais non enregistrée côté SportVision après plusieurs tentatives : " + (lastErr?.message || "erreur inconnue"),
         pennylane_invoice_id: String(invoice.id),
         pennylane_invoice_number: invoice.invoice_number || null,
         pennylane_public_url: invoice.public_file_url || null,
-      })
-      .eq("id", facture_id);
-    if (updateErr) return json({ error: updateErr.message }, 500);
+      }, 500);
+    }
 
     return json({
       sent: true,
@@ -143,6 +205,6 @@ serve(async (req) => {
       pennylane_public_url: invoice.public_file_url,
     });
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });

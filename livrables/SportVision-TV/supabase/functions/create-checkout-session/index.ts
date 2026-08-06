@@ -34,6 +34,7 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
     const portalUrl = Deno.env.get("PORTAL_URL") ?? "https://portail.sportvision.fr";
+    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
 
     if (!stripeSecretKey) return json({ error: "STRIPE_SECRET_KEY non configurée" }, 500);
 
@@ -44,7 +45,7 @@ serve(async (req) => {
     if (userErr || !userData?.user) return json({ error: "Session invalide" }, 401);
     const user = userData.user;
 
-    const { devis_id, prestation_id, type_paiement } = await req.json();
+    const { devis_id, prestation_id, type_paiement, caller } = await req.json();
     if (!devis_id && !prestation_id) return json({ error: "devis_id ou prestation_id requis" }, 400);
     if (!["acompte", "solde", "totalite"].includes(type_paiement)) {
       return json({ error: "type_paiement invalide" }, 400);
@@ -184,8 +185,13 @@ serve(async (req) => {
           quantity: 1,
         },
       ],
-      success_url: `${portalUrl}/?paiement=succes&paiement_id=${paiement.id}`,
-      cancel_url: `${portalUrl}/?paiement=annule&paiement_id=${paiement.id}`,
+      // Avant le 2026-08-06, cette fonction renvoyait TOUJOURS vers PORTAL_URL
+      // après paiement, même pour un paiement initié depuis SportVision Connect
+      // — le client était donc redirigé vers le Portail au lieu de revenir dans
+      // l'app d'où il venait. "caller" est un enum fermé (pas une URL fournie
+      // par le client) pour ne jamais introduire de risque de redirection ouverte.
+      success_url: `${(caller === "connect" ? connectUrl : portalUrl)}/?paiement=succes&paiement_id=${paiement.id}`,
+      cancel_url: `${(caller === "connect" ? connectUrl : portalUrl)}/?paiement=annule&paiement_id=${paiement.id}`,
       client_reference_id: paiement.id,
       metadata: { paiement_id: paiement.id },
       customer_email: user.email ?? undefined,
@@ -195,6 +201,6 @@ serve(async (req) => {
 
     return json({ url: session.url });
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });

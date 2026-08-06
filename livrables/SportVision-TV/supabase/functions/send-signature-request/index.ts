@@ -217,67 +217,119 @@ serve(async (req) => {
     const client = doc.clients;
     if (!client?.email) return json({ error: "Le client n'a pas d'adresse e-mail renseignée" }, 400);
 
+    if (doc.signature_statut === "demandee" || doc.signature_statut === "signee") {
+      return json({ error: "Une demande de signature est déjà en cours ou terminée pour ce document." }, 409);
+    }
+
+    // Réservation atomique : passe le document à "demandee" avant tout appel
+    // Youtrust. Empêche un retry (double-clic, timeout réseau côté staff) de
+    // renvoyer une SECONDE demande — et donc un second e-mail réel au client
+    // — pendant qu'un premier envoi est encore en vol. Bug identifié le
+    // 2026-08-06 : contrairement à Pennylane, aucun garde-fou n'existait ici
+    // du tout. Si l'un des appels Youtrust échoue AVANT l'activation (donc
+    // avant tout e-mail envoyé), la réservation est restaurée à son état
+    // d'origine dans le catch ci-dessous pour permettre un retry légitime.
+    const previousStatut = doc.signature_statut || "non_demandee";
+    const { data: claimed, error: claimErr } = await admin
+      .from(table)
+      .update({ signature_statut: "demandee" })
+      .eq("id", doc_id)
+      .not("signature_statut", "in", "(demandee,signee)")
+      .select("id")
+      .maybeSingle();
+    if (claimErr) return json({ error: claimErr.message }, 500);
+    if (!claimed) {
+      return json({ error: "Une demande de signature est déjà en cours ou terminée pour ce document." }, 409);
+    }
+
     const pdfBytes = await buildPdf(doc_type as "devis" | "contrat", doc, client);
 
-    // 1. Créer la demande de signature (brouillon)
-    const srRes = await fetch(`${youtrustApiUrl}/signature_requests`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${youtrustApiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: `${doc_type === "devis" ? "Devis" : "Contrat"} — ${client.nom}`.slice(0, 128),
-        delivery_mode: "email",
-      }),
-    });
-    if (!srRes.ok) return json({ error: "Youtrust (création) : " + (await srRes.text()) }, 502);
-    const sr = await srRes.json();
+    let sr: { id: string };
+    let activated = false;
+    try {
+      // 1. Créer la demande de signature (brouillon)
+      const srRes = await fetch(`${youtrustApiUrl}/signature_requests`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${youtrustApiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: `${doc_type === "devis" ? "Devis" : "Contrat"} — ${client.nom}`.slice(0, 128),
+          delivery_mode: "email",
+        }),
+      });
+      if (!srRes.ok) throw new Error("Youtrust (création) : " + (await srRes.text()));
+      sr = await srRes.json();
 
-    // 2. Uploader le PDF
-    const form = new FormData();
-    form.append("file", new Blob([pdfBytes as unknown as BlobPart], { type: "application/pdf" }), `${doc_type}-${doc_id}.pdf`);
-    form.append("nature", "signable_document");
-    const docRes = await fetch(`${youtrustApiUrl}/signature_requests/${sr.id}/documents`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${youtrustApiKey}` },
-      body: form,
-    });
-    if (!docRes.ok) return json({ error: "Youtrust (document) : " + (await docRes.text()) }, 502);
-    const uploadedDoc = await docRes.json();
+      // 2. Uploader le PDF
+      const form = new FormData();
+      form.append("file", new Blob([pdfBytes as unknown as BlobPart], { type: "application/pdf" }), `${doc_type}-${doc_id}.pdf`);
+      form.append("nature", "signable_document");
+      const docRes = await fetch(`${youtrustApiUrl}/signature_requests/${sr.id}/documents`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${youtrustApiKey}` },
+        body: form,
+      });
+      if (!docRes.ok) throw new Error("Youtrust (document) : " + (await docRes.text()));
+      const uploadedDoc = await docRes.json();
 
-    // 3. Ajouter le client comme signataire
-    const signerName = (client.prenom_contact || client.nom_contact)
-      ? { first_name: client.prenom_contact || client.nom, last_name: client.nom_contact || "" }
-      : { first_name: client.nom, last_name: "" };
-    const signerRes = await fetch(`${youtrustApiUrl}/signature_requests/${sr.id}/signers`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${youtrustApiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        info: { ...signerName, email: client.email, locale: "fr" },
-        signature_level: "electronic_signature",
-        signature_authentication_mode: "no_otp",
-        fields: [{ document_id: uploadedDoc.id, type: "signature", page: 1, x: 350, y: 60 }],
-      }),
-    });
-    if (!signerRes.ok) return json({ error: "Youtrust (signataire) : " + (await signerRes.text()) }, 502);
+      // 3. Ajouter le client comme signataire
+      const signerName = (client.prenom_contact || client.nom_contact)
+        ? { first_name: client.prenom_contact || client.nom, last_name: client.nom_contact || "" }
+        : { first_name: client.nom, last_name: "" };
+      const signerRes = await fetch(`${youtrustApiUrl}/signature_requests/${sr.id}/signers`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${youtrustApiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          info: { ...signerName, email: client.email, locale: "fr" },
+          signature_level: "electronic_signature",
+          signature_authentication_mode: "no_otp",
+          fields: [{ document_id: uploadedDoc.id, type: "signature", page: 1, x: 350, y: 60 }],
+        }),
+      });
+      if (!signerRes.ok) throw new Error("Youtrust (signataire) : " + (await signerRes.text()));
 
-    // 4. Activer — Youtrust envoie l'e-mail au client
-    const activateRes = await fetch(`${youtrustApiUrl}/signature_requests/${sr.id}/activate`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${youtrustApiKey}` },
-    });
-    if (!activateRes.ok) return json({ error: "Youtrust (activation) : " + (await activateRes.text()) }, 502);
+      // 4. Activer — Youtrust envoie l'e-mail au client. Point de non-retour :
+      // dès que cet appel réussit, la réservation ne doit plus jamais être
+      // restaurée, même si l'enregistrement en base échoue ensuite.
+      const activateRes = await fetch(`${youtrustApiUrl}/signature_requests/${sr.id}/activate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${youtrustApiKey}` },
+      });
+      if (!activateRes.ok) throw new Error("Youtrust (activation) : " + (await activateRes.text()));
+      activated = true;
+    } catch (e) {
+      if (!activated) {
+        await admin.from(table).update({ signature_statut: previousStatut }).eq("id", doc_id).eq("signature_statut", "demandee");
+      }
+      return json({ error: e instanceof Error ? e.message : String(e) }, 502);
+    }
 
-    const { error: updateErr } = await admin
-      .from(table)
-      .update({
-        signature_statut: "demandee",
-        signature_demandee_at: new Date().toISOString(),
+    let saved = false;
+    let lastErr: { message: string } | null = null;
+    for (let attempt = 0; attempt < 3 && !saved; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 300 * attempt));
+      const { error: updateErr } = await admin
+        .from(table)
+        .update({
+          signature_statut: "demandee",
+          signature_demandee_at: new Date().toISOString(),
+          youtrust_signature_request_id: sr.id,
+        })
+        .eq("id", doc_id);
+      if (!updateErr) { saved = true; break; }
+      lastErr = updateErr;
+    }
+    if (!saved) {
+      // L'e-mail de signature a bien été envoyé au client mais l'ID Youtrust
+      // n'a pas pu être enregistré après plusieurs tentatives — remonté au
+      // staff pour renseignement manuel plutôt que de risquer un second envoi.
+      return json({
+        error: "E-mail de signature envoyé mais non enregistré côté SportVision après plusieurs tentatives : " + (lastErr?.message || "erreur inconnue"),
         youtrust_signature_request_id: sr.id,
-      })
-      .eq("id", doc_id);
-    if (updateErr) return json({ error: updateErr.message }, 500);
+      }, 500);
+    }
 
     return json({ sent: true, youtrust_signature_request_id: sr.id });
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });
