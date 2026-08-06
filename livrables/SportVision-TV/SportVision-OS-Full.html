@@ -2507,15 +2507,34 @@ async function doLogout(){
   goLogin();
 }
 
+async function _refreshRoleFromDB(tok,uid){
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/profiles?id=eq.'+uid+'&select=role',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok}
+    });
+    const profs=await r.json();
+    if(profs&&profs[0]&&profs[0].role)return profs[0].role;
+  }catch(e){}
+  return null;
+}
+
 async function checkSession(){
   const tok=localStorage.getItem('sv_tok');
+  const uid=localStorage.getItem('sv_uid');
   const role=localStorage.getItem('sv_role');
   if(!tok||!role)return;
   try{
     const r=await fetch(SB_URL+'/auth/v1/user',{
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok}
     });
-    if(r.ok){goApp(role);return;}
+    if(r.ok){
+      // Le rôle peut avoir été changé côté admin depuis la dernière connexion :
+      // on revérifie toujours en base plutôt que de faire confiance au cache local.
+      const freshRole=await _refreshRoleFromDB(tok,uid)||role;
+      if(freshRole!==role)localStorage.setItem('sv_role',freshRole);
+      goApp(freshRole);
+      return;
+    }
     // Token expiré, on tente le refresh
     const ref=localStorage.getItem('sv_ref');
     if(!ref){svClear();return;}
@@ -2526,8 +2545,9 @@ async function checkSession(){
     });
     const d=await r2.json();
     if(d.access_token){
-      svSave(d.access_token,d.refresh_token,localStorage.getItem('sv_uid'),role);
-      goApp(role);
+      const freshRole=await _refreshRoleFromDB(d.access_token,uid)||role;
+      svSave(d.access_token,d.refresh_token,uid,freshRole);
+      goApp(freshRole);
     }else{svClear();}
   }catch(e){/* réseau HS, on reste sur login */}
 }
