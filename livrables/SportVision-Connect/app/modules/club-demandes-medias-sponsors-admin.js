@@ -60,6 +60,10 @@
       .cm-warn{border-color:#e2a03f55;background:rgba(226,160,63,.08)}
       .cm-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px}
       .cm-inline-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:rgba(0,0,0,.03);border-radius:10px;padding:9px 12px;margin-bottom:6px;font-size:12.5px}
+      .cm-player-list{max-height:190px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--card)}
+      .cm-player-row{display:flex;align-items:center;gap:8px;padding:4px 2px;font-size:13px;cursor:pointer}
+      .cm-player-row input[type=checkbox]{width:auto;flex:none}
+      .cm-player-empty{color:var(--muted);font-size:12.5px;padding:4px 2px}
     `;
     document.head.appendChild(style);
   }
@@ -376,6 +380,23 @@
       const accessRules = {}; // cache: 'club_media:<id>' -> array of rules
       let myName = null;
 
+      // ── Tagging joueurs (migration-clubplus-v30) ──
+      // clubPlayers : joueurs actifs du club (player_profiles), chargé avec le
+      // reste au démarrage du module — voir load(). Sert à la fois au formulaire
+      // de création (cases à cocher) et à la gestion des tags d'un média existant.
+      let clubPlayers = [];
+      // tagsByMedia : 'club_media:<id>'|'club_creations:<id>' -> array de lignes
+      // media_player_tags (avec player_profiles(prenom,nom) embarqué), chargé en
+      // bloc par loadTagsBulk() juste après load().
+      const tagsByMedia = {};
+      // blockedByMedia : même clé -> booléen, résultat de la fonction SQL dédiée
+      // media_has_unauthorized_tagged_player (rpc), calculé seulement pour les
+      // médias qui ont au moins un tag (un média non tagué n'est jamais bloqué).
+      const blockedByMedia = {};
+      // Cache local : nom d'équipe (minuscule) -> liste de player_id actifs dans
+      // cette équipe, pour le bouton "Cocher l'équipe saisie" des formulaires.
+      const teamPlayerCache = {};
+
       async function myDisplayName() {
         if (myName) return myName;
         const uid = localStorage.getItem('svc_uid');
@@ -389,15 +410,112 @@
       }
 
       async function load() {
-        const [mRes, cRes] = await Promise.all([
+        const [mRes, cRes, pRes] = await Promise.all([
           sbFetch('club_media?club_id=eq.' + orgId + '&select=*&order=created_at.desc'),
-          sbFetch('club_creations?club_id=eq.' + orgId + '&select=*&order=created_at.desc')
+          sbFetch('club_creations?club_id=eq.' + orgId + '&select=*&order=created_at.desc'),
+          sbFetch('player_profiles?club_id=eq.' + orgId + '&account_status=neq.retire&select=id,prenom,nom&order=nom.asc,prenom.asc')
         ]);
         if (!mRes.ok) toast('Erreur de chargement.');
         media = mRes.ok ? (mRes.data || []) : [];
         if (!cRes.ok) toast('Erreur de chargement.');
         creations = cRes.ok ? (cRes.data || []) : [];
+        // Pas de toast d'erreur dédié ici : si la RLS ne donne accès à aucun
+        // joueur pour ce rôle (ni admin ni éducateur — voir pp_admin_select /
+        // pp_educateur_select de v13), la section de tagging affiche simplement
+        // "aucun joueur", ce qui reste cohérent (le même rôle ne pourrait de
+        // toute façon pas créer de tag côté serveur, voir mpt_manager_insert).
+        clubPlayers = pRes.ok ? (pRes.data || []) : [];
         loaded = true;
+      }
+
+      // Repaint « silencieux » utilisé par les tâches de fond (chargement des
+      // tags en bloc) : n'écrase jamais un formulaire de création actuellement
+      // ouvert, pour ne pas effacer un titre/lien en cours de saisie par le
+      // club (paint() régénère tout le innerHTML du formulaire sans conserver
+      // les valeurs tapées — voir mediaFormHtml/creationFormHtml qui ne sont
+      // jamais recalculés pendant la saisie, seulement à l'ouverture/fermeture).
+      function backgroundPaint() {
+        if (mediaFormOpen || creationFormOpen) return;
+        paint();
+      }
+
+      // Charge en bloc les tags de tous les médias/créations affichés (une
+      // requête par type), pour alimenter à la fois le bloc « Joueurs tagués »
+      // des drawers et le badge d'alerte des cartes. Puis calcule, uniquement
+      // pour les médias effectivement tagués, le statut de blocage via la
+      // fonction SQL dédiée (media_has_unauthorized_tagged_player) plutôt que
+      // de relire parental_authorizations côté client (table non lisible par
+      // tous les rôles club — seuls les admins ont pp_admin_select — alors que
+      // la fonction SQL, security definer, donne la même réponse à tout le
+      // monde, exactement comme le fait déjà is_media_visible_to_family côté
+      // serveur).
+      async function loadTagsBulk() {
+        const mediaIds = media.map(function (m) { return m.id; });
+        const creationIds = creations.map(function (c) { return c.id; });
+        const reqs = [
+          mediaIds.length
+            ? sbFetch('media_player_tags?media_ref_type=eq.club_media&media_ref_id=in.(' + mediaIds.join(',') + ')&select=id,media_ref_id,player_id,player_profiles(prenom,nom)')
+            : Promise.resolve({ ok: true, data: [] }),
+          creationIds.length
+            ? sbFetch('media_player_tags?media_ref_type=eq.club_creations&media_ref_id=in.(' + creationIds.join(',') + ')&select=id,media_ref_id,player_id,player_profiles(prenom,nom)')
+            : Promise.resolve({ ok: true, data: [] })
+        ];
+        const [mTagsRes, cTagsRes] = await Promise.all(reqs);
+        Object.keys(tagsByMedia).forEach(function (k) { delete tagsByMedia[k]; });
+        Object.keys(blockedByMedia).forEach(function (k) { delete blockedByMedia[k]; });
+        // Initialise TOUS les médias/créations à [] (pas seulement ceux qui ont
+        // des tags) : sans ça, renderTagManageBlock ne peut pas distinguer « pas
+        // encore chargé » (undefined, affiche "Chargement…") de « chargé, aucun
+        // tag » (tableau vide, affiche "Aucun joueur tagué").
+        mediaIds.forEach(function (id) { tagsByMedia['club_media:' + id] = []; });
+        creationIds.forEach(function (id) { tagsByMedia['club_creations:' + id] = []; });
+        function ingest(res, type) {
+          if (!res.ok) return;
+          (res.data || []).forEach(function (t) {
+            const key = type + ':' + t.media_ref_id;
+            if (!tagsByMedia[key]) tagsByMedia[key] = [];
+            tagsByMedia[key].push(t);
+          });
+        }
+        ingest(mTagsRes, 'club_media');
+        ingest(cTagsRes, 'club_creations');
+        backgroundPaint();
+
+        const keys = Object.keys(tagsByMedia).filter(function (k) { return tagsByMedia[k].length > 0; });
+        await Promise.all(keys.map(async function (key) {
+          const sep = key.indexOf(':');
+          const type = key.slice(0, sep), id = key.slice(sep + 1);
+          const res = await sbFetch('rpc/media_has_unauthorized_tagged_player', { method: 'POST', body: { p_media_ref_type: type, p_media_ref_id: id } });
+          blockedByMedia[key] = res.ok ? !!res.data : false;
+        }));
+        backgroundPaint();
+      }
+
+      // Recalcule tags + statut de blocage pour un seul média après ajout/retrait
+      // d'un tag (évite de recharger tout le club pour une seule ligne).
+      async function recomputeBlocked(type, mediaId) {
+        const key = type + ':' + mediaId;
+        const tags = tagsByMedia[key] || [];
+        if (!tags.length) { delete blockedByMedia[key]; paint(); return; }
+        const res = await sbFetch('rpc/media_has_unauthorized_tagged_player', { method: 'POST', body: { p_media_ref_type: type, p_media_ref_id: mediaId } });
+        blockedByMedia[key] = res.ok ? !!res.data : false;
+        paint();
+      }
+
+      // Résout un nom d'équipe texte (tel que saisi dans le champ « Équipe »
+      // du formulaire) vers les player_id actifs de cette équipe, pour le
+      // bouton « Cocher l'équipe saisie ». Résolution simple par nom exact
+      // (club_teams.name) — si aucune équipe ne correspond, retourne [].
+      async function resolveTeamPlayerIds(teamName) {
+        const key = teamName.trim().toLowerCase();
+        if (!key) return [];
+        if (teamPlayerCache[key]) return teamPlayerCache[key];
+        const teamRes = await sbFetch('club_teams?club_id=eq.' + orgId + '&name=eq.' + encodeURIComponent(teamName.trim()) + '&select=id&limit=1');
+        if (!teamRes.ok || !teamRes.data || !teamRes.data[0]) { teamPlayerCache[key] = []; return []; }
+        const tmRes = await sbFetch('team_memberships?team_id=eq.' + teamRes.data[0].id + '&statut=eq.active&select=player_id');
+        const ids = tmRes.ok ? (tmRes.data || []).map(function (r) { return r.player_id; }) : [];
+        teamPlayerCache[key] = ids;
+        return ids;
       }
 
       async function loadAccessRule(mediaRefType, id) {
@@ -409,25 +527,132 @@
         paint();
       }
 
+      /* ── Tagging joueurs : rendu ── */
+      // Section optionnelle affichée dans les formulaires de création (mf-/cf-) :
+      // recherche + cases à cocher parmi clubPlayers. Volontaire de bout en bout :
+      // aucune case cochée = aucun tag créé = comportement inchangé.
+      function playerTagSectionHtml(prefix) {
+        if (!clubPlayers.length) {
+          return `<div class="cm-field"><label>Joueurs apparaissant sur ce média (optionnel)</label><div class="cm-player-empty">Aucun joueur actif trouvé pour ce club.</div></div>`;
+        }
+        return `<div class="cm-field">
+          <label>Joueurs apparaissant sur ce média (optionnel)</label>
+          <div style="display:flex;gap:8px;margin-bottom:6px">
+            <input type="text" data-field="${prefix}-player-search" placeholder="Rechercher un joueur…" style="flex:1">
+            <button type="button" class="btn btn-ghost" data-action="${prefix}-precheck-team">Cocher l'équipe saisie</button>
+          </div>
+          <div class="cm-player-list" data-role="${prefix}-player-list">
+            ${clubPlayers.map(function (p) {
+              const name = ((p.prenom || '') + ' ' + (p.nom || '')).trim();
+              return '<label class="cm-player-row" data-name="' + esc(name.toLowerCase()) + '"><input type="checkbox" data-field="' + prefix + '-player" value="' + p.id + '"> ' + esc(name) + '</label>';
+            }).join('')}
+          </div>
+        </div>`;
+      }
+
+      // Bloc « Joueurs tagués » affiché dans le drawer d'un média/création
+      // existant : liste des tags avec bouton retirer, + ajout d'un joueur non
+      // encore tagué. tagsByMedia[key] === undefined tant que loadTagsBulk() n'a
+      // pas fini de charger (affiche un état « Chargement… » transitoire).
+      function renderTagManageBlock(type, id) {
+        const key = type + ':' + id;
+        const tags = tagsByMedia[key];
+        const heading = '<div style="font-size:11.5px;font-weight:700;color:var(--muted);margin:14px 0 8px">JOUEURS TAGUÉS</div>';
+        if (tags === undefined) {
+          return heading + '<div class="cm-info"><div class="cm-player-empty">Chargement…</div></div>';
+        }
+        const blocked = !!blockedByMedia[key];
+        const rows = tags.length ? tags.map(function (t) {
+          const p = t.player_profiles || {};
+          const name = ((p.prenom || '') + ' ' + (p.nom || '')).trim() || 'Joueur';
+          return '<div class="cm-inline-row"><span>' + esc(name) + '</span><button class="btn btn-ghost" data-action="untag" data-type="' + type + '" data-media="' + id + '" data-tag="' + t.id + '">Retirer</button></div>';
+        }).join('') : '<div class="cm-player-empty" style="margin-bottom:8px">Aucun joueur tagué sur ce média.</div>';
+        const taggedIds = tags.map(function (t) { return t.player_id; });
+        const available = clubPlayers.filter(function (p) { return taggedIds.indexOf(p.id) === -1; });
+        const addBlock = available.length ? (
+          '<div style="display:flex;gap:8px;margin-top:8px">' +
+            '<select data-field="tag-add-' + type + '-' + id + '" style="flex:1">' +
+              available.map(function (p) { return '<option value="' + p.id + '">' + esc(((p.prenom || '') + ' ' + (p.nom || '')).trim()) + '</option>'; }).join('') +
+            '</select>' +
+            '<button class="btn btn-ghost" data-action="tag-add" data-type="' + type + '" data-media="' + id + '">Ajouter</button>' +
+          '</div>'
+        ) : '';
+        const warn = blocked ? '<div class="cm-info cm-warn" style="margin-bottom:8px">⚠ Autorisation manquante pour au moins un joueur tagué — ce média n\'est pas diffusé aux familles concernées.</div>' : '';
+        return heading + warn + '<div class="cm-info">' + rows + addBlock + '</div>';
+      }
+
+      async function tagPlayers(type, mediaId, playerIds, uid) {
+        const rows = playerIds.map(function (pid) { return { media_ref_type: type, media_ref_id: mediaId, player_id: pid, tagged_by: uid }; });
+        const res = await sbFetch('media_player_tags', { method: 'POST', body: rows });
+        if (!res.ok) toast('Le média a été enregistré, mais le tag de certains joueurs a échoué.');
+        return res;
+      }
+
+      async function untagPlayer(type, mediaId, tagId) {
+        const res = await sbFetch('media_player_tags?id=eq.' + tagId, { method: 'DELETE' });
+        if (!res.ok) { toast('Action impossible (droits insuffisants).'); return; }
+        const key = type + ':' + mediaId;
+        tagsByMedia[key] = (tagsByMedia[key] || []).filter(function (t) { return t.id !== tagId; });
+        toast('Joueur retiré du tag.');
+        await recomputeBlocked(type, mediaId);
+      }
+
+      async function addSingleTag(type, mediaId) {
+        const sel = container.querySelector('[data-field="tag-add-' + type + '-' + mediaId + '"]');
+        const playerId = sel ? sel.value : null;
+        if (!playerId) { toast('Sélectionnez un joueur à taguer.'); return; }
+        const uid = localStorage.getItem('svc_uid') || null;
+        const res = await sbFetch('media_player_tags', { method: 'POST', body: { media_ref_type: type, media_ref_id: mediaId, player_id: playerId, tagged_by: uid } });
+        if (!res.ok) { toast('Action impossible (droits insuffisants).'); return; }
+        const created = res.data && res.data[0];
+        const key = type + ':' + mediaId;
+        const p = clubPlayers.find(function (x) { return x.id === playerId; });
+        tagsByMedia[key] = (tagsByMedia[key] || []).concat([{ id: created ? created.id : playerId, media_ref_id: mediaId, player_id: playerId, player_profiles: p || null }]);
+        toast('Joueur tagué.');
+        await recomputeBlocked(type, mediaId);
+      }
+
+      async function precheckTeamPlayers(prefix) {
+        const teamField = container.querySelector('[data-field="' + prefix + '-team"]');
+        const teamName = teamField ? teamField.value.trim() : '';
+        if (!teamName) { toast('Indiquez une équipe pour pouvoir précocher ses joueurs.'); return; }
+        const ids = await resolveTeamPlayerIds(teamName);
+        if (!ids.length) { toast('Aucun joueur actif trouvé pour l\'équipe « ' + teamName + ' ».'); return; }
+        const list = container.querySelector('[data-role="' + prefix + '-player-list"]');
+        if (!list) return;
+        let count = 0;
+        ids.forEach(function (id) {
+          const cb = list.querySelector('input[value="' + id + '"]');
+          if (cb && !cb.checked) { cb.checked = true; count++; }
+        });
+        toast(count ? (count + ' joueur(s) de « ' + teamName + ' » coché(s).') : 'Ces joueurs étaient déjà cochés.');
+      }
+
       function mediaCard(m) {
         const badgeColor = m.expired ? 'var(--danger)' : 'var(--ok)';
         const badgeBg = m.expired ? '#e14b4b22' : '#1fa97122';
+        const blocked = !!blockedByMedia['club_media:' + m.id];
         return `<button class="cm-card" data-action="open-media" data-id="${m.id}">
           <div class="thumb">${esc(m.title)}</div>
           <div style="font-weight:600;font-size:12.5px;margin-top:8px">${esc(m.title)}</div>
           <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
             <span class="badge" style="background:#2f6bff22;color:var(--accent)">${esc(MEDIA_TYPE_LABEL[m.type] || m.type)}</span>
             <span class="badge" style="background:${badgeBg};color:${badgeColor}">${m.expired ? 'Lien expiré' : esc(MEDIA_SOURCE_LABEL[m.source] || m.source)}</span>
+            ${blocked ? '<span class="badge" style="background:#e2a03f22;color:#b56a00">⚠ Autorisation manquante</span>' : ''}
           </div>
         </button>`;
       }
       function creationCard(c) {
         const sm = statusMeta(c.status);
+        const blocked = !!blockedByMedia['club_creations:' + c.id];
         return `<button class="cm-card" data-action="open-creation" data-id="${c.id}">
           <div class="thumb">${esc(c.title)}</div>
           <div style="font-weight:600;font-size:12.5px;margin-top:8px">${esc(c.title)}</div>
           <div class="m" style="margin-top:2px">${esc(c.team || '—')}</div>
-          <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-top:6px;display:inline-block">${esc(sm.label)}</span>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
+            <span class="badge" style="background:${sm.color}22;color:${sm.color}">${esc(sm.label)}</span>
+            ${blocked ? '<span class="badge" style="background:#e2a03f22;color:#b56a00">⚠ Autorisation manquante</span>' : ''}
+          </div>
         </button>`;
       }
 
@@ -456,6 +681,7 @@
             <div class="cm-actions">
               ${canOpen ? `<button class="btn btn-primary" data-action="open-link" data-href="${esc(m.link)}">Ouvrir le lien</button>` : '<button class="btn btn-ghost" disabled>Aucun lien disponible</button>'}
             </div>
+            ${renderTagManageBlock('club_media', m.id)}
           </div>
         </div>`;
       }
@@ -480,6 +706,7 @@
               ${CREATION_STATUSES.map(function (st) { return '<option value="' + st + '" ' + (st === c.status ? 'selected' : '') + '>' + esc(statusMeta(st).label) + '</option>'; }).join('')}
             </select></div>
             <button class="btn btn-primary" data-action="save-creation-status" data-id="${c.id}">Mettre à jour le statut</button>
+            ${renderTagManageBlock('club_creations', c.id)}
           </div>
         </div>`;
       }
@@ -487,7 +714,7 @@
       function mediaFormHtml() {
         if (!mediaFormOpen) return '';
         return `<div class="cm-overlay" data-action="overlay-media-form">
-          <div class="cm-modal">
+          <div class="cm-modal wide">
             <div class="cm-drawer-head"><b>Importer un média</b><button class="cm-close" data-action="close-media-form">✕</button></div>
             <div class="cm-field"><label>Titre</label><input type="text" data-field="mf-title"></div>
             <div class="cm-row2">
@@ -501,6 +728,7 @@
               <option value="externe">Lien externe</option><option value="interne">Stockage</option>
             </select></div>
             <div class="cm-field"><label>Lien (si externe)</label><input type="text" data-field="mf-link" placeholder="https://…"></div>
+            ${playerTagSectionHtml('mf')}
             <button class="btn btn-primary" data-action="submit-media-form">Importer</button>
           </div>
         </div>`;
@@ -508,7 +736,7 @@
       function creationFormHtml() {
         if (!creationFormOpen) return '';
         return `<div class="cm-overlay" data-action="overlay-creation-form">
-          <div class="cm-modal">
+          <div class="cm-modal wide">
             <div class="cm-drawer-head"><b>Nouvelle création</b><button class="cm-close" data-action="close-creation-form">✕</button></div>
             <div class="cm-field"><label>Titre</label><input type="text" data-field="cf-title"></div>
             <div class="cm-row2">
@@ -516,6 +744,7 @@
               <div class="cm-field"><label>Équipe</label><input type="text" data-field="cf-team" placeholder="ex : Seniors R1"></div>
             </div>
             <div class="cm-field"><label>Sponsor associé (optionnel)</label><input type="text" data-field="cf-sponsor"></div>
+            ${playerTagSectionHtml('cf')}
             <button class="btn btn-primary" data-action="submit-creation-form">Créer en brouillon</button>
           </div>
         </div>`;
@@ -561,6 +790,10 @@
         return el ? el.value.trim() : '';
       }
 
+      function checkedPlayerIds(field) {
+        return Array.prototype.map.call(container.querySelectorAll('[data-field="' + field + '"]:checked'), function (el) { return el.value; });
+      }
+
       async function submitMediaForm() {
         const title = fieldVal('mf-title');
         if (!title) { toast('Le titre est obligatoire.'); return; }
@@ -570,11 +803,14 @@
         const link = fieldVal('mf-link');
         const uid = localStorage.getItem('svc_uid') || null;
         const authorName = await myDisplayName();
+        const playerIds = checkedPlayerIds('mf-player');
         const res = await sbFetch('club_media', { method: 'POST', body: { club_id: orgId, title: title, type: type, team: team || null, source: source, link: link || null, author_id: uid, author_name: authorName } });
         if (!res.ok) { toast("Erreur lors de l'import."); return; }
+        const created = res.data && res.data[0];
+        if (created && playerIds.length) await tagPlayers('club_media', created.id, playerIds, uid);
         mediaFormOpen = false;
-        toast('Média ajouté à la médiathèque.');
-        await load(); paint();
+        toast('Média ajouté à la médiathèque.' + (created && playerIds.length ? (' ' + playerIds.length + ' joueur(s) tagué(s).') : ''));
+        await load(); paint(); loadTagsBulk();
       }
       async function submitCreationForm() {
         const title = fieldVal('cf-title');
@@ -583,11 +819,14 @@
         const team = fieldVal('cf-team');
         const sponsor = fieldVal('cf-sponsor');
         const uid = localStorage.getItem('svc_uid') || null;
+        const playerIds = checkedPlayerIds('cf-player');
         const res = await sbFetch('club_creations', { method: 'POST', body: { club_id: orgId, title: title, type: type, team: team || null, status: 'brouillon', sponsor: sponsor || null, created_by: uid } });
         if (!res.ok) { toast("Erreur lors de l'enregistrement."); return; }
+        const created = res.data && res.data[0];
+        if (created && playerIds.length) await tagPlayers('club_creations', created.id, playerIds, uid);
         creationFormOpen = false;
-        toast('Création enregistrée en brouillon.');
-        await load(); paint();
+        toast('Création enregistrée en brouillon.' + (created && playerIds.length ? (' ' + playerIds.length + ' joueur(s) tagué(s).') : ''));
+        await load(); paint(); loadTagsBulk();
       }
       async function saveCreationStatus(id) {
         const sel = container.querySelector('[data-field="creation-status"]');
@@ -636,11 +875,33 @@
           else if (action === 'close-creation-form') { creationFormOpen = false; paint(); }
           else if (action === 'submit-creation-form') { await submitCreationForm(); }
           else if (action === 'save-creation-status') { await saveCreationStatus(btn.getAttribute('data-id')); }
+          else if (action === 'mf-precheck-team') { await precheckTeamPlayers('mf'); }
+          else if (action === 'cf-precheck-team') { await precheckTeamPlayers('cf'); }
+          else if (action === 'untag') { await untagPlayer(btn.getAttribute('data-type'), btn.getAttribute('data-media'), btn.getAttribute('data-tag')); }
+          else if (action === 'tag-add') { await addSingleTag(btn.getAttribute('data-type'), btn.getAttribute('data-media')); }
+        };
+        // Recherche dans la liste de cases à cocher des formulaires de création :
+        // filtre uniquement l'affichage (display none/'') des lignes, sans jamais
+        // rappeler paint() — un repaint pendant la frappe régénérerait tout le
+        // formulaire et effacerait titre/équipe/lien déjà saisis (voir
+        // backgroundPaint plus haut pour la même précaution côté chargement de fond).
+        container.oninput = function (e) {
+          const field = e.target && e.target.getAttribute && e.target.getAttribute('data-field');
+          if (field !== 'mf-player-search' && field !== 'cf-player-search') return;
+          const prefix = field.split('-')[0];
+          const q = e.target.value.trim().toLowerCase();
+          const list = container.querySelector('[data-role="' + prefix + '-player-list"]');
+          if (!list) return;
+          Array.prototype.forEach.call(list.querySelectorAll('.cm-player-row'), function (row) {
+            const name = row.getAttribute('data-name') || '';
+            row.style.display = (!q || name.indexOf(q) !== -1) ? '' : 'none';
+          });
         };
       }
 
       await load();
       paint();
+      loadTagsBulk();
     }
   };
 
