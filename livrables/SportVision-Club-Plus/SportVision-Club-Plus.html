@@ -1005,8 +1005,15 @@ async function handleSetPassword(){
     const d=await res.json();
     if(!res.ok) throw new Error(d.msg || d.error_description || 'Impossible de définir le mot de passe.');
     svSave(inviteAccessToken, inviteRefreshToken, d.id);
-    // Passe le club_members correspondant en 'actif' (autorisé : cm_self_update, auth.uid()=user_id).
-    await sbFetch('club_members?user_id=eq.'+d.id+'&status=eq.invitation', {method:'PATCH', body:{status:'actif'}});
+    // Passe le club_members correspondant en 'actif' — autorisé par
+    // protect_sensitive_club_member_fields() en tant que self-activation
+    // (invitation -> actif, sur sa propre ligne), voir migration-connect-v13.
+    const actRes = await sbFetch('club_members?user_id=eq.'+d.id+'&status=eq.invitation', {method:'PATCH', body:{status:'actif'}});
+    if (!actRes.ok) {
+      errEl.textContent = "Mot de passe défini, mais l'activation de votre accès club a échoué. Contactez l'administrateur de votre club ou réessayez dans un instant.";
+      btn.disabled = false; btn.textContent = 'Activer mon compte';
+      return;
+    }
     window.location.href='app.html';
   }catch(e){
     errEl.textContent=e.message;

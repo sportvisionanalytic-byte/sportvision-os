@@ -107,7 +107,15 @@ serve(async (req) => {
     // client — il peut alors lire ses vrais devis/factures/contrats via les
     // vues client_devis/client_factures/client_contrats (migration-portail-
     // v1.sql), sans aucune donnée dupliquée ni nouvelle policy Portail.
-    if (user.email) {
+    // Le pont ci-dessous donne accès aux devis/factures/contrats réels d'un
+    // client Portail existant sur simple correspondance d'e-mail — ne le
+    // faire que si Supabase a confirmé que l'appelant possède bien cette
+    // adresse (email_confirmed_at non nul). Sans cette vérification, si la
+    // confirmation par e-mail était un jour désactivée côté projet, n'importe
+    // qui pourrait s'inscrire avec l'e-mail de quelqu'un d'autre et hériter
+    // immédiatement de ses documents financiers. Découvert lors de l'audit
+    // du 2026-08-06.
+    if (user.email && user.email_confirmed_at) {
       try {
         const { data: matchedClient } = await admin
           .from("clients")
@@ -124,6 +132,22 @@ serve(async (req) => {
       } catch (_e) {
         // best-effort : une erreur ici ne doit pas empêcher la création du club
       }
+    }
+
+    // Notifie le staff — avant, un club pouvait s'auto-inscrire en self-service
+    // sans que personne chez SportVision ne le sache (aucune alerte nulle
+    // part). Best-effort, ne bloque jamais la création du club.
+    try {
+      await admin.rpc("notify_staff_by_role", {
+        p_roles: ["admin", "sec"],
+        p_titre: "Nouveau club Club+ auto-inscrit",
+        p_message: `${String(club.nom).trim()} vient de créer son compte Club+ (formule ${plan}).`,
+        p_priorite: "normale",
+        p_prestation_id: null,
+        p_client_id: null,
+      });
+    } catch (_e) {
+      // ignoré volontairement
     }
 
     return json({ club_id: createdClub.id, role: "admin", already_onboarded: false });
