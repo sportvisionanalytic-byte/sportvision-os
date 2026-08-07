@@ -14031,6 +14031,7 @@ async function genererAttestation(formationId,collaborateurId){
   const numCert=dbCert?.numero_certificat||'';
   const initiale=((p.prenom||localStorage.getItem('sv_prenom')||'?')[0]||'?').toUpperCase();
   const photoInner=p.avatar_url?`<img src="${esc(p.avatar_url)}" alt="">`:`<span>${esc(initiale)}</span>`;
+  const anneeObt=(dbCert?.date_obtention?new Date(dbCert.date_obtention):new Date()).getFullYear();
   const win=window.open('','_blank','width=840,height=1100');
   if(!win){toast('Autorisez les pop-ups pour générer l\'attestation.','wa');return;}
   win.document.write(`<!DOCTYPE html>
@@ -14038,7 +14039,7 @@ async function genererAttestation(formationId,collaborateurId){
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#eef1f7;color:#111;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}
-.page{width:740px;max-width:100%;min-width:0;border-radius:20px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(11,27,51,.35)}
+.page{width:740px;max-width:100%;min-width:0;border-radius:20px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(11,27,51,.35);position:relative;border:1px solid #d8deea}
 .head{background:#0B1B33;padding:28px 44px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden}
 .head::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,rgba(139,43,255,.28),rgba(0,196,255,.16) 60%,transparent);pointer-events:none}
 .head-l{display:flex;align-items:center;gap:14px;position:relative}
@@ -14047,7 +14048,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#eef1f
 .head-word small{display:block;font-size:9.5px;font-weight:600;color:#9DAEC3;text-transform:uppercase;letter-spacing:.12em;margin-top:3px}
 .head-r{font-size:10px;color:#9DAEC3;text-transform:uppercase;letter-spacing:.12em;font-weight:600;text-align:right;position:relative;line-height:1.6}
 .grad-line{height:5px;background:linear-gradient(90deg,#8B2BFF,#2A56FF,#00C4FF)}
-.cert{background:#fff;padding:42px 56px 38px}
+.cert{background:#fff;padding:42px 56px 38px;position:relative;overflow:hidden}
+.cert::before{content:'';position:absolute;inset:10px;border:1px solid rgba(42,86,255,.22);border-radius:14px;pointer-events:none}
+.wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0}
+.wm img{width:420px;max-width:none;opacity:.035;transform:rotate(-20deg)}
+.cert-body{position:relative;z-index:1}
 .photo-row{display:flex;flex-direction:column;align-items:center;margin-bottom:6px}
 .photo{width:88px;height:88px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#8B2BFF,#2A56FF,#00C4FF);margin-bottom:12px}
 .photo-in{width:100%;height:100%;border-radius:50%;background:#eef1f7;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid #fff}
@@ -14060,15 +14065,18 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#eef1f
 .certifie-label{font-size:11px;color:#64748b;text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em}
 .beneficiaire{font-size:23px;font-weight:700;color:#0f172a;display:inline-block;padding:0 6px 7px;border-bottom:3px solid;border-image:linear-gradient(90deg,#8B2BFF,#2A56FF,#00C4FF) 1}
 .context{text-align:center;font-size:13.5px;color:#374151;line-height:1.75;margin-bottom:30px}
-.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:34px}
+.meta{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:8px}
 .mi{background:#f8fafc;border:1px solid #e9edf3;border-left:3px solid #2A56FF;border-radius:9px;padding:12px 15px}
 .ml{font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-weight:600}
 .mv{font-size:13.5px;font-weight:700;color:#0f172a}
-.footer{display:flex;justify-content:space-between;align-items:center;padding-top:20px;border-top:1px solid #e9edf3}
-.seal{width:52px;height:52px;border-radius:50%;padding:5px;background:linear-gradient(135deg,#8B2BFF,#2A56FF,#00C4FF);flex-shrink:0}
-.seal img{width:100%;height:100%;border-radius:50%;background:#0B1B33;padding:8px;box-sizing:border-box;display:block}
-.fsig .fn{font-size:12.5px;font-weight:700;color:#0f172a;text-align:right}
-.fsig .fd{font-size:10.5px;color:#94a3b8;margin-top:3px;text-align:right}
+.footer{position:relative;display:flex;justify-content:space-between;align-items:flex-end;padding-top:34px;margin-top:34px;border-top:1px solid #e9edf3;min-height:88px}
+.sig-block{display:flex;flex-direction:column}
+.sig-hand{font-family:'Snell Roundhand','Brush Script MT','Segoe Script',cursive;font-size:32px;color:#1d2b52;line-height:1;margin-bottom:6px}
+.sig-line{width:160px;border-top:1.4px solid #cbd5e1;margin-bottom:7px}
+.fn{font-size:12.5px;font-weight:700;color:#0f172a}
+.fd{font-size:10.5px;color:#94a3b8;margin-top:3px}
+.stamp-wrap{position:absolute;right:6px;top:-46px;width:118px;height:118px;color:#4C1D95;opacity:.82;mix-blend-mode:multiply;transform:rotate(-11deg);filter:drop-shadow(0 2px 2px rgba(0,0,0,.12))}
+.stamp-wrap svg{width:100%;height:100%;display:block}
 @media (max-width:640px){
   body{padding:16px 10px;align-items:flex-start}
   .page{border-radius:14px}
@@ -14082,14 +14090,14 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#eef1f
   .cert-name{font-size:21px;margin-bottom:22px}
   .beneficiaire{font-size:20px}
   .context{font-size:13px}
-  .meta{grid-template-columns:1fr;margin-bottom:28px}
-  .footer{flex-direction:column;align-items:flex-start;gap:14px}
-  .fsig .fn,.fsig .fd{text-align:left}
+  .meta{grid-template-columns:1fr}
+  .footer{flex-direction:column;align-items:flex-start;gap:22px;padding-top:26px;margin-top:26px}
+  .stamp-wrap{position:static;align-self:flex-end;transform:rotate(-8deg) scale(.8);margin-bottom:-14px}
 }
 @media print{
   body{padding:0;background:#fff}
   .page{box-shadow:none;border-radius:0}
-  .head,.head::after,.grad-line{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .head,.head::after,.grad-line,.stamp-wrap{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   @page{margin:0;size:A4}
 }
 </style></head>
@@ -14103,6 +14111,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#eef1f
   </div>
   <div class="grad-line"></div>
   <div class="cert">
+    <div class="wm"><img src="${SV_LOGO_DATAURI}" alt=""></div>
+    <div class="cert-body">
     <div class="photo-row">
       <div class="photo"><div class="photo-in">${photoInner}</div></div>
       <div class="badge-chip">${f.certification.badge}</div>
@@ -14117,11 +14127,26 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#eef1f
       ${numCert?`<div class="mi" style="grid-column:1/-1"><div class="ml">Numéro de certificat</div><div class="mv" style="font-family:monospace;font-size:12px;letter-spacing:.04em">${esc(numCert)}</div></div>`:''}
     </div>
     <div class="footer">
-      <div class="seal"><img src="${SV_LOGO_DATAURI}" alt=""></div>
-      <div class="fsig">
+      <div class="sig-block">
+        <div class="sig-hand">SportVision</div>
+        <div class="sig-line"></div>
         <div class="fn">SportVision — Centre de formation</div>
         <div class="fd">Délivré le ${new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}</div>
       </div>
+      <div class="stamp-wrap">
+        <svg viewBox="0 0 200 200">
+          <defs><path id="stampArc" d="M 100,13 A 87,87 0 1 1 99.99,13" fill="none"/></defs>
+          <circle cx="100" cy="100" r="95" fill="none" stroke="currentColor" stroke-width="2"/>
+          <circle cx="100" cy="100" r="72" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text font-size="13" font-weight="800" letter-spacing="2.4" fill="currentColor">
+            <textPath href="#stampArc" startOffset="1%">SPORTVISION ✦ CENTRE DE FORMATION ✦ </textPath>
+          </text>
+          <text x="100" y="94" text-anchor="middle" font-size="19" font-weight="800" letter-spacing="1.2" fill="currentColor">CERTIFIÉ</text>
+          <line x1="70" y1="105" x2="130" y2="105" stroke="currentColor" stroke-width="1.1"/>
+          <text x="100" y="124" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="3" fill="currentColor">${anneeObt}</text>
+        </svg>
+      </div>
+    </div>
     </div>
   </div>
 </div>
