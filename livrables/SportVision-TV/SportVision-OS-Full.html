@@ -1245,7 +1245,6 @@ const VIEWS={
     <div id="taches-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'sec.docs':()=>_documentsView('sec'),
-  'sec.documents':()=>_documentsView('sec'),
 
   // ── PRODUCTION ──────────────────────────
   'prod.dash':()=>`
@@ -7170,7 +7169,7 @@ async function toggleTache(id,estFaite){
     const r=await sbFetch('notifications?id=eq.'+id,{method:'PATCH',body:{lue:!estFaite}});
     if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
     loadTaches();
-  }catch(e){}
+  }catch(e){toast('Erreur réseau : mise à jour impossible.','er');}
 }
 
 async function supprimerTache(id){
@@ -7178,7 +7177,7 @@ async function supprimerTache(id){
     const r=await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
     if(sbErr(r)){toast('Erreur : '+(r.message||'Suppression impossible.'),'er');return;}
     loadTaches();
-  }catch(e){}
+  }catch(e){toast('Erreur réseau : suppression impossible.','er');}
 }
 
 async function loadSettings(){
@@ -10022,11 +10021,17 @@ async function _sendDevisEmailConfirm(id,statutActuel){
       if(res.status===404)throw new Error('Edge Function non déployée. Voir instructions setup.');
       throw new Error(json.error||json.message||('Erreur serveur ('+res.status+')'));
     }
+    let statutMaj=true;
     if(markSent&&statutActuel==='brouillon'){
-      await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:new Date().toISOString().slice(0,10)}}).catch(()=>{});
+      const rSt=await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:new Date().toISOString().slice(0,10)}}).catch(()=>({code:'network_error'}));
+      if(sbErr(rSt))statutMaj=false;
     }
     closeModal();
-    toast('Email envoyé avec succès !');
+    // L'email est parti dans tous les cas (res.ok déjà vérifié ci-dessus) — mais
+    // si le passage en statut "envoyé" a échoué, il ne faut pas prétendre que
+    // tout s'est bien passé : le devis resterait "brouillon" dans les listes/KPI
+    // alors que le client a bien reçu le message.
+    toast(statutMaj?'Email envoyé avec succès !':'Email envoyé, mais le statut du devis n\'a pas pu être mis à jour — pensez à le faire manuellement.',statutMaj?'ok':'er');
     if(document.getElementById('devis-real'))loadDevis().catch(()=>{});
     else if(typeof loadDocs==='function')loadDocs().catch(()=>{});
   }catch(e){
@@ -11532,7 +11537,7 @@ let FORMATIONS_CATALOG=[
 {id:'sec-avance-05',titre:'Gérer Club+ Start et Club+ Performance',categorie:'Secrétariat — Parcours avancé',icone:'🏟️',niveau:'Avancé',type:'hybride',duree:'5h',xp:60,formateur:'Fouka',obligatoire:false,onlyRole:'sec',description:'Différencier Club+ Start et Performance, activer les droits correspondant au contrat, suivre les crédits et demandes, et gérer upgrade, downgrade, suspension et fin de contrat.',modules:[{titre:'Positionnement',lecons:['Club+ permet au club d\'organiser sa communication dans Connect sans déléguer entièrement à SportVision','Deux formules : Start et Performance. Full Communication reste une offre séparée']},{titre:'Droits et quotas',lecons:['Utilisateurs, demandes de visuels, crédits, équipes, sponsors, statistiques, support, priorité','La secrétaire ne modifie jamais un quota sans contrat, avenant ou validation interne']},{titre:'Cycle d\'abonnement',lecons:['Contrat signé, moyen de paiement enregistré, date de démarrage atteinte, abonnement Stripe actif, droits attribués, notification et tutoriel','En cas d\'impayé, appliquer la procédure progressive sans supprimer immédiatement les données']},{titre:'Consommation de crédits',lecons:['Chaque demande consomme le nombre de crédits prévu par son type, coût visible avant validation','Les crédits expirent, se reportent ou non selon le contrat — règle identique dans OS, Connect et le contrat']},{titre:'Procédure, erreurs et mise en pratique',lecons:['Vérifier contrat et formule, contrôler statut Stripe et date d\'effet, activer les droits depuis la matrice, notifier l\'administrateur','Ne jamais présenter Full Communication comme Club+ Premium, ni ajouter des crédits sans trace','Exercice : configurer un Club+ Start puis simuler son passage à Performance en cours de mois avec avenant, prorata et notification']}],certification:{id:'sec-avance-05',nom:'Badge : Gestion Club+',validite_mois:24,badge:'🏟️'},statut:'publiée'},
 {id:'sec-avance-06',titre:'Full Communication et accompagnements spécialisés',categorie:'Secrétariat — Parcours avancé',icone:'🔄',niveau:'Avancé',type:'hybride',duree:'5h',xp:60,formateur:'Fouka',obligatoire:false,onlyRole:'sec',description:'Distinguer Full Communication, Club+ et accompagnements spécialisés (académie, coach, joueur, événement), créer un onboarding adapté au profil et suivre présences, validations et hors forfait.',modules:[{titre:'Full Communication Club',lecons:['Le club délègue une partie importante ou la totalité de sa communication : stratégie, planning éditorial, créations, publications, photo, vidéo, reporting','Un Community Manager est affilié, les présences mensuelles sont planifiées et consommées avec précision']},{titre:'Académie, coach, joueur et événement',lecons:['Chaque profil a son vocabulaire, ses objectifs et ses livrables propres','Ne jamais copier intégralement le workflow Club sur ces profils']},{titre:'Calendrier éditorial et validations',lecons:['La secrétaire s\'assure que les priorités du mois sont collectées à temps et que les validations bloquantes sont relancées','Elle sécurise le calendrier, les accès et les preuves de validation, sans remplacer le CM dans la stratégie']},{titre:'Hors forfait',lecons:['Toute demande supplémentaire doit être identifiée avant production : crédit, présence, montage, urgence, déplacement, publication','L\'OS doit afficher l\'impact et demander la validation nécessaire']},{titre:'Procédure, erreurs et mise en pratique',lecons:['Créer le dossier et attribuer le référent, collecter objectifs et accès, planifier présences/échéances, suivre validations et hors forfait','Ne jamais utiliser le même formulaire pour un joueur et un club, ni consommer une présence sans preuve','Exercice : construire le planning d\'un mois pour un club Full Communication, un coach et une académie, avec trois processus différents']}],certification:{id:'sec-avance-06',nom:'Badge : Coordination récurrente',validite_mois:24,badge:'🔄'},statut:'publiée'},
 {id:'sec-avance-07',titre:'Contract Center et Yousign',categorie:'Secrétariat — Parcours avancé',icone:'✍️',niveau:'Avancé',type:'hybride',duree:'6h',xp:70,formateur:'Fouka',obligatoire:false,onlyRole:'sec',description:'Choisir le bon modèle contractuel, renseigner variables et annexes sans toucher aux clauses verrouillées, suivre les statuts Yousign et gérer avenant, expiration, refus et rétractation.',modules:[{titre:'Modèles et variables',lecons:['Le Contract Center utilise des modèles validés, des variables {{...}} et des annexes activables','Les clauses juridiques verrouillées ne se réécrivent jamais dans une note ou manuellement']},{titre:'Qualification du client',lecons:['L\'OS demande type de client, lieu/mode de conclusion, nombre de salariés si pertinent, objet du contrat, exécution anticipée','Le système produit une conclusion ou demande une validation — la secrétaire n\'improvise pas une décision juridique']},{titre:'Parcours Yousign',lecons:['Brouillon, validation interne, invitation créée, envoyée, consultée, signée, refusée, expirée ou annulée','Après signature : télécharger et archiver document final + piste d\'audit, vérifier toutes les annexes prévues']},{titre:'Avenants et versions',lecons:['Un contrat signé ne se modifie jamais en silence : tout changement durable passe par un avenant ou un nouveau contrat','Conserver version du modèle, date, auteur, validations et preuve de signature']},{titre:'Procédure, erreurs et mise en pratique',lecons:['Sélectionner le type de relation et le modèle, renseigner variables/annexes, contrôles obligatoires, valider puis envoyer via Yousign, archiver','Ne jamais modifier une clause verrouillée, envoyer un contrat avec des champs vides, ou supprimer une version signée','Exercice : générer un contrat Full Communication, détecter un cas juridique ambigu, envoyer via Yousign, créer un avenant de tarif']}],certification:{id:'sec-avance-07',nom:'Badge : Contrats maîtrisés',validite_mois:24,badge:'✍️'},statut:'publiée'},
-{id:'sec-avance-08',titre:'Stripe, paiements, factures et impayés',categorie:'Secrétariat — Parcours avancé',icone:'💳',niveau:'Avancé',type:'hybride',duree:'6h',xp:70,formateur:'Fouka',obligatoire:false,onlyRole:'sec',description:'Comprendre paiement ponctuel, abonnement et collecte différée, contrôler la date du premier débit, interpréter les statuts Stripe et appliquer le processus d\'impayé sans jamais manipuler de données carte.',modules:[{titre:'Trois objets à distinguer',lecons:['Le contrat, le moyen de paiement et le paiement sont trois événements différents','Un moyen de paiement peut être enregistré sans débit ; l\'abonnement/paiement est créé à la date autorisée']},{titre:'Paiement ponctuel et récurrent',lecons:['Prestations : paiement unique, acompte et solde. Club+ et certains accompagnements : échéances récurrentes','Prix, périodicité, date de début et phases tarifaires doivent correspondre au contrat']},{titre:'Statuts utiles',lecons:['Réussi, en attente, échoué, action requise, remboursé, abonnement actif, incomplet, en retard, annulé, fin programmée','L\'OS est la source de suivi ; Stripe sert à vérifier, jamais à improviser une correction non prévue']},{titre:'Impayés',lecons:['Relances progressives documentées, délais contractuels respectés','Ne jamais demander un numéro complet de carte, un cryptogramme ou une photo de carte — lien sécurisé ou portail client uniquement']},{titre:'Procédure, erreurs et mise en pratique',lecons:['Vérifier contrat/montant/périodicité/date, envoyer le parcours sécurisé, contrôler le webhook, mettre à jour la prestation, escalader si échec','Ne jamais créer un débit de 0€ artificiel, copier une clé Stripe dans un e-mail, ou marquer Payé sans événement confirmé','Exercice : contrat signé aujourd\'hui avec premier prélèvement dans 14 jours, puis un échec de paiement nécessitant une action du client']}],certification:{id:'sec-avance-08',nom:'Badge : Suivi financier sécurisé',validite_mois:24,badge:'💳'},statut:'publiée'},
+{id:'sec-avance-08',titre:'Stripe, paiements, factures et impayés',categorie:'Secrétariat — Parcours avancé',icone:'💳',niveau:'Avancé',type:'hybride',duree:'6h',xp:70,formateur:'Fouka',obligatoire:false,onlyRole:'sec',description:'Comprendre paiement ponctuel, abonnement et collecte différée, contrôler la date du premier débit, interpréter les statuts Stripe et appliquer le processus d\'impayé sans jamais manipuler de données carte.',modules:[{titre:'Trois objets à distinguer',lecons:['Le contrat, le moyen de paiement et le paiement sont trois événements différents','Un moyen de paiement peut être enregistré sans débit ; l\'abonnement/paiement est créé à la date autorisée']},{titre:'Paiement ponctuel et récurrent',lecons:['Prestations : paiement unique, acompte et solde. Club+ et certains accompagnements : échéances récurrentes','Prix, périodicité, date de début et phases tarifaires doivent correspondre au contrat']},{titre:'Statuts utiles',lecons:['Réussi, en attente, échoué, action requise, remboursé, abonnement actif, incomplet, en retard, annulé, fin programmée','L\'OS est la source de suivi ; Stripe sert à vérifier, jamais à improviser une correction non prévue']},{titre:'Impayés',lecons:['Relances progressives documentées, délais contractuels respectés','Ne jamais demander un numéro complet de carte, un cryptogramme ou une photo de carte — lien de paiement sécurisé ou espace Connect du client uniquement']},{titre:'Procédure, erreurs et mise en pratique',lecons:['Vérifier contrat/montant/périodicité/date, envoyer le parcours sécurisé, contrôler le webhook, mettre à jour la prestation, escalader si échec','Ne jamais créer un débit de 0€ artificiel, copier une clé Stripe dans un e-mail, ou marquer Payé sans événement confirmé','Exercice : contrat signé aujourd\'hui avec premier prélèvement dans 14 jours, puis un échec de paiement nécessitant une action du client']}],certification:{id:'sec-avance-08',nom:'Badge : Suivi financier sécurisé',validite_mois:24,badge:'💳'},statut:'publiée'},
 {id:'sec-avance-09',titre:'Communication Hub : e-mails, WhatsApp et notifications',categorie:'Secrétariat — Parcours avancé',icone:'📨',niveau:'Avancé',type:'hybride',duree:'5h',xp:60,formateur:'Fouka',obligatoire:false,onlyRole:'sec',description:'Utiliser la boîte mail SportVision comme canal officiel, comprendre les e-mails automatiques et leurs déclencheurs, gérer WhatsApp avec consentement et traçabilité, et respecter les préférences de notification.',modules:[{titre:'E-mails humains et automatiques',lecons:['Humains : échanges nécessitant jugement et personnalisation. Automatiques : invitation, vérification, mot de passe oublié, contrat, paiement, rendez-vous, mission, livraison, support','La secrétaire surveille erreurs d\'envoi, rebonds et réponses reçues']},{titre:'Sécurité des messages d\'authentification',lecons:['Un e-mail de mot de passe oublié contient un lien temporaire et ne révèle jamais l\'ancien mot de passe','Une modification sensible génère une notification et, si nécessaire, une réauthentification']},{titre:'WhatsApp Business',lecons:['Modèles approuvés et canal professionnel, consentement, horaires, fréquence et préférences du client respectés','Toute information importante reçue sur WhatsApp doit être résumée dans l\'OS']},{titre:'Préférences',lecons:['Les messages obligatoires de sécurité ou de contrat ne sont pas toujours désactivables','Ne pas dupliquer inutilement le même message sur e-mail, WhatsApp et notification']},{titre:'Procédure, erreurs et mise en pratique',lecons:['Choisir le type de message et son urgence, vérifier consentement et canal, utiliser le modèle avec les bonnes variables, tracer l\'action importante','Ne jamais envoyer un mot de passe en clair, utiliser un numéro personnel, ou relancer sur tous les canaux en même temps','Exercice : séquence de messages d\'une invitation Connect, d\'un mot de passe oublié, d\'un contrat signé et d\'une livraison de contenus']}],certification:{id:'sec-avance-09',nom:'Badge : Communication automatisée',validite_mois:24,badge:'📨'},statut:'publiée'},
 {id:'sec-avance-10',titre:'Google Agenda et coordination opérationnelle',categorie:'Secrétariat — Parcours avancé',icone:'📅',niveau:'Avancé',type:'hybride',duree:'5h',xp:60,formateur:'Fouka',obligatoire:false,onlyRole:'sec',description:'Créer et partager les bons calendriers, éviter les doubles réservations, gérer rappels/modifications/annulations et synchroniser les événements utiles avec l\'OS.',modules:[{titre:'Types de calendriers',lecons:['Calendriers distincts : direction, production, rendez-vous clients, événements, absences, ressources','Droits de lecture et de modification limités au rôle']},{titre:'Événement complet',lecons:['Titre standardisé, organisation, type, date, horaires, lieu, lien visio, participants, responsable, brief, référence OS','Un événement ne remplace pas la fiche prestation : il la complète']},{titre:'Modifications',lecons:['Toute modification importante met à jour l\'OS et l\'agenda, informe les participants, vérifie les conséquences (opérateurs, matériel, déplacement, paiement)','Ne jamais supprimer silencieusement un événement : utiliser statut et motif appropriés']},{titre:'Disponibilités',lecons:['Créneaux de rendez-vous, buffers et règles de capacité','Un rendez-vous commercial ne doit pas être placé sur un temps de mission ou de préparation critique']},{titre:'Procédure, erreurs et mise en pratique',lecons:['Rechercher l\'événement/dossier existant, vérifier les calendriers, créer avec toutes les infos, ajouter les rappels, synchroniser en cas de changement','Ne jamais créer le même événement dans plusieurs calendriers sans lien, ni supprimer une mission sans avertir la production','Exercice : planifier une semaine avec trois rendez-vous, quatre prestations, un Media Day, une réunion interne et deux indisponibilités']}],certification:{id:'sec-avance-10',nom:'Badge : Agenda synchronisé',validite_mois:24,badge:'📅'},statut:'publiée'},
 {id:'sec-avance-11',titre:'Documents, fichiers et livraisons',categorie:'Secrétariat — Parcours avancé',icone:'🗄️',niveau:'Avancé',type:'hybride',duree:'5h',xp:60,formateur:'Fouka',obligatoire:false,onlyRole:'sec',description:'Appliquer la nomenclature de dossiers et fichiers, différencier documents internes/confidentiels/livrables, utiliser des liens sécurisés et temporaires, et gérer versions, corrections et restrictions d\'image.',modules:[{titre:'Source de vérité',lecons:['Le document final est rattaché au dossier OS et stocké dans l\'espace autorisé ; copies personnelles ou liens publics ne deviennent jamais la source officielle','Contrats signés, factures, autorisations et livrables ont des règles de conservation différentes']},{titre:'Nommage',lecons:['Structure stable : date, organisation, type, référence, version — ex. 2026-10-12_FC-Fontainebleau_MatchU18_Photos_V1','Éviter final-final-2, nouveau, scan123 ou noms contenant des données sensibles inutiles']},{titre:'Partage',lecons:['Dossiers privés par défaut ; droits, liens signés, expirations, mots de passe et journalisation lorsque prévus','Un client ne doit jamais pouvoir naviguer vers les documents d\'une autre organisation']},{titre:'Droit à l\'image et mineurs',lecons:['Vérifier les autorisations et restrictions avant diffusion ; une restriction enregistrée doit être visible et bloquante','La secrétaire ne conclut jamais qu\'une autorisation est inutile sans procédure validée']},{titre:'Procédure, erreurs et mise en pratique',lecons:['Identifier la nature et la confidentialité, nommer/classer, attribuer les droits minimaux, vérifier version/autorisations, partager par canal sécurisé','Ne jamais partager un bucket public, envoyer le contrat d\'un autre client, ou écraser une version signée','Exercice : classer un dossier complet (devis, contrat, piste d\'audit, facture, autorisations, photos, vidéo, deux versions corrigées)']}],certification:{id:'sec-avance-11',nom:'Badge : Gestion documentaire',validite_mois:24,badge:'🗄️'},statut:'publiée'},
@@ -12650,7 +12655,7 @@ const FORMATION_CONTENT={
   [['Un contact peut posséder plusieurs rôles : demandeur, décideur, signataire, payeur, contact facturation, contact opérationnel, validateur de contenus, responsable communication, responsable sponsor, contact d\'urgence ou contact du jour J.','Exemple : décideur et signataire = présidente, facturation = trésorier, validation des contenus = responsable communication, jour J = éducateur, urgence = organisateur.','Règle : la secrétaire ne doit pas supposer que le président doit recevoir chaque message opérationnel.']],
   [['Le contact principal est la personne privilégiée pour la relation générale ; il ne remplace pas nécessairement le contact comptable, le signataire, le responsable terrain ou le validateur de contenu.','La fiche client doit afficher clairement le contact principal, le contact facturation, le contact opérationnel, le contact communication et le décideur.','Changement de contact principal : obtenir une information fiable, mettre à jour la fiche, conserver l\'ancien contact dans l\'historique, informer les responsables du dossier, vérifier les prestations ouvertes et modifier les destinataires futurs.']],
   [['E-mail : contrôler l\'orthographe, le domaine, le caractère personnel ou professionnel, la fonction concernée et le statut actif.','Téléphone : contrôler l\'indicatif, le numéro complet, la ligne professionnelle ou personnelle, la possibilité d\'utiliser WhatsApp et l\'autorisation de contact.','Adresse : contrôler l\'adresse administrative, l\'adresse de facturation, l\'adresse du siège et l\'adresse de la prestation — ces adresses peuvent être différentes.']],
-  [['Chaque contact peut préférer le téléphone, l\'e-mail, WhatsApp, le Portail client ou le rendez-vous.','Informations utiles : canal principal, canal secondaire, horaires à privilégier, disponibilités, langue, refus de messages commerciaux et préférence pour les documents.','Règle : une préférence ne doit pas empêcher d\'utiliser le canal officiel requis pour un contrat, une facture, une validation, une information confidentielle, une mise en demeure ou un document important.']],
+  [['Chaque contact peut préférer le téléphone, l\'e-mail, WhatsApp, Connect ou le rendez-vous.','Informations utiles : canal principal, canal secondaire, horaires à privilégier, disponibilités, langue, refus de messages commerciaux et préférence pour les documents.','Règle : une préférence ne doit pas empêcher d\'utiliser le canal officiel requis pour un contrat, une facture, une validation, une information confidentielle, une mise en demeure ou un document important.']],
   [['La fiche client peut comporter la raison sociale, l\'adresse de facturation, l\'e-mail comptable, une référence interne, un bon de commande requis, la personne responsable, les modalités prévues et les informations administratives.','La secrétaire doit distinguer l\'adresse du siège, l\'adresse du terrain, l\'adresse de facturation, le contact opérationnel et le contact comptabilité.','Interdit : enregistrer des informations bancaires non nécessaires, transmettre des coordonnées financières sans vérification, ou considérer le demandeur comme payeur sans confirmation.']],
   [['Prospect : a exprimé un intérêt, mais aucune prestation n\'est confirmée. Prospect qualifié : besoin suffisamment clair pour être étudié commercialement.','Nouveau client : première prestation acceptée ou commencée. Client actif : relation ou prestation en cours. Client récurrent : plusieurs prestations ou abonnement.','Client en pause : aucune prestation en cours, mais relation encore pertinente. Ancien client : relation terminée depuis une période définie.','Client à risque : signaux nécessitant une attention particulière. Client archivé : fiche conservée mais sortie des vues actives.','Règle : le statut ne doit pas être utilisé comme jugement personnel, il doit correspondre à des critères internes.']],
   [['Statuts disponibles : prospect non qualifié, prospect qualifié, proposition en cours, client à convertir, nouveau client, client actif, client récurrent, client sous abonnement, client en pause, client à réactiver, client à risque, ancien client, archivé.','Statuts sensibles : le passage en client à risque, relation suspendue, litige ou ne plus contacter doit être justifié par une note factuelle et, selon le cas, validé par un responsable.']],
@@ -18488,13 +18493,18 @@ function closeMobNav(){
 }
 
 // ── BOTTOM NAV MOBILE ─────────────────────────────────────────────────────────
+// 4 items exactement : renderBottomNav() n'affiche que items.slice(0,4), le
+// 5e slot de la barre étant toujours réservé au bouton "Plus". Un 5e id ici
+// serait donc silencieusement inatteignable (trouvé sur sec/prod/compta —
+// corrigé) — s'il désigne une fonctionnalité réelle, elle doit plutôt être
+// ajoutée à MOB_MORE_ITEMS pour rester accessible via "Plus".
 const BNAV_ITEMS={
   admin:['dash','pre','planning','fin'],
-  sec:  ['dash','demandes','pre','relances','taches'],
-  prod: ['dash','jourj','pre','planning','equipe'],
+  sec:  ['dash','demandes','pre','relances'],
+  prod: ['dash','jourj','pre','planning'],
   photo:['dash','jourj','pre','medias'],
   com:  ['dash','crm','pipeline','devis'],
-  compta:['dash','factures','impayes','rapprochement','rem'],
+  compta:['dash','factures','impayes','rapprochement'],
   cm:   ['dash','cal','contenus','publications'],
 };
 
@@ -18536,23 +18546,36 @@ function updateBottomNav(viewId){
 // rendez_vous, catalogue_offres).
 // ══════════════════════════════════════════════════════════════════════════
 
+// Inséré avant "Paramètres" plutôt qu'en fin d'array (.push simple) : sur un
+// vrai .push(), ce bloc atterrissait après Paramètres/déconnexion dans la
+// sidebar (cassant la convention respectée par tous les autres groupes), un
+// bug déjà trouvé et corrigé pour NAV['cm'] plus tôt cette session — même
+// correctif appliqué ici à admin/sec/com.
+function _navInsertBeforeSettings(role,items){
+  if(!NAV[role])return;
+  const idx=NAV[role].findIndex(n=>n.id==='set');
+  if(idx===-1){NAV[role].push(...items);return;}
+  NAV[role].splice(idx,0,...items);
+}
+
 ['admin','sec'].forEach(role=>{
   if(!NAV[role])return;
-  NAV[role].push(
-    {type:'sep',lb:'Portail client'},
+  const items=[
+    {type:'sep',lb:'Connect'},
     {id:'msgclients',lb:'Messages clients',ic:'msg'},
     {id:'rdvclients',lb:'Rendez-vous clients',ic:'cal'},
     {id:'catalogue',lb:'Catalogue public',ic:'pre'},
-  );
+  ];
+  if(role==='admin'){
+    items.push(
+      {id:'realisations',lb:'Réalisations (photos/vidéos)',ic:'pre'},
+      {id:'comptesportail',lb:'Comptes Connect',ic:'cli'},
+    );
+  }
+  items.push({id:'avisclients',lb:'Avis clients',ic:'doc'});
+  _navInsertBeforeSettings(role,items);
 });
-if(NAV['admin']){
-  NAV['admin'].push({id:'realisations',lb:'Réalisations (photos/vidéos)',ic:'pre'});
-  NAV['admin'].push({id:'comptesportail',lb:'Comptes Portail',ic:'cli'});
-}
-['admin','sec','com'].forEach(role=>{
-  if(!NAV[role])return;
-  NAV[role].push({id:'avisclients',lb:'Avis clients',ic:'doc'});
-});
+_navInsertBeforeSettings('com',[{type:'sep',lb:'Connect'},{id:'avisclients',lb:'Avis clients',ic:'doc'}]);
 // CM : l'entrée nav 'Messages clients' est définie directement dans NAV['cm']
 // (section Communication) plutôt que poussée ici — accès scopé par
 // portefeuille via mc_cm_acces (migration-cm-messages.sql), pas de filtre
@@ -18567,7 +18590,7 @@ function tplRdvClients(){
     <div id="rdvcl-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
 }
 function tplCataloguePortail(){
-  return `<div class="sh"><div class="sh-t">Catalogue public (Portail)</div></div>
+  return `<div class="sh"><div class="sh-t">Catalogue public (Connect)</div></div>
     <div id="catalogue-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
 }
 ['admin','sec'].forEach(role=>{
@@ -18756,7 +18779,7 @@ function renderCatalogueOffres(){
       <td><span class="bd ${o.actif?'ba':'bn'}"><span class="bd-d"></span>${o.actif?'Actif':'Inactif'}</span></td>
       <td><button class="btn bg2 bs" onclick="modalCatalogueOffreById('${o.id}')">Modifier</button></td>
     </tr>`).join('')+'</tbody></table></div>')
-    :'<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune offre publiée. Créez-en une pour qu\'elle apparaisse sur le Portail.</div>');
+    :'<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune offre publiée. Créez-en une pour qu\'elle apparaisse sur Connect.</div>');
 }
 function modalCatalogueOffreById(id){
   const o=id?(_catalogueCache.find(x=>x.id===id)||{}):{};
@@ -18776,7 +18799,7 @@ function modalCatalogueOffreById(id){
       ${S.role==='admin' ? `<div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Image (vignette catalogue et page prestation)</label>
         <div id="cof-image-preview">${o.image_url?`<img src="${o.image_url}" style="max-width:200px;max-height:140px;border-radius:8px;margin-bottom:8px;display:block;object-fit:cover">`:''}</div>
         <input id="cof-image-file" type="file" accept="image/*" style="width:100%;color:var(--t1)" onchange="realPreviewFile(this,'cof-image-preview')">
-        <div style="font-size:11px;color:var(--t3);margin-top:6px">JPG/PNG, format paysage recommandé (16:9), 5 Mo max pour un chargement rapide sur le Portail.</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:6px">JPG/PNG, format paysage recommandé (16:9), 5 Mo max pour un chargement rapide sur Connect.</div>
         <input type="hidden" id="cof-image-url" value="${(o.image_url||'').replace(/"/g,'&quot;')}"></div>` : ''}
       <div style="display:flex;gap:12px">
         <div style="flex:1"><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Tarif</label>
@@ -18787,7 +18810,7 @@ function modalCatalogueOffreById(id){
         <div style="flex:1"><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Prix HT (€)</label>
           <input id="cof-prix" type="number" step="0.01" value="${o.prix_ht??''}" style="width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box"></div>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1)"><input type="checkbox" id="cof-actif" ${o.actif!==false?'checked':''}> Offre active (visible sur le Portail)</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1)"><input type="checkbox" id="cof-actif" ${o.actif!==false?'checked':''}> Offre active (visible sur Connect)</label>
       <button class="btn bp" onclick="saveCatalogueOffre('${id||''}')" style="margin-top:8px">Enregistrer</button>
     </div>
   `);
@@ -18824,7 +18847,7 @@ async function saveCatalogueOffre(id){
 
 // ── Réalisations (galerie publique photo/vidéo) — réservé admin ──
 function tplRealisationsPortail(){
-  return `<div class="sh"><div class="sh-t">Réalisations (Portail)</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Photos et vidéos affichées sur la page publique "Réalisations"</div></div>
+  return `<div class="sh"><div class="sh-t">Réalisations (Connect)</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Photos et vidéos affichées sur la page publique "Réalisations"</div></div>
     <div id="realisations-admin-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
 }
 let _realisationsCache=[];
@@ -18847,7 +18870,7 @@ function renderRealisationsAdmin(){
       <td><span class="bd ${r.actif?'ba':'bn'}"><span class="bd-d"></span>${r.actif?'Actif':'Inactif'}</span></td>
       <td style="white-space:nowrap"><button class="btn bg2 bs" onclick="modalRealisationById('${r.id}')">Modifier</button> <button class="btn bg2 bs" onclick="deleteRealisation('${r.id}')">Suppr.</button></td>
     </tr>`).join('')+'</tbody></table></div>')
-    :'<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune réalisation publiée. Ajoutez-en une pour qu\'elle apparaisse sur le Portail.</div>');
+    :'<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune réalisation publiée. Ajoutez-en une pour qu\'elle apparaisse sur Connect.</div>');
 }
 function modalRealisationById(id){
   const r=id?(_realisationsCache.find(x=>x.id===id)||{}):{};
@@ -18855,7 +18878,7 @@ function modalRealisationById(id){
   const inp='width:100%;padding:10px;background:var(--s1);border:1px solid var(--b1);border-radius:8px;color:var(--t1);box-sizing:border-box';
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">${id?'Modifier':'Nouvelle'} réalisation</div>
-    <div style="font-size:12px;color:var(--t3);margin-bottom:20px">Apparaît sur la page publique "Réalisations" du Portail, visible sans compte.</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:20px">Apparaît sur la page publique "Réalisations" de Connect, visible sans compte.</div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div><label style="${lbl}">Titre</label>
         <input id="real-titre" value="${(r.titre||'').replace(/"/g,'&quot;')}" style="${inp}"></div>
@@ -18878,7 +18901,7 @@ function modalRealisationById(id){
         <input id="real-file" type="file" accept="image/*,video/*" style="width:100%;color:var(--t1)" onchange="realPreviewFile(this)">
         <div id="real-type-hint" style="font-size:11px;color:var(--t3);margin-top:6px">Photo : JPG/PNG, format paysage recommandé, 5 Mo max pour un affichage rapide. Vidéo : MP4, quelques dizaines de Mo max — préférez un extrait court (highlight) plutôt que le match complet.</div>
         <input type="hidden" id="real-media-url" value="${(r.media_url||'').replace(/"/g,'&quot;')}"></div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1)"><input type="checkbox" id="real-actif" ${r.actif!==false?'checked':''}> Visible sur le Portail</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1)"><input type="checkbox" id="real-actif" ${r.actif!==false?'checked':''}> Visible sur Connect</label>
       <button class="btn bp" id="real-save-btn" onclick="saveRealisation('${id||''}')" style="margin-top:8px">Enregistrer</button>
     </div>
   `);
@@ -18931,7 +18954,7 @@ async function deleteRealisation(id){
 
 // ── Comptes Portail (client_users) — réservé admin ──
 function tplComptesPortail(){
-  return `<div class="sh"><div class="sh-t">Comptes Portail</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Comptes de connexion des clients au Portail — supprimer ici ne supprime pas la fiche client ni son historique</div></div>
+  return `<div class="sh"><div class="sh-t">Comptes Connect</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Comptes de connexion des clients à Connect — supprimer ici ne supprime pas la fiche client ni son historique</div></div>
     <div id="comptesportail-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
 }
 let _comptesPortailCache=[];
@@ -18943,7 +18966,7 @@ async function loadComptesPortail(){
 function renderComptesPortail(){
   const el=document.getElementById('comptesportail-list');
   if(!el)return;
-  if(!_comptesPortailCache.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun compte Portail pour le moment.</div>';return;}
+  if(!_comptesPortailCache.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun compte Connect pour le moment.</div>';return;}
   el.innerHTML='<div class="tw"><table><thead><tr><th>Client (fiche)</th><th>Prénom</th><th>Nom</th><th>Téléphone</th><th>E-mail de connexion</th><th></th></tr></thead><tbody>'+
     _comptesPortailCache.map(cu=>`<tr>
       <td class="tp">${cu.clients?.nom||'—'}</td>
@@ -18967,7 +18990,7 @@ async function saveComptePortail(id){
 }
 async function deleteComptePortail(id){
   const cu=_comptesPortailCache.find(x=>x.id===id);
-  if(!confirm('Supprimer l\'accès Portail de '+(cu?.clients?.nom||'ce client')+' ? Si la fiche n\'a aucune prestation ni devis, elle sera aussi supprimée entièrement. Sinon, seule la connexion au Portail saute, la fiche et son historique restent.'))return;
+  if(!confirm('Supprimer l\'accès Connect de '+(cu?.clients?.nom||'ce client')+' ? Si la fiche n\'a aucune prestation ni devis, elle sera aussi supprimée entièrement. Sinon, seule la connexion à Connect saute, la fiche et son historique restent.'))return;
   try{
     const res=await fetch(SB_URL+'/functions/v1/admin-delete-portal-account',{
       method:'POST',
@@ -18980,7 +19003,7 @@ async function deleteComptePortail(id){
       if(res.status===404)throw new Error('Edge Function admin-delete-portal-account non déployée.');
       throw new Error(json.error||('Erreur serveur ('+res.status+')'));
     }
-    toast(json.client_deleted?'Compte et fiche client supprimés.':'Accès Portail supprimé (fiche conservée).','ok');
+    toast(json.client_deleted?'Compte et fiche client supprimés.':'Accès Connect supprimé (fiche conservée).','ok');
     await loadComptesPortail();
   }catch(e){
     toast(e.message);
@@ -19063,7 +19086,6 @@ const VIEW_CTA={
   'admin.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'admin.contrats':{t:'+ Nouveau contrat',fn:'modalNouveauContrat'},
   'admin.documents':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
-  'sec.documents':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'sec.docs':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'compta.documents':{t:'+ Avoir',fn:'docsModalNouvelAvoir'},
   'admin.users':{t:'+ Ajouter un membre',fn:'modalInviterCollaborateur'},
@@ -21940,9 +21962,9 @@ function closeMobFilter(){
 
 // ── More Menu ─────────────────────────────────────────────────────────────
 const MOB_MORE_ITEMS={
-  admin:[{id:'crm',lb:'Clients',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipes',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
+  admin:[{id:'crm',lb:'Clients',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'col',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
-  prod:[{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
+  prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
   cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
