@@ -266,6 +266,9 @@ section{position:relative}
 .sv-modal h3{font-size:21px}
 .sv-modal p.sub{color:#5b6478;font-size:14px;margin-top:8px}
 .sv-close{position:absolute;top:18px;right:18px;background:#f4f6fa;border:none;width:34px;height:34px;border-radius:10px;font-size:16px;color:#5b6478}
+.video-modal{background:#0a0c18;border-radius:var(--radius-lg);max-width:360px;width:100%;padding:0;position:relative;overflow:hidden}
+.video-modal .sv-close{background:rgba(255,255,255,.16);color:#fff;top:12px;right:12px;z-index:2}
+.video-modal video{display:block;width:100%;aspect-ratio:9/16;background:#000}
 .sv-field{margin-top:16px}
 .sv-field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:#374151}
 .sv-field input,.sv-field select,.sv-field textarea{width:100%;padding:11px 12px;border:1px solid #e4e7ef;border-radius:10px;font-size:14.5px;font-family:inherit;box-sizing:border-box}
@@ -556,12 +559,12 @@ section{position:relative}
     </div>
     <div class="gallery-grid reveal" id="gallery-grid">
       <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-action-sportvision.jpg);background-size:cover;background-position:center 20%"><div class="overlay"><div class="cap"><b>Entraînement</b><span>Captation terrain</span></div></div></div>
-      <div class="gallery-item" data-cat="video"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Highlight match</b><span>Captation + montage vertical</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-match-action-01.mp4" style="background-image:url(assets/realisations/reel-match-action-01-poster.jpg);background-size:cover;background-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Action de match</b><span>Extrait réel — captation terrain</span></div></div></div>
       <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/tennis-action-01.jpg);background-size:cover;background-position:center 25%"><div class="overlay"><div class="cap"><b>Action de jeu</b><span>Tennis — shooting joueur</span></div></div></div>
       <div class="gallery-item" data-cat="affiche"><div class="overlay"><div class="cap"><b>Affiche Matchday</b><span>Création graphique</span></div></div></div>
       <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-01.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Portrait joueur</b><span>Séance shooting club</span></div></div></div>
       <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/tennis-action-03.jpg);background-size:cover;background-position:center 30%"><div class="overlay"><div class="cap"><b>Retour de balle</b><span>Tennis — lumière de fin de journée</span></div></div></div>
-      <div class="gallery-item" data-cat="video"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Reel réseaux sociaux</b><span>Format vertical</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-gardien-arret-02.mp4" style="background-image:url(assets/realisations/reel-gardien-arret-02-poster.jpg);background-size:cover;background-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Duel sur le terrain</b><span>Extrait réel — format vertical</span></div></div></div>
       <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-action-02.jpg);background-size:cover;background-position:center 15%"><div class="overlay"><div class="cap"><b>Jonglage</b><span>Séance individuelle joueur</span></div></div></div>
       <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/tennis-action-02.jpg);background-size:cover;background-position:center 20%"><div class="overlay"><div class="cap"><b>Action de jeu</b><span>Tennis — captation match</span></div></div></div>
       <div class="gallery-item" data-cat="affiche"><div class="overlay"><div class="cap"><b>Campagne digitale</b><span>Création graphique</span></div></div></div>
@@ -575,6 +578,34 @@ section{position:relative}
       <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/tennis-action-08.jpg);background-size:cover;background-position:center 25%"><div class="overlay"><div class="cap"><b>Frappe</b><span>Tennis — gros plan action</span></div></div></div>
       <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/tennis-action-09.jpg);background-size:cover;background-position:center 20%"><div class="overlay"><div class="cap"><b>Déplacement</b><span>Tennis — captation match</span></div></div></div>
       <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/tennis-action-10.jpg);background-size:cover;background-position:center 25%"><div class="overlay"><div class="cap"><b>Coup droit</b><span>Tennis — fin de journée</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-04.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Portrait joueuse</b><span>Séance shooting club</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-groupe-01.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Complicité</b><span>Avant-match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/basket-action-01.jpg);background-size:cover;background-position:center 20%"><div class="overlay"><div class="cap"><b>Position défensive</b><span>Basket — captation match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-05.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Concentration</b><span>Portrait avant-match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-groupe-02.jpg);background-size:cover;background-position:center 20%"><div class="overlay"><div class="cap"><b>Groupe joueurs</b><span>Entrée sur le terrain</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-06.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Capitaine</b><span>Instant complice</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-groupe-03.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Cohésion d'équipe</b><span>Avant-match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-action-03.jpg);background-size:cover;background-position:center 20%"><div class="overlay"><div class="cap"><b>Frappe</b><span>Action de match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-07.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Portrait joueuse</b><span>Séance terrain</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-groupe-04.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Esprit d'équipe</b><span>Après tournoi</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/basket-action-02.jpg);background-size:cover;background-position:center 25%"><div class="overlay"><div class="cap"><b>Action de jeu</b><span>Basket — captation match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-08.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Portrait joueuse</b><span>Fin de tournoi</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-groupe-05.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Complicité joueurs</b><span>Séance shooting</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-action-04.jpg);background-size:cover;background-position:center 15%"><div class="overlay"><div class="cap"><b>Sur le terrain</b><span>Séance individuelle</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-09.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Portrait joueur</b><span>Avant-entraînement</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-groupe-06.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Victoire</b><span>Podium</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/basket-action-03.jpg);background-size:cover;background-position:center 15%"><div class="overlay"><div class="cap"><b>Dunk</b><span>Basket — action de jeu</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-10.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Portrait capitaine</b><span>Brassard</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-groupe-07.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Champions</b><span>Remise du trophée</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-action-05.jpg);background-size:cover;background-position:center 20%"><div class="overlay"><div class="cap"><b>Duel</b><span>Action de match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-11.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Sous la pluie</b><span>Instant de match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-groupe-08.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Coéquipiers</b><span>Avant-match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-action-06.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Position de jeu</b><span>Match</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-12.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Portrait capitaine</b><span>Lumière naturelle</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-groupe-09.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Instant capté</b><span>Pause entraînement</span></div></div></div>
+      <div class="gallery-item" data-cat="photo" style="background-image:url(assets/realisations/foot-portrait-13.jpg);background-size:cover;background-position:center top"><div class="overlay"><div class="cap"><b>Contre-jour</b><span>Séance shooting</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-action-jeu-03.mp4" style="background-image:url(assets/realisations/reel-action-jeu-03-poster.jpg);background-size:cover;background-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Arrêt du gardien</b><span>Extrait réel — captation match</span></div></div></div>
+      <div class="gallery-item" data-cat="video" data-video="assets/realisations/videos/reel-technique-freestyle-04.mp4" style="background-image:url(assets/realisations/reel-technique-freestyle-04-poster.jpg);background-size:cover;background-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Séance technique</b><span>Extrait réel — travail individuel</span></div></div></div>
     </div>
   </div>
 </section>
@@ -768,6 +799,14 @@ section{position:relative}
   </div>
 </div>
 
+<!-- ══════════════ MODAL LECTURE VIDÉO (RÉALISATIONS) ══════════════ -->
+<div class="sv-overlay" id="video-overlay">
+  <div class="video-modal">
+    <button class="sv-close" id="video-close" aria-label="Fermer">✕</button>
+    <video id="video-player" controls playsinline></video>
+  </div>
+</div>
+
 <!-- ══════════════ MODAL PRENDRE RENDEZ-VOUS ══════════════ -->
 <div class="sv-overlay" id="rdv-overlay">
   <div class="sv-modal">
@@ -874,10 +913,31 @@ galleryFilters.addEventListener('click', (e) => {
   });
 });
 
-// ── Réalisations : un clic ouvre le formulaire pour demander un rendu
-//    similaire plutôt que de simuler une lecture vidéo qui n'existe pas ──
+// ── Modal lecture vidéo (extraits réels de captations) ──
+const videoOverlay = document.getElementById('video-overlay');
+const videoPlayer = document.getElementById('video-player');
+function openVideo(src){
+  videoPlayer.src = src;
+  videoOverlay.classList.add('on');
+  videoPlayer.play().catch(() => {});
+}
+function closeVideo(){
+  videoOverlay.classList.remove('on');
+  videoPlayer.pause();
+  videoPlayer.removeAttribute('src');
+  videoPlayer.load();
+}
+document.getElementById('video-close').addEventListener('click', closeVideo);
+videoOverlay.addEventListener('click', (e) => { if (e.target === videoOverlay) closeVideo(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && videoOverlay.classList.contains('on')) closeVideo(); });
+
+// ── Réalisations : un clic sur une vidéo la lit réellement ; sur une photo/affiche,
+//    ouvre le formulaire pour demander un rendu similaire ──
 document.getElementById('gallery-grid').addEventListener('click', (e) => {
-  if (!e.target.closest('.gallery-item')) return;
+  const item = e.target.closest('.gallery-item');
+  if (!item) return;
+  const src = item.getAttribute('data-video');
+  if (src){ openVideo(src); return; }
   openDevis();
   toast('Envie d\'un rendu similaire ? Décrivez votre besoin ci-dessous.');
 });
