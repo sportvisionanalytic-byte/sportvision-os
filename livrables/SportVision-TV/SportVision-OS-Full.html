@@ -17894,7 +17894,10 @@ async function modalFicheCollaborateur(id){
     const name=[prof.prenom,prof.nom].filter(Boolean).join(' ')||prof.role;
     const ini=((prof.prenom?.[0]||'')+(prof.nom?.[0]||'')).toUpperCase()||'?';
     const col=RCLR[prof.role]||'#366BFF';
-    const {grade}=calcGrade(xpTotal);
+    // Grade réellement accordé (profiles.grade, validé par l'admin via Grades & XP) —
+    // pas le grade que l'XP permettrait d'atteindre (calcGrade), sinon la fiche affiche
+    // une promotion que l'admin n'a pas encore approuvée.
+    const grade=SV_GRADES[prof.grade||0]||SV_GRADES[0];
     const dispo=dispoRec?.statut||prof.disponibilite||'disponible';
     const DISPO_LBL={disponible:'Disponible',sous_conditions:'Sous conditions',indisponible:'Indisponible'};
     const DISPO_CLR={disponible:'#2ECC8A',sous_conditions:'#F5A524',indisponible:'#EF4444'};
