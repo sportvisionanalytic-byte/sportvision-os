@@ -962,10 +962,11 @@ const VIEWS={
         <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
       </div>
     </div>
-    <div class="kpi-g" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
+    <div class="kpi-g" style="grid-template-columns:repeat(6,1fr);margin-bottom:16px">
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Prestations du jour</div><div class="kpi-v" id="kpi-jour">—</div><span class="kpi-d dnt" id="kpi-jour-s">aujourd'hui</span></div>
       <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('fin')"><div class="kpi-ey">CA du mois</div><div class="kpi-v" id="kpi-ca-m" style="font-size:18px">—</div><span class="kpi-d dnt">facturé</span></div>
       <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('fin')"><div class="kpi-ey">À encaisser</div><div class="kpi-v" id="kpi-enc" style="font-size:18px">—</div><span class="kpi-d dnt" id="kpi-enc-s">factures</span></div>
+      <div class="kpi" style="--kl:#E85D75;cursor:pointer" onclick="switchView('depenses')"><div class="kpi-ey">Dépenses du mois</div><div class="kpi-v" id="kpi-dep-m" style="font-size:18px">—</div><span class="kpi-d dnt">charges</span></div>
       <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('crm')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="kpi-cli-v">—</div><span class="kpi-d dnt">partenaires</span></div>
       <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('incidents')"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="kpi-inc-v">—</div><span class="kpi-d dnt">à traiter</span></div>
     </div>
@@ -2215,9 +2216,10 @@ const VIEWS={
 
   'compta.resultat':()=>`
     <div class="sh"><div><div class="sh-t">Compte de résultat</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Vue de pilotage interne — pas un document comptable légal</div></div></div>
-    <div class="kpi-g" style="grid-template-columns:repeat(5,1fr);margin-bottom:13px">
+    <div class="kpi-g" style="grid-template-columns:repeat(6,1fr);margin-bottom:13px">
       <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">Revenus (mois)</div><div class="kpi-v" id="res-kpi-rev" style="font-size:18px">—</div><span class="kpi-d dnt">missions payées</span></div>
       <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Coûts missions (mois)</div><div class="kpi-v" id="res-kpi-cm" style="font-size:18px">—</div><span class="kpi-d dnt">rém. + frais + dép. + indirects</span></div>
+      <div class="kpi" style="--kl:#E85D75;cursor:pointer" onclick="switchView('depenses')"><div class="kpi-ey">Charges générales (mois)</div><div class="kpi-v" id="res-kpi-chg" style="font-size:18px">—</div><span class="kpi-d dnt">hors mission (loyer, logiciels…)</span></div>
       <div class="kpi" style="--kl:#E8A33D"><div class="kpi-ey">Masse salariale chargée</div><div class="kpi-v" id="res-kpi-sal" style="font-size:18px">—</div><span class="kpi-d dnt">salariés actifs, mensualisée</span></div>
       <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Commissions (mois)</div><div class="kpi-v" id="res-kpi-com" style="font-size:18px">—</div><span class="kpi-d dnt">équipe commerciale</span></div>
       <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Résultat net (mois)</div><div class="kpi-v" id="res-kpi-net" style="font-size:18px">—</div><span class="kpi-d dnt">tous coûts déduits</span></div>
@@ -4144,14 +4146,15 @@ async function loadAdminDash(){
   }
 
   // Fetch all data in parallel
-  let allPre=[],allCli=[],allKits=[],allInc=[],todayPre=[];
+  let allPre=[],allCli=[],allKits=[],allInc=[],todayPre=[],allDep=[];
   try{
-    [allPre,allCli,allKits,allInc,todayPre]=await Promise.all([
+    [allPre,allCli,allKits,allInc,todayPre,allDep]=await Promise.all([
       sbFetch('prestations?select=id,statut,statut_financier,montant_ttc,date_prestation,heure_debut,heure_fin,reference,type_prestation,clients(nom)&order=date_prestation.asc&limit=500'),
       sbFetch('clients?select=id,statut'),
       sbFetch('kits?select=id,nom,statut&order=nom.asc'),
       sbFetch('incidents?select=id&cloture=eq.false'),
       sbFetch('prestations?select=id,reference,heure_debut,heure_fin,lieu,type_prestation,statut,clients(nom)&date_prestation=eq.'+today+'&order=heure_debut.asc'),
+      sbFetch('expenses?select=montant_ttc,date_depense&date_depense=gte.'+mStart).catch(()=>[]),
     ]);
   }catch(e){}
 
@@ -4173,6 +4176,12 @@ async function loadAdminDash(){
   set('kpi-enc',aEnc.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €');
   const nbEnc=(allPre||[]).filter(p=>['facturée','partiellement_payée','en_retard'].includes(p.statut_financier)).length;
   set('kpi-enc-s',nbEnc+' facture'+(nbEnc>1?'s':''));
+
+  // Dépenses du mois (table expenses — mêmes données que la page Dépenses,
+  // absente jusqu'ici du tableau de bord alors que c'est la première chose
+  // demandée par un propriétaire d'entreprise : "combien je dépense ce mois-ci")
+  const depM=(Array.isArray(allDep)?allDep:[]).reduce((s,d)=>s+(d.montant_ttc||0),0);
+  set('kpi-dep-m',depM.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €');
 
   // CA facturé total (pour le graphique)
   const caTotal=(allPre||[]).filter(p=>['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
@@ -14865,11 +14874,12 @@ async function loadComptaDash(){
     const now=new Date();
     const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
     const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
-    const [data,remData,fraisData,remAttData]=await Promise.all([
+    const [data,remData,fraisData,remAttData,depData]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,acompte_montant,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500'),
       sbFetch('prestations_equipe?select=remuneration,prestations(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
       sbFetch('frais?select=montant&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext).catch(()=>[]),
       sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
+      sbFetch('expenses?select=montant_ttc&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext).catch(()=>[]),
     ]);
     const list=data||[];
     const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','acompte_demandé':'bw','non_facturée':'bn','en_retard':'br'};
@@ -14885,8 +14895,15 @@ async function loadComptaDash(){
       if(p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte')acomp+=p.acompte_montant||m*0.5;
       if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))nbFact++;
     });
+    // "Charges du mois" doit refléter la même donnée que la page Dépenses
+    // vers laquelle cette tuile renvoie (switchView('depenses')) — jusqu'ici
+    // elle ignorait entièrement la table expenses (loyer, logiciels,
+    // assurance...) et ne montrait que rémunérations équipe + frais de
+    // mission, ce qui la rendait trompeuse pour qui cherche son total de
+    // charges réel.
     const charges=(Array.isArray(remData)?remData:[]).reduce((s,r)=>s+(r.remuneration||0),0)
-      +(Array.isArray(fraisData)?fraisData:[]).reduce((s,f)=>s+(f.montant||0),0);
+      +(Array.isArray(fraisData)?fraisData:[]).reduce((s,f)=>s+(f.montant||0),0)
+      +(Array.isArray(depData)?depData:[]).reduce((s,d)=>s+(d.montant_ttc||0),0);
     const remAtt=(Array.isArray(remAttData)?remAttData:[]).reduce((s,r)=>s+(r.remuneration||0),0);
     const marge=enc-charges;
 
@@ -15582,10 +15599,15 @@ async function loadComptaResultat(){
     const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
     const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
     const sixMoisAgo=new Date(now.getFullYear(),now.getMonth()-5,1).toISOString().slice(0,10);
-    const [missions,employeeCosts,commissionsData]=await Promise.all([
+    const [missions,employeeCosts,commissionsData,chargesGenData]=await Promise.all([
       sbFetch('v_rentabilite_missions?select=*&date_prestation=gte.'+sixMoisAgo+'&order=date_prestation.asc&limit=500'),
       sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct').catch(()=>[]),
       sbFetch('commissions?select=montant_commission,statut,date_calcul&date_calcul=gte.'+mStart+'&date_calcul=lt.'+mNext).catch(()=>[]),
+      // Charges générales (loyer, logiciels, assurance...) : dépenses non
+      // rattachées à une mission (prestation_id NULL), donc absentes de
+      // v_rentabilite_missions qui est scopée par mission — sans cette
+      // ligne, le "Résultat net" ignorait entièrement ces charges réelles.
+      sbFetch('expenses?select=montant_ht&prestation_id=is.null&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext+'&statut=in.(engagee,payee,comptabilisee)').catch(()=>[]),
     ]);
     const list=Array.isArray(missions)?missions:[];
     const moisList=list.filter(p=>p.date_prestation&&p.date_prestation>=mStart&&p.date_prestation<mNext);
@@ -15593,8 +15615,9 @@ async function loadComptaResultat(){
     const coutsMissions=moisList.reduce((s,p)=>s+(p.cout_remunerations||0)+(p.cout_frais||0)+(p.cout_depenses_directes||0)+(p.cout_indirect_alloue||0),0);
     const masseSalariale=(Array.isArray(employeeCosts)?employeeCosts:[]).reduce((s,e)=>s+(e.salaire_brut_mensuel||0)*(1+(e.charges_patronales_pct||0)/100),0);
     const commissionsMois=(Array.isArray(commissionsData)?commissionsData:[]).reduce((s,c)=>s+(c.montant_commission||0),0);
-    const net=revenus-coutsMissions-masseSalariale-commissionsMois;
-    set('res-kpi-rev',fmt(revenus));set('res-kpi-cm',fmt(coutsMissions));set('res-kpi-sal',fmt(masseSalariale));set('res-kpi-com',fmt(commissionsMois));
+    const chargesGen=(Array.isArray(chargesGenData)?chargesGenData:[]).reduce((s,d)=>s+(d.montant_ht||0),0);
+    const net=revenus-coutsMissions-masseSalariale-commissionsMois-chargesGen;
+    set('res-kpi-rev',fmt(revenus));set('res-kpi-cm',fmt(coutsMissions));set('res-kpi-chg',fmt(chargesGen));set('res-kpi-sal',fmt(masseSalariale));set('res-kpi-com',fmt(commissionsMois));
     const netEl=document.getElementById('res-kpi-net');if(netEl){netEl.textContent=fmt(net);netEl.style.color=net>=0?'var(--ok)':'var(--er)';}
     if(elTend){
       const byMonth={};
@@ -15643,17 +15666,20 @@ async function loadComptaBudgets(){
     const threeAgo=new Date(now.getFullYear(),now.getMonth()-3,1);
     const curStartStr=curStart.toISOString().slice(0,10);
     const threeAgoStr=threeAgo.toISOString().slice(0,10);
-    const [missions,employeeCosts,commissionsData,scenarios]=await Promise.all([
+    const [missions,employeeCosts,commissionsData,scenarios,chargesGenData]=await Promise.all([
       sbFetch('v_rentabilite_missions?select=revenu_ht,cout_remunerations,cout_frais,cout_depenses_directes,cout_indirect_alloue,date_prestation&date_prestation=gte.'+threeAgoStr+'&date_prestation=lt.'+curStartStr),
       sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct').catch(()=>[]),
       sbFetch('commissions?select=montant_commission,date_calcul&date_calcul=gte.'+threeAgoStr+'&date_calcul=lt.'+curStartStr).catch(()=>[]),
       sbFetch('forecast_scenarios?select=*'),
+      // Charges générales hors mission (même raison que loadComptaResultat) :
+      // sans elles, le run-rate "Charges" sous-estime les coûts réels.
+      sbFetch('expenses?select=montant_ht,date_depense&prestation_id=is.null&date_depense=gte.'+threeAgoStr+'&date_depense=lt.'+curStartStr+'&statut=in.(engagee,payee,comptabilisee)').catch(()=>[]),
     ]);
     // Agrégation par mois calendaire ('YYYY-MM'), moyenne sur les 3 mois
     // attendus (même si une mission/commission manque un mois, on divise
     // quand même par 3 — c'est bien un run-rate glissant sur 3 mois).
     const moisAttendus=[1,2,3].map(i=>{const d=new Date(now.getFullYear(),now.getMonth()-i,1);return d.toISOString().slice(0,7);});
-    const byMonthCA={},byMonthCharges={},byMonthCom={};
+    const byMonthCA={},byMonthCharges={},byMonthCom={},byMonthChargesGen={};
     (Array.isArray(missions)?missions:[]).forEach(p=>{
       const m=(p.date_prestation||'').slice(0,7);
       byMonthCA[m]=(byMonthCA[m]||0)+(p.revenu_ht||0);
@@ -15663,10 +15689,14 @@ async function loadComptaBudgets(){
       const m=(c.date_calcul||'').slice(0,7);
       byMonthCom[m]=(byMonthCom[m]||0)+(c.montant_commission||0);
     });
+    (Array.isArray(chargesGenData)?chargesGenData:[]).forEach(d=>{
+      const m=(d.date_depense||'').slice(0,7);
+      byMonthChargesGen[m]=(byMonthChargesGen[m]||0)+(d.montant_ht||0);
+    });
     const sum3=obj=>moisAttendus.reduce((s,m)=>s+(obj[m]||0),0)/3;
     const masseSalariale=(Array.isArray(employeeCosts)?employeeCosts:[]).reduce((s,e)=>s+(e.salaire_brut_mensuel||0)*(1+(e.charges_patronales_pct||0)/100),0);
     const runRateCA=sum3(byMonthCA);
-    const runRateCharges=sum3(byMonthCharges)+masseSalariale+sum3(byMonthCom);
+    const runRateCharges=sum3(byMonthCharges)+masseSalariale+sum3(byMonthCom)+sum3(byMonthChargesGen);
     _budgetsData={scenarios:Array.isArray(scenarios)?scenarios:[],runRateCA,runRateCharges,ready:true};
     const fmt=n=>Math.round(n||0).toLocaleString('fr-FR')+' €';
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
