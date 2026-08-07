@@ -45,14 +45,16 @@
   /* ── Permissions d'affichage uniquement ──
    * La RLS (is_club_member pour insert/update, is_club_admin pour delete)
    * est l'unique source de vérité. Ici on se contente de masquer les
-   * boutons d'action pour les rôles manifestement non-admin, conformément
-   * à la consigne : "CRUD complet si rôle admin/dirigeant, lecture seule
-   * sinon, mais laisse le serveur trancher". Si le rôle réel autorise plus
-   * ou moins que cette heuristique, l'API tranchera (403 -> message clair).
+   * boutons d'action pour les rôles sans droit sur les résultats, en
+   * cohérence avec ROLE_DESC (club-parametres-acces.js) : resp_equipe a
+   * explicitement "résultats" dans sa description, contrairement à coach
+   * (Éducateur, limité à actualités/médias/demandes). Si le rôle réel
+   * autorise plus ou moins que cette heuristique, l'API tranchera
+   * (403 -> message clair).
    */
   function canManage(role) {
     var r = (role || '').toLowerCase();
-    return /admin|dirigean|president|owner/.test(r);
+    return /admin|dirigean|president|owner|resp_equipe/.test(r);
   }
 
   /* ── Styles scopés (préfixe cem-), injectés une seule fois ── */
