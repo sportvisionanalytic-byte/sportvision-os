@@ -53,7 +53,7 @@ serve(async (req) => {
     const { data: callerProfile } = await admin.from("profiles").select("role").eq("id", userData.user.id).maybeSingle();
     if (!callerProfile || callerProfile.role !== "admin") return json({ error: "Réservé aux administrateurs" }, 403);
 
-    const { email, prenom, nom, role, organization_name } = await req.json();
+    const { email, prenom, nom, role, organization_name, redirect_url } = await req.json();
     if (!email || !prenom || !nom || !role) return json({ error: "Champs manquants" }, 400);
     if (!ROLE_LABELS[role]) return json({ error: "Rôle invalide" }, 400);
 
@@ -62,7 +62,7 @@ serve(async (req) => {
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "invite",
       email,
-      options: { data: { role, prenom, nom } },
+      options: { data: { role, prenom, nom }, redirectTo: redirect_url },
     });
     if (linkErr) return json({ error: linkErr.message }, 400);
 
