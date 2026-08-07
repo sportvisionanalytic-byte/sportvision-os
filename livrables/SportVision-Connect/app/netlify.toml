@@ -2,7 +2,7 @@
   publish = "."
 
 # Connect est une app multi-fichiers (index.html + modules/*.js), contrairement
-# au Portail qui est un fichier HTML unique. Les fichiers réels (modules/*.js,
+# à Club+ qui est un fichier HTML unique. Les fichiers réels (modules/*.js,
 # manifest.json, sw.js, icônes) sont servis tels quels par Netlify ; seule une
 # route qui ne correspond à aucun fichier existant retombe sur index.html.
 [[redirects]]

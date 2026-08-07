@@ -1,7 +1,7 @@
 [build]
   publish = "."
 
-# Contrairement à Portail/Club+/Connect (redirection catch-all vers un seul
+# Contrairement à Club+/Connect (redirection catch-all vers un seul
 # fichier), la vitrine a de vraies pages distinctes : chaque .html doit être
 # servi tel quel. Seules les URLs "propres" (sans .html) redirigent vers leur
 # fichier, pour permettre /offres plutôt que /offres.html une fois le domaine

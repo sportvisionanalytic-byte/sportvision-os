@@ -8,7 +8,7 @@ Complète `index.html`. Couvre les points du brief qui ne sont pas du code : ana
 
 `livrables/SportVision/index.html` — page d'accueil publique complète, un seul fichier autonome (HTML/CSS/JS, aucune dépendance sauf les polices Google Fonts Manrope/Inter), sans authentification requise. Sections construites, dans l'ordre du brief : header, hero, barre de confiance, problème, démonstration, 5 sections fonctionnelles alternées, avant/après, solutions par profil (onglets), offres, services, réalisations (galerie filtrable), études de cas, témoignages, comment ça marche, aperçu de l'app privée, FAQ (accordéon), CTA final, footer complet. Le bouton "Se connecter" et tous les CTA de connexion pointent vers `../SportVision-Connect/app/index.html`.
 
-**Le formulaire "Demander une démonstration" est réellement fonctionnel** : il appelle l'edge function `create-guest-request` déjà déployée et utilisée par le Portail (même backend, même table `prestations`/`clients`, protection anti-bot honeypot + limite de fréquence déjà en place côté serveur) — pas un formulaire décoratif.
+**Le formulaire "Demander une démonstration" est réellement fonctionnel** : il appelle l'edge function `create-guest-request` déjà déployée et utilisée par Connect (même backend, même table `prestations`/`clients`, protection anti-bot honeypot + limite de fréquence déjà en place côté serveur) — pas un formulaire décoratif.
 
 ## 2. Analyse des références (Once Sport / Metrica Sports)
 
