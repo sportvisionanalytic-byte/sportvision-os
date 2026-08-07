@@ -1,0 +1,16 @@
+{
+  "name": "SportVision OS",
+  "short_name": "SV OS",
+  "description": "Outil interne SportVision : CRM, prestations, planning, finances, formation et équipe en un seul endroit.",
+  "start_url": "./SportVision-OS-Full.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#040611",
+  "theme_color": "#040611",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

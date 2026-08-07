@@ -1,0 +1,6 @@
+{
+  "appId": "fr.sportvision.connect",
+  "appName": "SportVision Connect",
+  "webDir": "../SportVision-Connect/app",
+  "backgroundColor": "#0b1330"
+}

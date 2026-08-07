@@ -1,0 +1,30 @@
+# Dépendances (réinstallables via npm install)
+node_modules/
+
+# iOS — artefacts régénérés par pod install / xcodebuild
+ios/App/Pods/
+ios/App/build/
+ios/App/DerivedData/
+ios/App/*.xcworkspace/xcuserdata/
+ios/App/*.xcodeproj/xcuserdata/
+ios/App/*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Android — artefacts régénérés par Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/*.iml
+
+# Copie des assets web générée par `npx cap sync` depuis
+# ../SportVision-Connect/app (source de vérité unique) — jamais éditer ici,
+# toujours régénérer avec `npm run sync`.
+ios/App/App/public/
+android/app/src/main/assets/public/
+ios/App/App/capacitor.config.json
+android/app/src/main/assets/capacitor.config.json
+
+# Divers
+.DS_Store
