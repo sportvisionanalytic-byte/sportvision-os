@@ -103,7 +103,7 @@
     style.id = 'je-styles';
     style.textContent = [
       '.je-wrap{display:flex;flex-direction:column;gap:16px}',
-      '.je-notice{background:color-mix(in srgb,#b56a00 12%,transparent);color:#b56a00;border-radius:var(--radius);padding:12px 16px;font-size:13px}',
+      '.je-notice{background:color-mix(in srgb,var(--warn) 12%,transparent);color:var(--warn);border-radius:var(--radius);padding:12px 16px;font-size:13px}',
       '.je-notice.je-danger{background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger)}',
       '.je-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}',
       '.je-profile-head{display:flex;align-items:center;gap:12px}',
@@ -133,7 +133,7 @@
       '.je-tile-open{display:block;margin-top:8px;font-size:11.5px}',
       '.je-badge{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px}',
       '.je-badge-info{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}',
-      '.je-badge-warn{background:color-mix(in srgb,#b56a00 16%,transparent);color:#b56a00}',
+      '.je-badge-warn{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}',
       '.je-badge-ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}',
       '.je-badge-muted{background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--muted)}',
       '.je-badge-danger{background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--danger)}',

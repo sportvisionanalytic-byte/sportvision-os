@@ -45,7 +45,7 @@
       .cm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
       .cm-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:left;cursor:pointer;font:inherit;color:inherit}
       .cm-card:hover{border-color:var(--accent)}
-      .cm-card .thumb{height:84px;border-radius:8px;background:linear-gradient(135deg,#eef1f7,#e4e7ef);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center;padding:8px;overflow:hidden}
+      .cm-card .thumb{height:84px;border-radius:8px;background:linear-gradient(135deg,rgba(157,174,195,.15),var(--border));display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center;padding:8px;overflow:hidden}
       .cm-field{margin-bottom:12px}
       .cm-field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
       .cm-field input,.cm-field select,.cm-field textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box}
@@ -57,7 +57,7 @@
       .cm-close{background:transparent;border:none;font-size:18px;cursor:pointer;color:var(--muted);line-height:1;padding:2px}
       .cm-comment{background:rgba(0,0,0,.03);border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:12.5px}
       .cm-info{border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12.5px;margin-bottom:12px}
-      .cm-warn{border-color:#e2a03f55;background:rgba(226,160,63,.08)}
+      .cm-warn{border-color:#F0A94E55;background:rgba(226,160,63,.08)}
       .cm-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px}
       .cm-inline-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:rgba(0,0,0,.03);border-radius:10px;padding:9px 12px;margin-bottom:6px;font-size:12.5px}
       .cm-player-list{max-height:190px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--card)}
@@ -77,22 +77,22 @@
   }
   function statusMeta(status) {
     return {
-      recues: { label: 'Reçue', color: '#2f6bff' },
+      recues: { label: 'Reçue', color: 'var(--accent)' },
       info_manquante: { label: 'Informations manquantes', color: '#e2a03f' },
-      en_traitement: { label: 'En traitement', color: '#7455ff' },
-      prete_a_creer: { label: 'Prête à créer', color: '#06c2c2' },
-      terminee: { label: 'Terminée', color: '#1fa971' },
-      refusee: { label: 'Refusée', color: '#e14b4b' },
-      brouillon: { label: 'Brouillon', color: '#5b6478' },
+      en_traitement: { label: 'En traitement', color: 'var(--purple)' },
+      prete_a_creer: { label: 'Prête à créer', color: 'var(--accent-2)' },
+      terminee: { label: 'Terminée', color: 'var(--ok)' },
+      refusee: { label: 'Refusée', color: 'var(--danger)' },
+      brouillon: { label: 'Brouillon', color: 'var(--muted)' },
       a_valider: { label: 'À valider', color: '#e2a03f' },
-      valide: { label: 'Validé', color: '#1fa971' },
-      publie: { label: 'Publié', color: '#2f6bff' },
-      actif: { label: 'Actif', color: '#1fa971' },
+      valide: { label: 'Validé', color: 'var(--ok)' },
+      publie: { label: 'Publié', color: 'var(--accent)' },
+      actif: { label: 'Actif', color: 'var(--ok)' },
       invitation: { label: 'Invitation en attente', color: '#e2a03f' },
-      suspendu: { label: 'Suspendu', color: '#e14b4b' },
+      suspendu: { label: 'Suspendu', color: 'var(--danger)' },
       a_faire: { label: 'À faire', color: '#e2a03f' },
-      realise: { label: 'Réalisé', color: '#1fa971' }
-    }[status] || { label: status || '—', color: '#5b6478' };
+      realise: { label: 'Réalisé', color: 'var(--ok)' }
+    }[status] || { label: status || '—', color: 'var(--muted)' };
   }
   function typeLabel(type) {
     return {
@@ -108,7 +108,7 @@
       recrutement_educateur: 5, anniversaire: 5, publication_sponsor: 5, annonce_tournoi: 5, annonce_importante: 2
     }[type] ?? null;
   }
-  const NIVEAU_COLOR = { Or: '#e2a03f', Argent: '#a7b6c9', Bronze: '#7455ff' };
+  const NIVEAU_COLOR = { Or: '#e2a03f', Argent: 'var(--muted)', Bronze: 'var(--purple)' };
   const ROLE_LABELS = {
     admin: 'Administrateur du club', president: 'Président', secretaire: 'Secrétaire', comm: 'Community Manager',
     cm_externe: 'Community Manager externe', coach: 'Éducateur', resp_equipe: "Responsable d'équipe",
@@ -212,7 +212,7 @@
             </div>
             <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:14px;display:inline-block">${esc(sm.label)}</span>
             ${r.credits_reserved ? `<div class="cm-info cm-warn">${r.credits_reserved} crédit(s) réservé(s) — débités seulement si SportVision accepte la demande, sinon restitués.</div>` : ''}
-            ${missing.length ? `<div class="cm-info cm-warn"><b style="display:block;margin-bottom:4px;font-size:11.5px;color:#b56a00">INFORMATIONS MANQUANTES</b>${missing.map(function (m) { return '<div>• ' + esc(m) + '</div>'; }).join('')}</div>` : ''}
+            ${missing.length ? `<div class="cm-info cm-warn"><b style="display:block;margin-bottom:4px;font-size:11.5px;color:var(--warn)">INFORMATIONS MANQUANTES</b>${missing.map(function (m) { return '<div>• ' + esc(m) + '</div>'; }).join('')}</div>` : ''}
             <div class="cm-info"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">DÉTAIL</div>${esc(r.detail || '—')}</div>
             <div style="font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:8px">COMMENTAIRES</div>
             ${comments.length ? comments.map(function (c) {
@@ -630,15 +630,15 @@
 
       function mediaCard(m) {
         const badgeColor = m.expired ? 'var(--danger)' : 'var(--ok)';
-        const badgeBg = m.expired ? '#e14b4b22' : '#1fa97122';
+        const badgeBg = m.expired ? 'var(--danger)22' : 'var(--ok)22';
         const blocked = !!blockedByMedia['club_media:' + m.id];
         return `<button class="cm-card" data-action="open-media" data-id="${m.id}">
           <div class="thumb">${esc(m.title)}</div>
           <div style="font-weight:600;font-size:12.5px;margin-top:8px">${esc(m.title)}</div>
           <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
-            <span class="badge" style="background:#2f6bff22;color:var(--accent)">${esc(MEDIA_TYPE_LABEL[m.type] || m.type)}</span>
+            <span class="badge" style="background:#168BFF22;color:var(--accent)">${esc(MEDIA_TYPE_LABEL[m.type] || m.type)}</span>
             <span class="badge" style="background:${badgeBg};color:${badgeColor}">${m.expired ? 'Lien expiré' : esc(MEDIA_SOURCE_LABEL[m.source] || m.source)}</span>
-            ${blocked ? '<span class="badge" style="background:#e2a03f22;color:#b56a00">⚠ Autorisation manquante</span>' : ''}
+            ${blocked ? '<span class="badge" style="background:#F0A94E22;color:var(--warn)">⚠ Autorisation manquante</span>' : ''}
           </div>
         </button>`;
       }
@@ -651,7 +651,7 @@
           <div class="m" style="margin-top:2px">${esc(c.team || '—')}</div>
           <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
             <span class="badge" style="background:${sm.color}22;color:${sm.color}">${esc(sm.label)}</span>
-            ${blocked ? '<span class="badge" style="background:#e2a03f22;color:#b56a00">⚠ Autorisation manquante</span>' : ''}
+            ${blocked ? '<span class="badge" style="background:#F0A94E22;color:var(--warn)">⚠ Autorisation manquante</span>' : ''}
           </div>
         </button>`;
       }
@@ -927,7 +927,7 @@
       }
 
       function card(sp) {
-        const color = NIVEAU_COLOR[sp.niveau] || '#7455ff';
+        const color = NIVEAU_COLOR[sp.niveau] || 'var(--purple)';
         const commitments = Array.isArray(sp.commitments) ? sp.commitments : [];
         const done = commitments.filter(function (c) { return c.status === 'realise'; }).length;
         return `<button class="cm-card" data-action="open" data-id="${sp.id}">
@@ -942,7 +942,7 @@
         if (!openId) return '';
         const sp = sponsors.find(function (x) { return x.id === openId; });
         if (!sp) return '';
-        const color = NIVEAU_COLOR[sp.niveau] || '#7455ff';
+        const color = NIVEAU_COLOR[sp.niveau] || 'var(--purple)';
         const commitments = Array.isArray(sp.commitments) ? sp.commitments : [];
         return `<div class="cm-overlay" data-action="overlay">
           <div class="cm-modal">

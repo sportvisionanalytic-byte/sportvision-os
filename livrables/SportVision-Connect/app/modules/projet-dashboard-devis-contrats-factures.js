@@ -100,34 +100,34 @@
 
   /* ── Badges de statut (mêmes libellés que le Portail, statutBadge()) ── */
   var DEVIS_STATUT = {
-    brouillon: { label: 'Brouillon', color: '#5b6478' },
-    'envoyé': { label: 'Envoyé', color: '#2f6bff' },
+    brouillon: { label: 'Brouillon', color: 'var(--muted)' },
+    'envoyé': { label: 'Envoyé', color: 'var(--accent)' },
     en_attente: { label: 'En attente', color: '#e2a03f' },
-    'accepté': { label: 'Accepté', color: '#1fa971' },
-    'refusé': { label: 'Refusé', color: '#e14b4b' },
-    'expiré': { label: 'Expiré', color: '#5b6478' },
-    'annulé': { label: 'Annulé', color: '#5b6478' },
+    'accepté': { label: 'Accepté', color: 'var(--ok)' },
+    'refusé': { label: 'Refusé', color: 'var(--danger)' },
+    'expiré': { label: 'Expiré', color: 'var(--muted)' },
+    'annulé': { label: 'Annulé', color: 'var(--muted)' },
   };
   var FACTURE_STATUT = {
-    brouillon: { label: 'Brouillon', color: '#5b6478' },
-    emise: { label: 'Émise', color: '#2f6bff' },
-    payee: { label: 'Payée', color: '#1fa971' },
-    en_retard: { label: 'En retard', color: '#e14b4b' },
-    annulee: { label: 'Annulée', color: '#e14b4b' },
-    remboursee: { label: 'Remboursée', color: '#5b6478' },
+    brouillon: { label: 'Brouillon', color: 'var(--muted)' },
+    emise: { label: 'Émise', color: 'var(--accent)' },
+    payee: { label: 'Payée', color: 'var(--ok)' },
+    en_retard: { label: 'En retard', color: 'var(--danger)' },
+    annulee: { label: 'Annulée', color: 'var(--danger)' },
+    remboursee: { label: 'Remboursée', color: 'var(--muted)' },
   };
   var CONTRAT_STATUT = {
-    brouillon: { label: 'Brouillon', color: '#5b6478' },
-    actif: { label: 'Actif', color: '#1fa971' },
+    brouillon: { label: 'Brouillon', color: 'var(--muted)' },
+    actif: { label: 'Actif', color: 'var(--ok)' },
     suspendu: { label: 'Suspendu', color: '#e2a03f' },
-    'résilié': { label: 'Résilié', color: '#e14b4b' },
-    'expiré': { label: 'Expiré', color: '#5b6478' },
+    'résilié': { label: 'Résilié', color: 'var(--danger)' },
+    'expiré': { label: 'Expiré', color: 'var(--muted)' },
   };
   var SIGNATURE_STATUT = {
-    non_demandee: { label: 'Aucune signature requise', color: '#5b6478' },
+    non_demandee: { label: 'Aucune signature requise', color: 'var(--muted)' },
     demandee: { label: 'À signer', color: '#e2a03f' },
-    signee: { label: 'Signé', color: '#1fa971' },
-    refusee: { label: 'Refusé', color: '#e14b4b' },
+    signee: { label: 'Signé', color: 'var(--ok)' },
+    refusee: { label: 'Refusé', color: 'var(--danger)' },
   };
   // Taxonomie de la Banque de contrats (migration-contrats-v2-types-banque.sql),
   // identique à CONTRAT_TYPES_LB dans SportVision-OS-Full.html. Anciennes clés
@@ -149,7 +149,7 @@
     partenariat: 'Partenariat',
   };
   function badge(map, key) {
-    var m = map[key] || { label: key || '—', color: '#5b6478' };
+    var m = map[key] || { label: key || '—', color: 'var(--muted)' };
     return '<span class="badge" style="background:' + m.color + '22;color:' + m.color + '">' + esc(m.label) + '</span>';
   }
 

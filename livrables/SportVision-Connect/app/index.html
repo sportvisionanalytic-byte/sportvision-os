@@ -10,83 +10,109 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.json">
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+  /* Palette et typographie reprises telles quelles de SportVision Portail (retiré le
+     2026-08-07) : c'est l'identité visuelle déjà éprouvée de l'écosystème SportVision,
+     pas une nouvelle direction inventée pour Connect. Les NOMS de variables restent
+     ceux de Connect (--bg, --card, --accent...) pour ne rien casser dans les ~12
+     fichiers modules/*.js qui les référencent déjà via var(--xxx) — seules les VALEURS
+     changent ici, ce qui reskinne l'app entière depuis ce seul bloc. */
   :root{
-    --bg:#f4f6fa; --card:#ffffff; --navy:#0b1330; --navy-2:#131c42;
-    --text:#101425; --muted:#5b6478; --border:#e4e7ef;
-    --accent:#2f6bff; --accent-2:#06c2c2; --danger:#e14b4b; --ok:#1fa971;
-    --radius:14px; --shadow:0 8px 24px rgba(15,23,60,.08);
-    font-family:-apple-system,BlinkMacSystemFont,'Inter',Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    --bg:#06111F; --card:#10243E; --navy:#0B1B33; --navy-2:#10243E;
+    --text:#F7F9FC; --muted:#9DAEC3; --faint:#6B7A90; --border:rgba(255,255,255,.08);
+    --accent:#168BFF; --accent-2:#32D8E6; --purple:#7857FF;
+    --danger:#F87171; --ok:#34D399; --warn:#F0A94E;
+    --radius:16px; --shadow:0 10px 28px rgba(0,0,0,.35);
+    --ff-h:'Space Grotesk',sans-serif; --ff-b:'Manrope',sans-serif;
+    font-family:var(--ff-b);
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);min-height:100vh}
+  body{margin:0;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--ff-h)}
   .screen{display:none;min-height:100vh}
   .screen.on{display:flex}
   .center{align-items:center;justify-content:center;padding:24px}
 
   /* ── Splash ── */
-  #scr-splash .box{display:flex;flex-direction:column;align-items:center;gap:14px;color:#fff}
-  #scr-splash{background:linear-gradient(160deg,var(--navy),var(--navy-2))}
-  .spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin .8s linear infinite}
+  #scr-splash .box{display:flex;flex-direction:column;align-items:center;gap:14px;color:var(--text);font-family:var(--ff-h);font-weight:600}
+  #scr-splash{background:linear-gradient(160deg,var(--navy),var(--bg))}
+  .spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:var(--accent-2);animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
 
   /* ── Connexion ── */
-  #scr-login{background:linear-gradient(160deg,var(--navy),var(--navy-2))}
-  .auth-card{width:100%;max-width:380px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 28px}
-  .auth-card h1{font-size:20px;margin:0 0 4px}
+  #scr-login,#scr-signup,#scr-forgot,#scr-reset{background:linear-gradient(160deg,var(--navy),var(--bg))}
+  .auth-card{width:100%;max-width:380px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 28px}
+  .auth-card h1{font-size:21px;margin:0 0 4px;letter-spacing:-.2px}
   .auth-card p.sub{color:var(--muted);font-size:14px;margin:0 0 24px}
-  label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
-  input[type=email],input[type=password],input[type=text],input[type=tel],select{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit}
-  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:10px;
-    padding:12px 18px;font-size:15px;font-weight:600;cursor:pointer;width:100%;margin-top:18px}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px;color:var(--muted)}
+  input[type=email],input[type=password],input[type=text],input[type=tel],select{
+    width:100%;padding:12px;border:1px solid var(--border);border-radius:9px;font-size:14.5px;
+    font-family:var(--ff-b);background:var(--navy);color:var(--text)}
+  input::placeholder{color:var(--faint)}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:9px;
+    padding:13px 18px;font-size:14.5px;font-weight:700;cursor:pointer;width:100%;margin-top:18px;font-family:var(--ff-b)}
   .btn-primary{background:var(--accent);color:#fff}
-  .btn-primary:disabled{opacity:.6;cursor:default}
-  .btn-ghost{background:transparent;color:var(--accent);width:auto;margin-top:0;padding:8px 4px}
+  .btn-primary:hover{background:#0f7ae0}
+  .btn-primary:disabled{opacity:.5;cursor:default}
+  .btn-ghost{background:transparent;color:var(--accent-2);width:auto;margin-top:0;padding:8px 4px}
   .err{color:var(--danger);font-size:13px;min-height:18px;margin-top:10px}
   .ok-msg{color:var(--ok);font-size:13px;min-height:18px;margin-top:10px}
   .auth-switch{text-align:center;margin-top:16px;font-size:13.5px;color:var(--muted)}
   .field-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .field-2col label{margin:14px 0 6px}
 
-  /* ── Coque commune (post-login) ── */
+  /* ── Coque commune (post-login) : bandeau supérieur façon Portail (fond sombre,
+     flou au scroll) + zone de contenu. La navigation entre modules d'un espace est
+     traitée plus bas en colonne latérale (#workspace), même esprit que le
+     #portal-sidebar du Portail, sans déplacer la structure DOM existante. ── */
   #app-shell{flex-direction:column;width:100%}
-  header.topbar{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:12px 20px}
-  header.topbar .brand{font-weight:700;letter-spacing:.2px}
+  header.topbar{position:sticky;top:0;z-index:20;background:rgba(11,27,51,.9);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);color:var(--text);display:flex;align-items:center;justify-content:space-between;padding:14px 22px}
+  header.topbar .brand{font-family:var(--ff-h);font-weight:700;letter-spacing:.2px;font-size:15px}
   header.topbar .brand span{color:var(--accent-2)}
   header.topbar .actions{display:flex;gap:10px;align-items:center}
-  header.topbar button{background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer}
-  header.topbar button:hover{background:rgba(255,255,255,.18)}
-  main{padding:28px 20px;max-width:920px;margin:0 auto;width:100%}
+  header.topbar button{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--ff-b)}
+  header.topbar button:hover{border-color:var(--accent)}
+  main{padding:28px 22px 60px;max-width:1100px;margin:0 auto;width:100%}
 
   /* ── Sélecteur d'espace ── */
   .org-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:18px}
-  .org-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;text-align:left;box-shadow:var(--shadow)}
-  .org-card:hover{border-color:var(--accent)}
+  .org-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;text-align:left;transition:.15s}
+  .org-card:hover{border-color:var(--accent);transform:translateY(-2px)}
   .org-card .type{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
-    color:var(--accent);background:#eaf0ff;border-radius:6px;padding:3px 8px;margin-bottom:10px}
-  .org-card h3{margin:0 0 4px;font-size:17px}
+    color:var(--accent-2);background:rgba(50,216,230,.12);border-radius:6px;padding:3px 8px;margin-bottom:10px}
+  .org-card h3{margin:0 0 4px;font-size:17px;color:var(--text)}
   .org-card .statut{font-size:12px;color:var(--muted)}
 
   /* ── Accueil ── */
   .empty-state{background:var(--card);border:1px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;color:var(--muted)}
+  #home-org-name{color:var(--text)}
+  #home-org-meta{color:var(--muted)}
   .modules-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:16px}
   .module-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
-  .module-card .lbl{font-weight:600;font-size:14px}
+  .module-card .lbl{font-weight:600;font-size:14px;color:var(--text)}
   .module-card .meta{font-size:12px;color:var(--muted);margin-top:4px}
-  .badge{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px}
-  .badge.prioritaire{background:#fff1e0;color:#b56a00}
-  .badge.standard{background:#eef1f7;color:var(--muted)}
+  .badge{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:3px 10px}
+  .badge.prioritaire{background:rgba(240,169,78,.15);color:var(--warn)}
+  .badge.standard{background:rgba(157,174,195,.15);color:var(--muted)}
 
-  /* ── Espace de travail (onglets + contenu de module, générique à tous les espaces) ── */
-  #workspace{margin-top:28px;border-top:1px solid var(--border);padding-top:22px}
-  .workspace-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
-  .workspace-tab{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:8px 16px;
-    font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
-  .workspace-tab:hover{border-color:var(--accent)}
-  .workspace-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  /* ── Espace de travail : colonne de navigation façon sidebar du Portail (verticale,
+     fixe) + contenu du module actif à droite. Mêmes IDs qu'avant (#workspace,
+     #workspace-tabs, #workspace-tab-content) — seule la mise en page change, aucun
+     JS touché. ── */
+  #workspace{margin-top:28px;border-top:1px solid var(--border);padding-top:22px;display:grid;grid-template-columns:220px 1fr;gap:26px;align-items:start}
+  @media(max-width:760px){#workspace{grid-template-columns:1fr}}
+  .workspace-tabs{display:flex;flex-direction:column;gap:3px;position:sticky;top:80px}
+  @media(max-width:760px){.workspace-tabs{position:static;flex-direction:row;flex-wrap:wrap}}
+  .workspace-tab{background:transparent;border:none;border-radius:8px;padding:10px 12px;text-align:left;
+    font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--ff-b)}
+  .workspace-tab:hover{color:var(--text);background:rgba(255,255,255,.04)}
+  .workspace-tab.active{background:rgba(22,139,255,.14);color:var(--text)}
   #workspace-tab-content{min-height:120px}
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:var(--text);border:1px solid var(--border);
     padding:10px 18px;border-radius:10px;font-size:14px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s}
   .toast.on{opacity:1}
 </style>

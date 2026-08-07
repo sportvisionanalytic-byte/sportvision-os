@@ -76,7 +76,7 @@
       .sp-close{background:transparent;border:none;font-size:18px;cursor:pointer;color:var(--muted);line-height:1;padding:2px}
       .sp-comment{background:rgba(0,0,0,.03);border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:12.5px}
       .sp-info{border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12.5px;margin-bottom:12px}
-      .sp-warn{border-color:#e2a03f55;background:rgba(226,160,63,.08)}
+      .sp-warn{border-color:#F0A94E55;background:rgba(226,160,63,.08)}
       .sp-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
       .sp-stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
       .sp-stat .n{font-size:26px;font-weight:800;color:var(--accent)}
@@ -99,30 +99,30 @@
   }
   function money(n) { return (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 
-  const NIVEAU_COLOR = { Or: '#e2a03f', Argent: '#a7b6c9', Bronze: '#7455ff' };
-  function niveauColor(n) { return NIVEAU_COLOR[n] || '#7455ff'; }
+  const NIVEAU_COLOR = { Or: '#e2a03f', Argent: 'var(--muted)', Bronze: 'var(--purple)' };
+  function niveauColor(n) { return NIVEAU_COLOR[n] || 'var(--purple)'; }
 
-  const COMMIT_STATUS = { a_faire: { label: 'À faire', color: '#e2a03f' }, realise: { label: 'Réalisé', color: '#1fa971' } };
-  function commitStatusMeta(s) { return COMMIT_STATUS[s] || { label: s || '—', color: '#5b6478' }; }
+  const COMMIT_STATUS = { a_faire: { label: 'À faire', color: '#e2a03f' }, realise: { label: 'Réalisé', color: 'var(--ok)' } };
+  function commitStatusMeta(s) { return COMMIT_STATUS[s] || { label: s || '—', color: 'var(--muted)' }; }
 
   const CREATION_STATUS = {
-    brouillon: { label: 'Brouillon', color: '#5b6478' },
+    brouillon: { label: 'Brouillon', color: 'var(--muted)' },
     a_valider: { label: 'À valider', color: '#e2a03f' },
-    valide: { label: 'Validé', color: '#1fa971' },
-    publie: { label: 'Publié', color: '#2f6bff' }
+    valide: { label: 'Validé', color: 'var(--ok)' },
+    publie: { label: 'Publié', color: 'var(--accent)' }
   };
-  function creationStatusMeta(s) { return CREATION_STATUS[s] || { label: s || '—', color: '#5b6478' }; }
+  function creationStatusMeta(s) { return CREATION_STATUS[s] || { label: s || '—', color: 'var(--muted)' }; }
 
   const REQUEST_STATUSES = ['recues', 'info_manquante', 'en_traitement', 'prete_a_creer', 'terminee', 'refusee'];
   function requestStatusMeta(status) {
     return {
-      recues: { label: 'Reçue', color: '#2f6bff' },
+      recues: { label: 'Reçue', color: 'var(--accent)' },
       info_manquante: { label: 'Informations manquantes', color: '#e2a03f' },
-      en_traitement: { label: 'En traitement', color: '#7455ff' },
-      prete_a_creer: { label: 'Prête à créer', color: '#06c2c2' },
-      terminee: { label: 'Terminée', color: '#1fa971' },
-      refusee: { label: 'Refusée', color: '#e14b4b' }
-    }[status] || { label: status || '—', color: '#5b6478' };
+      en_traitement: { label: 'En traitement', color: 'var(--purple)' },
+      prete_a_creer: { label: 'Prête à créer', color: 'var(--accent-2)' },
+      terminee: { label: 'Terminée', color: 'var(--ok)' },
+      refusee: { label: 'Refusée', color: 'var(--danger)' }
+    }[status] || { label: status || '—', color: 'var(--muted)' };
   }
 
   // Hypothèse : aucun catalogue de types de demande n'existe côté base pour
@@ -442,7 +442,7 @@
               <button class="sp-close" data-action="close">✕</button>
             </div>
             <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:14px;display:inline-block">${esc(sm.label)}</span>
-            ${missing.length ? `<div class="sp-info sp-warn"><b style="display:block;margin-bottom:4px;font-size:11.5px;color:#b56a00">INFORMATIONS MANQUANTES</b>${missing.map(function (m) { return '<div>• ' + esc(m) + '</div>'; }).join('')}</div>` : ''}
+            ${missing.length ? `<div class="sp-info sp-warn"><b style="display:block;margin-bottom:4px;font-size:11.5px;color:var(--warn)">INFORMATIONS MANQUANTES</b>${missing.map(function (m) { return '<div>• ' + esc(m) + '</div>'; }).join('')}</div>` : ''}
             <div class="sp-info"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">DÉTAIL</div>${esc(r.detail || '—')}</div>
             <div style="font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:8px">COMMENTAIRES</div>
             ${comments.length ? comments.map(function (c) {
@@ -584,10 +584,10 @@
   // attente), 'suspendu' (accès coupé par un referent ou le staff SportVision).
   function memberStatusMeta(status) {
     return {
-      actif: { label: 'Actif', color: '#1fa971' },
+      actif: { label: 'Actif', color: 'var(--ok)' },
       invitation: { label: 'Invitation en attente', color: '#e2a03f' },
-      suspendu: { label: 'Suspendu', color: '#e14b4b' }
-    }[status] || { label: status || '—', color: '#5b6478' };
+      suspendu: { label: 'Suspendu', color: 'var(--danger)' }
+    }[status] || { label: status || '—', color: 'var(--muted)' };
   }
 
   function roleLabelFromCatalog(roleCatalog, roleKey) {

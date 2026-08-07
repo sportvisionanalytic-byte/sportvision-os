@@ -60,11 +60,11 @@
       .pjc-row{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
       .pjc-row-title{font-weight:700;font-size:14px}
       .pjc-badge{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap}
-      .pjc-badge-blue{background:#eaf0ff;color:#2f6bff}
-      .pjc-badge-green{background:#e6f7f0;color:#1fa971}
-      .pjc-badge-orange{background:#fff1e0;color:#b56a00}
-      .pjc-badge-red{background:#fdecec;color:#e14b4b}
-      .pjc-badge-grey{background:#eef1f7;color:var(--muted)}
+      .pjc-badge-blue{background:rgba(22,139,255,.12);color:var(--accent)}
+      .pjc-badge-green{background:rgba(52,211,153,.15);color:var(--ok)}
+      .pjc-badge-orange{background:rgba(240,169,78,.15);color:var(--warn)}
+      .pjc-badge-red{background:rgba(248,113,113,.15);color:var(--danger)}
+      .pjc-badge-grey{background:rgba(157,174,195,.15);color:var(--muted)}
       .pjc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
       .pjc-eyebrow{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.3px}
       .pjc-actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -76,14 +76,14 @@
       .pjc-msg-convs{width:260px;flex:none;border-right:1px solid var(--border);overflow-y:auto;max-height:560px}
       .pjc-conv-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer}
       .pjc-conv-item:hover{background:rgba(0,0,0,.02)}
-      .pjc-conv-item.on{background:#eaf0ff}
+      .pjc-conv-item.on{background:rgba(22,139,255,.12)}
       .pjc-msg-panel{flex:1;display:flex;flex-direction:column;min-width:0;padding:14px}
       .pjc-mobile-back{display:none;margin-bottom:10px}
       .pjc-msg-title{font-weight:700;font-size:15px;margin-bottom:10px}
       .pjc-msg-thread{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px 2px;max-height:420px}
       .pjc-bubble{max-width:78%;padding:9px 13px;border-radius:14px;font-size:14px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
       .pjc-bubble-mine{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
-      .pjc-bubble-theirs{align-self:flex-start;background:#eef1f7;color:var(--text);border-bottom-left-radius:4px}
+      .pjc-bubble-theirs{align-self:flex-start;background:rgba(157,174,195,.15);color:var(--text);border-bottom-left-radius:4px}
       .pjc-msg-composer{display:flex;gap:8px;margin-top:12px;align-items:flex-end}
       .pjc-msg-composer textarea{flex:1;resize:vertical;padding:10px 11px;border:1px solid var(--border);border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box}
       .pjc-members{border-top:1px solid var(--border)}

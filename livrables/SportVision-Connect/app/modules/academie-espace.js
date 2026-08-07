@@ -58,7 +58,7 @@
       .ae-close{background:transparent;border:none;font-size:18px;cursor:pointer;color:var(--muted);line-height:1;padding:2px}
       .ae-comment{background:rgba(0,0,0,.03);border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:12.5px}
       .ae-info{border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12.5px;margin-bottom:12px}
-      .ae-warn{border-color:#e2a03f55;background:rgba(226,160,63,.08)}
+      .ae-warn{border-color:#F0A94E55;background:rgba(226,160,63,.08)}
       .ae-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px}
       .ae-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:18px}
       .ae-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
@@ -90,13 +90,13 @@
   }
   function statusMeta(status) {
     return {
-      recues: { label: 'Reçue', color: '#2f6bff' },
+      recues: { label: 'Reçue', color: 'var(--accent)' },
       info_manquante: { label: 'Informations manquantes', color: '#e2a03f' },
-      en_traitement: { label: 'En traitement', color: '#7455ff' },
-      prete_a_creer: { label: 'Prête à créer', color: '#06c2c2' },
-      terminee: { label: 'Terminée', color: '#1fa971' },
-      refusee: { label: 'Refusée', color: '#e14b4b' }
-    }[status] || { label: status || '—', color: '#5b6478' };
+      en_traitement: { label: 'En traitement', color: 'var(--purple)' },
+      prete_a_creer: { label: 'Prête à créer', color: 'var(--accent-2)' },
+      terminee: { label: 'Terminée', color: 'var(--ok)' },
+      refusee: { label: 'Refusée', color: 'var(--danger)' }
+    }[status] || { label: status || '—', color: 'var(--muted)' };
   }
   const REQUEST_TYPES = ['stage', 'inscriptions', 'communication', 'media', 'autre'];
   function requestTypeLabel(type) {
@@ -478,7 +478,7 @@
               <div class="m">${ev.context ? esc(ev.context) : ''}</div>
             </div>
           </div>
-          <span class="badge" style="background:#2f6bff22;color:var(--accent)">${esc(eventTypeLabel(ev.type))}</span>
+          <span class="badge" style="background:#168BFF22;color:var(--accent)">${esc(eventTypeLabel(ev.type))}</span>
         </div>`;
       }
 
@@ -594,7 +594,7 @@
             </div>
             <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:14px;display:inline-block">${esc(sm.label)}</span>
             ${r.credits_reserved ? `<div class="ae-info ae-warn">${r.credits_reserved} crédit(s) réservé(s) — débités seulement si SportVision accepte la demande, sinon restitués.</div>` : ''}
-            ${missing.length ? `<div class="ae-info ae-warn"><b style="display:block;margin-bottom:4px;font-size:11.5px;color:#b56a00">INFORMATIONS MANQUANTES</b>${missing.map(function (m) { return '<div>• ' + esc(m) + '</div>'; }).join('')}</div>` : ''}
+            ${missing.length ? `<div class="ae-info ae-warn"><b style="display:block;margin-bottom:4px;font-size:11.5px;color:var(--warn)">INFORMATIONS MANQUANTES</b>${missing.map(function (m) { return '<div>• ' + esc(m) + '</div>'; }).join('')}</div>` : ''}
             <div class="ae-info"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">DÉTAIL</div>${esc(r.detail || '—')}</div>
             <div style="font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:8px">COMMENTAIRES</div>
             ${comments.length ? comments.map(function (c) {
@@ -741,10 +741,10 @@
   // invitation). Aucun de ces états n'est modifiable depuis cet écran.
   function membershipStatusMeta(status) {
     return {
-      actif: { label: 'Actif', color: '#1fa971' },
+      actif: { label: 'Actif', color: 'var(--ok)' },
       invitation: { label: 'Invitation en attente', color: '#e2a03f' },
-      suspendu: { label: 'Suspendu', color: '#e14b4b' }
-    }[status] || { label: status || '—', color: '#5b6478' };
+      suspendu: { label: 'Suspendu', color: 'var(--danger)' }
+    }[status] || { label: status || '—', color: 'var(--muted)' };
   }
   // Message d'erreur renvoyé par PostgREST pour une exception levée côté
   // trigger/policy (ex : "Une invitation en attente ne peut pas être

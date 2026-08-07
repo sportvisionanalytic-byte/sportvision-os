@@ -90,7 +90,7 @@
       '.cem-score{font-size:16px;font-weight:800;color:var(--accent-2)}',
       '.cem-score-big{font-size:26px;font-weight:800;color:var(--accent-2);margin-bottom:14px}',
       '.cem-badge-info{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}',
-      '.cem-badge-warn{background:color-mix(in srgb,#b56a00 16%,transparent);color:#b56a00}',
+      '.cem-badge-warn{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}',
       '.cem-badge-ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}',
       '.cem-chip{display:inline-block;background:color-mix(in srgb,var(--accent-2) 14%,transparent);color:var(--accent-2);border-radius:8px;padding:4px 10px;font-size:12px;margin:0 6px 6px 0}',
       '.cem-overlay{position:fixed;inset:0;z-index:1000;display:flex;justify-content:flex-end}',
@@ -226,7 +226,7 @@
       '</div>' +
       '<div class="cem-row2">' +
       '<label class="cem-label">Effectif<input class="cem-input" type="number" min="0" name="members" value="' + (editing && t.members != null ? esc(String(t.members)) : '') + '"></label>' +
-      '<label class="cem-label">Couleur<input class="cem-input" type="text" name="couleur" placeholder="#2f6bff" value="' + (editing ? esc(t.couleur || '') : '') + '"></label>' +
+      '<label class="cem-label">Couleur<input class="cem-input" type="text" name="couleur" placeholder="var(--accent)" value="' + (editing ? esc(t.couleur || '') : '') + '"></label>' +
       '</div>' +
       '<label class="cem-label">Prochain match (texte libre)<input class="cem-input" name="next_match" value="' + (editing ? esc(t.next_match || '') : '') + '"></label>' +
       '<button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;margin-top:14px">' + (editing ? 'Enregistrer' : 'Ajouter') + '</button>' +

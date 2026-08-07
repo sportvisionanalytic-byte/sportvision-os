@@ -22,20 +22,20 @@
     'en_creation', 'programme', 'publie', 'archive'
   ];
   var NS_STATUS_META = {
-    recu:               { label: 'Reçu',                    color: '#168EFF' },
-    a_verifier:         { label: 'À vérifier par SportVision', color: '#2DD4E3' },
-    infos_manquantes:   { label: 'Informations manquantes',  color: '#F5A623' },
-    pret_a_transformer: { label: 'Prêt à transformer',       color: '#7455FF' },
-    en_creation:        { label: 'En création',              color: '#F5A623' },
-    programme:          { label: 'Programmé',                color: '#3D7FFF' },
-    publie:             { label: 'Publié',                   color: '#28C995' },
-    archive:            { label: 'Archivé',                  color: '#A7B6C9' }
+    recu:               { label: 'Reçu',                    color: 'var(--accent)' },
+    a_verifier:         { label: 'À vérifier par SportVision', color: 'var(--accent-2)' },
+    infos_manquantes:   { label: 'Informations manquantes',  color: 'var(--warn)' },
+    pret_a_transformer: { label: 'Prêt à transformer',       color: 'var(--purple)' },
+    en_creation:        { label: 'En création',              color: 'var(--warn)' },
+    programme:          { label: 'Programmé',                color: 'var(--accent)' },
+    publie:             { label: 'Publié',                   color: 'var(--ok)' },
+    archive:            { label: 'Archivé',                  color: 'var(--muted)' }
   };
   // Types autorisés par la contrainte CHECK de club_newsroom_items.type.
   var NS_TYPES = ['Actualité', 'Résultat'];
 
   function statusMeta(status) {
-    return NS_STATUS_META[status] || { label: status || '—', color: '#A7B6C9' };
+    return NS_STATUS_META[status] || { label: status || '—', color: 'var(--muted)' };
   }
 
   function fmtDate(iso) {
@@ -122,7 +122,7 @@
             '.svnc-list-row:hover{background:rgba(47,107,255,.05)}' +
             '.svnc-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;display:inline-block}' +
             '.svnc-empty{background:var(--card);border:1px dashed var(--border);border-radius:var(--radius);padding:28px;text-align:center;color:var(--muted)}' +
-            '.svnc-error{background:#fdeceb;border:1px solid #f3c3c0;color:var(--danger);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13.5px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}' +
+            '.svnc-error{background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);color:var(--danger);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13.5px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}' +
             '.svnc-kanban{display:grid;grid-auto-flow:column;grid-auto-columns:220px;gap:12px;overflow-x:auto;padding-bottom:8px}' +
             '.svnc-kan-col{background:rgba(91,100,120,.06);border-radius:12px;padding:10px}' +
             '.svnc-kan-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;font-size:12.5px}' +
@@ -286,7 +286,7 @@
         } else {
           out += '<div class="svnc-list">' + filtered.map(function (n) {
             var sm = statusMeta(n.status);
-            var prioColor = n.priority === 'haute' ? 'var(--danger)' : n.priority === 'basse' ? 'var(--muted)' : '#F5A623';
+            var prioColor = n.priority === 'haute' ? 'var(--danger)' : n.priority === 'basse' ? 'var(--muted)' : 'var(--warn)';
             return '<button type="button" class="svnc-list-row" data-act="ns-item" data-id="' + esc(n.id) + '">' +
               '<div style="display:flex;gap:10px;align-items:center;min-width:0">' +
                 '<span class="svnc-dot" style="background:' + prioColor + '"></span>' +
@@ -414,7 +414,7 @@
                 return '<button type="button" class="svnc-cal-day' + (day.today ? ' today' : '') + '" style="opacity:' + (day.inMonth ? 1 : .4) + '" data-act="pl-day" data-value="' + day.iso + '">' +
                   '<div style="font-size:11px;font-weight:700;margin-bottom:4px">' + day.label + '</div>' +
                   day.events.slice(0, 2).map(function (ev) {
-                    return '<div class="svnc-cal-ev" style="background:#2DD4E322;color:#1B9AA6">' + esc(ev.title) + '</div>';
+                    return '<div class="svnc-cal-ev" style="background:#32D8E622;color:var(--accent-2)">' + esc(ev.title) + '</div>';
                   }).join('') +
                   (day.events.length > 2 ? '<div class="svnc-muted" style="font-size:10px">+' + (day.events.length - 2) + '</div>' : '') +
                   '</button>';
@@ -425,7 +425,7 @@
           var sorted = filtered.slice().sort(function (a, b) { return String(a.event_date).localeCompare(String(b.event_date)); });
           out += '<div class="svnc-list">' + sorted.map(function (e) {
             return '<div class="svnc-list-row" style="cursor:default">' +
-              '<div style="display:flex;gap:10px;align-items:center"><span class="svnc-dot" style="background:#2DD4E3"></span>' +
+              '<div style="display:flex;gap:10px;align-items:center"><span class="svnc-dot" style="background:var(--accent-2)"></span>' +
               '<div><div style="font-weight:600;font-size:13px">' + esc(e.title) + '</div><div class="svnc-muted" style="font-size:11.5px">' + fmtDate(e.event_date) + ' · ' + esc(e.team || 'Club') + '</div></div></div>' +
             '</div>';
           }).join('') + '</div>';
