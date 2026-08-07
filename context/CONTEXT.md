@@ -20,11 +20,11 @@
 
 Je développe **SportVision**, une activité dans le domaine du sport qui combine la captation vidéo, la photographie et la création de contenus de communication. Je filme et photographie des matchs et des événements sportifs, puis je produis des contenus destinés à mettre en valeur les joueurs, les équipes et les clubs.
 
-Je travaille également sur le développement de **SportVision TV**, une plateforme de diffusion de contenus sportifs.
+**SportVision TV** (plateforme de diffusion de contenus sportifs) est un projet à long terme, pas encore lancé : sortie visée dans environ 2 ans (~2028). Jusqu'à cette date, elle ne doit pas être présentée comme un produit actif ou disponible (ni sur le site public, ni en prospection commerciale) — c'est un objectif futur, pas une offre à vendre aujourd'hui.
 
 ### Détails
 
-- **Activité :** Captation vidéo et photo d'événements sportifs, création de contenus de communication, diffusion via SportVision TV
+- **Activité :** Captation vidéo et photo d'événements sportifs, création de contenus de communication
 - **Modèle économique :** Prestations de captation photo/vidéo, offres de création de contenus pour clubs et sportifs, formules de diffusion et communication autour des événements sportifs
 - **Clients types :** Clubs de football et autres sports, joueurs, entraîneurs, familles souhaitant conserver des images de matchs ou améliorer la visibilité des sportifs
 
@@ -40,7 +40,7 @@ Je travaille également sur le développement de **SportVision TV**, une platefo
 ### Objectifs long terme (1 à 3 ans)
 
 - Devenir la référence du sport amateur en France
-- Lancer SportVision TV à l'échelle nationale
+- Lancer SportVision TV à l'échelle nationale (visée ~2028, dans environ 2 ans)
 - Construire une activité qui fonctionne en autonomie au quotidien
 
 ---
