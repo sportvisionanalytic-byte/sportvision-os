@@ -13159,9 +13159,15 @@ async function soumettreQuiz(id){
   const insId=_formInscIds[id];
   const bonusXp=pass?Math.round((f?.xp||0)*0.3):0;
   const alreadyPassed=_formProgCache[id]?.quiz_passe;
+  let scoreSaved=true;
   if(insId){
-    await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{score_quiz:score,quiz_passe:pass}}).catch(()=>{});
-    if(xpEligible&&pass&&bonusXp>0&&!alreadyPassed){
+    const rQz=await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{score_quiz:score,quiz_passe:pass}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rQz))scoreSaved=false;
+    // Le bonus XP ne doit pas être versé si quiz_passe n'a pas pu être
+    // enregistré : sinon un rechargement montrerait "pas encore réussi" alors
+    // que l'XP a déjà été crédité — même incohérence que le bug corrigé plus
+    // tôt sur toggleFormLesson.
+    if(scoreSaved&&xpEligible&&pass&&bonusXp>0&&!alreadyPassed){
       await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:uid,montant:bonusXp,type:'bonus',source_id:insId,source_type:'formation_inscriptions',description:'Quiz réussi : '+(f?.titre||id),attribue_par:uid}}).catch(()=>{});
       try{
         const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
@@ -13171,7 +13177,7 @@ async function soumettreQuiz(id){
       }catch(e){}
     }
   }
-  if(_formProgCache[id]){_formProgCache[id].score_quiz=score;_formProgCache[id].quiz_passe=pass;}
+  if(scoreSaved&&_formProgCache[id]){_formProgCache[id].score_quiz=score;_formProgCache[id].quiz_passe=pass;}
   if(document.getElementById('form-grade-content'))await loadForm();
   document.getElementById('sv-modal-ct').innerHTML=`<div style="padding:24px 20px;max-width:520px;margin:auto">
     <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid var(--b1);margin-bottom:20px">
@@ -13179,8 +13185,9 @@ async function soumettreQuiz(id){
       <div style="font-size:24px;font-weight:800;color:${pass?'var(--ok)':'var(--wa)'}">${score}%</div>
       <div style="font-size:15px;font-weight:700;color:var(--t1);margin-top:4px">${pass?'Quiz réussi !':'Pas encore…'}</div>
       <div style="font-size:12px;color:var(--t3);margin-top:4px">${correct}/${tot} bonne${correct>1?'s':''} réponse${correct>1?'s':''}</div>
-      ${xpEligible&&pass&&bonusXp>0&&!alreadyPassed?`<div style="font-size:12px;color:var(--ok);font-weight:600;margin-top:6px">+${bonusXp} XP bonus débloqués</div>`:''}
+      ${scoreSaved&&xpEligible&&pass&&bonusXp>0&&!alreadyPassed?`<div style="font-size:12px;color:var(--ok);font-weight:600;margin-top:6px">+${bonusXp} XP bonus débloqués</div>`:''}
       ${!pass?`<div style="font-size:12px;color:var(--wa);margin-top:6px">Score minimum requis : 70% — Révisez et réessayez.</div>`:''}
+      ${!scoreSaved?`<div style="font-size:12px;color:var(--er);margin-top:6px">Score non enregistré (problème réseau) — repassez le quiz pour qu\'il compte.</div>`:''}
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
       ${qs.map((q,qi)=>{const ok=answers[qi]===q.rep;return`<div style="padding:12px 14px;border-radius:10px;border:1px solid ${ok?'rgba(46,204,138,.3)':'rgba(240,68,94,.3)'};background:${ok?'rgba(46,204,138,.05)':'rgba(240,68,94,.05)'}">
@@ -13458,7 +13465,7 @@ async function loadAdminFormCertifs(){
   if(!el)return;
   el.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--t3)">Chargement…</div>`;
   try{
-    const certs=await sbFetch('collaborateur_certifications?select=id,collaborateur_id,code_certification,nom,badge,formation_id,date_obtention,date_expiration,statut,numero_certificat,profiles(prenom,nom,role)&order=date_expiration.asc.nullslast&limit=200').catch(()=>[]);
+    const certs=await sbFetch('collaborateur_certifications?select=id,collaborateur_id,code_certification,nom,badge,formation_id,date_obtention,date_expiration,statut,numero_certificat,profiles(prenom,nom,role,avatar_url)&order=date_expiration.asc.nullslast&limit=200').catch(()=>[]);
     const now=new Date();
     const list=(certs||[]).map(c=>{
       const exp=c.date_expiration?new Date(c.date_expiration):null;
@@ -13473,8 +13480,13 @@ async function loadAdminFormCertifs(){
       const f=FORMATIONS_CATALOG.find(x=>x.id===c.formation_id);
       const dt=c.date_obtention?new Date(c.date_obtention):null;
       const exp=c.date_expiration?new Date(c.date_expiration):null;
+      const ini=((c.profiles?.prenom||'?')[0]||'?').toUpperCase();
+      const avUrl=c.profiles?.avatar_url;
       return`<tr>
-        <td class="tm">${c.profiles?.prenom||''} ${c.profiles?.nom||''}<div style="font-size:10px;color:var(--t3)">${ROLE_LABELS[c.profiles?.role]||c.profiles?.role||''}</div></td>
+        <td class="tm"><div style="display:flex;align-items:center;gap:9px">
+          <div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;${avUrl?`background:url('${esc(avUrl)}') center/cover no-repeat`:'background:var(--gr);display:flex;align-items:center;justify-content:center'}">${avUrl?'':`<span style="font-size:11px;font-weight:700;color:#fff">${ini}</span>`}</div>
+          <div>${c.profiles?.prenom||''} ${c.profiles?.nom||''}<div style="font-size:10px;color:var(--t3)">${ROLE_LABELS[c.profiles?.role]||c.profiles?.role||''}</div></div>
+        </div></td>
         <td class="tm">${c.badge||'🏅'} ${esc(c.nom)}</td>
         <td style="font-size:11px;color:var(--t3)">${f?.titre||c.formation_id||'—'}</td>
         <td style="font-size:11.5px">${dt?dt.toLocaleDateString('fr-FR'):'—'}</td>
@@ -13917,14 +13929,22 @@ async function modalGererPresences(sessionId){
 async function majPresence(sessionId,collabId,statut){
   const r=await sbFetch('formation_presences',{method:'POST',body:{session_id:sessionId,collaborateur_id:collabId,statut}});
   if(sbErr(r)){
-    await sbFetch('formation_presences?session_id=eq.'+sessionId+'&collaborateur_id=eq.'+collabId,{method:'PATCH',body:{statut}}).catch(()=>{});
+    // Échec attendu si la ligne existe déjà (contrainte unique session+collab) —
+    // dans ce cas on bascule en PATCH. Mais ce fallback doit lui aussi être
+    // vérifié : avant ce correctif, un échec du PATCH (réseau, RLS...) restait
+    // totalement silencieux, sans aucun retour à l'utilisateur ni dans un cas
+    // ni dans l'autre.
+    const r2=await sbFetch('formation_presences?session_id=eq.'+sessionId+'&collaborateur_id=eq.'+collabId,{method:'PATCH',body:{statut}}).catch(()=>({code:'network_error'}));
+    if(sbErr(r2)){toast('Erreur : présence non enregistrée.','er');return;}
   }
+  toast('Présence mise à jour.','ok');
 }
 
 async function marquerSigne(sessionId,collabId,btn){
   const r=await sbFetch('formation_presences',{method:'POST',body:{session_id:sessionId,collaborateur_id:collabId,signe:true,signe_at:new Date().toISOString()}});
   if(sbErr(r)){
-    await sbFetch('formation_presences?session_id=eq.'+sessionId+'&collaborateur_id=eq.'+collabId,{method:'PATCH',body:{signe:true,signe_at:new Date().toISOString()}}).catch(()=>{});
+    const r2=await sbFetch('formation_presences?session_id=eq.'+sessionId+'&collaborateur_id=eq.'+collabId,{method:'PATCH',body:{signe:true,signe_at:new Date().toISOString()}}).catch(()=>({code:'network_error'}));
+    if(sbErr(r2)){toast('Erreur : signature non enregistrée.','er');return;}
   }
   if(btn){btn.textContent='✓';btn.style.background='rgba(46,204,138,.15)';btn.style.border='1px solid rgba(46,204,138,.3)';btn.style.color='var(--ok)';}
   toast('Présence signée','ok');
