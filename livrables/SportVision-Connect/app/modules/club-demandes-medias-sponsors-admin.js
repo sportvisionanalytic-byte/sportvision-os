@@ -136,8 +136,14 @@
   // que le shell ne la fournissait pas. Risque de divergence si l'une des
   // deux copies était corrigée sans l'autre (ex: le fix du refresh token du
   // 2026-08-06, qui n'aurait profité qu'au shell). Tous les appels ci-dessous
-  // utilisent désormais sbFunction directement.
-  const sbFunctionCall = sbFunction;
+  // utilisent désormais sbFunction directement, via un wrapper plutôt qu'un
+  // alias direct : ce fichier est chargé AVANT le script du shell qui déclare
+  // sbFunction (voir l'ordre des <script> dans index.html), donc `const
+  // sbFunctionCall = sbFunction` levait une ReferenceError au chargement de
+  // CHAQUE page (bug réel trouvé en test navigateur le 2026-08-07, qui
+  // empêchait tout le reste de ce fichier de s'exécuter). Une fonction wrapper
+  // résout `sbFunction` seulement à l'appel, une fois le shell chargé.
+  function sbFunctionCall(name, body) { return sbFunction(name, body); }
 
   window.ClubModules = window.ClubModules || {};
 
