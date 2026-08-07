@@ -1,4 +1,4 @@
-# Setup — Paiements Stripe pour SportVision Portail
+# Setup — Paiements Stripe pour SportVision Connect
 
 Durée estimée : ~20 minutes.
 
@@ -37,7 +37,7 @@ Supabase → **Edge Functions** → **Secrets** (partagés par toutes les foncti
 |-----|--------|
 | `STRIPE_SECRET_KEY` | La clé secrète copiée à l'étape 1 (`sk_test_...`) |
 | `STRIPE_WEBHOOK_SECRET` | Voir étape 4 ci-dessous |
-| `PORTAL_URL` | L'adresse du Portail une fois en ligne (ex : `https://portail.sportvision.fr`) |
+| `CONNECT_URL` | L'adresse de SportVision Connect (ex : `https://connect.sportvision.fr`) |
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont déjà disponibles automatiquement dans toutes les Edge Functions du projet, rien à ajouter.
 

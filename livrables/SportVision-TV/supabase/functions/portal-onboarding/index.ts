@@ -117,7 +117,7 @@ serve(async (req) => {
           prenom_contact: prenom || null,
           email: user.email,
           telephone: telephone || null,
-          origine_prospect: "portail",
+          origine_prospect: "connect",
           promo_bienvenue_disponible: true,
         })
         .select("id")

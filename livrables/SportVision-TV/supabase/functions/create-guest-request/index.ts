@@ -156,7 +156,7 @@ serve(async (req) => {
           prenom_contact: prenom,
           email,
           telephone: telephone || null,
-          origine_prospect: origine === "vitrine" ? "vitrine" : "portail",
+          origine_prospect: origine === "vitrine" ? "vitrine" : "connect",
         })
         .select("id")
         .single();

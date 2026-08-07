@@ -95,7 +95,7 @@ serve(async (req) => {
           prenom_contact: prenom,
           email,
           telephone: telephone || null,
-          origine_prospect: "portail",
+          origine_prospect: "connect",
         })
         .select("id")
         .single();
