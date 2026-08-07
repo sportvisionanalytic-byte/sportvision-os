@@ -19325,7 +19325,7 @@ function modalNouveauContrat(){
           <select id="nc-type" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
             <option value="ponctuel">Prestation ponctuelle</option><option value="full_communication">Full Communication</option>
             <option value="club_plus">Abonnement Club+</option><option value="coach_academie">Coach / Académie</option>
-            <option value="evenement">Événement</option><option value="joueur">Joueur</option>
+            <option value="evenement">Événement</option><option value="joueur" disabled>Joueur (en attente de relecture juridique)</option>
             <option value="sponsoring">Sponsoring</option><option value="pilote">Contrat pilote</option>
             <option value="autre">Autre</option>
           </select></div>
@@ -19424,7 +19424,7 @@ async function modalContratFromDevis(devisId){
               <option value="club_plus">Abonnement Club+</option>
               <option value="coach_academie">Coach / Académie</option>
               <option value="evenement">Événement</option>
-              <option value="joueur">Joueur</option>
+              <option value="joueur" disabled>Joueur (en attente de relecture juridique)</option>
               <option value="sponsoring">Sponsoring</option>
               <option value="pilote">Contrat pilote</option>
               <option value="autre">Autre</option>
@@ -19490,7 +19490,7 @@ async function modalEditerContrat(id){
             <option value="club_plus"${c.type_contrat==='club_plus'?' selected':''}>Abonnement Club+</option>
             <option value="coach_academie"${c.type_contrat==='coach_academie'?' selected':''}>Coach / Académie</option>
             <option value="evenement"${c.type_contrat==='evenement'?' selected':''}>Événement</option>
-            <option value="joueur"${c.type_contrat==='joueur'?' selected':''}>Joueur</option>
+            <option value="joueur"${c.type_contrat==='joueur'?' selected':''} ${c.type_contrat==='joueur'?'':'disabled'}>Joueur (en attente de relecture juridique)</option>
             <option value="sponsoring"${c.type_contrat==='sponsoring'?' selected':''}>Sponsoring</option>
             <option value="pilote"${c.type_contrat==='pilote'?' selected':''}>Contrat pilote</option>
             <option value="autre"${c.type_contrat==='autre'?' selected':''}>Autre</option>

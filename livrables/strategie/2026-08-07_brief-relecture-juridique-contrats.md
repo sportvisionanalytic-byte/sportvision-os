@@ -4,6 +4,8 @@ But de ce document : donner à un avocat (ou un service de relecture juridique e
 
 **Contexte :** SASU Elkana Group (nom commercial SportVision). Chaque contrat client est généré à partir d'un **Socle commun** (25 articles, identique pour tous les contrats) + des **Conditions particulières** spécifiques au type de prestation (9 types). Aucun client réel signé à ce jour — tout est en phase de test, donc encore modifiable sans casser un engagement existant.
 
+**Décision de Fouka (2026-08-07)** : les 8 autres types de contrats (dont les 5 restants rédigés par IA, non relus) sont utilisables dès maintenant avec de vrais clients, à ses risques, sans attendre cette relecture. Seul **SV-CL-006 (Joueur, mineur)** est désactivé dans SportVision OS (menu "Type de contrat" grisé) en attendant une relecture, jugé trop sensible pour être utilisé sans validation. Ce brief garde son utilité : envoyer tel quel à un avocat quand la relecture sera lancée.
+
 ---
 
 ## Qui a écrit quoi (important pour calibrer la relecture)
