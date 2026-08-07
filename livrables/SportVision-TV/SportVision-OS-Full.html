@@ -11691,6 +11691,7 @@ const _FORM_ROLE_REVERSE=(()=>{
 let _formTab='dashboard';
 let _formProgCache={};
 let _formInscIds={};
+let _toggleFormInFlight=new Set();
 let _certifCache=[];
 let _quizState=null;
 let _formSessCache=[];
@@ -13187,68 +13188,102 @@ async function toggleFormLesson(id,mi,li){
   if(!_formProgCache[id]||!_formInscIds[id]){await enrollForm(id);}
   const insId=_formInscIds[id];
   if(!insId){toast('Impossible de sauvegarder la progression.','er');return;}
-  const fp=_formProgCache[id]||{statut:'en_cours',lessons:{},_insId:insId};
   const key=mi+'_'+li;
+  // Garde anti-double-clic : un clic rapide/double-tap sur la même leçon avant
+  // que le premier appel n'ait fini pouvait faire lire fp.lessons[key] comme
+  // déjà coché par le second appel (posé de façon synchrone avant tout await)
+  // et repartir sur la branche "décocher" — deux PATCH concurrents sur
+  // formation_inscriptions.statut dont l'ordre d'arrivée réseau n'est pas
+  // garanti, pouvant laisser 'en_cours' en base après un "terminee" pourtant
+  // affiché à l'écran.
+  const flightKey=insId+'_'+key;
+  if(_toggleFormInFlight.has(flightKey))return;
+  _toggleFormInFlight.add(flightKey);
+  try{
+  const fp=_formProgCache[id]||{statut:'en_cours',lessons:{},_insId:insId};
   const f=FORMATIONS_CATALOG.find(x=>x.id===id);
   if(!f)return;
   const total=f.modules.reduce((s,m)=>s+m.lecons.length,0);
 
   if(fp.lessons?.[key]){
     // Décocher une leçon
+    const prevStatut=fp.statut;
     delete fp.lessons[key];
     if(fp.statut==='terminée')fp.statut='en_cours';
     const pct=total?Math.round(Object.keys(fp.lessons).length/total*100):0;
     await sbFetch('formation_progression?inscription_id=eq.'+insId+'&lecon_key=eq.'+key,{method:'DELETE'}).catch(()=>{});
-    await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{statut:'en_cours',progression_pct:pct}}).catch(()=>{});
+    const r=await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{statut:'en_cours',progression_pct:pct}}).catch(()=>({code:'network_error'}));
+    if(sbErr(r)){
+      // Échec de la persistance : on annule l'état local plutôt que de laisser
+      // l'écran afficher un état différent de la base (silencieusement, comme
+      // avant ce correctif).
+      fp.lessons[key]=true;fp.statut=prevStatut;
+      toast('Erreur : la modification n\'a pas pu être enregistrée.','er');
+    }
   }else{
     // Cocher une leçon
     fp.lessons=fp.lessons||{};fp.lessons[key]=true;
     await sbFetch('formation_progression',{method:'POST',body:{inscription_id:insId,lecon_key:key}}).catch(()=>{});
     const done=Object.keys(fp.lessons).length;const pct=total?Math.round(done/total*100):0;
     if(done>=total){
-      fp.statut='terminée';fp.completed_at=new Date().toISOString();
       const xpEligible=localStorage.getItem('sv_role')==='photo';
-      toast(xpEligible?'🎉 Formation terminée ! +'+f.xp+' XP':'🎉 Formation terminée !','ok');
-      await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{
+      const r=await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{
         statut:'terminee',progression_pct:100,xp_gagnes:xpEligible?f.xp:0,completed_at:new Date().toISOString(),
-      }}).catch(()=>{});
-      // Le système XP/Grade est réservé au rôle photographe/vidéaste
-      if(xpEligible){
-        // Écrire dans xp_events
-        await sbFetch('xp_events',{method:'POST',body:{
-          collaborateur_id:uid,montant:f.xp,type:'formation',
-          source_id:insId,source_type:'formation_inscriptions',
-          description:'Formation terminée : '+f.titre,attribue_par:uid,
-        }}).catch(()=>{});
-        // Mettre à jour profiles.xp
-        try{
-          const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
-          const cur=pr?.[0]?.xp||0;
-          await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+f.xp}});
-          await _checkGradePromotion(uid,cur+f.xp);
-        }catch(e){}
-      }
-      // Créer la certification en DB si la formation est certifiante
-      if(f.certification){
-        const expDate=new Date();
-        expDate.setMonth(expDate.getMonth()+f.certification.validite_mois);
-        const numCert='CERT-'+new Date().getFullYear()+'-'+Math.random().toString(36).substring(2,8).toUpperCase();
-        await sbFetch('collaborateur_certifications',{method:'POST',body:{
-          collaborateur_id:uid,code_certification:f.certification.id,nom:f.certification.nom,
-          badge:f.certification.badge,formation_id:id,inscription_id:insId,
-          date_obtention:new Date().toISOString(),date_expiration:expDate.toISOString(),
-          statut:'active',numero_certificat:numCert,
-        }}).catch(()=>{}); // unique constraint gère les doublons silencieusement
-        loadCertifFromDB(uid).catch(()=>{});
+      }}).catch(()=>({code:'network_error'}));
+      if(sbErr(r)){
+        // La leçon reste cochée localement (ça n'a pas changé), mais on ne
+        // peut pas prétendre que la formation est terminée si la base ne l'a
+        // pas enregistré — sinon c'est exactement le symptôme "on m'a dit
+        // que c'est fini mais ça affiche encore en cours" après un rechargement.
+        toast('Erreur : la formation n\'a pas pu être marquée comme terminée. Réessayez.','er');
+      }else{
+        fp.statut='terminée';fp.completed_at=new Date().toISOString();
+        toast(xpEligible?'🎉 Formation terminée ! +'+f.xp+' XP':'🎉 Formation terminée !','ok');
+        // Le système XP/Grade est réservé au rôle photographe/vidéaste
+        if(xpEligible){
+          // Écrire dans xp_events
+          await sbFetch('xp_events',{method:'POST',body:{
+            collaborateur_id:uid,montant:f.xp,type:'formation',
+            source_id:insId,source_type:'formation_inscriptions',
+            description:'Formation terminée : '+f.titre,attribue_par:uid,
+          }}).catch(()=>{});
+          // Mettre à jour profiles.xp
+          try{
+            const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
+            const cur=pr?.[0]?.xp||0;
+            await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+f.xp}});
+            await _checkGradePromotion(uid,cur+f.xp);
+          }catch(e){}
+        }
+        // Créer la certification en DB si la formation est certifiante
+        if(f.certification){
+          const expDate=new Date();
+          expDate.setMonth(expDate.getMonth()+f.certification.validite_mois);
+          const numCert='CERT-'+new Date().getFullYear()+'-'+Math.random().toString(36).substring(2,8).toUpperCase();
+          await sbFetch('collaborateur_certifications',{method:'POST',body:{
+            collaborateur_id:uid,code_certification:f.certification.id,nom:f.certification.nom,
+            badge:f.certification.badge,formation_id:id,inscription_id:insId,
+            date_obtention:new Date().toISOString(),date_expiration:expDate.toISOString(),
+            statut:'active',numero_certificat:numCert,
+          }}).catch(()=>{}); // unique constraint gère les doublons silencieusement
+          loadCertifFromDB(uid).catch(()=>{});
+        }
       }
     }else{
-      await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{statut:'en_cours',progression_pct:pct}}).catch(()=>{});
+      const r=await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{statut:'en_cours',progression_pct:pct}}).catch(()=>({code:'network_error'}));
+      if(sbErr(r)){
+        delete fp.lessons[key];
+        toast('Erreur : la modification n\'a pas pu être enregistrée.','er');
+      }
     }
   }
   _formProgCache[id]=fp;
   if(!_fpState)modalFormDetail(id);
   // Refresh grade panel si visible
   if(document.getElementById('form-grade-content'))await loadForm();
+  }finally{
+    _toggleFormInFlight.delete(flightKey);
+  }
 }
 
 // ── Admin : Centre de formation ──────────────────────────────────────────────
