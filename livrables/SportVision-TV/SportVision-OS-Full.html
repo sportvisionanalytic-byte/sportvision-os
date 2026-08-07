@@ -14278,6 +14278,18 @@ async function loadCmCal(){
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
 }
 
+// ── Audit — journal d'actions ────────────────────────────────────────────
+// Réutilise audit_logs (migration-portail-v1.sql), créée pour tracer le mode
+// "voir en tant que client" mais jamais alimentée jusqu'ici — table et
+// policy d'insertion (ouverte à tout staff authentifié) déjà en place, rien
+// à ajouter côté schéma pour écrire. Fire-and-forget : une erreur d'audit ne
+// doit jamais faire échouer l'action métier qu'elle trace.
+function _logAudit(action,cibleType,cibleId,details){
+  const uid=localStorage.getItem('sv_uid');
+  sbFetch('audit_logs',{method:'POST',headers:{'Prefer':'return=minimal'},body:{acteur_id:uid,action,cible_type:cibleType,cible_id:cibleId,details:details||{}}}).catch(()=>{});
+}
+const AUDIT_ACTION_LBL={contenu_cree:'Création',contenu_statut_change:'Changement de statut',contenu_modifie:'Modification',contenu_supprime:'Suppression'};
+
 // ── CM — Contenus ─────────────────────────────────────────────────────────────
 // Statuts contenus : tableau + bouton "étape suivante" (même pattern que
 // crmAvancerStatut/crmNext pour clients.statut) — pas de Kanban drag-and-drop.
@@ -14358,6 +14370,7 @@ async function loadCmContenus(){
 async function avancerContenu(id,statut){
   const r=await sbFetch('contenus?id=eq.'+id,{method:'PATCH',body:{statut,updated_at:new Date().toISOString(),...(statut==='publie'?{date_publication:new Date().toISOString().slice(0,10)}:{})}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  _logAudit('contenu_statut_change','contenu',id,{statut});
   toast('Statut mis à jour.','ok');
   loadViewData(S.role,S.view);
 }
@@ -14414,6 +14427,7 @@ async function creerContenu(){
       hashtags:hashtags||null,sponsor:sponsor||null
     }});
     if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'création impossible.');return;}
+    if(Array.isArray(r)&&r[0]) _logAudit('contenu_cree','contenu',r[0].id,{titre:ti});
     closeModal();
     if(document.getElementById('contenus-real')) loadCmContenus();
     else if(document.getElementById('cal-real')) loadCmCal();
@@ -14452,6 +14466,7 @@ async function modalEditContenu(id){
         <div class="fg"><label class="fl">Sponsor</label><input type="text" id="cte-spo" class="fi" value="${esc(info.sponsor||'')}"></div>
       </div>
       <div class="fg"><label class="fl">Statut actuel</label><div><span class="bd ${(CONTENU_STATUTS[info.statut]||CONTENU_STATUTS.brouillon).cls}"><span class="bd-d"></span>${(CONTENU_STATUTS[info.statut]||CONTENU_STATUTS.brouillon).lb}</span></div></div>
+      <div id="cte-hist"></div>
     </div>
     <div class="mf" style="flex-wrap:wrap;gap:8px">
       ${canDelete?`<button class="btn bb" onclick="supprimerContenu('${id}')">Supprimer</button>`:''}
@@ -14460,6 +14475,21 @@ async function modalEditContenu(id){
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
       <button class="btn bp" onclick="sauvegarderContenu('${id}')">Sauvegarder</button>
     </div>`);
+  // Lecture réservée à l'admin + Lead CM (migration-cm-audit-contenus.sql) —
+  // pour tout autre CM la requête renvoie simplement zéro ligne (RLS), le
+  // panneau reste alors vide sans qu'il soit nécessaire de le masquer
+  // explicitement côté JS.
+  sbFetch('audit_logs?cible_type=eq.contenu&cible_id=eq.'+id+'&select=action,details,created_at,profiles(prenom,nom)&order=created_at.desc&limit=20').then(rows=>{
+    const hist=document.getElementById('cte-hist');
+    if(!hist||!Array.isArray(rows)||!rows.length)return;
+    hist.innerHTML='<label class="fl">Historique</label><div style="display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto;font-size:11.5px;color:var(--t3)">'+
+      rows.map(a=>{
+        const who=a.profiles?[a.profiles.prenom,a.profiles.nom].filter(Boolean).join(' '):'—';
+        const when=new Date(a.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+        const st=a.details&&a.details.statut;
+        return `<div>${when} · ${esc(who)} · ${AUDIT_ACTION_LBL[a.action]||a.action}${st?' → '+(CONTENU_STATUTS[st]?.lb||st):''}</div>`;
+      }).join('')+'</div>';
+  }).catch(()=>{});
 }
 
 async function sauvegarderContenu(id){
@@ -14480,6 +14510,7 @@ async function sauvegarderContenu(id){
       updated_at:new Date().toISOString()
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'sauvegarde impossible.'),'er');return;}
+    _logAudit('contenu_modifie','contenu',id,{titre:ti});
     closeModal();
     if(document.getElementById('contenus-real')) loadCmContenus();
     else if(document.getElementById('cal-real')) loadCmCal();
@@ -14492,6 +14523,7 @@ function supprimerContenu(id){
     try{
       const r=await sbFetch('contenus?id=eq.'+id,{method:'DELETE'});
       if(sbErr(r)){toast('Erreur : '+(r.message||'suppression impossible.'),'er');return;}
+      _logAudit('contenu_supprime','contenu',id,{});
       closeModal();
       toast('Contenu supprimé.','ok');
       loadViewData(S.role,S.view);
