@@ -14024,11 +14024,11 @@ async function genererAttestation(formationId){
   const win=window.open('','_blank','width=840,height=1100');
   if(!win){toast('Autorisez les pop-ups pour générer l\'attestation.','wa');return;}
   win.document.write(`<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"><title>Attestation — ${esc(f.certification.nom)}</title>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Attestation — ${esc(f.certification.nom)}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#eef1f7;color:#111;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}
-.page{width:740px;max-width:100%;border-radius:20px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(11,27,51,.35)}
+.page{width:740px;max-width:100%;min-width:0;border-radius:20px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(11,27,51,.35)}
 .head{background:#0B1B33;padding:28px 44px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden}
 .head::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,rgba(139,43,255,.28),rgba(0,196,255,.16) 60%,transparent);pointer-events:none}
 .head-l{display:flex;align-items:center;gap:14px;position:relative}
@@ -14059,6 +14059,23 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#eef1f
 .seal img{width:100%;height:100%;border-radius:50%;background:#0B1B33;padding:8px;box-sizing:border-box;display:block}
 .fsig .fn{font-size:12.5px;font-weight:700;color:#0f172a;text-align:right}
 .fsig .fd{font-size:10.5px;color:#94a3b8;margin-top:3px;text-align:right}
+@media (max-width:640px){
+  body{padding:16px 10px;align-items:flex-start}
+  .page{border-radius:14px}
+  .head{padding:20px 22px;flex-direction:column;align-items:flex-start;gap:12px}
+  .head-r{text-align:left}
+  .head-logo{width:38px;height:38px}
+  .head-word{font-size:17px}
+  .cert{padding:30px 22px 26px}
+  .photo{width:76px;height:76px}
+  .photo-in span{font-size:26px}
+  .cert-name{font-size:21px;margin-bottom:22px}
+  .beneficiaire{font-size:20px}
+  .context{font-size:13px}
+  .meta{grid-template-columns:1fr;margin-bottom:28px}
+  .footer{flex-direction:column;align-items:flex-start;gap:14px}
+  .fsig .fn,.fsig .fd{text-align:left}
+}
 @media print{
   body{padding:0;background:#fff}
   .page{box-shadow:none;border-radius:0}
