@@ -518,11 +518,12 @@
       ensureStyles();
       container.innerHTML = '<div class="pjc-wrap"><div class="pjc-empty">Chargement…</div></div>';
 
-      const [devisRes, facturesRes, msgRes, livRes] = await Promise.all([
+      const [devisRes, facturesRes, msgRes, livRes, contenusRes] = await Promise.all([
         sbFetch('client_devis?client_id=eq.' + orgId + '&statut=eq.envoy%C3%A9&select=numero,created_at&order=created_at.desc'),
         sbFetch('client_factures?client_id=eq.' + orgId + '&statut=eq.emise&select=numero,montant_ttc,created_at&order=created_at.desc'),
         sbFetch('messages_client?client_id=eq.' + orgId + '&auteur_type=eq.staff&lu=eq.false&select=contenu,created_at&order=created_at.desc'),
         sbFetch('client_media_livrables?select=nom,created_at&order=created_at.desc&limit=5'),
+        sbFetch('contenus?client_id=eq.' + orgId + '&statut=eq.a_valider_client&select=titre,created_at&order=created_at.desc'),
       ]);
 
       const items = []
@@ -537,6 +538,9 @@
         }))
         .concat((livRes.ok ? livRes.data || [] : []).map(function (l) {
           return { title: 'Livrable disponible', detail: l.nom || '', date: l.created_at, cls: 'pjc-badge-green' };
+        }))
+        .concat((contenusRes.ok ? contenusRes.data || [] : []).map(function (c) {
+          return { title: 'Contenu à valider', detail: c.titre || '', date: c.created_at, cls: 'pjc-badge-orange' };
         }));
       items.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
 
