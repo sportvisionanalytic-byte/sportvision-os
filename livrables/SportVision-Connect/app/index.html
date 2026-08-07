@@ -110,7 +110,7 @@
     <input id="lg-pass" type="password" autocomplete="current-password">
     <div class="err" id="lg-err"></div>
     <button class="btn btn-primary" id="lg-btn" onclick="handleLogin()">Se connecter</button>
-    <p class="auth-switch"><a href="#" class="btn-ghost" style="display:inline" onclick="event.preventDefault();showScreen('forgot')">Mot de passe oublié ?</a></p>
+    <p class="auth-switch"><a href="#" class="btn-ghost" style="display:inline" onclick="event.preventDefault();resetForgotScreen();showScreen('forgot')">Mot de passe oublié ?</a></p>
     <p class="auth-switch">Pas encore de compte ? <a href="#" class="btn-ghost" style="display:inline" onclick="event.preventDefault();showScreen('signup')">Créer un compte</a></p>
   </div>
 </div>
@@ -306,6 +306,15 @@ function showScreen(name){
 function showPane(name){
   ['pane-selector','pane-home','pane-noorg'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById(name).style.display='block';
+}
+
+// handleRequestRecovery() remplace le contenu de #forgot-body par un message de
+// confirmation. Sans ce reset, revenir sur l'écran "mot de passe oublié" plus tard
+// dans la même session (ex: après être retourné à l'écran de connexion) affiche
+// encore ce message au lieu d'un formulaire vierge.
+const FORGOT_FORM_HTML = document.getElementById('forgot-body').innerHTML;
+function resetForgotScreen(){
+  document.getElementById('forgot-body').innerHTML = FORGOT_FORM_HTML;
 }
 
 // ── Auth ──
