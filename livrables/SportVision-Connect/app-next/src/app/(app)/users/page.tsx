@@ -7,7 +7,7 @@ import { canAccess } from "@/lib/permissions";
 import type { MembershipRole, OrgType } from "@/lib/types";
 import { mockOrgUsers } from "@/lib/mock/settings";
 import { ROLE_LABELS, type OrgUser } from "@/lib/types/settings";
-import { fetchClubMembers, setClubMemberStatus } from "@/lib/data/club/users";
+import { fetchClubMembers, inviteClubMember, setClubMemberStatus } from "@/lib/data/club/users";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -61,17 +61,25 @@ export default function UsersPage() {
 
   const availableRoles = ROLES_BY_ORG_TYPE[ctx.organization.type] ?? ["viewer"];
 
-  function handleInvite(input: { email: string; role: MembershipRole }) {
-    // Pas d'edge function d'invitation branchée pour le club dans cette phase (org-invite existe
-    // pour coach/académie/sponsor, pas encore vérifiée/branchée ici) — reste local-only, comme
-    // avant, pour ne pas prétendre envoyer une invitation qui ne part pas réellement.
+  function handleInvite(input: { email: string; firstName: string; lastName: string; role: MembershipRole }) {
+    if (isClub) {
+      // clubplus-invite (edge function réelle) : crée le compte auth.users, envoie l'e-mail
+      // d'invitation Supabase, insère la ligne club_members. On recharge la liste plutôt que
+      // d'ajouter une ligne locale fabriquée, pour refléter l'id réel attribué par la base.
+      const supabase = createClient();
+      return inviteClubMember(supabase, ctx.organization.id, input).then(() =>
+        fetchClubMembers(supabase, ctx.organization.id).then(setUsers),
+      );
+    }
+    // Pas d'edge function d'invitation branchée pour ce type d'organisation dans cette phase
+    // (org-invite existe pour coach/académie/sponsor, pas encore vérifiée/branchée ici) — reste
+    // local-only, comme avant, pour ne pas prétendre envoyer une invitation qui ne part pas réellement.
     setUsers((prev) => [
-      ...prev,
       {
         id: `user-local-${Date.now()}`,
         membershipId: `m-local-${Date.now()}`,
-        firstName: input.email.split("@")[0] ?? "Invité",
-        lastName: "",
+        firstName: input.firstName,
+        lastName: input.lastName,
         email: input.email,
         role: input.role,
         teamScope: [],
@@ -80,6 +88,7 @@ export default function UsersPage() {
       },
       ...prev,
     ]);
+    return Promise.resolve();
   }
 
   function handleDisable(user: OrgUser) {

@@ -37,6 +37,15 @@ export function mapClubRole(realRole: string): MembershipRole {
   return CLUB_ROLE_MAP[realRole] ?? "viewer";
 }
 
+const CLUB_ROLE_REVERSE_MAP: Partial<Record<MembershipRole, string>> = Object.fromEntries(
+  Object.entries(CLUB_ROLE_MAP).map(([real, design]) => [design, real]),
+);
+
+/** MembershipRole du design → club_members.role réel (check constraint), pour l'invitation. */
+export function mapClubRoleToReal(role: MembershipRole): string {
+  return CLUB_ROLE_REVERSE_MAP[role] ?? "lecture_seule";
+}
+
 /**
  * memberships.role réel pour un espace projet : toujours 'client' (posé par
  * sync_client_user_to_membership, migration-connect-v7 — un seul rôle réel, pas de finesse).

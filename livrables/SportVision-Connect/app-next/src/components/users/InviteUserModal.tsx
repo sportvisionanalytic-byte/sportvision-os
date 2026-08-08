@@ -13,14 +13,29 @@ import { Button } from "@/components/ui/Button";
 interface InviteUserModalProps {
   roles: MembershipRole[];
   onClose: () => void;
-  onInvite: (input: { email: string; role: MembershipRole }) => void;
+  onInvite: (input: { email: string; firstName: string; lastName: string; role: MembershipRole }) => Promise<unknown>;
 }
 
 export function InviteUserModal({ roles, onClose, onInvite }: InviteUserModalProps) {
   const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<MembershipRole>(roles[0] ?? "viewer");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = /\S+@\S+\.\S+/.test(email);
+  const canSubmit = /\S+@\S+\.\S+/.test(email) && firstName.trim().length > 0 && lastName.trim().length > 0;
+
+  function handleSubmit() {
+    setSubmitting(true);
+    setError(null);
+    onInvite({ email, firstName, lastName, role })
+      .then(() => onClose())
+      .catch((err) => {
+        setSubmitting(false);
+        setError(err instanceof Error ? err.message : "Envoi de l'invitation impossible, réessayez.");
+      });
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
@@ -35,6 +50,25 @@ export function InviteUserModal({ roles, onClose, onInvite }: InviteUserModalPro
 
         <h2 className="text-[19px] font-extrabold tracking-tight">Inviter un utilisateur</h2>
         <p className="text-[12.5px] text-text-soft">L&apos;invitation est valable 7 jours. Le rôle n&apos;est pas modifiable par l&apos;invité.</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Prénom</span>
+            <input
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="h-11 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Nom</span>
+            <input
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="h-11 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
+            />
+          </label>
+        </div>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[12.5px] font-bold text-text-soft">Adresse e-mail</span>
@@ -62,14 +96,10 @@ export function InviteUserModal({ roles, onClose, onInvite }: InviteUserModalPro
           </select>
         </label>
 
+        {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
+
         <div className="mt-1 flex justify-end">
-          <Button
-            disabled={!canSubmit}
-            onClick={() => {
-              onInvite({ email, role });
-              onClose();
-            }}
-          >
+          <Button disabled={!canSubmit || submitting} loading={submitting} onClick={handleSubmit}>
             Envoyer l&apos;invitation
           </Button>
         </div>
