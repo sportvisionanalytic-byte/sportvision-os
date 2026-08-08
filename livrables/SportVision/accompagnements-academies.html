@@ -426,7 +426,7 @@ section{position:relative}
       <h1>Développez l'image de votre <span>académie</span>.</h1>
       <p class="subtitle">Valorisez vos joueurs, vos coachs, vos stages et votre méthode grâce à une communication professionnelle.</p>
       <div class="hero-ctas">
-        <a href="#" class="btn btn-grad" data-action="open-devis">Présenter mon académie</a>
+        <a href="#" class="btn btn-grad" data-action="open-devis" data-devis-context="Accompagnement Académie">Présenter mon académie</a>
       </div>
         <div class="hero-tertiary"><button type="button" class="btn-link" data-action="open-rdv">Vous préférez qu'on en discute ? Prendre rendez-vous →</button></div>
       <p class="hero-micro">Pour les académies, centres de formation et structures de développement du joueur.</p>
@@ -537,7 +537,7 @@ section{position:relative}
     <h2 class="reveal">Prêt à valoriser votre académie ?</h2>
     <p class="reveal">Présentez-nous votre académie, vos groupes et vos objectifs de développement.</p>
     <div class="hero-ctas reveal">
-      <a href="#" class="btn btn-grad" data-action="open-devis">Présenter mon académie</a>
+      <a href="#" class="btn btn-grad" data-action="open-devis" data-devis-context="Accompagnement Académie">Présenter mon académie</a>
     </div>
   </div>
 </section>
@@ -710,16 +710,18 @@ document.getElementById('cookie-manage').addEventListener('click', (e) => {
 
 // ── Modal demande de devis / démonstration ──
 const devisOverlay = document.getElementById('devis-overlay');
-function openDevis(){
+function openDevis(context){
   document.getElementById('devis-form-wrap').style.display = '';
   document.getElementById('devis-ok-wrap').style.display = 'none';
   document.getElementById('devis-err').textContent = '';
+  const commentaireEl = document.getElementById('dv-commentaire');
+  if (context && commentaireEl && !commentaireEl.value) commentaireEl.value = 'Intéressé par : ' + context;
   devisOverlay.classList.add('on');
 }
 function closeDevis(){ devisOverlay.classList.remove('on'); }
 document.addEventListener('click', (e) => {
   const opener = e.target.closest('[data-action="open-devis"]');
-  if (opener){ e.preventDefault(); openDevis(); }
+  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context')); }
 });
 document.getElementById('devis-close').addEventListener('click', closeDevis);
 document.getElementById('devis-ok-close').addEventListener('click', closeDevis);
