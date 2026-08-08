@@ -381,13 +381,16 @@ section{position:relative}
                 <option value="entreprise">Une entreprise / un partenaire</option>
               </select>
             </div>
-            <div class="sv-field">
+            <div class="sv-field" id="paiement-field">
               <label>Comment souhaitez-vous régler ?</label>
               <p class="sub" style="margin:4px 0 10px;font-size:12.5px">Dans les deux cas, votre réservation est confirmée immédiatement.</p>
               <div class="options-grid" style="grid-template-columns:1fr 1fr">
                 <label class="opt-check"><input type="radio" name="solde-mode" value="carte" checked> Carte bancaire — paiement immédiat en ligne</label>
                 <label class="opt-check"><input type="radio" name="solde-mode" value="especes"> Espèces — réglé sur place le jour J</label>
               </div>
+            </div>
+            <div class="sv-field" id="devis-field" style="display:none">
+              <p class="sub" style="margin:4px 0 0;font-size:12.5px">Cette prestation est sur devis : aucun paiement n'est demandé à cette étape. Notre équipe revient vers vous rapidement avec un devis personnalisé.</p>
             </div>
             <div class="sv-err" id="booking-err"></div>
             <div class="booking-nav">
@@ -636,6 +639,9 @@ document.getElementById('btn-step3-next').addEventListener('click', () => {
   state.options = Array.from(document.querySelectorAll('.opt-check input:checked')).map(i => i.value);
   state.commentaire = document.getElementById('bk-commentaire').value.trim() || null;
   buildRecap();
+  const estPrixFixe = state.slug && OFFRES_PRIX_FIXE.has(state.slug);
+  document.getElementById('paiement-field').style.display = estPrixFixe ? '' : 'none';
+  document.getElementById('devis-field').style.display = estPrixFixe ? 'none' : '';
   goToStep(4);
 });
 

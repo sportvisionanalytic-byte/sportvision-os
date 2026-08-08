@@ -153,6 +153,26 @@ export const mockOrganizations: Organization[] = [
     accountManagerId: "sv-theo-marchand",
     createdAt: "2026-02-11T00:00:00.000Z",
   },
+
+  // Doublons volontairement conservés (même entité fictive que org-varenneauto /
+  // org-ninaberger ci-dessus, sous un autre id) : deux agents parallèles en avaient chacun
+  // besoin pour leurs propres fixtures (teams/sponsors/billing). À dédupliquer plus tard.
+  {
+    id: "org-varenne-auto",
+    type: "sponsor",
+    name: "Varenne Auto",
+    address: "12 avenue de la Gare, 77130 Varenne",
+    accountManagerId: "sv-theo-marchand",
+    createdAt: "2025-11-03T00:00:00.000Z",
+  },
+  {
+    id: "org-nina-berger",
+    type: "cm_agency",
+    name: "Studio Nina Berger",
+    address: "9 rue des Studios, 77300 Fontainebleau",
+    accountManagerId: "sv-theo-marchand",
+    createdAt: "2026-01-15T00:00:00.000Z",
+  },
 ];
 
 export const mockMemberships: Membership[] = [
@@ -173,6 +193,8 @@ export const mockMemberships: Membership[] = [
   { id: "m12", userId: "user-sophie", organizationId: "org-tournoirentree", role: "event_admin", teamScope: [], capabilities: [], status: "active" },
   { id: "m13", userId: "user-sophie", organizationId: "org-elitecup", role: "event_admin", teamScope: [], capabilities: [], status: "active" },
   { id: "m14", userId: "user-sophie", organizationId: "org-amine", role: "player", teamScope: [], capabilities: [], status: "active" },
+  { id: "m15", userId: "user-sophie", organizationId: "org-varenne-auto", role: "partner_manager", teamScope: [], capabilities: [], status: "active" },
+  { id: "m16", userId: "user-sophie", organizationId: "org-nina-berger", role: "external_cm", teamScope: [], capabilities: [], status: "active" },
 ];
 
 export const mockSubscriptions: Record<string, Subscription> = {
@@ -261,6 +283,21 @@ export const mockSubscriptions: Record<string, Subscription> = {
     status: "active",
     startsAt: "2025-11-10",
     renewsAt: "2026-11-10",
+    commitmentMonths: 0,
+    noticeMonths: 0,
+    creditsRemaining: 3,
+    creditsReserved: 0,
+    presencesUsed: 0,
+    storageUsedBytes: 120_000_000,
+    storageQuotaBytes: 2_000_000_000,
+  },
+  "org-varenne-auto": {
+    id: "sub-varenne-auto",
+    organizationId: "org-varenne-auto",
+    planCode: "club_access",
+    status: "active",
+    startsAt: "2025-11-03",
+    renewsAt: "2026-11-03",
     commitmentMonths: 0,
     noticeMonths: 0,
     creditsRemaining: 3,
@@ -388,5 +425,20 @@ export const mockSubscriptions: Record<string, Subscription> = {
     presencesUsed: 0,
     storageUsedBytes: 60_000_000,
     storageQuotaBytes: 2_000_000_000,
+  },
+  "org-nina-berger": {
+    id: "sub-nina-berger",
+    organizationId: "org-nina-berger",
+    planCode: "club_plus_start",
+    status: "active",
+    startsAt: "2026-01-15",
+    renewsAt: "2027-01-15",
+    commitmentMonths: 12,
+    noticeMonths: 2,
+    creditsRemaining: 6,
+    creditsReserved: 1,
+    presencesUsed: 1,
+    storageUsedBytes: 2_100_000_000,
+    storageQuotaBytes: 10_000_000_000,
   },
 };
