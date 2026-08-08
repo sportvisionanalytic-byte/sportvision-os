@@ -295,6 +295,87 @@
   </div>
 </div>
 
+
+<!-- Écran d'activation Club+ par lien privé (#/activation?token=…), généré par le
+     staff SportVision depuis SportVision OS (clubplus-generate-activation) pour un
+     club déjà suivi commercialement. Porté depuis SportVision-Club-Plus.html (l'ancienne
+     app séparée, absorbée par Connect — cf. ARCHITECTURE-CONNECT.md) le 08/08/2026 :
+     jusque-là Connect n'avait aucune route équivalente, donc clubplus-generate-
+     activation continuait de pointer vers l'ancienne app pour ce flux précis. Logique
+     serveur inchangée (clubplus-check-activation-token pour l'affichage,
+     clubplus-activate pour la consommation atomique du token) — seul l'écran est neuf,
+     avec les classes/conventions visuelles de Connect plutôt que celles de Club+. -->
+<div id="scr-activation" class="screen center">
+  <div class="auth-hero">
+    <div class="auth-hero-logo"><span class="mark">S</span>SportVision <span class="grad-text">Connect</span></div>
+    <h1 class="auth-hero-title"><span>Votre club</span><span class="grad-text">vous attend.</span></h1>
+    <p class="auth-hero-sub">SportVision vous invite à activer votre espace Club+ — déjà relié à vos devis, factures et prestations existants.</p>
+  </div>
+  <div class="auth-form-side">
+    <div class="auth-card">
+
+      <div id="act-loading" style="text-align:center;padding:20px 0">
+        <p class="sub">Vérification de votre lien d'activation…</p>
+      </div>
+
+      <div id="act-valid" style="display:none">
+        <h1 id="act-club-title">Votre club</h1>
+        <p class="sub">Aucun paiement n'est demandé aujourd'hui : votre accès est ouvert par SportVision.</p>
+        <div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--muted)">
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>Formule ouverte</span><b style="color:var(--text)" id="act-plan-label">Club+</b></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>Crédits inclus</span><b style="color:var(--text)" id="act-credits-label">5 / mois</b></div>
+        </div>
+        <label for="act-club-nom">Nom du club</label>
+        <input id="act-club-nom" type="text">
+        <div class="field-2col">
+          <div><label for="act-prenom">Prénom</label><input id="act-prenom" type="text" autocomplete="given-name"></div>
+          <div><label for="act-nom">Nom</label><input id="act-nom" type="text" autocomplete="family-name"></div>
+        </div>
+        <label for="act-email">Adresse e-mail</label>
+        <input id="act-email" type="email" autocomplete="username">
+        <label for="act-tel">Téléphone</label>
+        <input id="act-tel" type="tel" autocomplete="tel">
+        <div class="field-2col">
+          <div><label for="act-pass">Mot de passe</label><input id="act-pass" type="password" autocomplete="new-password"></div>
+          <div><label for="act-pass2">Confirmation</label><input id="act-pass2" type="password" autocomplete="new-password"></div>
+        </div>
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--muted);margin:10px 0"><input id="act-cgu" type="checkbox" style="width:auto;margin-top:2px"> J'accepte les CGU et la politique de confidentialité</label>
+        <div class="err" id="act-err"></div>
+        <div class="ok-msg" id="act-ok"></div>
+        <button class="btn btn-primary" id="act-btn" onclick="handleActivation()">Activer mon espace Club+</button>
+      </div>
+
+      <div id="act-expired" style="display:none">
+        <h1>Ce lien a expiré</h1>
+        <p class="sub">Les liens d'activation ont une durée de validité limitée. Contactez SportVision pour en recevoir un nouveau.</p>
+      </div>
+
+      <div id="act-used" style="display:none">
+        <h1>Ce lien a déjà été utilisé</h1>
+        <p class="sub">Un compte Club+ a déjà été créé avec ce lien. Connectez-vous avec l'adresse e-mail utilisée lors de l'activation.</p>
+        <p class="auth-switch"><a href="#" class="btn-ghost" style="display:inline" onclick="event.preventDefault();showScreen('login')">Se connecter →</a></p>
+      </div>
+
+      <div id="act-withdrawn" style="display:none">
+        <h1>Cette invitation a été retirée</h1>
+        <p class="sub">Le lien associé à cette invitation a été retiré par SportVision. Contactez votre interlocuteur pour en savoir plus.</p>
+      </div>
+
+      <div id="act-invalid" style="display:none">
+        <h1>Lien d'activation invalide</h1>
+        <p class="sub">Ce lien ne correspond à aucune invitation. Vérifiez que vous l'avez copié en entier, ou demandez-en un nouveau à SportVision.</p>
+      </div>
+
+      <div id="act-error" style="display:none">
+        <h1>Vérification impossible</h1>
+        <p class="sub">Nous n'avons pas pu vérifier votre lien d'activation. Vérifiez votre connexion et réessayez dans un instant.</p>
+        <button class="btn btn-primary" onclick="startActivation(_actToken)">Réessayer</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <div id="app-shell" class="screen">
   <header class="topbar">
     <div class="brand"><span class="mark">S</span>SportVision <span>Connect</span></div>
@@ -437,7 +518,7 @@ function toast(msg){
 
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
-  const id = name==='login' ? 'scr-login' : name==='signup' ? 'scr-signup' : name==='forgot' ? 'scr-forgot' : name==='reset' ? 'scr-reset' : name==='splash' ? 'scr-splash' : 'app-shell';
+  const id = name==='login' ? 'scr-login' : name==='signup' ? 'scr-signup' : name==='forgot' ? 'scr-forgot' : name==='reset' ? 'scr-reset' : name==='activation' ? 'scr-activation' : name==='splash' ? 'scr-splash' : 'app-shell';
   document.getElementById(id).classList.add('on');
 }
 function showPane(name){
@@ -467,18 +548,32 @@ async function handleLogin(){
     const d = await res.json();
     if (!d.access_token) throw new Error('E-mail ou mot de passe incorrect.');
     svcSave(d.access_token, d.refresh_token, d.user.id);
-    const cu = await sbFetch('client_users?id=eq.'+d.user.id+'&select=id');
-    if (!cu.data || !cu.data[0]){
-      // Filet de sécurité (même principe que le Portail) : si l'inscription n'a pas pu
-      // créer la fiche client (ex : confirmation d'e-mail obligatoire sur le projet,
-      // session absente au moment de l'inscription), on la crée maintenant, à la
-      // première connexion réussie. portal-onboarding est idempotent. Les infos
-      // saisies à l'inscription sont récupérées depuis les métadonnées du compte
-      // Supabase (enregistrées dès le signup), pas perdues.
+    // Activation Club+ par lien privé laissée en attente (compte créé, e-mail à
+    // confirmer avant de pouvoir appeler clubplus-activate — voir handleActivation) :
+    // on la rejoue maintenant, avant tout autre onboarding. clubplus-activate
+    // revérifie le token côté serveur et est idempotent (rejouable sans risque
+    // même si déjà consommé par un onglet précédent).
+    const pendingAct = localStorage.getItem('svc_act');
+    if (pendingAct){
+      localStorage.removeItem('svc_act');
       const meta = (d.user && d.user.user_metadata) || {};
-      await sbFunction('portal-onboarding', {
-        prenom: meta.prenom || '', nom: meta.nom || '', telephone: meta.telephone || '', profil: meta.profil || '',
-      });
+      const clubNom = localStorage.getItem('svc_act_club') || meta.club_nom || '';
+      localStorage.removeItem('svc_act_club');
+      await sbFunction('clubplus-activate', {token: pendingAct, prenom: meta.prenom||'', nom: meta.nom||'', telephone: meta.telephone||'', club_nom: clubNom});
+    } else {
+      const cu = await sbFetch('client_users?id=eq.'+d.user.id+'&select=id');
+      if (!cu.data || !cu.data[0]){
+        // Filet de sécurité (même principe que le Portail) : si l'inscription n'a pas pu
+        // créer la fiche client (ex : confirmation d'e-mail obligatoire sur le projet,
+        // session absente au moment de l'inscription), on la crée maintenant, à la
+        // première connexion réussie. portal-onboarding est idempotent. Les infos
+        // saisies à l'inscription sont récupérées depuis les métadonnées du compte
+        // Supabase (enregistrées dès le signup), pas perdues.
+        const meta = (d.user && d.user.user_metadata) || {};
+        await sbFunction('portal-onboarding', {
+          prenom: meta.prenom || '', nom: meta.nom || '', telephone: meta.telephone || '', profil: meta.profil || '',
+        });
+      }
     }
     await bootAfterLogin();
   }catch(e){
@@ -539,6 +634,109 @@ async function handleSignup(){
     errEl.textContent = e.message;
   }finally{
     btn.disabled = false; btn.textContent = 'Créer mon compte';
+  }
+}
+
+// ── Activation Club+ par lien privé (#/activation?token=…) — porté de
+//    SportVision-Club-Plus.html le 08/08/2026, logique serveur inchangée
+//    (clubplus-check-activation-token / clubplus-activate). Le token est un
+//    SECRET (122 bits) : il donne le rôle admin sur un club déjà rattaché à
+//    un client SportVision existant (devis/factures/contrats). Il reste
+//    donc dans le fragment d'URL (#...), jamais dans la query string, pour
+//    ne finir ni dans les logs serveur ni dans un en-tête Referer. ──
+const ACT_PLANS = {
+  club:        {label:'Club+',             credits:5},
+  performance: {label:'Club+ Performance', credits:20},
+};
+const ACT_SCREENS = ['loading','valid','expired','used','withdrawn','invalid','error'];
+let _actToken = null;
+let _actCheckedToken = null;
+
+function actShow(which){
+  ACT_SCREENS.forEach(k=>{
+    const el = document.getElementById('act-'+k);
+    if (el) el.style.display = 'none';
+  });
+  const el = document.getElementById('act-'+which);
+  if (el) el.style.display = 'block';
+}
+
+// Le back-end renvoie 'revoked' ; l'écran s'appelle act-withdrawn (vocabulaire
+// destiné au club, "retirée" plutôt que le terme technique "révoquée").
+function actScreenForStatus(status){
+  if (status==='valid') return 'valid';
+  if (status==='expired') return 'expired';
+  if (status==='used') return 'used';
+  if (status==='revoked') return 'withdrawn';
+  return 'invalid';
+}
+
+async function startActivation(token){
+  _actToken = token || null;
+  showScreen('activation');
+  if (!_actToken){ actShow('invalid'); return; }
+  actShow('loading');
+  let res;
+  try{
+    res = await sbFunction('clubplus-check-activation-token', {token:_actToken});
+  }catch(e){
+    actShow('error'); return;
+  }
+  if (!res.ok || !res.data || !res.data.status){ actShow('error'); return; }
+  const st = res.data.status;
+  if (st!=='valid'){ actShow(actScreenForStatus(st)); return; }
+
+  const plan = ACT_PLANS[res.data.plan] ? res.data.plan : 'club';
+  const nomPrefill = res.data.club_nom_prefill || '';
+  document.getElementById('act-club-title').textContent = nomPrefill || 'Votre club';
+  document.getElementById('act-club-nom').value = nomPrefill;
+  document.getElementById('act-plan-label').textContent = ACT_PLANS[plan].label;
+  document.getElementById('act-credits-label').textContent = ACT_PLANS[plan].credits + ' / mois';
+  _actCheckedToken = _actToken;
+  actShow('valid');
+}
+
+async function handleActivation(){
+  const errEl = document.getElementById('act-err'); errEl.textContent = '';
+  const okEl = document.getElementById('act-ok'); okEl.textContent = '';
+  const btn = document.getElementById('act-btn');
+  const clubNom = document.getElementById('act-club-nom').value.trim();
+  const prenom = document.getElementById('act-prenom').value.trim();
+  const nom = document.getElementById('act-nom').value.trim();
+  const email = document.getElementById('act-email').value.trim();
+  const tel = document.getElementById('act-tel').value.trim();
+  const pass = document.getElementById('act-pass').value;
+  const pass2 = document.getElementById('act-pass2').value;
+  if (!_actToken){ errEl.textContent = 'Lien d\'activation manquant. Rouvrez le lien reçu de SportVision.'; return; }
+  if (!clubNom){ errEl.textContent = 'Le nom du club est obligatoire.'; return; }
+  if (!prenom || !nom || !email){ errEl.textContent = 'Merci de compléter votre prénom, votre nom et votre e-mail.'; return; }
+  if (pass.length < 6){ errEl.textContent = 'Le mot de passe doit contenir au moins 6 caractères.'; return; }
+  if (pass !== pass2){ errEl.textContent = 'Les mots de passe ne correspondent pas.'; return; }
+  if (!document.getElementById('act-cgu').checked){ errEl.textContent = 'Merci d\'accepter les CGU pour continuer.'; return; }
+  btn.disabled = true; btn.textContent = 'Activation…';
+  try{
+    const res = await fetch(SB_URL+'/auth/v1/signup', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, password:pass, data:{prenom,nom,telephone:tel,club_nom:clubNom}})});
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.msg || d.error_description || 'Inscription impossible, cet e-mail a peut-être déjà un compte. Connectez-vous, puis rouvrez ce lien d\'activation.');
+    if (!d.access_token){
+      // Confirmation d'e-mail activée sur le projet : pas de session immédiate,
+      // donc pas d'appel possible à clubplus-activate (qui exige un JWT). On
+      // mémorise le token pour le rejouer au premier login réussi — même
+      // filet de sécurité que handleLogin() pour portal-onboarding.
+      localStorage.setItem('svc_act', _actToken);
+      localStorage.setItem('svc_act_club', clubNom);
+      okEl.textContent = 'Compte créé. Confirmez votre adresse par e-mail, puis connectez-vous : votre espace sera activé automatiquement.';
+      btn.disabled = false; btn.textContent = 'Activer mon espace Club+';
+      return;
+    }
+    svcSave(d.access_token, d.refresh_token, d.user.id);
+    const act = await sbFunction('clubplus-activate', {token:_actToken, prenom, nom, telephone:tel, club_nom:clubNom});
+    if (!act.ok) throw new Error(act.data?.error || 'Erreur lors de l\'activation de votre espace.');
+    await bootAfterLogin();
+  }catch(e){
+    errEl.textContent = e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Activer mon espace Club+';
   }
 }
 
@@ -822,6 +1020,17 @@ function handlePaymentReturn(){
 (async function init(){
   if (await consumeRecoveryHash()){
     showScreen('reset');
+    return;
+  }
+  // Lien d'activation Club+ privé (#/activation?token=…, généré par le staff
+  // depuis SportVision OS) : prioritaire sur tout le reste, y compris une
+  // session déjà ouverte dans ce navigateur (ex: poste partagé) — cliquer ce
+  // lien doit toujours montrer l'écran d'activation, jamais rester sur un
+  // autre espace déjà connecté par erreur.
+  if (window.location.hash.indexOf('#/activation') === 0){
+    const qi = window.location.hash.indexOf('?');
+    const token = qi === -1 ? '' : new URLSearchParams(window.location.hash.slice(qi+1)).get('token') || '';
+    await startActivation(token);
     return;
   }
   if (isLoggedIn()){

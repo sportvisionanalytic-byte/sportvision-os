@@ -27,8 +27,16 @@
 //
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: clubplus-generate-activation)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (déjà présents par défaut)
-// Secret optionnel : CLUBPLUS_URL (même variable que clubplus-invite / clubplus-family-invite,
+// Secret optionnel : CONNECT_URL (même variable que clubplus-invite / clubplus-family-invite,
 // même valeur par défaut — ne pas en créer une seconde)
+//
+// Fix du 08/08/2026 : générait un lien vers l'ancienne app Club+ séparée
+// (SportVision-Club-Plus.html#/activation?token=…). Connect a maintenant son
+// propre écran d'activation sur la même route de hash (#/activation?token=…,
+// voir index.html : scr-activation / startActivation / handleActivation),
+// portée depuis l'ancienne app le même jour — aucun changement de contrat
+// avec clubplus-check-activation-token / clubplus-activate, qui restent
+// inchangées.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -60,7 +68,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const clubplusUrl = Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision.fr";
+    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -112,7 +120,7 @@ serve(async (req) => {
       .single();
     if (insErr) return json({ error: insErr.message }, 500);
 
-    const activationUrl = `${clubplusUrl}/SportVision-Club-Plus.html#/activation?token=${token}`;
+    const activationUrl = `${connectUrl}/#/activation?token=${token}`;
 
     return json({
       id: created.id,
