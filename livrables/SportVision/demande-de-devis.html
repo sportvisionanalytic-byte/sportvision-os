@@ -613,6 +613,18 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   </div>
 </section>
 
+<!-- ══════════════ FAQ ══════════════ -->
+<section class="section-light" id="faq">
+  <div class="container">
+    <div class="section-head reveal"><h2>Questions fréquentes</h2></div>
+    <div class="faq-list reveal" id="faq-list">
+      <div class="faq-item"><button class="faq-q"><span>Sous combien de temps ai-je une réponse ?</span><span class="chev">+</span></button><div class="faq-a"><p>Notre équipe revient généralement vers vous sous 24 à 48h ouvrées. Si votre demande est urgente, indiquez-le dans le champ commentaire ou <button type="button" class="btn-link" data-action="open-rdv" style="font-size:inherit;padding:0">prenez directement rendez-vous</button>.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Dois-je créer un compte pour envoyer une demande ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non. Prénom, nom et e-mail suffisent. Un espace SportVision Connect vous est ouvert automatiquement dès votre première commande, pas avant.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Cette demande m'engage-t-elle à quelque chose ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non, aucun engagement. C'est un premier échange pour comprendre votre besoin — vous restez entièrement libre de donner suite ou non.</p></div></div>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <!-- ══════════════ FOOTER ══════════════ -->
@@ -727,6 +739,13 @@ if ('IntersectionObserver' in window){
 
 // ── Année du footer ──
 document.getElementById('sv-year').textContent = new Date().getFullYear();
+
+// ── FAQ accordéon ──
+document.getElementById('faq-list').addEventListener('click', (e) => {
+  const q = e.target.closest('.faq-q');
+  if (!q) return;
+  q.closest('.faq-item').classList.toggle('on');
+});
 
 // ── Formulaire de demande de devis / démonstration (page complète,
 //    même contrat exact que la modal de la home) ──

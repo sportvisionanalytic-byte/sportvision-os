@@ -539,6 +539,18 @@ section{position:relative}
   </div>
 </section>
 
+<!-- ══════════════ FAQ ══════════════ -->
+<section class="section-light" id="faq">
+  <div class="container">
+    <div class="section-head reveal"><h2>Questions fréquentes</h2></div>
+    <div class="faq-list reveal" id="faq-list">
+      <div class="faq-item"><button class="faq-q"><span>Puis-je changer d'accompagnement en cours de route ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui. Votre situation évolue, votre accompagnement peut évoluer avec elle — parlez-en simplement à votre interlocuteur SportVision.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Un accompagnement m'engage-t-il sur la durée ?</span><span class="chev">+</span></button><div class="faq-a"><p>Cela dépend de la formule choisie : certaines sont sans engagement, d'autres avec engagement pour un tarif plus avantageux. Les conditions précises sont indiquées sur chaque page d'accompagnement.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Je ne rentre dans aucun des 5 profils, que faire ?</span><span class="chev">+</span></button><div class="faq-a"><p>Contactez-nous directement : la plupart des situations se rapprochent d'un de ces profils, et nous pouvons adapter l'accompagnement à votre cas particulier.</p></div></div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════════ CTA FINAL ══════════════ -->
 <section class="cta-final">
   <div class="container">
@@ -684,6 +696,13 @@ if ('IntersectionObserver' in window){
 
 // ── Année du footer ──
 document.getElementById('sv-year').textContent = new Date().getFullYear();
+
+// ── FAQ accordéon ──
+document.getElementById('faq-list').addEventListener('click', (e) => {
+  const q = e.target.closest('.faq-q');
+  if (!q) return;
+  q.closest('.faq-item').classList.toggle('on');
+});
 
 // ── Bandeau cookies (RGPD) ──
 const cookieBanner = document.getElementById('cookie-banner');
