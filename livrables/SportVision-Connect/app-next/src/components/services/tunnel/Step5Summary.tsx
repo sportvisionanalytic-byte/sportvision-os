@@ -1,0 +1,80 @@
+import type { PlanCode } from "@/lib/types";
+import {
+  SERVICE_OPTION_BY_CODE,
+  SERVICE_TYPE_LABELS,
+  computeServicePricing,
+  formatServiceDate,
+  formatServicePrice,
+} from "@/lib/types/services";
+import type { TunnelState } from "./types";
+
+export function Step5Summary({
+  state,
+  planCode,
+  organizationAddress,
+  onAcceptTermsChange,
+}: {
+  state: TunnelState;
+  planCode: PlanCode;
+  organizationAddress?: string;
+  onAcceptTermsChange: (accepted: boolean) => void;
+}) {
+  if (!state.serviceType) return null;
+
+  const pricing = computeServicePricing({
+    serviceType: state.serviceType,
+    optionCodes: state.optionCodes,
+    planCode,
+    address: state.address,
+    organizationAddress,
+  });
+
+  return (
+    <div>
+      <h2 className="text-[18px] font-extrabold tracking-tight">Récapitulatif</h2>
+      <p className="mt-1 text-[13.5px] text-text-soft">Vérifiez les informations avant d&apos;envoyer votre demande.</p>
+
+      <div className="mt-5 flex flex-col gap-3">
+        <SummaryRow label="Prestation" value={SERVICE_TYPE_LABELS[state.serviceType]} />
+        <SummaryRow label="Date" value={state.date ? formatServiceDate(state.date) : "—"} />
+        <SummaryRow label="Horaires" value={state.startTime && state.endTime ? `${state.startTime} – ${state.endTime}` : "—"} />
+        <SummaryRow label="Adresse" value={state.address || "—"} />
+        {state.teamLabel && <SummaryRow label="Équipe" value={state.teamLabel} />}
+        <SummaryRow label="Contact sur place" value={`${state.contactName || "—"} · ${state.contactPhone || "—"}`} />
+        {state.needs && <SummaryRow label="Besoins spécifiques" value={state.needs} />}
+        <SummaryRow
+          label="Options"
+          value={state.optionCodes.length ? state.optionCodes.map((c) => SERVICE_OPTION_BY_CODE[c].label).join(", ") : "Aucune"}
+        />
+        <SummaryRow label="Montant total" value={formatServicePrice(pricing.totalPrice)} strong />
+        <SummaryRow
+          label="Acompte"
+          value={`${formatServicePrice(pricing.depositAmount)} · ${state.depositMethod === "card" ? "Carte bancaire" : "Espèces"}`}
+          strong
+        />
+      </div>
+
+      <label className="mt-6 flex items-start gap-2.5 rounded-xl border border-border bg-surface-alt p-3.5 text-[12.5px] leading-relaxed text-text-soft">
+        <input
+          type="checkbox"
+          checked={state.acceptedTerms}
+          onChange={(e) => onAcceptTermsChange(e.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-brand-blue-electric"
+        />
+        J&apos;accepte les conditions générales de prestation SportVision, notamment le mode de règlement de
+        l&apos;acompte et le nombre de corrections incluses (deux, la troisième étant facturée).
+      </label>
+    </div>
+  );
+}
+
+function SummaryRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-divider pb-3 last:border-0 last:pb-0">
+      <span className="flex-none text-[12.5px] font-bold text-text-soft">{label}</span>
+      <span className={strong ? "text-right text-[14px] font-extrabold text-text" : "text-right text-[13px] text-text"}>
+        {value}
+      </span>
+    </div>
+  );
+}
