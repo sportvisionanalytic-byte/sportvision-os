@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sportvisionfr.netlify.app/sitemap.xml
