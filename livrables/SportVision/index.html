@@ -202,6 +202,17 @@ section{position:relative}
 .tab-btn{padding:11px 20px;border-radius:999px;border:1px solid #e4e7ef;background:#fff;font-weight:700;font-size:14px;color:#5b6478}
 .tab-btn.on{background:var(--navy-900);border-color:var(--navy-900);color:#fff}
 
+/* ── Études de cas ── */
+.case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:8px}
+.case-card{border-radius:var(--radius-lg);overflow:hidden;border:1px solid #e9ecf5;background:#fff}
+.case-media{height:170px;background:linear-gradient(155deg,#131a3d,#3a1868)}
+.case-card:nth-child(2) .case-media{background:linear-gradient(155deg,#0d1330,#0f2a4a)}
+.case-card:nth-child(3) .case-media{background:linear-gradient(155deg,#1a1040,#2454FF)}
+.case-body{padding:22px}
+.case-body .tag{font-size:11px;font-weight:800;text-transform:uppercase;color:var(--blue);letter-spacing:.04em}
+.case-body h4{font-size:17px;margin-top:8px}
+.case-body p{font-size:13.5px;color:#5b6478;margin-top:8px}
+
 /* ── Trois solutions ── */
 .solutions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:8px}
 .solution-card{background:#fff;border:1px solid #e9ecf5;border-radius:var(--radius-lg);padding:30px 26px;display:flex;flex-direction:column}
@@ -303,6 +314,7 @@ section{position:relative}
   .feature-row.rev .feature-copy,.feature-row.rev .feature-visual{order:0}
   .solutions-grid{grid-template-columns:1fr}
   .gallery-grid{grid-template-columns:repeat(2,1fr)}
+  .case-grid{grid-template-columns:1fr}
   .footer-grid{grid-template-columns:1fr 1fr}
 }
 @media (max-width:560px){
@@ -615,8 +627,46 @@ section{position:relative}
       <span class="logo-item">Varenne</span>
       <span class="logo-item">Elite Sport Camp</span>
       <span class="logo-item">Games Factory</span>
+      <span class="logo-item">Brunoy FC</span>
+      <span class="logo-item">ASA Montereau</span>
     </div></div>
     <p class="zones-note reveal">Matchs, shootings, stages et événements couverts en Yonne, Seine-et-Marne et Île-de-France — extension progressive à d'autres régions.</p>
+  </div>
+</section>
+
+<!-- ══════════════ ÉTUDES DE CAS ══════════════ -->
+<section class="section-light">
+  <div class="container">
+    <div class="section-head reveal">
+      <h2>Quelques prestations récentes.</h2>
+      <p>Des exemples concrets de ce que nous produisons pour nos clients.</p>
+    </div>
+    <div class="case-grid reveal">
+      <div class="case-card">
+        <div class="case-media"></div>
+        <div class="case-body">
+          <span class="tag">FC Varennes · U15</span>
+          <h4>Un match de montée filmé en immersion</h4>
+          <p>Le coach de l'équipe U15 nous a contactés pour une couverture vidéo immersive de leur match décisif de montée.</p>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-media"></div>
+        <div class="case-body">
+          <span class="tag">Brunoy FC · U18</span>
+          <h4>Photo et vidéo en une seule prestation</h4>
+          <p>Le coach de l'équipe U18 a fait appel à SportVision pour une couverture combinée photo et vidéo de leur rencontre.</p>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-media"></div>
+        <div class="case-body">
+          <span class="tag">ASA Montereau · Seniors</span>
+          <h4>Un shooting collectif pour tout le groupe</h4>
+          <p>Séance photo réalisée pour l'ensemble de l'effectif senior de l'ASA Montereau.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
