@@ -354,6 +354,12 @@ section{position:relative}
 .offer-list li::before{content:'✓';color:var(--success);font-weight:900;flex-shrink:0}
 .offer-price{font-size:13px;color:var(--text-secondary);font-weight:700;margin-bottom:14px}
 .offer-card.featured .offer-price{color:rgba(255,255,255,.55)}
+.offer-price-main{font-family:var(--font-head);font-size:38px;font-weight:800;color:var(--navy-900);margin-top:6px;line-height:1}
+.offer-price-main span{font-family:var(--font-body);font-size:15px;font-weight:600;color:var(--text-secondary)}
+.offer-card.featured .offer-price-main{color:#fff}
+.offer-card.featured .offer-price-main span{color:rgba(255,255,255,.6)}
+.offer-price-note{font-size:12px;color:var(--text-secondary);margin-top:4px;margin-bottom:16px}
+.offer-card.featured .offer-price-note{color:rgba(255,255,255,.55)}
 .callout-box{margin-top:48px;padding:30px 34px;border-radius:var(--radius-lg);border:1px solid rgba(36,84,255,.22);background:rgba(36,84,255,.05);display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
 .callout-box p{font-size:16.5px;font-weight:700;color:var(--navy-900);margin:0}
 @media (max-width:700px){
@@ -465,7 +471,7 @@ section{position:relative}
 <section class="section-light" id="formules">
   <div class="container">
     <div class="section-head reveal">
-      <span class="eyebrow" style="margin-bottom:18px">Sur devis</span>
+      <span class="eyebrow" style="margin-bottom:18px">Tarifs</span>
       <h2>Deux formules Club+, une seule plateforme.</h2>
       <p>Club+ Performance inclut toutes les fonctionnalités de Club+ Start, avec plus de capacité et de priorité pour votre club.</p>
     </div>
@@ -474,7 +480,8 @@ section{position:relative}
         <span class="tag">Club+ Start</span>
         <h3>Pour bien démarrer</h3>
         <p class="desc">L'essentiel pour organiser la communication de votre club dans SportVision Connect.</p>
-        <p class="offer-price">Sur devis</p>
+        <p class="offer-price-main">49 € <span>/mois</span></p>
+        <p class="offer-price-note">Avec engagement · 59 €/mois sans engagement</p>
         <ul class="offer-list">
           <li>Accès à SportVision Connect</li>
           <li>Espace club dédié</li>
@@ -484,13 +491,14 @@ section{position:relative}
           <li>Contenus et demandes de prestations</li>
           <li>Remise sur les prestations</li>
         </ul>
-        <a href="#devis" class="btn btn-ghost-light" data-action="open-devis">Demander un devis</a>
+        <a href="#devis" class="btn btn-ghost-light" data-action="open-devis">Choisir Club+ Start</a>
       </div>
       <div class="offer-card featured">
         <span class="tag">Club+ Performance</span>
         <h3>Pour aller plus loin</h3>
         <p class="desc">Plus de capacité et de priorité pour les clubs ambitieux, saison après saison.</p>
-        <p class="offer-price">Sur devis</p>
+        <p class="offer-price-main">129 € <span>/mois</span></p>
+        <p class="offer-price-note">Avec engagement · 139 €/mois sans engagement</p>
         <ul class="offer-list">
           <li>Toutes les fonctionnalités Start</li>
           <li>Crédits supplémentaires</li>
@@ -499,7 +507,7 @@ section{position:relative}
           <li>Espace sponsors</li>
           <li>Statistiques et fonctionnalités avancées</li>
         </ul>
-        <a href="#devis" class="btn btn-grad" data-action="open-devis">Demander un devis</a>
+        <a href="#devis" class="btn btn-grad" data-action="open-devis">Choisir Club+ Performance</a>
       </div>
     </div>
     <div class="callout-box reveal">
@@ -676,7 +684,7 @@ section{position:relative}
 <section class="cta-final" id="devis">
   <div class="container">
     <h2 class="reveal">Donnez à votre club les moyens d'une communication organisée.</h2>
-    <p class="reveal">Choisissez Club+ Start ou Club+ Performance, sur devis, selon la taille et les ambitions de votre club.</p>
+    <p class="reveal">Club+ Start à partir de 49 €/mois, Club+ Performance à partir de 129 €/mois — selon la taille et les ambitions de votre club.</p>
     <div class="hero-ctas reveal">
       <a href="#formules" class="btn btn-grad">Découvrir les formules</a>
       <a href="full-communication.html" class="btn btn-ghost-dark">Découvrir Full Communication</a>
