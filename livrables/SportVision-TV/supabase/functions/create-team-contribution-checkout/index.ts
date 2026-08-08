@@ -1,3 +1,12 @@
+// ⚠️  REDÉPLOIEMENT MANUEL REQUIS après toute modification de ce fichier.
+// Ce code ne se déploie PAS automatiquement sur Supabase depuis le repo.
+// Étape à faire à chaque édition : Supabase Dashboard → Edge Functions →
+// create-team-contribution-checkout → coller ce code → Deploy.
+// Oublier cette étape est la cause la plus fréquente de "le code est bon
+// mais ça ne marche pas en prod" sur ce projet (déjà arrivé sur au moins
+// 5 fonctions : clubplus-billing-portal, create-clubplus-subscription-
+// checkout, dispatch-notifications, create-guest-rdv, create-guest-request).
+
 // Supabase Edge Function — create-team-contribution-checkout
 // Crée une session Stripe Checkout pour une contribution à un projet
 // collectif d'équipe (team_projects). Même patron que create-checkout-

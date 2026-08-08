@@ -1,3 +1,12 @@
+// ⚠️  REDÉPLOIEMENT MANUEL REQUIS après toute modification de ce fichier.
+// Ce code ne se déploie PAS automatiquement sur Supabase depuis le repo.
+// Étape à faire à chaque édition : Supabase Dashboard → Edge Functions →
+// invite-collaborateur → coller ce code → Deploy.
+// Oublier cette étape est la cause la plus fréquente de "le code est bon
+// mais ça ne marche pas en prod" sur ce projet (déjà arrivé sur au moins
+// 5 fonctions : clubplus-billing-portal, create-clubplus-subscription-
+// checkout, dispatch-notifications, create-guest-rdv, create-guest-request).
+
 // Supabase Edge Function — invite-collaborateur
 // Remplace le flux actuel (créerCollaborateur() côté OS révèle un mot de
 // passe provisoire en clair à l'écran, à communiquer "à la main" — exactement

@@ -1,3 +1,12 @@
+// ⚠️  REDÉPLOIEMENT MANUEL REQUIS après toute modification de ce fichier.
+// Ce code ne se déploie PAS automatiquement sur Supabase depuis le repo.
+// Étape à faire à chaque édition : Supabase Dashboard → Edge Functions →
+// create-clubplus-subscription-checkout → coller ce code → Deploy.
+// Oublier cette étape est la cause la plus fréquente de "le code est bon
+// mais ça ne marche pas en prod" sur ce projet (déjà arrivé sur au moins
+// 5 fonctions : clubplus-billing-portal, create-clubplus-subscription-
+// checkout, dispatch-notifications, create-guest-rdv, create-guest-request).
+
 // Supabase Edge Function — create-clubplus-subscription-checkout
 // Crée une session Stripe Checkout en mode `subscription` pour l'abonnement
 // mensuel SportVision Club+ d'un club. C'est le seul point d'entrée pour
