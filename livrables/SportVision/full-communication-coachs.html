@@ -439,7 +439,7 @@ section{position:relative}
       <h1>Développez votre <span>image professionnelle</span> sans y passer vos journées.</h1>
       <p class="subtitle">Personal branding, séances filmées, Reels et contenus pédagogiques : SportVision produit et publie à votre place, sous votre validation.</p>
       <div class="hero-ctas">
-        <a href="#devis" class="btn btn-grad" data-action="open-devis">Parler de mon activité</a>
+        <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Full Communication — Coachs & préparateurs">Parler de mon activité</a>
         <a href="#inclus" class="btn btn-ghost-dark">Voir ce qui est inclus</a>
       </div>
       <p class="hero-micro">Sur devis, selon le rythme et le volume souhaités.</p>
@@ -502,7 +502,7 @@ section{position:relative}
     <h2>Prêt à professionnaliser votre image ?</h2>
     <p class="reveal">Décrivez votre activité, nous revenons vers vous avec une proposition adaptée.</p>
     <div class="hero-ctas">
-      <a href="#devis" class="btn btn-grad" data-action="open-devis">Parler de mon activité</a>
+      <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Full Communication — Coachs & préparateurs">Parler de mon activité</a>
     </div>
   </div>
 </section>
@@ -667,16 +667,18 @@ document.getElementById('cookie-manage').addEventListener('click', (e) => {
 });
 
 const devisOverlay = document.getElementById('devis-overlay');
-function openDevis(){
+function openDevis(context){
   document.getElementById('devis-form-wrap').style.display = '';
   document.getElementById('devis-ok-wrap').style.display = 'none';
   document.getElementById('devis-err').textContent = '';
+  const commentaireEl = document.getElementById('dv-commentaire');
+  if (context && commentaireEl && !commentaireEl.value) commentaireEl.value = 'Intéressé par : ' + context;
   devisOverlay.classList.add('on');
 }
 function closeDevis(){ devisOverlay.classList.remove('on'); }
 document.addEventListener('click', (e) => {
   const opener = e.target.closest('[data-action="open-devis"]');
-  if (opener){ e.preventDefault(); openDevis(); }
+  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context')); }
 });
 document.getElementById('devis-close').addEventListener('click', closeDevis);
 document.getElementById('devis-ok-close').addEventListener('click', closeDevis);

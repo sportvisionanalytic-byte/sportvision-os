@@ -443,7 +443,7 @@ section{position:relative}
       <h1>Vous vous occupez du sportif. <span>Nous nous occupons de votre communication.</span></h1>
       <p class="subtitle">Stratégie, contenus, réseaux sociaux, photo, vidéo et reporting : SportVision devient l'équipe communication de votre structure — club, académie, coach ou événement.</p>
       <div class="hero-ctas">
-        <a href="#devis" class="btn btn-grad" data-action="open-devis">Demander mon audit</a>
+        <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Full Communication">Demander mon audit</a>
         <a href="#processus" class="btn btn-ghost-dark">Voir comment nous travaillons</a>
       </div>
       <p class="hero-micro">Pour les structures qui préfèrent déléguer leur communication à une équipe dédiée.</p>
@@ -615,7 +615,7 @@ section{position:relative}
     <h2 class="reveal">Laissez SportVision porter la communication de votre club.</h2>
     <p class="reveal">Un audit initial, une stratégie claire, une équipe dédiée à votre club.</p>
     <div class="hero-ctas reveal">
-      <a href="#devis" class="btn btn-grad" data-action="open-devis">Demander un audit de mon club</a>
+      <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Full Communication">Demander un audit de mon club</a>
     </div>
     <div class="hero-tertiary reveal"><button type="button" class="btn-link" data-action="open-rdv">Ou prendre rendez-vous avec notre équipe →</button></div>
   </div>
@@ -837,16 +837,18 @@ document.getElementById('cookie-manage').addEventListener('click', (e) => {
 
 // ── Modal demande de devis / démonstration ──
 const devisOverlay = document.getElementById('devis-overlay');
-function openDevis(){
+function openDevis(context){
   document.getElementById('devis-form-wrap').style.display = '';
   document.getElementById('devis-ok-wrap').style.display = 'none';
   document.getElementById('devis-err').textContent = '';
+  const commentaireEl = document.getElementById('dv-commentaire');
+  if (context && commentaireEl && !commentaireEl.value) commentaireEl.value = 'Intéressé par : ' + context;
   devisOverlay.classList.add('on');
 }
 function closeDevis(){ devisOverlay.classList.remove('on'); }
 document.addEventListener('click', (e) => {
   const opener = e.target.closest('[data-action="open-devis"]');
-  if (opener){ e.preventDefault(); openDevis(); }
+  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context')); }
 });
 document.getElementById('devis-close').addEventListener('click', closeDevis);
 document.getElementById('devis-ok-close').addEventListener('click', closeDevis);

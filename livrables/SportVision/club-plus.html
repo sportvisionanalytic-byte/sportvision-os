@@ -491,7 +491,7 @@ section{position:relative}
           <li>Contenus et demandes de prestations</li>
           <li>Remise sur les prestations</li>
         </ul>
-        <a href="#devis" class="btn btn-ghost-light" data-action="open-devis">Choisir Club+ Start</a>
+        <a href="#devis" class="btn btn-ghost-light" data-action="open-devis" data-devis-context="Club+ Start (49 €/mois)">Choisir Club+ Start</a>
       </div>
       <div class="offer-card featured">
         <span class="tag">Club+ Performance</span>
@@ -507,7 +507,7 @@ section{position:relative}
           <li>Espace sponsors</li>
           <li>Statistiques et fonctionnalités avancées</li>
         </ul>
-        <a href="#devis" class="btn btn-grad" data-action="open-devis">Choisir Club+ Performance</a>
+        <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Club+ Performance (129 €/mois)">Choisir Club+ Performance</a>
       </div>
     </div>
     <div class="callout-box reveal">
@@ -908,16 +908,18 @@ document.getElementById('cookie-manage').addEventListener('click', (e) => {
 
 // ── Modal demande de devis / démonstration ──
 const devisOverlay = document.getElementById('devis-overlay');
-function openDevis(){
+function openDevis(context){
   document.getElementById('devis-form-wrap').style.display = '';
   document.getElementById('devis-ok-wrap').style.display = 'none';
   document.getElementById('devis-err').textContent = '';
+  const commentaireEl = document.getElementById('dv-commentaire');
+  if (context && commentaireEl && !commentaireEl.value) commentaireEl.value = 'Intéressé par : ' + context;
   devisOverlay.classList.add('on');
 }
 function closeDevis(){ devisOverlay.classList.remove('on'); }
 document.addEventListener('click', (e) => {
   const opener = e.target.closest('[data-action="open-devis"]');
-  if (opener){ e.preventDefault(); openDevis(); }
+  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context')); }
 });
 document.getElementById('devis-close').addEventListener('click', closeDevis);
 document.getElementById('devis-ok-close').addEventListener('click', closeDevis);
