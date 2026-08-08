@@ -1,11 +1,21 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Calendar, FileUp, Images, Sparkles, UserPlus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
+import { fetchClubMediaAssets } from "@/lib/data/club/content";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+
+interface TodoItem {
+  title: string;
+  meta: string;
+  action: string;
+  due?: string;
+}
 
 // Tableau de bord — variante Club+ (Essentiel / Club+ Start / Club+ Performance, type club).
 // Voir ACTIONS.md § 5 et DATA_MODEL.md pour les quotas. Écran de référence pour les
@@ -20,12 +30,6 @@ const QUICK_ACTIONS = [
   { icon: UserPlus, label: "Inviter un utilisateur" },
 ];
 
-const TODO = [
-  { title: "Affiche Matchday — FC Fontainebleau vs US Varenne", meta: "Contenu à valider · Studio SportVision", action: "Valider", due: "Avant demain 12h" },
-  { title: "Facture SV-2026-0418 — Août 2026", meta: "690,00 € TTC", action: "Payer", due: "Échue depuis 3 j" },
-  { title: "Avenant Club+ Performance 2026-2027", meta: "Contrat à signer · Yousign", action: "Signer", due: "12 août" },
-];
-
 export function ClubPlusDashboard() {
   const { ctx } = useSession();
   const plan = PLANS[ctx.subscription.planCode];
@@ -33,6 +37,27 @@ export function ClubPlusDashboard() {
     plan.monthlyCredits && plan.monthlyCredits > 0
       ? Math.round((ctx.subscription.creditsRemaining / plan.monthlyCredits) * 100)
       : 0;
+
+  // "À traiter" — auparavant 3 lignes fictives (FC Fontainebleau...) affichées sur tout compte
+  // club réel, trouvé lors de la première vérification en conditions réelles (08/08/2026).
+  // Seules les créations SportVision en attente de validation ont une source réelle
+  // (club_creations.status='a_valider', via fetchClubMediaAssets) — factures/contrats restent
+  // hors scope (voir le plan Phase 1 § Gaps de données), pas remplacés par une autre fiction.
+  const [todo, setTodo] = useState<TodoItem[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    fetchClubMediaAssets(supabase, ctx.organization.id).then((assets) => {
+      const pending = assets.filter((a) => a.status === "to_validate");
+      setTodo(
+        pending.map((a) => ({
+          title: a.name,
+          meta: "Contenu à valider · Studio SportVision",
+          action: "Valider",
+        })),
+      );
+    });
+  }, [ctx.organization.id]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -100,25 +125,29 @@ export function ClubPlusDashboard() {
           <div className="flex items-center gap-2.5">
             <span className="h-2 w-2 rounded-full bg-[#F5A623]" />
             <span className="text-[15px] font-extrabold tracking-tight">À traiter</span>
-            <Badge tone="warning">{TODO.length} éléments</Badge>
+            <Badge tone="warning">{todo.length} élément{todo.length > 1 ? "s" : ""}</Badge>
           </div>
           <button className="text-[12.5px] font-bold text-brand-blue-electric">Tout voir</button>
         </div>
-        {TODO.map((t) => (
-          <div
-            key={t.title}
-            className="flex items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0 hover:bg-row-hover"
-          >
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13.5px] font-bold text-text">{t.title}</span>
-              <span className="mt-0.5 block text-[12px] text-text-soft">{t.meta}</span>
-            </span>
-            <span className="w-28 flex-none text-right text-[12px] font-bold text-due-late">{t.due}</span>
-            <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]">
-              {t.action}
-            </Button>
-          </div>
-        ))}
+        {todo.length === 0 ? (
+          <div className="px-5 py-6 text-center text-[13px] text-text-soft">Rien à traiter pour le moment.</div>
+        ) : (
+          todo.map((t) => (
+            <div
+              key={t.title}
+              className="flex items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0 hover:bg-row-hover"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13.5px] font-bold text-text">{t.title}</span>
+                <span className="mt-0.5 block text-[12px] text-text-soft">{t.meta}</span>
+              </span>
+              {t.due && <span className="w-28 flex-none text-right text-[12px] font-bold text-due-late">{t.due}</span>}
+              <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]">
+                {t.action}
+              </Button>
+            </div>
+          ))
+        )}
       </Card>
     </div>
   );
