@@ -2,9 +2,13 @@
 // bandeau sur le tableau de bord si interrompu, mémorisation de l'étape atteinte).
 //
 // Aucun backend n'est branché sur ce projet (voir README.md § Décision volontairement pas prise
-// ici) : `User.onboardingStep` / `onboardingCompletedAt` existent dans le modèle de données mais
-// `mock-data.ts` est un fichier partagé que je ne dois pas modifier. Le localStorage tient donc
-// lieu de mémoire de progression pour la démo, indépendamment du mock user.
+// ici) : le localStorage tient lieu de mémoire de progression pour la démo. Le mock user a déjà
+// `onboardingCompletedAt` renseigné (voir mock-data.ts) : c'est le repli par défaut tant
+// qu'aucune progression locale n'a été enregistrée, pour ne pas rouvrir l'onboarding à chaque
+// premier chargement (navigation privée, localStorage vidé...). « Revoir le tutoriel de
+// bienvenue » (ACTIONS.md § 24) reste le seul moyen de le relancer explicitement.
+
+import { mockUser } from "@/lib/mock-data";
 
 const STORAGE_KEY = "sv-connect-onboarding";
 
@@ -13,7 +17,9 @@ export interface OnboardingProgress {
   completed: boolean;
 }
 
-const DEFAULT_PROGRESS: OnboardingProgress = { step: 0, completed: false };
+const DEFAULT_PROGRESS: OnboardingProgress = mockUser.onboardingCompletedAt
+  ? { step: mockUser.onboardingStep, completed: true }
+  : { step: 0, completed: false };
 
 export function getOnboardingProgress(): OnboardingProgress {
   if (typeof window === "undefined") return DEFAULT_PROGRESS;

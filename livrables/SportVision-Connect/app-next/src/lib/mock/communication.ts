@@ -160,7 +160,7 @@ export const mockPublications: Publication[] = [
   // Chris Performance (coach)
   {
     id: "pub-chris-1",
-    organizationId: "org-chris",
+    organizationId: "org-chrisperformance",
     title: "Séance explosivité — vidéo pédagogique",
     platform: "instagram",
     format: "reel",
@@ -173,7 +173,7 @@ export const mockPublications: Publication[] = [
   },
   {
     id: "pub-chris-2",
-    organizationId: "org-chris",
+    organizationId: "org-chrisperformance",
     title: "Avant/après physique athlète",
     platform: "instagram",
     format: "post",
@@ -186,7 +186,7 @@ export const mockPublications: Publication[] = [
   },
   {
     id: "pub-chris-3",
-    organizationId: "org-chris",
+    organizationId: "org-chrisperformance",
     title: "Citation motivation du lundi",
     platform: "instagram",
     format: "post",
@@ -203,7 +203,7 @@ export const mockPublications: Publication[] = [
   },
   {
     id: "pub-chris-4",
-    organizationId: "org-chris",
+    organizationId: "org-chrisperformance",
     title: "Programme de la semaine",
     platform: "tiktok",
     format: "reel",
@@ -218,7 +218,7 @@ export const mockPublications: Publication[] = [
   // Elite Academy (académie)
   {
     id: "pub-ea-1",
-    organizationId: "org-elite-academy",
+    organizationId: "org-eliteacademy",
     title: "Bilan stage d'été",
     platform: "instagram",
     format: "post",
@@ -231,7 +231,7 @@ export const mockPublications: Publication[] = [
   },
   {
     id: "pub-ea-2",
-    organizationId: "org-elite-academy",
+    organizationId: "org-eliteacademy",
     title: "Présentation nouveaux groupes 2026/2027",
     platform: "instagram",
     format: "post",
@@ -244,7 +244,7 @@ export const mockPublications: Publication[] = [
   },
   {
     id: "pub-ea-3",
-    organizationId: "org-elite-academy",
+    organizationId: "org-eliteacademy",
     title: "Portes ouvertes académie",
     platform: "facebook",
     format: "post",
@@ -257,7 +257,7 @@ export const mockPublications: Publication[] = [
   },
   {
     id: "pub-ea-4",
-    organizationId: "org-elite-academy",
+    organizationId: "org-eliteacademy",
     title: "Retour sur la saison 2025/2026",
     platform: "youtube",
     format: "reel",
@@ -415,11 +415,11 @@ export const mockPresences: Presence[] = [
   { id: "pr-usv-5", organizationId: "org-usv", date: "2026-07-19", eventLabel: "Fête du club", kind: "event", operatorName: "Julien Faure", status: "completed" },
   { id: "pr-usv-6", organizationId: "org-usv", date: "2026-08-23", eventLabel: "Entraînement équipe première", kind: "training", status: "scheduled" },
 
-  { id: "pr-chris-1", organizationId: "org-chris", date: "2026-08-05", eventLabel: "Séance individuelle — captation", kind: "training", operatorName: "Nina Berger", status: "completed" },
-  { id: "pr-chris-2", organizationId: "org-chris", date: "2026-08-12", eventLabel: "Séance groupe — captation", kind: "training", status: "scheduled" },
+  { id: "pr-chris-1", organizationId: "org-chrisperformance", date: "2026-08-05", eventLabel: "Séance individuelle — captation", kind: "training", operatorName: "Nina Berger", status: "completed" },
+  { id: "pr-chris-2", organizationId: "org-chrisperformance", date: "2026-08-12", eventLabel: "Séance groupe — captation", kind: "training", status: "scheduled" },
 
-  { id: "pr-ea-1", organizationId: "org-elite-academy", date: "2026-08-07", eventLabel: "Stage d'été — dernier jour", kind: "event", operatorName: "Julien Faure", status: "completed" },
-  { id: "pr-ea-2", organizationId: "org-elite-academy", date: "2026-08-21", eventLabel: "Rentrée académie — captation", kind: "event", status: "scheduled" },
+  { id: "pr-ea-1", organizationId: "org-eliteacademy", date: "2026-08-07", eventLabel: "Stage d'été — dernier jour", kind: "event", operatorName: "Julien Faure", status: "completed" },
+  { id: "pr-ea-2", organizationId: "org-eliteacademy", date: "2026-08-21", eventLabel: "Rentrée académie — captation", kind: "event", status: "scheduled" },
 
   { id: "pr-ec-1", organizationId: "org-elitecup", date: "2026-08-26", eventLabel: "Elite Cup 2026 — Jour J", kind: "event", operatorName: "Nina Berger", status: "scheduled" },
 ];
@@ -436,8 +436,8 @@ export function getPresencesByOrg(organizationId: string): Presence[] {
 
 const ANALYTICS_SUMMARIES: Record<string, AnalyticsSummary> = {
   "org-usv": { organizationId: "org-usv", reach: 22600, reachDeltaPct: 14, views: 41600, viewsDeltaPct: 23, engagement: 2810, engagementDeltaPct: 9, followers: 3420, followersDeltaPct: 4 },
-  "org-chris": { organizationId: "org-chris", reach: 11400, reachDeltaPct: 31, views: 26700, viewsDeltaPct: 52, engagement: 1240, engagementDeltaPct: 38, followers: 1860, followersDeltaPct: 12 },
-  "org-elite-academy": { organizationId: "org-elite-academy", reach: 31200, reachDeltaPct: 18, views: 48900, viewsDeltaPct: 25, engagement: 3610, engagementDeltaPct: 13, followers: 5240, followersDeltaPct: 6 },
+  "org-chrisperformance": { organizationId: "org-chrisperformance", reach: 11400, reachDeltaPct: 31, views: 26700, viewsDeltaPct: 52, engagement: 1240, engagementDeltaPct: 38, followers: 1860, followersDeltaPct: 12 },
+  "org-eliteacademy": { organizationId: "org-eliteacademy", reach: 31200, reachDeltaPct: 18, views: 48900, viewsDeltaPct: 25, engagement: 3610, engagementDeltaPct: 13, followers: 5240, followersDeltaPct: 6 },
   "org-elitecup": { organizationId: "org-elitecup", reach: 4800, reachDeltaPct: 62, views: 9100, viewsDeltaPct: 74, engagement: 520, engagementDeltaPct: 58, followers: 640, followersDeltaPct: 21 },
 };
 
@@ -494,7 +494,7 @@ export const mockReports: Report[] = [
   },
   {
     id: "rep-chris-2026-07",
-    organizationId: "org-chris",
+    organizationId: "org-chrisperformance",
     period: "2026-07",
     status: "available",
     summary: "Premier mois complet d'accompagnement : mise en place de l'identité de contenu et régularité de publication trouvée.",
@@ -513,7 +513,7 @@ export const mockReports: Report[] = [
   },
   {
     id: "rep-ea-2026-07",
-    organizationId: "org-elite-academy",
+    organizationId: "org-eliteacademy",
     period: "2026-07",
     status: "available",
     summary: "Mois marqué par le stage d'été : forte production de contenus terrain et belle dynamique sur les Reels.",
@@ -557,7 +557,7 @@ export const mockThreads: Thread[] = [
   },
   {
     id: "thread-chris-cm",
-    organizationId: "org-chris",
+    organizationId: "org-chrisperformance",
     subject: "Communication Chris Performance",
     contextType: "communication",
     sportvisionRoleLabel: "Community Manager",
@@ -567,7 +567,7 @@ export const mockThreads: Thread[] = [
   },
   {
     id: "thread-ea-cm",
-    organizationId: "org-elite-academy",
+    organizationId: "org-eliteacademy",
     subject: "Communication Elite Academy",
     contextType: "communication",
     sportvisionRoleLabel: "Community Manager",
@@ -633,7 +633,7 @@ const CM_PROFILES_BY_ORG: Record<string, CommunityManagerProfile> = {
       "Un point d'avancement mensuel fait le bilan et prépare le mois suivant.",
     ],
   },
-  "org-chris": {
+  "org-chrisperformance": {
     id: "sv-nina-berger",
     name: "Nina Berger",
     role: "Community Manager SportVision",
@@ -648,7 +648,7 @@ const CM_PROFILES_BY_ORG: Record<string, CommunityManagerProfile> = {
       "Un point d'avancement mensuel ajuste la ligne éditoriale selon vos retours.",
     ],
   },
-  "org-elite-academy": {
+  "org-eliteacademy": {
     id: "sv-nina-berger",
     name: "Nina Berger",
     role: "Community Manager SportVision",

@@ -388,10 +388,10 @@ export const mockTeamDocuments: TeamDocument[] = [
 
 /** ACTIONS.md § 16 — pour un CM externe, /teams devient « Clubs suivis ». */
 export const mockFollowedClubs: Record<string, FollowedClub[]> = {
-  "org-nina-berger": [
+  "org-ninaberger": [
     { organizationId: "org-fcf", clubName: "FC Fontainebleau", publicationsCount: 18, toValidateCount: 3, progressPct: 72, accessStatus: "active" },
     { organizationId: "org-usv", clubName: "US Varenne", publicationsCount: 26, toValidateCount: 1, progressPct: 91, accessStatus: "active" },
-    { organizationId: "org-elite-academy", clubName: "Elite Academy", publicationsCount: 9, toValidateCount: 0, progressPct: 48, accessStatus: "restreint" },
+    { organizationId: "org-eliteacademy", clubName: "Elite Academy", publicationsCount: 9, toValidateCount: 0, progressPct: 48, accessStatus: "restreint" },
   ],
 };
 

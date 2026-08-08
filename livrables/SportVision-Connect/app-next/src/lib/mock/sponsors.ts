@@ -7,7 +7,7 @@ import type {
 } from "../types/sponsors";
 
 // Données fictives mais réalistes — voir README.md § Fidélité. « Varenne Auto » sponsorise US
-// Varenne et dispose aussi de son propre espace partenaire (organisation `org-varenne-auto`,
+// Varenne et dispose aussi de son propre espace partenaire (organisation `org-varenneauto`,
 // voir mock-data.ts) — c'est le même partenariat vu des deux côtés : club et sponsor.
 
 export const mockSponsors: Sponsor[] = [
@@ -99,7 +99,7 @@ export const mockSponsorDocuments: SponsorDocument[] = [
 /** Une organisation de type `sponsor` (son propre espace) peut être liée à un ou plusieurs
  * partenariats côté club — voir ACTIONS.md § 20 bis. */
 export const mockSponsorSelfView: Record<string, string[]> = {
-  "org-varenne-auto": ["sponsor-varenne-auto"],
+  "org-varenneauto": ["sponsor-varenne-auto"],
 };
 
 export function sponsorsForOrganization(organizationId: string): Sponsor[] {
