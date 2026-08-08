@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List, Download, Images } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { getMediaAssetsForPlayer, MOCK_LUCAS_PLAYER_ID } from "@/lib/mock/content";
 import { fetchClubMediaAssets } from "@/lib/data/club/content";
+import { fetchPlayerMediaAssets } from "@/lib/data/player/media";
 import { createClient } from "@/lib/supabase/client";
 import { MEDIA_FILTERS, matchesMediaFilter, type CollectionKind, type Collection, type MediaAsset, type MediaFilterKey } from "@/lib/types/content";
 import { Button } from "@/components/ui/Button";
@@ -35,20 +35,26 @@ export function ContentLibrary() {
 
   const [allAssets, setAllAssets] = useState<MediaAsset[]>([]);
 
+  // Pour un joueur, les médias réels sont scopés par club_id (player_profiles.club_id, exposé via
+  // organization.parentOrganizationId) — la RLS is_media_visible_to_family filtre déjà aux médias
+  // visibles pour cette famille. Voir le plan Phase 2 § Décisions d'architecture n°4.
+  const playerClubId = isPlayer ? ctx.organization.parentOrganizationId : undefined;
+
   useEffect(() => {
+    const supabase = createClient();
     if (isPlayer) {
-      setAllAssets(getMediaAssetsForPlayer(MOCK_LUCAS_PLAYER_ID));
+      if (!playerClubId) return;
+      fetchPlayerMediaAssets(supabase, playerClubId).then((rows) => setAllAssets(rows));
       return;
     }
     let cancelled = false;
-    const supabase = createClient();
     fetchClubMediaAssets(supabase, ctx.organization.id).then((rows) => {
       if (!cancelled) setAllAssets(rows);
     });
     return () => {
       cancelled = true;
     };
-  }, [isPlayer, ctx.organization.id]);
+  }, [isPlayer, playerClubId, ctx.organization.id]);
 
   const assets = useMemo(() => allAssets.filter((a) => matchesMediaFilter(a.kind, filter)), [allAssets, filter]);
 

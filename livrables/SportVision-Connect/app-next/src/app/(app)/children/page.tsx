@@ -1,26 +1,55 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
-import { childrenByParentOrg } from "@/lib/mock/persona";
+import { fetchConfirmedChildren, type ConfirmedChild } from "@/lib/data/family/children";
+import { fetchChildAuthorizations } from "@/lib/data/family/authorizations";
+import { createClient } from "@/lib/supabase/client";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 
 // /children — profils associés du parent, une carte par enfant. ACTIONS.md § 20 « Parent —
-// Profils associés ». Bandeau d'alerte si une autorisation manque ; « Voir ses contenus » et
-// « Réserver une prestation » n'apparaissent que si l'autorisation est signée.
+// Profils associés ». Bandeau d'alerte si le droit à l'image manque ; « Réserver une prestation »
+// n'apparaît que si l'autorisation est signée (voir data/family/authorizations.ts).
 export default function ChildrenPage() {
   const { ctx } = useSession();
   const router = useRouter();
+  const [children, setChildren] = useState<ConfirmedChild[] | null>(null);
+  // Statut réel de l'autorisation "droit_image" par enfant — undefined tant que non chargé.
+  const [imageRightByChild, setImageRightByChild] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    fetchConfirmedChildren(supabase, ctx.organization.id).then(async (rows) => {
+      if (cancelled) return;
+      setChildren(rows);
+      const entries = await Promise.all(
+        rows.map(async (child) => {
+          const auths = await fetchChildAuthorizations(supabase, child.playerId);
+          const droitImage = auths.find((a) => a.code === "droit_image");
+          return [child.playerId, droitImage?.statut ?? "non_transmise"] as const;
+        }),
+      );
+      if (!cancelled) setImageRightByChild(Object.fromEntries(entries));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.organization.id]);
 
   if (!canAccess(ctx, "children")) return <LockedModule />;
 
-  const children = childrenByParentOrg[ctx.organization.id] ?? [];
-  const missingAuth = children.some((c) => c.imageRightStatus !== "signed");
+  if (children === null) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  }
+
+  const missingAuth = children.some((c) => imageRightByChild[c.playerId] !== "valide");
 
   return (
     <div className="flex flex-col gap-5">
@@ -52,10 +81,10 @@ export default function ChildrenPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {children.map((child) => {
-          const signed = child.imageRightStatus === "signed";
+          const signed = imageRightByChild[child.playerId] === "valide";
           const initials = `${child.firstName[0] ?? ""}${child.lastName[0] ?? ""}`.toUpperCase();
           return (
-            <Card key={child.id} className="p-5">
+            <Card key={child.playerId} className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[13px] font-extrabold text-white">
@@ -66,7 +95,7 @@ export default function ChildrenPage() {
                       {child.firstName} {child.lastName}
                     </div>
                     <div className="text-[12.5px] text-text-soft">
-                      {child.age} ans · {child.teamName} · {child.clubName}
+                      {child.teamName ?? "Équipe non renseignée"} · {child.clubName ?? "—"}
                     </div>
                   </div>
                 </div>
@@ -76,10 +105,8 @@ export default function ChildrenPage() {
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-divider pt-4 text-[12.5px]">
-                <InfoRow label="Numéro" value={child.shirtNumber ?? "—"} />
-                <InfoRow label="Poste" value={child.position ?? "—"} />
-                <InfoRow label="Entraîneur" value={child.coachName} />
-                <InfoRow label="Contenus" value={String(child.contentCount)} />
+                <InfoRow label="Numéro" value={child.numeroMaillot ?? "—"} />
+                <InfoRow label="Licence" value={child.numeroLicence ?? "—"} />
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">

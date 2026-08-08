@@ -256,7 +256,7 @@ const NAV_PLAYER: NavEntry[] = [
   item("communication", "Mes publications", "communication"),
   item("sponsors", "Mes sponsors", "sponsors"),
   item("billing", "Mes factures", "billing"),
-  item("documents", "Mes autorisations", "documents"),
+  item("authorizations", "Mes autorisations", "authorizations"),
   item("messages", "Messages", "messages"),
   item("support", "Aide", "support"),
   item("settings", "Paramètres", "settings"),

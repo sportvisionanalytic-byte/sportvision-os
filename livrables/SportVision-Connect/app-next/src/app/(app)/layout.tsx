@@ -5,7 +5,23 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { NoActiveSpace } from "@/components/layout/NoActiveSpace";
 import { createClient } from "@/lib/supabase/server";
-import { ACTIVE_SPACE_COOKIE, buildClubActiveContext, getSpaces, pickActiveSpace } from "@/lib/supabase/session";
+import {
+  ACTIVE_SPACE_COOKIE,
+  buildClubActiveContext,
+  buildParentActiveContext,
+  buildPlayerActiveContext,
+  getSpaces,
+  pickActiveSpace,
+  type Space,
+} from "@/lib/supabase/session";
+import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
+import type { ActiveContext } from "@/lib/types";
+
+function buildActiveContext(supabase: SupabaseClient, user: SupabaseUser, space: Space): Promise<ActiveContext | null> {
+  if (space.kind === "organization") return buildClubActiveContext(supabase, user, space);
+  if (space.kind === "player") return buildPlayerActiveContext(supabase, user, space);
+  return buildParentActiveContext(supabase, user, space);
+}
 
 // Coque de l'application authentifiée — barre latérale sticky 264 px + barre supérieure 66 px
 // + zone centrale. Voir README.md § Architecture d'interface. Toutes les routes applicatives
@@ -27,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const cookieStore = await cookies();
   const rememberedKey = cookieStore.get(ACTIVE_SPACE_COOKIE)?.value;
   const activeSpace = pickActiveSpace(spaces, rememberedKey);
-  const ctx = activeSpace ? await buildClubActiveContext(supabase, user, activeSpace) : null;
+  const ctx = activeSpace ? await buildActiveContext(supabase, user, activeSpace) : null;
 
   if (!ctx) {
     return <NoActiveSpace spaces={spaces} />;

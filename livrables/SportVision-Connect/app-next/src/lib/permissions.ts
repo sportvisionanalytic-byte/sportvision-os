@@ -1,6 +1,6 @@
 import type { ActiveContext, FeatureKey, ModuleKey, QuotaKey, ResourceKey } from "./types";
 import { PLANS } from "./plans";
-import { MODULE_TO_CONNECT_MODULE, PHASE1_READY_MODULES } from "./supabase/entitlements";
+import { MODULE_TO_CONNECT_MODULE, READY_MODULES } from "./supabase/entitlements";
 
 // Permissions centralisées — voir README.md § Logique d'abonnement et DATA_MODEL.md
 // § Fonctions de permission.
@@ -13,15 +13,15 @@ import { MODULE_TO_CONNECT_MODULE, PHASE1_READY_MODULES } from "./supabase/entit
 const READ_ONLY_ROLES = new Set(["viewer"]);
 
 /**
- * Phase 1 (Espace Club branché sur données réelles, voir le plan de migration) : un module
- * absent de PHASE1_READY_MODULES est verrouillé, jamais ouvert par défaut — sinon un club réel
- * verrait du contenu mock (organisations/joueurs fictifs) sur un module pas encore branché.
- * Pour un module prêt, l'accès réel est piloté par organization_entitlements (via
- * MODULE_TO_CONNECT_MODULE) ; un module prêt sans clé d'entitlement est "core" (inclus dans
- * toute offre Club+, cf. ARCHITECTURE-CONNECT.md § Correspondance offres → entitlements).
+ * Un module absent de READY_MODULES est verrouillé, jamais ouvert par défaut — sinon un compte
+ * réel (club, joueur ou parent) verrait du contenu mock sur un module pas encore branché. Pour un
+ * module prêt, l'accès réel est piloté par organization_entitlements (via
+ * MODULE_TO_CONNECT_MODULE) quand une clé existe ; un module prêt sans clé est "core" (inclus
+ * par défaut — modules personnels Joueur/Famille, ou offre Club+ de base, cf.
+ * ARCHITECTURE-CONNECT.md § Correspondance offres → entitlements).
  */
 export function canAccess(ctx: ActiveContext, module: ModuleKey): boolean {
-  if (!PHASE1_READY_MODULES.has(module)) return false;
+  if (!READY_MODULES.has(module)) return false;
   const connectModuleKey = MODULE_TO_CONNECT_MODULE[module];
   if (!connectModuleKey) return true;
   return ctx.entitlements?.[connectModuleKey]?.actif ?? false;

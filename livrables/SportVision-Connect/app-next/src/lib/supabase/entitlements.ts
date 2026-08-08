@@ -2,7 +2,7 @@ import type { ModuleKey } from "@/lib/types";
 
 // Pilotage réel des modules — voir le plan Phase 1 § Décisions d'architecture n°4.
 //
-// PHASE1_READY_MODULES : seuls ces modules lisent de vraies données (src/lib/data/club/*).
+// READY_MODULES : seuls ces modules lisent de vraies données (src/lib/data/club/*).
 // Tout module absent de cette liste DOIT être verrouillé pour un contexte club en Phase 1 —
 // jamais laissé "ouvert par défaut", ce qui exposerait du contenu mock (clubs/joueurs fictifs)
 // sur le compte d'un vrai club connecté.
@@ -18,7 +18,11 @@ import type { ModuleKey } from "@/lib/types";
 // type de prestation typés, obligatoires. Forcer un mapping produirait un prix "0 €" trompeur
 // plutôt qu'une absence honnête de donnée. Reste verrouillé jusqu'à une vraie décision produit
 // sur comment représenter ce module (hors scope Phase 1).
-export const PHASE1_READY_MODULES: ReadonlySet<ModuleKey> = new Set([
+//
+// "children"/"authorizations" (Phase 2, Espace Famille) : ajoutés une fois /children et
+// /authorizations remodelés sur parent_player_relationships/parental_authorizations réels — voir
+// le plan Phase 2. Pas de clé connect_modules équivalente (module personnel, pas un module club).
+export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "dashboard",
   "teams",
   "matchcenter",
@@ -29,10 +33,12 @@ export const PHASE1_READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "visual_requests",
   "support",
   "settings",
+  "children",
+  "authorizations",
 ]);
 
 /**
- * ModuleKey (design) → connect_modules.key (réel). Un module de PHASE1_READY_MODULES absent
+ * ModuleKey (design) → connect_modules.key (réel). Un module de READY_MODULES absent
  * de cette table n'est gated par aucun entitlement — accès "core", garanti à tout membre actif
  * (ex. dashboard, calendar, services, support, billing, settings : pas de ligne connect_modules
  * dédiée côté Club+ Start, cf. ARCHITECTURE-CONNECT.md § Correspondance offres → entitlements).

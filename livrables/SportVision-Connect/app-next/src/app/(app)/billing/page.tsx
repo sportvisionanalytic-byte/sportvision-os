@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CreditCard, FileText, Receipt } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC, formatPaymentMethod } from "@/components/billing/format";
 import { contractsForOrganization, daysLate, invoicesForOrganization, mockPaymentMethods } from "@/lib/mock/billing";
-import { mockOrganizations } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/client";
 
 // Écran Factures — ACTIONS.md § 19. 3 cartes (facture en retard, prochaine mensualité, moyen de
 // paiement) puis la liste des factures.
@@ -135,7 +136,19 @@ export default function BillingPage() {
 
 function AffiliatedPlayerNotice() {
   const { ctx } = useSession();
-  const club = mockOrganizations.find((o) => o.id === ctx.organization.parentOrganizationId);
+  const [clubName, setClubName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ctx.organization.parentOrganizationId) return;
+    const supabase = createClient();
+    supabase
+      .from("organizations")
+      .select("nom")
+      .eq("id", ctx.organization.parentOrganizationId)
+      .maybeSingle()
+      .then(({ data }) => setClubName((data as { nom: string } | null)?.nom ?? null));
+  }, [ctx.organization.parentOrganizationId]);
+
   return (
     <Card className="flex flex-col items-center gap-3 px-8 py-16 text-center">
       <Receipt className="h-6 w-6 text-text-faint" aria-hidden />
@@ -146,7 +159,7 @@ function AffiliatedPlayerNotice() {
           l&apos;organisation qui vous accueille — voir README.md § Joueur affilié vs indépendant.
         </p>
       </div>
-      {club && <div className="text-[12.5px] font-bold text-text-soft">Club : {club.name}</div>}
+      {clubName && <div className="text-[12.5px] font-bold text-text-soft">Club : {clubName}</div>}
     </Card>
   );
 }

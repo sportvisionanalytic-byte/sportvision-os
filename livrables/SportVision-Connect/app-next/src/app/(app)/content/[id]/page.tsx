@@ -17,16 +17,23 @@ export default function MediaDetailPage({ params }: { params: { id: string } }) 
   const { ctx } = useSession();
   const [asset, setAsset] = useState<MediaAsset | null | undefined>(undefined);
 
+  // Pour un joueur, les médias réels sont scopés par club_id (player_profiles.club_id, exposé
+  // via organization.parentOrganizationId — voir le plan Phase 2 § Décisions d'architecture n°1),
+  // pas par ctx.organization.id (= player_profiles.id). La RLS is_media_visible_to_family filtre
+  // déjà aux médias visibles pour cette famille, quel que soit le club_id transmis.
+  const clubId = ctx.organization.type === "player" ? ctx.organization.parentOrganizationId : ctx.organization.id;
+
   useEffect(() => {
+    if (!clubId) return;
     let cancelled = false;
     const supabase = createClient();
-    fetchClubMediaAssets(supabase, ctx.organization.id).then((rows) => {
+    fetchClubMediaAssets(supabase, clubId).then((rows) => {
       if (!cancelled) setAsset(rows.find((a) => a.id === params.id) ?? null);
     });
     return () => {
       cancelled = true;
     };
-  }, [ctx.organization.id, params.id]);
+  }, [clubId, params.id]);
 
   if (!canAccess(ctx, "content")) return <LockedModule />;
 
@@ -36,7 +43,7 @@ export default function MediaDetailPage({ params }: { params: { id: string } }) 
 
   // Sécurité — voir DATA_MODEL.md § Sécurité : vérification d'organisation avant d'afficher la
   // ressource (filtrage déjà scopé par organisation active côté requête, revérifié ici).
-  if (!asset || asset.organizationId !== ctx.organization.id) {
+  if (!asset || asset.organizationId !== clubId) {
     return (
       <Card className="mx-auto flex max-w-[480px] flex-col items-center gap-3 p-9 text-center">
         <div className="text-[16px] font-extrabold tracking-tight">Contenu introuvable</div>

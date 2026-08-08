@@ -1,6 +1,22 @@
 import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
-import type { ActiveContext } from "@/lib/types";
+import type { ActiveContext, User } from "@/lib/types";
 import { mapClubPlan, mapClubRole, mapOrgType, SPACE_TYPE_LABELS } from "./mappers";
+
+function buildUserFromAuth(authUser: SupabaseUser): User {
+  const meta = (authUser.user_metadata ?? {}) as { prenom?: string; nom?: string; telephone?: string };
+  return {
+    id: authUser.id,
+    firstName: meta.prenom ?? "",
+    lastName: meta.nom ?? "",
+    email: authUser.email ?? "",
+    phone: meta.telephone,
+    locale: "fr",
+    theme: "dark",
+    mfaEnabled: false,
+    onboardingStep: 10,
+    onboardingCompletedAt: authUser.created_at,
+  };
+}
 
 // Reproduit bootAfterLogin() de l'app vanilla (app/index.html ~820-869) : un "espace" n'est pas
 // forcément une organisation — un espace Joueur/Famille n'a pas de ligne `memberships`, juste une
@@ -15,7 +31,9 @@ export interface Space {
   id: string;
   name: string;
   subtitle: string;
-  /** Seuls les espaces organisation de type club sont branchés en Phase 1. */
+  /** false uniquement pour une organisation non-club (coach/académie/sponsor/projet réels) —
+   * bascule espace par espace, voir le plan Phase 1 § Décisions d'architecture n°3. Club, joueur
+   * et parent sont cliquables depuis la Phase 2. */
   clickable: boolean;
   organizationType?: string;
   membershipId?: string;
@@ -70,7 +88,7 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
       id: row.id,
       name: `${row.prenom} ${row.nom}`,
       subtitle: SPACE_TYPE_LABELS.player ?? "Joueur",
-      clickable: false,
+      clickable: true,
     });
   }
 
@@ -80,7 +98,7 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
       id: row.id,
       name: `${row.prenom} ${row.nom}`,
       subtitle: SPACE_TYPE_LABELS.parent ?? "Parent / Famille",
-      clickable: false,
+      clickable: true,
     });
   }
 
@@ -142,8 +160,6 @@ export async function buildClubActiveContext(
   const club = clubRes.data as ClubRow | null;
   if (!org || !club || !space.role) return null;
 
-  const meta = (authUser.user_metadata ?? {}) as { prenom?: string; nom?: string; telephone?: string };
-
   const entitlements: NonNullable<ActiveContext["entitlements"]> = {};
   for (const row of (entitlementsRes.data ?? []) as EntitlementRow[]) {
     entitlements[row.module_key] = {
@@ -154,18 +170,7 @@ export async function buildClubActiveContext(
   }
 
   return {
-    user: {
-      id: authUser.id,
-      firstName: meta.prenom ?? "",
-      lastName: meta.nom ?? "",
-      email: authUser.email ?? "",
-      phone: meta.telephone,
-      locale: "fr",
-      theme: "dark",
-      mfaEnabled: false,
-      onboardingStep: 10,
-      onboardingCompletedAt: authUser.created_at,
-    },
+    user: buildUserFromAuth(authUser),
     organization: {
       id: org.id,
       type: mapOrgType(org.organization_type),
@@ -198,5 +203,142 @@ export async function buildClubActiveContext(
       storageQuotaBytes: 1,
     },
     entitlements,
+  };
+}
+
+interface PlayerProfileRow {
+  id: string;
+  club_id: string;
+  prenom: string;
+  nom: string;
+  account_status: string;
+  created_at: string;
+}
+
+/**
+ * Construit l'ActiveContext pour un espace Joueur — voir le plan Phase 2 § Décisions
+ * d'architecture n°1. `membership`/`subscription` sont synthétiques (un joueur n'a ni ligne
+ * `memberships` ni `clubs` propre) : role "player", plan "club_access" (déjà la convention posée
+ * par le mock pour "inclus dans l'offre du club"), quotas à 0 (non trackés côté réel).
+ * `entitlements` reste undefined — canAccess() verrouille alors tout module gated par une clé
+ * (teams, matchcenter, sponsors...), ce qui est le comportement voulu pour un espace personnel.
+ */
+export async function buildPlayerActiveContext(
+  supabase: SupabaseClient,
+  authUser: SupabaseUser,
+  space: Space,
+): Promise<ActiveContext | null> {
+  if (space.kind !== "player") return null;
+
+  const { data } = await supabase
+    .from("player_profiles")
+    .select("id, club_id, prenom, nom, account_status, created_at")
+    .eq("id", space.id)
+    .maybeSingle();
+  const player = data as PlayerProfileRow | null;
+  if (!player) return null;
+
+  return {
+    user: buildUserFromAuth(authUser),
+    organization: {
+      id: player.id,
+      type: "player",
+      name: `${player.prenom} ${player.nom}`,
+      // Toujours résolvable : player_profiles.club_id est NOT NULL en base (un joueur appartient
+      // toujours à un seul club) — voir le plan Phase 2 § Décisions d'architecture n°1.
+      parentOrganizationId: player.club_id,
+      createdAt: player.created_at,
+    },
+    membership: {
+      id: `player-membership-${player.id}`,
+      userId: authUser.id,
+      organizationId: player.id,
+      role: "player",
+      teamScope: [],
+      capabilities: [],
+      status: player.account_status === "actif" ? "active" : "disabled",
+    },
+    subscription: {
+      id: `sub-${player.id}`,
+      organizationId: player.id,
+      planCode: "club_access",
+      status: "active",
+      startsAt: player.created_at,
+      renewsAt: player.created_at,
+      commitmentMonths: 0,
+      noticeMonths: 0,
+      creditsRemaining: 0,
+      creditsReserved: 0,
+      presencesUsed: 0,
+      storageUsedBytes: 0,
+      storageQuotaBytes: 1,
+    },
+  };
+}
+
+interface ParentProfileRow {
+  id: string;
+  prenom: string | null;
+  nom: string | null;
+  created_at: string;
+}
+
+/**
+ * Construit l'ActiveContext pour un espace Famille. `organization.parentOrganizationId` reste
+ * undefined (contrairement au joueur) : un parent peut avoir des enfants dans plusieurs clubs,
+ * pas de club unique à résoudre sans ambiguïté — voir le plan Phase 2 § Décisions
+ * d'architecture n°1. `membership.status` = "active" si au moins un enfant confirmé
+ * (`parent_player_relationships.statut='confirme'`), sinon "invited" (en attente).
+ */
+export async function buildParentActiveContext(
+  supabase: SupabaseClient,
+  authUser: SupabaseUser,
+  space: Space,
+): Promise<ActiveContext | null> {
+  if (space.kind !== "parent") return null;
+
+  const [parentRes, confirmedRes] = await Promise.all([
+    supabase.from("parent_profiles").select("id, prenom, nom, created_at").eq("id", space.id).maybeSingle(),
+    supabase
+      .from("parent_player_relationships")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_id", space.id)
+      .eq("statut", "confirme"),
+  ]);
+  const parent = parentRes.data as ParentProfileRow | null;
+  if (!parent) return null;
+
+  return {
+    user: buildUserFromAuth(authUser),
+    organization: {
+      id: parent.id,
+      type: "parent",
+      name: `${parent.prenom ?? ""} ${parent.nom ?? ""}`.trim() || (authUser.email ?? "Parent"),
+      createdAt: parent.created_at,
+    },
+    membership: {
+      id: `parent-membership-${parent.id}`,
+      userId: authUser.id,
+      organizationId: parent.id,
+      role: "parent",
+      teamScope: [],
+      capabilities: [],
+      status: (confirmedRes.count ?? 0) > 0 ? "active" : "invited",
+    },
+    subscription: {
+      id: `sub-${parent.id}`,
+      organizationId: parent.id,
+      planCode: "club_access",
+      status: "active",
+      startsAt: parent.created_at,
+      renewsAt: parent.created_at,
+      commitmentMonths: 0,
+      noticeMonths: 0,
+      creditsRemaining: 0,
+      creditsReserved: 0,
+      presencesUsed: 0,
+      storageUsedBytes: 0,
+      storageQuotaBytes: 1,
+    },
   };
 }

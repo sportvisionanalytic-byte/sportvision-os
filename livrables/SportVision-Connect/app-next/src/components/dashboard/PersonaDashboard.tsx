@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
-import { mockOrganizations } from "@/lib/mock-data";
 import { formatPlanCredits, PLANS } from "@/lib/plans";
 import type { ActiveContext } from "@/lib/types";
 import {
-  childImageRightsByChild,
-  childrenByParentOrg,
   delegatedAccessByCmOrg,
   sponsorDeliverables,
   sponsorOperationsByOrg,
 } from "@/lib/mock/persona";
+import { fetchConfirmedChildren, type ConfirmedChild } from "@/lib/data/family/children";
+import { fetchChildAuthorizations, type ChildAuthorization } from "@/lib/data/family/authorizations";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
@@ -66,7 +66,20 @@ const SPONSORED_CLUB_LABEL: Record<string, string> = {
   "org-varenneauto": "US Varenne",
 };
 
-function buildConfig(ctx: ActiveContext): PersonaConfig {
+/** Données réelles chargées côté PersonaDashboard pour les cas player/parent (voir le plan
+ * Phase 2 § Décisions d'architecture n°6) — vide tant que non chargées, buildConfig retombe alors
+ * sur des valeurs à zéro plutôt que de bloquer le rendu du tableau de bord. */
+interface PersonaExtra {
+  playerClubName?: string;
+  children?: ConfirmedChild[];
+  authByChild?: Record<string, ChildAuthorization[]>;
+}
+
+function hasValidImageRight(auths: ChildAuthorization[] | undefined): boolean {
+  return !!auths?.some((a) => a.code === "droit_image" && a.statut === "valide");
+}
+
+function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
   const { organization, user, subscription } = ctx;
   const plan = PLANS[subscription.planCode];
   const storagePct = Math.round((subscription.storageUsedBytes / subscription.storageQuotaBytes) * 100);
@@ -91,13 +104,10 @@ function buildConfig(ctx: ActiveContext): PersonaConfig {
   switch (organization.type) {
     case "player": {
       const isAffiliated = !!organization.parentOrganizationId;
-      const parentClub = isAffiliated
-        ? mockOrganizations.find((o) => o.id === organization.parentOrganizationId)
-        : undefined;
       return {
         eyebrow: "Mon espace",
         clubBadge: isAffiliated
-          ? { label: `CLUB ABONNÉ · ${parentClub?.name ?? "club affilié"}`, tone: "success" }
+          ? { label: `CLUB ABONNÉ · ${extra.playerClubName ?? "…"}`, tone: "success" }
           : { label: "SANS CLUB", tone: "neutral" },
         title: `Bonjour ${user.firstName}, voici vos derniers contenus.`,
         subtitle: isAffiliated
@@ -143,12 +153,11 @@ function buildConfig(ctx: ActiveContext): PersonaConfig {
     }
 
     case "parent": {
-      const children = childrenByParentOrg[organization.id] ?? [];
-      const signedCount = children.filter(
-        (c) => childImageRightsByChild[c.id]?.scopes.team_match_photos || c.imageRightStatus === "signed",
-      ).length;
+      const children = extra.children ?? [];
+      const authByChild = extra.authByChild ?? {};
+      const signedCount = children.filter((c) => hasValidImageRight(authByChild[c.playerId])).length;
       const authPct = children.length ? Math.round((signedCount / children.length) * 100) : 100;
-      const pendingChild = children.find((c) => c.imageRightStatus !== "signed");
+      const pendingChild = children.find((c) => !hasValidImageRight(authByChild[c.playerId]));
       return {
         eyebrow: "Mes enfants",
         title: `Bonjour ${user.firstName}, voici le suivi de vos enfants.`,
@@ -353,7 +362,30 @@ export function PersonaDashboard() {
   const { ctx } = useSession();
   const router = useRouter();
   const [shareCopied, setShareCopied] = useState(false);
-  const config = buildConfig(ctx);
+  const [extra, setExtra] = useState<PersonaExtra>({});
+
+  useEffect(() => {
+    const supabase = createClient();
+    if (ctx.organization.type === "player" && ctx.organization.parentOrganizationId) {
+      supabase
+        .from("organizations")
+        .select("nom")
+        .eq("id", ctx.organization.parentOrganizationId)
+        .maybeSingle()
+        .then(({ data }) => setExtra({ playerClubName: (data as { nom: string } | null)?.nom }));
+    } else if (ctx.organization.type === "parent") {
+      fetchConfirmedChildren(supabase, ctx.organization.id).then(async (children) => {
+        const entries = await Promise.all(
+          children.map(async (c) => [c.playerId, await fetchChildAuthorizations(supabase, c.playerId)] as const),
+        );
+        setExtra({ children, authByChild: Object.fromEntries(entries) });
+      });
+    } else {
+      setExtra({});
+    }
+  }, [ctx.organization.id, ctx.organization.type, ctx.organization.parentOrganizationId]);
+
+  const config = buildConfig(ctx, extra);
 
   function handleShareBook() {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
