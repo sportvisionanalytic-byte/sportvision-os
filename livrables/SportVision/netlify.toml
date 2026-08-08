@@ -62,6 +62,26 @@
   status = 200
 
 [[redirects]]
+  from = "/full-communication/clubs"
+  to = "/full-communication-clubs.html"
+  status = 200
+
+[[redirects]]
+  from = "/full-communication/coachs"
+  to = "/full-communication-coachs.html"
+  status = 200
+
+[[redirects]]
+  from = "/full-communication/academies"
+  to = "/full-communication-academies.html"
+  status = 200
+
+[[redirects]]
+  from = "/full-communication/evenements"
+  to = "/full-communication-evenements.html"
+  status = 200
+
+[[redirects]]
   from = "/connect"
   to = "/connect.html"
   status = 200
