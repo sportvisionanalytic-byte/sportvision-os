@@ -18,7 +18,13 @@
 // (name: create-team-contribution-checkout)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
 // STRIPE_SECRET_KEY (déjà utilisé par create-checkout-session)
-// Secret optionnel : CLUBPLUS_URL (comme clubplus-invite/clubplus-family-invite)
+// Secret optionnel : CONNECT_URL (comme clubplus-invite/clubplus-family-invite)
+//
+// Fix du 08/08/2026 : success_url/cancel_url pointaient vers l'ancienne app
+// Club+ (app.html). Connect n'a pas de handler dédié à "contribution=" —
+// on utilise donc "paiement=succes/annule", déjà lu génériquement par
+// handlePaymentReturn() dans index.html (contribution_id conservé en plus,
+// sans effet sur ce handler générique).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -49,7 +55,7 @@ serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
-    const clubplusUrl = Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision.fr";
+    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
 
     if (!stripeSecretKey) return json({ error: "STRIPE_SECRET_KEY non configurée" }, 500);
 
@@ -180,8 +186,8 @@ serve(async (req) => {
           quantity: 1,
         },
       ],
-      success_url: `${clubplusUrl}/app.html?contribution=succes&contribution_id=${contribution.id}`,
-      cancel_url: `${clubplusUrl}/app.html?contribution=annule&contribution_id=${contribution.id}`,
+      success_url: `${connectUrl}/?paiement=succes&contribution_id=${contribution.id}`,
+      cancel_url: `${connectUrl}/?paiement=annule&contribution_id=${contribution.id}`,
       client_reference_id: contribution.id,
       metadata: { contribution_id: contribution.id },
       customer_email: user.email ?? undefined,

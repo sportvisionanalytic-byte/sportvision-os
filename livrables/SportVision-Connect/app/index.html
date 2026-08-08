@@ -580,9 +580,16 @@ async function handleSetNewPassword(){
   await bootAfterLogin();
 }
 
-// Détecte un lien de récupération Supabase (#access_token=...&type=recovery) au chargement.
+// Détecte un lien Supabase de type recovery/invite/signup
+// (#access_token=...&type=...) au chargement — les trois types demandent la
+// même action (définir un mot de passe) et utilisent le même format de hash.
+// À l'origine seul 'type=recovery' était reconnu : un lien d'invitation
+// envoyé par inviteUserByEmail (ex. org-invite, clubplus-invite) déposait
+// l'utilisateur sur l'écran de connexion sans que sa session soit établie,
+// au lieu de l'écran "définir mon mot de passe".
 async function consumeRecoveryHash(){
-  if (!window.location.hash.includes('type=recovery')) return false;
+  const h = window.location.hash;
+  if (!h.includes('type=recovery') && !h.includes('type=invite') && !h.includes('type=signup')) return false;
   const params = new URLSearchParams(window.location.hash.slice(1));
   const accessToken = params.get('access_token');
   const refreshToken = params.get('refresh_token');

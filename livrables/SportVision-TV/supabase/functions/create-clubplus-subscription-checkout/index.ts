@@ -32,7 +32,12 @@
 // Deploy via Supabase dashboard > Edge Functions > New Function
 // (name: create-clubplus-subscription-checkout)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
-//                  STRIPE_SECRET_KEY, CLUBPLUS_URL
+//                  STRIPE_SECRET_KEY, CONNECT_URL
+//
+// Fix du 08/08/2026 : success_url/cancel_url pointaient vers l'ancienne app
+// Club+ (app.html) au lieu de Connect. Le module club-abonnement.js de
+// Connect lit déjà ?abonnement=succes|annule (handleAbonnementReturn) —
+// paramètre conservé tel quel, seul le domaine change.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -137,7 +142,7 @@ serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
-    const clubplusUrl = Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision.fr";
+    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
 
     if (!stripeSecretKey) return json({ error: "STRIPE_SECRET_KEY non configurée" }, 500);
 
@@ -215,8 +220,8 @@ serve(async (req) => {
       payment_method_types: ["card"],
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${clubplusUrl}/app.html?abonnement=succes`,
-      cancel_url: `${clubplusUrl}/app.html?abonnement=annule`,
+      success_url: `${connectUrl}/?abonnement=succes`,
+      cancel_url: `${connectUrl}/?abonnement=annule`,
       client_reference_id: clubId,
       metadata: { club_id: clubId, plan, engagement },
       // Recopiés sur l'abonnement lui-même : le webhook retrouve ainsi le club

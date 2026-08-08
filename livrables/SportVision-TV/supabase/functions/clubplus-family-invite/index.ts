@@ -21,7 +21,8 @@
 //
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: clubplus-family-invite)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (déjà présents par défaut)
-// Secret optionnel : CLUBPLUS_URL (comme clubplus-invite)
+// Secret optionnel : CONNECT_URL (comme clubplus-invite — fix du 08/08/2026,
+// pointait vers l'ancienne app Club+ séparée absorbée par Connect)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -70,7 +71,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const clubplusUrl = Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision.fr";
+    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -148,7 +149,7 @@ serve(async (req) => {
     }
 
     const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${clubplusUrl}/SportVision-Club-Plus.html`,
+      redirectTo: `${connectUrl}/`,
       data: { prenom, nom },
     });
 

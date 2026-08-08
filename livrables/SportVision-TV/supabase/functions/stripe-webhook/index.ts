@@ -14,9 +14,9 @@
 //                  PENNYLANE_API_KEY (pour l'avoir automatique sur remboursement — optionnel : si
 //                  absente, le remboursement est quand même resynchronisé, seul l'avoir Pennylane
 //                  n'est pas créé et le staff est notifié pour le faire manuellement),
-//                  CLUBPLUS_URL (optionnel — repli sur https://clubplus.sportvision.fr, même
-//                  variable que create-clubplus-subscription-checkout / clubplus-billing-portal ;
-//                  utilisée dans le lien "Gérer mon abonnement" de l'e-mail d'échec de paiement)
+//                  CONNECT_URL (optionnel — repli sur https://connect.sportvision.fr ; utilisée
+//                  dans le lien "Gérer mon abonnement" de l'e-mail d'échec de paiement. Fix du
+//                  08/08/2026 : pointait vers l'ancienne app Club+ séparée.)
 //
 // E-mails CLIENT sur le cycle de vie de l'abonnement (migration-clubplus-v27, 2026-08-06) :
 // jusqu'ici, seul le STAFF SportVision était notifié (notify_staff_by_role) sur activation,
@@ -53,7 +53,7 @@ const PENNYLANE_BASE = "https://app.pennylane.com/api/external/v2";
 // prélèvement (lien vers le bouton "Gérer mon abonnement", qui ouvre le
 // Portail de facturation Stripe côté clubplus-billing-portal). Même
 // variable et même repli que create-clubplus-subscription-checkout.
-const CLUBPLUS_URL = Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision.fr";
+const CLUBPLUS_CONNECT_URL = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
 
 /* ── Abonnement Club+ (migration-clubplus-v25) ── */
 
@@ -686,7 +686,7 @@ serve(async (req) => {
                 p_payload: {
                   first_name: contact.prenom,
                   montant: montantFmt,
-                  lien_gestion: CLUBPLUS_URL + "/app.html",
+                  lien_gestion: CLUBPLUS_CONNECT_URL + "/",
                 },
               });
             }

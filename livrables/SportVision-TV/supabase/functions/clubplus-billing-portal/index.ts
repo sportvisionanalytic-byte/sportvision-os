@@ -30,7 +30,10 @@
 // Deploy via Supabase dashboard > Edge Functions > New Function
 // (name: clubplus-billing-portal)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
-//                  STRIPE_SECRET_KEY, CLUBPLUS_URL
+//                  STRIPE_SECRET_KEY, CONNECT_URL
+//
+// Fix du 08/08/2026 : return_url pointait vers l'ancienne app Club+
+// (app.html) au lieu de Connect.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -61,7 +64,7 @@ serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
-    const clubplusUrl = Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision.fr";
+    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
 
     if (!stripeSecretKey) return json({ error: "STRIPE_SECRET_KEY non configurée" }, 500);
 
@@ -107,7 +110,7 @@ serve(async (req) => {
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: club.stripe_customer_id,
-      return_url: `${clubplusUrl}/app.html`,
+      return_url: `${connectUrl}/`,
     });
 
     return json({ url: portalSession.url });
