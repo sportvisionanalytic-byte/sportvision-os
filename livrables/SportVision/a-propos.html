@@ -168,6 +168,13 @@ section{position:relative}
 .offer-card .desc{font-size:13.5px;color:#5b6478;margin-top:8px}
 .offer-card.featured .desc{color:rgba(255,255,255,.7)}
 
+/* ── Équipe (photos terrain, sans nom) ── */
+.team-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:12px}
+.team-photo{position:relative;border-radius:var(--radius-lg);overflow:hidden;aspect-ratio:3/4;background:#131a3d}
+.team-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.team-photo .overlay{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.75),transparent 50%);display:flex;align-items:flex-end;padding:14px}
+.team-photo .overlay span{color:#fff;font-size:12.5px;font-weight:700;letter-spacing:.02em}
+
 /* ── CTA final ── */
 .cta-final{background:var(--navy-900);color:#fff;padding:120px 0;text-align:center;position:relative;overflow:hidden}
 .cta-final::before{content:'';position:absolute;inset:0;background:var(--grad-hero-glow);opacity:.7}
@@ -220,10 +227,12 @@ section{position:relative}
   .offer-card.featured{transform:none}
   .services-grid{grid-template-columns:repeat(2,1fr)}
   .process-steps{grid-template-columns:repeat(2,1fr)}
+  .team-grid{grid-template-columns:repeat(2,1fr)}
   .footer-grid{grid-template-columns:1fr 1fr}
 }
 @media (max-width:560px){
   .hero{padding:130px 0 70px}
+  .team-grid{grid-template-columns:1fr 1fr}
   .footer-grid{grid-template-columns:1fr}
 }
 
@@ -493,6 +502,23 @@ section{position:relative}
         <h3>SportVision TV</h3>
         <p class="desc">Un projet média à moyen terme, pensé pour donner au sport amateur une diffusion qu'il n'a pas aujourd'hui. Les détails seront communiqués en temps voulu.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ L'ÉQUIPE SPORTVISION ══════════════ -->
+<section class="section-light" id="equipe">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">L'équipe SportVision</span>
+      <h2>Sur le terrain, à chaque prestation.</h2>
+      <p>Une équipe d'opérateurs présents sur le terrain pour capter vos matchs, shootings et événements.</p>
+    </div>
+    <div class="team-grid reveal">
+      <div class="team-photo"><img src="assets/equipe/equipe-photographe-01.jpg" alt="Photographe SportVision en action sur le terrain" loading="lazy"><div class="overlay"><span>Photographe</span></div></div>
+      <div class="team-photo"><img src="assets/equipe/equipe-photographe-02.jpg" alt="Opérateur SportVision avec matériel photo" loading="lazy"><div class="overlay"><span>Photographe / vidéaste</span></div></div>
+      <div class="team-photo"><img src="assets/equipe/equipe-photographe-03.jpg" alt="Photographe SportVision accrédité en bord de terrain" loading="lazy"><div class="overlay"><span>Photographe</span></div></div>
+      <div class="team-photo"><img src="assets/equipe/equipe-terrain-01.jpg" alt="Équipe SportVision en couverture d'événement" loading="lazy"><div class="overlay"><span>Couverture terrain</span></div></div>
     </div>
   </div>
 </section>
