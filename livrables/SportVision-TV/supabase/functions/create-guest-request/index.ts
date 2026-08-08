@@ -188,6 +188,23 @@ serve(async (req) => {
       return json({ error: "Prénom, nom et e-mail sont requis" }, 400);
     }
 
+    // Validation minimale au-delà du honeypot : un format d'e-mail invalide
+    // créerait un client fantôme (et ferait échouer silencieusement l'envoi
+    // de l'e-mail de confirmation) ; des champs anormalement longs sont un
+    // signe classique de bot/abus plutôt qu'une vraie demande.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return json({ error: "Adresse e-mail invalide" }, 400);
+    }
+    if (prenom.length > 100 || nom.length > 100) {
+      return json({ error: "Prénom ou nom trop long" }, 400);
+    }
+    if (telephone && telephone.length > 30) {
+      return json({ error: "Numéro de téléphone invalide" }, 400);
+    }
+    if (commentaire && commentaire.length > 3000) {
+      return json({ error: "Commentaire trop long (3000 caractères maximum)" }, 400);
+    }
+
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("cf-connecting-ip") || "inconnu";
     const rateOk = await checkRateLimit(admin, `req:${ip}`);
     if (!rateOk) {
