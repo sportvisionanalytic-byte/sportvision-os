@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Download, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
@@ -8,13 +9,29 @@ import { Card } from "@/components/ui/Card";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { TeamCard } from "@/components/teams/TeamCard";
 import { FollowedClubCard } from "@/components/teams/FollowedClubCard";
-import { mockFollowedClubs, teamsForOrganization } from "@/lib/mock/teams";
+import { mockFollowedClubs } from "@/lib/mock/teams";
+import { fetchClubTeams } from "@/lib/data/club/teams";
+import { createClient } from "@/lib/supabase/client";
+import type { Team } from "@/lib/types/teams";
 
 // Écran Équipes — ACTIONS.md § 16. Pour un CM externe (`cm_agency`), la même route devient
 // « Clubs suivis » : 4 statistiques + une carte par club. Le composant reste unique, seul le
 // contenu change selon le type d'organisation (voir README.md § Pas de duplication de pages).
 export default function TeamsPage() {
   const { ctx } = useSession();
+  const [teams, setTeams] = useState<Team[] | null>(null);
+
+  useEffect(() => {
+    if (ctx.organization.type === "cm_agency") return;
+    let cancelled = false;
+    const supabase = createClient();
+    fetchClubTeams(supabase, ctx.organization.id).then((rows) => {
+      if (!cancelled) setTeams(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.organization.id, ctx.organization.type]);
 
   if (!canAccess(ctx, "teams")) return <LockedModule />;
 
@@ -22,8 +39,11 @@ export default function TeamsPage() {
     return <FollowedClubsView organizationId={ctx.organization.id} />;
   }
 
-  const teams = teamsForOrganization(ctx.organization.id);
   const canAddPlayer = canCreate(ctx, "player");
+
+  if (teams === null) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement des équipes…</div>;
+  }
 
   return (
     <div className="flex flex-col gap-5">

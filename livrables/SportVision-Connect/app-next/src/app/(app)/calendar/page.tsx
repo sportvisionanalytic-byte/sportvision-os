@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Plus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
-import { mockCalendarEvents } from "@/lib/mock/calendar";
 import { CALENDAR_EVENT_KIND_LABELS, type CalendarEvent, type CalendarEventKind } from "@/lib/types/calendar";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +12,8 @@ import { LockedModule } from "@/components/ui/LockedModule";
 import { KIND_DOT } from "@/components/calendar/calendar-style";
 import { EventDetailPanel } from "@/components/calendar/EventDetailPanel";
 import { AddEventModal } from "@/components/calendar/AddEventModal";
+import { createClubCalendarEvent, fetchClubCalendarEvents } from "@/lib/data/club/calendar";
+import { createClient } from "@/lib/supabase/client";
 
 // /calendar — voir ACTIONS.md § 15. Calendrier central agrégé (mois/semaine/jour/liste) :
 // « fusionne matchs, entraînements, prestations, tournages, réunions, publications, échéances de
@@ -21,11 +22,13 @@ import { AddEventModal } from "@/components/calendar/AddEventModal";
 
 type ViewMode = "month" | "week" | "day" | "list";
 
-// Ancrée sur la date fictive du jeu de données (voir src/lib/mock/calendar.ts, semaine du 10 août
-// 2026) plutôt que sur la date réelle d'exécution, pour que la vue par défaut montre des
-// événements dans un environnement de démonstration sans backend.
-const TODAY = new Date("2026-08-08T00:00:00");
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
 function startOfWeek(date: Date): Date {
   const d = new Date(date);
@@ -47,11 +50,23 @@ function isSameDay(a: Date, b: Date): boolean {
 
 export default function CalendarPage() {
   const { ctx } = useSession();
-  const [events, setEvents] = useState<CalendarEvent[]>(() => mockCalendarEvents[ctx.organization.id] ?? []);
+  const today = useMemo(() => startOfToday(), []);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [view, setView] = useState<ViewMode>("month");
-  const [reference, setReference] = useState<Date>(TODAY);
+  const [reference, setReference] = useState<Date>(today);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    fetchClubCalendarEvents(supabase, ctx.organization.id).then((rows) => {
+      if (!cancelled) setEvents(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.organization.id]);
 
   if (!canAccess(ctx, "calendar")) return <LockedModule title="Calendrier" />;
 
@@ -75,19 +90,13 @@ export default function CalendarPage() {
   }
 
   function handleCreateEvent(input: { title: string; kind: CalendarEventKind; date: string; time: string; location: string }) {
-    const startsAt = new Date(`${input.date}T${input.time || "09:00"}:00`).toISOString();
-    setEvents((prev) => [
-      ...prev,
-      {
-        id: `cal-local-${Date.now()}`,
-        organizationId: ctx.organization.id,
-        kind: input.kind,
-        title: input.title,
-        startsAt,
-        allDay: false,
-        location: input.location || undefined,
-      },
-    ]);
+    const supabase = createClient();
+    createClubCalendarEvent(supabase, ctx.organization.id, {
+      title: input.title,
+      kind: input.kind,
+      date: input.date,
+      location: input.location || undefined,
+    }).then((created) => setEvents((prev) => [...prev, created]));
   }
 
   function exportIcal() {
@@ -169,7 +178,7 @@ export default function CalendarPage() {
             >
               <ChevronRight className="h-4 w-4" aria-hidden />
             </button>
-            <button onClick={() => setReference(TODAY)} className="ml-1 text-[12px] font-bold text-brand-blue-electric">
+            <button onClick={() => setReference(today)} className="ml-1 text-[12px] font-bold text-brand-blue-electric">
               Aujourd&apos;hui
             </button>
           </div>
@@ -177,13 +186,13 @@ export default function CalendarPage() {
       </div>
 
       {view === "month" && (
-        <MonthView reference={reference} eventsOnDay={eventsOnDay} onSelect={setSelectedEvent} today={TODAY} />
+        <MonthView reference={reference} eventsOnDay={eventsOnDay} onSelect={setSelectedEvent} today={today} />
       )}
       {view === "week" && (
-        <WeekView reference={reference} eventsOnDay={eventsOnDay} onSelect={setSelectedEvent} today={TODAY} />
+        <WeekView reference={reference} eventsOnDay={eventsOnDay} onSelect={setSelectedEvent} today={today} />
       )}
       {view === "day" && <DayView reference={reference} events={eventsOnDay(reference)} onSelect={setSelectedEvent} />}
-      {view === "list" && <ListView events={sortedEvents} onSelect={setSelectedEvent} />}
+      {view === "list" && <ListView events={sortedEvents} onSelect={setSelectedEvent} today={today} />}
 
       {selectedEvent && <EventDetailPanel event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
       {addOpen && <AddEventModal onClose={() => setAddOpen(false)} onCreate={handleCreateEvent} />}
@@ -324,8 +333,16 @@ function DayView({ reference, events, onSelect }: { reference: Date; events: Cal
   );
 }
 
-function ListView({ events, onSelect }: { events: CalendarEvent[]; onSelect: (e: CalendarEvent) => void }) {
-  const upcoming = events.filter((e) => new Date(e.startsAt).getTime() >= TODAY.getTime() - 86_400_000);
+function ListView({
+  events,
+  onSelect,
+  today,
+}: {
+  events: CalendarEvent[];
+  onSelect: (e: CalendarEvent) => void;
+  today: Date;
+}) {
+  const upcoming = events.filter((e) => new Date(e.startsAt).getTime() >= today.getTime() - 86_400_000);
   const groups = new Map<string, CalendarEvent[]>();
   for (const e of upcoming) {
     const label = new Date(e.startsAt).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });

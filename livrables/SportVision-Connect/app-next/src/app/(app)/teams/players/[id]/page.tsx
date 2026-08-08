@@ -44,6 +44,12 @@ export default function PlayerDetailPage({ params }: { params: { id: string } })
 
   if (!canAccess(ctx, "teams")) return <LockedModule />;
 
+  // Phase 1 : pas de roster nominatif réel (voir teams/[id]/page.tsx) — fiche joueur verrouillée
+  // jusqu'à la Phase 2 (Joueur & Famille).
+  if (ctx.organization.type === "club") {
+    return <LockedModule title="Fiche joueur" />;
+  }
+
   const player = mockPlayers.find((p) => p.id === params.id && p.organizationId === ctx.organization.id);
 
   if (!player) {

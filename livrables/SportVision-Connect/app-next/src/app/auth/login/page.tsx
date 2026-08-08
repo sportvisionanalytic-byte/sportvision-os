@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { createClient } from "@/lib/supabase/client";
 
 // /auth/login — voir ACTIONS.md § 1. Ne jamais préciser si c'est l'e-mail ou le mot de passe
 // qui est faux dans le message d'erreur.
@@ -13,11 +14,23 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(false);
+    setSubmitting(true);
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    setSubmitting(false);
+    if (signInError) {
+      setError(true);
+      return;
+    }
     router.push("/dashboard");
+    router.refresh();
   }
 
   return (
@@ -92,6 +105,8 @@ export default function LoginPage() {
               <input
                 type="email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="sophie.martin@fcfontainebleau.fr"
                 className="h-[46px] rounded-xl border border-border-strong bg-surface px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.12)]"
               />
@@ -103,6 +118,8 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••"
                   className="h-[46px] w-full rounded-xl border border-border-strong bg-surface px-3.5 pr-11 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.12)]"
                 />
@@ -132,8 +149,8 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <Button type="submit" className="h-12 w-full text-[15px]">
-              Se connecter
+            <Button type="submit" disabled={submitting} className="h-12 w-full text-[15px]">
+              {submitting ? "Connexion…" : "Se connecter"}
             </Button>
 
             <div className="flex items-center gap-3 text-[12px] font-semibold text-text-faint">

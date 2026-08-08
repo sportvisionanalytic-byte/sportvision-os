@@ -116,6 +116,12 @@ export interface ActiveContext {
   organization: Organization;
   membership: Membership;
   subscription: Subscription;
+  /**
+   * organization_entitlements réels, clé = connect_modules.key. Absent en mock (Phase 0) ;
+   * alimenté par src/lib/supabase/session.ts pour un contexte club réel (Phase 1) — voir
+   * permissions.ts § canAccess.
+   */
+  entitlements?: Record<string, { actif: boolean; quotaCredits: number | null; priorite: "standard" | "prioritaire" }>;
 }
 
 export type ModuleKey =

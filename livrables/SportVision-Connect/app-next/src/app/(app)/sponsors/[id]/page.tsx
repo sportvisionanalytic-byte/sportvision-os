@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FileText, Inbox, Images } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -17,6 +17,9 @@ import {
   mockSponsors,
   visibilityGauge,
 } from "@/lib/mock/sponsors";
+import { fetchClubSponsors } from "@/lib/data/club/sponsors";
+import { createClient } from "@/lib/supabase/client";
+import type { Sponsor } from "@/lib/types/sponsors";
 import { cn } from "@/lib/cn";
 
 // Fiche sponsor — 4 onglets : Livrables · Contrat · Publications · Documents. ACTIONS.md § 17.
@@ -40,11 +43,31 @@ const PAYMENT_SCHEDULE_LABEL: Record<string, string> = {
 export default function SponsorDetailPage({ params }: { params: { id: string } }) {
   const { ctx } = useSession();
   const [tab, setTab] = useState<TabKey>("livrables");
+  const [clubSponsors, setClubSponsors] = useState<Sponsor[] | null>(null);
 
   const isPartner = ctx.organization.type === "sponsor";
+
+  useEffect(() => {
+    if (isPartner) return;
+    let cancelled = false;
+    const supabase = createClient();
+    fetchClubSponsors(supabase, ctx.organization.id).then((rows) => {
+      if (!cancelled) setClubSponsors(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPartner, ctx.organization.id]);
+
   if (!isPartner && !canAccess(ctx, "sponsors")) return <LockedModule />;
 
-  const sponsor = mockSponsors.find((s) => s.id === params.id && (isPartner || s.organizationId === ctx.organization.id));
+  if (!isPartner && clubSponsors === null) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  }
+
+  const sponsor = isPartner
+    ? mockSponsors.find((s) => s.id === params.id)
+    : clubSponsors!.find((s) => s.id === params.id && s.organizationId === ctx.organization.id);
 
   if (!sponsor) {
     return (

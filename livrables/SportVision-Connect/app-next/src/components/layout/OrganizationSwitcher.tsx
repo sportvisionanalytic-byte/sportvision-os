@@ -24,7 +24,7 @@ function initials(name: string) {
 }
 
 export function OrganizationSwitcher() {
-  const { ctx, organizations, setActiveOrganizationId } = useSession();
+  const { ctx, spaces, setActiveSpace } = useSession();
   const [open, setOpen] = useState(false);
 
   return (
@@ -48,29 +48,40 @@ export function OrganizationSwitcher() {
       {open && (
         <div className="animate-svfade absolute left-3.5 right-3.5 top-[58px] z-50 rounded-2xl border border-white/10 bg-elevated p-2 shadow-sv-dropdown">
           <div className="px-2.5 pb-1.5 pt-2 text-[10.5px] font-extrabold uppercase tracking-[.09em] text-[#7E8FA5]">
-            Mes organisations
+            Mes espaces
           </div>
-          {organizations.map((org) => (
-            <button
-              key={org.id}
-              onClick={() => {
-                setActiveOrganizationId(org.id);
-                setOpen(false);
-              }}
-              className={cn(
-                "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-white/[.08]",
-                org.id === ctx.organization.id && "bg-white/[.06]",
-              )}
-            >
-              <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[10.5px] font-extrabold text-white">
-                {initials(org.name)}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[12.5px] font-bold text-white">{org.name}</span>
-                <span className="block truncate text-[11px] text-[#7E8FA5]">{org.type}</span>
-              </span>
-            </button>
-          ))}
+          {spaces.map((space) => {
+            const isActive = space.kind === "organization" && space.id === ctx.organization.id;
+            return (
+              <button
+                key={`${space.kind}:${space.id}`}
+                disabled={!space.clickable}
+                onClick={() => {
+                  if (!space.clickable) return;
+                  setActiveSpace(space);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors",
+                  space.clickable ? "hover:bg-white/[.08]" : "cursor-not-allowed opacity-50",
+                  isActive && "bg-white/[.06]",
+                )}
+              >
+                <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[10.5px] font-extrabold text-white">
+                  {initials(space.name)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12.5px] font-bold text-white">{space.name}</span>
+                  <span className="block truncate text-[11px] text-[#7E8FA5]">{space.subtitle}</span>
+                </span>
+                {!space.clickable && (
+                  <span className="flex-none rounded-full bg-white/10 px-2 py-0.5 text-[9.5px] font-bold text-[#7E8FA5]">
+                    Bientôt
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

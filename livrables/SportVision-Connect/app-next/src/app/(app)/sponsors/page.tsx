@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Award, Download, Gauge, RefreshCw, Wallet } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -15,10 +16,12 @@ import {
   mockSponsorOperations,
   mockSponsorPublications,
   mockSponsorSelfView,
-  sponsorsForOrganization,
   visibilityGauge,
 } from "@/lib/mock/sponsors";
 import { mockOrganizations } from "@/lib/mock-data";
+import { fetchClubSponsors } from "@/lib/data/club/sponsors";
+import { createClient } from "@/lib/supabase/client";
+import type { Sponsor } from "@/lib/types/sponsors";
 
 // Écran Sponsors — ACTIONS.md § 17 (vue club) et § 20 bis (espace partenaire). Le partenaire a
 // son propre espace, séparé du club : jauge de visibilité, contenus sponsorisés, opérations,
@@ -31,6 +34,19 @@ import { mockOrganizations } from "@/lib/mock-data";
 // sponsor sont toujours sur l'offre « Accès via le club » (tier 1).
 export default function SponsorsPage() {
   const { ctx } = useSession();
+  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+
+  useEffect(() => {
+    if (ctx.organization.type !== "club") return;
+    let cancelled = false;
+    const supabase = createClient();
+    fetchClubSponsors(supabase, ctx.organization.id).then((rows) => {
+      if (!cancelled) setSponsors(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.organization.id, ctx.organization.type]);
 
   if (ctx.organization.type === "sponsor") {
     return <PartnerView organizationId={ctx.organization.id} partnerName={ctx.organization.name} />;
@@ -41,7 +57,6 @@ export default function SponsorsPage() {
 
   if (!canAccess(ctx, "sponsors")) return <LockedModule />;
 
-  const sponsors = sponsorsForOrganization(ctx.organization.id);
   const active = sponsors.filter((s) => s.status === "active").length;
   const toRenew = sponsors.filter((s) => s.status === "to_renew").length;
   const totalAmount = sponsors.reduce((sum, s) => sum + s.annualAmount, 0);

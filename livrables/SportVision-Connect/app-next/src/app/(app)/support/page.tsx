@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LifeBuoy, PlayCircle, Search, Send } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
-import { mockSupportTickets, mockSupportTopics } from "@/lib/mock/settings";
-import type { SupportTicketCategory, SupportTicketPriority, SupportTicketStatus } from "@/lib/types/settings";
+import { mockSupportTopics } from "@/lib/mock/settings";
+import type { SupportTicket, SupportTicketCategory, SupportTicketPriority, SupportTicketStatus } from "@/lib/types/settings";
+import { fetchClubSupportTickets, createClubSupportTicket } from "@/lib/data/club/support";
+import { createClient } from "@/lib/supabase/client";
 import { mockThreads, mockMessages } from "@/lib/mock/messaging";
 import { resetOnboardingProgress } from "@/components/onboarding/onboarding-storage";
 import { Card } from "@/components/ui/Card";
@@ -34,7 +36,18 @@ export default function SupportPage() {
   const { ctx } = useSession();
   const [query, setQuery] = useState("");
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
-  const [tickets, setTickets] = useState(() => mockSupportTickets[ctx.organization.id] ?? []);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    fetchClubSupportTickets(supabase, ctx.organization.id).then((rows) => {
+      if (!cancelled) setTickets(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.organization.id]);
 
   if (!canAccess(ctx, "support")) return <LockedModule title="Aide" />;
 
@@ -52,22 +65,11 @@ export default function SupportPage() {
   }
 
   function handleNewTicket(ticket: { subject: string; category: SupportTicketCategory; priority: SupportTicketPriority; description: string }) {
-    setTickets((prev) => [
-      {
-        id: `tck-${Date.now()}`,
-        reference: `TCK-2026-${Math.floor(1000 + Math.random() * 8999)}`,
-        organizationId: ctx.organization.id,
-        createdById: ctx.user.id,
-        subject: ticket.subject,
-        category: ticket.category,
-        priority: ticket.priority,
-        description: ticket.description,
-        status: "open",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
+    const supabase = createClient();
+    const authorName = `${ctx.user.firstName} ${ctx.user.lastName}`.trim();
+    createClubSupportTicket(supabase, ctx.organization.id, authorName, ticket).then((created) => {
+      setTickets((prev) => [created, ...prev]);
+    });
   }
 
   return (

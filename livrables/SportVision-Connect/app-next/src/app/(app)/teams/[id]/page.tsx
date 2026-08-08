@@ -65,6 +65,14 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
 
   if (!canAccess(ctx, "teams")) return <LockedModule />;
 
+  // Phase 1 (branchement backend réel) : club_teams ne modélise qu'un résumé d'équipe, pas de
+  // roster nominatif — pas de table club_players. La fiche équipe détaillée (effectif, droits à
+  // l'image...) reste verrouillée jusqu'à la Phase 2 (Joueur & Famille). Voir le plan de migration
+  // § Gaps de données. Le rendu ci-dessous (mockTeams et suite) redevient actif à ce moment-là.
+  if (ctx.organization.type === "club") {
+    return <LockedModule title="Fiche équipe" />;
+  }
+
   const team = mockTeams.find((t) => t.id === params.id && t.organizationId === ctx.organization.id);
 
   if (!team) {

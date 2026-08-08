@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock, Sparkles } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -12,7 +12,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { MatchResultModal } from "@/components/matchcenter/MatchResultModal";
 import { cn } from "@/lib/cn";
-import { matchesStore, RESULT_TEMPLATE_CODE, updateMatch } from "@/lib/mock/studio";
+import { RESULT_TEMPLATE_CODE } from "@/lib/mock/studio";
+import { fetchClubMatches, saveClubMatchResult } from "@/lib/data/club/matches";
+import { createClient } from "@/lib/supabase/client";
 import { MATCH_STATUS_LABELS, MATCH_STATUS_TONE, type Match, type MatchStatus } from "@/lib/types/studio";
 
 // Match Center — saisie de résultats. Voir ACTIONS.md § 8 et DATA_MODEL.md § Match.
@@ -30,33 +32,48 @@ export default function MatchCenterPage() {
   const { toastMessage, showToast } = useToast();
   const [tab, setTab] = useState<MatchStatus>("upcoming");
   const [modalMatchId, setModalMatchId] = useState<string | null>(null);
-  const [, forceRender] = useState(0);
+  const [matches, setMatches] = useState<Match[]>([]);
+  // "content_created" (visuel généré) n'a pas d'équivalent réel en base (voir data/club/matches.ts)
+  // — recouvrement local uniquement, jamais écrit dans club_matches.status.
+  const [contentCreatedIds, setContentCreatedIds] = useState<Set<string>>(new Set());
 
   const allowed = canAccess(ctx, "matchcenter");
   const canWrite = canCreate(ctx, "match_result");
 
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    fetchClubMatches(supabase, ctx.organization.id).then((rows) => {
+      if (!cancelled) setMatches(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.organization.id]);
+
   if (!allowed) return <LockedModule title="Match Center" />;
 
-  const orgMatches = matchesStore.filter((m) => m.organizationId === ctx.organization.id);
+  const orgMatches = matches.map((m) =>
+    contentCreatedIds.has(m.id) && m.status === "result_received"
+      ? { ...m, status: "content_created" as MatchStatus }
+      : m,
+  );
   const pending = orgMatches.filter((m) => m.status === "result_pending");
   const received = orgMatches.filter((m) => m.status === "result_received" || m.status === "content_created");
   const rows = orgMatches.filter((m) => m.status === tab);
 
-  function refresh() {
-    forceRender((n) => n + 1);
-  }
-
   function handleSaveResult(matchId: string, patch: Partial<Match>) {
-    updateMatch(matchId, patch);
-    setModalMatchId(null);
-    refresh();
-    showToast("Résultat enregistré.");
+    const supabase = createClient();
+    saveClubMatchResult(supabase, matchId, patch).then(() => {
+      setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, ...patch, status: "result_received" } : m)));
+      setModalMatchId(null);
+      showToast("Résultat enregistré.");
+    });
   }
 
   function handleCreateVisual(match?: Match) {
-    updateMatch((match ?? received[0])?.id ?? "", { status: "content_created" });
-    refresh();
     const target = match ?? received[0];
+    if (target) setContentCreatedIds((prev) => new Set(prev).add(target.id));
     router.push(target ? `/studio/${RESULT_TEMPLATE_CODE}?matchId=${target.id}` : `/studio/${RESULT_TEMPLATE_CODE}`);
   }
 

@@ -1,5 +1,6 @@
 import type { ActiveContext, FeatureKey, ModuleKey, QuotaKey, ResourceKey } from "./types";
 import { PLANS } from "./plans";
+import { MODULE_TO_CONNECT_MODULE, PHASE1_READY_MODULES } from "./supabase/entitlements";
 
 // Permissions centralisées — voir README.md § Logique d'abonnement et DATA_MODEL.md
 // § Fonctions de permission.
@@ -9,32 +10,21 @@ import { PLANS } from "./plans";
 // tier de l'offre → entitlements → rôle → périmètre d'équipes → capacités explicites.
 // Le premier refus l'emporte.
 
-/** Tier minimum requis pour voir chaque module. Un module absent d'ici est ouvert à tous les tiers. */
-const MODULE_MIN_TIER: Partial<Record<ModuleKey, 1 | 2 | 3>> = {
-  studio: 2,
-  newsroom: 2,
-  matchcenter: 2,
-  teams: 2,
-  sponsors: 2,
-  analytics: 2,
-  communication: 3,
-  validations: 3,
-  publications: 3,
-  presences: 3,
-  reports: 3,
-  mycm: 3,
-  eventtimeline: 3,
-  live: 3,
-  sessions: 3,
-  camps: 3,
-};
-
 const READ_ONLY_ROLES = new Set(["viewer"]);
 
+/**
+ * Phase 1 (Espace Club branché sur données réelles, voir le plan de migration) : un module
+ * absent de PHASE1_READY_MODULES est verrouillé, jamais ouvert par défaut — sinon un club réel
+ * verrait du contenu mock (organisations/joueurs fictifs) sur un module pas encore branché.
+ * Pour un module prêt, l'accès réel est piloté par organization_entitlements (via
+ * MODULE_TO_CONNECT_MODULE) ; un module prêt sans clé d'entitlement est "core" (inclus dans
+ * toute offre Club+, cf. ARCHITECTURE-CONNECT.md § Correspondance offres → entitlements).
+ */
 export function canAccess(ctx: ActiveContext, module: ModuleKey): boolean {
-  const minTier = MODULE_MIN_TIER[module];
-  if (minTier === undefined) return true;
-  return PLANS[ctx.subscription.planCode].tier >= minTier;
+  if (!PHASE1_READY_MODULES.has(module)) return false;
+  const connectModuleKey = MODULE_TO_CONNECT_MODULE[module];
+  if (!connectModuleKey) return true;
+  return ctx.entitlements?.[connectModuleKey]?.actif ?? false;
 }
 
 export function canCreate(ctx: ActiveContext, _resource: ResourceKey): boolean {

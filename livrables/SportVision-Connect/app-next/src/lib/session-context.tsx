@@ -1,38 +1,48 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import type { ActiveContext } from "./types";
-import { mockMemberships, mockOrganizations, mockSubscriptions, mockUser } from "./mock-data";
+import type { Space } from "./supabase/session";
+import { switchActiveSpace } from "./supabase/actions";
 
 // Contexte de session — fournit l'organisation active et recharge tout au changement
 // (navigation, permissions, données, modules), voir README.md § Chrome permanent.
-// Implémentation mock côté client pour l'instant : à remplacer par la vraie session
-// (cookies/JWT + requêtes serveur) quand la couche d'authentification sera branchée —
-// c'est une décision séparée, volontairement pas prise ici.
+//
+// Reçoit l'état résolu côté serveur (src/app/(app)/layout.tsx, voir le plan Phase 1
+// § Décisions d'architecture n°2) : ctx reste garanti non-nul ici, seul le layout serveur
+// décide si l'app se monte ou non. Le changement d'espace persiste côté serveur (cookie via
+// Server Action) puis déclenche un router.refresh() pour que le layout recalcule ctx.
 
 interface SessionValue {
   ctx: ActiveContext;
-  organizations: typeof mockOrganizations;
-  setActiveOrganizationId: (id: string) => void;
+  spaces: Space[];
+  setActiveSpace: (space: Pick<Space, "kind" | "id">) => void;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
 
-export function SessionProvider({ children }: { children: ReactNode }) {
-  const [activeOrganizationId, setActiveOrganizationId] = useState(mockOrganizations[0]!.id);
+export function SessionProvider({
+  children,
+  initialCtx,
+  initialSpaces,
+}: {
+  children: ReactNode;
+  initialCtx: ActiveContext;
+  initialSpaces: Space[];
+}) {
+  const router = useRouter();
 
-  const value = useMemo<SessionValue>(() => {
-    const organization = mockOrganizations.find((o) => o.id === activeOrganizationId)!;
-    const membership = mockMemberships.find(
-      (m) => m.organizationId === activeOrganizationId && m.userId === mockUser.id,
-    )!;
-    const subscription = mockSubscriptions[activeOrganizationId]!;
-    return {
-      ctx: { user: mockUser, organization, membership, subscription },
-      organizations: mockOrganizations,
-      setActiveOrganizationId,
-    };
-  }, [activeOrganizationId]);
+  const value = useMemo<SessionValue>(
+    () => ({
+      ctx: initialCtx,
+      spaces: initialSpaces,
+      setActiveSpace: (space) => {
+        void switchActiveSpace(space).then(() => router.refresh());
+      },
+    }),
+    [initialCtx, initialSpaces, router],
+  );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

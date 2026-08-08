@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List, Download, Images } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { getCollectionsForOrganization, getMediaAssetsForOrganization, getMediaAssetsForPlayer, MOCK_LUCAS_PLAYER_ID } from "@/lib/mock/content";
-import { MEDIA_FILTERS, matchesMediaFilter, type CollectionKind, type Collection, type MediaFilterKey } from "@/lib/types/content";
+import { getMediaAssetsForPlayer, MOCK_LUCAS_PLAYER_ID } from "@/lib/mock/content";
+import { fetchClubMediaAssets } from "@/lib/data/club/content";
+import { createClient } from "@/lib/supabase/client";
+import { MEDIA_FILTERS, matchesMediaFilter, type CollectionKind, type Collection, type MediaAsset, type MediaFilterKey } from "@/lib/types/content";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
@@ -31,15 +33,28 @@ export function ContentLibrary() {
   const isPlayer = ctx.organization.type === "player";
   const isCoach = ctx.organization.type === "coach";
 
-  const allAssets = useMemo(
-    () => (isPlayer ? getMediaAssetsForPlayer(MOCK_LUCAS_PLAYER_ID) : getMediaAssetsForOrganization(ctx.organization.id)),
-    [isPlayer, ctx.organization.id],
-  );
+  const [allAssets, setAllAssets] = useState<MediaAsset[]>([]);
+
+  useEffect(() => {
+    if (isPlayer) {
+      setAllAssets(getMediaAssetsForPlayer(MOCK_LUCAS_PLAYER_ID));
+      return;
+    }
+    let cancelled = false;
+    const supabase = createClient();
+    fetchClubMediaAssets(supabase, ctx.organization.id).then((rows) => {
+      if (!cancelled) setAllAssets(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPlayer, ctx.organization.id]);
+
   const assets = useMemo(() => allAssets.filter((a) => matchesMediaFilter(a.kind, filter)), [allAssets, filter]);
 
-  const [collections, setCollections] = useState<Collection[]>(() =>
-    isPlayer ? [] : getCollectionsForOrganization(ctx.organization.id),
-  );
+  // Pas de table `collections` réelle (voir le plan Phase 1) — état local uniquement, comme
+  // handleCreateCollection ci-dessous, déjà local-only avant ce branchement.
+  const [collections, setCollections] = useState<Collection[]>([]);
 
   const title = isPlayer ? "Mes contenus" : isCoach ? "Contenus de mes joueurs" : "Contenus";
   const subtitle = isPlayer

@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { cn } from "@/lib/cn";
-import { FCF_TEAM_NAMES, addVisualRequest, buildAttachment, generateRequestReference } from "@/lib/mock/studio";
+import { FCF_TEAM_NAMES, buildAttachment } from "@/lib/mock/studio";
+import { submitClubRequest } from "@/lib/data/club/requests";
+import { createClient } from "@/lib/supabase/client";
 import {
   URGENCY_META,
   VISUAL_FORMAT_LABELS,
@@ -79,46 +81,29 @@ function NewRequestContent() {
     setAttachments((prev) => [...prev, ...next]);
   }
 
-  function buildRequest(status: "Envoyée" | "Brouillon") {
-    const reference = generateRequestReference();
-    return {
-      id: `req-${reference}`,
-      reference,
-      organizationId: ctx.organization.id,
-      requestedById: ctx.user.id,
-      requestedByName: `${ctx.user.firstName} ${ctx.user.lastName}`,
-      visualType,
-      teamName: teamName || undefined,
-      eventName: eventName || undefined,
-      publishDate: publishDate || new Date().toISOString().slice(0, 10),
-      format,
-      platform,
-      bodyText: bodyText || undefined,
-      urgency,
-      creditsReserved: status === "Envoyée" ? cost : 0,
-      status,
-      revisionCount: 0,
-      dueAt: publishDate || new Date().toISOString().slice(0, 10),
-      attachments,
-      createdAt: new Date().toISOString(),
-    };
-  }
-
   function handleSubmit() {
     if (!canWrite || !hasEnoughCredits) return;
     setSubmitting(true);
-    const request = buildRequest("Envoyée");
-    addVisualRequest(request);
-    showToast(`Demande ${request.reference} envoyée · ${cost} crédit${cost > 1 ? "s" : ""} réservé${cost > 1 ? "s" : ""}.`);
-    setTimeout(() => router.push("/requests"), 650);
-  }
-
-  function handleSaveDraft() {
-    if (!canWrite) return;
-    const request = buildRequest("Brouillon");
-    addVisualRequest(request);
-    showToast(`Brouillon ${request.reference} enregistré.`);
-    setTimeout(() => router.push("/requests"), 650);
+    const supabase = createClient();
+    submitClubRequest(supabase, ctx.organization.id, {
+      visualType,
+      teamName: teamName || undefined,
+      // Pas de colonnes réelles pour eventName/publishDate/format/platform (voir
+      // data/club/requests.ts) — repris dans le texte transmis pour ne rien perdre.
+      bodyText: [bodyText, eventName && `Événement : ${eventName}`, publishDate && `Publication visée : ${publishDate}`]
+        .filter(Boolean)
+        .join("\n"),
+      urgency,
+      credits: cost,
+    })
+      .then((request) => {
+        showToast(`Demande ${request.reference} envoyée · ${cost} crédit${cost > 1 ? "s" : ""} réservé${cost > 1 ? "s" : ""}.`);
+        setTimeout(() => router.push("/requests"), 650);
+      })
+      .catch(() => {
+        setSubmitting(false);
+        showToast("Envoi impossible, réessayez.");
+      });
   }
 
   return (
@@ -306,9 +291,6 @@ function NewRequestContent() {
               onClick={handleSubmit}
             >
               Envoyer la demande
-            </Button>
-            <Button variant="secondary" className="w-full" disabled={!canWrite} onClick={handleSaveDraft}>
-              Enregistrer en brouillon
             </Button>
           </div>
         </Card>

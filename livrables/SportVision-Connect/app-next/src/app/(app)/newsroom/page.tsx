@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, MessageSquarePlus, Sparkles } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -11,7 +11,8 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { cn } from "@/lib/cn";
-import { newsroomStore, updateNewsroomItem } from "@/lib/mock/studio";
+import { fetchClubNewsroomItems, updateClubNewsroomItemStatus } from "@/lib/data/club/newsroom";
+import { createClient } from "@/lib/supabase/client";
 import { NEWSROOM_STATUS_LABELS, NEWSROOM_STATUS_TONE, type NewsroomItem, type NewsroomStatus } from "@/lib/types/studio";
 
 // Newsroom — remontées des équipes, transformation en publication ou en demande de visuel.
@@ -45,24 +46,34 @@ export default function NewsroomPage() {
   const router = useRouter();
   const { toastMessage, showToast } = useToast();
   const [filter, setFilter] = useState<FilterKey>("all");
-  const [, forceRender] = useState(0);
 
   const allowed = canAccess(ctx, "newsroom");
   const canWrite = canCreate(ctx, "newsroom_item");
 
-  const items = useMemo(() => {
-    return newsroomStore.filter((i) => i.organizationId === ctx.organization.id);
-  }, [ctx.organization.id, newsroomStore.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [items, setItems] = useState<NewsroomItem[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    fetchClubNewsroomItems(supabase, ctx.organization.id).then((rows) => {
+      if (!cancelled) setItems(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.organization.id]);
 
   const filtered = filter === "all" ? items : items.filter((i) => i.status === filter);
 
-  function refresh() {
-    forceRender((n) => n + 1);
+  function applyStatus(item: NewsroomItem, status: "transformed" | "info_requested" | "archived") {
+    const supabase = createClient();
+    updateClubNewsroomItemStatus(supabase, item.id, status).then(() => {
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status } : i)));
+    });
   }
 
   function handleTransform(item: NewsroomItem, into: "publication" | "visual_request") {
-    updateNewsroomItem(item.id, { status: "transformed", transformedIntoType: into });
-    refresh();
+    applyStatus(item, "transformed");
     if (into === "publication") {
       const code = inferTemplateCode(item);
       router.push(`/studio/${code}?prefillBody=${encodeURIComponent(item.body)}`);
@@ -72,14 +83,12 @@ export default function NewsroomPage() {
   }
 
   function handleRequestInfo(item: NewsroomItem) {
-    updateNewsroomItem(item.id, { status: "info_requested" });
-    refresh();
+    applyStatus(item, "info_requested");
     showToast(`Complément demandé à ${item.submittedByName}.`);
   }
 
   function handleArchive(item: NewsroomItem) {
-    updateNewsroomItem(item.id, { status: "archived" });
-    refresh();
+    applyStatus(item, "archived");
     showToast("Remontée archivée.");
   }
 

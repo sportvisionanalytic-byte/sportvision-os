@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Columns3, Download, SlidersHorizontal, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
@@ -12,7 +11,8 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { cn } from "@/lib/cn";
-import { updateVisualRequest, visualRequestsStore } from "@/lib/mock/studio";
+import { cancelClubRequest, fetchClubRequests } from "@/lib/data/club/requests";
+import { createClient } from "@/lib/supabase/client";
 import {
   URGENCY_META,
   VISUAL_FORMAT_LABELS,
@@ -66,7 +66,6 @@ const PAGE_SIZE = 8;
 
 export default function RequestsPage() {
   const { ctx } = useSession();
-  const router = useRouter();
   const { toastMessage, showToast } = useToast();
 
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -79,18 +78,35 @@ export default function RequestsPage() {
     new Set(["team", "platform", "urgency", "credits"]),
   );
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [, forceRender] = useState(0);
+  const [orgRequests, setOrgRequests] = useState<VisualRequest[]>([]);
 
   const allowed = canAccess(ctx, "visual_requests");
   const canWrite = canCreate(ctx, "visual_request");
 
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    fetchClubRequests(supabase, ctx.organization.id).then((rows) => {
+      if (!cancelled) setOrgRequests(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx.organization.id]);
+
   if (!allowed) return <LockedModule title="Demandes de visuels" />;
 
-  function refresh() {
-    forceRender((n) => n + 1);
+  function handleCancel(r: VisualRequest) {
+    const supabase = createClient();
+    cancelClubRequest(supabase, r.id, ctx.organization.id)
+      .then((updated) => {
+        setOrgRequests((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+        setDetailId(null);
+        showToast(`Demande ${r.reference} annulée.`);
+      })
+      .catch(() => showToast("Cette demande ne peut plus être annulée — elle est déjà prise en charge."));
   }
 
-  const orgRequests = visualRequestsStore.filter((r) => r.organizationId === ctx.organization.id);
   const filteredByTab = orgRequests.filter((r) => matchesFilter(r, filter));
   const filtered = filteredByTab.filter((r) => (urgencyFilter.size === 0 ? true : urgencyFilter.has(r.urgency)));
 
@@ -117,42 +133,32 @@ export default function RequestsPage() {
     });
   }
 
+  // Un membre club ne peut agir que sur une demande encore "Envoyée" (annulation) — toute autre
+  // transition est staff-only côté RPC (voir data/club/requests.ts). Pas de validation/
+  // téléchargement en masse possible depuis Connect en Phase 1.
   function handleValidateSelection() {
     let count = 0;
     selected.forEach((id) => {
       const r = orgRequests.find((rr) => rr.id === id);
-      if (r && r.status === "À valider") {
-        updateVisualRequest(id, { status: "Terminée" });
+      if (r && r.status === "Envoyée") {
+        handleCancel(r);
         count += 1;
       }
     });
     setSelected(new Set());
-    refresh();
-    showToast(count > 0 ? `${count} demande${count > 1 ? "s" : ""} validée${count > 1 ? "s" : ""}.` : "Aucune demande à valider dans la sélection.");
+    showToast(count > 0 ? `${count} demande${count > 1 ? "s" : ""} annulée${count > 1 ? "s" : ""}.` : "Aucune demande annulable dans la sélection.");
   }
 
   function handleRowAction(r: VisualRequest) {
-    if (r.status === "À valider") {
-      updateVisualRequest(r.id, { status: "Terminée" });
-      refresh();
-      showToast(`Demande ${r.reference} validée.`);
-      return;
-    }
-    if (r.status === "Terminée") {
-      showToast(`Téléchargement de ${r.reference}… (aperçu, aucun fichier réel dans cette maquette).`);
-      return;
-    }
-    if (r.status === "Brouillon") {
-      router.push(r.templateCode ? `/studio/${r.templateCode}?draftId=${r.id}` : "/requests/new");
+    if (r.status === "Envoyée") {
+      handleCancel(r);
       return;
     }
     setDetailId(r.id);
   }
 
   function rowActionLabel(r: VisualRequest): string {
-    if (r.status === "À valider") return "Valider";
-    if (r.status === "Terminée") return "Télécharger";
-    if (r.status === "Brouillon") return "Ouvrir";
+    if (r.status === "Envoyée") return "Annuler";
     return "Suivre";
   }
 
@@ -284,7 +290,7 @@ export default function RequestsPage() {
         <div className="flex items-center justify-between rounded-sv border border-brand-blue-electric/50 bg-info-bg px-4 py-2.5">
           <span className="text-[12.5px] font-bold text-info-fg">{selected.size} sélectionnée{selected.size > 1 ? "s" : ""}</span>
           <Button variant="primary" className="h-8 px-3 text-[12px]" onClick={handleValidateSelection}>
-            Valider la sélection
+            Annuler la sélection
           </Button>
         </div>
       )}
@@ -433,6 +439,11 @@ export default function RequestsPage() {
               <div className="mt-4 rounded-xl border border-border bg-surface-alt p-3 text-[13px] text-text-soft">
                 {detailRequest.bodyText}
               </div>
+            )}
+            {detailRequest.status === "Envoyée" && (
+              <Button variant="secondary" className="mt-4 w-full" onClick={() => handleCancel(detailRequest)}>
+                Annuler la demande
+              </Button>
             )}
           </div>
         </div>
