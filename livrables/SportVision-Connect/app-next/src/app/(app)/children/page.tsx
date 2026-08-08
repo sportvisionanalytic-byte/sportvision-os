@@ -1,0 +1,126 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { AlertTriangle } from "lucide-react";
+import { useSession } from "@/lib/session-context";
+import { canAccess } from "@/lib/permissions";
+import { childrenByParentOrg } from "@/lib/mock/persona";
+import { LockedModule } from "@/components/persona/LockedModule";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+
+// /children — profils associés du parent, une carte par enfant. ACTIONS.md § 20 « Parent —
+// Profils associés ». Bandeau d'alerte si une autorisation manque ; « Voir ses contenus » et
+// « Réserver une prestation » n'apparaissent que si l'autorisation est signée.
+export default function ChildrenPage() {
+  const { ctx } = useSession();
+  const router = useRouter();
+
+  if (!canAccess(ctx, "children")) return <LockedModule ctx={ctx} />;
+
+  const children = childrenByParentOrg[ctx.organization.id] ?? [];
+  const missingAuth = children.some((c) => c.imageRightStatus !== "signed");
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <h1 className="text-[29px] font-extrabold leading-tight tracking-tight">Profils associés</h1>
+        <p className="mt-1.5 max-w-xl text-[13.5px] text-text-soft">
+          Retrouvez vos enfants, leurs contenus et le statut de leur droit à l&apos;image.
+        </p>
+      </div>
+
+      {missingAuth && (
+        <Card className="flex flex-wrap items-center gap-3 border-warning-fg/20 bg-warning-bg px-5 py-4">
+          <AlertTriangle className="h-[18px] w-[18px] flex-none text-warning-fg" aria-hidden />
+          <span className="min-w-0 flex-1 text-[13px] font-semibold text-warning-fg">
+            Une autorisation manque pour au moins un enfant. Ses contenus ne sont pas publiables tant qu&apos;elle
+            n&apos;est pas signée.
+          </span>
+          <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={() => router.push("/authorizations")}>
+            Voir les autorisations
+          </Button>
+        </Card>
+      )}
+
+      {children.length === 0 && (
+        <Card className="p-8 text-center text-[13.5px] text-text-soft">
+          Aucun enfant associé à votre espace pour le moment.
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {children.map((child) => {
+          const signed = child.imageRightStatus === "signed";
+          const initials = `${child.firstName[0] ?? ""}${child.lastName[0] ?? ""}`.toUpperCase();
+          return (
+            <Card key={child.id} className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[13px] font-extrabold text-white">
+                    {initials}
+                  </span>
+                  <div>
+                    <div className="text-[15px] font-extrabold tracking-tight">
+                      {child.firstName} {child.lastName}
+                    </div>
+                    <div className="text-[12.5px] text-text-soft">
+                      {child.age} ans · {child.teamName} · {child.clubName}
+                    </div>
+                  </div>
+                </div>
+                <Badge tone={signed ? "success" : "warning"}>
+                  {signed ? "Autorisation signée" : "Autorisation manquante"}
+                </Badge>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-divider pt-4 text-[12.5px]">
+                <InfoRow label="Numéro" value={child.shirtNumber ?? "—"} />
+                <InfoRow label="Poste" value={child.position ?? "—"} />
+                <InfoRow label="Entraîneur" value={child.coachName} />
+                <InfoRow label="Contenus" value={String(child.contentCount)} />
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  className="h-9 flex-1 px-3 text-[12.5px]"
+                  onClick={() => router.push("/content")}
+                >
+                  Voir ses contenus
+                </Button>
+                {signed ? (
+                  <Button
+                    variant="dark"
+                    className="h-9 flex-1 px-3 text-[12.5px]"
+                    onClick={() => router.push("/services/new")}
+                  >
+                    Réserver une prestation
+                  </Button>
+                ) : (
+                  <Button
+                    variant="dark"
+                    className="h-9 flex-1 px-3 text-[12.5px]"
+                    onClick={() => router.push("/authorizations")}
+                  >
+                    Régulariser l&apos;autorisation
+                  </Button>
+                )}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10.5px] font-bold uppercase tracking-[.04em] text-text-faint">{label}</div>
+      <div className="mt-0.5 font-semibold text-text">{value}</div>
+    </div>
+  );
+}
