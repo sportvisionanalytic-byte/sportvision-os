@@ -20,6 +20,7 @@
   <url><loc>https://sportvisionfr.netlify.app/accompagnements/coachs</loc><priority>0.7</priority></url>
   <url><loc>https://sportvisionfr.netlify.app/accompagnements/joueurs</loc><priority>0.7</priority></url>
   <url><loc>https://sportvisionfr.netlify.app/accompagnements/evenements</loc><priority>0.7</priority></url>
+  <url><loc>https://sportvisionfr.netlify.app/realisations</loc><priority>0.7</priority></url>
   <url><loc>https://sportvisionfr.netlify.app/a-propos</loc><priority>0.6</priority></url>
   <url><loc>https://sportvisionfr.netlify.app/connect</loc><priority>0.5</priority></url>
   <url><loc>https://sportvisionfr.netlify.app/mentions-legales</loc><priority>0.2</priority></url>
