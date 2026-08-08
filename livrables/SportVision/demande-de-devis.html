@@ -511,6 +511,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         <a href="#devis" class="btn btn-grad">Aller au formulaire</a>
         <a href="index.html#prestations" class="btn btn-ghost-dark">Voir les prestations</a>
       </div>
+        <div class="hero-tertiary"><button type="button" class="btn-link" data-action="open-rdv">Vous préférez qu'on en discute ? Prendre rendez-vous →</button></div>
     </div>
   </div>
 </section>
@@ -810,6 +811,115 @@ document.getElementById('cookie-refuse').addEventListener('click', () => {
 document.getElementById('cookie-manage').addEventListener('click', (e) => {
   e.preventDefault();
   showCookieBanner();
+});
+</script>
+<!-- ══════════════ MODAL PRENDRE RENDEZ-VOUS ══════════════ -->
+<div class="sv-overlay" id="rdv-overlay">
+  <div class="sv-modal">
+    <button class="sv-close" id="rdv-close" aria-label="Fermer">✕</button>
+    <div id="rdv-form-wrap">
+      <h3>Prendre rendez-vous</h3>
+      <p class="sub">Choisissez librement une date et un horaire, nous confirmons la disponibilité sous 24h.</p>
+      <form id="rdv-form">
+        <div class="sv-honeypot"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
+        <div class="sv-field">
+          <label for="rdv-type">Type de rendez-vous</label>
+          <select id="rdv-type" name="type_rdv" required>
+            <option value="appel">Appel téléphonique</option>
+            <option value="physique">Rendez-vous physique</option>
+          </select>
+        </div>
+        <div class="sv-field-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="sv-field"><label for="rdv-date">Date souhaitée</label><input id="rdv-date" name="date_demandee" type="date" required></div>
+          <div class="sv-field"><label for="rdv-heure">Horaire (7h-22h)</label><input id="rdv-heure" name="heure_demandee" type="time" min="07:00" max="22:00"></div>
+        </div>
+        <div class="sv-field"><label for="rdv-objet">Objet (facultatif)</label><input id="rdv-objet" name="objet" type="text" placeholder="Ex : étude accompagnement Club+"></div>
+        <div class="sv-field"><label for="rdv-prenom">Prénom</label><input id="rdv-prenom" name="prenom" type="text" required></div>
+        <div class="sv-field"><label for="rdv-nom">Nom</label><input id="rdv-nom" name="nom" type="text" required></div>
+        <div class="sv-field"><label for="rdv-email">E-mail</label><input id="rdv-email" name="email" type="email" required></div>
+        <div class="sv-field"><label for="rdv-tel">Téléphone (facultatif)</label><input id="rdv-tel" name="telephone" type="tel"></div>
+        <div class="sv-err" id="rdv-err"></div>
+        <button type="submit" class="btn btn-grad" style="width:100%;margin-top:6px" id="rdv-submit">Confirmer ma demande de rendez-vous</button>
+      </form>
+    </div>
+    <div id="rdv-ok-wrap" style="display:none">
+      <div class="sv-ok">
+        <div class="check">✓</div>
+        <h3>Demande de rendez-vous envoyée</h3>
+        <p class="sub">SportVision vous recontactera pour confirmer votre rendez-vous sous 24 heures.</p>
+        <button type="button" class="btn btn-grad" style="width:100%;margin-top:18px" id="rdv-ok-close">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Modal "Prendre rendez-vous" (formulaire léger, sans compte) ──
+const rdvOverlay = document.getElementById('rdv-overlay');
+function openRdv(){
+  document.getElementById('rdv-form-wrap').style.display = '';
+  document.getElementById('rdv-ok-wrap').style.display = 'none';
+  document.getElementById('rdv-err').textContent = '';
+  const dateInput = document.getElementById('rdv-date');
+  if (!dateInput.min) dateInput.min = new Date().toISOString().slice(0, 10);
+  rdvOverlay.classList.add('on');
+}
+function closeRdv(){ rdvOverlay.classList.remove('on'); }
+document.addEventListener('click', (e) => {
+  const opener = e.target.closest('[data-action="open-rdv"]');
+  if (opener){ e.preventDefault(); openRdv(); }
+});
+document.getElementById('rdv-close').addEventListener('click', closeRdv);
+document.getElementById('rdv-ok-close').addEventListener('click', closeRdv);
+rdvOverlay.addEventListener('click', (e) => { if (e.target === rdvOverlay) closeRdv(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && rdvOverlay.classList.contains('on')) closeRdv(); });
+
+document.getElementById('rdv-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const errEl = document.getElementById('rdv-err');
+  const btn = document.getElementById('rdv-submit');
+  errEl.textContent = '';
+  const fd = new FormData(form);
+  const heure = (fd.get('heure_demandee') || '').toString();
+  if (heure && (heure < '07:00' || heure > '22:00')){
+    errEl.textContent = 'Merci de choisir un horaire entre 7h et 22h.';
+    return;
+  }
+  const body = {
+    prenom: (fd.get('prenom') || '').toString().trim(),
+    nom: (fd.get('nom') || '').toString().trim(),
+    email: (fd.get('email') || '').toString().trim(),
+    telephone: (fd.get('telephone') || '').toString().trim() || null,
+    type_rdv: fd.get('type_rdv'),
+    objet: (fd.get('objet') || '').toString().trim() || null,
+    date_demandee: fd.get('date_demandee'),
+    heure_demandee: heure || null,
+    site_web: fd.get('site_web'),
+  };
+  if (!body.prenom || !body.nom || !body.email || !body.date_demandee){
+    errEl.textContent = 'Prénom, nom, e-mail et date sont obligatoires.';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    const res = await fetch(SB_URL + '/functions/v1/create-guest-rdv', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error){
+      errEl.textContent = data.error || "Une erreur est survenue, réessayez dans un instant.";
+      return;
+    }
+    document.getElementById('rdv-form-wrap').style.display = 'none';
+    document.getElementById('rdv-ok-wrap').style.display = '';
+  }catch(err){
+    errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";
+  }finally{
+    btn.disabled = false; btn.textContent = 'Confirmer ma demande de rendez-vous';
+  }
 });
 </script>
 </body>
