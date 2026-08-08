@@ -1,0 +1,346 @@
+"use client";
+
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, Check, Sparkles, UploadCloud } from "lucide-react";
+import { useSession } from "@/lib/session-context";
+import { canAccess, canCreate } from "@/lib/permissions";
+import { PLANS } from "@/lib/plans";
+import { LockedModule } from "@/components/locked/LockedModule";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Toast, useToast } from "@/components/feedback/Toast";
+import {
+  FCF_TEAM_NAMES,
+  addVisualRequest,
+  currentSeasonLabel,
+  findTemplate,
+  generateRequestReference,
+  inferVisualType,
+  matchesStore,
+  visualRequestsStore,
+} from "@/lib/mock/studio";
+import {
+  STUDIO_CATEGORY_LABELS,
+  STUDIO_FIELD_LABELS,
+  STUDIO_PREFILLED_FIELDS,
+  type StudioFieldKey,
+} from "@/lib/types/studio";
+
+// Fiche modèle du Studio — formulaire préempli, bandeau de coût en crédits. Voir ACTIONS.md § 6
+// et DATA_MODEL.md § Modèle de réservation de crédits : à l'envoi, le coût est réservé
+// (creditsReserved), pas déduit. La déduction réelle du solde `Subscription.creditsRemaining`
+// vit dans session-context.tsx (fichier partagé, hors périmètre) : cette page simule la
+// réservation dans la VisualRequest créée, sans muter l'état de session global — voir le rapport
+// de fin de tâche pour le détail de cette limite assumée en l'absence de backend.
+export default function StudioTemplatePage() {
+  return (
+    <Suspense fallback={null}>
+      <StudioTemplateContent />
+    </Suspense>
+  );
+}
+
+function StudioTemplateContent() {
+  const params = useParams<{ template: string }>();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { ctx } = useSession();
+  const { toastMessage, showToast } = useToast();
+
+  const template = useMemo(() => findTemplate(params.template), [params.template]);
+  const allowed = canAccess(ctx, "studio");
+
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!template) return;
+    const draftId = searchParams.get("draftId");
+    const matchId = searchParams.get("matchId");
+    const prefillBody = searchParams.get("prefillBody");
+    const next: Record<string, string> = {};
+
+    if (draftId) {
+      const draft = visualRequestsStore.find((r) => r.id === draftId);
+      if (draft) {
+        if (draft.teamName) next.team = draft.teamName;
+        if (draft.bodyText) next.comment = draft.bodyText;
+        if (draft.publishDate) next.date = draft.publishDate;
+      }
+    } else if (matchId) {
+      const match = matchesStore.find((m) => m.id === matchId);
+      if (match) {
+        next.team = match.teamName;
+        next.opponent = match.opponent;
+        next.competition = match.competition;
+        next.date = match.kickoffAt.slice(0, 10);
+        next.venue = match.venue;
+        if (match.scoreFor !== undefined && match.scoreAgainst !== undefined) {
+          next.comment = `${match.teamName} ${match.scoreFor} - ${match.scoreAgainst} ${match.opponent}`;
+        }
+      }
+    } else if (prefillBody) {
+      next.comment = prefillBody;
+    }
+
+    if (Object.keys(next).length > 0) setValues((prev) => ({ ...prev, ...next }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template?.code]);
+
+  if (!allowed) return <LockedModule title={template ? template.name : "Studio Club+"} />;
+
+  if (!template) {
+    return (
+      <Card className="mx-auto max-w-lg p-8 text-center">
+        <div className="text-[16px] font-extrabold">Modèle introuvable</div>
+        <p className="mt-2 text-[13px] text-text-soft">Ce modèle n&apos;existe pas ou plus dans le Studio.</p>
+        <Link href="/studio" className="mt-5 inline-block">
+          <Button variant="secondary">Retour au Studio</Button>
+        </Link>
+      </Card>
+    );
+  }
+
+  const plan = PLANS[ctx.subscription.planCode];
+  const remainingAfter =
+    plan.monthlyCredits === null ? null : ctx.subscription.creditsRemaining - template.creditCost;
+  const hasEnoughCredits = plan.monthlyCredits === null || ctx.subscription.creditsRemaining >= template.creditCost;
+  const canSubmit = canCreate(ctx, "visual_request");
+
+  function setField(field: StudioFieldKey, value: string) {
+    setValues((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function buildRequest(status: "Envoyée" | "Brouillon") {
+    const reference = generateRequestReference();
+    return {
+      id: `req-${reference}`,
+      reference,
+      organizationId: ctx.organization.id,
+      requestedById: ctx.user.id,
+      requestedByName: `${ctx.user.firstName} ${ctx.user.lastName}`,
+      templateCode: template!.code,
+      visualType: inferVisualType(template!),
+      teamName: values.team || undefined,
+      publishDate: values.date || new Date().toISOString().slice(0, 10),
+      format: "post_1_1" as const,
+      platform: "instagram" as const,
+      bodyText: values.comment || undefined,
+      urgency: "standard" as const,
+      creditsReserved: status === "Envoyée" ? template!.creditCost : 0,
+      status,
+      revisionCount: 0,
+      dueAt: values.date || new Date().toISOString().slice(0, 10),
+      attachments: [],
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  function handleSubmit() {
+    if (!hasEnoughCredits || !canSubmit) return;
+    setSubmitting(true);
+    const request = buildRequest("Envoyée");
+    addVisualRequest(request);
+    showToast(
+      `Demande ${request.reference} envoyée · ${template!.creditCost} crédit${template!.creditCost > 1 ? "s" : ""} réservé${
+        template!.creditCost > 1 ? "s" : ""
+      }.`,
+    );
+    setTimeout(() => router.push("/requests"), 650);
+  }
+
+  function handleSaveDraft() {
+    if (!canSubmit) return;
+    const request = buildRequest("Brouillon");
+    addVisualRequest(request);
+    showToast(`Brouillon ${request.reference} enregistré.`);
+    setTimeout(() => router.push("/requests"), 650);
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Link
+        href="/studio"
+        className="inline-flex w-fit items-center gap-1.5 text-[12.5px] font-bold text-brand-blue-electric"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+        Retour au Studio
+      </Link>
+
+      <div>
+        <Badge tone="accent">{STUDIO_CATEGORY_LABELS[template.category]}</Badge>
+        <h1 className="mt-2 text-[27px] font-extrabold leading-tight tracking-tight">{template.name}</h1>
+        <p className="mt-1 text-[13px] text-text-soft">Livraison sous {template.deliveryDelay}</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_1fr]">
+        <div className="flex flex-col gap-4">
+          <Card className="p-4">
+            <div className="text-[13.5px] font-extrabold tracking-tight">Aperçu et exemples</div>
+            <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+              {[template.previewUrl, template.sampleUrls[0], template.sampleUrls[1]].map((url, i) => (
+                <div
+                  key={url}
+                  className="flex h-32 items-center justify-center rounded-xl px-2 text-center text-[10.5px] font-mono uppercase tracking-wide text-white/80"
+                  style={{
+                    background:
+                      "repeating-linear-gradient(125deg, #1B2A6B 0px, #1B2A6B 14px, #24327A 14px, #24327A 28px)",
+                  }}
+                >
+                  {i === 0 ? "aperçu du modèle" : `exemple client ${i}`}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-2 text-[13.5px] font-extrabold tracking-tight">
+              <Check className="h-4 w-4 text-success-fg" aria-hidden />
+              Prérempli automatiquement
+            </div>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {STUDIO_PREFILLED_FIELDS.map((f) => (
+                <Badge key={f} tone="neutral">
+                  {f}
+                </Badge>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px] text-text-soft">
+              <div>Club : {ctx.organization.name}</div>
+              <div>Saison : {currentSeasonLabel()}</div>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="text-[13.5px] font-extrabold tracking-tight">Informations de la création</div>
+            <div className="mt-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              {template.formFields.map((field) => (
+                <FormField key={field} field={field} value={values[field] ?? ""} onChange={(v) => setField(field, v)} />
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <Card className="border-brand-blue-electric/40 p-4">
+            <div className="flex items-center gap-2 text-[13px] font-extrabold tracking-tight text-brand-blue-pale">
+              <Sparkles className="h-4 w-4" aria-hidden />
+              Coût de la création
+            </div>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-text-soft">
+              Cette création utilisera{" "}
+              <strong className="text-text">
+                {template.creditCost} crédit{template.creditCost > 1 ? "s" : ""}
+              </strong>{" "}
+              · livraison sous <strong className="text-text">{template.deliveryDelay}</strong>
+              {remainingAfter !== null ? (
+                <>
+                  {" "}
+                  · il vous restera{" "}
+                  <strong className="text-text">
+                    {Math.max(0, remainingAfter)} crédit{remainingAfter !== 1 ? "s" : ""}
+                  </strong>
+                </>
+              ) : (
+                <> · offre sur mesure, suivi avec votre Community Manager</>
+              )}
+              .
+            </p>
+            {!hasEnoughCredits && (
+              <p className="mt-2 text-[12.5px] font-bold text-danger-fg">
+                Crédits insuffisants ce mois-ci. Gérez votre offre ou attendez le renouvellement du{" "}
+                {ctx.subscription.renewsAt}.
+              </p>
+            )}
+            {!canSubmit && (
+              <p className="mt-2 text-[12.5px] font-bold text-warning-fg">
+                Votre rôle ne vous permet pas d&apos;effectuer cette action. Contactez l&apos;administrateur du club
+                pour demander un accès supplémentaire.
+              </p>
+            )}
+            <div className="mt-4 flex flex-col gap-2.5">
+              <Button
+                variant="primary"
+                className="w-full"
+                loading={submitting}
+                disabled={!hasEnoughCredits || !canSubmit}
+                onClick={handleSubmit}
+              >
+                Envoyer ma demande
+              </Button>
+              <Button variant="secondary" className="w-full" disabled={!canSubmit} onClick={handleSaveDraft}>
+                Enregistrer en brouillon
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      <Toast message={toastMessage} />
+    </div>
+  );
+}
+
+function FormField({
+  field,
+  value,
+  onChange,
+}: {
+  field: StudioFieldKey;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  if (field === "photo") {
+    return (
+      <label className="col-span-full flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong bg-surface-alt px-4 py-6 text-center transition-colors duration-sv hover:border-brand-blue-electric">
+        <UploadCloud className="h-5 w-5 text-text-faint" aria-hidden />
+        <span className="text-[12.5px] font-bold text-text-soft">
+          {value ? value : "Glissez une photo ou cliquez pour en choisir une"}
+        </span>
+        <input
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => onChange(e.target.files?.[0]?.name ?? "")}
+        />
+      </label>
+    );
+  }
+
+  if (field === "comment") {
+    return (
+      <div className="col-span-full flex flex-col gap-1.5">
+        <span className="text-[12.5px] font-bold text-text-soft">{STUDIO_FIELD_LABELS[field]}</span>
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={3}
+          className="rounded-sv border border-border-strong bg-input-bg px-3 py-2 text-[13.5px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.1)]"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[12.5px] font-bold text-text-soft">{STUDIO_FIELD_LABELS[field]}</span>
+      <input
+        type={field === "date" ? "date" : "text"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        list={field === "team" ? "sv-team-suggestions" : undefined}
+        className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13.5px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.1)]"
+      />
+      {field === "team" && (
+        <datalist id="sv-team-suggestions">
+          {FCF_TEAM_NAMES.map((t) => (
+            <option key={t} value={t} />
+          ))}
+        </datalist>
+      )}
+    </div>
+  );
+}
