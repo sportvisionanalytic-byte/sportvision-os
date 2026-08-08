@@ -394,11 +394,11 @@ section{position:relative}
               </select>
             </div>
             <div class="sv-field">
-              <label>Comment réglerez-vous le solde restant, une fois la prestation réalisée ?</label>
-              <p class="sub" style="margin:4px 0 10px;font-size:12.5px">L'acompte éventuellement demandé ci-après se paie toujours en ligne par carte — cette préférence ne concerne que ce qui reste à régler après.</p>
+              <label>Comment souhaitez-vous régler ?</label>
+              <p class="sub" style="margin:4px 0 10px;font-size:12.5px">Dans les deux cas, votre réservation est confirmée immédiatement.</p>
               <div class="options-grid" style="grid-template-columns:1fr 1fr">
-                <label class="opt-check"><input type="radio" name="solde-mode" value="carte" checked> Carte bancaire en ligne</label>
-                <label class="opt-check"><input type="radio" name="solde-mode" value="especes"> Espèces sur place</label>
+                <label class="opt-check"><input type="radio" name="solde-mode" value="carte" checked> Carte bancaire — paiement immédiat en ligne</label>
+                <label class="opt-check"><input type="radio" name="solde-mode" value="especes"> Espèces — réglé sur place le jour J</label>
               </div>
             </div>
             <div class="sv-err" id="booking-err"></div>
@@ -709,7 +709,7 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     adresse: state.adresse || undefined,
     commentaire: commentaireComplet || null,
     site_web: siteWeb,
-    preference_paiement_solde: soldeMode,
+    mode_paiement_choisi: soldeMode,
   };
 
   btn.disabled = true; btn.textContent = 'Envoi…';
@@ -725,29 +725,31 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
       return;
     }
 
-    // Sur les offres à tarif fixe, un acompte de 30% peut être obligatoire
-    // (1ère réservation) avant de considérer la demande comme confirmée —
-    // cf. create-guest-deposit-checkout. Si l'appel échoue pour une raison
-    // technique (fonction pas encore déployée, réseau...), on ne bloque
-    // jamais une demande par ailleurs valide : elle reste enregistrée et
-    // l'équipe SportVision revient vers le client, comme aujourd'hui.
-    if (data.prestation_id && OFFRES_PRIX_FIXE.has(state.slug)){
+    // La réservation est confirmée dans tous les cas dès cet instant — le
+    // choix "carte" propose juste un paiement immédiat en plus, jamais une
+    // condition à la confirmation. Uniquement pour les offres à tarif fixe
+    // (sur devis, le prix n'est pas encore connu). Si l'appel échoue pour
+    // une raison technique (fonction pas encore déployée, réseau...), on ne
+    // bloque jamais une demande par ailleurs valide : elle reste enregistrée
+    // et l'équipe SportVision revient vers le client pour l'encaissement.
+    if (soldeMode === 'carte' && data.prestation_id && OFFRES_PRIX_FIXE.has(state.slug)){
       try{
-        btn.textContent = 'Vérification…';
+        btn.textContent = 'Redirection…';
         const base = location.origin + location.pathname;
-        const depRes = await fetch(SB_URL + '/functions/v1/create-guest-deposit-checkout', {
+        const payRes = await fetch(SB_URL + '/functions/v1/create-guest-payment-checkout', {
           method: 'POST',
           headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({ prestation_id: data.prestation_id, email, success_url: base, cancel_url: base }),
         });
-        const depData = await depRes.json();
-        if (depRes.ok && depData.required && depData.checkout_url){
+        const payData = await payRes.json();
+        if (payRes.ok && payData.payable && payData.checkout_url){
           sessionStorage.setItem('sv-reserver-pending', JSON.stringify({ reference: data.reference, email, prestation_id: data.prestation_id }));
-          window.location.href = depData.checkout_url;
+          window.location.href = payData.checkout_url;
           return;
         }
-      }catch(depErr){
-        // Best-effort : on continue vers la confirmation normale ci-dessous.
+      }catch(payErr){
+        // Best-effort : on continue vers la confirmation normale ci-dessous,
+        // la réservation reste valable même sans paiement en ligne immédiat.
       }
     }
 
@@ -769,6 +771,10 @@ function showConfirmation(data, email){
   } else {
     message += ' Notre équipe revient vers vous très prochainement.';
   }
+  const soldeModeChoisi = (document.querySelector('input[name="solde-mode"]:checked') || {}).value;
+  if (soldeModeChoisi === 'especes' && state.slug && OFFRES_PRIX_FIXE.has(state.slug)){
+    message += ' Vous réglerez ' + (state.price || '') + ' en espèces sur place, le jour de la prestation.';
+  }
   document.getElementById('ok-message').textContent = message;
 
   if (state.slug && OFFRES_PRIX_FIXE.has(state.slug)){
@@ -782,9 +788,11 @@ function showConfirmation(data, email){
   document.querySelector('.booking-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Retour depuis Stripe (acompte 1ère réservation) : reserver.html sert
+// ── Retour depuis Stripe (paiement carte immédiat) : reserver.html sert
 //    lui-même de success_url/cancel_url (flux 100% anonyme, pas de compte
-//    Connect à ce stade) — cf. create-guest-deposit-checkout. ──
+//    Connect à ce stade) — cf. create-guest-payment-checkout. La réservation
+//    est déjà enregistrée avant ce retour, quel que soit le résultat du
+//    paiement : payer par carte n'est qu'une option, jamais une condition. ──
 (function handlePaiementRetour(){
   const params = new URLSearchParams(location.search);
   const paiement = params.get('paiement');
@@ -800,18 +808,18 @@ function showConfirmation(data, email){
 
   if (paiement === 'succes'){
     document.getElementById('ok-title').textContent = 'Réservation confirmée';
-    document.getElementById('ok-message').textContent = 'Référence : ' + reference + '. Votre acompte a bien été reçu, votre réservation est confirmée. Notre équipe revient vers vous pour les derniers détails.';
+    document.getElementById('ok-message').textContent = 'Référence : ' + reference + '. Votre paiement a bien été reçu, votre réservation est confirmée. Notre équipe revient vers vous pour les derniers détails.';
     sessionStorage.removeItem('sv-reserver-pending');
   } else if (paiement === 'annule'){
-    document.getElementById('ok-title').textContent = 'Paiement non finalisé';
-    document.getElementById('ok-message').innerHTML = 'Votre demande (référence ' + reference + ') est bien enregistrée, mais l\'acompte n\'a pas été réglé : la réservation n\'est pas encore confirmée. <button type="button" class="btn-link" id="retry-paiement-btn" style="color:var(--blue);text-decoration:underline">Réessayer le paiement</button> ou contactez-nous directement.';
+    document.getElementById('ok-title').textContent = 'Réservation confirmée';
+    document.getElementById('ok-message').innerHTML = 'Référence : ' + reference + '. Votre réservation est bien confirmée, même si le paiement par carte n\'a pas été finalisé. Vous pouvez <button type="button" class="btn-link" id="retry-paiement-btn" style="color:var(--blue);text-decoration:underline">réessayer de payer en ligne</button>, ou régler en espèces sur place le jour J.';
     const retryBtn = document.getElementById('retry-paiement-btn');
     if (retryBtn && pending.prestation_id && pending.email){
       retryBtn.addEventListener('click', async () => {
         retryBtn.disabled = true; retryBtn.textContent = 'Redirection…';
         try{
           const base = location.origin + location.pathname;
-          const res = await fetch(SB_URL + '/functions/v1/create-guest-deposit-checkout', {
+          const res = await fetch(SB_URL + '/functions/v1/create-guest-payment-checkout', {
             method: 'POST',
             headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ prestation_id: pending.prestation_id, email: pending.email, success_url: base, cancel_url: base }),
@@ -819,7 +827,7 @@ function showConfirmation(data, email){
           const data = await res.json();
           if (res.ok && data.checkout_url){ window.location.href = data.checkout_url; return; }
         }catch(_e){}
-        retryBtn.disabled = false; retryBtn.textContent = 'Réessayer le paiement';
+        retryBtn.disabled = false; retryBtn.textContent = 'réessayer de payer en ligne';
       });
     }
   }

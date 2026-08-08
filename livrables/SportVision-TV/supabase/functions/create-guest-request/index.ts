@@ -127,7 +127,7 @@ serve(async (req) => {
     const {
       prenom, nom, email, telephone, profil, origine,
       offre_slug, options, date, heure, lieu, ville, adresse, cp, commentaire, sport, equipes,
-      retractation_renoncee, site_web, preference_paiement_solde,
+      retractation_renoncee, site_web, mode_paiement_choisi,
       // distance_km / frais_deplacement_ht ne sont plus lus depuis le body :
       // recalculés côté serveur plus bas, jamais depuis une valeur visiteur.
     } = await req.json();
@@ -205,7 +205,7 @@ serve(async (req) => {
         retractation_renoncee_at: retractation_renoncee ? new Date().toISOString() : null,
         distance_km: distance_km ?? null,
         frais_deplacement_ht: frais_deplacement_ht ?? null,
-        preference_paiement_solde: ["carte", "especes"].includes(preference_paiement_solde) ? preference_paiement_solde : null,
+        mode_paiement_choisi: ["carte", "especes"].includes(mode_paiement_choisi) ? mode_paiement_choisi : null,
       })
       .select("id, reference")
       .single();

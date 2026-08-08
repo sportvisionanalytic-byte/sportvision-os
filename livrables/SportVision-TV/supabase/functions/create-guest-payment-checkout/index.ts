@@ -1,43 +1,40 @@
 // ⚠️  REDÉPLOIEMENT MANUEL REQUIS après toute modification de ce fichier.
 // Ce code ne se déploie PAS automatiquement sur Supabase depuis le repo.
 // Étape à faire à chaque édition : Supabase Dashboard → Edge Functions →
-// create-guest-deposit-checkout → coller ce code → Deploy.
+// create-guest-payment-checkout → coller ce code → Deploy.
 // Oublier cette étape est la cause la plus fréquente de "le code est bon
 // mais ça ne marche pas en prod" sur ce projet.
 //
-// Supabase Edge Function — create-guest-deposit-checkout
-// Crée une session Stripe Checkout pour l'ACOMPTE d'une prestation créée
-// sans compte (create-guest-request), depuis reserver.html — donc SANS
-// authentification Supabase, contrairement à create-checkout-session (réservé
-// aux clients connectés dans Connect). Utilisée uniquement pour les 3 offres
-// à tarif fixe (match-photo, match-video, pack-match) : sur devis, le prix
-// n'est pas encore connu, donc pas d'acompte possible à ce stade.
+// Supabase Edge Function — create-guest-payment-checkout
+// Crée une session Stripe Checkout pour le règlement immédiat et TOTAL d'une
+// prestation créée sans compte (create-guest-request), depuis reserver.html —
+// donc SANS authentification Supabase, contrairement à create-checkout-session
+// (réservé aux clients connectés dans Connect). Utilisée uniquement pour les
+// 3 offres à tarif fixe (match-photo, match-video, pack-match) : sur devis, le
+// prix n'est pas encore connu, donc rien à faire payer à ce stade.
 //
-// Règle produit (2026-08-08, demande fondateur) : l'acompte (30% du prix TTC,
-// même taux que create-checkout-session) est OBLIGATOIRE avant confirmation
-// définitive pour un client qui réserve pour la première fois — mais devient
-// facultatif si ce même e-mail a déjà un paiement "reussi" en base (client
-// existant, déjà en confiance). Le solde restant peut lui être réglé par
-// carte ou en espèces sur place (préférence exprimée séparément dans
-// create-guest-request, colonne prestations.preference_paiement_solde) —
-// mais l'acompte, lui, doit TOUJOURS être payé en ligne par carte : c'est la
-// seule chose qui garantit réellement la réservation avant intervention
-// humaine.
+// Règle produit (2026-08-08, décision fondateur) : au moment de réserver, le
+// client choisit librement carte (paiement immédiat de la totalité, cette
+// fonction) ou espèces (rien à payer en ligne, réglé sur place le jour J) —
+// cette fonction n'est appelée QUE si le client a choisi carte. Dans les deux
+// cas la réservation est confirmée tout de suite, sans condition ni acompte :
+// pas de vérification "1ère réservation" ou "client existant" ici, contrairement
+// à une version antérieure de cette fonctionnalité (acompte obligatoire),
+// abandonnée avant tout déploiement.
 //
 // Le paiement créé ici est traité par le webhook Stripe existant
 // (stripe-webhook, branche `paiementId`) sans aucune modification : il
 // identifie le paiement via metadata.paiement_id, met à jour paiements +
-// prestations.acompte_recu + envoie le reçu, exactement comme un acompte payé
+// prestations.statut_financier + envoie le reçu, exactement comme un paiement
 // depuis Connect. Rien à dupliquer côté webhook.
 //
 // Deploy via Supabase dashboard > Edge Functions > New Function
-// (name: create-guest-deposit-checkout)
+// (name: create-guest-payment-checkout)
 // Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY
 //
 // Anti-abus : même honeypot/limite de fréquence que les autres fonctions
-// invité (guest_rate_limits), espace de noms "deposit:" pour ne jamais
-// entrer en collision avec les autres identifiants (ex. "req:" de
-// create-guest-request).
+// invité (guest_rate_limits), espace de noms "payment:" pour ne jamais entrer
+// en collision avec les autres identifiants (ex. "req:" de create-guest-request).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -45,7 +42,6 @@ import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const ACOMPTE_TAUX = 0.3;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,14 +86,14 @@ serve(async (req) => {
     }
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("cf-connecting-ip") || "inconnu";
-    const rateOk = await checkRateLimit(admin, `deposit:${ip}`);
+    const rateOk = await checkRateLimit(admin, `payment:${ip}`);
     if (!rateOk) {
       return json({ error: "Trop de demandes envoyées récemment. Merci de réessayer plus tard." }, 429);
     }
 
     const { data: prestation } = await admin
       .from("prestations")
-      .select("id, client_id, offre_id, reference, montant_ttc, acompte_montant")
+      .select("id, client_id, offre_id, reference, montant_ttc")
       .eq("id", prestation_id)
       .maybeSingle();
     if (!prestation) return json({ error: "Prestation introuvable" }, 404);
@@ -109,14 +105,14 @@ serve(async (req) => {
       .maybeSingle();
     // Vérifie que l'e-mail fourni correspond bien au client de cette prestation
     // (seule "authentification" possible dans un flux 100% anonyme) : empêche
-    // de sonder/déclencher un paiement sur la prestation de quelqu'un d'autre
-    // en devinant un prestation_id.
+    // de déclencher un paiement sur la prestation de quelqu'un d'autre en
+    // devinant un prestation_id.
     if (!client || client.email.toLowerCase() !== String(email).toLowerCase()) {
       return json({ error: "Non autorisé" }, 403);
     }
 
     if (!prestation.offre_id) {
-      return json({ required: false, reason: "sur_devis" });
+      return json({ payable: false, reason: "sur_devis" });
     }
     const { data: offre } = await admin
       .from("catalogue_offres")
@@ -124,43 +120,28 @@ serve(async (req) => {
       .eq("id", prestation.offre_id)
       .maybeSingle();
     if (!offre || offre.tarif_type !== "fixe" || offre.prix_ht == null) {
-      return json({ required: false, reason: "sur_devis" });
+      return json({ payable: false, reason: "sur_devis" });
     }
 
-    // Client déjà en confiance (a déjà réglé un paiement "reussi" par le
-    // passé, tous types de prestations confondus) : acompte facultatif, on ne
-    // bloque pas la confirmation.
-    const { count: paiementsReussis } = await admin
-      .from("paiements")
-      .select("id", { count: "exact", head: true })
-      .eq("client_id", client.id)
-      .eq("statut", "reussi");
-    if ((paiementsReussis || 0) > 0) {
-      return json({ required: false, reason: "client_existant" });
-    }
-
-    const totalTtc = prestation.montant_ttc != null
+    const montant = prestation.montant_ttc != null
       ? Number(prestation.montant_ttc)
       : Math.round(Number(offre.prix_ht) * (1 + Number(offre.tva_pct ?? 20) / 100) * 100) / 100;
-    const montant = prestation.acompte_montant != null
-      ? Number(prestation.acompte_montant)
-      : Math.round(totalTtc * ACOMPTE_TAUX * 100) / 100;
-    if (!montant || montant <= 0) return json({ error: "Montant d'acompte nul" }, 400);
+    if (!montant || montant <= 0) return json({ error: "Montant nul" }, 400);
 
-    // Réutilise un acompte "en_attente" déjà créé pour cette prestation (ex.
+    // Réutilise un paiement "en_attente" déjà créé pour cette prestation (ex.
     // le visiteur a fermé l'onglet Stripe et relance) plutôt que d'empiler des
     // lignes orphelines à chaque tentative.
     const { data: existant } = await admin
       .from("paiements")
       .select("id, statut")
       .eq("prestation_id", prestation.id)
-      .eq("type_paiement", "acompte")
+      .eq("type_paiement", "totalite")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (existant?.statut === "reussi") {
-      return json({ required: false, reason: "deja_paye" });
+      return json({ payable: false, reason: "deja_paye" });
     }
 
     let paiementId: string;
@@ -173,7 +154,7 @@ serve(async (req) => {
         .insert({
           prestation_id: prestation.id,
           client_id: client.id,
-          type_paiement: "acompte",
+          type_paiement: "totalite",
           montant,
           statut: "en_attente",
         })
@@ -188,7 +169,7 @@ serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    const label = `SportVision — acompte ${offre.nom || ""} ${prestation.reference || ""}`.trim();
+    const label = `SportVision — ${offre.nom || ""} ${prestation.reference || ""}`.trim();
     const separator = success_url.includes("?") ? "&" : "?";
     const separatorCancel = cancel_url.includes("?") ? "&" : "?";
 
@@ -211,7 +192,7 @@ serve(async (req) => {
       cancel_url: `${cancel_url}${separatorCancel}paiement=annule&paiement_id=${paiementId}`,
     });
 
-    return json({ required: true, checkout_url: session.url, montant, reference: prestation.reference });
+    return json({ payable: true, checkout_url: session.url, montant, reference: prestation.reference });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
