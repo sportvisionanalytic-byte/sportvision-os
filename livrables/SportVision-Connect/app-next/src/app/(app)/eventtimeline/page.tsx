@@ -6,7 +6,7 @@ import { canAccess } from "@/lib/permissions";
 import { eventPhasesByEventOrg } from "@/lib/mock/events";
 import type { EventPhase } from "@/lib/types/events";
 import { cn } from "@/lib/cn";
-import { LockedModule } from "@/components/persona/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
@@ -20,7 +20,7 @@ const PHASE_STATUS_LABEL: Record<EventPhase["status"], { label: string; tone: Ba
 
 export default function EventTimelinePage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "eventtimeline")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "eventtimeline")) return <LockedModule />;
 
   const phases = eventPhasesByEventOrg[ctx.organization.id] ?? [];
 

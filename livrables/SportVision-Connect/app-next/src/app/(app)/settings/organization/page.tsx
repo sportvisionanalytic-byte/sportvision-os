@@ -6,7 +6,7 @@ import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { LockedModule } from "@/components/access/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 
 // /settings/organization — voir ACTIONS.md § 25 « Organisation ». Logo, nom, adresse, Instagram,
 // SIRET, couleurs du club.

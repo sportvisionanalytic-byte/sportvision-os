@@ -7,7 +7,7 @@ import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/billing/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC, totalLabel } from "@/components/billing/format";
 import { daysLate, mockInvoices } from "@/lib/mock/billing";
 
@@ -16,7 +16,7 @@ import { daysLate, mockInvoices } from "@/lib/mock/billing";
 export default function InvoiceDetailPage({ params }: { params: { id: string } }) {
   const { ctx } = useSession();
 
-  if (!canAccess(ctx, "billing")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "billing")) return <LockedModule />;
 
   const invoice = mockInvoices.find((i) => i.id === params.id && i.organizationId === ctx.organization.id);
 

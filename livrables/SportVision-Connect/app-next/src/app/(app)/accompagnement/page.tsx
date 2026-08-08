@@ -11,7 +11,7 @@ import {
   followUpPoints,
   monthlyFigures,
 } from "@/lib/mock/persona";
-import { LockedModule } from "@/components/persona/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -23,7 +23,7 @@ export default function AccompagnementPage() {
   const { ctx } = useSession();
   const router = useRouter();
 
-  if (!canAccess(ctx, "accompagnement")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "accompagnement")) return <LockedModule />;
 
   if (ctx.organization.type === "cm_agency") {
     const accesses = delegatedAccessByCmOrg[ctx.organization.id] ?? [];

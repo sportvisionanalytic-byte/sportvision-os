@@ -9,7 +9,7 @@ import { CALENDAR_EVENT_KIND_LABELS, type CalendarEvent, type CalendarEventKind 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { LockedModule } from "@/components/access/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { KIND_DOT } from "@/components/calendar/calendar-style";
 import { EventDetailPanel } from "@/components/calendar/EventDetailPanel";
 import { AddEventModal } from "@/components/calendar/AddEventModal";

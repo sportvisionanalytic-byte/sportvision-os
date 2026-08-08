@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Switch } from "@/components/settings/Switch";
-import { LockedModule } from "@/components/access/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 
 // /settings/profile — voir ACTIONS.md § 25 « Personnel ». Photo, nom, téléphone, e-mail, langue,
 // double authentification, apparence sombre, Enregistrer (seule action principale de l'écran).

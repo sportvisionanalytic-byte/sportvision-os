@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { getCollectionById } from "@/lib/mock/content";
-import { ContentLockedModule } from "@/components/content/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { CollectionPanel } from "@/components/content/CollectionPanel";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 // /content/collections/:id — panneau de collection, voir ACTIONS.md § 13.
 export default function CollectionDetailPage({ params }: { params: { id: string } }) {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "content")) return <ContentLockedModule />;
+  if (!canAccess(ctx, "content")) return <LockedModule />;
 
   const collection = getCollectionById(params.id);
 

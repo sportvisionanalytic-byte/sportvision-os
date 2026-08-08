@@ -7,7 +7,7 @@ import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
-import { LockedModule } from "@/components/communication/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { ScheduleSlotModal } from "@/components/communication/ScheduleSlotModal";
 import { ToastViewport } from "@/components/communication/ToastViewport";
 import { useToast } from "@/components/communication/useToast";
@@ -17,7 +17,7 @@ import { getCommunityManagerProfile } from "@/lib/mock/communication";
 // /messages (fil du CM), en dehors du périmètre de ce module — voir le rapport final.
 export default function MyCmPage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "mycm")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "mycm")) return <LockedModule />;
   return <MyCmScreen organizationId={ctx.organization.id} />;
 }
 

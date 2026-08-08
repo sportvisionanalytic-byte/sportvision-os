@@ -7,7 +7,7 @@ import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/teams/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { ImageRightBanner } from "@/components/teams/ImageRightBanner";
 import { imageRightForPlayer, mockPlayers, mockTeams } from "@/lib/mock/teams";
 import type { ImageRightScopes, LicenseStatus } from "@/lib/types/teams";
@@ -42,7 +42,7 @@ const SCOPE_LABEL: Record<keyof ImageRightScopes, string> = {
 export default function PlayerDetailPage({ params }: { params: { id: string } }) {
   const { ctx } = useSession();
 
-  if (!canAccess(ctx, "teams")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "teams")) return <LockedModule />;
 
   const player = mockPlayers.find((p) => p.id === params.id && p.organizationId === ctx.organization.id);
 

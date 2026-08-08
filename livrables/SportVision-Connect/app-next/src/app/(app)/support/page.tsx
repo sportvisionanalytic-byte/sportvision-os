@@ -12,7 +12,7 @@ import { resetOnboardingProgress } from "@/components/onboarding/onboarding-stor
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/access/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { NewTicketModal } from "@/components/support/NewTicketModal";
 
 // /support — voir ACTIONS.md § 24. Recherche, cartes de sujet, Nouveau ticket, Revoir le

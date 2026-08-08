@@ -8,7 +8,7 @@ import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/sponsors/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { SPONSOR_LEVEL_LABEL, SPONSOR_LEVEL_TONE, SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/components/sponsors/format";
 import {
   deliverablesForSponsor,
@@ -42,7 +42,7 @@ export default function SponsorDetailPage({ params }: { params: { id: string } }
   const [tab, setTab] = useState<TabKey>("livrables");
 
   const isPartner = ctx.organization.type === "sponsor";
-  if (!isPartner && !canAccess(ctx, "sponsors")) return <LockedModule ctx={ctx} />;
+  if (!isPartner && !canAccess(ctx, "sponsors")) return <LockedModule />;
 
   const sponsor = mockSponsors.find((s) => s.id === params.id && (isPartner || s.organizationId === ctx.organization.id));
 

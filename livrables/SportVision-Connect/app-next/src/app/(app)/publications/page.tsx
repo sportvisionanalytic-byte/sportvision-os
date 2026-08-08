@@ -7,7 +7,7 @@ import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/communication/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { EmptyState } from "@/components/communication/EmptyState";
 import { displayStatusTone } from "@/components/communication/statusTone";
 import { getPublicationsByOrg } from "@/lib/mock/communication";
@@ -22,7 +22,7 @@ const FILTERS: (PublicationDisplayStatus | "Toutes")[] = ["Toutes", "Publiée", 
 
 export default function PublicationsPage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "publications")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "publications")) return <LockedModule />;
   return <PublicationsHistory organizationId={ctx.organization.id} />;
 }
 

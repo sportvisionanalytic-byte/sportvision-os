@@ -8,7 +8,7 @@ import { PLANS } from "@/lib/plans";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/communication/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { EmptyState } from "@/components/communication/EmptyState";
 import { presenceStatusTone, PRESENCE_STATUS_LABELS } from "@/components/communication/statusTone";
 import { getPresencesByOrg } from "@/lib/mock/communication";
@@ -20,7 +20,7 @@ import { PRESENCE_KIND_LABELS } from "@/lib/types/communication";
 // celles du mois en cours (voir la note dans le rapport final sur ce choix).
 export default function PresencesPage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "presences")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "presences")) return <LockedModule />;
   return <PresencesScreen />;
 }
 

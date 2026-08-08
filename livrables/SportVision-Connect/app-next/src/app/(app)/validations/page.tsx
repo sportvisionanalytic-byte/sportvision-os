@@ -5,7 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
-import { LockedModule } from "@/components/communication/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { EmptyState } from "@/components/communication/EmptyState";
 import { Modal } from "@/components/communication/Modal";
 import { ValidationCard } from "@/components/communication/ValidationCard";
@@ -18,7 +18,7 @@ import { FORMAT_LABELS, PLATFORM_LABELS, type Publication } from "@/lib/types/co
 // valider → état vide qui rassure plutôt que de constater l'absence (README.md § États vides).
 export default function ValidationsPage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "validations")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "validations")) return <LockedModule />;
   return <ValidationsQueue organizationId={ctx.organization.id} />;
 }
 

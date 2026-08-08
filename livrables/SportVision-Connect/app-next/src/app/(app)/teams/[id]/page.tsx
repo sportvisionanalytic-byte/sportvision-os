@@ -18,7 +18,7 @@ import { canAccess, canCreate } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/teams/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { ImageRightStatusBadge } from "@/components/teams/ImageRightBanner";
 import {
   imageRightForPlayer,
@@ -63,7 +63,7 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
   const { ctx } = useSession();
   const [tab, setTab] = useState<TabKey>("apercu");
 
-  if (!canAccess(ctx, "teams")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "teams")) return <LockedModule />;
 
   const team = mockTeams.find((t) => t.id === params.id && t.organizationId === ctx.organization.id);
 

@@ -10,7 +10,7 @@ import { ROLE_LABELS, type OrgUser } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/access/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { InviteUserModal } from "@/components/users/InviteUserModal";
 
 // /users — voir ACTIONS.md § 15 « Utilisateurs » (juste après Équipes dans le document) et

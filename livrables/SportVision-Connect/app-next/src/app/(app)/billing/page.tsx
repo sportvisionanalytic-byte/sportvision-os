@@ -7,7 +7,7 @@ import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/billing/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC, formatPaymentMethod } from "@/components/billing/format";
 import { contractsForOrganization, daysLate, invoicesForOrganization, mockPaymentMethods } from "@/lib/mock/billing";
 import { mockOrganizations } from "@/lib/mock-data";
@@ -20,7 +20,7 @@ export default function BillingPage() {
   const isAffiliatedPlayer = ctx.organization.type === "player" && !!ctx.organization.parentOrganizationId;
   if (isAffiliatedPlayer) return <AffiliatedPlayerNotice />;
 
-  if (!canAccess(ctx, "billing")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "billing")) return <LockedModule />;
 
   const invoices = invoicesForOrganization(ctx.organization.id);
   const overdue = invoices.find((i) => i.status === "en_retard");

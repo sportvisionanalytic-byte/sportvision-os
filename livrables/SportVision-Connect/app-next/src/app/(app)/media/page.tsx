@@ -2,7 +2,7 @@
 
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
-import { ContentLockedModule } from "@/components/content/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { ContentLibrary } from "@/components/content/ContentLibrary";
 
 // /media — alias de /content pour les navigations Full Communication (voir README.md §
@@ -10,6 +10,6 @@ import { ContentLibrary } from "@/components/content/ContentLibrary";
 // aller-retour visible côté client.
 export default function MediaPage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "content")) return <ContentLockedModule />;
+  if (!canAccess(ctx, "content")) return <LockedModule />;
   return <ContentLibrary />;
 }

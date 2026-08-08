@@ -7,7 +7,7 @@ import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/sponsors/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { SponsorCard } from "@/components/sponsors/SponsorCard";
 import { SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/components/sponsors/format";
 import {
@@ -39,7 +39,7 @@ export default function SponsorsPage() {
   const isAffiliatedPlayer = ctx.organization.type === "player" && !!ctx.organization.parentOrganizationId;
   if (isAffiliatedPlayer) return <AffiliatedPlayerNotice />;
 
-  if (!canAccess(ctx, "sponsors")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "sponsors")) return <LockedModule />;
 
   const sponsors = sponsorsForOrganization(ctx.organization.id);
   const active = sponsors.filter((s) => s.status === "active").length;

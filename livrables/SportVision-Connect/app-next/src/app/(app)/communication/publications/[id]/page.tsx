@@ -8,7 +8,7 @@ import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/communication/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { StatusStepper } from "@/components/communication/StatusStepper";
 import { ToastViewport } from "@/components/communication/ToastViewport";
 import { useToast } from "@/components/communication/useToast";
@@ -25,7 +25,7 @@ import {
 
 export default function PublicationDetailPage({ params }: { params: { id: string } }) {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "communication")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "communication")) return <LockedModule />;
   return <PublicationDetail id={params.id} />;
 }
 

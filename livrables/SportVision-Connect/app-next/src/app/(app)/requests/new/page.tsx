@@ -7,7 +7,7 @@ import { ArrowLeft, UploadCloud } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
 import { PLANS } from "@/lib/plans";
-import { LockedModule } from "@/components/locked/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Toast, useToast } from "@/components/feedback/Toast";

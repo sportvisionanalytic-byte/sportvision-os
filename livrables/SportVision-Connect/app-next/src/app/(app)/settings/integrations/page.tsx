@@ -8,7 +8,7 @@ import type { Integration } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { LockedModule } from "@/components/access/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { IntegrationSyncPanel } from "@/components/settings/IntegrationSyncPanel";
 
 // /settings/integrations — voir ACTIONS.md § 25 « Intégrations ». 6 services avec état, compte

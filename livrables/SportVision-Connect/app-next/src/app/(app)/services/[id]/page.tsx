@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { getServiceById } from "@/lib/mock/services";
-import { ServicesLockedModule } from "@/components/services/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { ServiceDetail } from "@/components/services/ServiceDetail";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 // /services/:id — fiche prestation à 10 onglets, voir ACTIONS.md § 12.
 export default function ServiceDetailPage({ params }: { params: { id: string } }) {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "services")) return <ServicesLockedModule />;
+  if (!canAccess(ctx, "services")) return <LockedModule />;
 
   const service = getServiceById(params.id);
 

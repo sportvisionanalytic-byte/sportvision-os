@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
-import { LockedModule } from "@/components/access/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 
 // /documents — voir DATA_MODEL.md § Document (pas de section ACTIONS.md dédiée : cohérence
 // gardée avec les autres listes de l'app — filtres en puces, recherche, actions de ligne

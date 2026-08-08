@@ -8,7 +8,7 @@ import { canAccess, canCreate } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/communication/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { EmptyState } from "@/components/communication/EmptyState";
 import { NewPublicationModal } from "@/components/communication/NewPublicationModal";
 import { PublicationChip } from "@/components/communication/PublicationChip";
@@ -34,7 +34,7 @@ type ViewMode = "month" | "week" | "list";
 // publication. Voir ACTIONS.md § 14 et CHARTE.md § Glisser-déposer.
 export default function CommunicationPage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "communication")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "communication")) return <LockedModule />;
   return <EditorialPlanning organizationId={ctx.organization.id} />;
 }
 

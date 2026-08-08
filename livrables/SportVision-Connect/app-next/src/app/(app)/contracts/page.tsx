@@ -7,7 +7,7 @@ import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/contracts/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE, formatMonthlyAmount, signatureExpiresAt } from "@/components/contracts/format";
 import { contractsForOrganization } from "@/lib/mock/billing";
 
@@ -17,7 +17,7 @@ import { contractsForOrganization } from "@/lib/mock/billing";
 export default function ContractsPage() {
   const { ctx } = useSession();
 
-  if (!canAccess(ctx, "contracts")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "contracts")) return <LockedModule />;
 
   const contracts = contractsForOrganization(ctx.organization.id);
 

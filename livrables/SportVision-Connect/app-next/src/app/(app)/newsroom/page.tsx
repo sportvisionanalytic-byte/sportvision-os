@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Archive, MessageSquarePlus, Sparkles } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
-import { LockedModule } from "@/components/locked/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";

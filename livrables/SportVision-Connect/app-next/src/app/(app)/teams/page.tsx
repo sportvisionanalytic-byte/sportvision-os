@@ -5,7 +5,7 @@ import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { LockedModule } from "@/components/teams/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { TeamCard } from "@/components/teams/TeamCard";
 import { FollowedClubCard } from "@/components/teams/FollowedClubCard";
 import { mockFollowedClubs, teamsForOrganization } from "@/lib/mock/teams";
@@ -16,7 +16,7 @@ import { mockFollowedClubs, teamsForOrganization } from "@/lib/mock/teams";
 export default function TeamsPage() {
   const { ctx } = useSession();
 
-  if (!canAccess(ctx, "teams")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "teams")) return <LockedModule />;
 
   if (ctx.organization.type === "cm_agency") {
     return <FollowedClubsView organizationId={ctx.organization.id} />;

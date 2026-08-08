@@ -2,7 +2,7 @@
 
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
-import { LockedModule } from "@/components/access/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { MessagesShell } from "@/components/messaging/MessagesShell";
 
 // /messages/:thread — voir ACTIONS.md § 22 et README.md § Arborescence des routes. Même coque

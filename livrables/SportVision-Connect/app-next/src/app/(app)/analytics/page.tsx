@@ -6,7 +6,7 @@ import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Card } from "@/components/ui/Card";
 import { MetricCard } from "@/components/communication/MetricCard";
-import { LockedModule } from "@/components/communication/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { EmptyState } from "@/components/communication/EmptyState";
 import { getAnalyticsSummary, getPublicationsByOrg } from "@/lib/mock/communication";
 import { PLATFORM_LABELS } from "@/lib/types/communication";
@@ -15,7 +15,7 @@ import { PLATFORM_LABELS } from "@/lib/types/communication";
 // chacune avec sa progression », puis « Vos meilleures publications » (3 entrées).
 export default function AnalyticsPage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "analytics")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "analytics")) return <LockedModule />;
   return <AnalyticsScreen organizationId={ctx.organization.id} />;
 }
 

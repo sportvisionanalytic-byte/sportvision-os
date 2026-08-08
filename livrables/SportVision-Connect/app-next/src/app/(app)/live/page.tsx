@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { liveFeedByEventOrg, liveStatsByEventOrg } from "@/lib/mock/events";
-import { LockedModule } from "@/components/persona/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button";
 export default function LivePage() {
   const { ctx } = useSession();
   const router = useRouter();
-  if (!canAccess(ctx, "live")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "live")) return <LockedModule />;
 
   const stats = liveStatsByEventOrg[ctx.organization.id] ?? [];
   const feed = liveFeedByEventOrg[ctx.organization.id] ?? [];

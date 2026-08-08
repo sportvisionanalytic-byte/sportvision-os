@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { getMediaAssetById } from "@/lib/mock/content";
-import { ContentLockedModule } from "@/components/content/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { MediaDetail } from "@/components/content/MediaDetail";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 // /content/:id — fiche média, voir ACTIONS.md § 13.
 export default function MediaDetailPage({ params }: { params: { id: string } }) {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "content")) return <ContentLockedModule />;
+  if (!canAccess(ctx, "content")) return <LockedModule />;
 
   const asset = getMediaAssetById(params.id);
 

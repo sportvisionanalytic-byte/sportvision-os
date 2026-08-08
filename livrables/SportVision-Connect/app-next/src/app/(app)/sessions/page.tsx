@@ -5,7 +5,7 @@ import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { sessionsByCoachOrg } from "@/lib/mock/events";
 import type { CoachSession } from "@/lib/types/events";
-import { LockedModule } from "@/components/persona/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -19,7 +19,7 @@ const STATUS_LABEL: Record<CoachSession["status"], { label: string; tone: BadgeT
 
 export default function SessionsPage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "sessions")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "sessions")) return <LockedModule />;
 
   const sessions = sessionsByCoachOrg[ctx.organization.id] ?? [];
 

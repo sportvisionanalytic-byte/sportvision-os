@@ -7,7 +7,7 @@ import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { LockedModule } from "@/components/communication/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { EmptyState } from "@/components/communication/EmptyState";
 import { ToastViewport } from "@/components/communication/ToastViewport";
 import { useToast } from "@/components/communication/useToast";
@@ -18,7 +18,7 @@ import { getReportsByOrg } from "@/lib/mock/communication";
 // ACTIONS.md § 9 : carte de mois → charge le rapport, en-tête premium avec téléchargement PDF.
 export default function ReportsPage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "reports")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "reports")) return <LockedModule />;
   return <ReportsScreen organizationId={ctx.organization.id} />;
 }
 

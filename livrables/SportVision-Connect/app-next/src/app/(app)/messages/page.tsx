@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { mockThreads } from "@/lib/mock/messaging";
-import { LockedModule } from "@/components/access/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { MessagesShell } from "@/components/messaging/MessagesShell";
 
 // /messages — voir ACTIONS.md § 22. Ouvre directement la conversation la plus récente si elle

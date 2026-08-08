@@ -6,7 +6,7 @@ import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { childDocumentsByChild, childImageRightsByChild, childrenByParentOrg } from "@/lib/mock/persona";
 import { IMAGE_RIGHT_SCOPE_LABELS, type ImageRightScope } from "@/lib/types/persona";
-import { LockedModule } from "@/components/persona/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { ToggleSwitch } from "@/components/persona/ToggleSwitch";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -50,7 +50,7 @@ export default function AuthorizationsPage() {
     return initial;
   });
 
-  if (!canAccess(ctx, "authorizations")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "authorizations")) return <LockedModule />;
 
   function toggleScope(childId: string, scope: ImageRightScope) {
     setScopesByChild((prev) => ({

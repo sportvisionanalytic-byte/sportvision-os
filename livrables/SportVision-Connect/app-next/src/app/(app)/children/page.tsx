@@ -5,7 +5,7 @@ import { AlertTriangle } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { childrenByParentOrg } from "@/lib/mock/persona";
-import { LockedModule } from "@/components/persona/LockedModule";
+import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +17,7 @@ export default function ChildrenPage() {
   const { ctx } = useSession();
   const router = useRouter();
 
-  if (!canAccess(ctx, "children")) return <LockedModule ctx={ctx} />;
+  if (!canAccess(ctx, "children")) return <LockedModule />;
 
   const children = childrenByParentOrg[ctx.organization.id] ?? [];
   const missingAuth = children.some((c) => c.imageRightStatus !== "signed");
