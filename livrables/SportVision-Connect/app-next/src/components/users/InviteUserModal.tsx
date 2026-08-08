@@ -1,0 +1,79 @@
+"use client";
+
+import { useState } from "react";
+import { X } from "lucide-react";
+import type { MembershipRole } from "@/lib/types";
+import { ROLE_LABELS } from "@/lib/types/settings";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+
+// Modale « Inviter un utilisateur » — voir ACTIONS.md § 5 (action rapide « Inviter un
+// utilisateur ») et README.md § Sécurité (rôle attribué à l'invitation, non modifiable par
+// l'invité — voir DATA_MODEL.md § Membership).
+interface InviteUserModalProps {
+  roles: MembershipRole[];
+  onClose: () => void;
+  onInvite: (input: { email: string; role: MembershipRole }) => void;
+}
+
+export function InviteUserModal({ roles, onClose, onInvite }: InviteUserModalProps) {
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<MembershipRole>(roles[0] ?? "viewer");
+
+  const canSubmit = /\S+@\S+\.\S+/.test(email);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
+      <Card className="animate-svfade relative flex w-full max-w-[420px] flex-col gap-4 rounded-sv-modal p-6 shadow-sv-modal">
+        <button
+          aria-label="Fermer"
+          onClick={onClose}
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-text-faint hover:bg-surface-sunken hover:text-text"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+
+        <h2 className="text-[19px] font-extrabold tracking-tight">Inviter un utilisateur</h2>
+        <p className="text-[12.5px] text-text-soft">L&apos;invitation est valable 7 jours. Le rôle n&apos;est pas modifiable par l&apos;invité.</p>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12.5px] font-bold text-text-soft">Adresse e-mail</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-11 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
+            placeholder="prenom.nom@monclub.fr"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12.5px] font-bold text-text-soft">Rôle</span>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as MembershipRole)}
+            className="h-11 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[14px] outline-none focus-visible:border-brand-blue"
+          >
+            {roles.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABELS[r] ?? r}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="mt-1 flex justify-end">
+          <Button
+            disabled={!canSubmit}
+            onClick={() => {
+              onInvite({ email, role });
+              onClose();
+            }}
+          >
+            Envoyer l&apos;invitation
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
