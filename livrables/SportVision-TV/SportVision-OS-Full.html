@@ -2687,13 +2687,19 @@ function escJs(s){
 // (ex: RLS, réseau) — l'utilisateur ne doit pas perdre sa saisie pour ça.
 async function logFinancialAudit(action,tableCible,ligneId,montantAvant,montantApres,details){
   try{
-    await sbFetch('financial_audit_log',{method:'POST',body:{
+    // sbFetch ne lève jamais d'exception sur une erreur PostgREST (elle
+    // renvoie {code,message}) — ce try/catch seul ne peut donc attraper
+    // qu'un échec réseau, jamais un refus RLS/contrainte. On vérifie le
+    // résultat explicitement pour que l'échec reste au moins visible en
+    // console, plutôt que de disparaître sans aucune trace.
+    const r=await sbFetch('financial_audit_log',{method:'POST',body:{
       acteur_id:localStorage.getItem('sv_uid')||null,
       action,table_cible:tableCible,ligne_id:ligneId||null,
       montant_avant:(montantAvant===undefined?null:montantAvant),
       montant_apres:(montantApres===undefined?null:montantApres),
       details:details||{},
     }});
+    if(sbErr(r))console.error('logFinancialAudit failed',r);
   }catch(e){console.error('logFinancialAudit failed',e);}
 }
 
@@ -2876,25 +2882,30 @@ async function creerPrestation(){
   const clientId=document.getElementById('f-client').value;
   const date=document.getElementById('f-date').value;
   if(!date){err.textContent='La date est obligatoire.';return;}
+  const heureFin=document.getElementById('f-hfin').value||null;
+  const heureDebut=document.getElementById('f-hdeb').value||null;
+  if(heureDebut&&heureFin&&heureFin<=heureDebut){err.textContent='L\'heure de fin doit être après l\'heure de début.';return;}
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='Création…';}
   err.textContent='Création...';
   try{
     const body={
       client_id:clientId||null,
       type_prestation:document.getElementById('f-type').value,
       date_prestation:date,
-      heure_debut:document.getElementById('f-hdeb').value||null,
-      heure_fin:document.getElementById('f-hfin').value||null,
+      heure_debut:heureDebut,
+      heure_fin:heureFin,
       lieu:document.getElementById('f-lieu').value||null,
       description_besoin:document.getElementById('f-besoin').value||null,
       created_by:localStorage.getItem('sv_uid')
     };
     const r=await sbFetch('prestations',{method:'POST',body});
-    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Création impossible.');return;}
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Création impossible.');if(btn){btn.disabled=false;btn.textContent='Créer la prestation';}return;}
     closeModal();
     toast('Prestation créée.','ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
-  }catch(e){err.textContent='Erreur lors de la création.';}
+  }catch(e){err.textContent='Erreur lors de la création.';if(btn){btn.disabled=false;btn.textContent='Créer la prestation';}}
 }
 function filtrerClientsSelect(q){
   const dd=document.getElementById('f-client-dropdown');
@@ -6473,7 +6484,7 @@ async function loadEquipes(){
           const t=m.collaborateur||{};
           const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||'?';
           const name=[t.prenom,t.nom].filter(Boolean).join(' ')||'—';
-          const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'bb','remplacée':'bn','annulée':'bn'};
+          const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
           const iLb={'invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
           return`<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--s2);border-radius:var(--rb);position:relative">
             <div class="av" style="background:${rc[t.role]||'#366BFF'};width:32px;height:32px;font-size:12px">${ini}</div>
@@ -6529,10 +6540,19 @@ async function syncMissionXp(uid,preloadedRows){
     const missing=eligible.filter(r=>!already.has(r.id));
     if(!missing.length)return;
     const events=missing.map(r=>({collaborateur_id:uid,montant:100+(r.est_responsable?50:0),type:'prestation',source_id:r.id,source_type:'prestations_equipe',description:'Mission réalisée',attribue_par:uid}));
-    await sbFetch('xp_events',{method:'POST',body:events}).catch(()=>{});
+    // Les deux écritures doivent réussir ensemble : si xp_events échoue, la
+    // mission n'est pas marquée "déjà synchronisée" (le test d'idempotence se
+    // base sur xp_events), donc surtout ne PAS créditer profiles.xp — sinon le
+    // prochain appel retente la même mission et double-crédite l'XP à chaque
+    // rechargement du dashboard. Si c'est profiles.xp qui échoue après un
+    // xp_events réussi, l'inverse se produit (XP jamais réellement ajouté mais
+    // marqué comme si) — les deux cas sont donc bloqués avant d'agir.
+    const rEv=await sbFetch('xp_events',{method:'POST',body:events}).catch(()=>({code:'network_error'}));
+    if(sbErr(rEv))return;
     const addedXp=events.reduce((s,e)=>s+e.montant,0);
     const cur=prof.xp||0;
-    await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+addedXp}}).catch(()=>{});
+    const rXp=await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+addedXp}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rXp))return;
     await _checkGradePromotion(uid,cur+addedXp);
   }catch(e){}
 }
@@ -6581,15 +6601,24 @@ async function loadPhotoDash(){
     // Tri JS par date prestation (le tri serveur sur embedded ne marche pas sur toutes les versions)
     data.sort((a,b)=>(a.prestations?.date_prestation||'').localeCompare(b.prestations?.date_prestation||''));
     const invitations=data.filter(d=>d.statut==='invitation_envoyée'&&d.prestations);
-    const actives=data.filter(d=>!['refusée','annulée'].includes(d.statut)&&d.prestations);
+    // d.statut = statut de l'invitation (prestations_equipe), d.prestations.statut
+    // = statut réel de la mission — une prestation annulée par l'admin garde
+    // d.statut='acceptée', donc le test doit porter sur les DEUX champs, sinon
+    // le photographe continue de voir une mission annulée comme active.
+    const actives=data.filter(d=>d.statut!=='refusée'&&d.prestations&&d.prestations.statut!=='annulée');
     const prestations=actives.map(d=>d.prestations).filter(Boolean);
     const now=new Date();now.setHours(0,0,0,0);
     const futures=actives.filter(d=>d.prestations?.date_prestation&&new Date(d.prestations.date_prestation)>=now);
     const totalRem=actives.reduce((s,d)=>s+(d.remuneration||0),0);
     // XP total = source de vérité unique (profiles.xp : missions réalisées + formations + bonus quiz + attributions manuelles)
-    const prXp=await sbFetch('profiles?select=xp&id=eq.'+uid).catch(()=>[]);
+    const prXp=await sbFetch('profiles?select=xp,grade&id=eq.'+uid).catch(()=>[]);
     const xp=prXp?.[0]?.xp||0;
-    const {grade,next,pct}=calcGrade(xp);
+    // Grade réellement accordé (profiles.grade, validé par l'admin), pas celui
+    // que l'XP permettrait d'atteindre — sinon ce dashboard affiche une
+    // promotion que l'admin n'a pas encore approuvée (cf. Grades & XP).
+    const grade=GRADES_DEF[prXp?.[0]?.grade||0]||GRADES_DEF[0];
+    const next=GRADES_DEF[(prXp?.[0]?.grade||0)+1];
+    const pct=next?Math.min(100,Math.round((xp-grade.xp)/(next.xp-grade.xp)*100)):100;
     set('photo-kpi-pre',actives.length);
     set('photo-kpi-rem',totalRem?totalRem.toLocaleString('fr-FR')+' €':'0 €');
     set('photo-kpi-xp',xp.toLocaleString('fr-FR'));
@@ -6798,7 +6827,8 @@ async function loadPhotoMesPrestations(){
   try{
     const data=await sbFetch('prestations_equipe?select=id,statut,remuneration,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc');
     if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
-    _photoPreData=data.filter(d=>d.prestations&&d.statut!=='annulée');
+    // d.statut = statut de l'invitation, pas celui de la mission — voir loadPhotoDash.
+    _photoPreData=data.filter(d=>d.prestations&&d.prestations.statut!=='annulée');
     _photoPreData.sort((a,b)=>(b.prestations?.date_prestation||'').localeCompare(a.prestations?.date_prestation||''));
     renderPhotoPre();
   }catch(e){
@@ -7009,36 +7039,48 @@ async function submitDisponibiliteSousConditions(){
   const hDeb=document.getElementById('dsc-hdeb')?.value||'';
   const hFin=document.getElementById('dsc-hfin')?.value||'';
   const note=JSON.stringify({conditions,jours:joursSelec,horaires:{de:hDeb,a:hFin}});
-  localStorage.setItem('sv_dispo','sous_conditions');
   closeModal();
   const uid=localStorage.getItem('sv_uid');
   const today=new Date().toISOString().split('T')[0];
+  // localStorage + toast de succès étaient posés avant même de savoir si
+  // l'écriture réseau avait réussi (jamais vérifiée) — la prod, qui lit cette
+  // table pour savoir qui est réellement disponible, pouvait donc continuer à
+  // planifier quelqu'un qui se croyait "sous conditions" côté écran.
+  let ok=false;
   if(uid){
-    try{
-      await sbFetch('disponibilites?collaborateur_id=eq.'+uid+'&date=eq.'+today,{
-        method:'POST',
-        headers:{'Prefer':'resolution=merge-duplicates'},
-        body:{collaborateur_id:uid,date:today,statut:'sous_conditions',note},
-      });
-    }catch(e){}
+    const r=await sbFetch('disponibilites?on_conflict=collaborateur_id,date',{
+      method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates'},
+      body:{collaborateur_id:uid,date:today,statut:'sous_conditions',note},
+    }).catch(()=>({code:'network_error'}));
+    ok=!sbErr(r);
   }
-  toast('Disponibilité mise à jour.','ok');
+  if(ok){
+    localStorage.setItem('sv_dispo','sous_conditions');
+    toast('Disponibilité mise à jour.','ok');
+  }else{
+    toast('Erreur : la disponibilité n\'a pas pu être enregistrée. Réessayez.','er');
+  }
   if(typeof loadPhotoDash==='function')loadPhotoDash();
 }
 
 async function setDisponibilite(statut){
-  localStorage.setItem('sv_dispo',statut);
   closeModal();
   const uid=localStorage.getItem('sv_uid');
   const today=new Date().toISOString().split('T')[0];
+  let ok=false;
   if(uid){
-    try{
-      await sbFetch('disponibilites?collaborateur_id=eq.'+uid+'&date=eq.'+today,{
-        method:'POST',
-        headers:{'Prefer':'resolution=merge-duplicates'},
-        body:{collaborateur_id:uid,date:today,statut},
-      });
-    }catch(e){}
+    const r=await sbFetch('disponibilites?on_conflict=collaborateur_id,date',{
+      method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates'},
+      body:{collaborateur_id:uid,date:today,statut},
+    }).catch(()=>({code:'network_error'}));
+    ok=!sbErr(r);
+  }
+  if(ok){
+    localStorage.setItem('sv_dispo',statut);
+  }else{
+    toast('Erreur : la disponibilité n\'a pas pu être enregistrée. Réessayez.','er');
   }
   if(typeof loadPhotoDash==='function')loadPhotoDash();
 }
@@ -7084,7 +7126,7 @@ async function loadDocs(){
   if(!el)return;
   try{
     const [devisData,preData]=await Promise.all([
-      sbFetch('devis?select=id,numero,statut,total_ttc,notes,date_envoi,date_expiration,clients(id,nom)&order=created_at.desc&limit=50'),
+      sbFetch('devis?select=id,numero,statut,client_id,total_ttc,notes,date_envoi,date_expiration,clients(id,nom)&order=created_at.desc&limit=50'),
       sbFetch('prestations?select=reference,statut,statut_financier,contrat_signe,date_prestation,clients(nom)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=50'),
     ]);
     _devisCache=devisData||[];
@@ -7423,7 +7465,7 @@ async function chargerEquipe(prestationId,ref){
         <div class="av" style="background:${rc[t.role]||'#366BFF'};width:30px;height:30px;font-size:11px;flex-shrink:0">${ini}</div>
         <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${name}</div><div style="font-size:11px;color:var(--t3)">${m.fonction||t.role||'—'}</div></div>
         <span class="bd ${iSt[m.statut]||'bw'}" style="font-size:9.5px"><span class="bd-d"></span>${iLb[m.statut]||m.statut}</span>
-        <button onclick="retirerMembreEquipe('${m.id}','${prestationId}','${ref}')" style="padding:4px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Retirer</button>
+        <button onclick="retirerMembreEquipe('${m.id}','${prestationId}','${ref}','${t.id||''}')" style="padding:4px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Retirer</button>
       </div>`;
     }).join('');
   }catch(e){el.innerHTML='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';}
@@ -7433,11 +7475,19 @@ async function ajouterMembreEquipe(prestationId,ref){
   const colId=document.getElementById('eq-col').value;
   const fonc=document.getElementById('eq-fonc').value.trim();
   if(!colId){err.textContent='Sélectionne un collaborateur.';return;}
+  const btn=document.querySelector('[onclick^="ajouterMembreEquipe"]');
+  if(btn){if(btn.disabled)return;btn.disabled=true;}
   try{
+    // Pas de contrainte unique côté base sur (prestation_id, collaborateur_id) —
+    // un double-clic ou une resélection par erreur créait deux lignes pour le
+    // même collaborateur (double notification, double comptage de sa
+    // rémunération dans les rapports qui somment sans dédupliquer).
+    const already=await sbFetch('prestations_equipe?select=id&prestation_id=eq.'+prestationId+'&collaborateur_id=eq.'+colId+'&limit=1').catch(()=>[]);
+    if(Array.isArray(already)&&already.length){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
     const rem=document.getElementById('eq-rem').value;
     const rdv=document.getElementById('eq-rdv').value;
     const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
-    if(sbErr(rAdd)){err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');return;}
+    if(sbErr(rAdd)){err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');if(btn)btn.disabled=false;return;}
     creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
     document.getElementById('eq-col').value='';
     document.getElementById('eq-fonc').value='';
@@ -7446,12 +7496,16 @@ async function ajouterMembreEquipe(prestationId,ref){
     err.textContent='';
     await chargerEquipe(prestationId,ref);
   }catch(e){err.textContent='Erreur lors de l\'ajout.';}
+  finally{if(btn)btn.disabled=false;}
 }
-function retirerMembreEquipe(equipeId,prestationId,ref){
+function retirerMembreEquipe(equipeId,prestationId,ref,collaborateurId){
   confirmerAction('Retirer ce collaborateur de la prestation ?',async()=>{
     try{
       const r=await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'DELETE'});
       if(sbErr(r)){toast('Erreur : '+(r.message||'Retrait impossible.'),'er');return;}
+      if(collaborateurId){
+        creerNotifSiActive(collaborateurId,'invitations',{type:'invitation',titre:'Mission annulée — '+(ref||'prestation'),message:'Tu as été retiré(e) de cette prestation.',lue:false,prestation_id:prestationId}).catch(()=>{});
+      }
       toast('Collaborateur retiré.','ok');
       await chargerEquipe(prestationId,ref);
     }catch(e){toast('Erreur lors du retrait.');}
@@ -7504,6 +7558,24 @@ const KIT_ST_CFG={
   endommage:{lb:'Endommagé',dot:'#F0445E',bg:'rgba(240,68,94,.1)',br:'rgba(240,68,94,.3)',tx:'var(--er)'},
   indisponible:{lb:'Indisponible',dot:'#F0445E',bg:'rgba(240,68,94,.08)',br:'rgba(240,68,94,.2)',tx:'var(--er)'},
 };
+// kits.statut / kit_reservations.statut utilisent l'enum Postgres `statut_kit`,
+// qui est ACCENTUÉ (contrairement aux clés ci-dessus, historiquement écrites
+// pour materiels.statut qui est un simple texte sans accent). Sans ces alias,
+// KIT_ST_CFG['réservé'] etc. étaient introuvables et retombaient sur le badge
+// "Disponible" par défaut quel que soit le vrai statut du kit. Alias ajoutés
+// plutôt que renommage pour ne rien casser côté materiels.
+KIT_ST_CFG['pré_réservé']=KIT_ST_CFG.pre_reserve;
+KIT_ST_CFG['réservé']=KIT_ST_CFG.reserve;
+KIT_ST_CFG['à_récupérer']=KIT_ST_CFG.a_recuperer;
+KIT_ST_CFG['à_retourner']=KIT_ST_CFG.a_retourner;
+KIT_ST_CFG['retourné']=KIT_ST_CFG.retourne;
+KIT_ST_CFG['en_contrôle']=KIT_ST_CFG.en_controle;
+KIT_ST_CFG['endommagé']=KIT_ST_CFG.endommage;
+// Options valides pour kits.statut (enum statut_kit réel en base — voir
+// migration-audit-08-08-securite-rls.sql). kitsAppliquerStatut() doit piocher
+// UNIQUEMENT dans cette liste, pas dans KIT_ST_CFG en entier (qui contient
+// aussi des valeurs propres à materiels.statut, invalides pour l'enum kits).
+const KITS_STATUT_ENUM=['disponible','pré_réservé','réservé','à_récupérer','sorti','en_prestation','à_retourner','retourné','en_contrôle','endommagé','en_maintenance','indisponible'];
 
 const INCIDENT_TYPES=[
   ['panne','Panne'],['chute','Chute'],['choc','Choc'],['casse','Casse'],
@@ -8075,7 +8147,8 @@ async function kitsAddMaterielSubmit(kitId){
       ajoute_par:localStorage.getItem('sv_uid'),
     }});
     if(sbErr(rComp)){toast((rComp.code==='23505'||rComp.message?.includes('duplicate'))?'Déjà dans ce kit.':'Erreur : '+(rComp.message||'ajout impossible.'),'er');return;}
-    await sbFetch('materiels?id=eq.'+matId,{method:'PATCH',body:{kit_id:kitId,statut:'affecte_kit'}}).catch(()=>{});
+    const rMat=await sbFetch('materiels?id=eq.'+matId,{method:'PATCH',body:{kit_id:kitId,statut:'affecte_kit'}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rMat))toast('Ajouté au kit, mais le statut du matériel n\'a pas pu être synchronisé.','wa');
     closeModal();toast('Équipement ajouté au kit.','ok');kitsLoadAll();
   }catch(e){toast(e.message?.includes('duplicate')?'Déjà dans ce kit.':'Erreur.','er');}
 }
@@ -8085,7 +8158,10 @@ async function kitsRetirerMateriel(compId,kitId){
     const comp=await sbFetch('kit_compositions?select=materiel_id&id=eq.'+compId);
     const rDel=await sbFetch('kit_compositions?id=eq.'+compId,{method:'DELETE'});
     if(sbErr(rDel)){toast('Erreur : '+(rDel.message||'retrait impossible.'),'er');return;}
-    if(comp&&comp[0])await sbFetch('materiels?id=eq.'+comp[0].materiel_id,{method:'PATCH',body:{kit_id:null,statut:'disponible'}}).catch(()=>{});
+    if(comp&&comp[0]){
+      const rMat=await sbFetch('materiels?id=eq.'+comp[0].materiel_id,{method:'PATCH',body:{kit_id:null,statut:'disponible'}}).catch(()=>({code:'network_error'}));
+      if(sbErr(rMat))toast('Retiré du kit, mais le statut du matériel n\'a pas pu être synchronisé.','wa');
+    }
     toast('Matériel retiré du kit.','ok');kitsLoadAll();
     kitsOpenFiche(kitId);
   }catch(e){toast('Erreur.','er');}
@@ -8096,7 +8172,7 @@ function kitsModalChangerStatut(id,currentStatut){
   openModal(`<div class="mh"><div class="mt">Changer le statut</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
       <select id="kit-stat-sel" class="fi" style="height:42px">
-        ${Object.entries(KIT_ST_CFG).map(([v,c])=>`<option value="${v}"${v===currentStatut?' selected':''}>${c.lb}</option>`).join('')}
+        ${KITS_STATUT_ENUM.map(v=>`<option value="${v}"${v===currentStatut?' selected':''}>${KIT_ST_CFG[v].lb}</option>`).join('')}
       </select>
     </div>
     <div class="mf">
@@ -8164,14 +8240,15 @@ async function kitsAttribuerSubmit(kitId){
       prestation_id:preId,
       collaborateur_id:uid,
       responsable_id:document.getElementById('attr-resp')?.value||null,
-      statut:'reserve',
+      statut:'réservé',
       heure_sortie:document.getElementById('attr-sortie')?.value||null,
       heure_retour_prevue:document.getElementById('attr-retour')?.value||null,
       lieu_recuperation:document.getElementById('attr-lieu')?.value||null,
       consignes:document.getElementById('attr-cons')?.value||null,
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'attribution impossible.'),'er');return;}
-    await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'reserve'}}).catch(()=>{});
+    const rKit=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'réservé'}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rKit))toast('Réservation enregistrée, mais le statut du kit n\'a pas pu être synchronisé.','wa');
     // Contrôle "avant" : jusqu'ici, aucune ligne kit_controles n'était jamais
     // créée nulle part (ni trigger SQL, ni appel JS) — l'onglet Contrôles
     // affichait "Aucun contrôle à réaliser" en permanence, le filet de
@@ -8199,7 +8276,7 @@ async function kitsAttribuerSubmit(kitId){
 // ── ATTRIBUTION KIT → COLLABORATEUR ──────────────────────────────────────────
 async function kitsModalAttribuerCollab(kitId){
   const collabs=await sbFetch('profiles?select=id,prenom,nom&role=in.(photo,cm)&order=nom.asc').catch(()=>[]);
-  const curResas=await sbFetch('kit_reservations?select=id,collaborateur_id,profiles!collaborateur_id(prenom,nom)&kit_id=eq.'+kitId+'&prestation_id=is.null&statut=eq.sortie&limit=1').catch(()=>[]);
+  const curResas=await sbFetch('kit_reservations?select=id,collaborateur_id,profiles!collaborateur_id(prenom,nom)&kit_id=eq.'+kitId+'&prestation_id=is.null&statut=eq.sorti&limit=1').catch(()=>[]);
   const cur=Array.isArray(curResas)&&curResas[0]?curResas[0]:null;
   const list=Array.isArray(collabs)?collabs:[];
   openModal(`<div class="mh"><div class="mt">Attribuer le kit à un collaborateur</div><button class="mc" onclick="closeModal()">✕</button></div>
@@ -8230,11 +8307,12 @@ async function attribuerKitCollaborateur(kitId){
       prestation_id:null,
       collaborateur_id:collabId,
       responsable_id:collabId,
-      statut:'sortie',
+      statut:'sorti',
       heure_sortie:new Date().toISOString(),
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'attribution impossible.'),'er');return;}
-    await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'sorti'}}).catch(()=>{});
+    const rKit=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'sorti'}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rKit))toast('Attribution enregistrée, mais le statut du kit n\'a pas pu être synchronisé.','wa');
     closeModal();
     toast('Kit attribué au collaborateur.','ok');
     kitsLoadAll();
@@ -8245,7 +8323,8 @@ async function libererKitCollaborateur(kitId,resaId){
   try{
     const r=await sbFetch('kit_reservations?id=eq.'+resaId,{method:'PATCH',body:{statut:'retourné',heure_retour_reelle:new Date().toISOString()}});
     if(sbErr(r)){toast('Erreur : '+(r.message||'libération impossible.'),'er');return;}
-    await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'disponible'}}).catch(()=>{});
+    const rKit=await sbFetch('kits?id=eq.'+kitId,{method:'PATCH',body:{statut:'disponible'}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rKit))toast('Retour enregistré, mais le statut du kit n\'a pas pu être synchronisé — vérifiez la fiche kit.','wa');
     closeModal();
     toast('Attribution annulée — kit libéré.','ok');
     kitsLoadAll();
@@ -8310,7 +8389,8 @@ async function kitsIncidentSubmit(materielId){
     if(sbErr(r)){toast('Erreur : '+(r.message||'déclaration impossible.'),'er');return;}
     // Bloquer le matériel si critique
     const newStatut=gravite==='critique'?'endommage':'fonctionnel_reserve';
-    await sbFetch('materiels?id=eq.'+materielId,{method:'PATCH',body:{statut:newStatut}}).catch(()=>{});
+    const rMat=await sbFetch('materiels?id=eq.'+materielId,{method:'PATCH',body:{statut:newStatut}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rMat))toast('Incident déclaré, mais le statut du matériel n\'a pas pu être mis à jour — vérifiez-le manuellement.','wa');
     // Notifier prod + admin si critique
     if(gravite==='critique'){
       await dispatchSVEvent('prestation.confirmed',{prestation_id:null}).catch(()=>{});
@@ -8703,7 +8783,7 @@ async function loadDocuments(role){
 async function docsLoadAll(){
   try{
     const [devisData,contratsData,facturesData,avoirsData,retractationsData]=await Promise.all([
-      sbFetch('devis?select=id,numero,statut,signature_statut,signature_demandee_at,signature_confirmee_at,total_ttc,date_envoi,date_expiration,clients(id,nom),created_at&order=created_at.desc&limit=200'),
+      sbFetch('devis?select=id,numero,statut,client_id,signature_statut,signature_demandee_at,signature_confirmee_at,total_ttc,date_envoi,date_expiration,clients(id,nom),created_at&order=created_at.desc&limit=200'),
       sbFetch('contrats?select=id,type_contrat,statut,signature_statut,signature_demandee_at,signature_confirmee_at,montant_mensuel,frequence,date_debut,date_fin,clients(nom),created_at&order=created_at.desc&limit=200').catch(()=>[]),
       sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom),updated_at,factures(pennylane_invoice_number,pennylane_public_url)&statut_financier=neq.non_facturée&order=date_prestation.desc&limit=200').catch(()=>[]),
       sbFetch('avoirs?select=*,clients(nom),prestation:prestations(reference,date_prestation)&order=created_at.desc&limit=200').catch(()=>[]),
@@ -9523,7 +9603,7 @@ async function loadDevis(){
   const el=document.getElementById('devis-real');
   if(!el)return;
   try{
-    const data=await sbFetch('devis?select=id,numero,statut,total_ttc,notes,date_envoi,date_expiration,prestation_id,clients(id,nom),prestation:prestations(id,reference)&order=created_at.desc&limit=100');
+    const data=await sbFetch('devis?select=id,numero,statut,client_id,total_ttc,notes,date_envoi,date_expiration,prestation_id,clients(id,nom),prestation:prestations(id,reference)&order=created_at.desc&limit=100');
     _devisCache=data||[];
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     const att=_devisCache.filter(d=>['envoyé','en_attente'].includes(d.statut)).length;
@@ -10048,13 +10128,22 @@ async function _sendDevisEmailConfirm(id,statutActuel){
 // ── Facture réelle (table factures) ────────────────────────────────────────────
 // Récupère la facture existante liée à cette prestation, ou en crée une vraie
 // (numérotation auto FAC-AAAA-0001 via trigger Supabase) si aucune n'existe.
+// Une prestation peut avoir plusieurs devis liés (renégociation après refus,
+// cf. modalNouveauDevisFromPrestation) — sans tri ni filtre de statut, `[0]`
+// pouvait renvoyer n'importe lequel selon l'ordre PostgREST, y compris un
+// devis refusé plutôt que celui réellement accepté par le client.
+function _devisFacturable(devisList){
+  const list=Array.isArray(devisList)?devisList:[];
+  return list.find(d=>d.statut==='accepté')||list.find(d=>d.statut==='signé')||list[list.length-1]||null;
+}
+
 async function getOrCreateFacture(prestationId){
   const existing=await sbFetch('factures?select=*&prestation_id=eq.'+prestationId+'&order=created_at.desc&limit=1').catch(()=>[]);
   if(Array.isArray(existing)&&existing[0])return existing[0];
-  const pArr=await sbFetch(`prestations?id=eq.${prestationId}&select=id,client_id,montant_ht,montant_ttc,tva_pct,devis(id,numero,total_ht,total_ttc,tva_pct,lignes)`);
+  const pArr=await sbFetch(`prestations?id=eq.${prestationId}&select=id,client_id,montant_ht,montant_ttc,tva_pct,devis(id,numero,statut,total_ht,total_ttc,tva_pct,lignes)`);
   const p=pArr?.[0];
   if(!p)return null;
-  const dv=p.devis?.[0]||null;
+  const dv=_devisFacturable(p.devis);
   const montant_ht=dv?.total_ht||p.montant_ht||0;
   const montant_ttc=dv?.total_ttc||p.montant_ttc||0;
   const tva_pct=dv?.tva_pct||p.tva_pct||20;
@@ -10074,11 +10163,11 @@ async function getOrCreateFacture(prestationId){
 // ── PDF Facture ───────────────────────────────────────────────────────────────
 async function imprimerFacture(id){
   try{
-    const pArr=await sbFetch(`prestations?id=eq.${id}&select=*,clients(*),devis(id,numero,total_ht,total_ttc,tva_pct,lignes,remise_pct,remise_montant)`);
+    const pArr=await sbFetch(`prestations?id=eq.${id}&select=*,clients(*),devis(id,numero,statut,total_ht,total_ttc,tva_pct,lignes,remise_pct,remise_montant)`);
     const p=pArr?.[0];
     if(!p){toast('Prestation introuvable.');return;}
     const c=p.clients||{};
-    const dv=p.devis?.[0]||null;
+    const dv=_devisFacturable(p.devis);
     const fact=await getOrCreateFacture(id).catch(()=>null);
     const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
@@ -10332,6 +10421,7 @@ async function loadPhotoKits(){
 let _revPeriod='mois';
 let _revAllData=[];
 let _revXpCache=0;
+let _revGradeCache=0;
 
 function setRevPeriod(p){
   _revPeriod=p;
@@ -10362,11 +10452,13 @@ async function loadPhotoRevenus(){
   try{
     const data=await sbFetch('prestations_equipe?select=id,remuneration,est_responsable,statut,prestations(id,reference,statut,type_prestation,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=200');
     if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
-    _revAllData=data.filter(r=>r.prestations&&r.statut!=='refusée'&&r.statut!=='annulée');
+    // r.statut = statut de l'invitation, pas celui de la mission — voir loadPhotoDash.
+    _revAllData=data.filter(r=>r.statut!=='refusée'&&r.prestations&&r.prestations.statut!=='annulée');
     _revAllData.sort((a,b)=>(b.prestations?.date_prestation||'').localeCompare(a.prestations?.date_prestation||''));
     await syncMissionXp(uid,data);
-    const prXp=await sbFetch('profiles?select=xp&id=eq.'+uid).catch(()=>[]);
+    const prXp=await sbFetch('profiles?select=xp,grade&id=eq.'+uid).catch(()=>[]);
     _revXpCache=prXp?.[0]?.xp||0;
+    _revGradeCache=prXp?.[0]?.grade||0;
     renderPhotoRevenus();
   }catch(e){const el=document.getElementById('rev-real');if(el)el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
@@ -10390,7 +10482,8 @@ function renderPhotoRevenus(){
   const paye=list.filter(r=>r.statut_paiement==='payé'||(r.prestations?.statut==='payée'||r.prestations?.statut==='clôturée')).reduce((s,r)=>s+(r.remuneration||0),0);
   const att=total-paye;
   const xp=_revXpCache;
-  const {grade}=calcGrade(xp);
+  // Grade réellement accordé, pas celui recalculé depuis l'XP (cf. loadPhotoDash).
+  const grade=GRADES_DEF[_revGradeCache]||GRADES_DEF[0];
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('rev-nb',list.length);
   set('rev-total',(total||0).toLocaleString('fr-FR')+' €');
@@ -11849,7 +11942,13 @@ async function loadForm(){
   // parcours d'évolution, on n'affiche donc ni grade ni XP sur cet écran pour eux.
   const isPhotoRole=localStorage.getItem('sv_role')==='photo';
   const totalXp=profileXp;
-  const {grade,next,pct}=calcGrade(totalXp);
+  // Grade réellement accordé (_myFormGrade = profiles.grade, déjà chargé
+  // ci-dessus pour verrouiller les formations par grade) — pas celui que l'XP
+  // permettrait d'atteindre, sinon ce badge contredirait le verrouillage
+  // affiché sur les formations juste en dessous.
+  const grade=GRADES_DEF[_myFormGrade]||GRADES_DEF[0];
+  const next=GRADES_DEF[_myFormGrade+1];
+  const pct=next?Math.min(100,Math.round((totalXp-grade.xp)/(next.xp-grade.xp)*100)):100;
   const nbTerminees=_visForm.filter(f=>prog[f.id]?.statut==='terminée').length;
   const nbCerts=_visForm.filter(f=>f.certification&&prog[f.id]?.statut==='terminée').length;
   const obligFailed=_visForm.filter(f=>f.obligatoire&&prog[f.id]?.statut!=='terminée');
@@ -13165,21 +13264,29 @@ async function soumettreQuiz(id){
   const bonusXp=pass?Math.round((f?.xp||0)*0.3):0;
   const alreadyPassed=_formProgCache[id]?.quiz_passe;
   let scoreSaved=true;
+  let xpCredited=false;
   if(insId){
     const rQz=await sbFetch('formation_inscriptions?id=eq.'+insId,{method:'PATCH',body:{score_quiz:score,quiz_passe:pass}}).catch(()=>({code:'network_error'}));
     if(sbErr(rQz))scoreSaved=false;
     // Le bonus XP ne doit pas être versé si quiz_passe n'a pas pu être
     // enregistré : sinon un rechargement montrerait "pas encore réussi" alors
     // que l'XP a déjà été crédité — même incohérence que le bug corrigé plus
-    // tôt sur toggleFormLesson.
+    // tôt sur toggleFormLesson. Les deux écritures XP elles-mêmes sont
+    // maintenant aussi vérifiées : le badge "+XX XP" ne s'affiche que si le
+    // crédit a réellement réussi, pas juste si le score a été enregistré.
     if(scoreSaved&&xpEligible&&pass&&bonusXp>0&&!alreadyPassed){
-      await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:uid,montant:bonusXp,type:'bonus',source_id:insId,source_type:'formation_inscriptions',description:'Quiz réussi : '+(f?.titre||id),attribue_par:uid}}).catch(()=>{});
-      try{
-        const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
-        const cur=pr?.[0]?.xp||0;
-        await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+bonusXp}});
-        await _checkGradePromotion(uid,cur+bonusXp);
-      }catch(e){}
+      const rEv=await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:uid,montant:bonusXp,type:'bonus',source_id:insId,source_type:'formation_inscriptions',description:'Quiz réussi : '+(f?.titre||id),attribue_par:uid}}).catch(()=>({code:'network_error'}));
+      if(!sbErr(rEv)){
+        try{
+          const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
+          const cur=pr?.[0]?.xp||0;
+          const rXp=await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+bonusXp}});
+          if(!sbErr(rXp)){
+            xpCredited=true;
+            await _checkGradePromotion(uid,cur+bonusXp);
+          }
+        }catch(e){}
+      }
     }
   }
   if(scoreSaved&&_formProgCache[id]){_formProgCache[id].score_quiz=score;_formProgCache[id].quiz_passe=pass;}
@@ -13190,7 +13297,8 @@ async function soumettreQuiz(id){
       <div style="font-size:24px;font-weight:800;color:${pass?'var(--ok)':'var(--wa)'}">${score}%</div>
       <div style="font-size:15px;font-weight:700;color:var(--t1);margin-top:4px">${pass?'Quiz réussi !':'Pas encore…'}</div>
       <div style="font-size:12px;color:var(--t3);margin-top:4px">${correct}/${tot} bonne${correct>1?'s':''} réponse${correct>1?'s':''}</div>
-      ${scoreSaved&&xpEligible&&pass&&bonusXp>0&&!alreadyPassed?`<div style="font-size:12px;color:var(--ok);font-weight:600;margin-top:6px">+${bonusXp} XP bonus débloqués</div>`:''}
+      ${xpCredited?`<div style="font-size:12px;color:var(--ok);font-weight:600;margin-top:6px">+${bonusXp} XP bonus débloqués</div>`:''}
+      ${scoreSaved&&xpEligible&&pass&&bonusXp>0&&!alreadyPassed&&!xpCredited?`<div style="font-size:12px;color:var(--er);margin-top:6px">Quiz réussi, mais le bonus XP n\'a pas pu être crédité (problème réseau) — signale-le si ça se reproduit.</div>`:''}
       ${!pass?`<div style="font-size:12px;color:var(--wa);margin-top:6px">Score minimum requis : 70% — Révisez et réessayez.</div>`:''}
       ${!scoreSaved?`<div style="font-size:12px;color:var(--er);margin-top:6px">Score non enregistré (problème réseau) — repassez le quiz pour qu\'il compte.</div>`:''}
     </div>
@@ -13264,34 +13372,46 @@ async function toggleFormLesson(id,mi,li){
         toast('Erreur : la formation n\'a pas pu être marquée comme terminée. Réessayez.','er');
       }else{
         fp.statut='terminée';fp.completed_at=new Date().toISOString();
-        toast(xpEligible?'🎉 Formation terminée ! +'+f.xp+' XP':'🎉 Formation terminée !','ok');
-        // Le système XP/Grade est réservé au rôle photographe/vidéaste
+        // Le système XP/Grade est réservé au rôle photographe/vidéaste. Les
+        // écritures XP sont maintenant vérifiées avant d'annoncer le montant à
+        // l'utilisateur — avant, le toast "+XX XP" s'affichait de façon
+        // optimiste juste avant ces appels, sans savoir s'ils avaient réussi
+        // (même régression que celle déjà corrigée sur le statut de la
+        // formation elle-même, mais un cran plus loin dans cette fonction).
+        let xpCredited=false;
         if(xpEligible){
-          // Écrire dans xp_events
-          await sbFetch('xp_events',{method:'POST',body:{
+          const rEv=await sbFetch('xp_events',{method:'POST',body:{
             collaborateur_id:uid,montant:f.xp,type:'formation',
             source_id:insId,source_type:'formation_inscriptions',
             description:'Formation terminée : '+f.titre,attribue_par:uid,
-          }}).catch(()=>{});
-          // Mettre à jour profiles.xp
-          try{
-            const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
-            const cur=pr?.[0]?.xp||0;
-            await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+f.xp}});
-            await _checkGradePromotion(uid,cur+f.xp);
-          }catch(e){}
+          }}).catch(()=>({code:'network_error'}));
+          if(!sbErr(rEv)){
+            try{
+              const pr=await sbFetch('profiles?id=eq.'+uid+'&select=xp');
+              const cur=pr?.[0]?.xp||0;
+              const rXp=await sbFetch('profiles?id=eq.'+uid,{method:'PATCH',body:{xp:cur+f.xp}});
+              if(!sbErr(rXp)){
+                xpCredited=true;
+                await _checkGradePromotion(uid,cur+f.xp);
+              }
+            }catch(e){}
+          }
         }
+        if(!xpEligible)toast('🎉 Formation terminée !','ok');
+        else if(xpCredited)toast('🎉 Formation terminée ! +'+f.xp+' XP','ok');
+        else toast('🎉 Formation terminée ! (XP non crédité — problème réseau, signale-le si ça se reproduit)','wa');
         // Créer la certification en DB si la formation est certifiante
         if(f.certification){
           const expDate=new Date();
           expDate.setMonth(expDate.getMonth()+f.certification.validite_mois);
           const numCert='CERT-'+new Date().getFullYear()+'-'+Math.random().toString(36).substring(2,8).toUpperCase();
-          await sbFetch('collaborateur_certifications',{method:'POST',body:{
+          const rCert=await sbFetch('collaborateur_certifications',{method:'POST',body:{
             collaborateur_id:uid,code_certification:f.certification.id,nom:f.certification.nom,
             badge:f.certification.badge,formation_id:id,inscription_id:insId,
             date_obtention:new Date().toISOString(),date_expiration:expDate.toISOString(),
             statut:'active',numero_certificat:numCert,
-          }}).catch(()=>{}); // unique constraint gère les doublons silencieusement
+          }}).catch(()=>({code:'network_error'})); // 23505 = doublon, géré ci-dessous sans alerter
+          if(sbErr(rCert)&&rCert.code!=='23505')toast('Formation terminée, mais la certification n\'a pas pu être délivrée — signale-le.','wa');
           loadCertifFromDB(uid).catch(()=>{});
         }
       }
@@ -14951,7 +15071,7 @@ async function loadComDash(){
     const ed=document.getElementById('com-dash-dev');
     if(ed){
       try{
-        const devs=await sbFetch('devis?select=id,numero,statut,total_ttc,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&order=date_expiration.asc&limit=5');
+        const devs=await sbFetch('devis?select=id,numero,statut,client_id,total_ttc,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&order=date_expiration.asc&limit=5');
         _devisCache=devs||[];
         const s_lbl={envoyé:'Envoyé',en_attente:'En attente'};
         const s_cls={envoyé:'bw',en_attente:'bl'};
@@ -14980,7 +15100,7 @@ async function loadComptaDash(){
     const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
     const [data,remData,fraisData,remAttData,depData]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,acompte_montant,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500'),
-      sbFetch('prestations_equipe?select=remuneration,prestations(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('prestations_equipe?select=remuneration,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
       sbFetch('frais?select=montant&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext).catch(()=>[]),
       sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
       sbFetch('expenses?select=montant_ttc&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext).catch(()=>[]),
@@ -15667,6 +15787,7 @@ async function modalReglagesCoutsIndirects(){
   openModal(`<div class="mh"><div class="mt">Réglages coûts indirects</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
       <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Ces montants sont ajoutés au coût de chaque mission dans le calcul de rentabilité, pour représenter les charges fixes non affectées directement (matériel, licences, structure…).</div>
+      <div style="font-size:11.5px;color:var(--wa);background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.2);border-radius:8px;padding:10px 12px;margin-bottom:14px">⚠ Ne saisis ici que des charges qui ne sont <strong>pas</strong> déjà entrées individuellement dans Dépenses (loyer, abonnements…) — sinon elles sont comptées deux fois dans le résultat net et les budgets.</div>
       <div><label style="${L}">Forfait fixe par mission (€)</label>
         <input id="rci-forfait" type="number" step="0.01" min="0" class="fi" value="${forfait}">
       </div>
@@ -15687,8 +15808,10 @@ async function sauvegarderCoutsIndirects(){
   try{
     // Upsert sur la contrainte unique (methode) — cost_allocations n'a qu'une
     // ligne active par méthode (migration-finance-lot0b.sql).
-    await sbFetch('cost_allocations?on_conflict=methode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{methode:'forfait_par_mission',valeur:forfait,actif:true}});
-    await sbFetch('cost_allocations?on_conflict=methode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{methode:'pourcentage_ca',valeur:pct,actif:true}});
+    const r1=await sbFetch('cost_allocations?on_conflict=methode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{methode:'forfait_par_mission',valeur:forfait,actif:true}});
+    if(sbErr(r1)){err.textContent='Erreur : '+(r1.message||'impossible d\'enregistrer.');return;}
+    const r2=await sbFetch('cost_allocations?on_conflict=methode',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:{methode:'pourcentage_ca',valeur:pct,actif:true}});
+    if(sbErr(r2)){err.textContent='Erreur : '+(r2.message||'impossible d\'enregistrer.');return;}
   }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
   logFinancialAudit('modification','cost_allocations',null,null,forfait,{forfait_par_mission:forfait,pourcentage_ca:pct});
   closeModal();toast('Réglages enregistrés.','ok');loadComptaRentabilite();
@@ -16082,7 +16205,7 @@ async function genererExportFEC(){
     const [factures,expenses,remunerations,employeeCosts,commissionsData]=await Promise.all([
       sbFetch('factures?select=numero,montant_ht,montant_ttc,date_emission,clients(nom)&statut=eq.payee&date_emission=gte.'+mStart+'&date_emission=lt.'+mNext),
       sbFetch('expenses?select=libelle,montant_ht,montant_ttc,date_depense,categorie,vendors(nom)&statut=in.(payee,comptabilisee)&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext),
-      sbFetch('prestations_equipe?select=remuneration,prestations(reference,date_prestation),profiles!collaborateur_id(prenom,nom)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('prestations_equipe?select=remuneration,prestations!inner(reference,date_prestation),profiles!collaborateur_id(prenom,nom)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
       sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct,profiles(prenom,nom)').catch(()=>[]),
       sbFetch('commissions?select=montant_commission,date_paiement,profiles!commercial_id(prenom,nom)&statut=eq.payee&date_paiement=gte.'+mStart+'&date_paiement=lt.'+mNext).catch(()=>[]),
     ]);
@@ -16169,7 +16292,8 @@ async function sauvegarderMappingPCG(){
     for(const inp of nums){
       const id=inp.dataset.id;
       const lib=document.querySelector(`.pcg-lib[data-id="${id}"]`)?.value||'';
-      await sbFetch('pcg_mapping?id=eq.'+id,{method:'PATCH',body:{compte_numero:inp.value.trim(),compte_libelle:lib.trim()}});
+      const r=await sbFetch('pcg_mapping?id=eq.'+id,{method:'PATCH',body:{compte_numero:inp.value.trim(),compte_libelle:lib.trim()}});
+      if(sbErr(r)){err.textContent='Erreur : '+(r.message||'impossible d\'enregistrer.');return;}
     }
     logFinancialAudit('modification','pcg_mapping',null,null,null,{});
   }catch(e){err.textContent='Erreur : impossible d\'enregistrer.';return;}
@@ -16522,7 +16646,7 @@ async function exportComptaMois(moisKey){
     const mNext=new Date(y,m,1).toISOString().slice(0,10);
     const [pres,rems,frais]=await Promise.all([
       sbFetch('prestations?select=reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom)&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext+'&order=date_prestation.asc&limit=500'),
-      sbFetch('prestations_equipe?select=remuneration,statut_paiement,prestations(reference,date_prestation),profiles!collaborateur_id(prenom,nom)&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext+'&limit=500').catch(()=>[]),
+      sbFetch('prestations_equipe?select=remuneration,statut_paiement,prestations!inner(reference,date_prestation),profiles!collaborateur_id(prenom,nom)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext+'&limit=500').catch(()=>[]),
       sbFetch('frais?select=montant,type,description,date_frais&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext+'&limit=200').catch(()=>[]),
     ]);
     const ts=new Date().toISOString().slice(0,10);
@@ -17686,10 +17810,17 @@ async function loadFinances(){
   const el=document.getElementById('fin-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom)&montant_ttc=not.is.null&order=date_prestation.desc&limit=100');
+    // "CA encaissé (année)" et les KPI voisins ignoraient le statut (une
+    // prestation annulée avec montant_ttc renseigné gonflait quand même le
+    // CA) et n'avaient aucun filtre de date malgré le libellé "(année)" —
+    // au-delà de 100 prestations facturées cumulées, les plus anciennes
+    // disparaissaient aussi silencieusement du calcul.
+    const startOfYear=new Date(new Date().getFullYear(),0,1).toISOString().slice(0,10);
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom)&montant_ttc=not.is.null&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=2000');
     const list=data||[];
+    const listAnnee=list.filter(p=>p.date_prestation&&p.date_prestation>=startOfYear);
     let enc=0,total=0,att=0;
-    list.forEach(p=>{
+    listAnnee.forEach(p=>{
       const m=p.montant_ttc||0;
       if(['payée'].includes(p.statut_financier))enc+=m;
       if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))total+=m;
@@ -17943,9 +18074,11 @@ async function modalFicheCollaborateur(id){
     const fmtE=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
     const fmtD=d=>d?new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
     const totalRem=pres.reduce((s,p)=>s+(p.remuneration||0),0);
-    const accepted=pres.filter(p=>p.statut!=='refusée'&&p.statut!=='annulée').length;
+    // p.statut = statut de l'invitation, p.prestations.statut = statut réel de
+    // la mission — voir loadPhotoDash pour le même défaut déjà corrigé.
+    const accepted=pres.filter(p=>p.statut!=='refusée'&&p.prestations?.statut!=='annulée').length;
     const tauxAcc=pres.length?Math.round(accepted/pres.length*100):0;
-    const prochaine=pres.filter(p=>{const d=p.prestations?.date_prestation;return d&&d>=today&&p.statut!=='annulée';})
+    const prochaine=pres.filter(p=>{const d=p.prestations?.date_prestation;return d&&d>=today&&p.prestations?.statut!=='annulée';})
       .sort((a,b)=>(a.prestations?.date_prestation||'').localeCompare(b.prestations?.date_prestation||''))[0];
     const ic=(lbl,val)=>'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:14px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">'+lbl+'</div><div style="font-size:13.5px;color:var(--t1);font-weight:500">'+val+'</div></div>';
     // Rémunérations groupées par mois
@@ -18821,7 +18954,8 @@ async function sendMsgClient(clientId,prestationId,idx){
   const contenu=input.value.trim();
   if(!contenu)return;
   const r=await sbFetch('messages_client',{method:'POST',body:{client_id:clientId,prestation_id:prestationId,auteur_type:'staff',auteur_staff_id:localStorage.getItem('sv_uid'),contenu}});
-  if(!r){toast('Message non envoyé.');return;}
+  if(sbErr(r)){toast('Erreur : '+(r.message||'message non envoyé.'),'er');return;}
+  input.value='';
   await loadMsgClients();
 }
 
@@ -18850,14 +18984,14 @@ function renderRdvClients(){
 }
 async function confirmerRdvClient(id){
   const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'confirme',confirme_par:localStorage.getItem('sv_uid')}});
-  if(!r){toast('Erreur mise à jour.');return;}
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
   toast('Rendez-vous confirmé.','ok');
   await loadRdvClients();
 }
 async function annulerRdvClient(id){
   if(!confirm('Annuler ce rendez-vous ?'))return;
   const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'annule'}});
-  if(!r){toast('Erreur mise à jour.');return;}
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
   toast('Rendez-vous annulé.','ok');
   await loadRdvClients();
 }
@@ -19281,7 +19415,8 @@ async function loadPhotoPlan(){
   try{
     const raw=await sbFetch('prestations_equipe?select=id,statut,fonction,heure_rdv,remuneration,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
     if(!Array.isArray(raw))throw new Error(raw?.message||'Erreur API');
-    const missions=raw.filter(r=>r.prestations&&r.prestations.date_prestation>=start&&r.prestations.date_prestation<=end&&r.statut!=='annulée');
+    // r.statut = statut de l'invitation, pas celui de la mission — voir loadPhotoDash.
+    const missions=raw.filter(r=>r.prestations&&r.prestations.date_prestation>=start&&r.prestations.date_prestation<=end&&r.prestations.statut!=='annulée');
     if(kpiEl)kpiEl.textContent=missions.length+' mission'+(missions.length!==1?'s':'')+' ce mois';
     // Construction de la grille mensuelle
     const startDow=firstDay.getDay()||7; // 1=Lun 7=Dim
@@ -21024,17 +21159,28 @@ async function centreAttribuerXPSubmit(userId){
 }
 
 async function centreAttribuerXP(userId,montant,type,description){
-  if(!userId||!montant)return;
+  if(!userId||!montant)return false;
   try{
     const p=await sbFetch('profiles?select=xp,role&id=eq.'+userId).catch(()=>[]);
     const prof=p?.[0];
-    if(!prof||prof.role!=='photo')return; // XP/Grade réservé au rôle photographe/vidéaste
+    if(!prof||prof.role!=='photo')return false; // XP/Grade réservé au rôle photographe/vidéaste
     const uid=localStorage.getItem('sv_uid');
-    await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:userId,montant,type,description,attribue_par:uid}}).catch(()=>{});
+    // xp_events self-service n'accepte que type in (formation,certification,
+    // prestation) (migration-connect-v1-securite-hardening.sql item 5) — un
+    // appel self-service avec type='manuel' (ex. bonus d'acceptation du
+    // règlement) est donc rejeté par la policy RLS par conception, alors que
+    // profiles.xp (colonne non protégée par ailleurs) est bien modifiable par
+    // son propriétaire : on ne bloque donc pas ce second appel sur le premier
+    // ici, contrairement à syncMissionXp — mais on garde une trace en console
+    // pour ne pas perdre totalement la visibilité sur l'échec du ledger.
+    const rEv=await sbFetch('xp_events',{method:'POST',body:{collaborateur_id:userId,montant,type,description,attribue_par:uid}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rEv))console.error('centreAttribuerXP: xp_events non créé',rEv);
     const xpActuel=prof.xp||0;
-    await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{xp:xpActuel+montant}}).catch(()=>{});
+    const rXp=await sbFetch('profiles?id=eq.'+userId,{method:'PATCH',body:{xp:xpActuel+montant}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rXp))return false;
     await _checkGradePromotion(userId,xpActuel+montant);
-  }catch(e){}
+    return true;
+  }catch(e){return false;}
 }
 
 function centreModalChangerGrade(userId,prenom,nom,gradeActuel){
@@ -21365,7 +21511,7 @@ async function loadAnnuaire(role){
     const today=new Date().toISOString().slice(0,10);
     const [profiles,busyEquipe]=await Promise.all([
       sbFetch('profiles?select=id,prenom,nom,role,email,telephone,avatar_url,ville,vehicule,permis,bio&order=nom.asc&limit=200'),
-      sbFetch('prestations_equipe?select=collaborateur_id,prestations(date_prestation)&prestations.date_prestation=eq.'+today+'&statut=in.(acceptée,invitation_envoyée)&limit=200').catch(()=>[]),
+      sbFetch('prestations_equipe?select=collaborateur_id,prestations!inner(date_prestation)&prestations.date_prestation=eq.'+today+'&statut=in.(acceptée,invitation_envoyée)&limit=200').catch(()=>[]),
     ]);
     _annuaireTodayBusy=new Set((busyEquipe||[]).map(e=>e.collaborateur_id));
     _annuaireAll=Array.isArray(profiles)?profiles:[];
@@ -21474,8 +21620,8 @@ async function loadEquipeEnDirect(){
   const _eqRoleFilter=_eqRole==='prod'?'&role=in.(photo,cm)':'';
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
     sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
-    sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations(id,reference,titre_court,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
-    sbFetch('prestations_equipe?select=collaborateur_id,prestations(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
+    sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations!inner(id,reference,titre_court,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
+    sbFetch('prestations_equipe?select=collaborateur_id,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
   ]);
 
@@ -22309,14 +22455,17 @@ async function loadMobilePhotoDash(ct){
       sbFetch('prestations_equipe?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc&limit=100').catch(()=>[]),
       sbFetch('notifications?select=id&destinataire_id=eq.'+uid+'&lue=eq.false&order=created_at.desc&limit=5').catch(()=>[]),
     ]);
-    const data=(equipe||[]).filter(d=>d.prestations&&d.statut!=='annulée');
+    // d.statut = statut de l'invitation, d.prestations.statut = statut réel de
+    // la mission — voir loadPhotoDash pour le même défaut déjà corrigé.
+    const data=(equipe||[]).filter(d=>d.prestations&&d.prestations.statut!=='annulée');
     const invitations=data.filter(d=>d.statut==='invitation_envoyée');
-    const futures=data.filter(d=>d.prestations?.date_prestation&&d.prestations.date_prestation>=today&&!['refusée','annulée'].includes(d.statut));
+    const futures=data.filter(d=>d.prestations?.date_prestation&&d.prestations.date_prestation>=today&&d.statut!=='refusée');
     const totalRem=data.filter(d=>d.statut!=='refusée').reduce((s,d)=>s+(d.remuneration||0),0);
     await syncMissionXp(uid,equipe);
-    const prXp=await sbFetch('profiles?select=xp&id=eq.'+uid).catch(()=>[]);
+    const prXp=await sbFetch('profiles?select=xp,grade&id=eq.'+uid).catch(()=>[]);
     const xp=prXp?.[0]?.xp||0;
-    const {grade}=calcGrade(xp);
+    // Grade réellement accordé, pas celui recalculé depuis l'XP (cf. loadPhotoDash).
+    const grade=GRADES_DEF[prXp?.[0]?.grade||0]||GRADES_DEF[0];
     const prochaine=futures[0];
     let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div><div style="font-size:22px;font-weight:800;color:var(--t1)">Bonjour ${prenom} 👋</div>
