@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ImagePlus, Plus, X } from "lucide-react";
+import { ImagePlus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
+import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { LockedModule } from "@/components/ui/LockedModule";
 
 // /settings/organization — voir ACTIONS.md § 25 « Organisation ». Logo, nom, adresse, Instagram,
@@ -16,25 +15,17 @@ export default function OrganizationSettingsPage() {
   if (!canAccess(ctx, "settings")) return <LockedModule title="Paramètres" />;
 
   const { organization } = ctx;
-  const [name, setName] = useState(organization.name);
-  const [address, setAddress] = useState(organization.address ?? "");
-  const [instagram, setInstagram] = useState(organization.instagramHandle ?? "");
-  const [siret, setSiret] = useState(organization.siret ?? "");
-  const [colors, setColors] = useState<string[]>(organization.brandColors ?? ["#2454FF", "#832DFF"]);
-  const [saved, setSaved] = useState(false);
+  const name = organization.name;
+  const address = organization.address ?? "";
+  const instagram = organization.instagramHandle ?? "";
+  const siret = organization.siret ?? "";
+  const colors = organization.brandColors ?? ["#2454FF", "#832DFF"];
 
-  function addColor() {
-    setColors((prev) => [...prev, "#2454FF"]);
-  }
-
-  function removeColor(index: number) {
-    setColors((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3200);
-  }
+  // Pas de colonne réelle (adresse/instagram/siret/couleurs) ni de policy d'écriture club-admin
+  // sur `clubs` à ce jour — seule la lecture est autorisée (clubs_member_select), écrire
+  // nécessiterait une policy/RPC dédiée (changement de schéma, hors scope d'un correctif ; à
+  // faire suivre au conseiller SportVision). Champs en lecture seule plutôt qu'un faux
+  // "enregistré" : voir le plan Phase 1 § pas de fabrication de données.
 
   return (
     <div className="flex max-w-2xl flex-col gap-5">
@@ -46,63 +37,41 @@ export default function OrganizationSettingsPage() {
           <div className="text-[13.5px] font-extrabold">Logo</div>
           <div className="text-[12px] text-text-soft">Utilisé dans le Studio, les documents et les e-mails.</div>
         </div>
-        <Button variant="secondary" className="ml-auto h-9 px-3.5 text-[12.5px]">
-          Changer le logo
-        </Button>
       </Card>
 
       <Card className="flex flex-col gap-4 p-5">
         <div className="text-[13.5px] font-extrabold">Informations générales</div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Nom" full>
-            <input value={name} onChange={(e) => setName(e.target.value)} className={fieldClass} />
+            <input value={name} disabled className={cn(fieldClass, "cursor-not-allowed text-text-faint")} />
           </Field>
           <Field label="Adresse" full>
-            <input value={address} onChange={(e) => setAddress(e.target.value)} className={fieldClass} />
+            <input value={address} disabled placeholder="Non renseignée" className={cn(fieldClass, "cursor-not-allowed text-text-faint")} />
           </Field>
           <Field label="Instagram">
-            <input value={instagram} onChange={(e) => setInstagram(e.target.value)} className={fieldClass} placeholder="@fcfontainebleau" />
+            <input value={instagram} disabled placeholder="Non renseigné" className={cn(fieldClass, "cursor-not-allowed text-text-faint")} />
           </Field>
           <Field label="SIRET">
-            <input value={siret} onChange={(e) => setSiret(e.target.value)} className={fieldClass} />
+            <input value={siret} disabled placeholder="Non renseigné" className={cn(fieldClass, "cursor-not-allowed text-text-faint")} />
           </Field>
         </div>
       </Card>
 
       <Card className="flex flex-col gap-4 p-5">
-        <div className="flex items-center justify-between">
-          <div className="text-[13.5px] font-extrabold">Couleurs du club</div>
-          <button
-            onClick={addColor}
-            className="flex items-center gap-1.5 text-[12.5px] font-bold text-brand-blue-electric"
-          >
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Ajouter une couleur
-          </button>
-        </div>
+        <div className="text-[13.5px] font-extrabold">Couleurs du club</div>
         <div className="flex flex-wrap gap-3">
           {colors.map((color, i) => (
             <div key={`${color}-${i}`} className="flex items-center gap-2 rounded-xl border border-border-strong px-2.5 py-2">
               <span className="h-6 w-6 flex-none rounded-full border border-white/20" style={{ backgroundColor: color }} />
-              <input
-                value={color}
-                onChange={(e) =>
-                  setColors((prev) => prev.map((c, idx) => (idx === i ? e.target.value : c)))
-                }
-                className="w-24 bg-transparent font-mono text-[12.5px] outline-none"
-              />
-              <button aria-label="Retirer cette couleur" onClick={() => removeColor(i)} className="text-text-faint hover:text-danger-fg">
-                <X className="h-3.5 w-3.5" aria-hidden />
-              </button>
+              <span className="w-24 font-mono text-[12.5px] text-text-faint">{color}</span>
             </div>
           ))}
         </div>
       </Card>
 
-      <div className="flex items-center gap-3">
-        <Button onClick={handleSave}>Enregistrer</Button>
-        {saved && <span className="text-[12.5px] font-bold text-success-fg">Modifications enregistrées.</span>}
-      </div>
+      <p className="text-[12.5px] text-text-soft">
+        Ces informations ne sont pas encore modifiables depuis Connect. Contactez votre conseiller SportVision pour les mettre à jour.
+      </p>
     </div>
   );
 }
