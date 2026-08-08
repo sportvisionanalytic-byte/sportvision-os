@@ -56,6 +56,45 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// Même pattern que sendGuestRequestConfirmationEmail (create-guest-request) et
+// sendPaymentReceiptEmail (stripe-webhook) : un rendez-vous demandé sans compte
+// n'avait jusqu'ici aucune trace écrite pour le visiteur, seul un message à
+// l'écran. Best-effort, jamais bloquant pour la création du rendez-vous.
+async function sendRdvConfirmationEmail(
+  to: string,
+  info: { prenom: string; type_rdv: string; date_demandee: string; heure_demandee: string | null; objet: string | null },
+) {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) return;
+  const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
+  const dateFmt = new Date(info.date_demandee).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  const typeLbl = info.type_rdv === "physique" ? "Rendez-vous physique" : "Appel téléphonique";
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#06111F;font-family:Arial,sans-serif;color:#F7F9FC">
+  <div style="max-width:520px;margin:32px auto;background:#10243E;border-radius:14px;overflow:hidden">
+    <div style="background:#0B1B33;padding:26px 32px">
+      <div style="font-size:20px;font-weight:800;color:#fff">SPORTVISION</div>
+    </div>
+    <div style="padding:28px 32px">
+      <p style="font-size:15px;line-height:1.6">Bonjour ${info.prenom},</p>
+      <p style="font-size:14px;line-height:1.7;color:#9DAEC3">Nous avons bien reçu votre demande de rendez-vous${info.objet ? " — " + info.objet : ""}. Notre équipe vous recontactera pour confirmer sous 24 heures.</p>
+      <div style="background:#0B1B33;border-radius:10px;padding:16px 20px;margin:18px 0">
+        <div style="font-size:12px;color:#9DAEC3">${typeLbl}</div>
+        <div style="font-size:18px;font-weight:800;color:#32D8E6;margin-top:4px">${dateFmt}${info.heure_demandee ? " à " + info.heure_demandee : ""}</div>
+      </div>
+    </div>
+  </div>
+</body></html>`;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: fromEmail, to: [to], subject: "Demande de rendez-vous reçue — SportVision", html }),
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -126,8 +165,14 @@ serve(async (req) => {
       .single();
     if (rdvErr) return json({ error: rdvErr.message }, 500);
 
+    try {
+      await sendRdvConfirmationEmail(email, { prenom, type_rdv, date_demandee, heure_demandee: heure_demandee || null, objet: objet || null });
+    } catch (_e) {
+      // Best-effort : un échec d'envoi ne doit jamais faire échouer une demande valide.
+    }
+
     return json({ rdv_id: rdv.id, client_email: email });
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });

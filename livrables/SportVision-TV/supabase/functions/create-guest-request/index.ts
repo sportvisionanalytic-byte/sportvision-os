@@ -114,6 +114,52 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// E-mail de confirmation envoyé à CHAQUE demande créée depuis la vitrine
+// publique (réservation ou devis), quel que soit le mode de paiement choisi.
+// Avant ceci, seul un paiement carte réussi (stripe-webhook) déclenchait un
+// e-mail : un visiteur payant en espèces ou demandant un devis n'avait
+// aucune trace écrite de sa demande une fois l'onglet fermé, seule la
+// référence affichée à l'écran une fois. Même pattern que
+// sendPaymentReceiptEmail dans stripe-webhook (Resend, best-effort, jamais
+// bloquant pour la création de la prestation).
+async function sendGuestRequestConfirmationEmail(
+  to: string,
+  info: { prenom: string; reference: string; label: string | null; date: string | null },
+) {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) return;
+  const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
+  const dateFmt = info.date
+    ? new Date(info.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+    : null;
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#06111F;font-family:Arial,sans-serif;color:#F7F9FC">
+  <div style="max-width:520px;margin:32px auto;background:#10243E;border-radius:14px;overflow:hidden">
+    <div style="background:#0B1B33;padding:26px 32px">
+      <div style="font-size:20px;font-weight:800;color:#fff">SPORTVISION</div>
+    </div>
+    <div style="padding:28px 32px">
+      <p style="font-size:15px;line-height:1.6">Bonjour ${info.prenom},</p>
+      <p style="font-size:14px;line-height:1.7;color:#9DAEC3">Nous avons bien reçu votre demande${info.label ? " — " + info.label : ""}. Notre équipe revient vers vous rapidement.</p>
+      <div style="background:#0B1B33;border-radius:10px;padding:16px 20px;margin:18px 0">
+        <div style="font-size:12px;color:#9DAEC3">Référence</div>
+        <div style="font-size:22px;font-weight:800;color:#32D8E6;margin-top:4px">${info.reference}</div>
+        ${dateFmt ? `<div style="font-size:13px;color:#9DAEC3;margin-top:10px">Date souhaitée : ${dateFmt}</div>` : ""}
+      </div>
+      <p style="font-size:13px;line-height:1.6;color:#9DAEC3">Conservez cette référence, elle permet à notre équipe de retrouver votre demande immédiatement.</p>
+    </div>
+  </div>
+</body></html>`;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: fromEmail, to: [to], subject: `Demande reçue — Référence ${info.reference}`, html }),
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -210,6 +256,18 @@ serve(async (req) => {
       .select("id, reference")
       .single();
     if (prestationErr) return json({ error: prestationErr.message }, 500);
+
+    try {
+      await sendGuestRequestConfirmationEmail(email, {
+        prenom,
+        reference: prestation.reference,
+        label: commentaire || null,
+        date: date || null,
+      });
+    } catch (_e) {
+      // Best-effort, comme sendPaymentReceiptEmail : un échec d'envoi ne doit
+      // jamais faire échouer une demande par ailleurs valide.
+    }
 
     return json({ reference: prestation.reference, prestation_id: prestation.id, client_email: email });
   } catch (e) {
