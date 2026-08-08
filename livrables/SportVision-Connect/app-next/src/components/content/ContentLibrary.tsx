@@ -5,6 +5,7 @@ import { LayoutGrid, List, Download, Images } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { fetchClubMediaAssets } from "@/lib/data/club/content";
 import { fetchPlayerMediaAssets } from "@/lib/data/player/media";
+import { fetchClientLivrables } from "@/lib/data/projet/livrables";
 import { createClient } from "@/lib/supabase/client";
 import { MEDIA_FILTERS, matchesMediaFilter, type CollectionKind, type Collection, type MediaAsset, type MediaFilterKey } from "@/lib/types/content";
 import { Button } from "@/components/ui/Button";
@@ -32,6 +33,7 @@ export function ContentLibrary() {
 
   const isPlayer = ctx.organization.type === "player";
   const isCoach = ctx.organization.type === "coach";
+  const isProjet = ctx.organization.type === "generic";
 
   const [allAssets, setAllAssets] = useState<MediaAsset[]>([]);
 
@@ -47,6 +49,10 @@ export function ContentLibrary() {
       fetchPlayerMediaAssets(supabase, playerClubId).then((rows) => setAllAssets(rows));
       return;
     }
+    if (isProjet) {
+      fetchClientLivrables(supabase, ctx.organization.id).then((rows) => setAllAssets(rows));
+      return;
+    }
     let cancelled = false;
     fetchClubMediaAssets(supabase, ctx.organization.id).then((rows) => {
       if (!cancelled) setAllAssets(rows);
@@ -54,7 +60,7 @@ export function ContentLibrary() {
     return () => {
       cancelled = true;
     };
-  }, [isPlayer, playerClubId, ctx.organization.id]);
+  }, [isPlayer, isProjet, playerClubId, ctx.organization.id]);
 
   const assets = useMemo(() => allAssets.filter((a) => matchesMediaFilter(a.kind, filter)), [allAssets, filter]);
 
@@ -62,12 +68,14 @@ export function ContentLibrary() {
   // handleCreateCollection ci-dessous, déjà local-only avant ce branchement.
   const [collections, setCollections] = useState<Collection[]>([]);
 
-  const title = isPlayer ? "Mes contenus" : isCoach ? "Contenus de mes joueurs" : "Contenus";
+  const title = isPlayer ? "Mes contenus" : isCoach ? "Contenus de mes joueurs" : isProjet ? "Mes livrables" : "Contenus";
   const subtitle = isPlayer
     ? "Les contenus où vous apparaissez, sélectionnés par votre club."
     : isCoach
       ? "Les contenus produits pour les joueurs que vous suivez."
-      : `${allAssets.length} élément${allAssets.length > 1 ? "s" : ""} · ${ctx.organization.name}`;
+      : isProjet
+        ? "Les livrables de vos prestations, disponibles dès leur validation."
+        : `${allAssets.length} élément${allAssets.length > 1 ? "s" : ""} · ${ctx.organization.name}`;
 
   function showToast(message: string) {
     setToast(message);
@@ -119,7 +127,7 @@ export function ContentLibrary() {
         </Card>
       )}
 
-      {!isPlayer && (
+      {!isPlayer && !isProjet && (
         <div>
           <div className="flex items-center justify-between">
             <span className="text-[15px] font-extrabold tracking-tight">Collections</span>

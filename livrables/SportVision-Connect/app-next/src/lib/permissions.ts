@@ -14,14 +14,19 @@ const READ_ONLY_ROLES = new Set(["viewer"]);
 
 /**
  * Un module absent de READY_MODULES est verrouillé, jamais ouvert par défaut — sinon un compte
- * réel (club, joueur ou parent) verrait du contenu mock sur un module pas encore branché. Pour un
- * module prêt, l'accès réel est piloté par organization_entitlements (via
- * MODULE_TO_CONNECT_MODULE) quand une clé existe ; un module prêt sans clé est "core" (inclus
- * par défaut — modules personnels Joueur/Famille, ou offre Club+ de base, cf.
- * ARCHITECTURE-CONNECT.md § Correspondance offres → entitlements).
+ * réel (club, joueur, parent ou projet) verrait du contenu mock sur un module pas encore branché.
+ * Pour un module prêt, l'accès réel est piloté par organization_entitlements (via
+ * MODULE_TO_CONNECT_MODULE) — mais organization_entitlements n'existe que pour un espace CLUB
+ * (c'est un plan/quota vendu). Un espace joueur, parent ou projet n'a pas d'entitlements réels
+ * (ctx.entitlements toujours undefined pour eux, voir session.ts) : un module READY_MODULES leur
+ * est donc toujours ouvert, jamais bloqué par une clé qui ne les concerne pas.
+ * Correction (Phase 3) : la version précédente appliquait le gate d'entitlement à tout le monde,
+ * ce qui verrouillait silencieusement /content pour un espace joueur/parent (Phase 2) faute
+ * d'entitlement "bibliotheque_contenus" — jamais détecté faute de compte réel pour tester.
  */
 export function canAccess(ctx: ActiveContext, module: ModuleKey): boolean {
   if (!READY_MODULES.has(module)) return false;
+  if (ctx.organization.type !== "club") return true;
   const connectModuleKey = MODULE_TO_CONNECT_MODULE[module];
   if (!connectModuleKey) return true;
   return ctx.entitlements?.[connectModuleKey]?.actif ?? false;

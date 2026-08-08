@@ -1,6 +1,6 @@
 import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
 import type { ActiveContext, User } from "@/lib/types";
-import { mapClubPlan, mapClubRole, mapOrgType, SPACE_TYPE_LABELS } from "./mappers";
+import { mapClubPlan, mapClubRole, mapOrgType, mapProjetRole, SPACE_TYPE_LABELS } from "./mappers";
 
 function buildUserFromAuth(authUser: SupabaseUser): User {
   const meta = (authUser.user_metadata ?? {}) as { prenom?: string; nom?: string; telephone?: string };
@@ -74,7 +74,7 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
       id: row.organizations.id,
       name: row.organizations.nom,
       subtitle: SPACE_TYPE_LABELS[orgType] ?? orgType,
-      clickable: orgType === "club",
+      clickable: orgType === "club" || orgType === "projet",
       organizationType: orgType,
       membershipId: row.id,
       role: row.role,
@@ -332,6 +332,64 @@ export async function buildParentActiveContext(
       status: "active",
       startsAt: parent.created_at,
       renewsAt: parent.created_at,
+      commitmentMonths: 0,
+      noticeMonths: 0,
+      creditsRemaining: 0,
+      creditsReserved: 0,
+      presencesUsed: 0,
+      storageUsedBytes: 0,
+      storageQuotaBytes: 1,
+    },
+  };
+}
+
+/**
+ * Construit l'ActiveContext pour un espace Projet (organizations.organization_type='projet',
+ * client ponctuel indépendant — ex-Portail). Contrairement à joueur/parent, une vraie ligne
+ * `memberships` existe (role réel toujours 'client', posé par sync_client_user_to_membership) —
+ * voir le plan Phase 3 § Décisions d'architecture n°1. Pas de `clubs`/`organization_entitlements` :
+ * planCode "one_off" ("Facturé à la commande"), entitlements undefined (aucun module Projet n'est
+ * gated par une clé connect_modules de toute façon).
+ */
+export async function buildProjetActiveContext(
+  supabase: SupabaseClient,
+  authUser: SupabaseUser,
+  space: Space,
+): Promise<ActiveContext | null> {
+  if (space.kind !== "organization" || space.organizationType !== "projet" || !space.clickable) return null;
+
+  const { data } = await supabase
+    .from("organizations")
+    .select("id, nom, organization_type, created_at")
+    .eq("id", space.id)
+    .maybeSingle();
+  const org = data as { id: string; nom: string; organization_type: string; created_at: string } | null;
+  if (!org || !space.role) return null;
+
+  return {
+    user: buildUserFromAuth(authUser),
+    organization: {
+      id: org.id,
+      type: mapOrgType(org.organization_type),
+      name: org.nom,
+      createdAt: org.created_at,
+    },
+    membership: {
+      id: space.membershipId!,
+      userId: authUser.id,
+      organizationId: org.id,
+      role: mapProjetRole(space.role),
+      teamScope: [],
+      capabilities: [],
+      status: space.status === "actif" ? "active" : space.status === "invitation" ? "invited" : "disabled",
+    },
+    subscription: {
+      id: `sub-${org.id}`,
+      organizationId: org.id,
+      planCode: "one_off",
+      status: "active",
+      startsAt: org.created_at,
+      renewsAt: org.created_at,
       commitmentMonths: 0,
       noticeMonths: 0,
       creditsRemaining: 0,

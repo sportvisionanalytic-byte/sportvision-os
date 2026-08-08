@@ -10,6 +10,7 @@ import {
   buildClubActiveContext,
   buildParentActiveContext,
   buildPlayerActiveContext,
+  buildProjetActiveContext,
   getSpaces,
   pickActiveSpace,
   type Space,
@@ -18,6 +19,9 @@ import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js
 import type { ActiveContext } from "@/lib/types";
 
 function buildActiveContext(supabase: SupabaseClient, user: SupabaseUser, space: Space): Promise<ActiveContext | null> {
+  if (space.kind === "organization" && space.organizationType === "projet") {
+    return buildProjetActiveContext(supabase, user, space);
+  }
   if (space.kind === "organization") return buildClubActiveContext(supabase, user, space);
   if (space.kind === "player") return buildPlayerActiveContext(supabase, user, space);
   return buildParentActiveContext(supabase, user, space);

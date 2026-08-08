@@ -38,6 +38,15 @@ export function mapClubRole(realRole: string): MembershipRole {
 }
 
 /**
+ * memberships.role réel pour un espace projet : toujours 'client' (posé par
+ * sync_client_user_to_membership, migration-connect-v7 — un seul rôle réel, pas de finesse).
+ * Mappé sur "admin" : le client est responsable de son propre espace, jamais en lecture seule.
+ */
+export function mapProjetRole(_realRole: string): MembershipRole {
+  return "admin";
+}
+
+/**
  * clubs.plan réel ('club'|'performance') → PlanCode du design. Sert uniquement à faire
  * fonctionner resolveNavigation()/PLANS[...] sans les modifier — jamais la source de vérité
  * pour savoir si un module est activé (ça, c'est organization_entitlements, voir entitlements.ts).

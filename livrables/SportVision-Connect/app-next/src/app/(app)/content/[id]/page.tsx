@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { fetchClubMediaAssets } from "@/lib/data/club/content";
+import { fetchClientLivrables } from "@/lib/data/projet/livrables";
 import { createClient } from "@/lib/supabase/client";
 import type { MediaAsset } from "@/lib/types/content";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -21,19 +22,21 @@ export default function MediaDetailPage({ params }: { params: { id: string } }) 
   // via organization.parentOrganizationId — voir le plan Phase 2 § Décisions d'architecture n°1),
   // pas par ctx.organization.id (= player_profiles.id). La RLS is_media_visible_to_family filtre
   // déjà aux médias visibles pour cette famille, quel que soit le club_id transmis.
+  const isProjet = ctx.organization.type === "generic";
   const clubId = ctx.organization.type === "player" ? ctx.organization.parentOrganizationId : ctx.organization.id;
 
   useEffect(() => {
     if (!clubId) return;
     let cancelled = false;
     const supabase = createClient();
-    fetchClubMediaAssets(supabase, clubId).then((rows) => {
+    const fetcher = isProjet ? fetchClientLivrables(supabase, clubId) : fetchClubMediaAssets(supabase, clubId);
+    fetcher.then((rows) => {
       if (!cancelled) setAsset(rows.find((a) => a.id === params.id) ?? null);
     });
     return () => {
       cancelled = true;
     };
-  }, [clubId, params.id]);
+  }, [clubId, isProjet, params.id]);
 
   if (!canAccess(ctx, "content")) return <LockedModule />;
 
