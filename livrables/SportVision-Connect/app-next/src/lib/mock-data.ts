@@ -154,9 +154,9 @@ export const mockOrganizations: Organization[] = [
     createdAt: "2026-02-11T00:00:00.000Z",
   },
 
-  // Doublons volontairement conservés (même entité fictive que org-varenneauto /
-  // org-ninaberger ci-dessus, sous un autre id) : deux agents parallèles en avaient chacun
-  // besoin pour leurs propres fixtures (teams/sponsors/billing). À dédupliquer plus tard.
+  // Doublons volontairement conservés (même entité fictive qu'une organisation ci-dessus, sous
+  // un autre id) : plusieurs agents parallèles en avaient chacun besoin pour leurs propres
+  // fixtures (teams/sponsors/billing, Full Communication). À dédupliquer plus tard.
   {
     id: "org-varenne-auto",
     type: "sponsor",
@@ -172,6 +172,28 @@ export const mockOrganizations: Organization[] = [
     address: "9 rue des Studios, 77300 Fontainebleau",
     accountManagerId: "sv-theo-marchand",
     createdAt: "2026-01-15T00:00:00.000Z",
+  },
+  {
+    id: "org-chris",
+    type: "coach",
+    name: "Chris Performance",
+    address: "Centre de préparation physique, 45000 Orléans",
+    instagramHandle: "@chrisperformance",
+    accountManagerId: "sv-theo-marchand",
+    communityManagerId: "sv-nina-berger",
+    createdAt: "2026-02-10T00:00:00.000Z",
+  },
+  {
+    id: "org-elite-academy",
+    type: "academy",
+    name: "Elite Academy",
+    address: "Centre de formation, 45100 Orléans",
+    instagramHandle: "@eliteacademy",
+    teamCount: 8,
+    memberCount: 210,
+    accountManagerId: "sv-theo-marchand",
+    communityManagerId: "sv-nina-berger",
+    createdAt: "2025-09-01T00:00:00.000Z",
   },
 ];
 
@@ -195,6 +217,8 @@ export const mockMemberships: Membership[] = [
   { id: "m14", userId: "user-sophie", organizationId: "org-amine", role: "player", teamScope: [], capabilities: [], status: "active" },
   { id: "m15", userId: "user-sophie", organizationId: "org-varenne-auto", role: "partner_manager", teamScope: [], capabilities: [], status: "active" },
   { id: "m16", userId: "user-sophie", organizationId: "org-nina-berger", role: "external_cm", teamScope: [], capabilities: [], status: "active" },
+  { id: "m17", userId: "user-sophie", organizationId: "org-chris", role: "owner", teamScope: [], capabilities: [], status: "active" },
+  { id: "m18", userId: "user-sophie", organizationId: "org-elite-academy", role: "admin", teamScope: [], capabilities: [], status: "active" },
 ];
 
 export const mockSubscriptions: Record<string, Subscription> = {
@@ -440,5 +464,35 @@ export const mockSubscriptions: Record<string, Subscription> = {
     presencesUsed: 1,
     storageUsedBytes: 2_100_000_000,
     storageQuotaBytes: 10_000_000_000,
+  },
+  "org-chris": {
+    id: "sub-chris",
+    organizationId: "org-chris",
+    planCode: "full_communication",
+    status: "active",
+    startsAt: "2026-02-10",
+    renewsAt: "2027-02-10",
+    commitmentMonths: 12,
+    noticeMonths: 2,
+    creditsRemaining: 0,
+    creditsReserved: 0,
+    presencesUsed: 4,
+    storageUsedBytes: 3_100_000_000,
+    storageQuotaBytes: 15_000_000_000,
+  },
+  "org-elite-academy": {
+    id: "sub-elite-academy",
+    organizationId: "org-elite-academy",
+    planCode: "full_communication",
+    status: "active",
+    startsAt: "2025-09-01",
+    renewsAt: "2026-09-01",
+    commitmentMonths: 12,
+    noticeMonths: 2,
+    creditsRemaining: 0,
+    creditsReserved: 0,
+    presencesUsed: 7,
+    storageUsedBytes: 14_200_000_000,
+    storageQuotaBytes: 30_000_000_000,
   },
 };
