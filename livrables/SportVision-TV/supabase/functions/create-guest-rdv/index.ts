@@ -120,6 +120,17 @@ serve(async (req) => {
       return json({ error: "Type de rendez-vous invalide" }, 400);
     }
 
+    // Validation minimale au-delà du honeypot, même logique que create-guest-request.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return json({ error: "Adresse e-mail invalide" }, 400);
+    }
+    if (prenom.length > 100 || nom.length > 100) {
+      return json({ error: "Prénom ou nom trop long" }, 400);
+    }
+    if (objet && objet.length > 500) {
+      return json({ error: "Objet trop long" }, 400);
+    }
+
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("cf-connecting-ip") || "inconnu";
     const rateOk = await checkRateLimit(admin, `rdv:${ip}`);
     if (!rateOk) {
