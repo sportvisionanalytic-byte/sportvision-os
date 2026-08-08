@@ -1300,13 +1300,13 @@ begin
   select count(*) into v_custom_count from formations_quiz_custom where formation_id = v_insc.formation_id;
 
   for v_row in (
-    select reponse_correcte as correct_index from formations_quiz_custom
+    (select reponse_correcte as correct_index from formations_quiz_custom
       where formation_id = v_insc.formation_id and v_custom_count > 0
-      order by ordre
+      order by ordre)
     union all
-    select correct_index from formation_quiz_questions
+    (select correct_index from formation_quiz_questions
       where formation_id = v_insc.formation_id and v_custom_count = 0
-      order by q_index
+      order by q_index)
   )
   loop
     v_correct_index := v_row.correct_index;
