@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ShieldCheck, User as UserIcon } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
+import { updateUserProfile } from "@/lib/data/shared/profile";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +19,7 @@ import { LockedModule } from "@/components/ui/LockedModule";
 // double authentification, apparence sombre, Enregistrer (seule action principale de l'écran).
 export default function ProfileSettingsPage() {
   const { ctx } = useSession();
+  const router = useRouter();
 
   if (!canAccess(ctx, "settings")) return <LockedModule title="Paramètres" />;
 
@@ -24,9 +28,11 @@ export default function ProfileSettingsPage() {
   const [lastName, setLastName] = useState(user.lastName);
   const [phone, setPhone] = useState(user.phone ?? "");
   const [locale, setLocale] = useState<"fr" | "en">(user.locale);
-  const [mfaEnabled, setMfaEnabled] = useState(user.mfaEnabled);
+  const [mfaEnabled] = useState(user.mfaEnabled);
   const [theme, setTheme] = useState<Theme>("dark");
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setTheme(getStoredTheme()), []);
 
@@ -37,8 +43,20 @@ export default function ProfileSettingsPage() {
   }
 
   function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3200);
+    setSaving(true);
+    setError(null);
+    const supabase = createClient();
+    updateUserProfile(supabase, { firstName, lastName, phone, locale })
+      .then(() => {
+        setSaving(false);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3200);
+        router.refresh();
+      })
+      .catch(() => {
+        setSaving(false);
+        setError("Enregistrement impossible, réessayez.");
+      });
   }
 
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
@@ -95,9 +113,7 @@ export default function ProfileSettingsPage() {
         {mfaEnabled ? (
           <Badge tone="success">Activée</Badge>
         ) : (
-          <Button variant="secondary" className="h-9 flex-none px-3.5 text-[12.5px]" onClick={() => setMfaEnabled(true)}>
-            Activer
-          </Button>
+          <Badge tone="neutral">Bientôt disponible</Badge>
         )}
       </Card>
 
@@ -110,8 +126,11 @@ export default function ProfileSettingsPage() {
       </Card>
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave}>Enregistrer</Button>
+        <Button loading={saving} onClick={handleSave}>
+          Enregistrer
+        </Button>
         {saved && <span className="text-[12.5px] font-bold text-success-fg">Modifications enregistrées.</span>}
+        {error && <span className="text-[12.5px] font-bold text-danger-fg">{error}</span>}
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ export function Header() {
   }
 
   const title = pathname === "/dashboard" ? "Tableau de bord" : pathname?.slice(1) || "Accueil";
+  const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";
 
   return (
     <header className="sticky top-0 z-40 flex h-[66px] items-center gap-4 border-b border-divider bg-bg/85 px-7 backdrop-blur-xl">
@@ -72,7 +73,7 @@ export function Header() {
         aria-label="Mon profil"
         className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-violet to-brand-blue-electric text-[12px] font-extrabold text-white"
       >
-        SM
+        {initials}
       </button>
     </header>
   );

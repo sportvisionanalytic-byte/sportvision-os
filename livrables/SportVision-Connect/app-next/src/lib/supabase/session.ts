@@ -3,14 +3,14 @@ import type { ActiveContext, User } from "@/lib/types";
 import { mapClubPlan, mapClubRole, mapOrgRole, mapOrgType, mapProjetRole, SPACE_TYPE_LABELS } from "./mappers";
 
 function buildUserFromAuth(authUser: SupabaseUser): User {
-  const meta = (authUser.user_metadata ?? {}) as { prenom?: string; nom?: string; telephone?: string };
+  const meta = (authUser.user_metadata ?? {}) as { prenom?: string; nom?: string; telephone?: string; locale?: "fr" | "en" };
   return {
     id: authUser.id,
     firstName: meta.prenom ?? "",
     lastName: meta.nom ?? "",
     email: authUser.email ?? "",
     phone: meta.telephone,
-    locale: "fr",
+    locale: meta.locale ?? "fr",
     theme: "dark",
     mfaEnabled: false,
     onboardingStep: 10,
