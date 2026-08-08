@@ -1,0 +1,163 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+
+// /auth/login — voir ACTIONS.md § 1. Ne jamais préciser si c'est l'e-mail ou le mot de passe
+// qui est faux dans le message d'erreur.
+export default function LoginPage() {
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState(false);
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setError(false);
+    router.push("/dashboard");
+  }
+
+  return (
+    <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-chrome p-11 lg:flex">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(900px 520px at 8% -10%, rgba(36,75,255,.55), transparent 60%), radial-gradient(700px 500px at 95% 100%, rgba(138,46,255,.42), transparent 62%)",
+          }}
+        />
+        <div className="relative flex items-center gap-3">
+          <span className="flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[15px] font-extrabold text-white">
+            SV
+          </span>
+          <span className="text-[17px] font-extrabold tracking-tight text-white">
+            SportVision<span className="font-medium text-brand-blue-pale"> Connect</span>
+          </span>
+        </div>
+
+        <div className="relative max-w-lg">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1.5 pl-1.5 pr-3 text-[11.5px] font-bold text-[#C6D3F0]">
+            <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-gradient-to-br from-brand-cyan to-brand-violet">
+              <span className="h-1.5 w-1.5 animate-svpulse rounded-full bg-white" />
+            </span>
+            Une plateforme. Toutes vos offres SportVision.
+          </div>
+          <h1 className="mt-6 text-[44px] font-extrabold leading-[1.06] tracking-tight text-white">
+            Votre sport.
+            <br />
+            Vos contenus.
+            <br />
+            <span className="bg-gradient-to-r from-brand-blue-electric via-brand-cyan to-brand-violet-light bg-clip-text text-transparent">
+              Votre espace.
+            </span>
+          </h1>
+          <p className="mt-5 max-w-[420px] text-[16px] leading-relaxed text-text-secondary">
+            Club+, Full Communication ou prestation ponctuelle : vos demandes, vos contenus et vos
+            échéances vivent au même endroit.
+          </p>
+        </div>
+
+        <div className="relative flex items-center gap-4 border-t border-white/10 pt-5 text-[12px] text-[#8B9BBE]">
+          <span className="flex items-center gap-1.5 font-semibold">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#28C995]" />
+            Tous les services fonctionnent
+          </span>
+          <span className="text-[#5B6B96]">Clubs · Académies · Coachs · Joueurs · Parents · Événements</span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center bg-bg-alt p-8">
+        <div className="w-full max-w-[396px]">
+          <h2 className="text-[28px] font-extrabold tracking-tight">Connexion</h2>
+          <p className="mt-2 text-[14px] leading-relaxed text-text-soft">
+            Accédez à l&apos;espace de votre club, de votre académie ou de votre projet.
+          </p>
+
+          {error && (
+            <div className="mt-5 flex gap-2.5 rounded-xl border border-[#FDA29B] bg-danger-bg px-3.5 py-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-none text-danger-fg" aria-hidden />
+              <p className="text-[13px] font-semibold leading-relaxed text-danger-fg">
+                Identifiants incorrects. Vérifiez votre adresse e-mail et votre mot de passe.
+              </p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-bold text-text-soft">Adresse e-mail</span>
+              <input
+                type="email"
+                required
+                placeholder="sophie.martin@fcfontainebleau.fr"
+                className="h-[46px] rounded-xl border border-border-strong bg-surface px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.12)]"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-bold text-text-soft">Mot de passe</span>
+              <span className="relative block">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••••"
+                  className="h-[46px] w-full rounded-xl border border-border-strong bg-surface px-3.5 pr-11 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.12)]"
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-1.5 top-1.5 flex h-[34px] w-[34px] items-center justify-center rounded-lg text-text-soft hover:bg-surface-sunken"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+                </button>
+              </span>
+            </label>
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-[13px] font-semibold text-text-soft">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="h-4 w-4 accent-brand-blue-electric"
+                />
+                Se souvenir de moi
+              </label>
+              <Link href="/auth/forgot" className="text-[13px] font-bold text-brand-blue-electric">
+                Mot de passe oublié
+              </Link>
+            </div>
+
+            <Button type="submit" className="h-12 w-full text-[15px]">
+              Se connecter
+            </Button>
+
+            <div className="flex items-center gap-3 text-[12px] font-semibold text-text-faint">
+              <span className="h-px flex-1 bg-border" />
+              ou
+              <span className="h-px flex-1 bg-border" />
+            </div>
+
+            <button
+              type="button"
+              className="flex h-[46px] items-center justify-center gap-2.5 rounded-xl border border-border-strong text-[14px] font-bold text-text-soft"
+            >
+              Continuer avec Google
+            </button>
+          </form>
+
+          <div className="mt-6 border-t border-border pt-5 text-center text-[13.5px] text-text-soft">
+            Pas encore de compte ?{" "}
+            <Link href="/signup/type" className="font-extrabold text-brand-blue-electric">
+              Créer mon espace
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

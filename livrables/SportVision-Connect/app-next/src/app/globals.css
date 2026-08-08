@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Tokens exacts — ../../context/import/SportVision-Connect-Design/CHARTE.md
+  Sombre par défaut (:root). [data-theme="light"] applique le mode clair.
+  La bascule pose l'attribut sur <html> et persiste le choix (voir lib/theme.ts).
+*/
+
+:root {
+  --sv-bg: #070a17;
+  --sv-bg-alt: #0b1026;
+  --sv-surface: #111735;
+  --sv-surface-alt: #0b1026;
+  --sv-surface-sunken: #0a0f26;
+  --sv-elevated: #1a2145;
+  --sv-border: #252c4a;
+  --sv-border-strong: #343c63;
+  --sv-divider: rgba(255, 255, 255, 0.07);
+  --sv-text: #f5f7fb;
+  --sv-text-soft: #a7b6c9;
+  --sv-text-secondary: #a7b6c9;
+  --sv-text-faint: #93a6bd;
+  --sv-input-bg: #0a0f26;
+  --sv-row-hover: #1a2145;
+
+  --sv-success-bg: rgba(40, 201, 149, 0.16);
+  --sv-success-fg: #7be8c3;
+  --sv-warning-bg: rgba(245, 166, 35, 0.16);
+  --sv-warning-fg: #ffce85;
+  --sv-danger-bg: rgba(239, 91, 103, 0.16);
+  --sv-danger-fg: #ffa3ab;
+  --sv-info-bg: rgba(22, 142, 255, 0.16);
+  --sv-info-fg: #8fb4ff;
+  --sv-accent-bg: rgba(116, 85, 255, 0.18);
+  --sv-accent-fg: #c9a6ff;
+  --sv-cyan-bg: rgba(45, 212, 227, 0.16);
+  --sv-cyan-fg: #8fd9ff;
+  --sv-neutral-bg: rgba(255, 255, 255, 0.07);
+  --sv-neutral-fg: #a7b6c9;
+
+  --sv-due: #a7b6c9;
+  --sv-due-warn: #ffce85;
+  --sv-due-late: #ffa3ab;
+  --sv-due-muted: #7a8ca3;
+
+  --sv-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --sv-shadow-card-hover: 0 12px 26px -16px rgba(16, 24, 40, 0.45);
+  --sv-shadow-dropdown: 0 20px 44px -18px rgba(16, 24, 40, 0.35);
+  --sv-shadow-modal: 0 40px 90px -24px rgba(7, 10, 23, 0.55);
+  --sv-shadow-panel: -30px 0 70px -20px rgba(7, 10, 23, 0.5);
+}
+
+[data-theme="light"] {
+  --sv-bg: #f5f7fc;
+  --sv-bg-alt: #fafbfe;
+  --sv-surface: #ffffff;
+  --sv-surface-alt: #fafbfe;
+  --sv-surface-sunken: #eff2f8;
+  --sv-elevated: #ffffff;
+  --sv-border: #e8ecf4;
+  --sv-border-strong: #d5dbe7;
+  --sv-divider: #f5f7fc;
+  --sv-text: #111827;
+  --sv-text-soft: #344054;
+  --sv-text-secondary: #667085;
+  --sv-text-faint: #98a2b3;
+  --sv-input-bg: #ffffff;
+  --sv-row-hover: #fbfcfe;
+
+  --sv-success-bg: #ecfdf3;
+  --sv-success-fg: #027a48;
+  --sv-warning-bg: #fef0c7;
+  --sv-warning-fg: #b54708;
+  --sv-danger-bg: #fef3f2;
+  --sv-danger-fg: #b42318;
+  --sv-info-bg: #eef2ff;
+  --sv-info-fg: #2454ff;
+  --sv-accent-bg: #f6eeff;
+  --sv-accent-fg: #832dff;
+  --sv-cyan-bg: #e6f9ff;
+  --sv-cyan-fg: #03688a;
+  --sv-neutral-bg: #f2f4f7;
+  --sv-neutral-fg: #667085;
+
+  --sv-due: #667085;
+  --sv-due-warn: #b54708;
+  --sv-due-late: #b42318;
+  --sv-due-muted: #98a2b3;
+
+  --sv-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+* {
+  border-color: var(--sv-border);
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--sv-bg);
+  color: var(--sv-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

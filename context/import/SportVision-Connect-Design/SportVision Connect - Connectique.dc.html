@@ -10,13 +10,13 @@
 <helmet>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { font-family: Manrope, system-ui, sans-serif; background: #080B1A; color: #EDF1FB; -webkit-font-smoothing: antialiased; }
-  a { color: #8FB4FF; text-decoration: none; }
-  a:hover { color: #C337FF; }
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: #070A17; color: #F5F7FB; -webkit-font-smoothing: antialiased; }
+  a { color: #8FD4FF; text-decoration: none; }
+  a:hover { color: #832DFF; }
   button { font-family: inherit; }
 </style>
 </helmet>
@@ -24,23 +24,23 @@
 <div style="max-width:1240px;margin:0 auto;padding:44px 32px 96px">
 
   <div style="display:flex;align-items:center;gap:13px">
-    <span style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#244BFF,#8A2EFF);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;letter-spacing:-.03em">SV</span>
+    <span style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#1686FF,#832DFF);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;letter-spacing:-.03em">SV</span>
     <span style="line-height:1.1">
       <span style="display:block;font-size:20px;font-weight:800;letter-spacing:-.025em">SportVision Connect</span>
-      <span style="display:block;font-size:11.5px;font-weight:700;color:#A9B6D6;letter-spacing:.09em;text-transform:uppercase">Connectique et parcours</span>
+      <span style="display:block;font-size:11.5px;font-weight:700;color:#A7B6C9;letter-spacing:.09em;text-transform:uppercase">Connectique et parcours</span>
     </span>
   </div>
-  <p style="margin:20px 0 0;font-size:15.5px;color:#A9B6D6;line-height:1.6;max-width:660px">Comment les écrans s'enchaînent, ce qui déclenche chaque transition, et ce qui se passe côté SportVision. Chaque flèche correspond à une action réelle dans la maquette.</p>
+  <p style="margin:20px 0 0;font-size:15.5px;color:#A7B6C9;line-height:1.6;max-width:660px">Comment les écrans s'enchaînent, ce qui déclenche chaque transition, et ce qui se passe côté SportVision. Chaque flèche correspond à une action réelle dans la maquette.</p>
 
   <div style="margin-top:36px;display:flex;gap:8px;flex-wrap:wrap">
     <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
-      <button onClick="{{ t.go }}" style="height:38px;padding:0 16px;border:1px solid {{ t.border }};border-radius:99px;background:{{ t.bg }};color:{{ t.fg }};font-size:13.5px;font-weight:700;cursor:pointer" style-hover="border-color:#8FB4FF">{{ t.label }}</button>
+      <button onClick="{{ t.go }}" style="height:38px;padding:0 16px;border:1px solid {{ t.border }};border-radius:99px;background:{{ t.bg }};color:{{ t.fg }};font-size:13.5px;font-weight:700;cursor:pointer" style-hover="border-color:#8FD4FF">{{ t.label }}</button>
     </sc-for>
   </div>
 
   <div style="margin-top:28px">
     <div style="font-size:22px;font-weight:800;letter-spacing:-.03em">{{ flow.title }}</div>
-    <div style="margin-top:7px;font-size:14px;color:#A9B6D6;line-height:1.55;max-width:680px">{{ flow.intro }}</div>
+    <div style="margin-top:7px;font-size:14px;color:#A7B6C9;line-height:1.55;max-width:680px">{{ flow.intro }}</div>
   </div>
 
   <div style="margin-top:26px;display:flex;flex-direction:column;gap:0">
@@ -59,38 +59,38 @@
               <span style="padding:4px 10px;border-radius:99px;background:{{ s.tint }};color:{{ s.color }};font-size:10.5px;font-weight:800;letter-spacing:.05em">{{ s.zone }}</span>
               <span style="font-size:16px;font-weight:800;letter-spacing:-.02em;color:#fff">{{ s.screen }}</span>
               <div style="flex:1"></div>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7E93C7">{{ s.route }}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7E8FA5">{{ s.route }}</span>
             </div>
 
             <div style="padding:16px 18px;display:grid;grid-template-columns:1fr 1fr;gap:22px">
               <div>
-                <div style="font-size:10.5px;font-weight:800;color:#7E93C7;letter-spacing:.09em;text-transform:uppercase">Ce que voit l'utilisateur</div>
-                <div style="margin-top:8px;font-size:13.5px;color:#C3CEE6;line-height:1.55">{{ s.sees }}</div>
-                <div style="margin-top:14px;font-size:10.5px;font-weight:800;color:#7E93C7;letter-spacing:.09em;text-transform:uppercase">Sorties possibles</div>
+                <div style="font-size:10.5px;font-weight:800;color:#7E8FA5;letter-spacing:.09em;text-transform:uppercase">Ce que voit l'utilisateur</div>
+                <div style="margin-top:8px;font-size:13.5px;color:#C2CFDE;line-height:1.55">{{ s.sees }}</div>
+                <div style="margin-top:14px;font-size:10.5px;font-weight:800;color:#7E8FA5;letter-spacing:.09em;text-transform:uppercase">Sorties possibles</div>
                 <div style="margin-top:9px;display:flex;flex-direction:column;gap:7px">
                   <sc-for list="{{ s.exits }}" as="e" hint-placeholder-count="2">
                     <div style="display:flex;gap:9px;align-items:flex-start">
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8FB4FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
-                      <span style="font-size:13px;color:#C3CEE6;line-height:1.45"><strong style="color:#fff;font-weight:800">{{ e.a }}</strong> {{ e.t }}</span>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8FD4FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
+                      <span style="font-size:13px;color:#C2CFDE;line-height:1.45"><strong style="color:#fff;font-weight:800">{{ e.a }}</strong> {{ e.t }}</span>
                     </div>
                   </sc-for>
                 </div>
               </div>
 
               <div>
-                <div style="font-size:10.5px;font-weight:800;color:#7E93C7;letter-spacing:.09em;text-transform:uppercase">Ce qui se passe en coulisses</div>
+                <div style="font-size:10.5px;font-weight:800;color:#7E8FA5;letter-spacing:.09em;text-transform:uppercase">Ce qui se passe en coulisses</div>
                 <div style="margin-top:9px;display:flex;flex-direction:column;gap:7px">
                   <sc-for list="{{ s.system }}" as="y" hint-placeholder-count="3">
                     <div style="display:flex;gap:9px;align-items:flex-start">
                       <span style="width:5px;height:5px;flex:none;margin-top:7px;border-radius:50%;background:{{ s.color }}"></span>
-                      <span style="font-size:13px;color:#A9B6D6;line-height:1.45">{{ y }}</span>
+                      <span style="font-size:13px;color:#A7B6C9;line-height:1.45">{{ y }}</span>
                     </div>
                   </sc-for>
                 </div>
                 <sc-if value="{{ s.mail }}" hint-placeholder-val="{{ false }}">
                   <div style="margin-top:14px;padding:11px 13px;border-radius:11px;background:rgba(36,75,255,.14);border:1px solid rgba(143,180,255,.3);display:flex;gap:10px;align-items:flex-start">
-                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#8FB4FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="M3 6h18v12H3zM3 7l9 6 9-6" /></svg>
-                    <span style="font-size:12.5px;color:#C3CEE6;line-height:1.45">E-mail envoyé — <strong style="color:#fff;font-weight:800">{{ s.mail }}</strong></span>
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#8FD4FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="M3 6h18v12H3zM3 7l9 6 9-6" /></svg>
+                    <span style="font-size:12.5px;color:#C2CFDE;line-height:1.45">E-mail envoyé — <strong style="color:#fff;font-weight:800">{{ s.mail }}</strong></span>
                   </div>
                 </sc-if>
               </div>
@@ -102,7 +102,7 @@
   </div>
 
   <div style="margin-top:44px">
-    <div style="font-size:11.5px;font-weight:800;color:#8FB4FF;letter-spacing:.11em;text-transform:uppercase">Règles transverses</div>
+    <div style="font-size:11.5px;font-weight:800;color:#8FD4FF;letter-spacing:.11em;text-transform:uppercase">Règles transverses</div>
     <h2 style="margin:10px 0 0;font-size:24px;font-weight:800;letter-spacing:-.03em">Ce qui gouverne tous les parcours.</h2>
     <div style="margin-top:20px;display:grid;grid-template-columns:repeat(2,1fr);gap:14px">
       <sc-for list="{{ rules }}" as="r" hint-placeholder-count="6">
@@ -111,14 +111,14 @@
             <span style="width:28px;height:28px;flex:none;border-radius:9px;background:{{ r.tint }};display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="{{ r.color }}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ r.icon }}" /></svg></span>
             <span style="font-size:14.5px;font-weight:800;color:#fff;letter-spacing:-.015em">{{ r.t }}</span>
           </div>
-          <div style="margin-top:11px;font-size:13.5px;color:#A9B6D6;line-height:1.6">{{ r.d }}</div>
+          <div style="margin-top:11px;font-size:13.5px;color:#A7B6C9;line-height:1.6">{{ r.d }}</div>
         </div>
       </sc-for>
     </div>
   </div>
 
   <div style="margin-top:44px">
-    <div style="font-size:11.5px;font-weight:800;color:#8FB4FF;letter-spacing:.11em;text-transform:uppercase">Statuts</div>
+    <div style="font-size:11.5px;font-weight:800;color:#8FD4FF;letter-spacing:.11em;text-transform:uppercase">Statuts</div>
     <h2 style="margin:10px 0 0;font-size:24px;font-weight:800;letter-spacing:-.03em">Les chaînes de statuts, bout à bout.</h2>
     <div style="margin-top:20px;display:flex;flex-direction:column;gap:20px">
       <sc-for list="{{ chains }}" as="c" hint-placeholder-count="4">
@@ -143,11 +143,11 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240}}">
 const Z = {
-  auth: ['rgba(36,75,255,.2)', '#8FB4FF', 'ACCÈS'],
+  auth: ['rgba(36,75,255,.2)', '#8FD4FF', 'ACCÈS'],
   onb: ['rgba(138,46,255,.2)', '#C9A6FF', 'ONBOARDING'],
   app: ['rgba(0,200,255,.18)', '#8FD4FF', 'APPLICATION'],
   studio: ['rgba(195,55,255,.18)', '#E0A6FF', 'STUDIO SPORTVISION'],
-  fin: ['rgba(18,183,106,.2)', '#5BE59E', 'FINANCE'],
+  fin: ['rgba(18,183,106,.2)', '#7BE8C3', 'FINANCE'],
   terrain: ['rgba(247,144,9,.2)', '#FFCF8F', 'TERRAIN']
 };
 
@@ -200,6 +200,30 @@ const FLOWS = {
       { z: 'fin', screen: 'Renouvellement', route: '/contracts · à renouveler', sees: 'Le contrat en statut « à renouveler » deux mois avant l\'échéance, avec l\'avenant proposé.', exits: [{ a: 'Signer l\'avenant →', t: 'nouveau contrat actif' }, { a: 'Résilier →', t: 'demande transmise au conseiller' }], system: ['Reconduction tacite pour 12 mois sauf préavis de 2 mois.', 'L\'espace reste accessible en lecture après résiliation.'], mail: 'Échéance de renouvellement à 60 jours' }
     ]
   },
+  'Studio Club+': {
+    title: 'D\'un besoin à une création livrée',
+    intro: 'Le club a une information à publier. Sept minutes plus tard, la demande est chez le studio avec tout ce qu\'il faut pour produire.',
+    steps: [
+      { z: 'app', screen: 'Newsroom du club', route: '/newsroom', sees: 'Les remontées de ses équipes : un résultat, une signature, une reprise d\'entraînement. Chacune avec son auteur et son statut.', exits: [{ a: 'Transformer en publication →', t: 'Studio, modèle présélectionné' }, { a: 'Créer une demande →', t: 'formulaire de demande de visuel' }], system: ['Un éducateur remonte l\'information depuis son espace, sans passer par le responsable communication.', 'L\'information reste liée à son équipe d\'origine.'], mail: '' },
+      { z: 'app', screen: 'Studio Club+', route: '/studio', sees: '47 modèles répartis sur 7 catégories, une recherche, des filtres. Chaque carte affiche son coût en crédits et son délai.', exits: [{ a: 'Choisir un modèle →', t: 'fiche du modèle' }], system: ['Le Studio n\'apparaît qu\'à partir de Club+ : l\'offre Essentiel ne l\'a pas.', 'Les modèles indisponibles ne sont pas masqués, ils portent un cadenas.'], mail: '' },
+      { z: 'app', screen: 'Fiche modèle', route: '/studio/:template', sees: 'Un aperçu, trois réalisations pour d\'autres clubs, et un formulaire déjà rempli pour moitié.', exits: [{ a: 'Envoyer ma demande →', t: 'crédits réservés, demande créée' }, { a: 'Enregistrer en brouillon →', t: 'aucun crédit consommé' }], system: ['Club, logo, couleurs, sponsors et saison sont préremplis depuis l\'identité de l\'organisation.', 'Le coût en crédits dépend du modèle : 1 à 3.', 'Les crédits sont RÉSERVÉS, pas débités.'], mail: 'Accusé de réception avec délai annoncé' },
+      { z: 'studio', screen: 'Production', route: 'SportVision OS', sees: 'La demande passe en « en création » dans son suivi.', exits: [{ a: 'Studio livre →', t: 'statut « à valider »' }], system: ['La charte du club est chargée automatiquement.', 'Le graphiste voit le brief et les fichiers joints.'], mail: '' },
+      { z: 'app', screen: 'Validation', route: '/content/:id', sees: 'La création livrée, ses informations, et deux actions.', exits: [{ a: 'Valider →', t: 'crédits DÉFINITIVEMENT consommés' }, { a: 'Demander une correction →', t: 'réservation maintenue, retour au studio' }], system: ['Deux corrections incluses, la troisième facturée.', 'Un refus libère la réservation sans débit.'], mail: 'Contenu prêt à être validé' },
+      { z: 'app', screen: 'Match Center', route: '/matchcenter', sees: 'Les rencontres à venir, celles dont le résultat est attendu, et les contenus déjà produits.', exits: [{ a: 'Saisir un résultat →', t: 'formulaire express en 3 champs' }, { a: 'Créer le visuel →', t: 'Studio, modèle Résultat préempli' }], system: ['Le score saisi alimente directement le modèle Résultat.', 'Aucune ressaisie entre le Match Center et le Studio.'], mail: '' }
+    ]
+  },
+  'Full Communication': {
+    title: 'Le client valide, SportVision produit',
+    intro: 'Ici le client ne crée rien. Il transmet, il valide, il consulte. Tout le travail se fait dans OS.',
+    steps: [
+      { z: 'app', screen: 'Tableau de bord', route: '/dashboard', sees: 'Sa semaine éditoriale : publications programmées, contenus à valider, présence prévue, rapport disponible.', exits: [{ a: 'Transmettre une information →', t: 'formulaire libre vers le CM' }, { a: 'Voir ce qui attend ma validation →', t: 'file de validation' }], system: ['Le dashboard ne propose jamais « créez votre affiche ».', 'Le contenu varie selon le type : club, coach, académie, événement.'], mail: '' },
+      { z: 'studio', screen: 'Le CM construit le planning', route: 'SportVision OS', sees: 'Les publications apparaissent au fur et à mesure dans son planning éditorial, en « en préparation ».', exits: [{ a: 'CM soumet →', t: 'statut « à valider », client notifié' }], system: ['Le brief est créé dans OS à partir de l\'information transmise.', 'Validation interne avant que le client voie quoi que ce soit.'], mail: '' },
+      { z: 'app', screen: 'À valider', route: '/validations', sees: 'Les contenus en attente, classés par urgence, avec leur date de publication prévue et leur auteur.', exits: [{ a: 'Valider →', t: 'programmation automatique' }, { a: 'Demander une correction →', t: 'retour au CM' }], system: ['Sans validation sous 48 h, la publication est décalée.', 'Le client ne voit aucun détail technique de programmation.'], mail: 'Contenu à valider, rappel à 24 h' },
+      { z: 'app', screen: 'Publications et statistiques', route: '/publications · /analytics', sees: 'Ce qui est sorti, ce qui arrive, et quatre métriques : portée, vues, engagement, abonnés.', exits: [{ a: 'Consulter →', t: 'détail d\'une publication' }], system: ['Les statistiques remontent de Metricool via OS.', 'Aucun token, aucun identifiant technique, aucune erreur d\'API exposés.'], mail: '' },
+      { z: 'app', screen: 'Rapport mensuel', route: '/reports', sees: 'Résumé du mois, objectifs, contenus réalisés, meilleure publication, recommandations, plan du mois suivant.', exits: [{ a: 'Télécharger →', t: 'PDF' }], system: ['Généré par le CM dans OS, publié dans Connect.', 'Point mensuel de 30 minutes proposé en parallèle.'], mail: 'Votre rapport mensuel est disponible' },
+      { z: 'app', screen: 'Mon Community Manager', route: '/mycm', sees: 'Sa CM, son indicateur de disponibilité, son délai de réponse, le prochain point prévu.', exits: [{ a: 'Envoyer un message →', t: 'fil rattaché à la communication' }, { a: 'Planifier un échange →', t: 'créneaux' }], system: ['Un seul interlocuteur affiché, jamais toute l\'équipe.', 'Les commentaires internes OS n\'apparaissent jamais dans ce fil.'], mail: '' }
+    ]
+  },
   'Rôles et accès': {
     title: 'Qui voit quoi, et comment on le contrôle',
     intro: 'Un utilisateur peut appartenir à plusieurs organisations avec un rôle différent dans chacune. Le changement d\'organisation recharge tout.',
@@ -220,14 +244,14 @@ class Component extends DCLogic {
     const cur = this.state.f;
     const flow = FLOWS[cur];
     const chip = (label, k, arrow) => {
-      const M = { grey: ['#252C47', '#A9B6D6'], blue: ['rgba(36,75,255,.24)', '#A8C4FF'], violet: ['rgba(138,46,255,.24)', '#D3B0FF'], amber: ['rgba(247,144,9,.22)', '#FFCF8F'], green: ['rgba(18,183,106,.22)', '#5BE59E'], red: ['rgba(240,68,56,.22)', '#FF9C93'], cyan: ['rgba(0,200,255,.2)', '#8FD4FF'] };
+      const M = { grey: ['#252C47', '#A7B6C9'], blue: ['rgba(36,75,255,.24)', '#A8C4FF'], violet: ['rgba(138,46,255,.24)', '#D3B0FF'], amber: ['rgba(247,144,9,.22)', '#FFCF8F'], green: ['rgba(18,183,106,.22)', '#7BE8C3'], red: ['rgba(240,68,56,.22)', '#FF9C93'], cyan: ['rgba(0,200,255,.2)', '#8FD4FF'] };
       return { label, bg: M[k][0], fg: M[k][1], arrow };
     };
     return {
       tabs: keys.map(k => ({
         label: k, go: () => this.setState({ f: k }),
-        bg: k === cur ? 'linear-gradient(135deg,#244BFF,#8A2EFF)' : 'rgba(255,255,255,.05)',
-        fg: k === cur ? '#fff' : '#A9B6D6',
+        bg: k === cur ? 'linear-gradient(135deg,#1686FF,#832DFF)' : 'rgba(255,255,255,.05)',
+        fg: k === cur ? '#fff' : '#A7B6C9',
         border: k === cur ? 'transparent' : 'rgba(255,255,255,.14)'
       })),
       flow: {
@@ -235,14 +259,14 @@ class Component extends DCLogic {
         steps: flow.steps.map((s, i) => ({
           ...s, n: i + 1, notLast: i !== flow.steps.length - 1,
           zone: Z[s.z][2], tint: Z[s.z][0], color: Z[s.z][1],
-          badgeBg: 'linear-gradient(135deg,#244BFF,#8A2EFF)', badgeFg: '#fff'
+          badgeBg: 'linear-gradient(135deg,#1686FF,#832DFF)', badgeFg: '#fff'
         }))
       },
       rules: [
-        { t: 'Un seul espace externe', d: 'Connect remplace définitivement les portails séparés. Club+ n\'est plus une plateforme mais un niveau d\'accompagnement à l\'intérieur de Connect.', icon: 'M4 4h7v7H4zM13 4h7v4h-7zM13 12h7v8h-7zM4 15h7v5H4z', tint: 'rgba(36,75,255,.2)', color: '#8FB4FF' },
+        { t: 'Un seul espace externe', d: 'Connect remplace définitivement les portails séparés. Club+ n\'est plus une plateforme mais un niveau d\'accompagnement à l\'intérieur de Connect.', icon: 'M4 4h7v7H4zM13 4h7v4h-7zM13 12h7v8h-7zM4 15h7v5H4z', tint: 'rgba(36,75,255,.2)', color: '#8FD4FF' },
         { t: 'Permissions centralisées', d: 'Aucun écran ne teste le nom de l\'offre. Tout passe par canAccess, canCreate, hasEntitlement et hasQuota, ce qui permet de faire évoluer les formules sans toucher aux vues.', icon: 'M5 11h14v9H5zM8.5 11V8a3.5 3.5 0 017 0v3', tint: 'rgba(138,46,255,.2)', color: '#C9A6FF' },
         { t: 'Rien n\'est masqué sans raison', d: 'Un module non inclus reste visible avec un cadenas et un écran qui explique ce qu\'il apporte. L\'utilisateur comprend toujours pourquoi il ne peut pas accéder à quelque chose.', icon: 'M12 21a9 9 0 100-18 9 9 0 000 18zM9.6 9.5a2.5 2.5 0 113.4 2.3c-.6.3-1 .9-1 1.7M12 17h.01', tint: 'rgba(0,200,255,.18)', color: '#8FD4FF' },
-        { t: 'Les échanges suivent l\'objet', d: 'Pas de messagerie générale. Les commentaires sont attachés à une prestation, un contenu, une demande ou un contrat, avec mentions, fichiers et résolution.', icon: 'M4 5h16v11H9l-5 4z', tint: 'rgba(18,183,106,.2)', color: '#5BE59E' },
+        { t: 'Les échanges suivent l\'objet', d: 'Pas de messagerie générale. Les commentaires sont attachés à une prestation, un contenu, une demande ou un contrat, avec mentions, fichiers et résolution.', icon: 'M4 5h16v11H9l-5 4z', tint: 'rgba(18,183,106,.2)', color: '#7BE8C3' },
         { t: 'Une action principale par écran', d: 'Chaque vue a un bouton dominant. Les actions secondaires restent accessibles mais ne rivalisent jamais visuellement avec l\'action attendue.', icon: 'M12 5v14M5 12h14', tint: 'rgba(247,144,9,.2)', color: '#FFCF8F' },
         { t: 'Les données sensibles suivent le rôle', d: 'Autorisations d\'image, informations administratives et montants n\'apparaissent que selon le rôle et le périmètre d\'équipes de l\'utilisateur.', icon: 'M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z', tint: 'rgba(240,68,56,.2)', color: '#FF9C93' }
       ],
@@ -277,6 +301,17 @@ class Component extends DCLogic {
           n: 'Facture — chemin d\'exception', steps: [
             chip('À payer', 'amber', true), chip('En retard', 'red', true), chip('Suspension', 'red', true),
             chip('Régularisée', 'green', false)
+          ]
+        },
+        {
+          n: 'Crédit Club+', steps: [
+            chip('Attribué le 1er', 'grey', true), chip('Réservé à la demande', 'amber', true),
+            chip('Consommé à la validation', 'green', false)
+          ]
+        },
+        {
+          n: 'Crédit — chemin d\'exception', steps: [
+            chip('Réservé', 'amber', true), chip('Demande refusée', 'red', true), chip('Libéré', 'grey', false)
           ]
         },
         {
