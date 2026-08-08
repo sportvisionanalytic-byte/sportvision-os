@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ShieldAlert } from "lucide-react";
+import { useSession } from "@/lib/session-context";
 import { defaultNotificationPreferences } from "@/lib/mock/settings";
 import {
   NOTIFICATION_CATEGORY_LABELS,
@@ -10,6 +11,8 @@ import {
   type NotificationFrequency,
   type NotificationPreferences,
 } from "@/lib/types/settings";
+import { fetchQuietHours, saveQuietHours, type QuietHours } from "@/lib/data/shared/notification-quiet-hours";
+import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/settings/Switch";
@@ -39,16 +42,39 @@ const CATEGORY_ORDER: NotificationCategory[] = [
 ];
 
 export default function NotificationPreferencesPage() {
-  const [prefs, setPrefs] = useState<NotificationPreferences>(defaultNotificationPreferences);
+  const { ctx } = useSession();
+  // Préférences par catégorie : mock uniquement — notification_preferences (réel) a une
+  // taxonomie incompatible (SECURITY/LEGAL/BILLING/OPERATIONS/SUPPORT/PRODUCT/MARKETING, pas de
+  // notion de fréquence ni de canal in-app), pas de mapping honnête possible vers les 8
+  // catégories du design. Affiché à titre indicatif, non modifiable (voir plus bas).
+  const [prefs] = useState<NotificationPreferences>(defaultNotificationPreferences);
+
+  const [quietHours, setQuietHours] = useState<QuietHours>({ notBefore: "08:00", notAfter: "21:00", sundayUrgentOnly: true });
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function updateCategory(category: NotificationCategory, patch: Partial<NotificationPreferences[NotificationCategory]>) {
-    setPrefs((prev) => ({ ...prev, [category]: { ...prev[category], ...patch } }));
-  }
+  useEffect(() => {
+    const supabase = createClient();
+    fetchQuietHours(supabase, ctx.user.id).then((row) => {
+      if (row) setQuietHours(row);
+    });
+  }, [ctx.user.id]);
 
-  function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3200);
+  function handleSaveQuietHours() {
+    setSaving(true);
+    setError(null);
+    const supabase = createClient();
+    saveQuietHours(supabase, ctx.user.id, quietHours)
+      .then(() => {
+        setSaving(false);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3200);
+      })
+      .catch(() => {
+        setSaving(false);
+        setError("Enregistrement impossible, réessayez.");
+      });
   }
 
   return (
@@ -62,7 +88,12 @@ export default function NotificationPreferencesPage() {
         <p className="mt-1 text-[13.5px] text-text-soft">Choisissez comment et quand être prévenu, par catégorie.</p>
       </div>
 
-      <Card className="divide-y divide-divider">
+      <p className="text-[12.5px] text-text-soft">
+        Le détail par catégorie ci-dessous n&apos;est pas encore modifiable depuis Connect (affiché à titre indicatif).
+        Les heures calmes, elles, sont réellement enregistrées.
+      </p>
+
+      <Card className="divide-y divide-divider opacity-60">
         {CATEGORY_ORDER.map((category) => {
           const pref = prefs[category];
           return (
@@ -71,8 +102,8 @@ export default function NotificationPreferencesPage() {
                 <span className="text-[13.5px] font-extrabold">{NOTIFICATION_CATEGORY_LABELS[category]}</span>
                 <select
                   value={pref.frequency}
-                  onChange={(e) => updateCategory(category, { frequency: e.target.value as NotificationFrequency })}
-                  className="h-9 rounded-lg border border-border-strong bg-input-bg px-2.5 text-[12.5px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
+                  disabled
+                  className="h-9 cursor-not-allowed rounded-lg border border-border-strong bg-input-bg px-2.5 text-[12.5px] outline-none"
                 >
                   {Object.entries(FREQUENCY_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -83,11 +114,11 @@ export default function NotificationPreferencesPage() {
               </div>
               <div className="flex items-center gap-6">
                 <label className="flex items-center gap-2.5 text-[12.5px] font-semibold text-text-soft">
-                  <Switch checked={pref.email} onChange={(v) => updateCategory(category, { email: v })} label={`E-mail — ${NOTIFICATION_CATEGORY_LABELS[category]}`} />
+                  <Switch checked={pref.email} onChange={() => {}} disabled label={`E-mail — ${NOTIFICATION_CATEGORY_LABELS[category]}`} />
                   E-mail
                 </label>
                 <label className="flex items-center gap-2.5 text-[12.5px] font-semibold text-text-soft">
-                  <Switch checked={pref.inApp} onChange={(v) => updateCategory(category, { inApp: v })} label={`Application — ${NOTIFICATION_CATEGORY_LABELS[category]}`} />
+                  <Switch checked={pref.inApp} onChange={() => {}} disabled label={`Application — ${NOTIFICATION_CATEGORY_LABELS[category]}`} />
                   Application
                 </label>
               </div>
@@ -103,8 +134,8 @@ export default function NotificationPreferencesPage() {
             <span className="text-[12px] font-bold text-text-soft">Pas avant</span>
             <input
               type="time"
-              value={prefs.quietHours.notBefore}
-              onChange={(e) => setPrefs((prev) => ({ ...prev, quietHours: { ...prev.quietHours, notBefore: e.target.value } }))}
+              value={quietHours.notBefore}
+              onChange={(e) => setQuietHours((prev) => ({ ...prev, notBefore: e.target.value }))}
               className="h-10 rounded-xl border border-border-strong bg-input-bg px-3 text-[13px] outline-none focus-visible:border-brand-blue"
             />
           </label>
@@ -112,16 +143,16 @@ export default function NotificationPreferencesPage() {
             <span className="text-[12px] font-bold text-text-soft">Pas après</span>
             <input
               type="time"
-              value={prefs.quietHours.notAfter}
-              onChange={(e) => setPrefs((prev) => ({ ...prev, quietHours: { ...prev.quietHours, notAfter: e.target.value } }))}
+              value={quietHours.notAfter}
+              onChange={(e) => setQuietHours((prev) => ({ ...prev, notAfter: e.target.value }))}
               className="h-10 rounded-xl border border-border-strong bg-input-bg px-3 text-[13px] outline-none focus-visible:border-brand-blue"
             />
           </label>
         </div>
         <label className="flex items-center gap-2.5 text-[12.5px] font-semibold text-text-soft">
           <Switch
-            checked={prefs.quietHours.sundayUrgentOnly}
-            onChange={(v) => setPrefs((prev) => ({ ...prev, quietHours: { ...prev.quietHours, sundayUrgentOnly: v } }))}
+            checked={quietHours.sundayUrgentOnly}
+            onChange={(v) => setQuietHours((prev) => ({ ...prev, sundayUrgentOnly: v }))}
             label="Dimanche en urgences uniquement"
           />
           Dimanche : urgences uniquement
@@ -134,8 +165,11 @@ export default function NotificationPreferencesPage() {
       </Card>
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave}>Enregistrer les préférences</Button>
-        {saved && <span className="text-[12.5px] font-bold text-success-fg">Préférences enregistrées.</span>}
+        <Button loading={saving} onClick={handleSaveQuietHours}>
+          Enregistrer les heures calmes
+        </Button>
+        {saved && <span className="text-[12.5px] font-bold text-success-fg">Heures calmes enregistrées.</span>}
+        {error && <span className="text-[12.5px] font-bold text-danger-fg">{error}</span>}
       </div>
     </div>
   );
