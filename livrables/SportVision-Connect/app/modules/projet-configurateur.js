@@ -166,8 +166,9 @@
       }
 
       function priceLabel(o) {
+        var tvaMult = 1 + ((o.tva_pct != null ? o.tva_pct : 20) / 100);
         return (o.tarif_type === 'fixe' && o.prix_ht != null)
-          ? (Math.round(o.prix_ht * 1.2 * 100) / 100).toLocaleString('fr-FR') + ' € TTC'
+          ? (Math.round(o.prix_ht * tvaMult * 100) / 100).toLocaleString('fr-FR') + ' € TTC'
           : 'Sur devis';
       }
 
@@ -320,11 +321,12 @@
         if (key === 'options') {
           var o3 = currentOffer();
           var opts = (o3 && Array.isArray(o3.options)) ? o3.options : [];
+          var optsTvaMult = 1 + (((o3 && o3.tva_pct != null) ? o3.tva_pct : 20) / 100);
           var optsHtml = opts.map(function (op) {
             var sel = state.options.indexOf(op.nom) !== -1;
             return '<div class="pjcfg-offer-row' + (sel ? ' sel' : '') + '" data-action="toggle-option" data-nom="' + esc(op.nom) + '">'
               + '<b>' + esc(op.nom) + '</b>'
-              + '<span class="pjcfg-price">' + (sel ? '−' : '+') + (Math.round((op.prix_ht || 0) * 1.2 * 100) / 100).toLocaleString('fr-FR') + ' € TTC</span></div>';
+              + '<span class="pjcfg-price">' + (sel ? '−' : '+') + (Math.round((op.prix_ht || 0) * optsTvaMult * 100) / 100).toLocaleString('fr-FR') + ' € TTC</span></div>';
           }).join('');
           var frais = (state.horsIdf && state.fraisDeplacementHt != null)
             ? '<div class="pjcfg-note-card"><b style="color:var(--text)">Frais de déplacement</b><p style="margin:6px 0 0">Lieu hors Île-de-France (environ ' + state.distanceKm + ' km aller-retour depuis notre siège) : <b style="color:var(--text)">+' + (Math.round(state.fraisDeplacementHt * 1.2 * 100) / 100).toLocaleString('fr-FR') + ' € TTC</b></p></div>'
