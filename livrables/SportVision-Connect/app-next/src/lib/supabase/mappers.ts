@@ -47,6 +47,38 @@ export function mapProjetRole(_realRole: string): MembershipRole {
 }
 
 /**
+ * organization_role_catalog réel (migration-connect-v6.sql) → MembershipRole du design, par
+ * type d'organisation. Coach/académie/sponsor n'ont pas de plan/quota vendu (pas
+ * d'organization_entitlements) — voir le plan Phase 4.
+ */
+const COACH_ROLE_MAP: Record<string, MembershipRole> = {
+  proprietaire: "owner",
+  assistant: "staff",
+  resp_communication: "communication_manager",
+  collaborateur_limite: "viewer",
+};
+
+const ACADEMIE_ROLE_MAP: Record<string, MembershipRole> = {
+  admin: "admin",
+  secretaire: "secretary",
+  coach: "coach",
+  resp_programme: "manager",
+  resp_communication: "communication_manager",
+  lecture_seule: "viewer",
+};
+
+const SPONSOR_ROLE_MAP: Record<string, MembershipRole> = {
+  referent: "sponsor_manager",
+  contact: "viewer",
+};
+
+export function mapOrgRole(orgType: "coach" | "academie" | "sponsor", realRole: string): MembershipRole {
+  if (orgType === "coach") return COACH_ROLE_MAP[realRole] ?? "viewer";
+  if (orgType === "academie") return ACADEMIE_ROLE_MAP[realRole] ?? "viewer";
+  return SPONSOR_ROLE_MAP[realRole] ?? "viewer";
+}
+
+/**
  * clubs.plan réel ('club'|'performance') → PlanCode du design. Sert uniquement à faire
  * fonctionner resolveNavigation()/PLANS[...] sans les modifier — jamais la source de vérité
  * pour savoir si un module est activé (ça, c'est organization_entitlements, voir entitlements.ts).

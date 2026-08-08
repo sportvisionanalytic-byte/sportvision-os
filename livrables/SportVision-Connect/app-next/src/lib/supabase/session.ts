@@ -1,6 +1,6 @@
 import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
 import type { ActiveContext, User } from "@/lib/types";
-import { mapClubPlan, mapClubRole, mapOrgType, mapProjetRole, SPACE_TYPE_LABELS } from "./mappers";
+import { mapClubPlan, mapClubRole, mapOrgRole, mapOrgType, mapProjetRole, SPACE_TYPE_LABELS } from "./mappers";
 
 function buildUserFromAuth(authUser: SupabaseUser): User {
   const meta = (authUser.user_metadata ?? {}) as { prenom?: string; nom?: string; telephone?: string };
@@ -74,7 +74,7 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
       id: row.organizations.id,
       name: row.organizations.nom,
       subtitle: SPACE_TYPE_LABELS[orgType] ?? orgType,
-      clickable: orgType === "club" || orgType === "projet",
+      clickable: orgType === "club" || orgType === "projet" || orgType === "coach" || orgType === "academie" || orgType === "sponsor",
       organizationType: orgType,
       membershipId: row.id,
       role: row.role,
@@ -379,6 +379,69 @@ export async function buildProjetActiveContext(
       userId: authUser.id,
       organizationId: org.id,
       role: mapProjetRole(space.role),
+      teamScope: [],
+      capabilities: [],
+      status: space.status === "actif" ? "active" : space.status === "invitation" ? "invited" : "disabled",
+    },
+    subscription: {
+      id: `sub-${org.id}`,
+      organizationId: org.id,
+      planCode: "one_off",
+      status: "active",
+      startsAt: org.created_at,
+      renewsAt: org.created_at,
+      commitmentMonths: 0,
+      noticeMonths: 0,
+      creditsRemaining: 0,
+      creditsReserved: 0,
+      presencesUsed: 0,
+      storageUsedBytes: 0,
+      storageQuotaBytes: 1,
+    },
+  };
+}
+
+const GENERIC_ORG_TYPES = ["coach", "academie", "sponsor"] as const;
+type GenericOrgType = (typeof GENERIC_ORG_TYPES)[number];
+
+/**
+ * Construit l'ActiveContext pour un espace Coach, Académie ou Sponsor — voir le plan Phase 4.
+ * Les 3 partagent le même socle réel (migration-connect-v3/v4/v6) : une vraie ligne
+ * `memberships`, un rôle réel via `organization_role_catalog` (pas de check constraint en dur
+ * comme pour club_members), et aucune `organization_entitlements` (pas de plan/quota vendu —
+ * planCode "one_off", comme pour un espace projet). Une seule fonction paramétrée plutôt que 3
+ * quasi-identiques : les 3 backends sont structurellement identiques, seul le rôle diffère.
+ */
+export async function buildOrgSpaceActiveContext(
+  supabase: SupabaseClient,
+  authUser: SupabaseUser,
+  space: Space,
+): Promise<ActiveContext | null> {
+  if (space.kind !== "organization" || !space.clickable) return null;
+  if (!GENERIC_ORG_TYPES.includes(space.organizationType as GenericOrgType)) return null;
+  const orgType = space.organizationType as GenericOrgType;
+
+  const { data } = await supabase
+    .from("organizations")
+    .select("id, nom, organization_type, created_at")
+    .eq("id", space.id)
+    .maybeSingle();
+  const org = data as { id: string; nom: string; organization_type: string; created_at: string } | null;
+  if (!org || !space.role) return null;
+
+  return {
+    user: buildUserFromAuth(authUser),
+    organization: {
+      id: org.id,
+      type: mapOrgType(org.organization_type),
+      name: org.nom,
+      createdAt: org.created_at,
+    },
+    membership: {
+      id: space.membershipId!,
+      userId: authUser.id,
+      organizationId: org.id,
+      role: mapOrgRole(orgType, space.role),
       teamScope: [],
       capabilities: [],
       status: space.status === "actif" ? "active" : space.status === "invitation" ? "invited" : "disabled",

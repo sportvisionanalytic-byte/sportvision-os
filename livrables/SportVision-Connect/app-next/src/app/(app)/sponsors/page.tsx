@@ -11,16 +11,12 @@ import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { SponsorCard } from "@/components/sponsors/SponsorCard";
 import { SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/components/sponsors/format";
-import {
-  deliverablesForSponsor,
-  mockSponsorOperations,
-  mockSponsorPublications,
-  mockSponsorSelfView,
-  visibilityGauge,
-} from "@/lib/mock/sponsors";
+import { mockSponsorOperations, mockSponsorPublications, visibilityGauge } from "@/lib/mock/sponsors";
 import { fetchClubSponsors } from "@/lib/data/club/sponsors";
+import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
 import { createClient } from "@/lib/supabase/client";
 import type { Sponsor } from "@/lib/types/sponsors";
+import { SPONSOR_LEVEL_LABEL, SPONSOR_LEVEL_TONE } from "@/components/sponsors/format";
 
 // Écran Sponsors — ACTIONS.md § 17 (vue club) et § 20 bis (espace partenaire). Le partenaire a
 // son propre espace, séparé du club : jauge de visibilité, contenus sponsorisés, opérations,
@@ -114,13 +110,19 @@ export default function SponsorsPage() {
 }
 
 function PartnerView({ organizationId, partnerName }: { organizationId: string; partnerName: string }) {
-  const sponsorIds = mockSponsorSelfView[organizationId] ?? [];
-  const deliverables = sponsorIds.flatMap((id) => deliverablesForSponsor(id));
-  const planned = deliverables.reduce((sum, d) => sum + d.plannedCount, 0);
-  const delivered = deliverables.reduce((sum, d) => sum + d.deliveredCount, 0);
-  const gauge = planned > 0 ? Math.round((delivered / planned) * 100) : 0;
-  const publications = mockSponsorPublications.filter((p) => sponsorIds.includes(p.sponsorId));
-  const operations = mockSponsorOperations.filter((o) => sponsorIds.includes(o.sponsorId));
+  // club_sponsors filtré par sponsor_organization_id (Phase 4) — un sponsor peut avoir plusieurs
+  // partenariats (un par club), traités comme une liste. Pas de table réelle pour
+  // livrables/publications détaillés (voir data/sponsor/sponsorships.ts) : ces sections restent
+  // honnêtement vides plutôt que de montrer les données mock d'un seul sponsor fictif.
+  const [partnerships, setPartnerships] = useState<Sponsor[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    fetchSponsorPartnerships(supabase, organizationId).then(setPartnerships);
+  }, [organizationId]);
+
+  const publications: typeof mockSponsorPublications = [];
+  const operations: typeof mockSponsorOperations = [];
 
   return (
     <div className="flex flex-col gap-5">
@@ -132,19 +134,23 @@ function PartnerView({ organizationId, partnerName }: { organizationId: string; 
       </div>
 
       <Card className="p-4.5">
-        <div className="flex items-baseline justify-between">
-          <span className="text-[14px] font-extrabold tracking-tight">Ma visibilité</span>
-          <span className="text-[22px] font-extrabold tracking-tight">{gauge} %</span>
-        </div>
-        <p className="mt-1 text-[12.5px] text-text-soft">
-          {delivered} livrable{delivered > 1 ? "s" : ""} réalisé{delivered > 1 ? "s" : ""} sur {planned} prévu{planned > 1 ? "s" : ""}.
-        </p>
-        <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-surface-sunken">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet"
-            style={{ width: `${Math.min(100, Math.max(0, gauge))}%` }}
-          />
-        </div>
+        <div className="text-[14px] font-extrabold tracking-tight">Mes partenariats</div>
+        {partnerships.length === 0 ? (
+          <p className="mt-3 text-[12.5px] text-text-soft">Aucun partenariat enregistré pour le moment.</p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-2.5">
+            {partnerships.map((s) => (
+              <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface-alt px-3.5 py-2.5">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-bold text-text">{s.name}</span>
+                  <span className="block text-[11.5px] text-text-soft">{formatEuro(s.annualAmount)} / an</span>
+                </span>
+                <Badge tone={SPONSOR_LEVEL_TONE[s.level]}>{SPONSOR_LEVEL_LABEL[s.level]}</Badge>
+                <Badge tone={SPONSOR_STATUS_TONE[s.status]}>{SPONSOR_STATUS_LABEL[s.status]}</Badge>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

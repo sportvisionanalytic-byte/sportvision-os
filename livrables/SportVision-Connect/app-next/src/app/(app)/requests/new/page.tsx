@@ -14,6 +14,7 @@ import { Toast, useToast } from "@/components/feedback/Toast";
 import { cn } from "@/lib/cn";
 import { FCF_TEAM_NAMES, buildAttachment } from "@/lib/mock/studio";
 import { submitClubRequest } from "@/lib/data/club/requests";
+import { submitOrgRequest } from "@/lib/data/shared/requests";
 import { createClient } from "@/lib/supabase/client";
 import {
   URGENCY_META,
@@ -81,21 +82,27 @@ function NewRequestContent() {
     setAttachments((prev) => [...prev, ...next]);
   }
 
+  const isGenericOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
+
   function handleSubmit() {
     if (!canWrite || !hasEnoughCredits) return;
     setSubmitting(true);
     const supabase = createClient();
-    submitClubRequest(supabase, ctx.organization.id, {
-      visualType,
-      teamName: teamName || undefined,
-      // Pas de colonnes réelles pour eventName/publishDate/format/platform (voir
-      // data/club/requests.ts) — repris dans le texte transmis pour ne rien perdre.
-      bodyText: [bodyText, eventName && `Événement : ${eventName}`, publishDate && `Publication visée : ${publishDate}`]
-        .filter(Boolean)
-        .join("\n"),
-      urgency,
-      credits: cost,
-    })
+    // Pas de colonnes réelles pour eventName/publishDate/format/platform (club_requests) ni pour
+    // teamName/eventName/publishDate/format/platform (requests générique, Phase 4) — tout repris
+    // dans le texte transmis pour ne rien perdre.
+    const composedBody = [
+      bodyText,
+      !isGenericOrg && teamName && `Équipe : ${teamName}`,
+      eventName && `Événement : ${eventName}`,
+      publishDate && `Publication visée : ${publishDate}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const submission = isGenericOrg
+      ? submitOrgRequest(supabase, ctx.organization.id, { visualType, bodyText: composedBody, urgency, credits: cost })
+      : submitClubRequest(supabase, ctx.organization.id, { visualType, teamName: teamName || undefined, bodyText: composedBody, urgency, credits: cost });
+    submission
       .then((request) => {
         showToast(`Demande ${request.reference} envoyée · ${cost} crédit${cost > 1 ? "s" : ""} réservé${cost > 1 ? "s" : ""}.`);
         setTimeout(() => router.push("/requests"), 650);

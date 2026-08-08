@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { cn } from "@/lib/cn";
 import { cancelClubRequest, fetchClubRequests } from "@/lib/data/club/requests";
+import { cancelOrgRequest, fetchOrgRequests } from "@/lib/data/shared/requests";
 import { createClient } from "@/lib/supabase/client";
 import {
   URGENCY_META,
@@ -82,23 +83,28 @@ export default function RequestsPage() {
 
   const allowed = canAccess(ctx, "visual_requests");
   const canWrite = canCreate(ctx, "visual_request");
+  // club_requests (Espace Club) vs requests générique (Coach/Académie/Sponsor, Phase 4) — même
+  // forme VisualRequest en sortie, source différente selon le type d'organisation.
+  const isGenericOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
 
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    fetchClubRequests(supabase, ctx.organization.id).then((rows) => {
+    const fetcher = isGenericOrg ? fetchOrgRequests(supabase, ctx.organization.id) : fetchClubRequests(supabase, ctx.organization.id);
+    fetcher.then((rows) => {
       if (!cancelled) setOrgRequests(rows);
     });
     return () => {
       cancelled = true;
     };
-  }, [ctx.organization.id]);
+  }, [ctx.organization.id, isGenericOrg]);
 
   if (!allowed) return <LockedModule title="Demandes de visuels" />;
 
   function handleCancel(r: VisualRequest) {
     const supabase = createClient();
-    cancelClubRequest(supabase, r.id, ctx.organization.id)
+    const cancelFn = isGenericOrg ? cancelOrgRequest : cancelClubRequest;
+    cancelFn(supabase, r.id, ctx.organization.id)
       .then((updated) => {
         setOrgRequests((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
         setDetailId(null);

@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { formatPlanCredits, PLANS } from "@/lib/plans";
 import type { ActiveContext } from "@/lib/types";
-import {
-  delegatedAccessByCmOrg,
-  sponsorDeliverables,
-  sponsorOperationsByOrg,
-} from "@/lib/mock/persona";
+import { delegatedAccessByCmOrg } from "@/lib/mock/persona";
 import { fetchConfirmedChildren, type ConfirmedChild } from "@/lib/data/family/children";
 import { fetchChildAuthorizations, type ChildAuthorization } from "@/lib/data/family/authorizations";
+import { fetchOrgRequests } from "@/lib/data/shared/requests";
+import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
+import { fetchCoachPlayers } from "@/lib/data/coach/players";
+import { fetchAcademieGroups } from "@/lib/data/academie/groups";
+import type { Sponsor } from "@/lib/types/sponsors";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
@@ -60,12 +61,6 @@ interface PersonaConfig {
   contents: PersonaContentItem[];
 }
 
-/** Club sponsorisé affiché en en-tête du tableau de bord sponsor — donnée mock, pas un lien de
- * données réel (le sponsor n'a pas de `parentOrganizationId`, réservé au joueur affilié). */
-const SPONSORED_CLUB_LABEL: Record<string, string> = {
-  "org-varenneauto": "US Varenne",
-};
-
 /** Données réelles chargées côté PersonaDashboard pour les cas player/parent (voir le plan
  * Phase 2 § Décisions d'architecture n°6) — vide tant que non chargées, buildConfig retombe alors
  * sur des valeurs à zéro plutôt que de bloquer le rendu du tableau de bord. */
@@ -73,6 +68,9 @@ interface PersonaExtra {
   playerClubName?: string;
   children?: ConfirmedChild[];
   authByChild?: Record<string, ChildAuthorization[]>;
+  openRequestsCount?: number;
+  partnerships?: Sponsor[];
+  rosterCount?: number;
 }
 
 function hasValidImageRight(auths: ChildAuthorization[] | undefined): boolean {
@@ -196,37 +194,33 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
     }
 
     case "sponsor": {
-      const deliverable = sponsorDeliverables[organization.id] ?? { delivered: 0, planned: 1 };
-      const visibilityPct = Math.round((deliverable.delivered / deliverable.planned) * 100);
-      const ops = sponsorOperationsByOrg[organization.id] ?? [];
-      const completedOps = ops.filter((o) => o.status === "completed").length;
-      const opsPct = ops.length ? Math.round((completedOps / ops.length) * 100) : 0;
-      const nextOp = ops.find((o) => o.status === "planned");
+      // club_sponsors réel (Phase 4) — pas de deliverables/opérations trackées (voir
+      // data/sponsor/sponsorships.ts), gauges recentrées sur ce qui est réellement su : nombre
+      // de partenariats et montant total engagé.
+      const partnerships = extra.partnerships ?? [];
+      const totalAmount = partnerships.reduce((sum, s) => sum + s.annualAmount, 0);
+      const activeCount = partnerships.filter((s) => s.status === "active").length;
+      const clubNames = partnerships.map((s) => s.name).join(", ");
       return {
         eyebrow: "Mon partenariat",
-        title: `Bonjour ${user.firstName}, voici votre visibilité chez ${SPONSORED_CLUB_LABEL[organization.id] ?? "votre club partenaire"}.`,
-        subtitle: "Suivez vos livrables, vos opérations et vos publications sponsorisées.",
-        heroActionLabel: "Voir ma visibilité",
+        title: `Bonjour ${user.firstName}, voici votre partenariat${partnerships.length > 1 ? "s" : ""}${clubNames ? ` avec ${clubNames}` : ""}.`,
+        subtitle: "Suivez vos partenariats et vos demandes auprès de SportVision.",
+        heroActionLabel: "Voir mes partenariats",
         heroActionHref: "/sponsors",
         gauges: [
-          { label: "Jauge de visibilité", value: `${deliverable.delivered} / ${deliverable.planned}`, pct: visibilityPct },
-          { label: "Opérations réalisées", value: `${completedOps} / ${ops.length}`, pct: opsPct },
+          { label: "Partenariats actifs", value: `${activeCount} / ${partnerships.length}`, pct: partnerships.length ? Math.round((activeCount / partnerships.length) * 100) : 0 },
+          { label: "Montant engagé", value: `${totalAmount.toLocaleString("fr-FR")} €`, pct: 100 },
           { label: "Stockage", value: `${storagePct} %`, pct: storagePct },
         ],
         priorityTitle: "À traiter",
-        priorityItems: nextOp
-          ? [{ title: nextOp.label, meta: "Opération à venir", action: "Voir", due: nextOp.date }]
-          : [],
-        secondaryTitle: "Vos livrables",
-        secondaryItems: ops
-          .filter((o) => o.status === "completed")
-          .map((o) => ({ title: o.label, meta: "Livré", due: o.date })),
+        priorityItems:
+          extra.openRequestsCount && extra.openRequestsCount > 0
+            ? [{ title: `${extra.openRequestsCount} demande${extra.openRequestsCount > 1 ? "s" : ""} en attente`, meta: "Envoyées à SportVision", action: "Voir", due: undefined }]
+            : [],
+        secondaryTitle: "Mes partenariats",
+        secondaryItems: partnerships.map((s) => ({ title: s.name, meta: `${s.annualAmount.toLocaleString("fr-FR")} € / an`, due: s.endsAt })),
         contentsTitle: "Contenus sponsorisés",
-        contents: [
-          { label: "Bâche bord de terrain", kind: "Photo" },
-          { label: "Maillot extérieur", kind: "Photo" },
-          { label: "Story partenaire", kind: "Story" },
-        ],
+        contents: [],
       };
     }
 
@@ -298,38 +292,34 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
 
     case "academy":
     case "coach": {
+      // coach_players/academie_groups + requests génériques réels (Phase 4) — pas de
+      // crédits/présences/stockage suivis pour ces espaces (pas d'organization_entitlements,
+      // voir buildOrgSpaceActiveContext), standardGauges n'a donc pas de sens ici.
       const isAcademy = organization.type === "academy";
+      const rosterCount = extra.rosterCount ?? 0;
+      const openRequests = extra.openRequestsCount ?? 0;
       return {
         eyebrow: isAcademy ? "Mon académie" : "Mon activité",
         title: `Bonjour ${user.firstName}, voici ce qui nécessite votre attention.`,
         subtitle: isAcademy
-          ? "Suivez vos prestations et vos contenus produits pour l'académie."
-          : "Commandez des contenus et suivez votre image professionnelle.",
-        heroActionLabel: isAcademy ? "Suivre une prestation" : "Commander des contenus",
-        heroActionHref: isAcademy ? "/services" : "/requests",
-        gauges: standardGauges,
+          ? "Suivez vos groupes et vos demandes auprès de SportVision."
+          : "Suivez vos joueurs et vos demandes auprès de SportVision.",
+        heroActionLabel: "Voir mes demandes",
+        heroActionHref: "/requests",
+        gauges: [
+          { label: isAcademy ? "Groupes" : "Joueurs suivis", value: `${rosterCount}`, pct: rosterCount > 0 ? 100 : 0 },
+          { label: "Demandes en attente", value: `${openRequests}`, pct: openRequests > 0 ? 100 : 0 },
+          { label: "Stockage", value: `${storagePct} %`, pct: storagePct },
+        ],
         priorityTitle: "À traiter",
-        priorityItems: [
-          {
-            title: isAcademy ? "Devis — journée portes ouvertes" : "Demande de contenus — présentation programme",
-            meta: isAcademy ? "Devis disponible · reçu le 5 août" : "En cours de création · Studio SportVision",
-            action: isAcademy ? "Voir le devis" : "Suivre",
-            due: isAcademy ? "À valider" : "Livraison sous 48 h",
-          },
-        ],
-        secondaryTitle: "Prochainement",
-        secondaryItems: [
-          {
-            title: isAcademy ? "Stage d'automne" : "Séance individuelle",
-            meta: isAcademy ? "Centre sportif régional" : "Prochain rendez-vous",
-            due: isAcademy ? "19 octobre 2026" : "14 août",
-          },
-        ],
+        priorityItems:
+          openRequests > 0
+            ? [{ title: `${openRequests} demande${openRequests > 1 ? "s" : ""} en attente`, meta: "Envoyées à SportVision", action: "Voir" }]
+            : [],
+        secondaryTitle: isAcademy ? "Mes groupes" : "Mes joueurs suivis",
+        secondaryItems: [],
         contentsTitle: "Derniers contenus",
-        contents: [
-          { label: "Affiche du programme", kind: "Photo" },
-          { label: "Séance filmée", kind: "Vidéo" },
-        ],
+        contents: [],
       };
     }
 
@@ -379,6 +369,27 @@ export function PersonaDashboard() {
           children.map(async (c) => [c.playerId, await fetchChildAuthorizations(supabase, c.playerId)] as const),
         );
         setExtra({ children, authByChild: Object.fromEntries(entries) });
+      });
+    } else if (ctx.organization.type === "sponsor") {
+      Promise.all([
+        fetchSponsorPartnerships(supabase, ctx.organization.id),
+        fetchOrgRequests(supabase, ctx.organization.id),
+      ]).then(([partnerships, requests]) => {
+        setExtra({ partnerships, openRequestsCount: requests.filter((r) => r.status === "Envoyée").length });
+      });
+    } else if (ctx.organization.type === "coach") {
+      Promise.all([
+        fetchCoachPlayers(supabase, ctx.organization.id),
+        fetchOrgRequests(supabase, ctx.organization.id),
+      ]).then(([players, requests]) => {
+        setExtra({ rosterCount: players.length, openRequestsCount: requests.filter((r) => r.status === "Envoyée").length });
+      });
+    } else if (ctx.organization.type === "academy") {
+      Promise.all([
+        fetchAcademieGroups(supabase, ctx.organization.id),
+        fetchOrgRequests(supabase, ctx.organization.id),
+      ]).then(([groups, requests]) => {
+        setExtra({ rosterCount: groups.length, openRequestsCount: requests.filter((r) => r.status === "Envoyée").length });
       });
     } else {
       setExtra({});

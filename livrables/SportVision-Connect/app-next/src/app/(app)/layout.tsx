@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   ACTIVE_SPACE_COOKIE,
   buildClubActiveContext,
+  buildOrgSpaceActiveContext,
   buildParentActiveContext,
   buildPlayerActiveContext,
   buildProjetActiveContext,
@@ -18,9 +19,14 @@ import {
 import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
 import type { ActiveContext } from "@/lib/types";
 
+const GENERIC_SPACE_TYPES = new Set(["coach", "academie", "sponsor"]);
+
 function buildActiveContext(supabase: SupabaseClient, user: SupabaseUser, space: Space): Promise<ActiveContext | null> {
   if (space.kind === "organization" && space.organizationType === "projet") {
     return buildProjetActiveContext(supabase, user, space);
+  }
+  if (space.kind === "organization" && GENERIC_SPACE_TYPES.has(space.organizationType ?? "")) {
+    return buildOrgSpaceActiveContext(supabase, user, space);
   }
   if (space.kind === "organization") return buildClubActiveContext(supabase, user, space);
   if (space.kind === "player") return buildPlayerActiveContext(supabase, user, space);

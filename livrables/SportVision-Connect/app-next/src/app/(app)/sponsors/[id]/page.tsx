@@ -10,14 +10,9 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { SPONSOR_LEVEL_LABEL, SPONSOR_LEVEL_TONE, SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/components/sponsors/format";
-import {
-  deliverablesForSponsor,
-  mockSponsorDocuments,
-  mockSponsorPublications,
-  mockSponsors,
-  visibilityGauge,
-} from "@/lib/mock/sponsors";
+import { deliverablesForSponsor, mockSponsorDocuments, mockSponsorPublications, visibilityGauge } from "@/lib/mock/sponsors";
 import { fetchClubSponsors } from "@/lib/data/club/sponsors";
+import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
 import { createClient } from "@/lib/supabase/client";
 import type { Sponsor } from "@/lib/types/sponsors";
 import { cn } from "@/lib/cn";
@@ -48,10 +43,12 @@ export default function SponsorDetailPage({ params }: { params: { id: string } }
   const isPartner = ctx.organization.type === "sponsor";
 
   useEffect(() => {
-    if (isPartner) return;
     let cancelled = false;
     const supabase = createClient();
-    fetchClubSponsors(supabase, ctx.organization.id).then((rows) => {
+    const fetcher = isPartner
+      ? fetchSponsorPartnerships(supabase, ctx.organization.id)
+      : fetchClubSponsors(supabase, ctx.organization.id);
+    fetcher.then((rows) => {
       if (!cancelled) setClubSponsors(rows);
     });
     return () => {
@@ -61,13 +58,13 @@ export default function SponsorDetailPage({ params }: { params: { id: string } }
 
   if (!isPartner && !canAccess(ctx, "sponsors")) return <LockedModule />;
 
-  if (!isPartner && clubSponsors === null) {
+  if (clubSponsors === null) {
     return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
   }
 
   const sponsor = isPartner
-    ? mockSponsors.find((s) => s.id === params.id)
-    : clubSponsors!.find((s) => s.id === params.id && s.organizationId === ctx.organization.id);
+    ? clubSponsors.find((s) => s.id === params.id)
+    : clubSponsors.find((s) => s.id === params.id && s.organizationId === ctx.organization.id);
 
   if (!sponsor) {
     return (
@@ -154,7 +151,7 @@ function DeliverablesTab({ sponsorId }: { sponsorId: string }) {
   );
 }
 
-function ContractTab({ sponsor }: { sponsor: (typeof mockSponsors)[number] }) {
+function ContractTab({ sponsor }: { sponsor: Sponsor }) {
   return (
     <Card className="p-4.5">
       <div className="text-[14px] font-extrabold tracking-tight">Conditions du partenariat</div>

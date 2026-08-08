@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import type { MembershipRole, OrgType } from "@/lib/types";
 import { mockOrgUsers } from "@/lib/mock/settings";
 import { ROLE_LABELS, type OrgUser } from "@/lib/types/settings";
+import { fetchClubMembers, setClubMemberStatus } from "@/lib/data/club/users";
+import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -42,14 +44,27 @@ const STATUS_LABEL: Record<OrgUser["status"], string> = {
 
 export default function UsersPage() {
   const { ctx } = useSession();
-  const [users, setUsers] = useState<OrgUser[]>(() => mockOrgUsers[ctx.organization.id] ?? []);
+  const isClub = ctx.organization.type === "club";
+  const [users, setUsers] = useState<OrgUser[]>(() => (isClub ? [] : mockOrgUsers[ctx.organization.id] ?? []));
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  if (!canAccess(ctx, "users")) return <LockedModule title="Utilisateurs" />;
+  useEffect(() => {
+    if (!isClub) return;
+    const supabase = createClient();
+    fetchClubMembers(supabase, ctx.organization.id).then(setUsers);
+  }, [isClub, ctx.organization.id]);
+
+  // club_members réel (Phase suivante) : seul le club a de vraies données ici — les autres
+  // types d'organisation restent verrouillés ("users" hors READY_MODULES) plutôt que de montrer
+  // mockOrgUsers sur un compte réel, même logique que /billing et /services.
+  if (!isClub && !canAccess(ctx, "users")) return <LockedModule title="Utilisateurs" />;
 
   const availableRoles = ROLES_BY_ORG_TYPE[ctx.organization.type] ?? ["viewer"];
 
   function handleInvite(input: { email: string; role: MembershipRole }) {
+    // Pas d'edge function d'invitation branchée pour le club dans cette phase (org-invite existe
+    // pour coach/académie/sponsor, pas encore vérifiée/branchée ici) — reste local-only, comme
+    // avant, pour ne pas prétendre envoyer une invitation qui ne part pas réellement.
     setUsers((prev) => [
       ...prev,
       {
@@ -67,8 +82,16 @@ export default function UsersPage() {
     ]);
   }
 
-  function handleDisable(userId: string) {
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: u.status === "disabled" ? "active" : "disabled" } : u)));
+  function handleDisable(user: OrgUser) {
+    if (!isClub) {
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: u.status === "disabled" ? "active" : "disabled" } : u)));
+      return;
+    }
+    const nextStatus = user.status === "disabled" ? "actif" : "suspendu";
+    const supabase = createClient();
+    setClubMemberStatus(supabase, user.membershipId, nextStatus).then(() => {
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus === "actif" ? "active" : "disabled" } : u)));
+    });
   }
 
   return (
@@ -113,7 +136,7 @@ export default function UsersPage() {
                   <Button
                     variant="secondary"
                     className="h-8 flex-none px-3 text-[12px]"
-                    onClick={() => handleDisable(user.id)}
+                    onClick={() => handleDisable(user)}
                   >
                     {user.status === "disabled" ? "Réactiver" : "Désactiver"}
                   </Button>

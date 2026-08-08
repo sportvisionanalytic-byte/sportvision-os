@@ -11,32 +11,44 @@ import { TeamCard } from "@/components/teams/TeamCard";
 import { FollowedClubCard } from "@/components/teams/FollowedClubCard";
 import { mockFollowedClubs } from "@/lib/mock/teams";
 import { fetchClubTeams } from "@/lib/data/club/teams";
+import { fetchAcademieGroups } from "@/lib/data/academie/groups";
+import { fetchCoachPlayers, type CoachPlayer } from "@/lib/data/coach/players";
 import { createClient } from "@/lib/supabase/client";
 import type { Team } from "@/lib/types/teams";
 
 // Écran Équipes — ACTIONS.md § 16. Pour un CM externe (`cm_agency`), la même route devient
-// « Clubs suivis » : 4 statistiques + une carte par club. Le composant reste unique, seul le
-// contenu change selon le type d'organisation (voir README.md § Pas de duplication de pages).
+// « Clubs suivis » : 4 statistiques + une carte par club. Pour une académie, « Groupes »
+// (academie_groups, réutilise Team/TeamCard). Pour un coach, « Joueurs suivis » (coach_players,
+// vue dédiée — pas de notion d'équipe côté coach, voir le plan Phase 4). Le composant reste
+// unique, seul le contenu change selon le type d'organisation (voir README.md § Pas de
+// duplication de pages).
 export default function TeamsPage() {
   const { ctx } = useSession();
   const [teams, setTeams] = useState<Team[] | null>(null);
+  const isAcademy = ctx.organization.type === "academy";
+  const isCoach = ctx.organization.type === "coach";
 
   useEffect(() => {
-    if (ctx.organization.type === "cm_agency") return;
+    if (ctx.organization.type === "cm_agency" || isCoach) return;
     let cancelled = false;
     const supabase = createClient();
-    fetchClubTeams(supabase, ctx.organization.id).then((rows) => {
+    const fetcher = isAcademy ? fetchAcademieGroups(supabase, ctx.organization.id) : fetchClubTeams(supabase, ctx.organization.id);
+    fetcher.then((rows) => {
       if (!cancelled) setTeams(rows);
     });
     return () => {
       cancelled = true;
     };
-  }, [ctx.organization.id, ctx.organization.type]);
+  }, [ctx.organization.id, ctx.organization.type, isAcademy, isCoach]);
 
   if (!canAccess(ctx, "teams")) return <LockedModule />;
 
   if (ctx.organization.type === "cm_agency") {
     return <FollowedClubsView organizationId={ctx.organization.id} />;
+  }
+
+  if (isCoach) {
+    return <CoachPlayersView organizationId={ctx.organization.id} />;
   }
 
   const canAddPlayer = canCreate(ctx, "player");
@@ -49,9 +61,9 @@ export default function TeamsPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="text-[12px] font-bold text-text-soft">Équipes</div>
+          <div className="text-[12px] font-bold text-text-soft">{isAcademy ? "Groupes" : "Équipes"}</div>
           <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">
-            {teams.length} équipe{teams.length > 1 ? "s" : ""} pour {ctx.organization.name}
+            {teams.length} {isAcademy ? "groupe" : "équipe"}{teams.length > 1 ? "s" : ""} pour {ctx.organization.name}
           </h1>
         </div>
         <div className="flex items-center gap-2.5">
@@ -135,6 +147,55 @@ function FollowedClubsView({ organizationId }: { organizationId: string }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {clubs.map((club) => (
             <FollowedClubCard key={club.organizationId} club={club} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CoachPlayersView({ organizationId }: { organizationId: string }) {
+  const [players, setPlayers] = useState<CoachPlayer[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    fetchCoachPlayers(supabase, organizationId).then((rows) => {
+      if (!cancelled) setPlayers(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId]);
+
+  if (players === null) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <div className="text-[12px] font-bold text-text-soft">Joueurs suivis</div>
+        <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">
+          {players.length} joueur{players.length > 1 ? "s" : ""} suivi{players.length > 1 ? "s" : ""}
+        </h1>
+      </div>
+
+      {players.length === 0 ? (
+        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
+          <Users className="h-6 w-6 text-text-faint" aria-hidden />
+          <div className="mt-1 text-[15px] font-extrabold">Aucun joueur suivi pour le moment.</div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          {players.map((p) => (
+            <Card key={p.id} className="p-4">
+              <div className="text-[14.5px] font-extrabold tracking-tight">
+                {p.firstName} {p.lastName ?? ""}
+              </div>
+              {p.category && <div className="mt-1 text-[12px] font-semibold text-text-soft">{p.category}</div>}
+              {p.notes && <p className="mt-2 text-[12.5px] leading-relaxed text-text-soft">{p.notes}</p>}
+            </Card>
           ))}
         </div>
       )}

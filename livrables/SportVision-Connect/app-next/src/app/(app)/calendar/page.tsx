@@ -13,6 +13,7 @@ import { KIND_DOT } from "@/components/calendar/calendar-style";
 import { EventDetailPanel } from "@/components/calendar/EventDetailPanel";
 import { AddEventModal } from "@/components/calendar/AddEventModal";
 import { createClubCalendarEvent, fetchClubCalendarEvents } from "@/lib/data/club/calendar";
+import { fetchOrgCalendarEvents } from "@/lib/data/shared/calendar-events";
 import { createClient } from "@/lib/supabase/client";
 
 // /calendar — voir ACTIONS.md § 15. Calendrier central agrégé (mois/semaine/jour/liste) :
@@ -57,16 +58,23 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
+  // calendar_events générique (Coach/Académie/Sponsor, Phase 4) est en lecture seule côté membre
+  // (écriture réservée au staff SportVision) — contrairement à club_calendar_events.
+  const isGenericOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
+
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    fetchClubCalendarEvents(supabase, ctx.organization.id).then((rows) => {
+    const fetcher = isGenericOrg
+      ? fetchOrgCalendarEvents(supabase, ctx.organization.id)
+      : fetchClubCalendarEvents(supabase, ctx.organization.id);
+    fetcher.then((rows) => {
       if (!cancelled) setEvents(rows);
     });
     return () => {
       cancelled = true;
     };
-  }, [ctx.organization.id]);
+  }, [ctx.organization.id, isGenericOrg]);
 
   if (!canAccess(ctx, "calendar")) return <LockedModule title="Calendrier" />;
 
@@ -138,10 +146,12 @@ export default function CalendarPage() {
             <Download className="h-4 w-4" aria-hidden />
             Exporter (iCal)
           </Button>
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Ajouter un événement
-          </Button>
+          {!isGenericOrg && (
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Ajouter un événement
+            </Button>
+          )}
         </div>
       </div>
 
