@@ -613,7 +613,7 @@ section{position:relative}
             <option value="particulier">Un particulier</option>
           </select>
         </div>
-        <div class="sv-field"><label for="dv-commentaire">Votre besoin (facultatif)</label><textarea id="dv-commentaire" name="commentaire" rows="3" placeholder="Ex : match photo le 14/09, shooting joueur, devis Club+..."></textarea></div>
+        <div class="sv-field"><label for="dv-commentaire">Votre besoin (facultatif)</label><textarea id="dv-commentaire" name="commentaire" rows="3" placeholder="Ex : shooting photo de mon équipe"></textarea></div>
         <div class="sv-err" id="devis-err"></div>
         <button type="submit" class="btn btn-grad" style="width:100%;margin-top:6px" id="devis-submit">Envoyer ma demande</button>
       </form>
@@ -784,7 +784,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
           <div class="sv-field"><label for="rdv-date">Date souhaitée</label><input id="rdv-date" name="date_demandee" type="date" required></div>
           <div class="sv-field"><label for="rdv-heure">Horaire (7h-22h)</label><input id="rdv-heure" name="heure_demandee" type="time" min="07:00" max="22:00"></div>
         </div>
-        <div class="sv-field"><label for="rdv-objet">Objet (facultatif)</label><input id="rdv-objet" name="objet" type="text" placeholder="Ex : étude accompagnement Club+"></div>
+        <div class="sv-field"><label for="rdv-objet">Objet (facultatif)</label><input id="rdv-objet" name="objet" type="text" placeholder="Ex : shooting d'équipe"></div>
         <div class="sv-field"><label for="rdv-prenom">Prénom</label><input id="rdv-prenom" name="prenom" type="text" required></div>
         <div class="sv-field"><label for="rdv-nom">Nom</label><input id="rdv-nom" name="nom" type="text" required></div>
         <div class="sv-field"><label for="rdv-email">E-mail</label><input id="rdv-email" name="email" type="email" required></div>
