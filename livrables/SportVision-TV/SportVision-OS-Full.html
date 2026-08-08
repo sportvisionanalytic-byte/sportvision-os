@@ -2585,6 +2585,12 @@ async function _refreshRoleFromDB(tok,uid){
     // déconnecte donc jamais personne par erreur tant qu'elle n'est pas là.
     if(profs&&profs[0]&&profs[0].actif===false)return 'INACTIF';
     if(profs&&profs[0]&&profs[0].role)return profs[0].role;
+    // r.ok + tableau vide = la requête a bien abouti, il n'y a juste plus de
+    // ligne profiles pour cet id (profil réellement supprimé, cas différent
+    // de la désactivation) — à distinguer d'un échec réseau/exception
+    // (retourne null plus bas), qui ne doit PAS déconnecter quelqu'un juste
+    // parce que la requête a échoué momentanément.
+    if(r.ok&&Array.isArray(profs)&&profs.length===0)return 'SUPPRIME';
   }catch(e){}
   return null;
 }
@@ -2606,7 +2612,7 @@ async function checkSession(){
       // ce cas, la session restait valide tant que le token Supabase l'était
       // (voir audit du 08/08/2026, "Supprimer" échouait déjà en silence côté
       // FK — ceci corrige le vrai besoin : couper l'accès, pas supprimer la ligne).
-      if(freshRole==='INACTIF'){svClear();goLogin();return;}
+      if(freshRole==='INACTIF'||freshRole==='SUPPRIME'){svClear();goLogin();return;}
       if(freshRole!==role)localStorage.setItem('sv_role',freshRole);
       goApp(freshRole);
       return;
@@ -2622,7 +2628,7 @@ async function checkSession(){
     const d=await r2.json();
     if(d.access_token){
       const freshRole=await _refreshRoleFromDB(d.access_token,uid)||role;
-      if(freshRole==='INACTIF'){svClear();goLogin();return;}
+      if(freshRole==='INACTIF'||freshRole==='SUPPRIME'){svClear();goLogin();return;}
       svSave(d.access_token,d.refresh_token,uid,freshRole);
       goApp(freshRole);
     }else{svClear();}
@@ -8250,7 +8256,26 @@ async function kitsModalAttribuer(kitId){
 async function kitsAttribuerSubmit(kitId){
   const preId=document.getElementById('attr-pre')?.value;
   if(!preId){toast('Sélectionnez une prestation.','er');return;}
+  const sortie=document.getElementById('attr-sortie')?.value||null;
+  const retour=document.getElementById('attr-retour')?.value||null;
   try{
+    // Aucun contrôle de chevauchement n'existait avant l'attribution : rien
+    // n'empêchait d'attribuer un kit déjà réservé sur la même période à une
+    // deuxième prestation. Vérifié seulement quand les deux heures sont
+    // renseignées des deux côtés (best-effort, une réservation sans heure ne
+    // peut pas être comparée fiablement).
+    if(sortie&&retour){
+      const existantes=await sbFetch('kit_reservations?select=id,heure_sortie,heure_retour_prevue,prestations(reference,date_prestation,clients(nom))&kit_id=eq.'+kitId+'&statut=not.in.(retourné,en_contrôle)').catch(()=>[]);
+      const conflit=(Array.isArray(existantes)?existantes:[]).find(r=>{
+        if(!r.heure_sortie||!r.heure_retour_prevue)return false;
+        return sortie<r.heure_retour_prevue&&r.heure_sortie<retour;
+      });
+      if(conflit){
+        const p=conflit.prestations;
+        toast('Ce kit est déjà réservé sur ce créneau pour '+(p?.clients?.nom||p?.reference||'une autre prestation')+'.','er');
+        return;
+      }
+    }
     const uid=localStorage.getItem('sv_uid');
     const r=await sbFetch('kit_reservations',{method:'POST',body:{
       kit_id:kitId,
@@ -8258,8 +8283,8 @@ async function kitsAttribuerSubmit(kitId){
       collaborateur_id:uid,
       responsable_id:document.getElementById('attr-resp')?.value||null,
       statut:'réservé',
-      heure_sortie:document.getElementById('attr-sortie')?.value||null,
-      heure_retour_prevue:document.getElementById('attr-retour')?.value||null,
+      heure_sortie:sortie,
+      heure_retour_prevue:retour,
       lieu_recuperation:document.getElementById('attr-lieu')?.value||null,
       consignes:document.getElementById('attr-cons')?.value||null,
     }});
@@ -8513,6 +8538,17 @@ async function kitsControleSubmit(controleId){
       items_total:vals.length,items_ok:ok,items_reserve:reserve,items_ko:def,items_absent:absent,
     }});
     if(sbErr(rCtrl)){toast('Erreur : '+(rCtrl.message||'validation impossible.'),'er');return;}
+    // Un contrôle "après" validé sans anomalie bloquante ne remettait jamais
+    // le kit à "disponible" nulle part (ni trigger, ni appel JS) — il fallait
+    // le faire manuellement via "Changer statut", facilement oublié. À
+    // l'inverse, un contrôle bloquant passe le kit en panne plutôt que de le
+    // laisser dans son statut précédent sans signal.
+    const ctrl=rCtrl?.[0];
+    if(ctrl?.type==='apres'&&ctrl?.kit_id){
+      const nouveauStatutKit=hasBloquant?'endommagé':'disponible';
+      const rKitSt=await sbFetch('kits?id=eq.'+ctrl.kit_id,{method:'PATCH',body:{statut:nouveauStatutKit}}).catch(()=>({code:'network_error'}));
+      if(sbErr(rKitSt))toast('Contrôle validé, mais le statut du kit n\'a pas pu être synchronisé.','wa');
+    }
     if(hasBloquant){
       // Notifier prod
       const prods=await sbFetch('profiles?select=id&role=in.(admin,prod)').catch(()=>[]);
@@ -9846,7 +9882,8 @@ async function creerDevis(){
       return;
     }
     if(document.getElementById('dv-promo-apply')?.checked){
-      await sbFetch('clients?id=eq.'+cli,{method:'PATCH',body:{promo_bienvenue_disponible:false}}).catch(()=>{});
+      const rPromo=await sbFetch('clients?id=eq.'+cli,{method:'PATCH',body:{promo_bienvenue_disponible:false}}).catch(()=>({code:'network_error'}));
+      if(sbErr(rPromo))toast('Devis créé, mais la promo de bienvenue n\'a pas pu être marquée consommée — vérifiez le client.','wa');
     }
     closeModal();toast('Devis créé.','ok');
     if(S.view==='devis')loadDevis();else{switchView('devis');}
@@ -9948,7 +9985,8 @@ async function sauvegarderDevis(id){
         try{
           const cl=await sbFetch('clients?select=id,statut&id=eq.'+dv.client_id);
           if(cl&&cl[0]&&['prospect','qualifié','devis_envoyé'].includes(cl[0].statut)){
-            await sbFetch('clients?id=eq.'+dv.client_id,{method:'PATCH',body:{statut:'négociation'}});
+            const rCl=await sbFetch('clients?id=eq.'+dv.client_id,{method:'PATCH',body:{statut:'négociation'}});
+            if(sbErr(rCl))toast('Devis accepté, mais le client n\'a pas pu être avancé dans le pipeline.','wa');
           }
         }catch(e){}
       }
@@ -9983,7 +10021,8 @@ async function envoyerDevis(id){
     if(dv?.client_id){
       const cl=await sbFetch('clients?select=id,statut&id=eq.'+dv.client_id).catch(()=>[]);
       if(cl&&cl[0]&&['prospect','qualifié'].includes(cl[0].statut)){
-        await sbFetch('clients?id=eq.'+dv.client_id,{method:'PATCH',body:{statut:'devis_envoyé'}}).catch(()=>{});
+        const rCl=await sbFetch('clients?id=eq.'+dv.client_id,{method:'PATCH',body:{statut:'devis_envoyé'}}).catch(()=>({code:'network_error'}));
+        if(sbErr(rCl))toast('Devis envoyé, mais le client n\'a pas pu être avancé dans le pipeline.','wa');
       }
     }
   }catch(e){toast('Erreur lors de la mise à jour.');}
@@ -14949,8 +14988,13 @@ async function loadCmCharge(){
   const uid=localStorage.getItem('sv_uid');
   const tier=await _ensureMyNiveauCm();
   try{
+    // Pour les paliers cm_club_plus_studio/cm_evenement, le vrai portefeuille
+    // vient des contrats (type_contrat=club_plus/evenement), pas de
+    // clients.cm_id — voir _cmVisibleClients(), déjà utilisée partout
+    // ailleurs dans l'espace CM. clients?cm_id=eq.uid seul sous-comptait
+    // (souvent à 0) la jauge de charge pour ces deux paliers.
     const [myClients,myContenus]=await Promise.all([
-      sbFetch('clients?select=id&cm_id=eq.'+uid),
+      ['cm_club_plus_studio','cm_evenement'].includes(tier)?_cmVisibleClients():sbFetch('clients?select=id&cm_id=eq.'+uid),
       sbFetch('contenus?select=id,statut,date_prevue&cm_id=eq.'+uid),
     ]);
     const contenus=Array.isArray(myContenus)?myContenus:[];
@@ -14979,26 +15023,39 @@ async function _renderChargeEquipe(wrap){
   const listEl=document.getElementById('ch-equipe-list');
   if(!listEl)return;
   try{
-    const [cms,clients,contenus]=await Promise.all([
+    // Pour cm_club_plus_studio/cm_evenement, le portefeuille vient des
+    // contrats (partagé par palier, pas d'assignation individuelle par
+    // cm_id — voir _cmVisibleClients) : clients?cm_id seul affichait 0 pour
+    // ces CM alors qu'ils gèrent bien des clients. Compté une fois par
+    // palier (nombre partagé, pas propre à chaque CM) plutôt que de laisser
+    // 0, qui sous-estimait leur charge réelle aux yeux du Lead CM.
+    const [cms,clients,contenus,ctrClubPlus,ctrEvenement]=await Promise.all([
       sbFetch('profiles?select=id,prenom,nom,niveau_cm&role=eq.cm&order=prenom.asc'),
       sbFetch('clients?select=id,cm_id&cm_id=not.is.null'),
       sbFetch('contenus?select=id,cm_id,statut,date_prevue&cm_id=not.is.null'),
+      sbFetch('contrats?select=client_id&type_contrat=eq.club_plus&statut=eq.actif').catch(()=>[]),
+      sbFetch('contrats?select=client_id&type_contrat=eq.evenement&statut=eq.actif').catch(()=>[]),
     ]);
+    const nbClubPlus=new Set((Array.isArray(ctrClubPlus)?ctrClubPlus:[]).map(c=>c.client_id)).size;
+    const nbEvenement=new Set((Array.isArray(ctrEvenement)?ctrEvenement:[]).map(c=>c.client_id)).size;
     const list=Array.isArray(cms)?cms:[];
     if(!list.length){listEl.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun CM.</div>';return;}
     const today=new Date().toISOString().slice(0,10);
     const rows=list.map(cm=>{
-      const nbCl=(clients||[]).filter(c=>c.cm_id===cm.id).length;
+      const nbCl=cm.niveau_cm==='cm_club_plus_studio'?nbClubPlus
+        :cm.niveau_cm==='cm_evenement'?nbEvenement
+        :(clients||[]).filter(c=>c.cm_id===cm.id).length;
       const myCont=(contenus||[]).filter(c=>c.cm_id===cm.id);
       const enCours=myCont.filter(c=>!['publie','archive'].includes(c.statut)).length;
       const enRetard=myCont.filter(c=>!['publie','archive'].includes(c.statut)&&c.date_prevue&&c.date_prevue<today).length;
-      return{cm,nbCl,enCours,enRetard,niv:_chargeNiveau(enCours,enRetard)};
+      const partage=['cm_club_plus_studio','cm_evenement'].includes(cm.niveau_cm);
+      return{cm,nbCl,partage,enCours,enRetard,niv:_chargeNiveau(enCours,enRetard)};
     });
     listEl.innerHTML='<div class="tw"><table><thead><tr><th>CM</th><th>Palier</th><th>Portefeuille</th><th>En cours</th><th>En retard</th><th>Charge</th></tr></thead><tbody>'+
       rows.map(r=>`<tr>
         <td class="tp">${esc([r.cm.prenom,r.cm.nom].filter(Boolean).join(' ')||'—')}</td>
         <td>${CM_NIVEAU_LBL[r.cm.niveau_cm]||'Non classé'}</td>
-        <td class="tm">${r.nbCl}</td>
+        <td class="tm">${r.nbCl}${r.partage?' <span style="color:var(--t3);font-weight:400" title="Portefeuille partagé entre tous les CM de ce palier, pas une assignation individuelle">(palier)</span>':''}</td>
         <td class="tm">${r.enCours}</td>
         <td class="tm" style="${r.enRetard?'color:var(--er);font-weight:700':''}">${r.enRetard}</td>
         <td><span class="bd ${r.niv.cls}"><span class="bd-d"></span>${r.niv.lb}</span></td>
@@ -18148,15 +18205,22 @@ async function modalFicheCollaborateur(id){
     const INS_BG={en_cours:'rgba(54,107,255,.12)',terminee:'rgba(46,204,138,.12)',abandonnee:'rgba(239,68,68,.12)'};
     const fmtE=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
     const fmtD=d=>d?new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
-    const totalRem=pres.reduce((s,p)=>s+(p.remuneration||0),0);
     // p.statut = statut de l'invitation, p.prestations.statut = statut réel de
     // la mission — voir loadPhotoDash pour le même défaut déjà corrigé.
+    const totalRem=pres.reduce((s,p)=>s+(p.statut==='acceptée'&&p.prestations?.statut!=='annulée'?(p.remuneration||0):0),0);
     const accepted=pres.filter(p=>p.statut!=='refusée'&&p.prestations?.statut!=='annulée').length;
     const tauxAcc=pres.length?Math.round(accepted/pres.length*100):0;
     const prochaine=pres.filter(p=>{const d=p.prestations?.date_prestation;return d&&d>=today&&p.prestations?.statut!=='annulée';})
       .sort((a,b)=>(a.prestations?.date_prestation||'').localeCompare(b.prestations?.date_prestation||''))[0];
     const ic=(lbl,val)=>'<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:14px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">'+lbl+'</div><div style="font-size:13.5px;color:var(--t1);font-weight:500">'+val+'</div></div>';
-    // Rémunérations groupées par mois
+    // Rémunérations groupées par mois. Liste TOUTES les lignes (y compris
+    // refusées/annulées, chacune avec son badge de statut) pour garder
+    // l'historique complet visible — mais les sous-totaux et le total
+    // général ne comptent que ce qui est réellement dû (statut accepté,
+    // mission non annulée), pour rester cohérents avec loadComptaRem
+    // (référence) plutôt qu'avec un 3ᵉ calcul de "total rémunération"
+    // différent des deux autres écrans qui l'affichent déjà.
+    const isRemDue=pe=>pe.statut==='acceptée'&&pe.prestations?.statut!=='annulée';
     const remByMonth={};
     pres.forEach(pe=>{
       const d=pe.prestations?.date_prestation;if(!d)return;
@@ -18164,7 +18228,7 @@ async function modalFicheCollaborateur(id){
       const key=dt.getFullYear()+'-'+(dt.getMonth()+1).toString().padStart(2,'0');
       const lbl=dt.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}).replace(/^\w/,c=>c.toUpperCase());
       if(!remByMonth[key])remByMonth[key]={lbl,items:[],total:0};
-      remByMonth[key].items.push(pe);remByMonth[key].total+=(pe.remuneration||0);
+      remByMonth[key].items.push(pe);if(isRemDue(pe))remByMonth[key].total+=(pe.remuneration||0);
     });
     const remMonths=Object.entries(remByMonth).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,6);
     // Construire les contenus de chaque onglet
@@ -19768,9 +19832,12 @@ async function sauvegarderContrat(){
   const err=document.getElementById('ncf-err');
   const clientId=document.getElementById('nc-client').value;
   if(!clientId){err.textContent='Veuillez sélectionner un client.';err.style.display='block';return;}
+  const dateDebut=document.getElementById('nc-debut').value||null;
+  const dateFin=document.getElementById('nc-fin').value||null;
+  if(dateDebut&&dateFin&&dateFin<dateDebut){err.textContent='La date de fin doit être postérieure à la date de début.';err.style.display='block';return;}
   const payload={client_id:clientId,type_contrat:document.getElementById('nc-type').value,statut:document.getElementById('nc-statut').value,
     montant_mensuel:parseFloat(document.getElementById('nc-montant').value)||null,frequence:document.getElementById('nc-freq').value,
-    date_debut:document.getElementById('nc-debut').value||null,date_fin:document.getElementById('nc-fin').value||null,
+    date_debut:dateDebut,date_fin:dateFin,
     renouvellement_auto:document.getElementById('nc-auto').checked,notes:document.getElementById('nc-notes').value.trim()||null,
     type_abonnement:document.getElementById('nc-abonnement')?.value||null,
     created_by:S.uid};
@@ -19780,7 +19847,8 @@ async function sauvegarderContrat(){
     try{
       const cl=await sbFetch('clients?select=id,statut&id=eq.'+clientId);
       if(cl&&cl[0]&&cl[0].statut!=='partenaire'){
-        await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{statut:'partenaire'}});
+        const rCl=await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{statut:'partenaire'}});
+        if(sbErr(rCl))toast('Contrat créé, mais le statut du client n\'a pas pu être mis à jour en "partenaire".','wa');
       }
     }catch(e){}
   }
@@ -19927,9 +19995,12 @@ async function modalEditerContrat(id){
 }
 
 async function mettreAJourContrat(id){
+  const dateDebut=document.getElementById('ec-debut').value||null;
+  const dateFin=document.getElementById('ec-fin').value||null;
+  if(dateDebut&&dateFin&&dateFin<dateDebut){const e=document.getElementById('ecf-err');if(e){e.textContent='La date de fin doit être postérieure à la date de début.';e.style.display='block';}return;}
   const payload={type_contrat:document.getElementById('ec-type').value,statut:document.getElementById('ec-statut').value,
     montant_mensuel:parseFloat(document.getElementById('ec-montant').value)||null,frequence:document.getElementById('ec-freq').value,
-    date_debut:document.getElementById('ec-debut').value||null,date_fin:document.getElementById('ec-fin').value||null,
+    date_debut:dateDebut,date_fin:dateFin,
     renouvellement_auto:document.getElementById('ec-auto').checked,notes:document.getElementById('ec-notes').value.trim()||null};
   const r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payload});
   if(sbErr(r)){const e=document.getElementById('ecf-err');if(e){e.textContent='Erreur: '+(r.message||'Impossible de modifier.');e.style.display='block';}return;}
@@ -19940,7 +20011,8 @@ async function mettreAJourContrat(id){
       if(cid){
         const cl=await sbFetch('clients?select=id,statut&id=eq.'+cid);
         if(cl&&cl[0]&&cl[0].statut!=='partenaire'){
-          await sbFetch('clients?id=eq.'+cid,{method:'PATCH',body:{statut:'partenaire'}});
+          const rCl=await sbFetch('clients?id=eq.'+cid,{method:'PATCH',body:{statut:'partenaire'}});
+          if(sbErr(rCl))toast('Contrat mis à jour, mais le statut du client n\'a pas pu être mis à jour en "partenaire".','wa');
         }
       }
     }catch(e){}
