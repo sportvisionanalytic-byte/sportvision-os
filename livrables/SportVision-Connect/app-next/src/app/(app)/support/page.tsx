@@ -67,7 +67,7 @@ export default function SupportPage() {
   function handleNewTicket(ticket: { subject: string; category: SupportTicketCategory; priority: SupportTicketPriority; description: string }) {
     const supabase = createClient();
     const authorName = `${ctx.user.firstName} ${ctx.user.lastName}`.trim();
-    createClubSupportTicket(supabase, ctx.organization.id, authorName, ticket).then((created) => {
+    return createClubSupportTicket(supabase, ctx.organization.id, authorName, ticket).then((created) => {
       setTickets((prev) => [created, ...prev]);
     });
   }

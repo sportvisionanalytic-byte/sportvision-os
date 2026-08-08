@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 // Modale « Ajouter un événement » — voir ACTIONS.md § 15.
 interface AddEventModalProps {
   onClose: () => void;
-  onCreate: (event: { title: string; kind: CalendarEventKind; date: string; time: string; location: string }) => void;
+  onCreate: (event: { title: string; kind: CalendarEventKind; date: string; time: string; location: string }) => Promise<unknown>;
 }
 
 export function AddEventModal({ onClose, onCreate }: AddEventModalProps) {
@@ -19,8 +19,21 @@ export function AddEventModal({ onClose, onCreate }: AddEventModalProps) {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("10:00");
   const [location, setLocation] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const canSubmit = title.trim().length > 0 && date.trim().length > 0;
+
+  function handleSubmit() {
+    setSubmitting(true);
+    setError(null);
+    onCreate({ title, kind, date, time, location })
+      .then(() => onClose())
+      .catch(() => {
+        setSubmitting(false);
+        setError("Impossible de créer l'événement. Réessayez.");
+      });
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
@@ -67,14 +80,10 @@ export function AddEventModal({ onClose, onCreate }: AddEventModalProps) {
           <input value={location} onChange={(e) => setLocation(e.target.value)} className={fieldClass} />
         </label>
 
+        {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
+
         <div className="mt-1 flex justify-end">
-          <Button
-            disabled={!canSubmit}
-            onClick={() => {
-              onCreate({ title, kind, date, time, location });
-              onClose();
-            }}
-          >
+          <Button disabled={!canSubmit || submitting} loading={submitting} onClick={handleSubmit}>
             Ajouter
           </Button>
         </div>

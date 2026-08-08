@@ -25,7 +25,7 @@ const PRIORITY_LABELS: Record<SupportTicketPriority, string> = {
 
 interface NewTicketModalProps {
   onClose: () => void;
-  onSubmit: (ticket: { subject: string; category: SupportTicketCategory; priority: SupportTicketPriority; description: string }) => void;
+  onSubmit: (ticket: { subject: string; category: SupportTicketCategory; priority: SupportTicketPriority; description: string }) => Promise<unknown>;
 }
 
 export function NewTicketModal({ onClose, onSubmit }: NewTicketModalProps) {
@@ -33,8 +33,21 @@ export function NewTicketModal({ onClose, onSubmit }: NewTicketModalProps) {
   const [category, setCategory] = useState<SupportTicketCategory>("content");
   const [priority, setPriority] = useState<SupportTicketPriority>("normal");
   const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const canSubmit = subject.trim().length > 0 && description.trim().length > 0;
+
+  function handleSubmit() {
+    setSubmitting(true);
+    setError(null);
+    onSubmit({ subject, category, priority, description })
+      .then(() => onClose())
+      .catch(() => {
+        setSubmitting(false);
+        setError("Impossible d'envoyer le ticket. Réessayez.");
+      });
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
@@ -92,14 +105,10 @@ export function NewTicketModal({ onClose, onSubmit }: NewTicketModalProps) {
           />
         </label>
 
+        {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
+
         <div className="mt-1 flex justify-end">
-          <Button
-            disabled={!canSubmit}
-            onClick={() => {
-              onSubmit({ subject, category, priority, description });
-              onClose();
-            }}
-          >
+          <Button disabled={!canSubmit || submitting} loading={submitting} onClick={handleSubmit}>
             Envoyer le ticket
           </Button>
         </div>
