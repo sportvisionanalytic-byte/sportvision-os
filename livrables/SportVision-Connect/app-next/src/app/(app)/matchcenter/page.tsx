@@ -29,7 +29,7 @@ const TABS: { key: MatchStatus; label: string }[] = [
 export default function MatchCenterPage() {
   const { ctx } = useSession();
   const router = useRouter();
-  const { toastMessage, showToast } = useToast();
+  const { toastMessage, toastTone, showToast } = useToast();
   const [tab, setTab] = useState<MatchStatus>("upcoming");
   const [modalMatchId, setModalMatchId] = useState<string | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -70,7 +70,7 @@ export default function MatchCenterPage() {
         setModalMatchId(null);
         showToast("Résultat enregistré.");
       })
-      .catch(() => showToast("Enregistrement impossible, réessayez."));
+      .catch(() => showToast("Enregistrement impossible, réessayez.", "error"));
   }
 
   function handleCreateVisual(match?: Match) {
@@ -185,7 +185,7 @@ export default function MatchCenterPage() {
         />
       )}
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} tone={toastTone} />
     </div>
   );
 }

@@ -30,7 +30,7 @@ import { Toast, useToast } from "@/components/feedback/Toast";
 // (voir data/player/authorizations.ts).
 export default function AuthorizationsPage() {
   const { ctx } = useSession();
-  const { toastMessage, showToast } = useToast();
+  const { toastMessage, toastTone, showToast } = useToast();
   const isParent = ctx.organization.type === "parent";
 
   const [children, setChildren] = useState<ConfirmedChild[]>([]);
@@ -153,7 +153,7 @@ export default function AuthorizationsPage() {
         des contenus déjà publiés sous 72 heures.
       </Card>
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} tone={toastTone} />
     </div>
   );
 }
