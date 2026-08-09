@@ -21,6 +21,7 @@ import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Toast, useToast } from "@/components/feedback/Toast";
 
 // /authorizations — remodelé sur le vrai schéma (authorization_types × parental_authorizations,
 // voir le plan Phase 2 § Décisions d'architecture n°5) : 12 types réels, 10 statuts, plus les 5
@@ -29,11 +30,13 @@ import { Button } from "@/components/ui/Button";
 // (voir data/player/authorizations.ts).
 export default function AuthorizationsPage() {
   const { ctx } = useSession();
+  const { toastMessage, showToast } = useToast();
   const isParent = ctx.organization.type === "parent";
 
   const [children, setChildren] = useState<ConfirmedChild[]>([]);
   const [authsByChild, setAuthsByChild] = useState<Record<string, ChildAuthorization[]>>({});
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   async function reload() {
     const supabase = createClient();
@@ -64,15 +67,29 @@ export default function AuthorizationsPage() {
   }
 
   async function handleSign(authorizationId: string) {
-    const supabase = createClient();
-    await signChildAuthorization(supabase, authorizationId);
-    await reload();
+    setBusyId(authorizationId);
+    try {
+      const supabase = createClient();
+      await signChildAuthorization(supabase, authorizationId);
+      await reload();
+    } catch {
+      showToast("Signature impossible, réessayez.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function handleWithdraw(authorizationId: string) {
-    const supabase = createClient();
-    await withdrawChildAuthorization(supabase, authorizationId);
-    await reload();
+    setBusyId(authorizationId);
+    try {
+      const supabase = createClient();
+      await withdrawChildAuthorization(supabase, authorizationId);
+      await reload();
+    } catch {
+      showToast("Retrait impossible, réessayez.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -106,6 +123,7 @@ export default function AuthorizationsPage() {
                 canManage
                 onSign={handleSign}
                 onWithdraw={handleWithdraw}
+                busyId={busyId}
               />
             </Card>
           ))
@@ -119,6 +137,8 @@ export default function AuthorizationsPage() {
         <span className="font-bold text-text">RGPD</span> — le retrait d&apos;une autorisation entraîne le retrait
         des contenus déjà publiés sous 72 heures.
       </Card>
+
+      <Toast message={toastMessage} />
     </div>
   );
 }
@@ -128,11 +148,13 @@ function AuthorizationRows({
   canManage,
   onSign,
   onWithdraw,
+  busyId,
 }: {
   items: ChildAuthorization[];
   canManage: boolean;
   onSign?: (id: string) => void;
   onWithdraw?: (id: string) => void;
+  busyId?: string | null;
 }) {
   if (items.length === 0) {
     return <p className="pt-4 text-[13px] text-text-soft">Aucune autorisation enregistrée pour le moment.</p>;
@@ -155,12 +177,24 @@ function AuthorizationRows({
             {AUTHORIZATION_STATUS_LABELS[item.statut] ?? item.statut}
           </Badge>
           {canManage && isSignable(item.statut) && (
-            <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={() => onSign?.(item.id)}>
+            <Button
+              variant="secondary"
+              className="h-8 flex-none px-3 text-[12px]"
+              disabled={busyId === item.id}
+              loading={busyId === item.id}
+              onClick={() => onSign?.(item.id)}
+            >
               Signer
             </Button>
           )}
           {canManage && isWithdrawable(item.statut) && (
-            <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={() => onWithdraw?.(item.id)}>
+            <Button
+              variant="secondary"
+              className="h-8 flex-none px-3 text-[12px]"
+              disabled={busyId === item.id}
+              loading={busyId === item.id}
+              onClick={() => onWithdraw?.(item.id)}
+            >
               Retirer
             </Button>
           )}
