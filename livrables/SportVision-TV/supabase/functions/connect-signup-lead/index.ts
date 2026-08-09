@@ -25,14 +25,13 @@
 // qu'un conseiller le rattache manuellement — écran déjà conçu pour ce cas précis.
 //
 // Pourquoi une Edge Function plutôt qu'un appel direct à notify_staff_by_role() depuis le
-// client : cette RPC (migration-portail-v10.sql) n'a jamais eu de `revoke execute`,
+// client : cette RPC (migration-portail-v10.sql) n'avait jamais eu de `revoke execute`,
 // contrairement à enqueue_notification/rpc_get_custom_quiz/... (migration-securite-
-// enqueue-notification.sql, migration-audit-nocturne-securite-09-08.sql) — elle reste
-// donc appelable directement par n'importe quel rôle PostgREST (authenticated, voire
-// anon) avec un titre/message entièrement choisi par l'appelant. Trouvé en écrivant cette
-// fonction (09/08/2026) : à corriger séparément par un `revoke execute` (même patron que
-// les migrations citées), signalé à Fouka, jamais exécuté ici. Cette fonction contourne
-// le problème pour ce flux précis en composant elle-même le titre/message côté serveur à
+// enqueue-notification.sql, migration-audit-nocturne-securite-09-08.sql) — trouvé en
+// écrivant cette fonction (09/08/2026), corrigé le même jour par
+// migration-securite-notify-staff-by-role.sql (exécutée par Fouka) : la RPC n'est plus
+// appelable directement par public/anon/authenticated. Cette fonction reste malgré tout
+// la bonne pratique pour ce flux : elle compose elle-même le titre/message côté serveur à
 // partir d'un `reason` fermé (enum), jamais du texte libre injecté tel quel dans le titre.
 //
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: connect-signup-lead)

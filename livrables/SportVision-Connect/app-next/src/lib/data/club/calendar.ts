@@ -35,9 +35,27 @@ export const CREATABLE_EVENT_TYPE_MAP: Record<string, string> = {
 interface ClubCalendarEventRow {
   id: string;
   event_date: string;
+  event_time: string | null;
   type: string;
   title: string;
   team: string | null;
+  location: string | null;
+}
+
+// event_time/location : colonnes ajoutées par migration-clubplus-v35-calendar-event-heure-lieu.sql
+// (exécutée par Fouka le 09/08/2026) — réintègre les champs retirés lors de l'audit du même jour.
+function toCalendarEvent(row: ClubCalendarEventRow, organizationId: string): CalendarEvent {
+  const hasTime = Boolean(row.event_time);
+  return {
+    id: `event-${row.id}`,
+    organizationId,
+    kind: EVENT_TYPE_MAP[row.type] ?? "event",
+    title: row.title,
+    startsAt: hasTime ? `${row.event_date}T${row.event_time}` : row.event_date,
+    allDay: !hasTime,
+    location: row.location ?? undefined,
+    teamName: row.team ?? undefined,
+  };
 }
 
 interface ClubMatchRow {
@@ -56,7 +74,7 @@ export async function fetchClubCalendarEvents(
   const [eventsRes, matchesRes] = await Promise.all([
     supabase
       .from("club_calendar_events")
-      .select("id, event_date, type, title, team")
+      .select("id, event_date, event_time, type, title, team, location")
       .eq("club_id", organizationId),
     supabase
       .from("club_matches")
@@ -64,15 +82,9 @@ export async function fetchClubCalendarEvents(
       .eq("club_id", organizationId),
   ]);
 
-  const events: CalendarEvent[] = ((eventsRes.data ?? []) as ClubCalendarEventRow[]).map((row) => ({
-    id: `event-${row.id}`,
-    organizationId,
-    kind: EVENT_TYPE_MAP[row.type] ?? "event",
-    title: row.title,
-    startsAt: row.event_date,
-    allDay: true,
-    teamName: row.team ?? undefined,
-  }));
+  const events: CalendarEvent[] = ((eventsRes.data ?? []) as ClubCalendarEventRow[]).map((row) =>
+    toCalendarEvent(row, organizationId),
+  );
 
   const matches: CalendarEvent[] = ((matchesRes.data ?? []) as ClubMatchRow[])
     .filter((row) => row.match_date)
@@ -97,25 +109,23 @@ export async function fetchClubCalendarEvents(
 export async function createClubCalendarEvent(
   supabase: SupabaseClient,
   organizationId: string,
-  input: { title: string; kind: CalendarEventKind; date: string },
+  input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string },
 ): Promise<CalendarEvent> {
   const type = CREATABLE_EVENT_TYPE_MAP[input.kind] ?? "contenu";
 
   const { data, error } = await supabase
     .from("club_calendar_events")
-    .insert({ club_id: organizationId, event_date: input.date, type, title: input.title })
-    .select("id, event_date, type, title, team")
+    .insert({
+      club_id: organizationId,
+      event_date: input.date,
+      event_time: input.time || null,
+      type,
+      title: input.title,
+      location: input.location || null,
+    })
+    .select("id, event_date, event_time, type, title, team, location")
     .single();
   if (error || !data) throw error ?? new Error("Création de l'événement impossible.");
 
-  const row = data as ClubCalendarEventRow;
-  return {
-    id: `event-${row.id}`,
-    organizationId,
-    kind: EVENT_TYPE_MAP[row.type] ?? "event",
-    title: row.title,
-    startsAt: row.event_date,
-    allDay: true,
-    teamName: row.team ?? undefined,
-  };
+  return toCalendarEvent(data as ClubCalendarEventRow, organizationId);
 }

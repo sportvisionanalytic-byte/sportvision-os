@@ -112,12 +112,14 @@ export default function CalendarPage() {
     }
   }
 
-  function handleCreateEvent(input: { title: string; kind: CalendarEventKind; date: string }) {
+  function handleCreateEvent(input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string }) {
     const supabase = createClient();
     return createClubCalendarEvent(supabase, ctx.organization.id, {
       title: input.title,
       kind: input.kind,
       date: input.date,
+      time: input.time,
+      location: input.location,
     }).then((created) => setEvents((prev) => (prev ? [...prev, created] : prev)));
   }
 

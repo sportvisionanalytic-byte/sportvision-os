@@ -149,9 +149,10 @@ export default function UsersPage() {
             // Se désactiver soi-même coupe l'accès RLS à tout le club côté club_members
             // (is_club_member/is_club_admin exigent status='actif') sans porte de sortie en
             // libre-service — un membre ne peut alors être réactivé que par un autre admin déjà
-            // actif ou le staff SportVision (protect_sensitive_club_member_fields, migration-
-            // connect-v13). Trouvé en le déclenchant réellement sur le compte de test. Bouton
-            // masqué sur sa propre ligne plutôt que de compter sur la prudence de l'utilisateur.
+            // actif ou le staff SportVision. Trouvé en le déclenchant réellement sur le compte de
+            // test. Bouton masqué sur sa propre ligne (UX) ; bloqué aussi côté base depuis le
+            // 09/08/2026 (migration-connect-v15-fix-club-admin-self-demote.sql, exécutée) — un
+            // appel API direct qui contournerait ce masquage échoue désormais aussi.
             const isSelf = user.id === ctx.user.id;
             return (
               <div

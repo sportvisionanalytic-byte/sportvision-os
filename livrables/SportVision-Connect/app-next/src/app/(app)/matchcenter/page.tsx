@@ -72,11 +72,28 @@ export default function MatchCenterPage() {
   const pending = orgMatches.filter((m) => m.status === "result_pending");
   const rows = orgMatches.filter((m) => m.status === tab);
 
-  function handleSaveResult(matchId: string, patch: Partial<Match>) {
+  function handleSaveResult(
+    matchId: string,
+    patch: Partial<Match> & { attendance?: number; assists?: string; cards?: string; comment?: string },
+  ) {
+    const { attendance, assists, cards, comment, ...matchFields } = patch;
     const supabase = createClient();
     saveClubMatchResult(supabase, matchId, patch)
       .then(() => {
-        setMatches((prev) => (prev ? prev.map((m) => (m.id === matchId ? { ...m, ...patch, status: "result_received" } : m)) : prev));
+        setMatches((prev) =>
+          prev
+            ? prev.map((m) =>
+                m.id === matchId
+                  ? {
+                      ...m,
+                      ...matchFields,
+                      status: "result_received",
+                      extendedReport: { attendance, assists, cards, comment },
+                    }
+                  : m,
+              )
+            : prev,
+        );
         setModalMatchId(null);
         showToast("Résultat enregistré.");
       })
@@ -152,6 +169,7 @@ export default function MatchCenterPage() {
                 <div className="mt-1 flex items-center gap-1.5 text-[12px] font-semibold text-text-faint">
                   <CalendarClock className="h-3.5 w-3.5" aria-hidden />
                   {m.kickoffAt ? new Date(m.kickoffAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "Date à confirmer"}
+                  {m.competition ? ` · ${m.competition}` : ""}
                   {m.venue ? ` · ${m.venue}` : ""}
                 </div>
               </div>

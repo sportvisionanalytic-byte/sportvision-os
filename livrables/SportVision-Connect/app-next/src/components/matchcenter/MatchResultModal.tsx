@@ -9,19 +9,17 @@ import type { Match } from "@/lib/types/studio";
 // Modale « Saisir un résultat » — voir ACTIONS.md § 8 et DATA_MODEL.md § Match. Composant propre
 // au module Match Center.
 //
-// Le formulaire ne collecte que ce que saveClubMatchResult (data/club/matches.ts) écrit
-// réellement : club_matches (migration-clubplus-v3.sql) n'a que 4 colonnes pertinentes ici
-// (status, score, scorers, man_of_match) — compétition, lieu, domicile/extérieur, affluence,
-// passeurs, cartons et commentaire n'ont pas de colonne réelle. Équipe/adversaire ne sont pas
-// éditables ici : ils servent uniquement à identifier le match (sélecteur ci-dessous), les
-// modifier n'aurait aucun effet en base. Voir migration-clubplus-v34-match-champs-
-// complementaires.sql (additive, non exécutée) pour le chemin de réintroduction de ces champs.
+// Formulaire complet réintégré le 09/08/2026 : migration-clubplus-v34-match-champs-
+// complementaires.sql (compétition/domicile-extérieur/affluence/passeurs/cartons/commentaire) a
+// été exécutée par Fouka, saveClubMatchResult (data/club/matches.ts) écrit désormais ces champs
+// réellement — voir ce fichier pour le détail. Équipe/adversaire restent non éditables : ils
+// servent uniquement à identifier le match (sélecteur ci-dessous).
 
 interface MatchResultModalProps {
   matches: Match[];
   initialMatchId: string;
   onClose: () => void;
-  onSubmit: (matchId: string, patch: Partial<Match>) => void;
+  onSubmit: (matchId: string, patch: Partial<Match> & { competition?: string; venue?: string; isHome?: boolean; attendance?: number; assists?: string; cards?: string; comment?: string }) => void;
 }
 
 export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }: MatchResultModalProps) {
@@ -32,6 +30,13 @@ export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }:
   const [scoreAgainst, setScoreAgainst] = useState(match.scoreAgainst?.toString() ?? "");
   const [scorersText, setScorersText] = useState(scorersToText(match.scorers));
   const [manOfTheMatch, setManOfTheMatch] = useState(match.manOfTheMatch ?? "");
+  const [competition, setCompetition] = useState(match.competition ?? "");
+  const [venue, setVenue] = useState(match.venue ?? "");
+  const [isHome, setIsHome] = useState(match.isHome ?? true);
+  const [attendance, setAttendance] = useState(match.extendedReport?.attendance?.toString() ?? "");
+  const [assists, setAssists] = useState(match.extendedReport?.assists ?? "");
+  const [cards, setCards] = useState(match.extendedReport?.cards ?? "");
+  const [comment, setComment] = useState(match.extendedReport?.comment ?? "");
 
   function handleSelectMatch(id: string) {
     const m = matches.find((mm) => mm.id === id);
@@ -41,14 +46,28 @@ export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }:
     setScoreAgainst(m.scoreAgainst?.toString() ?? "");
     setScorersText(scorersToText(m.scorers));
     setManOfTheMatch(m.manOfTheMatch ?? "");
+    setCompetition(m.competition ?? "");
+    setVenue(m.venue ?? "");
+    setIsHome(m.isHome ?? true);
+    setAttendance(m.extendedReport?.attendance?.toString() ?? "");
+    setAssists(m.extendedReport?.assists ?? "");
+    setCards(m.extendedReport?.cards ?? "");
+    setComment(m.extendedReport?.comment ?? "");
   }
 
-  function buildPatch(): Partial<Match> {
+  function buildPatch() {
     return {
       scoreFor: scoreFor === "" ? undefined : Number(scoreFor),
       scoreAgainst: scoreAgainst === "" ? undefined : Number(scoreAgainst),
       scorers: textToScorers(scorersText),
       manOfTheMatch: manOfTheMatch || undefined,
+      competition,
+      venue,
+      isHome,
+      attendance: attendance === "" ? undefined : Number(attendance),
+      assists,
+      cards,
+      comment,
     };
   }
 
@@ -94,6 +113,24 @@ export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }:
         )}
 
         <div className="mt-4 grid grid-cols-2 gap-3.5">
+          <TextField label="Compétition" value={competition} onChange={setCompetition} />
+          <TextField label="Lieu" value={venue} onChange={setVenue} />
+        </div>
+
+        <div className="mt-3.5 flex items-center gap-2">
+          <input
+            id="mrm-is-home"
+            type="checkbox"
+            checked={isHome}
+            onChange={(e) => setIsHome(e.target.checked)}
+            className="h-4 w-4 accent-brand-blue-electric"
+          />
+          <label htmlFor="mrm-is-home" className="text-[12.5px] font-bold text-text-soft">
+            Match à domicile
+          </label>
+        </div>
+
+        <div className="mt-3.5 grid grid-cols-2 gap-3.5">
           <NumberField label="Score pour" value={scoreFor} onChange={setScoreFor} />
           <NumberField label="Score contre" value={scoreAgainst} onChange={setScoreAgainst} />
         </div>
@@ -107,12 +144,36 @@ export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }:
           />
         </div>
 
+        <div className="mt-3.5 grid grid-cols-2 gap-3.5">
+          <TextField label="Homme du match" value={manOfTheMatch} onChange={setManOfTheMatch} />
+          <NumberField label="Affluence" value={attendance} onChange={setAttendance} />
+        </div>
+
         <div className="mt-3.5 flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-bold text-text-soft">Homme du match</span>
+          <span className="text-[12.5px] font-bold text-text-soft">Passeurs décisifs</span>
           <input
-            value={manOfTheMatch}
-            onChange={(e) => setManOfTheMatch(e.target.value)}
+            value={assists}
+            onChange={(e) => setAssists(e.target.value)}
             className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13.5px] outline-none focus-visible:border-brand-blue"
+          />
+        </div>
+
+        <div className="mt-3.5 flex flex-col gap-1.5">
+          <span className="text-[12.5px] font-bold text-text-soft">Cartons</span>
+          <input
+            value={cards}
+            onChange={(e) => setCards(e.target.value)}
+            className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13.5px] outline-none focus-visible:border-brand-blue"
+          />
+        </div>
+
+        <div className="mt-3.5 flex flex-col gap-1.5">
+          <span className="text-[12.5px] font-bold text-text-soft">Commentaire</span>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={3}
+            className="rounded-sv border border-border-strong bg-input-bg px-3 py-2 text-[13.5px] outline-none focus-visible:border-brand-blue"
           />
         </div>
 
@@ -135,6 +196,19 @@ function NumberField({ label, value, onChange }: { label: string; value: string;
       <span className="text-[12.5px] font-bold text-text-soft">{label}</span>
       <input
         type="number"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13.5px] outline-none focus-visible:border-brand-blue"
+      />
+    </div>
+  );
+}
+
+function TextField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[12.5px] font-bold text-text-soft">{label}</span>
+      <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13.5px] outline-none focus-visible:border-brand-blue"

@@ -3,9 +3,14 @@ import type { Match, MatchScorer, MatchStatus } from "@/lib/types/studio";
 
 // club_matches (migration-clubplus-v3.sql) — 3 statuts réels (a_venir/a_transmettre/recu),
 // contrainte check en base : "content_created" (4e statut du design, purement un marqueur
-// Connect "visuel créé") n'a PAS d'équivalent réel et ne doit JAMAIS être écrit dans `status`
+// Connect "visuel généré") n'a PAS d'équivalent réel et ne doit JAMAIS être écrit dans `status`
 // (violerait la contrainte). Voir fetchClubMatches/saveClubMatchResult. RLS :
 // is_club_member(club_id) pour select/insert/update.
+//
+// competition/is_home/attendance/assists/cards/comment : colonnes ajoutées par
+// migration-clubplus-v34-match-champs-complementaires.sql (exécutée par Fouka le 09/08/2026) —
+// réintègre les champs du formulaire complet retirés lors de l'audit du même jour, désormais
+// réellement persistés.
 
 export const STATUS_MAP: Record<string, MatchStatus> = {
   a_venir: "upcoming",
@@ -23,6 +28,12 @@ interface ClubMatchRow {
   score: string | null;
   scorers: string | null;
   man_of_match: string | null;
+  competition: string | null;
+  is_home: boolean | null;
+  attendance: number | null;
+  assists: string | null;
+  cards: string | null;
+  comment: string | null;
 }
 
 function parseScorers(raw: string | null): MatchScorer[] | undefined {
@@ -38,25 +49,34 @@ function parseScore(raw: string | null): { scoreFor?: number; scoreAgainst?: num
 }
 
 function toMatch(row: ClubMatchRow, organizationId: string): Match {
+  const hasExtended = row.attendance !== null || row.assists !== null || row.cards !== null || row.comment !== null;
   return {
     id: row.id,
     organizationId,
     teamId: "",
     teamName: row.team,
     opponent: row.opponent,
-    competition: "",
+    competition: row.competition ?? "",
     kickoffAt: row.match_date ?? "",
     venue: row.lieu ?? "",
-    // Non tracké en base — voir le plan Phase 1 § permissions.ts (champs sans équivalent réel).
-    isHome: true,
+    isHome: row.is_home ?? true,
     ...parseScore(row.score),
     scorers: parseScorers(row.scorers),
     manOfTheMatch: row.man_of_match ?? undefined,
     status: STATUS_MAP[row.status] ?? "upcoming",
+    extendedReport: hasExtended
+      ? {
+          attendance: row.attendance ?? undefined,
+          assists: row.assists ?? undefined,
+          cards: row.cards ?? undefined,
+          comment: row.comment ?? undefined,
+        }
+      : undefined,
   };
 }
 
-const SELECT = "id, team, opponent, match_date, lieu, status, score, scorers, man_of_match";
+const SELECT =
+  "id, team, opponent, match_date, lieu, status, score, scorers, man_of_match, competition, is_home, attendance, assists, cards, comment";
 
 export async function fetchClubMatches(supabase: SupabaseClient, organizationId: string): Promise<Match[]> {
   const { data } = await supabase
@@ -88,7 +108,19 @@ export async function fetchClubMatchById(
 export async function saveClubMatchResult(
   supabase: SupabaseClient,
   matchId: string,
-  patch: { scoreFor?: number; scoreAgainst?: number; scorers?: MatchScorer[]; manOfTheMatch?: string },
+  patch: {
+    scoreFor?: number;
+    scoreAgainst?: number;
+    scorers?: MatchScorer[];
+    manOfTheMatch?: string;
+    competition?: string;
+    venue?: string;
+    isHome?: boolean;
+    attendance?: number;
+    assists?: string;
+    cards?: string;
+    comment?: string;
+  },
 ): Promise<void> {
   const update: Record<string, unknown> = { status: "recu" };
   if (patch.scoreFor !== undefined && patch.scoreAgainst !== undefined) {
@@ -97,9 +129,14 @@ export async function saveClubMatchResult(
   if (patch.scorers) {
     update.scorers = patch.scorers.map((s) => s.playerName).join(", ");
   }
-  if (patch.manOfTheMatch !== undefined) {
-    update.man_of_match = patch.manOfTheMatch;
-  }
+  if (patch.manOfTheMatch !== undefined) update.man_of_match = patch.manOfTheMatch;
+  if (patch.competition !== undefined) update.competition = patch.competition || null;
+  if (patch.venue !== undefined) update.lieu = patch.venue || null;
+  if (patch.isHome !== undefined) update.is_home = patch.isHome;
+  if (patch.attendance !== undefined) update.attendance = patch.attendance;
+  if (patch.assists !== undefined) update.assists = patch.assists || null;
+  if (patch.cards !== undefined) update.cards = patch.cards || null;
+  if (patch.comment !== undefined) update.comment = patch.comment || null;
   const { error } = await supabase.from("club_matches").update(update).eq("id", matchId);
   if (error) throw error;
 }
