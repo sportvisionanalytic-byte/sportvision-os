@@ -77,11 +77,12 @@ function toVisualRequest(row: ClubRequestRow, organizationId: string): VisualReq
 }
 
 export async function fetchClubRequests(supabase: SupabaseClient, organizationId: string): Promise<VisualRequest[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("club_requests")
     .select(SELECT)
     .eq("club_id", organizationId)
     .order("created_at", { ascending: false });
+  if (error) throw error;
 
   return ((data ?? []) as ClubRequestRow[]).map((row) => toVisualRequest(row, organizationId));
 }

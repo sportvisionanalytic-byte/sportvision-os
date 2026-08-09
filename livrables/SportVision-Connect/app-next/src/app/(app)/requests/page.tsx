@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Columns3, Download, SlidersHorizontal, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -16,8 +16,6 @@ import { cancelOrgRequest, fetchOrgRequests } from "@/lib/data/shared/requests";
 import { createClient } from "@/lib/supabase/client";
 import {
   URGENCY_META,
-  VISUAL_FORMAT_LABELS,
-  VISUAL_PLATFORM_LABELS,
   VISUAL_REQUEST_STATUS_TONE,
   VISUAL_TYPE_LABELS,
   type VisualRequest,
@@ -26,39 +24,42 @@ import {
 
 // Demandes de visuels — liste avec filtres, colonnes, export et sélection multiple.
 // Voir ACTIONS.md § 11 et DATA_MODEL.md § VisualRequest.
+//
+// Statuts réellement produits par le backend (STATUS_MAP, data/club/requests.ts et
+// data/shared/requests.ts) : Envoyée, À compléter, En traitement, Acceptée, Terminée, Refusée.
+// "À valider"/"Brouillon"/"En production"/"Correction"/"Annulée" n'existent dans aucun mapper —
+// tout onglet/filtre construit dessus serait structurellement toujours vide.
 
-type FilterKey = "all" | "to_validate" | "in_creation" | "delivered" | "drafts";
+type FilterKey = "all" | "in_creation" | "delivered";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "Toutes" },
-  { key: "to_validate", label: "À valider" },
-  { key: "in_creation", label: "En création" },
+  { key: "in_creation", label: "En cours" },
   { key: "delivered", label: "Livrées" },
-  { key: "drafts", label: "Brouillons" },
 ];
+
+/** "Express" n'a pas d'équivalent réel côté colonne (urgency ne supporte que
+ * normale/haute, voir migration-clubplus-v4.sql) — retiré du formulaire de création
+ * (requests/new), donc jamais produit par de vraies données ici non plus. */
+const REAL_URGENCIES: VisualRequestUrgency[] = ["standard", "priority"];
 
 function matchesFilter(r: VisualRequest, filter: FilterKey): boolean {
   switch (filter) {
     case "all":
       return true;
-    case "to_validate":
-      return r.status === "À valider";
     case "in_creation":
-      return ["Acceptée", "En traitement", "En production", "Correction"].includes(r.status);
+      return ["Acceptée", "En traitement"].includes(r.status);
     case "delivered":
       return r.status === "Terminée";
-    case "drafts":
-      return r.status === "Brouillon";
     default:
       return true;
   }
 }
 
-type ColumnKey = "team" | "platform" | "urgency" | "credits";
+type ColumnKey = "team" | "urgency" | "credits";
 
 const OPTIONAL_COLUMNS: { key: ColumnKey; label: string }[] = [
   { key: "team", label: "Équipe" },
-  { key: "platform", label: "Plateforme" },
   { key: "urgency", label: "Urgence" },
   { key: "credits", label: "Crédits" },
 ];
@@ -75,11 +76,10 @@ export default function RequestsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [showColumns, setShowColumns] = useState(false);
   const [urgencyFilter, setUrgencyFilter] = useState<Set<VisualRequestUrgency>>(new Set());
-  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(
-    new Set(["team", "platform", "urgency", "credits"]),
-  );
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(["team", "urgency", "credits"]));
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [orgRequests, setOrgRequests] = useState<VisualRequest[]>([]);
+  const [orgRequests, setOrgRequests] = useState<VisualRequest[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const allowed = canAccess(ctx, "visual_requests");
   const canWrite = canCreate(ctx, "visual_request");
@@ -90,10 +90,15 @@ export default function RequestsPage() {
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
+    setLoadError(false);
     const fetcher = isGenericOrg ? fetchOrgRequests(supabase, ctx.organization.id) : fetchClubRequests(supabase, ctx.organization.id);
-    fetcher.then((rows) => {
-      if (!cancelled) setOrgRequests(rows);
-    });
+    fetcher
+      .then((rows) => {
+        if (!cancelled) setOrgRequests(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -102,25 +107,27 @@ export default function RequestsPage() {
   if (!allowed) return <LockedModule title="Demandes de visuels" />;
 
   function handleCancel(r: VisualRequest) {
+    if (!window.confirm(`Annuler la demande ${r.reference} ?`)) return;
     const supabase = createClient();
     const cancelFn = isGenericOrg ? cancelOrgRequest : cancelClubRequest;
     cancelFn(supabase, r.id, ctx.organization.id)
       .then((updated) => {
-        setOrgRequests((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+        setOrgRequests((prev) => (prev ? prev.map((row) => (row.id === updated.id ? updated : row)) : prev));
         setDetailId(null);
         showToast(`Demande ${r.reference} annulée.`);
       })
       .catch(() => showToast("Cette demande ne peut plus être annulée — elle est déjà prise en charge."));
   }
 
-  const filteredByTab = orgRequests.filter((r) => matchesFilter(r, filter));
+  const requests = orgRequests ?? [];
+  const filteredByTab = requests.filter((r) => matchesFilter(r, filter));
   const filtered = filteredByTab.filter((r) => (urgencyFilter.size === 0 ? true : urgencyFilter.has(r.urgency)));
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const detailRequest = detailId ? orgRequests.find((r) => r.id === detailId) ?? null : null;
+  const detailRequest = detailId ? requests.find((r) => r.id === detailId) ?? null : null;
 
   function toggleSelectAll() {
     if (selected.size === pageRows.length && pageRows.every((r) => selected.has(r.id))) {
@@ -143,16 +150,33 @@ export default function RequestsPage() {
   // transition est staff-only côté RPC (voir data/club/requests.ts). Pas de validation/
   // téléchargement en masse possible depuis Connect en Phase 1.
   function handleValidateSelection() {
-    let count = 0;
-    selected.forEach((id) => {
-      const r = orgRequests.find((rr) => rr.id === id);
-      if (r && r.status === "Envoyée") {
-        handleCancel(r);
-        count += 1;
+    const targets = requests.filter((r) => selected.has(r.id) && r.status === "Envoyée");
+    if (targets.length === 0) {
+      setSelected(new Set());
+      showToast("Aucune demande annulable dans la sélection.");
+      return;
+    }
+    if (!window.confirm(`Annuler ${targets.length} demande${targets.length > 1 ? "s" : ""} ?`)) return;
+    setSelected(new Set());
+    const supabase = createClient();
+    const cancelFn = isGenericOrg ? cancelOrgRequest : cancelClubRequest;
+    Promise.allSettled(targets.map((r) => cancelFn(supabase, r.id, ctx.organization.id))).then((results) => {
+      const updated = results
+        .filter((r): r is PromiseFulfilledResult<VisualRequest> => r.status === "fulfilled")
+        .map((r) => r.value);
+      const updatedById = new Map(updated.map((r) => [r.id, r]));
+      setOrgRequests((prev) => (prev ? prev.map((row) => updatedById.get(row.id) ?? row) : prev));
+      const failedCount = results.length - updated.length;
+      if (updated.length > 0 && failedCount === 0) {
+        showToast(`${updated.length} demande${updated.length > 1 ? "s" : ""} annulée${updated.length > 1 ? "s" : ""}.`);
+      } else if (updated.length > 0) {
+        showToast(
+          `${updated.length} demande${updated.length > 1 ? "s" : ""} annulée${updated.length > 1 ? "s" : ""}, ${failedCount} déjà prise${failedCount > 1 ? "s" : ""} en charge.`,
+        );
+      } else {
+        showToast("Aucune annulation n'a abouti — ces demandes sont déjà prises en charge.");
       }
     });
-    setSelected(new Set());
-    showToast(count > 0 ? `${count} demande${count > 1 ? "s" : ""} annulée${count > 1 ? "s" : ""}.` : "Aucune demande annulable dans la sélection.");
   }
 
   function handleRowAction(r: VisualRequest) {
@@ -169,14 +193,14 @@ export default function RequestsPage() {
   }
 
   function exportCsv() {
-    const cols = ["Référence", "Type", "Équipe", "Urgence", "Statut", "Date de publication", "Crédits réservés"];
+    const cols = ["Référence", "Type", "Équipe", "Urgence", "Statut", "Créée le", "Crédits réservés"];
     const rows = filtered.map((r) => [
       r.reference,
       VISUAL_TYPE_LABELS[r.visualType],
       r.teamName ?? "",
       URGENCY_META[r.urgency].label,
       r.status,
-      r.publishDate,
+      r.createdAt,
       String(r.creditsReserved),
     ]);
     const csv = [cols, ...rows].map((row) => row.map((v) => `"${v.replace(/"/g, '""')}"`).join(";")).join("\n");
@@ -235,7 +259,7 @@ export default function RequestsPage() {
               <div className="absolute right-0 top-11 z-20 w-56 rounded-sv border border-border-strong bg-elevated p-3 shadow-sv-dropdown">
                 <div className="text-[11px] font-extrabold uppercase tracking-wide text-text-faint">Urgence</div>
                 <div className="mt-2 flex flex-col gap-1.5">
-                  {(Object.keys(URGENCY_META) as VisualRequestUrgency[]).map((u) => (
+                  {REAL_URGENCIES.map((u) => (
                     <label key={u} className="flex items-center gap-2 text-[13px] font-semibold text-text-soft">
                       <input
                         type="checkbox"
@@ -301,7 +325,14 @@ export default function RequestsPage() {
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {loadError ? (
+        <Card className="p-8 text-center">
+          <div className="text-[14px] font-extrabold text-danger-fg">Chargement impossible</div>
+          <p className="mt-1.5 text-[13px] text-text-soft">Une erreur réseau empêche d&apos;afficher vos demandes. Réessayez.</p>
+        </Card>
+      ) : orgRequests === null ? (
+        <div className="py-16 text-center text-[13px] text-text-soft">Chargement des demandes…</div>
+      ) : filtered.length === 0 ? (
         <Card className="p-8 text-center">
           <div className="text-[14px] font-extrabold">Vous n&apos;avez encore créé aucune demande.</div>
           <p className="mt-1.5 text-[13px] text-text-soft">Commencez par demander votre premier visuel.</p>
@@ -328,10 +359,9 @@ export default function RequestsPage() {
                   <th className="px-3 py-3">Référence</th>
                   <th className="px-3 py-3">Type</th>
                   {visibleColumns.has("team") && <th className="px-3 py-3">Équipe</th>}
-                  {visibleColumns.has("platform") && <th className="px-3 py-3">Plateforme</th>}
                   {visibleColumns.has("urgency") && <th className="px-3 py-3">Urgence</th>}
                   <th className="px-3 py-3">Statut</th>
-                  <th className="px-3 py-3">Publication</th>
+                  <th className="px-3 py-3">Créée le</th>
                   {visibleColumns.has("credits") && <th className="px-3 py-3">Crédits</th>}
                   <th className="px-3 py-3 text-right">Action</th>
                 </tr>
@@ -353,9 +383,6 @@ export default function RequestsPage() {
                     <td className="px-3 py-3 font-mono text-[12.5px] font-medium">{r.reference}</td>
                     <td className="px-3 py-3 font-semibold">{VISUAL_TYPE_LABELS[r.visualType]}</td>
                     {visibleColumns.has("team") && <td className="px-3 py-3 text-text-soft">{r.teamName ?? "—"}</td>}
-                    {visibleColumns.has("platform") && (
-                      <td className="px-3 py-3 text-text-soft">{VISUAL_PLATFORM_LABELS[r.platform]}</td>
-                    )}
                     {visibleColumns.has("urgency") && (
                       <td className="px-3 py-3 text-text-soft">{URGENCY_META[r.urgency].label}</td>
                     )}
@@ -363,7 +390,7 @@ export default function RequestsPage() {
                       <Badge tone={VISUAL_REQUEST_STATUS_TONE[r.status]}>{r.status}</Badge>
                     </td>
                     <td className="px-3 py-3 text-text-soft">
-                      {new Date(r.publishDate).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                      {new Date(r.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
                     </td>
                     {visibleColumns.has("credits") && (
                       <td className="px-3 py-3 font-mono text-text-soft">{r.creditsReserved}</td>
@@ -431,14 +458,9 @@ export default function RequestsPage() {
             </div>
             <dl className="mt-4 flex flex-col gap-2.5 text-[13px]">
               <Row label="Équipe" value={detailRequest.teamName ?? "—"} />
-              <Row label="Format" value={VISUAL_FORMAT_LABELS[detailRequest.format]} />
-              <Row label="Plateforme" value={VISUAL_PLATFORM_LABELS[detailRequest.platform]} />
               <Row label="Urgence" value={URGENCY_META[detailRequest.urgency].label} />
               <Row label="Crédits réservés" value={String(detailRequest.creditsReserved)} />
-              <Row
-                label="Publication prévue"
-                value={new Date(detailRequest.publishDate).toLocaleDateString("fr-FR")}
-              />
+              <Row label="Créée le" value={new Date(detailRequest.createdAt).toLocaleDateString("fr-FR")} />
               <Row label="Corrections" value={`${detailRequest.revisionCount} / 2 incluses`} />
             </dl>
             {detailRequest.bodyText && (
