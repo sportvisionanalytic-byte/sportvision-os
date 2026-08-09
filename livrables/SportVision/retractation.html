@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rétractation — SportVision</title>
+<meta name="description" content="Exercez votre droit de rétractation SportVision en ligne : délai de 14 jours, formulaire de déclaration, accusé de réception immédiat, ou modèle à envoyer par courrier.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://sportvision-an.fr/retractation">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SportVision">
+<meta property="og:url" content="https://sportvision-an.fr/retractation">
+<meta property="og:title" content="Rétractation — SportVision">
+<meta property="og:description" content="Exercez votre droit de rétractation SportVision en ligne : délai de 14 jours, formulaire de déclaration, accusé de réception immédiat, ou modèle à envoyer par courrier.">
+<meta property="og:image" content="https://sportvision-an.fr/assets/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Rétractation — SportVision">
+<meta name="twitter:description" content="Exercez votre droit de rétractation SportVision en ligne : délai de 14 jours, formulaire de déclaration, accusé de réception immédiat, ou modèle à envoyer par courrier.">
+<meta name="twitter:image" content="https://sportvision-an.fr/assets/og-image.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SportVision — page légale « Rétractation ». Structure (header/
+   footer/CMP/variables) copiée à l'identique de cgv.html — voir
+   ce fichier pour la référence de style. Complétée en bas par les
+   classes de formulaire (.sv-field/.sv-honeypot/.sv-err/.sv-ok/
+   .toast), copiées à l'identique de demande-de-devis.html, seule
+   autre page du site avec un vrai formulaire public sans compte.
+   Vanilla HTML/CSS/JS, aucun framework, aucune étape de build.
+   ============================================================ */
+:root{
+  --navy-900:#070A17; --navy-800:#10162F;
+  --blue:#2454FF; --blue-electric:#1686FF; --cyan:#00C7FF;
+  --violet:#832DFF; --violet-bright:#C337FF;
+  --white:#FFFFFF; --bg-light:#F5F7FC; --text-secondary:#98A2B3;
+  --success:#12B76A;
+  --grad-brand: linear-gradient(135deg, var(--blue) 0%, var(--cyan) 50%, var(--violet-bright) 100%);
+  --radius:16px; --radius-lg:24px;
+  --shadow-lg: 0 24px 60px rgba(7,10,23,.35);
+  --font-head:'Manrope',-apple-system,sans-serif;
+  --font-body:'Inter',-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important} }
+body{margin:0;font-family:var(--font-body);color:var(--navy-900);background:var(--white);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,h4{font-family:var(--font-head);font-weight:800;line-height:1.12;margin:0;letter-spacing:-.01em}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+button{font-family:inherit;cursor:pointer}
+.container{max-width:1240px;margin:0 auto;padding:0 24px}
+section{position:relative}
+
+/* ── Boutons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:14px 26px;font-weight:700;font-size:15px;border:none;white-space:nowrap;transition:transform .18s ease, box-shadow .18s ease, background .18s ease}
+.btn-grad{background:var(--grad-brand);color:#fff;box-shadow:0 10px 30px rgba(101,60,255,.35)}
+.btn-grad:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(101,60,255,.45)}
+.btn-ghost-dark{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.22)}
+.btn-ghost-dark:hover{background:rgba(255,255,255,.16)}
+.btn-ghost-light{background:transparent;color:var(--navy-900);border:1px solid #e4e7ef}
+.btn-ghost-light:hover{border-color:var(--blue)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none !important}
+
+/* ── Header ── */
+.site-header{position:fixed;top:0;left:0;right:0;z-index:1000;padding:16px 0;transition:background .25s ease, box-shadow .25s ease, padding .25s ease;background:rgba(7,10,23,.86);backdrop-filter:blur(14px);box-shadow:0 1px 0 rgba(255,255,255,.06)}
+.site-header .container{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-head);font-weight:800;font-size:19px;color:#fff}
+.brand .mark{width:32px;height:32px;border-radius:9px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;flex-shrink:0}
+.main-nav{display:flex;gap:30px}
+.main-nav a{font-size:14.5px;font-weight:600;color:rgba(255,255,255,.82);transition:color .15s}
+.main-nav a:hover{color:#fff}
+.header-actions{display:flex;align-items:center;gap:10px}
+.header-actions .btn-ghost-dark{padding:11px 18px;font-size:13.5px}
+.header-actions .btn-grad{padding:11px 20px;font-size:13.5px}
+.burger{display:none;background:none;border:none;color:#fff;width:38px;height:38px;align-items:center;justify-content:center}
+.burger span,.burger span::before,.burger span::after{content:'';display:block;width:20px;height:2px;background:#fff;position:relative;transition:.2s}
+.burger span::before{position:absolute;top:-6px}
+.burger span::after{position:absolute;top:6px}
+.mobile-nav{display:none;position:fixed;inset:0;z-index:999;background:var(--navy-900);padding:90px 24px 24px;flex-direction:column;gap:6px}
+.mobile-nav.on{display:flex}
+.mobile-nav>a{color:#fff;font-size:19px;font-weight:700;padding:14px 4px;border-bottom:1px solid rgba(255,255,255,.08)}
+.mobile-nav .mobile-ctas{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+
+/* ── Contenu légal ── */
+.legal-page{padding:158px 0 110px;background:var(--white)}
+.legal-wrap{max-width:760px;margin:0 auto;padding:0 24px}
+.legal-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--blue-electric);background:rgba(36,84,255,.1);border:1px solid rgba(36,84,255,.25);border-radius:999px;padding:7px 14px;margin-bottom:18px}
+.legal-title h1{font-size:clamp(28px,4vw,40px)}
+.legal-updated{color:var(--text-secondary);font-size:13px;margin-top:14px;margin-bottom:8px}
+.legal-body{margin-top:36px}
+.legal-body h2{font-family:var(--font-head);font-weight:800;font-size:19px;color:var(--navy-900);margin:38px 0 12px}
+.legal-body h2:first-child{margin-top:0}
+.legal-body p{color:#374151;font-size:15.5px;line-height:1.75;margin-bottom:14px}
+.legal-body ul{margin:0 0 14px;padding-left:20px;color:#374151;font-size:15.5px;line-height:1.75}
+.legal-body li{margin-bottom:6px}
+.legal-body a{color:var(--blue);text-decoration:underline}
+.legal-body strong{color:var(--navy-900)}
+
+/* ── Footer ── */
+.site-footer{background:var(--navy-900);color:rgba(255,255,255,.6);padding:70px 0 30px;border-top:1px solid rgba(255,255,255,.06)}
+.footer-grid{display:grid;grid-template-columns:1.6fr repeat(5,1fr);gap:30px}
+.footer-brand p{font-size:13.5px;line-height:1.6;margin-top:14px;max-width:220px}
+.footer-col h5{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.85);margin-bottom:16px}
+.footer-col ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.footer-col a{font-size:13.5px;color:rgba(255,255,255,.6)}
+.footer-col a:hover{color:#fff}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-top:1px solid rgba(255,255,255,.08);margin-top:54px;padding-top:24px;font-size:12.5px;color:rgba(255,255,255,.4)}
+.footer-legal{display:flex;gap:18px;flex-wrap:wrap}
+.footer-social{display:flex;gap:10px}
+.footer-social a{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:13px}
+
+/* ── Responsive ── */
+@media (max-width:980px){
+  .main-nav,.header-actions{display:none}
+  .burger{display:flex}
+  .footer-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .legal-page{padding:130px 0 70px}
+  .footer-grid{grid-template-columns:1fr}
+}
+.btn-sm{padding:10px 18px;font-size:13.5px;border-radius:10px}
+
+/* ── Bandeau cookies (RGPD) ── */
+.cookie-banner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2500;background:var(--navy-900);border-top:1px solid rgba(255,255,255,.12);padding:18px 24px;box-shadow:0 -8px 24px rgba(0,0,0,.35);max-height:82vh;overflow-y:auto}
+.cookie-banner.on{display:flex;flex-direction:column}
+.cookie-banner-inner{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.cookie-banner-inner p{flex:1;min-width:240px;font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.6;margin:0}
+.cookie-banner-inner a{color:var(--cyan);text-decoration:underline}
+.cookie-banner-actions{display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.cookie-panel{display:none;max-width:1100px;margin:16px auto 0;width:100%;border-top:1px solid rgba(255,255,255,.12);padding-top:16px}
+.cookie-panel.on{display:block}
+.cookie-cat{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.cookie-cat:last-of-type{border-bottom:none}
+.cookie-cat-info b{display:block;font-size:13.5px;color:#fff;margin-bottom:3px}
+.cookie-cat-info span{display:block;font-size:12.5px;color:rgba(255,255,255,.6);line-height:1.5;max-width:60ch}
+.cookie-switch{position:relative;flex:none;width:40px;height:23px}
+.cookie-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.cookie-switch .track{position:absolute;inset:0;border-radius:999px;background:rgba(255,255,255,.18);transition:background .15s;pointer-events:none}
+.cookie-switch .dot{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .15s;pointer-events:none}
+.cookie-switch input:checked + .track{background:var(--cyan)}
+.cookie-switch input:checked ~ .dot{transform:translateX(17px)}
+.cookie-switch input:disabled + .track{opacity:.5}
+.cookie-panel-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+@media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}.cookie-cat{flex-wrap:wrap}}
+.nav-item{position:relative}
+.nav-item>a{display:flex;align-items:center;gap:5px}
+.nav-caret{font-size:9px;opacity:.55;transition:transform .15s}
+.nav-item:hover .nav-caret,.nav-item:focus-within .nav-caret{transform:rotate(180deg)}
+.nav-dropdown{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(6px);min-width:240px;background:rgba(7,10,23,.98);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px;box-shadow:0 24px 48px rgba(0,0,0,.45);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease, transform .15s ease;display:flex;flex-direction:column;gap:1px;z-index:1100}
+.nav-item:hover .nav-dropdown,.nav-item:focus-within .nav-dropdown{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(-50%) translateY(2px)}
+.nav-dropdown a{padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;color:rgba(255,255,255,.75);white-space:nowrap}
+.nav-dropdown a:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-dropdown-all{border-top:1px solid rgba(255,255,255,.1);margin-top:5px;padding-top:11px !important;color:var(--cyan) !important;font-weight:700 !important}
+.main-nav>a.active,.main-nav .nav-item>a.active{color:#fff}
+.mobile-nav-group{border-bottom:1px solid rgba(255,255,255,.08)}
+.mobile-nav-group summary{color:#fff;font-size:18px;font-weight:700;padding:13px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none}
+.mobile-nav-group summary::-webkit-details-marker{display:none}
+.mobile-nav-group summary::after{content:'+';font-weight:400;color:rgba(255,255,255,.5);font-size:20px}
+.mobile-nav-group[open] summary::after{content:'\2013'}
+.mobile-nav-group .sub-links{display:flex;flex-direction:column;padding:0 4px 14px 12px}
+.mobile-nav-group .sub-links a{font-size:15px;font-weight:600;padding:9px 0;color:rgba(255,255,255,.68)}
+
+/* ── Résumé légal (encart clé : délai, article, renonciation) ── */
+.retract-summary{background:var(--bg-light);border:1px solid #e4e7ef;border-radius:var(--radius-lg);padding:26px 28px;margin:8px 0 40px}
+.retract-summary ul{margin:0;padding-left:20px;color:#374151;font-size:15px;line-height:1.75}
+.retract-summary li{margin-bottom:8px}
+.retract-summary li:last-child{margin-bottom:0}
+
+/* ── Formulaire de rétractation (mêmes classes que demande-de-devis.html) ── */
+.retract-card{background:#fff;border:1px solid #e9ecf5;border-radius:var(--radius-lg);padding:32px;box-shadow:0 10px 30px rgba(7,10,23,.06)}
+.sv-field{margin-top:16px}
+.sv-field:first-of-type{margin-top:0}
+.sv-field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:#374151}
+.sv-field input,.sv-field select,.sv-field textarea{width:100%;padding:11px 12px;border:1px solid #e4e7ef;border-radius:10px;font-size:14.5px;font-family:inherit;box-sizing:border-box}
+.sv-field input:focus,.sv-field select:focus,.sv-field textarea:focus{outline:2px solid var(--blue);outline-offset:1px}
+.sv-field .hint{display:block;font-size:12px;color:#8891A8;margin-top:5px;font-weight:500}
+.sv-honeypot{position:absolute;left:-9999px;opacity:0}
+.sv-err{color:#e14b4b;font-size:13px;margin-top:10px;min-height:16px}
+.sv-ok{text-align:center;padding:10px 0}
+.sv-ok .check{width:56px;height:56px;border-radius:50%;background:rgba(18,183,106,.12);border:1px solid rgba(18,183,106,.35);color:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px}
+.opt-check{display:flex;align-items:flex-start;gap:10px;border:1.5px solid #e4e7ef;border-radius:12px;padding:14px 16px;cursor:pointer;font-size:13.5px;font-weight:600;color:#374151;margin-top:20px}
+.opt-check input{width:16px;height:16px;flex-shrink:0;margin-top:2px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy-900);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:opacity .2s;z-index:3000}
+.toast.on{opacity:1}
+
+/* ── Bloc courrier / modèle Annexe 1 ── */
+.retract-annexe{background:var(--bg-light);border:1px solid #e4e7ef;border-radius:var(--radius-lg);padding:26px 28px;margin-top:14px}
+.retract-annexe pre{white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:13.5px;line-height:1.8;color:#374151;background:#fff;border:1px solid #e4e7ef;border-radius:10px;padding:18px 20px;margin:16px 0}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="site-header" id="site-header">
+  <div class="container">
+    <a href="index.html" class="brand"><span class="mark">S</span>SportVision</a>
+    <nav class="main-nav">
+      <div class="nav-item">
+        <a href="prestations.html">Prestations <span class="nav-caret">▾</span></a>
+        <div class="nav-dropdown">
+          <a href="prestation-match-photo.html">Match photo</a>
+          <a href="prestation-match-video.html">Match vidéo</a>
+          <a href="prestation-pack-match.html">Pack match complet</a>
+          <a href="prestation-shooting-joueur.html">Shooting joueur</a>
+          <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
+          <a href="prestation-media-day.html">Media Day</a>
+          <a href="prestation-tournois.html">Tournois et stages</a>
+          <a href="prestation-creations.html">Créations graphiques</a>
+          <a href="prestation-coachs.html">Coachs et préparateurs</a>
+          <a href="prestations.html" class="nav-dropdown-all">Toutes les prestations →</a>
+        </div>
+      </div>
+      <a href="club-plus.html">Club+</a>
+      <a href="full-communication.html">Full Communication</a>
+      <div class="nav-item">
+        <a href="accompagnements.html">Accompagnements <span class="nav-caret">▾</span></a>
+        <div class="nav-dropdown">
+          <a href="accompagnements-academies.html">Académies</a>
+          <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
+          <a href="accompagnements-joueurs.html">Joueurs</a>
+          <a href="accompagnements-evenements.html">Tournois et événements</a>
+          <a href="accompagnements.html" class="nav-dropdown-all">Tous les accompagnements →</a>
+        </div>
+      </div>
+      <a href="realisations.html">Réalisations</a>
+      <a href="a-propos.html">À propos</a>
+    </nav>
+    <div class="header-actions">
+      <a href="https://connectsportvisionfr.netlify.app/" class="btn btn-ghost-dark">Se connecter</a>
+      <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
+    </div>
+    <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
+  </div>
+</header>
+
+<div class="mobile-nav" id="mobile-nav">
+  <details class="mobile-nav-group">
+    <summary>Prestations</summary>
+    <div class="sub-links">
+      <a href="prestation-match-photo.html">Match photo</a>
+      <a href="prestation-match-video.html">Match vidéo</a>
+      <a href="prestation-pack-match.html">Pack match complet</a>
+      <a href="prestation-shooting-joueur.html">Shooting joueur</a>
+      <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
+      <a href="prestation-media-day.html">Media Day</a>
+      <a href="prestation-tournois.html">Tournois et stages</a>
+      <a href="prestation-creations.html">Créations graphiques</a>
+      <a href="prestation-coachs.html">Coachs et préparateurs</a>
+      <a href="prestations.html">Toutes les prestations →</a>
+    </div>
+  </details>
+  <a href="club-plus.html">Club+</a>
+  <a href="full-communication.html">Full Communication</a>
+  <details class="mobile-nav-group">
+    <summary>Accompagnements</summary>
+    <div class="sub-links">
+      <a href="accompagnements-academies.html">Académies</a>
+      <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
+      <a href="accompagnements-joueurs.html">Joueurs</a>
+      <a href="accompagnements-evenements.html">Tournois et événements</a>
+      <a href="accompagnements.html">Tous les accompagnements →</a>
+    </div>
+  </details>
+  <a href="realisations.html">Réalisations</a>
+  <a href="a-propos.html">À propos</a>
+  <div class="mobile-ctas">
+    <a href="https://connectsportvisionfr.netlify.app/" class="btn btn-ghost-dark">Se connecter</a>
+    <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
+  </div>
+</div>
+
+<!-- ══════════════ CONTENU ══════════════ -->
+<main class="legal-page">
+  <div class="legal-wrap">
+
+    <div class="legal-title">
+      <span class="legal-eyebrow">Droit des consommateurs</span>
+      <h1>Exercer votre droit de rétractation</h1>
+      <p class="legal-updated">Cette page vous permet de notifier votre rétractation en ligne, gratuitement, en quelques minutes — conformément à l'article 36 des CGV.</p>
+    </div>
+
+    <div class="legal-body">
+
+      <h2>Ce que dit la loi, en résumé</h2>
+      <div class="retract-summary">
+        <ul>
+          <li>Si vous êtes un <strong>consommateur</strong> (particulier, en dehors de toute activité professionnelle) et que vous avez commandé une prestation SportVision <strong>à distance</strong>, vous disposez en principe d'un délai de <strong>14 jours</strong> à compter de la conclusion du contrat pour vous rétracter, <strong>sans avoir à motiver votre décision</strong>.</li>
+          <li>Si vous avez demandé que la prestation démarre avant la fin de ce délai (case de renonciation cochée au moment de la commande), vous pouvez rester redevable d'un montant proportionnel au service déjà fourni jusqu'à votre déclaration de rétractation.</li>
+          <li>Une fois la prestation <strong>entièrement exécutée</strong> avec votre accord exprès préalable, le droit de rétractation ne peut plus être exercé.</li>
+          <li>Le détail complet de ces règles figure à l'<a href="cgv.html#article-35">article 35 des CGV</a> — cette page n'en est qu'un résumé factuel, le texte des CGV fait foi en cas de différence.</li>
+        </ul>
+      </div>
+
+      <h2>Exercer votre rétractation en ligne</h2>
+      <p>
+        Renseignez les informations ci-dessous puis validez avec le bouton <strong>« Confirmer la rétractation »</strong>.
+        Un accusé de réception vous sera envoyé par e-mail dès que votre demande sera enregistrée. Notre équipe
+        l'examine ensuite et revient vers vous sous 48 heures ouvrées.
+      </p>
+
+      <div class="retract-card">
+        <div id="retract-form-wrap">
+          <form id="retract-form" novalidate>
+            <div class="sv-honeypot" aria-hidden="true">
+              <label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label>
+            </div>
+            <div class="sv-field"><label for="rt-prenom">Prénom</label><input id="rt-prenom" name="prenom" type="text" required autocomplete="given-name"></div>
+            <div class="sv-field"><label for="rt-nom">Nom</label><input id="rt-nom" name="nom" type="text" required autocomplete="family-name"></div>
+            <div class="sv-field">
+              <label for="rt-email">E-mail utilisé lors de votre commande</label>
+              <input id="rt-email" name="email" type="email" required autocomplete="email">
+              <span class="hint">C'est cette adresse qui nous permet de retrouver votre commande.</span>
+            </div>
+            <div class="sv-field">
+              <label for="rt-reference">Référence de commande ou de devis (si vous l'avez)</label>
+              <input id="rt-reference" name="reference" type="text" placeholder="Ex. SV-2026-0001 ou DEV-2026-0001" autocomplete="off">
+              <span class="hint">Facultatif, mais nous permet de traiter votre demande plus vite. Cette référence figure sur votre confirmation de commande ou votre devis.</span>
+            </div>
+            <div class="sv-field">
+              <label for="rt-motif">Motif (facultatif — vous n'êtes pas obligé de justifier votre choix)</label>
+              <textarea id="rt-motif" name="motif" rows="4"></textarea>
+            </div>
+            <label class="opt-check">
+              <input type="checkbox" id="rt-confirm" required>
+              <span>Je notifie par la présente ma rétractation de la prestation ou du contrat commandé auprès de SportVision (ELKANA GROUP), conformément à l'article 35 des CGV.</span>
+            </label>
+            <div class="sv-err" id="retract-err" role="alert" aria-live="assertive"></div>
+            <button type="submit" class="btn btn-grad" style="width:100%;margin-top:18px" id="retract-submit">Confirmer la rétractation</button>
+          </form>
+        </div>
+        <div id="retract-ok-wrap" style="display:none" role="status" aria-live="polite">
+          <div class="sv-ok">
+            <div class="check">✓</div>
+            <h3 tabindex="-1" id="retract-ok-title">Rétractation transmise</h3>
+            <p class="sub">
+              Nous avons bien reçu votre déclaration de rétractation. Un accusé de réception vient de vous être
+              envoyé par e-mail. Notre équipe l'examine et revient vers vous sous 48 heures ouvrées, conformément
+              à l'article 35 des CGV.
+            </p>
+            <p class="sub" style="margin-top:10px;font-size:12.5px;color:#8891A8">Identifiant de votre demande : <b id="retract-demande-id"></b></p>
+            <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+              <a href="index.html" class="btn btn-grad" style="flex:1">Retour à l'accueil</a>
+              <a href="cgv.html" class="btn btn-ghost-light" style="flex:1">Relire les CGV</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Vous préférez nous écrire ?</h2>
+      <p>
+        L'utilisation du formulaire ci-dessus n'est pas obligatoire. Vous pouvez également notifier votre
+        rétractation par toute déclaration dénuée d'ambiguïté, par e-mail ou par courrier, à :
+      </p>
+      <ul>
+        <li>ELKANA GROUP — SportVision</li>
+        <li>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne, France</li>
+        <li>E-mail : <a href="mailto:elkanagroup0@gmail.com">elkanagroup0@gmail.com</a></li>
+        <li>Téléphone : 07 68 84 24 50</li>
+      </ul>
+      <p>
+        Le modèle de formulaire ci-dessous (Annexe 1 des CGV) peut être utilisé pour cela, mais son usage n'est pas
+        obligatoire — une lettre ou un e-mail rédigé avec vos propres mots est tout aussi valable.
+      </p>
+      <div class="retract-annexe">
+        <strong>Modèle de formulaire de rétractation (Annexe 1 des CGV)</strong>
+        <pre id="annexe-text">À l'attention de :
+ELKANA GROUP - SportVision
+4 Place Pierre Semard, 77130 Montereau-Fault-Yonne, France
+E-mail : elkanagroup0@gmail.com
+Téléphone : 07 68 84 24 50
+
+Je / Nous (*) vous notifie / notifions (*) par la présente ma / notre (*) rétractation du contrat portant sur la prestation de services ci-dessous :
+
+- Prestation / référence : ______________________
+- Commandée / contrat conclu le : ______________________
+- Nom du / des consommateur(s) : ______________________
+- Adresse du / des consommateur(s) : ______________________
+- Date : ______________________
+- Signature du / des consommateur(s) (uniquement en cas de notification sur papier) : ______________________
+
+(*) Rayez la mention inutile.</pre>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="annexe-download">Télécharger le modèle (.txt)</button>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="brand" style="font-size:18px"><span class="mark" style="width:28px;height:28px;font-size:14px">S</span>SportVision</a>
+        <p>Photo, vidéo et communication sportive — par ELKANA GROUP.</p>
+      </div>
+      <div class="footer-col"><h5>Prestations</h5><ul>
+        <li><a href="prestation-match-photo.html">Match photo</a></li>
+        <li><a href="prestation-match-video.html">Match vidéo</a></li>
+        <li><a href="prestation-shooting-joueur.html">Shootings</a></li>
+        <li><a href="prestation-tournois.html">Tournois &amp; stages</a></li>
+        <li><a href="prestations.html">Toutes les prestations</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Offres</h5><ul>
+        <li><a href="club-plus.html">Club+</a></li>
+        <li><a href="full-communication.html">Full Communication</a></li>
+        <li><a href="accompagnements-academies.html">Académies</a></li>
+        <li><a href="accompagnements-coachs.html">Coachs</a></li>
+        <li><a href="accompagnements-joueurs.html">Joueurs</a></li>
+        <li><a href="accompagnements-evenements.html">Tournois &amp; événements</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Connect</h5><ul>
+        <li><a href="connect.html">Fonctionnement</a></li>
+        <li><a href="https://connectsportvisionfr.netlify.app/">Connexion</a></li>
+        <li><a href="demande-de-devis.html">Démonstration</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Ressources</h5><ul>
+        <li><a href="realisations.html">Réalisations</a></li>
+        <li><a href="index.html#faq">Centre d'aide</a></li>
+        <li><a href="index.html#faq">FAQ</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Entreprise</h5><ul>
+        <li><a href="a-propos.html">À propos</a></li>
+        <li><a href="demande-de-devis.html">Contact</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="sv-year"></span> ELKANA GROUP — SportVision. Tous droits réservés.</span>
+            <div class="footer-legal">
+        <a href="mentions-legales.html">Mentions légales</a>
+        <a href="cgv.html">CGV</a>
+        <a href="confidentialite.html">Politique de confidentialité</a>
+        <a href="cookies.html">Politique cookies</a>
+        <a href="retractation.html" class="active">Rétractation</a>
+        <a href="#" id="cookie-manage">Gérer mes cookies</a>
+      </div>
+      <div class="footer-social">
+        <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div class="cookie-banner" id="cookie-banner" role="dialog" aria-label="Gestion des cookies" aria-live="polite">
+  <div class="cookie-banner-inner">
+    <p>SportVision utilise des traceurs nécessaires au fonctionnement du site. Avec votre accord, nous pouvons également utiliser des traceurs de mesure d'audience, de fonctionnalités externes ou de marketing afin d'améliorer nos services. <a href="cookies.html">En savoir plus</a></p>
+    <div class="cookie-banner-actions">
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-refuse">Tout refuser</button>
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-customize">Personnaliser</button>
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-accept">Tout accepter</button>
+    </div>
+  </div>
+  <div class="cookie-panel" id="cookie-panel">
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Nécessaires</b><span>Fonctionnement du site, mémorisation de vos choix, sécurité et session SportVision Connect. Toujours actifs.</span></div>
+      <label class="cookie-switch"><input type="checkbox" checked disabled aria-label="Cookies nécessaires, toujours actifs"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Mesure d'audience</b><span>Statistiques de fréquentation agrégées pour comprendre l'utilisation du site.</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-audience" aria-label="Cookies de mesure d'audience"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Fonctionnalités externes</b><span>Contenus intégrés provenant de plateformes tierces (réseaux sociaux, vidéo).</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-external" aria-label="Cookies de fonctionnalités externes"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Marketing</b><span>Mesure de campagnes publicitaires et personnalisation, si activé.</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-marketing" aria-label="Cookies marketing"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-panel-actions">
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-save">Enregistrer mes choix</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   SportVision — page « Rétractation ». Vanilla JS, aucune
+   dépendance externe. Le seul appel réseau est l'envoi du
+   formulaire, vers l'edge function submit-retractation-demande
+   (SportVision-TV/supabase/functions/submit-retractation-demande),
+   même clé publique déjà utilisée par demande-de-devis.html.
+   ============================================================ */
+const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
+const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
+
+/* ── Menu mobile ── */
+const burger = document.getElementById('burger-btn');
+const mobileNav = document.getElementById('mobile-nav');
+burger.addEventListener('click', () => mobileNav.classList.toggle('on'));
+mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mobileNav.classList.remove('on')));
+
+/* ── Année du footer ── */
+document.getElementById('sv-year').textContent = new Date().getFullYear();
+
+/* ── Formulaire de rétractation ──────────────────────────────
+   Règle du projet (README SportVision Connect, "Conventions pour
+   construire un nouveau module", points 8-9) : ne jamais afficher
+   un état de succès avant que l'écriture serveur soit confirmée,
+   ne jamais fabriquer une confirmation. L'état "retract-ok-wrap"
+   n'est donc affiché QUE dans le bloc `if (res.ok && !data.error)`
+   ci-dessous, jamais avant, jamais de manière optimiste. ── */
+function showRetractForm(){
+  document.getElementById('retract-form-wrap').style.display = '';
+  document.getElementById('retract-ok-wrap').style.display = 'none';
+  document.getElementById('retract-err').textContent = '';
+}
+function showRetractSuccess(demandeId){
+  document.getElementById('retract-form-wrap').style.display = 'none';
+  const okWrap = document.getElementById('retract-ok-wrap');
+  okWrap.style.display = '';
+  document.getElementById('retract-demande-id').textContent = demandeId || '—';
+  document.getElementById('retract-ok-title').focus();
+}
+
+document.getElementById('retract-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const errEl = document.getElementById('retract-err');
+  const btn = document.getElementById('retract-submit');
+  errEl.textContent = '';
+
+  const fd = new FormData(form);
+  const body = {
+    prenom: (fd.get('prenom') || '').toString().trim(),
+    nom: (fd.get('nom') || '').toString().trim(),
+    email: (fd.get('email') || '').toString().trim(),
+    reference: (fd.get('reference') || '').toString().trim() || null,
+    motif: (fd.get('motif') || '').toString().trim() || null,
+    site_web: fd.get('site_web'), // honeypot — doit rester vide
+  };
+
+  if (!body.prenom || !body.nom || !body.email){
+    errEl.textContent = 'Prénom, nom et e-mail sont obligatoires.';
+    return;
+  }
+  if (!document.getElementById('rt-confirm').checked){
+    errEl.textContent = 'Merci de confirmer votre déclaration de rétractation en cochant la case ci-dessus.';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    const res = await fetch(SB_URL + '/functions/v1/submit-retractation-demande', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error){
+      errEl.textContent = data.error || "Une erreur est survenue, réessayez dans un instant.";
+      return;
+    }
+    // Succès confirmé côté serveur uniquement : la ligne existe bien dans
+    // retractation_demandes (data.demande_id renvoyé par la fonction après
+    // l'insert réussi) — jamais affiché avant ce point.
+    showRetractSuccess(data.demande_id);
+  }catch(err){
+    errEl.textContent = "Impossible d'envoyer votre demande pour le moment. Réessayez dans un instant, ou écrivez-nous directement à elkanagroup0@gmail.com.";
+  }finally{
+    btn.disabled = false; btn.textContent = 'Confirmer la rétractation';
+  }
+});
+
+/* ── Téléchargement du modèle Annexe 1 (texte brut, aucune requête réseau) ── */
+document.getElementById('annexe-download').addEventListener('click', () => {
+  const text = document.getElementById('annexe-text').textContent;
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sportvision-modele-retractation.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+/* ── Bandeau cookies (RGPD) ── */
+const COOKIE_CONSENT_KEY = 'sv_cookie_consent_v2';
+const COOKIE_CONSENT_MAX_AGE_MS = 183 * 24 * 60 * 60 * 1000; // ~6 mois, cf. Politique cookies § 8
+const cookieBanner = document.getElementById('cookie-banner');
+const cookiePanel = document.getElementById('cookie-panel');
+
+function readConsent(){
+  try{
+    const raw = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed.date || Date.now() - parsed.date > COOKIE_CONSENT_MAX_AGE_MS) return null;
+    return parsed;
+  }catch(e){ return null; }
+}
+function writeConsent(categories){
+  localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify({ date: Date.now(), categories }));
+}
+window.svCookieConsent = function(category){
+  const c = readConsent();
+  return !!(c && c.categories && c.categories[category]);
+};
+
+function showCookieBanner(openPanel){
+  cookieBanner.classList.add('on');
+  if (openPanel) cookiePanel.classList.add('on');
+  document.body.style.paddingBottom = cookieBanner.offsetHeight + 'px';
+}
+function hideCookieBanner(){
+  cookieBanner.classList.remove('on');
+  cookiePanel.classList.remove('on');
+  document.body.style.paddingBottom = '';
+}
+function applyStoredChoiceToPanel(){
+  const c = readConsent();
+  const cats = (c && c.categories) || {};
+  document.getElementById('cat-audience').checked = !!cats.audience;
+  document.getElementById('cat-external').checked = !!cats.external;
+  document.getElementById('cat-marketing').checked = !!cats.marketing;
+}
+
+if (!readConsent()) showCookieBanner();
+applyStoredChoiceToPanel();
+
+document.getElementById('cookie-accept').addEventListener('click', () => {
+  writeConsent({ necessary: true, audience: true, external: true, marketing: true });
+  hideCookieBanner();
+});
+document.getElementById('cookie-refuse').addEventListener('click', () => {
+  writeConsent({ necessary: true, audience: false, external: false, marketing: false });
+  hideCookieBanner();
+});
+document.getElementById('cookie-customize').addEventListener('click', () => {
+  applyStoredChoiceToPanel();
+  cookiePanel.classList.add('on');
+});
+document.getElementById('cookie-save').addEventListener('click', () => {
+  writeConsent({
+    necessary: true,
+    audience: document.getElementById('cat-audience').checked,
+    external: document.getElementById('cat-external').checked,
+    marketing: document.getElementById('cat-marketing').checked,
+  });
+  hideCookieBanner();
+});
+document.getElementById('cookie-manage').addEventListener('click', (e) => {
+  e.preventDefault();
+  applyStoredChoiceToPanel();
+  showCookieBanner(true);
+});
+</script>
+</body>
+</html>
