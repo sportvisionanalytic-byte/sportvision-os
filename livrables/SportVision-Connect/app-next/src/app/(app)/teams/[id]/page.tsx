@@ -22,6 +22,7 @@ import { LockedModule } from "@/components/ui/LockedModule";
 import { ImageRightStatusBadge } from "@/components/teams/ImageRightBanner";
 import {
   imageRightForPlayer,
+  isRealId,
   mockTeamCalendar,
   mockTeamContent,
   mockTeamDocuments,
@@ -216,12 +217,10 @@ function RosterTab({ players }: { players: ReturnType<typeof playersForTeam> }) 
       </div>
       {players.map((p) => {
         const right = imageRightForPlayer(p.id);
-        return (
-          <Link
-            key={p.id}
-            href={`/teams/players/${p.id}`}
-            className="grid grid-cols-2 gap-2.5 border-b border-divider px-5 py-3.5 last:border-0 hover:bg-row-hover sm:grid-cols-[40px_1.6fr_1fr_1fr_1fr] sm:items-center sm:gap-3"
-          >
+        const rowClassName =
+          "grid grid-cols-2 gap-2.5 border-b border-divider px-5 py-3.5 last:border-0 sm:grid-cols-[40px_1.6fr_1fr_1fr_1fr] sm:items-center sm:gap-3";
+        const rowContent = (
+          <>
             <span className="font-mono text-[12.5px] font-bold text-text-soft">
               {p.shirtNumber ?? "—"}
             </span>
@@ -235,6 +234,18 @@ function RosterTab({ players }: { players: ReturnType<typeof playersForTeam> }) 
             <span>
               <ImageRightStatusBadge status={right?.status ?? "pending"} />
             </span>
+          </>
+        );
+        if (isRealId(p.id)) {
+          return (
+            <div key={p.id} className={rowClassName}>
+              {rowContent}
+            </div>
+          );
+        }
+        return (
+          <Link key={p.id} href={`/teams/players/${p.id}`} className={cn(rowClassName, "hover:bg-row-hover")}>
+            {rowContent}
           </Link>
         );
       })}
