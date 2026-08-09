@@ -2,10 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Sponsor, SponsorLevel, SponsorStatus } from "@/lib/types/sponsors";
 
 // club_sponsors (migration-clubplus-v5.sql) — pas de colonne `status` réelle ni de
-// `paymentSchedule`/`contractId`/`signatories` : status dérivé de date_fin, le reste par défaut
-// sûr documenté ci-dessous. Pas de table pour SponsorDeliverable/Publication/Operation/Document
-// (voir le plan Phase 1) — ces onglets restent vides plutôt que d'inventer une donnée. RLS :
-// is_club_member(club_id).
+// `paymentSchedule`/`contractId`/`signatories` : status dérivé de date_fin, le reste laissé
+// honnêtement absent (`null`/`[]`/`undefined`) plutôt que comblé par une valeur par défaut
+// affichée comme un fait (corrigé lors de l'audit du 09/08 — `paymentSchedule: "annual"` en dur
+// était affiché comme réel dans /sponsors/:id § Contrat pour TOUT sponsor réel). Pas de table
+// pour SponsorDeliverable/Publication/Operation/Document (voir le plan Phase 1) — ces onglets
+// restent vides plutôt que d'inventer une donnée. RLS : is_club_member(club_id).
 
 const LEVEL_MAP: Record<string, SponsorLevel> = {
   Or: "or",
@@ -47,7 +49,7 @@ export async function fetchClubSponsors(supabase: SupabaseClient, organizationId
     startsAt: row.date_debut ?? "",
     endsAt: row.date_fin ?? "",
     annualAmount: row.montant,
-    paymentSchedule: "annual",
+    paymentSchedule: null,
     status: deriveStatus(row.date_fin),
     signatories: [],
     sector: row.secteur ?? undefined,

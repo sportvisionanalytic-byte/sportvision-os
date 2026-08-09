@@ -6,20 +6,20 @@
 <title>Réserver une prestation — SportVision</title>
 <meta name="description" content="Réservez votre prestation SportVision en quelques étapes : match photo, match vidéo, shooting, tournoi ou création de contenu. Vérification de disponibilité en temps réel.">
 <meta name="robots" content="index, follow">
-<link rel="canonical" href="https://sportvisionfr.netlify.app/reserver">
+<link rel="canonical" href="https://sportvision-an.fr/reserver">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SportVision">
-<meta property="og:url" content="https://sportvisionfr.netlify.app/reserver">
+<meta property="og:url" content="https://sportvision-an.fr/reserver">
 <meta property="og:title" content="Réserver une prestation — SportVision">
 <meta property="og:description" content="Réservez votre prestation SportVision en quelques étapes : match photo, match vidéo, shooting, tournoi ou création de contenu. Vérification de disponibilité en temps réel.">
-<meta property="og:image" content="https://sportvisionfr.netlify.app/assets/og-image.jpg">
+<meta property="og:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Réserver une prestation — SportVision">
 <meta name="twitter:description" content="Réservez votre prestation SportVision en quelques étapes : match photo, match vidéo, shooting, tournoi ou création de contenu. Vérification de disponibilité en temps réel.">
-<meta name="twitter:image" content="https://sportvisionfr.netlify.app/assets/og-image.jpg">
+<meta name="twitter:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -447,7 +447,7 @@ section{position:relative}
         <li><a href="prestation-tournois.html">Tournois &amp; stages</a></li>
         <li><a href="prestations.html">Toutes les prestations</a></li>
       </ul></div>
-      <div class="footer-col"><h5>Accompagnements</h5><ul>
+      <div class="footer-col"><h5>Offres</h5><ul>
         <li><a href="club-plus.html">Club+</a></li>
         <li><a href="full-communication.html">Full Communication</a></li>
         <li><a href="accompagnements-academies.html">Académies</a></li>
@@ -788,6 +788,10 @@ function showConfirmation(data, email){
   if (state.slug && OFFRES_PRIX_FIXE.has(state.slug)){
     document.getElementById('ok-connect-wrap').style.display = '';
     document.getElementById('ok-connect-link').href = 'https://connectsportvisionfr.netlify.app/?signup=1&email=' + encodeURIComponent(email);
+    // "et payer" n'a de sens que si le paiement en ligne reste réellement à
+    // faire (carte choisie mais le checkout Stripe n'a pas pu démarrer). En
+    // espèces, rien n'est dû en ligne : le bouton ne doit pas le suggérer.
+    document.getElementById('ok-connect-link').textContent = soldeModeChoisi === 'especes' ? 'Créer mon espace Connect' : 'Créer mon compte et payer';
   }
 
   document.querySelectorAll('.step-dot').forEach(d => d.classList.add('done'));

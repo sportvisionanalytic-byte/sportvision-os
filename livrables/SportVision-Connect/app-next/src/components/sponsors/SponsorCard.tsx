@@ -23,13 +23,15 @@ export function SponsorCard({ sponsor }: { sponsor: Sponsor }) {
         <div className="mt-4">
           <div className="flex items-baseline justify-between text-[12px] font-semibold text-text-soft">
             <span>Visibilité livrée</span>
-            <span className="font-extrabold text-text">{gauge} %</span>
+            <span className="font-extrabold text-text">{gauge === null ? "Non suivi" : `${gauge} %`}</span>
           </div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-sunken">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet"
-              style={{ width: `${Math.min(100, Math.max(0, gauge))}%` }}
-            />
+            {gauge !== null && (
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet"
+                style={{ width: `${Math.min(100, Math.max(0, gauge))}%` }}
+              />
+            )}
           </div>
         </div>
 

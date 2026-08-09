@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MessageSquarePlus, Play, Share2 } from "lucide-react";
-import { useSession } from "@/lib/session-context";
+import { ArrowLeft, Play, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -12,28 +11,25 @@ import type { MediaAsset, MediaAssetStatus, MediaComment } from "@/lib/types/con
 import { MEDIA_KIND_LABELS, MEDIA_STATUS_LABELS, MEDIA_STATUS_TONE, formatMediaDate, formatMediaDuration, formatMediaSize } from "@/lib/types/content";
 import { MediaThumb } from "./MediaThumb";
 
-let localSeq = 0;
-function nextId(prefix: string) {
-  localSeq += 1;
-  return `${prefix}-local-${localSeq}`;
-}
-
 // Fiche média — voir ACTIONS.md § 13. Lecteur mock (les fichiers réels ne sont pas fournis,
-// voir CHARTE.md § Imagerie) : la barre de progression, les chapitres et les commentaires
-// horodatés restent fonctionnels sur un temps simulé, sans lecture vidéo réelle.
+// voir CHARTE.md § Imagerie) : la barre de progression et les chapitres restent fonctionnels sur
+// un temps simulé, sans lecture vidéo réelle.
+//
+// Valider / Demander une correction / Publier un commentaire retirés le 09/08 (audit contenu) :
+// club_media et club_creations (data/club/content.ts) n'exposent ni colonne de statut inscriptible
+// depuis le client, ni table de commentaires réelle — les anciennes versions de ces actions
+// faisaient un setState local (status/revisionCount/comments) suivi d'un toast de confirmation
+// sans aucune écriture réelle, exactement l'anti-pattern documenté au README § Conventions n°9.
+// Statut et commentaires restent donc affichés en lecture seule depuis `asset`.
 export function MediaDetail({ asset }: { asset: MediaAsset }) {
-  const { ctx } = useSession();
   const isTimeBased = asset.durationSeconds !== undefined;
   const duration = asset.durationSeconds ?? 0;
+  const status: MediaAssetStatus = asset.status;
+  const revisionCount = asset.revisionCount;
+  const comments: MediaComment[] = asset.comments;
 
   const [currentTime, setCurrentTime] = useState(0);
   const [selectedVersionId, setSelectedVersionId] = useState(asset.versions.find((v) => v.isFinalVersion)?.id ?? asset.versions[0]?.id);
-  const [status, setStatus] = useState<MediaAssetStatus>(asset.status);
-  const [revisionCount, setRevisionCount] = useState(asset.revisionCount);
-  const [comments, setComments] = useState<MediaComment[]>(asset.comments);
-  const [commentDraft, setCommentDraft] = useState("");
-  const [showCorrectionForm, setShowCorrectionForm] = useState(false);
-  const [correctionDraft, setCorrectionDraft] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
   const selectedVersion = useMemo(
@@ -46,57 +42,31 @@ export function MediaDetail({ asset }: { asset: MediaAsset }) {
     setTimeout(() => setToast(null), 3200);
   }
 
-  function publishComment() {
-    if (!commentDraft.trim()) return;
-    setComments((c) => [
-      ...c,
-      {
-        id: nextId("com"),
-        mediaAssetId: asset.id,
-        authorName: `${ctx.user.firstName} ${ctx.user.lastName}`,
-        body: commentDraft.trim(),
-        videoTimestampSeconds: isTimeBased ? Math.round(currentTime) : undefined,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
-    setCommentDraft("");
-  }
-
-  function validate() {
-    setStatus("validated");
-    showToast("Contenu validé.");
-  }
-
-  function submitCorrection() {
-    if (!correctionDraft.trim()) return;
-    setStatus("revision_requested");
-    setRevisionCount((n) => n + 1);
-    setComments((c) => [
-      ...c,
-      {
-        id: nextId("com"),
-        mediaAssetId: asset.id,
-        authorName: `${ctx.user.firstName} ${ctx.user.lastName}`,
-        body: correctionDraft.trim(),
-        videoTimestampSeconds: isTimeBased ? Math.round(currentTime) : undefined,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
-    setCorrectionDraft("");
-    setShowCorrectionForm(false);
-    showToast("Correction demandée.");
-  }
-
+  // Ouvre le vrai fichier (fileUrl réel, colonne `link`/`lien_url` en base) plutôt que d'afficher
+  // un faux "Téléchargement lancé." sans rien déclencher.
   function download() {
     if (!asset.downloadAllowed) {
       showToast("Le téléchargement de ce contenu n'est pas autorisé.");
       return;
     }
-    showToast("Téléchargement lancé.");
+    if (!asset.fileUrl) {
+      showToast("Aucun fichier disponible pour ce contenu.");
+      return;
+    }
+    window.open(asset.fileUrl, "_blank", "noopener,noreferrer");
   }
 
+  // Copie le vrai lien (pas de mécanisme de lien sécurisé à expiration côté backend, voir
+  // data/club/content.ts) plutôt que de prétendre à un lien "sécurisé" qui n'existe pas.
   function share() {
-    showToast("Lien de partage sécurisé copié.");
+    if (!asset.fileUrl) {
+      showToast("Aucun lien disponible pour ce contenu.");
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(asset.fileUrl).catch(() => undefined);
+    }
+    showToast("Lien copié dans le presse-papiers.");
   }
 
   return (
@@ -214,46 +184,18 @@ export function MediaDetail({ asset }: { asset: MediaAsset }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5">
-        <Button variant="primary" onClick={validate} disabled={status === "validated"}>
-          {status === "validated" ? "Contenu validé" : "Valider"}
-        </Button>
-        <Button variant="secondary" onClick={() => setShowCorrectionForm((v) => !v)}>
-          Demander une correction
-        </Button>
         <Button variant="secondary" onClick={download}>
           Télécharger
         </Button>
         <Button variant="tertiary" onClick={share}>
           <Share2 className="h-3.5 w-3.5" aria-hidden />
-          Partager par lien sécurisé
+          Copier le lien
         </Button>
       </div>
       <p className="text-[11.5px] text-text-faint">
         Deux corrections incluses, la troisième facturée. {revisionCount > 0 && `${revisionCount} déjà demandée${revisionCount > 1 ? "s" : ""}.`}
+        {" "}Validation et demande de correction directement ici : bientôt disponible — en attendant, passez par votre Community Manager.
       </p>
-
-      {showCorrectionForm && (
-        <Card className="p-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-bold text-text-soft">Décrivez la correction souhaitée</span>
-            <textarea
-              rows={3}
-              autoFocus
-              value={correctionDraft}
-              onChange={(e) => setCorrectionDraft(e.target.value)}
-              className="resize-none rounded-xl border border-border-strong bg-surface px-3.5 py-2.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
-            />
-          </label>
-          <div className="mt-3 flex justify-end gap-2.5">
-            <Button variant="secondary" onClick={() => setShowCorrectionForm(false)}>
-              Annuler
-            </Button>
-            <Button variant="primary" onClick={submitCorrection} disabled={!correctionDraft.trim()}>
-              Envoyer la demande
-            </Button>
-          </div>
-        </Card>
-      )}
 
       <div>
         <div className="text-[13px] font-extrabold tracking-tight">Commentaires</div>
@@ -282,21 +224,7 @@ export function MediaDetail({ asset }: { asset: MediaAsset }) {
             ))
           )}
         </div>
-
-        <div className="mt-3 flex items-center gap-2.5">
-          <input
-            type="text"
-            value={commentDraft}
-            onChange={(e) => setCommentDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && publishComment()}
-            placeholder={isTimeBased ? `Commenter à ${formatMediaDuration(currentTime)}…` : "Ajouter un commentaire…"}
-            className="h-11 flex-1 rounded-xl border border-border-strong bg-surface px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
-          />
-          <Button variant="secondary" onClick={publishComment} disabled={!commentDraft.trim()}>
-            <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
-            Publier
-          </Button>
-        </div>
+        <p className="mt-2 text-[11.5px] text-text-faint">Ajouter un commentaire ici : bientôt disponible.</p>
       </div>
 
       {toast && (
