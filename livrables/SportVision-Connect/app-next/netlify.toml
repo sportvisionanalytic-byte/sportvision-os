@@ -1,13 +1,18 @@
 [build]
   base = "livrables/SportVision-Connect/app-next"
   command = "npm run build"
+  # "publish" vide se résout par défaut sur le même chemin que "base" (publishOrigin: default,
+  # vu dans les logs de build du 09/08/2026), ce que le plugin Next.js refuse explicitement
+  # ("Your publish directory cannot be the same as the base directory"). .next (sortie standard
+  # de `next build`, sous-dossier de base) est la valeur attendue par le Next Runtime — ce n'est
+  # pas ce qu'il sert réellement (il gère SSR/Server Components/Middleware lui-même), juste ce
+  # qu'il faut déclarer pour satisfaire cette vérification.
+  publish = ".next"
 
 # Plugin déclaré explicitement : la détection automatique du Next Runtime par Netlify a échoué
 # une première fois (site créé le 09/08/2026 avec "Runtime: Not set" dans Build settings — tout
 # renvoyait 404, y compris /favicon.ico, signe qu'aucun adaptateur SSR n'était branché). Le
-# déclarer ici force son activation quelle que soit la détection automatique. Pas de "publish" à
-# préciser : le plugin gère lui-même la sortie (SSR/Server Components/Middleware), contrairement
-# aux sites statiques du repo.
+# déclarer ici force son activation quelle que soit la détection automatique.
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
