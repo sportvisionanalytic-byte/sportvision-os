@@ -259,7 +259,7 @@ section{position:relative}
       <a href="a-propos.html">À propos</a>
     </nav>
     <div class="header-actions">
-      <a href="https://connectsportvisionfr.netlify.app/" class="btn btn-ghost-dark">Se connecter</a>
+      <a href="https://connect.sportvision-an.fr/" class="btn btn-ghost-dark">Se connecter</a>
       <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
     </div>
     <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
@@ -297,7 +297,7 @@ section{position:relative}
   <a href="realisations.html">Réalisations</a>
   <a href="a-propos.html">À propos</a>
   <div class="mobile-ctas">
-    <a href="https://connectsportvisionfr.netlify.app/" class="btn btn-ghost-dark">Se connecter</a>
+    <a href="https://connect.sportvision-an.fr/" class="btn btn-ghost-dark">Se connecter</a>
     <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
   </div>
 </div>
@@ -410,12 +410,7 @@ section{position:relative}
               </select>
             </div>
             <div class="sv-field" id="paiement-field">
-              <label>Comment souhaitez-vous régler ?</label>
-              <p class="sub" style="margin:4px 0 10px;font-size:12.5px">Dans les deux cas, votre demande est enregistrée immédiatement ; la disponibilité est confirmée sous 24h.</p>
-              <div class="options-grid" style="grid-template-columns:1fr 1fr">
-                <label class="opt-check"><input type="radio" name="solde-mode" value="carte" checked> Carte bancaire — paiement immédiat en ligne</label>
-                <label class="opt-check"><input type="radio" name="solde-mode" value="especes"> Espèces — réglé sur place le jour J</label>
-              </div>
+              <p class="sub" style="margin:4px 0 0;font-size:12.5px">Votre demande est enregistrée immédiatement, avec une référence à l'appui. Aucun paiement n'est effectué à cette étape : une fois la disponibilité confirmée, vous réglerez votre prestation depuis SportVision Connect, au plus tard avant le jour de la prestation.</p>
               <div class="sv-field" id="retractation-field" style="margin-top:10px">
                 <label class="opt-check" style="align-items:flex-start"><input type="checkbox" id="bk-retractation" style="margin-top:3px"> <span>Je demande expressément que l'exécution de la prestation commence avant l'expiration de mon délai légal de rétractation de 14 jours. Si je me rétracte ensuite, un montant proportionnel au service déjà fourni pourra rester dû (<a href="cgv.html#article-35" target="_blank" style="color:var(--blue);font-weight:700">Article 35 des CGV</a>).</span></label>
               </div>
@@ -441,7 +436,7 @@ section{position:relative}
             <h2 id="ok-title">Demande envoyée</h2>
             <p class="sub" id="ok-message"></p>
             <div id="ok-connect-wrap" style="display:none;margin-top:20px">
-              <a href="#" id="ok-connect-link" class="btn btn-grad" style="width:100%">Créer mon compte et payer</a>
+              <a href="#" id="ok-connect-link" class="btn btn-grad" style="width:100%">Créer mon espace Connect</a>
             </div>
             <a href="index.html" class="btn btn-ghost-light" style="width:100%;margin-top:12px">Retour à l'accueil</a>
           </div>
@@ -477,7 +472,7 @@ section{position:relative}
       </ul></div>
       <div class="footer-col"><h5>Connect</h5><ul>
         <li><a href="connect.html">Fonctionnement</a></li>
-        <li><a href="https://connectsportvisionfr.netlify.app/">Connexion</a></li>
+        <li><a href="https://connect.sportvision-an.fr/">Connexion</a></li>
         <li><a href="demande-de-devis.html">Démonstration</a></li>
       </ul></div>
       <div class="footer-col"><h5>Ressources</h5><ul>
@@ -809,7 +804,6 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
   const telephone = document.getElementById('bk-tel').value.trim();
   const profil = document.getElementById('bk-profil').value;
   const siteWeb = document.getElementById('bk-site-web').value;
-  const soldeMode = (document.querySelector('input[name="solde-mode"]:checked') || {}).value || 'carte';
 
   if (!prenom || !nom || !email){
     errEl.textContent = 'Prénom, nom et e-mail sont obligatoires.';
@@ -843,7 +837,6 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     adresse: state.adresse || undefined,
     commentaire: commentaireComplet || null,
     site_web: siteWeb,
-    mode_paiement_choisi: soldeMode,
     cgv_acceptee: document.getElementById('bk-cgv').checked,
     cgv_acceptee_le: new Date().toISOString(),
     retractation_renoncee: document.getElementById('bk-retractation').checked,
@@ -862,39 +855,13 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
       return;
     }
 
-    // La demande est enregistrée dans tous les cas dès cet instant, avec sa
-    // référence (CGV art. 6.3 : l'enregistrement n'emporte pas confirmation
-    // automatique de disponibilité). Le choix "carte" propose juste un
-    // paiement immédiat en plus : si ce paiement aboutit, il vaut engagement
-    // financier réel et la réservation peut être annoncée comme confirmée
-    // (cf. handlePaiementRetour) ; sinon (espèces ou paiement non finalisé),
-    // l'équipe SportVision confirme la disponibilité sous 24h. Uniquement
-    // pour les offres à tarif fixe (sur devis, le prix n'est pas encore
-    // connu). Si l'appel échoue pour une raison technique (fonction pas
-    // encore déployée, réseau...), on ne bloque jamais une demande par
-    // ailleurs valide : elle reste enregistrée et l'équipe SportVision
-    // revient vers le client pour l'encaissement.
-    if (soldeMode === 'carte' && data.prestation_id && OFFRES_PRIX_FIXE.has(state.slug)){
-      try{
-        btn.textContent = 'Redirection…';
-        const base = location.origin + location.pathname;
-        const payRes = await fetch(SB_URL + '/functions/v1/create-guest-payment-checkout', {
-          method: 'POST',
-          headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prestation_id: data.prestation_id, email, success_url: base, cancel_url: base }),
-        });
-        const payData = await payRes.json();
-        if (payRes.ok && payData.payable && payData.checkout_url){
-          sessionStorage.setItem('sv-reserver-pending', JSON.stringify({ reference: data.reference, email, prestation_id: data.prestation_id }));
-          window.location.href = payData.checkout_url;
-          return;
-        }
-      }catch(payErr){
-        // Best-effort : on continue vers la confirmation normale ci-dessous,
-        // la réservation reste valable même sans paiement en ligne immédiat.
-      }
-    }
-
+    // La demande est enregistrée dans tous les cas dès cet instant, avec sa référence
+    // (CGV art. 6.3 : l'enregistrement n'emporte pas confirmation automatique de
+    // disponibilité). Aucun paiement n'est déclenché à cette étape — le paiement en ligne
+    // immédiat (Stripe) a été retiré du tunnel le 09/08 pour ne plus faire cohabiter deux
+    // logiques différentes (paiement maintenant vs paiement après confirmation). Le
+    // règlement se fait désormais uniquement depuis SportVision Connect, une fois la
+    // disponibilité confirmée par l'équipe.
     showConfirmation(data, email);
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";
@@ -913,19 +880,14 @@ function showConfirmation(data, email){
   } else {
     message += ' Notre équipe revient vers vous très prochainement.';
   }
-  const soldeModeChoisi = (document.querySelector('input[name="solde-mode"]:checked') || {}).value;
-  if (soldeModeChoisi === 'especes' && state.slug && OFFRES_PRIX_FIXE.has(state.slug)){
-    message += ' Vous réglerez ' + (state.price || '') + ' en espèces sur place, le jour de la prestation.';
+  if (state.slug && OFFRES_PRIX_FIXE.has(state.slug)){
+    message += ' Vous pourrez régler votre prestation depuis SportVision Connect une fois la disponibilité confirmée.';
   }
   document.getElementById('ok-message').textContent = message;
 
   if (state.slug && OFFRES_PRIX_FIXE.has(state.slug)){
     document.getElementById('ok-connect-wrap').style.display = '';
-    document.getElementById('ok-connect-link').href = 'https://connectsportvisionfr.netlify.app/?signup=1&email=' + encodeURIComponent(email);
-    // "et payer" n'a de sens que si le paiement en ligne reste réellement à
-    // faire (carte choisie mais le checkout Stripe n'a pas pu démarrer). En
-    // espèces, rien n'est dû en ligne : le bouton ne doit pas le suggérer.
-    document.getElementById('ok-connect-link').textContent = soldeModeChoisi === 'especes' ? 'Créer mon espace Connect' : 'Créer mon compte et payer';
+    document.getElementById('ok-connect-link').href = 'https://connect.sportvision-an.fr/?signup=1&email=' + encodeURIComponent(email);
   }
 
   document.querySelectorAll('.step-dot').forEach(d => d.classList.add('done'));
@@ -933,57 +895,6 @@ function showConfirmation(data, email){
   document.querySelector('.booking-step[data-step="5"]').classList.add('on');
   document.querySelector('.booking-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-
-// ── Retour depuis Stripe (paiement carte immédiat) : reserver.html sert
-//    lui-même de success_url/cancel_url (flux 100% anonyme, pas de compte
-//    Connect à ce stade) — cf. create-guest-payment-checkout. La demande
-//    est déjà enregistrée avant ce retour, quel que soit le résultat du
-//    paiement. Un paiement carte réussi vaut engagement financier réel : on
-//    peut alors parler de réservation confirmée. En l'absence de paiement
-//    abouti, seule la demande est enregistrée — la disponibilité reste à
-//    confirmer par l'équipe (CGV art. 6.3), on ne doit donc pas afficher
-//    "confirmée" dans ce cas. ──
-(function handlePaiementRetour(){
-  const params = new URLSearchParams(location.search);
-  const paiement = params.get('paiement');
-  if (!paiement) return;
-
-  let pending = {};
-  try{ pending = JSON.parse(sessionStorage.getItem('sv-reserver-pending') || '{}'); }catch(_e){}
-  const reference = params.get('reference') || pending.reference || '—';
-
-  document.querySelectorAll('.step-dot').forEach(d => d.classList.add('done'));
-  document.querySelectorAll('.booking-step').forEach(s => s.classList.remove('on'));
-  document.querySelector('.booking-step[data-step="5"]').classList.add('on');
-
-  if (paiement === 'succes'){
-    document.getElementById('ok-title').textContent = 'Réservation confirmée';
-    document.getElementById('ok-message').textContent = 'Référence : ' + reference + '. Votre paiement a bien été reçu, votre réservation est confirmée. Notre équipe revient vers vous pour les derniers détails.';
-    sessionStorage.removeItem('sv-reserver-pending');
-  } else if (paiement === 'annule'){
-    document.getElementById('ok-title').textContent = 'Demande bien reçue';
-    document.getElementById('ok-message').innerHTML = 'Référence : ' + reference + '. Le paiement par carte n\'a pas été finalisé, mais votre demande est bien enregistrée. Notre équipe revient vers vous sous 24h pour confirmer la disponibilité. Vous pouvez <button type="button" class="btn-link" id="retry-paiement-btn" style="color:var(--blue);text-decoration:underline">réessayer de payer en ligne</button>, ou régler en espèces sur place le jour J.';
-    const retryBtn = document.getElementById('retry-paiement-btn');
-    if (retryBtn && pending.prestation_id && pending.email){
-      retryBtn.addEventListener('click', async () => {
-        retryBtn.disabled = true; retryBtn.textContent = 'Redirection…';
-        try{
-          const base = location.origin + location.pathname;
-          const res = await fetch(SB_URL + '/functions/v1/create-guest-payment-checkout', {
-            method: 'POST',
-            headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prestation_id: pending.prestation_id, email: pending.email, success_url: base, cancel_url: base }),
-          });
-          const data = await res.json();
-          if (res.ok && data.checkout_url){ window.location.href = data.checkout_url; return; }
-        }catch(_e){}
-        retryBtn.disabled = false; retryBtn.textContent = 'réessayer de payer en ligne';
-      });
-    }
-  }
-
-  document.querySelector('.booking-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-})();
 </script>
 </body>
 </html>
