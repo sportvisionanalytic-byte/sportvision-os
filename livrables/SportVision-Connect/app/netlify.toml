@@ -19,11 +19,16 @@
 
 # En-têtes de sécurité HTTP (2026-08-06). CSP construite à partir des domaines
 # externes réellement appelés : le projet Supabase (fetch REST/auth/functions,
-# tous les modules/*.js passent par SB_URL) et l'API adresse gouvernementale
-# (autocomplétion d'adresse dans projet-configurateur.js). Aucun Google Fonts
-# ni police externe : l'app n'utilise que la pile de polices système. Le site
-# utilise des <script> inline (index.html) et des gestionnaires d'évènements
-# construits en JS, d'où 'unsafe-inline' sur script-src et style-src.
+# tous les modules/*.js passent par SB_URL), l'API adresse gouvernementale
+# (autocomplétion d'adresse dans projet-configurateur.js) et Google Fonts
+# (index.html charge Space Grotesk/Manrope depuis fonts.googleapis.com —
+# corrigé le 09/08/2026 : le commentaire affirmait à tort l'absence de police
+# externe, la CSP bloquait silencieusement le chargement de la feuille de
+# style depuis le tout premier déploiement, dégradant vers la police système
+# sans casse visuelle mais avec une erreur console à chaque connexion). Le
+# site utilise des <script> inline (index.html) et des gestionnaires
+# d'évènements construits en JS, d'où 'unsafe-inline' sur script-src et
+# style-src.
 # HSTS ajouté le 2026-08-07 : tout est servi par Netlify, donc HTTPS par
 # défaut sur le domaine exact visité, sans risque. Volontairement SANS
 # includeSubDomains (on ne connaît pas encore tous les sous-domaines
@@ -37,4 +42,4 @@
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
     X-Frame-Options = "SAMEORIGIN"
     Strict-Transport-Security = "max-age=31536000"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co https://api-adresse.data.gouv.fr; frame-src 'none'; object-src 'none'; base-uri 'self'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co https://api-adresse.data.gouv.fr; frame-src 'none'; object-src 'none'; base-uri 'self'"
