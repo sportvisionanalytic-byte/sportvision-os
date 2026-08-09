@@ -6,11 +6,12 @@ import type { ModuleKey } from "@/lib/types";
 // Tout module absent de cette liste DOIT être verrouillé pour un contexte club en Phase 1 —
 // jamais laissé "ouvert par défaut", ce qui exposerait du contenu mock (clubs/joueurs fictifs)
 // sur le compte d'un vrai club connecté.
-// "billing" est délibérément absent : la page /billing réelle n'affiche que des factures, et ni
-// `factures` ni `contrats`/`devis` n'ont de policy RLS accessible à un membre club (staff-only) —
-// voir le plan Phase 1 § Gaps de données. Les crédits (seule partie réellement trackée côté
-// `clubs`) sont déjà affichés sur /dashboard via ctx.subscription, pas sur /billing. Idem
-// "contracts" (jamais ajouté).
+// "billing"/"contracts"/"documents" (09/08/2026, chantier Tier B) : les vues client_devis/
+// client_factures/client_contrats sont étendues aux clubs depuis migration-clubplus-v33-club-
+// documents-access.sql (exécutée) — un membre actif d'un club dont clubs.portail_client_id est
+// renseigné peut lire ses vrais documents (club_member_has_client_access()). Résolution du
+// client_id via resolveClubPortailClientId (data/club/portail-link.ts) ; un club jamais relié
+// affiche un état honnête "pas encore relié", pas une erreur.
 //
 // "services" est également délibérément absent : club_bookings (migration-clubplus-v6.sql) n'a
 // ni prix numérique structuré (juste `price_label` texte libre), ni catégorie de prestation, ni
@@ -35,6 +36,9 @@ export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "settings",
   "children",
   "authorizations",
+  "billing",
+  "contracts",
+  "documents",
 ]);
 
 /**

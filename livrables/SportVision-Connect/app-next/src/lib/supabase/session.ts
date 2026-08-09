@@ -126,6 +126,7 @@ interface ClubRow {
   credits_balance: number;
   credits_monthly: number;
   credits_reserved: number;
+  portail_client_id: string | null;
 }
 
 interface EntitlementRow {
@@ -147,7 +148,7 @@ export async function buildClubActiveContext(
     supabase.from("organizations").select("id, nom, organization_type, created_at").eq("id", space.id).maybeSingle(),
     supabase
       .from("clubs")
-      .select("id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved")
+      .select("id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id")
       .eq("id", space.id)
       .maybeSingle(),
     supabase
@@ -159,6 +160,25 @@ export async function buildClubActiveContext(
   const org = orgRes.data as { id: string; nom: string; organization_type: string; created_at: string } | null;
   const club = clubRes.data as ClubRow | null;
   if (!org || !club || !space.role) return null;
+
+  // Un club réel n'a jamais organization_entitlements/clubs.plan pour distinguer "Full
+  // Communication" de Club+ : ce plan est vendu par contrat, pas par abonnement logiciel. Dérivé
+  // d'un contrat réel actif (contrats.type_contrat='full_communication', migration-contrats-v2)
+  // lié au client Portail relié au club — jamais d'un nouveau champ sur `clubs`. Un club sans
+  // portail_client_id (jamais relié) ou sans contrat actif de ce type retombe sur club/performance
+  // via mapClubPlan, comportement inchangé.
+  let isFullCommunication = false;
+  if (club.portail_client_id) {
+    const { data: contract } = await supabase
+      .from("contrats")
+      .select("id")
+      .eq("client_id", club.portail_client_id)
+      .eq("type_contrat", "full_communication")
+      .eq("statut", "actif")
+      .limit(1)
+      .maybeSingle();
+    isFullCommunication = Boolean(contract);
+  }
 
   const entitlements: NonNullable<ActiveContext["entitlements"]> = {};
   for (const row of (entitlementsRes.data ?? []) as EntitlementRow[]) {
@@ -189,7 +209,7 @@ export async function buildClubActiveContext(
     subscription: {
       id: `sub-${club.id}`,
       organizationId: org.id,
-      planCode: mapClubPlan(club.plan),
+      planCode: isFullCommunication ? "full_communication" : mapClubPlan(club.plan),
       status: "active",
       startsAt: org.created_at,
       renewsAt: org.created_at,

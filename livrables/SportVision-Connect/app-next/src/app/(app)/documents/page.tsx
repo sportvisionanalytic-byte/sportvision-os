@@ -1,156 +1,236 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { FileText, Upload } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, FileText } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess } from "@/lib/permissions";
-import { mockDocuments } from "@/lib/mock/settings";
-import { DOCUMENT_KIND_LABELS, type AppDocument, type DocumentKind, type DocumentStatus } from "@/lib/types/settings";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { cn } from "@/lib/cn";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { cn } from "@/lib/cn";
+import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC } from "@/components/billing/format";
+import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE } from "@/components/contracts/format";
+import { createClient } from "@/lib/supabase/client";
+import { fetchClientContracts, fetchClientDevis, fetchClientInvoices } from "@/lib/data/projet/billing";
+import { resolveClubPortailClientId } from "@/lib/data/club/portail-link";
+import type { ClientContract, ClientDevis } from "@/lib/data/projet/billing";
+import type { Invoice } from "@/lib/types/billing";
 
-// /documents — voir DATA_MODEL.md § Document (pas de section ACTIONS.md dédiée : cohérence
-// gardée avec les autres listes de l'app — filtres en puces, recherche, actions de ligne
-// dépendantes du statut, une seule action principale).
-const STATUS_META: Record<DocumentStatus, { label: string; tone: "success" | "warning" | "info" | "danger"; action: string }> = {
-  to_review: { label: "À consulter", tone: "info", action: "Consulter" },
-  to_sign: { label: "À signer", tone: "warning", action: "Signer" },
-  to_complete: { label: "À compléter", tone: "warning", action: "Compléter" },
-  valid: { label: "Valide", tone: "success", action: "Télécharger" },
-  expired: { label: "Expiré", tone: "danger", action: "Renouveler" },
-};
+// Écran Documents — vue consolidée devis/factures/contrats en lecture seule, calquée sur le
+// module vanilla équivalent (livrables/SportVision-Connect/app/modules/club-services-documents-
+// rapports.js, ClubModules.documents) : aucune action (accepter un devis, payer, signer) n'est
+// dupliquée ici — ces actions vivent respectivement dans /billing et /contracts. Ce module n'est
+// qu'un flux chronologique unique pour tout retrouver rapidement.
 
-const KIND_FILTERS: (DocumentKind | "all")[] = [
-  "all",
-  "contract",
-  "invoice",
-  "quote",
-  "image_right",
-  "brand_guidelines",
-  "logo_pack",
-  "insurance",
-  "medical",
-  "roster",
-  "report",
-  "other",
-];
-
-function formatSize(bytes: number): string {
-  if (bytes === 0) return "—";
-  if (bytes < 1_000_000) return `${Math.round(bytes / 1000)} Ko`;
-  return `${(bytes / 1_000_000).toFixed(1)} Mo`;
+type DocKind = "devis" | "facture" | "contrat";
+interface DocRow {
+  kind: DocKind;
+  title: string;
+  date: string;
+  amount: number | null;
+  statusLabel: string;
+  statusTone: "success" | "warning" | "danger" | "info" | "accent" | "cyan" | "neutral";
+  pdfUrl?: string;
 }
+
+const DEVIS_STATUS_TONE: Record<string, DocRow["statusTone"]> = {
+  brouillon: "neutral",
+  "envoyé": "info",
+  en_attente: "warning",
+  "accepté": "success",
+  "refusé": "danger",
+  "expiré": "neutral",
+  "annulé": "neutral",
+};
 
 export default function DocumentsPage() {
   const { ctx } = useSession();
-  const [documents, setDocuments] = useState<AppDocument[]>(() => mockDocuments[ctx.organization.id] ?? []);
-  const [query, setQuery] = useState("");
-  const [kindFilter, setKindFilter] = useState<DocumentKind | "all">("all");
 
-  if (!canAccess(ctx, "documents")) return <LockedModule title="Documents" />;
+  if (ctx.organization.type === "generic") return <ClientDocumentsView clientId={ctx.organization.id} />;
+  if (ctx.organization.type === "club") return <ClubDocumentsView />;
 
-  const filtered = useMemo(
-    () =>
-      documents
-        .filter((d) => kindFilter === "all" || d.kind === kindFilter)
-        .filter((d) => !query.trim() || d.name.toLowerCase().includes(query.trim().toLowerCase())),
-    [documents, kindFilter, query],
-  );
+  return <LockedModule />;
+}
 
-  function handleImport() {
-    setDocuments((prev) => [
-      {
-        id: `doc-local-${Date.now()}`,
-        organizationId: ctx.organization.id,
-        name: "Nouveau document.pdf",
-        kind: "other",
-        mimeType: "application/pdf",
-        sizeBytes: 240_000,
-        uploadedByName: `${ctx.user.firstName} ${ctx.user.lastName}`,
-        uploadedAt: new Date().toISOString(),
-        status: "to_review",
-      },
-      ...prev,
-    ]);
+function ClubDocumentsView() {
+  const { ctx } = useSession();
+  const [clientId, setClientId] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    const supabase = createClient();
+    resolveClubPortailClientId(supabase, ctx.organization.id).then(setClientId);
+  }, [ctx.organization.id]);
+
+  if (clientId === undefined) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
   }
+
+  if (clientId === null) {
+    return (
+      <Card className="flex flex-col items-center gap-3 px-8 py-16 text-center">
+        <FileText className="h-6 w-6 text-text-faint" aria-hidden />
+        <div className="max-w-md">
+          <h2 className="text-[18px] font-extrabold tracking-tight">Documents pas encore reliés</h2>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-text-soft">
+            SportVision n&apos;a pas encore relié {ctx.organization.name} à un espace Documents — vos devis, factures
+            et contrats apparaîtront ici une fois ce lien fait par votre interlocuteur SportVision.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  return <ClientDocumentsView clientId={clientId} />;
+}
+
+function ClientDocumentsView({ clientId }: { clientId: string }) {
+  const { ctx } = useSession();
+  const [devis, setDevis] = useState<ClientDevis[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [contracts, setContracts] = useState<ClientContract[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [filter, setFilter] = useState<"tous" | DocKind>("tous");
+
+  async function reload() {
+    setLoadError(false);
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const [dev, inv, con] = await Promise.all([
+        fetchClientDevis(supabase, clientId),
+        fetchClientInvoices(supabase, clientId),
+        fetchClientContracts(supabase, clientId),
+      ]);
+      setDevis(dev);
+      setInvoices(inv);
+      setContracts(con);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  const docs = useMemo<DocRow[]>(() => {
+    const rows: DocRow[] = [
+      ...devis.map((d): DocRow => ({
+        kind: "devis",
+        title: `Devis ${d.numero}`,
+        date: d.dateExpiration ?? "",
+        amount: d.totalTtc,
+        statusLabel: d.statusLabel,
+        statusTone: DEVIS_STATUS_TONE[d.statut] ?? "neutral",
+      })),
+      ...invoices.map((f): DocRow => ({
+        kind: "facture",
+        title: `Facture ${f.number}`,
+        date: f.issueDate,
+        amount: f.totalInclVat,
+        statusLabel: INVOICE_STATUS_LABEL[f.status],
+        statusTone: INVOICE_STATUS_TONE[f.status],
+        pdfUrl: f.pdfUrl,
+      })),
+      ...contracts.map((c): DocRow => ({
+        kind: "contrat",
+        title: c.name,
+        date: c.startsAt,
+        amount: c.monthlyAmount ?? null,
+        statusLabel: CONTRACT_STATUS_LABEL[c.status],
+        statusTone: CONTRACT_STATUS_TONE[c.status],
+      })),
+    ];
+    rows.sort((a, b) => (a.date < b.date ? 1 : -1));
+    return filter === "tous" ? rows : rows.filter((r) => r.kind === filter);
+  }, [devis, invoices, contracts, filter]);
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[29px] font-extrabold tracking-tight">Documents</h1>
-          <p className="mt-1 text-[13.5px] text-text-soft">Contrats, factures, autorisations et pièces partagées avec SportVision.</p>
-        </div>
-        <Button onClick={handleImport}>
-          <Upload className="h-4 w-4" aria-hidden />
-          Importer un document
-        </Button>
+      <div>
+        <div className="text-[12px] font-bold text-text-soft">Documents</div>
+        <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">
+          Documents de {ctx.organization.name}
+        </h1>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher un document…"
-          className="h-10 w-full max-w-xs rounded-xl border border-border-strong bg-input-bg px-3.5 text-[13.5px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
-        />
-      </div>
+      {loadError && (
+        <Card className="flex flex-wrap items-center gap-3 border-danger-fg/30 bg-danger-bg px-5 py-4">
+          <AlertTriangle className="h-[18px] w-[18px] flex-none text-danger-fg" aria-hidden />
+          <span className="min-w-0 flex-1 text-[13px] font-semibold text-danger-fg">
+            Impossible de charger vos documents pour le moment.
+          </span>
+          <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={reload}>
+            Réessayer
+          </Button>
+        </Card>
+      )}
 
-      <div className="flex flex-wrap gap-2">
-        {KIND_FILTERS.map((kind) => (
-          <button
-            key={kind}
-            onClick={() => setKindFilter(kind)}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-[12px] font-bold transition-colors duration-sv",
-              kindFilter === kind ? "border-brand-blue bg-info-bg text-info-fg" : "border-border text-text-soft hover:border-border-strong",
-            )}
-          >
-            {kind === "all" ? "Tous" : DOCUMENT_KIND_LABELS[kind]}
-          </button>
-        ))}
-      </div>
-
-      <Card>
-        {filtered.length === 0 ? (
-          <div className="p-9 text-center text-[13.5px] text-text-soft">
-            Aucun document ne correspond à votre recherche.
-          </div>
-        ) : (
-          filtered.map((doc) => {
-            const meta = STATUS_META[doc.status];
-            return (
-              <div
-                key={doc.id}
-                className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0 hover:bg-row-hover"
+      {loading ? (
+        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
+          <div className="text-[13.5px] font-bold text-text-soft">Chargement…</div>
+        </Card>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["tous", "Tous"],
+                ["devis", "Devis"],
+                ["facture", "Factures"],
+                ["contrat", "Contrats"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={cn(
+                  "rounded-full border px-3.5 py-1.5 text-[12.5px] font-bold transition-colors duration-sv",
+                  filter === key ? "border-brand-blue-electric bg-info-bg text-brand-blue-electric" : "border-border-strong text-text-soft",
+                )}
               >
-                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-info-bg text-info-fg">
-                  <FileText className="h-4 w-4" aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-bold">{doc.name}</span>
-                  <span className="mt-0.5 block text-[12px] text-text-soft">
-                    {DOCUMENT_KIND_LABELS[doc.kind]} · {doc.uploadedByName} ·{" "}
-                    {new Date(doc.uploadedAt).toLocaleDateString("fr-FR")}
-                    {doc.teamName ? ` · ${doc.teamName}` : ""}
-                    {doc.playerName ? ` · ${doc.playerName}` : ""}
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {docs.length === 0 ? (
+            <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
+              <FileText className="h-6 w-6 text-text-faint" aria-hidden />
+              <div className="mt-1 text-[15px] font-extrabold">Aucun document pour le moment.</div>
+            </Card>
+          ) : (
+            <Card>
+              {docs.map((d, i) => (
+                <div key={`${d.kind}-${i}`} className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-bold text-text">{d.title}</span>
+                    {d.date && <span className="mt-0.5 block text-[12px] text-text-soft">{d.date}</span>}
                   </span>
-                </span>
-                <span className="w-16 flex-none text-right font-mono text-[11.5px] text-text-faint">
-                  {formatSize(doc.sizeBytes)}
-                </span>
-                <Badge tone={meta.tone}>{meta.label}</Badge>
-                <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]">
-                  {meta.action}
-                </Button>
-              </div>
-            );
-          })
-        )}
-      </Card>
+                  {d.amount !== null && (
+                    <span className="text-[13px] font-bold text-text-soft">{formatEuroTTC(d.amount)}</span>
+                  )}
+                  <Badge tone={d.statusTone}>{d.statusLabel}</Badge>
+                  {d.pdfUrl && (
+                    <a href={d.pdfUrl} target="_blank" rel="noreferrer" className="text-[12px] font-bold text-info-fg hover:underline">
+                      Voir le PDF
+                    </a>
+                  )}
+                </div>
+              ))}
+            </Card>
+          )}
+
+          <p className="text-[12.5px] text-text-soft">
+            Ces documents sont gérés par votre interlocuteur SportVision — contactez-le pour toute question ou action
+            sur un devis, une facture ou un contrat.
+          </p>
+        </>
+      )}
     </div>
   );
 }
