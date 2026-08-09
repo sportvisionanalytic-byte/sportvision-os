@@ -620,7 +620,7 @@ section{position:relative}
         <a href="cgv.html">CGV</a>
         <a href="confidentialite.html">Politique de confidentialité</a>
         <a href="cookies.html">Politique cookies</a>
-        <a href="retractation.html">Rétractation</a>
+        <a href="retractation.html">Rétractation / Renoncer à un contrat</a>
         <a href="#" id="cookie-manage">Gérer mes cookies</a>
       </div>
       <div class="footer-social">
@@ -684,6 +684,7 @@ section{position:relative}
         </div>
         <div class="sv-field"><label for="dv-commentaire">Votre besoin (facultatif)</label><textarea id="dv-commentaire" name="commentaire" rows="3" placeholder="Ex : tournage de séance pour mes réseaux"></textarea></div>
         <div class="sv-err" id="devis-err"></div>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--text-secondary)">Les informations renseignées sont utilisées par SportVision pour traiter votre demande et vous recontacter. <a href="confidentialite.html" target="_blank">En savoir plus</a>.</p>
         <button type="submit" class="btn btn-grad" style="width:100%;margin-top:6px" id="devis-submit">Envoyer ma demande</button>
       </form>
     </div>
@@ -910,6 +911,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
         <div class="sv-field"><label for="rdv-email">E-mail</label><input id="rdv-email" name="email" type="email" required></div>
         <div class="sv-field"><label for="rdv-tel">Téléphone (facultatif)</label><input id="rdv-tel" name="telephone" type="tel"></div>
         <div class="sv-err" id="rdv-err"></div>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--text-secondary)">Les informations renseignées sont utilisées par SportVision pour traiter votre demande et vous recontacter. <a href="confidentialite.html" target="_blank">En savoir plus</a>.</p>
         <button type="submit" class="btn btn-grad" style="width:100%;margin-top:6px" id="rdv-submit">Confirmer ma demande de rendez-vous</button>
       </form>
     </div>

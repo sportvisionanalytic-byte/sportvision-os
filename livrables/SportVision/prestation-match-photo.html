@@ -516,13 +516,13 @@ section{position:relative}
         <p class="desc">Vous réservez un service organisé de bout en bout, pensé pour un rendu professionnel — pas une faveur entre connaissances.</p>
         <ul class="feature-list">
           <li>Réservation en 2 minutes, sans créer de compte</li>
-          <li>Paiement par carte en ligne ou en espèces sur place, au choix</li>
+          <li>Paiement sécurisé depuis SportVision Connect, après confirmation de la disponibilité</li>
           <li>Galerie HD centralisée dans votre espace SportVision Connect — pas un lien qui expire</li>
           <li>Besoin de plus par la suite ? Vidéo, création graphique, couverture récurrente : tout reste au même endroit</li>
         </ul>
       </div>
       <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/coulisses-photographe.jpg) center/cover no-repeat">
-        <div class="gcard"><div class="k">Réservation</div><div class="v">Référence immédiate</div><div class="sub">Confirmation sous 24h · Carte ou espèces</div></div>
+        <div class="gcard"><div class="k">Réservation</div><div class="v">Référence immédiate</div><div class="sub">Confirmation sous 24h · Suivi dans SportVision Connect</div></div>
       </div>
     </div>
   </div>
@@ -646,7 +646,7 @@ section{position:relative}
         <a href="cgv.html">CGV</a>
         <a href="confidentialite.html">Politique de confidentialité</a>
         <a href="cookies.html">Politique cookies</a>
-        <a href="retractation.html">Rétractation</a>
+        <a href="retractation.html">Rétractation / Renoncer à un contrat</a>
         <a href="#" id="cookie-manage">Gérer mes cookies</a>
       </div>
       <div class="footer-social">
@@ -710,6 +710,7 @@ section{position:relative}
         </div>
         <div class="sv-field"><label for="dv-commentaire">Votre besoin (facultatif)</label><textarea id="dv-commentaire" name="commentaire" rows="3" placeholder="Ex : match photo pour mon équipe le 14/09"></textarea></div>
         <div class="sv-err" id="devis-err"></div>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--text-secondary)">Les informations renseignées sont utilisées par SportVision pour traiter votre demande et vous recontacter. <a href="confidentialite.html" target="_blank">En savoir plus</a>.</p>
         <button type="submit" class="btn btn-grad" style="width:100%;margin-top:6px" id="devis-submit">Envoyer ma demande</button>
       </form>
     </div>
@@ -717,8 +718,8 @@ section{position:relative}
       <div class="sv-ok">
         <div class="check">✓</div>
         <h3>Demande enregistrée</h3>
-        <p class="sub">Référence : <b id="devis-ref"></b><br>Créez votre compte SportVision Connect (gratuit, avec ce même e-mail) pour suivre votre prestation et régler votre acompte en ligne.</p>
-        <a href="#" id="devis-connect-link" class="btn btn-grad" style="width:100%;margin-top:18px;display:flex">Créer mon compte et payer</a>
+        <p class="sub">Référence : <b id="devis-ref"></b><br>Créez votre espace SportVision Connect (gratuit, avec ce même e-mail) pour suivre votre prestation. Le paiement s'effectuera depuis Connect une fois la disponibilité confirmée.</p>
+        <a href="#" id="devis-connect-link" class="btn btn-grad" style="width:100%;margin-top:18px;display:flex">Créer mon espace Connect</a>
         <button type="button" class="btn btn-ghost-light" style="width:100%;margin-top:10px" id="devis-ok-close">Plus tard</button>
       </div>
     </div>
@@ -906,7 +907,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
     document.getElementById('devis-form-wrap').style.display = 'none';
     document.getElementById('devis-ok-wrap').style.display = '';
     document.getElementById('devis-ref').textContent = data.reference || '—';
-    document.getElementById('devis-connect-link').href = 'https://connectsportvision-an.fr/?signup=1&email=' + encodeURIComponent(body.email);
+    document.getElementById('devis-connect-link').href = 'https://connect.sportvision-an.fr/?signup=1&email=' + encodeURIComponent(body.email);
   }catch(err){
     errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";
   }finally{
@@ -940,6 +941,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
         <div class="sv-field"><label for="rdv-email">E-mail</label><input id="rdv-email" name="email" type="email" required></div>
         <div class="sv-field"><label for="rdv-tel">Téléphone (facultatif)</label><input id="rdv-tel" name="telephone" type="tel"></div>
         <div class="sv-err" id="rdv-err"></div>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--text-secondary)">Les informations renseignées sont utilisées par SportVision pour traiter votre demande et vous recontacter. <a href="confidentialite.html" target="_blank">En savoir plus</a>.</p>
         <button type="submit" class="btn btn-grad" style="width:100%;margin-top:6px" id="rdv-submit">Confirmer ma demande de rendez-vous</button>
       </form>
     </div>
