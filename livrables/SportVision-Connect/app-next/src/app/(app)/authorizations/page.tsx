@@ -30,28 +30,35 @@ import { Toast, useToast } from "@/components/feedback/Toast";
 // (voir data/player/authorizations.ts).
 export default function AuthorizationsPage() {
   const { ctx } = useSession();
-  const { toastMessage, showToast } = useToast();
+  const { toastMessage, toastTone, showToast } = useToast();
   const isParent = ctx.organization.type === "parent";
 
   const [children, setChildren] = useState<ConfirmedChild[]>([]);
   const [authsByChild, setAuthsByChild] = useState<Record<string, ChildAuthorization[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   async function reload() {
     const supabase = createClient();
-    if (isParent) {
-      const rows = await fetchConfirmedChildren(supabase, ctx.organization.id);
-      setChildren(rows);
-      const entries = await Promise.all(
-        rows.map(async (child) => [child.playerId, await fetchChildAuthorizations(supabase, child.playerId)] as const),
-      );
-      setAuthsByChild(Object.fromEntries(entries));
-    } else {
-      const rows = await fetchPlayerAuthorizations(supabase, ctx.organization.id);
-      setAuthsByChild({ [ctx.organization.id]: rows });
+    try {
+      if (isParent) {
+        const rows = await fetchConfirmedChildren(supabase, ctx.organization.id);
+        setChildren(rows);
+        const entries = await Promise.all(
+          rows.map(async (child) => [child.playerId, await fetchChildAuthorizations(supabase, child.playerId)] as const),
+        );
+        setAuthsByChild(Object.fromEntries(entries));
+      } else {
+        const rows = await fetchPlayerAuthorizations(supabase, ctx.organization.id);
+        setAuthsByChild({ [ctx.organization.id]: rows });
+      }
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -66,6 +73,14 @@ export default function AuthorizationsPage() {
     return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
   }
 
+  if (loadError) {
+    return (
+      <Card className="p-8 text-center text-[13.5px] font-semibold text-danger-fg">
+        Impossible de charger vos autorisations. Réessayez plus tard.
+      </Card>
+    );
+  }
+
   async function handleSign(authorizationId: string) {
     setBusyId(authorizationId);
     try {
@@ -73,7 +88,7 @@ export default function AuthorizationsPage() {
       await signChildAuthorization(supabase, authorizationId);
       await reload();
     } catch {
-      showToast("Signature impossible, réessayez.");
+      showToast("Signature impossible, réessayez.", "error");
     } finally {
       setBusyId(null);
     }
@@ -86,7 +101,7 @@ export default function AuthorizationsPage() {
       await withdrawChildAuthorization(supabase, authorizationId);
       await reload();
     } catch {
-      showToast("Retrait impossible, réessayez.");
+      showToast("Retrait impossible, réessayez.", "error");
     } finally {
       setBusyId(null);
     }
@@ -138,7 +153,7 @@ export default function AuthorizationsPage() {
         des contenus déjà publiés sous 72 heures.
       </Card>
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} tone={toastTone} />
     </div>
   );
 }
@@ -193,7 +208,11 @@ function AuthorizationRows({
               className="h-8 flex-none px-3 text-[12px]"
               disabled={busyId === item.id}
               loading={busyId === item.id}
-              onClick={() => onWithdraw?.(item.id)}
+              onClick={() => {
+                if (window.confirm("Retirer cette autorisation ? Les contenus déjà publiés seront supprimés sous 72h.")) {
+                  onWithdraw?.(item.id);
+                }
+              }}
             >
               Retirer
             </Button>

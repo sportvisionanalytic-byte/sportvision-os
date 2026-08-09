@@ -44,7 +44,7 @@ function inferTemplateCode(item: NewsroomItem): string {
 export default function NewsroomPage() {
   const { ctx } = useSession();
   const router = useRouter();
-  const { toastMessage, showToast } = useToast();
+  const { toastMessage, toastTone, showToast } = useToast();
   const [filter, setFilter] = useState<FilterKey>("all");
 
   const allowed = canAccess(ctx, "newsroom");
@@ -71,7 +71,7 @@ export default function NewsroomPage() {
       .then(() => {
         setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status } : i)));
       })
-      .catch(() => showToast("Action impossible, réessayez."));
+      .catch(() => showToast("Action impossible, réessayez.", "error"));
   }
 
   function handleTransform(item: NewsroomItem, into: "publication" | "visual_request") {
@@ -189,7 +189,7 @@ export default function NewsroomPage() {
         </div>
       )}
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} tone={toastTone} />
     </div>
   );
 }

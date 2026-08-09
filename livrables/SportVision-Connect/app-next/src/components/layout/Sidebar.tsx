@@ -1,24 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Lock, HelpCircle, LogOut } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { filterAffiliatedPlayerNav, resolveNavigation } from "@/lib/navigation";
 import { formatPlanCredits, PLANS } from "@/lib/plans";
 import { cn } from "@/lib/cn";
+import { createClient } from "@/lib/supabase/client";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { ctx } = useSession();
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/auth/login");
+    router.refresh();
+  }
 
   const isAffiliatedPlayer = ctx.organization.type === "player" && !!ctx.organization.parentOrganizationId;
   let entries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
   if (isAffiliatedPlayer) entries = filterAffiliatedPlayerNav(entries);
 
   const plan = PLANS[ctx.subscription.planCode];
+  const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";
 
   return (
     <aside className="sticky top-0 flex h-screen w-[264px] flex-none flex-col border-r border-white/5 bg-chrome">
@@ -98,16 +108,19 @@ export function Sidebar() {
 
         <div className="flex items-center gap-2.5 rounded-xl bg-white/[.04] p-2.5">
           <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-violet to-brand-blue-electric text-[11px] font-extrabold text-white">
-            SM
+            {initials}
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[12.5px] font-bold text-white">
               {ctx.user.firstName} {ctx.user.lastName}
             </span>
-            <span className="block truncate text-[11px] text-[#7E8FA5]">{ctx.user.jobTitle}</span>
+            {ctx.user.jobTitle && (
+              <span className="block truncate text-[11px] text-[#7E8FA5]">{ctx.user.jobTitle}</span>
+            )}
           </span>
           <button
             aria-label="Se déconnecter"
+            onClick={handleLogout}
             className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg text-[#7E8FA5] transition-colors hover:bg-white/10"
           >
             <LogOut className="h-3.5 w-3.5" aria-hidden />
