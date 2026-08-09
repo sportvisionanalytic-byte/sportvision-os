@@ -4054,7 +4054,7 @@ async function loadClientContacts(clientId){
       <button onclick="modalAjouterContact('${clientId}')" style="padding:6px 14px;font-size:12px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Ajouter un contact</button>
     </div>`+
     (list.length?'<div style="display:flex;flex-direction:column;gap:8px">'+list.map(c=>{
-      const auteur=[c.auteur?.prenom,c.auteur?.nom].filter(Boolean).join(' ')||'—';
+      const auteur=esc([c.auteur?.prenom,c.auteur?.nom].filter(Boolean).join(' ')||'—');
       const d=new Date(c.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
       return`<div style="padding:12px 14px;background:var(--s2);border-radius:var(--rb);border:1px solid var(--b1)">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
@@ -4063,10 +4063,10 @@ async function loadClientContacts(clientId){
           <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.06);color:${RES_CLR[c.resultat]||'var(--t3)'}">${RES_LB[c.resultat]||'—'}</span>
           <span style="margin-left:auto;font-size:10px;color:var(--t3)">${d} · ${auteur}</span>
         </div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.5">${c.note}</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.5">${esc(c.note)}</div>
         ${c.next_action?`<div style="margin-top:8px;padding:6px 10px;background:rgba(245,165,36,.07);border-radius:6px;border-left:2px solid var(--wa)">
           <div style="font-size:10px;font-weight:700;color:var(--wa);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">Prochaine action</div>
-          <div style="font-size:12px;color:var(--t2)">${c.next_action}${c.next_action_date?' · <b style="color:var(--wa)">'+new Date(c.next_action_date).toLocaleDateString('fr-FR',{day:'2-digit',month:'long'})+'</b>':''}</div>
+          <div style="font-size:12px;color:var(--t2)">${esc(c.next_action)}${c.next_action_date?' · <b style="color:var(--wa)">'+new Date(c.next_action_date).toLocaleDateString('fr-FR',{day:'2-digit',month:'long'})+'</b>':''}</div>
         </div>`:''}
       </div>`;
     }).join('')+'</div>':
@@ -5769,11 +5769,16 @@ async function sauvegarderVersion(postprodId){
       commentaire:document.getElementById('ver-com')?.value||null
     }});
     if(sbErr(rVer)){err.textContent='Erreur : '+(rVer.message||'Création de la version impossible.');return;}
-    // Mettre à jour le statut de la postprod
-    await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'version_prete'}}).catch(()=>{});
+    // Mettre à jour le statut de la postprod. La version elle-même est déjà
+    // créée (rVer vérifié ci-dessus) : cette écriture ne doit donc jamais
+    // bloquer, mais un échec silencieux laissait le statut de la postprod
+    // désynchronisé (version soumise mais toujours affichée "en_cours") sans
+    // aucune trace ni avertissement.
+    const rStatut=await sbFetch('media_postproductions?id=eq.'+postprodId,{method:'PATCH',body:{statut:'version_prete'}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rStatut))console.error('MAJ statut postprod échouée',rStatut);
     await logMediaHistory(pp.prestation_id,S.uid,'Version soumise','version',null,'—','V'+numero);
     closeModal();
-    toast('Version V'+numero+' soumise','ok');
+    toast(sbErr(rStatut)?'Version V'+numero+' soumise, mais le statut n\'a pas pu être synchronisé.':'Version V'+numero+' soumise','ok');
     loadProdPostprod();
   }catch(e){err.textContent='Erreur lors de la soumission.';}
 }
@@ -6061,10 +6066,15 @@ async function confirmerLivraison(livrableId){
       statut:'envoyee'
     }});
     if(sbErr(rEnvoi)){err.textContent='Erreur : '+(rEnvoi.message||'Enregistrement de la livraison impossible.');return;}
-    await sbFetch('media_livrables?id=eq.'+livrableId,{method:'PATCH',body:{statut:'livre'}}).catch(()=>{});
+    // Idem : l'événement de livraison est déjà enregistré (rEnvoi vérifié
+    // ci-dessus, le client a déjà reçu son fichier) — cette écriture ne doit
+    // pas bloquer, mais si elle échoue en silence le livrable reste "à
+    // livrer" dans les listes/dashboards alors qu'il a réellement été livré.
+    const rStatut=await sbFetch('media_livrables?id=eq.'+livrableId,{method:'PATCH',body:{statut:'livre'}}).catch(()=>({code:'network_error'}));
+    if(sbErr(rStatut))console.error('MAJ statut livrable échouée',rStatut);
     if(lv?.prestation_id) await logMediaHistory(lv.prestation_id,S.uid,'Livraison effectuée','livraison',null,null,email);
     closeModal();
-    toast('Livraison enregistrée','ok');
+    toast(sbErr(rStatut)?'Livraison enregistrée, mais le statut du livrable n\'a pas pu être synchronisé.':'Livraison enregistrée','ok');
     loadProdLivrables();
   }catch(e){err.textContent='Erreur lors de l\'enregistrement.';}
 }
@@ -8104,14 +8114,21 @@ async function kitsCreerMaterielSubmit(){
       created_by:localStorage.getItem('sv_uid'),
     }});
     if(sbErr(newMat)){toast('Erreur : '+(newMat.message||'enregistrement impossible.'),'er');return;}
-    // Si kit sélectionné, créer la composition
+    // Si kit sélectionné, créer la composition. Le matériel existe déjà (newMat
+    // vérifié ci-dessus) : ne pas bloquer sur cet échec, mais si le lien vers
+    // le kit échoue en silence, l'équipement est créé "orphelin" — absent de la
+    // composition du kit malgré le message de succès annoncé à l'utilisateur.
+    let compoErr=null;
     if(kitId&&Array.isArray(newMat)&&newMat[0]){
-      await sbFetch('kit_compositions',{method:'POST',body:{
+      const rCompo=await sbFetch('kit_compositions',{method:'POST',body:{
         kit_id:kitId,materiel_id:newMat[0].id,obligatoire:true,
         ajoute_par:localStorage.getItem('sv_uid'),
-      }}).catch(()=>{});
+      }}).catch(()=>({code:'network_error'}));
+      if(sbErr(rCompo)){compoErr=rCompo;console.error('Liaison kit_compositions échouée',rCompo);}
     }
-    closeModal();toast('Équipement enregistré.','ok');kitsLoadAll();
+    closeModal();
+    toast(compoErr?'Équipement enregistré, mais le lien vers le kit a échoué — ajoutez-le manuellement.':'Équipement enregistré.',compoErr?'wa':'ok');
+    kitsLoadAll();
   }catch(e){toast('Erreur lors de l\'enregistrement.','er');}
 }
 
@@ -8301,12 +8318,17 @@ async function kitsAttribuerSubmit(kitId){
     // affichait "Aucun contrôle à réaliser" en permanence, le filet de
     // sécurité matériel n'était jamais alimenté. On la crée dès l'attribution.
     const resa=Array.isArray(r)?r[0]:null;
+    let controleErr=null;
     if(resa?.id){
       const respId=document.getElementById('attr-resp')?.value||uid;
-      await sbFetch('kit_controles',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
+      const rCtrl=await sbFetch('kit_controles',{method:'POST',headers:{'Prefer':'return=minimal'},body:{
         kit_id:kitId,kit_reservation_id:resa.id,prestation_id:preId,
         collaborateur_id:respId,type:'avant',statut:'en_cours',
-      }}).catch(()=>{});
+      }}).catch(()=>({code:'network_error'}));
+      // Cette ligne EST le filet de sécurité matériel (cf. commentaire ci-dessus) :
+      // un échec silencieux ici recrée exactement le bug que ce correctif visait à
+      // éliminer (onglet Contrôles vide malgré une réservation active).
+      if(sbErr(rCtrl)){controleErr=rCtrl;console.error('Création kit_controles "avant" échouée',rCtrl);}
     }
     // Notifier le responsable
     const respId=document.getElementById('attr-resp')?.value;
@@ -8316,7 +8338,9 @@ async function kitsAttribuerSubmit(kitId){
         message:'Un kit vous a été attribué pour une prestation. Pensez au contrôle avant départ.',source_type:'kits',source_id:kitId,
       });
     }
-    closeModal();toast('Kit attribué.','ok');kitsLoadAll();updateNavBadges(S.role);
+    closeModal();
+    toast(controleErr?'Kit attribué, mais le contrôle "avant" n\'a pas pu être créé — vérifiez l\'onglet Contrôles.':'Kit attribué.',controleErr?'wa':'ok');
+    kitsLoadAll();updateNavBadges(S.role);
   }catch(e){toast('Erreur lors de l\'attribution.','er');}
 }
 
@@ -8489,11 +8513,11 @@ async function kitsControleOpen(controleId){
           its.map(item=>{
             const matCfg=MAT_CATS[item.materiels?.categorie]||{ic:'📎'};
             return`<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-              <div style="font-size:13.5px;font-weight:700;color:var(--t1);margin-bottom:8px">${matCfg.ic} ${item.materiels?.nom||'—'}${item.materiels?.marque?' · '+item.materiels.marque:''}</div>
+              <div style="font-size:13.5px;font-weight:700;color:var(--t1);margin-bottom:8px">${matCfg.ic} ${esc(item.materiels?.nom||'—')}${item.materiels?.marque?' · '+esc(item.materiels.marque):''}</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
                 ${ITEM_OPT.map(o=>`<button id="ci-btn-${item.id}-${o.v}" onclick="kitsCtrlSelectItem('${item.id}','${o.v}')" style="flex:1;padding:7px 0;font-size:11.5px;font-weight:600;border-radius:var(--rp);cursor:pointer;font-family:var(--ff);transition:all .1s;border:1px solid ${item.statut_item===o.v?'transparent':'var(--b1)'};background:${item.statut_item===o.v?o.c:'rgba(255,255,255,.04)'};color:${item.statut_item===o.v?'#fff':o.c}">${o.lb}</button>`).join('')}
               </div>
-              <input id="ci-note-${item.id}" type="text" class="fi" placeholder="Commentaire (optionnel)…" value="${item.commentaire||''}" style="height:30px;font-size:11.5px">
+              <input id="ci-note-${item.id}" type="text" class="fi" placeholder="Commentaire (optionnel)…" value="${esc(item.commentaire||'')}" style="height:30px;font-size:11.5px">
             </div>`;
           }).join('')
         }
@@ -8617,7 +8641,7 @@ async function kitsModalEditMateriel(materielId){
   openModal(`<div class="mh"><div class="mt">Modifier l'équipement</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Nom</label>
-        <input id="em-nom" type="text" class="fi" value="${m.nom}">
+        <input id="em-nom" type="text" class="fi" value="${esc(m.nom)}">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="fg"><label class="fl">Catégorie</label>
@@ -8629,7 +8653,7 @@ async function kitsModalEditMateriel(materielId){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="fg"><label class="fl">Marque</label>
-          <input id="em-marque" type="text" class="fi" value="${m.marque||''}">
+          <input id="em-marque" type="text" class="fi" value="${esc(m.marque||'')}">
         </div>
         <div class="fg"><label class="fl">Valeur (€)</label>
           <input id="em-val" type="number" class="fi" value="${m.valeur||''}">
@@ -8672,21 +8696,21 @@ function kitsModalEditKit(kitId){
   openModal(`<div class="mh"><div class="mt">Modifier le kit</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Nom du kit *</label>
-        <input id="ek-nom" type="text" class="fi" value="${k.nom||''}" autofocus>
+        <input id="ek-nom" type="text" class="fi" value="${esc(k.nom||'')}" autofocus>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="fg"><label class="fl">Type</label>
           <select id="ek-type" class="fi"><option value="">— Type —</option>${KIT_TYPES_LIST.map(t=>`<option value="${t}"${t===k.type_kit?' selected':''}>${t}</option>`).join('')}</select>
         </div>
         <div class="fg"><label class="fl">N° interne</label>
-          <input id="ek-num" type="text" class="fi" value="${k.num_interne||''}">
+          <input id="ek-num" type="text" class="fi" value="${esc(k.num_interne||'')}">
         </div>
       </div>
       <div class="fg"><label class="fl">Localisation</label>
-        <input id="ek-loc" type="text" class="fi" value="${k.localisation||''}">
+        <input id="ek-loc" type="text" class="fi" value="${esc(k.localisation||'')}">
       </div>
       <div class="fg"><label class="fl">Notes</label>
-        <input id="ek-notes" type="text" class="fi" value="${k.notes||''}">
+        <input id="ek-notes" type="text" class="fi" value="${esc(k.notes||'')}">
       </div>
     </div>
     <div class="mf">
@@ -9936,7 +9960,7 @@ async function modalModifierDevis(idx){
   <div class="fg"><label class="fl">Statut</label><select id="dv-st" class="fi">${opts}</select></div>
   ${preRef?`<div style="font-size:11px;color:var(--t3);margin-bottom:4px">Prestation : <span style="color:var(--acc);cursor:pointer;text-decoration:underline" onclick="closeModal();setTimeout(()=>modalDetailById('${preId}'),150)">${preRef} ›</span></div>`:''}
   ${dvEditorHTML(tva,remise)}
-  <div class="fg" style="margin-top:6px"><label class="fl">Notes / Conditions</label><textarea id="dv-no" class="fi" rows="2">${full.notes||''}</textarea></div>
+  <div class="fg" style="margin-top:6px"><label class="fl">Notes / Conditions</label><textarea id="dv-no" class="fi" rows="2">${esc(full.notes||'')}</textarea></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
     <div class="fg"><label class="fl">Date d'envoi</label><input type="date" id="dv-env2" class="fi" value="${full.date_envoi||''}"></div>
     <div class="fg"><label class="fl">Validité (jours)</label><input type="number" id="dv-validite" class="fi" value="${full.validite_jours||30}"></div>
@@ -10098,7 +10122,7 @@ async function imprimerDevis(id){
     <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:17px;font-weight:800;color:#1a1a2e;border-top:2px solid #1a1a2e;margin-top:4px"><span>TOTAL TTC</span><span style="color:#366BFF">${fmt(d.total_ttc||0)}</span></div>
   </div>
 </div>
-${d.notes?`<div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:28px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Notes & conditions</div><div style="font-size:12.5px;color:#555E73;line-height:1.7">${d.notes}</div></div>`:''}
+${d.notes?`<div style="background:#F5F7FF;border-radius:10px;padding:16px 20px;margin-bottom:28px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8891A8;margin-bottom:8px">Notes & conditions</div><div style="font-size:12.5px;color:#555E73;line-height:1.7">${esc(d.notes)}</div></div>`:''}
 <div style="border-top:1px solid #E8EBF4;padding-top:20px;display:flex;justify-content:space-between;align-items:flex-end">
   <div style="font-size:11px;color:#8891A8;line-height:1.6;max-width:380px">Devis valable ${d.validite_jours||30} jours à compter de sa date d'émission.<br>Pour accepter, retourner un exemplaire signé avec la mention "Bon pour accord".</div>
   <div style="text-align:right">
@@ -13260,15 +13284,22 @@ async function enrollForm(id){
   try{
     let insId=_formInscIds[id];
     if(!insId){
-      try{
-        const r=await sbFetch('formation_inscriptions',{method:'POST',body:{
-          formation_id:id,collaborateur_id:uid,statut:'en_cours',
-          enrolled_at:new Date().toISOString(),
-        }});
+      // sbFetch ne lève jamais d'exception sur un conflit PostgREST (contrainte
+      // unique(formation_id,collaborateur_id) déjà inscrit) — elle renvoie un
+      // objet {code:'23505',...}, jamais une exception JS. Le try/catch seul ne
+      // pouvait donc jamais déclencher la récupération de l'inscription
+      // existante ci-dessous ; insId restait indéfiniment undefined et la
+      // progression (leçons, quiz) ne se sauvegardait plus pour ce collaborateur
+      // tant que le cache _formInscIds n'était pas repeuplé par un rechargement.
+      const r=await sbFetch('formation_inscriptions',{method:'POST',body:{
+        formation_id:id,collaborateur_id:uid,statut:'en_cours',
+        enrolled_at:new Date().toISOString(),
+      }}).catch(()=>({code:'network_error'}));
+      if(!sbErr(r)){
         const ins=Array.isArray(r)?r[0]:r;
         if(ins?.id){insId=ins.id;_formInscIds[id]=ins.id;}
-      }catch(e){
-        // Déjà inscrit — récupérer l'existant
+      }else{
+        // Déjà inscrit (ou échec réseau) — récupérer l'inscription existante
         const ex=await sbFetch('formation_inscriptions?formation_id=eq.'+id+'&collaborateur_id=eq.'+uid+'&limit=1').catch(()=>[]);
         if(ex?.[0]?.id){insId=ex[0].id;_formInscIds[id]=ex[0].id;}
       }
@@ -14016,7 +14047,7 @@ function modalCreerSession(){
         <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Formateur</div>
           <select id="ns-formateur" style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px">
             <option value="">Sélectionner…</option>
-            ${profs.map(p=>`<option value="${p.id}">${p.prenom} ${p.nom}</option>`).join('')}
+            ${profs.map(p=>`<option value="${p.id}">${esc(p.prenom)} ${esc(p.nom)}</option>`).join('')}
           </select></div>
         <div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px">Capacité max</div>
           <input id="ns-capacite" type="number" value="20" style="width:100%;padding:10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t1);font-size:13px;box-sizing:border-box"></div>
