@@ -18,7 +18,10 @@ import { Toast, useToast } from "@/components/feedback/Toast";
 
 // /users — voir ACTIONS.md § 15 « Utilisateurs » (juste après Équipes dans le document) et
 // DATA_MODEL.md § Membership. Liste des membres avec rôle et statut, invitation. « Une
-// organisation a exactement un owner, non désactivable sans transfert. »
+// organisation a exactement un owner, non désactivable sans transfert. » — règle du design
+// jamais applicable ici : club_members.role (check constraint, migration-clubplus-v1.sql) n'a
+// pas de valeur 'owner', donc pas de mapping possible côté CLUB_ROLE_MAP (mappers.ts). Un club
+// n'a réellement que des admins (potentiellement plusieurs), pas un owner unique protégé.
 const ROLES_BY_ORG_TYPE: Record<OrgType, MembershipRole[]> = {
   club: ["admin", "president", "communication_manager", "secretary", "coach", "team_manager", "sponsor_manager", "treasurer", "board_member", "viewer", "external_cm"],
   academy: ["admin", "manager", "coach", "internal_cm", "staff", "viewer"],
@@ -136,7 +139,6 @@ export default function UsersPage() {
         ) : (
           users.map((user) => {
             const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase() || "?";
-            const isOwner = user.role === "owner";
             // Se désactiver soi-même coupe l'accès RLS à tout le club côté club_members
             // (is_club_member/is_club_admin exigent status='actif') sans porte de sortie en
             // libre-service — un membre ne peut alors être réactivé que par un autre admin déjà
@@ -165,7 +167,7 @@ export default function UsersPage() {
                 {isSelf ? (
                   <span className="w-[92px] flex-none text-center text-[11.5px] font-semibold text-text-faint">Vous</span>
                 ) : (
-                  isAdmin && !isOwner && (
+                  isAdmin && (
                     <Button
                       variant="secondary"
                       className="h-8 flex-none px-3 text-[12px]"
