@@ -334,6 +334,7 @@ section{position:relative}
 .cookie-switch input:checked + .track{background:var(--cyan)}
 .cookie-switch input:checked ~ .dot{transform:translateX(17px)}
 .cookie-switch input:disabled + .track{opacity:.5}
+.cookie-switch input:focus-visible + .track{box-shadow:0 0 0 3px var(--cyan)}
 .cookie-panel-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
 @media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}.cookie-cat{flex-wrap:wrap}}
 
@@ -521,7 +522,7 @@ section{position:relative}
         </ul>
       </div>
       <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/coulisses-photographe.jpg) center/cover no-repeat">
-        <div class="gcard"><div class="k">Réservation</div><div class="v">Confirmée immédiatement</div><div class="sub">Carte ou espèces, sans engagement</div></div>
+        <div class="gcard"><div class="k">Réservation</div><div class="v">Référence immédiate</div><div class="sub">Confirmation sous 24h · Carte ou espèces</div></div>
       </div>
     </div>
   </div>

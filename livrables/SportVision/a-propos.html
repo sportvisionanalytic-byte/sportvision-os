@@ -269,6 +269,7 @@ section{position:relative}
 .cookie-switch input:checked + .track{background:var(--cyan)}
 .cookie-switch input:checked ~ .dot{transform:translateX(17px)}
 .cookie-switch input:disabled + .track{opacity:.5}
+.cookie-switch input:focus-visible + .track{box-shadow:0 0 0 3px var(--cyan)}
 .cookie-panel-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
 @media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}.cookie-cat{flex-wrap:wrap}}
 .nav-item{position:relative}

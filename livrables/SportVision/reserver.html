@@ -190,6 +190,7 @@ section{position:relative}
 .cookie-switch input:checked + .track{background:var(--cyan)}
 .cookie-switch input:checked ~ .dot{transform:translateX(17px)}
 .cookie-switch input:disabled + .track{opacity:.5}
+.cookie-switch input:focus-visible + .track{box-shadow:0 0 0 3px var(--cyan)}
 .cookie-panel-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
 @media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}.cookie-cat{flex-wrap:wrap}}
 
@@ -307,7 +308,7 @@ section{position:relative}
   <div class="container">
     <a href="index.html" class="back-link">← Retour à l'accueil</a>
     <h1>Réservez votre prestation</h1>
-    <p>Quatre étapes, deux minutes. Votre réservation est confirmée immédiatement, avec une référence à l'appui.</p>
+    <p>Quatre étapes, deux minutes. Votre demande est enregistrée immédiatement, avec une référence à l'appui.</p>
   </div>
 </section>
 
@@ -411,7 +412,7 @@ section{position:relative}
             </div>
             <div class="sv-field" id="paiement-field">
               <label>Comment souhaitez-vous régler ?</label>
-              <p class="sub" style="margin:4px 0 10px;font-size:12.5px">Dans les deux cas, votre réservation est confirmée immédiatement.</p>
+              <p class="sub" style="margin:4px 0 10px;font-size:12.5px">Dans les deux cas, votre demande est enregistrée immédiatement ; la disponibilité est confirmée sous 24h.</p>
               <div class="options-grid" style="grid-template-columns:1fr 1fr">
                 <label class="opt-check"><input type="radio" name="solde-mode" value="carte" checked> Carte bancaire — paiement immédiat en ligne</label>
                 <label class="opt-check"><input type="radio" name="solde-mode" value="especes"> Espèces — réglé sur place le jour J</label>
@@ -422,6 +423,9 @@ section{position:relative}
             </div>
             <div class="sv-field" id="devis-field" style="display:none">
               <p class="sub" style="margin:4px 0 0;font-size:12.5px">Cette prestation est sur devis : aucun paiement n'est demandé à cette étape. Notre équipe revient vers vous rapidement avec un devis personnalisé.</p>
+            </div>
+            <div class="sv-field" id="cgv-field" style="margin-top:10px">
+              <label class="opt-check" style="align-items:flex-start"><input type="checkbox" id="bk-cgv" required style="margin-top:3px"> <span>J'ai lu et j'accepte les <a href="cgv.html" target="_blank" style="color:var(--blue);font-weight:700">Conditions Générales de Vente</a>.</span></label>
             </div>
             <div class="sv-err" id="booking-err"></div>
             <div class="booking-nav">
@@ -802,6 +806,10 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     errEl.textContent = 'Prénom, nom et e-mail sont obligatoires.';
     return;
   }
+  if (!document.getElementById('bk-cgv').checked){
+    errEl.textContent = "Merci d'accepter les Conditions Générales de Vente pour envoyer votre demande.";
+    return;
+  }
   if (soldeMode === 'carte' && !document.getElementById('bk-retractation').checked){
     errEl.textContent = 'Merci de cocher la case de renoncement au droit de rétractation pour payer en ligne, ou choisissez le règlement en espèces sur place.';
     return;
@@ -827,6 +835,8 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     commentaire: commentaireComplet || null,
     site_web: siteWeb,
     mode_paiement_choisi: soldeMode,
+    cgv_acceptee: document.getElementById('bk-cgv').checked,
+    cgv_acceptee_le: new Date().toISOString(),
     retractation_renoncee: soldeMode === 'carte' ? document.getElementById('bk-retractation').checked : undefined,
   };
 
@@ -843,13 +853,18 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
       return;
     }
 
-    // La réservation est confirmée dans tous les cas dès cet instant — le
-    // choix "carte" propose juste un paiement immédiat en plus, jamais une
-    // condition à la confirmation. Uniquement pour les offres à tarif fixe
-    // (sur devis, le prix n'est pas encore connu). Si l'appel échoue pour
-    // une raison technique (fonction pas encore déployée, réseau...), on ne
-    // bloque jamais une demande par ailleurs valide : elle reste enregistrée
-    // et l'équipe SportVision revient vers le client pour l'encaissement.
+    // La demande est enregistrée dans tous les cas dès cet instant, avec sa
+    // référence (CGV art. 6.3 : l'enregistrement n'emporte pas confirmation
+    // automatique de disponibilité). Le choix "carte" propose juste un
+    // paiement immédiat en plus : si ce paiement aboutit, il vaut engagement
+    // financier réel et la réservation peut être annoncée comme confirmée
+    // (cf. handlePaiementRetour) ; sinon (espèces ou paiement non finalisé),
+    // l'équipe SportVision confirme la disponibilité sous 24h. Uniquement
+    // pour les offres à tarif fixe (sur devis, le prix n'est pas encore
+    // connu). Si l'appel échoue pour une raison technique (fonction pas
+    // encore déployée, réseau...), on ne bloque jamais une demande par
+    // ailleurs valide : elle reste enregistrée et l'équipe SportVision
+    // revient vers le client pour l'encaissement.
     if (soldeMode === 'carte' && data.prestation_id && OFFRES_PRIX_FIXE.has(state.slug)){
       try{
         btn.textContent = 'Redirection…';
@@ -912,9 +927,13 @@ function showConfirmation(data, email){
 
 // ── Retour depuis Stripe (paiement carte immédiat) : reserver.html sert
 //    lui-même de success_url/cancel_url (flux 100% anonyme, pas de compte
-//    Connect à ce stade) — cf. create-guest-payment-checkout. La réservation
+//    Connect à ce stade) — cf. create-guest-payment-checkout. La demande
 //    est déjà enregistrée avant ce retour, quel que soit le résultat du
-//    paiement : payer par carte n'est qu'une option, jamais une condition. ──
+//    paiement. Un paiement carte réussi vaut engagement financier réel : on
+//    peut alors parler de réservation confirmée. En l'absence de paiement
+//    abouti, seule la demande est enregistrée — la disponibilité reste à
+//    confirmer par l'équipe (CGV art. 6.3), on ne doit donc pas afficher
+//    "confirmée" dans ce cas. ──
 (function handlePaiementRetour(){
   const params = new URLSearchParams(location.search);
   const paiement = params.get('paiement');
@@ -933,8 +952,8 @@ function showConfirmation(data, email){
     document.getElementById('ok-message').textContent = 'Référence : ' + reference + '. Votre paiement a bien été reçu, votre réservation est confirmée. Notre équipe revient vers vous pour les derniers détails.';
     sessionStorage.removeItem('sv-reserver-pending');
   } else if (paiement === 'annule'){
-    document.getElementById('ok-title').textContent = 'Réservation confirmée';
-    document.getElementById('ok-message').innerHTML = 'Référence : ' + reference + '. Votre réservation est bien confirmée, même si le paiement par carte n\'a pas été finalisé. Vous pouvez <button type="button" class="btn-link" id="retry-paiement-btn" style="color:var(--blue);text-decoration:underline">réessayer de payer en ligne</button>, ou régler en espèces sur place le jour J.';
+    document.getElementById('ok-title').textContent = 'Demande bien reçue';
+    document.getElementById('ok-message').innerHTML = 'Référence : ' + reference + '. Le paiement par carte n\'a pas été finalisé, mais votre demande est bien enregistrée. Notre équipe revient vers vous sous 24h pour confirmer la disponibilité. Vous pouvez <button type="button" class="btn-link" id="retry-paiement-btn" style="color:var(--blue);text-decoration:underline">réessayer de payer en ligne</button>, ou régler en espèces sur place le jour J.';
     const retryBtn = document.getElementById('retry-paiement-btn');
     if (retryBtn && pending.prestation_id && pending.email){
       retryBtn.addEventListener('click', async () => {
