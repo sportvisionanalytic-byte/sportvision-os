@@ -3,33 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mentions légales — SportVision</title>
-<meta name="description" content="Mentions légales du site SportVision (ELKANA GROUP, SASU) — Version finale V1.0 du 9 août 2026 : éditeur, directeur de publication, hébergement Netlify, propriété intellectuelle, médiation CM2C.">
+<title>Rétractation — SportVision</title>
+<meta name="description" content="Exercez votre droit de rétractation SportVision en ligne : délai de 14 jours, formulaire de déclaration, accusé de réception immédiat, ou modèle à envoyer par courrier.">
 <meta name="robots" content="index, follow">
-<link rel="canonical" href="https://sportvision-an.fr/mentions-legales">
+<link rel="canonical" href="https://sportvision-an.fr/retractation">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SportVision">
-<meta property="og:url" content="https://sportvision-an.fr/mentions-legales">
-<meta property="og:title" content="Mentions légales — SportVision">
-<meta property="og:description" content="Mentions légales du site SportVision (ELKANA GROUP, SASU) — Version finale V1.0 du 9 août 2026 : éditeur, directeur de publication, hébergement Netlify, propriété intellectuelle, médiation CM2C.">
+<meta property="og:url" content="https://sportvision-an.fr/retractation">
+<meta property="og:title" content="Rétractation — SportVision">
+<meta property="og:description" content="Exercez votre droit de rétractation SportVision en ligne : délai de 14 jours, formulaire de déclaration, accusé de réception immédiat, ou modèle à envoyer par courrier.">
 <meta property="og:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Mentions légales — SportVision">
-<meta name="twitter:description" content="Mentions légales du site SportVision (ELKANA GROUP, SASU) — Version finale V1.0 du 9 août 2026 : éditeur, directeur de publication, hébergement Netlify, propriété intellectuelle, médiation CM2C.">
+<meta name="twitter:title" content="Rétractation — SportVision">
+<meta name="twitter:description" content="Exercez votre droit de rétractation SportVision en ligne : délai de 14 jours, formulaire de déclaration, accusé de réception immédiat, ou modèle à envoyer par courrier.">
 <meta name="twitter:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
-   SportVision — page légale. Reprend le design system de la
-   page d'accueil (livrables/SportVision/index.html) : mêmes
-   variables, mêmes classes de header/footer/boutons. Contenu
-   sobre en colonne unique, sans hero ni animation.
-   Vanilla HTML/CSS, aucun framework, aucune étape de build.
+   SportVision — page légale « Rétractation ». Structure (header/
+   footer/CMP/variables) copiée à l'identique de cgv.html — voir
+   ce fichier pour la référence de style. Complétée en bas par les
+   classes de formulaire (.sv-field/.sv-honeypot/.sv-err/.sv-ok/
+   .toast), copiées à l'identique de demande-de-devis.html, seule
+   autre page du site avec un vrai formulaire public sans compte.
+   Vanilla HTML/CSS/JS, aucun framework, aucune étape de build.
    ============================================================ */
 :root{
   --navy-900:#070A17; --navy-800:#10162F;
@@ -61,6 +63,9 @@ section{position:relative}
 .btn-grad:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(101,60,255,.45)}
 .btn-ghost-dark{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.22)}
 .btn-ghost-dark:hover{background:rgba(255,255,255,.16)}
+.btn-ghost-light{background:transparent;color:var(--navy-900);border:1px solid #e4e7ef}
+.btn-ghost-light:hover{border-color:var(--blue)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none !important}
 
 /* ── Header ── */
 .site-header{position:fixed;top:0;left:0;right:0;z-index:1000;padding:16px 0;transition:background .25s ease, box-shadow .25s ease, padding .25s ease;background:rgba(7,10,23,.86);backdrop-filter:blur(14px);box-shadow:0 1px 0 rgba(255,255,255,.06)}
@@ -96,13 +101,6 @@ section{position:relative}
 .legal-body li{margin-bottom:6px}
 .legal-body a{color:var(--blue);text-decoration:underline}
 .legal-body strong{color:var(--navy-900)}
-.legal-body ol{margin:0 0 14px;padding-left:20px;color:#374151;font-size:15.5px;line-height:1.75}
-.legal-table-wrap{overflow-x:auto;margin:0 0 20px}
-.legal-body table{width:100%;border-collapse:collapse;font-size:14.5px;line-height:1.6;min-width:480px}
-.legal-body th,.legal-body td{border:1px solid #e4e7ef;padding:10px 14px;text-align:left;vertical-align:top}
-.legal-body thead th{background:var(--bg-light);color:var(--navy-900);font-weight:700;font-family:var(--font-head);font-size:13.5px}
-.legal-body tbody td{color:#374151}
-.legal-body tbody tr:nth-child(even) td{background:#fafbfd}
 
 /* ── Footer ── */
 .site-footer{background:var(--navy-900);color:rgba(255,255,255,.6);padding:70px 0 30px;border-top:1px solid rgba(255,255,255,.06)}
@@ -168,6 +166,33 @@ section{position:relative}
 .mobile-nav-group[open] summary::after{content:'\2013'}
 .mobile-nav-group .sub-links{display:flex;flex-direction:column;padding:0 4px 14px 12px}
 .mobile-nav-group .sub-links a{font-size:15px;font-weight:600;padding:9px 0;color:rgba(255,255,255,.68)}
+
+/* ── Résumé légal (encart clé : délai, article, renonciation) ── */
+.retract-summary{background:var(--bg-light);border:1px solid #e4e7ef;border-radius:var(--radius-lg);padding:26px 28px;margin:8px 0 40px}
+.retract-summary ul{margin:0;padding-left:20px;color:#374151;font-size:15px;line-height:1.75}
+.retract-summary li{margin-bottom:8px}
+.retract-summary li:last-child{margin-bottom:0}
+
+/* ── Formulaire de rétractation (mêmes classes que demande-de-devis.html) ── */
+.retract-card{background:#fff;border:1px solid #e9ecf5;border-radius:var(--radius-lg);padding:32px;box-shadow:0 10px 30px rgba(7,10,23,.06)}
+.sv-field{margin-top:16px}
+.sv-field:first-of-type{margin-top:0}
+.sv-field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:#374151}
+.sv-field input,.sv-field select,.sv-field textarea{width:100%;padding:11px 12px;border:1px solid #e4e7ef;border-radius:10px;font-size:14.5px;font-family:inherit;box-sizing:border-box}
+.sv-field input:focus,.sv-field select:focus,.sv-field textarea:focus{outline:2px solid var(--blue);outline-offset:1px}
+.sv-field .hint{display:block;font-size:12px;color:#8891A8;margin-top:5px;font-weight:500}
+.sv-honeypot{position:absolute;left:-9999px;opacity:0}
+.sv-err{color:#e14b4b;font-size:13px;margin-top:10px;min-height:16px}
+.sv-ok{text-align:center;padding:10px 0}
+.sv-ok .check{width:56px;height:56px;border-radius:50%;background:rgba(18,183,106,.12);border:1px solid rgba(18,183,106,.35);color:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px}
+.opt-check{display:flex;align-items:flex-start;gap:10px;border:1.5px solid #e4e7ef;border-radius:12px;padding:14px 16px;cursor:pointer;font-size:13.5px;font-weight:600;color:#374151;margin-top:20px}
+.opt-check input{width:16px;height:16px;flex-shrink:0;margin-top:2px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy-900);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:opacity .2s;z-index:3000}
+.toast.on{opacity:1}
+
+/* ── Bloc courrier / modèle Annexe 1 ── */
+.retract-annexe{background:var(--bg-light);border:1px solid #e4e7ef;border-radius:var(--radius-lg);padding:26px 28px;margin-top:14px}
+.retract-annexe pre{white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:13.5px;line-height:1.8;color:#374151;background:#fff;border:1px solid #e4e7ef;border-radius:10px;padding:18px 20px;margin:16px 0}
 </style>
 </head>
 <body>
@@ -256,124 +281,113 @@ section{position:relative}
   <div class="legal-wrap">
 
     <div class="legal-title">
-      <span class="legal-eyebrow">Informations légales</span>
-      <h1>Mentions légales</h1>
-      <p class="legal-updated">Version V1.0 — 9 août 2026. Applicable au site https://sportvision-an.fr, édité par ELKANA GROUP (marque SportVision).</p>
+      <span class="legal-eyebrow">Droit des consommateurs</span>
+      <h1>Exercer votre droit de rétractation</h1>
+      <p class="legal-updated">Cette page vous permet de notifier votre rétractation en ligne, gratuitement, en quelques minutes — conformément à l'article 36 des CGV.</p>
     </div>
 
     <div class="legal-body">
 
-<h2>1. Éditeur du site</h2>
+      <h2>Ce que dit la loi, en résumé</h2>
+      <div class="retract-summary">
+        <ul>
+          <li>Si vous êtes un <strong>consommateur</strong> (particulier, en dehors de toute activité professionnelle) et que vous avez commandé une prestation SportVision <strong>à distance</strong>, vous disposez en principe d'un délai de <strong>14 jours</strong> à compter de la conclusion du contrat pour vous rétracter, <strong>sans avoir à motiver votre décision</strong>.</li>
+          <li>Si vous avez demandé que la prestation démarre avant la fin de ce délai (case de renonciation cochée au moment de la commande), vous pouvez rester redevable d'un montant proportionnel au service déjà fourni jusqu'à votre déclaration de rétractation.</li>
+          <li>Une fois la prestation <strong>entièrement exécutée</strong> avec votre accord exprès préalable, le droit de rétractation ne peut plus être exercé.</li>
+          <li>Le détail complet de ces règles figure à l'<a href="cgv.html#article-35">article 35 des CGV</a> — cette page n'en est qu'un résumé factuel, le texte des CGV fait foi en cas de différence.</li>
+        </ul>
+      </div>
 
-<p>Le site internet https://sportvision-an.fr est édité par ELKANA GROUP, qui exploite la marque SportVision.</p>
+      <h2>Exercer votre rétractation en ligne</h2>
+      <p>
+        Renseignez les informations ci-dessous puis validez avec le bouton <strong>« Confirmer la rétractation »</strong>.
+        Un accusé de réception vous sera envoyé par e-mail dès que votre demande sera enregistrée. Notre équipe
+        l'examine ensuite et revient vers vous sous 48 heures ouvrées.
+      </p>
 
-<div class="legal-table-wrap"><table>
-<thead><tr><th>Champ</th><th>Valeur</th></tr></thead>
-<tbody>
-<tr><td>Dénomination sociale</td><td>ELKANA GROUP</td></tr>
-<tr><td>Forme juridique</td><td>SASU - Société par actions simplifiée unipersonnelle</td></tr>
-<tr><td>Capital social</td><td>1,00 €</td></tr>
-<tr><td>SIREN</td><td>105 173 124</td></tr>
-<tr><td>SIRET du siège</td><td>105 173 124 00014</td></tr>
-<tr><td>TVA intracommunautaire</td><td>FR15 105 173 124</td></tr>
-<tr><td>Immatriculation</td><td>Registre National des Entreprises (RNE) - 17/06/2026</td></tr>
-<tr><td>Code APE</td><td>74.20Z - Activités photographiques</td></tr>
-<tr><td>Siège social</td><td>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne, France</td></tr>
-<tr><td>E-mail</td><td>elkanagroup0@gmail.com</td></tr>
-<tr><td>Téléphone</td><td>07 68 84 24 50</td></tr>
-</tbody></table></div>
+      <div class="retract-card">
+        <div id="retract-form-wrap">
+          <form id="retract-form" novalidate>
+            <div class="sv-honeypot" aria-hidden="true">
+              <label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label>
+            </div>
+            <div class="sv-field"><label for="rt-prenom">Prénom</label><input id="rt-prenom" name="prenom" type="text" required autocomplete="given-name"></div>
+            <div class="sv-field"><label for="rt-nom">Nom</label><input id="rt-nom" name="nom" type="text" required autocomplete="family-name"></div>
+            <div class="sv-field">
+              <label for="rt-email">E-mail utilisé lors de votre commande</label>
+              <input id="rt-email" name="email" type="email" required autocomplete="email">
+              <span class="hint">C'est cette adresse qui nous permet de retrouver votre commande.</span>
+            </div>
+            <div class="sv-field">
+              <label for="rt-reference">Référence de commande ou de devis (si vous l'avez)</label>
+              <input id="rt-reference" name="reference" type="text" placeholder="Ex. SV-2026-0001 ou DEV-2026-0001" autocomplete="off">
+              <span class="hint">Facultatif, mais nous permet de traiter votre demande plus vite. Cette référence figure sur votre confirmation de commande ou votre devis.</span>
+            </div>
+            <div class="sv-field">
+              <label for="rt-motif">Motif (facultatif — vous n'êtes pas obligé de justifier votre choix)</label>
+              <textarea id="rt-motif" name="motif" rows="4"></textarea>
+            </div>
+            <label class="opt-check">
+              <input type="checkbox" id="rt-confirm" required>
+              <span>Je notifie par la présente ma rétractation de la prestation ou du contrat commandé auprès de SportVision (ELKANA GROUP), conformément à l'article 35 des CGV.</span>
+            </label>
+            <div class="sv-err" id="retract-err" role="alert" aria-live="assertive"></div>
+            <button type="submit" class="btn btn-grad" style="width:100%;margin-top:18px" id="retract-submit">Confirmer la rétractation</button>
+          </form>
+        </div>
+        <div id="retract-ok-wrap" style="display:none" role="status" aria-live="polite">
+          <div class="sv-ok">
+            <div class="check">✓</div>
+            <h3 tabindex="-1" id="retract-ok-title">Rétractation transmise</h3>
+            <p class="sub">
+              Nous avons bien reçu votre déclaration de rétractation. Un accusé de réception vient de vous être
+              envoyé par e-mail. Notre équipe l'examine et revient vers vous sous 48 heures ouvrées, conformément
+              à l'article 35 des CGV.
+            </p>
+            <p class="sub" style="margin-top:10px;font-size:12.5px;color:#8891A8">Identifiant de votre demande : <b id="retract-demande-id"></b></p>
+            <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+              <a href="index.html" class="btn btn-grad" style="flex:1">Retour à l'accueil</a>
+              <a href="cgv.html" class="btn btn-ghost-light" style="flex:1">Relire les CGV</a>
+            </div>
+          </div>
+        </div>
+      </div>
 
-<p>ELKANA GROUP exerce notamment des activités de photographie, vidéo, production audiovisuelle, création de contenus, communication digitale, gestion des réseaux sociaux, création graphique et prestations associées au secteur sportif.</p>
+      <h2>Vous préférez nous écrire ?</h2>
+      <p>
+        L'utilisation du formulaire ci-dessus n'est pas obligatoire. Vous pouvez également notifier votre
+        rétractation par toute déclaration dénuée d'ambiguïté, par e-mail ou par courrier, à :
+      </p>
+      <ul>
+        <li>ELKANA GROUP — SportVision</li>
+        <li>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne, France</li>
+        <li>E-mail : <a href="mailto:elkanagroup0@gmail.com">elkanagroup0@gmail.com</a></li>
+        <li>Téléphone : 07 68 84 24 50</li>
+      </ul>
+      <p>
+        Le modèle de formulaire ci-dessous (Annexe 1 des CGV) peut être utilisé pour cela, mais son usage n'est pas
+        obligatoire — une lettre ou un e-mail rédigé avec vos propres mots est tout aussi valable.
+      </p>
+      <div class="retract-annexe">
+        <strong>Modèle de formulaire de rétractation (Annexe 1 des CGV)</strong>
+        <pre id="annexe-text">À l'attention de :
+ELKANA GROUP - SportVision
+4 Place Pierre Semard, 77130 Montereau-Fault-Yonne, France
+E-mail : elkanagroup0@gmail.com
+Téléphone : 07 68 84 24 50
 
-<h2>2. Directeur de la publication</h2>
+Je / Nous (*) vous notifie / notifions (*) par la présente ma / notre (*) rétractation du contrat portant sur la prestation de services ci-dessous :
 
-<p>Le directeur de la publication est Monsieur Christian Rostel FOUKA, en qualité de Président de ELKANA GROUP.</p>
+- Prestation / référence : ______________________
+- Commandée / contrat conclu le : ______________________
+- Nom du / des consommateur(s) : ______________________
+- Adresse du / des consommateur(s) : ______________________
+- Date : ______________________
+- Signature du / des consommateur(s) (uniquement en cas de notification sur papier) : ______________________
 
-<h2>3. Hébergement</h2>
-
-<p>Le site est hébergé par :</p>
-
-<ul><li>Netlify, Inc.</li><li>101 2nd Street, Suite 575, San Francisco, California 94105, États-Unis</li><li>Téléphone : +1 650 963 4977</li><li>Contact : support@netlify.com</li><li>Site : https://www.netlify.com/</li></ul>
-
-<p>L'hébergeur assure l'infrastructure technique permettant la mise à disposition du site sur internet.</p>
-
-<h2>4. Propriété intellectuelle</h2>
-
-<p>Sauf mention contraire, la structure du site, son identité visuelle, ses textes, graphismes, logos, icônes, créations, photographies, vidéos, montages, documents et autres contenus produits par SportVision sont protégés par les règles applicables à la propriété intellectuelle.</p>
-
-<p>Toute reproduction, représentation, adaptation, diffusion, extraction ou réutilisation substantielle de tout ou partie des éléments protégés du site, par quelque procédé que ce soit, nécessite l'autorisation préalable du titulaire des droits, sauf exception prévue par la loi.</p>
-
-<p>Certains contenus peuvent appartenir à des clients, partenaires, clubs, photographes, vidéastes, prestataires ou autres tiers, ou être utilisés avec leur autorisation. Ces contenus restent soumis aux droits de leurs titulaires respectifs.</p>
-
-<p>La marque, le nom commercial, les signes distinctifs et le logo SportVision ne peuvent être utilisés de manière susceptible de créer une confusion sur l'origine d'un service, d'une offre ou d'un contenu.</p>
-
-<h2>5. Photographies, vidéos et droit à l'image</h2>
-
-<p>Les photographies et vidéos diffusées sur le site sont publiées dans le respect des droits détenus par SportVision et, lorsque cela est requis, des autorisations relatives aux personnes représentées.</p>
-
-<p>Toute demande légitime concernant l'utilisation ou le retrait d'une image peut être adressée à elkanagroup0@gmail.com en précisant l'URL ou le contenu concerné et les informations permettant de traiter la demande.</p>
-
-<p>Les règles détaillées relatives aux prestations, à l'utilisation des livrables et aux droits accordés aux clients figurent dans les Conditions Générales de Vente de SportVision.</p>
-
-<h2>6. Informations publiées et responsabilité</h2>
-
-<p>SportVision s'efforce de fournir sur le site des informations exactes, claires et à jour. Les informations commerciales, tarifs, disponibilités, fonctionnalités ou délais peuvent toutefois évoluer.</p>
-
-<p>Lorsque le site présente une prestation nécessitant une vérification de disponibilité, l'envoi d'une demande ne constitue pas à lui seul une garantie de disponibilité. Les conditions contractuelles applicables sont celles communiquées et acceptées au moment de la commande.</p>
-
-<p>SportVision ne saurait être tenu responsable d'une indisponibilité temporaire du site résultant notamment d'une opération de maintenance, d'un incident technique, d'un cas de force majeure, d'une défaillance d'un prestataire tiers ou d'une cause extérieure raisonnablement indépendante de son contrôle, sans préjudice des obligations légales qui lui incombent.</p>
-
-<h2>7. Liens externes</h2>
-
-<p>Le site peut contenir des liens vers des sites ou services de tiers. Ces liens sont fournis pour faciliter l'accès à certaines informations ou fonctionnalités. SportVision ne contrôle pas nécessairement le contenu, la disponibilité, les pratiques ou les politiques de ces sites tiers.</p>
-
-<p>L'existence d'un lien vers un site tiers n'implique pas, sauf mention expresse, une validation ou une recommandation de l'ensemble de son contenu par SportVision.</p>
-
-<h2>8. Données personnelles et cookies</h2>
-
-<p>Les traitements de données personnelles réalisés par SportVision sont décrits dans une <a href="confidentialite.html">Politique de confidentialité</a> distincte, accessible depuis le site.</p>
-
-<p>Cette politique précise notamment les finalités des traitements, leurs bases légales, les catégories de données traitées, leurs destinataires, les durées de conservation, les éventuels transferts hors de l'Union européenne et les droits des personnes.</p>
-
-<p>Lorsque des cookies ou traceurs nécessitent un consentement, celui-ci est recueilli selon les règles applicables. L'utilisateur peut modifier ses choix à partir de l'outil de gestion des cookies mis à disposition sur le site.</p>
-
-<p>Pour toute question relative aux données personnelles : elkanagroup0@gmail.com.</p>
-
-<h2>9. Conditions Générales de Vente</h2>
-
-<p>Les ventes et prestations SportVision sont régies par les <a href="cgv.html">Conditions Générales de Vente</a> applicables à la date de la commande, complétées le cas échéant par un devis, un bon de commande, un contrat ou des conditions particulières.</p>
-
-<p>Les CGV sont accessibles sur le site SportVision et précisent notamment les règles de commande, paiement, annulation, report, livraison, propriété intellectuelle, Club+, Full Communication, rétractation et règlement des litiges.</p>
-
-<h2>10. Rétractation des consommateurs</h2>
-
-<p>Lorsqu'un Client consommateur bénéficie légalement d'un <a href="retractation.html">droit de rétractation</a>, il peut l'exercer dans les conditions prévues par les CGV et la réglementation applicable.</p>
-
-<p>SportVision met à disposition la fonctionnalité de rétractation en ligne requise pour les contrats consommateurs concernés. Les modalités et le modèle de formulaire de rétractation figurent également dans les CGV.</p>
-
-<h2>11. Médiation de la consommation</h2>
-
-<p>Après une réclamation écrite préalable adressée à SportVision et restée sans solution satisfaisante, le Client consommateur peut recourir gratuitement au médiateur de la consommation désigné par ELKANA GROUP :</p>
-
-<ul><li>CM2C - Centre de la Médiation de la Consommation de Conciliateurs de Justice</li><li>49 Rue de Ponthieu, 75008 Paris, France</li><li>Téléphone : 01 89 47 00 14</li><li>Site : https://www.cm2c.net/</li></ul>
-
-<p>La médiation de la consommation est réservée aux litiges entrant dans son champ légal et suppose en principe une démarche préalable du consommateur auprès du professionnel.</p>
-
-<h2>12. Contact</h2>
-
-<p>Pour toute question concernant le site ou les présentes mentions légales :</p>
-
-<ul><li>E-mail : elkanagroup0@gmail.com</li><li>Téléphone : 07 68 84 24 50</li><li>Courrier : ELKANA GROUP - SportVision, 4 Place Pierre Semard, 77130 Montereau-Fault-Yonne, France</li></ul>
-
-<h2>13. Droit applicable</h2>
-
-<p>Le site et les présentes mentions légales sont soumis au droit français, sous réserve des dispositions impératives éventuellement applicables à l'utilisateur ou au Client.</p>
-
-<h2>14. Mise à jour</h2>
-
-<p>Dernière mise à jour des présentes mentions légales : 9 août 2026.</p>
-
-<p>SportVision peut mettre à jour ces informations afin de tenir compte d'une évolution de l'entreprise, de ses prestataires, du site ou de la réglementation applicable.</p>
+(*) Rayez la mention inutile.</pre>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="annexe-download">Télécharger le modèle (.txt)</button>
+      </div>
 
     </div>
   </div>
@@ -424,7 +438,7 @@ section{position:relative}
         <a href="cgv.html">CGV</a>
         <a href="confidentialite.html">Politique de confidentialité</a>
         <a href="cookies.html">Politique cookies</a>
-        <a href="retractation.html">Rétractation</a>
+        <a href="retractation.html" class="active">Rétractation</a>
         <a href="#" id="cookie-manage">Gérer mes cookies</a>
       </div>
       <div class="footer-social">
@@ -466,8 +480,19 @@ section{position:relative}
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
-/* ── Header solide (fixe, style identique en permanence sur ces pages sobres) ── */
+/* ============================================================
+   SportVision — page « Rétractation ». Vanilla JS, aucune
+   dépendance externe. Le seul appel réseau est l'envoi du
+   formulaire, vers l'edge function submit-retractation-demande
+   (SportVision-TV/supabase/functions/submit-retractation-demande),
+   même clé publique déjà utilisée par demande-de-devis.html.
+   ============================================================ */
+const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
+const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
+
 /* ── Menu mobile ── */
 const burger = document.getElementById('burger-btn');
 const mobileNav = document.getElementById('mobile-nav');
@@ -477,8 +502,90 @@ mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => m
 /* ── Année du footer ── */
 document.getElementById('sv-year').textContent = new Date().getFullYear();
 
+/* ── Formulaire de rétractation ──────────────────────────────
+   Règle du projet (README SportVision Connect, "Conventions pour
+   construire un nouveau module", points 8-9) : ne jamais afficher
+   un état de succès avant que l'écriture serveur soit confirmée,
+   ne jamais fabriquer une confirmation. L'état "retract-ok-wrap"
+   n'est donc affiché QUE dans le bloc `if (res.ok && !data.error)`
+   ci-dessous, jamais avant, jamais de manière optimiste. ── */
+function showRetractForm(){
+  document.getElementById('retract-form-wrap').style.display = '';
+  document.getElementById('retract-ok-wrap').style.display = 'none';
+  document.getElementById('retract-err').textContent = '';
+}
+function showRetractSuccess(demandeId){
+  document.getElementById('retract-form-wrap').style.display = 'none';
+  const okWrap = document.getElementById('retract-ok-wrap');
+  okWrap.style.display = '';
+  document.getElementById('retract-demande-id').textContent = demandeId || '—';
+  document.getElementById('retract-ok-title').focus();
+}
+
+document.getElementById('retract-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const errEl = document.getElementById('retract-err');
+  const btn = document.getElementById('retract-submit');
+  errEl.textContent = '';
+
+  const fd = new FormData(form);
+  const body = {
+    prenom: (fd.get('prenom') || '').toString().trim(),
+    nom: (fd.get('nom') || '').toString().trim(),
+    email: (fd.get('email') || '').toString().trim(),
+    reference: (fd.get('reference') || '').toString().trim() || null,
+    motif: (fd.get('motif') || '').toString().trim() || null,
+    site_web: fd.get('site_web'), // honeypot — doit rester vide
+  };
+
+  if (!body.prenom || !body.nom || !body.email){
+    errEl.textContent = 'Prénom, nom et e-mail sont obligatoires.';
+    return;
+  }
+  if (!document.getElementById('rt-confirm').checked){
+    errEl.textContent = 'Merci de confirmer votre déclaration de rétractation en cochant la case ci-dessus.';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    const res = await fetch(SB_URL + '/functions/v1/submit-retractation-demande', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error){
+      errEl.textContent = data.error || "Une erreur est survenue, réessayez dans un instant.";
+      return;
+    }
+    // Succès confirmé côté serveur uniquement : la ligne existe bien dans
+    // retractation_demandes (data.demande_id renvoyé par la fonction après
+    // l'insert réussi) — jamais affiché avant ce point.
+    showRetractSuccess(data.demande_id);
+  }catch(err){
+    errEl.textContent = "Impossible d'envoyer votre demande pour le moment. Réessayez dans un instant, ou écrivez-nous directement à elkanagroup0@gmail.com.";
+  }finally{
+    btn.disabled = false; btn.textContent = 'Confirmer la rétractation';
+  }
+});
+
+/* ── Téléchargement du modèle Annexe 1 (texte brut, aucune requête réseau) ── */
+document.getElementById('annexe-download').addEventListener('click', () => {
+  const text = document.getElementById('annexe-text').textContent;
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sportvision-modele-retractation.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
 /* ── Bandeau cookies (RGPD) ── */
-// ── Bandeau cookies (RGPD) ──
 const COOKIE_CONSENT_KEY = 'sv_cookie_consent_v2';
 const COOKIE_CONSENT_MAX_AGE_MS = 183 * 24 * 60 * 60 * 1000; // ~6 mois, cf. Politique cookies § 8
 const cookieBanner = document.getElementById('cookie-banner');
@@ -496,8 +603,6 @@ function readConsent(){
 function writeConsent(categories){
   localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify({ date: Date.now(), categories }));
 }
-// Exposé pour qu'un futur script tiers vérifie le consentement avant de se charger,
-// ex. if (window.svCookieConsent('marketing')) { ... }. Voir Politique cookies § 4.4.
 window.svCookieConsent = function(category){
   const c = readConsent();
   return !!(c && c.categories && c.categories[category]);
