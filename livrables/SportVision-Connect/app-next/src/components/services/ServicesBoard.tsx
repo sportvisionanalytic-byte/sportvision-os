@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { LayoutGrid, List, Sparkles } from "lucide-react";
+import { AlertTriangle, LayoutGrid, List, Sparkles } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { getServicesForOrganization } from "@/lib/mock/services";
 import { fetchClientServices } from "@/lib/data/projet/services";
@@ -28,11 +28,15 @@ export function ServicesBoard() {
   const [view, setView] = useState<ViewMode>("kanban");
   const isProjet = ctx.organization.type === "generic";
   const [realServices, setRealServices] = useState<Service[]>([]);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!isProjet) return;
+    setLoadError(false);
     const supabase = createClient();
-    fetchClientServices(supabase, ctx.organization.id).then(setRealServices);
+    fetchClientServices(supabase, ctx.organization.id)
+      .then(setRealServices)
+      .catch(() => setLoadError(true));
   }, [isProjet, ctx.organization.id]);
 
   const services = useMemo(
@@ -62,7 +66,19 @@ export function ServicesBoard() {
         </div>
       </div>
 
-      {services.length === 0 ? (
+      {isProjet && loadError ? (
+        <Card className="flex flex-col items-center gap-3 border-danger-fg/30 bg-danger-bg p-10 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-danger-bg text-danger-fg">
+            <AlertTriangle className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="text-[15px] font-extrabold tracking-tight text-danger-fg">
+            Impossible de charger vos prestations.
+          </div>
+          <p className="max-w-[380px] text-[13.5px] leading-relaxed text-text-soft">
+            Une erreur est survenue lors du chargement. Réessayez dans quelques instants.
+          </p>
+        </Card>
+      ) : services.length === 0 ? (
         <Card className="flex flex-col items-center gap-3 p-10 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-info-bg text-info-fg">
             <Sparkles className="h-5 w-5" aria-hidden />

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC, formatPaymentMethod } from "@/components/billing/format";
+import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE } from "@/components/contracts/format";
 import { contractsForOrganization, invoicesForOrganization, mockPaymentMethods } from "@/lib/mock/billing";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -18,7 +19,6 @@ import {
   fetchClientContracts,
   fetchClientDevis,
   fetchClientInvoices,
-  signContract,
   type ClientContract,
   type ClientDevis,
 } from "@/lib/data/projet/billing";
@@ -157,22 +157,31 @@ export default function BillingPage() {
 
 function ProjetBillingView() {
   const { ctx } = useSession();
-  const { toastMessage, showToast } = useToast();
+  const { toastMessage, toastTone, showToast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [devis, setDevis] = useState<ClientDevis[]>([]);
   const [contracts, setContracts] = useState<ClientContract[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [decidingDevisId, setDecidingDevisId] = useState<string | null>(null);
 
   async function reload() {
-    const supabase = createClient();
-    const [inv, dev, con] = await Promise.all([
-      fetchClientInvoices(supabase, ctx.organization.id),
-      fetchClientDevis(supabase, ctx.organization.id),
-      fetchClientContracts(supabase, ctx.organization.id),
-    ]);
-    setInvoices(inv);
-    setDevis(dev);
-    setContracts(con);
+    setLoadError(false);
+    try {
+      const supabase = createClient();
+      const [inv, dev, con] = await Promise.all([
+        fetchClientInvoices(supabase, ctx.organization.id),
+        fetchClientDevis(supabase, ctx.organization.id),
+        fetchClientContracts(supabase, ctx.organization.id),
+      ]);
+      setInvoices(inv);
+      setDevis(dev);
+      setContracts(con);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -180,38 +189,39 @@ function ProjetBillingView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx.organization.id]);
 
-  const pendingDevis = devis.find((d) => d.decidable);
-  const awaitingContract = contracts.find((c) => c.awaitingSignature);
+  const pendingDevisList = devis.filter((d) => d.decidable);
   const overdue = invoices.find((i) => i.status === "en_retard");
-  const upcoming = invoices.filter((i) => i.status === "a_payer").sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1))[0];
+  // "emise" seulement : les factures en_retard ont déjà leur propre carte ci-dessous, les
+  // reprendre ici doublonnerait le même montant sous deux étiquettes différentes.
+  const upcoming = invoices.filter((i) => i.status === "emise").sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1))[0];
 
-  async function handleDevisDecision(decision: "accepté" | "refusé") {
-    if (!pendingDevis) return;
-    setBusy(true);
+  async function handleDevisDecision(devisId: string, decision: "accepté" | "refusé") {
+    setDecidingDevisId(devisId);
     try {
       const supabase = createClient();
-      await decideDevis(supabase, pendingDevis.id, decision);
+      await decideDevis(supabase, devisId, decision);
       await reload();
     } catch {
-      showToast("Action impossible, réessayez.");
+      showToast("Action impossible, réessayez.", "error");
     } finally {
-      setBusy(false);
+      setDecidingDevisId(null);
     }
   }
 
-  async function handleSignContract() {
-    if (!awaitingContract) return;
-    const name = `${ctx.user.firstName} ${ctx.user.lastName}`.trim();
-    setBusy(true);
-    try {
-      const supabase = createClient();
-      await signContract(supabase, awaitingContract.id, name);
-      await reload();
-    } catch {
-      showToast("Signature impossible, réessayez.");
-    } finally {
-      setBusy(false);
-    }
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div>
+          <div className="text-[12px] font-bold text-text-soft">Facturation</div>
+          <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">
+            Devis, contrats et factures de {ctx.organization.name}
+          </h1>
+        </div>
+        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
+          <div className="text-[13.5px] font-bold text-text-soft">Chargement de vos informations…</div>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -223,30 +233,59 @@ function ProjetBillingView() {
         </h1>
       </div>
 
-      {pendingDevis && (
-        <Card className="flex flex-wrap items-center gap-3 border-brand-blue-pale/40 bg-info-bg px-5 py-4">
-          <FileText className="h-[18px] w-[18px] flex-none text-info-fg" aria-hidden />
-          <span className="min-w-0 flex-1 text-[13px] font-semibold text-info-fg">
-            Devis {pendingDevis.numero} · {formatEuroTTC(pendingDevis.totalTtc)} — en attente de votre décision.
+      {loadError && (
+        <Card className="flex flex-wrap items-center gap-3 border-danger-fg/30 bg-danger-bg px-5 py-4">
+          <AlertTriangle className="h-[18px] w-[18px] flex-none text-danger-fg" aria-hidden />
+          <span className="min-w-0 flex-1 text-[13px] font-semibold text-danger-fg">
+            Impossible de charger certaines de vos informations. Les montants ci-dessous peuvent être incomplets.
           </span>
-          <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" disabled={busy} onClick={() => handleDevisDecision("refusé")}>
-            Refuser
-          </Button>
-          <Button variant="primary" className="h-8 flex-none px-3 text-[12px]" disabled={busy} onClick={() => handleDevisDecision("accepté")}>
-            Accepter
+          <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={reload}>
+            Réessayer
           </Button>
         </Card>
       )}
 
-      {awaitingContract && (
-        <Card className="flex flex-wrap items-center gap-3 border-brand-blue-pale/40 bg-info-bg px-5 py-4">
+      {pendingDevisList.map((d) => (
+        <Card key={d.id} className="flex flex-wrap items-center gap-3 border-brand-blue-pale/40 bg-info-bg px-5 py-4">
           <FileText className="h-[18px] w-[18px] flex-none text-info-fg" aria-hidden />
           <span className="min-w-0 flex-1 text-[13px] font-semibold text-info-fg">
-            Contrat {awaitingContract.name} — signature demandée.
+            Devis {d.numero} · {formatEuroTTC(d.totalTtc)} — en attente de votre décision.
           </span>
-          <Button variant="primary" className="h-8 flex-none px-3 text-[12px]" disabled={busy} onClick={handleSignContract}>
-            Signer
+          <Button
+            variant="secondary"
+            className="h-8 flex-none px-3 text-[12px]"
+            disabled={decidingDevisId === d.id}
+            onClick={() => handleDevisDecision(d.id, "refusé")}
+          >
+            Refuser
           </Button>
+          <Button
+            variant="primary"
+            className="h-8 flex-none px-3 text-[12px]"
+            disabled={decidingDevisId === d.id}
+            onClick={() => handleDevisDecision(d.id, "accepté")}
+          >
+            Accepter
+          </Button>
+        </Card>
+      ))}
+
+      {contracts.length > 0 && (
+        <Card>
+          {contracts.map((c) => (
+            <div key={c.id} className="flex flex-col gap-1.5 border-b border-divider px-5 py-3.5 last:border-0">
+              <div className="flex items-center gap-3.5">
+                <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-text">{c.name}</span>
+                <Badge tone={CONTRACT_STATUS_TONE[c.status]}>{CONTRACT_STATUS_LABEL[c.status]}</Badge>
+              </div>
+              {c.awaitingSignature && (
+                <p className="text-[12px] text-text-soft">
+                  Signature demandée — vous avez reçu un e-mail de notre partenaire de signature électronique
+                  (Youtrust) avec un lien pour signer. Vérifiez votre boîte mail, y compris les spams.
+                </p>
+              )}
+            </div>
+          ))}
         </Card>
       )}
 
@@ -300,12 +339,22 @@ function ProjetBillingView() {
               <span className="w-24 flex-none text-right text-[13px] font-bold text-text">{formatEuroTTC(inv.totalInclVat)}</span>
               <span className="w-28 flex-none text-right text-[12px] text-text-soft">Échéance {inv.dueDate}</span>
               <Badge tone={INVOICE_STATUS_TONE[inv.status]}>{INVOICE_STATUS_LABEL[inv.status]}</Badge>
+              {inv.pdfUrl && (
+                <a
+                  href={inv.pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-none text-[12px] font-bold text-info-fg hover:underline"
+                >
+                  Voir le PDF
+                </a>
+              )}
             </div>
           ))}
         </Card>
       )}
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} tone={toastTone} />
     </div>
   );
 }

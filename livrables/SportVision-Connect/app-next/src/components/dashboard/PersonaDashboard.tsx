@@ -12,11 +12,29 @@ import { fetchOrgRequests } from "@/lib/data/shared/requests";
 import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
 import { fetchCoachPlayers } from "@/lib/data/coach/players";
 import { fetchAcademieGroups } from "@/lib/data/academie/groups";
+import { fetchClubMatches } from "@/lib/data/club/matches";
+import { fetchPlayerMediaAssets } from "@/lib/data/player/media";
+import { fetchClientInvoices } from "@/lib/data/projet/billing";
+import { fetchClientServices } from "@/lib/data/projet/services";
+import { fetchClientLivrables } from "@/lib/data/projet/livrables";
 import type { Sponsor } from "@/lib/types/sponsors";
+import type { Match } from "@/lib/types/studio";
+import type { Invoice } from "@/lib/types/billing";
+import type { Service } from "@/lib/types/services";
+import { SERVICE_TYPE_LABELS } from "@/lib/types/services";
+import { MEDIA_KIND_LABELS, type MediaAsset } from "@/lib/types/content";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
+
+function daysLate(dueDate: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(dueDate).getTime()) / (1000 * 60 * 60 * 24)));
+}
+
+function formatFrDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
 
 // Tableau de bord — variante Persona. Couvre Joueur, Parent, Sponsor, CM externe, Client
 // ponctuel, Structure générique, et Académie/Coach hors Full Communication (tout ce qui n'est
@@ -29,7 +47,7 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 interface PersonaGauge {
   label: string;
   value: string;
-  pct: number;
+  pct: number | null;
 }
 
 interface PersonaListItem {
@@ -37,6 +55,7 @@ interface PersonaListItem {
   meta: string;
   due?: string;
   action?: string;
+  actionHref?: string;
 }
 
 interface PersonaContentItem {
@@ -66,18 +85,23 @@ interface PersonaConfig {
  * sur des valeurs à zéro plutôt que de bloquer le rendu du tableau de bord. */
 interface PersonaExtra {
   playerClubName?: string;
+  playerUpcomingMatches?: Match[];
+  playerContents?: MediaAsset[];
   children?: ConfirmedChild[];
   authByChild?: Record<string, ChildAuthorization[]>;
   openRequestsCount?: number;
   partnerships?: Sponsor[];
   rosterCount?: number;
+  genericOverdueInvoice?: Invoice;
+  genericUpcomingService?: Service;
+  genericContents?: MediaAsset[];
 }
 
 function hasValidImageRight(auths: ChildAuthorization[] | undefined): boolean {
   return !!auths?.some((a) => a.code === "droit_image" && a.statut === "valide");
 }
 
-function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
+function buildConfig(ctx: ActiveContext, extra: PersonaExtra, extraLoading: boolean): PersonaConfig {
   const { organization, user, subscription } = ctx;
   const plan = PLANS[subscription.planCode];
   const storagePct = Math.round((subscription.storageUsedBytes / subscription.storageQuotaBytes) * 100);
@@ -85,23 +109,12 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
     plan.monthlyCredits && plan.monthlyCredits > 0
       ? Math.round((subscription.creditsRemaining / plan.monthlyCredits) * 100)
       : 0;
-  const presencesPct = plan.seasonPresences
-    ? Math.round((subscription.presencesUsed / plan.seasonPresences) * 100)
-    : 0;
-
-  const standardGauges: PersonaGauge[] = [
-    { label: "Crédits visuels", value: formatPlanCredits(plan), pct: creditsPct },
-    {
-      label: "Présences terrain",
-      value: `${subscription.presencesUsed} / ${plan.seasonPresences}`,
-      pct: presencesPct,
-    },
-    { label: "Stockage", value: `${storagePct} %`, pct: storagePct },
-  ];
 
   switch (organization.type) {
     case "player": {
       const isAffiliated = !!organization.parentOrganizationId;
+      const upcomingMatches = extra.playerUpcomingMatches ?? [];
+      const playerContents = extra.playerContents ?? [];
       return {
         eyebrow: "Mon espace",
         clubBadge: isAffiliated
@@ -114,39 +127,26 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
         heroActionLabel: isAffiliated ? "Consulter mes contenus" : "Réserver une prestation",
         heroActionHref: isAffiliated ? "/content" : "/services/new",
         showShareBook: !isAffiliated,
-        gauges: standardGauges,
+        // Aucune jauge crédits/présences/stockage n'a de sens pour un espace joueur : ces champs
+        // valent toujours 0 côté session.ts (pas d'organization_entitlements hors club, voir
+        // permissions.ts), ce ne sont pas des crédits/présences réellement suivis pour ce joueur.
+        gauges: [],
         priorityTitle: "À traiter",
-        priorityItems: isAffiliated
-          ? [
-              {
-                title: "Portrait officiel — saison 2026/2027",
-                meta: "Contenu à valider · Studio SportVision",
-                action: "Valider",
-                due: "Avant le 14 août",
-              },
-            ]
-          : [
-              {
-                title: "Devis — shooting individuel",
-                meta: "En attente de votre validation",
-                action: "Voir le devis",
-                due: "Envoyé le 6 août",
-              },
-            ],
+        // Pas de source réelle "à valider" scopée à ce joueur (club_creations n'a pas de colonne
+        // joueur) — pas remplacé par une autre fiction, voir le plan Phase 1 § pas de fabrication.
+        priorityItems: [],
         secondaryTitle: "Prochainement",
         secondaryItems: isAffiliated
-          ? [
-              { title: "FC Fontainebleau vs US Varenne", meta: "Match à domicile", due: "Samedi 16 août · 15h00" },
-              { title: "Séance photo individuelle", meta: "Studio SportVision", due: "20 août" },
-            ]
+          ? upcomingMatches.slice(0, 2).map((m) => ({
+              title: `${m.teamName} vs ${m.opponent}`,
+              meta: "Match à venir",
+              due: m.kickoffAt ? formatFrDate(m.kickoffAt) : undefined,
+            }))
           : [{ title: "Aucune prestation planifiée", meta: "Réservez votre premier shooting avec SportVision" }],
         contentsTitle: "Mes derniers contenus",
-        contents: [
-          { label: "Portrait officiel", kind: "Photo" },
-          { label: "Temps fort — but", kind: "Vidéo" },
-          { label: "Story victoire", kind: "Story" },
-          { label: "Interview d'après-match", kind: "Vidéo" },
-        ],
+        contents: isAffiliated
+          ? playerContents.slice(0, 4).map((a) => ({ label: a.name, kind: MEDIA_KIND_LABELS[a.kind] }))
+          : [],
       };
     }
 
@@ -162,10 +162,15 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
         subtitle: "Profils, contenus et autorisations de vos enfants, réunis au même endroit.",
         heroActionLabel: "Gérer les autorisations",
         heroActionHref: "/authorizations",
+        // Crédits/stockage retirés : pas de sens pour un espace parent (toujours 0 côté
+        // session.ts, pas d'organization_entitlements hors club). Seule "Autorisations à jour"
+        // est une donnée réellement suivie ici.
         gauges: [
-          { label: "Autorisations à jour", value: `${signedCount} / ${children.length}`, pct: authPct },
-          { label: "Crédits prestations", value: formatPlanCredits(plan), pct: creditsPct },
-          { label: "Stockage", value: `${storagePct} %`, pct: storagePct },
+          {
+            label: "Autorisations à jour",
+            value: extraLoading ? "Chargement…" : `${signedCount} / ${children.length}`,
+            pct: extraLoading ? null : authPct,
+          },
         ],
         priorityTitle: "À traiter",
         priorityItems: pendingChild
@@ -174,6 +179,7 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
                 title: `Autorisation droit à l'image — ${pendingChild.firstName} ${pendingChild.lastName}`,
                 meta: "Signature requise · bloque la publication de ses contenus",
                 action: "Signer",
+                actionHref: "/authorizations",
                 due: "Dès que possible",
               },
             ]
@@ -184,12 +190,10 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
           { title: "Facture SportVision — Août", meta: "0,00 € · inclus dans l'offre du club" },
         ],
         contentsTitle: "Leurs derniers contenus",
-        contents: [
-          { label: "Match du week-end", kind: "Photo" },
-          { label: "Séance d'entraînement", kind: "Photo" },
-          { label: "Temps fort", kind: "Vidéo" },
-          { label: "Portrait d'équipe", kind: "Photo" },
-        ],
+        // Pas de club_id unique exposé par enfant ici (ConfirmedChild n'expose que clubName) —
+        // pas de source réelle branchable sans requête supplémentaire par enfant, pas remplacé
+        // par une autre fiction. Voir le plan Phase 1 § pas de fabrication de données.
+        contents: [],
       };
     }
 
@@ -209,13 +213,14 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
         heroActionHref: "/sponsors",
         gauges: [
           { label: "Partenariats actifs", value: `${activeCount} / ${partnerships.length}`, pct: partnerships.length ? Math.round((activeCount / partnerships.length) * 100) : 0 },
-          { label: "Montant engagé", value: `${totalAmount.toLocaleString("fr-FR")} €`, pct: 100 },
+          // Pas de barre de progression : "Montant engagé" est un total, pas un ratio suivi.
+          { label: "Montant engagé", value: `${totalAmount.toLocaleString("fr-FR")} €`, pct: null },
           { label: "Stockage", value: `${storagePct} %`, pct: storagePct },
         ],
         priorityTitle: "À traiter",
         priorityItems:
           extra.openRequestsCount && extra.openRequestsCount > 0
-            ? [{ title: `${extra.openRequestsCount} demande${extra.openRequestsCount > 1 ? "s" : ""} en attente`, meta: "Envoyées à SportVision", action: "Voir", due: undefined }]
+            ? [{ title: `${extra.openRequestsCount} demande${extra.openRequestsCount > 1 ? "s" : ""} en attente`, meta: "Envoyées à SportVision", action: "Voir", actionHref: "/requests", due: undefined }]
             : [],
         secondaryTitle: "Mes partenariats",
         secondaryItems: partnerships.map((s) => ({ title: s.name, meta: `${s.annualAmount.toLocaleString("fr-FR")} € / an`, due: s.endsAt })),
@@ -270,7 +275,8 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
           : "Préparez votre événement et suivez ce qui reste à faire.",
         heroActionLabel: isOneOff ? "Suivre ma prestation" : "Préparer l'événement",
         heroActionHref: "/services",
-        gauges: standardGauges,
+        // Crédits/présences/stockage n'ont pas de sens ici (toujours 0 côté session.ts).
+        gauges: [],
         priorityTitle: "À traiter",
         priorityItems: [
           {
@@ -293,8 +299,8 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
     case "academy":
     case "coach": {
       // coach_players/academie_groups + requests génériques réels (Phase 4) — pas de
-      // crédits/présences/stockage suivis pour ces espaces (pas d'organization_entitlements,
-      // voir buildOrgSpaceActiveContext), standardGauges n'a donc pas de sens ici.
+      // crédits/présences suivis pour ces espaces (pas d'organization_entitlements, voir
+      // buildOrgSpaceActiveContext), une jauge crédits/présences n'aurait donc pas de sens ici.
       const isAcademy = organization.type === "academy";
       const rosterCount = extra.rosterCount ?? 0;
       const openRequests = extra.openRequestsCount ?? 0;
@@ -314,7 +320,7 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
         priorityTitle: "À traiter",
         priorityItems:
           openRequests > 0
-            ? [{ title: `${openRequests} demande${openRequests > 1 ? "s" : ""} en attente`, meta: "Envoyées à SportVision", action: "Voir" }]
+            ? [{ title: `${openRequests} demande${openRequests > 1 ? "s" : ""} en attente`, meta: "Envoyées à SportVision", action: "Voir", actionHref: "/requests" }]
             : [],
         secondaryTitle: isAcademy ? "Mes groupes" : "Mes joueurs suivis",
         secondaryItems: [],
@@ -325,24 +331,43 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra): PersonaConfig {
 
     case "generic":
     default: {
+      // Espace Projet/ponctuel (ex-Portail) : devis/factures/prestations/livrables réels via les
+      // vues client_* (data/projet/*), mêmes vues que /billing, /services et /content pour ce
+      // type d'organisation — voir le plan Phase 3.
+      const overdueInvoice = extra.genericOverdueInvoice;
+      const upcomingService = extra.genericUpcomingService;
+      const contents = extra.genericContents ?? [];
       return {
         eyebrow: "Aperçu",
         title: `Bonjour ${user.firstName}, voici ce qui nécessite votre attention.`,
         subtitle: "Vos prestations, vos contenus et vos factures, au même endroit.",
         heroActionLabel: "Commander une prestation",
         heroActionHref: "/services/new",
-        gauges: standardGauges,
+        gauges: [],
         priorityTitle: "À traiter",
-        priorityItems: [
-          { title: "Facture SV-2026-0512", meta: "312,00 € TTC", action: "Payer", due: "Échue depuis 2 j" },
-        ],
+        priorityItems: overdueInvoice
+          ? [
+              {
+                title: `Facture ${overdueInvoice.number}`,
+                meta: `${overdueInvoice.totalInclVat.toLocaleString("fr-FR")} € TTC`,
+                action: "Payer",
+                actionHref: "/billing",
+                due: `Échue depuis ${daysLate(overdueInvoice.dueDate)} j`,
+              },
+            ]
+          : [],
         secondaryTitle: "Prochainement",
-        secondaryItems: [{ title: "Prestation planifiée", meta: "Finale régionale", due: "22 août 2026" }],
+        secondaryItems: upcomingService
+          ? [
+              {
+                title: SERVICE_TYPE_LABELS[upcomingService.serviceType],
+                meta: upcomingService.address || "",
+                due: formatFrDate(upcomingService.date),
+              },
+            ]
+          : [],
         contentsTitle: "Derniers contenus",
-        contents: [
-          { label: "Affiche événement", kind: "Photo" },
-          { label: "Reportage", kind: "Vidéo" },
-        ],
+        contents: contents.slice(0, 4).map((c) => ({ label: c.name, kind: MEDIA_KIND_LABELS[c.kind] })),
       };
     }
   }
@@ -353,50 +378,93 @@ export function PersonaDashboard() {
   const router = useRouter();
   const [shareCopied, setShareCopied] = useState(false);
   const [extra, setExtra] = useState<PersonaExtra>({});
+  const [extraLoading, setExtraLoading] = useState(true);
 
   useEffect(() => {
     const supabase = createClient();
+    setExtraLoading(true);
     if (ctx.organization.type === "player" && ctx.organization.parentOrganizationId) {
-      supabase
-        .from("organizations")
-        .select("nom")
-        .eq("id", ctx.organization.parentOrganizationId)
-        .maybeSingle()
-        .then(({ data }) => setExtra({ playerClubName: (data as { nom: string } | null)?.nom }));
+      const clubId = ctx.organization.parentOrganizationId;
+      Promise.all([
+        supabase.from("organizations").select("nom").eq("id", clubId).maybeSingle(),
+        fetchClubMatches(supabase, clubId),
+        fetchPlayerMediaAssets(supabase, clubId),
+      ])
+        .then(([orgRes, matches, mediaAssets]) => {
+          setExtra({
+            playerClubName: (orgRes.data as { nom: string } | null)?.nom,
+            playerUpcomingMatches: matches.filter((m) => m.status === "upcoming"),
+            playerContents: mediaAssets.filter((a) => a.status === "validated"),
+          });
+        })
+        .catch(() => setExtra({}))
+        .finally(() => setExtraLoading(false));
     } else if (ctx.organization.type === "parent") {
-      fetchConfirmedChildren(supabase, ctx.organization.id).then(async (children) => {
-        const entries = await Promise.all(
-          children.map(async (c) => [c.playerId, await fetchChildAuthorizations(supabase, c.playerId)] as const),
-        );
-        setExtra({ children, authByChild: Object.fromEntries(entries) });
-      });
+      fetchConfirmedChildren(supabase, ctx.organization.id)
+        .then(async (children) => {
+          const entries = await Promise.all(
+            children.map(async (c) => [c.playerId, await fetchChildAuthorizations(supabase, c.playerId)] as const),
+          );
+          setExtra({ children, authByChild: Object.fromEntries(entries) });
+        })
+        .catch(() => setExtra({}))
+        .finally(() => setExtraLoading(false));
     } else if (ctx.organization.type === "sponsor") {
       Promise.all([
         fetchSponsorPartnerships(supabase, ctx.organization.id),
         fetchOrgRequests(supabase, ctx.organization.id),
-      ]).then(([partnerships, requests]) => {
-        setExtra({ partnerships, openRequestsCount: requests.filter((r) => r.status === "Envoyée").length });
-      });
+      ])
+        .then(([partnerships, requests]) => {
+          setExtra({ partnerships, openRequestsCount: requests.filter((r) => r.status === "Envoyée").length });
+        })
+        .catch(() => setExtra({}))
+        .finally(() => setExtraLoading(false));
     } else if (ctx.organization.type === "coach") {
       Promise.all([
         fetchCoachPlayers(supabase, ctx.organization.id),
         fetchOrgRequests(supabase, ctx.organization.id),
-      ]).then(([players, requests]) => {
-        setExtra({ rosterCount: players.length, openRequestsCount: requests.filter((r) => r.status === "Envoyée").length });
-      });
+      ])
+        .then(([players, requests]) => {
+          setExtra({ rosterCount: players.length, openRequestsCount: requests.filter((r) => r.status === "Envoyée").length });
+        })
+        .catch(() => setExtra({}))
+        .finally(() => setExtraLoading(false));
     } else if (ctx.organization.type === "academy") {
       Promise.all([
         fetchAcademieGroups(supabase, ctx.organization.id),
         fetchOrgRequests(supabase, ctx.organization.id),
-      ]).then(([groups, requests]) => {
-        setExtra({ rosterCount: groups.length, openRequestsCount: requests.filter((r) => r.status === "Envoyée").length });
-      });
+      ])
+        .then(([groups, requests]) => {
+          setExtra({ rosterCount: groups.length, openRequestsCount: requests.filter((r) => r.status === "Envoyée").length });
+        })
+        .catch(() => setExtra({}))
+        .finally(() => setExtraLoading(false));
+    } else if (ctx.organization.type === "generic") {
+      Promise.all([
+        fetchClientInvoices(supabase, ctx.organization.id),
+        fetchClientServices(supabase, ctx.organization.id),
+        fetchClientLivrables(supabase, ctx.organization.id),
+      ])
+        .then(([invoices, services, livrables]) => {
+          const now = Date.now();
+          const upcomingService = services
+            .filter((s) => s.date && new Date(s.date).getTime() >= now)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+          setExtra({
+            genericOverdueInvoice: invoices.find((i) => i.status === "en_retard"),
+            genericUpcomingService: upcomingService,
+            genericContents: livrables,
+          });
+        })
+        .catch(() => setExtra({}))
+        .finally(() => setExtraLoading(false));
     } else {
       setExtra({});
+      setExtraLoading(false);
     }
   }, [ctx.organization.id, ctx.organization.type, ctx.organization.parentOrganizationId]);
 
-  const config = buildConfig(ctx, extra);
+  const config = buildConfig(ctx, extra, extraLoading);
 
   function handleShareBook() {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -435,13 +503,20 @@ export function PersonaDashboard() {
 
       <CardPremium>
         <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-brand-blue-pale">
-          {PLANS[ctx.subscription.planCode].name}
+          {/* coach/académie/sponsor n'ont jamais souscrit "Prestation unique" (planCode "one_off"
+             posé en dur côté session.ts pour ces espaces, sans offre réellement vendue) : pas de
+             nom d'offre inventé pour eux. */}
+          {["coach", "academy", "sponsor"].includes(ctx.organization.type)
+            ? "Espace professionnel"
+            : PLANS[ctx.subscription.planCode].name}
         </div>
-        <div className="relative mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-          {config.gauges.map((g) => (
-            <Gauge key={g.label} {...g} />
-          ))}
-        </div>
+        {config.gauges.length > 0 && (
+          <div className="relative mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+            {config.gauges.map((g) => (
+              <Gauge key={g.label} {...g} />
+            ))}
+          </div>
+        )}
       </CardPremium>
 
       <Card>
@@ -454,7 +529,7 @@ export function PersonaDashboard() {
         </div>
         {config.priorityItems.length === 0 && (
           <div className="px-5 py-6 text-center text-[13px] text-text-soft">
-            Rien à traiter pour le moment. Tout est à jour.
+            {extraLoading ? "Chargement…" : "Rien à traiter pour le moment. Tout est à jour."}
           </div>
         )}
         {config.priorityItems.map((item) => (
@@ -470,7 +545,11 @@ export function PersonaDashboard() {
               <span className="w-32 flex-none text-right text-[12px] font-bold text-due-warn">{item.due}</span>
             )}
             {item.action && (
-              <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]">
+              <Button
+                variant="secondary"
+                className="h-8 flex-none px-3 text-[12px]"
+                onClick={item.actionHref ? () => router.push(item.actionHref!) : undefined}
+              >
                 {item.action}
               </Button>
             )}
@@ -483,7 +562,9 @@ export function PersonaDashboard() {
           <span className="text-[15px] font-extrabold tracking-tight">{config.secondaryTitle}</span>
         </div>
         {config.secondaryItems.length === 0 && (
-          <div className="px-5 py-6 text-center text-[13px] text-text-soft">Rien de prévu pour le moment.</div>
+          <div className="px-5 py-6 text-center text-[13px] text-text-soft">
+            {extraLoading ? "Chargement…" : "Rien de prévu pour le moment."}
+          </div>
         )}
         {config.secondaryItems.map((item) => (
           <div
@@ -501,6 +582,9 @@ export function PersonaDashboard() {
 
       <div>
         <div className="mb-3 text-[15px] font-extrabold tracking-tight">{config.contentsTitle}</div>
+        {config.contents.length === 0 && (
+          <div className="text-[13px] text-text-soft">Rien à afficher pour le moment.</div>
+        )}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {config.contents.map((c) => (
             <div
@@ -535,10 +619,12 @@ function Gauge({ label, value, pct }: PersonaGauge) {
         <span className="text-[13px] font-extrabold">{value}</span>
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[.16]">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet"
-          style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-        />
+        {pct !== null && (
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet"
+            style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+          />
+        )}
       </div>
     </div>
   );

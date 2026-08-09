@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CalendarEvent, CalendarEventKind } from "@/lib/types/calendar";
+import { MATCH_STATUS_LABELS } from "@/lib/types/studio";
+import { STATUS_MAP as MATCH_STATUS_MAP } from "./matches";
 
 // Vue agrégée — voir le plan Phase 1 § Remplacement module par module. club_calendar_events
 // (migration-clubplus-v4.sql) est une source parmi d'autres ; club_matches (v3) en est une
@@ -13,6 +15,21 @@ const EVENT_TYPE_MAP: Record<string, CalendarEventKind> = {
   contenu: "shoot",
   sponsor: "meeting",
   prestation: "service",
+};
+
+/**
+ * club_calendar_events.type (contrainte check, migration-clubplus-v4.sql) n'accepte que ces 6
+ * valeurs — les 4 autres CalendarEventKind du design (publication, contract_deadline,
+ * invoice_deadline, camp) n'ont pas d'équivalent réel et ne doivent jamais être proposées à la
+ * création (voir AddEventModal.tsx, qui filtre son <select> sur les clés de ce map).
+ */
+export const CREATABLE_EVENT_TYPE_MAP: Record<string, string> = {
+  match: "match",
+  training: "entrainement",
+  event: "tournoi",
+  shoot: "contenu",
+  meeting: "sponsor",
+  service: "prestation",
 };
 
 interface ClubCalendarEventRow {
@@ -69,7 +86,9 @@ export async function fetchClubCalendarEvents(
       location: row.lieu ?? undefined,
       teamName: row.team,
       sourceHref: "/matchcenter",
-      status: row.status,
+      // Traduit le statut brut (a_venir/a_transmettre/recu) via le même mapping que Match Center
+      // (MATCH_STATUS_LABELS) — voir EventDetailPanel.tsx, qui affiche event.status tel quel.
+      status: MATCH_STATUS_LABELS[MATCH_STATUS_MAP[row.status] ?? "upcoming"],
     }));
 
   return [...events, ...matches];
@@ -78,17 +97,9 @@ export async function fetchClubCalendarEvents(
 export async function createClubCalendarEvent(
   supabase: SupabaseClient,
   organizationId: string,
-  input: { title: string; kind: CalendarEventKind; date: string; location?: string },
+  input: { title: string; kind: CalendarEventKind; date: string },
 ): Promise<CalendarEvent> {
-  const REVERSE_TYPE_MAP: Record<string, string> = {
-    match: "match",
-    training: "entrainement",
-    event: "tournoi",
-    shoot: "contenu",
-    meeting: "sponsor",
-    service: "prestation",
-  };
-  const type = REVERSE_TYPE_MAP[input.kind] ?? "contenu";
+  const type = CREATABLE_EVENT_TYPE_MAP[input.kind] ?? "contenu";
 
   const { data, error } = await supabase
     .from("club_calendar_events")
@@ -105,7 +116,6 @@ export async function createClubCalendarEvent(
     title: row.title,
     startsAt: row.event_date,
     allDay: true,
-    location: input.location,
     teamName: row.team ?? undefined,
   };
 }

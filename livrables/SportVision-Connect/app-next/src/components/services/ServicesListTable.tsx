@@ -7,7 +7,7 @@ import {
   SERVICE_STATUS_TONE,
   SERVICE_TYPE_LABELS,
   formatServiceDate,
-  formatServicePrice,
+  formatServicePriceOrPending,
 } from "@/lib/types/services";
 
 // Vue liste des prestations — voir ACTIONS.md § 12 (« Kanban et Liste »). Sous 760 px, les
@@ -33,7 +33,7 @@ export function ServicesListTable({ services }: { services: Service[] }) {
           <span>
             <Badge tone={SERVICE_STATUS_TONE[service.status]}>{SERVICE_STATUS_LABELS[service.status]}</Badge>
           </span>
-          <span className="text-[12.5px] font-bold text-text">{formatServicePrice(service.totalPrice)}</span>
+          <span className="text-[12.5px] font-bold text-text">{formatServicePriceOrPending(service.totalPrice)}</span>
           <span className="font-mono text-[11px] text-text-faint sm:text-right">{service.reference}</span>
         </Link>
       ))}

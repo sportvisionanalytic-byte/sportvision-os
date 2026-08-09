@@ -7,7 +7,7 @@ import type { Match, MatchScorer, MatchStatus } from "@/lib/types/studio";
 // (violerait la contrainte). Voir fetchClubMatches/saveClubMatchResult. RLS :
 // is_club_member(club_id) pour select/insert/update.
 
-const STATUS_MAP: Record<string, MatchStatus> = {
+export const STATUS_MAP: Record<string, MatchStatus> = {
   a_venir: "upcoming",
   a_transmettre: "result_pending",
   recu: "result_received",

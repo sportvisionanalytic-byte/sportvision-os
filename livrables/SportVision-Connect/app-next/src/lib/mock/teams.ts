@@ -406,3 +406,15 @@ export function playersForTeam(teamId: string): Player[] {
 export function imageRightForPlayer(playerId: string): ImageRight | undefined {
   return mockImageRights.find((r) => r.playerId === playerId);
 }
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Un id mock (team-fcf-seniors, player-fcf-mendes...) ne suit jamais le format uuid ; un id réel
+ * Supabase (club_teams, academie_groups...) toujours. Sert à éviter de lier vers /teams/{id} ou
+ * /teams/players/{id} quand la cible n'existe que dans les mocks — voir teams/[id]/page.tsx et
+ * teams/players/[id]/page.tsx, verrouillés tant que club_players n'existe pas réellement.
+ */
+export function isRealId(id: string): boolean {
+  return UUID_PATTERN.test(id);
+}

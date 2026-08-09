@@ -7,6 +7,7 @@ import type { InvoiceStatus, PaymentMethod } from "@/lib/types/billing";
 
 export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
   brouillon: "Brouillon",
+  emise: "Émise",
   a_payer: "À payer",
   payee: "Payée",
   en_retard: "En retard",
@@ -18,6 +19,7 @@ export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
 
 export const INVOICE_STATUS_TONE: Record<InvoiceStatus, BadgeTone> = {
   brouillon: "neutral",
+  emise: "warning",
   a_payer: "warning",
   payee: "success",
   en_retard: "danger",

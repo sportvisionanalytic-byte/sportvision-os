@@ -3,7 +3,13 @@ import { Calendar, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import type { Service } from "@/lib/types/services";
-import { SERVICE_STATUS_LABELS, SERVICE_STATUS_TONE, SERVICE_TYPE_LABELS, formatServiceDateShort, formatServicePrice } from "@/lib/types/services";
+import {
+  SERVICE_STATUS_LABELS,
+  SERVICE_STATUS_TONE,
+  SERVICE_TYPE_LABELS,
+  formatServiceDateShort,
+  formatServicePriceOrPending,
+} from "@/lib/types/services";
 
 // Carte de prestation — utilisée par le kanban (colonne) et par la vue liste en mobile.
 // Voir ACTIONS.md § 12.
@@ -25,7 +31,7 @@ export function ServiceCard({ service }: { service: Service }) {
           <span className="truncate">{service.address}</span>
         </div>
         <div className="mt-1 flex items-center justify-between border-t border-divider pt-2.5">
-          <span className="text-[12.5px] font-extrabold text-text">{formatServicePrice(service.totalPrice)}</span>
+          <span className="text-[12.5px] font-extrabold text-text">{formatServicePriceOrPending(service.totalPrice)}</span>
           {service.progressPercent > 0 && (
             <span className="text-[11px] font-bold text-text-faint">{service.progressPercent}%</span>
           )}
