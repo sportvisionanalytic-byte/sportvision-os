@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Clock3 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { fetchConfirmedChildren, type ConfirmedChild } from "@/lib/data/family/children";
-import { fetchChildAuthorizations } from "@/lib/data/family/authorizations";
+import { fetchChildAuthorizations, isWithdrawable } from "@/lib/data/family/authorizations";
 import { createClient } from "@/lib/supabase/client";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
@@ -16,28 +16,59 @@ import { Button } from "@/components/ui/Button";
 // /children — profils associés du parent, une carte par enfant. ACTIONS.md § 20 « Parent —
 // Profils associés ». Bandeau d'alerte si le droit à l'image manque ; « Réserver une prestation »
 // n'apparaît que si l'autorisation est signée (voir data/family/authorizations.ts).
+
+// Trois états réels d'une autorisation "droit_image", pas deux : une autorisation signée passe
+// par `a_verifier` (submit_parental_authorization, migration-clubplus-v15.sql ~430) avant
+// `valide` — la traiter comme "manquante" pendant cette période affiche une fausse alerte et un
+// bouton "Régulariser" qui renvoie vers un écran qui ne propose rien à refaire (bug corrigé
+// 09/08). "checking" tant que le statut réel n'est pas encore chargé (évite l'alerte prématurée
+// affichée avant d'avoir la vraie réponse).
+type AuthCategory = "checking" | "missing" | "pending" | "valid";
+
+function categorizeAuth(statut: string | undefined, authLoading: boolean): AuthCategory {
+  if (authLoading) return "checking";
+  if (statut === "valide") return "valid";
+  if (statut && isWithdrawable(statut)) return "pending";
+  return "missing";
+}
+
 export default function ChildrenPage() {
   const { ctx } = useSession();
   const router = useRouter();
   const [children, setChildren] = useState<ConfirmedChild[] | null>(null);
-  // Statut réel de l'autorisation "droit_image" par enfant — undefined tant que non chargé.
+  const [loadError, setLoadError] = useState(false);
+  // Statut réel de l'autorisation "droit_image" par enfant — vide tant que non chargé, voir
+  // authLoading pour distinguer "pas encore chargé" de "chargé, aucune autorisation".
   const [imageRightByChild, setImageRightByChild] = useState<Record<string, string>>({});
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    fetchConfirmedChildren(supabase, ctx.organization.id).then(async (rows) => {
-      if (cancelled) return;
-      setChildren(rows);
-      const entries = await Promise.all(
-        rows.map(async (child) => {
-          const auths = await fetchChildAuthorizations(supabase, child.playerId);
-          const droitImage = auths.find((a) => a.code === "droit_image");
-          return [child.playerId, droitImage?.statut ?? "non_transmise"] as const;
-        }),
-      );
-      if (!cancelled) setImageRightByChild(Object.fromEntries(entries));
-    });
+    setLoadError(false);
+    setAuthLoading(true);
+    fetchConfirmedChildren(supabase, ctx.organization.id)
+      .then((rows) => {
+        if (cancelled) return;
+        setChildren(rows);
+        return Promise.all(
+          rows.map(async (child) => {
+            const auths = await fetchChildAuthorizations(supabase, child.playerId);
+            const droitImage = auths.find((a) => a.code === "droit_image");
+            return [child.playerId, droitImage?.statut ?? "non_transmise"] as const;
+          }),
+        ).then((entries) => {
+          if (cancelled) return;
+          setImageRightByChild(Object.fromEntries(entries));
+          setAuthLoading(false);
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadError(true);
+          setAuthLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -45,11 +76,21 @@ export default function ChildrenPage() {
 
   if (!canAccess(ctx, "children")) return <LockedModule />;
 
+  if (loadError) {
+    return (
+      <Card className="p-8 text-center text-[13.5px] font-semibold text-danger-fg">
+        Impossible de charger vos profils associés. Réessayez plus tard.
+      </Card>
+    );
+  }
+
   if (children === null) {
     return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
   }
 
-  const missingAuth = children.some((c) => imageRightByChild[c.playerId] !== "valide");
+  const categories = new Map(children.map((c) => [c.playerId, categorizeAuth(imageRightByChild[c.playerId], authLoading)]));
+  const missingCount = children.filter((c) => categories.get(c.playerId) === "missing").length;
+  const pendingCount = children.filter((c) => categories.get(c.playerId) === "pending").length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -60,7 +101,7 @@ export default function ChildrenPage() {
         </p>
       </div>
 
-      {missingAuth && (
+      {missingCount > 0 && (
         <Card className="flex flex-wrap items-center gap-3 border-warning-fg/20 bg-warning-bg px-5 py-4">
           <AlertTriangle className="h-[18px] w-[18px] flex-none text-warning-fg" aria-hidden />
           <span className="min-w-0 flex-1 text-[13px] font-semibold text-warning-fg">
@@ -73,6 +114,16 @@ export default function ChildrenPage() {
         </Card>
       )}
 
+      {missingCount === 0 && pendingCount > 0 && (
+        <Card className="flex flex-wrap items-center gap-3 border-brand-blue-pale/40 bg-info-bg px-5 py-4">
+          <Clock3 className="h-[18px] w-[18px] flex-none text-info-fg" aria-hidden />
+          <span className="min-w-0 flex-1 text-[13px] font-semibold text-info-fg">
+            Une autorisation signée est en cours de vérification par notre équipe pour au moins un enfant. Ses
+            contenus seront publiables dès validation.
+          </span>
+        </Card>
+      )}
+
       {children.length === 0 && (
         <Card className="p-8 text-center text-[13.5px] text-text-soft">
           Aucun enfant associé à votre espace pour le moment.
@@ -81,7 +132,7 @@ export default function ChildrenPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {children.map((child) => {
-          const signed = imageRightByChild[child.playerId] === "valide";
+          const category = categories.get(child.playerId) ?? "checking";
           const initials = `${child.firstName[0] ?? ""}${child.lastName[0] ?? ""}`.toUpperCase();
           return (
             <Card key={child.playerId} className="p-5">
@@ -99,8 +150,18 @@ export default function ChildrenPage() {
                     </div>
                   </div>
                 </div>
-                <Badge tone={signed ? "success" : "warning"}>
-                  {signed ? "Autorisation signée" : "Autorisation manquante"}
+                <Badge
+                  tone={
+                    category === "valid" ? "success" : category === "pending" ? "info" : category === "checking" ? "neutral" : "warning"
+                  }
+                >
+                  {category === "valid"
+                    ? "Autorisation signée"
+                    : category === "pending"
+                      ? "Vérification en cours"
+                      : category === "checking"
+                        ? "Vérification…"
+                        : "Autorisation manquante"}
                 </Badge>
               </div>
 
@@ -110,14 +171,7 @@ export default function ChildrenPage() {
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  variant="secondary"
-                  className="h-9 flex-1 px-3 text-[12.5px]"
-                  onClick={() => router.push("/content")}
-                >
-                  Voir ses contenus
-                </Button>
-                {signed ? (
+                {category === "valid" && (
                   <Button
                     variant="dark"
                     className="h-9 flex-1 px-3 text-[12.5px]"
@@ -125,7 +179,8 @@ export default function ChildrenPage() {
                   >
                     Réserver une prestation
                   </Button>
-                ) : (
+                )}
+                {category === "missing" && (
                   <Button
                     variant="dark"
                     className="h-9 flex-1 px-3 text-[12.5px]"
@@ -133,6 +188,11 @@ export default function ChildrenPage() {
                   >
                     Régulariser l&apos;autorisation
                   </Button>
+                )}
+                {category === "pending" && (
+                  <p className="flex-1 text-[12.5px] text-text-soft">
+                    Signée, en cours de vérification par notre équipe.
+                  </p>
                 )}
               </div>
             </Card>

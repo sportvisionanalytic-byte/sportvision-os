@@ -24,11 +24,13 @@ const STATUS_MAP: Record<string, OrgUser["status"]> = {
 };
 
 export async function fetchClubMembers(supabase: SupabaseClient, clubId: string): Promise<OrgUser[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("club_members")
     .select("id, user_id, prenom, nom, role, status, created_at")
     .eq("club_id", clubId)
     .order("created_at", { ascending: true });
+
+  if (error) throw error;
 
   return ((data ?? []) as ClubMemberRow[]).map((row) => ({
     id: row.user_id,
@@ -66,12 +68,17 @@ export async function inviteClubMember(
 }
 
 /** Un admin peut suspendre/réactiver un autre membre (jamais lui-même) — écriture directe
- * autorisée par la policy is_club_admin, pas de RPC dédiée pour ce champ côté club_members. */
+ * autorisée par la policy is_club_admin, pas de RPC dédiée pour ce champ côté club_members.
+ * `.select()` est nécessaire : sur un update filtré par RLS qui ne matche aucune ligne (appelant
+ * non-admin), Supabase renvoie `{error: null}` — seul un tableau vide en retour révèle l'échec. */
 export async function setClubMemberStatus(
   supabase: SupabaseClient,
   membershipId: string,
   status: "actif" | "suspendu",
 ): Promise<void> {
-  const { error } = await supabase.from("club_members").update({ status }).eq("id", membershipId);
+  const { data, error } = await supabase.from("club_members").update({ status }).eq("id", membershipId).select();
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Action impossible : droits insuffisants ou membre introuvable.");
+  }
 }
