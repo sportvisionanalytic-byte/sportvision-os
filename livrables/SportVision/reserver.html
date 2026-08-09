@@ -20,10 +20,9 @@
 <meta name="twitter:title" content="Réserver une prestation — SportVision">
 <meta name="twitter:description" content="Réservez votre prestation SportVision en quelques étapes : match photo, match vidéo, shooting, tournoi ou création de contenu. Vérification de disponibilité en temps réel.">
 <meta name="twitter:image" content="https://sportvision-an.fr/assets/og-image.jpg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url('assets/fonts/inter-variable-latin.woff2') format('woff2')}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:500 800;font-display:swap;src:url('assets/fonts/manrope-variable-latin.woff2') format('woff2')}
 /* ============================================================
    SportVision — tunnel de réservation. Même design system que le
    reste de la vitrine (chrome copié depuis index.html). Le tunnel
@@ -744,7 +743,11 @@ document.getElementById('btn-step2-next').addEventListener('click', () => {
 
 // ── Étape 3 : options ──
 document.getElementById('btn-step3-next').addEventListener('click', () => {
-  state.options = Array.from(document.querySelectorAll('.opt-check input:checked')).map(i => i.value);
+  // Scopé à l'étape 3 : sans ce scope, le sélecteur matchait aussi le radio du mode de
+  // paiement à l'étape 4 (même classe .opt-check), qui est coché par défaut sur "carte"
+  // dès le chargement de la page — "carte" se retrouvait donc systématiquement ajouté aux
+  // options envoyées au backend, y compris pour des clients n'ayant coché aucune option réelle.
+  state.options = Array.from(document.querySelectorAll('.booking-step[data-step="3"] .opt-check input:checked')).map(i => i.value);
   state.commentaire = document.getElementById('bk-commentaire').value.trim() || null;
   buildRecap();
   const estPrixFixe = state.slug && OFFRES_PRIX_FIXE.has(state.slug);
