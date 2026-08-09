@@ -233,7 +233,7 @@ serve(async (req) => {
         );
       portailLie = !cuErr;
     } catch (_e) {
-      // best-effort
+      console.error("[clubplus-activate] rattachement client_users (historique Portail) a échoué :", _e);
     }
 
     // Notifie le staff — un club qui active son accès depuis un lien privé est un
@@ -250,7 +250,7 @@ serve(async (req) => {
         p_client_id: tokenRow.client_id,
       });
     } catch (_e) {
-      // ignoré volontairement
+      console.error("[clubplus-activate] notify_staff_by_role (activation Club+) a échoué :", _e);
     }
 
     return json({

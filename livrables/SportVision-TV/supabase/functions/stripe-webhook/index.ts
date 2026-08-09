@@ -191,6 +191,7 @@ async function getClubAdminContact(admin: any, clubId: string): Promise<{ email:
 
     return { email, userId: member.user_id, prenom: member.prenom || "" };
   } catch (_e) {
+    console.error("[stripe-webhook] getClubAdminContact a échoué (best-effort, e-mail club non envoyé) :", _e);
     return null;
   }
 }
@@ -291,7 +292,7 @@ serve(async (req) => {
             p_client_id: null,
           });
         } catch (_e) {
-          // ignoré volontairement
+          console.error("[stripe-webhook] notify_staff_by_role (activation Club+) a échoué :", _e);
         }
 
         // E-mail au club lui-même (le payeur) — jusqu'ici seul le staff était
@@ -318,7 +319,7 @@ serve(async (req) => {
             });
           }
         } catch (_e) {
-          // ignoré volontairement
+          console.error("[stripe-webhook] enqueue_notification (e-mail activation Club+) a échoué :", _e);
         }
       }
 
@@ -382,7 +383,7 @@ serve(async (req) => {
                 .eq("type_facture", paiement.type_paiement)
                 .in("statut", ["brouillon", "emise"]);
             } catch (_e) {
-              // ignoré volontairement
+              console.error("[stripe-webhook] mise à jour facture liée au paiement a échoué :", _e);
             }
 
             // Notifie le staff (cloche de notifications de l'OS) — best-effort.
@@ -407,7 +408,7 @@ serve(async (req) => {
                 p_client_id: paiement.client_id,
               });
             } catch (_e) {
-              // ignoré volontairement
+              console.error("[stripe-webhook] notify_staff_by_role (paiement reçu) a échoué :", _e);
             }
 
             // Reçu de paiement au client — best-effort, n'affecte jamais la confirmation du paiement.
@@ -423,7 +424,7 @@ serve(async (req) => {
                 }
               }
             } catch (_e) {
-              // ignoré volontairement
+              console.error("[stripe-webhook] envoi du reçu de paiement client a échoué :", _e);
             }
           }
 
@@ -489,7 +490,7 @@ serve(async (req) => {
                   }
                 }
               } catch (_e) {
-                // ignoré volontairement
+                console.error("[stripe-webhook] création avoir Pennylane (remboursement) a échoué :", _e);
               }
             }
           }
@@ -517,7 +518,7 @@ serve(async (req) => {
               p_client_id: paiement.client_id,
             });
           } catch (_e) {
-            // ignoré volontairement
+            console.error("[stripe-webhook] notify_staff_by_role (remboursement) a échoué :", _e);
           }
         } else if (!paiement) {
           // Pas un paiement Portail/Connect classique : peut être une
@@ -544,7 +545,7 @@ serve(async (req) => {
                 note: `${contribution.montant} € remboursés via Stripe`,
               });
             } catch (_e) {
-              // ignoré volontairement
+              console.error("[stripe-webhook] journalisation team_project_events (remboursement contribution) a échoué :", _e);
             }
           }
         }
@@ -607,7 +608,7 @@ serve(async (req) => {
                 p_client_id: null,
               });
             } catch (_e) {
-              // ignoré volontairement
+              console.error("[stripe-webhook] notify_staff_by_role (changement de formule Club+) a échoué :", _e);
             }
           }
         }
@@ -671,7 +672,7 @@ serve(async (req) => {
               p_client_id: null,
             });
           } catch (_e) {
-            // ignoré volontairement
+            console.error("[stripe-webhook] notify_staff_by_role (abonnement Club+ impayé) a échoué :", _e);
           }
 
           // E-mail au club : un impayé nécessite une action du payeur (mettre à
@@ -700,7 +701,7 @@ serve(async (req) => {
               });
             }
           } catch (_e) {
-            // ignoré volontairement
+            console.error("[stripe-webhook] enqueue_notification (e-mail impayé Club+) a échoué :", _e);
           }
         }
       }
@@ -730,7 +731,7 @@ serve(async (req) => {
             p_client_id: null,
           });
         } catch (_e) {
-          // ignoré volontairement
+          console.error("[stripe-webhook] notify_staff_by_role (résiliation Club+) a échoué :", _e);
         }
 
         // E-mail au club : confirmation de résiliation, cf. commentaire d'en-tête
@@ -758,7 +759,7 @@ serve(async (req) => {
             });
           }
         } catch (_e) {
-          // ignoré volontairement
+          console.error("[stripe-webhook] enqueue_notification (e-mail résiliation Club+) a échoué :", _e);
         }
       }
     }

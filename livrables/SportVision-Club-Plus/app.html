@@ -275,6 +275,14 @@ function toast(msg){
   host.appendChild(t); setTimeout(()=>t.remove(),3200);
 }
 function esc(s){ if(s===null||s===undefined) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// Échappe une donnée destinée à être injectée comme argument JS entre guillemets
+// simples dans un attribut HTML entre guillemets doubles (ex: onclick="fn('${escJs(x)}')").
+// Contrairement à esc(), un simple entity-encode de la quote ne suffit pas ici : le
+// parseur HTML décode les entités de l'attribut AVANT que le JS ne soit lu, donc
+// esc() laisserait passer une quote qui referme la chaîne JS interne. escJs()
+// échappe la quote en JS (\') et échappe séparément le guillemet double en entité
+// HTML pour protéger aussi le délimiteur de l'attribut lui-même.
+function escJs(s){ if(s===null||s===undefined) return ''; return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function uid(p){ return p+Math.random().toString(36).slice(2,9); }
 function openModal(html){ document.getElementById('modalCt').innerHTML=html; document.getElementById('modalHost').style.display='flex'; }
 function closeModal(){ document.getElementById('modalHost').style.display='none'; document.getElementById('modalCt').innerHTML=''; }
@@ -958,11 +966,11 @@ function dashGeneric(){
   </div>
   <div class="grid g2" style="margin-bottom:20px">
     <div class="card"><div class="sh" style="margin-bottom:12px"><b style="font-size:15px">Demandes de création</b><a onclick="switchView('demandes')">Tout voir →</a></div>
-      ${requestsSource().slice(0,3).map(r=>{const sm=statusMeta(r.status); return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><div><div style="font-weight:600;font-size:12.5px">${typeLabel(r.type)} · ${r.team}</div><div class="muted" style="font-size:11px">${r.requester}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join('')||'<div class="muted" style="padding:10px 0">Aucune demande pour le moment.</div>'}
+      ${requestsSource().slice(0,3).map(r=>{const sm=statusMeta(r.status); return `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)"><div><div style="font-weight:600;font-size:12.5px">${typeLabel(r.type)} · ${esc(r.team)}</div><div class="muted" style="font-size:11px">${esc(r.requester)}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>`;}).join('')||'<div class="muted" style="padding:10px 0">Aucune demande pour le moment.</div>'}
     </div>
     <div class="card"><div class="sh" style="margin-bottom:12px"><b style="font-size:15px">Sponsors</b><a onclick="switchView('sponsors')">Voir les sponsors →</a></div>
       <div class="muted" style="font-size:12.5px;margin-bottom:12px">2 activations réalisées sur 3 prévues ce mois-ci.</div>
-      <div style="display:flex;gap:10px">${sponsorsSource().map(sp=>`<div class="club-crest" title="${sp.name}">${initials(sp.name)}</div>`).join('')||'<span class="muted" style="font-size:12px">Aucun sponsor pour le moment.</span>'}</div>
+      <div style="display:flex;gap:10px">${sponsorsSource().map(sp=>`<div class="club-crest" title="${esc(sp.name)}">${esc(initials(sp.name))}</div>`).join('')||'<span class="muted" style="font-size:12px">Aucun sponsor pour le moment.</span>'}</div>
     </div>
   </div>
   <div class="card"><b style="font-size:15px;display:block;margin-bottom:10px">SportVision</b>
@@ -1052,7 +1060,7 @@ function tplNewsroom(){
     content = items.length ? `<div class="list-host">${items.map(n=>{const sm=statusMeta(n.status); return `
       <button class="list-row" onclick="openNewsroomDrawer('${n.id}')">
         <div style="display:flex;gap:10px;align-items:center"><span style="width:7px;height:7px;border-radius:4px;background:${n.priority==='haute'?'var(--er)':n.priority==='basse'?'var(--t2)':'var(--wa)'}"></span>
-        <div><div style="font-weight:700;font-size:13.5px">${esc(n.title)}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${n.type} · ${n.team} · ${n.author} · ${fmtDate(n.date)} · ${n.media} média(s)</div></div></div>
+        <div><div style="font-weight:700;font-size:13.5px">${esc(n.title)}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${n.type} · ${esc(n.team)} · ${esc(n.author)} · ${fmtDate(n.date)} · ${n.media} média(s)</div></div></div>
         <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
       </button>`;}).join('')}</div>` : `<div class="empty-state">Aucune information dans ce filtre pour le moment.</div>`;
   } else if(nsView==='cartes'){
@@ -1060,16 +1068,16 @@ function tplNewsroom(){
       <button class="tile-card" onclick="openNewsroomDrawer('${n.id}')">
         <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span class="muted" style="font-size:11px;font-weight:700">${n.type}</span><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></div>
         <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">${esc(n.title)}</div>
-        <div class="muted" style="font-size:11.5px">${n.team} · ${n.author}</div></button>`;}).join('')}</div>`;
+        <div class="muted" style="font-size:11.5px">${esc(n.team)} · ${esc(n.author)}</div></button>`;}).join('')}</div>`;
   } else {
     content = `<div class="kanban">${statuses.map(st=>{const sm=statusMeta(st); const col=items.filter(n=>n.status===st);
       return `<div class="kan-col"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="width:7px;height:7px;border-radius:4px;background:${sm.color}"></span><span class="muted" style="font-size:12px;font-weight:700">${sm.label}</span></div>
-      ${col.map(n=>`<div class="kan-card" onclick="openNewsroomDrawer('${n.id}')"><div style="font-weight:700;font-size:12.5px;margin-bottom:4px">${esc(n.title)}</div><div class="muted" style="font-size:11px">${n.team} · ${fmtDate(n.date)}</div></div>`).join('')}
+      ${col.map(n=>`<div class="kan-card" onclick="openNewsroomDrawer('${n.id}')"><div style="font-weight:700;font-size:12.5px;margin-bottom:4px">${esc(n.title)}</div><div class="muted" style="font-size:11px">${esc(n.team)} · ${fmtDate(n.date)}</div></div>`).join('')}
       </div>`;}).join('')}</div>`;
   }
   return `<div class="sh"><b>Newsroom du club</b><button class="btn bp" onclick="guard(openNewsroomForm)()">+ Envoyer une information</button></div>
     <div class="pillbar">${[['liste','Liste'],['cartes','Cartes'],['kanban','Kanban']].map(([k,l])=>`<button class="pill${nsView===k?' on':''}" onclick="nsView='${k}';renderContent()">${l}</button>`).join('')}</div>
-    <div class="pillbar">${['toutes',...teamNames()].map(t=>`<button class="pill${nsTeam===t?' on':''}" onclick="nsTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
+    <div class="pillbar">${['toutes',...teamNames()].map(t=>`<button class="pill${nsTeam===t?' on':''}" onclick="nsTeam='${escJs(t)}';renderContent()">${t==='toutes'?'Toutes les équipes':esc(t)}</button>`).join('')}</div>
     <div class="pillbar">${['toutes',...statuses].map(st=>`<button class="pill${nsStatus===st?' on':''}" onclick="nsStatus='${st}';renderContent()">${st==='toutes'?'Tous les statuts':statusMeta(st).label}</button>`).join('')}</div>
     ${content}`;
 }
@@ -1078,9 +1086,9 @@ function openNewsroomDrawer(id){
   if(!n || !n.id){ toast('Information introuvable.'); return; }
   const sm=statusMeta(n.status);
   openDrawer(`<div class="sh"><b>${esc(n.title)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
-    <div class="muted" style="font-size:12px;margin-bottom:14px">${n.type} · ${n.team} · ${n.author} · ${fmtDate(n.date)}</div>
+    <div class="muted" style="font-size:12px;margin-bottom:14px">${n.type} · ${esc(n.team)} · ${esc(n.author)} · ${fmtDate(n.date)}</div>
     <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:16px;display:inline-block">${sm.label}</span>
-    <div class="card" style="margin-bottom:16px"><div style="margin-bottom:8px">${esc(n.desc)}</div><div class="muted" style="font-size:11.5px">${n.media} média(s) joint(s) · Sponsor : ${n.sponsor||'Aucun'}</div></div>
+    <div class="card" style="margin-bottom:16px"><div style="margin-bottom:8px">${esc(n.desc)}</div><div class="muted" style="font-size:11.5px">${n.media} média(s) joint(s) · Sponsor : ${n.sponsor?esc(n.sponsor):'Aucun'}</div></div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="btn bp" onclick="nsAction('${id}','pret_a_transformer','Transformé en publication — retrouvez-le dans Studio de création.')">Transformer en publication</button>
       <button class="btn" style="background:var(--violet);color:#fff" onclick="closeDrawer();switchView('demandes');toast('Créez la demande liée à cette information.')">Créer une demande</button>
@@ -1100,7 +1108,7 @@ async function nsAction(id,status,msg){
 function openNewsroomForm(){
   openModal(`<div class="sh"><b>Envoyer une information</b><button class="close-x" onclick="closeModal()">✕</button></div>
     <div class="row2"><div class="field"><label>Type</label><select id="nf-type"><option>Résultat</option><option>Actualité</option></select></div>
-    <div class="field"><label>Équipe</label><select id="nf-team">${teamNames().map(t=>`<option>${t}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Équipe</label><select id="nf-team">${teamNames().map(t=>`<option>${esc(t)}</option>`).join('')}</select></div></div>
     <div class="field"><label>Titre</label><input id="nf-title" type="text"></div>
     <div class="field"><label>Description</label><textarea id="nf-desc" rows="3"></textarea></div>
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitNewsroomForm()">Envoyer</button>`);
@@ -1138,16 +1146,16 @@ function tplMatchCenter(){
   let content='';
   if(mcView==='a_venir'){
     const list=source.filter(m=>m.status==='a_venir');
-    content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)} · ${m.lieu}</div></div><span class="badge" style="background:#168EFF22;color:var(--blue)">À venir</span></div>`).join('')||'<div class="empty-state">Aucun match à venir.</div>'}</div>`;
+    content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${esc(m.team)} vs ${esc(m.opp)}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)} · ${esc(m.lieu)}</div></div><span class="badge" style="background:#168EFF22;color:var(--blue)">À venir</span></div>`).join('')||'<div class="empty-state">Aucun match à venir.</div>'}</div>`;
   } else if(mcView==='a_transmettre'){
     const list=source.filter(m=>m.status==='a_transmettre');
-    content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)}</div></div><button class="btn" style="background:var(--wa);color:#06182B" onclick="guard(openMatchExpress,'envoyer_resultat')()">Transmettre</button></div>`).join('')||'<div class="empty-state">Rien à transmettre.</div>'}</div>`;
+    content=`<div class="list-host">${list.map(m=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${esc(m.team)} vs ${esc(m.opp)}</div><div class="muted" style="font-size:11.5px;margin-top:2px">${fmtDate(m.date)}</div></div><button class="btn" style="background:var(--wa);color:#06182B" onclick="guard(openMatchExpress,'envoyer_resultat')()">Transmettre</button></div>`).join('')||'<div class="empty-state">Rien à transmettre.</div>'}</div>`;
   } else if(mcView==='recus'){
     const list=source.filter(m=>m.status==='recu');
-    content=`<div class="grid g3">${list.map(m=>`<button class="tile-card" onclick="openMatchDrawer('${m.id}')"><div style="font-weight:700;font-size:13.5px">${m.team} vs ${m.opp}</div><div style="font-size:20px;font-weight:800;color:var(--cyan);margin:8px 0">${m.score}</div><div class="muted" style="font-size:11.5px">${fmtDate(m.date)}</div></button>`).join('')}</div>`;
+    content=`<div class="grid g3">${list.map(m=>`<button class="tile-card" onclick="openMatchDrawer('${m.id}')"><div style="font-weight:700;font-size:13.5px">${esc(m.team)} vs ${esc(m.opp)}</div><div style="font-size:20px;font-weight:800;color:var(--cyan);margin:8px 0">${esc(m.score)}</div><div class="muted" style="font-size:11.5px">${fmtDate(m.date)}</div></button>`).join('')}</div>`;
   } else {
     const list=source.filter(m=>m.status==='recu'&&m.contents&&m.contents.length);
-    content=`<div class="list-host">${list.flatMap(m=>m.contents.map(c=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${c}</div><div class="muted" style="font-size:11.5px">${m.team} vs ${m.opp} · ${fmtDate(m.date)}</div></div></div>`)).join('')||'<div class="empty-state">Aucun contenu créé pour le moment.</div>'}</div>`;
+    content=`<div class="list-host">${list.flatMap(m=>m.contents.map(c=>`<div class="list-row" style="cursor:default"><div><div style="font-weight:700;font-size:13.5px">${esc(c)}</div><div class="muted" style="font-size:11.5px">${esc(m.team)} vs ${esc(m.opp)} · ${fmtDate(m.date)}</div></div></div>`)).join('')||'<div class="empty-state">Aucun contenu créé pour le moment.</div>'}</div>`;
   }
   return `<div class="sh"><b>Match Center</b><div style="display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn bo" onclick="guard(openMatchExpress,'envoyer_resultat')()">+ Résultat express</button>
@@ -1158,11 +1166,11 @@ function tplMatchCenter(){
 function openMatchDrawer(id){
   const m = REAL ? normMatchItem(realMatches.find(x=>x.id===id)||{}) : DATA.matchItems.find(x=>x.id===id);
   if(!m || !m.id){ toast('Match introuvable.'); return; }
-  openDrawer(`<div class="sh"><b>${m.team} vs ${m.opp}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+  openDrawer(`<div class="sh"><b>${esc(m.team)} vs ${esc(m.opp)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="muted" style="font-size:12px;margin-bottom:16px">${fmtDate(m.date)}</div>
-    <div style="font-size:26px;font-weight:800;color:var(--cyan);margin-bottom:16px">${m.score}</div>
-    <div style="font-size:13px;margin-bottom:6px">Homme du match : ${m.motm||'—'}</div>
-    <div class="muted" style="font-size:13px;margin-bottom:20px">Buteurs : ${m.scorers||'—'}</div>
+    <div style="font-size:26px;font-weight:800;color:var(--cyan);margin-bottom:16px">${esc(m.score)}</div>
+    <div style="font-size:13px;margin-bottom:6px">Homme du match : ${esc(m.motm)||'—'}</div>
+    <div class="muted" style="font-size:13px;margin-bottom:20px">Buteurs : ${esc(m.scorers)||'—'}</div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="btn bp" onclick="closeDrawer();switchView('creations');toast('Affiche résultat créée en brouillon.')">Créer une affiche résultat</button>
       <button class="btn bo" onclick="toast('Story créée en brouillon.')">Créer une story</button>
@@ -1182,7 +1190,7 @@ async function mcSendNewsroom(id){
 }
 function openMatchExpress(){
   openModal(`<div class="sh"><b>Résultat express</b><button class="close-x" onclick="closeModal()">✕</button></div>
-    <div class="row2"><div class="field"><label>Équipe</label><select id="me-team">${teamNames().map(t=>`<option>${t}</option>`).join('')}</select></div>
+    <div class="row2"><div class="field"><label>Équipe</label><select id="me-team">${teamNames().map(t=>`<option>${esc(t)}</option>`).join('')}</select></div>
     <div class="field"><label>Domicile / extérieur</label><select id="me-de"><option>Domicile</option><option>Extérieur</option></select></div></div>
     <div class="field"><label>Adversaire</label><input id="me-opp" type="text"></div>
     <div class="field"><label>Score</label><input id="me-score" type="text" placeholder="2-1"></div>
@@ -1226,11 +1234,11 @@ function tplCalendrier(){
       </button>`).join('')}</div>`).join('')}
     </div>`;
   } else {
-    content=`<div class="list-host">${[...filtered].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<div class="list-row" style="cursor:default"><div style="display:flex;gap:10px;align-items:center"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${e.type[0].toUpperCase()}</span><div><div style="font-weight:600;font-size:13px">${esc(e.title)}</div><div class="muted" style="font-size:11.5px">${fmtDate(e.date)} · ${e.team||'Club'}</div></div></div></div>`).join('')}</div>`;
+    content=`<div class="list-host">${[...filtered].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<div class="list-row" style="cursor:default"><div style="display:flex;gap:10px;align-items:center"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${e.type[0].toUpperCase()}</span><div><div style="font-weight:600;font-size:13px">${esc(e.title)}</div><div class="muted" style="font-size:11.5px">${fmtDate(e.date)} · ${e.team?esc(e.team):'Club'}</div></div></div></div>`).join('')}</div>`;
   }
   return `<div class="sh"><b>Calendrier éditorial — Août 2026</b><span class="pill">Saison 2026-2027</span></div>
     <div class="pillbar">${[['mois','Mois'],['agenda','Agenda']].map(([k,l])=>`<button class="pill${calView===k?' on':''}" onclick="calView='${k}';renderContent()">${l}</button>`).join('')}</div>
-    <div class="pillbar">${['toutes',...teamNames()].map(t=>`<button class="pill${calFilterTeam===t?' on':''}" onclick="calFilterTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
+    <div class="pillbar">${['toutes',...teamNames()].map(t=>`<button class="pill${calFilterTeam===t?' on':''}" onclick="calFilterTeam='${escJs(t)}';renderContent()">${t==='toutes'?'Toutes les équipes':esc(t)}</button>`).join('')}</div>
     <div class="pillbar">${[['tous','Tous les types'],['match','Matchs'],['contenu','Contenus'],['sponsor','Sponsors'],['prestation','Prestations'],['entrainement','Entraînements'],['tournoi','Tournois']].map(([k,l])=>`<button class="pill${calFilterType===k?' on':''}" onclick="calFilterType='${k}';renderContent()">${l}</button>`).join('')}</div>
     ${content}`;
 }
@@ -1251,14 +1259,14 @@ function monthGrid(y,m,events){
 function openDayDrawer(iso){
   const evs=(REAL?realEvents:DATA.calEvents).filter(e=>e.date===iso);
   openDrawer(`<div class="sh"><b>${fmtDate(iso)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
-    ${evs.map(e=>`<div class="card" style="margin-bottom:10px"><div style="display:flex;gap:8px;align-items:center"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${e.type[0].toUpperCase()}</span><b style="font-size:13.5px">${esc(e.title)}</b></div><div class="muted" style="font-size:12px;margin-top:4px">${e.team||'Club'}</div></div>`).join('') || '<div class="muted" style="margin-bottom:16px">Aucun événement ce jour-là pour l’instant.</div>'}
+    ${evs.map(e=>`<div class="card" style="margin-bottom:10px"><div style="display:flex;gap:8px;align-items:center"><span class="ni-tile" style="background:${eventColor(e.type)}22;color:${eventColor(e.type)}">${e.type[0].toUpperCase()}</span><b style="font-size:13.5px">${esc(e.title)}</b></div><div class="muted" style="font-size:12px;margin-top:4px">${e.team?esc(e.team):'Club'}</div></div>`).join('') || '<div class="muted" style="margin-bottom:16px">Aucun événement ce jour-là pour l’instant.</div>'}
     <button class="btn bp" style="width:100%;justify-content:center" onclick="guard(()=>openAddEvent('${iso}'))()">+ Ajouter un événement</button>`);
 }
 function openAddEvent(iso){
   openModal(`<div class="sh"><b>Ajouter un événement — ${fmtDate(iso)}</b><button class="close-x" onclick="closeModal()">✕</button></div>
     <div class="field"><label>Type</label><select id="ae-type"><option value="match">Match</option><option value="entrainement">Entraînement important</option><option value="tournoi">Tournoi</option><option value="contenu">Contenu à préparer</option><option value="sponsor">Échéance sponsor</option><option value="prestation">Prestation SportVision</option></select></div>
     <div class="field"><label>Titre</label><input id="ae-title" type="text" placeholder="ex: Match vs AS Berville"></div>
-    <div class="field"><label>Équipe</label><select id="ae-team">${teamNames().map(t=>`<option>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Équipe</label><select id="ae-team">${teamNames().map(t=>`<option>${esc(t)}</option>`).join('')}</select></div>
     <button class="btn bp" style="width:100%;justify-content:center" onclick="submitAddEvent('${iso}')">Ajouter</button>`);
 }
 async function submitAddEvent(iso){
@@ -1313,7 +1321,7 @@ function tplCreations(){
   } else {
     const map={brouillons:'brouillon',a_valider:'a_valider',valides:'valide'};
     const list=src.filter(c=>c.status===map[crView]);
-    content = list.length ? `<div class="grid g3">${list.map(c=>{const sm=statusMeta(c.status); return `<button class="tile-card" onclick="openCreationDrawer('${c.id}')"><div class="thumb">${esc(c.title)}</div><div style="font-weight:600;font-size:12.5px;margin-top:8px">${esc(c.title)}</div><div class="muted" style="font-size:11px;margin-top:2px">${c.team} · ${fmtDate(c.date)}</div><span class="badge" style="background:${sm.color}22;color:${sm.color};margin-top:6px">${sm.label}</span>${mediaWarnBadgeHtml('club_creations',c.id,'6px')}</button>`;}).join('')}</div>` : `<div class="empty-state">Aucun visuel dans cette catégorie pour le moment.</div>`;
+    content = list.length ? `<div class="grid g3">${list.map(c=>{const sm=statusMeta(c.status); return `<button class="tile-card" onclick="openCreationDrawer('${c.id}')"><div class="thumb">${esc(c.title)}</div><div style="font-weight:600;font-size:12.5px;margin-top:8px">${esc(c.title)}</div><div class="muted" style="font-size:11px;margin-top:2px">${esc(c.team)} · ${fmtDate(c.date)}</div><span class="badge" style="background:${sm.color}22;color:${sm.color};margin-top:6px">${sm.label}</span>${mediaWarnBadgeHtml('club_creations',c.id,'6px')}</button>`;}).join('')}</div>` : `<div class="empty-state">Aucun visuel dans cette catégorie pour le moment.</div>`;
   }
   return `<div class="sh"><b>Studio de création</b><button class="btn bp" onclick="guard(openCreationWizard)()">+ Nouveau visuel</button></div>
     <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${crView===k?' on':''}" onclick="crView='${k}';renderContent()">${l}</button>`).join('')}</div>
@@ -1324,11 +1332,11 @@ function openCreationDrawer(id){
   if(!c){ toast('Visuel introuvable.'); return; }
   const sm=statusMeta(c.status);
   openDrawer(`<div class="sh"><b>${typeLabel(c.type)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
-    <div class="muted" style="font-size:12px;margin-bottom:14px">${c.team} · ${fmtDate(c.date)}</div>
+    <div class="muted" style="font-size:12px;margin-bottom:14px">${esc(c.team)} · ${fmtDate(c.date)}</div>
     <div class="thumb" style="height:200px;margin-bottom:16px">${esc(c.title)}</div>
     <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:16px;display:inline-block">${sm.label}</span>
     ${REAL && mediaTagBadge['club_creations:'+id]?`<div class="card" style="border-color:#EF5B6755;margin-bottom:16px;color:var(--er);font-size:12.5px">⚠ Autorisation manquante — au moins un joueur tagué sur ce média n'a pas de droit à l'image valide. Le média reste invisible pour les familles concernées.</div>`:''}
-    <div class="muted" style="font-size:12.5px;margin-bottom:20px">Sponsor associé : ${c.sponsor||'Aucun'}</div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:20px">Sponsor associé : ${c.sponsor?esc(c.sponsor):'Aucun'}</div>
     <div style="display:flex;flex-direction:column;gap:8px">
       ${c.status==='brouillon'?`<button class="btn" style="background:var(--wa);color:#06182B" onclick="crStatus('${id}','a_valider','Validation demandée.')">Demander une validation</button>`:''}
       ${c.status==='a_valider'?`<button class="btn bp" onclick="crStatus('${id}','valide','Visuel validé.')">Valider</button>`:''}
@@ -1376,7 +1384,7 @@ function renderCreationWizard(){
   if(cw.step===1){
     body=`<div class="muted" style="font-size:12.5px;margin-bottom:12px">Choisissez un type de contenu</div><div class="grid g2">${CREATION_TYPES.map(t=>`<button class="opt-btn" onclick="cw.type='${t}';cw.step=2;renderCreationWizard()">${typeLabel(t)}</button>`).join('')}</div>`;
   } else if(cw.step===2){
-    body=`<div class="field"><label>Équipe</label><select id="cw-team" onchange="tagPrecheckByTeam('cw-team','cw-players-list')">${teamNames().map(t=>`<option ${t===cw.team?'selected':''}>${t}</option>`).join('')}</select></div>
+    body=`<div class="field"><label>Équipe</label><select id="cw-team" onchange="tagPrecheckByTeam('cw-team','cw-players-list')">${teamNames().map(t=>`<option ${t===cw.team?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
       <div class="field"><label>Titre</label><input id="cw-title" type="text" value="${esc(cw.title)}"></div>
       <div class="field"><label>Détail (score, adversaire, message…)</label><textarea id="cw-detail" rows="2">${esc(cw.detail)}</textarea></div>
       ${REAL?`<div class="field"><label>Joueurs apparaissant sur ce média (optionnel)</label>
@@ -1384,7 +1392,7 @@ function renderCreationWizard(){
         <div id="cw-players-list" class="tag-list-box">${tagPlayersListHtml(cwTagPlayers, new Set(cw.playerIds))}</div>
       </div>`:''}`;
   } else if(cw.step===3){
-    body=`<div class="field"><label>Sponsor à valoriser</label><select id="cw-sponsor"><option>Aucun</option>${sponsorsSource().map(sp=>`<option>${sp.name}</option>`).join('')}</select></div>
+    body=`<div class="field"><label>Sponsor à valoriser</label><select id="cw-sponsor"><option>Aucun</option>${sponsorsSource().map(sp=>`<option>${esc(sp.name)}</option>`).join('')}</select></div>
       <div class="thumb" style="height:200px">Aperçu du visuel</div>`;
   } else {
     body=`<div class="card"><b style="font-size:14px;display:block;margin-bottom:8px">${typeLabel(cw.type)}</b><div class="muted" style="font-size:13px;line-height:1.7">Équipe : ${cw.team}<br>Titre : ${esc(cw.title)}<br>Sponsor : ${cw.sponsor}<br>Joueurs tagués : ${cw.playerIds.length?esc(cw.playerIds.map(id=>tagPlayerName(cwTagPlayers.find(p=>p.id===id))).join(', ')):'Aucun'}</div></div>
@@ -1461,7 +1469,7 @@ function tplMediatheque(){
   const list=mediaSource().filter(m=>(mtTeam==='toutes'||m.team===mtTeam||!m.team)&&(mtType==='tous'||m.type===mtType));
   const typeLbl={photo:'Photo',video:'Vidéo',logo:'Logo',document:'Document',creation:'Création'};
   return `<div class="sh"><b>Banque média</b><button class="btn bp" onclick="guard(openMediaForm)()">+ Importer</button></div>
-    <div class="pillbar">${['toutes',...teamNames()].map(t=>`<button class="pill${mtTeam===t?' on':''}" onclick="mtTeam='${t}';renderContent()">${t==='toutes'?'Toutes les équipes':t}</button>`).join('')}</div>
+    <div class="pillbar">${['toutes',...teamNames()].map(t=>`<button class="pill${mtTeam===t?' on':''}" onclick="mtTeam='${escJs(t)}';renderContent()">${t==='toutes'?'Toutes les équipes':esc(t)}</button>`).join('')}</div>
     <div class="pillbar">${[['tous','Tous les types'],['photo','Photos'],['video','Vidéos'],['logo','Logos'],['creation','Créations']].map(([k,l])=>`<button class="pill${mtType===k?' on':''}" onclick="mtType='${k}';renderContent()">${l}</button>`).join('')}</div>
     <div class="grid g4">${list.map(m=>`<button class="tile-card" onclick="openMediaDrawer('${m.id}')"><div class="thumb">${esc(m.title)}</div><div style="font-weight:600;font-size:12px;margin-top:8px">${esc(m.title)}</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"><span class="badge" style="background:#168EFF22;color:var(--blue)">${typeLbl[m.type]}</span><span class="badge" style="background:${m.expired?'#EF5B6722':'#28C99522'};color:${m.expired?'var(--er)':'var(--ok)'}">${m.expired?'Lien expiré':m.source}</span>${mediaWarnBadgeHtml('club_media',m.id)}</div></button>`).join('')||'<div class="empty-state">Aucun média pour ces filtres.</div>'}</div>`;
@@ -1469,12 +1477,20 @@ function tplMediatheque(){
 function openMediaDrawer(id){
   const m=mediaSource().find(x=>x.id===id);
   if(!m){ toast('Média introuvable.'); return; }
+  // Le lien vient d'un champ libre saisi par un membre du club (submitMediaForm,
+  // aucune validation de schéma à l'écriture) : ne jamais l'ouvrir sans vérifier
+  // qu'il s'agit bien de http(s), sinon une valeur "javascript:..." exécuterait du
+  // code dans le contexte de l'app (vol de session via svcp_tok) au clic sur "Ouvrir
+  // le lien" — même précaution que le module Administration de Connect (data-href).
+  // escJs() (et pas esc()) car la valeur est injectée dans un argument JS entre
+  // guillemets simples à l'intérieur de l'attribut onclick.
+  const linkOk = m.link && /^https?:\/\//i.test(m.link);
   openDrawer(`<div class="sh"><b>${esc(m.title)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <div class="thumb" style="height:200px;margin-bottom:16px">${esc(m.title)}</div>
     ${m.expired?`<div class="card" style="border-color:#EF5B6755;margin-bottom:16px;color:var(--er);font-size:12.5px">Ce lien externe est expiré ou indisponible. Demandez un nouveau lien à son auteur.</div>`:''}
     ${REAL && mediaTagBadge['club_media:'+id]?`<div class="card" style="border-color:#EF5B6755;margin-bottom:16px;color:var(--er);font-size:12.5px">⚠ Autorisation manquante — au moins un joueur tagué sur ce média n'a pas de droit à l'image valide. Le média reste invisible pour les familles concernées.</div>`:''}
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn bp" onclick="${m.link?`window.open('${esc(m.link)}','_blank')`:"toast('Lien copié dans le presse-papiers.')"}">${m.link?'Ouvrir le lien':'Copier le lien'}</button>
+      <button class="btn bp" onclick="${linkOk?`window.open('${escJs(m.link)}','_blank','noopener,noreferrer')`:(m.link?"toast('Lien invalide ou non sécurisé — impossible de l\\'ouvrir.')":"toast('Lien copié dans le presse-papiers.')")}">${linkOk?'Ouvrir le lien':(m.link?'Lien invalide':'Copier le lien')}</button>
       ${REAL?`<button class="btn bo" onclick="openPublishToFamilyModal('club_media','${id}')">Publier vers l'Espace Joueur</button>`:''}
       <button class="btn bo" onclick="closeDrawer();switchView('creations');toast('Média prêt à être utilisé dans une création.')">Utiliser dans une création</button>
       <button class="btn bo" onclick="toast('Signalement transmis à SportVision.')">Signaler un problème</button>
@@ -1490,7 +1506,7 @@ async function openMediaForm(){
   openModal(`<div class="sh"><b>Importer un média</b><button class="close-x" onclick="closeModal()">✕</button></div>
     <div class="field"><label>Titre</label><input id="mf-title" type="text"></div>
     <div class="row2"><div class="field"><label>Type</label><select id="mf-type"><option value="photo">Photo</option><option value="video">Vidéo</option><option value="logo">Logo</option><option value="document">Document</option><option value="creation">Création</option></select></div>
-    <div class="field"><label>Équipe</label><select id="mf-team" onchange="tagPrecheckByTeam('mf-team','mf-players-list')">${teamNames().map(t=>`<option>${t}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Équipe</label><select id="mf-team" onchange="tagPrecheckByTeam('mf-team','mf-players-list')">${teamNames().map(t=>`<option>${esc(t)}</option>`).join('')}</select></div></div>
     <div class="field"><label>Source</label><select id="mf-source"><option value="externe">Lien externe</option><option value="interne">Stockage Club+</option></select></div>
     <div class="field"><label>Lien (si externe)</label><input id="mf-link" type="text" placeholder="https://…"></div>
     ${REAL?`<div class="field"><label>Joueurs apparaissant sur ce média (optionnel)</label>
@@ -1704,19 +1720,19 @@ function tplSponsors(){
       <div class="stat"><b>0</b><span>Partenaires sans logo</span></div>
     </div>
     <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:10px">ALERTES</div>
-    <div class="card">${pending.map(c=>`<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd);font-size:13px"><span style="width:7px;height:7px;border-radius:4px;background:var(--wa);flex-shrink:0"></span>${c.sponsorName} : "${c.type}" à réaliser${c.due!=='Permanent'?' avant le '+fmtDate(c.due):''}.</div>`).join('')||'<div style="padding:10px 0" class="muted">Aucune alerte pour le moment.</div>'}</div>`;
+    <div class="card">${pending.map(c=>`<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd);font-size:13px"><span style="width:7px;height:7px;border-radius:4px;background:var(--wa);flex-shrink:0"></span>${esc(c.sponsorName)} : "${esc(c.type)}" à réaliser${c.due!=='Permanent'?' avant le '+fmtDate(c.due):''}.</div>`).join('')||'<div style="padding:10px 0" class="muted">Aucune alerte pour le moment.</div>'}</div>`;
   } else if(spView==='partenaires'){
     content = src.length ? `<div class="grid g3">${src.map(sp=>{const done=sp.commitments.filter(c=>c.status==='realise').length;
       return `<button class="tile-card" onclick="openSponsorDrawer('${sp.id}')">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><div class="club-crest" style="border-radius:10px">${initials(sp.name)}</div><div><div style="font-weight:700;font-size:14px">${sp.name}</div><div class="muted" style="font-size:11.5px">${sp.secteur}</div></div></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><div class="club-crest" style="border-radius:10px">${esc(initials(sp.name))}</div><div><div style="font-weight:700;font-size:14px">${esc(sp.name)}</div><div class="muted" style="font-size:11.5px">${esc(sp.secteur)}</div></div></div>
         <span class="badge" style="background:${sp.color}22;color:${sp.color};margin-bottom:8px">${sp.niveau}</span>
-        <div class="muted" style="font-size:11.5px">${sp.teams.join(', ')||'—'}</div>
+        <div class="muted" style="font-size:11.5px">${esc(sp.teams.join(', '))||'—'}</div>
         <div style="font-size:11.5px;color:var(--cyan);font-weight:600;margin-top:4px">${done}/${sp.commitments.length} contreparties réalisées</div></button>`;}).join('')}</div>` : `<div class="empty-state">Aucun sponsor pour le moment.</div>`;
   } else {
     content=`<div class="card" style="background:linear-gradient(135deg,var(--card),var(--card2));display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px">
       <div class="muted" style="font-size:13px">Aperçu de la page publique des partenaires du club.</div>
       <a href="SportVision-Club-Plus.html#/partenaires" target="_blank" class="btn bp">Voir la page publique →</a></div>
-      <div class="grid g4">${src.map(sp=>`<div class="tile-card" style="text-align:center"><div class="club-crest" style="border-radius:10px;margin:0 auto 10px">${initials(sp.name)}</div><div style="font-weight:700;font-size:13px">${sp.name}</div><div class="muted" style="font-size:11.5px">${sp.secteur}</div></div>`).join('')||'<div class="empty-state">Aucun sponsor pour le moment.</div>'}</div>`;
+      <div class="grid g4">${src.map(sp=>`<div class="tile-card" style="text-align:center"><div class="club-crest" style="border-radius:10px;margin:0 auto 10px">${esc(initials(sp.name))}</div><div style="font-weight:700;font-size:13px">${esc(sp.name)}</div><div class="muted" style="font-size:11.5px">${esc(sp.secteur)}</div></div>`).join('')||'<div class="empty-state">Aucun sponsor pour le moment.</div>'}</div>`;
   }
   return `<div class="sh"><b>Espace Sponsors</b><button class="btn bp" onclick="guard(openSponsorForm,'gerer_sponsors')()">+ Ajouter un sponsor</button></div>
     <div class="pillbar">${tabs.map(([k,l])=>`<button class="pill${spView===k?' on':''}" onclick="spView='${k}';renderContent()">${l}</button>`).join('')}</div>
@@ -1725,15 +1741,15 @@ function tplSponsors(){
 function openSponsorDrawer(id){
   const sp=sponsorsSource().find(x=>x.id===id);
   if(!sp){ toast('Sponsor introuvable.'); return; }
-  openDrawer(`<div class="sh"><div style="display:flex;align-items:center;gap:12px"><div class="club-crest" style="border-radius:10px">${initials(sp.name)}</div><div><b>${sp.name}</b><div class="muted" style="font-size:12px">${sp.secteur}</div></div></div><button class="close-x" onclick="closeDrawer()">✕</button></div>
+  openDrawer(`<div class="sh"><div style="display:flex;align-items:center;gap:12px"><div class="club-crest" style="border-radius:10px">${esc(initials(sp.name))}</div><div><b>${esc(sp.name)}</b><div class="muted" style="font-size:12px">${esc(sp.secteur)}</div></div></div><button class="close-x" onclick="closeDrawer()">✕</button></div>
     <span class="badge" style="background:${sp.color}22;color:${sp.color};margin:14px 0;display:inline-block">Partenaire ${sp.niveau}</span>
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Contrat</span><span style="font-weight:600">${sp.debut?fmtDate(sp.debut):'—'} — ${sp.fin?fmtDate(sp.fin):'—'}</span></div>
       <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Montant annuel</span><span style="font-weight:600">${sp.montant} €</span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px"><span class="muted">Contact</span><span style="font-weight:600">${sp.contact||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px"><span class="muted">Contact</span><span style="font-weight:600">${esc(sp.contact)||'—'}</span></div>
     </div>
     <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">CONTREPARTIES</div>
-    ${sp.commitments.map(c=>{const sm=statusMeta(c.status); return `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:6px"><div><div style="font-weight:600;font-size:12.5px">${c.type}</div><div class="muted" style="font-size:11px">${c.due==='Permanent'?'Permanent':fmtDate(c.due)}</div></div>${c.status==='a_faire'?`<button class="btn bo" style="padding:5px 10px" onclick="sponsorMarkDone('${sp.id}','${c.id}')">Marquer réalisé</button>`:`<span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>`}</div>`;}).join('')||'<div class="muted" style="font-size:12.5px">Aucune contrepartie enregistrée.</div>'}
+    ${sp.commitments.map(c=>{const sm=statusMeta(c.status); return `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:6px"><div><div style="font-weight:600;font-size:12.5px">${esc(c.type)}</div><div class="muted" style="font-size:11px">${c.due==='Permanent'?'Permanent':fmtDate(c.due)}</div></div>${c.status==='a_faire'?`<button class="btn bo" style="padding:5px 10px" onclick="sponsorMarkDone('${sp.id}','${c.id}')">Marquer réalisé</button>`:`<span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>`}</div>`;}).join('')||'<div class="muted" style="font-size:12.5px">Aucune contrepartie enregistrée.</div>'}
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
       <button class="btn" style="background:linear-gradient(135deg,#168EFF,#7455FF);color:#fff" onclick="toast('Le rapport de partenariat PDF sera disponible au lancement.')">Générer le rapport</button>
       <button class="btn bo" onclick="toast('Renouvellement en préparation.')">Préparer le renouvellement</button>
@@ -1809,7 +1825,7 @@ function tplDemandes(){
     <div class="list-host">${list.length?list.map(r=>{const sm=statusMeta(r.status); return `
       <button class="list-row" onclick="openRequestDrawer('${r.id}')">
         <div style="display:flex;gap:10px;align-items:center"><span style="width:7px;height:7px;border-radius:4px;background:${r.urgency==='haute'?'var(--er)':'var(--bd)'}"></span>
-        <div><div style="font-weight:700;font-size:14px">${typeLabel(r.type)}</div><div class="muted" style="font-size:12px;margin-top:2px">${r.team} · ${r.requester} · ${fmtDate(r.created)}</div></div></div>
+        <div><div style="font-weight:700;font-size:14px">${typeLabel(r.type)}</div><div class="muted" style="font-size:12px;margin-top:2px">${esc(r.team)} · ${esc(r.requester)} · ${fmtDate(r.created)}</div></div></div>
         <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span>
       </button>`;}).join(''):'<div class="empty-state">Aucune demande dans ce statut pour le moment.</div>'}</div>`;
 }
@@ -1817,13 +1833,13 @@ function openRequestDrawer(id){
   const r = REAL ? normRequestItem(realRequests.find(x=>x.id===id)||{}) : DATA.requests.find(x=>x.id===id);
   if(!r || !r.id){ toast('Demande introuvable.'); return; }
   openDrawer(`<div class="sh"><b>${typeLabel(r.type)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
-    <div class="muted" style="font-size:12.5px;margin-bottom:18px">${r.team} · ${r.requester} · ${fmtDate(r.created)}</div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:18px">${esc(r.team)} · ${esc(r.requester)} · ${fmtDate(r.created)}</div>
     <div class="field"><label>Statut</label><select onchange="changeRequestStatus('${id}',this.value)">${REQ_STATUSES.map(st=>`<option value="${st}" ${st===r.status?'selected':''}>${statusMeta(st).label}</option>`).join('')}</select></div>
     ${r.creditsReserved?`<div class="card" style="border-color:#F5A62355;margin-bottom:16px;font-size:12.5px">${r.creditsReserved} crédit(s) réservé(s) — débités seulement si SportVision accepte la demande, sinon restitués.</div>`:''}
-    ${r.missing&&r.missing.length?`<div class="card" style="border-color:#F5A62355;margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--wa);margin-bottom:6px">Informations manquantes</div>${r.missing.map(m=>`<div style="font-size:12.5px">• ${m}</div>`).join('')}</div>`:''}
+    ${r.missing&&r.missing.length?`<div class="card" style="border-color:#F5A62355;margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--wa);margin-bottom:6px">Informations manquantes</div>${r.missing.map(m=>`<div style="font-size:12.5px">• ${esc(m)}</div>`).join('')}</div>`:''}
     <div class="card" style="margin-bottom:16px"><div class="muted" style="font-size:11.5px;margin-bottom:6px">DÉTAIL</div><div style="font-size:12.5px">${esc(r.detail)}</div></div>
     <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">COMMENTAIRES</div>
-    ${r.comments.map(c=>`<div class="card" style="margin-bottom:8px;padding:10px 12px"><div style="font-size:12px;font-weight:700">${c.author} <span class="muted" style="font-weight:400">· ${c.date}</span></div><div style="font-size:12.5px;margin-top:3px">${esc(c.text)}</div></div>`).join('')}
+    ${r.comments.map(c=>`<div class="card" style="margin-bottom:8px;padding:10px 12px"><div style="font-size:12px;font-weight:700">${esc(c.author)} <span class="muted" style="font-weight:400">· ${esc(c.date)}</span></div><div style="font-size:12.5px;margin-top:3px">${esc(c.text)}</div></div>`).join('')}
     <div style="display:flex;gap:8px;margin-top:8px"><input id="req-comment" type="text" placeholder="Ajouter un commentaire…" style="flex:1"><button class="btn bp" onclick="addRequestComment('${id}')">Envoyer</button></div>`);
 }
 async function addRequestComment(id){
@@ -1867,7 +1883,7 @@ function renderRequestWizard(){
   if(rw.step===1){
     body=`<div class="grid g2">${REQ_TYPES.map(t=>{const c=creditCost(t); return `<button class="opt-btn" onclick="rw.type='${t}';rw.step=2;renderRequestWizard()"><div>${typeLabel(t)}<div style="color:var(--cyan);font-size:11px;font-weight:600;margin-top:4px">${c==null?'Sur devis':c+' crédit'+(c>1?'s':'')}</div></div></button>`;}).join('')}</div>`;
   } else if(rw.step===2){
-    body=`<div class="field"><label>Équipe</label><select id="rw-team">${teamNames().map(t=>`<option ${t===rw.team?'selected':''}>${t}</option>`).join('')}</select></div>
+    body=`<div class="field"><label>Équipe</label><select id="rw-team">${teamNames().map(t=>`<option ${t===rw.team?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
       <div class="field"><label>Commentaire</label><textarea id="rw-comment" rows="2">${esc(rw.comment)}</textarea></div>
       <div class="field"><label>Niveau d'urgence</label><select id="rw-urgency"><option value="normale" ${rw.urgency==='normale'?'selected':''}>Normale</option><option value="haute" ${rw.urgency==='haute'?'selected':''}>Haute</option></select></div>`;
   } else {
@@ -1973,7 +1989,7 @@ function tplServices(){
   } else {
     if(REAL && realBookings===null){ loadRealBookings(); return `<div class="sh"><b>Prestations SportVision</b></div><div class="empty-state">Chargement…</div>`; }
     const bks=bookingsSource();
-    content = bks.length ? `<div class="list-host">${bks.map(bk=>{const sm=statusMeta(bk.status); return `<button class="list-row" onclick="openBookingDrawer('${bk.id}')"><div><div style="font-weight:700;font-size:14px">${bk.service}</div><div class="muted" style="font-size:12px;margin-top:2px">${bk.team} · ${fmtDate(bk.date)} · ${bk.duree} · ${bk.price}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;}).join('')}</div>` : `<div class="empty-state">Aucune réservation pour le moment.</div>`;
+    content = bks.length ? `<div class="list-host">${bks.map(bk=>{const sm=statusMeta(bk.status); return `<button class="list-row" onclick="openBookingDrawer('${bk.id}')"><div><div style="font-weight:700;font-size:14px">${esc(bk.service)}</div><div class="muted" style="font-size:12px;margin-top:2px">${esc(bk.team)} · ${fmtDate(bk.date)} · ${esc(bk.duree)} · ${esc(bk.price)}</div></div><span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;}).join('')}</div>` : `<div class="empty-state">Aucune réservation pour le moment.</div>`;
   }
   return `<div class="sh"><b>Prestations SportVision</b><button class="btn bp" onclick="guard(()=>openBookingWizard(null),'creer_demande')()">+ Réserver une présence</button></div>
     <div class="pillbar">${[['catalogue','Catalogue'],['reservations','Mes réservations']].map(([k,l])=>`<button class="pill${svView===k?' on':''}" onclick="svView='${k}';renderContent()">${l}</button>`).join('')}</div>
@@ -1984,9 +2000,9 @@ function openBookingDrawer(id){
   if(!bk){ toast('Réservation introuvable.'); return; }
   const sm=statusMeta(bk.status);
   const steps=['recue','qualifiee','confirmee','operateur_affecte','mission_realisee','livree']; const idx=steps.indexOf(bk.status)>=0?steps.indexOf(bk.status):2;
-  openDrawer(`<div class="sh"><b>${bk.service}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
-    <div class="muted" style="font-size:12.5px;margin-bottom:18px">${bk.team} · ${fmtDate(bk.date)} · ${bk.duree}</div>
-    <div style="font-size:16px;font-weight:800;margin-bottom:20px">${bk.price}</div>
+  openDrawer(`<div class="sh"><b>${esc(bk.service)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:18px">${esc(bk.team)} · ${fmtDate(bk.date)} · ${esc(bk.duree)}</div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:20px">${esc(bk.price)}</div>
     <div class="muted" style="font-size:11.5px;font-weight:700;margin-bottom:8px">PIPELINE TERRAIN</div>
     ${['Reçue','Besoin qualifié','Confirmée','Opérateur affecté','Mission réalisée','Livrée'].map((l,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="width:8px;height:8px;border-radius:4px;background:${i<=idx?'var(--cyan)':'var(--bd)'}"></span><span style="font-size:12px;color:${i<=idx?'var(--t1)':'var(--t2)'};font-weight:${i===idx?700:500}">${l}</span></div>`).join('')}
     <button class="btn bo" style="width:100%;justify-content:center;margin-top:20px" onclick="toast('Le support SportVision sera joignable directement au lancement.')">Contacter le support</button>`);
@@ -1999,7 +2015,7 @@ function renderBookingWizard(){
   let body='';
   if(bw.step===1){
     body=`<div class="field"><label>Type de prestation</label><select id="bw-type">${cat.map(sv=>`<option value="${sv.key}" ${sv.key===bw.type?'selected':''}>${sv.label}</option>`).join('')}</select></div>
-      <div class="field"><label>Équipe</label><select id="bw-team">${teamNames().map(t=>`<option ${t===bw.team?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Équipe</label><select id="bw-team">${teamNames().map(t=>`<option ${t===bw.team?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
       <div class="row2"><div class="field"><label>Date</label><input id="bw-date" type="date"></div><div class="field"><label>Heure</label><input id="bw-heure" type="text" placeholder="15:00"></div></div>
       <div class="field"><label>Adresse</label><input id="bw-adresse" type="text" placeholder="Stade Municipal, Sens"></div>`;
   } else {
@@ -2066,27 +2082,27 @@ function tplEquipes(){
   const src=teamsSource();
   return `<div class="sh"><b>Équipes & éducateurs</b><button class="btn bp" onclick="guard(openEquipeForm,'gerer_equipes')()">+ Ajouter une équipe</button></div>
     <div class="grid g2">${src.map(t=>`<button class="tile-card" onclick="openEquipeDrawer('${t.id}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div><div style="font-size:15px;font-weight:700">${t.name}</div><div class="muted" style="font-size:11.5px">${t.cat} · ${t.members} membres</div></div><span class="badge" style="background:#168EFF22;color:var(--blue)">${t.contribution}% régularité</span></div>
-      <div class="muted" style="font-size:12px;margin-bottom:4px">Éducateur : ${t.coach}</div>
-      <div class="muted" style="font-size:12px;margin-bottom:10px">Prochain : ${t.next}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div><div style="font-size:15px;font-weight:700">${esc(t.name)}</div><div class="muted" style="font-size:11.5px">${esc(t.cat)} · ${t.members} membres</div></div><span class="badge" style="background:#168EFF22;color:var(--blue)">${t.contribution}% régularité</span></div>
+      <div class="muted" style="font-size:12px;margin-bottom:4px">Éducateur : ${esc(t.coach)}</div>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">Prochain : ${esc(t.next)}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge" style="background:#F5A62322;color:var(--wa)">${t.openReq} demandes ouvertes</span><span class="badge" style="background:#2DD4E322;color:var(--cyan)">${t.toPrep} contenus à préparer</span></div>
     </button>`).join('')||'<div class="empty-state">Aucune équipe pour le moment.</div>'}</div>`;
 }
 function openEquipeDrawer(id){
   const t=teamsSource().find(x=>x.id===id);
   if(!t){ toast('Équipe introuvable.'); return; }
-  openDrawer(`<div class="sh"><b>${t.name}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
-    <div class="muted" style="font-size:12.5px;margin-bottom:18px">${t.cat} · ${t.members} membres</div>
+  openDrawer(`<div class="sh"><b>${esc(t.name)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:18px">${esc(t.cat)} · ${t.members} membres</div>
     <div class="card" style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Éducateur</span><span style="font-weight:600">${t.coach}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Responsable communication</span><span style="font-weight:600">${t.respComm}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px"><span class="muted">Prochain</span><span style="font-weight:600">${t.next}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Éducateur</span><span style="font-weight:600">${esc(t.coach)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12.5px"><span class="muted">Responsable communication</span><span style="font-weight:600">${esc(t.respComm)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px"><span class="muted">Prochain</span><span style="font-weight:600">${esc(t.next)}</span></div>
     </div>
     <div class="muted" style="font-size:11.5px;margin-bottom:6px">SCORE DE CONTRIBUTION</div>
     <div class="progress" style="margin-bottom:6px"><i style="width:${t.contribution}%"></i></div>
     <div class="muted" style="font-size:12px;margin-bottom:16px">${t.contribution} % de régularité de transmission</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px"><span class="badge" style="background:#F5A62322;color:var(--wa)">${t.openReq} demandes ouvertes</span><span class="badge" style="background:#2DD4E322;color:var(--cyan)">${t.toPrep} contenus à préparer</span></div>
-    <button class="btn bo" style="width:100%;justify-content:center" onclick="toast('Relance envoyée à l\\'équipe ${t.name}.')">Relancer l'équipe</button>`);
+    <button class="btn bo" style="width:100%;justify-content:center" onclick="toast('Relance envoyée à l\\'équipe ${escJs(t.name)}.')">Relancer l'équipe</button>`);
 }
 function openEquipeForm(){
   openModal(`<div class="sh"><b>Ajouter une équipe</b><button class="close-x" onclick="closeModal()">✕</button></div>
@@ -2116,15 +2132,23 @@ async function submitEquipeForm(){
 let realMembers=null;
 async function loadRealMembers(){
   if(!REAL) return;
-  const res=await sbFetch('club_members?club_id=eq.'+REAL.clubId+'&select=id,role,prenom,nom,telephone,teams,status&order=created_at.asc');
+  const res=await sbFetch('club_members?club_id=eq.'+REAL.clubId+'&select=id,user_id,role,prenom,nom,telephone,teams,status&order=created_at.asc');
   realMembers = res.ok ? (res.data||[]) : [];
   if(['membres','dashboard'].includes(S.view)) renderContent();
 }
 function membersSource(){
   if(!REAL) return DATA.users;
   if(realMembers===null){ loadRealMembers(); return []; }
-  return realMembers.map(u=>({id:u.id, name:(`${u.prenom||''} ${u.nom||''}`.trim())||'(sans nom)', role:(ROLES[u.role]&&ROLES[u.role].label)||u.role, status:u.status}));
+  return realMembers.map(u=>({id:u.id, user_id:u.user_id, name:(`${u.prenom||''} ${u.nom||''}`.trim())||'(sans nom)', role:(ROLES[u.role]&&ROLES[u.role].label)||u.role, status:u.status}));
 }
+// Se suspendre ou se supprimer soi-même via cet écran coupe immédiatement l'accès
+// RLS à tout le club (is_club_member/is_club_admin exigent status='actif'), sans
+// porte de sortie en libre-service : seul un AUTRE admin déjà actif ou le staff
+// SportVision peut réactiver (protect_sensitive_club_member_fields). Pour un club
+// à un seul admin, verrouillage complet. Bouton masqué sur sa propre ligne plutôt
+// que de compter sur la prudence de l'utilisateur — même pattern que la faille
+// identique déjà corrigée côté Connect (module Administration, commit d25703b).
+function isSelf(u){ return !!(REAL && u && u.user_id && u.user_id===REAL.userId); }
 function tplMembres(){
   if(REAL){
     if(realMembers===null){ loadRealMembers(); return `<div class="sh"><b>Utilisateurs</b></div><div class="empty-state">Chargement…</div>`; }
@@ -2133,8 +2157,9 @@ function tplMembres(){
         const sm=statusMeta(u.status);
         const name=`${u.prenom||''} ${u.nom||''}`.trim()||'(sans nom)';
         const roleLabel=(ROLES[u.role]&&ROLES[u.role].label)||u.role;
+        const self=isSelf(u);
         return `<button class="list-row" onclick="openUserDrawer('${u.id}')">
-          <div><div style="font-weight:700;font-size:14px">${esc(name)}</div><div class="muted" style="font-size:12px;margin-top:2px">${roleLabel}${u.teams&&u.teams.length?' · '+u.teams.join(', '):''}</div></div>
+          <div><div style="font-weight:700;font-size:14px">${esc(name)}${self?' <span class="muted" style="font-weight:600">(vous)</span>':''}</div><div class="muted" style="font-size:12px;margin-top:2px">${roleLabel}${u.teams&&u.teams.length?' · '+u.teams.join(', '):''}</div></div>
           <span class="badge" style="background:${sm.color}22;color:${sm.color}">${sm.label}</span></button>`;
       }).join(''):'<div class="empty-state">Aucun utilisateur pour le moment.</div>'}</div>`;
   }
@@ -2149,14 +2174,15 @@ function openUserDrawer(id){
     const sm=statusMeta(u.status);
     const name=`${u.prenom||''} ${u.nom||''}`.trim()||'(sans nom)';
     const roleLabel=(ROLES[u.role]&&ROLES[u.role].label)||u.role;
-    openDrawer(`<div class="sh"><b>${esc(name)}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
+    const self=isSelf(u);
+    openDrawer(`<div class="sh"><b>${esc(name)}${self?' (vous)':''}</b><button class="close-x" onclick="closeDrawer()">✕</button></div>
       <div class="muted" style="font-size:12.5px;margin-bottom:16px">${roleLabel}</div>
       <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:18px;display:inline-block">${sm.label}</span>
       <div class="muted" style="font-size:12.5px;margin-bottom:20px">Équipes autorisées : ${u.teams&&u.teams.length?u.teams.join(', '):'Toutes'}</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
+      ${self?'<div class="muted" style="font-size:12.5px">Vous ne pouvez pas suspendre ni supprimer votre propre accès depuis cet écran. Demandez à un autre administrateur si nécessaire.</div>':`<div style="display:flex;flex-direction:column;gap:8px">
         <button class="btn bo" onclick="userToggleSuspend('${id}')">${u.status==='suspendu'?"Réactiver l'accès":"Suspendre l'accès"}</button>
         <button class="btn bd" onclick="userRemove('${id}')">Supprimer l'accès</button>
-      </div>`);
+      </div>`}`);
     return;
   }
   const u=DATA.users.find(x=>x.id===id); const sm=statusMeta(u.status);
@@ -2173,6 +2199,11 @@ function openUserDrawer(id){
 async function userToggleSuspend(id){
   if(REAL){
     const u=realMembers.find(x=>x.id===id); if(!u) return;
+    // Garde de sécurité en plus du bouton masqué (voir isSelf) : le bouton ne
+    // devrait jamais déclencher ceci sur sa propre ligne, mais on ne fait pas
+    // confiance uniquement à l'UI pour une action qui verrouille l'accès de
+    // tout le club côté RLS.
+    if(isSelf(u)){ toast('Vous ne pouvez pas suspendre votre propre accès.'); return; }
     const next = u.status==='suspendu'?'actif':'suspendu';
     const res=await sbFetch('club_members?id=eq.'+id, {method:'PATCH', body:{status:next}});
     if(res.ok){ u.status=next; closeDrawer(); renderContent(); toast(next==='suspendu'?'Accès suspendu.':'Accès réactivé.'); }
@@ -2183,6 +2214,8 @@ async function userToggleSuspend(id){
 }
 async function userRemove(id){
   if(REAL){
+    const u=realMembers.find(x=>x.id===id); if(!u) return;
+    if(isSelf(u)){ toast('Vous ne pouvez pas supprimer votre propre accès.'); return; }
     const res=await sbFetch('club_members?id=eq.'+id, {method:'DELETE'});
     if(res.ok){ realMembers=realMembers.filter(x=>x.id!==id); closeDrawer(); renderContent(); toast('Accès supprimé.'); }
     else toast("Action impossible (droits administrateur requis).");
@@ -2219,7 +2252,7 @@ function renderInviteWizard(){
       <div class="card" id="iw-desc" style="font-size:12px;color:var(--t2);line-height:1.6">${ROLE_DESC[iw.role]}</div>`;
   } else {
     body=`<div class="muted" style="font-size:12px;margin-bottom:8px">Équipes concernées</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${teamNames().map(t=>`<button class="pill${iw.teams.includes(t)?' on':''}" onclick="iwToggleTeam('${t}')">${t}</button>`).join('')}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${teamNames().map(t=>`<button class="pill${iw.teams.includes(t)?' on':''}" onclick="iwToggleTeam('${escJs(t)}')">${esc(t)}</button>`).join('')}</div>
       <div class="muted" style="font-size:11.5px">Permissions recommandées appliquées automatiquement selon le rôle — personnalisables ensuite dans Paramètres.</div>`;
   }
   openModal(`<div class="sh"><b>Inviter un utilisateur — étape ${iw.step}/3</b><button class="close-x" onclick="closeModal()">✕</button></div>

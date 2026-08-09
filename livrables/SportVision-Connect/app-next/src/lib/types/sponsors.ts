@@ -13,7 +13,9 @@ export interface Sponsor {
   startsAt: string;
   endsAt: string;
   annualAmount: number;
-  paymentSchedule: PaymentSchedule;
+  // `null` = non tracké côté backend réel (club_sponsors n'a pas cette colonne, voir
+  // data/club/sponsors.ts) — ne jamais combler avec une valeur par défaut affichée comme un fait.
+  paymentSchedule: PaymentSchedule | null;
   status: SponsorStatus;
   contractId?: string;
   signatories: string[];

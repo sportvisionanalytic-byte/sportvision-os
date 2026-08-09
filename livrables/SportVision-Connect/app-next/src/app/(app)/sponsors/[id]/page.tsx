@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { SPONSOR_LEVEL_LABEL, SPONSOR_LEVEL_TONE, SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/components/sponsors/format";
-import { deliverablesForSponsor, mockSponsorDocuments, mockSponsorPublications, visibilityGauge } from "@/lib/mock/sponsors";
+import { deliverablesForSponsor, visibilityGauge } from "@/lib/mock/sponsors";
 import { fetchClubSponsors } from "@/lib/data/club/sponsors";
 import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
 import { createClient } from "@/lib/supabase/client";
@@ -94,7 +94,7 @@ export default function SponsorDetailPage({ params }: { params: { id: string } }
         </div>
         <div className="text-right">
           <div className="text-[11px] font-bold uppercase tracking-[.04em] text-text-faint">Visibilité livrée</div>
-          <div className="text-[24px] font-extrabold tracking-tight">{gauge} %</div>
+          <div className="text-[24px] font-extrabold tracking-tight">{gauge === null ? "Non suivi" : `${gauge} %`}</div>
         </div>
       </div>
 
@@ -159,7 +159,10 @@ function ContractTab({ sponsor }: { sponsor: Sponsor }) {
         <Info label="Niveau" value={SPONSOR_LEVEL_LABEL[sponsor.level]} />
         <Info label="Statut" value={SPONSOR_STATUS_LABEL[sponsor.status]} />
         <Info label="Montant annuel" value={formatEuro(sponsor.annualAmount)} />
-        <Info label="Rythme de paiement" value={PAYMENT_SCHEDULE_LABEL[sponsor.paymentSchedule] ?? sponsor.paymentSchedule} />
+        <Info
+          label="Rythme de paiement"
+          value={sponsor.paymentSchedule ? (PAYMENT_SCHEDULE_LABEL[sponsor.paymentSchedule] ?? sponsor.paymentSchedule) : ""}
+        />
         <Info label="Début" value={sponsor.startsAt} />
         <Info label="Fin" value={sponsor.endsAt} />
         <Info label="Signataire(s)" value={sponsor.signatories.join(", ")} />
@@ -168,65 +171,29 @@ function ContractTab({ sponsor }: { sponsor: Sponsor }) {
   );
 }
 
+// `value` vide (colonne absente côté club_sponsors : paymentSchedule/signataires, voir
+// data/club/sponsors.ts) → "Non renseigné" plutôt qu'un champ blanc muet ou une valeur
+// fabriquée. Ne jamais passer une valeur par défaut inventée à ce composant.
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-[11px] font-bold uppercase tracking-[.04em] text-text-faint">{label}</dt>
-      <dd className="mt-1 text-[13.5px] font-bold text-text">{value}</dd>
+      <dd className="mt-1 text-[13.5px] font-bold text-text">{value || "Non renseigné"}</dd>
     </div>
   );
 }
 
-function PublicationsTab({ sponsorId }: { sponsorId: string }) {
-  const items = mockSponsorPublications.filter((p) => p.sponsorId === sponsorId);
-  if (items.length === 0) return <EmptyTab icon={Images} label="Aucune publication où le logo apparaît." />;
-  return (
-    <Card>
-      {items.map((p) => (
-        <div key={p.id} className="flex items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13.5px] font-bold text-text">{p.label}</span>
-            {p.publishedAt && <span className="mt-0.5 block text-[12px] text-text-soft">Publié le {p.publishedAt}</span>}
-          </span>
-          {typeof p.reach === "number" && <span className="text-[12.5px] font-bold text-text-soft">{p.reach.toLocaleString("fr-FR")} vues</span>}
-          <Badge tone={p.status === "publie" ? "success" : p.status === "programme" ? "info" : "accent"}>
-            {p.status === "publie" ? "Publié" : p.status === "programme" ? "Programmé" : "En création"}
-          </Badge>
-        </div>
-      ))}
-    </Card>
-  );
+// Publications et Documents : pas de table backend pour ces entités par sponsor (voir le plan
+// Phase 4 § Gaps de données, même limite que "Contenus sponsorisés"/"Opérations" dans la vue
+// partenaire de /sponsors). Listes honnêtement vides plutôt que d'afficher les exemples fictifs
+// de lib/mock/sponsors.ts sur un sponsor réel — sponsorId gardé dans la signature pour le jour
+// où une vraie table existera.
+function PublicationsTab({ sponsorId: _sponsorId }: { sponsorId: string }) {
+  return <EmptyTab icon={Images} label="Aucune publication où le logo apparaît." />;
 }
 
-const DOC_KIND_LABEL: Record<string, string> = {
-  contract: "Contrat",
-  brand_guidelines: "Charte graphique",
-  logo_pack: "Pack logos",
-  invoice: "Facture",
-  other: "Document",
-};
-
-function DocumentsTab({ sponsorId }: { sponsorId: string }) {
-  const items = mockSponsorDocuments.filter((d) => d.sponsorId === sponsorId);
-  if (items.length === 0) return <EmptyTab icon={FileText} label="Aucun document pour ce sponsor." />;
-  return (
-    <Card>
-      {items.map((d) => (
-        <div key={d.id} className="flex items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
-          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-neutral-bg text-neutral-fg">
-            <FileText className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13.5px] font-bold text-text">{d.name}</span>
-            <span className="mt-0.5 block text-[12px] text-text-soft">{DOC_KIND_LABEL[d.kind]} · mis à jour le {d.updatedAt}</span>
-          </span>
-          <Button variant="tertiary" className="h-8 flex-none px-2 text-[12px]">
-            Télécharger
-          </Button>
-        </div>
-      ))}
-    </Card>
-  );
+function DocumentsTab({ sponsorId: _sponsorId }: { sponsorId: string }) {
+  return <EmptyTab icon={FileText} label="Aucun document pour ce sponsor." />;
 }
 
 function EmptyTab({ icon: Icon, label }: { icon: typeof Inbox; label: string }) {
