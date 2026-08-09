@@ -7,6 +7,7 @@ import {
   SERVICE_TYPE_LABELS,
   formatServiceDate,
   formatServicePrice,
+  formatServicePriceOrPending,
 } from "@/lib/types/services";
 
 export function ResumeTab({ service }: { service: Service }) {
@@ -52,7 +53,7 @@ export function ResumeTab({ service }: { service: Service }) {
 
         <div className="rounded-sv-card border border-border bg-surface-alt p-4">
           <div className="text-[13px] font-extrabold tracking-tight">Montant</div>
-          <div className="mt-2 text-[22px] font-extrabold tracking-tight">{formatServicePrice(service.totalPrice)}</div>
+          <div className="mt-2 text-[22px] font-extrabold tracking-tight">{formatServicePriceOrPending(service.totalPrice)}</div>
           <div className="mt-1 text-[12px] text-text-soft">
             Acompte {formatServicePrice(service.depositAmount)}
             {service.depositPaidAt ? " · réglé" : " · en attente"}

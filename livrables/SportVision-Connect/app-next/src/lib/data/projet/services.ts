@@ -65,8 +65,6 @@ interface PrestationRow {
   heure_fin: string | null;
   lieu: string | null;
   adresse_complete: string | null;
-  contact_sur_place: string | null;
-  telephone_sur_place: string | null;
   description_besoin: string | null;
   montant_ttc: number | null;
   acompte_montant: number | null;
@@ -75,11 +73,18 @@ interface PrestationRow {
   created_at: string;
 }
 
+// Colonnes réellement exposées par la vue client_prestations (migration-portail-v2.sql, la
+// définition la plus récente) — contact_sur_place/telephone_sur_place n'existent ni dans la
+// vue ni dans `prestations` et faisaient échouer silencieusement toute la requête (42703).
 const SELECT =
-  "id, reference, statut, type_prestation, date_prestation, heure_debut, heure_fin, lieu, adresse_complete, contact_sur_place, telephone_sur_place, description_besoin, montant_ttc, acompte_montant, acompte_recu, acompte_date, created_at";
+  "id, reference, statut, type_prestation, date_prestation, heure_debut, heure_fin, lieu, adresse_complete, description_besoin, montant_ttc, acompte_montant, acompte_recu, acompte_date, created_at";
 
 export async function fetchClientServices(supabase: SupabaseClient, organizationId: string): Promise<Service[]> {
-  const { data } = await supabase.from("client_prestations").select(SELECT).order("date_prestation", { ascending: false });
+  const { data, error } = await supabase
+    .from("client_prestations")
+    .select(SELECT)
+    .order("date_prestation", { ascending: false });
+  if (error) throw error;
 
   return ((data ?? []) as PrestationRow[]).map((row) => ({
     id: row.id,
@@ -90,15 +95,15 @@ export async function fetchClientServices(supabase: SupabaseClient, organization
     startTime: row.heure_debut ?? "",
     endTime: row.heure_fin ?? "",
     address: row.adresse_complete ?? row.lieu ?? "",
-    onSiteContactName: row.contact_sur_place ?? "",
-    onSiteContactPhone: row.telephone_sur_place ?? "",
+    onSiteContactName: "",
+    onSiteContactPhone: "",
     brief: { objective: row.description_besoin ?? "" },
     optionCodes: [],
-    basePrice: row.montant_ttc ?? 0,
+    basePrice: row.montant_ttc,
     optionsTotal: 0,
     discountAmount: 0,
     travelFees: 0,
-    totalPrice: row.montant_ttc ?? 0,
+    totalPrice: row.montant_ttc,
     depositAmount: row.acompte_montant ?? 0,
     depositPaidAt: row.acompte_recu ? (row.acompte_date ?? undefined) : undefined,
     status: STATUS_MAP[row.statut] ?? "demande_recue",

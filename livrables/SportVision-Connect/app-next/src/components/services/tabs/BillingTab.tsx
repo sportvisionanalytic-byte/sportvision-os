@@ -1,5 +1,5 @@
 import type { Service } from "@/lib/types/services";
-import { formatServicePrice } from "@/lib/types/services";
+import { formatServicePrice, formatServicePriceOrPending } from "@/lib/types/services";
 import { Button } from "@/components/ui/Button";
 
 export function BillingTab({ service }: { service: Service }) {
@@ -8,11 +8,11 @@ export function BillingTab({ service }: { service: Service }) {
       <div className="rounded-sv-card border border-border bg-surface-alt p-4">
         <div className="text-[13px] font-extrabold tracking-tight">Montants</div>
         <div className="mt-3 flex flex-col gap-2 text-[13px]">
-          <Row label="Forfait" value={formatServicePrice(service.basePrice)} />
+          <Row label="Forfait" value={formatServicePriceOrPending(service.basePrice)} />
           {service.optionsTotal > 0 && <Row label="Options" value={`+ ${formatServicePrice(service.optionsTotal)}`} />}
           {service.discountAmount > 0 && <Row label="Remise offre" value={`- ${formatServicePrice(service.discountAmount)}`} />}
           {service.travelFees > 0 && <Row label="Déplacement" value={formatServicePrice(service.travelFees)} />}
-          <Row label="Total TTC" value={formatServicePrice(service.totalPrice)} strong />
+          <Row label="Total TTC" value={formatServicePriceOrPending(service.totalPrice)} strong />
           <Row label="Acompte (30 %)" value={formatServicePrice(service.depositAmount)} strong />
         </div>
       </div>

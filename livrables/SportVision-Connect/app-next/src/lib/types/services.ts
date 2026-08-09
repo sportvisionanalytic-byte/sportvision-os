@@ -170,6 +170,12 @@ export function formatServicePrice(amount: number): string {
   return `${amount.toLocaleString("fr-FR")} € TTC`;
 }
 
+/** `null` = prestation demandée mais pas encore chiffrée par le staff (montant_ttc absent en
+ * base) — état normal, pas une erreur. Ne jamais afficher "0 € TTC" dans ce cas. */
+export function formatServicePriceOrPending(amount: number | null): string {
+  return amount === null ? "Non chiffré" : formatServicePrice(amount);
+}
+
 export function formatServiceDate(iso: string): string {
   return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
 }
@@ -360,11 +366,13 @@ export interface Service {
   onSiteContactPhone: string;
   brief: ServiceBrief;
   optionCodes: ServiceOptionCode[];
-  basePrice: number;
+  /** `null` = pas encore chiffré par le staff (voir formatServicePriceOrPending). */
+  basePrice: number | null;
   optionsTotal: number;
   discountAmount: number;
   travelFees: number;
-  totalPrice: number;
+  /** `null` = pas encore chiffré par le staff (voir formatServicePriceOrPending). */
+  totalPrice: number | null;
   depositAmount: number;
   depositMethod?: "card" | "cash";
   depositPaidAt?: string;
