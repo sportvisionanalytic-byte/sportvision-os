@@ -110,8 +110,13 @@ export function deliverablesForSponsor(sponsorId: string): SponsorDeliverable[] 
   return mockSponsorDeliverables.filter((d) => d.sponsorId === sponsorId);
 }
 
-export function visibilityGauge(sponsorId: string): number {
+// `null` = aucun livrable suivi pour ce sponsor (cas de tout sponsor réel : SponsorDeliverable
+// n'a pas de table backend, voir data/club/sponsors.ts). À ne jamais confondre avec 0 % — 0 %
+// affirmerait « rien n'a été livré » alors qu'on ne suit tout simplement rien. Les appelants
+// doivent afficher "Non suivi" plutôt qu'un pourcentage fabriqué quand la valeur est `null`.
+export function visibilityGauge(sponsorId: string): number | null {
   const items = deliverablesForSponsor(sponsorId);
+  if (items.length === 0) return null;
   const planned = items.reduce((sum, d) => sum + d.plannedCount, 0);
   const delivered = items.reduce((sum, d) => sum + d.deliveredCount, 0);
   return planned > 0 ? Math.round((delivered / planned) * 100) : 0;

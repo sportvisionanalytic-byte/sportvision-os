@@ -55,13 +55,15 @@ export default function SponsorsPage() {
   const active = sponsors.filter((s) => s.status === "active").length;
   const toRenew = sponsors.filter((s) => s.status === "to_renew").length;
   const totalAmount = sponsors.reduce((sum, s) => sum + s.annualAmount, 0);
-  const avgGauge = sponsors.length
-    ? Math.round(sponsors.reduce((sum, s) => sum + visibilityGauge(s.id), 0) / sponsors.length)
-    : 0;
+  // Aucun sponsor réel n'a de livrables suivis (pas de table backend, voir
+  // lib/mock/sponsors.ts § visibilityGauge) : ne pas fabriquer une moyenne à 0 % qui
+  // affirmerait « rien n'a été livré » plutôt que « on ne suit rien ».
+  const gauges = sponsors.map((s) => visibilityGauge(s.id)).filter((g): g is number => g !== null);
+  const avgGauge = gauges.length ? Math.round(gauges.reduce((sum, g) => sum + g, 0) / gauges.length) : null;
 
   const stats = [
     { label: "Sponsors actifs", value: String(active), icon: Award },
-    { label: "Visibilité moyenne", value: `${avgGauge} %`, icon: Gauge },
+    { label: "Visibilité moyenne", value: avgGauge === null ? "Non suivi" : `${avgGauge} %`, icon: Gauge },
     { label: "Montant annuel total", value: formatEuro(totalAmount), icon: Wallet },
     { label: "À renouveler", value: String(toRenew), icon: RefreshCw },
   ];
