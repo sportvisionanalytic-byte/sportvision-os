@@ -20,12 +20,16 @@ export function CollectionPanel({ collection }: { collection: Collection }) {
     setTimeout(() => setToast(null), 3200);
   }
 
+  // Pas de génération réelle de lien à expiration (30 jours) ni de job d'archive/e-mail derrière
+  // ces deux actions (voir le plan Phase 1 § Gaps de données) — les anciens toasts affirmaient un
+  // lien copié et un e-mail à venir sans qu'aucun des deux ne se produise réellement, exactement
+  // l'anti-pattern du README § Conventions n°9. Honnête plutôt qu'inventé.
   function shareLink() {
-    showToast("Lien de partage copié — valable 30 jours.");
+    showToast("Le partage par lien n'est pas encore disponible pour cette collection.");
   }
 
   function downloadAll() {
-    showToast("Une archive de la collection vous sera envoyée par e-mail.");
+    showToast("Le téléchargement groupé n'est pas encore disponible. Contactez votre interlocuteur SportVision pour recevoir vos contenus.");
   }
 
   return (

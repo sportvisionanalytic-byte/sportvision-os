@@ -164,7 +164,7 @@ serve(async (req) => {
             .upsert({ id: user.id, client_id: matchedClient.id, prenom: prenom || null, nom: nom || null, telephone: telephone || null }, { onConflict: "id" });
         }
       } catch (_e) {
-        // best-effort : une erreur ici ne doit pas empêcher la création du club
+        console.error("[clubplus-onboarding] rattachement automatique au client Portail a échoué (best-effort) :", _e);
       }
     }
 
@@ -181,7 +181,7 @@ serve(async (req) => {
         p_client_id: null,
       });
     } catch (_e) {
-      // ignoré volontairement
+      console.error("[clubplus-onboarding] notify_staff_by_role (nouveau club auto-inscrit) a échoué :", _e);
     }
 
     return json({ club_id: createdClub.id, role: "admin", already_onboarded: false });

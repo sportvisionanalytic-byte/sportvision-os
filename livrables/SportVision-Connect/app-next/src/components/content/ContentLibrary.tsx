@@ -7,6 +7,7 @@ import { fetchClubMediaAssets } from "@/lib/data/club/content";
 import { fetchPlayerMediaAssets } from "@/lib/data/player/media";
 import { fetchClientLivrables } from "@/lib/data/projet/livrables";
 import { createClient } from "@/lib/supabase/client";
+import { addLocalCollection, getLocalCollectionsForOrganization } from "@/lib/mock/content";
 import { MEDIA_FILTERS, matchesMediaFilter, type CollectionKind, type Collection, type MediaAsset, type MediaFilterKey } from "@/lib/types/content";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -64,9 +65,15 @@ export function ContentLibrary() {
 
   const assets = useMemo(() => allAssets.filter((a) => matchesMediaFilter(a.kind, filter)), [allAssets, filter]);
 
-  // Pas de table `collections` réelle (voir le plan Phase 1) — état local uniquement, comme
-  // handleCreateCollection ci-dessous, déjà local-only avant ce branchement.
-  const [collections, setCollections] = useState<Collection[]>([]);
+  // Pas de table `collections` réelle (voir le plan Phase 1) — store en mémoire partagé avec la
+  // fiche de collection (lib/mock/content.ts § localCollectionsStore), pas un `useState` isolé :
+  // sinon une collection tout juste créée devient introuvable dès qu'on clique dessus (bug
+  // corrigé le 09/08, voir le commentaire sur localCollectionsStore).
+  const [collections, setCollections] = useState<Collection[]>(() => getLocalCollectionsForOrganization(ctx.organization.id));
+
+  useEffect(() => {
+    setCollections(getLocalCollectionsForOrganization(ctx.organization.id));
+  }, [ctx.organization.id]);
 
   const title = isPlayer ? "Mes contenus" : isCoach ? "Contenus de mes joueurs" : isProjet ? "Mes livrables" : "Contenus";
   const subtitle = isPlayer
@@ -82,26 +89,28 @@ export function ContentLibrary() {
     setTimeout(() => setToast(null), 3200);
   }
 
+  // Pas de job réel d'archivage/envoi e-mail derrière ce bouton (voir le plan Phase 1 § Gaps de
+  // données) — un faux "vous sera envoyée par e-mail" promettait un e-mail qui n'arrive jamais.
+  // Honnête plutôt qu'inventé, en attendant un vrai mécanisme d'export.
   function handleDownloadAll() {
-    showToast("Une archive de vos contenus vous sera envoyée par e-mail.");
+    showToast("Le téléchargement groupé n'est pas encore disponible. Contactez votre interlocuteur SportVision pour recevoir vos contenus.");
   }
 
   function handleCreateCollection(name: string, kind: CollectionKind) {
     localCollectionSeq += 1;
-    setCollections((prev) => [
-      {
-        id: `col-local-${localCollectionSeq}`,
-        organizationId: ctx.organization.id,
-        name,
-        kind,
-        assetIds: [],
-        itemCount: 0,
-        ownerId: ctx.user.id,
-        ownerName: `${ctx.user.firstName} ${ctx.user.lastName}`,
-        visibility: "organization",
-      },
-      ...prev,
-    ]);
+    const collection: Collection = {
+      id: `col-local-${localCollectionSeq}`,
+      organizationId: ctx.organization.id,
+      name,
+      kind,
+      assetIds: [],
+      itemCount: 0,
+      ownerId: ctx.user.id,
+      ownerName: `${ctx.user.firstName} ${ctx.user.lastName}`,
+      visibility: "organization",
+    };
+    addLocalCollection(collection);
+    setCollections((prev) => [collection, ...prev]);
     setShowCreateModal(false);
     showToast("Collection créée.");
   }

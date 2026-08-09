@@ -127,7 +127,10 @@ async function sendGuestRequestConfirmationEmail(
   info: { prenom: string; reference: string; label: string | null; date: string | null },
 ) {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  if (!resendApiKey) return;
+  if (!resendApiKey) {
+    console.error("[sendGuestRequestConfirmationEmail] RESEND_API_KEY absent des secrets de cette fonction — e-mail non envoyé");
+    return;
+  }
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
   const dateFmt = info.date
     ? new Date(info.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
@@ -153,11 +156,14 @@ async function sendGuestRequestConfirmationEmail(
   </div>
 </body></html>`;
 
-  await fetch("https://api.resend.com/emails", {
+  const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: fromEmail, to: [to], subject: `Demande reçue — Référence ${info.reference}`, html }),
   });
+  if (!res.ok) {
+    console.error("[sendGuestRequestConfirmationEmail] échec Resend", res.status, await res.text());
+  }
 }
 
 serve(async (req) => {
@@ -281,9 +287,12 @@ serve(async (req) => {
         label: commentaire || null,
         date: date || null,
       });
-    } catch (_e) {
+    } catch (e) {
       // Best-effort, comme sendPaymentReceiptEmail : un échec d'envoi ne doit
-      // jamais faire échouer une demande par ailleurs valide.
+      // jamais faire échouer une demande par ailleurs valide — mais on log
+      // pour pouvoir diagnostiquer (Supabase Dashboard → Edge Functions →
+      // create-guest-request → Logs).
+      console.error("[create-guest-request] exception envoi e-mail", e instanceof Error ? e.message : String(e));
     }
 
     return json({ reference: prestation.reference, prestation_id: prestation.id, client_email: email });

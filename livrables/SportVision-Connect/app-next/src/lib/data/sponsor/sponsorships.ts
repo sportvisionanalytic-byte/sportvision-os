@@ -48,7 +48,7 @@ export async function fetchSponsorPartnerships(supabase: SupabaseClient, sponsor
     startsAt: row.date_debut ?? "",
     endsAt: row.date_fin ?? "",
     annualAmount: row.montant,
-    paymentSchedule: "annual",
+    paymentSchedule: null,
     status: deriveStatus(row.date_fin),
     signatories: [],
   }));
