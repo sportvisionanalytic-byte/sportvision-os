@@ -788,6 +788,10 @@ function showConfirmation(data, email){
   if (state.slug && OFFRES_PRIX_FIXE.has(state.slug)){
     document.getElementById('ok-connect-wrap').style.display = '';
     document.getElementById('ok-connect-link').href = 'https://connectsportvisionfr.netlify.app/?signup=1&email=' + encodeURIComponent(email);
+    // "et payer" n'a de sens que si le paiement en ligne reste réellement à
+    // faire (carte choisie mais le checkout Stripe n'a pas pu démarrer). En
+    // espèces, rien n'est dû en ligne : le bouton ne doit pas le suggérer.
+    document.getElementById('ok-connect-link').textContent = soldeModeChoisi === 'especes' ? 'Créer mon espace Connect' : 'Créer mon compte et payer';
   }
 
   document.querySelectorAll('.step-dot').forEach(d => d.classList.add('done'));
