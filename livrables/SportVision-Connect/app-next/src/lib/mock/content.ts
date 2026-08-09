@@ -551,5 +551,22 @@ export function getMediaAssetById(id: string): MediaAsset | undefined {
 }
 
 export function getCollectionById(id: string): Collection | undefined {
-  return mockCollections.find((c) => c.id === id);
+  return mockCollections.find((c) => c.id === id) ?? localCollectionsStore.find((c) => c.id === id);
+}
+
+// Pas de table `collections` réelle (voir le plan Phase 1) — store en mémoire, même pattern que
+// visualRequestsStore côté Studio (lib/mock/studio.ts). Corrige un bug trouvé le 09/08 : la
+// création passait par un `useState` local à ContentLibrary, donc la fiche de collection
+// (/content/collections/:id, alimentée uniquement par mockCollections) affichait "Collection
+// introuvable" juste après le toast "Collection créée." — une confirmation de succès qui menait
+// droit à une erreur. Perdu au rechargement de la page : ce n'est toujours pas une persistance
+// réelle, seulement une cohérence de session le temps qu'une vraie table existe.
+export const localCollectionsStore: Collection[] = [];
+
+export function addLocalCollection(collection: Collection) {
+  localCollectionsStore.unshift(collection);
+}
+
+export function getLocalCollectionsForOrganization(organizationId: string): Collection[] {
+  return localCollectionsStore.filter((c) => c.organizationId === organizationId);
 }
