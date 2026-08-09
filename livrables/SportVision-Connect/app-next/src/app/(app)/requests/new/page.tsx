@@ -43,7 +43,7 @@ function NewRequestContent() {
   const { ctx } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toastMessage, showToast } = useToast();
+  const { toastMessage, toastTone, showToast } = useToast();
 
   const allowed = canAccess(ctx, "visual_requests");
   const canWrite = canCreate(ctx, "visual_request");
@@ -109,7 +109,7 @@ function NewRequestContent() {
       })
       .catch(() => {
         setSubmitting(false);
-        showToast("Envoi impossible, réessayez.");
+        showToast("Envoi impossible, réessayez.", "error");
       });
   }
 
@@ -303,7 +303,7 @@ function NewRequestContent() {
         </Card>
       </div>
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} tone={toastTone} />
     </div>
   );
 }
