@@ -67,6 +67,30 @@ ce n'est pas tranché, continuez à étendre `mock-data.ts` avec des données fi
    obligatoires.
 7. **Suivez `ACTIONS.md` écran par écran.** C'est l'inventaire exhaustif des boutons, cibles et
    effets ; ne devinez pas un comportement qui y est déjà spécifié.
+8. **Toute écriture réelle (`insert`/`update`/RPC/edge function) doit attendre la réponse avant de
+   confirmer quoi que ce soit à l'utilisateur.** Anti-pattern trouvé et corrigé 9 fois dans une
+   seule session d'audit (08-09/08/2026, comptes réels) : une modale qui fait `onAction(input);
+   onClose();` sans attendre, ou un `.then(...)` sans `.catch(...)` — dans les deux cas, en cas
+   d'échec (RLS, réseau, contrainte), l'utilisateur voit une confirmation alors que rien n'a été
+   écrit, ou un bouton qui reste bloqué en "chargement" indéfiniment. Toujours :
+   `submitting`/`error` en state local, `await`/`.then().catch()` explicite, ne fermer/confirmer
+   qu'au succès, afficher l'erreur (inline ou `components/feedback/Toast`) sinon — jamais
+   deviner que ça a marché. Seul `requests/new/page.tsx` avait ce pattern dès le départ ;
+   copiez-le plutôt que d'improviser. Le typecheck/build ne détecte JAMAIS ce bug — seul un test
+   en conditions réelles (compte réel, écriture réelle) le révèle.
+9. **Ne fabriquez jamais de données ni de confirmation de succès sans backend réel derrière.** Si
+   la table/colonne/policy nécessaire n'existe pas encore, verrouillez l'écran (`LockedModule`) ou
+   affichez les champs en lecture seule avec une note honnête — jamais un faux "Enregistré".
+   Trouvé 3 fois (profil, organisation, préférences de notification) : un `setSaved(true)` sur un
+   state React local uniquement, sans aucune écriture réelle derrière.
+10. **Une action qui modifie le statut/rôle d'un AUTRE utilisateur doit exclure l'utilisateur
+    courant de sa propre cible.** `club_members.status`/`role` sont protégés par un trigger
+    (`protect_sensitive_club_member_fields`, migration-connect-v13) qui autorise un admin actif à
+    modifier n'importe quelle ligne — y compris la sienne. Se désactiver soi-même est donc
+    possible côté base et coupe immédiatement l'accès RLS (`is_club_member`/`is_club_admin`
+    exigent `status='actif'`) à tout le club, sans porte de sortie en libre-service pour un club à
+    admin unique. Toute action de ce type doit comparer la cible à `ctx.user.id` et se masquer/
+    désactiver sur sa propre ligne (voir `/users`), le trigger ne le fait pas à votre place.
 
 ## Démarrer
 
