@@ -61,6 +61,11 @@ export default function UsersPage() {
   // mockOrgUsers sur un compte réel, même logique que /billing et /services.
   if (!isClub && !canAccess(ctx, "users")) return <LockedModule title="Utilisateurs" />;
 
+  // Seul un admin de club a le droit d'inviter/désactiver côté RLS (is_club_admin) — la policy
+  // laisse un coach/lecture_seule voir la liste mais refuse toute écriture. On reflète ça côté UI
+  // plutôt que d'afficher des actions qui échoueront silencieusement.
+  const isAdmin = !isClub || ctx.membership.role === "admin";
+
   const availableRoles = ROLES_BY_ORG_TYPE[ctx.organization.type] ?? ["viewer"];
 
   function handleInvite(input: { email: string; firstName: string; lastName: string; role: MembershipRole }) {
@@ -112,12 +117,17 @@ export default function UsersPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-[29px] font-extrabold tracking-tight">Utilisateurs</h1>
-          <p className="mt-1 text-[13.5px] text-text-soft">Membres de {ctx.organization.name} et leur rôle.</p>
+          <p className="mt-1 text-[13.5px] text-text-soft">
+            Membres de {ctx.organization.name} et leur rôle.
+            {!isAdmin && " Seul un administrateur peut gérer les membres."}
+          </p>
         </div>
-        <Button onClick={() => setInviteOpen(true)}>
-          <UserPlus className="h-4 w-4" aria-hidden />
-          Inviter un utilisateur
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setInviteOpen(true)}>
+            <UserPlus className="h-4 w-4" aria-hidden />
+            Inviter un utilisateur
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -155,7 +165,7 @@ export default function UsersPage() {
                 {isSelf ? (
                   <span className="w-[92px] flex-none text-center text-[11.5px] font-semibold text-text-faint">Vous</span>
                 ) : (
-                  !isOwner && (
+                  isAdmin && !isOwner && (
                     <Button
                       variant="secondary"
                       className="h-8 flex-none px-3 text-[12px]"
