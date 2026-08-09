@@ -195,7 +195,7 @@ serve(async (req) => {
         Pénalité de retard : taux d'intérêt légal x3. Indemnité forfaitaire pour frais de recouvrement : 40 €.
       </div>
       <div style="font-size:10.5px;color:#8891A8;line-height:1.6;border-top:1px solid #E8EBF4;padding-top:12px">
-        SportVision — Elkana Group, SAS — 4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>
+        SportVision — Elkana Group, SAS — 4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>
         SIREN 105 173 124 · SIRET 105 173 124 00014 · RCS Melun · APE 74.20Z<br>
         TVA intracommunautaire : FR15 105 173 124
       </div>

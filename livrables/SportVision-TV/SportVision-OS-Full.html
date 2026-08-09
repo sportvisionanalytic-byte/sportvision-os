@@ -9279,7 +9279,7 @@ const SV_IDENTITE_CONTRAT={
   nomCommercial:'SportVision',
   raisonSociale:'Elkana Group',
   formeJuridique:'SAS',
-  adresse:'4 Place Pierre Semard, 77130 Montereau-Fault-Yonne',
+  adresse:'4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne',
   siren:'105 173 124',
   siret:'105 173 124 00014',
   rcs:'RCS Melun',
@@ -9554,7 +9554,7 @@ async function genererAvoirPDF(id){
   <div>
     <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
     <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Elkana Group</div>
-    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>contact@sportvision.fr</div>
+    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>contact@sportvision.fr</div>
   </div>
   <div style="text-align:right">
     <div style="font-size:30px;font-weight:800;color:#F0445E;letter-spacing:-.01em">AVOIR</div>
@@ -9564,7 +9564,7 @@ async function genererAvoirPDF(id){
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px">
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Émetteur</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision</div>
-    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
+    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Destinataire</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${cl.nom||'—'}</div>
     <div style="font-size:12px;color:#555E73;line-height:1.7">${cl.email||''}${cl.telephone?'<br>'+cl.telephone:''}${cl.ville?'<br>'+cl.ville:''}</div></div>
@@ -10065,7 +10065,7 @@ async function imprimerDevis(id){
   <div>
     <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
     <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Elkana Group</div>
-    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>contact@sportvision.fr</div>
+    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>contact@sportvision.fr</div>
   </div>
   <div style="text-align:right">
     <div style="font-size:30px;font-weight:800;color:#366BFF;letter-spacing:-.01em">DEVIS</div>
@@ -10076,7 +10076,7 @@ async function imprimerDevis(id){
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px">
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Émetteur</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision</div>
-    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
+    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Destinataire</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${esc(c.nom||'—')}</div>
     <div style="font-size:12px;color:#555E73;line-height:1.7">${[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||''}${c.email?'<br>'+c.email:''}${c.telephone?'<br>'+c.telephone:''}${c.ville?'<br>'+c.ville:''}</div></div>
@@ -10256,7 +10256,7 @@ async function imprimerFacture(id){
   <div>
     <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
     <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Elkana Group</div>
-    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>contact@sportvision.fr</div>
+    <div style="margin-top:12px;font-size:11.5px;color:#555E73;line-height:1.7">4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>contact@sportvision.fr</div>
   </div>
   <div style="text-align:right">
     <div style="font-size:30px;font-weight:800;color:#2ECC8A;letter-spacing:-.01em">FACTURE</div>
@@ -10268,7 +10268,7 @@ async function imprimerFacture(id){
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px">
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Prestataire</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SportVision</div>
-    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
+    <div style="font-size:11.5px;color:#555E73;line-height:1.7">Elkana Group — SAS<br>4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne<br>SIREN 105 173 124 · SIRET 105 173 124 00014<br>RCS Melun · APE 74.20Z<br>TVA intracommunautaire : FR15 105 173 124<br>contact@sportvision.fr</div></div>
   <div><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:8px">Client</div>
     <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px">${esc(c.nom||'—')}</div>
     <div style="font-size:12px;color:#555E73;line-height:1.7">${[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||''}${c.email?'<br>'+c.email:''}${c.telephone?'<br>'+c.telephone:''}${c.ville?'<br>'+c.ville:''}</div></div>
@@ -10294,7 +10294,7 @@ async function imprimerFacture(id){
 <div style="border-top:1px solid #E8EBF4;padding-top:20px;font-size:11px;color:#8891A8;line-height:1.6">
   Paiement par virement bancaire à 30 jours. Pas d'escompte pour paiement anticipé.<br>
   Pénalité de retard : taux d'intérêt légal x3. Indemnité forfaitaire pour frais de recouvrement : 40 €.<br>
-  SportVision — Elkana Group, SAS — 4 Place Pierre Semard, 77130 Montereau-Fault-Yonne — RCS Melun 105 173 124
+  SportVision — Elkana Group, SAS — 4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne — RCS Melun 105 173 124
 </div>
 </div></body></html>`);
     win.document.close();
