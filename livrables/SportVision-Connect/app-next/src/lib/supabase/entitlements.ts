@@ -23,6 +23,13 @@ import type { ModuleKey } from "@/lib/types";
 // "children"/"authorizations" (Phase 2, Espace Famille) : ajoutés une fois /children et
 // /authorizations remodelés sur parent_player_relationships/parental_authorizations réels — voir
 // le plan Phase 2. Pas de clé connect_modules équivalente (module personnel, pas un module club).
+//
+// "messages"/"communication"/"publications"/"validations" (09/08/2026, chantier Tier B Phase 2) :
+// messages_client et contenus (planning éditorial), accès club étendu par migration-clubplus-v34-
+// club-messages-contenus-access.sql — À EXÉCUTER PAR FOUKA, non exécutée à ce jour. L'Espace
+// Projet (client_users direct) fonctionne déjà sans cette migration ; un club verra un message
+// d'erreur honnête ("Impossible de charger…") tant qu'elle n'est pas passée, jamais une fausse
+// donnée. Voir data/shared/contenus.ts, data/shared/messages.ts.
 export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "dashboard",
   "teams",
@@ -39,6 +46,10 @@ export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "billing",
   "contracts",
   "documents",
+  "messages",
+  "communication",
+  "publications",
+  "validations",
 ]);
 
 /**
