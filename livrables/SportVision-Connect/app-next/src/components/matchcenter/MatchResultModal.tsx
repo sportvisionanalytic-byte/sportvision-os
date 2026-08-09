@@ -6,9 +6,16 @@ import { Button } from "@/components/ui/Button";
 import { scorersToText, textToScorers } from "@/lib/mock/studio";
 import type { Match } from "@/lib/types/studio";
 
-// Modale « Saisir un résultat » — formulaire express 3 champs (score, buteurs, homme du match) ou
-// complet 14 champs. Voir ACTIONS.md § 8 et DATA_MODEL.md § Match. Composant propre au module
-// Match Center.
+// Modale « Saisir un résultat » — voir ACTIONS.md § 8 et DATA_MODEL.md § Match. Composant propre
+// au module Match Center.
+//
+// Le formulaire ne collecte que ce que saveClubMatchResult (data/club/matches.ts) écrit
+// réellement : club_matches (migration-clubplus-v3.sql) n'a que 4 colonnes pertinentes ici
+// (status, score, scorers, man_of_match) — compétition, lieu, domicile/extérieur, affluence,
+// passeurs, cartons et commentaire n'ont pas de colonne réelle. Équipe/adversaire ne sont pas
+// éditables ici : ils servent uniquement à identifier le match (sélecteur ci-dessous), les
+// modifier n'aurait aucun effet en base. Voir migration-clubplus-v34-match-champs-
+// complementaires.sql (additive, non exécutée) pour le chemin de réintroduction de ces champs.
 
 interface MatchResultModalProps {
   matches: Match[];
@@ -19,23 +26,12 @@ interface MatchResultModalProps {
 
 export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }: MatchResultModalProps) {
   const [matchId, setMatchId] = useState(initialMatchId);
-  const [mode, setMode] = useState<"express" | "complete">("express");
   const match = matches.find((m) => m.id === matchId) ?? matches[0]!;
 
   const [scoreFor, setScoreFor] = useState(match.scoreFor?.toString() ?? "");
   const [scoreAgainst, setScoreAgainst] = useState(match.scoreAgainst?.toString() ?? "");
   const [scorersText, setScorersText] = useState(scorersToText(match.scorers));
   const [manOfTheMatch, setManOfTheMatch] = useState(match.manOfTheMatch ?? "");
-
-  const [teamName, setTeamName] = useState(match.teamName);
-  const [opponent, setOpponent] = useState(match.opponent);
-  const [competition, setCompetition] = useState(match.competition);
-  const [venue, setVenue] = useState(match.venue);
-  const [isHome, setIsHome] = useState(match.isHome);
-  const [assists, setAssists] = useState(match.extendedReport?.assists ?? "");
-  const [cards, setCards] = useState(match.extendedReport?.cards ?? "");
-  const [attendance, setAttendance] = useState(match.extendedReport?.attendance?.toString() ?? "");
-  const [comment, setComment] = useState(match.extendedReport?.comment ?? "");
 
   function handleSelectMatch(id: string) {
     const m = matches.find((mm) => mm.id === id);
@@ -45,11 +41,6 @@ export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }:
     setScoreAgainst(m.scoreAgainst?.toString() ?? "");
     setScorersText(scorersToText(m.scorers));
     setManOfTheMatch(m.manOfTheMatch ?? "");
-    setTeamName(m.teamName);
-    setOpponent(m.opponent);
-    setCompetition(m.competition);
-    setVenue(m.venue);
-    setIsHome(m.isHome);
   }
 
   function buildPatch(): Partial<Match> {
@@ -58,21 +49,6 @@ export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }:
       scoreAgainst: scoreAgainst === "" ? undefined : Number(scoreAgainst),
       scorers: textToScorers(scorersText),
       manOfTheMatch: manOfTheMatch || undefined,
-      teamName,
-      opponent,
-      competition,
-      venue,
-      isHome,
-      status: "result_received",
-      extendedReport:
-        mode === "complete"
-          ? {
-              assists: assists || undefined,
-              cards: cards || undefined,
-              attendance: attendance === "" ? undefined : Number(attendance),
-              comment: comment || undefined,
-            }
-          : match.extendedReport,
     };
   }
 
@@ -87,7 +63,8 @@ export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }:
           <div>
             <div className="text-[16px] font-extrabold tracking-tight">Saisir un résultat</div>
             <p className="mt-1 text-[12.5px] text-text-soft">
-              {match.teamName} vs {match.opponent} · {new Date(match.kickoffAt).toLocaleDateString("fr-FR")}
+              {match.teamName} vs {match.opponent}
+              {match.kickoffAt ? ` · ${new Date(match.kickoffAt).toLocaleDateString("fr-FR")}` : ""}
             </p>
           </div>
           <button
@@ -139,45 +116,6 @@ export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }:
           />
         </div>
 
-        <button
-          onClick={() => setMode(mode === "express" ? "complete" : "express")}
-          className="mt-3.5 text-[12.5px] font-bold text-brand-blue-electric"
-        >
-          {mode === "express" ? "Passer au formulaire complet (14 champs)" : "Revenir au formulaire express"}
-        </button>
-
-        {mode === "complete" && (
-          <div className="mt-3.5 grid grid-cols-1 gap-3.5 border-t border-divider pt-3.5 sm:grid-cols-2">
-            <TextField label="Équipe" value={teamName} onChange={setTeamName} />
-            <TextField label="Adversaire" value={opponent} onChange={setOpponent} />
-            <TextField label="Compétition" value={competition} onChange={setCompetition} />
-            <TextField label="Lieu" value={venue} onChange={setVenue} />
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[12.5px] font-bold text-text-soft">Domicile / Extérieur</span>
-              <select
-                value={isHome ? "home" : "away"}
-                onChange={(e) => setIsHome(e.target.value === "home")}
-                className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13.5px] outline-none focus-visible:border-brand-blue"
-              >
-                <option value="home">Domicile</option>
-                <option value="away">Extérieur</option>
-              </select>
-            </div>
-            <NumberField label="Affluence" value={attendance} onChange={setAttendance} />
-            <TextField label="Passeurs décisifs" value={assists} onChange={setAssists} />
-            <TextField label="Cartons" value={cards} onChange={setCards} />
-            <div className="col-span-full flex flex-col gap-1.5">
-              <span className="text-[12.5px] font-bold text-text-soft">Commentaire</span>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={3}
-                className="rounded-sv border border-border-strong bg-input-bg px-3 py-2 text-[13.5px] outline-none focus-visible:border-brand-blue"
-              />
-            </div>
-          </div>
-        )}
-
         <div className="mt-5 flex justify-end gap-2.5 border-t border-divider pt-4">
           <Button variant="secondary" onClick={onClose}>
             Annuler
@@ -187,19 +125,6 @@ export function MatchResultModal({ matches, initialMatchId, onClose, onSubmit }:
           </Button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function TextField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-[12.5px] font-bold text-text-soft">{label}</span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13.5px] outline-none focus-visible:border-brand-blue"
-      />
     </div>
   );
 }

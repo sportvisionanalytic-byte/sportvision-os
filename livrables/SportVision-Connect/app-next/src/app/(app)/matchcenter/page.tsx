@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CalendarClock, Sparkles } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
@@ -12,12 +11,14 @@ import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { MatchResultModal } from "@/components/matchcenter/MatchResultModal";
 import { cn } from "@/lib/cn";
-import { RESULT_TEMPLATE_CODE } from "@/lib/mock/studio";
 import { fetchClubMatches, saveClubMatchResult } from "@/lib/data/club/matches";
 import { createClient } from "@/lib/supabase/client";
 import { MATCH_STATUS_LABELS, MATCH_STATUS_TONE, type Match, type MatchStatus } from "@/lib/types/studio";
 
 // Match Center — saisie de résultats. Voir ACTIONS.md § 8 et DATA_MODEL.md § Match.
+// "content_created" (visuel généré) n'a pas d'équivalent réel en base (voir data/club/matches.ts)
+// et aucun marquage local ne le simule plus : /studio est verrouillé (hors READY_MODULES), il n'y
+// a donc aujourd'hui aucun chemin réel pour faire transiter un match vers ce statut.
 
 const TABS: { key: MatchStatus; label: string }[] = [
   { key: "upcoming", label: "À venir" },
@@ -28,14 +29,11 @@ const TABS: { key: MatchStatus; label: string }[] = [
 
 export default function MatchCenterPage() {
   const { ctx } = useSession();
-  const router = useRouter();
   const { toastMessage, showToast } = useToast();
   const [tab, setTab] = useState<MatchStatus>("upcoming");
   const [modalMatchId, setModalMatchId] = useState<string | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
-  // "content_created" (visuel généré) n'a pas d'équivalent réel en base (voir data/club/matches.ts)
-  // — recouvrement local uniquement, jamais écrit dans club_matches.status.
-  const [contentCreatedIds, setContentCreatedIds] = useState<Set<string>>(new Set());
+  const [matches, setMatches] = useState<Match[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const allowed = canAccess(ctx, "matchcenter");
   const canWrite = canCreate(ctx, "match_result");
@@ -43,9 +41,13 @@ export default function MatchCenterPage() {
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    fetchClubMatches(supabase, ctx.organization.id).then((rows) => {
-      if (!cancelled) setMatches(rows);
-    });
+    fetchClubMatches(supabase, ctx.organization.id)
+      .then((rows) => {
+        if (!cancelled) setMatches(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -53,30 +55,32 @@ export default function MatchCenterPage() {
 
   if (!allowed) return <LockedModule title="Match Center" />;
 
-  const orgMatches = matches.map((m) =>
-    contentCreatedIds.has(m.id) && m.status === "result_received"
-      ? { ...m, status: "content_created" as MatchStatus }
-      : m,
-  );
+  if (loadError) {
+    return (
+      <Card className="p-8 text-center">
+        <div className="text-[14px] font-extrabold">Impossible de charger les matchs.</div>
+        <p className="mt-1.5 text-[13px] text-text-soft">Réessayez dans quelques instants.</p>
+      </Card>
+    );
+  }
+
+  if (matches === null) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement des matchs…</div>;
+  }
+
+  const orgMatches = matches;
   const pending = orgMatches.filter((m) => m.status === "result_pending");
-  const received = orgMatches.filter((m) => m.status === "result_received" || m.status === "content_created");
   const rows = orgMatches.filter((m) => m.status === tab);
 
   function handleSaveResult(matchId: string, patch: Partial<Match>) {
     const supabase = createClient();
     saveClubMatchResult(supabase, matchId, patch)
       .then(() => {
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, ...patch, status: "result_received" } : m)));
+        setMatches((prev) => (prev ? prev.map((m) => (m.id === matchId ? { ...m, ...patch, status: "result_received" } : m)) : prev));
         setModalMatchId(null);
         showToast("Résultat enregistré.");
       })
       .catch(() => showToast("Enregistrement impossible, réessayez."));
-  }
-
-  function handleCreateVisual(match?: Match) {
-    const target = match ?? received[0];
-    if (target) setContentCreatedIds((prev) => new Set(prev).add(target.id));
-    router.push(target ? `/studio/${RESULT_TEMPLATE_CODE}?matchId=${target.id}` : `/studio/${RESULT_TEMPLATE_CODE}`);
   }
 
   return (
@@ -90,12 +94,8 @@ export default function MatchCenterPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Button
-            variant="secondary"
-            disabled={received.length === 0}
-            onClick={() => handleCreateVisual()}
-          >
-            Créer le visuel
+          <Button variant="secondary" disabled title="Le studio de création de visuels arrive bientôt.">
+            Bientôt disponible
           </Button>
           <Button
             variant="primary"
@@ -151,8 +151,8 @@ export default function MatchCenterPage() {
                 </div>
                 <div className="mt-1 flex items-center gap-1.5 text-[12px] font-semibold text-text-faint">
                   <CalendarClock className="h-3.5 w-3.5" aria-hidden />
-                  {new Date(m.kickoffAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} ·{" "}
-                  {m.competition} · {m.venue}
+                  {m.kickoffAt ? new Date(m.kickoffAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "Date à confirmer"}
+                  {m.venue ? ` · ${m.venue}` : ""}
                 </div>
               </div>
               {m.status === "result_pending" && (
@@ -166,9 +166,9 @@ export default function MatchCenterPage() {
                 </Button>
               )}
               {(m.status === "result_received" || m.status === "content_created") && (
-                <Button variant="secondary" className="h-9 px-3.5 text-[12.5px]" onClick={() => handleCreateVisual(m)}>
+                <Button variant="secondary" className="h-9 px-3.5 text-[12.5px]" disabled title="Le studio de création de visuels arrive bientôt.">
                   <Sparkles className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                  Créer le visuel
+                  Bientôt disponible
                 </Button>
               )}
             </Card>
