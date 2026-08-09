@@ -1092,6 +1092,7 @@
       // rôle dont chaque appel échouait ensuite (invite/changement de rôle/
       // suspension) sans que l'UI ne prévienne pourquoi.
       const canManage = !!(ctx && ctx.role === 'admin');
+      const uid = localStorage.getItem('svc_uid');
 
       let members = [];
       let loaded = false;
@@ -1099,18 +1100,28 @@
       let invite = null; // {step, prenom, nom, email, role}
 
       async function load() {
-        const res = await sbFetch('club_members?club_id=eq.' + orgId + '&select=id,role,prenom,nom,telephone,teams,status&order=created_at.asc');
+        const res = await sbFetch('club_members?club_id=eq.' + orgId + '&select=id,user_id,role,prenom,nom,telephone,teams,status&order=created_at.asc');
         if (!res.ok) toast('Erreur de chargement.');
         members = res.ok ? (res.data || []) : [];
         loaded = true;
       }
+
+      // Se suspendre soi-même via ce bouton coupe immédiatement l'accès RLS à
+      // tout le club (is_club_member/is_club_admin exigent status='actif'),
+      // sans porte de sortie en libre-service : seul un AUTRE admin déjà actif
+      // ou le staff SportVision peut réactiver (protect_sensitive_club_member_
+      // fields, migration-connect-v13 — même trigger que côté app-next, voir
+      // fix(connect): un admin pouvait se désactiver lui-même…). Pour un club à
+      // un seul admin, verrouillage complet. Bouton masqué sur sa propre ligne
+      // plutôt que de compter sur la prudence de l'utilisateur.
+      function isSelf(u) { return !!(uid && u.user_id === uid); }
 
       function row(u) {
         const sm = statusMeta(u.status);
         const name = ((u.prenom || '') + ' ' + (u.nom || '')).trim() || '(sans nom)';
         return `<button class="cm-row" data-action="open" data-id="${u.id}">
           <div>
-            <div class="t">${esc(name)}</div>
+            <div class="t">${esc(name)}${isSelf(u) ? ' <span class="m" style="font-weight:600">(vous)</span>' : ''}</div>
             <div class="m">${esc(roleLabel(u.role))}${u.teams && u.teams.length ? ' · ' + esc(u.teams.join(', ')) : ''}</div>
           </div>
           <span class="badge" style="background:${sm.color}22;color:${sm.color}">${esc(sm.label)}</span>
@@ -1122,16 +1133,17 @@
         const u = members.find(function (x) { return x.id === openId; });
         if (!u) return '';
         const sm = statusMeta(u.status);
+        const self = isSelf(u);
         const name = ((u.prenom || '') + ' ' + (u.nom || '')).trim() || '(sans nom)';
         return `<div class="cm-overlay" data-action="overlay">
           <div class="cm-modal">
-            <div class="cm-drawer-head"><b>${esc(name)}</b><button class="cm-close" data-action="close">✕</button></div>
+            <div class="cm-drawer-head"><b>${esc(name)}${self ? ' (vous)' : ''}</b><button class="cm-close" data-action="close">✕</button></div>
             <span class="badge" style="background:${sm.color}22;color:${sm.color};margin-bottom:14px;display:inline-block">${esc(sm.label)}</span>
             <div class="cm-info">
               Téléphone : ${esc(u.telephone || '—')}<br>
               Équipes autorisées : ${u.teams && u.teams.length ? esc(u.teams.join(', ')) : 'Toutes'}
             </div>
-            ${canManage ? `
+            ${canManage && !self ? `
               <div class="cm-field"><label>Rôle</label><select data-field="role-select">
                 ${ROLE_CODES.map(function (r) { return '<option value="' + r + '" ' + (r === u.role ? 'selected' : '') + '>' + esc(roleLabel(r)) + '</option>'; }).join('')}
               </select></div>
@@ -1139,7 +1151,9 @@
               <div class="cm-actions">
                 <button class="btn btn-ghost" data-action="toggle-suspend" data-id="${u.id}" data-status="${esc(u.status)}">${u.status === 'suspendu' ? "Réactiver l'accès" : "Suspendre l'accès"}</button>
               </div>
-            ` : '<div class="m">Seul un administrateur ou le président du club peut modifier le rôle ou le statut d’un membre.</div>'}
+            ` : (canManage && self
+              ? '<div class="m" style="margin-top:4px;color:var(--muted);font-size:12.5px">Vous ne pouvez pas modifier votre propre rôle ni suspendre votre propre accès depuis cet écran. Demandez à un autre administrateur si nécessaire.</div>'
+              : '<div class="m">Seul un administrateur ou le président du club peut modifier le rôle ou le statut d’un membre.</div>')}
           </div>
         </div>`;
       }
@@ -1196,6 +1210,8 @@
       }
 
       async function saveRole(id) {
+        const target = members.find(function (x) { return x.id === id; });
+        if (target && isSelf(target)) { toast('Vous ne pouvez pas modifier votre propre rôle depuis cet écran.'); return; }
         const sel = container.querySelector('[data-field="role-select"]');
         const role = sel ? sel.value : null;
         if (!role) return;
@@ -1206,6 +1222,12 @@
         await load(); paint();
       }
       async function toggleSuspend(id, currentStatus) {
+        // Garde de sécurité en plus du bouton masqué (voir isSelf) : le bouton
+        // ne devrait jamais déclencher ceci sur sa propre ligne, mais on ne
+        // fait pas confiance uniquement à l'UI pour une action qui verrouille
+        // l'accès de tout le club côté RLS.
+        const target = members.find(function (x) { return x.id === id; });
+        if (target && isSelf(target)) { toast('Vous ne pouvez pas suspendre votre propre accès.'); return; }
         const next = currentStatus === 'suspendu' ? 'actif' : 'suspendu';
         const res = await sbFetch('club_members?id=eq.' + id, { method: 'PATCH', body: { status: next } });
         if (!res.ok) { toast('Action impossible (droits administrateur requis).'); return; }
