@@ -4,21 +4,28 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import type { CalendarEventKind } from "@/lib/types/calendar";
 import { CALENDAR_EVENT_KIND_LABELS } from "@/lib/types/calendar";
+import { CREATABLE_EVENT_TYPE_MAP } from "@/lib/data/club/calendar";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
-// Modale « Ajouter un événement » — voir ACTIONS.md § 15.
+// Modale « Ajouter un événement » — voir ACTIONS.md § 15. Pas de champs Heure/Lieu :
+// club_calendar_events (migration-clubplus-v4.sql) n'a qu'event_date (date, sans heure) et aucune
+// colonne lieu — voir migration-clubplus-v35-calendar-event-heure-lieu.sql (additive, non
+// exécutée) pour le chemin de réintroduction. Le type proposé est limité aux 6 valeurs couvertes
+// par CREATABLE_EVENT_TYPE_MAP (contrainte check réelle sur club_calendar_events.type) : les 4
+// autres types du design (Publication, Échéance de contrat, Échéance de facture, Stage) n'ont pas
+// d'équivalent réel et retombaient silencieusement sur "Tournage" en base.
 interface AddEventModalProps {
   onClose: () => void;
-  onCreate: (event: { title: string; kind: CalendarEventKind; date: string; time: string; location: string }) => Promise<unknown>;
+  onCreate: (event: { title: string; kind: CalendarEventKind; date: string }) => Promise<unknown>;
 }
+
+const CREATABLE_KINDS = Object.keys(CREATABLE_EVENT_TYPE_MAP) as CalendarEventKind[];
 
 export function AddEventModal({ onClose, onCreate }: AddEventModalProps) {
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<CalendarEventKind>("meeting");
   const [date, setDate] = useState("");
-  const [time, setTime] = useState("10:00");
-  const [location, setLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +34,7 @@ export function AddEventModal({ onClose, onCreate }: AddEventModalProps) {
   function handleSubmit() {
     setSubmitting(true);
     setError(null);
-    onCreate({ title, kind, date, time, location })
+    onCreate({ title, kind, date })
       .then(() => onClose())
       .catch(() => {
         setSubmitting(false);
@@ -56,28 +63,17 @@ export function AddEventModal({ onClose, onCreate }: AddEventModalProps) {
         <label className="flex flex-col gap-1.5">
           <span className="text-[12.5px] font-bold text-text-soft">Type</span>
           <select value={kind} onChange={(e) => setKind(e.target.value as CalendarEventKind)} className={fieldClass}>
-            {Object.entries(CALENDAR_EVENT_KIND_LABELS).map(([value, label]) => (
+            {CREATABLE_KINDS.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {CALENDAR_EVENT_KIND_LABELS[value]}
               </option>
             ))}
           </select>
         </label>
 
-        <div className="grid grid-cols-2 gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-bold text-text-soft">Date</span>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={fieldClass} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-bold text-text-soft">Heure</span>
-            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={fieldClass} />
-          </label>
-        </div>
-
         <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-bold text-text-soft">Lieu (facultatif)</span>
-          <input value={location} onChange={(e) => setLocation(e.target.value)} className={fieldClass} />
+          <span className="text-[12.5px] font-bold text-text-soft">Date</span>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={fieldClass} />
         </label>
 
         {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}

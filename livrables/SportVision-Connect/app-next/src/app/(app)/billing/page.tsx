@@ -157,7 +157,7 @@ export default function BillingPage() {
 
 function ProjetBillingView() {
   const { ctx } = useSession();
-  const { toastMessage, showToast } = useToast();
+  const { toastMessage, toastTone, showToast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [devis, setDevis] = useState<ClientDevis[]>([]);
   const [contracts, setContracts] = useState<ClientContract[]>([]);
@@ -202,7 +202,7 @@ function ProjetBillingView() {
       await decideDevis(supabase, devisId, decision);
       await reload();
     } catch {
-      showToast("Action impossible, réessayez.");
+      showToast("Action impossible, réessayez.", "error");
     } finally {
       setDecidingDevisId(null);
     }
@@ -354,7 +354,7 @@ function ProjetBillingView() {
         </Card>
       )}
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} tone={toastTone} />
     </div>
   );
 }

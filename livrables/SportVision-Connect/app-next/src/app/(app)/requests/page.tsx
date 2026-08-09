@@ -67,7 +67,7 @@ const PAGE_SIZE = 8;
 
 export default function RequestsPage() {
   const { ctx } = useSession();
-  const { toastMessage, showToast } = useToast();
+  const { toastMessage, toastTone, showToast } = useToast();
 
   const [filter, setFilter] = useState<FilterKey>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -110,7 +110,7 @@ export default function RequestsPage() {
         setDetailId(null);
         showToast(`Demande ${r.reference} annulée.`);
       })
-      .catch(() => showToast("Cette demande ne peut plus être annulée — elle est déjà prise en charge."));
+      .catch(() => showToast("Cette demande ne peut plus être annulée — elle est déjà prise en charge.", "error"));
   }
 
   const filteredByTab = orgRequests.filter((r) => matchesFilter(r, filter));
@@ -455,7 +455,7 @@ export default function RequestsPage() {
         </div>
       )}
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} tone={toastTone} />
     </div>
   );
 }
