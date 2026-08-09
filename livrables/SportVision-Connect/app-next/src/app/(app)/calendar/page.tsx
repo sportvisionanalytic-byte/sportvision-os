@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Plus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, canCreate } from "@/lib/permissions";
 import { CALENDAR_EVENT_KIND_LABELS, type CalendarEvent, type CalendarEventKind } from "@/lib/types/calendar";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -52,7 +52,8 @@ function isSameDay(a: Date, b: Date): boolean {
 export default function CalendarPage() {
   const { ctx } = useSession();
   const today = useMemo(() => startOfToday(), []);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [view, setView] = useState<ViewMode>("month");
   const [reference, setReference] = useState<Date>(today);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -68,20 +69,34 @@ export default function CalendarPage() {
     const fetcher = isGenericOrg
       ? fetchOrgCalendarEvents(supabase, ctx.organization.id)
       : fetchClubCalendarEvents(supabase, ctx.organization.id);
-    fetcher.then((rows) => {
-      if (!cancelled) setEvents(rows);
-    });
+    fetcher
+      .then((rows) => {
+        if (!cancelled) setEvents(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
     return () => {
       cancelled = true;
     };
   }, [ctx.organization.id, isGenericOrg]);
 
-  if (!canAccess(ctx, "calendar")) return <LockedModule title="Calendrier" />;
-
+  // Hooks appelés inconditionnellement avant tout `return` — sortedEvents doit être calculé ici,
+  // pas après le early-return de canAccess ci-dessous (règle des Hooks React).
   const sortedEvents = useMemo(
-    () => [...events].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()),
+    () => [...(events ?? [])].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()),
     [events],
   );
+
+  if (!canAccess(ctx, "calendar")) return <LockedModule title="Calendrier" />;
+
+  if (loadError) {
+    return <Card className="p-9 text-center text-[13.5px] text-text-soft">Impossible de charger le calendrier.</Card>;
+  }
+
+  if (events === null) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement du calendrier…</div>;
+  }
 
   function eventsOnDay(day: Date): CalendarEvent[] {
     return sortedEvents.filter((e) => isSameDay(new Date(e.startsAt), day));
@@ -97,14 +112,13 @@ export default function CalendarPage() {
     }
   }
 
-  function handleCreateEvent(input: { title: string; kind: CalendarEventKind; date: string; time: string; location: string }) {
+  function handleCreateEvent(input: { title: string; kind: CalendarEventKind; date: string }) {
     const supabase = createClient();
     return createClubCalendarEvent(supabase, ctx.organization.id, {
       title: input.title,
       kind: input.kind,
       date: input.date,
-      location: input.location || undefined,
-    }).then((created) => setEvents((prev) => [...prev, created]));
+    }).then((created) => setEvents((prev) => (prev ? [...prev, created] : prev)));
   }
 
   function exportIcal() {
@@ -147,7 +161,7 @@ export default function CalendarPage() {
             Exporter (iCal)
           </Button>
           {!isGenericOrg && (
-            <Button onClick={() => setAddOpen(true)}>
+            <Button disabled={!canCreate(ctx, "calendar_event")} onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" aria-hidden />
               Ajouter un événement
             </Button>

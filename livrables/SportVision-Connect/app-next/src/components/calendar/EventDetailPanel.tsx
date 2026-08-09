@@ -63,16 +63,13 @@ export function EventDetailPanel({ event, onClose }: EventDetailPanelProps) {
           </div>
         )}
 
-        <div className="mt-auto flex flex-col gap-2.5">
-          {event.sourceHref && (
+        {event.sourceHref && (
+          <div className="mt-auto">
             <Link href={event.sourceHref}>
               <Button className="w-full">Voir la ressource liée</Button>
             </Link>
-          )}
-          <Button variant="secondary" className="w-full" onClick={onClose}>
-            Ajouter à mon calendrier
-          </Button>
-        </div>
+          </div>
+        )}
       </Card>
     </div>
   );
