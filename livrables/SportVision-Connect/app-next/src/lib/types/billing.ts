@@ -9,6 +9,7 @@ export type ContractStatus =
   | "signe"
   | "actif"
   | "a_renouveler"
+  | "suspendu"
   | "resilie"
   | "expire";
 
@@ -75,6 +76,7 @@ export interface ContractSchedule {
 
 export type InvoiceStatus =
   | "brouillon"
+  | "emise"
   | "a_payer"
   | "payee"
   | "en_retard"

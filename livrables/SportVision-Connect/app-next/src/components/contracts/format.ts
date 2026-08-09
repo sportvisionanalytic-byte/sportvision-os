@@ -12,6 +12,7 @@ export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
   signe: "Signé",
   actif: "Actif",
   a_renouveler: "À renouveler",
+  suspendu: "Suspendu",
   resilie: "Résilié",
   expire: "Expiré",
 };
@@ -23,6 +24,7 @@ export const CONTRACT_STATUS_TONE: Record<ContractStatus, BadgeTone> = {
   signe: "success",
   actif: "success",
   a_renouveler: "warning",
+  suspendu: "danger",
   resilie: "danger",
   expire: "neutral",
 };

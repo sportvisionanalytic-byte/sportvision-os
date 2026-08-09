@@ -6,15 +6,25 @@ import type { Contract, ContractStatus, Invoice, InvoiceStatus } from "@/lib/typ
 // directe). Écriture EXCLUSIVEMENT via RPC client_decide_devis/client_sign_contrat (jamais de
 // PATCH direct sur statut/montant) — voir le plan Phase 3.
 
+// factures.statut (migration-portail-v1.sql, CHECK) : brouillon, emise, payee, en_retard,
+// annulee, remboursee. Ce map utilisait par erreur l'énumération de prestations.statut_financier
+// (non_facturée/en_préparation/facturée/partiellement_payée/payée/annulée/remboursée), une
+// colonne différente : comme les valeurs réelles de factures.statut ne matchaient jamais ces
+// clés, toute facture retombait sur "brouillon" par défaut, quel que soit son vrai statut.
 const INVOICE_STATUS_MAP: Record<string, InvoiceStatus> = {
-  non_facturée: "brouillon",
-  en_préparation: "brouillon",
-  facturée: "a_payer",
-  partiellement_payée: "a_payer",
-  payée: "payee",
+  brouillon: "brouillon",
+  emise: "emise",
+  payee: "payee",
   en_retard: "en_retard",
-  annulée: "annulee",
-  remboursée: "remboursee",
+  annulee: "annulee",
+  remboursee: "remboursee",
+};
+
+// factures.type_facture (CHECK) : acompte, solde, totalite.
+const FACTURE_TYPE_LABELS: Record<string, string> = {
+  acompte: "Facture d'acompte",
+  solde: "Facture de solde",
+  totalite: "Facture",
 };
 
 interface FactureRow {
@@ -33,11 +43,12 @@ interface FactureRow {
 }
 
 export async function fetchClientInvoices(supabase: SupabaseClient, organizationId: string): Promise<Invoice[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("client_factures")
     .select("id, numero, type_facture, statut, prestation_id, montant_ht, tva_pct, montant_ttc, date_emission, date_echeance, pdf_url, created_at")
     .eq("client_id", organizationId)
     .order("date_emission", { ascending: false });
+  if (error) throw error;
 
   return ((data ?? []) as FactureRow[]).map((row) => ({
     id: row.id,
@@ -46,7 +57,7 @@ export async function fetchClientInvoices(supabase: SupabaseClient, organization
     serviceId: row.prestation_id ?? undefined,
     issueDate: row.date_emission ?? row.created_at,
     dueDate: row.date_echeance ?? row.date_emission ?? row.created_at,
-    subject: row.type_facture ?? "Facture",
+    subject: (row.type_facture && FACTURE_TYPE_LABELS[row.type_facture]) ?? "Facture",
     lines: [],
     subtotalExclVat: row.montant_ht,
     vatRate: row.tva_pct,
@@ -90,11 +101,12 @@ interface DevisRow {
 }
 
 export async function fetchClientDevis(supabase: SupabaseClient, organizationId: string): Promise<ClientDevis[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("client_devis")
     .select("id, numero, statut, total_ttc, date_expiration")
     .eq("client_id", organizationId)
     .order("date_envoi", { ascending: false });
+  if (error) throw error;
 
   return ((data ?? []) as DevisRow[]).map((row) => ({
     id: row.id,
@@ -112,10 +124,13 @@ export async function decideDevis(supabase: SupabaseClient, devisId: string, dec
   if (error) throw error;
 }
 
+// contrats.statut (migration-contrats.sql, CHECK) : brouillon, actif, suspendu, résilié, expiré.
+// "suspendu" mappait par erreur vers "a_renouveler" ("À renouveler") : un contrat suspendu
+// (paiement en incident, litige...) n'a rien d'un simple renouvellement à venir.
 const CONTRACT_STATUS_MAP: Record<string, ContractStatus> = {
   brouillon: "brouillon",
   actif: "actif",
-  suspendu: "a_renouveler",
+  suspendu: "suspendu",
   résilié: "resilie",
   expiré: "expire",
 };
@@ -143,11 +158,12 @@ export interface ClientContract extends Contract {
 }
 
 export async function fetchClientContracts(supabase: SupabaseClient, organizationId: string): Promise<ClientContract[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("client_contrats")
     .select("id, type_contrat, statut, signature_statut, montant_mensuel, frequence, date_debut, date_fin, created_at")
     .eq("client_id", organizationId)
     .order("created_at", { ascending: false });
+  if (error) throw error;
 
   return ((data ?? []) as ContratRow[]).map((row) => ({
     id: row.id,
