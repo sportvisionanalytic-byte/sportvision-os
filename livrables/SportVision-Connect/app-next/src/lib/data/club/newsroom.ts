@@ -52,23 +52,31 @@ function toNewsroomItem(row: ClubNewsroomRow, organizationId: string): NewsroomI
 }
 
 export async function fetchClubNewsroomItems(supabase: SupabaseClient, organizationId: string): Promise<NewsroomItem[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("club_newsroom_items")
     .select(SELECT)
     .eq("club_id", organizationId)
     .order("created_at", { ascending: false });
+  if (error) throw error;
 
   return ((data ?? []) as ClubNewsroomRow[]).map((row) => toNewsroomItem(row, organizationId));
 }
 
+/** `.eq("club_id", ...)` + `.select()` : sans ça, une RLS qui bloque silencieusement (0 ligne
+ * affectée) renvoie quand même `{error: null}` et l'appelant marquerait l'item comme mis à jour
+ * à tort (faux succès) — voir newsroom/page.tsx. */
 export async function updateClubNewsroomItemStatus(
   supabase: SupabaseClient,
   id: string,
+  organizationId: string,
   status: "transformed" | "info_requested" | "archived",
 ): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("club_newsroom_items")
     .update({ status: WRITE_STATUS_MAP[status] })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("club_id", organizationId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Mise à jour refusée : remontée introuvable ou accès refusé.");
 }

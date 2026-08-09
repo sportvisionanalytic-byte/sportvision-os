@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, MessageSquarePlus, Sparkles } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -24,6 +24,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "Tout" },
   { key: "received", label: "Reçu" },
   { key: "to_process", label: "À traiter" },
+  { key: "info_requested", label: "Complément demandé" },
   { key: "transformed", label: "Transformé" },
   { key: "archived", label: "Archivé" },
 ];
@@ -50,48 +51,59 @@ export default function NewsroomPage() {
   const allowed = canAccess(ctx, "newsroom");
   const canWrite = canCreate(ctx, "newsroom_item");
 
-  const [items, setItems] = useState<NewsroomItem[]>([]);
+  const [items, setItems] = useState<NewsroomItem[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    fetchClubNewsroomItems(supabase, ctx.organization.id).then((rows) => {
-      if (!cancelled) setItems(rows);
-    });
+    setLoadError(false);
+    fetchClubNewsroomItems(supabase, ctx.organization.id)
+      .then((rows) => {
+        if (!cancelled) setItems(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
     return () => {
       cancelled = true;
     };
   }, [ctx.organization.id]);
 
-  const filtered = filter === "all" ? items : items.filter((i) => i.status === filter);
+  const filtered = (items ?? []).filter((i) => filter === "all" || i.status === filter);
 
   function applyStatus(item: NewsroomItem, status: "transformed" | "info_requested" | "archived") {
     const supabase = createClient();
-    updateClubNewsroomItemStatus(supabase, item.id, status)
+    return updateClubNewsroomItemStatus(supabase, item.id, ctx.organization.id, status).then(() => {
+      setItems((prev) => (prev ? prev.map((i) => (i.id === item.id ? { ...i, status } : i)) : prev));
+    });
+  }
+
+  function handleTransform(item: NewsroomItem, into: "publication" | "visual_request") {
+    applyStatus(item, "transformed")
       .then(() => {
-        setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status } : i)));
+        if (into === "publication") {
+          const code = inferTemplateCode(item);
+          router.push(`/studio/${code}?prefillBody=${encodeURIComponent(item.body)}`);
+        } else {
+          router.push(
+            `/requests/new?prefillBody=${encodeURIComponent(item.body)}&teamName=${encodeURIComponent(item.teamName ?? "")}`,
+          );
+        }
       })
       .catch(() => showToast("Action impossible, réessayez."));
   }
 
-  function handleTransform(item: NewsroomItem, into: "publication" | "visual_request") {
-    applyStatus(item, "transformed");
-    if (into === "publication") {
-      const code = inferTemplateCode(item);
-      router.push(`/studio/${code}?prefillBody=${encodeURIComponent(item.body)}`);
-    } else {
-      router.push(`/requests/new?prefillBody=${encodeURIComponent(item.body)}&teamName=${encodeURIComponent(item.teamName ?? "")}`);
-    }
-  }
-
   function handleRequestInfo(item: NewsroomItem) {
-    applyStatus(item, "info_requested");
-    showToast(`Complément demandé à ${item.submittedByName}.`);
+    applyStatus(item, "info_requested")
+      .then(() => showToast(`Complément demandé à ${item.submittedByName}.`))
+      .catch(() => showToast("Action impossible, réessayez."));
   }
 
   function handleArchive(item: NewsroomItem) {
-    applyStatus(item, "archived");
-    showToast("Remontée archivée.");
+    applyStatus(item, "archived")
+      .then(() => showToast("Remontée archivée."))
+      .catch(() => showToast("Action impossible, réessayez."));
   }
 
   if (!allowed) return <LockedModule title="Newsroom" />;
@@ -123,7 +135,14 @@ export default function NewsroomPage() {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {loadError ? (
+        <Card className="p-8 text-center">
+          <div className="text-[14px] font-extrabold text-danger-fg">Chargement impossible</div>
+          <p className="mt-1.5 text-[13px] text-text-soft">Une erreur réseau empêche d&apos;afficher les remontées. Réessayez.</p>
+        </Card>
+      ) : items === null ? (
+        <div className="py-16 text-center text-[13px] text-text-soft">Chargement des remontées…</div>
+      ) : filtered.length === 0 ? (
         <Card className="p-8 text-center">
           <div className="text-[14px] font-extrabold">Aucune remontée à traiter</div>
           <p className="mt-1.5 text-[13px] text-text-soft">Tout est à jour dans cette vue.</p>
