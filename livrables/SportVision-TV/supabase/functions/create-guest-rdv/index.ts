@@ -65,7 +65,10 @@ async function sendRdvConfirmationEmail(
   info: { prenom: string; type_rdv: string; date_demandee: string; heure_demandee: string | null; objet: string | null },
 ) {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  if (!resendApiKey) return;
+  if (!resendApiKey) {
+    console.error("[sendRdvConfirmationEmail] RESEND_API_KEY absent des secrets de cette fonction — e-mail non envoyé");
+    return;
+  }
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
   const dateFmt = new Date(info.date_demandee).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   const typeLbl = info.type_rdv === "physique" ? "Rendez-vous physique" : "Appel téléphonique";
@@ -88,11 +91,14 @@ async function sendRdvConfirmationEmail(
   </div>
 </body></html>`;
 
-  await fetch("https://api.resend.com/emails", {
+  const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: fromEmail, to: [to], subject: "Demande de rendez-vous reçue — SportVision", html }),
   });
+  if (!res.ok) {
+    console.error("[sendRdvConfirmationEmail] échec Resend", res.status, await res.text());
+  }
 }
 
 serve(async (req) => {
@@ -178,8 +184,11 @@ serve(async (req) => {
 
     try {
       await sendRdvConfirmationEmail(email, { prenom, type_rdv, date_demandee, heure_demandee: heure_demandee || null, objet: objet || null });
-    } catch (_e) {
-      // Best-effort : un échec d'envoi ne doit jamais faire échouer une demande valide.
+    } catch (e) {
+      // Best-effort : un échec d'envoi ne doit jamais faire échouer une demande
+      // valide — mais on log pour pouvoir diagnostiquer (Supabase Dashboard →
+      // Edge Functions → create-guest-rdv → Logs).
+      console.error("[create-guest-rdv] exception envoi e-mail", e instanceof Error ? e.message : String(e));
     }
 
     return json({ rdv_id: rdv.id, client_email: email });
