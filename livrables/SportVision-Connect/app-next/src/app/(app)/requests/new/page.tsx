@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, UploadCloud } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
 import { PLANS } from "@/lib/plans";
@@ -12,22 +12,26 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { cn } from "@/lib/cn";
-import { FCF_TEAM_NAMES, buildAttachment } from "@/lib/mock/studio";
 import { submitClubRequest } from "@/lib/data/club/requests";
 import { submitOrgRequest } from "@/lib/data/shared/requests";
+import { fetchClubTeams } from "@/lib/data/club/teams";
 import { createClient } from "@/lib/supabase/client";
 import {
   URGENCY_META,
   VISUAL_FORMAT_LABELS,
   VISUAL_PLATFORM_LABELS,
   VISUAL_TYPE_LABELS,
-  type RequestAttachment,
   type VisualFormat,
   type VisualPlatform,
   type VisualRequestUrgency,
   type VisualType,
 } from "@/lib/types/studio";
 import { VISUAL_FORMAT_OPTIONS, VISUAL_PLATFORM_OPTIONS, VISUAL_TYPE_OPTIONS } from "@/lib/mock/studio";
+
+/** urgency ne supporte que 2 niveaux réels côté schéma (normale/haute, voir
+ * migration-clubplus-v4.sql) : "Express" n'a pas d'équivalent et dégraderait
+ * silencieusement en "Prioritaire" après écriture — retiré du formulaire. */
+const SELECTABLE_URGENCIES: VisualRequestUrgency[] = ["standard", "priority"];
 
 // Nouvelle demande de visuel — modale de la maquette implémentée en page dédiée (route explicite
 // /requests/new dans README.md § Arborescence des routes). Voir ACTIONS.md § 11.
@@ -56,9 +60,10 @@ function NewRequestContent() {
   const [platform, setPlatform] = useState<VisualPlatform>("instagram");
   const [bodyText, setBodyText] = useState("");
   const [urgency, setUrgency] = useState<VisualRequestUrgency>("standard");
-  const [attachments, setAttachments] = useState<RequestAttachment[]>([]);
-  const [dragActive, setDragActive] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [teamNames, setTeamNames] = useState<string[]>([]);
+
+  const isGenericOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
 
   useEffect(() => {
     const prefillBody = searchParams.get("prefillBody");
@@ -68,34 +73,39 @@ function NewRequestContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (isGenericOrg) return;
+    const supabase = createClient();
+    fetchClubTeams(supabase, ctx.organization.id).then((teams) => setTeamNames(teams.map((t) => t.name)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx.organization.id]);
+
   if (!allowed) return <LockedModule title="Demandes de visuels" />;
 
   const plan = PLANS[ctx.subscription.planCode];
   const cost = URGENCY_META[urgency].creditCost;
   const available = ctx.subscription.creditsRemaining;
-  const remainingAfter = plan.monthlyCredits === null ? null : available - cost;
-  const hasEnoughCredits = plan.monthlyCredits === null || available >= cost;
-
-  function addFiles(files: FileList | null) {
-    if (!files) return;
-    const next = Array.from(files).map((f) => buildAttachment(f.name, f.size));
-    setAttachments((prev) => [...prev, ...next]);
-  }
-
-  const isGenericOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
+  // coach/académie/sponsor n'ont aucun système de crédits réel suivi (plan "one_off",
+  // creditsRemaining toujours à 0 côté session.ts) : bloquer l'envoi sur ce quota qui
+  // n'existe pas pour eux rendrait le bouton définitivement inactif.
+  const hasCreditSystem = plan.monthlyCredits !== null && !isGenericOrg;
+  const remainingAfter = hasCreditSystem ? available - cost : null;
+  const hasEnoughCredits = !hasCreditSystem || available >= cost;
 
   function handleSubmit() {
     if (!canWrite || !hasEnoughCredits) return;
     setSubmitting(true);
     const supabase = createClient();
-    // Pas de colonnes réelles pour eventName/publishDate/format/platform (club_requests) ni pour
-    // teamName/eventName/publishDate/format/platform (requests générique, Phase 4) — tout repris
-    // dans le texte transmis pour ne rien perdre.
+    // Pas de colonnes réelles pour eventName/publishDate (club_requests et requests générique) ni
+    // pour team/format/platform côté requests générique — tout repris dans le texte transmis pour
+    // ne rien perdre. Pour un club, `team` a une vraie colonne (passée à part) : pas dupliqué ici.
     const composedBody = [
       bodyText,
-      !isGenericOrg && teamName && `Équipe : ${teamName}`,
+      isGenericOrg && teamName && `Équipe : ${teamName}`,
       eventName && `Événement : ${eventName}`,
       publishDate && `Publication visée : ${publishDate}`,
+      `Format : ${VISUAL_FORMAT_LABELS[format]}`,
+      `Plateforme : ${VISUAL_PLATFORM_LABELS[platform]}`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -104,7 +114,8 @@ function NewRequestContent() {
       : submitClubRequest(supabase, ctx.organization.id, { visualType, teamName: teamName || undefined, bodyText: composedBody, urgency, credits: cost });
     submission
       .then((request) => {
-        showToast(`Demande ${request.reference} envoyée · ${cost} crédit${cost > 1 ? "s" : ""} réservé${cost > 1 ? "s" : ""}.`);
+        const creditsSuffix = hasCreditSystem ? ` · ${cost} crédit${cost > 1 ? "s" : ""} réservé${cost > 1 ? "s" : ""}` : "";
+        showToast(`Demande ${request.reference} envoyée${creditsSuffix}.`);
         setTimeout(() => router.push("/requests"), 650);
       })
       .catch(() => {
@@ -150,7 +161,7 @@ function NewRequestContent() {
                 className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13.5px] outline-none focus-visible:border-brand-blue"
               />
               <datalist id="sv-new-request-teams">
-                {FCF_TEAM_NAMES.map((t) => (
+                {teamNames.map((t) => (
                   <option key={t} value={t} />
                 ))}
               </datalist>
@@ -211,41 +222,10 @@ function NewRequestContent() {
             />
           </Field>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-bold text-text-soft">Pièces jointes</span>
-            <label
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragActive(true);
-              }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragActive(false);
-                addFiles(e.dataTransfer.files);
-              }}
-              className={cn(
-                "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed px-4 py-7 text-center transition-colors duration-sv",
-                dragActive ? "border-brand-blue-electric bg-info-bg" : "border-border-strong bg-surface-alt",
-              )}
-            >
-              <UploadCloud className="h-5 w-5 text-text-faint" aria-hidden />
-              <span className="text-[12.5px] font-bold text-text-soft">Glissez vos fichiers ou cliquez pour en choisir</span>
-              <input type="file" multiple className="sr-only" onChange={(e) => addFiles(e.target.files)} />
-            </label>
-            {attachments.length > 0 && (
-              <ul className="mt-1 flex flex-col gap-1 text-[12.5px] text-text-soft">
-                {attachments.map((a) => (
-                  <li key={a.id}>{a.fileName}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-
           <div>
             <span className="text-[12.5px] font-bold text-text-soft">Urgence</span>
             <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-              {(Object.keys(URGENCY_META) as VisualRequestUrgency[]).map((u) => (
+              {SELECTABLE_URGENCIES.map((u) => (
                 <button
                   key={u}
                   type="button"
@@ -272,7 +252,7 @@ function NewRequestContent() {
             <SummaryRow label="Urgence" value={URGENCY_META[urgency].label} />
             <SummaryRow label="Délai" value={URGENCY_META[urgency].delayLabel} />
             <SummaryRow label="Crédits nécessaires" value={`${cost}`} />
-            <SummaryRow label="Crédits disponibles" value={plan.monthlyCredits === null ? "Sur mesure" : `${available}`} />
+            <SummaryRow label="Crédits disponibles" value={hasCreditSystem ? `${available}` : "Suivi avec votre CM"} />
             <SummaryRow
               label="Solde restant"
               value={remainingAfter === null ? "Suivi avec votre CM" : `${Math.max(0, remainingAfter)}`}
@@ -281,7 +261,7 @@ function NewRequestContent() {
           </dl>
           {!hasEnoughCredits && (
             <p className="mt-3 text-[12.5px] font-bold text-danger-fg">
-              Crédits insuffisants ce mois-ci. Gérez votre offre ou attendez le renouvellement du {ctx.subscription.renewsAt}.
+              Crédits insuffisants ce mois-ci. Gérez votre offre pour continuer.
             </p>
           )}
           {!canWrite && (
