@@ -18,7 +18,7 @@ import {
 import { mockContracts, schedulesForContract } from "@/lib/mock/billing";
 
 // Fiche contrat — ACTIONS.md § 18 : 8 conditions, 5 points « à retenir », échéancier, aperçu
-// PDF, « Signer avec Yousign » (lien 8 jours), annexes.
+// PDF, « Signer avec Youtrust » (lien 8 jours), annexes.
 export default function ContractDetailPage({ params }: { params: { id: string } }) {
   const { ctx } = useSession();
 
@@ -60,7 +60,7 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
           {needsSignature && (
             <Button variant="primary">
               <FileSignature className="h-3.5 w-3.5" aria-hidden />
-              Signer avec Yousign
+              Signer avec Youtrust
             </Button>
           )}
         </div>
@@ -70,7 +70,7 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
         <Card className="flex items-start gap-3 border-warning-fg/30 bg-warning-bg px-4 py-3.5">
           <FileSignature className="mt-0.5 h-4.5 w-4.5 flex-none text-warning-fg" aria-hidden />
           <p className="text-[12.5px] leading-relaxed text-warning-fg">
-            Ce contrat attend votre signature. Le lien Yousign expire le{" "}
+            Ce contrat attend votre signature. Le lien Youtrust expire le{" "}
             {signatureExpiresAt(contract.signatureRequestedAt)}.
           </p>
         </Card>
@@ -134,7 +134,7 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
           </span>
           <div>
             <div className="text-[13.5px] font-bold text-text">Aperçu du contrat</div>
-            <div className="text-[12px] text-text-soft">Document PDF signé électroniquement via Yousign</div>
+            <div className="text-[12px] text-text-soft">Document PDF signé électroniquement via Youtrust</div>
           </div>
         </div>
         <Button variant="secondary">Ouvrir l&apos;aperçu</Button>

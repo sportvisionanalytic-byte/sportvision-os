@@ -48,7 +48,7 @@ export function formatMonthlyAmount(amount: number | null): string {
   return `${amount.toLocaleString("fr-FR")} € TTC / mois`;
 }
 
-/** Le lien de signature Yousign expire à 8 jours — DATA_MODEL.md § Contract. */
+/** Le lien de signature Youtrust expire à 8 jours — DATA_MODEL.md § Contract. */
 export function signatureExpiresAt(requestedAt: string): string {
   const d = new Date(requestedAt);
   d.setDate(d.getDate() + 8);

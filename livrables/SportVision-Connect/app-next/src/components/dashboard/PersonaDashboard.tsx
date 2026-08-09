@@ -281,7 +281,7 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra, extraLoading: bool
         priorityItems: [
           {
             title: "Contrat de prestation",
-            meta: "À signer · Yousign",
+            meta: "À signer · Youtrust",
             action: "Signer",
             due: "12 août",
           },
