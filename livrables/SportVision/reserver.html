@@ -6,20 +6,20 @@
 <title>Réserver une prestation — SportVision</title>
 <meta name="description" content="Réservez votre prestation SportVision en quelques étapes : match photo, match vidéo, shooting, tournoi ou création de contenu. Vérification de disponibilité en temps réel.">
 <meta name="robots" content="index, follow">
-<link rel="canonical" href="https://sportvisionfr.netlify.app/reserver">
+<link rel="canonical" href="https://sportvision-an.fr/reserver">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SportVision">
-<meta property="og:url" content="https://sportvisionfr.netlify.app/reserver">
+<meta property="og:url" content="https://sportvision-an.fr/reserver">
 <meta property="og:title" content="Réserver une prestation — SportVision">
 <meta property="og:description" content="Réservez votre prestation SportVision en quelques étapes : match photo, match vidéo, shooting, tournoi ou création de contenu. Vérification de disponibilité en temps réel.">
-<meta property="og:image" content="https://sportvisionfr.netlify.app/assets/og-image.jpg">
+<meta property="og:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Réserver une prestation — SportVision">
 <meta name="twitter:description" content="Réservez votre prestation SportVision en quelques étapes : match photo, match vidéo, shooting, tournoi ou création de contenu. Vérification de disponibilité en temps réel.">
-<meta name="twitter:image" content="https://sportvisionfr.netlify.app/assets/og-image.jpg">
+<meta name="twitter:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -245,7 +245,7 @@ section{position:relative}
       <a href="a-propos.html">À propos</a>
     </nav>
     <div class="header-actions">
-      <a href="https://connectsportvisionfr.netlify.app/" class="btn btn-ghost-dark">Se connecter</a>
+      <a href="https://connectsportvision-an.fr/" class="btn btn-ghost-dark">Se connecter</a>
       <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
     </div>
     <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
@@ -283,7 +283,7 @@ section{position:relative}
   <a href="realisations.html">Réalisations</a>
   <a href="a-propos.html">À propos</a>
   <div class="mobile-ctas">
-    <a href="https://connectsportvisionfr.netlify.app/" class="btn btn-ghost-dark">Se connecter</a>
+    <a href="https://connectsportvision-an.fr/" class="btn btn-ghost-dark">Se connecter</a>
     <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
   </div>
 </div>
@@ -402,6 +402,9 @@ section{position:relative}
                 <label class="opt-check"><input type="radio" name="solde-mode" value="carte" checked> Carte bancaire — paiement immédiat en ligne</label>
                 <label class="opt-check"><input type="radio" name="solde-mode" value="especes"> Espèces — réglé sur place le jour J</label>
               </div>
+              <div class="sv-field" id="retractation-field" style="margin-top:10px">
+                <label class="opt-check" style="align-items:flex-start"><input type="checkbox" id="bk-retractation" required style="margin-top:3px"> <span>Je demande l'exécution immédiate de la prestation et renonce expressément à mon droit de rétractation de 14 jours pour ce paiement en ligne.</span></label>
+              </div>
             </div>
             <div class="sv-field" id="devis-field" style="display:none">
               <p class="sub" style="margin:4px 0 0;font-size:12.5px">Cette prestation est sur devis : aucun paiement n'est demandé à cette étape. Notre équipe revient vers vous rapidement avec un devis personnalisé.</p>
@@ -457,7 +460,7 @@ section{position:relative}
       </ul></div>
       <div class="footer-col"><h5>Connect</h5><ul>
         <li><a href="connect.html">Fonctionnement</a></li>
-        <li><a href="https://connectsportvisionfr.netlify.app/">Connexion</a></li>
+        <li><a href="https://connectsportvision-an.fr/">Connexion</a></li>
         <li><a href="demande-de-devis.html">Démonstration</a></li>
       </ul></div>
       <div class="footer-col"><h5>Ressources</h5><ul>
@@ -656,8 +659,23 @@ document.getElementById('btn-step3-next').addEventListener('click', () => {
   const estPrixFixe = state.slug && OFFRES_PRIX_FIXE.has(state.slug);
   document.getElementById('paiement-field').style.display = estPrixFixe ? '' : 'none';
   document.getElementById('devis-field').style.display = estPrixFixe ? 'none' : '';
+  updateRetractationField();
   goToStep(4);
 });
+
+// Le renoncement au droit de rétractation ne concerne que l'exécution immédiate d'un
+// paiement en ligne (vente à distance) — pas le règlement en espèces sur place, où il n'y a
+// pas de paiement à distance à ce stade. Case affichée et obligatoire uniquement pour "carte".
+function updateRetractationField(){
+  const soldeMode = (document.querySelector('input[name="solde-mode"]:checked') || {}).value || 'carte';
+  const field = document.getElementById('retractation-field');
+  const checkbox = document.getElementById('bk-retractation');
+  const showIt = soldeMode === 'carte';
+  field.style.display = showIt ? '' : 'none';
+  checkbox.required = showIt;
+  if (!showIt) checkbox.checked = false;
+}
+document.querySelectorAll('input[name="solde-mode"]').forEach(r => r.addEventListener('change', updateRetractationField));
 
 function buildRecap(){
   const parts = [];
@@ -697,6 +715,10 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     errEl.textContent = 'Prénom, nom et e-mail sont obligatoires.';
     return;
   }
+  if (soldeMode === 'carte' && !document.getElementById('bk-retractation').checked){
+    errEl.textContent = 'Merci de cocher la case de renoncement au droit de rétractation pour payer en ligne, ou choisissez le règlement en espèces sur place.';
+    return;
+  }
 
   const commentaireComplet = [
     state.label ? 'Besoin : ' + state.label : null,
@@ -718,6 +740,7 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     commentaire: commentaireComplet || null,
     site_web: siteWeb,
     mode_paiement_choisi: soldeMode,
+    retractation_renoncee: soldeMode === 'carte' ? document.getElementById('bk-retractation').checked : undefined,
   };
 
   btn.disabled = true; btn.textContent = 'Envoi…';
@@ -787,7 +810,7 @@ function showConfirmation(data, email){
 
   if (state.slug && OFFRES_PRIX_FIXE.has(state.slug)){
     document.getElementById('ok-connect-wrap').style.display = '';
-    document.getElementById('ok-connect-link').href = 'https://connectsportvisionfr.netlify.app/?signup=1&email=' + encodeURIComponent(email);
+    document.getElementById('ok-connect-link').href = 'https://connectsportvision-an.fr/?signup=1&email=' + encodeURIComponent(email);
   }
 
   document.querySelectorAll('.step-dot').forEach(d => d.classList.add('done'));
