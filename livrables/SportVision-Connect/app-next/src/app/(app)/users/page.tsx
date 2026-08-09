@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { InviteUserModal } from "@/components/users/InviteUserModal";
+import { Toast, useToast } from "@/components/feedback/Toast";
 
 // /users — voir ACTIONS.md § 15 « Utilisateurs » (juste après Équipes dans le document) et
 // DATA_MODEL.md § Membership. Liste des membres avec rôle et statut, invitation. « Une
@@ -44,6 +45,7 @@ const STATUS_LABEL: Record<OrgUser["status"], string> = {
 
 export default function UsersPage() {
   const { ctx } = useSession();
+  const { toastMessage, showToast } = useToast();
   const isClub = ctx.organization.type === "club";
   const [users, setUsers] = useState<OrgUser[]>(() => (isClub ? [] : mockOrgUsers[ctx.organization.id] ?? []));
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -98,9 +100,11 @@ export default function UsersPage() {
     }
     const nextStatus = user.status === "disabled" ? "actif" : "suspendu";
     const supabase = createClient();
-    setClubMemberStatus(supabase, user.membershipId, nextStatus).then(() => {
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus === "actif" ? "active" : "disabled" } : u)));
-    });
+    setClubMemberStatus(supabase, user.membershipId, nextStatus)
+      .then(() => {
+        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus === "actif" ? "active" : "disabled" } : u)));
+      })
+      .catch(() => showToast("Action impossible, réessayez."));
   }
 
   return (
@@ -123,6 +127,13 @@ export default function UsersPage() {
           users.map((user) => {
             const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase() || "?";
             const isOwner = user.role === "owner";
+            // Se désactiver soi-même coupe l'accès RLS à tout le club côté club_members
+            // (is_club_member/is_club_admin exigent status='actif') sans porte de sortie en
+            // libre-service — un membre ne peut alors être réactivé que par un autre admin déjà
+            // actif ou le staff SportVision (protect_sensitive_club_member_fields, migration-
+            // connect-v13). Trouvé en le déclenchant réellement sur le compte de test. Bouton
+            // masqué sur sa propre ligne plutôt que de compter sur la prudence de l'utilisateur.
+            const isSelf = user.id === ctx.user.id;
             return (
               <div
                 key={user.id}
@@ -141,14 +152,18 @@ export default function UsersPage() {
                   {ROLE_LABELS[user.role] ?? user.role}
                 </span>
                 <Badge tone={STATUS_TONE[user.status]}>{STATUS_LABEL[user.status]}</Badge>
-                {!isOwner && (
-                  <Button
-                    variant="secondary"
-                    className="h-8 flex-none px-3 text-[12px]"
-                    onClick={() => handleDisable(user)}
-                  >
-                    {user.status === "disabled" ? "Réactiver" : "Désactiver"}
-                  </Button>
+                {isSelf ? (
+                  <span className="w-[92px] flex-none text-center text-[11.5px] font-semibold text-text-faint">Vous</span>
+                ) : (
+                  !isOwner && (
+                    <Button
+                      variant="secondary"
+                      className="h-8 flex-none px-3 text-[12px]"
+                      onClick={() => handleDisable(user)}
+                    >
+                      {user.status === "disabled" ? "Réactiver" : "Désactiver"}
+                    </Button>
+                  )
                 )}
               </div>
             );
@@ -159,6 +174,8 @@ export default function UsersPage() {
       {inviteOpen && (
         <InviteUserModal roles={availableRoles} onClose={() => setInviteOpen(false)} onInvite={handleInvite} />
       )}
+
+      <Toast message={toastMessage} />
     </div>
   );
 }

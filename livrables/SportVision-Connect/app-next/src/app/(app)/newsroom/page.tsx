@@ -67,9 +67,11 @@ export default function NewsroomPage() {
 
   function applyStatus(item: NewsroomItem, status: "transformed" | "info_requested" | "archived") {
     const supabase = createClient();
-    updateClubNewsroomItemStatus(supabase, item.id, status).then(() => {
-      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status } : i)));
-    });
+    updateClubNewsroomItemStatus(supabase, item.id, status)
+      .then(() => {
+        setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status } : i)));
+      })
+      .catch(() => showToast("Action impossible, réessayez."));
   }
 
   function handleTransform(item: NewsroomItem, into: "publication" | "visual_request") {

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { Toast, useToast } from "@/components/feedback/Toast";
 import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC, formatPaymentMethod } from "@/components/billing/format";
 import { contractsForOrganization, invoicesForOrganization, mockPaymentMethods } from "@/lib/mock/billing";
 import { createClient } from "@/lib/supabase/client";
@@ -156,6 +157,7 @@ export default function BillingPage() {
 
 function ProjetBillingView() {
   const { ctx } = useSession();
+  const { toastMessage, showToast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [devis, setDevis] = useState<ClientDevis[]>([]);
   const [contracts, setContracts] = useState<ClientContract[]>([]);
@@ -186,20 +188,30 @@ function ProjetBillingView() {
   async function handleDevisDecision(decision: "accepté" | "refusé") {
     if (!pendingDevis) return;
     setBusy(true);
-    const supabase = createClient();
-    await decideDevis(supabase, pendingDevis.id, decision);
-    await reload();
-    setBusy(false);
+    try {
+      const supabase = createClient();
+      await decideDevis(supabase, pendingDevis.id, decision);
+      await reload();
+    } catch {
+      showToast("Action impossible, réessayez.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleSignContract() {
     if (!awaitingContract) return;
     const name = `${ctx.user.firstName} ${ctx.user.lastName}`.trim();
     setBusy(true);
-    const supabase = createClient();
-    await signContract(supabase, awaitingContract.id, name);
-    await reload();
-    setBusy(false);
+    try {
+      const supabase = createClient();
+      await signContract(supabase, awaitingContract.id, name);
+      await reload();
+    } catch {
+      showToast("Signature impossible, réessayez.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -292,6 +304,8 @@ function ProjetBillingView() {
           ))}
         </Card>
       )}
+
+      <Toast message={toastMessage} />
     </div>
   );
 }

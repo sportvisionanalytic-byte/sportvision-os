@@ -64,11 +64,13 @@ export default function MatchCenterPage() {
 
   function handleSaveResult(matchId: string, patch: Partial<Match>) {
     const supabase = createClient();
-    saveClubMatchResult(supabase, matchId, patch).then(() => {
-      setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, ...patch, status: "result_received" } : m)));
-      setModalMatchId(null);
-      showToast("Résultat enregistré.");
-    });
+    saveClubMatchResult(supabase, matchId, patch)
+      .then(() => {
+        setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, ...patch, status: "result_received" } : m)));
+        setModalMatchId(null);
+        showToast("Résultat enregistré.");
+      })
+      .catch(() => showToast("Enregistrement impossible, réessayez."));
   }
 
   function handleCreateVisual(match?: Match) {
