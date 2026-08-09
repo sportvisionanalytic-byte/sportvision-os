@@ -1,19 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings2 } from "lucide-react";
-import { useSession } from "@/lib/session-context";
-import { mockNotifications } from "@/lib/mock/settings";
-import { NOTIFICATION_CATEGORY_LABELS, type AppNotification, type NotificationCategory } from "@/lib/types/settings";
+import { AlertTriangle, Settings2 } from "lucide-react";
+import { NOTIFICATION_CATEGORY_LABELS, type NotificationCategory } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
+import { createClient } from "@/lib/supabase/client";
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type MemberNotification,
+} from "@/lib/data/shared/notifications";
 
 // /notifications — voir ACTIONS.md § 23. Regroupement par jour, filtres par catégorie, non lues
 // sur fond teinté avec point bleu, badge « IMPORTANT » sur les épinglées, Tout marquer comme lu.
+// Branché le 09/08/2026 sur member_notifications (migration-connect-v16-member-notifications.sql,
+// EN ATTENTE D'EXÉCUTION) — jusqu'à son exécution, la liste reste honnêtement vide (aucune ligne
+// en base), jamais un contenu fictif.
 //
 // Pas de garde `canAccess` ici : "notifications" n'existe pas dans `ModuleKey` (src/lib/types.ts)
 // — c'est une fonctionnalité de compte personnelle, non liée à l'offre de l'organisation, au même
@@ -43,14 +51,30 @@ const CATEGORY_FILTERS: (NotificationCategory | "all")[] = [
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const { ctx } = useSession();
-  const [items, setItems] = useState<AppNotification[]>(() => mockNotifications[ctx.organization.id] ?? []);
+  const [items, setItems] = useState<MemberNotification[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState<NotificationCategory | "all">("all");
 
-  const filtered = filter === "all" ? items : items.filter((n) => n.category === filter);
+  async function reload() {
+    setLoadError(false);
+    try {
+      const supabase = createClient();
+      setItems(await fetchNotifications(supabase));
+    } catch {
+      setLoadError(true);
+      setItems([]);
+    }
+  }
+
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const filtered = (items ?? []).filter((n) => filter === "all" || n.category === filter);
 
   const grouped = useMemo(() => {
-    const groups = new Map<string, AppNotification[]>();
+    const groups = new Map<string, MemberNotification[]>();
     for (const n of filtered) {
       const label = dayLabel(n.createdAt);
       groups.set(label, [...(groups.get(label) ?? []), n]);
@@ -59,11 +83,17 @@ export default function NotificationsPage() {
   }, [filtered]);
 
   function markAllRead() {
-    setItems((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt: new Date().toISOString() })));
+    const supabase = createClient();
+    setItems((prev) => (prev ? prev.map((n) => (n.readAt ? n : { ...n, readAt: new Date().toISOString() })) : prev));
+    markAllNotificationsRead(supabase).catch(() => reload());
   }
 
-  function openNotification(n: AppNotification) {
-    setItems((prev) => prev.map((i) => (i.id === n.id ? { ...i, readAt: i.readAt ?? new Date().toISOString() } : i)));
+  function openNotification(n: MemberNotification) {
+    if (!n.readAt) {
+      const supabase = createClient();
+      setItems((prev) => (prev ? prev.map((i) => (i.id === n.id ? { ...i, readAt: new Date().toISOString() } : i)) : prev));
+      markNotificationRead(supabase, n.id).catch(() => reload());
+    }
     if (n.targetHref) router.push(n.targetHref);
   }
 
@@ -103,7 +133,19 @@ export default function NotificationsPage() {
         ))}
       </div>
 
-      {grouped.length === 0 ? (
+      {loadError && (
+        <Card className="flex flex-wrap items-center gap-3 border-danger-fg/30 bg-danger-bg px-5 py-4">
+          <AlertTriangle className="h-[18px] w-[18px] flex-none text-danger-fg" aria-hidden />
+          <span className="min-w-0 flex-1 text-[13px] font-semibold text-danger-fg">Impossible de charger les notifications.</span>
+          <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={reload}>
+            Réessayer
+          </Button>
+        </Card>
+      )}
+
+      {items === null ? (
+        <Card className="p-9 text-center text-[13.5px] text-text-soft">Chargement…</Card>
+      ) : grouped.length === 0 ? (
         <Card className="p-9 text-center text-[13.5px] text-text-soft">Aucune notification pour cette catégorie.</Card>
       ) : (
         grouped.map(([label, notifs]) => (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, HelpCircle, Moon, Plus, Search, Sun } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
@@ -11,6 +11,7 @@ import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const { ctx } = useSession();
   const [theme, setTheme] = useState<Theme>("dark");
 
@@ -42,13 +43,17 @@ export function Header() {
         />
       </div>
 
-      <button className="flex h-9 flex-none items-center gap-1.5 rounded-[11px] bg-gradient-to-br from-brand-blue-electric to-brand-violet px-3.5 text-[13px] font-bold text-white shadow-sv-button">
+      <button
+        onClick={() => router.push("/requests/new")}
+        className="flex h-9 flex-none items-center gap-1.5 rounded-[11px] bg-gradient-to-br from-brand-blue-electric to-brand-violet px-3.5 text-[13px] font-bold text-white shadow-sv-button"
+      >
         <Plus className="h-3.5 w-3.5" aria-hidden />
         Nouvelle demande
       </button>
 
       <button
         aria-label="Notifications"
+        onClick={() => router.push("/notifications")}
         className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
       >
         <Bell className="h-4 w-4" aria-hidden />
@@ -64,6 +69,7 @@ export function Header() {
 
       <button
         aria-label="Aide"
+        onClick={() => router.push("/support")}
         className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
       >
         <HelpCircle className="h-4 w-4" aria-hidden />
@@ -71,6 +77,7 @@ export function Header() {
 
       <button
         aria-label="Mon profil"
+        onClick={() => router.push("/settings/profile")}
         className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-violet to-brand-blue-electric text-[12px] font-extrabold text-white"
       >
         {initials}

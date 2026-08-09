@@ -30,6 +30,18 @@ import type { ModuleKey } from "@/lib/types";
 // Projet (client_users direct) fonctionne déjà sans cette migration ; un club verra un message
 // d'erreur honnête ("Impossible de charger…") tant qu'elle n'est pas passée, jamais une fausse
 // donnée. Voir data/shared/contenus.ts, data/shared/messages.ts.
+//
+// "presences" (09/08/2026, Tier B Phase 4) : table club_presences réelle, migration-connect-v17-
+// club-presences.sql — À EXÉCUTER PAR FOUKA. Gardé derrière son entitlement `connect_modules`
+// (ci-dessous) délibérément : aucun club réel n'a aujourd'hui de contrat Full Communication actif
+// (vérifié), donc aucune ligne organization_entitlements pour "presences" n'existe encore pour
+// personne — le module reste verrouillé pour tout le monde tant qu'un membre du staff ne l'active
+// pas explicitement pour un club qui a vraiment signé cette offre (même geste manuel que pour
+// n'importe quel autre entitlement club — jamais d'auto-activation depuis un simple champ texte).
+// "sessions"/"camps" (coach/académie) volontairement PAS ajoutés : ces types d'organisation n'ont
+// aujourd'hui aucun lien vers une ligne `clients` réelle (contrairement à un club via
+// portail_client_id) — aucun mécanisme de rapprochement équivalent à clubplus-onboarding n'existe
+// pour eux, donc aucune donnée réelle n'est possible sans construire ça d'abord.
 export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "dashboard",
   "teams",
@@ -50,6 +62,7 @@ export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "communication",
   "publications",
   "validations",
+  "presences",
 ]);
 
 /**
@@ -65,4 +78,5 @@ export const MODULE_TO_CONNECT_MODULE: Partial<Record<ModuleKey, string>> = {
   visual_requests: "demandes_visuels",
   content: "bibliotheque_contenus",
   sponsors: "sponsors",
+  presences: "presences",
 };
