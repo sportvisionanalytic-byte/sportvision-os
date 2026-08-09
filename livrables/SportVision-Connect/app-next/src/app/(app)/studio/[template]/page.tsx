@@ -12,16 +12,12 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
-import {
-  FCF_TEAM_NAMES,
-  addVisualRequest,
-  currentSeasonLabel,
-  findTemplate,
-  generateRequestReference,
-  inferVisualType,
-  matchesStore,
-  visualRequestsStore,
-} from "@/lib/mock/studio";
+import { currentSeasonLabel, findTemplate, inferVisualType } from "@/lib/mock/studio";
+import { submitClubRequest } from "@/lib/data/club/requests";
+import { submitOrgRequest } from "@/lib/data/shared/requests";
+import { fetchClubMatchById } from "@/lib/data/club/matches";
+import { fetchClubTeams } from "@/lib/data/club/teams";
+import { createClient } from "@/lib/supabase/client";
 import {
   STUDIO_CATEGORY_LABELS,
   STUDIO_FIELD_LABELS,
@@ -29,12 +25,11 @@ import {
   type StudioFieldKey,
 } from "@/lib/types/studio";
 
-// Fiche modèle du Studio — formulaire préempli, bandeau de coût en crédits. Voir ACTIONS.md § 6
-// et DATA_MODEL.md § Modèle de réservation de crédits : à l'envoi, le coût est réservé
-// (creditsReserved), pas déduit. La déduction réelle du solde `Subscription.creditsRemaining`
-// vit dans session-context.tsx (fichier partagé, hors périmètre) : cette page simule la
-// réservation dans la VisualRequest créée, sans muter l'état de session global — voir le rapport
-// de fin de tâche pour le détail de cette limite assumée en l'absence de backend.
+// Fiche modèle du Studio — formulaire préempli, bandeau de coût en crédits. Voir ACTIONS.md § 6.
+// À l'envoi, submitClubRequest/submitOrgRequest appellent la vraie RPC serveur qui réserve les
+// crédits (club_requests) ou stocke credits_reserved sur la ligne (requests générique, aucun
+// solde réel déduit — voir data/shared/requests.ts). `ctx.subscription.creditsRemaining` ne se
+// rafraîchit qu'à la prochaine navigation (session-context.tsx, hors périmètre).
 export default function StudioTemplatePage() {
   return (
     <Suspense fallback={null}>
@@ -52,43 +47,43 @@ function StudioTemplateContent() {
 
   const template = useMemo(() => findTemplate(params.template), [params.template]);
   const allowed = canAccess(ctx, "studio");
+  const isGenericOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [teamNames, setTeamNames] = useState<string[]>([]);
 
   useEffect(() => {
     if (!template) return;
-    const draftId = searchParams.get("draftId");
     const matchId = searchParams.get("matchId");
     const prefillBody = searchParams.get("prefillBody");
-    const next: Record<string, string> = {};
 
-    if (draftId) {
-      const draft = visualRequestsStore.find((r) => r.id === draftId);
-      if (draft) {
-        if (draft.teamName) next.team = draft.teamName;
-        if (draft.bodyText) next.comment = draft.bodyText;
-        if (draft.publishDate) next.date = draft.publishDate;
-      }
-    } else if (matchId) {
-      const match = matchesStore.find((m) => m.id === matchId);
-      if (match) {
-        next.team = match.teamName;
-        next.opponent = match.opponent;
-        next.competition = match.competition;
-        next.date = match.kickoffAt.slice(0, 10);
-        next.venue = match.venue;
+    if (matchId && !isGenericOrg) {
+      const supabase = createClient();
+      fetchClubMatchById(supabase, ctx.organization.id, matchId).then((match) => {
+        if (!match) return;
+        const next: Record<string, string> = { team: match.teamName };
+        if (match.opponent) next.opponent = match.opponent;
+        if (match.competition) next.competition = match.competition;
+        if (match.kickoffAt) next.date = match.kickoffAt.slice(0, 10);
+        if (match.venue) next.venue = match.venue;
         if (match.scoreFor !== undefined && match.scoreAgainst !== undefined) {
           next.comment = `${match.teamName} ${match.scoreFor} - ${match.scoreAgainst} ${match.opponent}`;
         }
-      }
+        setValues((prev) => ({ ...prev, ...next }));
+      });
     } else if (prefillBody) {
-      next.comment = prefillBody;
+      setValues((prev) => ({ ...prev, comment: prefillBody }));
     }
-
-    if (Object.keys(next).length > 0) setValues((prev) => ({ ...prev, ...next }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template?.code]);
+
+  useEffect(() => {
+    if (isGenericOrg) return;
+    const supabase = createClient();
+    fetchClubTeams(supabase, ctx.organization.id).then((teams) => setTeamNames(teams.map((t) => t.name)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx.organization.id]);
 
   if (!allowed) return <LockedModule title={template ? template.name : "Studio Club+"} />;
 
@@ -114,50 +109,48 @@ function StudioTemplateContent() {
     setValues((prev) => ({ ...prev, [field]: value }));
   }
 
-  function buildRequest(status: "Envoyée" | "Brouillon") {
-    const reference = generateRequestReference();
-    return {
-      id: `req-${reference}`,
-      reference,
-      organizationId: ctx.organization.id,
-      requestedById: ctx.user.id,
-      requestedByName: `${ctx.user.firstName} ${ctx.user.lastName}`,
-      templateCode: template!.code,
-      visualType: inferVisualType(template!),
-      teamName: values.team || undefined,
-      publishDate: values.date || new Date().toISOString().slice(0, 10),
-      format: "post_1_1" as const,
-      platform: "instagram" as const,
-      bodyText: values.comment || undefined,
-      urgency: "standard" as const,
-      creditsReserved: status === "Envoyée" ? template!.creditCost : 0,
-      status,
-      revisionCount: 0,
-      dueAt: values.date || new Date().toISOString().slice(0, 10),
-      attachments: [],
-      createdAt: new Date().toISOString(),
-    };
+  function composeBodyText(): string {
+    const parts = [values.comment];
+    for (const field of template!.formFields) {
+      if (field === "team" || field === "comment" || field === "photo") continue;
+      if (values[field]) parts.push(`${STUDIO_FIELD_LABELS[field]} : ${values[field]}`);
+    }
+    return parts.filter(Boolean).join("\n");
   }
 
   function handleSubmit() {
     if (!hasEnoughCredits || !canSubmit) return;
     setSubmitting(true);
-    const request = buildRequest("Envoyée");
-    addVisualRequest(request);
-    showToast(
-      `Demande ${request.reference} envoyée · ${template!.creditCost} crédit${template!.creditCost > 1 ? "s" : ""} réservé${
-        template!.creditCost > 1 ? "s" : ""
-      }.`,
-    );
-    setTimeout(() => router.push("/requests"), 650);
-  }
-
-  function handleSaveDraft() {
-    if (!canSubmit) return;
-    const request = buildRequest("Brouillon");
-    addVisualRequest(request);
-    showToast(`Brouillon ${request.reference} enregistré.`);
-    setTimeout(() => router.push("/requests"), 650);
+    const supabase = createClient();
+    const bodyText = composeBodyText();
+    const submission = isGenericOrg
+      ? submitOrgRequest(supabase, ctx.organization.id, {
+          visualType: inferVisualType(template!),
+          bodyText,
+          urgency: "standard",
+          credits: template!.creditCost,
+        })
+      : submitClubRequest(supabase, ctx.organization.id, {
+          visualType: inferVisualType(template!),
+          teamName: values.team || undefined,
+          bodyText,
+          urgency: "standard",
+          credits: template!.creditCost,
+        });
+    submission
+      .then((request) => {
+        const creditsSuffix = isGenericOrg
+          ? ""
+          : ` · ${template!.creditCost} crédit${template!.creditCost > 1 ? "s" : ""} réservé${
+              template!.creditCost > 1 ? "s" : ""
+            }`;
+        showToast(`Demande ${request.reference} envoyée${creditsSuffix}.`);
+        setTimeout(() => router.push("/requests"), 650);
+      })
+      .catch(() => {
+        setSubmitting(false);
+        showToast("Envoi impossible, réessayez.");
+      });
   }
 
   return (
@@ -218,7 +211,13 @@ function StudioTemplateContent() {
             <div className="text-[13.5px] font-extrabold tracking-tight">Informations de la création</div>
             <div className="mt-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               {template.formFields.map((field) => (
-                <FormField key={field} field={field} value={values[field] ?? ""} onChange={(v) => setField(field, v)} />
+                <FormField
+                  key={field}
+                  field={field}
+                  value={values[field] ?? ""}
+                  onChange={(v) => setField(field, v)}
+                  teamNames={teamNames}
+                />
               ))}
             </div>
           </Card>
@@ -251,8 +250,7 @@ function StudioTemplateContent() {
             </p>
             {!hasEnoughCredits && (
               <p className="mt-2 text-[12.5px] font-bold text-danger-fg">
-                Crédits insuffisants ce mois-ci. Gérez votre offre ou attendez le renouvellement du{" "}
-                {ctx.subscription.renewsAt}.
+                Crédits insuffisants ce mois-ci. Gérez votre offre pour continuer.
               </p>
             )}
             {!canSubmit && (
@@ -271,9 +269,6 @@ function StudioTemplateContent() {
               >
                 Envoyer ma demande
               </Button>
-              <Button variant="secondary" className="w-full" disabled={!canSubmit} onClick={handleSaveDraft}>
-                Enregistrer en brouillon
-              </Button>
             </div>
           </Card>
         </div>
@@ -288,10 +283,12 @@ function FormField({
   field,
   value,
   onChange,
+  teamNames,
 }: {
   field: StudioFieldKey;
   value: string;
   onChange: (value: string) => void;
+  teamNames: string[];
 }) {
   if (field === "photo") {
     return (
@@ -336,7 +333,7 @@ function FormField({
       />
       {field === "team" && (
         <datalist id="sv-team-suggestions">
-          {FCF_TEAM_NAMES.map((t) => (
+          {teamNames.map((t) => (
             <option key={t} value={t} />
           ))}
         </datalist>

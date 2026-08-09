@@ -68,6 +68,23 @@ export async function fetchClubMatches(supabase: SupabaseClient, organizationId:
   return ((data ?? []) as ClubMatchRow[]).map((row) => toMatch(row, organizationId));
 }
 
+/** Utilisé par le Studio pour préremplir un formulaire depuis un match réel (?matchId=uuid),
+ * voir studio/[template]/page.tsx. */
+export async function fetchClubMatchById(
+  supabase: SupabaseClient,
+  organizationId: string,
+  matchId: string,
+): Promise<Match | null> {
+  const { data } = await supabase
+    .from("club_matches")
+    .select(SELECT)
+    .eq("club_id", organizationId)
+    .eq("id", matchId)
+    .maybeSingle();
+
+  return data ? toMatch(data as ClubMatchRow, organizationId) : null;
+}
+
 export async function saveClubMatchResult(
   supabase: SupabaseClient,
   matchId: string,
