@@ -48,15 +48,18 @@ const STATUS_LABEL: Record<OrgUser["status"], string> = {
 
 export default function UsersPage() {
   const { ctx } = useSession();
-  const { toastMessage, showToast } = useToast();
+  const { toastMessage, toastTone, showToast } = useToast();
   const isClub = ctx.organization.type === "club";
   const [users, setUsers] = useState<OrgUser[]>(() => (isClub ? [] : mockOrgUsers[ctx.organization.id] ?? []));
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!isClub) return;
     const supabase = createClient();
-    fetchClubMembers(supabase, ctx.organization.id).then(setUsers);
+    fetchClubMembers(supabase, ctx.organization.id)
+      .then(setUsers)
+      .catch(() => setLoadError(true));
   }, [isClub, ctx.organization.id]);
 
   // club_members réel (Phase suivante) : seul le club a de vraies données ici — les autres
@@ -77,9 +80,9 @@ export default function UsersPage() {
       // d'invitation Supabase, insère la ligne club_members. On recharge la liste plutôt que
       // d'ajouter une ligne locale fabriquée, pour refléter l'id réel attribué par la base.
       const supabase = createClient();
-      return inviteClubMember(supabase, ctx.organization.id, input).then(() =>
-        fetchClubMembers(supabase, ctx.organization.id).then(setUsers),
-      );
+      return inviteClubMember(supabase, ctx.organization.id, input)
+        .then(() => fetchClubMembers(supabase, ctx.organization.id).then(setUsers))
+        .catch(() => showToast("Invitation impossible, réessayez.", "error"));
     }
     // Pas d'edge function d'invitation branchée pour ce type d'organisation dans cette phase
     // (org-invite existe pour coach/académie/sponsor, pas encore vérifiée/branchée ici) — reste
@@ -112,7 +115,7 @@ export default function UsersPage() {
       .then(() => {
         setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus === "actif" ? "active" : "disabled" } : u)));
       })
-      .catch(() => showToast("Action impossible, réessayez."));
+      .catch(() => showToast("Action impossible, réessayez.", "error"));
   }
 
   return (
@@ -134,7 +137,11 @@ export default function UsersPage() {
       </div>
 
       <Card>
-        {users.length === 0 ? (
+        {loadError ? (
+          <div className="p-9 text-center text-[13.5px] font-semibold text-danger-fg">
+            Impossible de charger les membres. Réessayez plus tard.
+          </div>
+        ) : users.length === 0 ? (
           <div className="p-9 text-center text-[13.5px] text-text-soft">Aucun utilisateur pour le moment.</div>
         ) : (
           users.map((user) => {
@@ -158,7 +165,9 @@ export default function UsersPage() {
                   <span className="block truncate text-[13.5px] font-bold">
                     {user.firstName} {user.lastName}
                   </span>
-                  <span className="mt-0.5 block truncate text-[12px] text-text-soft">{user.email}</span>
+                  {user.email && (
+                    <span className="mt-0.5 block truncate text-[12px] text-text-soft">{user.email}</span>
+                  )}
                 </span>
                 <span className="w-44 flex-none text-[12.5px] font-semibold text-text-soft">
                   {ROLE_LABELS[user.role] ?? user.role}
@@ -187,7 +196,7 @@ export default function UsersPage() {
         <InviteUserModal roles={availableRoles} onClose={() => setInviteOpen(false)} onInvite={handleInvite} />
       )}
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} tone={toastTone} />
     </div>
   );
 }

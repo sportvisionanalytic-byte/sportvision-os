@@ -24,11 +24,13 @@ const STATUS_MAP: Record<string, OrgUser["status"]> = {
 };
 
 export async function fetchClubMembers(supabase: SupabaseClient, clubId: string): Promise<OrgUser[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("club_members")
     .select("id, user_id, prenom, nom, role, status, created_at")
     .eq("club_id", clubId)
     .order("created_at", { ascending: true });
+
+  if (error) throw error;
 
   return ((data ?? []) as ClubMemberRow[]).map((row) => ({
     id: row.user_id,
