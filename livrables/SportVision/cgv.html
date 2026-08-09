@@ -6,20 +6,20 @@
 <title>Conditions Générales de Vente — SportVision</title>
 <meta name="description" content="Conditions générales de vente de SportVision : prestations, devis, paiement, droit de rétractation, propriété des contenus livrés.">
 <meta name="robots" content="index, follow">
-<link rel="canonical" href="https://sportvisionfr.netlify.app/cgv">
+<link rel="canonical" href="https://sportvision-an.fr/cgv">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SportVision">
-<meta property="og:url" content="https://sportvisionfr.netlify.app/cgv">
+<meta property="og:url" content="https://sportvision-an.fr/cgv">
 <meta property="og:title" content="Conditions Générales de Vente — SportVision">
 <meta property="og:description" content="Conditions générales de vente de SportVision : prestations, devis, paiement, droit de rétractation, propriété des contenus livrés.">
-<meta property="og:image" content="https://sportvisionfr.netlify.app/assets/og-image.jpg">
+<meta property="og:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Conditions Générales de Vente — SportVision">
 <meta name="twitter:description" content="Conditions générales de vente de SportVision : prestations, devis, paiement, droit de rétractation, propriété des contenus livrés.">
-<meta name="twitter:image" content="https://sportvisionfr.netlify.app/assets/og-image.jpg">
+<meta name="twitter:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -124,13 +124,27 @@ section{position:relative}
 .btn-sm{padding:10px 18px;font-size:13.5px;border-radius:10px}
 
 /* ── Bandeau cookies (RGPD) ── */
-.cookie-banner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2500;background:var(--navy-900);border-top:1px solid rgba(255,255,255,.12);padding:18px 24px;box-shadow:0 -8px 24px rgba(0,0,0,.35)}
-.cookie-banner.on{display:flex}
+.cookie-banner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2500;background:var(--navy-900);border-top:1px solid rgba(255,255,255,.12);padding:18px 24px;box-shadow:0 -8px 24px rgba(0,0,0,.35);max-height:82vh;overflow-y:auto}
+.cookie-banner.on{display:flex;flex-direction:column}
 .cookie-banner-inner{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
 .cookie-banner-inner p{flex:1;min-width:240px;font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.6;margin:0}
 .cookie-banner-inner a{color:var(--cyan);text-decoration:underline}
-.cookie-banner-actions{display:flex;gap:10px;flex-shrink:0}
-@media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}}
+.cookie-banner-actions{display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.cookie-panel{display:none;max-width:1100px;margin:16px auto 0;width:100%;border-top:1px solid rgba(255,255,255,.12);padding-top:16px}
+.cookie-panel.on{display:block}
+.cookie-cat{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.cookie-cat:last-of-type{border-bottom:none}
+.cookie-cat-info b{display:block;font-size:13.5px;color:#fff;margin-bottom:3px}
+.cookie-cat-info span{display:block;font-size:12.5px;color:rgba(255,255,255,.6);line-height:1.5;max-width:60ch}
+.cookie-switch{position:relative;flex:none;width:40px;height:23px}
+.cookie-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.cookie-switch .track{position:absolute;inset:0;border-radius:999px;background:rgba(255,255,255,.18);transition:background .15s;pointer-events:none}
+.cookie-switch .dot{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .15s;pointer-events:none}
+.cookie-switch input:checked + .track{background:var(--cyan)}
+.cookie-switch input:checked ~ .dot{transform:translateX(17px)}
+.cookie-switch input:disabled + .track{opacity:.5}
+.cookie-panel-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+@media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}.cookie-cat{flex-wrap:wrap}}
 .nav-item{position:relative}
 .nav-item>a{display:flex;align-items:center;gap:5px}
 .nav-caret{font-size:9px;opacity:.55;transition:transform .15s}
@@ -368,11 +382,13 @@ section{position:relative}
     </div>
     <div class="footer-bottom">
       <span>© <span id="sv-year"></span> ELKANA GROUP — SportVision. Tous droits réservés.</span>
-      <div class="footer-legal">
+            <div class="footer-legal">
         <a href="mentions-legales.html">Mentions légales</a>
-        <a href="confidentialite.html">Politique de confidentialité</a>
         <a href="cgv.html">CGV</a>
-        <a href="#" id="cookie-manage">Gestion des cookies</a>
+        <a href="confidentialite.html">Politique de confidentialité</a>
+        <a href="cookies.html">Politique cookies</a>
+        <a href="retractation.html">Rétractation</a>
+        <a href="#" id="cookie-manage">Gérer mes cookies</a>
       </div>
       <div class="footer-social">
         <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
@@ -381,12 +397,34 @@ section{position:relative}
   </div>
 </footer>
 
-<div class="cookie-banner" id="cookie-banner">
+<div class="cookie-banner" id="cookie-banner" role="dialog" aria-label="Gestion des cookies" aria-live="polite">
   <div class="cookie-banner-inner">
-    <p>Ce site utilise des cookies techniques nécessaires à son fonctionnement. Aucun cookie de mesure d'audience n'est déposé à ce jour. <a href="confidentialite.html">En savoir plus</a></p>
+    <p>SportVision utilise des traceurs nécessaires au fonctionnement du site. Avec votre accord, nous pouvons également utiliser des traceurs de mesure d'audience, de fonctionnalités externes ou de marketing afin d'améliorer nos services. <a href="cookies.html">En savoir plus</a></p>
     <div class="cookie-banner-actions">
-      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-refuse">Refuser</button>
-      <button type="button" class="btn btn-grad btn-sm" id="cookie-accept">Accepter</button>
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-refuse">Tout refuser</button>
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-customize">Personnaliser</button>
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-accept">Tout accepter</button>
+    </div>
+  </div>
+  <div class="cookie-panel" id="cookie-panel">
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Nécessaires</b><span>Fonctionnement du site, mémorisation de vos choix, sécurité et session SportVision Connect. Toujours actifs.</span></div>
+      <label class="cookie-switch"><input type="checkbox" checked disabled aria-label="Cookies nécessaires, toujours actifs"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Mesure d'audience</b><span>Statistiques de fréquentation agrégées pour comprendre l'utilisation du site.</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-audience" aria-label="Cookies de mesure d'audience"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Fonctionnalités externes</b><span>Contenus intégrés provenant de plateformes tierces (réseaux sociaux, vidéo).</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-external" aria-label="Cookies de fonctionnalités externes"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Marketing</b><span>Mesure de campagnes publicitaires et personnalisation, si activé.</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-marketing" aria-label="Cookies marketing"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-panel-actions">
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-save">Enregistrer mes choix</button>
     </div>
   </div>
 </div>
@@ -402,27 +440,77 @@ mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => m
 document.getElementById('sv-year').textContent = new Date().getFullYear();
 
 /* ── Bandeau cookies (RGPD) ── */
+// ── Bandeau cookies (RGPD) ──
+const COOKIE_CONSENT_KEY = 'sv_cookie_consent_v2';
+const COOKIE_CONSENT_MAX_AGE_MS = 183 * 24 * 60 * 60 * 1000; // ~6 mois, cf. Politique cookies § 8
 const cookieBanner = document.getElementById('cookie-banner');
-function showCookieBanner(){
+const cookiePanel = document.getElementById('cookie-panel');
+
+function readConsent(){
+  try{
+    const raw = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed.date || Date.now() - parsed.date > COOKIE_CONSENT_MAX_AGE_MS) return null;
+    return parsed;
+  }catch(e){ return null; }
+}
+function writeConsent(categories){
+  localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify({ date: Date.now(), categories }));
+}
+// Exposé pour qu'un futur script tiers vérifie le consentement avant de se charger,
+// ex. if (window.svCookieConsent('marketing')) { ... }. Voir Politique cookies § 4.4.
+window.svCookieConsent = function(category){
+  const c = readConsent();
+  return !!(c && c.categories && c.categories[category]);
+};
+
+function showCookieBanner(openPanel){
   cookieBanner.classList.add('on');
+  if (openPanel) cookiePanel.classList.add('on');
   document.body.style.paddingBottom = cookieBanner.offsetHeight + 'px';
 }
 function hideCookieBanner(){
   cookieBanner.classList.remove('on');
+  cookiePanel.classList.remove('on');
   document.body.style.paddingBottom = '';
 }
-if (!localStorage.getItem('sv_cookie_consent')) showCookieBanner();
+function applyStoredChoiceToPanel(){
+  const c = readConsent();
+  const cats = (c && c.categories) || {};
+  document.getElementById('cat-audience').checked = !!cats.audience;
+  document.getElementById('cat-external').checked = !!cats.external;
+  document.getElementById('cat-marketing').checked = !!cats.marketing;
+}
+
+if (!readConsent()) showCookieBanner();
+applyStoredChoiceToPanel();
+
 document.getElementById('cookie-accept').addEventListener('click', () => {
-  localStorage.setItem('sv_cookie_consent', 'accepted');
+  writeConsent({ necessary: true, audience: true, external: true, marketing: true });
   hideCookieBanner();
 });
 document.getElementById('cookie-refuse').addEventListener('click', () => {
-  localStorage.setItem('sv_cookie_consent', 'refused');
+  writeConsent({ necessary: true, audience: false, external: false, marketing: false });
+  hideCookieBanner();
+});
+document.getElementById('cookie-customize').addEventListener('click', () => {
+  applyStoredChoiceToPanel();
+  cookiePanel.classList.add('on');
+});
+document.getElementById('cookie-save').addEventListener('click', () => {
+  writeConsent({
+    necessary: true,
+    audience: document.getElementById('cat-audience').checked,
+    external: document.getElementById('cat-external').checked,
+    marketing: document.getElementById('cat-marketing').checked,
+  });
   hideCookieBanner();
 });
 document.getElementById('cookie-manage').addEventListener('click', (e) => {
   e.preventDefault();
-  showCookieBanner();
+  applyStoredChoiceToPanel();
+  showCookieBanner(true);
 });
 </script>
 </body>
