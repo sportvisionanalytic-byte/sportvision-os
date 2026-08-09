@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Conditions Générales de Vente — SportVision</title>
-<meta name="description" content="Conditions générales de vente de SportVision : prestations, devis, paiement, droit de rétractation, propriété des contenus livrés.">
+<meta name="description" content="Conditions générales de vente SportVision (ELKANA GROUP) — Version finale V1.0 du 9 août 2026 : prestations, devis, paiement, annulation et report, rétractation, propriété des livrables, Club+, Full Communication.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://sportvision-an.fr/cgv">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
@@ -14,11 +14,11 @@
 <meta property="og:site_name" content="SportVision">
 <meta property="og:url" content="https://sportvision-an.fr/cgv">
 <meta property="og:title" content="Conditions Générales de Vente — SportVision">
-<meta property="og:description" content="Conditions générales de vente de SportVision : prestations, devis, paiement, droit de rétractation, propriété des contenus livrés.">
+<meta property="og:description" content="Conditions générales de vente SportVision (ELKANA GROUP) — Version finale V1.0 du 9 août 2026 : prestations, devis, paiement, annulation et report, rétractation, propriété des livrables, Club+, Full Communication.">
 <meta property="og:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Conditions Générales de Vente — SportVision">
-<meta name="twitter:description" content="Conditions générales de vente de SportVision : prestations, devis, paiement, droit de rétractation, propriété des contenus livrés.">
+<meta name="twitter:description" content="Conditions générales de vente SportVision (ELKANA GROUP) — Version finale V1.0 du 9 août 2026 : prestations, devis, paiement, annulation et report, rétractation, propriété des livrables, Club+, Full Communication.">
 <meta name="twitter:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,7 +85,6 @@ section{position:relative}
 /* ── Contenu légal ── */
 .legal-page{padding:158px 0 110px;background:var(--white)}
 .legal-wrap{max-width:760px;margin:0 auto;padding:0 24px}
-.legal-warning{background:var(--bg-light);border:1px solid #e4e7ef;border-left:4px solid var(--blue);border-radius:var(--radius);padding:18px 22px;margin-bottom:44px;font-size:13.5px;line-height:1.65;color:#4b5468}
 .legal-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--blue-electric);background:rgba(36,84,255,.1);border:1px solid rgba(36,84,255,.25);border-radius:999px;padding:7px 14px;margin-bottom:18px}
 .legal-title h1{font-size:clamp(28px,4vw,40px)}
 .legal-updated{color:var(--text-secondary);font-size:13px;margin-top:14px;margin-bottom:8px}
@@ -97,6 +96,13 @@ section{position:relative}
 .legal-body li{margin-bottom:6px}
 .legal-body a{color:var(--blue);text-decoration:underline}
 .legal-body strong{color:var(--navy-900)}
+.legal-body ol{margin:0 0 14px;padding-left:20px;color:#374151;font-size:15.5px;line-height:1.75}
+.legal-table-wrap{overflow-x:auto;margin:0 0 20px}
+.legal-body table{width:100%;border-collapse:collapse;font-size:14.5px;line-height:1.6;min-width:480px}
+.legal-body th,.legal-body td{border:1px solid #e4e7ef;padding:10px 14px;text-align:left;vertical-align:top}
+.legal-body thead th{background:var(--bg-light);color:var(--navy-900);font-weight:700;font-family:var(--font-head);font-size:13.5px}
+.legal-body tbody td{color:#374151}
+.legal-body tbody tr:nth-child(even) td{background:#fafbfd}
 
 /* ── Footer ── */
 .site-footer{background:var(--navy-900);color:rgba(255,255,255,.6);padding:70px 0 30px;border-top:1px solid rgba(255,255,255,.06)}
@@ -249,94 +255,467 @@ section{position:relative}
 <main class="legal-page">
   <div class="legal-wrap">
 
-    <div class="legal-warning">
-      Ce document est un projet de base et doit être relu et validé par un professionnel du droit avant toute publication réelle — conformément à la règle du cahier des charges SportVision Connect sur les textes juridiques.
-    </div>
-
     <div class="legal-title">
       <span class="legal-eyebrow">Informations légales</span>
       <h1>Conditions Générales de Vente</h1>
-      <p class="legal-updated">Applicables aux prestations SportVision et aux offres SportVision Connect (Club+).</p>
+      <p class="legal-updated">Version finale V1.0 — 9 août 2026. ELKANA GROUP (marque SportVision), SASU au capital de 1,00 € — SIREN 105 173 124. Applicables à l'ensemble des prestations et offres SportVision (Connect, Club+, Full Communication).</p>
     </div>
 
     <div class="legal-body">
 
-      <h2>1. Objet</h2>
-      <p>
-        Les présentes Conditions Générales de Vente (CGV) régissent les relations contractuelles entre
-        <strong>Elkana Group</strong> (SAS, exploitant l'activité sous le nom commercial SportVision, SIREN 105 173 124,
-        siège social 4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne) et toute personne physique ou morale
-        (« le client ») souscrivant à une prestation ou à un abonnement via le site SportVision ou via la plateforme
-        SportVision Connect. Toute commande implique l'acceptation pleine et entière des présentes CGV.
-      </p>
+<p>Les présentes Conditions Générales de Vente (« CGV ») définissent les conditions dans lesquelles ELKANA GROUP, exploitant la marque SportVision, fournit ses prestations et services à ses clients.</p>
 
-      <h2>2. Prestations proposées</h2>
-      <p>
-        SportVision propose des prestations de captation photo et vidéo sportive, de création de contenus, de gestion
-        de communication, ainsi que l'accès à la plateforme SportVision Connect (dont les offres Club+ à destination
-        des clubs, académies, coachs et joueurs). Le détail des prestations, offres et fonctionnalités disponibles
-        figure sur le site SportVision et dans le catalogue accessible depuis Connect ; il n'est pas redétaillé dans
-        les présentes CGV, qui en fixent le cadre contractuel général.
-      </p>
+<p>Elles s'appliquent sous réserve des dispositions impératives de la loi, notamment lorsque le Client a la qualité de consommateur ou de non-professionnel.</p>
 
-      <h2>3. Devis et commandes</h2>
-      <p>
-        Toute prestation fait l'objet d'un devis préalable, transmis par SportVision ou généré depuis le configurateur
-        de SportVision Connect. La commande n'est considérée comme définitive qu'après acceptation expresse du devis
-        par le client (validation en ligne ou signature) et, le cas échéant, versement de l'acompte demandé.
-      </p>
+<h2>ARTICLE 1 - Identité du Prestataire</h2>
 
-      <h2>4. Modalités de paiement</h2>
-      <p>
-        Le paiement s'effectue selon les modalités précisées sur le devis ou dans l'offre souscrite (paiement intégral,
-        acompte suivi d'un solde, ou abonnement récurrent). Les paiements en ligne sont traités par un prestataire de
-        paiement sécurisé tiers. Les conditions précises de délai et de pénalité de retard applicables sont celles
-        indiquées sur chaque devis ou facture émis par SportVision.
-      </p>
+<p>SportVision est une marque exploitée par ELKANA GROUP, société par actions simplifiée unipersonnelle (SASU) au capital social de 1,00 euro, immatriculée au Registre National des Entreprises sous le numéro SIREN 105 173 124.</p>
 
-      <h2>5. Droit de rétractation</h2>
-      <p>
-        Conformément à l'article L221-18 du Code de la consommation, le client particulier dispose d'un délai de
-        14 jours pour exercer son droit de rétractation à compter de la conclusion du contrat, pour toute prestation
-        commandée à distance. Lorsque la prestation demandée est prévue dans un délai inférieur à 14 jours, le client
-        reconnaît expressément demander l'exécution immédiate de la prestation et renonce à son droit de rétractation,
-        via une case de renonciation dédiée présentée lors de la commande (notamment dans le configurateur de
-        SportVision Connect). À défaut de cette renonciation expresse, la prestation ne peut être exécutée avant
-        l'expiration du délai de rétractation.
-      </p>
+<ul><li>SIRET du siège : 105 173 124 00014</li><li>Numéro de TVA intracommunautaire : FR15 105 173 124</li><li>Siège social : 4 Place Pierre Semard, 77130 Montereau-Fault-Yonne, France</li><li>Code APE : 74.20Z - Activités photographiques</li><li>Président : Monsieur Christian Rostel FOUKA</li><li>Adresse électronique : elkanagroup0@gmail.com</li><li>Site internet : https://sportvision-an.fr</li><li>Téléphone professionnel : 07 68 84 24 50</li></ul>
 
-      <h2>6. Annulation et report</h2>
-      <p>
-        Toute demande d'annulation ou de report d'une prestation doit être adressée à SportVision dans les meilleurs
-        délais via le formulaire du site ou l'espace Connect. Les conditions d'annulation ou de report (délais,
-        éventuelles conditions financières associées) sont précisées sur le devis ou le contrat propre à chaque
-        prestation.
-      </p>
+<p>Dans les présentes CGV, ELKANA GROUP peut être désignée par les termes « SportVision » ou « le Prestataire ».</p>
 
-      <h2>7. Propriété des contenus livrés et droits d'usage</h2>
-      <p>
-        Les contenus produits par SportVision (photographies, vidéos, montages, créations graphiques) dans le cadre
-        d'une prestation restent la propriété intellectuelle de SportVision, sauf cession expresse des droits prévue
-        au contrat. Le client bénéficie d'un droit d'usage des contenus livrés, dans le cadre défini par la prestation
-        souscrite (usage club, usage personnel, usage commercial, etc.). Toute utilisation en dehors de ce cadre, ou
-        toute cession à un tiers, nécessite l'accord écrit préalable de SportVision.
-      </p>
+<h2>ARTICLE 2 - Champ d'application et acceptation</h2>
 
-      <h2>8. Responsabilité</h2>
-      <p>
-        SportVision met en œuvre les moyens nécessaires à la bonne exécution de ses prestations. Sa responsabilité ne
-        saurait être engagée en cas d'inexécution ou de mauvaise exécution due à un cas de force majeure, au fait d'un
-        tiers, ou à des informations erronées ou incomplètes transmises par le client. La responsabilité de SportVision
-        est limitée au montant de la prestation concernée.
-      </p>
+<p>Les présentes CGV s'appliquent aux prestations et services commercialisés par SportVision, sauf conditions particulières expressément acceptées par les parties.</p>
 
-      <h2>9. Droit applicable et juridiction compétente</h2>
-      <p>
-        Les présentes CGV sont soumises au droit français. Tout litige relatif à leur interprétation ou à leur
-        exécution, à défaut de résolution amiable, relève de la compétence exclusive des tribunaux compétents du
-        ressort du siège social de SportVision, soit les tribunaux du ressort de Melun, sous réserve des règles
-        d'ordre public applicables aux consommateurs.
-      </p>
+<p>La validation d'un devis, d'un bon de commande, d'un récapitulatif contractuel, d'un contrat, d'une souscription ou de toute commande réalisée par un moyen permettant d'établir l'accord du Client emporte acceptation des présentes CGV dans leur version applicable à la date de la commande.</p>
+
+<p>Les dispositions impératives applicables aux consommateurs et, lorsque la loi le prévoit, aux non-professionnels, prévalent sur toute stipulation contraire.</p>
+
+<h2>ARTICLE 3 - Définitions</h2>
+
+<ul><li>Client : toute personne physique ou morale qui commande une Prestation ou souscrit une offre SportVision.</li><li>Client consommateur : personne physique agissant à des fins n'entrant pas dans le cadre de son activité professionnelle.</li><li>Client professionnel : personne physique ou morale agissant à des fins entrant dans le cadre de son activité professionnelle.</li><li>Prestation : toute prestation photo, vidéo, audiovisuelle, graphique, éditoriale, de communication ou autre service vendu par SportVision.</li><li>Livrable : fichier ou contenu final expressément prévu dans le devis, la commande ou le contrat.</li><li>Connect : SportVision Connect, espace numérique client dont les fonctions varient selon l'offre souscrite.</li><li>Club+ : offre récurrente destinée principalement aux clubs souhaitant conserver le pilotage de leur communication tout en utilisant des outils et créations SportVision.</li><li>Full Communication : accompagnement dans lequel SportVision prend en charge tout ou partie de la stratégie, de la production et/ou de la gestion de communication définie au contrat.</li></ul>
+
+<h2>ARTICLE 4 - Prestations et services concernés</h2>
+
+<p>Les CGV couvrent notamment, sans que cette liste soit exhaustive :</p>
+
+<ul><li>photographie de match, d'entraînement, de tournoi ou d'événement ;</li><li>captation vidéo, highlights et montage ;</li><li>Pack Match photo + vidéo ;</li><li>shooting individuel ou collectif ;</li><li>Media Day ;</li><li>tournois, stages et événements sportifs ;</li><li>prestations drone lorsqu'elles sont expressément prévues et réalisables ;</li><li>création graphique et création de contenus ;</li><li>Community Management et stratégie de communication ;</li><li>Club+ Start et Club+ Performance ;</li><li>Full Communication ;</li><li>mise à disposition de fonctionnalités de SportVision Connect.</li></ul>
+
+<p>Le contenu précis de chaque Prestation est celui décrit dans l'offre, le devis, le bon de commande ou le contrat accepté par le Client.</p>
+
+<h2>ARTICLE 5 - Information précontractuelle et documents contractuels</h2>
+
+<p>Avant la conclusion du contrat, SportVision communique au Client les caractéristiques essentielles de la Prestation, son prix ou son mode de calcul, les éventuels frais supplémentaires connus, la date ou le délai d'exécution lorsque cela est applicable, ainsi que les principales conditions contractuelles.</p>
+
+<p>Selon la Prestation, la relation contractuelle peut être constituée de tout ou partie des documents suivants :</p>
+
+<ol><li>devis ou proposition commerciale ;</li><li>bon ou récapitulatif de commande ;</li><li>présentes CGV ;</li><li>conditions particulières ;</li><li>contrat spécifique ;</li><li>caractéristiques de l'offre souscrite ;</li><li>documents de signature électronique et annexes éventuelles.</li></ol>
+
+<p>En cas de contradiction, les conditions particulières ou le contrat spécifique expressément accepté prévalent sur les présentes CGV pour le point concerné.</p>
+
+<h2>ARTICLE 6 - Demande, disponibilité et confirmation</h2>
+
+<p><strong>6.1 Envoi d'une demande.</strong> L'envoi d'un formulaire, d'un message, d'une demande de réservation ou d'une demande de devis ne garantit pas à lui seul la disponibilité de SportVision.</p>
+
+<p><strong>6.2 Vérification.</strong> SportVision vérifie notamment la date, le lieu, la nature de la Prestation, les ressources humaines et matérielles nécessaires, les déplacements et les éventuelles contraintes d'accès ou de sécurité.</p>
+
+<p><strong>6.3 Réservation ferme.</strong> Sauf mention expresse contraire, une Prestation ponctuelle devient ferme après validation de la disponibilité par SportVision et acceptation par le Client du devis, bon de commande, récapitulatif ou autre document contractuel matérialisant son accord.</p>
+
+<p>Le site peut enregistrer immédiatement une demande et lui attribuer une référence sans que cela constitue une confirmation automatique de disponibilité.</p>
+
+<h2>ARTICLE 7 - Prestations à prix affiché et prestations sur devis</h2>
+
+<p><strong>7.1 Prix affiché.</strong> Lorsqu'un tarif est affiché publiquement, notamment pour certaines prestations de match, ce tarif s'applique sous réserve des options, frais de déplacement, contraintes particulières et informations communiquées avant l'engagement du Client.</p>
+
+<p><strong>7.2 Sur devis.</strong> Les prestations personnalisées, notamment certains tournois, stages, Media Days, tournages, projets de communication ou besoins spécifiques, font l'objet d'un devis ou d'une proposition commerciale. Aucun paiement ne doit être exigé avant communication du prix ou de ses modalités de calcul.</p>
+
+<h2>ARTICLE 8 - Prix, taxes et frais</h2>
+
+<p>Les prix applicables sont ceux affichés ou communiqués au Client au moment de la conclusion du contrat. Pour les consommateurs, les prix sont présentés toutes taxes comprises lorsque la réglementation l'exige. Pour les professionnels, les documents commerciaux précisent les montants HT et/ou TTC selon le contexte.</p>
+
+<p>Les éventuels frais de déplacement, de stationnement, de péage, d'hébergement, de location spécifique ou autres frais nécessaires à l'exécution sont indiqués avant validation de la commande lorsqu'ils sont à la charge du Client.</p>
+
+<p>Toute demande supplémentaire hors périmètre initial susceptible d'augmenter le prix fait l'objet d'une information et d'un accord préalable du Client.</p>
+
+<h2>ARTICLE 9 - Paiement des prestations ponctuelles</h2>
+
+<p>Sauf condition particulière expressément convenue, SportVision ne demande pas d'acompte standard pour les prestations ponctuelles.</p>
+
+<p>Le montant total de la Prestation est payable au plus tard avant le début de la Prestation le jour J, sauf accord particulier écrit de SportVision.</p>
+
+<p>Le règlement peut être effectué par carte bancaire, virement ou tout autre moyen expressément accepté par SportVision.</p>
+
+<p>Lorsque le paiement devait intervenir avant le commencement de la Prestation et n'a pas été effectué, SportVision peut suspendre le démarrage jusqu'à régularisation, sous réserve des dispositions impératives applicables.</p>
+
+<h2>ARTICLE 10 - Facturation et retard de paiement des professionnels</h2>
+
+<p>Les factures sont émises selon les conditions convenues dans la commande ou le contrat.</p>
+
+<p>Pour les Clients professionnels, toute somme non réglée à l'échéance entraîne, de plein droit et sans rappel préalable, l'application de pénalités de retard au taux égal au taux d'intérêt appliqué par la Banque centrale européenne à son opération de refinancement la plus récente, majoré de dix points de pourcentage, sans pouvoir être inférieur au minimum légal applicable.</p>
+
+<p>Tout Client professionnel en retard de paiement est également redevable de l'indemnité forfaitaire légale de 40 euros pour frais de recouvrement. Une indemnisation complémentaire peut être demandée, sur justification, lorsque les frais de recouvrement effectivement exposés sont supérieurs.</p>
+
+<p>L'indemnité forfaitaire de 40 euros prévue entre professionnels ne s'applique pas aux Clients consommateurs.</p>
+
+<h2>ARTICLE 11 - Annulation d'une prestation ponctuelle par le Client</h2>
+
+<p>Sous réserve du droit légal de rétractation lorsqu'il s'applique et de toute autre disposition impérative, les règles commerciales d'annulation suivantes sont convenues :</p>
+
+<div class="legal-table-wrap"><table>
+<thead><tr><th>Moment de l'annulation</th><th>Conséquence contractuelle</th></tr></thead>
+<tbody>
+<tr><td>Plus de 7 jours avant</td><td>Annulation gratuite</td></tr>
+<tr><td>Entre 7 jours et 48 h avant</td><td>30 % du prix de la Prestation sont dus ; un report gratuit peut être demandé sous réserve de disponibilité</td></tr>
+<tr><td>Moins de 48 h avant</td><td>50 % du prix de la Prestation sont dus</td></tr>
+<tr><td>Jour J / absence / no-show</td><td>100 % du prix de la Prestation sont dus</td></tr>
+</tbody></table></div>
+
+<p>Les pourcentages ci-dessus constituent une indemnité forfaitaire d'annulation destinée notamment à compenser l'immobilisation du créneau, la mobilisation des ressources et les frais déjà engagés par SportVision. Ils s'appliquent sous réserve du droit légal de rétractation lorsqu'il existe, de toute disposition impérative plus favorable au Client et, le cas échéant, du pouvoir du juge de modérer une pénalité manifestement excessive. Les sommes dues au titre d'une annulation peuvent faire l'objet d'une facture.</p>
+
+<h2>ARTICLE 12 - Report et modification de date</h2>
+
+<p>Un report gratuit peut être accepté dans les conditions suivantes, sous réserve des disponibilités de SportVision :</p>
+
+<ul><li>plus de 7 jours avant : changement de date possible sans frais ;</li><li>entre 7 jours et 48 h avant : un report gratuit peut remplacer l'annulation soumise à 30 % ;</li><li>moins de 48 h avant : report uniquement après accord exprès de SportVision ; à défaut, la règle d'annulation applicable demeure ;</li><li>jour J : un changement est en principe assimilé à une annulation, sauf report officiel de l'événement, force majeure ou situation exceptionnelle acceptée par SportVision.</li></ul>
+
+<p>La nouvelle date doit être convenue entre les parties et reste soumise à la disponibilité de SportVision.</p>
+
+<h2>ARTICLE 13 - Annulation officielle d'un match ou événement</h2>
+
+<p>Lorsqu'un match ou événement est officiellement annulé ou reporté pour une cause indépendante du Client, notamment décision d'une instance, terrain déclaré impraticable ou modification officielle du calendrier, SportVision privilégie un report sur la nouvelle date, sous réserve de disponibilité.</p>
+
+<p>Une telle situation n'est pas automatiquement assimilée à un no-show volontaire du Client. Les conséquences financières sont appréciées selon la situation, les frais déjà engagés, les possibilités de report et les dispositions légales applicables.</p>
+
+<h2>ARTICLE 14 - Retard du Client ou de l'événement</h2>
+
+<p>Une tolérance de quinze minutes est accordée au Client pour les prestations dont l'heure de début dépend de sa présence.</p>
+
+<p>Au-delà de ce délai, SportVision n'est pas tenu de prolonger la Prestation au-delà de l'horaire initialement convenu. Le temps perdu du fait du retard du Client peut donc réduire la durée effectivement disponible.</p>
+
+<p>Pour un événement sportif retardé pour des raisons indépendantes du Client, SportVision fait ses meilleurs efforts pour s'adapter dans la limite de ses autres engagements et disponibilités.</p>
+
+<h2>ARTICLE 15 - Dépassement de durée et prestations supplémentaires</h2>
+
+<p>Le prix couvre la durée et le périmètre prévus dans la commande ou le devis.</p>
+
+<p>Les dépassements normaux liés au déroulement d'un match, tels que le temps additionnel, ne donnent pas automatiquement lieu à supplément.</p>
+
+<p>Toute demande substantielle supplémentaire - heure additionnelle, seconde rencontre, cérémonie, shooting ou captation non prévus - peut faire l'objet d'un supplément, uniquement après information et accord du Client.</p>
+
+<h2>ARTICLE 16 - Changement de lieu et frais de déplacement</h2>
+
+<p>Un changement de lieu est possible sous réserve de faisabilité.</p>
+
+<p>S'il entraîne des coûts supplémentaires ou une modification significative du temps de déplacement, SportVision communique au Client les frais supplémentaires avant de confirmer le nouveau lieu.</p>
+
+<p>Les frais de déplacement sont indiqués dans le devis, le récapitulatif ou les conditions particulières. Aucun barème kilométrique universel n'est imposé par les présentes CGV.</p>
+
+<h2>ARTICLE 17 - Accès, accréditations et conditions d'intervention</h2>
+
+<p>Lorsque cela relève de lui, le Client doit s'assurer que SportVision et ses intervenants sont autorisés à accéder aux espaces nécessaires : terrain, stade, salle, vestiaires lorsque convenu, zone média, événement ou autre lieu d'intervention.</p>
+
+<p>Si l'accès est refusé parce que le Client n'a pas obtenu une autorisation qui relevait de sa responsabilité, la situation peut être traitée comme une impossibilité d'exécuter imputable au Client et, selon les circonstances, comme une annulation le jour J.</p>
+
+<p>Si SportVision s'était expressément engagé à obtenir une accréditation déterminée et ne l'a pas obtenue par sa faute, la présente clause ne peut être opposée au Client.</p>
+
+<h2>ARTICLE 18 - Sécurité et comportement sur place</h2>
+
+<p>SportVision peut suspendre ou interrompre une Prestation en cas de violence, menace, harcèlement, agression, danger manifeste, comportement gravement irrespectueux ou mise en danger des personnes ou du matériel.</p>
+
+<p>Lorsque l'interruption est directement imputable au Client ou à des personnes placées sous sa responsabilité dans le cadre de la Prestation, les conséquences financières sont appréciées au regard de la partie déjà exécutée, des frais engagés et des circonstances.</p>
+
+<p>SportVision respecte les consignes de sécurité du lieu d'intervention et peut refuser toute demande manifestement dangereuse ou illicite.</p>
+
+<h2>ARTICLE 19 - Annulation ou impossibilité d'exécution par SportVision</h2>
+
+<p>Si SportVision ne peut assurer une Prestation confirmée pour une raison qui lui est imputable, il cherche en priorité une solution de remplacement : autre opérateur, adaptation raisonnable ou nouvelle date.</p>
+
+<p>Si aucune solution raisonnable n'est possible ou acceptée, aucune somme n'est due pour la partie non exécutée et les montants éventuellement déjà versés correspondant à cette partie sont remboursés.</p>
+
+<p>Cette clause ne limite pas les droits impératifs du Client en cas d'inexécution contractuelle.</p>
+
+<h2>ARTICLE 20 - Force majeure</h2>
+
+<p>Aucune partie ne peut être tenue responsable d'une inexécution ou d'un retard résultant d'un événement présentant les caractères de la force majeure au sens du droit français.</p>
+
+<p>Lorsque l'empêchement est temporaire, l'exécution est suspendue et les parties recherchent prioritairement un report. Lorsque l'empêchement est définitif, le contrat ou la partie concernée est traité conformément aux dispositions légales applicables et aux prestations déjà exécutées.</p>
+
+<h2>ARTICLE 21 - Exécution, intervenants et sous-traitance</h2>
+
+<p>SportVision peut faire intervenir des salariés, prestataires, photographes, vidéastes, Community Managers, monteurs ou autres collaborateurs qualifiés pour exécuter tout ou partie d'une Prestation.</p>
+
+<p>SportVision demeure l'interlocuteur contractuel du Client pour les Prestations qu'il facture, sans préjudice des responsabilités propres de chaque intervenant lorsque la loi l'impose.</p>
+
+<p>Les prestations drone, lorsqu'elles sont prévues, restent soumises aux conditions réglementaires, météorologiques, de sécurité et d'autorisation applicables le jour de l'intervention.</p>
+
+<h2>ARTICLE 22 - Délais de livraison</h2>
+
+<p>Pour les prestations standards, le délai indicatif habituel de livraison est de trois à cinq jours ouvrés après la Prestation, sauf délai différent indiqué dans la commande.</p>
+
+<p>Pour les tournois, stages, Media Days, projets à gros volume ou prestations spécifiques, le délai applicable est celui figurant dans le devis ou le contrat.</p>
+
+<p>SportVision informe le Client lorsqu'un retard significatif est prévisible. Un retard ne prive pas le Client de ses droits légaux lorsqu'un délai contractuel essentiel n'est pas respecté.</p>
+
+<h2>ARTICLE 23 - Sélection, retouches et corrections</h2>
+
+<p><strong>23.1 Photographie.</strong> Une prestation photo comprend la sélection et le traitement éditorial des images selon le style et les choix artistiques de SportVision. Le Client n'acquiert pas un droit à des retouches personnalisées illimitées.</p>
+
+<p>Toute erreur objective de fichier, d'export, de format convenu ou autre non-conformité imputable à SportVision est corrigée sans frais.</p>
+
+<p><strong>23.2 Vidéo et création graphique.</strong> Sauf conditions particulières, deux séries de corrections sont incluses pour les vidéos, créations graphiques et projets personnalisés. Ces corrections doivent rester dans le périmètre du brief initial.</p>
+
+<p>Une modification substantielle du concept, du brief ou des livrables après production peut faire l'objet d'un devis complémentaire.</p>
+
+<p><strong>23.3 Full Communication.</strong> Pour Full Communication, les processus de validation, correction et publication sont définis dans le contrat, le calendrier éditorial ou l'onboarding du Client.</p>
+
+<h2>ARTICLE 24 - Rushs, RAW et fichiers sources</h2>
+
+<p>Sauf stipulation expresse contraire, ne sont pas inclus dans les Livrables :</p>
+
+<ul><li>fichiers RAW photo ;</li><li>rushs vidéo non montés ;</li><li>projets Premiere Pro, CapCut ou logiciels équivalents ;</li><li>fichiers Photoshop, Illustrator, Canva éditables ou autres sources ;</li><li>fichiers de travail intermédiaires.</li></ul>
+
+<p>La remise de tout fichier source ou brut doit être expressément prévue dans la commande, le devis ou un accord complémentaire.</p>
+
+<h2>ARTICLE 25 - Conservation des fichiers</h2>
+
+<p>SportVision conserve les Livrables finaux pendant une durée minimale de six mois à compter de leur livraison.</p>
+
+<p>Les rushs, RAW et fichiers de travail non livrés peuvent être supprimés après soixante jours.</p>
+
+<p>Au-delà de ces durées, SportVision ne garantit ni la conservation ni la possibilité de récupérer les fichiers. Le Client est responsable de la sauvegarde de ses propres copies après livraison.</p>
+
+<h2>ARTICLE 26 - Propriété intellectuelle et licence d'utilisation du Client</h2>
+
+<p>Sous réserve des droits éventuellement détenus par les auteurs, collaborateurs ou concédants de SportVision, les créations, photographies, vidéos, graphismes, montages et autres éléments originaux restent protégés par le droit de la propriété intellectuelle.</p>
+
+<p>Sauf stipulation contraire, le règlement intégral de la Prestation confère au Client une licence non exclusive de reproduction et de représentation des Livrables finaux, dans le monde entier et pour la durée légale de protection applicable, uniquement pour sa propre communication et la promotion de ses activités.</p>
+
+<p>Cette licence autorise notamment l'utilisation sur les réseaux sociaux, le site du Client, ses supports de communication, affiches, présentations, communications internes et communications mettant en avant ses partenaires dans le cadre de ses propres publications.</p>
+
+<p>Elle n'autorise pas, sans accord écrit préalable de SportVision :</p>
+
+<ul><li>la revente des Livrables en tant que fichiers ou œuvres ;</li><li>la cession autonome à un tiers pour une campagne publicitaire indépendante de ce tiers ;</li><li>la sous-licence commerciale générale ;</li><li>la présentation du Client comme auteur d'une création SportVision.</li></ul>
+
+<p>Toute cession plus large de droits fait l'objet d'un écrit définissant les droits concernés, leur destination, leur étendue, leur territoire et leur durée.</p>
+
+<h2>ARTICLE 27 - Sponsors et exploitation par des tiers</h2>
+
+<p>Le Client peut utiliser les Livrables pour valoriser ses sponsors ou partenaires dans sa propre communication, dans les limites de la licence prévue à l'article précédent.</p>
+
+<p>Si un sponsor, une marque ou une entreprise tierce souhaite exploiter directement un Livrable dans sa propre campagne publicitaire ou commerciale indépendante, une autorisation complémentaire de SportVision peut être nécessaire, ainsi que les autorisations de droit à l'image ou autres droits de tiers applicables.</p>
+
+<h2>ARTICLE 28 - Droit à l'image, personnes filmées et mineurs</h2>
+
+<p>Le Client communique à SportVision, avant ou pendant la Prestation dans un délai permettant leur prise en compte, les restrictions dont il a connaissance concernant les personnes qui ne doivent pas être photographiées, filmées ou dont l'image ne doit pas être diffusée.</p>
+
+<p>Lorsqu'une structure cliente organise ou commande une captation, elle confirme disposer des autorisations relevant de sa responsabilité pour les usages qu'elle demande et transmet à SportVision les restrictions nécessaires. Cette confirmation ne décharge pas SportVision de ses propres obligations lorsqu'il publie ou exploite des images.</p>
+
+<p>Pour un shooting individuel concernant un mineur ou toute utilisation nécessitant une autorisation spécifique, SportVision recueille ou vérifie les autorisations des représentants légaux requises selon la situation.</p>
+
+<p>La simple prise de vue ne vaut pas nécessairement autorisation illimitée de diffusion. Les usages de l'image restent limités aux autorisations obtenues et au contexte contractuel.</p>
+
+<h2>ARTICLE 29 - Utilisation des réalisations par SportVision</h2>
+
+<p>SportVision peut utiliser une sélection de ses réalisations à des fins de portfolio, de présentation commerciale, de site internet ou de réseaux sociaux uniquement lorsque les droits et autorisations nécessaires à cette utilisation sont réunis.</p>
+
+<p>Le Client doit informer SportVision de toute restriction particulière connue. Pour les mineurs et les situations sensibles, une autorisation appropriée doit être disponible avant toute diffusion par SportVision.</p>
+
+<p>Toute demande légitime relative au retrait d'une image est traitée conformément aux droits applicables et aux circonstances.</p>
+
+<h2>ARTICLE 30 - SportVision Connect</h2>
+
+<p>SportVision Connect est l'espace numérique utilisé pour centraliser, selon les offres, le suivi des prestations, contenus, validations, documents, paiements, demandes, médias et échanges.</p>
+
+<p>Les fonctionnalités visibles dépendent du profil du Client, de son organisation et de l'offre souscrite. L'accès à Connect peut être inclus comme outil de suivi sans constituer une offre payante distincte.</p>
+
+<p>Le Client est responsable de la confidentialité de ses identifiants et doit informer SportVision sans délai en cas d'accès non autorisé suspecté.</p>
+
+<p>SportVision peut procéder à des opérations de maintenance, de sécurité ou de mise à jour. Les interruptions raisonnablement nécessaires ne constituent pas une inexécution, sous réserve des droits légaux applicables.</p>
+
+<p>Lorsqu'un consommateur acquiert à titre onéreux un contenu ou service numérique relevant des dispositions du Code de la consommation, il bénéficie de la garantie légale de conformité applicable aux contenus et services numériques. En cas de défaut de conformité, il peut notamment demander la mise en conformité sans frais et, dans les conditions légales, une réduction du prix ou la résolution du contrat.</p>
+
+<h2>ARTICLE 31 - Club+ avec engagement</h2>
+
+<p>Lorsque le Client souscrit une formule Club+ avec engagement de douze mois, les caractéristiques, crédits, utilisateurs, remises, fonctionnalités et prix applicables sont ceux indiqués dans l'offre et le récapitulatif contractuel au moment de la souscription.</p>
+
+<p>La facturation peut être mensuelle tout en correspondant à un engagement contractuel de douze mois.</p>
+
+<p>Sous réserve des dispositions légales impératives, des droits éventuellement reconnus au Client consommateur ou non-professionnel, d'un motif légitime applicable ou d'un accord exprès de SportVision, une résiliation anticipée à l'initiative du Client ne met pas fin à l'engagement financier correspondant à la durée contractuelle restante.</p>
+
+<p>À l'issue des douze mois, l'engagement ne repart pas automatiquement pour une nouvelle période de douze mois. SportVision peut proposer un renouvellement ; celui-ci suppose un nouvel accord du Client.</p>
+
+<p>À défaut de renouvellement accepté, l'offre prend fin à son échéance contractuelle.</p>
+
+<h2>ARTICLE 32 - Club+ sans engagement</h2>
+
+<p>La formule Club+ sans engagement est souscrite par périodes mensuelles successives.</p>
+
+<p>Elle se renouvelle automatiquement chaque mois jusqu'à résiliation par le Client.</p>
+
+<p>Le Client peut résilier à tout moment. La résiliation prend effet à la fin de la période mensuelle déjà payée ; aucun nouveau prélèvement n'est alors effectué pour la période suivante.</p>
+
+<p>Sauf disposition légale impérative ou geste commercial exprès, la période mensuelle déjà commencée n'est pas remboursée au prorata.</p>
+
+<p>Lorsque la réglementation impose une fonctionnalité de résiliation en ligne, SportVision la met à disposition du Client concerné selon les conditions légales.</p>
+
+<h2>ARTICLE 33 - Crédits et fonctionnalités Club+</h2>
+
+<p>Les règles de consommation, d'attribution, d'éventuel renouvellement, d'expiration ou de report des crédits Club+, ainsi que les limites d'utilisateurs et les fonctionnalités incluses, sont précisées dans l'offre ou le contrat applicable.</p>
+
+<p>SportVision ne peut être tenu de fournir une fonctionnalité qui n'est pas incluse dans la formule souscrite ou qui est expressément présentée comme « bêta » ou « prochainement ».</p>
+
+<p>Les modifications substantielles d'une offre en cours de contrat sont communiquées au Client et ne peuvent réduire les droits déjà acquis au titre de la période contractuelle sans respecter les règles applicables.</p>
+
+<h2>ARTICLE 34 - Full Communication</h2>
+
+<p>Full Communication est une prestation personnalisée dont la durée, le périmètre, les plateformes, le volume de contenus, les présences terrain, le calendrier, les processus de validation, les livrables, les frais et le prix sont définis dans la proposition commerciale et/ou le contrat.</p>
+
+<p>Aucune durée standard unique n'est imposée par les présentes CGV. La durée applicable est celle expressément convenue avec le Client.</p>
+
+<p>Le Client s'engage à fournir dans des délais raisonnables les informations, accès, éléments de marque, validations et contenus nécessaires. Tout retard imputable au Client peut entraîner un décalage du calendrier sans que SportVision soit responsable de ce décalage.</p>
+
+<p>La publication des contenus et le niveau de validation préalable sont organisés selon le processus défini avec le Client. Lorsqu'une validation préalable est prévue, l'absence de réponse du Client peut retarder ou empêcher la publication concernée.</p>
+
+<p>Le renouvellement d'un accompagnement Full Communication intervient selon les conditions prévues au contrat. Sauf stipulation particulière, SportVision privilégie un renouvellement proposé et expressément accepté.</p>
+
+<h2>ARTICLE 35 - Droit de rétractation des consommateurs</h2>
+
+<p>Le présent article s'applique uniquement lorsque le Client bénéficie légalement du droit de rétractation, notamment pour certains contrats conclus à distance ou hors établissement.</p>
+
+<p>Le consommateur dispose en principe d'un délai de quatorze jours à compter de la conclusion du contrat de prestation de services pour exercer son droit de rétractation sans avoir à motiver sa décision.</p>
+
+<p>Les règles contractuelles d'annulation prévues aux présentes CGV ne font pas obstacle à l'exercice d'un droit légal de rétractation lorsqu'il existe.</p>
+
+<p><strong>35.1 Demande d'exécution avant la fin du délai.</strong> Si le consommateur souhaite que l'exécution de la Prestation commence avant l'expiration du délai de rétractation, SportVision recueille sa demande expresse dans les conditions prévues par la loi.</p>
+
+<p>Si le consommateur exerce ensuite son droit de rétractation alors que l'exécution a commencé à sa demande expresse, il peut être tenu de verser un montant proportionnel au service fourni jusqu'à la communication de sa décision, dans les conditions légales.</p>
+
+<p><strong>35.2 Prestation entièrement exécutée.</strong> Lorsque les conditions légales sont réunies, le droit de rétractation ne peut plus être exercé après l'exécution complète d'une prestation de services commencée avec l'accord préalable exprès du consommateur et après reconnaissance de la perte de son droit une fois la prestation pleinement exécutée.</p>
+
+<p><strong>35.3 Modalités.</strong> Le consommateur peut exercer son droit au moyen d'une déclaration dénuée d'ambiguïté adressée à ELKANA GROUP, 4 Place Pierre Semard, 77130 Montereau-Fault-Yonne, France, ou par courrier électronique à <a href="mailto:elkanagroup0@gmail.com">elkanagroup0@gmail.com</a>.</p>
+
+<p>Le modèle de formulaire figurant en Annexe 1 peut être utilisé mais son utilisation n'est pas obligatoire.</p>
+
+<h2>ARTICLE 36 - Fonctionnalité de rétractation et résiliation en ligne</h2>
+
+<p>Pour les contrats conclus à distance au moyen d'une interface en ligne avec un consommateur et lorsque la loi l'impose, SportVision doit mettre à disposition, pendant le délai de rétractation, une fonctionnalité en ligne gratuite, visible, directement et facilement accessible permettant d'exercer le droit de rétractation.</p>
+
+<p>Cette fonctionnalité devra notamment permettre l'identification du Client et du contrat, la confirmation de la rétractation et l'envoi d'un accusé de réception sur support durable.</p>
+
+<p>Pour les contrats concernés pouvant être résiliés en ligne, SportVision met également à disposition une fonctionnalité de résiliation gratuite et facilement accessible lorsque les dispositions légales l'exigent.</p>
+
+<h2>ARTICLE 37 - Formules numériques et garantie légale de conformité</h2>
+
+<p>Lorsqu'un consommateur souscrit à titre onéreux un service numérique relevant du régime légal de conformité, SportVision fournit un service conforme au contrat et aux critères légaux applicables.</p>
+
+<p>En cas de défaut de conformité, le consommateur peut demander la mise en conformité sans frais et sans retard injustifié. Lorsque les conditions légales sont réunies, il peut obtenir une réduction du prix ou la résolution du contrat.</p>
+
+<p>Cette garantie légale s'applique indépendamment de toute éventuelle garantie commerciale volontaire.</p>
+
+<h2>ARTICLE 38 - Perte, corruption ou indisponibilité de fichiers</h2>
+
+<p>SportVision met en œuvre des mesures raisonnables de sauvegarde et de sécurité adaptées à ses prestations.</p>
+
+<p>En cas de perte ou corruption technique exceptionnelle et définitive touchant une partie essentielle des fichiers avant livraison, SportVision propose en priorité, lorsque cela est réalisable, une nouvelle captation ou un nouveau shooting.</p>
+
+<p>Si aucune nouvelle réalisation n'est possible, SportVision rembourse la partie de la Prestation effectivement affectée, sans préjudice des droits impératifs du Client et de la responsabilité légalement applicable.</p>
+
+<h2>ARTICLE 39 - Responsabilité</h2>
+
+<p>Chaque partie répond des dommages directs résultant de ses fautes ou manquements dans les conditions prévues par la loi.</p>
+
+<p>SportVision ne répond pas des conséquences résultant d'informations erronées ou incomplètes fournies par le Client, d'une absence d'autorisation relevant du Client, d'un retard du Client, d'une indisponibilité d'un lieu non imputable à SportVision ou d'un usage des Livrables non conforme aux droits accordés.</p>
+
+<p>Aucune clause des présentes CGV n'a pour objet d'exclure ou limiter une responsabilité qui ne peut légalement l'être, notamment à l'égard d'un consommateur.</p>
+
+<h2>ARTICLE 40 - Confidentialité</h2>
+
+<p>Les informations non publiques identifiées comme confidentielles ou qui présentent manifestement un caractère confidentiel, notamment stratégies, accès aux comptes, documents commerciaux, mots de passe, informations internes et données de campagne, ne doivent pas être divulguées à des tiers sans autorisation, sauf obligation légale ou nécessité d'exécution de la Prestation.</p>
+
+<p>SportVision peut partager les seules informations nécessaires avec ses collaborateurs et prestataires soumis à des obligations appropriées.</p>
+
+<h2>ARTICLE 41 - Données personnelles</h2>
+
+<p>SportVision traite certaines données personnelles nécessaires à la gestion des demandes, commandes, paiements, contrats, comptes Connect, livraisons, communications et obligations légales.</p>
+
+<p>Les modalités détaillées de traitement, les finalités, bases légales, durées de conservation, destinataires et droits des personnes sont décrits dans la <a href="confidentialite.html">Politique de confidentialité</a> accessible sur le site SportVision.</p>
+
+<p>Les demandes relatives aux données personnelles peuvent être adressées à elkanagroup0@gmail.com.</p>
+
+<p>Lorsque le Client transmet à SportVision des données personnelles concernant des tiers, notamment joueurs, parents, éducateurs ou membres d'une structure, il s'engage à le faire dans le respect des règles applicables et à ne transmettre que les informations nécessaires.</p>
+
+<h2>ARTICLE 42 - Réclamations</h2>
+
+<p>Toute réclamation doit être adressée en priorité à SportVision par courrier électronique à elkanagroup0@gmail.com ou par courrier au siège social.</p>
+
+<p>Le Client doit préciser son identité, la référence de la commande ou du contrat, l'objet de la réclamation et les éléments utiles à son traitement.</p>
+
+<p>SportVision s'efforce de traiter les réclamations dans un délai raisonnable.</p>
+
+<h2>ARTICLE 43 - Médiation de la consommation</h2>
+
+<p>Après une réclamation écrite préalable adressée à SportVision et restée sans solution satisfaisante, tout Client consommateur peut recourir gratuitement à un médiateur de la consommation, dans les conditions prévues par le Code de la consommation.</p>
+
+<p>Le médiateur de la consommation désigné par ELKANA GROUP est : CM2C - Centre de la Médiation de la Consommation de Conciliateurs de Justice, 49 rue de Ponthieu, 75008 Paris.</p>
+
+<p>Site internet du médiateur : <a href="https://www.cm2c.net/" target="_blank" rel="noopener">https://www.cm2c.net/</a> - Saisine en ligne accessible depuis le site de CM2C.</p>
+
+<p>Le consommateur doit avoir préalablement tenté de résoudre son litige directement avec SportVision par une réclamation écrite avant de saisir le médiateur.</p>
+
+<h2>ARTICLE 44 - Droit applicable et règlement des litiges</h2>
+
+<p>Les présentes CGV sont régies par le droit français.</p>
+
+<p>Les parties s'efforcent de résoudre amiablement tout différend avant toute action judiciaire.</p>
+
+<p>Pour les Clients consommateurs, les règles légales de compétence juridictionnelle demeurent applicables et aucune stipulation des présentes CGV ne peut les priver de la protection d'une disposition impérative.</p>
+
+<p>Pour les autres Clients, la juridiction compétente est déterminée conformément aux règles de droit commun ou à toute clause particulière valablement convenue entre les parties.</p>
+
+<h2>ARTICLE 45 - Preuve, signature électronique et communications</h2>
+
+<p>Les échanges électroniques, validations, signatures électroniques, confirmations de commande, historiques de paiement, journaux techniques et documents conservés dans des conditions permettant d'en assurer l'intégrité peuvent être utilisés comme éléments de preuve dans les conditions prévues par la loi.</p>
+
+<p>Lorsque la signature électronique est utilisée, le Client reconnaît qu'elle matérialise son consentement au document signé dans les conditions prévues par le dispositif de signature utilisé.</p>
+
+<h2>ARTICLE 46 - Modification des CGV</h2>
+
+<p>SportVision peut modifier les présentes CGV pour les commandes futures, notamment en raison d'une évolution légale, réglementaire, technique ou commerciale.</p>
+
+<p>La version applicable à une commande ponctuelle est celle acceptée lors de la conclusion du contrat.</p>
+
+<p>Pour un contrat en cours, toute modification substantielle nécessitant l'accord du Client est soumise à cet accord, sauf lorsque la loi prévoit une autre modalité.</p>
+
+<h2>ARTICLE 47 - Nullité partielle et non-renonciation</h2>
+
+<p>Si une stipulation des présentes CGV est déclarée nulle, inapplicable ou contraire à une règle impérative, les autres stipulations restent applicables dans toute la mesure permise par la loi.</p>
+
+<p>Le fait pour une partie de ne pas se prévaloir ponctuellement d'un droit ne vaut pas renonciation définitive à ce droit.</p>
+
+<h2>ARTICLE 48 - Entrée en vigueur</h2>
+
+<p>La présente version finale V1.0 est datée du 9 août 2026.</p>
+
+<p>Elle entre en vigueur pour les commandes et contrats qui s'y réfèrent à compter de sa mise à disposition par SportVision.</p>
+
+<h2>ANNEXE 1 - MODÈLE DE FORMULAIRE DE RÉTRACTATION</h2>
+
+<p>À utiliser uniquement si vous êtes un consommateur bénéficiant d'un droit légal de rétractation et si vous souhaitez vous rétracter du contrat.</p>
+
+<p>À l'attention de :</p>
+
+<ul><li>ELKANA GROUP - SportVision</li><li>4 Place Pierre Semard, 77130 Montereau-Fault-Yonne, France</li><li>E-mail : elkanagroup0@gmail.com</li><li>Téléphone : 07 68 84 24 50</li></ul>
+
+<p>Je / Nous (*) vous notifie / notifions (*) par la présente ma / notre (*) rétractation du contrat portant sur la prestation de services ci-dessous :</p>
+
+<ul><li>Prestation / référence : ______________________</li><li>Commandée / contrat conclu le : ______________________</li><li>Nom du / des consommateur(s) : ______________________</li><li>Adresse du / des consommateur(s) : ______________________</li><li>Date : ______________________</li><li>Signature du / des consommateur(s) (uniquement en cas de notification sur papier) : ______________________</li></ul>
+
+<p>(*) Rayez la mention inutile.</p>
+
+<h2>ANNEXE 2 - GRILLE COMMERCIALE D'ANNULATION</h2>
+
+<p>Cette annexe synthétise la politique commerciale validée. Elle ne remplace pas les droits légaux impératifs, notamment le droit de rétractation lorsqu'il s'applique.</p>
+
+<div class="legal-table-wrap"><table>
+<thead><tr><th>Délai</th><th>Annulation</th><th>Report</th></tr></thead>
+<tbody>
+<tr><td>Plus de 7 jours</td><td>Gratuite</td><td>Possible sans frais, sous réserve de disponibilité</td></tr>
+<tr><td>Entre 7 jours et 48 h</td><td>30 % dus</td><td>Un report gratuit possible, sous réserve de disponibilité</td></tr>
+<tr><td>Moins de 48 h</td><td>50 % dus</td><td>Uniquement avec accord de SportVision</td></tr>
+<tr><td>Jour J / no-show</td><td>100 % dus</td><td>En principe non, sauf cas particulier accepté</td></tr>
+</tbody></table></div>
 
     </div>
   </div>
