@@ -33,11 +33,8 @@ export function LockedModule({ title }: LockedModuleProps) {
           <p className="mt-2 max-w-md text-[13.5px] leading-relaxed text-text-soft">{lockedModuleMessage(ctx)}</p>
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5">
-          <Link href="/billing">
-            <Button variant="primary">Découvrir les offres</Button>
-          </Link>
           <Link href="/support">
-            <Button variant="secondary">Parler à mon conseiller</Button>
+            <Button variant="primary">Parler à mon conseiller</Button>
           </Link>
         </div>
       </Card>

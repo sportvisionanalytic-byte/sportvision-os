@@ -45,7 +45,7 @@ const STATUS_LABEL: Record<OrgUser["status"], string> = {
 
 export default function UsersPage() {
   const { ctx } = useSession();
-  const { toastMessage, showToast } = useToast();
+  const { toastMessage, toastTone, showToast } = useToast();
   const isClub = ctx.organization.type === "club";
   const [users, setUsers] = useState<OrgUser[]>(() => (isClub ? [] : mockOrgUsers[ctx.organization.id] ?? []));
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -104,7 +104,7 @@ export default function UsersPage() {
       .then(() => {
         setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus === "actif" ? "active" : "disabled" } : u)));
       })
-      .catch(() => showToast("Action impossible, réessayez."));
+      .catch(() => showToast("Action impossible, réessayez.", "error"));
   }
 
   return (
@@ -175,7 +175,7 @@ export default function UsersPage() {
         <InviteUserModal roles={availableRoles} onClose={() => setInviteOpen(false)} onInvite={handleInvite} />
       )}
 
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} tone={toastTone} />
     </div>
   );
 }
