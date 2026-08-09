@@ -2,9 +2,16 @@
   base = "livrables/SportVision-Connect/app-next"
   command = "npm run build"
 
-# Next.js App Router détecté automatiquement par le Next Runtime de Netlify (zéro config sur le
-# rendu : SSR/Server Components/Middleware pris en charge nativement, pas de "publish" à préciser
-# ici contrairement aux sites statiques du repo). Variables d'environnement à définir dans
-# Netlify (Site settings → Environment variables), jamais ici :
+# Plugin déclaré explicitement : la détection automatique du Next Runtime par Netlify a échoué
+# une première fois (site créé le 09/08/2026 avec "Runtime: Not set" dans Build settings — tout
+# renvoyait 404, y compris /favicon.ico, signe qu'aucun adaptateur SSR n'était branché). Le
+# déclarer ici force son activation quelle que soit la détection automatique. Pas de "publish" à
+# préciser : le plugin gère lui-même la sortie (SSR/Server Components/Middleware), contrairement
+# aux sites statiques du repo.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Variables d'environnement à définir dans Netlify (Site settings → Environment variables),
+# jamais ici :
 #   NEXT_PUBLIC_SUPABASE_URL
 #   NEXT_PUBLIC_SUPABASE_ANON_KEY
