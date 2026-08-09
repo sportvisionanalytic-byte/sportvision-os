@@ -101,7 +101,10 @@ async function ensureProduct(stripe: Stripe, plan: string): Promise<string> {
     const existing = await stripe.products.retrieve(id);
     if (existing?.id) return existing.id;
   } catch (_e) {
-    // Produit inexistant (première utilisation) : on le crée ci-dessous.
+    // Produit inexistant (première utilisation) : on le crée ci-dessous — cas
+    // attendu, pas une vraie erreur, mais tracé pour distinguer ce cas d'un
+    // souci réseau/API Stripe si la création ci-dessous échoue aussi.
+    console.error("[create-clubplus-subscription-checkout] ensureProduct : produit Stripe non trouvé, création :", _e);
   }
   const created = await stripe.products.create({
     id,
