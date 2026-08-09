@@ -1,35 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Search } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
-import { mockOrganizations } from "@/lib/mock-data";
 import { cn } from "@/lib/cn";
 import { PLAN_OPTIONS_BY_TYPE, useSignup } from "../signup-context";
 import { inputClass } from "../signup-styles";
 
-// Étape 5 · Offre — voir ACTIONS.md § 2. Cartes radio filtrées par type. Un joueur affilié voit
-// une recherche de club à la place (accès financé par le club, voir DATA_MODEL.md § Organization).
+const ENGAGEMENT_PLANS = new Set(["club_plus_start", "club_plus_performance"]);
+
+// Étape 5 · Offre — voir ACTIONS.md § 2. Cartes radio filtrées par type. Un joueur affilié saisit
+// le nom de son club en texte libre : aucune recherche en direct n'est branchée (aucune policy de
+// lecture publique sur `organizations` à ce jour), un conseiller SportVision retrouve et valide le
+// club manuellement — voir le commentaire clubSearch dans signup-context.tsx.
 export default function SignupPlanPage() {
   const router = useRouter();
   const { state, patch } = useSignup();
-  const [clubQuery, setClubQuery] = useState(state.clubSearch);
 
   const isAffiliatedPlayer = state.orgType === "player" && state.playerAffiliation === "join_club";
   const availablePlans = useMemo(
     () => (state.orgType ? PLAN_OPTIONS_BY_TYPE[state.orgType].map((code) => PLANS[code]) : []),
     [state.orgType],
   );
-
-  const clubResults = useMemo(() => {
-    if (!clubQuery.trim()) return [];
-    return mockOrganizations.filter(
-      (o) => o.type === "club" && o.name.toLowerCase().includes(clubQuery.trim().toLowerCase()),
-    );
-  }, [clubQuery]);
+  const selectedPlan = state.planCode ? PLANS[state.planCode] : null;
+  const needsEngagementChoice = selectedPlan !== null && ENGAGEMENT_PLANS.has(selectedPlan.code);
 
   const canContinue = isAffiliatedPlayer ? state.clubSearch.trim().length > 0 : state.planCode !== null;
 
@@ -47,67 +43,78 @@ export default function SignupPlanPage() {
       </div>
 
       {isAffiliatedPlayer ? (
-        <div className="flex flex-col gap-3">
-          <div className="relative max-w-md">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-faint" aria-hidden />
-            <input
-              value={clubQuery}
-              onChange={(e) => {
-                setClubQuery(e.target.value);
-                patch({ clubSearch: e.target.value });
-              }}
-              className={cn(inputClass, "pl-9")}
-              placeholder="Rechercher un club sur Connect…"
-            />
-          </div>
-          {clubResults.length > 0 && (
-            <Card className="max-w-md divide-y divide-divider">
-              {clubResults.map((club) => (
-                <button
-                  key={club.id}
-                  type="button"
-                  onClick={() => {
-                    setClubQuery(club.name);
-                    patch({ clubSearch: club.name });
-                  }}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left text-[13px] font-semibold hover:bg-row-hover"
-                >
-                  {club.name}
-                  {state.clubSearch === club.name && <Check className="h-4 w-4 text-brand-blue" aria-hidden />}
-                </button>
-              ))}
-            </Card>
-          )}
+        <div className="flex flex-col gap-2 max-w-md">
+          <input
+            value={state.clubSearch}
+            onChange={(e) => patch({ clubSearch: e.target.value })}
+            className={inputClass}
+            placeholder="Nom du club"
+          />
+          <p className="text-[12px] text-text-soft">
+            Un conseiller SportVision vérifie et rattache votre compte à ce club sous 24 à 48h ouvrées.
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {availablePlans.map((plan) => {
-            const selected = state.planCode === plan.code;
-            return (
-              <button
-                key={plan.code}
-                type="button"
-                onClick={() => patch({ planCode: plan.code })}
-                className={cn(
-                  "flex flex-col items-start gap-2.5 rounded-sv-card border p-4 text-left transition-[transform,border-color] duration-sv hover:-translate-y-0.5",
-                  selected ? "border-brand-blue bg-info-bg shadow-sv-card-hover" : "border-border bg-surface",
-                )}
-              >
-                <span className="flex w-full items-center justify-between">
-                  <span className="text-[16px] font-extrabold tracking-tight">{plan.name}</span>
-                  {selected && (
-                    <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-brand-blue text-white">
-                      <Check className="h-3 w-3" aria-hidden />
-                    </span>
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {availablePlans.map((plan) => {
+              const selected = state.planCode === plan.code;
+              return (
+                <button
+                  key={plan.code}
+                  type="button"
+                  onClick={() => patch({ planCode: plan.code })}
+                  className={cn(
+                    "flex flex-col items-start gap-2.5 rounded-sv-card border p-4 text-left transition-[transform,border-color] duration-sv hover:-translate-y-0.5",
+                    selected ? "border-brand-blue bg-info-bg shadow-sv-card-hover" : "border-border bg-surface",
                   )}
-                </span>
-                <span className="text-[13px] font-bold text-brand-blue-electric">{formatPlanPrice(plan)}</span>
-                <span className="text-[12px] text-text-soft">
-                  {formatPlanCredits(plan)} · {plan.maxUsers === null ? "Utilisateurs illimités" : `${plan.maxUsers} utilisateurs`}
-                </span>
-              </button>
-            );
-          })}
+                >
+                  <span className="flex w-full items-center justify-between">
+                    <span className="text-[16px] font-extrabold tracking-tight">{plan.name}</span>
+                    {selected && (
+                      <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-brand-blue text-white">
+                        <Check className="h-3 w-3" aria-hidden />
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[13px] font-bold text-brand-blue-electric">{formatPlanPrice(plan)}</span>
+                  <span className="text-[12px] text-text-soft">
+                    {formatPlanCredits(plan)} · {plan.maxUsers === null ? "Utilisateurs illimités" : `${plan.maxUsers} utilisateurs`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {needsEngagementChoice && selectedPlan && (
+            <div className="flex flex-col gap-2 rounded-sv-card border border-border bg-surface-alt p-4">
+              <span className="text-[13px] font-extrabold tracking-tight">Engagement</span>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => patch({ engagement: "12mois" })}
+                  className={cn(
+                    "rounded-xl border px-3.5 py-3 text-left transition-colors duration-sv",
+                    state.engagement === "12mois" ? "border-brand-blue-electric bg-info-bg" : "border-border-strong bg-surface",
+                  )}
+                >
+                  <div className="text-[13px] font-extrabold tracking-tight">Engagement 12 mois</div>
+                  <div className="mt-0.5 text-[12px] text-text-soft">{selectedPlan.monthlyPrice} € / mois</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => patch({ engagement: "sans" })}
+                  className={cn(
+                    "rounded-xl border px-3.5 py-3 text-left transition-colors duration-sv",
+                    state.engagement === "sans" ? "border-brand-blue-electric bg-info-bg" : "border-border-strong bg-surface",
+                  )}
+                >
+                  <div className="text-[13px] font-extrabold tracking-tight">Sans engagement</div>
+                  <div className="mt-0.5 text-[12px] text-text-soft">{selectedPlan.monthlyPriceNoCommitment} € / mois</div>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

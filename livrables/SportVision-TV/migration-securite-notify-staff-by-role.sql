@@ -1,0 +1,27 @@
+-- Migration : ferme un relais de spam de notifications ouvert sur notify_staff_by_role().
+--
+-- ─── Découverte ──────────────────────────────────────────────────────────
+-- Trouvé le 09/08/2026 en écrivant l'inscription self-service de SportVision Connect
+-- (app-next) : notify_staff_by_role() (migration-portail-v10.sql) n'a jamais eu de
+-- `revoke execute`, contrairement aux 5 fonctions déjà corrigées par
+-- migration-securite-enqueue-notification.sql, et aux 6 fonctions corrigées par
+-- migration-audit-nocturne-securite-09-08.sql. PostgREST expose par défaut TOUTE
+-- fonction du schéma public en RPC à tout rôle — y compris anon (aucune authentification
+-- requise).
+--
+-- Conséquence concrète : n'importe qui (même sans compte, avec la seule clé anon publique
+-- déjà exposée côté client) pouvait appeler rpc/notify_staff_by_role directement avec un
+-- titre (p_titre) et un message (p_message) entièrement arbitraires, créant de fausses
+-- notifications adressées à tout le staff ayant l'un des rôles choisis (p_roles) — spam,
+-- désinformation interne, ou notifications trompeuses imitant un événement réel (nouvelle
+-- demande, paiement, etc.) dans l'OS.
+--
+-- Correctif : revoke execute pour public/anon/authenticated. Les appels internes (triggers
+-- et Edge Functions en service_role, ex. connect-org-signup, connect-signup-lead,
+-- clubplus-onboarding, stripe-webhook) continuent de fonctionner — même principe déjà
+-- établi par les deux migrations citées ci-dessus.
+--
+-- Idempotente : REVOKE ne lève pas d'erreur si le privilège n'existe déjà plus.
+-- À exécuter dès que possible, indépendante de tout autre chantier.
+
+revoke execute on function notify_staff_by_role(text[], text, text, text, uuid, uuid) from public, anon, authenticated;

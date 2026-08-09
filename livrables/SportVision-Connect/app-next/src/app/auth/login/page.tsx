@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
+import { consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
 
 // /auth/login — voir ACTIONS.md § 1. Ne jamais préciser si c'est l'e-mail ou le mot de passe
 // qui est faux dans le message d'erreur.
@@ -24,11 +25,27 @@ export default function LoginPage() {
     setSubmitting(true);
     const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    setSubmitting(false);
     if (signInError) {
+      setSubmitting(false);
       setError(true);
       return;
     }
+
+    // Filet de sécurité inscription (voir lib/signup/pending-onboarding.ts) : si ce compte
+    // vient de confirmer son e-mail sans jamais avoir eu de session pour finaliser son
+    // inscription, on la rejoue maintenant. Échec journalisé seulement, jamais bloquant pour
+    // la connexion elle-même.
+    try {
+      const result = await consumePendingOnboarding(supabase);
+      if (result?.redirectUrl) {
+        window.location.href = result.redirectUrl;
+        return;
+      }
+    } catch (e) {
+      console.error("[login] rejeu de l'inscription en attente échoué :", e);
+    }
+
+    setSubmitting(false);
     router.push("/dashboard");
     router.refresh();
   }

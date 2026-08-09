@@ -45,7 +45,11 @@ export interface SignupState {
   org: SignupOrg;
   needs: { selected: string[]; freeText: string };
   planCode: PlanCode | null;
-  /** Recherche de club — remplace le choix d'offre pour un joueur affilié. */
+  /** Uniquement pour club_plus_start/club_plus_performance — voir src/lib/plans.ts. */
+  engagement: "12mois" | "sans";
+  /** Recherche de club — remplace le choix d'offre pour un joueur affilié. Texte libre : aucune
+   * recherche en direct n'est branchée (aucune policy de lecture publique sur `organizations` à
+   * ce jour) — un conseiller SportVision retrouve et valide le club manuellement. */
   clubSearch: string;
   payment: SignupPayment;
   /** Message de mise en relation — remplace le paiement pour Full Communication. */
@@ -59,6 +63,7 @@ const EMPTY_STATE: SignupState = {
   org: { logoUrl: "", name: "", address: "", instagram: "", siret: "", teamCount: "", memberCount: "" },
   needs: { selected: [], freeText: "" },
   planCode: null,
+  engagement: "12mois",
   clubSearch: "",
   payment: { cardNumber: "", expiry: "", cvc: "" },
   quoteMessage: "",

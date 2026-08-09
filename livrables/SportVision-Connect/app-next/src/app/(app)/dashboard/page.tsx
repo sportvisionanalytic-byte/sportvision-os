@@ -5,6 +5,7 @@ import { ClubPlusDashboard } from "@/components/dashboard/ClubPlusDashboard";
 import { FullCommunicationDashboard } from "@/components/dashboard/FullCommunicationDashboard";
 import { PersonaDashboard } from "@/components/dashboard/PersonaDashboard";
 import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
+import { StripeReturnBanner } from "@/components/dashboard/StripeReturnBanner";
 
 // Aiguilleur — le tableau de bord n'a qu'une seule route mais trois familles de contenu très
 // différentes. Chaque variante vit dans son propre fichier sous src/components/dashboard/ pour
