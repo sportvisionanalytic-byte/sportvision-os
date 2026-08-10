@@ -25,7 +25,7 @@
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: clubplus-invite)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (déjà présents par défaut)
 // Secret optionnel : CONNECT_URL (URL de SportVision Connect pour le lien de retour ; à
-// défaut https://connect.sportvision.fr est utilisée)
+// défaut https://connect.sportvision-an.fr est utilisée)
 //
 // Fix du 08/08/2026 : pointait vers l'ancienne app Club+ séparée
 // (SportVision-Club-Plus.html, absorbée par Connect — cf. ARCHITECTURE-
@@ -86,7 +86,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
+    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision-an.fr";
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },

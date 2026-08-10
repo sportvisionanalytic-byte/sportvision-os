@@ -23,7 +23,7 @@
 //                  PENNYLANE_API_KEY (pour l'avoir automatique sur remboursement — optionnel : si
 //                  absente, le remboursement est quand même resynchronisé, seul l'avoir Pennylane
 //                  n'est pas créé et le staff est notifié pour le faire manuellement),
-//                  CONNECT_URL (optionnel — repli sur https://connect.sportvision.fr ; utilisée
+//                  CONNECT_URL (optionnel — repli sur https://connect.sportvision-an.fr ; utilisée
 //                  dans le lien "Gérer mon abonnement" de l'e-mail d'échec de paiement. Fix du
 //                  08/08/2026 : pointait vers l'ancienne app Club+ séparée.)
 //
@@ -62,7 +62,7 @@ const PENNYLANE_BASE = "https://app.pennylane.com/api/external/v2";
 // prélèvement (lien vers le bouton "Gérer mon abonnement", qui ouvre le
 // Portail de facturation Stripe côté clubplus-billing-portal). Même
 // variable et même repli que create-clubplus-subscription-checkout.
-const CLUBPLUS_CONNECT_URL = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
+const CLUBPLUS_CONNECT_URL = Deno.env.get("CONNECT_URL") || "https://connect.sportvision-an.fr";
 
 /* ── Abonnement Club+ (migration-clubplus-v25) ── */
 
@@ -779,7 +779,7 @@ async function sendPaymentReceiptEmail(
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) return;
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
-  const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
+  const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision-an.fr";
   const montantFmt = (info.montant || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
   const typeLbl = info.type_paiement === "acompte" ? "Acompte" : info.type_paiement === "solde" ? "Solde" : "Paiement total";
 

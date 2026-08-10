@@ -168,7 +168,7 @@ async function sendWelcomeEmail(to: string, prenom: string | undefined, isNewCli
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   if (!resendApiKey) return; // optionnel : pas d'e-mail si le secret n'est pas configuré
   const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
-  const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision.fr";
+  const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision-an.fr";
 
   const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"></head>
