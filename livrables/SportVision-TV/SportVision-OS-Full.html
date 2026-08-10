@@ -3444,6 +3444,12 @@ function modalDetailPrestation(idx){
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">${p.reference||'Prestation'}</div>
     <div style="font-size:12px;color:var(--t3);margin-bottom:10px">${esc(p.clients?.nom||'Sans client')} · ${p.type_prestation||'—'}</div>
+    ${(p.options_selectionnees?.length||p.mode_paiement_choisi||p.distance_km||p.frais_deplacement_ht)?`<div style="background:rgba(124,77,255,.06);border:1px solid rgba(124,77,255,.2);border-radius:var(--rb);padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#7C4DFF">Transmis par le client (tunnel de réservation)</div>
+      ${p.options_selectionnees?.length?`<div style="font-size:12px;color:var(--t1)"><b>Options choisies :</b> ${esc(p.options_selectionnees.join(', '))}</div>`:''}
+      ${p.mode_paiement_choisi?`<div style="font-size:12px;color:var(--t1)"><b>Mode de paiement souhaité :</b> ${p.mode_paiement_choisi==='carte'?'Carte (en ligne)':'Espèces (sur place)'}</div>`:''}
+      ${(p.distance_km||p.frais_deplacement_ht)?`<div style="font-size:12px;color:var(--t1)"><b>Déplacement :</b> ${p.distance_km?p.distance_km+' km (A/R)':'—'}${p.frais_deplacement_ht?' · '+p.frais_deplacement_ht.toLocaleString('fr-FR')+' € HT':''}</div>`:''}
+    </div>`:''}
     ${p.statut==='à_valider_production'&&S.role==='prod'?`<div style="display:flex;gap:8px;margin-bottom:14px;padding:12px 14px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.25);border-radius:var(--rb)">
       <div style="flex:1"><div style="font-size:11px;font-weight:700;color:var(--er);margin-bottom:2px">VALIDATION PRODUCTION REQUISE</div>
       <div style="font-size:12px;color:var(--t2)">Cette prestation attend votre validation avant planification.</div></div>
@@ -17625,7 +17631,7 @@ async function loadKanban(){
 
 async function modalDetailById(id){
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,briefing_vu_at,clients(nom)&id=eq.'+id);
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,briefing_vu_at,options_selectionnees,mode_paiement_choisi,distance_km,frais_deplacement_ht,clients(nom)&id=eq.'+id);
     if(!data||!data[0])return;
     if(S.role==='prod'){modalProdFiche(data[0]);return;}
     if(S.role==='photo'){
