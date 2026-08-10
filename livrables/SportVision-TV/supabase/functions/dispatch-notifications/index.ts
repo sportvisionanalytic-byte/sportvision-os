@@ -25,7 +25,7 @@
 // déclencher le traitement de la file à volonté.
 //
 // Secrets requis (Supabase → Edge Functions → dispatch-notifications → Secrets) :
-//   BREVO_API_KEY, FROM_EMAIL (ex: "SportVision <notifications@sportvision.fr>"),
+//   BREVO_API_KEY, FROM_EMAIL (ex: "SportVision <notifications@sportvision-an.fr>"),
 //   DISPATCH_NOTIFICATIONS_SECRET (même valeur que le secret Vault
 //   "dispatch_notifications_key" créé par migration-connect-v11)
 // Tant que BREVO_API_KEY n'est pas configurée, la fonction renvoie une erreur
@@ -121,7 +121,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const brevoApiKey = Deno.env.get("BREVO_API_KEY");
-    const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <notifications@sportvision.fr>";
+    const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <notifications@sportvision-an.fr>";
     const admin = createClient(supabaseUrl, serviceKey);
 
     const { data: batch, error: batchErr } = await admin
