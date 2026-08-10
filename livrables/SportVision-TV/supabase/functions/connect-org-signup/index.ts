@@ -181,6 +181,77 @@ serve(async (req) => {
     });
     if (memberErr) return json({ error: memberErr.message }, 500);
 
+    // Pont Documents ↔ Portail (best-effort, ne bloque jamais la création de l'organisation) :
+    // même bloc que clubplus-onboarding (voir supabase/functions/clubplus-onboarding/index.ts,
+    // section "Pont Documents ↔ Portail"), mais relie organizations.legacy_client_id au lieu de
+    // clubs.portail_client_id — cette colonne existe déjà (migration-connect-v2-organizations-
+    // entitlements.sql, ligne 56) mais n'était encore jamais peuplée pour 'coach'/'academie',
+    // laissant ces organisations invisibles de l'OS (aucune ligne `clients`, donc absentes de
+    // toute liste/KPI côté staff) et bloquant tout module client_id-scoped (Séances/Stages ici ;
+    // MyCM/Accompagnement plus tard). Même garde que clubplus-onboarding : ne rapprocher/créer que
+    // si Supabase a confirmé que l'appelant possède bien cette adresse (email_confirmed_at non
+    // nul) — sans cette vérification, si la confirmation par e-mail était un jour désactivée côté
+    // projet, n'importe qui pourrait s'inscrire avec l'e-mail de quelqu'un d'autre et hériter
+    // immédiatement de ses documents financiers existants (audit du 2026-08-06).
+    //
+    // type_client choisi : 'entreprise'. La contrainte check réelle de clients.type_client
+    // (supabase-schema-v2.sql) n'accepte que 5 valeurs : 'club','association','entreprise',
+    // 'particulier','fédération' — aucune dédiée à un coach ou une académie. 'club' est écarté (ni
+    // l'un ni l'autre n'est un club) et 'fédération' aussi (échelle sans rapport). Entre
+    // 'association' et 'entreprise', 'entreprise' est retenu pour les deux organization_type : un
+    // coach self-service est très majoritairement un professionnel indépendant (auto-entrepreneur/
+    // entreprise individuelle) qui vend une prestation, pas un particulier réservant une séance
+    // pour lui-même ; une académie, même parfois structurée en association loi 1901, reste ici une
+    // structure professionnelle qui souscrit une offre payante (Club+/Full Communication), pas un
+    // particulier. 'entreprise' est déjà le bucket utilisé ailleurs dans l'écosystème pour tout
+    // profil professionnel qui n'est ni club ni organisateur associatif identifié comme tel (voir
+    // TYPE_CLIENT_MAP dans supabase/functions/portal-onboarding/index.ts) — c'est le choix le plus
+    // proche disponible, pas une certitude juridique. Purement informatif (alimente
+    // CONTRAT_CLIENT_FORMES pour le libellé de forme juridique si un contrat est généré) : un
+    // membre du staff peut le corriger à la main dans la fiche client de l'OS si besoin.
+    if (user.email && user.email_confirmed_at) {
+      try {
+        const { data: matchedClient } = await admin
+          .from("clients")
+          .select("id")
+          .ilike("email", user.email)
+          .limit(1)
+          .maybeSingle();
+
+        let linkedClientId: string | null = matchedClient?.id ?? null;
+
+        if (!linkedClientId) {
+          const { data: createdClient, error: createClientErr } = await admin
+            .from("clients")
+            .insert({
+              statut: "prospect",
+              type_client: "entreprise",
+              nom,
+              nom_contact: nomContact || null,
+              prenom_contact: prenom || null,
+              email: user.email,
+              telephone: telephone || null,
+              ville: ville || null,
+              origine_prospect: "connect",
+            })
+            .select("id")
+            .single();
+          if (createClientErr) throw createClientErr;
+          linkedClientId = createdClient.id;
+        }
+
+        await admin.from("organizations").update({ legacy_client_id: linkedClientId }).eq("id", createdOrg.id);
+        await admin
+          .from("client_users")
+          .upsert(
+            { id: user.id, client_id: linkedClientId, prenom: prenom || null, nom: nomContact || null, telephone: telephone || null },
+            { onConflict: "id" },
+          );
+      } catch (_e) {
+        console.error("[connect-org-signup] rattachement/création du client Portail a échoué (best-effort) :", _e);
+      }
+    }
+
     // Notifie le staff — aucune facturation réelle n'est déclenchée par cette fonction
     // (voir en-tête) : un conseiller doit reprendre la main pour toute offre payante.
     try {
