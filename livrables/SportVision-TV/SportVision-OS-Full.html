@@ -19898,7 +19898,9 @@ function modalNouveauContrat(){
           <option value="elite">Elite (prestations illimitées)</option>
           <option value="sur_mesure">Sur mesure</option>
         </select></div>
-      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES</label>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">PÉRIMÈTRE / PRESTATIONS INCLUSES</label>
+        <textarea id="nc-description" rows="3" placeholder="Ce qui est concrètement inclus dans ce contrat (imprimé dans le contrat et le PDF envoyé en signature)..." style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea></div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3)">(usage interne — n'apparaît pas dans le contrat imprimé)</span></label>
         <textarea id="nc-notes" rows="3" placeholder="Notes, conditions particulières..." style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
@@ -19923,9 +19925,20 @@ async function sauvegarderContrat(){
     montant_mensuel:parseFloat(document.getElementById('nc-montant').value)||null,frequence:document.getElementById('nc-freq').value,
     date_debut:dateDebut,date_fin:dateFin,
     renouvellement_auto:document.getElementById('nc-auto').checked,notes:document.getElementById('nc-notes').value.trim()||null,
+    description:document.getElementById('nc-description')?.value.trim()||null,
     type_abonnement:document.getElementById('nc-abonnement')?.value||null,
     created_by:S.uid};
-  const r=await sbFetch('contrats',{method:'POST',body:payload});
+  let r=await sbFetch('contrats',{method:'POST',body:payload});
+  let descriptionNonEnregistree=false;
+  if(sbErr(r)&&/description/i.test(r.message||'')&&payload.description!==undefined){
+    // Colonne "description" pas encore migrée (migration-contrats-v3-description.sql
+    // EN ATTENTE d'exécution) : on retente sans elle plutôt que de bloquer la création
+    // du contrat. Le staff garde son texte dans le champ tant qu'il ne ferme pas la
+    // modale, mais il ne sera pas persisté avant l'exécution de la migration.
+    const {description,...payloadSansDescription}=payload;
+    r=await sbFetch('contrats',{method:'POST',body:payloadSansDescription});
+    descriptionNonEnregistree=!sbErr(r);
+  }
   if(sbErr(r)){if(err){err.textContent='Erreur: '+(r.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}return;}
   if(payload.statut==='actif'&&clientId){
     try{
@@ -19936,7 +19949,9 @@ async function sauvegarderContrat(){
       }
     }catch(e){}
   }
-  closeModal();toast('Contrat créé','ok');await loadContrats();
+  closeModal();
+  toast(descriptionNonEnregistree?'Contrat créé — le périmètre n\'a pas pu être enregistré (migration-contrats-v3-description.sql non exécutée).':'Contrat créé',descriptionNonEnregistree?'wa':'ok');
+  await loadContrats();
 }
 
 async function modalContratFromDevis(devisId){
@@ -20015,7 +20030,10 @@ async function modalContratFromDevis(devisId){
             <input id="nc-fin" type="date" value="${fin1y}" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box">
           </div>
         </div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES</label>
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">PÉRIMÈTRE / PRESTATIONS INCLUSES</label>
+          <textarea id="nc-description" rows="3" placeholder="Ce qui est concrètement inclus dans ce contrat (imprimé dans le contrat et le PDF envoyé en signature)..." style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea>
+        </div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3)">(usage interne — n'apparaît pas dans le contrat imprimé)</span></label>
           <textarea id="nc-notes" rows="3" placeholder="Conditions, services inclus…" style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(d.notes||'')}</textarea>
         </div>
       </div>
@@ -20075,7 +20093,9 @@ async function modalEditerContrat(id){
         <input type="checkbox" id="ec-auto"${c.renouvellement_auto?' checked':''} style="width:15px;height:15px;accent-color:var(--acc)">
         <label for="ec-auto" style="font-size:13px;color:var(--t2);cursor:pointer">Renouvellement automatique</label>
       </div>
-      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES</label>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">PÉRIMÈTRE / PRESTATIONS INCLUSES</label>
+        <textarea id="ec-description" rows="3" placeholder="Ce qui est concrètement inclus dans ce contrat (imprimé dans le contrat et le PDF envoyé en signature)..." style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(c.description||'')}</textarea></div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3)">(usage interne — n'apparaît pas dans le contrat imprimé)</span></label>
         <textarea id="ec-notes" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(c.notes||'')}</textarea></div>
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:20px">
@@ -20094,8 +20114,17 @@ async function mettreAJourContrat(id){
   const payload={type_contrat:document.getElementById('ec-type').value,statut:document.getElementById('ec-statut').value,
     montant_mensuel:parseFloat(document.getElementById('ec-montant').value)||null,frequence:document.getElementById('ec-freq').value,
     date_debut:dateDebut,date_fin:dateFin,
-    renouvellement_auto:document.getElementById('ec-auto').checked,notes:document.getElementById('ec-notes').value.trim()||null};
-  const r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payload});
+    renouvellement_auto:document.getElementById('ec-auto').checked,notes:document.getElementById('ec-notes').value.trim()||null,
+    description:document.getElementById('ec-description')?.value.trim()||null};
+  let r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payload});
+  let descriptionNonEnregistree=false;
+  if(sbErr(r)&&/description/i.test(r.message||'')&&payload.description!==undefined){
+    // Colonne "description" pas encore migrée (migration-contrats-v3-description.sql
+    // EN ATTENTE d'exécution) : on retente sans elle plutôt que de bloquer la modification.
+    const {description,...payloadSansDescription}=payload;
+    r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payloadSansDescription});
+    descriptionNonEnregistree=!sbErr(r);
+  }
   if(sbErr(r)){const e=document.getElementById('ecf-err');if(e){e.textContent='Erreur: '+(r.message||'Impossible de modifier.');e.style.display='block';}return;}
   if(payload.statut==='actif'){
     try{
@@ -20110,7 +20139,9 @@ async function mettreAJourContrat(id){
       }
     }catch(e){}
   }
-  closeModal();toast('Contrat mis à jour','ok');await loadContrats();
+  closeModal();
+  toast(descriptionNonEnregistree?'Contrat mis à jour — le périmètre n\'a pas pu être enregistré (migration-contrats-v3-description.sql non exécutée).':'Contrat mis à jour',descriptionNonEnregistree?'wa':'ok');
+  await loadContrats();
 }
 
 async function supprimerContrat(id){
