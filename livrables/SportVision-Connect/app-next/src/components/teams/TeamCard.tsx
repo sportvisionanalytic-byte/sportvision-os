@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MapPin, Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { cn } from "@/lib/cn";
 import { isRealId } from "@/lib/mock/teams";
 import type { Team } from "@/lib/types/teams";
 
@@ -9,8 +10,14 @@ import type { Team } from "@/lib/types/teams";
 // affiche "Équipe introuvable" (voir le TODO de ce fichier). On évite donc de router vers une
 // page dont l'issue est déjà connue.
 export function TeamCard({ team }: { team: Team }) {
+  const clickable = !isRealId(team.id);
   const body = (
-    <Card className="group h-full p-4.5 hover:-translate-y-0.5 hover:border-brand-blue-pale hover:shadow-sv-card-hover">
+    <Card
+      className={cn(
+        "group h-full p-4.5",
+        clickable && "hover:-translate-y-0.5 hover:border-brand-blue-pale hover:shadow-sv-card-hover",
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[15px] font-extrabold tracking-tight">{team.name}</div>
