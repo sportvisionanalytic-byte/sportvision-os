@@ -91,8 +91,7 @@ function AnalyticsScreen({ clientId }: { clientId: string }) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <div className="text-[12px] font-bold text-text-soft">Full Communication</div>
-        <h1 className="mt-1 text-[24px] font-extrabold tracking-tight">Statistiques</h1>
+        <h1 className="text-[24px] font-extrabold tracking-tight">Statistiques</h1>
         <p className="mt-1 text-[13.5px] text-text-soft">
           Saisies manuellement par votre Community Manager, contenu par contenu — pas de synchronisation automatique.
         </p>
