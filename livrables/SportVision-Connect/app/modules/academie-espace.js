@@ -41,6 +41,7 @@
       .ae-toolbar h2{margin:0;font-size:19px}
       .ae-pillbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
       .ae-pill{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer;font-weight:600}
+      .ae-pill:not(.on):hover{border-color:var(--accent);color:var(--text)}
       .ae-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
       .ae-empty{background:var(--card);border:1px dashed var(--border);border-radius:var(--radius);padding:28px;text-align:center;color:var(--muted)}
       .ae-list{display:flex;flex-direction:column;gap:8px}

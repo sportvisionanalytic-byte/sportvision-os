@@ -59,6 +59,7 @@
       .cm-toolbar h2{margin:0;font-size:19px}
       .cm-pillbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
       .cm-pill{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer;font-weight:600}
+      .cm-pill:not(.on):hover{border-color:var(--accent);color:var(--text)}
       .cm-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
       .cm-empty{background:var(--card);border:1px dashed var(--border);border-radius:var(--radius);padding:28px;text-align:center;color:var(--muted)}
       .cm-list{display:flex;flex-direction:column;gap:8px}

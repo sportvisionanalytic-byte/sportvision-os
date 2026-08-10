@@ -116,6 +116,7 @@
       '.je-error{color:var(--danger)}',
       '.je-pillbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}',
       '.je-pill{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}',
+      '.je-pill:not(.on):hover{border-color:var(--accent);color:var(--text)}',
       '.je-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}',
       '.je-list{display:flex;flex-direction:column;gap:8px}',
       '.je-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}',

@@ -155,6 +155,7 @@
       '.ccal-tabbtn.on{color:var(--accent);border-bottom-color:var(--accent)}',
       '.ccal-pillbar{display:flex;gap:8px;flex-wrap:wrap}',
       '.ccal-pill{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}',
+      '.ccal-pill:not(.on):hover{border-color:var(--accent);color:var(--text)}',
       '.ccal-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}',
       '.ccal-month-head{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px}',
       '.ccal-month-label{font-size:14.5px;font-weight:700;min-width:150px;text-align:center;text-transform:capitalize}',

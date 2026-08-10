@@ -83,6 +83,7 @@
       '.cem-error{color:var(--danger)}',
       '.cem-pillbar{display:flex;gap:8px;flex-wrap:wrap}',
       '.cem-pill{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}',
+      '.cem-pill:not(.on):hover{border-color:var(--accent);color:var(--text)}',
       '.cem-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}',
       '.cem-list{display:flex;flex-direction:column;gap:8px}',
       '.cem-row-item{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;width:100%;text-align:left;font:inherit;color:inherit}',
