@@ -4472,13 +4472,21 @@ async function loadProdDash(){
       sbFetch('kits?select=id,statut,nom,type_kit'),
       sbFetch('incidents?select=id,type_incident,description,niveau,cloture,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
       sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=nom.asc'),
-      sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
+      sbFetch('prestations_equipe?select=remuneration,statut_paiement,prestations!inner(statut)&statut=eq.acceptée&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
     ]);
     const pre=Array.isArray(preRaw)?preRaw:[];
     const kits=Array.isArray(kitsRaw)?kitsRaw:[];
     const inc=Array.isArray(incRaw)?incRaw:[];
     const prof=Array.isArray(profRaw)?profRaw:[];
-    const remAtt=(Array.isArray(remRaw)?remRaw:[]).reduce((s,r)=>s+(r.remuneration||0),0);
+    // Cette KPI renvoie vers switchView('rem') (prod.rem / loadProdRemunerations) : elle
+    // doit compter exactement les mêmes lignes que cet écran, sinon le chiffre affiché ici
+    // ne correspond pas à ce que l'utilisateur voit en cliquant dessus. Avant ce correctif,
+    // la requête ne filtrait ni sur prestations_equipe.statut='acceptée' (elle sommait aussi
+    // les invitations en attente, refusées ou remplacées), ni sur le statut de la prestation
+    // liée (elle sommait aussi les missions annulées/refusées) — surestimant largement le
+    // montant "à contrôler". Même règle que loadProdRemunerations pour les missions
+    // annulées/refusées : exclue, sauf si déjà validée avant l'annulation.
+    const remAtt=(Array.isArray(remRaw)?remRaw:[]).filter(r=>!['annulée','refusée'].includes(r.prestations?.statut)||r.statut_paiement==='validé').reduce((s,r)=>s+(r.remuneration||0),0);
     // KPIs
     const VALIDER_ST=['à_valider_production'];
     const aValider=pre.filter(p=>VALIDER_ST.includes(p.statut));
