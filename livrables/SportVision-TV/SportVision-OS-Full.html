@@ -699,6 +699,7 @@ const NAV={
     {id:'pipeline',lb:'Prospection',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
+    {id:'cmagency',lb:'Agences CM',ic:'cli'},
     {type:'sep',lb:'Équipe & RH'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
     {id:'users',lb:'Utilisateurs & accès',ic:'col'},
@@ -751,6 +752,7 @@ const NAV={
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
     {id:'abonnements',lb:'Abonnements',ic:'pre'},
+    {id:'cmagency',lb:'Agences CM',ic:'cli'},
     {type:'sep',lb:'Prestations'},
     {id:'pre',lb:'Prestations',ic:'pre'},
     {id:'planning',lb:'Planning admin',ic:'cal'},
@@ -1045,6 +1047,10 @@ const VIEWS={
   'admin.crm':()=>`
     <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
     <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── Accès délégués Agence CM ↔ Club (plan Tier C § Phase 3 « Accompagnement », 10/08/2026) ──
+  'admin.cmagency':()=>_cmAgencyAccessView(),
+  'sec.cmagency':()=>_cmAgencyAccessView(),
 
   'sec.dash':()=>`
     <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px">
@@ -3218,6 +3224,7 @@ async function creerCollaborateur(){
 async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='prod')&&view==='pre') await loadPrestations();
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
+  if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
   if(role==='admin'&&view==='col') await loadCollaborateurs();
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';await loadKits();}
   if(role==='admin'&&view==='dash') await loadAdminDash();
@@ -4126,6 +4133,166 @@ async function genererChecklistStandard(orgId,orgNom){
   if(sbErr(r)){toast('Erreur : '+(r.message||'Génération impossible.'),'er');return;}
   toast('Checklist standard générée.','ok');
   renderChecklistEvenement(orgId,orgNom);
+}
+
+// ── Accès délégués Agence CM ↔ Club (plan Tier C § Phase 3 « Accompagnement », 10/08/2026) ──
+// CRUD simple : lister/déléguer/révoquer le périmètre qu'un club confie à une agence CM externe
+// (table cm_agency_club_access, migration-cm-agency-club-access.sql — À EXÉCUTER PAR FOUKA).
+// Écran réservé admin/sec (nav) ; écriture RLS réservée à role in ('admin','sec','com').
+let _cmAgencyOrgs=[];
+let _cmAgencyClubsCache=[];
+let _cmAgencySelectedId='';
+let _cmAgencyAccessCache=[];
+
+function _cmAgencyAccessView(){
+  return`<div class="sh"><div class="sh-t">Accès délégués agences CM</div></div>
+  <div style="font-size:12px;color:var(--t3);margin-bottom:14px;max-width:680px">Le périmètre que chaque club délègue à une agence CM externe pour produire et publier en son nom (app Connect, module Accompagnement « Mes accès délégués »).</div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <select id="cma-agency-select" class="l-inp" style="height:38px;max-width:320px" onchange="changerAgenceCmAccess(this.value)">
+      <option value="">Chargement des agences…</option>
+    </select>
+    <button class="btn bp bs" id="cma-add-btn" style="display:none" onclick="modalAjouterAccesCmAgency()">+ Déléguer un club</button>
+  </div>
+  <div id="cma-real" style="min-height:160px"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+
+async function loadCmAgencyAccess(){
+  const sel=document.getElementById('cma-agency-select');
+  const real=document.getElementById('cma-real');
+  const addBtn=document.getElementById('cma-add-btn');
+  if(!sel||!real)return;
+  try{
+    const [orgs,clubs]=await Promise.all([
+      sbFetch('organizations?organization_type=eq.cm_agency&select=id,nom&order=nom.asc'),
+      sbFetch('clubs?select=id,nom&order=nom.asc'),
+    ]);
+    _cmAgencyOrgs=Array.isArray(orgs)?orgs:[];
+    _cmAgencyClubsCache=Array.isArray(clubs)?clubs:[];
+    if(!_cmAgencyOrgs.length){
+      sel.innerHTML='<option value="">Aucune agence CM créée</option>';
+      if(addBtn)addBtn.style.display='none';
+      real.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune agence CM n’a encore été créée. Utilisez « Créer espace événement/agence » depuis la fiche client (CRM) pour en générer une.</div>';
+      return;
+    }
+    sel.innerHTML=_cmAgencyOrgs.map(o=>`<option value="${o.id}">${esc(o.nom)}</option>`).join('');
+    _cmAgencySelectedId=_cmAgencyOrgs[0].id;
+    sel.value=_cmAgencySelectedId;
+    if(addBtn)addBtn.style.display='';
+    await renderCmAgencyAccessTable();
+  }catch(e){
+    real.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+async function changerAgenceCmAccess(agencyId){
+  _cmAgencySelectedId=agencyId;
+  await renderCmAgencyAccessTable();
+}
+
+async function renderCmAgencyAccessTable(){
+  const real=document.getElementById('cma-real');
+  if(!real)return;
+  if(!_cmAgencySelectedId){real.innerHTML='';return;}
+  real.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const rows=await sbFetch('cm_agency_club_access?cm_agency_org_id=eq.'+_cmAgencySelectedId+'&select=id,club_id,allowed,denied,expires_at,created_at,clubs(nom)&order=created_at.desc');
+    if(sbErr(rows)){real.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement (la migration cm_agency_club_access a-t-elle été exécutée ?).</div>';return;}
+    _cmAgencyAccessCache=Array.isArray(rows)?rows:[];
+    if(!_cmAgencyAccessCache.length){
+      real.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun club délégué à cette agence pour le moment.</div>';
+      return;
+    }
+    real.innerHTML='<div class="tw"><table><thead><tr><th>Club</th><th>Autorisé</th><th>Non autorisé</th><th>Expire le</th><th></th></tr></thead><tbody>'+
+      _cmAgencyAccessCache.map(r=>{
+        const clubNom=(r.clubs&&r.clubs.nom)?r.clubs.nom:'—';
+        const allowed=(r.allowed||[]).map(esc).join(', ')||'—';
+        const denied=(r.denied||[]).map(esc).join(', ')||'—';
+        const exp=r.expires_at?new Date(r.expires_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
+        return`<tr>
+          <td class="tp">${esc(clubNom)}</td>
+          <td style="font-size:12px;color:var(--ok)">${allowed}</td>
+          <td style="font-size:12px;color:var(--er)">${denied}</td>
+          <td>${exp}</td>
+          <td><button onclick="revoquerAccesCmAgency('${r.id}','${escJs(clubNom)}')" style="padding:4px 8px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Révoquer</button></td>
+        </tr>`;
+      }).join('')+
+    '</tbody></table></div>';
+  }catch(e){
+    real.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+function modalAjouterAccesCmAgency(){
+  if(!_cmAgencySelectedId){toast('Sélectionnez une agence d’abord.','er');return;}
+  const agency=_cmAgencyOrgs.find(o=>o.id===_cmAgencySelectedId);
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const alreadyIds=new Set(_cmAgencyAccessCache.map(r=>r.club_id));
+  const available=_cmAgencyClubsCache.filter(c=>!alreadyIds.has(c.id));
+  openModal(`<div class="mh"><div class="mt">Déléguer un club à ${esc(agency?agency.nom:'')}</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="${lbl}">Club</label>
+        <select id="cma-club" class="l-inp" style="height:38px">
+          ${available.length?available.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join(''):'<option value="">Aucun club disponible</option>'}
+        </select>
+        ${!available.length?'<div style="font-size:11px;color:var(--t3);margin-top:4px">Tous les clubs Club+ existants ont déjà un accès délégué à cette agence.</div>':''}
+      </div>
+      <div><label style="${lbl}">Autorisé (séparé par des virgules)</label>
+        <input id="cma-allowed" type="text" class="l-inp" style="height:38px" placeholder="Créer des publications, Consulter la médiathèque">
+      </div>
+      <div><label style="${lbl}">Non autorisé (séparé par des virgules)</label>
+        <input id="cma-denied" type="text" class="l-inp" style="height:38px" placeholder="Facturation, Gestion des utilisateurs">
+      </div>
+      <div><label style="${lbl}">Expire le</label>
+        <input id="cma-expires" type="date" class="l-inp" style="height:38px">
+      </div>
+      <div id="cma-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" id="cma-btn" onclick="creerAccesCmAgency()">Déléguer</button>
+    </div>`);
+}
+
+async function creerAccesCmAgency(){
+  const err=document.getElementById('cma-err');
+  const btn=document.getElementById('cma-btn');
+  const clubId=document.getElementById('cma-club')?.value||'';
+  if(!clubId){if(err)err.textContent='Choisissez un club.';return;}
+  const allowed=(document.getElementById('cma-allowed')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const denied=(document.getElementById('cma-denied')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const expiresAt=document.getElementById('cma-expires')?.value||null;
+  if(err)err.textContent='';
+  if(btn){btn.disabled=true;btn.textContent='Enregistrement…';}
+  try{
+    const r=await sbFetch('cm_agency_club_access',{method:'POST',body:{
+      cm_agency_org_id:_cmAgencySelectedId,
+      club_id:clubId,
+      allowed,
+      denied,
+      expires_at:expiresAt||null,
+      granted_by:S.uid,
+    }});
+    if(sbErr(r)){
+      if(err)err.textContent=r.code==='23505'?'Ce club a déjà un accès délégué pour cette agence.':'Erreur : '+(r.message||'Délégation impossible.');
+      if(btn){btn.disabled=false;btn.textContent='Déléguer';}
+      return;
+    }
+    closeModal();
+    toast('Accès délégué.','ok');
+    await renderCmAgencyAccessTable();
+  }catch(e){
+    if(err)err.textContent='Erreur réseau.';
+    if(btn){btn.disabled=false;btn.textContent='Déléguer';}
+  }
+}
+
+function revoquerAccesCmAgency(id,clubNom){
+  confirmerAction('Révoquer l’accès délégué de '+esc(clubNom)+' ? L’agence perdra immédiatement ce périmètre.',async()=>{
+    const r=await sbFetch('cm_agency_club_access?id=eq.'+id,{method:'DELETE'});
+    if(sbErr(r)){toast('Erreur : révocation impossible.','er');return;}
+    toast('Accès révoqué.','ok');
+    await renderCmAgencyAccessTable();
+  });
 }
 
 function supprimerClient(id){

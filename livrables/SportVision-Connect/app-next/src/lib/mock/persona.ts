@@ -5,14 +5,11 @@
 // d'espace actif (useSession().ctx.organization.id).
 
 import type {
-  AccompagnementContact,
   AccompagnementInclusion,
   ChildDocument,
   ChildImageRight,
   ChildProfile,
   DelegatedAccess,
-  FollowUpPoint,
-  MonthlyFigure,
   SponsorOperation,
 } from "../types/persona";
 
@@ -107,24 +104,12 @@ export function accompagnementInclusions(planName: string, creditsLabel: string,
   ];
 }
 
-export const followUpPoints: FollowUpPoint[] = [
-  { label: "Point de rentrée — objectifs de la saison", date: "12 septembre 2026", status: "done" },
-  { label: "Point mensuel — bilan et priorités", date: "9 octobre 2026", status: "scheduled" },
-];
-
-export function monthlyFigures(creditsRemaining: number, presencesUsed: number, contentCount: number, storagePct: number): MonthlyFigure[] {
-  return [
-    { label: "Crédits restants", value: String(creditsRemaining) },
-    { label: "Présences réalisées", value: String(presencesUsed) },
-    { label: "Contenus livrés", value: String(contentCount) },
-    { label: "Stockage utilisé", value: `${storagePct} %` },
-  ];
-}
-
-export const accompagnementContacts: AccompagnementContact[] = [
-  { role: "Chargé de compte", name: "Théo Marchand" },
-  { role: "Studio", name: "Studio SportVision" },
-];
+// followUpPoints / monthlyFigures / accompagnementContacts (mock) supprimés le 10/08/2026 —
+// remplacés par de vraies données dans accompagnement/page.tsx (Tier C Phase 3) : chargé de
+// compte via client_cm (data/shared/community-manager.ts, comme /mycm), 4 chiffres du mois
+// vérifiés un par un (voir le commentaire en tête de page.tsx). Aucune source réelle
+// n'existe pour un « point de suivi mensuel » à date (ni RDV CM↔client, voir le raisonnement déjà
+// posé pour /mycm) — la page l'indique honnêtement plutôt que d'inventer un calendrier.
 
 // ---------------------------------------------------------------------------------------------
 // CM externe — /accompagnement « Mes accès délégués » (ACTIONS.md § 21).
