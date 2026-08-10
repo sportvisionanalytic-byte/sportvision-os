@@ -190,6 +190,10 @@ export interface Collection {
 }
 
 export function formatMediaSize(bytes: number): string {
+  // 0 signifie « taille non suivie côté source réelle » (club_media/club_creations n'ont pas de
+  // colonne de poids de fichier, voir data/club/content.ts) et non un fichier vide — afficher
+  // honnêtement l'absence de donnée plutôt qu'un trompeur "0 Ko".
+  if (bytes <= 0) return "Taille inconnue";
   if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} Go`;
   if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} Mo`;
   return `${Math.round(bytes / 1_000)} Ko`;

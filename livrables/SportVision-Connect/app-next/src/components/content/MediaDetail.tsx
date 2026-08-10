@@ -164,20 +164,24 @@ export function MediaDetail({ asset }: { asset: MediaAsset }) {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="text-[12.5px] font-bold text-text-soft">Version</span>
-          <select
-            value={selectedVersion?.id}
-            onChange={(e) => setSelectedVersionId(e.target.value)}
-            className="h-9 rounded-[10px] border border-border-strong bg-surface px-2.5 text-[12.5px] font-semibold outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
-          >
-            {asset.versions.map((v) => (
-              <option key={v.id} value={v.id}>
-                v{v.version} — {v.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {asset.versions.length > 0 ? (
+          <div className="flex items-center gap-2.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Version</span>
+            <select
+              value={selectedVersion?.id}
+              onChange={(e) => setSelectedVersionId(e.target.value)}
+              className="h-9 rounded-[10px] border border-border-strong bg-surface px-2.5 text-[12.5px] font-semibold outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
+            >
+              {asset.versions.map((v) => (
+                <option key={v.id} value={v.id}>
+                  v{v.version} — {v.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <span />
+        )}
         <span className="text-[12px] text-text-faint">
           {formatMediaDate(asset.createdAt)} · {formatMediaSize(asset.sizeBytes)}
         </span>
