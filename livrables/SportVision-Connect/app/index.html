@@ -457,7 +457,11 @@ function svcSave(tok, ref, uid){
   localStorage.setItem('svc_uid', uid);
 }
 function svcClear(){
-  ['svc_tok','svc_ref','svc_uid','svc_space_key'].forEach(k=>localStorage.removeItem(k));
+  // svc_act/svc_act_club inclus : un token d'activation Club+ en attente de rejeu
+  // appartient à celui qui a cliqué le lien e-mail, pas au navigateur — le laisser
+  // survivre à une déconnexion permettrait de le rejouer sur le compte suivant
+  // qui se connecte sur ce même poste (cf. handleLogin).
+  ['svc_tok','svc_ref','svc_uid','svc_space_key','svc_act','svc_act_club'].forEach(k=>localStorage.removeItem(k));
 }
 function isLoggedIn(){ return !!localStorage.getItem('svc_tok'); }
 
