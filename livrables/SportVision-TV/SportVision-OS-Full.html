@@ -6100,7 +6100,11 @@ async function loadProdBudget(){
       ? await sbFetch('prestations_equipe?select=remuneration,statut&prestation_id=in.('+preIds.join(',')+')')
       : [];
     const active=pre.filter(p=>!['livrée','clôturée'].includes(p.statut));
-    s('bud-nb',active.length||pre.length);
+    // active.length||pre.length affichait le TOTAL du mois dès que active.length
+    // valait 0 (0 est falsy en JS) — donc le KPI "Prestations actives" montrait
+    // le nombre de prestations livrées/clôturées au lieu de 0 quand tout était
+    // déjà terminé, l'exact inverse de ce que le libellé annonce.
+    s('bud-nb',active.length);
     const ca=pre.reduce((acc,p)=>acc+(Number(p.montant_ttc)||0),0);
     // Une mission refusée/remplacée/annulée n'est pas un coût réel.
     const costsRem=(Array.isArray(rawRem)?rawRem:[]).filter(r=>r.statut==='acceptée').reduce((acc,r)=>acc+(Number(r.remuneration)||0),0);
