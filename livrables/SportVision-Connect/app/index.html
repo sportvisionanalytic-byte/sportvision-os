@@ -1068,6 +1068,30 @@ function handlePaymentReturn(){
   history.replaceState(null, '', url.pathname + url.search);
 }
 
+// Retour depuis Stripe Checkout pour un abonnement Club+
+// (?abonnement=succes|annule, create-clubplus-subscription-checkout) : le
+// traitement complet existe déjà dans club-abonnement.js
+// (handleAbonnementReturn), mais ne s'exécute que si l'onglet Abonnement est
+// ouvert au chargement — or renderWorkspaceTabs() ouvre toujours le premier
+// module de la liste, pas forcément celui-là. Un club qui vient de payer ne
+// voyait donc aucune confirmation dans la plupart des cas. Filet de sécurité
+// au point d'entrée principal, indépendant de l'onglet ouvert — ne retire
+// rien à club-abonnement.js : si le paramètre a déjà été nettoyé par le
+// module (onglet Abonnement ouvert par défaut), ce filet est un no-op.
+function handleAbonnementReturnGlobal(){
+  const params = new URLSearchParams(location.search);
+  const r = params.get('abonnement');
+  if (!r) return;
+  if (r === 'succes'){
+    toast('Abonnement activé !');
+  } else if (r === 'annule'){
+    toast('Paiement annulé.');
+  }
+  const url = new URL(location.href);
+  url.searchParams.delete('abonnement');
+  history.replaceState(null, '', url.pathname + url.search);
+}
+
 // ── Démarrage ──
 (async function init(){
   const recovery = await consumeRecoveryHash();
@@ -1103,6 +1127,7 @@ function handlePaymentReturn(){
   if (isLoggedIn()){
     await bootAfterLogin();
     handlePaymentReturn();
+    handleAbonnementReturnGlobal();
     return;
   }
   // Arrivée depuis la vitrine SportVision après une demande de prestation
