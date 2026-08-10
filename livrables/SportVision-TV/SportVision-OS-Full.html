@@ -9651,6 +9651,26 @@ async function avoirSubmit(){
   if(!ht||ht<=0){toast('Montant invalide.','er');return;}
   if(!motif){toast('Motif requis.','er');return;}
   const ttc=Math.round(ht*(1+tva/100)*100)/100;
+  // Garde-fous avant insertion (jusqu'ici absents : un avoir pouvait être créé
+  // pour n'importe quel montant, et le champ "Prestation liée" — rempli via un
+  // <select> listant TOUTES les prestations facturées, indépendamment du
+  // client choisi juste au-dessus — n'était jamais recoupé avec le client
+  // sélectionné). Un avoir sans prestation liée (geste commercial générique)
+  // reste autorisé sans plafond : il n'y a alors rien de facturé à comparer.
+  if(prestId){
+    const prestArr=await sbFetch('prestations?id=eq.'+prestId+'&select=id,client_id,montant_ttc').catch(()=>[]);
+    const prest=Array.isArray(prestArr)&&prestArr[0];
+    if(!prest){toast('Prestation liée introuvable.','er');return;}
+    if(prest.client_id&&prest.client_id!==clientId){toast("La prestation sélectionnée n'appartient pas au client choisi.",'er');return;}
+    const existants=await sbFetch('avoirs?select=montant_ttc&prestation_id=eq.'+prestId).catch(()=>[]);
+    const dejaEmis=(Array.isArray(existants)?existants:[]).reduce((s,a)=>s+(Number(a.montant_ttc)||0),0);
+    const plafond=Number(prest.montant_ttc)||0;
+    const restant=Math.round((plafond-dejaEmis)*100)/100;
+    if(ttc>restant){
+      toast(`Montant refusé : ${ttc.toLocaleString('fr-FR')} € dépasse le solde avoirable de cette prestation (${restant.toLocaleString('fr-FR')} € restants sur ${plafond.toLocaleString('fr-FR')} € facturés${dejaEmis?', '+dejaEmis.toLocaleString('fr-FR')+' € déjà avoirés':''}).`,'er');
+      return;
+    }
+  }
   const year=new Date().getFullYear();
   let numAvoir='AVO-'+year+'-'+Date.now().toString().slice(-4);
   try{
@@ -9671,6 +9691,11 @@ async function avoirSubmit(){
       motif,montant_ht:ht,tva_pct:tva,montant_ttc:ttc,statut:'emis',created_by:S.uid,
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
+    // logDocEvent trace l'événement documentaire (journal Documents) ; logFinancialAudit
+    // trace l'impact financier (financial_audit_log) — même distinction que partout
+    // ailleurs dans le fichier pour les actions sensibles (encaissement, remboursement…),
+    // manquante ici jusqu'à présent.
+    logFinancialAudit('creation','avoirs',r?.[0]?.id,null,ttc,{motif:motif.substring(0,120),client_id:clientId,prestation_id:prestId});
     await logDocEvent('avoir',numAvoir,'avoir','Avoir émis — '+motif.substring(0,60));
     closeModal();
     toast('Avoir '+numAvoir+' créé.','ok');
