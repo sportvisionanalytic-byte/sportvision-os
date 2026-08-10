@@ -547,6 +547,11 @@ function resetForgotScreen(){
 // idempotent). Partagé entre les deux points d'entrée pour que ni l'un ni
 // l'autre n'atterrisse sur "Aucun espace n'est encore rattaché à ce compte"
 // alors qu'un rattachement était en attente.
+// Retourne un message d'erreur clair si le rejeu d'activation échoue (token
+// expiré/révoqué/déjà consommé/rate-limité), null sinon — auparavant le
+// résultat de clubplus-activate n'était jamais inspecté : le token était
+// perdu (removeItem) puis l'échec passait totalement inaperçu, laissant
+// croire à l'utilisateur que l'activation avait réussi.
 async function runPostAuthOnboarding(user){
   const pendingAct = localStorage.getItem('svc_act');
   if (pendingAct){
@@ -554,7 +559,10 @@ async function runPostAuthOnboarding(user){
     const meta = (user && user.user_metadata) || {};
     const clubNom = localStorage.getItem('svc_act_club') || meta.club_nom || '';
     localStorage.removeItem('svc_act_club');
-    await sbFunction('clubplus-activate', {token: pendingAct, prenom: meta.prenom||'', nom: meta.nom||'', telephone: meta.telephone||'', club_nom: clubNom});
+    const act = await sbFunction('clubplus-activate', {token: pendingAct, prenom: meta.prenom||'', nom: meta.nom||'', telephone: meta.telephone||'', club_nom: clubNom});
+    if (!act.ok){
+      return act.data?.error || 'Ce lien d\'activation n\'est plus valide, contactez SportVision.';
+    }
   } else {
     const cu = await sbFetch('client_users?id=eq.'+user.id+'&select=id');
     if (!cu.data || !cu.data[0]){
@@ -564,6 +572,7 @@ async function runPostAuthOnboarding(user){
       });
     }
   }
+  return null;
 }
 
 async function handleLogin(){
@@ -578,7 +587,8 @@ async function handleLogin(){
     const d = await res.json();
     if (!d.access_token) throw new Error('E-mail ou mot de passe incorrect.');
     svcSave(d.access_token, d.refresh_token, d.user.id);
-    await runPostAuthOnboarding(d.user);
+    const onboardErr = await runPostAuthOnboarding(d.user);
+    if (onboardErr) throw new Error(onboardErr);
     await bootAfterLogin();
   }catch(e){
     errEl.textContent = e.message;
@@ -1057,9 +1067,14 @@ function handlePaymentReturn(){
       // Confirmation d'inscription : même filet de sécurité que handleLogin
       // (rejeu svc_act / création fiche client si portal-onboarding n'a pas pu
       // s'exécuter au signup faute de session), puis dashboard direct — jamais
-      // l'écran "nouveau mot de passe".
-      if (recovery.user){ await runPostAuthOnboarding(recovery.user); }
+      // l'écran "nouveau mot de passe". Pas d'écran de connexion à ce stade
+      // pour afficher une erreur inline (contrairement à handleLogin) : un
+      // échec du rejeu d'activation est signalé par toast, sans bloquer l'accès
+      // au compte qui, lui, est bien confirmé.
+      let onboardErr = null;
+      if (recovery.user){ onboardErr = await runPostAuthOnboarding(recovery.user); }
       await bootAfterLogin();
+      if (onboardErr) toast(onboardErr);
       return;
     }
     showScreen('reset');
