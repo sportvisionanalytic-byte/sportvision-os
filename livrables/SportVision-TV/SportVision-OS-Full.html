@@ -720,6 +720,7 @@ const NAV={
     {id:'acomptes',lb:'Acomptes',ic:'fin'},
     {id:'impayes',lb:'Impayés',ic:'alert'},
     {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
+    {id:'encaissements',lb:'Encaissements Stripe',ic:'fin'},
     {id:'depenses',lb:'Dépenses',ic:'fin'},
     {id:'frais',lb:'Frais & km',ic:'fin'},
     {id:'paiements',lb:'Paiements équipe',ic:'fin'},
@@ -849,6 +850,7 @@ const NAV={
     {id:'acomptes',lb:'Acomptes',ic:'fin'},
     {id:'impayes',lb:'Impayés',ic:'alert'},
     {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
+    {id:'encaissements',lb:'Encaissements Stripe',ic:'fin'},
     {id:'documents',lb:'Centre documentaire',ic:'doc'},
     {type:'sep',lb:'Paiements'},
     {id:'paiements',lb:'Paiements équipe',ic:'fin'},
@@ -2149,6 +2151,21 @@ const VIEWS={
     </div>
     <div id="compta-avoirs-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  // Ledger des paiements Stripe (table `paiements`, alimentée par les webhooks —
+  // migration-portail-v1.sql) : jusqu'ici jamais affichée nulle part dans l'OS,
+  // alors qu'elle est la seule trace des encaissements en ligne réellement
+  // reçus, utile pour rapprocher ce qui a été facturé/marqué payé côté
+  // `prestations`/`factures` avec ce que Stripe a effectivement transféré.
+  // Lecture seule volontaire : aucune action possible sur cet écran, cf. audit.
+  'compta.encaissements':()=>`
+    <div class="sh"><div><div class="sh-t">Encaissements Stripe</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Paiements en ligne réellement reçus (webhooks Stripe) — lecture seule, pour rapprochement avec les statuts financiers.</div></div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Total encaissé (réussis)</div><div class="fs-v" id="enc-kpi-tot" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Paiements réussis</div><div class="fs-v" id="enc-kpi-nb">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En attente</div><div class="fs-v" id="enc-kpi-att" style="color:var(--wa)">—</div></div>
+    </div>
+    <div id="compta-encaissements-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   'compta.documents':()=>_documentsView('compta'),
 
   'compta.depenses':()=>`
@@ -3239,6 +3256,7 @@ async function loadViewData(role,view){
   if(_isComptaLike&&view==='acomptes') await loadComptaAcomptes();
   if(_isComptaLike&&view==='impayes') await loadComptaImpayes();
   if(_isComptaLike&&view==='avoirs') await loadComptaAvoirs();
+  if(_isComptaLike&&view==='encaissements') await loadComptaEncaissements();
   if(_isComptaLike&&view==='depenses') await loadComptaDepenses();
   if(_isComptaLike&&view==='depenses') await loadEcheancesDepenses();
   if(_isComptaLike&&view==='frais') await loadComptaFrais();
@@ -3259,6 +3277,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='acomptes') await loadComptaAcomptes();
   if(role==='admin'&&view==='impayes') await loadComptaImpayes();
   if(role==='admin'&&view==='avoirs') await loadComptaAvoirs();
+  if(role==='admin'&&view==='encaissements') await loadComptaEncaissements();
   if(role==='admin'&&view==='depenses') await loadComptaDepenses();
   if(role==='admin'&&view==='depenses') await loadEcheancesDepenses();
   if(role==='admin'&&view==='frais') await loadComptaFrais();
@@ -15601,6 +15620,73 @@ async function loadComptaAvoirs(){
   }
 }
 
+// ── Encaissements Stripe (ledger `paiements`, lecture seule) ─────────────────
+// Table alimentée par les webhooks Stripe (migration-portail-v1.sql) mais
+// jusqu'ici jamais lue par aucun écran de l'OS — aucun moyen de vérifier ce qui
+// a réellement été encaissé en ligne, distinct de ce que prestations/factures
+// disent avoir été facturé/marqué payé manuellement. Écran volontairement
+// minimal : aucune action, juste une liste triable pour rapprochement.
+let _encaissementsData=[],_encaissementsSort={col:'created_at',dir:'desc'};
+async function loadComptaEncaissements(){
+  const el=document.getElementById('compta-encaissements-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('paiements?select=id,montant,devise,statut,type_paiement,created_at,stripe_payment_intent_id,prestation:prestations(reference),client:clients(nom)&order=created_at.desc&limit=500');
+    _encaissementsData=Array.isArray(data)?data:[];
+    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    const reussis=_encaissementsData.filter(p=>p.statut==='reussi');
+    const totReussi=reussis.reduce((s,p)=>s+(p.montant||0),0);
+    const enAttente=_encaissementsData.filter(p=>p.statut==='en_attente').length;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('enc-kpi-tot',fmt(totReussi));set('enc-kpi-nb',reussis.length);set('enc-kpi-att',enAttente);
+    _encaissementsSort={col:'created_at',dir:'desc'};
+    renderComptaEncaissements();
+  }catch(e){
+    el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table paiements non disponible (migration-portail-v1.sql à exécuter), ou aucun encaissement Stripe enregistré.</div>';
+    console.error(e);
+  }
+}
+function sortComptaEncaissements(col){
+  if(_encaissementsSort.col===col)_encaissementsSort.dir=_encaissementsSort.dir==='asc'?'desc':'asc';
+  else _encaissementsSort={col,dir:'desc'};
+  renderComptaEncaissements();
+}
+function renderComptaEncaissements(){
+  const el=document.getElementById('compta-encaissements-real');if(!el)return;
+  if(!_encaissementsData.length){
+    el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucun encaissement Stripe enregistré.</div>';
+    return;
+  }
+  const {col,dir}=_encaissementsSort;
+  const list=[..._encaissementsData].sort((a,b)=>{
+    const va=col==='montant'?(a.montant||0):(a[col]||'');
+    const vb=col==='montant'?(b.montant||0):(b[col]||'');
+    if(va<vb)return dir==='asc'?-1:1;
+    if(va>vb)return dir==='asc'?1:-1;
+    return 0;
+  });
+  const st_cls={reussi:'ba',en_attente:'bw',echoue:'bn',rembourse:'bl',annule:'bn'};
+  const st_lbl={reussi:'Réussi',en_attente:'En attente',echoue:'Échoué',rembourse:'Remboursé',annule:'Annulé'};
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(s).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'—';
+  const arrow=c=>col===c?(dir==='asc'?' ▲':' ▼'):'';
+  const th=(lb,c)=>`<th style="cursor:pointer;white-space:nowrap;user-select:none" onclick="sortComptaEncaissements('${c}')">${lb}${arrow(c)}</th>`;
+  el.innerHTML='<div class="tw"><table><thead><tr>'+
+    th('Date','created_at')+th('Montant','montant')+th('Statut','statut')+th('Type','type_paiement')+
+    '<th>Prestation</th><th>Client</th><th>Réf. Stripe</th>'+
+    '</tr></thead><tbody>'+
+    list.map(p=>`<tr>
+      <td style="color:var(--t3);font-size:11.5px;white-space:nowrap">${fd(p.created_at)}</td>
+      <td class="tm" style="font-weight:700">${fmt(p.montant)}</td>
+      <td><span class="bd ${st_cls[p.statut]||'bw'}"><span class="bd-d"></span>${st_lbl[p.statut]||p.statut}</span></td>
+      <td>${p.type_paiement||'—'}</td>
+      <td>${p.prestation?.reference||'—'}</td>
+      <td class="tp">${esc(p.client?.nom||'—')}</td>
+      <td style="font-size:10.5px;color:var(--t3);font-family:monospace">${esc(p.stripe_payment_intent_id||'—')}</td>
+    </tr>`).join('')+
+    '</tbody></table></div>';
+}
+
 async function loadComptaDepenses(){
   const el=document.getElementById('compta-depenses-real');if(!el)return;
   try{
@@ -19238,7 +19324,7 @@ VIEWS['expert_comptable.fec']=VIEWS['compta.fec'];
 // détaillés compta (rentabilité, dépenses, clôtures…) — Fouka (toujours
 // connecté en admin) doit voir tout ça directement, pas seulement via un
 // compte compta séparé.
-['resultat','rentabilite','commissions','budgets','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export','tva','fec','audit','immobilisations'].forEach(v=>{
+['resultat','rentabilite','commissions','budgets','rapprochement','factures','acomptes','impayes','avoirs','encaissements','depenses','frais','paiements','rem','clotures','export','tva','fec','audit','immobilisations'].forEach(v=>{
   if(VIEWS['compta.'+v]) VIEWS['admin.'+v]=VIEWS['compta.'+v];
 });
 
