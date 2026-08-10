@@ -3374,7 +3374,16 @@ const _NEXT_ST={
   'offre_en_préparation':'devis_envoyé','devis_envoyé':'en_attente_réponse',
   'en_attente_réponse':'devis_accepté','devis_accepté':'en_attente_signature',
   'en_attente_signature':'en_attente_acompte','en_attente_acompte':'documents_complets',
-  'documents_complets':'confirmée','à_valider_production':'confirmée',
+  // 'documents_complets' menait avant directement à 'confirmée', sautant
+  // 'à_valider_production' — un statut qui existe dans l'enum (juste avant
+  // 'confirmée'), a ses propres libellé/couleur/KPI ("prod-kpi-val"),
+  // filtre dashboard prod ("À valider"), et tout un bloc UI de
+  // validation/refus (validerPrestation, visible uniquement pour le rôle
+  // prod, libellé "Cette prestation attend votre validation avant
+  // planification") — mais qu'aucun code n'écrivait jamais : la chaîne
+  // "avancer" sautait par-dessus. Le repositionner dans la séquence rend
+  // le statut atteignable et active la validation prod déjà construite.
+  'documents_complets':'à_valider_production','à_valider_production':'confirmée',
   'confirmée':'à_planifier','à_planifier':'planifiée',
   'planifiée':'équipe_affectée','équipe_affectée':'prête',
   'prête':'équipe_en_route','équipe_en_route':'arrivée_sur_place',
