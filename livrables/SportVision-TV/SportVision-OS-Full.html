@@ -4497,7 +4497,10 @@ async function loadProdDash(){
     const aTransferer=pre.filter(p=>['médias_à_transférer','production_terminée'].includes(p.statut));
     const livrablesAValider=pre.filter(p=>['prête_validation','prêt_validation'].includes(p.statut));
     const kitsDispo=kits.filter(k=>k.statut==='disponible').length;
-    const kitsRes=kits.filter(k=>['réservé','pré_réservé','sorti','en_prestation'].includes(k.statut)).length;
+    // Même liste de statuts que kitsRenderKitsGrid/kitsLoadAll ("Déployés" sur l'écran Kits) —
+    // il manquait à_récupérer et à_retourner ici, donc ce KPI et celui de l'écran Kits (vers
+    // lequel il pointe) pouvaient afficher deux chiffres différents pour la même réalité.
+    const kitsRes=kits.filter(k=>['réservé','pré_réservé','sorti','en_prestation','à_récupérer','à_retourner'].includes(k.statut)).length;
     const todayAssigned=new Set(
       pre.filter(p=>p.date_prestation===today&&!DONE_ST.includes(p.statut))
          .flatMap(p=>(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').map(e=>e.collaborateur?.id))
