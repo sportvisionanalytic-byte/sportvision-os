@@ -97,9 +97,11 @@ export default function SupportPage() {
         />
       </div>
 
+      {/* Cartes purement informatives (comptage d'articles mock, pas de fiche à ouvrir) — pas de
+          hover "carte cliquable" ici pour ne pas promettre une interaction absente. */}
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
         {topics.map((topic) => (
-          <Card key={topic.id} className="flex flex-col gap-1.5 p-4 hover:-translate-y-0.5 hover:border-border-strong">
+          <Card key={topic.id} className="flex flex-col gap-1.5 p-4">
             <div className="text-[14px] font-extrabold tracking-tight">{topic.title}</div>
             <div className="text-[12.5px] leading-relaxed text-text-soft">{topic.description}</div>
             <div className="mt-1 text-[11.5px] font-bold text-text-faint">{topic.articleCount} articles</div>
