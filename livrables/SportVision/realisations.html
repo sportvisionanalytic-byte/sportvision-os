@@ -370,6 +370,12 @@ section{position:relative}
 .video-modal{background:#0a0c18;border-radius:var(--radius-lg);max-width:360px;width:100%;padding:0;position:relative;overflow:hidden}
 .video-modal .sv-close{background:rgba(255,255,255,.16);color:#fff;top:12px;right:12px;z-index:2}
 .video-modal video{display:block;width:100%;aspect-ratio:9/16;background:#000}
+.photo-modal{background:#0a0c18;border-radius:var(--radius-lg);max-width:640px;width:100%;padding:0;position:relative;overflow:hidden}
+.photo-modal .sv-close{background:rgba(255,255,255,.16);color:#fff;top:12px;right:12px;z-index:2}
+.photo-modal img{display:block;width:100%;max-height:78vh;object-fit:contain;background:#000}
+.photo-modal .photo-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;flex-wrap:wrap}
+.photo-modal .photo-cap b{display:block;font-size:14.5px;color:#fff}
+.photo-modal .photo-cap span{font-size:12.5px;color:rgba(255,255,255,.6)}
 </style>
 
 </head>
@@ -658,6 +664,17 @@ section{position:relative}
   </div>
 </div>
 
+<div class="sv-overlay" id="photo-overlay">
+  <div class="photo-modal">
+    <button class="sv-close" id="photo-close" aria-label="Fermer">✕</button>
+    <img id="photo-img" src="" alt="">
+    <div class="photo-foot">
+      <div class="photo-cap"><b id="photo-cap-title"></b><span id="photo-cap-sub"></span></div>
+      <button type="button" class="btn btn-grad" id="photo-devis-btn" style="flex-shrink:0">Demander un devis</button>
+    </div>
+  </div>
+</div>
+
 <div class="sv-overlay" id="devis-overlay">
   <div class="sv-modal">
     <button class="sv-close" id="devis-close" aria-label="Fermer">✕</button>
@@ -782,13 +799,41 @@ document.getElementById('video-close').addEventListener('click', closeVideo);
 videoOverlay.addEventListener('click', (e) => { if (e.target === videoOverlay) closeVideo(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && videoOverlay.classList.contains('on')) closeVideo(); });
 
-// ── Un clic sur une vidéo la lit réellement ; sur une photo/affiche,
-//    ouvre le formulaire pour demander un rendu similaire ──
+// ── Modal photo en grand ──
+const photoOverlay = document.getElementById('photo-overlay');
+const photoImg = document.getElementById('photo-img');
+const photoCapTitle = document.getElementById('photo-cap-title');
+const photoCapSub = document.getElementById('photo-cap-sub');
+const photoDevisBtn = document.getElementById('photo-devis-btn');
+function openPhoto(src, alt, title, sub){
+  photoImg.src = src;
+  photoImg.alt = alt || '';
+  photoCapTitle.textContent = title || '';
+  photoCapSub.textContent = sub || '';
+  photoDevisBtn.onclick = () => { closePhoto(); openDevis(title || null); };
+  photoOverlay.classList.add('on');
+}
+function closePhoto(){
+  photoOverlay.classList.remove('on');
+  photoImg.removeAttribute('src');
+}
+document.getElementById('photo-close').addEventListener('click', closePhoto);
+photoOverlay.addEventListener('click', (e) => { if (e.target === photoOverlay) closePhoto(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && photoOverlay.classList.contains('on')) closePhoto(); });
+
+// ── Un clic sur une vidéo la lit réellement ; sur une photo, l'affiche en grand
+//    (bouton "Demander un devis" dans le visualiseur) ; sur une création graphique
+//    sans photo réelle (affiche), ouvre directement le formulaire ──
 document.getElementById('gallery-grid').addEventListener('click', (e) => {
   const item = e.target.closest('.gallery-item');
   if (!item) return;
-  const src = item.getAttribute('data-video');
-  if (src){ openVideo(src); return; }
+  const videoSrc = item.getAttribute('data-video');
+  if (videoSrc){ openVideo(videoSrc); return; }
+  const img = item.querySelector('img');
+  const cap = item.querySelector('.cap');
+  const title = cap ? cap.querySelector('b')?.textContent : '';
+  const sub = cap ? cap.querySelector('span')?.textContent : '';
+  if (img){ openPhoto(img.src, img.alt, title, sub); return; }
   openDevis();
   toast('Envie d\'un rendu similaire ? Décrivez votre besoin ci-dessous.');
 });
