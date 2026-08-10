@@ -7540,6 +7540,32 @@ async function ajouterMembreEquipe(prestationId,ref){
     if(Array.isArray(already)&&already.length){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
     const rem=document.getElementById('eq-rem').value;
     const rdv=document.getElementById('eq-rdv').value;
+    // Détection de conflit de planning avant confirmation. L'edge function
+    // check-disponibilite (supabase/functions/check-disponibilite) existe déjà
+    // et vérifie bien des chevauchements d'OPÉRATEURS (pas de matériel — elle
+    // ne référence aucune table kit), mais pour un usage différent : elle
+    // cherche "y a-t-il UN opérateur libre parmi tous" pour le tunnel public,
+    // pas "CE collaborateur précis est-il libre" comme ici. Requête directe à
+    // la place. Avertissement seulement, jamais bloquant : même philosophie
+    // que check-disponibilite (décision fondateur 2026-08-06, voir son
+    // commentaire d'en-tête) — un chevauchement peut déjà exister en prod
+    // aujourd'hui (aucune vérification n'existait avant ce correctif) et deux
+    // missions courtes le même jour peuvent être parfaitement légitimes ; le
+    // staff garde la main.
+    try{
+      const preArr=await sbFetch('prestations?id=eq.'+prestationId+'&select=date_prestation');
+      const datePres=preArr&&preArr[0]&&preArr[0].date_prestation;
+      if(datePres){
+        const conflits=await sbFetch('prestations_equipe?select=id,prestations!inner(reference,date_prestation,statut)&collaborateur_id=eq.'+colId+'&prestation_id=neq.'+prestationId+'&statut=in.(invitation_envoyée,en_attente,acceptée)&prestations.date_prestation=eq.'+datePres+'&prestations.statut=not.in.(annulée,refusée,clôturée)').catch(()=>[]);
+        if(Array.isArray(conflits)&&conflits.length){
+          const refs=conflits.map(c=>c.prestations?.reference).filter(Boolean).join(', ')||'une autre prestation';
+          if(!confirm('⚠️ Ce collaborateur est déjà affecté le '+new Date(datePres).toLocaleDateString('fr-FR')+' à : '+refs+'.\n\nConfirmer quand même cette affectation ?')){
+            if(btn)btn.disabled=false;
+            return;
+          }
+        }
+      }
+    }catch(e){}
     const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
     if(sbErr(rAdd)){err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');if(btn)btn.disabled=false;return;}
     creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
