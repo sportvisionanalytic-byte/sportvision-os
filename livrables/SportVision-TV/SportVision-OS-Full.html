@@ -14835,7 +14835,23 @@ async function modalEditContenu(id){
   const full=await sbFetch('contenus?id=eq.'+id+'&select=*').catch(()=>null);
   if(!Array.isArray(full)||!full[0])return;
   const info=full[0];
-  const clients=await _cmVisibleClients();
+  let clients=await _cmVisibleClients();
+  if(info.client_id&&!clients.some(cl=>cl.id===info.client_id)){
+    // Le client actuel du contenu n'est pas dans la liste standard (portefeuille
+    // tronqué à limit=200, palier mal couvert, ou catch(e){return[]} réseau de
+    // _cmVisibleClients) — sans ce complément, aucune <option> n'est "selected"
+    // et le navigateur retombe sur "Aucun client" par défaut : sauvegarderContenu
+    // enverrait alors client_id:null et ferait disparaître le contenu de l'espace
+    // du client, silencieusement. On ajoute une option dédiée pour ce client,
+    // avec son nom si on arrive à le récupérer, sinon un libellé de repli qui
+    // préserve quand même son id.
+    let curNom=null;
+    try{
+      const cur=await sbFetch('clients?id=eq.'+info.client_id+'&select=id,nom');
+      if(Array.isArray(cur)&&cur[0])curNom=cur[0].nom;
+    }catch(e){}
+    clients=[...clients,{id:info.client_id,nom:curNom||'(client actuel, hors liste)'}];
+  }
   const plats=['Instagram','YouTube','Facebook','TikTok','Twitter/X'];
   const types=['Vidéo','Photo','Story','Reel','Article','Post'];
   const uid=localStorage.getItem('sv_uid');
