@@ -540,6 +540,32 @@ function resetForgotScreen(){
 }
 
 // ── Auth ──
+// Filet de sécurité après authentification réussie (login direct via
+// handleLogin, ou confirmation d'un lien d'inscription via consumeRecoveryHash) :
+// rejoue un token d'activation Club+ laissé en attente (voir handleActivation),
+// sinon crée la fiche client si l'inscription ne l'a pas fait (portal-onboarding,
+// idempotent). Partagé entre les deux points d'entrée pour que ni l'un ni
+// l'autre n'atterrisse sur "Aucun espace n'est encore rattaché à ce compte"
+// alors qu'un rattachement était en attente.
+async function runPostAuthOnboarding(user){
+  const pendingAct = localStorage.getItem('svc_act');
+  if (pendingAct){
+    localStorage.removeItem('svc_act');
+    const meta = (user && user.user_metadata) || {};
+    const clubNom = localStorage.getItem('svc_act_club') || meta.club_nom || '';
+    localStorage.removeItem('svc_act_club');
+    await sbFunction('clubplus-activate', {token: pendingAct, prenom: meta.prenom||'', nom: meta.nom||'', telephone: meta.telephone||'', club_nom: clubNom});
+  } else {
+    const cu = await sbFetch('client_users?id=eq.'+user.id+'&select=id');
+    if (!cu.data || !cu.data[0]){
+      const meta = (user && user.user_metadata) || {};
+      await sbFunction('portal-onboarding', {
+        prenom: meta.prenom || '', nom: meta.nom || '', telephone: meta.telephone || '', profil: meta.profil || '',
+      });
+    }
+  }
+}
+
 async function handleLogin(){
   const email = document.getElementById('lg-email').value.trim();
   const pass = document.getElementById('lg-pass').value;
@@ -552,33 +578,7 @@ async function handleLogin(){
     const d = await res.json();
     if (!d.access_token) throw new Error('E-mail ou mot de passe incorrect.');
     svcSave(d.access_token, d.refresh_token, d.user.id);
-    // Activation Club+ par lien privé laissée en attente (compte créé, e-mail à
-    // confirmer avant de pouvoir appeler clubplus-activate — voir handleActivation) :
-    // on la rejoue maintenant, avant tout autre onboarding. clubplus-activate
-    // revérifie le token côté serveur et est idempotent (rejouable sans risque
-    // même si déjà consommé par un onglet précédent).
-    const pendingAct = localStorage.getItem('svc_act');
-    if (pendingAct){
-      localStorage.removeItem('svc_act');
-      const meta = (d.user && d.user.user_metadata) || {};
-      const clubNom = localStorage.getItem('svc_act_club') || meta.club_nom || '';
-      localStorage.removeItem('svc_act_club');
-      await sbFunction('clubplus-activate', {token: pendingAct, prenom: meta.prenom||'', nom: meta.nom||'', telephone: meta.telephone||'', club_nom: clubNom});
-    } else {
-      const cu = await sbFetch('client_users?id=eq.'+d.user.id+'&select=id');
-      if (!cu.data || !cu.data[0]){
-        // Filet de sécurité (même principe que le Portail) : si l'inscription n'a pas pu
-        // créer la fiche client (ex : confirmation d'e-mail obligatoire sur le projet,
-        // session absente au moment de l'inscription), on la crée maintenant, à la
-        // première connexion réussie. portal-onboarding est idempotent. Les infos
-        // saisies à l'inscription sont récupérées depuis les métadonnées du compte
-        // Supabase (enregistrées dès le signup), pas perdues.
-        const meta = (d.user && d.user.user_metadata) || {};
-        await sbFunction('portal-onboarding', {
-          prenom: meta.prenom || '', nom: meta.nom || '', telephone: meta.telephone || '', profil: meta.profil || '',
-        });
-      }
-    }
+    await runPostAuthOnboarding(d.user);
     await bootAfterLogin();
   }catch(e){
     errEl.textContent = e.message;
@@ -783,23 +783,29 @@ async function handleSetNewPassword(){
 }
 
 // Détecte un lien Supabase de type recovery/invite/signup
-// (#access_token=...&type=...) au chargement — les trois types demandent la
+// (#access_token=...&type=...) au chargement. recovery et invite demandent la
 // même action (définir un mot de passe) et utilisent le même format de hash.
+// signup est différent : c'est le lien de CONFIRMATION D'INSCRIPTION, l'utilisateur
+// a déjà choisi son mot de passe à l'inscription (handleSignup) — le router vers
+// l'écran "nouveau mot de passe" n'a pas de sens et court-circuite le filet de
+// sécurité d'onboarding (voir l'appelant, init()). Le type exact est donc
+// retourné à l'appelant plutôt qu'un simple booléen.
 // À l'origine seul 'type=recovery' était reconnu : un lien d'invitation
 // envoyé par inviteUserByEmail (ex. org-invite, clubplus-invite) déposait
 // l'utilisateur sur l'écran de connexion sans que sa session soit établie,
 // au lieu de l'écran "définir mon mot de passe".
 async function consumeRecoveryHash(){
   const h = window.location.hash;
-  if (!h.includes('type=recovery') && !h.includes('type=invite') && !h.includes('type=signup')) return false;
+  if (!h.includes('type=recovery') && !h.includes('type=invite') && !h.includes('type=signup')) return null;
   const params = new URLSearchParams(window.location.hash.slice(1));
   const accessToken = params.get('access_token');
   const refreshToken = params.get('refresh_token');
-  if (!accessToken) return false;
+  if (!accessToken) return null;
+  const type = params.get('type');
   history.replaceState({}, '', window.location.pathname);
   const userRes = await fetch(SB_URL+'/auth/v1/user', {headers:{apikey:SB_KEY, Authorization:'Bearer '+accessToken}}).then(r=>r.json()).catch(()=>null);
   svcSave(accessToken, refreshToken || '', userRes?.id || '');
-  return true;
+  return { type, user: userRes };
 }
 
 // ── Cœur du nouveau socle : espaces → entitlements → modules ──
@@ -1022,7 +1028,17 @@ function handlePaymentReturn(){
 
 // ── Démarrage ──
 (async function init(){
-  if (await consumeRecoveryHash()){
+  const recovery = await consumeRecoveryHash();
+  if (recovery){
+    if (recovery.type === 'signup'){
+      // Confirmation d'inscription : même filet de sécurité que handleLogin
+      // (rejeu svc_act / création fiche client si portal-onboarding n'a pas pu
+      // s'exécuter au signup faute de session), puis dashboard direct — jamais
+      // l'écran "nouveau mot de passe".
+      if (recovery.user){ await runPostAuthOnboarding(recovery.user); }
+      await bootAfterLogin();
+      return;
+    }
     showScreen('reset');
     return;
   }
