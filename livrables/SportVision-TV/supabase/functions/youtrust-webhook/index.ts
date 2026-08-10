@@ -95,16 +95,51 @@ serve(async (req) => {
     for (const table of ["devis", "contrats"] as const) {
       const { data: rows } = await admin
         .from(table)
-        .select("id")
+        .select(table === "devis" ? "id, numero, client_id, clients(nom)" : "id, type_contrat, client_id, clients(nom)")
         .eq("youtrust_signature_request_id", signatureRequestId)
         .limit(1);
       if (rows && rows[0]) {
+        const row = rows[0] as {
+          id: string;
+          numero?: string;
+          type_contrat?: string;
+          client_id: string | null;
+          clients?: { nom?: string } | null;
+        };
         const patch: Record<string, unknown> = { signature_statut: nouveauStatut };
         if (nouveauStatut === "signee") {
           patch.signature_confirmee_at = new Date().toISOString();
           patch.statut = table === "devis" ? "accepté" : "actif";
         }
-        await admin.from(table).update(patch).eq("id", rows[0].id);
+        await admin.from(table).update(patch).eq("id", row.id);
+
+        // Notifie le staff — jusqu'ici, seule l'ancienne confirmation manuelle
+        // (bouton "✓ Signé", retiré le 10/08 car elle contournait ce webhook)
+        // déclenchait une notification ; la confirmation réelle via ce webhook
+        // n'en a jamais envoyé aucune. Best-effort, ne bloque jamais la mise à
+        // jour du document elle-même en cas d'échec.
+        try {
+          const ref = table === "devis" ? row.numero || row.id : row.type_contrat || row.id;
+          const clientNom = row.clients?.nom || "client";
+          const titre =
+            nouveauStatut === "signee"
+              ? (table === "devis" ? "Devis signé" : "Contrat signé")
+              : (table === "devis" ? "Devis refusé/expiré" : "Contrat refusé/expiré");
+          const message =
+            nouveauStatut === "signee"
+              ? `${clientNom} vient de signer électroniquement ${table === "devis" ? "le devis" : "le contrat"} ${ref} via Youtrust.`
+              : `La demande de signature ${table === "devis" ? "du devis" : "du contrat"} ${ref} (${clientNom}) a été refusée ou a expiré.`;
+          await admin.rpc("notify_staff_by_role", {
+            p_roles: ["admin", "sec"],
+            p_titre: titre,
+            p_message: message,
+            p_priorite: "normale",
+            p_prestation_id: null,
+            p_client_id: row.client_id,
+          });
+        } catch (_e) {
+          console.error("[youtrust-webhook] notify_staff_by_role a échoué :", _e);
+        }
         break;
       }
     }
@@ -113,6 +148,6 @@ serve(async (req) => {
   } catch (e) {
     // On accuse toujours réception pour éviter les re-livraisons en boucle ;
     // l'erreur reste tracée dans la réponse pour le debug via les logs Supabase.
-    return new Response(JSON.stringify({ received: true, error: e.message }), { status: 200 });
+    return new Response(JSON.stringify({ received: true, error: e instanceof Error ? e.message : String(e) }), { status: 200 });
   }
 });
