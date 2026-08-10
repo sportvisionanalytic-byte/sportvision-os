@@ -19161,13 +19161,23 @@ function renderRdvClients(){
       <td>${esc(r.objet||'—')}</td>
       <td>${r.date_demandee?new Date(r.date_demandee).toLocaleDateString('fr-FR'):'—'}${r.heure_demandee?' à '+r.heure_demandee.slice(0,5):''}</td>
       <td><span class="bd ${RDV_CL_CLS[r.statut]||'bw'}"><span class="bd-d"></span>${RDV_CL_LBL[r.statut]||r.statut}</span></td>
-      <td style="white-space:nowrap">${r.statut==='a_confirmer'?`<button class="btn bp bs" onclick="confirmerRdvClient('${r.id}')">Confirmer</button> <button class="btn bg2 bs" onclick="annulerRdvClient('${r.id}')">Annuler</button>`:''}</td>
+      <td style="white-space:nowrap">${r.statut==='a_confirmer'?`<button class="btn bp bs" onclick="confirmerRdvClient('${r.id}')">Confirmer</button> <button class="btn bg2 bs" onclick="annulerRdvClient('${r.id}')">Annuler</button>`:r.statut==='confirme'?`<button class="btn bp bs" onclick="marquerRealiseRdvClient('${r.id}')">Marquer réalisé</button> <button class="btn bg2 bs" onclick="annulerRdvClient('${r.id}')">Annuler</button>`:''}</td>
     </tr>`).join('')+'</tbody></table></div>';
 }
 async function confirmerRdvClient(id){
   const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'confirme',confirme_par:localStorage.getItem('sv_uid')}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
   toast('Rendez-vous confirmé.','ok');
+  await loadRdvClients();
+}
+// statut 'realise' existe dans la contrainte CHECK (migration-portail-v1.sql
+// ~ligne 249 : a_confirmer, confirme, annule, realise) et RDV_CL_LBL le
+// déclare déjà ('Réalisé') mais rien ne l'écrivait jamais — un RDV confirmé
+// restait bloqué sans action possible une fois passé.
+async function marquerRealiseRdvClient(id){
+  const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'realise'}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  toast('Rendez-vous marqué réalisé.','ok');
   await loadRdvClients();
 }
 async function annulerRdvClient(id){
