@@ -15270,8 +15270,8 @@ async function loadComptaDash(){
       sbFetch('expenses?select=montant_ttc&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext).catch(()=>[]),
     ]);
     const list=data||[];
-    const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','acompte_demandé':'bw','non_facturée':'bn','en_retard':'br'};
-    const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','acompte_demandé':'Acompte att.','non_facturée':'Non facturée','en_retard':'En retard'};
+    const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','non_facturée':'bn','en_retard':'br'};
+    const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','non_facturée':'Non facturée','en_retard':'En retard'};
     const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
 
     let enc=0,imp=0,acomp=0,nbFact=0;
@@ -15280,7 +15280,7 @@ async function loadComptaDash(){
       const m=p.montant_ttc||0;
       if(p.statut_financier==='payée')enc+=m;
       if(['facturée','partiellement_payée'].includes(p.statut_financier)&&p.date_prestation<now.toISOString().slice(0,10))imp+=m;
-      if(p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte')acomp+=p.acompte_montant||m*0.5;
+      if(p.statut==='en_attente_acompte')acomp+=p.acompte_montant||m*0.5;
       if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))nbFact++;
     });
     // "Charges du mois" doit refléter la même donnée que la page Dépenses
@@ -15365,9 +15365,9 @@ async function loadComptaAcomptes(){
   const el=document.getElementById('compta-acomptes-real');if(!el)return;
   try{
     const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,acompte_montant,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
-    _comptaAcData=(Array.isArray(data)?data:[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte'||p.statut_financier==='partiellement_payée');
+    _comptaAcData=(Array.isArray(data)?data:[]).filter(p=>p.statut==='en_attente_acompte'||p.statut_financier==='partiellement_payée');
     const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
-    const kdem=_comptaAcData.filter(p=>p.statut==='en_attente_acompte'||p.statut_financier==='acompte_demandé').length;
+    const kdem=_comptaAcData.filter(p=>p.statut==='en_attente_acompte').length;
     const kenc=_comptaAcData.filter(p=>p.statut_financier==='partiellement_payée').length;
     const ktot=_comptaAcData.reduce((s,p)=>s+(p.acompte_montant||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
@@ -15384,7 +15384,7 @@ function renderComptaAcomptes(){
   const el=document.getElementById('compta-acomptes-real');if(!el)return;
   let list=_comptaAcData;
   const now=new Date().toISOString().slice(0,10);
-  if(_comptaAcFilter==='en_attente')list=list.filter(p=>p.statut==='en_attente_acompte'||p.statut_financier==='acompte_demandé');
+  if(_comptaAcFilter==='en_attente')list=list.filter(p=>p.statut==='en_attente_acompte');
   else if(_comptaAcFilter==='encaisse')list=list.filter(p=>p.statut_financier==='partiellement_payée');
   else if(_comptaAcFilter==='retard')list=list.filter(p=>p.date_prestation&&p.date_prestation<now&&p.statut_financier!=='payée'&&!['annulée','refusée'].includes(p.statut));
   if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun acompte dans cette catégorie.</div>';return;}
@@ -16859,7 +16859,7 @@ async function loadSecDash(){
     const actifs=(clients||[]).filter(c=>['client','partenaire'].includes(c.statut)).length;
     const demandes=(pres||[]).filter(p=>['demande_reçue','à_qualifier','offre_en_préparation'].includes(p.statut)).length;
     const devisBrouillon=(devis||[]).filter(d=>d.statut==='brouillon'||d.statut==='en_cours').length;
-    const acomptes=(pres||[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
+    const acomptes=(pres||[]).filter(p=>p.statut==='en_attente_acompte').length;
     const livraisons=(pres||[]).filter(p=>['prêt_validation','livrée','prête_à_livrer'].includes(p.statut)).length;
     const encours=(pres||[]).filter(p=>!['demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse','devis_accepté','en_attente_signature','en_attente_acompte'].includes(p.statut)).length;
     const signManquantes=(Array.isArray(conts)?conts:[]).filter(c=>c.statut==='brouillon').length
@@ -16990,7 +16990,7 @@ async function loadSecRelances(){
     const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,acompte_montant,date_prestation,clients(nom,email,telephone)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
     _secRelData=Array.isArray(data)?data:[];
     const now2=new Date();
-    const acomptes=_secRelData.filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
+    const acomptes=_secRelData.filter(p=>p.statut==='en_attente_acompte').length;
     const soldes=_secRelData.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payée').length;
     const enRetardRel=_secRelData.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now2&&p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut)).length;
     const montantAtt=_secRelData.filter(p=>p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut)).reduce((s,p)=>s+(p.montant_ttc||0),0);
@@ -17008,7 +17008,7 @@ function filterSecRelances(f){
 function renderSecRelances(){
   const el=document.getElementById('sec-relances-real');if(!el)return;
   let list=_secRelData;
-  if(_secRelFilter==='acompte')list=list.filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte');
+  if(_secRelFilter==='acompte')list=list.filter(p=>p.statut==='en_attente_acompte');
   else if(_secRelFilter==='solde')list=list.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payée');
   else if(_secRelFilter==='retard'){
     const now=new Date();
@@ -17020,18 +17020,24 @@ function renderSecRelances(){
   }
   if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune relance pour ce filtre.</div>';return;}
   el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date</th><th>Statut financier</th><th></th></tr></thead><tbody>'+
-    list.slice(0,30).map(p=>`<tr>
+    list.slice(0,30).map(p=>{
+      // Même garde que loadFinances (~ligne 18035, canPayer) : une prestation
+      // non_facturée n'a jamais été facturée (rien à encaisser) et une
+      // prestation déjà payée n'a plus rien à régler — afficher "✓ Payé"
+      // dans ces deux cas laissait un bouton actionnable sans action valide.
+      const canPayer=['facturée','partiellement_payée','en_retard'].includes(p.statut_financier);
+      return `<tr>
       <td class="tm">${p.reference||'—'}</td>
       <td class="tp">${esc(p.clients?.nom||'—')}</td>
       <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
       <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
       <td><span class="bd ${SC[p.statut_financier]||'bw'}"><span class="bd-d"></span>${SL[p.statut_financier]||p.statut_financier||'—'}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">
-        <button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secMarquerPaye('${p.id}')">✓ Payé</button>
+        ${canPayer?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secMarquerPaye('${p.id}')">✓ Payé</button>`:''}
         ${p.clients?.email?`<a href="mailto:${esc(p.clients.email)}?subject=Relance paiement — ${p.reference||'SportVision'}&body=Bonjour,%0A%0ANotre prestation ${p.reference||''} du ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):''} (${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);font-size:11px;cursor:pointer;text-decoration:none;white-space:nowrap">✉ Relancer</a>`:''}
         <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
       </div></td>
-    </tr>`).join('')+'</tbody></table></div>';
+    </tr>`;}).join('')+'</tbody></table></div>';
 }
 
 async function loadSecContrats(){
@@ -17147,9 +17153,19 @@ async function exportSecRapport(type){
       (Array.isArray(data)?data:[]).forEach(d=>rows.push([d.numero||'',d.clients?.nom||'',d.prestations?.reference||'',d.total_ht||'',d.total_ttc||'',d.created_at||'',d.date_expiration||'',d.statut||'']));
       dlCSV(`devis-${ts}.csv`,rows);
     } else if(type==='relances'){
-      const data=await sbFetch('prestations?select=reference,statut,statut_financier,date_prestation,montant_ttc,clients(nom,email,telephone)&statut_financier=in.(acompte_demandé,partiellement_payée,facturée)&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=500');
+      // 'acompte_demandé' n'existe pas dans l'enum statut_facture (voir
+      // supabase-schema-v2.sql ~ligne 41 : non_facturée, en_préparation,
+      // facturée, partiellement_payée, payée, en_retard, annulée,
+      // remboursée) — le filtre échouait en 400, sbFetch renvoyait un objet
+      // d'erreur (jamais un tableau) et dlCSV était appelé quand même,
+      // téléchargeant un CSV vide avec un toast de succès. 'en_préparation'
+      // remplace 'acompte_demandé' : c'est la valeur la plus proche d'un
+      // acompte en cours de facturation/à relancer (par opposition à
+      // 'non_facturée', où rien n'a encore été engagé côté facturation).
+      const data=await sbFetch('prestations?select=reference,statut,statut_financier,date_prestation,montant_ttc,clients(nom,email,telephone)&statut_financier=in.(en_préparation,partiellement_payée,facturée)&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=500');
+      if(!Array.isArray(data)){toast('Erreur export : '+(data&&data.message||'requête invalide.'),'er');return;}
       const rows=[['Référence','Client','Email','Téléphone','Date','Montant TTC','Statut financier']];
-      (Array.isArray(data)?data:[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.clients?.email||'',p.clients?.telephone||'',p.date_prestation||'',p.montant_ttc||'',p.statut_financier||'']));
+      data.forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.clients?.email||'',p.clients?.telephone||'',p.date_prestation||'',p.montant_ttc||'',p.statut_financier||'']));
       dlCSV(`relances-${ts}.csv`,rows);
     }
   }catch(e){toast('Erreur export : '+(e.message||'inconnue'),'er');}
@@ -17284,6 +17300,7 @@ async function secConfirmerPaye(id){
       mode_paiement:document.getElementById('paye-mode')?.value||null,
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'enregistrement impossible.'),'er');return;}
+    logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{mode_paiement:r?.[0]?.mode_paiement});
     closeModal();toast('Paiement enregistré.','ok');loadSecRelances();
   }catch(e){toast('Erreur lors de l\'enregistrement.','er');}
 }
@@ -17513,7 +17530,7 @@ async function loadComptaFactures(){
   const el=document.getElementById('compta-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom,email)&statut_financier=not.in.(non_facturée,brouillon)&order=date_prestation.desc&limit=200');
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom,email)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=200');
     _comptaFactData=Array.isArray(data)?data:[];
     const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
     let enc=0,att=0,total=0;
@@ -19162,13 +19179,23 @@ function renderRdvClients(){
       <td>${esc(r.objet||'—')}</td>
       <td>${r.date_demandee?new Date(r.date_demandee).toLocaleDateString('fr-FR'):'—'}${r.heure_demandee?' à '+r.heure_demandee.slice(0,5):''}</td>
       <td><span class="bd ${RDV_CL_CLS[r.statut]||'bw'}"><span class="bd-d"></span>${RDV_CL_LBL[r.statut]||r.statut}</span></td>
-      <td style="white-space:nowrap">${r.statut==='a_confirmer'?`<button class="btn bp bs" onclick="confirmerRdvClient('${r.id}')">Confirmer</button> <button class="btn bg2 bs" onclick="annulerRdvClient('${r.id}')">Annuler</button>`:''}</td>
+      <td style="white-space:nowrap">${r.statut==='a_confirmer'?`<button class="btn bp bs" onclick="confirmerRdvClient('${r.id}')">Confirmer</button> <button class="btn bg2 bs" onclick="annulerRdvClient('${r.id}')">Annuler</button>`:r.statut==='confirme'?`<button class="btn bp bs" onclick="marquerRealiseRdvClient('${r.id}')">Marquer réalisé</button> <button class="btn bg2 bs" onclick="annulerRdvClient('${r.id}')">Annuler</button>`:''}</td>
     </tr>`).join('')+'</tbody></table></div>';
 }
 async function confirmerRdvClient(id){
   const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'confirme',confirme_par:localStorage.getItem('sv_uid')}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
   toast('Rendez-vous confirmé.','ok');
+  await loadRdvClients();
+}
+// statut 'realise' existe dans la contrainte CHECK (migration-portail-v1.sql
+// ~ligne 249 : a_confirmer, confirme, annule, realise) et RDV_CL_LBL le
+// déclare déjà ('Réalisé') mais rien ne l'écrivait jamais — un RDV confirmé
+// restait bloqué sans action possible une fois passé.
+async function marquerRealiseRdvClient(id){
+  const r=await sbFetch('rendez_vous?id=eq.'+id,{method:'PATCH',body:{statut:'realise'}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
+  toast('Rendez-vous marqué réalisé.','ok');
   await loadRdvClients();
 }
 async function annulerRdvClient(id){
@@ -22852,7 +22879,7 @@ async function loadMobileSecDash(ct){
       uid?sbFetch('notifications?select=id&type=eq.tache&lue=eq.false&destinataire_id=eq.'+uid).catch(()=>[]):[],
     ]);
     const demandes=(pres||[]).filter(p=>['demande_reçue','à_qualifier','offre_en_préparation'].includes(p.statut));
-    const acomptes=(pres||[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte');
+    const acomptes=(pres||[]).filter(p=>p.statut==='en_attente_acompte');
     const livraisons=(pres||[]).filter(p=>['prêt_validation','livrée','prête_à_livrer'].includes(p.statut));
     const devisEnvoi=(devis||[]).filter(d=>d.statut==='brouillon'||d.statut==='en_cours');
     const taches=(tachesRaw||[]).length;
@@ -22923,7 +22950,7 @@ async function loadMobileComptaDash(ct){
     const ca=mois.filter(p=>['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const enc=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const impayes=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier));
-    const acomptes=list.filter(p=>p.statut_financier==='acompte_demandé');
+    const acomptes=list.filter(p=>p.statut==='en_attente_acompte');
     const remAtt2=(Array.isArray(remAtt)?remAtt:[]).reduce((s,r)=>s+(r.remuneration||0),0);
     const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
     let html=`<div style="margin-bottom:16px">

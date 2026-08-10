@@ -61,6 +61,42 @@ const TYPE_CLIENT_MAP: Record<string, string> = {
   entreprise: "entreprise",
 };
 
+// Mapping besoin vitrine (data-slug de reserver.html) → type_prestation.
+// prestations.type_prestation est un simple `text default 'match'` (pas de
+// contrainte CHECK), mais le reste de l'OS traite un domaine fixe de valeurs
+// (dropdown de création manuelle SportVision-OS-Full.html ~ligne 2855 :
+// match, tournoi, entraînement, portrait, événement, réseaux_sociaux,
+// streaming, autre — même liste que le filtre du flux Brief ~ligne 14538
+// qui cherche `type_prestation=eq.réseaux_sociaux`). Avant ce fix, aucune
+// valeur n'était envoyée par cette fonction → la colonne retombait toujours
+// sur son défaut 'match', quel que soit le besoin réel du visiteur.
+// Correspondance choisie (jugement métier, à ajuster si le catalogue change) :
+//  - match-photo / match-video / pack-match → 'match'
+//  - shooting (joueur ou équipe)            → 'portrait'
+//  - couverture-tournoi                     → 'tournoi'
+//  - couverture-stage                       → 'entraînement' (stage le plus proche du domaine existant)
+//  - coach-preparateur (tournage)           → 'entraînement'
+//  - media-day                              → 'événement'
+//  - creation-contenu                       → 'réseaux_sociaux' (cohérent avec le filtre du flux Brief)
+//  - slug vide ("Autre besoin") ou inconnu  → 'autre'
+const OFFRE_SLUG_TO_TYPE_PRESTATION: Record<string, string> = {
+  "match-photo": "match",
+  "match-video": "match",
+  "pack-match": "match",
+  "shooting": "portrait",
+  "couverture-tournoi": "tournoi",
+  "couverture-stage": "entraînement",
+  "coach-preparateur": "entraînement",
+  "media-day": "événement",
+  "creation-contenu": "réseaux_sociaux",
+};
+function resolveTypePrestation(offreSlug: string | null | undefined): string {
+  if (offreSlug && OFFRE_SLUG_TO_TYPE_PRESTATION[offreSlug]) {
+    return OFFRE_SLUG_TO_TYPE_PRESTATION[offreSlug];
+  }
+  return "autre";
+}
+
 // Recalcul serveur des frais de déplacement — même logique que
 // cfgComputeFraisDeplacement() côté Portail (SportVision-Portail.html),
 // dupliquée ici car auparavant distance_km/frais_deplacement_ht étaient
@@ -261,6 +297,7 @@ serve(async (req) => {
       .from("prestations")
       .insert({
         statut: "demande_reçue",
+        type_prestation: resolveTypePrestation(offre_slug),
         client_id: clientId,
         offre_id: offreId,
         options_selectionnees: options || [],
