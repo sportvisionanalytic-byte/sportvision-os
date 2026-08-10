@@ -19873,7 +19873,7 @@ function modalNouveauContrat(){
           </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT MENSUEL (€)</label>
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT MENSUEL (€ TTC)</label>
           <input id="nc-montant" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box"></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">FRÉQUENCE</label>
           <select id="nc-freq" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
@@ -19948,7 +19948,16 @@ async function modalContratFromDevis(devisId){
     const today=new Date().toISOString().slice(0,10);
     const in1y=new Date();in1y.setFullYear(in1y.getFullYear()+1);
     const fin1y=in1y.toISOString().slice(0,10);
-    const montantM=d.total_ht?Math.round(d.total_ht/12*100)/100:null;
+    // Bug corrigé (audit Contrats/Signature, 2026-08) : contrats.montant_mensuel est stocké
+    // TTC (cf. comment on column contrats.tva_pct dans migration-contrats-v2-types-banque.sql :
+    // « sert à calculer le prix HT depuis montant_mensuel (TTC) » — c'est aussi ce que fait
+    // genererContratPDF() et l'edge function send-signature-request). Ce préfil utilisait
+    // total_ht (montant hors taxe) au lieu de total_ttc : un contrat créé sans modifier ce
+    // champ prérempli stockait donc un montant HT dans un champ documenté comme TTC, que
+    // genererContratPDF() redivisait ensuite par (1+TVA%) en le traitant comme du TTC —
+    // d'où un montant HT affiché ~16,7% trop bas sur le contrat imprimé et envoyé en
+    // signature (HT / 1,2 = HT × 0,833). Ne PAS remodifier sans revalider ce raisonnement.
+    const montantM=d.total_ttc?Math.round(d.total_ttc/12*100)/100:null;
     openModal(`<div class="mh"><div class="mt">Créer un contrat — ${esc(cl.nom||'Client')}</div><button class="mc" onclick="closeModal()">✕</button></div>
       <div class="mb" style="display:flex;flex-direction:column;gap:12px">
         <div style="padding:10px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.2);border-radius:var(--rb)">
@@ -19980,7 +19989,7 @@ async function modalContratFromDevis(devisId){
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT (€)</label>
+          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT (€ TTC)</label>
             <input id="nc-montant" type="number" min="0" step="0.01" value="${montantM||''}" placeholder="0.00" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box">
           </div>
           <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">FRÉQUENCE</label>
@@ -20046,7 +20055,7 @@ async function modalEditerContrat(id){
           </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT MENSUEL (€)</label>
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT MENSUEL (€ TTC)</label>
           <input id="ec-montant" type="number" min="0" step="0.01" value="${c.montant_mensuel||''}" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box"></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">FRÉQUENCE</label>
           <select id="ec-freq" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
