@@ -56,6 +56,14 @@ import type { ModuleKey } from "@/lib/types";
 // fait donc directement sur `ctx.organization.type === "generic"` dans appointments/page.tsx
 // (comme services/page.tsx), pas via cette liste : canAccess(ctx, "appointments") reste toujours
 // faux, y compris pour un club, tant qu'aucune vraie policy/decision produit n'étend ce périmètre.
+//
+// "mycm" (10/08/2026, plan MyCM Phase 2) : même famille que billing/contracts/documents — pas de
+// clé connect_modules dédiée (l'accès Full Communication n'est pas un entitlement vendu, c'est un
+// contrat `contrats.type_contrat='full_communication'` actif, comme pour session.ts:
+// buildClubActiveContext → isFullCommunication). Le gate réel se fait dans mycm/page.tsx via
+// data/shared/community-manager.ts:fetchIsFullCommunication (interroge client_contrats en
+// direct), pas via cette liste ni via MODULE_TO_CONNECT_MODULE — canAccess(ctx, "mycm") ne
+// vérifie donc que "module prêt", pas "Full Communication actif".
 export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "dashboard",
   "teams",
@@ -79,6 +87,7 @@ export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "presences",
   "sessions",
   "camps",
+  "mycm",
 ]);
 
 /**
