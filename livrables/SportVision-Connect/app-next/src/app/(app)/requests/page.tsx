@@ -153,7 +153,7 @@ export default function RequestsPage() {
     const targets = requests.filter((r) => selected.has(r.id) && r.status === "Envoyée");
     if (targets.length === 0) {
       setSelected(new Set());
-      showToast("Aucune demande annulable dans la sélection.");
+      showToast("Aucune demande annulable dans la sélection.", "error");
       return;
     }
     if (!window.confirm(`Annuler ${targets.length} demande${targets.length > 1 ? "s" : ""} ?`)) return;
@@ -174,7 +174,7 @@ export default function RequestsPage() {
           `${updated.length} demande${updated.length > 1 ? "s" : ""} annulée${updated.length > 1 ? "s" : ""}, ${failedCount} déjà prise${failedCount > 1 ? "s" : ""} en charge.`,
         );
       } else {
-        showToast("Aucune annulation n'a abouti — ces demandes sont déjà prises en charge.");
+        showToast("Aucune annulation n'a abouti — ces demandes sont déjà prises en charge.", "error");
       }
     });
   }
