@@ -10,11 +10,19 @@ import { Button } from "@/components/ui/Button";
 import { useClientId } from "@/lib/data/shared/use-client-id";
 import { createClient } from "@/lib/supabase/client";
 import { fetchContenus, type Contenu } from "@/lib/data/shared/contenus";
+import { fetchContenuStatsByIds, type ContenuStat } from "@/lib/data/shared/contenu-stats";
 
 // /publications — historique réel des contenus publiés/programmés (table `contenus`, filtrée sur
-// statut). Pas de colonnes "Portée"/"Interactions" : aucune métrique de diffusion n'existe dans le
-// schéma (Metricool n'est utilisé qu'à la main par les CM, aucune intégration API) — voir le plan
-// Tier B § Phase 5. Ne jamais inventer un chiffre à la place.
+// statut).
+//
+// Mise à jour du 10/08/2026 (Phase 5, saisie manuelle de stats) : les colonnes "Portée"/
+// "Interactions" ci-dessous étaient volontairement absentes jusqu'ici — aucune métrique de
+// diffusion n'existait dans le schéma (Metricool n'est utilisé qu'à la main par les CM, aucune
+// intégration API réelle). Elles réapparaissent maintenant que `contenu_stats`
+// (migration-cm-contenu-stats.sql) existe : une ligne par contenu PUBLIÉ, saisie à la main par le
+// CM propriétaire ou le Lead CM. Un contenu "programme" (pas encore publié) ou "publie" mais
+// jamais renseigné affiche toujours "—", jamais 0 — et toute valeur affichée porte la mention
+// "saisi manuellement" (jamais "synchronisé" : ce n'est toujours pas une intégration automatique).
 export default function PublicationsPage() {
   const { ctx } = useSession();
   const resolution = useClientId();
@@ -41,6 +49,7 @@ export default function PublicationsPage() {
 function PublicationsHistory({ clientId }: { clientId: string }) {
   const { ctx } = useSession();
   const [items, setItems] = useState<Contenu[] | null>(null);
+  const [statsById, setStatsById] = useState<Map<string, ContenuStat>>(new Map());
   const [loadError, setLoadError] = useState(false);
 
   async function reload() {
@@ -49,7 +58,12 @@ function PublicationsHistory({ clientId }: { clientId: string }) {
     try {
       const supabase = createClient();
       const all = await fetchContenus(supabase, clientId);
-      setItems(all.filter((c) => c.statut === "publie" || c.statut === "programme"));
+      const visibles = all.filter((c) => c.statut === "publie" || c.statut === "programme");
+      setItems(visibles);
+      // Les stats n'ont de sens que pour les contenus déjà publiés — un "programme" n'a jamais
+      // de ligne contenu_stats possible (pas encore diffusé).
+      const publieIds = visibles.filter((c) => c.statut === "publie").map((c) => c.id);
+      setStatsById(await fetchContenuStatsByIds(supabase, publieIds));
     } catch {
       setLoadError(true);
       setItems([]);
@@ -91,16 +105,37 @@ function PublicationsHistory({ clientId }: { clientId: string }) {
         </Card>
       ) : (
         <Card>
-          {items.map((c) => (
-            <div key={c.id} className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-bold text-text">{c.titre}</span>
-                <span className="mt-0.5 block text-[12px] text-text-soft">{c.plateforme ?? "—"}</span>
-              </span>
-              <span className="w-28 flex-none text-right text-[12px] text-text-soft">{c.datePublication ?? c.datePrevue ?? "—"}</span>
-              <Badge tone={c.statut === "publie" ? "success" : "info"}>{c.statut === "publie" ? "Publié" : "Programmé"}</Badge>
-            </div>
-          ))}
+          <div className="flex items-center gap-3.5 border-b border-divider px-5 py-2.5 text-[11px] font-bold uppercase tracking-[.04em] text-text-faint">
+            <span className="min-w-0 flex-1">Contenu</span>
+            <span className="w-20 flex-none text-right">Portée</span>
+            <span className="w-20 flex-none text-right">Interactions</span>
+            <span className="w-28 flex-none text-right">Date</span>
+            <span className="w-[74px] flex-none text-right">Statut</span>
+          </div>
+          <div className="px-5 pb-1 pt-2 text-[11px] text-text-faint">
+            Portée/Interactions : saisies manuellement par votre Community Manager, jamais une synchronisation automatique.
+          </div>
+          {items.map((c) => {
+            const stat = c.statut === "publie" ? statsById.get(c.id) : undefined;
+            return (
+              <div key={c.id} className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-bold text-text">{c.titre}</span>
+                  <span className="mt-0.5 block text-[12px] text-text-soft">{c.plateforme ?? "—"}</span>
+                </span>
+                <span className="w-20 flex-none text-right text-[12.5px] font-bold text-text">
+                  {stat?.portee != null ? stat.portee.toLocaleString("fr-FR") : "—"}
+                </span>
+                <span className="w-20 flex-none text-right text-[12.5px] font-bold text-text">
+                  {stat?.engagement != null ? stat.engagement.toLocaleString("fr-FR") : "—"}
+                </span>
+                <span className="w-28 flex-none text-right text-[12px] text-text-soft">{c.datePublication ?? c.datePrevue ?? "—"}</span>
+                <span className="w-[74px] flex-none text-right">
+                  <Badge tone={c.statut === "publie" ? "success" : "info"}>{c.statut === "publie" ? "Publié" : "Programmé"}</Badge>
+                </span>
+              </div>
+            );
+          })}
         </Card>
       )}
     </div>

@@ -15257,19 +15257,48 @@ async function loadCmPublications(){
 // ── CM — Analytics ────────────────────────────────────────────────────────────
 async function loadCmAnalytics(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  const mStart=new Date().toISOString().slice(0,7)+'-01';
+  const now=new Date();
+  const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+  const mNext=new Date(now.getFullYear(),now.getMonth()+1,1).toISOString().slice(0,10);
   try{
-    const [pubTotal,byPlat]=await Promise.all([
+    const [pubTotal,byPlat,pubMois]=await Promise.all([
       sbFetch('contenus?select=id&statut=eq.publie'),
       sbFetch('contenus?select=plateforme&statut=eq.publie&limit=200'),
+      sbFetch('contenus?select=id,plateforme&statut=eq.publie&date_publication=gte.'+mStart+'&date_publication=lt.'+mNext+'&limit=200'),
     ]);
     set('an-pub',(pubTotal||[]).length);
-    // Social stats from localStorage (manual input)
-    const statsKey='sv_an_stats';
-    const stats=JSON.parse(localStorage.getItem(statsKey)||'{}');
-    set('an-ig-reach',stats.ig_reach?Number(stats.ig_reach).toLocaleString('fr-FR'):'—');
-    set('an-fb-reach',stats.fb_reach?Number(stats.fb_reach).toLocaleString('fr-FR'):'—');
-    set('an-yt-views',stats.yt_views?Number(stats.yt_views).toLocaleString('fr-FR'):'—');
+    // Portée/Engagement/Vues : saisies manuellement par le CM, PAR CONTENU
+    // (table contenu_stats — Phase 5 du plan, migration-cm-contenu-stats.sql).
+    // Remplace l'ancien stockage localStorage (sv_an_stats) : 3 chiffres
+    // globaux jamais partagés entre CM, jamais persistés côté serveur.
+    // Changement de granularité assumé : chaque tuile agrège maintenant les
+    // stats saisies sur les contenus publiés CE MOIS pour la plateforme
+    // concernée (Instagram→portée, Facebook→portée, YouTube→vues), plutôt
+    // qu'un unique champ libre. Si aucun contenu de la plateforme n'a de
+    // stats saisies, la tuile affiche "—" — jamais 0 comme si c'était une
+    // vraie mesure à zéro.
+    const contenusMois=Array.isArray(pubMois)?pubMois:[];
+    const idsMois=contenusMois.map(c=>c.id);
+    let statsMois=[];
+    if(idsMois.length){
+      try{statsMois=await sbFetch('contenu_stats?select=contenu_id,portee,engagement,vues&contenu_id=in.('+idsMois.join(',')+')')||[];}catch(e){statsMois=[];}
+    }
+    const statsByContenu={};
+    (Array.isArray(statsMois)?statsMois:[]).forEach(s=>{statsByContenu[s.contenu_id]=s;});
+    const sumParPlateforme=(plateforme,champ)=>{
+      let total=0,saisi=false;
+      contenusMois.filter(c=>c.plateforme===plateforme).forEach(c=>{
+        const s=statsByContenu[c.id];
+        if(s&&s[champ]!==null&&s[champ]!==undefined){total+=Number(s[champ]);saisi=true;}
+      });
+      return saisi?total:null;
+    };
+    const igReach=sumParPlateforme('Instagram','portee');
+    const fbReach=sumParPlateforme('Facebook','portee');
+    const ytViews=sumParPlateforme('YouTube','vues');
+    set('an-ig-reach',igReach!==null?igReach.toLocaleString('fr-FR'):'—');
+    set('an-fb-reach',fbReach!==null?fbReach.toLocaleString('fr-FR'):'—');
+    set('an-yt-views',ytViews!==null?ytViews.toLocaleString('fr-FR'):'—');
     // By platform breakdown
     const platMap={};
     (byPlat||[]).forEach(c=>{const pl=c.plateforme||'Autre';platMap[pl]=(platMap[pl]||0)+1;});
@@ -15462,23 +15491,74 @@ async function genererRapportClient(){
   }catch(e){resEl.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de génération.</div>';console.error(e);}
 }
 
-function modalSaisirStats(){
-  const k='sv_an_stats';
-  const s=JSON.parse(localStorage.getItem(k)||'{}');
-  openModal(`<div class="mh"><div class="mt">Saisir statistiques sociales</div><button class="mc" onclick="closeModal()">✕</button></div>
+// Saisie de stats rattachée à UN contenu publié précis (table contenu_stats,
+// migration-cm-contenu-stats.sql) — remplace l'ancien formulaire à 3 champs
+// globaux stockés en localStorage (sv_an_stats). Changement de granularité
+// assumé : avant, un chiffre par mois pour tout le portefeuille, jamais
+// partagé entre CM ; après, une saisie par contenu publié, persistée côté
+// serveur et visible par toute l'équipe (RLS : CM propriétaire du contenu
+// ou Lead CM, jamais le client).
+async function modalSaisirStats(){
+  let contenus=[];
+  try{
+    contenus=await sbFetch('contenus?select=id,titre,plateforme,date_publication,clients(nom)&statut=eq.publie&order=date_publication.desc&limit=100')||[];
+  }catch(e){contenus=[];}
+  if(!Array.isArray(contenus))contenus=[];
+  if(!contenus.length){
+    openModal(`<div class="mh"><div class="mt">Saisir statistiques</div><button class="mc" onclick="closeModal()">✕</button></div>
+      <div class="mb"><div style="padding:8px 0;color:var(--t3);font-size:13px">Aucun contenu publié pour l'instant. Les statistiques se saisissent contenu par contenu, une fois publié.</div></div>
+      <div class="mf"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+    return;
+  }
+  const ids=contenus.map(c=>c.id);
+  let existantes=[];
+  try{existantes=await sbFetch('contenu_stats?select=contenu_id,portee,engagement,vues&contenu_id=in.('+ids.join(',')+')')||[];}catch(e){existantes=[];}
+  const statsByContenu={};
+  (Array.isArray(existantes)?existantes:[]).forEach(s=>{statsByContenu[s.contenu_id]=s;});
+  const opts=contenus.map(c=>{
+    const d=c.date_publication?new Date(c.date_publication).toLocaleDateString('fr-FR'):'—';
+    const cl=c.clients?.nom||'SportVision';
+    const s=statsByContenu[c.id]||{};
+    return `<option value="${c.id}" data-portee="${s.portee??''}" data-engagement="${s.engagement??''}" data-vues="${s.vues??''}">${esc(d+' · '+cl+' · '+c.titre+' ('+(c.plateforme||'—')+')')}</option>`;
+  }).join('');
+  openModal(`<div class="mh"><div class="mt">Saisir statistiques</div><button class="mc" onclick="closeModal()">✕</button></div>
     <div class="mb">
-      <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Ces stats sont stockées localement. Renseignez-les depuis vos dashboards Instagram, Facebook et YouTube.</div>
-      <div class="fg"><label class="fl">Instagram — Reach ce mois</label><input type="number" id="st-ig" class="fi" value="${s.ig_reach||''}" placeholder="Ex: 8200"></div>
-      <div class="fg"><label class="fl">Facebook — Portée ce mois</label><input type="number" id="st-fb" class="fi" value="${s.fb_reach||''}" placeholder="Ex: 2800"></div>
-      <div class="fg"><label class="fl">YouTube — Vues ce mois</label><input type="number" id="st-yt" class="fi" value="${s.yt_views||''}" placeholder="Ex: 1400"></div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Statistiques saisies manuellement depuis vos dashboards Instagram/Facebook/YouTube, rattachées au contenu publié choisi ci-dessous. Ré-enregistrer un contenu déjà saisi écrase les chiffres précédents.</div>
+      <div class="fg"><label class="fl">Contenu publié</label><select id="st-contenu" class="fi" onchange="_statsPrefill()">${opts}</select></div>
+      <div class="fg"><label class="fl">Portée</label><input type="number" id="st-portee" class="fi" placeholder="Ex: 8200"></div>
+      <div class="fg"><label class="fl">Engagement</label><input type="number" id="st-engagement" class="fi" placeholder="Ex: 340"></div>
+      <div class="fg"><label class="fl">Vues</label><input type="number" id="st-vues" class="fi" placeholder="Ex: 1400"></div>
+      <div id="st-err" style="color:var(--er);font-size:12px;min-height:16px"></div>
     </div>
     <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="sauvegarderStats()">Sauvegarder</button></div>`);
+  _statsPrefill();
 }
 
-function sauvegarderStats(){
-  const s={ig_reach:document.getElementById('st-ig')?.value,fb_reach:document.getElementById('st-fb')?.value,yt_views:document.getElementById('st-yt')?.value};
-  localStorage.setItem('sv_an_stats',JSON.stringify(s));
-  closeModal();loadCmAnalytics();
+function _statsPrefill(){
+  const sel=document.getElementById('st-contenu');
+  const opt=sel?.selectedOptions?.[0];
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
+  set('st-portee',opt?.dataset.portee);
+  set('st-engagement',opt?.dataset.engagement);
+  set('st-vues',opt?.dataset.vues);
+}
+
+async function sauvegarderStats(){
+  const err=document.getElementById('st-err');
+  const contenuId=document.getElementById('st-contenu')?.value;
+  if(!contenuId){if(err)err.textContent='Choisissez un contenu.';return;}
+  const num=v=>{const t=(v??'').toString().trim();return t===''?null:Number(t);};
+  const body={
+    contenu_id:contenuId,
+    portee:num(document.getElementById('st-portee')?.value),
+    engagement:num(document.getElementById('st-engagement')?.value),
+    vues:num(document.getElementById('st-vues')?.value),
+  };
+  try{
+    const r=await sbFetch('contenu_stats?on_conflict=contenu_id',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body});
+    if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+  }catch(e){if(err)err.textContent='Erreur : enregistrement impossible.';return;}
+  closeModal();toast('Statistiques enregistrées.','ok');loadCmAnalytics();
 }
 
 // ── Dashboard commercial ──────────────────────────────────────────────────────
