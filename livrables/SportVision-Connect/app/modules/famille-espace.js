@@ -96,6 +96,7 @@
       '.fam-wrap{display:flex;flex-direction:column;gap:14px}',
       '.fam-pillbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}',
       '.fam-pill{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}',
+      '.fam-pill:not(.on):hover{border-color:var(--accent);color:var(--text)}',
       '.fam-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}',
       '.fam-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}',
       '.fam-card{text-align:left;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;cursor:pointer;font:inherit;color:inherit}',

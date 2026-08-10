@@ -70,6 +70,7 @@
       .pjc-actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
       .pjc-pillbar{display:flex;gap:8px;flex-wrap:wrap}
       .pjc-pill{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600}
+      .pjc-pill:not(.on):hover{border-color:var(--accent);color:var(--text)}
       .pjc-pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
       .pjc-btn-noshrink{width:auto;margin-top:0}
       .pjc-msg-shell{display:flex;gap:16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;min-height:420px}
