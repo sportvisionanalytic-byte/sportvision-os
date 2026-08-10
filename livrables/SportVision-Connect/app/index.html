@@ -598,8 +598,17 @@ async function handleLogin(){
 }
 
 function handleLogout(){
+  // Déconnexion locale immédiate et inconditionnelle : l'utilisateur ne doit
+  // jamais rester bloqué sur son espace parce que le réseau est coupé.
+  // L'appel serveur (invalide le refresh_token côté Supabase, empêchant sa
+  // réutilisation) est fait en best-effort, sans attendre sa réponse ni
+  // faire échouer la déconnexion locale s'il échoue.
+  const tok = localStorage.getItem('svc_tok');
   svcClear();
   showScreen('login');
+  if (tok){
+    fetch(SB_URL+'/auth/v1/logout', {method:'POST', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok}}).catch(()=>{});
+  }
 }
 
 // Cartes visuelles "Vous êtes" (remplace le <select> nu) : synchronise la
