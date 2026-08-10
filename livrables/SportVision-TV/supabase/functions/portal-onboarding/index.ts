@@ -99,7 +99,16 @@ serve(async (req) => {
 
     let clientId: string | null = null;
     let isNewClient = false;
-    if (user.email) {
+    // 10/08/2026 — corrige un rapprochement par e-mail sans vérification email_confirmed_at,
+    // trouvé par audit indépendant en miroir exact de la faille déjà corrigée dans
+    // clubplus-onboarding le 2026-08-06 (voir son commentaire) : sans ce garde-fou, si la
+    // confirmation d'e-mail était un jour désactivée sur le projet, n'importe qui pouvait
+    // s'inscrire avec l'adresse d'un prospect/client existant et hériter immédiatement de ses
+    // devis/factures/contrats/messages (client_devis/client_factures/client_contrats/
+    // messages_client se cloisonnent tous sur ce client_id). Cette fonction faisait exactement
+    // le même rapprochement que clubplus-onboarding sur exactement la même table, sans le
+    // correctif.
+    if (user.email && user.email_confirmed_at) {
       const { data: matched } = await admin
         .from("clients")
         .select("id")

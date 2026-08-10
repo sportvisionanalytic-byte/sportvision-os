@@ -25,6 +25,21 @@
 --    v_autorise) accepte aussi un membre de club — c'est la RPC qui fait
 --    fonctionner l'écran Validations.
 --
+-- ─── Correction du 10/08/2026, avant toute exécution ──────────────────────
+-- Trouvé par un audit indépendant le lendemain de l'écriture de cette
+-- migration : `messages_client.auteur_client_id` a une FK stricte vers
+-- `client_users(id)` (migration-portail-v1.sql). Un membre de club qui
+-- n'est PAS le compte `client_users` d'origine (donc la quasi-totalité des
+-- membres pour qui cette migration existe) n'a AUCUNE ligne dans
+-- `client_users` — poser `auteur_client_id = auth.uid()` pour lui viole la
+-- FK (23503) et fait échouer toute la transaction : l'insert de message ET
+-- la RPC client_valider_contenu (qui écrit dans messages_client à la fin,
+-- ligne ~108) plantent pour tout membre de club non-fondateur. Corrigé
+-- ci-dessous : `auteur_client_id` n'est posé que s'il correspond à une
+-- vraie ligne `client_users`, sinon laissé `null` (colonne déjà nullable,
+-- `on delete set null`) — le message reste attribuable via `auteur_type`,
+-- juste pas nommément pour un membre de club.
+--
 -- Additive, idempotente (drop policy if exists / create or replace),
 -- aucun changement de structure de table. mc_staff_all et le reste du
 -- corps de client_valider_contenu restent inchangés.
@@ -44,7 +59,10 @@ create policy "mc_client_select" on messages_client for select using (
 drop policy if exists "mc_client_insert" on messages_client;
 create policy "mc_client_insert" on messages_client for insert with check (
   auteur_type = 'client'
-  and auteur_client_id = auth.uid()
+  -- auteur_client_id doit être soit le vrai client_users de l'appelant (cas d'origine),
+  -- soit null (membre de club sans ligne client_users — voir la correction en tête de
+  -- fichier) : jamais un uuid arbitraire qui violerait la FK ou usurperait quelqu'un d'autre.
+  and (auteur_client_id = auth.uid() or auteur_client_id is null)
   and (
     exists (select 1 from client_users cu where cu.id = auth.uid() and cu.client_id = messages_client.client_id)
     or club_member_has_client_access(messages_client.client_id)
@@ -72,6 +90,7 @@ language plpgsql security definer as $$
 declare
   v_row contenus;
   v_autorise boolean;
+  v_auteur_client_id uuid;
 begin
   if p_decision not in ('valide','corrections') then
     raise exception 'Décision invalide.';
@@ -98,8 +117,13 @@ begin
 
   update contenus set statut = p_decision, updated_at = now() where id = p_contenu_id returning * into v_row;
 
+  -- auth.uid() n'a de ligne dans client_users que pour le fondateur du compte Portail — pour
+  -- tout autre membre de club (autorisé ci-dessus via club_member_has_client_access), la FK de
+  -- messages_client.auteur_client_id rejetterait un uuid qui n'existe pas dans client_users.
+  select cu.id into v_auteur_client_id from client_users cu where cu.id = auth.uid();
+
   insert into messages_client (client_id, auteur_type, auteur_client_id, contenu)
-    values (v_row.client_id, 'client', auth.uid(),
+    values (v_row.client_id, 'client', v_auteur_client_id,
       case when p_decision = 'valide'
         then 'Contenu validé : « ' || coalesce(v_row.titre,'') || ' »'
         else 'Corrections demandées sur « ' || coalesce(v_row.titre,'') || ' » : ' || p_commentaire

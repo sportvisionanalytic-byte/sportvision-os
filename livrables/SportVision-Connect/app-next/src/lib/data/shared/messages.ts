@@ -38,13 +38,25 @@ export async function fetchClientMessages(supabase: SupabaseClient, clientId: st
   }));
 }
 
+/** auteur_client_id référence client_users(id) (FK stricte, migration-portail-v1.sql) — seul le
+ * fondateur du compte Portail y a une ligne. Un autre membre de club (accès étendu par v34) n'en
+ * a pas : poser user.id violerait la FK. On tente avec l'id réel d'abord (cas nominal, le plus
+ * fréquent), et on retombe sur `null` (colonne nullable) uniquement si Postgres rejette la FK —
+ * évite une requête de vérification séparée avant chaque envoi. */
 export async function sendClientMessage(supabase: SupabaseClient, clientId: string, contenu: string): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Session invalide.");
-  const { error } = await supabase
+
+  const attempt = await supabase
     .from("messages_client")
     .insert({ client_id: clientId, auteur_type: "client", auteur_client_id: user.id, contenu });
-  if (error) throw error;
+  if (!attempt.error) return;
+  if (attempt.error.code !== "23503") throw attempt.error;
+
+  const retry = await supabase
+    .from("messages_client")
+    .insert({ client_id: clientId, auteur_type: "client", auteur_client_id: null, contenu });
+  if (retry.error) throw retry.error;
 }

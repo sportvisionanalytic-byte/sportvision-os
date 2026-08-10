@@ -134,21 +134,28 @@ serve(async (req) => {
     });
     if (cmErr) return json({ error: cmErr.message }, 500);
 
-    // Pont Documents ↔ Portail (best-effort, ne bloque jamais la création du club) :
-    // si un `clients` Portail existe déjà pour cet e-mail (club déjà suivi
-    // commercialement par SportVision avant son inscription à Club+), relie
-    // clubs.portail_client_id et fait de l'admin un client_users pour ce
-    // client — il peut alors lire ses vrais devis/factures/contrats via les
-    // vues client_devis/client_factures/client_contrats (migration-portail-
-    // v1.sql), sans aucune donnée dupliquée ni nouvelle policy Portail.
-    // Le pont ci-dessous donne accès aux devis/factures/contrats réels d'un
-    // client Portail existant sur simple correspondance d'e-mail — ne le
-    // faire que si Supabase a confirmé que l'appelant possède bien cette
-    // adresse (email_confirmed_at non nul). Sans cette vérification, si la
-    // confirmation par e-mail était un jour désactivée côté projet, n'importe
-    // qui pourrait s'inscrire avec l'e-mail de quelqu'un d'autre et hériter
-    // immédiatement de ses documents financiers. Découvert lors de l'audit
+    // Pont Documents ↔ Portail (best-effort, ne bloque jamais la création du club) : relie
+    // clubs.portail_client_id à un `clients` Portail et fait de l'admin un client_users pour ce
+    // client — il peut alors lire ses vrais devis/factures/contrats via les vues
+    // client_devis/client_factures/client_contrats (migration-portail-v1.sql), sans aucune
+    // donnée dupliquée ni nouvelle policy Portail. Ne le faire (rapprocher OU créer) que si
+    // Supabase a confirmé que l'appelant possède bien cette adresse (email_confirmed_at non
+    // nul) — sans cette vérification, si la confirmation par e-mail était un jour désactivée
+    // côté projet, n'importe qui pourrait s'inscrire avec l'e-mail de quelqu'un d'autre et
+    // hériter immédiatement de ses documents financiers existants. Découvert lors de l'audit
     // du 2026-08-06.
+    //
+    // 10/08/2026 — avant ce correctif, l'absence de `clients` correspondant (le cas normal
+    // pour un club acquis en self-service, qui n'a par définition jamais eu de fiche Portail
+    // avant de s'inscrire) laissait `portail_client_id` null POUR TOUJOURS : aucun autre code
+    // du repo ne l'écrit ailleurs, et l'OS n'a aucune UI pour le faire à la main (vérifié par
+    // audit). Résultat räel mesuré : Facturation/Contrats/Documents/Messages/Communication/
+    // Publications/Validations (tous branchés sur ce lien le 09/08/2026) restaient vides pour
+    // la quasi-totalité des clubs, et le club lui-même était invisible dans l'OS (n'apparaît
+    // dans aucune liste, aucun KPI, tous basés sur `clients`). Fix : si aucune correspondance
+    // n'existe, CRÉER la fiche `clients` plutôt que de laisser le lien vide — aucun risque
+    // d'hériter des données de quelqu'un d'autre (rien n'existait avant), et le club devient
+    // enfin visible et gérable côté staff dès son inscription.
     if (user.email && user.email_confirmed_at) {
       try {
         const { data: matchedClient } = await admin
@@ -157,14 +164,35 @@ serve(async (req) => {
           .ilike("email", user.email)
           .limit(1)
           .maybeSingle();
-        if (matchedClient) {
-          await admin.from("clubs").update({ portail_client_id: matchedClient.id }).eq("id", createdClub.id);
-          await admin
-            .from("client_users")
-            .upsert({ id: user.id, client_id: matchedClient.id, prenom: prenom || null, nom: nom || null, telephone: telephone || null }, { onConflict: "id" });
+
+        let linkedClientId: string | null = matchedClient?.id ?? null;
+
+        if (!linkedClientId) {
+          const { data: createdClient, error: createClientErr } = await admin
+            .from("clients")
+            .insert({
+              statut: "prospect",
+              type_client: "club",
+              nom: String(club.nom).trim(),
+              nom_contact: nom || null,
+              prenom_contact: prenom || null,
+              email: user.email,
+              telephone: telephone || null,
+              ville: club.ville || null,
+              origine_prospect: "connect",
+            })
+            .select("id")
+            .single();
+          if (createClientErr) throw createClientErr;
+          linkedClientId = createdClient.id;
         }
+
+        await admin.from("clubs").update({ portail_client_id: linkedClientId }).eq("id", createdClub.id);
+        await admin
+          .from("client_users")
+          .upsert({ id: user.id, client_id: linkedClientId, prenom: prenom || null, nom: nom || null, telephone: telephone || null }, { onConflict: "id" });
       } catch (_e) {
-        console.error("[clubplus-onboarding] rattachement automatique au client Portail a échoué (best-effort) :", _e);
+        console.error("[clubplus-onboarding] rattachement/création du client Portail a échoué (best-effort) :", _e);
       }
     }
 
