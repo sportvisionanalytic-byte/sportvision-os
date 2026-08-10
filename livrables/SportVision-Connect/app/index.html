@@ -585,7 +585,7 @@ async function handleLogin(){
   try{
     const res = await fetch(SB_URL+'/auth/v1/token?grant_type=password', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email,password:pass})});
     const d = await res.json();
-    if (!d.access_token) throw new Error('E-mail ou mot de passe incorrect.');
+    if (!d.access_token) throw new Error(d.msg || d.error_description || 'E-mail ou mot de passe incorrect.');
     svcSave(d.access_token, d.refresh_token, d.user.id);
     const onboardErr = await runPostAuthOnboarding(d.user);
     if (onboardErr) throw new Error(onboardErr);
