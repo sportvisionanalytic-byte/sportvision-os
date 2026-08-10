@@ -73,8 +73,9 @@ export async function fetchIsFullCommunication(supabase: SupabaseClient, clientI
 
 /** Contenus publiés ce mois-ci par ce CM pour ce client (`contenus`, migration-contenus.sql,
  * accès client via contenus_client_select — client_users d'origine, club étendu par
- * migration-clubplus-v34, NON EXÉCUTÉE à ce jour : un club verra 0 tant qu'elle n'est pas
- * passée, même limite honnête déjà documentée pour /publications et /communication).
+ * migration-clubplus-v34-club-messages-contenus-access.sql, exécutée et vérifiée en direct
+ * le 10/08/2026 : un club voit bien ses contenus 'a_valider_client'/'valide'/etc., pas de
+ * limite résiduelle ici contrairement à ce qu'un commentaire antérieur affirmait).
  *
  * Seul indicateur des 3 du design d'origine (contentsProducedThisMonth / responseTime /
  * nextMeetingAt) avec une vraie source de donnée. Les deux autres n'ont AUCUNE table réelle
