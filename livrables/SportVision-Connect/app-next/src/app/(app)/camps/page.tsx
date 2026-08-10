@@ -1,91 +1,128 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Tent } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
-import { campsByAcademyOrg } from "@/lib/mock/events";
-import type { Camp } from "@/lib/types/events";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
-import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { createClient } from "@/lib/supabase/client";
+import { resolveOrgLegacyClientId } from "@/lib/data/shared/org-legacy-link";
+import { fetchAcademieCamps, type AcademieCampEvent } from "@/lib/data/academie/camps";
 
-// /camps — stages de l'académie en Full Communication. ACTIONS.md § 10 « Académie Full Com ».
-const STATUS_LABEL: Record<Camp["status"], { label: string; tone: BadgeTone }> = {
-  upcoming: { label: "À venir", tone: "info" },
-  open: { label: "Inscriptions ouvertes", tone: "success" },
-  full: { label: "Complet", tone: "warning" },
-  running: { label: "En cours", tone: "accent" },
-  completed: { label: "Terminé", tone: "neutral" },
-};
+// /camps — stages de l'académie, alimentés par calendar_events (type='stage'), en lecture seule
+// (le staff SportVision planifie, l'académie consulte — voir le plan Tier C § Phase 1 Séances/
+// Stages). Remplace le mock campsByAcademyOrg (venue/groupes/capacité/inscrits inventés, retiré
+// de lib/mock/events.ts) : calendar_events ne porte réellement qu'une date + un titre + un
+// contexte, rien de plus n'est affiché.
+//
+// Gate à deux niveaux, même pattern que /billing (ClubBillingView) : organization.type ===
+// "academy" d'abord (organizations.organization_type='academie' en base, traduit en "academy"
+// côté app-next par mapOrgType — voir lib/supabase/mappers.ts, ORG_TYPE_MAP), puis l'état honnête
+// "pas encore relié" si organizations.legacy_client_id est encore null (le pont Documents ↔
+// Portail de connect-org-signup est best-effort et peut ne pas avoir abouti).
+
+function fmtDate(value: string): string {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
 
 export default function CampsPage() {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "camps")) return <LockedModule />;
+  const [linkedClientId, setLinkedClientId] = useState<string | null | undefined>(undefined);
+  const [camps, setCamps] = useState<AcademieCampEvent[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
-  const camps = campsByAcademyOrg[ctx.organization.id] ?? [];
+  useEffect(() => {
+    if (ctx.organization.type !== "academy") return;
+    const supabase = createClient();
+    resolveOrgLegacyClientId(supabase, ctx.organization.id).then(setLinkedClientId);
+  }, [ctx.organization.id, ctx.organization.type]);
+
+  useEffect(() => {
+    if (!linkedClientId) return;
+    const supabase = createClient();
+    fetchAcademieCamps(supabase, ctx.organization.id)
+      .then(setCamps)
+      .catch(() => setLoadError(true));
+  }, [ctx.organization.id, linkedClientId]);
+
+  if (ctx.organization.type !== "academy" || !canAccess(ctx, "camps")) return <LockedModule />;
+
+  const header = (
+    <div>
+      <h1 className="text-[29px] font-extrabold leading-tight tracking-tight">Stages</h1>
+      <p className="mt-1.5 max-w-xl text-[13.5px] text-text-soft">
+        Vos stages au planning, alimenté par SportVision.
+      </p>
+    </div>
+  );
+
+  if (linkedClientId === undefined) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  }
+
+  if (linkedClientId === null) {
+    return (
+      <div className="flex flex-col gap-5">
+        {header}
+        <Card className="flex flex-col items-center gap-3 px-8 py-16 text-center">
+          <Tent className="h-6 w-6 text-text-faint" aria-hidden />
+          <div className="max-w-md">
+            <h2 className="text-[18px] font-extrabold tracking-tight">Espace Stages pas encore relié</h2>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-text-soft">
+              SportVision n&apos;a pas encore relié {ctx.organization.name} à votre espace Stages. Contactez votre
+              interlocuteur SportVision pour l&apos;activer.
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col gap-5">
+        {header}
+        <Card className="p-8 text-center text-[13.5px] text-text-soft">Impossible de charger vos stages.</Card>
+      </div>
+    );
+  }
+
+  if (camps === null) {
+    return (
+      <div className="flex flex-col gap-5">
+        {header}
+        <div className="py-16 text-center text-[13px] text-text-soft">Chargement de vos stages…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <h1 className="text-[29px] font-extrabold leading-tight tracking-tight">Stages</h1>
-          <p className="mt-1.5 max-w-xl text-[13.5px] text-text-soft">
-            Vos stages, leurs groupes et leur taux de remplissage.
-          </p>
-        </div>
-        <Button variant="primary">
-          <Plus className="h-3.5 w-3.5" aria-hidden />
-          Créer un stage
-        </Button>
-      </div>
+      {header}
 
       {camps.length === 0 && (
-        <Card className="p-8 text-center text-[13.5px] text-text-soft">Aucun stage pour le moment.</Card>
+        <Card className="p-8 text-center text-[13.5px] text-text-soft">Aucun stage planifié pour le moment.</Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {camps.map((camp) => {
-          const pct = Math.round((camp.registered / camp.capacity) * 100);
-          const status = STATUS_LABEL[camp.status];
-          return (
-            <Card key={camp.id} className="p-5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-[15px] font-extrabold tracking-tight">{camp.name}</div>
-                  <div className="mt-0.5 text-[12.5px] text-text-soft">
-                    {camp.startsAt} → {camp.endsAt} · {camp.venue}
-                  </div>
-                </div>
-                <Badge tone={status.tone}>{status.label}</Badge>
+      {camps.length > 0 && (
+        <Card>
+          {camps.map((camp) => (
+            <div
+              key={camp.id}
+              className="flex flex-wrap items-center gap-3.5 border-b border-divider px-5 py-4 last:border-0 hover:bg-row-hover"
+            >
+              <div className="w-[170px] flex-none text-[13px] font-extrabold capitalize text-text">{fmtDate(camp.eventDate)}</div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13.5px] font-bold text-text">{camp.title}</div>
+                {camp.context && <div className="mt-0.5 truncate text-[12px] text-text-soft">{camp.context}</div>}
               </div>
-
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {camp.groups.map((g) => (
-                  <span key={g} className="rounded-full bg-neutral-bg px-2.5 py-1 text-[11px] font-bold text-neutral-fg">
-                    {g}
-                  </span>
-                ))}
-              </div>
-
-              <div className="mt-4">
-                <div className="flex items-baseline justify-between text-[12px] font-semibold text-text-soft">
-                  <span>Inscriptions</span>
-                  <span className="font-extrabold text-text">
-                    {camp.registered} / {camp.capacity}
-                  </span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-sunken">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-brand-cyan to-brand-violet"
-                    style={{ width: `${Math.min(100, pct)}%` }}
-                  />
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+            </div>
+          ))}
+        </Card>
+      )}
     </div>
   );
 }

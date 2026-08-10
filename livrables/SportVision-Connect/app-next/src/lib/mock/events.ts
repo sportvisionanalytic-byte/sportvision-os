@@ -1,63 +1,14 @@
-// Données fictives mais réalistes pour les espaces Coach / Académie / Tournoi Full
-// Communication — voir ACTIONS.md § 10, README.md § Fidélité. Clés par identifiant
-// d'organisation pour suivre le changement d'espace actif.
+// Données fictives mais réalistes pour l'espace Tournoi Full Communication — voir ACTIONS.md
+// § 10, README.md § Fidélité. Clés par identifiant d'organisation pour suivre le changement
+// d'espace actif.
+//
+// sessionsByCoachOrg/campsByAcademyOrg (Coach/Académie) retirés le 10/08/2026 (plan Tier C
+// § Phase 1 Séances/Stages) : /sessions et /camps lisent désormais calendar_events réel (voir
+// data/coach/sessions.ts, data/academie/camps.ts), plus besoin de ce mock. eventPhasesByEventOrg/
+// liveStatsByEventOrg/liveFeedByEventOrg (Tournoi, /eventtimeline et /live) restent mockés — hors
+// périmètre de cette phase, voir le plan Tier C § Phase 4.
 
-import type { Camp, CoachSession, EventPhase, LiveFeedItem, LiveStat } from "../types/events";
-
-// ---------------------------------------------------------------------------------------------
-// Coach Full Com — /sessions (ACTIONS.md § 10). Chris Performance.
-// ---------------------------------------------------------------------------------------------
-
-export const sessionsByCoachOrg: Record<string, CoachSession[]> = {
-  "org-chrisperformance": [
-    { id: "sess-1", title: "Séance individuelle — travail de finition", date: "12 août 2026", time: "17h00", location: "Stade Pierre-Bardin, Fontainebleau", status: "confirmed" },
-    { id: "sess-2", title: "Préparation physique — groupe U17", date: "14 août 2026", time: "18h30", location: "Complexe sportif, Varenne", status: "capture_planned" },
-    { id: "sess-3", title: "Séance individuelle — gardien", date: "19 août 2026", time: "10h00", location: "Centre Elite Academy, Melun", status: "to_confirm" },
-    { id: "sess-4", title: "Masterclass — prise de décision", date: "22 août 2026", time: "16h00", location: "Stade Pierre-Bardin, Fontainebleau", status: "confirmed" },
-  ],
-};
-
-// ---------------------------------------------------------------------------------------------
-// Académie Full Com — /camps (ACTIONS.md § 10, DATA_MODEL.md § Camp). Elite Academy.
-// ---------------------------------------------------------------------------------------------
-
-export const campsByAcademyOrg: Record<string, Camp[]> = {
-  "org-eliteacademy": [
-    {
-      id: "camp-toussaint",
-      name: "Stage de la Toussaint",
-      startsAt: "2026-10-19",
-      endsAt: "2026-10-23",
-      venue: "Centre sportif régional, Melun",
-      groups: ["U11", "U13", "U15"],
-      capacity: 60,
-      registered: 47,
-      status: "open",
-    },
-    {
-      id: "camp-ete",
-      name: "Stage d'été — perfectionnement",
-      startsAt: "2026-07-06",
-      endsAt: "2026-07-10",
-      venue: "Centre sportif régional, Melun",
-      groups: ["U15", "U17"],
-      capacity: 40,
-      registered: 40,
-      status: "completed",
-    },
-    {
-      id: "camp-gardiens",
-      name: "Stage spécifique gardiens",
-      startsAt: "2026-12-21",
-      endsAt: "2026-12-23",
-      venue: "Gymnase Coubertin, Melun",
-      groups: ["U13", "U15", "U17"],
-      capacity: 16,
-      registered: 9,
-      status: "upcoming",
-    },
-  ],
-};
+import type { EventPhase, LiveFeedItem, LiveStat } from "../types/events";
 
 // ---------------------------------------------------------------------------------------------
 // Tournoi Full Com — /eventtimeline et /live (ACTIONS.md § 10, DATA_MODEL.md § EventPhase).

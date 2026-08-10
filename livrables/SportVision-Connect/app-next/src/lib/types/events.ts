@@ -1,28 +1,11 @@
-// Types propres aux espaces spécifiques Coach / Académie / Tournoi Full Communication —
-// ACTIONS.md § 10, DATA_MODEL.md § Camp, § EventPhase. Ne duplique rien de src/lib/types.ts.
-
-/** Séance du coach — ACTIONS.md § 10 « Coach Full Com — /sessions ». */
-export interface CoachSession {
-  id: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  status: "capture_planned" | "confirmed" | "to_confirm";
-}
-
-/** Stage de l'académie — ACTIONS.md § 10 « Académie Full Com — /camps », DATA_MODEL.md § Camp. */
-export interface Camp {
-  id: string;
-  name: string;
-  startsAt: string;
-  endsAt: string;
-  venue: string;
-  groups: string[];
-  capacity: number;
-  registered: number;
-  status: "upcoming" | "open" | "full" | "running" | "completed";
-}
+// Types propres à l'espace spécifique Tournoi Full Communication — ACTIONS.md § 10,
+// DATA_MODEL.md § EventPhase. Ne duplique rien de src/lib/types.ts.
+//
+// CoachSession/Camp (Coach/Académie) retirés le 10/08/2026 (plan Tier C § Phase 1 Séances/
+// Stages) : /sessions et /camps lisent désormais calendar_events réel, dont la forme (event_date/
+// title/context, voir migration-connect-v3-coach-academie-requests.sql) ne correspond pas à ces
+// types mock (heure/lieu/statut, venue/groupes/capacité inventés) — types réels dans
+// data/coach/sessions.ts (CoachSessionEvent) et data/academie/camps.ts (AcademieCampEvent).
 
 /** Une des 3 phases de la timeline d'un tournoi — ACTIONS.md § 10, DATA_MODEL.md § EventPhase. */
 export type EventPhaseKind = "before" | "during" | "after";

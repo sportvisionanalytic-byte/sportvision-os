@@ -38,10 +38,15 @@ import type { ModuleKey } from "@/lib/types";
 // personne — le module reste verrouillé pour tout le monde tant qu'un membre du staff ne l'active
 // pas explicitement pour un club qui a vraiment signé cette offre (même geste manuel que pour
 // n'importe quel autre entitlement club — jamais d'auto-activation depuis un simple champ texte).
-// "sessions"/"camps" (coach/académie) volontairement PAS ajoutés : ces types d'organisation n'ont
-// aujourd'hui aucun lien vers une ligne `clients` réelle (contrairement à un club via
-// portail_client_id) — aucun mécanisme de rapprochement équivalent à clubplus-onboarding n'existe
-// pour eux, donc aucune donnée réelle n'est possible sans construire ça d'abord.
+// "sessions"/"camps" (coach/académie, 10/08/2026 — plan Tier C § Phase 1 Séances/Stages) :
+// ajoutés maintenant que connect-org-signup peuple organizations.legacy_client_id pour ces deux
+// types (bloc "Pont Documents ↔ Portail", même principe que clubplus-onboarding/
+// clubs.portail_client_id). Lisent calendar_events (migration-connect-v3-coach-academie-
+// requests.sql) filtré organization_id + type='seance'/'stage', en lecture seule (policy
+// cal_staff_write : seul le staff écrit, le coach/l'académie consulte) — voir
+// data/coach/sessions.ts, data/academie/camps.ts. Le gate réel se fait par organization.type
+// ("coach"/"academy" — mapOrgType traduit 'academie' en 'academy', voir supabase/mappers.ts) dans
+// sessions/page.tsx et camps/page.tsx, pas par cette seule liste.
 //
 // "appointments" (10/08/2026) : volontairement absent, même raisonnement que "services" —
 // équivalent Next.js de ProjetModules.rdv (vanilla), monté UNIQUEMENT pour l'Espace Projet dans
@@ -72,6 +77,8 @@ export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "publications",
   "validations",
   "presences",
+  "sessions",
+  "camps",
 ]);
 
 /**
