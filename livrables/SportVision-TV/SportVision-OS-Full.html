@@ -9095,7 +9095,7 @@ function docsRenderDevis(){
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
         ${d.statut==='brouillon'?`<button onclick="envoyerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:#366BFF;cursor:pointer">Envoyer</button>`:''}
         ${(d.statut==='envoyé'||d.statut==='en_attente')&&(!d.signature_statut||d.signature_statut==='non_demandee')?`<button onclick="demanderSignatureDoc('devis','${d.id}','${d.numero||d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
-        ${d.signature_statut==='demandee'?`<button onclick="confirmerSignatureDoc('devis','${d.id}','${d.numero||d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">✓</button>`:''}
+        ${d.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Youtrust dès signature du client — aucune action manuelle possible ici." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:#F5A524;white-space:nowrap">⏳ Attente Youtrust</span>`:''}
         <button onclick="imprimerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">PDF</button>
         <button onclick="envoyerDevisParEmail('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);border-radius:var(--rp);color:var(--acc2);cursor:pointer" title="Envoyer par email">✉</button>
         <button class="btn bg2 bs" onclick="modalModifierDevis(${i})" style="font-size:11px;padding:3px 9px">Modifier</button>
@@ -9118,7 +9118,7 @@ function docsRenderContrats(){
       <td>${_docsBadge(c.statut||'brouillon',CONTRAT_STATUTS)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
         ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='resilie'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
-        ${c.signature_statut==='demandee'?`<button onclick="confirmerSignatureDoc('contrat','${c.id}','${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">✓</button>`:''}
+        ${c.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Youtrust dès signature du client — aucune action manuelle possible ici." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:#F5A524;white-space:nowrap">⏳ Attente Youtrust</span>`:''}
         ${c.signature_statut?_sigBadge(c.signature_statut):''}
         <button onclick="genererContratPDF('${c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer">PDF</button>
       </td>
@@ -9301,19 +9301,22 @@ async function demanderSignatureDoc(docType,id,ref){
   }catch(e){toast('Erreur : '+e.message,'er');}
 }
 
+// Retirée le 2026-08-10 (audit Contrats/Signature) : cette fonction posait un PATCH
+// direct signature_statut='signee' + statut='accepté'/'actif' déclenché par un simple
+// clic staff, SANS aucune confirmation Youtrust réelle. C'est exactement le
+// contournement que le trigger check_signature_avant_acceptation()/
+// check_signature_avant_activation() (migration-audit-08-08-corrections-interfaces.sql)
+// est censé empêcher — le trigger le laissait pourtant passer puisque les deux champs
+// étaient posés dans le MÊME appel PATCH que la confirmation. La confirmation réelle et
+// automatique existe déjà côté serveur : supabase/functions/youtrust-webhook (vérifie la
+// signature HMAC Youtrust avant de poser signature_statut='signee'). Décision déjà prise
+// par Fouka (voir commentaire du trigger, 08/08/2026) : un passage manuel hors Youtrust
+// (signature papier) doit se faire par SQL Editor par Fouka lui-même, jamais par un
+// bouton de l'UI accessible au staff. Le bouton correspondant a été retiré de docsRenderDevis,
+// docsRenderContrats et docsRenderSignatures ; cette fonction est neutralisée (au lieu
+// d'être supprimée) en filet de sécurité si un ancien onclick mis en cache l'appelait encore.
 async function confirmerSignatureDoc(docType,id,ref){
-  const table=docType==='devis'?'devis':'contrats';
-  try{
-    const patch={signature_statut:'signee',signature_confirmee_at:new Date().toISOString()};
-    if(docType==='devis')patch.statut='accepté';
-    else patch.statut='actif';
-    const r=await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:patch});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
-    await logDocEvent('signature',ref,docType,'Document signé — '+ref);
-    dispatchSVEvent('document.signed',{label:ref}).catch(()=>{});
-    toast('Document marqué comme signé.','ok');
-    await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
-  }catch(e){toast('Erreur.','er');}
+  toast('Confirmation manuelle désactivée. La signature est confirmée automatiquement par Youtrust (webhook sécurisé). Pour un cas de signature papier hors Youtrust, contactez Fouka — passage exceptionnel par SQL Editor uniquement.','er');
 }
 
 async function refuserSignatureDoc(docType,id,ref){
@@ -9349,7 +9352,7 @@ async function docsRenderSignatures(){
       <td style="color:var(--t3);font-size:11.5px">${fd(d.signature_confirmee_at)}</td>
       <td>${_sigBadge(d.signature_statut)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
-        ${d.signature_statut==='demandee'?`<button onclick="confirmerSignatureDoc('${d._type}','${d.id}','${d._ref}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">✓ Signé</button><button onclick="refuserSignatureDoc('${d._type}','${d.id}','${d._ref}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.18);border-radius:var(--rp);color:var(--er);cursor:pointer">Refuser</button>`:''}
+        ${d.signature_statut==='demandee'?`<button onclick="refuserSignatureDoc('${d._type}','${d.id}','${d._ref}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.18);border-radius:var(--rp);color:var(--er);cursor:pointer">Refuser</button>`:''}
       </td></tr>`).join('')}
     </tbody></table></div></div>`;
   }
@@ -20197,7 +20200,7 @@ function modalNouveauContrat(){
           </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT MENSUEL (€)</label>
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT MENSUEL (€ TTC)</label>
           <input id="nc-montant" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box"></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">FRÉQUENCE</label>
           <select id="nc-freq" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
@@ -20222,7 +20225,9 @@ function modalNouveauContrat(){
           <option value="elite">Elite (prestations illimitées)</option>
           <option value="sur_mesure">Sur mesure</option>
         </select></div>
-      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES</label>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">PÉRIMÈTRE / PRESTATIONS INCLUSES</label>
+        <textarea id="nc-description" rows="3" placeholder="Ce qui est concrètement inclus dans ce contrat (imprimé dans le contrat et le PDF envoyé en signature)..." style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea></div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3)">(usage interne — n'apparaît pas dans le contrat imprimé)</span></label>
         <textarea id="nc-notes" rows="3" placeholder="Notes, conditions particulières..." style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
@@ -20247,9 +20252,20 @@ async function sauvegarderContrat(){
     montant_mensuel:parseFloat(document.getElementById('nc-montant').value)||null,frequence:document.getElementById('nc-freq').value,
     date_debut:dateDebut,date_fin:dateFin,
     renouvellement_auto:document.getElementById('nc-auto').checked,notes:document.getElementById('nc-notes').value.trim()||null,
+    description:document.getElementById('nc-description')?.value.trim()||null,
     type_abonnement:document.getElementById('nc-abonnement')?.value||null,
     created_by:S.uid};
-  const r=await sbFetch('contrats',{method:'POST',body:payload});
+  let r=await sbFetch('contrats',{method:'POST',body:payload});
+  let descriptionNonEnregistree=false;
+  if(sbErr(r)&&/description/i.test(r.message||'')&&payload.description!==undefined){
+    // Colonne "description" pas encore migrée (migration-contrats-v3-description.sql
+    // EN ATTENTE d'exécution) : on retente sans elle plutôt que de bloquer la création
+    // du contrat. Le staff garde son texte dans le champ tant qu'il ne ferme pas la
+    // modale, mais il ne sera pas persisté avant l'exécution de la migration.
+    const {description,...payloadSansDescription}=payload;
+    r=await sbFetch('contrats',{method:'POST',body:payloadSansDescription});
+    descriptionNonEnregistree=!sbErr(r);
+  }
   if(sbErr(r)){if(err){err.textContent='Erreur: '+(r.message||'Table "contrats" manquante. Exécutez la migration SQL.');err.style.display='block';}return;}
   if(payload.statut==='actif'&&clientId){
     try{
@@ -20260,7 +20276,9 @@ async function sauvegarderContrat(){
       }
     }catch(e){}
   }
-  closeModal();toast('Contrat créé','ok');await loadContrats();
+  closeModal();
+  toast(descriptionNonEnregistree?'Contrat créé — le périmètre n\'a pas pu être enregistré (migration-contrats-v3-description.sql non exécutée).':'Contrat créé',descriptionNonEnregistree?'wa':'ok');
+  await loadContrats();
 }
 
 async function modalContratFromDevis(devisId){
@@ -20272,7 +20290,16 @@ async function modalContratFromDevis(devisId){
     const today=new Date().toISOString().slice(0,10);
     const in1y=new Date();in1y.setFullYear(in1y.getFullYear()+1);
     const fin1y=in1y.toISOString().slice(0,10);
-    const montantM=d.total_ht?Math.round(d.total_ht/12*100)/100:null;
+    // Bug corrigé (audit Contrats/Signature, 2026-08) : contrats.montant_mensuel est stocké
+    // TTC (cf. comment on column contrats.tva_pct dans migration-contrats-v2-types-banque.sql :
+    // « sert à calculer le prix HT depuis montant_mensuel (TTC) » — c'est aussi ce que fait
+    // genererContratPDF() et l'edge function send-signature-request). Ce préfil utilisait
+    // total_ht (montant hors taxe) au lieu de total_ttc : un contrat créé sans modifier ce
+    // champ prérempli stockait donc un montant HT dans un champ documenté comme TTC, que
+    // genererContratPDF() redivisait ensuite par (1+TVA%) en le traitant comme du TTC —
+    // d'où un montant HT affiché ~16,7% trop bas sur le contrat imprimé et envoyé en
+    // signature (HT / 1,2 = HT × 0,833). Ne PAS remodifier sans revalider ce raisonnement.
+    const montantM=d.total_ttc?Math.round(d.total_ttc/12*100)/100:null;
     openModal(`<div class="mh"><div class="mt">Créer un contrat — ${esc(cl.nom||'Client')}</div><button class="mc" onclick="closeModal()">✕</button></div>
       <div class="mb" style="display:flex;flex-direction:column;gap:12px">
         <div style="padding:10px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.2);border-radius:var(--rb)">
@@ -20304,7 +20331,7 @@ async function modalContratFromDevis(devisId){
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT (€)</label>
+          <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT (€ TTC)</label>
             <input id="nc-montant" type="number" min="0" step="0.01" value="${montantM||''}" placeholder="0.00" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box">
           </div>
           <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">FRÉQUENCE</label>
@@ -20330,7 +20357,10 @@ async function modalContratFromDevis(devisId){
             <input id="nc-fin" type="date" value="${fin1y}" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box">
           </div>
         </div>
-        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES</label>
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">PÉRIMÈTRE / PRESTATIONS INCLUSES</label>
+          <textarea id="nc-description" rows="3" placeholder="Ce qui est concrètement inclus dans ce contrat (imprimé dans le contrat et le PDF envoyé en signature)..." style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box"></textarea>
+        </div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3)">(usage interne — n'apparaît pas dans le contrat imprimé)</span></label>
           <textarea id="nc-notes" rows="3" placeholder="Conditions, services inclus…" style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(d.notes||'')}</textarea>
         </div>
       </div>
@@ -20370,7 +20400,7 @@ async function modalEditerContrat(id){
           </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT MENSUEL (€)</label>
+        <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">MONTANT MENSUEL (€ TTC)</label>
           <input id="ec-montant" type="number" min="0" step="0.01" value="${c.montant_mensuel||''}" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box"></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">FRÉQUENCE</label>
           <select id="ec-freq" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px">
@@ -20390,7 +20420,9 @@ async function modalEditerContrat(id){
         <input type="checkbox" id="ec-auto"${c.renouvellement_auto?' checked':''} style="width:15px;height:15px;accent-color:var(--acc)">
         <label for="ec-auto" style="font-size:13px;color:var(--t2);cursor:pointer">Renouvellement automatique</label>
       </div>
-      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES</label>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">PÉRIMÈTRE / PRESTATIONS INCLUSES</label>
+        <textarea id="ec-description" rows="3" placeholder="Ce qui est concrètement inclus dans ce contrat (imprimé dans le contrat et le PDF envoyé en signature)..." style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(c.description||'')}</textarea></div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">NOTES <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3)">(usage interne — n'apparaît pas dans le contrat imprimé)</span></label>
         <textarea id="ec-notes" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:8px 10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(c.notes||'')}</textarea></div>
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:20px">
@@ -20409,8 +20441,17 @@ async function mettreAJourContrat(id){
   const payload={type_contrat:document.getElementById('ec-type').value,statut:document.getElementById('ec-statut').value,
     montant_mensuel:parseFloat(document.getElementById('ec-montant').value)||null,frequence:document.getElementById('ec-freq').value,
     date_debut:dateDebut,date_fin:dateFin,
-    renouvellement_auto:document.getElementById('ec-auto').checked,notes:document.getElementById('ec-notes').value.trim()||null};
-  const r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payload});
+    renouvellement_auto:document.getElementById('ec-auto').checked,notes:document.getElementById('ec-notes').value.trim()||null,
+    description:document.getElementById('ec-description')?.value.trim()||null};
+  let r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payload});
+  let descriptionNonEnregistree=false;
+  if(sbErr(r)&&/description/i.test(r.message||'')&&payload.description!==undefined){
+    // Colonne "description" pas encore migrée (migration-contrats-v3-description.sql
+    // EN ATTENTE d'exécution) : on retente sans elle plutôt que de bloquer la modification.
+    const {description,...payloadSansDescription}=payload;
+    r=await sbFetch('contrats?id=eq.'+id,{method:'PATCH',body:payloadSansDescription});
+    descriptionNonEnregistree=!sbErr(r);
+  }
   if(sbErr(r)){const e=document.getElementById('ecf-err');if(e){e.textContent='Erreur: '+(r.message||'Impossible de modifier.');e.style.display='block';}return;}
   if(payload.statut==='actif'){
     try{
@@ -20425,7 +20466,9 @@ async function mettreAJourContrat(id){
       }
     }catch(e){}
   }
-  closeModal();toast('Contrat mis à jour','ok');await loadContrats();
+  closeModal();
+  toast(descriptionNonEnregistree?'Contrat mis à jour — le périmètre n\'a pas pu être enregistré (migration-contrats-v3-description.sql non exécutée).':'Contrat mis à jour',descriptionNonEnregistree?'wa':'ok');
+  await loadContrats();
 }
 
 async function supprimerContrat(id){
