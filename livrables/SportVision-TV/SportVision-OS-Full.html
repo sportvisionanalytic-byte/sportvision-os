@@ -8977,7 +8977,7 @@ function docsRenderTous(){
     rows.push({dt:new Date(p.date_prestation||0),type:'Facture',cl:'#2ECC8A',ref:p.reference||'—',
       client:esc(p.clients?.nom)||'—',montant:fmt(p.montant_ttc),dateStr:fd(p.date_prestation),
       badge:_docsBadge(p.statut_financier||'facturée',FACT_STATUTS),
-      actions:`<button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">PDF</button>`});
+      actions:`<button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer" title="Aperçu — ne crée rien, voir l'onglet Factures pour émettre">PDF</button>`});
   });
   _docsCache.avoirs.forEach(a=>{
     rows.push({dt:new Date(a.created_at||0),type:'Avoir',cl:'#F0445E',ref:a.numero||'—',
@@ -9058,7 +9058,8 @@ function docsRenderFactures(){
       <td style="color:var(--t3);font-size:11.5px">${fd(p.date_prestation)}</td>
       <td>${_docsBadge(p.statut_financier||'facturée',FACT_STATUTS)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
-        <button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">Facture</button>
+        <button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer" title="Aperçu — ne crée rien">Aperçu</button>
+        ${!p.factures?.length?`<button onclick="emettreFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:var(--rp);color:#366BFF;cursor:pointer;font-weight:600" title="Émet une facture définitive et numérotée">Émettre</button>`:''}
         <button onclick="envoyerFactureParEmail('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);border-radius:var(--rp);color:var(--acc2);cursor:pointer" title="Envoyer par email">✉</button>
         ${p.factures?.[0]?.pennylane_invoice_number
           ?`<a href="${p.factures[0].pennylane_public_url||'#'}" target="_blank" style="padding:3px 9px;font-size:11px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.2);border-radius:var(--rp);color:#14B8A6;text-decoration:none" title="Facture électronique Pennylane">✓ ${p.factures[0].pennylane_invoice_number}</a>`
@@ -10308,7 +10309,15 @@ async function imprimerFacture(id){
     if(!p){toast('Prestation introuvable.');return;}
     const c=p.clients||{};
     const dv=_devisFacturable(p.devis);
-    const fact=await getOrCreateFacture(id).catch(()=>null);
+    // Aperçu en lecture seule : lit une facture déjà émise (via getOrCreateFacture
+    // à l'avancement en 'production_terminée', ou via emettreFacture) sans jamais
+    // en créer une — auparavant, ce simple aperçu appelait getOrCreateFacture, qui
+    // numérote et persiste une vraie ligne `factures` dès le premier clic : un
+    // aperçu émettait donc, à l'insu de l'utilisateur, un document comptable
+    // définitif et séquentiellement numéroté. Seul emettreFacture() crée/numérote,
+    // avec confirmation explicite (voir plus bas).
+    const factArr=await sbFetch('factures?select=*&prestation_id=eq.'+id+'&order=created_at.desc&limit=1').catch(()=>[]);
+    const fact=Array.isArray(factArr)&&factArr[0]||null;
     const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
     const ht=dv?.total_ht||p.montant_ht||0;
@@ -10322,7 +10331,11 @@ async function imprimerFacture(id){
     const sfLbl={payée:'Payée',facturée:'Facturée',partiellement_payée:'Part. payée',en_retard:'En retard',non_facturée:'Non facturée'};
     const sfClr={payée:'#2ECC8A',facturée:'#366BFF',partiellement_payée:'#F5A524',en_retard:'#F0445E',non_facturée:'#8891A8'};
     const sf=p.statut_financier||'non_facturée';
-    const numFact=fact?.numero||'FAC-'+new Date().getFullYear()+'-'+(p.reference||'').replace('SV-','').replace(/\d{4}-/,'');
+    // Sans facture émise, aucun numéro réel n'existe encore : pas de faux-semblant
+    // (l'ancien fallback fabriquait un numéro au format FAC-AAAA-xxxx qui ressemblait
+    // à un vrai numéro séquentiel alors qu'il n'était ni persisté ni définitif).
+    const numFact=fact?.numero||'APERÇU (non émise)';
+    const apercuBanner=fact?'':'<div style="background:#FFF4E5;border:1px solid #F5A524;border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:12.5px;color:#8A5A00;line-height:1.6"><strong>APERÇU — document non définitif.</strong> Aucune facture n\'a encore été émise pour cette prestation : ce document n\'a pas de numéro séquentiel réel et n\'a aucune valeur comptable ou légale. Pour émettre la facture officielle, utilisez le bouton « Émettre » dans l\'écran Factures.</div>';
     const win=window.open('','_blank','width=900,height=800');
     if(!win){toast('Autorisez les popups pour générer la facture.');return;}
     win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Facture ${numFact} — SportVision</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5}.page{max-width:800px;margin:0 auto;padding:48px}@media print{.np{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
@@ -10331,6 +10344,7 @@ async function imprimerFacture(id){
   <button onclick="window.print()" style="padding:8px 18px;background:#366BFF;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer">Imprimer / PDF</button>
   <button onclick="window.close()" style="padding:8px 14px;background:#F0F2F7;color:#555E73;border:none;border-radius:7px;font-size:13px;cursor:pointer">Fermer</button>
 </div>
+${apercuBanner}
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:24px;border-bottom:2px solid #2ECC8A">
   <div>
     <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
@@ -10380,10 +10394,36 @@ async function imprimerFacture(id){
   }catch(e){toast('Erreur lors de la génération de la facture.');}
 }
 
-async function envoyerFactureParEmail(prestationId){
+// Seule action qui crée réellement une ligne `factures` numérotée à la demande
+// explicite du staff (getOrCreateFacture est par ailleurs déjà appelé
+// automatiquement à la fin de production — voir avancerStatutPrestation sur
+// le passage en 'production_terminée' — ce bouton couvre les cas où ce n'est
+// pas encore arrivé : facturation manuelle, donnée historique, etc.).
+// Confirmation explicite exigée : contrairement à l'aperçu (imprimerFacture),
+// cette action est irréversible et engage une numérotation séquentielle
+// légale (seul un avoir permet de la corriger ensuite).
+async function emettreFacture(prestationId){
+  if(!confirm('Cette action émet une facture définitive et numérotée pour cette prestation. Elle ne pourra plus être modifiée (seul un avoir permettra de la corriger). Confirmer ?'))return;
   try{
     const fact=await getOrCreateFacture(prestationId);
-    if(!fact){toast('Impossible de générer la facture.','er');return;}
+    if(!fact){toast('Émission impossible : prestation ou devis introuvable.','er');return;}
+    logFinancialAudit('creation','factures',fact.id,null,fact.montant_ttc,{prestation_id:prestationId,numero:fact.numero});
+    toast('Facture '+(fact.numero||'')+' émise.','ok');
+    if(document.getElementById('docs-content')){await docsLoadAll();docsUpdateKPIs();await docsRenderTab();}
+    else if(S.view==='rapprochement')await loadRapprochement();
+    else if(S.view==='factures')await loadComptaFactures();
+  }catch(e){toast('Erreur lors de l\'émission.','er');}
+}
+
+async function envoyerFactureParEmail(prestationId){
+  try{
+    const factArr=await sbFetch('factures?select=*&prestation_id=eq.'+prestationId+'&order=created_at.desc&limit=1').catch(()=>[]);
+    const fact=Array.isArray(factArr)&&factArr[0]||null;
+    // N'émet plus la facture silencieusement en ouvrant ce modal (auparavant via
+    // getOrCreateFacture) : ouvrir un brouillon d'email ne doit pas, par
+    // effet de bord, numéroter un document comptable définitif. Il faut
+    // d'abord émettre explicitement via le bouton « Émettre ».
+    if(!fact){toast('Aucune facture émise pour cette prestation. Cliquez sur « Émettre » avant de l\'envoyer par email.','er');return;}
     const pArr=await sbFetch(`prestations?id=eq.${prestationId}&select=clients(nom,email,prenom_contact,nom_contact)`);
     const c=pArr?.[0]?.clients||{};
     const num=fact.numero||'—';
@@ -18138,7 +18178,8 @@ async function loadFinances(){
           <td><div style="display:flex;gap:4px;justify-content:flex-end">
             ${canFacturer?`<button onclick="majStatutFinancier('${p.id}','facturée')" style="padding:4px 8px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);color:var(--wa);cursor:pointer;white-space:nowrap" title="Marquer comme facturée">Facturer</button>`:''}
             ${canPayer?`<button onclick="majStatutFinancier('${p.id}','payée')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap" title="Marquer comme payée">Payée ✓</button>`:''}
-            <button onclick="imprimerFacture('${p.id}')" style="padding:4px 8px;font-size:11px;background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer;white-space:nowrap" title="Générer facture PDF">Facture</button>
+            <button onclick="imprimerFacture('${p.id}')" style="padding:4px 8px;font-size:11px;background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer;white-space:nowrap" title="Aperçu — ne crée rien">Aperçu</button>
+            <button onclick="emettreFacture('${p.id}')" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:var(--rp);color:#366BFF;cursor:pointer;white-space:nowrap;font-weight:600" title="Émet une facture définitive et numérotée">Émettre</button>
             <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
           </div></td>
         </tr>`;
