@@ -19558,7 +19558,11 @@ const VIEW_CTA={
   'prod.dash':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
   'prod.pre':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'prod.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
-  'prod.equipe':{t:'+ Inviter un collaborateur',fn:'modalInviterCollaborateur'},
+  // Pas de CTA 'prod.equipe' → modalInviterCollaborateur() : l'edge function
+  // invite-collaborateur est réservée aux admin côté serveur (403 systématique
+  // pour tout autre rôle, cf. supabase/functions/invite-collaborateur/index.ts
+  // ligne 63). Le bouton "+ Inviter un collaborateur" échouait donc à 100%
+  // pour le rôle prod après avoir fait remplir tout le formulaire.
   'prod.jourj':{t:'⚠ Déclarer incident',fn:'modalSignalerIncident'},
   'prod.frais':{t:'+ Déclarer frais',fn:'modalDeclarerFrais'},
   'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
