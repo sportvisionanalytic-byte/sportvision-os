@@ -17282,6 +17282,7 @@ async function secConfirmerPaye(id){
       mode_paiement:document.getElementById('paye-mode')?.value||null,
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'enregistrement impossible.'),'er');return;}
+    logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{mode_paiement:r?.[0]?.mode_paiement});
     closeModal();toast('Paiement enregistré.','ok');loadSecRelances();
   }catch(e){toast('Erreur lors de l\'enregistrement.','er');}
 }
