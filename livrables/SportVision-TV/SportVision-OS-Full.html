@@ -4472,13 +4472,21 @@ async function loadProdDash(){
       sbFetch('kits?select=id,statut,nom,type_kit'),
       sbFetch('incidents?select=id,type_incident,description,niveau,cloture,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
       sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=nom.asc'),
-      sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
+      sbFetch('prestations_equipe?select=remuneration,statut_paiement,prestations!inner(statut)&statut=eq.acceptée&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
     ]);
     const pre=Array.isArray(preRaw)?preRaw:[];
     const kits=Array.isArray(kitsRaw)?kitsRaw:[];
     const inc=Array.isArray(incRaw)?incRaw:[];
     const prof=Array.isArray(profRaw)?profRaw:[];
-    const remAtt=(Array.isArray(remRaw)?remRaw:[]).reduce((s,r)=>s+(r.remuneration||0),0);
+    // Cette KPI renvoie vers switchView('rem') (prod.rem / loadProdRemunerations) : elle
+    // doit compter exactement les mêmes lignes que cet écran, sinon le chiffre affiché ici
+    // ne correspond pas à ce que l'utilisateur voit en cliquant dessus. Avant ce correctif,
+    // la requête ne filtrait ni sur prestations_equipe.statut='acceptée' (elle sommait aussi
+    // les invitations en attente, refusées ou remplacées), ni sur le statut de la prestation
+    // liée (elle sommait aussi les missions annulées/refusées) — surestimant largement le
+    // montant "à contrôler". Même règle que loadProdRemunerations pour les missions
+    // annulées/refusées : exclue, sauf si déjà validée avant l'annulation.
+    const remAtt=(Array.isArray(remRaw)?remRaw:[]).filter(r=>!['annulée','refusée'].includes(r.prestations?.statut)||r.statut_paiement==='validé').reduce((s,r)=>s+(r.remuneration||0),0);
     // KPIs
     const VALIDER_ST=['à_valider_production'];
     const aValider=pre.filter(p=>VALIDER_ST.includes(p.statut));
@@ -4489,7 +4497,10 @@ async function loadProdDash(){
     const aTransferer=pre.filter(p=>['médias_à_transférer','production_terminée'].includes(p.statut));
     const livrablesAValider=pre.filter(p=>['prête_validation','prêt_validation'].includes(p.statut));
     const kitsDispo=kits.filter(k=>k.statut==='disponible').length;
-    const kitsRes=kits.filter(k=>['réservé','pré_réservé','sorti','en_prestation'].includes(k.statut)).length;
+    // Même liste de statuts que kitsRenderKitsGrid/kitsLoadAll ("Déployés" sur l'écran Kits) —
+    // il manquait à_récupérer et à_retourner ici, donc ce KPI et celui de l'écran Kits (vers
+    // lequel il pointe) pouvaient afficher deux chiffres différents pour la même réalité.
+    const kitsRes=kits.filter(k=>['réservé','pré_réservé','sorti','en_prestation','à_récupérer','à_retourner'].includes(k.statut)).length;
     const todayAssigned=new Set(
       pre.filter(p=>p.date_prestation===today&&!DONE_ST.includes(p.statut))
          .flatMap(p=>(p.prestations_equipe||[]).filter(e=>e.statut==='acceptée').map(e=>e.collaborateur?.id))
@@ -6100,7 +6111,11 @@ async function loadProdBudget(){
       ? await sbFetch('prestations_equipe?select=remuneration,statut&prestation_id=in.('+preIds.join(',')+')')
       : [];
     const active=pre.filter(p=>!['livrée','clôturée'].includes(p.statut));
-    s('bud-nb',active.length||pre.length);
+    // active.length||pre.length affichait le TOTAL du mois dès que active.length
+    // valait 0 (0 est falsy en JS) — donc le KPI "Prestations actives" montrait
+    // le nombre de prestations livrées/clôturées au lieu de 0 quand tout était
+    // déjà terminé, l'exact inverse de ce que le libellé annonce.
+    s('bud-nb',active.length);
     const ca=pre.reduce((acc,p)=>acc+(Number(p.montant_ttc)||0),0);
     // Une mission refusée/remplacée/annulée n'est pas un coût réel.
     const costsRem=(Array.isArray(rawRem)?rawRem:[]).filter(r=>r.statut==='acceptée').reduce((acc,r)=>acc+(Number(r.remuneration)||0),0);
@@ -6176,10 +6191,11 @@ function renderProdRemList(){
         :sp==='validé'
         ?`<button onclick="majStatutPaiement('${r.id}','transmis_compta')" style="padding:3px 8px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:var(--wa);cursor:pointer;white-space:nowrap">→ Compta</button>`
         :'—';
-      return`<tr>
+      const preAnnulee=['annulée','refusée'].includes(pre.statut);
+      return`<tr${preAnnulee?' style="background:rgba(240,68,94,.05)"':''}>
         <td class="tp">${name}</td>
         <td>${esc(col.role||r.fonction||'—')}</td>
-        <td class="tm">${pre.reference||'—'}</td>
+        <td class="tm">${pre.reference||'—'}${preAnnulee?` <span title="Mission ${pre.statut} après engagement du paiement — à vérifier avant toute action" style="color:var(--er);font-size:10px;font-weight:700">⚠ ${pre.statut}</span>`:''}</td>
         <td>${esc(pre.clients?.nom||'—')}</td>
         <td>${pre.date_prestation?new Date(pre.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
         <td class="tm" style="font-weight:700;color:var(--ok)">${r.remuneration?r.remuneration.toLocaleString('fr-FR')+' €':'—'}</td>
@@ -6194,8 +6210,12 @@ async function loadProdRemunerations(){
   if(!el)return;
   try{
     const raw=await sbFetch('prestations_equipe?select=id,statut,remuneration,statut_paiement,date_paiement,fonction,prestations(id,reference,date_prestation,statut,clients(nom)),collaborateur:profiles(id,prenom,nom,role)&order=created_at.desc&limit=100');
-    // Une mission refusée/remplacée/annulée ou une prestation annulée/refusée ne doit jamais générer de rémunération à valider.
-    _prodRemData=(Array.isArray(raw)?raw:[]).filter(r=>r.statut==='acceptée'&&!['annulée','refusée'].includes(r.prestations?.statut));
+    // Une mission refusée/remplacée/annulée ne doit jamais faire apparaître une NOUVELLE
+    // rémunération à valider. Mais si le paiement était déjà validé/transmis/payé avant que
+    // la prestation ne passe à annulée/refusée (travail déjà effectué, argent déjà engagé ou
+    // versé), la ligne doit rester visible — la faire disparaître silencieusement effacerait
+    // une somme due sans trace ni alerte (renderProdRemList affiche un badge "annulée" dessus).
+    _prodRemData=(Array.isArray(raw)?raw:[]).filter(r=>r.statut==='acceptée'&&(!['annulée','refusée'].includes(r.prestations?.statut)||['validé','transmis_compta','payé'].includes(r.statut_paiement)));
     // KPIs
     const now=new Date();const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
     const tot=_prodRemData.reduce((s,r)=>s+(r.remuneration||0),0);
@@ -15603,11 +15623,14 @@ async function loadComptaRem(){
   const el=document.getElementById('compta-rem-real');if(!el)return;
   try{
     const data=await sbFetch('prestations_equipe?select=id,remuneration,statut_paiement,date_paiement,prestations(reference,date_prestation,statut),collaborateur:profiles(id,prenom,nom,role)&statut=eq.acceptée&order=created_at.desc&limit=200');
-    // Une mission dont la prestation parente est annulée/refusée ne doit
-    // jamais générer de rémunération à payer (même filtre que
-    // loadProdRemunerations) — le filtre statut=eq.acceptée ci-dessus ne
-    // porte que sur prestations_equipe, pas sur la prestation elle-même.
-    _comptaRemData=(Array.isArray(data)?data:[]).filter(r=>!['annulée','refusée'].includes(r.prestations?.statut));
+    // Une mission dont la prestation parente est annulée/refusée ne doit jamais
+    // faire apparaître une NOUVELLE rémunération à payer (même filtre que
+    // loadProdRemunerations) — le filtre statut=eq.acceptée ci-dessus ne porte
+    // que sur prestations_equipe, pas sur la prestation elle-même. Mais si le
+    // paiement était déjà validé/transmis/payé avant l'annulation (travail déjà
+    // effectué), la ligne reste visible avec un badge d'alerte (renderComptaRem)
+    // au lieu de disparaître silencieusement avec une somme due non tracée.
+    _comptaRemData=(Array.isArray(data)?data:[]).filter(r=>!['annulée','refusée'].includes(r.prestations?.statut)||['validé','transmis_compta','payé'].includes(r.statut_paiement));
     const tot=_comptaRemData.reduce((s,r)=>s+(r.remuneration||0),0);
     const pay=_comptaRemData.filter(r=>r.statut_paiement==='payé').reduce((s,r)=>s+(r.remuneration||0),0);
     const att=tot-pay;
@@ -15649,13 +15672,13 @@ function renderComptaRem(){
         ${attIds.length?`<button onclick="toutPayerCollab(${JSON.stringify(attIds)},this)" style="padding:6px 14px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap">Tout payer (${attIds.length})</button>`:''}
       </div>
       <div class="tw" style="margin-top:2px"><table><thead><tr><th>Prestation</th><th>Date</th><th>Rémunération</th><th>Statut</th><th></th></tr></thead><tbody>
-        ${g.items.map(r=>`<tr>
-          <td class="tm">${r.prestations?.reference||'—'}</td>
+        ${g.items.map(r=>{const preAnnulee=['annulée','refusée'].includes(r.prestations?.statut);return`<tr${preAnnulee?' style="background:rgba(240,68,94,.05)"':''}>
+          <td class="tm">${r.prestations?.reference||'—'}${preAnnulee?` <span title="Mission ${r.prestations.statut} après engagement du paiement — à vérifier avant toute action" style="color:var(--er);font-size:10px;font-weight:700">⚠ ${r.prestations.statut}</span>`:''}</td>
           <td>${r.prestations?.date_prestation?new Date(r.prestations.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
           <td class="tm" style="font-weight:600">${fmt(r.remuneration)}</td>
           <td><span class="bd ${r.statut_paiement==='payé'?'ba':'bw'}"><span class="bd-d"></span>${r.statut_paiement==='payé'?'Payé':'En attente'}</span></td>
           <td>${r.statut_paiement!=='payé'?`<button id="rem-btn-${r.id}" onclick="marquerPayeRem('${r.id}',this)" style="padding:4px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:11px;cursor:pointer">Payer</button>`:'<span style="font-size:11px;color:var(--ok)">✓</span>'}</td>
-        </tr>`).join('')}
+        </tr>`;}).join('')}
       </tbody></table></div>
     </div>`;
   }).join('');
@@ -19550,7 +19573,11 @@ const VIEW_CTA={
   'prod.dash':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
   'prod.pre':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'prod.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
-  'prod.equipe':{t:'+ Inviter un collaborateur',fn:'modalInviterCollaborateur'},
+  // Pas de CTA 'prod.equipe' → modalInviterCollaborateur() : l'edge function
+  // invite-collaborateur est réservée aux admin côté serveur (403 systématique
+  // pour tout autre rôle, cf. supabase/functions/invite-collaborateur/index.ts
+  // ligne 63). Le bouton "+ Inviter un collaborateur" échouait donc à 100%
+  // pour le rôle prod après avoir fait remplir tout le formulaire.
   'prod.jourj':{t:'⚠ Déclarer incident',fn:'modalSignalerIncident'},
   'prod.frais':{t:'+ Déclarer frais',fn:'modalDeclarerFrais'},
   'cm.dash':{t:'+ Nouveau contenu',fn:'modalNouveauContenu'},
