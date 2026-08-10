@@ -17002,18 +17002,24 @@ function renderSecRelances(){
   }
   if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune relance pour ce filtre.</div>';return;}
   el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date</th><th>Statut financier</th><th></th></tr></thead><tbody>'+
-    list.slice(0,30).map(p=>`<tr>
+    list.slice(0,30).map(p=>{
+      // Même garde que loadFinances (~ligne 18035, canPayer) : une prestation
+      // non_facturée n'a jamais été facturée (rien à encaisser) et une
+      // prestation déjà payée n'a plus rien à régler — afficher "✓ Payé"
+      // dans ces deux cas laissait un bouton actionnable sans action valide.
+      const canPayer=['facturée','partiellement_payée','en_retard'].includes(p.statut_financier);
+      return `<tr>
       <td class="tm">${p.reference||'—'}</td>
       <td class="tp">${esc(p.clients?.nom||'—')}</td>
       <td class="tm" style="font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
       <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
       <td><span class="bd ${SC[p.statut_financier]||'bw'}"><span class="bd-d"></span>${SL[p.statut_financier]||p.statut_financier||'—'}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">
-        <button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secMarquerPaye('${p.id}')">✓ Payé</button>
+        ${canPayer?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secMarquerPaye('${p.id}')">✓ Payé</button>`:''}
         ${p.clients?.email?`<a href="mailto:${esc(p.clients.email)}?subject=Relance paiement — ${p.reference||'SportVision'}&body=Bonjour,%0A%0ANotre prestation ${p.reference||''} du ${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):''} (${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);font-size:11px;cursor:pointer;text-decoration:none;white-space:nowrap">✉ Relancer</a>`:''}
         <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
       </div></td>
-    </tr>`).join('')+'</tbody></table></div>';
+    </tr>`;}).join('')+'</tbody></table></div>';
 }
 
 async function loadSecContrats(){
