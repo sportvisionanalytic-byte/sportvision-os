@@ -3826,6 +3826,7 @@ function modalModifierClient(idx){
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
           ${['admin','sec','com'].includes(S.role)?`<button class="btn bg2" onclick="modalInviterClubPlus('${c.id}','${escJs(c.nom)}')" title="Générer un lien privé d'activation Club+ pré-relié à ce client">Inviter à activer Club+</button>`:''}
           ${['admin','sec','com'].includes(S.role)?`<button class="btn bg2" onclick="modalCreerOrgEventCmAgency('${c.id}','${escJs(c.nom)}')" title="Générer un lien privé de création d'espace Connect événement ou agence CM, pré-relié à ce client">Créer espace événement/agence</button>`:''}
+          ${['admin','sec','com'].includes(S.role)?`<button class="btn bg2" onclick="modalChecklistEvenement('${c.id}','${escJs(c.nom)}')" title="Cocher/décocher la checklist avant/jour J/après de l'espace événement relié à ce client">Checklist événement</button>`:''}
           ${canEdit?`<button class="btn bg2" onclick="closeModal();modalNouvellePrestation('${c.id}')" title="Créer une prestation pour ce client">+ Prestation</button>
           <button class="btn bp" onclick="modifierClient('${c.id}')">Enregistrer</button>`:''}
         </div>
@@ -4040,6 +4041,91 @@ async function genererLienCreationOrg(clientId){
   }finally{
     if(btn){btn.disabled=false;if(!_lienCreationOrg)btn.textContent='Générer le lien';}
   }
+}
+
+// Checklist événement (migration-connect-v22-event-checklist-items.sql, 10/08/2026) — écran
+// staff pour cocher/décocher les 12 items de référence (avant/jour J/après) d'un espace Connect
+// événement, depuis la fiche client. Écriture réservée à admin/sec/com côté RLS (policy
+// eci_staff_write) — ce modal ne fait qu'appeler PATCH directement sur event_checklist_items, la
+// RLS est le seul gardien (pas de vérification de rôle dupliquée ici). Résout d'abord
+// l'organisation `event` reliée au client (organizations.legacy_client_id) : un client peut ne
+// pas encore en avoir (lien pas encore activé) ou, en théorie, en avoir plusieurs — on affiche la
+// plus récente et on signale s'il y en a d'autres plutôt que de les fusionner silencieusement.
+const CKE_PHASE_LABELS={avant:"Avant l'événement",jour_j:'Jour J',apres:"Après l'événement"};
+const CKE_PHASE_ORDER=['avant','jour_j','apres'];
+
+async function modalChecklistEvenement(clientId,clientNom){
+  openModal(`<div class="mh"><div class="mt">Checklist événement — ${esc(clientNom)}</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" id="cke-body" style="display:flex;flex-direction:column;gap:14px;min-height:80px">
+      <div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+  const body=document.getElementById('cke-body');
+  try{
+    const orgs=await sbFetch('organizations?legacy_client_id=eq.'+clientId+'&organization_type=eq.event&select=id,nom&order=created_at.desc');
+    if(sbErr(orgs)){if(body)body.innerHTML='<div style="text-align:center;color:var(--er);padding:24px 0">Erreur de chargement.</div>';return;}
+    const list=Array.isArray(orgs)?orgs:[];
+    if(!list.length){
+      if(body)body.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px 0">Aucun espace événement relié à ce client pour le moment. Générez d\'abord un lien via « Créer espace événement/agence » ci-dessus, puis revenez ici une fois activé.</div>';
+      return;
+    }
+    if(body&&list.length>1){
+      const note=document.createElement('div');
+      note.style.cssText='font-size:11px;color:var(--t3)';
+      note.textContent=`${list.length} espaces événement reliés à ce client — la checklist de "${list[0].nom}" (le plus récent) est affichée ci-dessous.`;
+      body.appendChild(note);
+    }
+    await renderChecklistEvenement(list[0].id,list[0].nom);
+  }catch(e){
+    if(body)body.innerHTML='<div style="text-align:center;color:var(--er);padding:24px 0">Erreur de chargement.</div>';
+  }
+}
+
+async function renderChecklistEvenement(orgId,orgNom){
+  const body=document.getElementById('cke-body');
+  if(!body)return;
+  body.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>';
+  const items=await sbFetch('event_checklist_items?organization_id=eq.'+orgId+'&select=id,phase,label,fait,fait_le&order=created_at.asc');
+  if(sbErr(items)){body.innerHTML='<div style="text-align:center;color:var(--er);padding:24px 0">Erreur de chargement.</div>';return;}
+  const list=Array.isArray(items)?items:[];
+  if(!list.length){
+    body.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px;align-items:center;padding:24px 0">
+      <div style="text-align:center;color:var(--t3)">Aucune checklist pour <b style="color:var(--t1)">${esc(orgNom)}</b> pour le moment.</div>
+      <button class="btn bp" onclick="genererChecklistStandard('${escJs(orgId)}','${escJs(orgNom)}')">Générer la checklist standard</button>
+    </div>`;
+    return;
+  }
+  body.innerHTML=CKE_PHASE_ORDER.map(ph=>{
+    const itemsPh=list.filter(i=>i.phase===ph);
+    if(!itemsPh.length)return'';
+    const done=itemsPh.filter(i=>i.fait).length;
+    return `<div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t2)">${esc(CKE_PHASE_LABELS[ph]||ph)}</div>
+        <div style="font-size:11px;color:var(--t3)">${done}/${itemsPh.length}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${itemsPh.map(i=>`
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:7px 9px;border-radius:var(--rb);background:var(--s2)">
+            <input type="checkbox" ${i.fait?'checked':''} onchange="toggleChecklistItem('${i.id}',this.checked,'${escJs(orgId)}','${escJs(orgNom)}')" style="width:15px;height:15px;flex-shrink:0;accent-color:var(--acc)">
+            <span style="font-size:12.5px;color:var(--t1);${i.fait?'text-decoration:line-through;opacity:.6':''}">${esc(i.label)}</span>
+          </label>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleChecklistItem(id,checked,orgId,orgNom){
+  const r=await sbFetch('event_checklist_items?id=eq.'+id,{method:'PATCH',body:{fait:checked}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Modification impossible.'),'er');}
+  renderChecklistEvenement(orgId,orgNom);
+}
+
+async function genererChecklistStandard(orgId,orgNom){
+  const r=await sbFetch('rpc/seed_event_checklist',{method:'POST',body:{p_organization_id:orgId}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Génération impossible.'),'er');return;}
+  toast('Checklist standard générée.','ok');
+  renderChecklistEvenement(orgId,orgNom);
 }
 
 function supprimerClient(id){
