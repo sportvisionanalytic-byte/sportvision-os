@@ -1217,6 +1217,12 @@
         if (!role) return;
         const res = await sbFetch('club_members?id=eq.' + id, { method: 'PATCH', body: { role: role } });
         if (!res.ok) { toast('Action impossible (droits administrateur requis).'); return; }
+        // PostgREST + Prefer:return=representation renvoie 200 [] (pas une
+        // erreur) quand une policy RLS filtre la ligne au lieu de la
+        // rejeter (cas classique using(...) sans with check) — un res.ok
+        // seul ne prouve donc pas que le PATCH a réellement modifié la
+        // ligne. Voir sbFetch (index.html).
+        if (!(res.data && res.data.length > 0)) { toast('Action refusée, vérifiez vos droits.'); return; }
         openId = null;
         toast('Rôle mis à jour.');
         await load(); paint();
@@ -1231,6 +1237,9 @@
         const next = currentStatus === 'suspendu' ? 'actif' : 'suspendu';
         const res = await sbFetch('club_members?id=eq.' + id, { method: 'PATCH', body: { status: next } });
         if (!res.ok) { toast('Action impossible (droits administrateur requis).'); return; }
+        // Même piège que saveRole ci-dessus : une policy RLS qui filtre au
+        // lieu de rejeter renvoie 200 [] sur un PATCH refusé.
+        if (!(res.data && res.data.length > 0)) { toast('Action refusée, vérifiez vos droits.'); return; }
         openId = null;
         toast(next === 'suspendu' ? 'Accès suspendu.' : 'Accès réactivé.');
         await load(); paint();

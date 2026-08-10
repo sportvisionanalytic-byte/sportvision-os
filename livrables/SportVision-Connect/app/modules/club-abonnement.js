@@ -224,14 +224,24 @@
          (migration-clubplus-v25) — un PATCH direct depuis ce module
          échouerait toujours. Plutôt que d'inventer un flux de paiement
          (choix de tarification, produits Stripe, webhook dédié) qui n'est
-         pas dans le périmètre de ce fichier, ce module transmet la
-         demande à SportVision — voir le rapport de portage pour le detail
-         de ce qui resterait à construire pour rendre l'achat réellement
-         libre-service. */
+         pas dans le périmètre de ce fichier, ce bouton oriente le club
+         vers un contact direct avec SportVision — voir le rapport de
+         portage pour le detail de ce qui resterait à construire pour
+         rendre l'achat réellement libre-service.
+         Audit du 09/08 : la version précédente affichait « Demande
+         transmise à SportVision » sans aucun appel réseau (ni sbFetch, ni
+         sbRpc, ni sbFunction) — un faux succès, personne n'était notifié.
+         La RPC notify_staff_by_role() aurait pu servir ici, mais elle n'a
+         jamais eu de revoke execute (migration-securite-notify-staff-by-
+         role.sql, préparée mais pas encore exécutée par Fouka au moment de
+         ce correctif) : elle est donc appelable par n'importe qui avec la
+         seule clé anon, y compris sans compte. L'appeler depuis ce module
+         reproduirait exactement le relais de spam déjà signalé. On affiche
+         donc un message honnête, sans promesse d'action automatique. */
       function requestCreditPack(amount, label) {
         packOpen = false;
         paint();
-        toast('Demande transmise à SportVision pour l’ajout de ' + label + ' à votre solde. L’achat de packs en libre-service arrive prochainement.');
+        toast('Achat de packs en libre-service à venir. Contactez SportVision (contact@sportvision.fr) pour ajouter ' + label + ' à votre solde.');
       }
 
       function planInfo() {
@@ -354,7 +364,7 @@
                 </button>`;
               }).join('')}
             </div>
-            <div class="cm-ab-muted" style="margin-top:14px">L’achat de packs en libre-service est en cours de finalisation côté paiement. Choisir un pack transmet votre demande à SportVision pour un ajout manuel rapide.</div>
+            <div class="cm-ab-muted" style="margin-top:14px">L’achat de packs en libre-service est en cours de finalisation côté paiement. Pour ajouter des crédits dès maintenant, contactez <a href="mailto:contact@sportvision.fr">contact@sportvision.fr</a>.</div>
           </div>
         </div>`;
       }
@@ -389,7 +399,11 @@
           else if (action === 'open-pack') { if (!canManage) return; packOpen = true; paint(); }
           else if (action === 'close-pack') { packOpen = false; paint(); }
           else if (action === 'buy-pack') { if (!canManage) return; requestCreditPack(Number(btn.getAttribute('data-amount')), btn.getAttribute('data-label')); }
-          else if (action === 'contact-sportvision') { toast('Un conseiller SportVision vous recontactera prochainement.'); }
+          // Audit du 09/08 : ce bouton n'affichait qu'un toast promettant un
+          // rappel, sans aucun appel réseau ni notification réelle — faux
+          // succès. « Contacter SportVision » ouvre désormais réellement un
+          // e-mail vers le contact SportVision (mailto, aucun backend requis).
+          else if (action === 'contact-sportvision') { window.location.href = 'mailto:contact@sportvision.fr'; }
         };
       }
 
