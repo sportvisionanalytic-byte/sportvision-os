@@ -457,7 +457,11 @@ function svcSave(tok, ref, uid){
   localStorage.setItem('svc_uid', uid);
 }
 function svcClear(){
-  ['svc_tok','svc_ref','svc_uid','svc_space_key'].forEach(k=>localStorage.removeItem(k));
+  // svc_act/svc_act_club inclus : un token d'activation Club+ en attente de rejeu
+  // appartient à celui qui a cliqué le lien e-mail, pas au navigateur — le laisser
+  // survivre à une déconnexion permettrait de le rejouer sur le compte suivant
+  // qui se connecte sur ce même poste (cf. handleLogin).
+  ['svc_tok','svc_ref','svc_uid','svc_space_key','svc_act','svc_act_club'].forEach(k=>localStorage.removeItem(k));
 }
 function isLoggedIn(){ return !!localStorage.getItem('svc_tok'); }
 
@@ -536,6 +540,41 @@ function resetForgotScreen(){
 }
 
 // ── Auth ──
+// Filet de sécurité après authentification réussie (login direct via
+// handleLogin, ou confirmation d'un lien d'inscription via consumeRecoveryHash) :
+// rejoue un token d'activation Club+ laissé en attente (voir handleActivation),
+// sinon crée la fiche client si l'inscription ne l'a pas fait (portal-onboarding,
+// idempotent). Partagé entre les deux points d'entrée pour que ni l'un ni
+// l'autre n'atterrisse sur "Aucun espace n'est encore rattaché à ce compte"
+// alors qu'un rattachement était en attente.
+// Retourne un message d'erreur clair si le rejeu d'activation échoue (token
+// expiré/révoqué/déjà consommé/rate-limité), null sinon — auparavant le
+// résultat de clubplus-activate n'était jamais inspecté : le token était
+// perdu (removeItem) puis l'échec passait totalement inaperçu, laissant
+// croire à l'utilisateur que l'activation avait réussi.
+async function runPostAuthOnboarding(user){
+  const pendingAct = localStorage.getItem('svc_act');
+  if (pendingAct){
+    localStorage.removeItem('svc_act');
+    const meta = (user && user.user_metadata) || {};
+    const clubNom = localStorage.getItem('svc_act_club') || meta.club_nom || '';
+    localStorage.removeItem('svc_act_club');
+    const act = await sbFunction('clubplus-activate', {token: pendingAct, prenom: meta.prenom||'', nom: meta.nom||'', telephone: meta.telephone||'', club_nom: clubNom});
+    if (!act.ok){
+      return act.data?.error || 'Ce lien d\'activation n\'est plus valide, contactez SportVision.';
+    }
+  } else {
+    const cu = await sbFetch('client_users?id=eq.'+user.id+'&select=id');
+    if (!cu.data || !cu.data[0]){
+      const meta = (user && user.user_metadata) || {};
+      await sbFunction('portal-onboarding', {
+        prenom: meta.prenom || '', nom: meta.nom || '', telephone: meta.telephone || '', profil: meta.profil || '',
+      });
+    }
+  }
+  return null;
+}
+
 async function handleLogin(){
   const email = document.getElementById('lg-email').value.trim();
   const pass = document.getElementById('lg-pass').value;
@@ -546,35 +585,10 @@ async function handleLogin(){
   try{
     const res = await fetch(SB_URL+'/auth/v1/token?grant_type=password', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email,password:pass})});
     const d = await res.json();
-    if (!d.access_token) throw new Error('E-mail ou mot de passe incorrect.');
+    if (!d.access_token) throw new Error(d.msg || d.error_description || 'E-mail ou mot de passe incorrect.');
     svcSave(d.access_token, d.refresh_token, d.user.id);
-    // Activation Club+ par lien privé laissée en attente (compte créé, e-mail à
-    // confirmer avant de pouvoir appeler clubplus-activate — voir handleActivation) :
-    // on la rejoue maintenant, avant tout autre onboarding. clubplus-activate
-    // revérifie le token côté serveur et est idempotent (rejouable sans risque
-    // même si déjà consommé par un onglet précédent).
-    const pendingAct = localStorage.getItem('svc_act');
-    if (pendingAct){
-      localStorage.removeItem('svc_act');
-      const meta = (d.user && d.user.user_metadata) || {};
-      const clubNom = localStorage.getItem('svc_act_club') || meta.club_nom || '';
-      localStorage.removeItem('svc_act_club');
-      await sbFunction('clubplus-activate', {token: pendingAct, prenom: meta.prenom||'', nom: meta.nom||'', telephone: meta.telephone||'', club_nom: clubNom});
-    } else {
-      const cu = await sbFetch('client_users?id=eq.'+d.user.id+'&select=id');
-      if (!cu.data || !cu.data[0]){
-        // Filet de sécurité (même principe que le Portail) : si l'inscription n'a pas pu
-        // créer la fiche client (ex : confirmation d'e-mail obligatoire sur le projet,
-        // session absente au moment de l'inscription), on la crée maintenant, à la
-        // première connexion réussie. portal-onboarding est idempotent. Les infos
-        // saisies à l'inscription sont récupérées depuis les métadonnées du compte
-        // Supabase (enregistrées dès le signup), pas perdues.
-        const meta = (d.user && d.user.user_metadata) || {};
-        await sbFunction('portal-onboarding', {
-          prenom: meta.prenom || '', nom: meta.nom || '', telephone: meta.telephone || '', profil: meta.profil || '',
-        });
-      }
-    }
+    const onboardErr = await runPostAuthOnboarding(d.user);
+    if (onboardErr) throw new Error(onboardErr);
     await bootAfterLogin();
   }catch(e){
     errEl.textContent = e.message;
@@ -584,8 +598,17 @@ async function handleLogin(){
 }
 
 function handleLogout(){
+  // Déconnexion locale immédiate et inconditionnelle : l'utilisateur ne doit
+  // jamais rester bloqué sur son espace parce que le réseau est coupé.
+  // L'appel serveur (invalide le refresh_token côté Supabase, empêchant sa
+  // réutilisation) est fait en best-effort, sans attendre sa réponse ni
+  // faire échouer la déconnexion locale s'il échoue.
+  const tok = localStorage.getItem('svc_tok');
   svcClear();
   showScreen('login');
+  if (tok){
+    fetch(SB_URL+'/auth/v1/logout', {method:'POST', headers:{apikey:SB_KEY, Authorization:'Bearer '+tok}}).catch(()=>{});
+  }
 }
 
 // Cartes visuelles "Vous êtes" (remplace le <select> nu) : synchronise la
@@ -703,13 +726,36 @@ async function handleActivation(){
   const clubNom = document.getElementById('act-club-nom').value.trim();
   const prenom = document.getElementById('act-prenom').value.trim();
   const nom = document.getElementById('act-nom').value.trim();
-  const email = document.getElementById('act-email').value.trim();
   const tel = document.getElementById('act-tel').value.trim();
-  const pass = document.getElementById('act-pass').value;
-  const pass2 = document.getElementById('act-pass2').value;
   if (!_actToken){ errEl.textContent = 'Lien d\'activation manquant. Rouvrez le lien reçu de SportVision.'; return; }
   if (!clubNom){ errEl.textContent = 'Le nom du club est obligatoire.'; return; }
-  if (!prenom || !nom || !email){ errEl.textContent = 'Merci de compléter votre prénom, votre nom et votre e-mail.'; return; }
+  if (!prenom || !nom){ errEl.textContent = 'Merci de compléter votre prénom et votre nom.'; return; }
+
+  // Session déjà ouverte sur ce navigateur (compte déjà inscrit qui rouvre le
+  // lien d'activation, ou deuxième tentative après un premier essai réussi) :
+  // /auth/v1/signup échouerait systématiquement en 422 "email already
+  // registered" pour un compte existant, ce qui renvoyait l'utilisateur vers
+  // un message "connectez-vous, puis rouvrez ce lien" qui repassait par le
+  // même chemin cassé — boucle infinie. Avec une session valide, on peut
+  // appeler clubplus-activate directement, sans re-signup ni mot de passe.
+  if (isLoggedIn()){
+    btn.disabled = true; btn.textContent = 'Activation…';
+    try{
+      const act = await sbFunction('clubplus-activate', {token:_actToken, prenom, nom, telephone:tel, club_nom:clubNom});
+      if (!act.ok) throw new Error(act.data?.error || 'Erreur lors de l\'activation de votre espace.');
+      await bootAfterLogin();
+    }catch(e){
+      errEl.textContent = e.message;
+    }finally{
+      btn.disabled = false; btn.textContent = 'Activer mon espace Club+';
+    }
+    return;
+  }
+
+  const email = document.getElementById('act-email').value.trim();
+  const pass = document.getElementById('act-pass').value;
+  const pass2 = document.getElementById('act-pass2').value;
+  if (!email){ errEl.textContent = 'Merci de renseigner votre e-mail.'; return; }
   if (pass.length < 6){ errEl.textContent = 'Le mot de passe doit contenir au moins 6 caractères.'; return; }
   if (pass !== pass2){ errEl.textContent = 'Les mots de passe ne correspondent pas.'; return; }
   if (!document.getElementById('act-cgu').checked){ errEl.textContent = 'Merci d\'accepter les CGU pour continuer.'; return; }
@@ -779,23 +825,29 @@ async function handleSetNewPassword(){
 }
 
 // Détecte un lien Supabase de type recovery/invite/signup
-// (#access_token=...&type=...) au chargement — les trois types demandent la
+// (#access_token=...&type=...) au chargement. recovery et invite demandent la
 // même action (définir un mot de passe) et utilisent le même format de hash.
+// signup est différent : c'est le lien de CONFIRMATION D'INSCRIPTION, l'utilisateur
+// a déjà choisi son mot de passe à l'inscription (handleSignup) — le router vers
+// l'écran "nouveau mot de passe" n'a pas de sens et court-circuite le filet de
+// sécurité d'onboarding (voir l'appelant, init()). Le type exact est donc
+// retourné à l'appelant plutôt qu'un simple booléen.
 // À l'origine seul 'type=recovery' était reconnu : un lien d'invitation
 // envoyé par inviteUserByEmail (ex. org-invite, clubplus-invite) déposait
 // l'utilisateur sur l'écran de connexion sans que sa session soit établie,
 // au lieu de l'écran "définir mon mot de passe".
 async function consumeRecoveryHash(){
   const h = window.location.hash;
-  if (!h.includes('type=recovery') && !h.includes('type=invite') && !h.includes('type=signup')) return false;
+  if (!h.includes('type=recovery') && !h.includes('type=invite') && !h.includes('type=signup')) return null;
   const params = new URLSearchParams(window.location.hash.slice(1));
   const accessToken = params.get('access_token');
   const refreshToken = params.get('refresh_token');
-  if (!accessToken) return false;
+  if (!accessToken) return null;
+  const type = params.get('type');
   history.replaceState({}, '', window.location.pathname);
   const userRes = await fetch(SB_URL+'/auth/v1/user', {headers:{apikey:SB_KEY, Authorization:'Bearer '+accessToken}}).then(r=>r.json()).catch(()=>null);
   svcSave(accessToken, refreshToken || '', userRes?.id || '');
-  return true;
+  return { type, user: userRes };
 }
 
 // ── Cœur du nouveau socle : espaces → entitlements → modules ──
@@ -1016,9 +1068,48 @@ function handlePaymentReturn(){
   history.replaceState(null, '', url.pathname + url.search);
 }
 
+// Retour depuis Stripe Checkout pour un abonnement Club+
+// (?abonnement=succes|annule, create-clubplus-subscription-checkout) : le
+// traitement complet existe déjà dans club-abonnement.js
+// (handleAbonnementReturn), mais ne s'exécute que si l'onglet Abonnement est
+// ouvert au chargement — or renderWorkspaceTabs() ouvre toujours le premier
+// module de la liste, pas forcément celui-là. Un club qui vient de payer ne
+// voyait donc aucune confirmation dans la plupart des cas. Filet de sécurité
+// au point d'entrée principal, indépendant de l'onglet ouvert — ne retire
+// rien à club-abonnement.js : si le paramètre a déjà été nettoyé par le
+// module (onglet Abonnement ouvert par défaut), ce filet est un no-op.
+function handleAbonnementReturnGlobal(){
+  const params = new URLSearchParams(location.search);
+  const r = params.get('abonnement');
+  if (!r) return;
+  if (r === 'succes'){
+    toast('Abonnement activé !');
+  } else if (r === 'annule'){
+    toast('Paiement annulé.');
+  }
+  const url = new URL(location.href);
+  url.searchParams.delete('abonnement');
+  history.replaceState(null, '', url.pathname + url.search);
+}
+
 // ── Démarrage ──
 (async function init(){
-  if (await consumeRecoveryHash()){
+  const recovery = await consumeRecoveryHash();
+  if (recovery){
+    if (recovery.type === 'signup'){
+      // Confirmation d'inscription : même filet de sécurité que handleLogin
+      // (rejeu svc_act / création fiche client si portal-onboarding n'a pas pu
+      // s'exécuter au signup faute de session), puis dashboard direct — jamais
+      // l'écran "nouveau mot de passe". Pas d'écran de connexion à ce stade
+      // pour afficher une erreur inline (contrairement à handleLogin) : un
+      // échec du rejeu d'activation est signalé par toast, sans bloquer l'accès
+      // au compte qui, lui, est bien confirmé.
+      let onboardErr = null;
+      if (recovery.user){ onboardErr = await runPostAuthOnboarding(recovery.user); }
+      await bootAfterLogin();
+      if (onboardErr) toast(onboardErr);
+      return;
+    }
     showScreen('reset');
     return;
   }
@@ -1036,6 +1127,7 @@ function handlePaymentReturn(){
   if (isLoggedIn()){
     await bootAfterLogin();
     handlePaymentReturn();
+    handleAbonnementReturnGlobal();
     return;
   }
   // Arrivée depuis la vitrine SportVision après une demande de prestation
