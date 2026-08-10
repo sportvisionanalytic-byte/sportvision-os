@@ -6176,10 +6176,11 @@ function renderProdRemList(){
         :sp==='validé'
         ?`<button onclick="majStatutPaiement('${r.id}','transmis_compta')" style="padding:3px 8px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:var(--wa);cursor:pointer;white-space:nowrap">→ Compta</button>`
         :'—';
-      return`<tr>
+      const preAnnulee=['annulée','refusée'].includes(pre.statut);
+      return`<tr${preAnnulee?' style="background:rgba(240,68,94,.05)"':''}>
         <td class="tp">${name}</td>
         <td>${esc(col.role||r.fonction||'—')}</td>
-        <td class="tm">${pre.reference||'—'}</td>
+        <td class="tm">${pre.reference||'—'}${preAnnulee?` <span title="Mission ${pre.statut} après engagement du paiement — à vérifier avant toute action" style="color:var(--er);font-size:10px;font-weight:700">⚠ ${pre.statut}</span>`:''}</td>
         <td>${esc(pre.clients?.nom||'—')}</td>
         <td>${pre.date_prestation?new Date(pre.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
         <td class="tm" style="font-weight:700;color:var(--ok)">${r.remuneration?r.remuneration.toLocaleString('fr-FR')+' €':'—'}</td>
@@ -6194,8 +6195,12 @@ async function loadProdRemunerations(){
   if(!el)return;
   try{
     const raw=await sbFetch('prestations_equipe?select=id,statut,remuneration,statut_paiement,date_paiement,fonction,prestations(id,reference,date_prestation,statut,clients(nom)),collaborateur:profiles(id,prenom,nom,role)&order=created_at.desc&limit=100');
-    // Une mission refusée/remplacée/annulée ou une prestation annulée/refusée ne doit jamais générer de rémunération à valider.
-    _prodRemData=(Array.isArray(raw)?raw:[]).filter(r=>r.statut==='acceptée'&&!['annulée','refusée'].includes(r.prestations?.statut));
+    // Une mission refusée/remplacée/annulée ne doit jamais faire apparaître une NOUVELLE
+    // rémunération à valider. Mais si le paiement était déjà validé/transmis/payé avant que
+    // la prestation ne passe à annulée/refusée (travail déjà effectué, argent déjà engagé ou
+    // versé), la ligne doit rester visible — la faire disparaître silencieusement effacerait
+    // une somme due sans trace ni alerte (renderProdRemList affiche un badge "annulée" dessus).
+    _prodRemData=(Array.isArray(raw)?raw:[]).filter(r=>r.statut==='acceptée'&&(!['annulée','refusée'].includes(r.prestations?.statut)||['validé','transmis_compta','payé'].includes(r.statut_paiement)));
     // KPIs
     const now=new Date();const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
     const tot=_prodRemData.reduce((s,r)=>s+(r.remuneration||0),0);
@@ -15603,11 +15608,14 @@ async function loadComptaRem(){
   const el=document.getElementById('compta-rem-real');if(!el)return;
   try{
     const data=await sbFetch('prestations_equipe?select=id,remuneration,statut_paiement,date_paiement,prestations(reference,date_prestation,statut),collaborateur:profiles(id,prenom,nom,role)&statut=eq.acceptée&order=created_at.desc&limit=200');
-    // Une mission dont la prestation parente est annulée/refusée ne doit
-    // jamais générer de rémunération à payer (même filtre que
-    // loadProdRemunerations) — le filtre statut=eq.acceptée ci-dessus ne
-    // porte que sur prestations_equipe, pas sur la prestation elle-même.
-    _comptaRemData=(Array.isArray(data)?data:[]).filter(r=>!['annulée','refusée'].includes(r.prestations?.statut));
+    // Une mission dont la prestation parente est annulée/refusée ne doit jamais
+    // faire apparaître une NOUVELLE rémunération à payer (même filtre que
+    // loadProdRemunerations) — le filtre statut=eq.acceptée ci-dessus ne porte
+    // que sur prestations_equipe, pas sur la prestation elle-même. Mais si le
+    // paiement était déjà validé/transmis/payé avant l'annulation (travail déjà
+    // effectué), la ligne reste visible avec un badge d'alerte (renderComptaRem)
+    // au lieu de disparaître silencieusement avec une somme due non tracée.
+    _comptaRemData=(Array.isArray(data)?data:[]).filter(r=>!['annulée','refusée'].includes(r.prestations?.statut)||['validé','transmis_compta','payé'].includes(r.statut_paiement));
     const tot=_comptaRemData.reduce((s,r)=>s+(r.remuneration||0),0);
     const pay=_comptaRemData.filter(r=>r.statut_paiement==='payé').reduce((s,r)=>s+(r.remuneration||0),0);
     const att=tot-pay;
@@ -15649,13 +15657,13 @@ function renderComptaRem(){
         ${attIds.length?`<button onclick="toutPayerCollab(${JSON.stringify(attIds)},this)" style="padding:6px 14px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap">Tout payer (${attIds.length})</button>`:''}
       </div>
       <div class="tw" style="margin-top:2px"><table><thead><tr><th>Prestation</th><th>Date</th><th>Rémunération</th><th>Statut</th><th></th></tr></thead><tbody>
-        ${g.items.map(r=>`<tr>
-          <td class="tm">${r.prestations?.reference||'—'}</td>
+        ${g.items.map(r=>{const preAnnulee=['annulée','refusée'].includes(r.prestations?.statut);return`<tr${preAnnulee?' style="background:rgba(240,68,94,.05)"':''}>
+          <td class="tm">${r.prestations?.reference||'—'}${preAnnulee?` <span title="Mission ${r.prestations.statut} après engagement du paiement — à vérifier avant toute action" style="color:var(--er);font-size:10px;font-weight:700">⚠ ${r.prestations.statut}</span>`:''}</td>
           <td>${r.prestations?.date_prestation?new Date(r.prestations.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
           <td class="tm" style="font-weight:600">${fmt(r.remuneration)}</td>
           <td><span class="bd ${r.statut_paiement==='payé'?'ba':'bw'}"><span class="bd-d"></span>${r.statut_paiement==='payé'?'Payé':'En attente'}</span></td>
           <td>${r.statut_paiement!=='payé'?`<button id="rem-btn-${r.id}" onclick="marquerPayeRem('${r.id}',this)" style="padding:4px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);font-size:11px;cursor:pointer">Payer</button>`:'<span style="font-size:11px;color:var(--ok)">✓</span>'}</td>
-        </tr>`).join('')}
+        </tr>`;}).join('')}
       </tbody></table></div>
     </div>`;
   }).join('');
