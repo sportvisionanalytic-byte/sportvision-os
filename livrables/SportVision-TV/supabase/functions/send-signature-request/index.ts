@@ -215,7 +215,7 @@ async function buildPdf(
   };
 
   page.drawText("SPORTVISION", { x: margin, y, size: 20, font: bold, color: navy });
-  page.drawText("ELKANA GROUP — 4 Place Pierre Sémard, 77130 Montereau-Fault-Yonne", {
+  page.drawText("ELKANA GROUP — 4 Place Pierre Semard, 77130 Montereau-Fault-Yonne", {
     x: margin, y: y - 18, size: 8.5, font: regular, color: gray,
   });
   page.drawText("SIREN 105 173 124 — TVA FR15 105 173 124", {
