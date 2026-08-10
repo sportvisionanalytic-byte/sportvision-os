@@ -720,6 +720,7 @@ const NAV={
     {id:'acomptes',lb:'Acomptes',ic:'fin'},
     {id:'impayes',lb:'Impayés',ic:'alert'},
     {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
+    {id:'encaissements',lb:'Encaissements Stripe',ic:'fin'},
     {id:'depenses',lb:'Dépenses',ic:'fin'},
     {id:'frais',lb:'Frais & km',ic:'fin'},
     {id:'paiements',lb:'Paiements équipe',ic:'fin'},
@@ -849,6 +850,7 @@ const NAV={
     {id:'acomptes',lb:'Acomptes',ic:'fin'},
     {id:'impayes',lb:'Impayés',ic:'alert'},
     {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
+    {id:'encaissements',lb:'Encaissements Stripe',ic:'fin'},
     {id:'documents',lb:'Centre documentaire',ic:'doc'},
     {type:'sep',lb:'Paiements'},
     {id:'paiements',lb:'Paiements équipe',ic:'fin'},
@@ -2149,6 +2151,21 @@ const VIEWS={
     </div>
     <div id="compta-avoirs-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  // Ledger des paiements Stripe (table `paiements`, alimentée par les webhooks —
+  // migration-portail-v1.sql) : jusqu'ici jamais affichée nulle part dans l'OS,
+  // alors qu'elle est la seule trace des encaissements en ligne réellement
+  // reçus, utile pour rapprocher ce qui a été facturé/marqué payé côté
+  // `prestations`/`factures` avec ce que Stripe a effectivement transféré.
+  // Lecture seule volontaire : aucune action possible sur cet écran, cf. audit.
+  'compta.encaissements':()=>`
+    <div class="sh"><div><div class="sh-t">Encaissements Stripe</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Paiements en ligne réellement reçus (webhooks Stripe) — lecture seule, pour rapprochement avec les statuts financiers.</div></div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Total encaissé (réussis)</div><div class="fs-v" id="enc-kpi-tot" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Paiements réussis</div><div class="fs-v" id="enc-kpi-nb">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En attente</div><div class="fs-v" id="enc-kpi-att" style="color:var(--wa)">—</div></div>
+    </div>
+    <div id="compta-encaissements-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
   'compta.documents':()=>_documentsView('compta'),
 
   'compta.depenses':()=>`
@@ -2729,6 +2746,35 @@ async function logFinancialAudit(action,tableCible,ligneId,montantAvant,montantA
   }catch(e){console.error('logFinancialAudit failed',e);}
 }
 
+// Synchronise la ligne `factures` liée quand un paiement intégral est confirmé
+// manuellement (virement/chèque/espèces/carte hors Stripe, côté secrétariat ou
+// compta). Jusqu'ici, comptaConfirmerImpaye/secConfirmerPaye/majStatutFinancier
+// ne mettaient à jour QUE prestations.statut_financier — la ligne `factures`
+// correspondante (prestation_id) restait bloquée à 'emise'/'en_retard' même
+// après règlement complet : deux sources de vérité sur le même paiement,
+// jamais synchronisées.
+// Ne crée JAMAIS de facture (pas d'appel à getOrCreateFacture) : seule
+// l'émission explicite (voir emettreFacture) doit numéroter un document — cette
+// fonction se contente de mettre à jour une facture déjà émise, si elle existe.
+// N'écrase pas un statut terminal (payee/annulee/remboursee) déjà posé
+// manuellement ou via Pennylane/avoir, pour ne jamais revenir en arrière sur
+// une décision comptable déjà prise ailleurs.
+// Ne couvre que le règlement intégral : un acompte (statut_financier
+// 'partiellement_payée') n'a pas d'équivalent dans l'enum factures.statut
+// ('brouillon','emise','payee','en_retard','annulee','remboursee') — aucun
+// mapping fiable n'existe pour un paiement partiel, donc pas de synchronisation
+// tentée pour ce cas (voir comptaConfirmerAcompte).
+async function _syncFactureApresPaiementIntegral(prestationId,montantTtc,modePaiement){
+  try{
+    const existing=await sbFetch('factures?select=id,statut&prestation_id=eq.'+prestationId+'&order=created_at.desc&limit=1');
+    const fact=Array.isArray(existing)&&existing[0];
+    if(!fact||['payee','annulee','remboursee'].includes(fact.statut))return;
+    const r=await sbFetch('factures?id=eq.'+fact.id,{method:'PATCH',body:{statut:'payee'}});
+    if(sbErr(r)){console.error('_syncFactureApresPaiementIntegral failed',r);return;}
+    logFinancialAudit('encaissement','factures',fact.id,null,montantTtc,{prestation_id:prestationId,mode_paiement:modePaiement||null});
+  }catch(e){console.error('_syncFactureApresPaiementIntegral failed',e);}
+}
+
 // ── Préférences de notification ──────────────────────────────────────────────
 // Chaque collaborateur peut désactiver certaines catégories de notifications
 // (profiles.notification_prefs, jsonb — voir migration-notification-prefs.sql).
@@ -3210,6 +3256,7 @@ async function loadViewData(role,view){
   if(_isComptaLike&&view==='acomptes') await loadComptaAcomptes();
   if(_isComptaLike&&view==='impayes') await loadComptaImpayes();
   if(_isComptaLike&&view==='avoirs') await loadComptaAvoirs();
+  if(_isComptaLike&&view==='encaissements') await loadComptaEncaissements();
   if(_isComptaLike&&view==='depenses') await loadComptaDepenses();
   if(_isComptaLike&&view==='depenses') await loadEcheancesDepenses();
   if(_isComptaLike&&view==='frais') await loadComptaFrais();
@@ -3230,6 +3277,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='acomptes') await loadComptaAcomptes();
   if(role==='admin'&&view==='impayes') await loadComptaImpayes();
   if(role==='admin'&&view==='avoirs') await loadComptaAvoirs();
+  if(role==='admin'&&view==='encaissements') await loadComptaEncaissements();
   if(role==='admin'&&view==='depenses') await loadComptaDepenses();
   if(role==='admin'&&view==='depenses') await loadEcheancesDepenses();
   if(role==='admin'&&view==='frais') await loadComptaFrais();
@@ -9009,7 +9057,7 @@ function docsRenderTous(){
     rows.push({dt:new Date(p.date_prestation||0),type:'Facture',cl:'#2ECC8A',ref:p.reference||'—',
       client:esc(p.clients?.nom)||'—',montant:fmt(p.montant_ttc),dateStr:fd(p.date_prestation),
       badge:_docsBadge(p.statut_financier||'facturée',FACT_STATUTS),
-      actions:`<button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">PDF</button>`});
+      actions:`<button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer" title="Aperçu — ne crée rien, voir l'onglet Factures pour émettre">PDF</button>`});
   });
   _docsCache.avoirs.forEach(a=>{
     rows.push({dt:new Date(a.created_at||0),type:'Avoir',cl:'#F0445E',ref:a.numero||'—',
@@ -9090,7 +9138,8 @@ function docsRenderFactures(){
       <td style="color:var(--t3);font-size:11.5px">${fd(p.date_prestation)}</td>
       <td>${_docsBadge(p.statut_financier||'facturée',FACT_STATUTS)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
-        <button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">Facture</button>
+        <button onclick="imprimerFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer" title="Aperçu — ne crée rien">Aperçu</button>
+        ${!p.factures?.length?`<button onclick="emettreFacture('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:var(--rp);color:#366BFF;cursor:pointer;font-weight:600" title="Émet une facture définitive et numérotée">Émettre</button>`:''}
         <button onclick="envoyerFactureParEmail('${p.id}')" style="padding:3px 9px;font-size:11px;background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);border-radius:var(--rp);color:var(--acc2);cursor:pointer" title="Envoyer par email">✉</button>
         ${p.factures?.[0]?.pennylane_invoice_number
           ?`<a href="${p.factures[0].pennylane_public_url||'#'}" target="_blank" style="padding:3px 9px;font-size:11px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.2);border-radius:var(--rp);color:#14B8A6;text-decoration:none" title="Facture électronique Pennylane">✓ ${p.factures[0].pennylane_invoice_number}</a>`
@@ -9712,6 +9761,26 @@ async function avoirSubmit(){
   if(!ht||ht<=0){toast('Montant invalide.','er');return;}
   if(!motif){toast('Motif requis.','er');return;}
   const ttc=Math.round(ht*(1+tva/100)*100)/100;
+  // Garde-fous avant insertion (jusqu'ici absents : un avoir pouvait être créé
+  // pour n'importe quel montant, et le champ "Prestation liée" — rempli via un
+  // <select> listant TOUTES les prestations facturées, indépendamment du
+  // client choisi juste au-dessus — n'était jamais recoupé avec le client
+  // sélectionné). Un avoir sans prestation liée (geste commercial générique)
+  // reste autorisé sans plafond : il n'y a alors rien de facturé à comparer.
+  if(prestId){
+    const prestArr=await sbFetch('prestations?id=eq.'+prestId+'&select=id,client_id,montant_ttc').catch(()=>[]);
+    const prest=Array.isArray(prestArr)&&prestArr[0];
+    if(!prest){toast('Prestation liée introuvable.','er');return;}
+    if(prest.client_id&&prest.client_id!==clientId){toast("La prestation sélectionnée n'appartient pas au client choisi.",'er');return;}
+    const existants=await sbFetch('avoirs?select=montant_ttc&prestation_id=eq.'+prestId).catch(()=>[]);
+    const dejaEmis=(Array.isArray(existants)?existants:[]).reduce((s,a)=>s+(Number(a.montant_ttc)||0),0);
+    const plafond=Number(prest.montant_ttc)||0;
+    const restant=Math.round((plafond-dejaEmis)*100)/100;
+    if(ttc>restant){
+      toast(`Montant refusé : ${ttc.toLocaleString('fr-FR')} € dépasse le solde avoirable de cette prestation (${restant.toLocaleString('fr-FR')} € restants sur ${plafond.toLocaleString('fr-FR')} € facturés${dejaEmis?', '+dejaEmis.toLocaleString('fr-FR')+' € déjà avoirés':''}).`,'er');
+      return;
+    }
+  }
   const year=new Date().getFullYear();
   let numAvoir='AVO-'+year+'-'+Date.now().toString().slice(-4);
   try{
@@ -9732,6 +9801,11 @@ async function avoirSubmit(){
       motif,montant_ht:ht,tva_pct:tva,montant_ttc:ttc,statut:'emis',created_by:S.uid,
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'création impossible.'),'er');return;}
+    // logDocEvent trace l'événement documentaire (journal Documents) ; logFinancialAudit
+    // trace l'impact financier (financial_audit_log) — même distinction que partout
+    // ailleurs dans le fichier pour les actions sensibles (encaissement, remboursement…),
+    // manquante ici jusqu'à présent.
+    logFinancialAudit('creation','avoirs',r?.[0]?.id,null,ttc,{motif:motif.substring(0,120),client_id:clientId,prestation_id:prestId});
     await logDocEvent('avoir',numAvoir,'avoir','Avoir émis — '+motif.substring(0,60));
     closeModal();
     toast('Avoir '+numAvoir+' créé.','ok');
@@ -10350,7 +10424,15 @@ async function imprimerFacture(id){
     if(!p){toast('Prestation introuvable.');return;}
     const c=p.clients||{};
     const dv=_devisFacturable(p.devis);
-    const fact=await getOrCreateFacture(id).catch(()=>null);
+    // Aperçu en lecture seule : lit une facture déjà émise (via getOrCreateFacture
+    // à l'avancement en 'production_terminée', ou via emettreFacture) sans jamais
+    // en créer une — auparavant, ce simple aperçu appelait getOrCreateFacture, qui
+    // numérote et persiste une vraie ligne `factures` dès le premier clic : un
+    // aperçu émettait donc, à l'insu de l'utilisateur, un document comptable
+    // définitif et séquentiellement numéroté. Seul emettreFacture() crée/numérote,
+    // avec confirmation explicite (voir plus bas).
+    const factArr=await sbFetch('factures?select=*&prestation_id=eq.'+id+'&order=created_at.desc&limit=1').catch(()=>[]);
+    const fact=Array.isArray(factArr)&&factArr[0]||null;
     const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
     const ht=dv?.total_ht||p.montant_ht||0;
@@ -10364,7 +10446,11 @@ async function imprimerFacture(id){
     const sfLbl={payée:'Payée',facturée:'Facturée',partiellement_payée:'Part. payée',en_retard:'En retard',non_facturée:'Non facturée'};
     const sfClr={payée:'#2ECC8A',facturée:'#366BFF',partiellement_payée:'#F5A524',en_retard:'#F0445E',non_facturée:'#8891A8'};
     const sf=p.statut_financier||'non_facturée';
-    const numFact=fact?.numero||'FAC-'+new Date().getFullYear()+'-'+(p.reference||'').replace('SV-','').replace(/\d{4}-/,'');
+    // Sans facture émise, aucun numéro réel n'existe encore : pas de faux-semblant
+    // (l'ancien fallback fabriquait un numéro au format FAC-AAAA-xxxx qui ressemblait
+    // à un vrai numéro séquentiel alors qu'il n'était ni persisté ni définitif).
+    const numFact=fact?.numero||'APERÇU (non émise)';
+    const apercuBanner=fact?'':'<div style="background:#FFF4E5;border:1px solid #F5A524;border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:12.5px;color:#8A5A00;line-height:1.6"><strong>APERÇU — document non définitif.</strong> Aucune facture n\'a encore été émise pour cette prestation : ce document n\'a pas de numéro séquentiel réel et n\'a aucune valeur comptable ou légale. Pour émettre la facture officielle, utilisez le bouton « Émettre » dans l\'écran Factures.</div>';
     const win=window.open('','_blank','width=900,height=800');
     if(!win){toast('Autorisez les popups pour générer la facture.');return;}
     win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Facture ${numFact} — SportVision</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5}.page{max-width:800px;margin:0 auto;padding:48px}@media print{.np{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
@@ -10373,6 +10459,7 @@ async function imprimerFacture(id){
   <button onclick="window.print()" style="padding:8px 18px;background:#366BFF;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer">Imprimer / PDF</button>
   <button onclick="window.close()" style="padding:8px 14px;background:#F0F2F7;color:#555E73;border:none;border-radius:7px;font-size:13px;cursor:pointer">Fermer</button>
 </div>
+${apercuBanner}
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:24px;border-bottom:2px solid #2ECC8A">
   <div>
     <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">SportVision</div>
@@ -10422,10 +10509,36 @@ async function imprimerFacture(id){
   }catch(e){toast('Erreur lors de la génération de la facture.');}
 }
 
-async function envoyerFactureParEmail(prestationId){
+// Seule action qui crée réellement une ligne `factures` numérotée à la demande
+// explicite du staff (getOrCreateFacture est par ailleurs déjà appelé
+// automatiquement à la fin de production — voir avancerStatutPrestation sur
+// le passage en 'production_terminée' — ce bouton couvre les cas où ce n'est
+// pas encore arrivé : facturation manuelle, donnée historique, etc.).
+// Confirmation explicite exigée : contrairement à l'aperçu (imprimerFacture),
+// cette action est irréversible et engage une numérotation séquentielle
+// légale (seul un avoir permet de la corriger ensuite).
+async function emettreFacture(prestationId){
+  if(!confirm('Cette action émet une facture définitive et numérotée pour cette prestation. Elle ne pourra plus être modifiée (seul un avoir permettra de la corriger). Confirmer ?'))return;
   try{
     const fact=await getOrCreateFacture(prestationId);
-    if(!fact){toast('Impossible de générer la facture.','er');return;}
+    if(!fact){toast('Émission impossible : prestation ou devis introuvable.','er');return;}
+    logFinancialAudit('creation','factures',fact.id,null,fact.montant_ttc,{prestation_id:prestationId,numero:fact.numero});
+    toast('Facture '+(fact.numero||'')+' émise.','ok');
+    if(document.getElementById('docs-content')){await docsLoadAll();docsUpdateKPIs();await docsRenderTab();}
+    else if(S.view==='rapprochement')await loadRapprochement();
+    else if(S.view==='factures')await loadComptaFactures();
+  }catch(e){toast('Erreur lors de l\'émission.','er');}
+}
+
+async function envoyerFactureParEmail(prestationId){
+  try{
+    const factArr=await sbFetch('factures?select=*&prestation_id=eq.'+prestationId+'&order=created_at.desc&limit=1').catch(()=>[]);
+    const fact=Array.isArray(factArr)&&factArr[0]||null;
+    // N'émet plus la facture silencieusement en ouvrant ce modal (auparavant via
+    // getOrCreateFacture) : ouvrir un brouillon d'email ne doit pas, par
+    // effet de bord, numéroter un document comptable définitif. Il faut
+    // d'abord émettre explicitement via le bouton « Émettre ».
+    if(!fact){toast('Aucune facture émise pour cette prestation. Cliquez sur « Émettre » avant de l\'envoyer par email.','er');return;}
     const pArr=await sbFetch(`prestations?id=eq.${prestationId}&select=clients(nom,email,prenom_contact,nom_contact)`);
     const c=pArr?.[0]?.clients||{};
     const num=fact.numero||'—';
@@ -15502,26 +15615,60 @@ function renderComptaAcomptes(){
 async function loadComptaImpayes(){
   const el=document.getElementById('compta-impayes-real');if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom,email,telephone)&statut_financier=in.(facturée,partiellement_payée)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
+    const [data,facturesRaw]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom,email,telephone)&statut_financier=in.(facturée,partiellement_payée)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200'),
+      // La table `factures` porte la vraie échéance (posée à l'émission, ex J+30)
+      // et un statut 'en_retard' déjà calculé chaque nuit par le cron
+      // check_factures_en_retard() (migration-finance-relances-auto.sql), qui
+      // s'appuie dessus pour envoyer les relances automatiques — un signal fiable,
+      // mais jusqu'ici jamais lu ici : cet écran recalculait son propre "en retard"
+      // à partir de date_prestation (date de la mission, pas l'échéance de
+      // paiement), sans aucun rapport avec le signal déjà utilisé côté relances.
+      sbFetch('factures?select=prestation_id,date_echeance,statut&statut=in.(emise,en_retard)&prestation_id=not.is.null&limit=500').catch(()=>[]),
+    ]);
     const list=Array.isArray(data)?data:[];
-    const now30=new Date();now30.setDate(now30.getDate()-30);
-    const enRetard=list.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now30).length;
+    // La création d'une facture est désormais explicite (émission auto en fin de
+    // production, ou action "Émettre" — voir emettreFacture) : toute prestation
+    // facturée/part. payée n'a donc pas forcément encore de ligne `factures`.
+    // On enrichit la liste existante avec l'échéance réelle quand elle est
+    // connue, sans jamais retirer une prestation de la liste : garder l'ancienne
+    // heuristique (30 jours depuis la date de prestation) en repli pour les
+    // dossiers dont la facture n'a pas encore été émise reste plus utile que de
+    // les faire disparaître de l'écran Impayés.
+    const factByPrestation={};
+    (Array.isArray(facturesRaw)?facturesRaw:[]).forEach(f=>{
+      const prev=factByPrestation[f.prestation_id];
+      if(!prev||(f.date_echeance||'')<(prev.date_echeance||''))factByPrestation[f.prestation_id]=f;
+    });
+    const now=new Date();const now30=new Date();now30.setDate(now30.getDate()-30);
+    const isEnRetard=p=>{
+      const f=factByPrestation[p.id];
+      if(f)return f.statut==='en_retard'||(!!f.date_echeance&&new Date(f.date_echeance)<now);
+      return !!p.date_prestation&&new Date(p.date_prestation)<now30;
+    };
+    const enRetard=list.filter(isEnRetard).length;
     const tot=list.reduce((s,p)=>s+(p.montant_ttc||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     set('imp-kpi-tot',tot.toLocaleString('fr-FR')+' €');set('imp-kpi-nb',list.length);set('imp-kpi-rel',enRetard);
-    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date presta.</th><th>Statut fin.</th><th></th></tr></thead><tbody>'+
-      list.map(p=>`<tr>
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date presta.</th><th>Échéance facture</th><th>Statut fin.</th><th></th></tr></thead><tbody>'+
+      list.map(p=>{
+        const f=factByPrestation[p.id];
+        const echLbl=f?.date_echeance
+          ?new Date(f.date_echeance).toLocaleDateString('fr-FR')+(f.statut==='en_retard'||new Date(f.date_echeance)<now?' <span style="color:var(--er);font-weight:700">(retard)</span>':'')
+          :'<span style="color:var(--t3);font-size:11px">facture non émise</span>';
+        return `<tr>
         <td class="tm">${p.reference||'—'}</td>
         <td class="tp">${esc(p.clients?.nom||'—')}</td>
         <td class="tm" style="font-weight:700;color:var(--er)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td style="font-size:11.5px">${echLbl}</td>
         <td><span class="bd bw"><span class="bd-d"></span>${p.statut_financier}</span></td>
         <td><div style="display:flex;gap:5px;flex-wrap:wrap">
           <button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="comptaMarquerPayeImpaye('${p.id}')">✓ Payé</button>
           ${p.clients?.email?`<a href="mailto:${esc(p.clients.email)}?subject=Relance paiement — ${p.reference||'SportVision'}&body=Bonjour,%0A%0ANotre prestation ${p.reference||''} (${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);font-size:11px;cursor:pointer;text-decoration:none;white-space:nowrap">✉ Relancer</a>`:''}
           <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
         </div></td>
-      </tr>`).join('')+'</tbody></table></div>':
+      </tr>`;}).join('')+'</tbody></table></div>':
       '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun impayé en ce moment.</div>';
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
 }
@@ -15567,6 +15714,73 @@ async function loadComptaAvoirs(){
   }catch(e){
     el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
   }
+}
+
+// ── Encaissements Stripe (ledger `paiements`, lecture seule) ─────────────────
+// Table alimentée par les webhooks Stripe (migration-portail-v1.sql) mais
+// jusqu'ici jamais lue par aucun écran de l'OS — aucun moyen de vérifier ce qui
+// a réellement été encaissé en ligne, distinct de ce que prestations/factures
+// disent avoir été facturé/marqué payé manuellement. Écran volontairement
+// minimal : aucune action, juste une liste triable pour rapprochement.
+let _encaissementsData=[],_encaissementsSort={col:'created_at',dir:'desc'};
+async function loadComptaEncaissements(){
+  const el=document.getElementById('compta-encaissements-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('paiements?select=id,montant,devise,statut,type_paiement,created_at,stripe_payment_intent_id,prestation:prestations(reference),client:clients(nom)&order=created_at.desc&limit=500');
+    _encaissementsData=Array.isArray(data)?data:[];
+    const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    const reussis=_encaissementsData.filter(p=>p.statut==='reussi');
+    const totReussi=reussis.reduce((s,p)=>s+(p.montant||0),0);
+    const enAttente=_encaissementsData.filter(p=>p.statut==='en_attente').length;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('enc-kpi-tot',fmt(totReussi));set('enc-kpi-nb',reussis.length);set('enc-kpi-att',enAttente);
+    _encaissementsSort={col:'created_at',dir:'desc'};
+    renderComptaEncaissements();
+  }catch(e){
+    el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table paiements non disponible (migration-portail-v1.sql à exécuter), ou aucun encaissement Stripe enregistré.</div>';
+    console.error(e);
+  }
+}
+function sortComptaEncaissements(col){
+  if(_encaissementsSort.col===col)_encaissementsSort.dir=_encaissementsSort.dir==='asc'?'desc':'asc';
+  else _encaissementsSort={col,dir:'desc'};
+  renderComptaEncaissements();
+}
+function renderComptaEncaissements(){
+  const el=document.getElementById('compta-encaissements-real');if(!el)return;
+  if(!_encaissementsData.length){
+    el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucun encaissement Stripe enregistré.</div>';
+    return;
+  }
+  const {col,dir}=_encaissementsSort;
+  const list=[..._encaissementsData].sort((a,b)=>{
+    const va=col==='montant'?(a.montant||0):(a[col]||'');
+    const vb=col==='montant'?(b.montant||0):(b[col]||'');
+    if(va<vb)return dir==='asc'?-1:1;
+    if(va>vb)return dir==='asc'?1:-1;
+    return 0;
+  });
+  const st_cls={reussi:'ba',en_attente:'bw',echoue:'bn',rembourse:'bl',annule:'bn'};
+  const st_lbl={reussi:'Réussi',en_attente:'En attente',echoue:'Échoué',rembourse:'Remboursé',annule:'Annulé'};
+  const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+new Date(s).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'—';
+  const arrow=c=>col===c?(dir==='asc'?' ▲':' ▼'):'';
+  const th=(lb,c)=>`<th style="cursor:pointer;white-space:nowrap;user-select:none" onclick="sortComptaEncaissements('${c}')">${lb}${arrow(c)}</th>`;
+  el.innerHTML='<div class="tw"><table><thead><tr>'+
+    th('Date','created_at')+th('Montant','montant')+th('Statut','statut')+th('Type','type_paiement')+
+    '<th>Prestation</th><th>Client</th><th>Réf. Stripe</th>'+
+    '</tr></thead><tbody>'+
+    list.map(p=>`<tr>
+      <td style="color:var(--t3);font-size:11.5px;white-space:nowrap">${fd(p.created_at)}</td>
+      <td class="tm" style="font-weight:700">${fmt(p.montant)}</td>
+      <td><span class="bd ${st_cls[p.statut]||'bw'}"><span class="bd-d"></span>${st_lbl[p.statut]||p.statut}</span></td>
+      <td>${p.type_paiement||'—'}</td>
+      <td>${p.prestation?.reference||'—'}</td>
+      <td class="tp">${esc(p.client?.nom||'—')}</td>
+      <td style="font-size:10.5px;color:var(--t3);font-family:monospace">${esc(p.stripe_payment_intent_id||'—')}</td>
+    </tr>`).join('')+
+    '</tbody></table></div>';
 }
 
 async function loadComptaDepenses(){
@@ -15825,6 +16039,10 @@ async function comptaConfirmerAcompte(id){
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.acompte_montant||r?.[0]?.montant_ttc,{type:'acompte',mode_paiement:r?.[0]?.mode_paiement});
+    // Pas de sync vers `factures` ici : un acompte n'a pas de statut équivalent
+    // dans l'enum factures.statut (voir _syncFactureApresPaiementIntegral) —
+    // seul un règlement intégral (comptaConfirmerImpaye/secConfirmerPaye/
+    // majStatutFinancier('payée')) déclenche la synchronisation.
     closeModal();toast('Acompte enregistré.','ok');loadComptaAcomptes();
   }catch(e){toast('Erreur.','er');}
 }
@@ -15859,6 +16077,7 @@ async function comptaConfirmerImpaye(id){
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{type:'impaye_regle',mode_paiement:r?.[0]?.mode_paiement});
+    _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
     closeModal();toast('Paiement enregistré.','ok');loadComptaImpayes();
   }catch(e){toast('Erreur.','er');}
 }
@@ -17400,6 +17619,7 @@ async function secConfirmerPaye(id){
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'enregistrement impossible.'),'er');return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{mode_paiement:r?.[0]?.mode_paiement});
+    _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
     closeModal();toast('Paiement enregistré.','ok');loadSecRelances();
   }catch(e){toast('Erreur lors de l\'enregistrement.','er');}
 }
@@ -18177,7 +18397,8 @@ async function loadFinances(){
           <td><div style="display:flex;gap:4px;justify-content:flex-end">
             ${canFacturer?`<button onclick="majStatutFinancier('${p.id}','facturée')" style="padding:4px 8px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);color:var(--wa);cursor:pointer;white-space:nowrap" title="Marquer comme facturée">Facturer</button>`:''}
             ${canPayer?`<button onclick="majStatutFinancier('${p.id}','payée')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap" title="Marquer comme payée">Payée ✓</button>`:''}
-            <button onclick="imprimerFacture('${p.id}')" style="padding:4px 8px;font-size:11px;background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer;white-space:nowrap" title="Générer facture PDF">Facture</button>
+            <button onclick="imprimerFacture('${p.id}')" style="padding:4px 8px;font-size:11px;background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer;white-space:nowrap" title="Aperçu — ne crée rien">Aperçu</button>
+            <button onclick="emettreFacture('${p.id}')" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:var(--rp);color:#366BFF;cursor:pointer;white-space:nowrap;font-weight:600" title="Émet une facture définitive et numérotée">Émettre</button>
             <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
           </div></td>
         </tr>`;
@@ -18190,7 +18411,10 @@ async function majStatutFinancier(id,statut){
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut_financier:statut}});
     if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
-    if(statut==='payée')logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{statut_financier:statut});
+    if(statut==='payée'){
+      logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{statut_financier:statut});
+      _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
+    }
     const lbl={facturée:'Prestation facturée.',payée:'Paiement enregistré.'}[statut]||'Mis à jour.';
     toast(lbl,'ok');
     if(S.view==='fin')loadFinances();
@@ -19199,7 +19423,7 @@ VIEWS['expert_comptable.fec']=VIEWS['compta.fec'];
 // détaillés compta (rentabilité, dépenses, clôtures…) — Fouka (toujours
 // connecté en admin) doit voir tout ça directement, pas seulement via un
 // compte compta séparé.
-['resultat','rentabilite','commissions','budgets','rapprochement','factures','acomptes','impayes','avoirs','depenses','frais','paiements','rem','clotures','export','tva','fec','audit','immobilisations'].forEach(v=>{
+['resultat','rentabilite','commissions','budgets','rapprochement','factures','acomptes','impayes','avoirs','encaissements','depenses','frais','paiements','rem','clotures','export','tva','fec','audit','immobilisations'].forEach(v=>{
   if(VIEWS['compta.'+v]) VIEWS['admin.'+v]=VIEWS['compta.'+v];
 });
 
