@@ -707,13 +707,36 @@ async function handleActivation(){
   const clubNom = document.getElementById('act-club-nom').value.trim();
   const prenom = document.getElementById('act-prenom').value.trim();
   const nom = document.getElementById('act-nom').value.trim();
-  const email = document.getElementById('act-email').value.trim();
   const tel = document.getElementById('act-tel').value.trim();
-  const pass = document.getElementById('act-pass').value;
-  const pass2 = document.getElementById('act-pass2').value;
   if (!_actToken){ errEl.textContent = 'Lien d\'activation manquant. Rouvrez le lien reçu de SportVision.'; return; }
   if (!clubNom){ errEl.textContent = 'Le nom du club est obligatoire.'; return; }
-  if (!prenom || !nom || !email){ errEl.textContent = 'Merci de compléter votre prénom, votre nom et votre e-mail.'; return; }
+  if (!prenom || !nom){ errEl.textContent = 'Merci de compléter votre prénom et votre nom.'; return; }
+
+  // Session déjà ouverte sur ce navigateur (compte déjà inscrit qui rouvre le
+  // lien d'activation, ou deuxième tentative après un premier essai réussi) :
+  // /auth/v1/signup échouerait systématiquement en 422 "email already
+  // registered" pour un compte existant, ce qui renvoyait l'utilisateur vers
+  // un message "connectez-vous, puis rouvrez ce lien" qui repassait par le
+  // même chemin cassé — boucle infinie. Avec une session valide, on peut
+  // appeler clubplus-activate directement, sans re-signup ni mot de passe.
+  if (isLoggedIn()){
+    btn.disabled = true; btn.textContent = 'Activation…';
+    try{
+      const act = await sbFunction('clubplus-activate', {token:_actToken, prenom, nom, telephone:tel, club_nom:clubNom});
+      if (!act.ok) throw new Error(act.data?.error || 'Erreur lors de l\'activation de votre espace.');
+      await bootAfterLogin();
+    }catch(e){
+      errEl.textContent = e.message;
+    }finally{
+      btn.disabled = false; btn.textContent = 'Activer mon espace Club+';
+    }
+    return;
+  }
+
+  const email = document.getElementById('act-email').value.trim();
+  const pass = document.getElementById('act-pass').value;
+  const pass2 = document.getElementById('act-pass2').value;
+  if (!email){ errEl.textContent = 'Merci de renseigner votre e-mail.'; return; }
   if (pass.length < 6){ errEl.textContent = 'Le mot de passe doit contenir au moins 6 caractères.'; return; }
   if (pass !== pass2){ errEl.textContent = 'Les mots de passe ne correspondent pas.'; return; }
   if (!document.getElementById('act-cgu').checked){ errEl.textContent = 'Merci d\'accepter les CGU pour continuer.'; return; }
