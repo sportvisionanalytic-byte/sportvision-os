@@ -10070,6 +10070,25 @@ async function envoyerDevis(id){
         if(sbErr(rCl))toast('Devis envoyé, mais le client n\'a pas pu être avancé dans le pipeline.','wa');
       }
     }
+    // Sync prestation liée : l'envoi du devis ne faisait progresser que le
+    // pipeline CLIENT (ci-dessus) — la prestation elle-même restait bloquée
+    // à son statut de départ (demande_reçue/à_qualifier/offre_en_préparation)
+    // jusqu'à ce que quelqu'un clique manuellement "avancer". On relit
+    // prestation_id depuis la base plutôt que le cache local (_devisCache
+    // n'a pas toujours cette colonne selon l'écran d'où l'action est
+    // lancée — Devis vs Documents). Garde symétrique de celle déjà en place
+    // pour devis.statut==='accepté' un peu plus haut dans sauvegarderDevis :
+    // on n'avance que si la prestation n'a pas déjà dépassé ce stade.
+    try{
+      const dvArr=await sbFetch('devis?id=eq.'+id+'&select=prestation_id');
+      const prestationId=dvArr&&dvArr[0]&&dvArr[0].prestation_id;
+      if(prestationId){
+        const pre=await sbFetch('prestations?select=id,statut&id=eq.'+prestationId);
+        if(pre&&pre[0]&&['demande_reçue','à_qualifier','offre_en_préparation'].includes(pre[0].statut)){
+          await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:'devis_envoyé'}});
+        }
+      }
+    }catch(e){}
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
@@ -10211,6 +10230,22 @@ async function _sendDevisEmailConfirm(id,statutActuel){
     if(markSent&&statutActuel==='brouillon'){
       const rSt=await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:new Date().toISOString().slice(0,10)}}).catch(()=>({code:'network_error'}));
       if(sbErr(rSt))statutMaj=false;
+      else{
+        // Même sync prestation que dans envoyerDevis() : l'envoi par email
+        // doit aussi faire progresser la prestation liée si elle n'a pas
+        // déjà dépassé ce stade. Best-effort, ne bloque jamais le toast de
+        // succès de l'email lui-même.
+        try{
+          const dvArr=await sbFetch('devis?id=eq.'+id+'&select=prestation_id');
+          const prestationId=dvArr&&dvArr[0]&&dvArr[0].prestation_id;
+          if(prestationId){
+            const pre=await sbFetch('prestations?select=id,statut&id=eq.'+prestationId);
+            if(pre&&pre[0]&&['demande_reçue','à_qualifier','offre_en_préparation'].includes(pre[0].statut)){
+              await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:'devis_envoyé'}});
+            }
+          }
+        }catch(e){}
+      }
     }
     closeModal();
     // L'email est parti dans tous les cas (res.ok déjà vérifié ci-dessus) — mais
