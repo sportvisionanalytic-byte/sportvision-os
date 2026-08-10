@@ -15500,26 +15500,60 @@ function renderComptaAcomptes(){
 async function loadComptaImpayes(){
   const el=document.getElementById('compta-impayes-real');if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom,email,telephone)&statut_financier=in.(facturée,partiellement_payée)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
+    const [data,facturesRaw]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut_financier,montant_ttc,date_prestation,clients(nom,email,telephone)&statut_financier=in.(facturée,partiellement_payée)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200'),
+      // La table `factures` porte la vraie échéance (posée à l'émission, ex J+30)
+      // et un statut 'en_retard' déjà calculé chaque nuit par le cron
+      // check_factures_en_retard() (migration-finance-relances-auto.sql), qui
+      // s'appuie dessus pour envoyer les relances automatiques — un signal fiable,
+      // mais jusqu'ici jamais lu ici : cet écran recalculait son propre "en retard"
+      // à partir de date_prestation (date de la mission, pas l'échéance de
+      // paiement), sans aucun rapport avec le signal déjà utilisé côté relances.
+      sbFetch('factures?select=prestation_id,date_echeance,statut&statut=in.(emise,en_retard)&prestation_id=not.is.null&limit=500').catch(()=>[]),
+    ]);
     const list=Array.isArray(data)?data:[];
-    const now30=new Date();now30.setDate(now30.getDate()-30);
-    const enRetard=list.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now30).length;
+    // La création d'une facture est désormais explicite (émission auto en fin de
+    // production, ou action "Émettre" — voir emettreFacture) : toute prestation
+    // facturée/part. payée n'a donc pas forcément encore de ligne `factures`.
+    // On enrichit la liste existante avec l'échéance réelle quand elle est
+    // connue, sans jamais retirer une prestation de la liste : garder l'ancienne
+    // heuristique (30 jours depuis la date de prestation) en repli pour les
+    // dossiers dont la facture n'a pas encore été émise reste plus utile que de
+    // les faire disparaître de l'écran Impayés.
+    const factByPrestation={};
+    (Array.isArray(facturesRaw)?facturesRaw:[]).forEach(f=>{
+      const prev=factByPrestation[f.prestation_id];
+      if(!prev||(f.date_echeance||'')<(prev.date_echeance||''))factByPrestation[f.prestation_id]=f;
+    });
+    const now=new Date();const now30=new Date();now30.setDate(now30.getDate()-30);
+    const isEnRetard=p=>{
+      const f=factByPrestation[p.id];
+      if(f)return f.statut==='en_retard'||(!!f.date_echeance&&new Date(f.date_echeance)<now);
+      return !!p.date_prestation&&new Date(p.date_prestation)<now30;
+    };
+    const enRetard=list.filter(isEnRetard).length;
     const tot=list.reduce((s,p)=>s+(p.montant_ttc||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     set('imp-kpi-tot',tot.toLocaleString('fr-FR')+' €');set('imp-kpi-nb',list.length);set('imp-kpi-rel',enRetard);
-    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date presta.</th><th>Statut fin.</th><th></th></tr></thead><tbody>'+
-      list.map(p=>`<tr>
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Montant</th><th>Date presta.</th><th>Échéance facture</th><th>Statut fin.</th><th></th></tr></thead><tbody>'+
+      list.map(p=>{
+        const f=factByPrestation[p.id];
+        const echLbl=f?.date_echeance
+          ?new Date(f.date_echeance).toLocaleDateString('fr-FR')+(f.statut==='en_retard'||new Date(f.date_echeance)<now?' <span style="color:var(--er);font-weight:700">(retard)</span>':'')
+          :'<span style="color:var(--t3);font-size:11px">facture non émise</span>';
+        return `<tr>
         <td class="tm">${p.reference||'—'}</td>
         <td class="tp">${esc(p.clients?.nom||'—')}</td>
         <td class="tm" style="font-weight:700;color:var(--er)">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
+        <td style="font-size:11.5px">${echLbl}</td>
         <td><span class="bd bw"><span class="bd-d"></span>${p.statut_financier}</span></td>
         <td><div style="display:flex;gap:5px;flex-wrap:wrap">
           <button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="comptaMarquerPayeImpaye('${p.id}')">✓ Payé</button>
           ${p.clients?.email?`<a href="mailto:${esc(p.clients.email)}?subject=Relance paiement — ${p.reference||'SportVision'}&body=Bonjour,%0A%0ANotre prestation ${p.reference||''} (${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);font-size:11px;cursor:pointer;text-decoration:none;white-space:nowrap">✉ Relancer</a>`:''}
           <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
         </div></td>
-      </tr>`).join('')+'</tbody></table></div>':
+      </tr>`;}).join('')+'</tbody></table></div>':
       '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun impayé en ce moment.</div>';
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Erreur de chargement.</div>';console.error(e);}
 }
