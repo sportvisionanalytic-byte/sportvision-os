@@ -2729,6 +2729,35 @@ async function logFinancialAudit(action,tableCible,ligneId,montantAvant,montantA
   }catch(e){console.error('logFinancialAudit failed',e);}
 }
 
+// Synchronise la ligne `factures` liée quand un paiement intégral est confirmé
+// manuellement (virement/chèque/espèces/carte hors Stripe, côté secrétariat ou
+// compta). Jusqu'ici, comptaConfirmerImpaye/secConfirmerPaye/majStatutFinancier
+// ne mettaient à jour QUE prestations.statut_financier — la ligne `factures`
+// correspondante (prestation_id) restait bloquée à 'emise'/'en_retard' même
+// après règlement complet : deux sources de vérité sur le même paiement,
+// jamais synchronisées.
+// Ne crée JAMAIS de facture (pas d'appel à getOrCreateFacture) : seule
+// l'émission explicite (voir emettreFacture) doit numéroter un document — cette
+// fonction se contente de mettre à jour une facture déjà émise, si elle existe.
+// N'écrase pas un statut terminal (payee/annulee/remboursee) déjà posé
+// manuellement ou via Pennylane/avoir, pour ne jamais revenir en arrière sur
+// une décision comptable déjà prise ailleurs.
+// Ne couvre que le règlement intégral : un acompte (statut_financier
+// 'partiellement_payée') n'a pas d'équivalent dans l'enum factures.statut
+// ('brouillon','emise','payee','en_retard','annulee','remboursee') — aucun
+// mapping fiable n'existe pour un paiement partiel, donc pas de synchronisation
+// tentée pour ce cas (voir comptaConfirmerAcompte).
+async function _syncFactureApresPaiementIntegral(prestationId,montantTtc,modePaiement){
+  try{
+    const existing=await sbFetch('factures?select=id,statut&prestation_id=eq.'+prestationId+'&order=created_at.desc&limit=1');
+    const fact=Array.isArray(existing)&&existing[0];
+    if(!fact||['payee','annulee','remboursee'].includes(fact.statut))return;
+    const r=await sbFetch('factures?id=eq.'+fact.id,{method:'PATCH',body:{statut:'payee'}});
+    if(sbErr(r)){console.error('_syncFactureApresPaiementIntegral failed',r);return;}
+    logFinancialAudit('encaissement','factures',fact.id,null,montantTtc,{prestation_id:prestationId,mode_paiement:modePaiement||null});
+  }catch(e){console.error('_syncFactureApresPaiementIntegral failed',e);}
+}
+
 // ── Préférences de notification ──────────────────────────────────────────────
 // Chaque collaborateur peut désactiver certaines catégories de notifications
 // (profiles.notification_prefs, jsonb — voir migration-notification-prefs.sql).
@@ -15751,6 +15780,10 @@ async function comptaConfirmerAcompte(id){
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.acompte_montant||r?.[0]?.montant_ttc,{type:'acompte',mode_paiement:r?.[0]?.mode_paiement});
+    // Pas de sync vers `factures` ici : un acompte n'a pas de statut équivalent
+    // dans l'enum factures.statut (voir _syncFactureApresPaiementIntegral) —
+    // seul un règlement intégral (comptaConfirmerImpaye/secConfirmerPaye/
+    // majStatutFinancier('payée')) déclenche la synchronisation.
     closeModal();toast('Acompte enregistré.','ok');loadComptaAcomptes();
   }catch(e){toast('Erreur.','er');}
 }
@@ -15785,6 +15818,7 @@ async function comptaConfirmerImpaye(id){
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{type:'impaye_regle',mode_paiement:r?.[0]?.mode_paiement});
+    _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
     closeModal();toast('Paiement enregistré.','ok');loadComptaImpayes();
   }catch(e){toast('Erreur.','er');}
 }
@@ -17326,6 +17360,7 @@ async function secConfirmerPaye(id){
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'enregistrement impossible.'),'er');return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{mode_paiement:r?.[0]?.mode_paiement});
+    _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
     closeModal();toast('Paiement enregistré.','ok');loadSecRelances();
   }catch(e){toast('Erreur lors de l\'enregistrement.','er');}
 }
@@ -18116,7 +18151,10 @@ async function majStatutFinancier(id,statut){
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut_financier:statut}});
     if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
-    if(statut==='payée')logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{statut_financier:statut});
+    if(statut==='payée'){
+      logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{statut_financier:statut});
+      _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
+    }
     const lbl={facturée:'Prestation facturée.',payée:'Paiement enregistré.'}[statut]||'Mis à jour.';
     toast(lbl,'ok');
     if(S.view==='fin')loadFinances();
