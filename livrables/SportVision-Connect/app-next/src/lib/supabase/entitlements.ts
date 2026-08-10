@@ -51,6 +51,18 @@ import type { ModuleKey } from "@/lib/types";
 // fait donc directement sur `ctx.organization.type === "generic"` dans appointments/page.tsx
 // (comme services/page.tsx), pas via cette liste : canAccess(ctx, "appointments") reste toujours
 // faux, y compris pour un club, tant qu'aucune vraie policy/decision produit n'étend ce périmètre.
+//
+// "analytics"/"reports" (10/08/2026, Tier C Phase 5 — saisie manuelle de stats) : plus aucune
+// intégration Metricool réelle n'est prévue à court terme (plan payant + token absents) — la
+// donnée de portée/engagement/vues vient désormais de `contenu_stats` (migration-cm-contenu-
+// stats.sql), une ligne par contenu PUBLIÉ, saisie à la main par le CM propriétaire ou le Lead CM
+// (jamais par le client, jamais automatique). /analytics et /reports (src/lib/data/shared/
+// contenu-stats.ts) agrègent ces lignes à l'affichage ; un contenu jamais renseigné n'entre dans
+// aucun total (jamais compté comme 0), et tout chiffre affiché porte la mention "saisi
+// manuellement". Même absence de mapping MODULE_TO_CONNECT_MODULE que messages/communication/
+// publications/validations ci-dessus : aucune offre club ne vend spécifiquement "analytics"/
+// "reports" à ce jour, donc pas d'entitlement dédié — accès ouvert à tout membre actif dès que le
+// module est READY, comme le reste du lot Tier B Phase 2.
 export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "dashboard",
   "teams",
@@ -72,6 +84,8 @@ export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "publications",
   "validations",
   "presences",
+  "analytics",
+  "reports",
 ]);
 
 /**
