@@ -3374,7 +3374,16 @@ const _NEXT_ST={
   'offre_en_préparation':'devis_envoyé','devis_envoyé':'en_attente_réponse',
   'en_attente_réponse':'devis_accepté','devis_accepté':'en_attente_signature',
   'en_attente_signature':'en_attente_acompte','en_attente_acompte':'documents_complets',
-  'documents_complets':'confirmée','à_valider_production':'confirmée',
+  // 'documents_complets' menait avant directement à 'confirmée', sautant
+  // 'à_valider_production' — un statut qui existe dans l'enum (juste avant
+  // 'confirmée'), a ses propres libellé/couleur/KPI ("prod-kpi-val"),
+  // filtre dashboard prod ("À valider"), et tout un bloc UI de
+  // validation/refus (validerPrestation, visible uniquement pour le rôle
+  // prod, libellé "Cette prestation attend votre validation avant
+  // planification") — mais qu'aucun code n'écrivait jamais : la chaîne
+  // "avancer" sautait par-dessus. Le repositionner dans la séquence rend
+  // le statut atteignable et active la validation prod déjà construite.
+  'documents_complets':'à_valider_production','à_valider_production':'confirmée',
   'confirmée':'à_planifier','à_planifier':'planifiée',
   'planifiée':'équipe_affectée','équipe_affectée':'prête',
   'prête':'équipe_en_route','équipe_en_route':'arrivée_sur_place',
@@ -3444,6 +3453,12 @@ function modalDetailPrestation(idx){
   openModal(`
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">${p.reference||'Prestation'}</div>
     <div style="font-size:12px;color:var(--t3);margin-bottom:10px">${esc(p.clients?.nom||'Sans client')} · ${p.type_prestation||'—'}</div>
+    ${(p.options_selectionnees?.length||p.mode_paiement_choisi||p.distance_km||p.frais_deplacement_ht)?`<div style="background:rgba(124,77,255,.06);border:1px solid rgba(124,77,255,.2);border-radius:var(--rb);padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#7C4DFF">Transmis par le client (tunnel de réservation)</div>
+      ${p.options_selectionnees?.length?`<div style="font-size:12px;color:var(--t1)"><b>Options choisies :</b> ${esc(p.options_selectionnees.join(', '))}</div>`:''}
+      ${p.mode_paiement_choisi?`<div style="font-size:12px;color:var(--t1)"><b>Mode de paiement souhaité :</b> ${p.mode_paiement_choisi==='carte'?'Carte (en ligne)':'Espèces (sur place)'}</div>`:''}
+      ${(p.distance_km||p.frais_deplacement_ht)?`<div style="font-size:12px;color:var(--t1)"><b>Déplacement :</b> ${p.distance_km?p.distance_km+' km (A/R)':'—'}${p.frais_deplacement_ht?' · '+p.frais_deplacement_ht.toLocaleString('fr-FR')+' € HT':''}</div>`:''}
+    </div>`:''}
     ${p.statut==='à_valider_production'&&S.role==='prod'?`<div style="display:flex;gap:8px;margin-bottom:14px;padding:12px 14px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.25);border-radius:var(--rb)">
       <div style="flex:1"><div style="font-size:11px;font-weight:700;color:var(--er);margin-bottom:2px">VALIDATION PRODUCTION REQUISE</div>
       <div style="font-size:12px;color:var(--t2)">Cette prestation attend votre validation avant planification.</div></div>
@@ -7545,6 +7560,32 @@ async function ajouterMembreEquipe(prestationId,ref){
     if(Array.isArray(already)&&already.length){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
     const rem=document.getElementById('eq-rem').value;
     const rdv=document.getElementById('eq-rdv').value;
+    // Détection de conflit de planning avant confirmation. L'edge function
+    // check-disponibilite (supabase/functions/check-disponibilite) existe déjà
+    // et vérifie bien des chevauchements d'OPÉRATEURS (pas de matériel — elle
+    // ne référence aucune table kit), mais pour un usage différent : elle
+    // cherche "y a-t-il UN opérateur libre parmi tous" pour le tunnel public,
+    // pas "CE collaborateur précis est-il libre" comme ici. Requête directe à
+    // la place. Avertissement seulement, jamais bloquant : même philosophie
+    // que check-disponibilite (décision fondateur 2026-08-06, voir son
+    // commentaire d'en-tête) — un chevauchement peut déjà exister en prod
+    // aujourd'hui (aucune vérification n'existait avant ce correctif) et deux
+    // missions courtes le même jour peuvent être parfaitement légitimes ; le
+    // staff garde la main.
+    try{
+      const preArr=await sbFetch('prestations?id=eq.'+prestationId+'&select=date_prestation');
+      const datePres=preArr&&preArr[0]&&preArr[0].date_prestation;
+      if(datePres){
+        const conflits=await sbFetch('prestations_equipe?select=id,prestations!inner(reference,date_prestation,statut)&collaborateur_id=eq.'+colId+'&prestation_id=neq.'+prestationId+'&statut=in.(invitation_envoyée,en_attente,acceptée)&prestations.date_prestation=eq.'+datePres+'&prestations.statut=not.in.(annulée,refusée,clôturée)').catch(()=>[]);
+        if(Array.isArray(conflits)&&conflits.length){
+          const refs=conflits.map(c=>c.prestations?.reference).filter(Boolean).join(', ')||'une autre prestation';
+          if(!confirm('⚠️ Ce collaborateur est déjà affecté le '+new Date(datePres).toLocaleDateString('fr-FR')+' à : '+refs+'.\n\nConfirmer quand même cette affectation ?')){
+            if(btn)btn.disabled=false;
+            return;
+          }
+        }
+      }
+    }catch(e){}
     const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
     if(sbErr(rAdd)){err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');if(btn)btn.disabled=false;return;}
     creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
@@ -10075,6 +10116,25 @@ async function envoyerDevis(id){
         if(sbErr(rCl))toast('Devis envoyé, mais le client n\'a pas pu être avancé dans le pipeline.','wa');
       }
     }
+    // Sync prestation liée : l'envoi du devis ne faisait progresser que le
+    // pipeline CLIENT (ci-dessus) — la prestation elle-même restait bloquée
+    // à son statut de départ (demande_reçue/à_qualifier/offre_en_préparation)
+    // jusqu'à ce que quelqu'un clique manuellement "avancer". On relit
+    // prestation_id depuis la base plutôt que le cache local (_devisCache
+    // n'a pas toujours cette colonne selon l'écran d'où l'action est
+    // lancée — Devis vs Documents). Garde symétrique de celle déjà en place
+    // pour devis.statut==='accepté' un peu plus haut dans sauvegarderDevis :
+    // on n'avance que si la prestation n'a pas déjà dépassé ce stade.
+    try{
+      const dvArr=await sbFetch('devis?id=eq.'+id+'&select=prestation_id');
+      const prestationId=dvArr&&dvArr[0]&&dvArr[0].prestation_id;
+      if(prestationId){
+        const pre=await sbFetch('prestations?select=id,statut&id=eq.'+prestationId);
+        if(pre&&pre[0]&&['demande_reçue','à_qualifier','offre_en_préparation'].includes(pre[0].statut)){
+          await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:'devis_envoyé'}});
+        }
+      }
+    }catch(e){}
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
@@ -10216,6 +10276,22 @@ async function _sendDevisEmailConfirm(id,statutActuel){
     if(markSent&&statutActuel==='brouillon'){
       const rSt=await sbFetch('devis?id=eq.'+id,{method:'PATCH',body:{statut:'envoyé',date_envoi:new Date().toISOString().slice(0,10)}}).catch(()=>({code:'network_error'}));
       if(sbErr(rSt))statutMaj=false;
+      else{
+        // Même sync prestation que dans envoyerDevis() : l'envoi par email
+        // doit aussi faire progresser la prestation liée si elle n'a pas
+        // déjà dépassé ce stade. Best-effort, ne bloque jamais le toast de
+        // succès de l'email lui-même.
+        try{
+          const dvArr=await sbFetch('devis?id=eq.'+id+'&select=prestation_id');
+          const prestationId=dvArr&&dvArr[0]&&dvArr[0].prestation_id;
+          if(prestationId){
+            const pre=await sbFetch('prestations?select=id,statut&id=eq.'+prestationId);
+            if(pre&&pre[0]&&['demande_reçue','à_qualifier','offre_en_préparation'].includes(pre[0].statut)){
+              await sbFetch('prestations?id=eq.'+prestationId,{method:'PATCH',body:{statut:'devis_envoyé'}});
+            }
+          }
+        }catch(e){}
+      }
     }
     closeModal();
     // L'email est parti dans tous les cas (res.ok déjà vérifié ci-dessus) — mais
@@ -17648,7 +17724,7 @@ async function loadKanban(){
 
 async function modalDetailById(id){
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,briefing_vu_at,clients(nom)&id=eq.'+id);
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,briefing_vu_at,options_selectionnees,mode_paiement_choisi,distance_km,frais_deplacement_ht,clients(nom)&id=eq.'+id);
     if(!data||!data[0])return;
     if(S.role==='prod'){modalProdFiche(data[0]);return;}
     if(S.role==='photo'){
