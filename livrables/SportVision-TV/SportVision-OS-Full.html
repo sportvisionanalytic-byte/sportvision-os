@@ -17417,7 +17417,7 @@ async function loadSecLivraisons(){
   const el=document.getElementById('sec-livraisons-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom,email,telephone)&statut=in.(prête_validation,livrée,prête_à_livrer,médias_complets,montage_en_cours,à_monter,prêt_validation)&order=date_prestation.desc&limit=100');
+    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom,email,telephone)&statut=in.(livrée,prête_à_livrer,médias_complets,montage_en_cours,à_monter,prêt_validation)&order=date_prestation.desc&limit=100');
     _secLivrData=Array.isArray(data)?data:[];
     const kpret=_secLivrData.filter(p=>['prête_validation','prête_à_livrer','prêt_validation'].includes(p.statut)).length;
     const kenv=_secLivrData.filter(p=>p.statut==='livrée').length;
@@ -19039,7 +19039,7 @@ async function updateNavBadges(role){
     if(role==='sec'){
       const demandes=await sbFetch('prestations?select=id&statut=in.(demande_reçue,à_qualifier)');
       setBadge('demandes',(demandes||[]).length,'nb-r');
-      const livrPret=await sbFetch('prestations?select=id&statut=in.(prête_validation,prête_à_livrer,prêt_validation)');
+      const livrPret=await sbFetch('prestations?select=id&statut=in.(prête_à_livrer,prêt_validation)');
       setBadge('livraisons',(livrPret||[]).length,'nb-o');
     }
     if(role==='photo'){
