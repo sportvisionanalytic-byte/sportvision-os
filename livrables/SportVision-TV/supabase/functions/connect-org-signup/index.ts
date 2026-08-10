@@ -153,9 +153,17 @@ serve(async (req) => {
       .maybeSingle();
     const adminRole = roleRow?.role_key ?? "admin";
 
+    // organizations.id n'a pas de valeur par défaut côté schéma (délibéré : pour un club/
+    // académie migré depuis l'ancien modèle, id = clubs.id/clients.id — voir migration-
+    // connect-v2-organizations-entitlements.sql). Pour une inscription self-service coach/
+    // académie, il n'existe aucune ligne clubs/clients préexistante à faire correspondre :
+    // il faut donc générer explicitement un nouvel id, sous peine de violation NOT NULL
+    // (bug trouvé le 10/08 en testant en conditions réelles : l'inscription échouait à
+    // 100% pour ces deux types, jamais un id fourni).
     const { data: createdOrg, error: orgErr } = await admin
       .from("organizations")
       .insert({
+        id: crypto.randomUUID(),
         organization_type: organizationType,
         nom,
         ville: ville || null,
