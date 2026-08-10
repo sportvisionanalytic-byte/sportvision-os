@@ -65,6 +65,15 @@ import type { ModuleKey } from "@/lib/types";
 // direct), pas via cette liste ni via MODULE_TO_CONNECT_MODULE — canAccess(ctx, "mycm") ne
 // vérifie donc que "module prêt", pas "Full Communication actif".
 //
+// "accompagnement" (10/08/2026, Tier C Phase 3) : deux branches distinctes dans le même fichier
+// (accompagnement/page.tsx) selon organization.type. Club/projet (majoritaire) : inclusions du
+// plan (catalogue PLANS, réel), chargé de compte via la vue client_cm (Phase 2, comme mycm), 4
+// chiffres du mois vérifiés un par un — voir le commentaire en tête de page.tsx pour le détail
+// réel vs honnêtement absent par indicateur. cm_agency : nouvelle table cm_agency_club_access
+// (migration-cm-agency-club-access.sql, À EXÉCUTER PAR FOUKA) remplace le mock
+// delegatedAccessByCmOrg — data/shared/cm-agency-access.ts. Aucune clé connect_modules dédiée
+// (même famille que mycm/messages/communication ci-dessus) : accès ouvert à tout membre actif
+// dès que le module est READY.
 // "analytics"/"reports" (10/08/2026, Tier C Phase 5 — saisie manuelle de stats) : plus aucune
 // intégration Metricool réelle n'est prévue à court terme (plan payant + token absents) — la
 // donnée de portée/engagement/vues vient désormais de `contenu_stats` (migration-cm-contenu-
@@ -100,6 +109,7 @@ export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "sessions",
   "camps",
   "mycm",
+  "accompagnement",
   "analytics",
   "reports",
 ]);

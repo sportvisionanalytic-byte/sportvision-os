@@ -67,20 +67,12 @@ export interface AccompagnementInclusion {
   description: string;
 }
 
-/** Un interlocuteur SportVision — ACTIONS.md § 21 « Qui intervient pour vous ». */
-export interface AccompagnementContact {
-  role: string;
-  name: string;
-}
+// AccompagnementContact / FollowUpPoint (mock, ACTIONS.md § 21) supprimés le 10/08/2026 — voir
+// mock/persona.ts. « Qui intervient pour vous » utilise désormais directement CommunityManager
+// (data/shared/community-manager.ts) ; aucune source réelle pour un « point de suivi mensuel ».
 
-/** Un point de suivi mensuel — ACTIONS.md § 21. */
-export interface FollowUpPoint {
-  label: string;
-  date: string;
-  status: "done" | "scheduled";
-}
-
-/** Le mois en cours en 4 chiffres — ACTIONS.md § 21. */
+/** Le mois en cours en 4 chiffres — ACTIONS.md § 21. `value` peut être « Non disponible » quand
+ * aucune source réelle n'existe pour ce type d'espace (voir accompagnement/page.tsx). */
 export interface MonthlyFigure {
   label: string;
   value: string;

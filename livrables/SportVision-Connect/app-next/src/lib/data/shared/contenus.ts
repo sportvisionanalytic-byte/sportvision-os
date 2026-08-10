@@ -62,6 +62,24 @@ export async function fetchContenus(supabase: SupabaseClient, clientId: string):
   return ((data ?? []) as ContenuRow[]).map(toContenu);
 }
 
+/** Nombre de contenus publiés ce mois-ci pour ce client, tous CM confondus — /accompagnement
+ * « Le mois en cours » (Tier C Phase 3, 10/08/2026). Même principe que
+ * data/shared/community-manager.ts:fetchContentsProducedThisMonth (compte `statut='publie'` sur
+ * la même fenêtre calendaire), mais sans filtrer par `cm_id` : cette page affiche un chiffre
+ * global côté client, pas la contribution d'un CM en particulier. */
+export async function fetchContenusPublishedThisMonth(supabase: SupabaseClient, clientId: string): Promise<number> {
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString().slice(0, 10);
+  const { count, error } = await supabase
+    .from("contenus")
+    .select("id", { count: "exact", head: true })
+    .eq("client_id", clientId)
+    .eq("statut", "publie")
+    .gte("date_publication", monthStart);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 /** Accepter ou demander une correction sur un contenu `a_valider_client` — RPC client_valider_contenu
  * (migration-connect-validation-contenus.sql, autorisation club étendue par v34). */
 export async function decideContenu(

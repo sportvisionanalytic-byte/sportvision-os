@@ -40,3 +40,21 @@ export async function fetchClubPresences(supabase: SupabaseClient, organizationI
     status: row.status as PresenceStatus,
   }));
 }
+
+/** Présences réalisées ce mois-ci — /accompagnement « Le mois en cours » (Tier C Phase 3,
+ * 10/08/2026). Remplace `ctx.subscription.presencesUsed`, toujours 0 en dur côté session.ts (non
+ * tracké à ce niveau, voir le commentaire de /presences) — ici un vrai comptage sur
+ * club_presences (status='completed', event_date dans le mois courant), RLS `cpr_member_select`
+ * (is_org_member) sans dépendre d'un entitlement actif. */
+export async function fetchClubPresencesThisMonth(supabase: SupabaseClient, organizationId: string): Promise<number> {
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)).toISOString().slice(0, 10);
+  const { count, error } = await supabase
+    .from("club_presences")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .eq("status", "completed")
+    .gte("event_date", monthStart);
+  if (error) throw error;
+  return count ?? 0;
+}
