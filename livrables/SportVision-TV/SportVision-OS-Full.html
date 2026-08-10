@@ -8986,7 +8986,7 @@ function docsRenderDevis(){
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
         ${d.statut==='brouillon'?`<button onclick="envoyerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:#366BFF;cursor:pointer">Envoyer</button>`:''}
         ${(d.statut==='envoyé'||d.statut==='en_attente')&&(!d.signature_statut||d.signature_statut==='non_demandee')?`<button onclick="demanderSignatureDoc('devis','${d.id}','${d.numero||d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
-        ${d.signature_statut==='demandee'?`<button onclick="confirmerSignatureDoc('devis','${d.id}','${d.numero||d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">✓</button>`:''}
+        ${d.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Youtrust dès signature du client — aucune action manuelle possible ici." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:#F5A524;white-space:nowrap">⏳ Attente Youtrust</span>`:''}
         <button onclick="imprimerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">PDF</button>
         <button onclick="envoyerDevisParEmail('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);border-radius:var(--rp);color:var(--acc2);cursor:pointer" title="Envoyer par email">✉</button>
         <button class="btn bg2 bs" onclick="modalModifierDevis(${i})" style="font-size:11px;padding:3px 9px">Modifier</button>
@@ -9009,7 +9009,7 @@ function docsRenderContrats(){
       <td>${_docsBadge(c.statut||'brouillon',CONTRAT_STATUTS)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
         ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='resilie'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
-        ${c.signature_statut==='demandee'?`<button onclick="confirmerSignatureDoc('contrat','${c.id}','${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">✓</button>`:''}
+        ${c.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Youtrust dès signature du client — aucune action manuelle possible ici." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:#F5A524;white-space:nowrap">⏳ Attente Youtrust</span>`:''}
         ${c.signature_statut?_sigBadge(c.signature_statut):''}
         <button onclick="genererContratPDF('${c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer">PDF</button>
       </td>
@@ -9191,19 +9191,22 @@ async function demanderSignatureDoc(docType,id,ref){
   }catch(e){toast('Erreur : '+e.message,'er');}
 }
 
+// Retirée le 2026-08-10 (audit Contrats/Signature) : cette fonction posait un PATCH
+// direct signature_statut='signee' + statut='accepté'/'actif' déclenché par un simple
+// clic staff, SANS aucune confirmation Youtrust réelle. C'est exactement le
+// contournement que le trigger check_signature_avant_acceptation()/
+// check_signature_avant_activation() (migration-audit-08-08-corrections-interfaces.sql)
+// est censé empêcher — le trigger le laissait pourtant passer puisque les deux champs
+// étaient posés dans le MÊME appel PATCH que la confirmation. La confirmation réelle et
+// automatique existe déjà côté serveur : supabase/functions/youtrust-webhook (vérifie la
+// signature HMAC Youtrust avant de poser signature_statut='signee'). Décision déjà prise
+// par Fouka (voir commentaire du trigger, 08/08/2026) : un passage manuel hors Youtrust
+// (signature papier) doit se faire par SQL Editor par Fouka lui-même, jamais par un
+// bouton de l'UI accessible au staff. Le bouton correspondant a été retiré de docsRenderDevis,
+// docsRenderContrats et docsRenderSignatures ; cette fonction est neutralisée (au lieu
+// d'être supprimée) en filet de sécurité si un ancien onclick mis en cache l'appelait encore.
 async function confirmerSignatureDoc(docType,id,ref){
-  const table=docType==='devis'?'devis':'contrats';
-  try{
-    const patch={signature_statut:'signee',signature_confirmee_at:new Date().toISOString()};
-    if(docType==='devis')patch.statut='accepté';
-    else patch.statut='actif';
-    const r=await sbFetch(table+'?id=eq.'+id,{method:'PATCH',body:patch});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
-    await logDocEvent('signature',ref,docType,'Document signé — '+ref);
-    dispatchSVEvent('document.signed',{label:ref}).catch(()=>{});
-    toast('Document marqué comme signé.','ok');
-    await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
-  }catch(e){toast('Erreur.','er');}
+  toast('Confirmation manuelle désactivée. La signature est confirmée automatiquement par Youtrust (webhook sécurisé). Pour un cas de signature papier hors Youtrust, contactez Fouka — passage exceptionnel par SQL Editor uniquement.','er');
 }
 
 async function refuserSignatureDoc(docType,id,ref){
@@ -9239,7 +9242,7 @@ async function docsRenderSignatures(){
       <td style="color:var(--t3);font-size:11.5px">${fd(d.signature_confirmee_at)}</td>
       <td>${_sigBadge(d.signature_statut)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
-        ${d.signature_statut==='demandee'?`<button onclick="confirmerSignatureDoc('${d._type}','${d.id}','${d._ref}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">✓ Signé</button><button onclick="refuserSignatureDoc('${d._type}','${d.id}','${d._ref}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.18);border-radius:var(--rp);color:var(--er);cursor:pointer">Refuser</button>`:''}
+        ${d.signature_statut==='demandee'?`<button onclick="refuserSignatureDoc('${d._type}','${d.id}','${d._ref}')" style="padding:3px 9px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.18);border-radius:var(--rp);color:var(--er);cursor:pointer">Refuser</button>`:''}
       </td></tr>`).join('')}
     </tbody></table></div></div>`;
   }
