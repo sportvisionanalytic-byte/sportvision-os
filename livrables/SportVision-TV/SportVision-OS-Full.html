@@ -1774,8 +1774,9 @@ const VIEWS={
 
   'cm.contenus':()=>`
     <div class="sh"><div class="sh-t">Contenus</div><button class="btn bp bs" onclick="modalNouveauContenu()">+ Nouveau</button></div>
-    <div class="g3" style="margin-bottom:13px">
+    <div class="g4" style="margin-bottom:13px">
       <div class="fs"><div class="fs-l">Brouillons</div><div class="fs-v" id="cnt-kpi-draft">—</div></div>
+      <div class="fs"><div class="fs-l">Corrections</div><div class="fs-v" id="cnt-kpi-corr" style="color:var(--er)">—</div></div>
       <div class="fs"><div class="fs-l">Programmés</div><div class="fs-v" id="cnt-kpi-prog" style="color:var(--ac)">—</div></div>
       <div class="fs"><div class="fs-l">Publiés</div><div class="fs-v" id="cnt-kpi-pub" style="color:var(--ok)">—</div></div>
     </div>
@@ -14736,10 +14737,11 @@ async function loadCmContenus(){
   try{
     const data=await sbFetch('contenus?select=id,titre,statut,plateforme,type_contenu,date_prevue,clients(nom)&order=updated_at.desc&limit=100');
     _contenuCache=Array.isArray(data)?data:[];
-    const draft=_contenuCache.filter(c=>['brouillon','corrections'].includes(c.statut)).length;
+    const draft=_contenuCache.filter(c=>c.statut==='brouillon').length;
+    const corr=_contenuCache.filter(c=>c.statut==='corrections').length;
     const prog=_contenuCache.filter(c=>c.statut==='programme').length;
     const pub=_contenuCache.filter(c=>c.statut==='publie').length;
-    set('cnt-kpi-draft',draft);set('cnt-kpi-prog',prog);set('cnt-kpi-pub',pub);
+    set('cnt-kpi-draft',draft);set('cnt-kpi-corr',corr);set('cnt-kpi-prog',prog);set('cnt-kpi-pub',pub);
     if(!_contenuCache.length){
       el.innerHTML='<div class="cd"><div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucun contenu. Créez le premier.</div></div>';return;
     }
