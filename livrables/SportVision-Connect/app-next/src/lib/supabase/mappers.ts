@@ -12,6 +12,8 @@ const ORG_TYPE_MAP: Record<string, OrgType> = {
   coach: "coach",
   projet: "generic",
   sponsor: "sponsor",
+  event: "event",
+  cm_agency: "cm_agency",
 };
 
 export function mapOrgType(realType: string): OrgType {
@@ -81,9 +83,27 @@ const SPONSOR_ROLE_MAP: Record<string, MembershipRole> = {
   contact: "viewer",
 };
 
-export function mapOrgRole(orgType: "coach" | "academie" | "sponsor", realRole: string): MembershipRole {
+// event/cm_agency (migration-connect-v20) : catalogue minimaliste 2 rôles chacun,
+// comme sponsor à sa création — voir mapping ADMIN_ROLE_BY_TYPE côté
+// connect-org-activate pour la contrepartie serveur.
+const EVENT_ROLE_MAP: Record<string, MembershipRole> = {
+  responsable: "event_admin",
+  partenaire: "partner",
+};
+
+const CM_AGENCY_ROLE_MAP: Record<string, MembershipRole> = {
+  proprietaire: "owner",
+  collaborateur: "staff",
+};
+
+export function mapOrgRole(
+  orgType: "coach" | "academie" | "sponsor" | "event" | "cm_agency",
+  realRole: string,
+): MembershipRole {
   if (orgType === "coach") return COACH_ROLE_MAP[realRole] ?? "viewer";
   if (orgType === "academie") return ACADEMIE_ROLE_MAP[realRole] ?? "viewer";
+  if (orgType === "event") return EVENT_ROLE_MAP[realRole] ?? "viewer";
+  if (orgType === "cm_agency") return CM_AGENCY_ROLE_MAP[realRole] ?? "viewer";
   return SPONSOR_ROLE_MAP[realRole] ?? "viewer";
 }
 

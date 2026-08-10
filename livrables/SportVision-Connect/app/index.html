@@ -308,8 +308,8 @@
 <div id="scr-activation" class="screen center">
   <div class="auth-hero">
     <div class="auth-hero-logo"><span class="mark">S</span>SportVision <span class="grad-text">Connect</span></div>
-    <h1 class="auth-hero-title"><span>Votre club</span><span class="grad-text">vous attend.</span></h1>
-    <p class="auth-hero-sub">SportVision vous invite à activer votre espace Club+ — déjà relié à vos devis, factures et prestations existants.</p>
+    <h1 class="auth-hero-title" id="act-hero-title"><span>Votre club</span><span class="grad-text">vous attend.</span></h1>
+    <p class="auth-hero-sub" id="act-hero-sub">SportVision vous invite à activer votre espace Club+ — déjà relié à vos devis, factures et prestations existants.</p>
   </div>
   <div class="auth-form-side">
     <div class="auth-card">
@@ -320,12 +320,12 @@
 
       <div id="act-valid" style="display:none">
         <h1 id="act-club-title">Votre club</h1>
-        <p class="sub">Aucun paiement n'est demandé aujourd'hui : votre accès est ouvert par SportVision.</p>
-        <div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--muted)">
+        <p class="sub" id="act-valid-sub">Aucun paiement n'est demandé aujourd'hui : votre accès est ouvert par SportVision.</p>
+        <div id="act-plan-box" style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--muted)">
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>Formule ouverte</span><b style="color:var(--text)" id="act-plan-label">Club+</b></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>Crédits inclus</span><b style="color:var(--text)" id="act-credits-label">5 / mois</b></div>
         </div>
-        <label for="act-club-nom">Nom du club</label>
+        <label for="act-club-nom" id="act-club-nom-label">Nom du club</label>
         <input id="act-club-nom" type="text">
         <div class="field-2col">
           <div><label for="act-prenom">Prénom</label><input id="act-prenom" type="text" autocomplete="given-name"></div>
@@ -342,7 +342,7 @@
         <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--muted);margin:10px 0"><input id="act-cgu" type="checkbox" style="width:auto;margin-top:2px"> J'accepte les CGU et la politique de confidentialité</label>
         <div class="err" id="act-err"></div>
         <div class="ok-msg" id="act-ok"></div>
-        <button class="btn btn-primary" id="act-btn" onclick="handleActivation()">Activer mon espace Club+</button>
+        <button class="btn btn-primary" id="act-btn" onclick="handleActivation()">Activer mon espace</button>
       </div>
 
       <div id="act-expired" style="display:none">
@@ -461,7 +461,7 @@ function svcClear(){
   // appartient à celui qui a cliqué le lien e-mail, pas au navigateur — le laisser
   // survivre à une déconnexion permettrait de le rejouer sur le compte suivant
   // qui se connecte sur ce même poste (cf. handleLogin).
-  ['svc_tok','svc_ref','svc_uid','svc_space_key','svc_act','svc_act_club'].forEach(k=>localStorage.removeItem(k));
+  ['svc_tok','svc_ref','svc_uid','svc_space_key','svc_act','svc_act_club','svc_act_kind'].forEach(k=>localStorage.removeItem(k));
 }
 function isLoggedIn(){ return !!localStorage.getItem('svc_tok'); }
 
@@ -556,10 +556,19 @@ async function runPostAuthOnboarding(user){
   const pendingAct = localStorage.getItem('svc_act');
   if (pendingAct){
     localStorage.removeItem('svc_act');
+    const pendingKind = localStorage.getItem('svc_act_kind') || 'club';
+    localStorage.removeItem('svc_act_kind');
     const meta = (user && user.user_metadata) || {};
-    const clubNom = localStorage.getItem('svc_act_club') || meta.club_nom || '';
+    const nomPrefill = localStorage.getItem('svc_act_club') || meta.club_nom || '';
     localStorage.removeItem('svc_act_club');
-    const act = await sbFunction('clubplus-activate', {token: pendingAct, prenom: meta.prenom||'', nom: meta.nom||'', telephone: meta.telephone||'', club_nom: clubNom});
+    // connect-org-activate (event/cm_agency) n'a pas d'équivalent de club_members :
+    // memberships (générique) ne porte pas prenom/nom/téléphone, contrairement à
+    // club_members — l'identité de la personne reste dans auth.users.user_metadata,
+    // posée au moment du signup (même choix déjà fait par connect-org-signup pour
+    // coach/académie). Seul le nom de l'organisation est envoyé ici.
+    const act = pendingKind==='org'
+      ? await sbFunction('connect-org-activate', {token: pendingAct, nom: nomPrefill})
+      : await sbFunction('clubplus-activate', {token: pendingAct, prenom: meta.prenom||'', nom: meta.nom||'', telephone: meta.telephone||'', club_nom: nomPrefill});
     if (!act.ok){
       return act.data?.error || 'Ce lien d\'activation n\'est plus valide, contactez SportVision.';
     }
@@ -674,6 +683,37 @@ const ACT_PLANS = {
 const ACT_SCREENS = ['loading','valid','expired','used','withdrawn','invalid','error'];
 let _actToken = null;
 let _actCheckedToken = null;
+// 'club' (défaut, historique) ou 'org' (event/cm_agency, migration-connect-v20,
+// #/org-activation?token=…) — un seul jeu d'écrans partagé, adapté dynamiquement
+// (voir actApplyKindUI ci-dessous) plutôt que dupliqué, les deux flux étant
+// structurellement identiques (vérifier le token → formulaire → activer).
+let _actKind = 'club';
+const ACT_ORG_LABELS = {
+  event: {hero:'Votre espace événement', sub:'SportVision vous invite à activer votre espace de suivi événementiel.', nomLabel:"Nom de l'événement", btn:'Activer mon espace'},
+  cm_agency: {hero:'Votre espace agence', sub:'SportVision vous invite à activer votre espace de gestion déléguée.', nomLabel:"Nom de l'agence", btn:'Activer mon espace'},
+};
+
+function actApplyKindUI(orgType){
+  const heroTitle = document.getElementById('act-hero-title');
+  const heroSub = document.getElementById('act-hero-sub');
+  const planBox = document.getElementById('act-plan-box');
+  const nomLabel = document.getElementById('act-club-nom-label');
+  const btn = document.getElementById('act-btn');
+  if (_actKind === 'org' && ACT_ORG_LABELS[orgType]){
+    const lbl = ACT_ORG_LABELS[orgType];
+    heroTitle.innerHTML = '<span>'+lbl.hero+'</span>';
+    heroSub.textContent = lbl.sub;
+    planBox.style.display = 'none';
+    nomLabel.textContent = lbl.nomLabel;
+    btn.textContent = lbl.btn;
+  } else {
+    heroTitle.innerHTML = '<span>Votre club</span><span class="grad-text">vous attend.</span>';
+    heroSub.textContent = "SportVision vous invite à activer votre espace Club+ — déjà relié à vos devis, factures et prestations existants.";
+    planBox.style.display = '';
+    nomLabel.textContent = 'Nom du club';
+    btn.textContent = 'Activer mon espace Club+';
+  }
+}
 
 function actShow(which){
   ACT_SCREENS.forEach(k=>{
@@ -694,14 +734,17 @@ function actScreenForStatus(status){
   return 'invalid';
 }
 
-async function startActivation(token){
+async function startActivation(token, kind){
   _actToken = token || null;
+  _actKind = kind === 'org' ? 'org' : 'club';
   showScreen('activation');
   if (!_actToken){ actShow('invalid'); return; }
   actShow('loading');
   let res;
   try{
-    res = await sbFunction('clubplus-check-activation-token', {token:_actToken});
+    res = _actKind==='org'
+      ? await sbFunction('connect-org-check-activation-token', {token:_actToken})
+      : await sbFunction('clubplus-check-activation-token', {token:_actToken});
   }catch(e){
     actShow('error'); return;
   }
@@ -709,6 +752,18 @@ async function startActivation(token){
   const st = res.data.status;
   if (st!=='valid'){ actShow(actScreenForStatus(st)); return; }
 
+  if (_actKind==='org'){
+    const orgType = res.data.organization_type;
+    const nomPrefill = res.data.nom_prefill || '';
+    actApplyKindUI(orgType);
+    document.getElementById('act-club-title').textContent = nomPrefill || (ACT_ORG_LABELS[orgType]?.hero || 'Votre espace');
+    document.getElementById('act-club-nom').value = nomPrefill;
+    _actCheckedToken = _actToken;
+    actShow('valid');
+    return;
+  }
+
+  actApplyKindUI(null);
   const plan = ACT_PLANS[res.data.plan] ? res.data.plan : 'club';
   const nomPrefill = res.data.club_nom_prefill || '';
   document.getElementById('act-club-title').textContent = nomPrefill || 'Votre club';
@@ -723,13 +778,22 @@ async function handleActivation(){
   const errEl = document.getElementById('act-err'); errEl.textContent = '';
   const okEl = document.getElementById('act-ok'); okEl.textContent = '';
   const btn = document.getElementById('act-btn');
-  const clubNom = document.getElementById('act-club-nom').value.trim();
+  const btnLabel = _actKind==='org' ? 'Activer mon espace' : 'Activer mon espace Club+';
+  const orgNom = document.getElementById('act-club-nom').value.trim();
   const prenom = document.getElementById('act-prenom').value.trim();
   const nom = document.getElementById('act-nom').value.trim();
   const tel = document.getElementById('act-tel').value.trim();
   if (!_actToken){ errEl.textContent = 'Lien d\'activation manquant. Rouvrez le lien reçu de SportVision.'; return; }
-  if (!clubNom){ errEl.textContent = 'Le nom du club est obligatoire.'; return; }
+  if (!orgNom){ errEl.textContent = _actKind==='org' ? 'Le nom de l\'organisation est obligatoire.' : 'Le nom du club est obligatoire.'; return; }
   if (!prenom || !nom){ errEl.textContent = 'Merci de compléter votre prénom et votre nom.'; return; }
+
+  // callActivate() : mêmes paramètres source (formulaire), mais un appel
+  // edge function différent selon _actKind — connect-org-activate (event/
+  // cm_agency, memberships générique, pas de prenom/nom/tel côté serveur, voir
+  // runPostAuthOnboarding) vs clubplus-activate (club, club_members complet).
+  const callActivate = () => _actKind==='org'
+    ? sbFunction('connect-org-activate', {token:_actToken, nom:orgNom})
+    : sbFunction('clubplus-activate', {token:_actToken, prenom, nom, telephone:tel, club_nom:orgNom});
 
   // Session déjà ouverte sur ce navigateur (compte déjà inscrit qui rouvre le
   // lien d'activation, ou deuxième tentative après un premier essai réussi) :
@@ -737,17 +801,17 @@ async function handleActivation(){
   // registered" pour un compte existant, ce qui renvoyait l'utilisateur vers
   // un message "connectez-vous, puis rouvrez ce lien" qui repassait par le
   // même chemin cassé — boucle infinie. Avec une session valide, on peut
-  // appeler clubplus-activate directement, sans re-signup ni mot de passe.
+  // appeler l'activation directement, sans re-signup ni mot de passe.
   if (isLoggedIn()){
     btn.disabled = true; btn.textContent = 'Activation…';
     try{
-      const act = await sbFunction('clubplus-activate', {token:_actToken, prenom, nom, telephone:tel, club_nom:clubNom});
+      const act = await callActivate();
       if (!act.ok) throw new Error(act.data?.error || 'Erreur lors de l\'activation de votre espace.');
       await bootAfterLogin();
     }catch(e){
       errEl.textContent = e.message;
     }finally{
-      btn.disabled = false; btn.textContent = 'Activer mon espace Club+';
+      btn.disabled = false; btn.textContent = btnLabel;
     }
     return;
   }
@@ -761,28 +825,29 @@ async function handleActivation(){
   if (!document.getElementById('act-cgu').checked){ errEl.textContent = 'Merci d\'accepter les CGU pour continuer.'; return; }
   btn.disabled = true; btn.textContent = 'Activation…';
   try{
-    const res = await fetch(SB_URL+'/auth/v1/signup', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, password:pass, data:{prenom,nom,telephone:tel,club_nom:clubNom}})});
+    const res = await fetch(SB_URL+'/auth/v1/signup', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, password:pass, data:{prenom,nom,telephone:tel,club_nom:orgNom}})});
     const d = await res.json();
     if (!res.ok) throw new Error(d.msg || d.error_description || 'Inscription impossible, cet e-mail a peut-être déjà un compte. Connectez-vous, puis rouvrez ce lien d\'activation.');
     if (!d.access_token){
       // Confirmation d'e-mail activée sur le projet : pas de session immédiate,
-      // donc pas d'appel possible à clubplus-activate (qui exige un JWT). On
-      // mémorise le token pour le rejouer au premier login réussi — même
-      // filet de sécurité que handleLogin() pour portal-onboarding.
+      // donc pas d'appel possible à l'activation (qui exige un JWT). On
+      // mémorise le token (+ le type) pour le rejouer au premier login réussi —
+      // même filet de sécurité que handleLogin() pour portal-onboarding.
       localStorage.setItem('svc_act', _actToken);
-      localStorage.setItem('svc_act_club', clubNom);
+      localStorage.setItem('svc_act_club', orgNom);
+      localStorage.setItem('svc_act_kind', _actKind);
       okEl.textContent = 'Compte créé. Confirmez votre adresse par e-mail, puis connectez-vous : votre espace sera activé automatiquement.';
-      btn.disabled = false; btn.textContent = 'Activer mon espace Club+';
+      btn.disabled = false; btn.textContent = btnLabel;
       return;
     }
     svcSave(d.access_token, d.refresh_token, d.user.id);
-    const act = await sbFunction('clubplus-activate', {token:_actToken, prenom, nom, telephone:tel, club_nom:clubNom});
+    const act = await callActivate();
     if (!act.ok) throw new Error(act.data?.error || 'Erreur lors de l\'activation de votre espace.');
     await bootAfterLogin();
   }catch(e){
     errEl.textContent = e.message;
   }finally{
-    btn.disabled = false; btn.textContent = 'Activer mon espace Club+';
+    btn.disabled = false; btn.textContent = btnLabel;
   }
 }
 
@@ -1113,6 +1178,15 @@ function handleAbonnementReturnGlobal(){
     showScreen('reset');
     return;
   }
+  // Lien d'activation event/cm_agency privé (#/org-activation?token=…, généré
+  // par le staff via connect-staff-create-org, migration-connect-v20) — même
+  // priorité et même raisonnement que l'activation Club+ ci-dessous.
+  if (window.location.hash.indexOf('#/org-activation') === 0){
+    const qi = window.location.hash.indexOf('?');
+    const token = qi === -1 ? '' : new URLSearchParams(window.location.hash.slice(qi+1)).get('token') || '';
+    await startActivation(token, 'org');
+    return;
+  }
   // Lien d'activation Club+ privé (#/activation?token=…, généré par le staff
   // depuis SportVision OS) : prioritaire sur tout le reste, y compris une
   // session déjà ouverte dans ce navigateur (ex: poste partagé) — cliquer ce
@@ -1121,7 +1195,7 @@ function handleAbonnementReturnGlobal(){
   if (window.location.hash.indexOf('#/activation') === 0){
     const qi = window.location.hash.indexOf('?');
     const token = qi === -1 ? '' : new URLSearchParams(window.location.hash.slice(qi+1)).get('token') || '';
-    await startActivation(token);
+    await startActivation(token, 'club');
     return;
   }
   if (isLoggedIn()){

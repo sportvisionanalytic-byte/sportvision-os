@@ -421,16 +421,21 @@ export async function buildProjetActiveContext(
   };
 }
 
-const GENERIC_ORG_TYPES = ["coach", "academie", "sponsor"] as const;
+// event/cm_agency (migration-connect-v20) ajoutés le 10/08 : même socle réel exact que
+// coach/académie/sponsor (memberships + organization_role_catalog, pas d'entitlements) —
+// seule différence, leur création passe par connect-staff-create-org/connect-org-activate
+// (staff) plutôt que connect-org-signup (self-service), ce qui ne change rien ici : cette
+// fonction lit uniquement l'état déjà en base, peu importe comment il y est arrivé.
+const GENERIC_ORG_TYPES = ["coach", "academie", "sponsor", "event", "cm_agency"] as const;
 type GenericOrgType = (typeof GENERIC_ORG_TYPES)[number];
 
 /**
- * Construit l'ActiveContext pour un espace Coach, Académie ou Sponsor — voir le plan Phase 4.
- * Les 3 partagent le même socle réel (migration-connect-v3/v4/v6) : une vraie ligne
+ * Construit l'ActiveContext pour un espace Coach, Académie, Sponsor, Événement ou Agence CM.
+ * Les 5 partagent le même socle réel (migration-connect-v3/v4/v6/v20) : une vraie ligne
  * `memberships`, un rôle réel via `organization_role_catalog` (pas de check constraint en dur
  * comme pour club_members), et aucune `organization_entitlements` (pas de plan/quota vendu —
- * planCode "one_off", comme pour un espace projet). Une seule fonction paramétrée plutôt que 3
- * quasi-identiques : les 3 backends sont structurellement identiques, seul le rôle diffère.
+ * planCode "one_off", comme pour un espace projet). Une seule fonction paramétrée plutôt que 5
+ * quasi-identiques : les 5 backends sont structurellement identiques, seul le rôle diffère.
  */
 export async function buildOrgSpaceActiveContext(
   supabase: SupabaseClient,
