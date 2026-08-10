@@ -178,6 +178,7 @@ const NAV_GENERIC: NavEntry[] = [
   item("visual_requests" as ModuleKey, "Demandes", "requests"),
   item("content", "Contenus", "content"),
   item("calendar", "Calendrier", "calendar"),
+  item("appointments", "Rendez-vous", "appointments"),
   section("Gestion"),
   item("documents", "Documents", "documents"),
   item("billing", "Factures", "billing"),

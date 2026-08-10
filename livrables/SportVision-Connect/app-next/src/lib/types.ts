@@ -153,6 +153,7 @@ export type ModuleKey =
   | "authorizations"
   | "documents"
   | "messages"
+  | "appointments"
   | "accompagnement"
   | "support"
   | "settings";

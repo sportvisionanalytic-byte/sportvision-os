@@ -42,6 +42,15 @@ import type { ModuleKey } from "@/lib/types";
 // aujourd'hui aucun lien vers une ligne `clients` réelle (contrairement à un club via
 // portail_client_id) — aucun mécanisme de rapprochement équivalent à clubplus-onboarding n'existe
 // pour eux, donc aucune donnée réelle n'est possible sans construire ça d'abord.
+//
+// "appointments" (10/08/2026) : volontairement absent, même raisonnement que "services" —
+// équivalent Next.js de ProjetModules.rdv (vanilla), monté UNIQUEMENT pour l'Espace Projet dans
+// l'app en production (espace: 'projet'). `rendez_vous` (migration-portail-v1.sql) n'a de policy
+// RLS que pour client_users (rdv_client_own/rdv_client_insert) — aucune extension club_* n'existe
+// (contrairement à billing/contracts/documents étendus par migration-clubplus-v33). Le gate se
+// fait donc directement sur `ctx.organization.type === "generic"` dans appointments/page.tsx
+// (comme services/page.tsx), pas via cette liste : canAccess(ctx, "appointments") reste toujours
+// faux, y compris pour un club, tant qu'aucune vraie policy/decision produit n'étend ce périmètre.
 export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "dashboard",
   "teams",
