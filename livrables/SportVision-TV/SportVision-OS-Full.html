@@ -15252,8 +15252,8 @@ async function loadComptaDash(){
       sbFetch('expenses?select=montant_ttc&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext).catch(()=>[]),
     ]);
     const list=data||[];
-    const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','acompte_demandé':'bw','non_facturée':'bn','en_retard':'br'};
-    const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','acompte_demandé':'Acompte att.','non_facturée':'Non facturée','en_retard':'En retard'};
+    const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','non_facturée':'bn','en_retard':'br'};
+    const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','non_facturée':'Non facturée','en_retard':'En retard'};
     const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
 
     let enc=0,imp=0,acomp=0,nbFact=0;
@@ -15262,7 +15262,7 @@ async function loadComptaDash(){
       const m=p.montant_ttc||0;
       if(p.statut_financier==='payée')enc+=m;
       if(['facturée','partiellement_payée'].includes(p.statut_financier)&&p.date_prestation<now.toISOString().slice(0,10))imp+=m;
-      if(p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte')acomp+=p.acompte_montant||m*0.5;
+      if(p.statut==='en_attente_acompte')acomp+=p.acompte_montant||m*0.5;
       if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))nbFact++;
     });
     // "Charges du mois" doit refléter la même donnée que la page Dépenses
@@ -15347,9 +15347,9 @@ async function loadComptaAcomptes(){
   const el=document.getElementById('compta-acomptes-real');if(!el)return;
   try{
     const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,acompte_montant,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
-    _comptaAcData=(Array.isArray(data)?data:[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte'||p.statut_financier==='partiellement_payée');
+    _comptaAcData=(Array.isArray(data)?data:[]).filter(p=>p.statut==='en_attente_acompte'||p.statut_financier==='partiellement_payée');
     const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
-    const kdem=_comptaAcData.filter(p=>p.statut==='en_attente_acompte'||p.statut_financier==='acompte_demandé').length;
+    const kdem=_comptaAcData.filter(p=>p.statut==='en_attente_acompte').length;
     const kenc=_comptaAcData.filter(p=>p.statut_financier==='partiellement_payée').length;
     const ktot=_comptaAcData.reduce((s,p)=>s+(p.acompte_montant||0),0);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
@@ -15366,7 +15366,7 @@ function renderComptaAcomptes(){
   const el=document.getElementById('compta-acomptes-real');if(!el)return;
   let list=_comptaAcData;
   const now=new Date().toISOString().slice(0,10);
-  if(_comptaAcFilter==='en_attente')list=list.filter(p=>p.statut==='en_attente_acompte'||p.statut_financier==='acompte_demandé');
+  if(_comptaAcFilter==='en_attente')list=list.filter(p=>p.statut==='en_attente_acompte');
   else if(_comptaAcFilter==='encaisse')list=list.filter(p=>p.statut_financier==='partiellement_payée');
   else if(_comptaAcFilter==='retard')list=list.filter(p=>p.date_prestation&&p.date_prestation<now&&p.statut_financier!=='payée'&&!['annulée','refusée'].includes(p.statut));
   if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun acompte dans cette catégorie.</div>';return;}
@@ -16841,7 +16841,7 @@ async function loadSecDash(){
     const actifs=(clients||[]).filter(c=>['client','partenaire'].includes(c.statut)).length;
     const demandes=(pres||[]).filter(p=>['demande_reçue','à_qualifier','offre_en_préparation'].includes(p.statut)).length;
     const devisBrouillon=(devis||[]).filter(d=>d.statut==='brouillon'||d.statut==='en_cours').length;
-    const acomptes=(pres||[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
+    const acomptes=(pres||[]).filter(p=>p.statut==='en_attente_acompte').length;
     const livraisons=(pres||[]).filter(p=>['prêt_validation','livrée','prête_à_livrer'].includes(p.statut)).length;
     const encours=(pres||[]).filter(p=>!['demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse','devis_accepté','en_attente_signature','en_attente_acompte'].includes(p.statut)).length;
     const signManquantes=(Array.isArray(conts)?conts:[]).filter(c=>c.statut==='brouillon').length
@@ -16972,7 +16972,7 @@ async function loadSecRelances(){
     const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,acompte_montant,date_prestation,clients(nom,email,telephone)&statut=not.in.(annulée,refusée,clôturée)&order=date_prestation.asc&limit=200');
     _secRelData=Array.isArray(data)?data:[];
     const now2=new Date();
-    const acomptes=_secRelData.filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte').length;
+    const acomptes=_secRelData.filter(p=>p.statut==='en_attente_acompte').length;
     const soldes=_secRelData.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payée').length;
     const enRetardRel=_secRelData.filter(p=>p.date_prestation&&new Date(p.date_prestation)<now2&&p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut)).length;
     const montantAtt=_secRelData.filter(p=>p.statut_financier!=='payée'&&!['annulée','refusée','clôturée'].includes(p.statut)).reduce((s,p)=>s+(p.montant_ttc||0),0);
@@ -16990,7 +16990,7 @@ function filterSecRelances(f){
 function renderSecRelances(){
   const el=document.getElementById('sec-relances-real');if(!el)return;
   let list=_secRelData;
-  if(_secRelFilter==='acompte')list=list.filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte');
+  if(_secRelFilter==='acompte')list=list.filter(p=>p.statut==='en_attente_acompte');
   else if(_secRelFilter==='solde')list=list.filter(p=>['livrée','prête_à_livrer'].includes(p.statut)&&p.statut_financier!=='payée');
   else if(_secRelFilter==='retard'){
     const now=new Date();
@@ -17129,9 +17129,19 @@ async function exportSecRapport(type){
       (Array.isArray(data)?data:[]).forEach(d=>rows.push([d.numero||'',d.clients?.nom||'',d.prestations?.reference||'',d.total_ht||'',d.total_ttc||'',d.created_at||'',d.date_expiration||'',d.statut||'']));
       dlCSV(`devis-${ts}.csv`,rows);
     } else if(type==='relances'){
-      const data=await sbFetch('prestations?select=reference,statut,statut_financier,date_prestation,montant_ttc,clients(nom,email,telephone)&statut_financier=in.(acompte_demandé,partiellement_payée,facturée)&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=500');
+      // 'acompte_demandé' n'existe pas dans l'enum statut_facture (voir
+      // supabase-schema-v2.sql ~ligne 41 : non_facturée, en_préparation,
+      // facturée, partiellement_payée, payée, en_retard, annulée,
+      // remboursée) — le filtre échouait en 400, sbFetch renvoyait un objet
+      // d'erreur (jamais un tableau) et dlCSV était appelé quand même,
+      // téléchargeant un CSV vide avec un toast de succès. 'en_préparation'
+      // remplace 'acompte_demandé' : c'est la valeur la plus proche d'un
+      // acompte en cours de facturation/à relancer (par opposition à
+      // 'non_facturée', où rien n'a encore été engagé côté facturation).
+      const data=await sbFetch('prestations?select=reference,statut,statut_financier,date_prestation,montant_ttc,clients(nom,email,telephone)&statut_financier=in.(en_préparation,partiellement_payée,facturée)&statut=not.in.(annulée,refusée)&order=date_prestation.asc&limit=500');
+      if(!Array.isArray(data)){toast('Erreur export : '+(data&&data.message||'requête invalide.'),'er');return;}
       const rows=[['Référence','Client','Email','Téléphone','Date','Montant TTC','Statut financier']];
-      (Array.isArray(data)?data:[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.clients?.email||'',p.clients?.telephone||'',p.date_prestation||'',p.montant_ttc||'',p.statut_financier||'']));
+      data.forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.clients?.email||'',p.clients?.telephone||'',p.date_prestation||'',p.montant_ttc||'',p.statut_financier||'']));
       dlCSV(`relances-${ts}.csv`,rows);
     }
   }catch(e){toast('Erreur export : '+(e.message||'inconnue'),'er');}
@@ -17495,7 +17505,7 @@ async function loadComptaFactures(){
   const el=document.getElementById('compta-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom,email)&statut_financier=not.in.(non_facturée,brouillon)&order=date_prestation.desc&limit=200');
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom,email)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=200');
     _comptaFactData=Array.isArray(data)?data:[];
     const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
     let enc=0,att=0,total=0;
@@ -22834,7 +22844,7 @@ async function loadMobileSecDash(ct){
       uid?sbFetch('notifications?select=id&type=eq.tache&lue=eq.false&destinataire_id=eq.'+uid).catch(()=>[]):[],
     ]);
     const demandes=(pres||[]).filter(p=>['demande_reçue','à_qualifier','offre_en_préparation'].includes(p.statut));
-    const acomptes=(pres||[]).filter(p=>p.statut_financier==='acompte_demandé'||p.statut==='en_attente_acompte');
+    const acomptes=(pres||[]).filter(p=>p.statut==='en_attente_acompte');
     const livraisons=(pres||[]).filter(p=>['prêt_validation','livrée','prête_à_livrer'].includes(p.statut));
     const devisEnvoi=(devis||[]).filter(d=>d.statut==='brouillon'||d.statut==='en_cours');
     const taches=(tachesRaw||[]).length;
@@ -22905,7 +22915,7 @@ async function loadMobileComptaDash(ct){
     const ca=mois.filter(p=>['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const enc=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
     const impayes=list.filter(p=>['facturée','partiellement_payée'].includes(p.statut_financier));
-    const acomptes=list.filter(p=>p.statut_financier==='acompte_demandé');
+    const acomptes=list.filter(p=>p.statut==='en_attente_acompte');
     const remAtt2=(Array.isArray(remAtt)?remAtt:[]).reduce((s,r)=>s+(r.remuneration||0),0);
     const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
     let html=`<div style="margin-bottom:16px">
