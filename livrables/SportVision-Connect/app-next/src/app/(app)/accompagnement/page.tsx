@@ -285,12 +285,13 @@ function ClientAccompagnement({ ctx }: { ctx: ActiveContext }) {
       <Card className="p-5">
         <div className="text-[15px] font-extrabold tracking-tight">Qui intervient pour vous</div>
         <div className="mt-3 flex flex-col gap-2.5">
-          <ContactRow name="Studio SportVision" role="Studio" />
+          <ContactRow name="Studio SportVision" role="Studio" onContact={() => router.push("/messages")} />
           {cmState.status === "loading" && <ContactRow name="Chargement…" role="Community Manager" />}
           {cmState.status === "ready" && (
             <ContactRow
               name={`${cmState.cm.firstName} ${cmState.cm.lastName}`.trim() || "Community Manager"}
               role={cmState.cm.levelLabel ?? "Community Manager SportVision"}
+              onContact={() => router.push("/messages")}
             />
           )}
           {cmState.status !== "loading" && cmState.status !== "ready" && (
@@ -334,7 +335,7 @@ function ClientAccompagnement({ ctx }: { ctx: ActiveContext }) {
   );
 }
 
-function ContactRow({ name, role }: { name: string; role: string }) {
+function ContactRow({ name, role, onContact }: { name: string; role: string; onContact?: () => void }) {
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border px-3.5 py-2.5">
       <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[11px] font-extrabold text-white">
@@ -344,9 +345,11 @@ function ContactRow({ name, role }: { name: string; role: string }) {
         <span className="block text-[13px] font-bold text-text">{name}</span>
         <span className="block text-[11.5px] text-text-soft">{role}</span>
       </span>
-      <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]">
-        Contacter
-      </Button>
+      {onContact && (
+        <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={onContact}>
+          Contacter
+        </Button>
+      )}
     </div>
   );
 }
