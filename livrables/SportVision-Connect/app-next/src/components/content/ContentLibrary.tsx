@@ -36,7 +36,7 @@ export function ContentLibrary() {
   const isCoach = ctx.organization.type === "coach";
   const isProjet = ctx.organization.type === "generic";
 
-  const [allAssets, setAllAssets] = useState<MediaAsset[]>([]);
+  const [allAssets, setAllAssets] = useState<MediaAsset[] | null>(null);
 
   // Pour un joueur, les médias réels sont scopés par club_id (player_profiles.club_id, exposé via
   // organization.parentOrganizationId) — la RLS is_media_visible_to_family filtre déjà aux médias
@@ -63,7 +63,7 @@ export function ContentLibrary() {
     };
   }, [isPlayer, isProjet, playerClubId, ctx.organization.id]);
 
-  const assets = useMemo(() => allAssets.filter((a) => matchesMediaFilter(a.kind, filter)), [allAssets, filter]);
+  const assets = useMemo(() => (allAssets ?? []).filter((a) => matchesMediaFilter(a.kind, filter)), [allAssets, filter]);
 
   // Pas de table `collections` réelle (voir le plan Phase 1) — store en mémoire partagé avec la
   // fiche de collection (lib/mock/content.ts § localCollectionsStore), pas un `useState` isolé :
@@ -82,7 +82,7 @@ export function ContentLibrary() {
       ? "Les contenus produits pour les joueurs que vous suivez."
       : isProjet
         ? "Les livrables de vos prestations, disponibles dès leur validation."
-        : `${allAssets.length} élément${allAssets.length > 1 ? "s" : ""} · ${ctx.organization.name}`;
+        : `${(allAssets ?? []).length} élément${(allAssets ?? []).length > 1 ? "s" : ""} · ${ctx.organization.name}`;
 
   function showToast(message: string) {
     setToast(message);
@@ -205,7 +205,9 @@ export function ContentLibrary() {
         </div>
       </div>
 
-      {assets.length === 0 ? (
+      {allAssets === null ? (
+        <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>
+      ) : assets.length === 0 ? (
         <Card className="flex flex-col items-center gap-3 p-10 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-info-bg text-info-fg">
             <Images className="h-5 w-5" aria-hidden />

@@ -44,7 +44,7 @@ export function ClubPlusDashboard() {
   // statut mappé côté fetchClubMediaAssets (voir data/club/content.ts CREATION_STATUS_MAP), donc
   // requête directe ici sur le statut brut plutôt que via ce mapping. Factures/contrats restent
   // hors scope (voir le plan Phase 1 § Gaps de données), pas remplacés par une autre fiction.
-  const [todo, setTodo] = useState<TodoItem[]>([]);
+  const [todo, setTodo] = useState<TodoItem[] | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -129,7 +129,7 @@ export function ClubPlusDashboard() {
           <div className="flex items-center gap-2.5">
             <span className="h-2 w-2 rounded-full bg-[#F5A623]" />
             <span className="text-[15px] font-extrabold tracking-tight">À traiter</span>
-            <Badge tone="warning">{todo.length} élément{todo.length > 1 ? "s" : ""}</Badge>
+            <Badge tone="warning">{todo?.length ?? 0} élément{(todo?.length ?? 0) > 1 ? "s" : ""}</Badge>
           </div>
           <button onClick={() => router.push("/content")} className="text-[12.5px] font-bold text-brand-blue-electric">
             Tout voir
@@ -137,6 +137,8 @@ export function ClubPlusDashboard() {
         </div>
         {error ? (
           <div className="px-5 py-6 text-center text-[13px] text-text-soft">Impossible de charger le contenu à traiter.</div>
+        ) : todo === null ? (
+          <div className="px-5 py-6 text-center text-[13px] text-text-soft">Chargement…</div>
         ) : todo.length === 0 ? (
           <div className="px-5 py-6 text-center text-[13px] text-text-soft">Rien à traiter pour le moment.</div>
         ) : (

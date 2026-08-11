@@ -571,7 +571,7 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 <!-- MODAL -->
 <div id="sv-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center">
   <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--rc);padding:28px;width:min(540px,calc(100vw - 24px));max-height:90dvh;overflow-y:auto;position:relative">
-    <button onclick="closeModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1">✕</button>
+    <button onclick="closeModal()" aria-label="Fermer" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1">✕</button>
     <div id="sv-modal-ct"></div>
   </div>
 </div>
@@ -1035,9 +1035,9 @@ const VIEWS={
   'admin.planning':()=>`
     <div class="sh">
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn bg2 bs" onclick="planningPrev()">‹</button>
+        <button class="btn bg2 bs" onclick="planningPrev()" aria-label="Période précédente">‹</button>
         <div class="sh-t" id="planning-title">Planning</div>
-        <button class="btn bg2 bs" onclick="planningNext()">›</button>
+        <button class="btn bg2 bs" onclick="planningNext()" aria-label="Période suivante">›</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <div style="display:flex;border:1px solid var(--b1);border-radius:var(--rp);overflow:hidden">
@@ -1106,9 +1106,9 @@ const VIEWS={
   'photo.planning':()=>`
     <div class="sh" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn bg2 bs" onclick="photoPlanPrev()" style="padding:10px 16px;font-size:16px;min-width:44px;min-height:44px">←</button>
+        <button class="btn bg2 bs" onclick="photoPlanPrev()" aria-label="Période précédente" style="padding:10px 16px;font-size:16px;min-width:44px;min-height:44px">←</button>
         <div class="sh-t" id="photo-plan-title" style="min-width:140px;text-align:center">—</div>
-        <button class="btn bg2 bs" onclick="photoPlanNext()" style="padding:10px 16px;font-size:16px;min-width:44px;min-height:44px">→</button>
+        <button class="btn bg2 bs" onclick="photoPlanNext()" aria-label="Période suivante" style="padding:10px 16px;font-size:16px;min-width:44px;min-height:44px">→</button>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:12px;color:var(--t3)" id="photo-plan-kpi"></div>
@@ -1133,9 +1133,9 @@ const VIEWS={
   'cm.cal':()=>`
     <div class="sh">
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn bg2 bs" onclick="calPrev()">‹</button>
+        <button class="btn bg2 bs" onclick="calPrev()" aria-label="Période précédente">‹</button>
         <div class="sh-t" id="cal-title">Calendrier</div>
-        <button class="btn bg2 bs" onclick="calNext()">›</button>
+        <button class="btn bg2 bs" onclick="calNext()" aria-label="Période suivante">›</button>
       </div>
       <button class="btn bp bs" onclick="modalNouveauContenu()">+ Contenu</button>
     </div>
@@ -1244,9 +1244,9 @@ const VIEWS={
   'sec.planning':()=>`
     <div class="sh">
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn bg2 bs" onclick="planningPrev()">‹</button>
+        <button class="btn bg2 bs" onclick="planningPrev()" aria-label="Période précédente">‹</button>
         <div class="sh-t" id="planning-title">Planning</div>
-        <button class="btn bg2 bs" onclick="planningNext()">›</button>
+        <button class="btn bg2 bs" onclick="planningNext()" aria-label="Période suivante">›</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <div style="display:flex;border:1px solid var(--b1);border-radius:var(--rp);overflow:hidden">
@@ -2080,8 +2080,8 @@ const VIEWS={
         <div style="font-size:11px;color:var(--t3);margin-top:2px" id="sec-rap-periode">Chargement…</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn bg2 bs" onclick="secRapportMoisPrev()">←</button>
-        <button class="btn bg2 bs" onclick="secRapportMoisNext()">→</button>
+        <button class="btn bg2 bs" onclick="secRapportMoisPrev()" aria-label="Mois précédent">←</button>
+        <button class="btn bg2 bs" onclick="secRapportMoisNext()" aria-label="Mois suivant">→</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
@@ -2371,9 +2371,9 @@ const VIEWS={
   'admin.rapport':()=>`
     <div class="sh">
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="btn bg2 bs" onclick="rapportPrev()">‹</button>
+        <button class="btn bg2 bs" onclick="rapportPrev()" aria-label="Mois précédent">‹</button>
         <div class="sh-t" id="rapport-titre">Rapport mensuel</div>
-        <button class="btn bg2 bs" onclick="rapportNext()">›</button>
+        <button class="btn bg2 bs" onclick="rapportNext()" aria-label="Mois suivant">›</button>
       </div>
       <button class="btn bp bs" onclick="exportRapportCSV()">Exporter CSV</button>
     </div>
@@ -2899,7 +2899,7 @@ function copier(txt){
 let _pendingConfirm=null;
 function confirmerAction(msg,onConfirm){
   _pendingConfirm=onConfirm;
-  openModal(`<div class="mh"><div class="mt">Confirmation</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Confirmation</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:13.5px;color:var(--t1);margin-bottom:20px">${msg}</div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -4015,7 +4015,7 @@ let _lienActivationClubPlus='';
 function modalInviterClubPlus(clientId,clientNom){
   _lienActivationClubPlus='';
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
-  openModal(`<div class="mh"><div class="mt">Inviter à activer Club+</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Inviter à activer Club+</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:12px">
       <div style="font-size:12px;color:var(--t3)">Client : <b style="color:var(--t1)">${esc(clientNom)}</b></div>
       <div><label style="${lbl}">Nom du club pré-rempli</label>
@@ -4089,7 +4089,7 @@ let _lienCreationOrg='';
 function modalCreerOrgEventCmAgency(clientId,clientNom){
   _lienCreationOrg='';
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
-  openModal(`<div class="mh"><div class="mt">Créer un espace événement / agence CM</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Créer un espace événement / agence CM</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:12px">
       <div style="font-size:12px;color:var(--t3)">Client : <b style="color:var(--t1)">${esc(clientNom)}</b></div>
       <div><label style="${lbl}">Type d'espace</label>
@@ -4165,7 +4165,7 @@ const CKE_PHASE_LABELS={avant:"Avant l'événement",jour_j:'Jour J',apres:"Aprè
 const CKE_PHASE_ORDER=['avant','jour_j','apres'];
 
 async function modalChecklistEvenement(clientId,clientNom){
-  openModal(`<div class="mh"><div class="mt">Checklist événement — ${esc(clientNom)}</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Checklist événement — ${esc(clientNom)}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" id="cke-body" style="display:flex;flex-direction:column;gap:14px;min-height:80px">
       <div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>
     </div>
@@ -4331,7 +4331,7 @@ function modalAjouterAccesCmAgency(){
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   const alreadyIds=new Set(_cmAgencyAccessCache.map(r=>r.club_id));
   const available=_cmAgencyClubsCache.filter(c=>!alreadyIds.has(c.id));
-  openModal(`<div class="mh"><div class="mt">Déléguer un club à ${esc(agency?agency.nom:'')}</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Déléguer un club à ${esc(agency?agency.nom:'')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:12px">
       <div><label style="${lbl}">Club</label>
         <select id="cma-club" class="l-inp" style="height:38px">
@@ -4571,7 +4571,7 @@ async function loadClientContacts(clientId){
 
 function modalAjouterContact(clientId){
   const today=ymdLocal();
-  openModal(`<div class="mh"><div class="mt">Nouveau contact</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Nouveau contact</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:12px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px">Type de contact</label>
@@ -5579,8 +5579,8 @@ function renderMediaLiensList(liens){
         ${exp}
       </div>
       <div style="flex-shrink:0;display:flex;gap:5px">
-        <button onclick="event.stopPropagation();ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:5px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗</button>
-        <button onclick="event.stopPropagation();copierLien('${encodeURIComponent(l.url)}')" style="padding:5px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>
+        <button onclick="event.stopPropagation();ouvrirLien('${encodeURIComponent(l.url)}')" aria-label="Ouvrir le lien" style="padding:5px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗</button>
+        <button onclick="event.stopPropagation();copierLien('${encodeURIComponent(l.url)}')" aria-label="Copier le lien" style="padding:5px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>
       </div>
     </div>`;
   }).join('')+'</div>';
@@ -5620,8 +5620,8 @@ function renderMediaParPrestation(liens){
           <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.nom)}</div>
           <div style="font-size:10px;color:var(--t3)">${llb} · ${ML_FOURNISSEUR[l.fournisseur]||l.fournisseur||'—'}</div></div>
           <div style="display:flex;gap:4px;flex-shrink:0">
-            <button onclick="event.stopPropagation();ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button>
-            ${l.statut==='a_verifier'?`<button onclick="event.stopPropagation();validerLienMedia('${l.id}')" style="padding:4px 8px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:10px;cursor:pointer">✓</button>`:''}
+            <button onclick="event.stopPropagation();ouvrirLien('${encodeURIComponent(l.url)}')" aria-label="Ouvrir le lien" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button>
+            ${l.statut==='a_verifier'?`<button onclick="event.stopPropagation();validerLienMedia('${l.id}')" aria-label="Valider ce lien" style="padding:4px 8px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:10px;cursor:pointer">✓</button>`:''}
           </div>
         </div>`;
       }).join('')}
@@ -5681,7 +5681,7 @@ async function loadMediaBibliotheque(el){
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0">
           <button onclick="ouvrirLien('${encodeURIComponent(b.url)}')" style="padding:4px 10px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗ Ouvrir</button>
-          <button onclick="copierLien('${encodeURIComponent(b.url)}')" style="padding:4px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>
+          <button onclick="copierLien('${encodeURIComponent(b.url)}')" aria-label="Copier le lien" style="padding:4px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>
         </div>
       </div>`).join('')}
       </div>
@@ -6006,13 +6006,13 @@ async function loadPhotoMedias(){
             <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.nom)}</div>
             <div style="font-size:10px;color:var(--t3)">${ML_TYPE[l.type_media]||'—'} · <span style="color:${lclr}">${llb}</span></div></div>
             <div style="display:flex;gap:4px;flex-shrink:0">
-              <button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button>
-              <button onclick="copierLien('${encodeURIComponent(l.url)}')" style="padding:4px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:10px;cursor:pointer">⎘</button>
+              <button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" aria-label="Ouvrir le lien" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button>
+              <button onclick="copierLien('${encodeURIComponent(l.url)}')" aria-label="Copier le lien" style="padding:4px 8px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:10px;cursor:pointer">⎘</button>
             </div>
           </div>`;
         }).join('')+'</div>':`<div style="font-size:12px;color:var(--t3);font-style:italic">Aucun lien transmis pour cette prestation.</div>`}
       </div>`;
-    }).join('')+(mesLiens.filter(l=>!l.prestation_id).length?`<div class="cd"><div style="font-size:12px;font-weight:600;color:var(--t3);margin-bottom:8px">Liens sans prestation associée</div><div style="display:flex;flex-direction:column;gap:5px">`+mesLiens.filter(l=>!l.prestation_id).map(l=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:6px"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1)">${esc(l.nom)}</div></div><button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button></div>`).join('')+'</div></div>':'');
+    }).join('')+(mesLiens.filter(l=>!l.prestation_id).length?`<div class="cd"><div style="font-size:12px;font-weight:600;color:var(--t3);margin-bottom:8px">Liens sans prestation associée</div><div style="display:flex;flex-direction:column;gap:5px">`+mesLiens.filter(l=>!l.prestation_id).map(l=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:6px"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--t1)">${esc(l.nom)}</div></div><button onclick="ouvrirLien('${encodeURIComponent(l.url)}')" aria-label="Ouvrir le lien" style="padding:4px 8px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:10px;cursor:pointer">↗</button></div>`).join('')+'</div></div>':'');
   }catch(e){if(el)el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:12px;color:var(--t3)"><div style="font-size:32px;opacity:.2">📶</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Connexion instable</div><div style="font-size:12px;text-align:center">Vérifiez votre réseau puis réessayez.</div><button onclick="loadPhotoMedias()" style="margin-top:4px;padding:8px 18px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:12px;font-weight:600;cursor:pointer">↻ Réessayer</button></div>';}
 }
 
@@ -6197,7 +6197,7 @@ async function modalPostprodDetail(id){
               <div style="font-size:10px;color:var(--t3)">${auteur} · ${new Date(v.created_at).toLocaleDateString('fr-FR')}</div>
             </div>
             <div style="display:flex;gap:4px;flex-shrink:0">
-              ${v.lien?.url?`<button onclick="ouvrirLien('${encodeURIComponent(v.lien.url)}')" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;cursor:pointer">↗</button>`:''}
+              ${v.lien?.url?`<button onclick="ouvrirLien('${encodeURIComponent(v.lien.url)}')" aria-label="Ouvrir le lien" style="padding:4px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;cursor:pointer">↗</button>`:''}
             </div>
           </div>`;
         }).join(''):
@@ -6438,7 +6438,7 @@ function renderLivrables(){
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         ${lv.lien?.url?`<button onclick="ouvrirLien('${encodeURIComponent(lv.lien.url)}')" style="padding:5px 10px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗ Ouvrir</button>
-        <button onclick="copierLien('${encodeURIComponent(lv.lien.url)}')" style="padding:5px 8px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>`:''}
+        <button onclick="copierLien('${encodeURIComponent(lv.lien.url)}')" aria-label="Copier le lien" style="padding:5px 8px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>`:''}
         ${canValidate?`<button onclick="validerLivrable('${lv.id}')" style="padding:5px 12px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:700;cursor:pointer">✓ Valider</button>`:''}
         ${canDeliver?`<button onclick="modalPrepLivraison('${lv.id}')" style="padding:5px 12px;background:var(--acc);border:none;border-radius:var(--rp);color:#fff;font-size:11px;font-weight:700;cursor:pointer">📤 Livrer</button>`:''}
         ${daysLeft!==null?`<span style="font-size:10px;color:${daysLeft<=3?'var(--er)':'var(--t3)'}">Exp: ${expDate.toLocaleDateString('fr-FR')} ${daysLeft<=7?'('+daysLeft+'j)':''}</span>`:''}
@@ -7469,7 +7469,7 @@ async function repondreInvitation(equipeId,statut,motif){
 }
 
 function modalRefuserInvitation(equipeId,nomPrestation){
-  openModal(`<div class="mh"><div class="mt">Refuser la mission</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Refuser la mission</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:12px">
       <div style="font-size:13px;color:var(--t2)">${nomPrestation||'Cette mission'}</div>
       <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Motif du refus</label>
@@ -7496,7 +7496,7 @@ function modalRefuserInvitation(equipeId,nomPrestation){
 function modalSignalerRetard(){
   const now=new Date();
   const hhmm=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-  openModal(`<div class="mh"><div class="mt">Signaler un retard</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Signaler un retard</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:12px">
       <div style="font-size:13px;color:var(--t2)">Le responsable de production sera notifié.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -7546,7 +7546,7 @@ async function signalerRetardCbk(hp,he,mo,co){
 function modalDisponibilite(){
   const cur=localStorage.getItem('sv_dispo')||'disponible';
   const opts=[{v:'disponible',lb:'Disponible',ic:'🟢',desc:'Prêt(e) à accepter des missions'},{v:'sous_conditions',lb:'Sous conditions',ic:'🟡',desc:'Disponible avec contraintes (horaires, zone…)'},{v:'indisponible',lb:'Indisponible',ic:'🔴',desc:'Pas de mission pour le moment'}];
-  openModal(`<div class="mh"><div class="mt">Mon statut de disponibilité</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Mon statut de disponibilité</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:8px">
       ${opts.map(o=>`<button onclick="${o.v==='sous_conditions'?'modalDisponibiliteSousConditions()':'setDisponibilite(\''+o.v+'\')'}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:${cur===o.v?'rgba(14,165,255,.1)':'var(--s2)'};border:${cur===o.v?'2px solid var(--acc)':'1px solid var(--b1)'};border-radius:10px;cursor:pointer;text-align:left;width:100%">
         <span style="font-size:22px">${o.ic}</span>
@@ -7563,7 +7563,7 @@ function modalDisponibilite(){
 
 function modalDisponibiliteSousConditions(){
   const jours=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-  openModal(`<div class="mh"><div class="mt">Disponibilité sous conditions</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Disponibilité sous conditions</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:14px">
       <div>
         <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:6px">Conditions</label>
@@ -7735,7 +7735,7 @@ async function loadTaches(){
         <div style="font-size:13px;color:${t.lue?'var(--t3)':'var(--t1)'};text-decoration:${t.lue?'line-through':''}">${esc(t.titre)}</div>
         ${t.message?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(t.message)}</div>`:''}
       </div>
-      <button onclick="supprimerTache('${t.id}')" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;opacity:.5;hover:opacity:1">✕</button>
+      <button onclick="supprimerTache('${t.id}')" aria-label="Supprimer cette tâche" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;opacity:.5;hover:opacity:1">✕</button>
     </div>`;
     el.innerHTML=`
       ${open.length?`<div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">À faire</div><span class="bd bn">${open.length}</span></div>${open.map(renderTask).join('')}</div>`:''}
@@ -7746,7 +7746,7 @@ async function loadTaches(){
 function modalNouvelleTache(){
   const uid=localStorage.getItem('sv_uid');
   if(!uid)return;
-  openModal(`<div class="mh"><div class="mt">Nouvelle tâche</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Nouvelle tâche</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Tâche</label><input type="text" id="ta-titre" class="fi" placeholder="Ex: Envoyer devis Brunoy FC" autofocus></div>
       <div class="fg"><label class="fl">Détail / Date limite</label><input type="text" id="ta-msg" class="fi" placeholder="Ex: Avant vendredi 18h"></div>
@@ -8332,8 +8332,8 @@ function kitsRenderMatGrid(){
             </div>
             <div style="font-size:11px;color:var(--t3);min-width:80px;text-align:center">${kitName}</div>
             <span class="kbadge" style="background:${st.bg};border:1px solid ${st.br};color:${st.tx}">${st.lb}</span>
-            ${isAdmin?`<button onclick="kitsModalEditMateriel('${m.id}')" style="padding:4px 9px;font-size:11px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff)">✎</button>`:''}
-            <button onclick="kitsModalSignalerIncidentById('${m.id}')" style="padding:4px 9px;font-size:11px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff)">!</button>
+            ${isAdmin?`<button onclick="kitsModalEditMateriel('${m.id}')" aria-label="Modifier ce matériel" style="padding:4px 9px;font-size:11px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff)">✎</button>`:''}
+            <button onclick="kitsModalSignalerIncidentById('${m.id}')" aria-label="Signaler un incident" style="padding:4px 9px;font-size:11px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff)">!</button>
           </div>`;
         }).join('')}
       </div>`;
@@ -8377,7 +8377,7 @@ async function kitsRenderControles(){
         </div>`;
       }).join('')}
     </div>`;
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── TAB INCIDENTS ────────────────────────────────────────────────────────────
@@ -8417,7 +8417,7 @@ async function kitsRenderIncidents(){
         </div>`;
       }).join('')}
     </div>`;
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── TAB MAINTENANCE ──────────────────────────────────────────────────────────
@@ -8456,7 +8456,7 @@ async function kitsRenderMaintenance(){
         </div>`;
       }).join('')}
     </div>`;
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── FICHE KIT ────────────────────────────────────────────────────────────────
@@ -8490,7 +8490,7 @@ async function kitsOpenFiche(kitId){
           ${valeurTotal>0?`<span style="font-size:11px;color:var(--t3)">${valeurTotal.toLocaleString('fr-FR')} €</span>`:''}
         </div>
       </div>
-      <button class="mc" onclick="closeModal()">✕</button>
+      <button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button>
     </div>
     <div class="mb" style="max-height:70vh;overflow-y:auto;padding:0 24px 24px">
       ${inc.length?`<div style="background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px">
@@ -8514,7 +8514,7 @@ async function kitsOpenFiche(kitId){
             </div>
             ${c.quantite>1?`<span style="font-size:11px;color:var(--t3)">×${c.quantite}</span>`:''}
             <span class="kbadge" style="background:${mst.bg};border:1px solid ${mst.br};color:${mst.tx};font-size:9.5px">${mst.lb}</span>
-            ${isAdmin?`<button onclick="kitsRetirerMateriel('${c.id}','${kit.id}')" style="padding:3px 7px;font-size:10px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:5px;color:var(--er);cursor:pointer;font-family:var(--ff)">✕</button>`:''}
+            ${isAdmin?`<button onclick="kitsRetirerMateriel('${c.id}','${kit.id}')" aria-label="Retirer ce matériel" style="padding:3px 7px;font-size:10px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:5px;color:var(--er);cursor:pointer;font-family:var(--ff)">✕</button>`:''}
           </div>`;
         }).join('')}
       </div>
@@ -8545,12 +8545,12 @@ async function kitsOpenFiche(kitId){
       </div>
     </div>`;
     openModal(html);
-  }catch(e){openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb">${e.message}</div>`);}
+  }catch(e){openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">${e.message}</div>`);}
 }
 
 // ── CRÉATION KIT ─────────────────────────────────────────────────────────────
 function kitsModalCreerKit(){
-  openModal(`<div class="mh"><div class="mt">Créer un kit</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Créer un kit</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Nom du kit *</label>
         <input id="ck-nom" type="text" class="fi" placeholder="KIT PHOTO 01, KIT VIDÉO 01…" autofocus>
@@ -8595,7 +8595,7 @@ async function kitsCreerKitSubmit(){
 
 // ── CRÉATION MATÉRIEL ─────────────────────────────────────────────────────────
 function kitsModalCreerMateriel(){
-  openModal(`<div class="mh"><div class="mt">Ajouter un équipement</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Ajouter un équipement</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Nom *</label>
         <input id="cm-nom" type="text" class="fi" placeholder="Sony A6700, DJI Mini 3 Pro, Rode VideoMic…" autofocus>
@@ -8682,7 +8682,7 @@ async function kitsCreerMaterielSubmit(){
 
 // ── AJOUTER MATÉRIEL À UN KIT ────────────────────────────────────────────────
 async function kitsModalAddMaterielToKit(kitId){
-  openModal(`<div class="mh"><div class="mt">Ajouter au kit</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Ajouter au kit</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb"><div id="am-inner" style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>
     <div class="mf">
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
@@ -8762,7 +8762,7 @@ async function kitsRetirerMateriel(compId,kitId){
 
 // ── CHANGER STATUT KIT ────────────────────────────────────────────────────────
 function kitsModalChangerStatut(id,currentStatut){
-  openModal(`<div class="mh"><div class="mt">Changer le statut</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Changer le statut</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <select id="kit-stat-sel" class="fi" style="height:42px">
         ${KITS_STATUT_ENUM.map(v=>`<option value="${v}"${v===currentStatut?' selected':''}>${KIT_ST_CFG[v].lb}</option>`).join('')}
@@ -8788,7 +8788,7 @@ async function kitsAppliquerStatut(id){
 async function kitsModalAttribuer(kitId){
   const prests=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&statut=in.(confirmée,en_production,planifiée)&order=date_prestation.asc&limit=50').catch(()=>[]);
   const colls=await sbFetch('profiles?select=id,prenom,nom&role=in.(photo,prod)&order=nom.asc').catch(()=>[]);
-  openModal(`<div class="mh"><div class="mt">Attribuer le kit</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Attribuer le kit</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Prestation</label>
         <select id="attr-pre" class="fi">
@@ -8898,7 +8898,7 @@ async function kitsModalAttribuerCollab(kitId){
   const curResas=await sbFetch('kit_reservations?select=id,collaborateur_id,profiles!collaborateur_id(prenom,nom)&kit_id=eq.'+kitId+'&prestation_id=is.null&statut=eq.sorti&limit=1').catch(()=>[]);
   const cur=Array.isArray(curResas)&&curResas[0]?curResas[0]:null;
   const list=Array.isArray(collabs)?collabs:[];
-  openModal(`<div class="mh"><div class="mt">Attribuer le kit à un collaborateur</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Attribuer le kit à un collaborateur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       ${cur?`<div style="background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:13px;color:var(--ok)">Actuellement attribué à <strong>${esc(cur.profiles?.prenom||'')} ${esc(cur.profiles?.nom||'')}</strong></span>
@@ -8956,7 +8956,7 @@ function kitsModalSignalerIncidentById(materielId){
   kitsModalSignalerIncident(materielId,m?.nom||'—');
 }
 function kitsModalSignalerIncident(materielId,materielNom){
-  openModal(`<div class="mh"><div class="mt">Signaler un incident</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Signaler un incident</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:12.5px;font-weight:600;color:var(--t2);margin-bottom:12px">Matériel concerné : <span style="color:var(--t1)">${materielNom}</span></div>
       <div class="fg"><label class="fl">Type d'incident *</label>
@@ -9054,7 +9054,7 @@ async function kitsControleOpen(controleId){
         <div><div class="mt">${typeLabel}</div>
           <div style="font-size:12px;color:var(--t2);margin-top:2px">${esc(c.kits?.nom||'Kit')}${esc(pre?' · '+(pre.clients?.nom||'—'):'')}</div>
         </div>
-        <button class="mc" onclick="closeModal()">✕</button>
+        <button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button>
       </div>
       <div class="mb" style="max-height:65vh;overflow-y:auto;padding:0 24px 16px">
         ${its.length===0?'<div style="padding:24px;text-align:center;color:var(--t3)">Aucun équipement à contrôler dans ce kit.</div>':
@@ -9146,7 +9146,7 @@ async function kitsControleSubmit(controleId){
 
 // ── MAINTENANCE ───────────────────────────────────────────────────────────────
 async function kitsModalMajMaintenance(maintId){
-  openModal(`<div class="mh"><div class="mt">Mettre à jour la maintenance</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Mettre à jour la maintenance</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Statut</label>
         <select id="maint-stat" class="fi">
@@ -9186,7 +9186,7 @@ async function kitsMaintSubmit(maintId){
 async function kitsModalEditMateriel(materielId){
   const m=_matCache.find(x=>x.id===materielId);
   if(!m)return;
-  openModal(`<div class="mh"><div class="mt">Modifier l'équipement</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Modifier l'équipement</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Nom</label>
         <input id="em-nom" type="text" class="fi" value="${esc(m.nom)}">
@@ -9241,7 +9241,7 @@ async function ajouterEquipement(){kitsModalCreerMateriel();}
 function kitsModalEditKit(kitId){
   const k=_kitsCache.find(x=>x.id===kitId);
   if(!k){toast('Kit introuvable.','er');return;}
-  openModal(`<div class="mh"><div class="mt">Modifier le kit</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Modifier le kit</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Nom du kit *</label>
         <input id="ek-nom" type="text" class="fi" value="${esc(k.nom||'')}" autofocus>
@@ -9286,7 +9286,7 @@ async function kitsEditKitSubmit(kitId){
 function kitsConfirmerSupprimer(kitId){
   const k=_kitsCache.find(x=>x.id===kitId);
   const nom=k?.nom||'ce kit';
-  openModal(`<div class="mh"><div class="mt">Supprimer le kit</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Supprimer le kit</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:14px;color:var(--t1);margin-bottom:10px">Supprimer <strong>${nom}</strong> ?</div>
       <div style="font-size:12.5px;color:var(--t3);line-height:1.6">Cette action est irréversible. La composition du kit sera supprimée. Les équipements restent dans l'inventaire.</div>
@@ -9652,7 +9652,7 @@ function docsRenderRetractations(){
 
 function retractationTraiter(id,statut){
   const label=statut==='acceptee'?'Accepter':'Refuser';
-  openModal(`<div class="mh"><div class="mt">${label} la demande de rétractation</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">${label} la demande de rétractation</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <label class="fl">Note interne (optionnel) <textarea id="rtr-note" class="inp" rows="3" placeholder="Précisez si besoin…"></textarea></label>
       <div style="font-size:12px;color:var(--t3);margin-top:8px">Aucune action financière automatique : un éventuel remboursement reste à traiter manuellement via le flux existant (avoir + remboursement Stripe).</div>
@@ -10156,7 +10156,7 @@ ${p?`<div style="background:#FFF5F7;border-radius:10px;padding:16px 20px;margin-
 // ── Modal Avoir ───────────────────────────────────────────────────────────────
 function docsModalNouvelAvoir(prestationId){
   openModal(`
-    <div class="mh"><div class="mt">Nouvel avoir</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mh"><div class="mt">Nouvel avoir</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <label class="fl">Client <select id="av-client-id" class="inp"><option value="">Sélectionner un client...</option></select></label>
       <label class="fl">Prestation liée (optionnel) <select id="av-prestation-id" class="inp"><option value="">Aucune prestation liée</option></select></label>
@@ -10363,7 +10363,7 @@ function modalNouveauDevis(){
     const opts=(clients||[]).map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
     const today=ymdLocal();
     _dvLignes=[{libelle:'',details:'',qte:1,pu:0}];
-    openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()">✕</button></div>
+    openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
 <div class="mb">
   <div class="fg"><label class="fl">Client *</label><select id="dv-cli" class="fi" onchange="dvCheckPromoBienvenue()"><option value="">-- Sélectionner --</option>${opts}</select></div>
   <div id="dv-promo-banner" style="display:none;background:rgba(50,216,230,.08);border:1px solid rgba(50,216,230,.3);border-radius:var(--rp);padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:var(--t1)">
@@ -10380,7 +10380,7 @@ function modalNouveauDevis(){
 </div>
 <div class="mf"><button class="btn bg2" onclick="closeModal()">Annuler</button><button class="btn bp" onclick="creerDevis()">Créer le devis</button></div>`);
     dvRenderLignes();dvOpenWide();
-  }).catch(()=>{openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb"><p style="color:var(--er)">Impossible de charger les clients.</p></div>`);});
+  }).catch(()=>{openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb"><p style="color:var(--er)">Impossible de charger les clients.</p></div>`);});
 }
 
 async function modalCreerDevisRapide(clientId,clientNom){
@@ -10395,7 +10395,7 @@ async function modalCreerDevisRapide(clientId,clientNom){
     {lb:'Reportage événement spécial',desc:'Reportage photo et vidéo pour tournoi, gala, remise de trophées. Livraison sous 72h.',qte:1,pu:400},
   ];
   _dvLignes=[{libelle:'',details:'',qte:1,pu:0}];
-  openModal(`<div class="mh"><div class="mt">Devis rapide — ${clientNom||'Club'}</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Devis rapide — ${clientNom||'Club'}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
 <div class="mb">
   <div class="fg"><label class="fl">Client</label><select id="dv-cli" class="fi" onchange="dvCheckPromoBienvenue()">${opts}</select></div>
   <div id="dv-promo-banner" style="display:none;background:rgba(50,216,230,.08);border:1px solid rgba(50,216,230,.3);border-radius:var(--rp);padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:var(--t1)">
@@ -10498,7 +10498,7 @@ async function modalNouveauDevisFromPrestation(prestId,clientNom,montantHT){
   const matchedId=(clients||[]).find(c=>c.nom===clientNom)?.id||'';
   const today=ymdLocal();
   _dvLignes=[{libelle:'Prestation SportVision',details:'',qte:1,pu:parseFloat(montantHT)||0}];
-  openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
 <div class="mb">
   <input type="hidden" id="dv-pre-id" value="${prestId}">
   <div style="font-size:11px;color:var(--t3);padding:2px 0 6px">Lié à la prestation</div>
@@ -10525,7 +10525,7 @@ async function modalModifierDevis(idx){
   const stLb={brouillon:'Brouillon',envoyé:'Envoyé',en_attente:'En attente',accepté:'Accepté',refusé:'Refusé',expiré:'Expiré',annulé:'Annulé'};
   const opts=statuts.map(s=>`<option value="${s}"${full.statut===s?' selected':''}>${stLb[s]}</option>`).join('');
   const preRef=full.prestation?.reference;const preId=full.prestation?.id||full.prestation_id;
-  openModal(`<div class="mh"><div class="mt">${full.numero||'Devis'} — ${esc(full.clients?.nom||'')}</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">${full.numero||'Devis'} — ${esc(full.clients?.nom||'')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
 <div class="mb">
   <div class="fg"><label class="fl">Statut</label><select id="dv-st" class="fi">${opts}</select></div>
   ${preRef?`<div style="font-size:11px;color:var(--t3);margin-bottom:4px">Prestation : <span style="color:var(--acc);cursor:pointer;text-decoration:underline" onclick="closeModal();setTimeout(()=>modalDetailById('${preId}'),150)">${preRef} ›</span></div>`:''}
@@ -10737,7 +10737,7 @@ async function envoyerDevisParEmail(id){
     const contact=esc([c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||c.nom||'');
     const validite=d.validite_jours||30;
     const msgDefaut=`${contact?'Bonjour '+contact+',':'Bonjour,'}\n\nVeuillez trouver ci-dessous le devis ${num} d'un montant de ${montant} TTC.\n\nCe devis est valable ${validite} jours. Pour l'accepter, il vous suffit de répondre à cet email avec la mention "Bon pour accord".\n\nN'hésitez pas à me contacter pour toute question.\n\nBien cordialement,\nFouka\nSportVision`;
-    openModal(`<div class="mh"><div class="mt">Envoyer le devis par email</div><button class="mc" onclick="closeModal()">✕</button></div>
+    openModal(`<div class="mh"><div class="mt">Envoyer le devis par email</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
       <div class="mb">
         <div style="background:rgba(14,165,255,.07);border:1px solid rgba(14,165,255,.18);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:var(--t2);display:flex;gap:16px;flex-wrap:wrap">
           <span><span style="color:var(--t3);font-size:11px">DEVIS</span><br><span style="font-weight:700;color:var(--acc)">${num}</span></span>
@@ -10980,7 +10980,7 @@ async function envoyerFactureParEmail(prestationId){
     const contact=esc([c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||c.nom||'');
     const echeance=fact.date_echeance?new Date(fact.date_echeance).toLocaleDateString('fr-FR'):'30 jours';
     const msgDefaut=`${contact?'Bonjour '+contact+',':'Bonjour,'}\n\nVeuillez trouver ci-dessous la facture ${num} d'un montant de ${montant} TTC.\n\nRèglement attendu avant le ${echeance}.\n\nN'hésitez pas à me contacter pour toute question.\n\nBien cordialement,\nFouka\nSportVision`;
-    openModal(`<div class="mh"><div class="mt">Envoyer la facture par email</div><button class="mc" onclick="closeModal()">✕</button></div>
+    openModal(`<div class="mh"><div class="mt">Envoyer la facture par email</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
       <div class="mb">
         <div style="background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.18);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:var(--t2);display:flex;gap:16px;flex-wrap:wrap">
           <span><span style="color:var(--t3);font-size:11px">FACTURE</span><br><span style="font-weight:700;color:#2ECC8A">${num}</span></span>
@@ -11710,7 +11710,7 @@ function buildMsgShell(){
     <!-- Conversation -->
     <div id="msg-conv-panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
       <div id="msg-conv-header" style="padding:12px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:12px;background:var(--s2);flex-shrink:0">
-        <button id="msg-back-btn" onclick="msgShowList()" style="display:none;background:none;border:none;color:var(--t2);cursor:pointer;padding:4px;border-radius:6px;font-size:16px;line-height:1">‹</button>
+        <button id="msg-back-btn" onclick="msgShowList()" aria-label="Retour à la liste" style="display:none;background:none;border:none;color:var(--t2);cursor:pointer;padding:4px;border-radius:6px;font-size:16px;line-height:1">‹</button>
         <div id="msg-conv-title" style="font-size:14px;font-weight:600;color:var(--t1)">Chargement…</div>
       </div>
       <div id="msg-list" style="flex:1;overflow-y:auto;padding:8px 0"></div>
@@ -11882,7 +11882,7 @@ function msgShowList(){
 function msgNewConv(){
   const myUid=localStorage.getItem('sv_uid');
   const others=Object.entries(_msgProfiles).filter(([id])=>id!==myUid);
-  openModal(`<div class="mh"><div class="mt">Nouvelle conversation</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Nouvelle conversation</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Choisir un membre de l'équipe :</div>
     <div style="display:flex;flex-direction:column;gap:2px">
       ${others.map(([id,p])=>{
@@ -11935,7 +11935,7 @@ function msgReplyTo(txt){
 
 function msgCrTache(txt){
   const titre=txt.slice(0,80)+(txt.length>80?'…':'');
-  openModal(`<div class="mh"><div class="mt">Créer une tâche</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Créer une tâche</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Titre de la tâche</label>
         <input id="mct-titre" type="text" class="fi" value="${titre.replace(/"/g,'&quot;')}">
@@ -12883,7 +12883,7 @@ function modalFormDetail(id){
   const xpEligible=S.role==='photo';
   const lockLbl=_formLockLabel(f);
   if(lockLbl){
-    openModal(`<button onclick="closeModal()" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--b1);color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+    openModal(`<button onclick="closeModal()" aria-label="Fermer" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--b1);color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
       <div style="padding:40px 24px;text-align:center;max-width:400px;margin:auto">
         <div style="font-size:44px;margin-bottom:14px;opacity:.6">🔒</div>
         <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:8px">${esc(f.titre)}</div>
@@ -12901,7 +12901,7 @@ function modalFormDetail(id){
   const isTerminée=fp.statut==='terminée';
   const NCLR={Débutant:'#2ECC8A',Intermédiaire:'#366BFF',Avancé:'#7C4DFF',Expert:'#F5A524'};
   const TLBL={en_ligne:'En ligne',hybride:'Hybride',terrain:'Terrain',presentiel:'Présentiel'};
-  openModal(`<button onclick="closeModal()" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--b1);color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1;flex-shrink:0">✕</button><div style="padding:24px 20px;max-width:520px;margin:auto;position:relative">
+  openModal(`<button onclick="closeModal()" aria-label="Fermer" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--b1);color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1;flex-shrink:0">✕</button><div style="padding:24px 20px;max-width:520px;margin:auto;position:relative">
     <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:18px">
       <div style="font-size:44px;flex-shrink:0;line-height:1">${esc(f.icone)}</div>
       <div style="flex:1">
@@ -13880,7 +13880,7 @@ function _fpRender(){
   el.innerHTML=`
     <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--b1);background:var(--s1);flex-shrink:0">
       <button onclick="closeFormationPlayer()" style="background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;color:var(--t2);font-size:13px;cursor:pointer;flex-shrink:0">✕ Quitter</button>
-      <button id="fp-sidebar-toggle" onclick="document.getElementById('fp-sidebar')?.classList.toggle('fp-open')" style="display:none;background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;color:var(--t2);font-size:13px;cursor:pointer;flex-shrink:0">☰</button>
+      <button id="fp-sidebar-toggle" onclick="document.getElementById('fp-sidebar')?.classList.toggle('fp-open')" aria-label="Ouvrir le menu" style="display:none;background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;color:var(--t2);font-size:13px;cursor:pointer;flex-shrink:0">☰</button>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.icone)} ${esc(f.titre)}</div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
@@ -14591,7 +14591,7 @@ async function _reloadQuizAdmin(formId,formTitre){
             <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">${i+1}. ${q.question}</div>
             ${opts.map((o,oi)=>`<div style="font-size:11px;color:${oi===q.reponse_correcte?'var(--ok)':'var(--t3)'};padding:1px 0">${oi===q.reponse_correcte?'✓ ':'    '}${o}</div>`).join('')}
           </div>
-          <button onclick="adminSupprimerQuestion('${q.id}','${formId}','${titleSafe}')" style="padding:4px 8px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;flex-shrink:0">✕</button>
+          <button onclick="adminSupprimerQuestion('${q.id}','${formId}','${titleSafe}')" aria-label="Supprimer cette question" style="padding:4px 8px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;flex-shrink:0">✕</button>
         </div>`;
       }).join('');
     }
@@ -15084,7 +15084,7 @@ async function loadCmDemandes(){
           </td>
         </tr>`;
       }).join('')+'</tbody></table></div></div>';
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';console.error(e);}
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';console.error(e);}
 }
 
 async function avancerDemande(id,statut){
@@ -15200,13 +15200,13 @@ async function loadCmBriefs(){
           <td>${p.briefing_vu_at?'<span style="color:var(--ok)">✓ '+new Date(p.briefing_vu_at).toLocaleDateString('fr-FR')+'</span>':'<span style="color:var(--t3)">Pas encore</span>'}</td>
         </tr>`;
       }).join('')+'</tbody></table></div></div>';
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';console.error(e);}
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';console.error(e);}
 }
 
 async function modalNouveauBriefCm(prefill){
   const pf=prefill||{};
   const clients=await _cmVisibleClients();
-  openModal(`<div class="mh"><div class="mt">Nouveau brief production</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Nouveau brief production</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Client</label>
         <select id="brf-cl" class="fi"><option value="">— Sélectionner —</option>${clients.map(c=>`<option value="${c.id}"${pf.clientId===c.id?' selected':''}>${esc(c.nom)}</option>`).join('')}</select></div>
@@ -15311,11 +15311,11 @@ async function loadCmCal(){
           <div style="font-size:11px;font-weight:700;color:${isToday?'var(--ac)':'var(--t2)'};margin-bottom:8px">${JOURS[i]} ${d.getDate()}</div>
           ${dayPre.map(p=>`<div style="background:rgba(54,107,255,.15);border-left:2px solid var(--ac);padding:4px 6px;border-radius:4px;margin-bottom:4px;font-size:10px;color:var(--ac);cursor:pointer" onclick="modalDetailById('${p.id}')" title="${esc(p.clients?.nom||'')}">${esc((p.clients?.nom||'').slice(0,14)||p.reference)}</div>`).join('')}
           ${dayCont.map(c=>{const published=c.statut==='publie';return`<div style="background:${published?'rgba(46,204,138,.12)':'rgba(245,165,36,.1)'};border-left:2px solid ${published?'var(--ok)':'var(--wa)'};padding:4px 6px;border-radius:4px;margin-bottom:4px;font-size:10px;color:${published?'var(--ok)':'var(--wa)'};cursor:pointer" onclick="modalEditContenu('${c.id}')" title="${esc(c.titre)}">${esc(c.titre.slice(0,14))} · ${esc(c.plateforme||'?')}</div>`;}).join('')}
-          <button onclick="modalNouveauContenu(null,'${ds}')" style="width:100%;margin-top:4px;padding:3px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:5px;color:var(--t3);font-size:10px;cursor:pointer">+</button>
+          <button onclick="modalNouveauContenu(null,'${ds}')" aria-label="Ajouter un contenu ce jour" style="width:100%;margin-top:4px;padding:3px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:5px;color:var(--t3);font-size:10px;cursor:pointer">+</button>
         </div>`;
       }).join('')}
     </div></div>`;
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── Audit — journal d'actions ────────────────────────────────────────────
@@ -15405,7 +15405,7 @@ async function loadCmContenus(){
           </td>
         </tr>`;
       }).join('')+'</tbody></table></div></div>';
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';console.error(e);}
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';console.error(e);}
 }
 
 async function avancerContenu(id,statut){
@@ -15420,7 +15420,7 @@ async function modalNouveauContenu(statutInit,dateInit,prefill){
   const d=dateInit||'';
   const pf=prefill||{};
   const clients=await _cmVisibleClients();
-  openModal(`<div class="mh"><div class="mt">Nouveau contenu</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Nouveau contenu</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Titre</label><input type="text" id="ct-ti" class="fi" placeholder="Ex: Résumé match Brunoy FC" value="${esc(pf.titre||'')}" autofocus></div>
       <div class="fg"><label class="fl">Client</label>
@@ -15503,7 +15503,7 @@ async function modalEditContenu(id){
   const canDelete=info.cm_id===uid||S.role==='admin'||(S.role==='cm'&&_myNiveauCm==='cm_lead');
   const next=CONTENU_NEXT[info.statut];
   const canCorrections=['a_valider_interne','a_valider_client'].includes(info.statut);
-  openModal(`<div class="mh"><div class="mt">Modifier contenu</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Modifier contenu</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Titre</label><input type="text" id="cte-ti" class="fi" value="${esc(info.titre)}"></div>
       <div class="fg"><label class="fl">Client</label>
@@ -15607,7 +15607,7 @@ async function loadCmPublications(){
           <td>${c.date_publication?new Date(c.date_publication).toLocaleDateString('fr-FR'):'—'}</td>
           <td><button class="btn bg2 bs" onclick="modalEditContenu('${c.id}')">Détail</button></td>
         </tr>`).join('')+'</tbody></table></div></div>';
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── CM — Analytics ────────────────────────────────────────────────────────────
@@ -15773,7 +15773,7 @@ async function _renderChargeEquipe(wrap){
         <td class="tm" style="${r.enRetard?'color:var(--er);font-weight:700':''}">${r.enRetard}</td>
         <td><span class="bd ${r.niv.cls}"><span class="bd-d"></span>${r.niv.lb}</span></td>
       </tr>`).join('')+'</tbody></table></div>';
-  }catch(e){listEl.innerHTML='<div style="padding:20px;color:var(--er)">Erreur.</div>';}
+  }catch(e){listEl.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // ── CM — Rapports clients ─────────────────────────────────────────────────────
@@ -15861,7 +15861,7 @@ async function modalSaisirStats(){
   }catch(e){contenus=[];}
   if(!Array.isArray(contenus))contenus=[];
   if(!contenus.length){
-    openModal(`<div class="mh"><div class="mt">Saisir statistiques</div><button class="mc" onclick="closeModal()">✕</button></div>
+    openModal(`<div class="mh"><div class="mt">Saisir statistiques</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
       <div class="mb"><div style="padding:8px 0;color:var(--t3);font-size:13px">Aucun contenu publié pour l'instant. Les statistiques se saisissent contenu par contenu, une fois publié.</div></div>
       <div class="mf"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
     return;
@@ -15877,7 +15877,7 @@ async function modalSaisirStats(){
     const s=statsByContenu[c.id]||{};
     return `<option value="${c.id}" data-portee="${s.portee??''}" data-engagement="${s.engagement??''}" data-vues="${s.vues??''}">${esc(d+' · '+cl+' · '+c.titre+' ('+(c.plateforme||'—')+')')}</option>`;
   }).join('');
-  openModal(`<div class="mh"><div class="mt">Saisir statistiques</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Saisir statistiques</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Statistiques saisies manuellement depuis vos dashboards Instagram/Facebook/YouTube, rattachées au contenu publié choisi ci-dessous. Ré-enregistrer un contenu déjà saisi écrase les chiffres précédents.</div>
       <div class="fg"><label class="fl">Contenu publié</label><select id="st-contenu" class="fi" onchange="_statsPrefill()">${opts}</select></div>
@@ -16524,7 +16524,7 @@ async function marquerPayeRem(id,btn){
 
 // ── Actions rapides comptable ─────────────────────────────────────────────────
 async function comptaEncaisserAcompte(id){
-  openModal(`<div class="mh"><div class="mt">Acompte encaissé</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Acompte encaissé</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:13.5px;color:var(--t1);margin-bottom:12px">Confirmer la réception de l'acompte ?</div>
       <div class="fg"><label class="fl">Date d'encaissement</label>
@@ -16562,7 +16562,7 @@ async function comptaConfirmerAcompte(id){
 }
 
 async function comptaMarquerPayeImpaye(id){
-  openModal(`<div class="mh"><div class="mt">Paiement intégral</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Paiement intégral</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:13.5px;color:var(--t1);margin-bottom:12px">Confirmer le règlement complet ?</div>
       <div class="fg"><label class="fl">Date d'encaissement</label>
@@ -16611,7 +16611,7 @@ async function modalNouvelleDepense(){
   const categories=[['materiel','Matériel'],['logiciel','Logiciel'],['marketing','Marketing'],['loyer','Loyer'],['assurance','Assurance'],['transport','Transport'],['sous_traitance','Sous-traitance'],['banque','Frais bancaires'],['autre','Autre']];
   let vendors=[];
   try{vendors=await sbFetch('vendors?select=id,nom&actif=eq.true&order=nom.asc')||[];}catch(e){}
-  openModal(`<div class="mh"><div class="mt">Nouvelle dépense</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Nouvelle dépense</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Catégorie *</label>
@@ -16692,7 +16692,7 @@ async function sauvegarderNouvelleDepense(){
 function modalNouveauFournisseur(){
   const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   const categories=[['materiel','Matériel'],['logiciel','Logiciel'],['marketing','Marketing'],['loyer','Loyer'],['assurance','Assurance'],['transport','Transport'],['sous_traitance','Sous-traitance'],['banque','Banque'],['autre','Autre']];
-  openModal(`<div class="mh"><div class="mt">Nouveau fournisseur</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Nouveau fournisseur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="margin-bottom:10px"><label style="${L}">Nom *</label>
         <input id="nf-nom" class="fi" placeholder="Ex : Adobe, EDF, Bureau d'assurance…">
@@ -16790,7 +16790,7 @@ async function modalReglagesCoutsIndirects(){
   try{rows=await sbFetch('cost_allocations?select=*&actif=eq.true')||[];}catch(e){}
   const forfait=rows.find(r=>r.methode==='forfait_par_mission')?.valeur??0;
   const pct=rows.find(r=>r.methode==='pourcentage_ca')?.valeur??0;
-  openModal(`<div class="mh"><div class="mt">Réglages coûts indirects</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Réglages coûts indirects</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Ces montants sont ajoutés au coût de chaque mission dans le calcul de rentabilité, pour représenter les charges fixes non affectées directement (matériel, licences, structure…).</div>
       <div style="font-size:11.5px;color:var(--wa);background:rgba(245,165,36,.08);border:1px solid rgba(245,165,36,.2);border-radius:8px;padding:10px 12px;margin-bottom:14px">⚠ Ne saisis ici que des charges qui ne sont <strong>pas</strong> déjà entrées individuellement dans Dépenses (loyer, abonnements…) — sinon elles sont comptées deux fois dans le résultat net et les budgets.</div>
@@ -17020,7 +17020,7 @@ async function modalEditerScenario(type){
   const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   const sc=_budgetsData.scenarios.find(s=>s.type===type)||{};
   const meta=BUDGET_SCENARIOS_META[type];
-  openModal(`<div class="mh"><div class="mt">Modifier le scénario — ${meta.lb}</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Modifier le scénario — ${meta.lb}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Taux mensuels composés appliqués au run-rate actuel pour projeter le CA et les charges sur l'horizon choisi.</div>
       <div><label style="${L}">Croissance CA (%/mois)</label>
@@ -17102,7 +17102,7 @@ async function modalNouvelleCommission(){
       sbFetch('prestations?select=id,reference,montant_ht,clients(nom)&statut_financier=in.(payée,facturée,partiellement_payée)&order=date_prestation.desc&limit=100'),
     ]);
   }catch(e){}
-  openModal(`<div class="mh"><div class="mt">Nouvelle commission</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Nouvelle commission</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div><label style="${L}">Commercial *</label>
         <select id="nco-commercial" class="fi">${(commerciaux||[]).map(c=>`<option value="${c.id}">${esc((c.prenom||'')+' '+(c.nom||''))}</option>`).join('')}</select>
@@ -17274,7 +17274,7 @@ async function genererExportFEC(){
 async function modalMappingPCG(){
   let rows=[];
   try{rows=await sbFetch('pcg_mapping?select=*&order=type_operation.asc')||[];}catch(e){}
-  openModal(`<div class="mh"><div class="mt">Mapping des comptes (indicatif)</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Mapping des comptes (indicatif)</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Ces numéros de compte servent uniquement à préremplir le brouillon FEC — fais-les valider par ton expert-comptable.</div>
       <div style="max-height:360px;overflow-y:auto">
@@ -17898,7 +17898,7 @@ function modalReservationClub(id){
   const b=_cbkData.find(x=>x.id===id);
   if(!b){toast('Réservation introuvable.','error');return;}
   const opts=CBK_STEPS.map(s=>`<option value="${s}" ${s===b.status?'selected':''}>${esc(CBK_STATUS_LABEL[s])}</option>`).join('');
-  openModal(`<div class="mh"><div class="mt">${esc(b.service_label||'Prestation')}</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">${esc(b.service_label||'Prestation')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:12.5px;color:var(--t3);margin-bottom:14px">${esc(b.clubs?.nom||'—')} · ${esc(b.team||'—')} · ${b.event_date?new Date(b.event_date).toLocaleDateString('fr-FR'):'—'}</div>
       <div class="fg"><label class="fl">Club</label><div style="font-size:13.5px;color:var(--t1)">${esc(b.clubs?.nom||'—')}</div></div>
@@ -18228,7 +18228,7 @@ async function secCreerDevisDepuisDemande(id){
 }
 
 async function secMarquerPaye(id){
-  openModal(`<div class="mh"><div class="mt">Confirmer le paiement</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Confirmer le paiement</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:13.5px;color:var(--t1);margin-bottom:12px">Enregistrer ce règlement ?</div>
       <div class="fg"><label class="fl">Date d'encaissement</label>
@@ -18618,7 +18618,7 @@ function modalPhotoBriefing(p){
       <div class="mt">${p.reference||'Prestation'}</div>
       <div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(p.clients?.nom||'—')} · ${p.type_prestation||'—'}</div>
     </div>
-    <button class="mc" onclick="closeModal()">✕</button>
+    <button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button>
   </div>
   <div class="mb" style="display:flex;flex-direction:column;gap:12px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -18673,7 +18673,7 @@ function modalPhotoBriefing(p){
 
 function modalDeclarerHeures(equipeId,ref){
   if(!equipeId){toast('Mission introuvable.','er');return;}
-  openModal(`<div class="mh"><div class="mt">Déclarer mes heures</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Déclarer mes heures</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
   <div class="mb" style="display:flex;flex-direction:column;gap:12px">
     ${ref?`<div style="font-size:12px;color:var(--t3)">${ref}</div>`:''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -18943,7 +18943,7 @@ async function loadPlanning(){
               </div>`;
             }).join('')}
             ${pres.length===0?'<div style="font-size:11px;color:var(--t3);padding:2px 0">—</div>':''}
-            <button onclick="modalNouvellePrestation(null,'${`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}')" style="margin-top:4px;padding:2px 8px;font-size:10px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:var(--rp);color:var(--t3);cursor:pointer;display:block;width:100%">+</button>
+            <button onclick="modalNouvellePrestation(null,'${`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}')" aria-label="Ajouter une prestation ce jour" style="margin-top:4px;padding:2px 8px;font-size:10px;background:transparent;border:1px dashed rgba(255,255,255,.15);border-radius:var(--rp);color:var(--t3);cursor:pointer;display:block;width:100%">+</button>
           </div>
         </div>`;
       }
@@ -19204,7 +19204,7 @@ async function modalFicheCollaborateur(id){
       sbFetch('formation_inscriptions?select=*&collaborateur_id=eq.'+id+'&order=updated_at.desc').catch(()=>[]),
     ]);
     const prof=(Array.isArray(profRaw)?profRaw:[])[0];
-    if(!prof){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb">Profil introuvable.</div>');return;}
+    if(!prof){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">Profil introuvable.</div>');return;}
     const pres=Array.isArray(presRaw)?presRaw:[];
     const certs=Array.isArray(certRaw)?certRaw:[];
     const inscriptions=Array.isArray(inscrRaw)?inscrRaw:[];
@@ -19404,7 +19404,7 @@ async function modalFicheCollaborateur(id){
       +'</div>');
     const mw=document.querySelector('#sv-modal > div');
     if(mw){mw.style.width='min(720px,calc(100vw - 16px))';mw.style.padding='0';mw.style.overflow='hidden';const ob=mw.querySelector(':scope > button');if(ob)ob.style.display='none';}
-  }catch(e){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()">✕</button></div><div class="mb">'+(e.message||'Impossible de charger la fiche.')+'</div>');}
+  }catch(e){openModal('<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">'+(e.message||'Impossible de charger la fiche.')+'</div>');}
 }
 
 // ── RÉCUPÉRATION / PREMIÈRE DÉFINITION DE MOT DE PASSE
@@ -19696,7 +19696,7 @@ async function updateNavBadges(role){
 // ── Recherche globale ─────────────────────────────────────────────────────────
 let _searchTimer=null;
 function openSearch(){
-  openModal(`<div class="mh"><div class="mt">Recherche</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Recherche</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="min-height:200px">
       <input type="text" id="gsq" class="fi" placeholder="Client, prestation, référence…" autofocus oninput="debounceSearch(this.value)">
       <div id="gs-res" style="margin-top:12px"></div>
@@ -19834,7 +19834,7 @@ const NOTIF_PRIORITY_CFG={
 };
 async function openNotifPanel(){
   const uid=localStorage.getItem('sv_uid');
-  openModal(`<div class="mh"><div class="mt">Notifications</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Notifications</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="padding-top:4px" id="notif-panel-body"><div style="text-align:center;padding:30px;color:var(--t3);font-size:13px">Chargement…</div></div>`);
   try{
     const data=await sbFetch('notifications?select=id,type,titre,message,lue,created_at,priorite,lien_prestation_id,lien_client_id&destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)&order=lue.asc,created_at.desc&limit=30');
@@ -20945,7 +20945,7 @@ async function modalContratFromDevis(devisId){
     // d'où un montant HT affiché ~16,7% trop bas sur le contrat imprimé et envoyé en
     // signature (HT / 1,2 = HT × 0,833). Ne PAS remodifier sans revalider ce raisonnement.
     const montantM=d.total_ttc?Math.round(d.total_ttc/12*100)/100:null;
-    openModal(`<div class="mh"><div class="mt">Créer un contrat — ${esc(cl.nom||'Client')}</div><button class="mc" onclick="closeModal()">✕</button></div>
+    openModal(`<div class="mh"><div class="mt">Créer un contrat — ${esc(cl.nom||'Client')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
       <div class="mb" style="display:flex;flex-direction:column;gap:12px">
         <div style="padding:10px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.2);border-radius:var(--rb)">
           <div style="font-size:10px;font-weight:700;color:var(--ok);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Devis de référence</div>
@@ -22374,7 +22374,7 @@ async function renderCentreAdminDash(){
 
 // ── Actions XP & Grade ────────────────────────────────────────────────────────
 function centreModalAttribuerXP(userId){
-  openModal(`<div class="mh"><div class="mt">Attribuer des XP</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Attribuer des XP</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Montant XP</label>
         <input id="axp-v" type="number" class="fi" value="50" min="1" max="1000">
@@ -22446,7 +22446,7 @@ async function centreAttribuerXP(userId,montant,type,description){
 
 function centreModalChangerGrade(userId,prenom,nom,gradeActuel){
   const grade=SV_GRADES[gradeActuel]||SV_GRADES[0];
-  openModal(`<div class="mh"><div class="mt">Changer le grade — ${prenom} ${nom}</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Changer le grade — ${prenom} ${nom}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div style="font-size:13px;color:var(--t2);margin-bottom:14px">Grade actuel : <strong style="color:${grade.color}">${grade.ic} ${grade.nom}</strong></div>
       <div class="fg"><label class="fl">Nouveau grade</label>
@@ -22535,8 +22535,8 @@ async function renderCentreRessources(){
             ${r.description?`<div style="font-size:11.5px;color:var(--t3);margin-top:2px">${esc(r.description)}</div>`:''}
           </div>
           ${!r.actif?`<span style="font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(239,68,68,.12);color:var(--er);flex-shrink:0">Masquée</span>`:''}
-          ${isAdmin?`<button onclick="event.stopPropagation();modalEditerRessourceCentre('${r.id}')" style="padding:5px 10px;font-size:11px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff);flex-shrink:0">✎</button>
-          <button onclick="event.stopPropagation();supprimerRessourceCentre('${r.id}')" style="padding:5px 10px;font-size:11px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff);flex-shrink:0">🗑</button>`:''}
+          ${isAdmin?`<button onclick="event.stopPropagation();modalEditerRessourceCentre('${r.id}')" aria-label="Modifier cette ressource" style="padding:5px 10px;font-size:11px;background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);cursor:pointer;font-family:var(--ff);flex-shrink:0">✎</button>
+          <button onclick="event.stopPropagation();supprimerRessourceCentre('${r.id}')" aria-label="Supprimer cette ressource" style="padding:5px 10px;font-size:11px;background:rgba(240,68,94,.07);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer;font-family:var(--ff);flex-shrink:0">🗑</button>`:''}
         </div>`;
       }).join('')}</div>`}
   </div>`;
@@ -22544,7 +22544,7 @@ async function renderCentreRessources(){
 function centreModalVoirRessource(id){
   const r=(_centreRessourcesCache||[]).find(x=>x.id===id);
   if(!r)return;
-  openModal(`<div class="mh"><div class="mt">${esc(r.icone||'📝')} ${esc(r.titre)}</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">${esc(r.icone||'📝')} ${esc(r.titre)}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="font-size:13.5px;color:var(--t2);white-space:pre-wrap;line-height:1.6">${esc(r.contenu||'')}</div>`);
 }
 function _crToggleType(){
@@ -23146,7 +23146,7 @@ function openIntegrationSetup(id){
     </div>`).join('');
   openModal(`<div class="mh">
     <div class="mt">${intg.icon} Configurer ${intg.name}</div>
-    <button class="mc" onclick="closeModal()">✕</button>
+    <button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button>
   </div>
   <div class="mb">
     <div style="font-size:13px;color:var(--t2);margin-bottom:16px">${intg.description}</div>
@@ -23217,7 +23217,7 @@ function modalEditerTemplate(code){
   const meta=_TPL_CODES[code]||{nom:t.nom,ic:'📧',cl:'var(--acc)'};
   openModal(`<div class="mh">
     <div class="mt">${meta.ic} Modifier — ${esc(t.nom)}</div>
-    <button class="mc" onclick="closeModal()">✕</button>
+    <button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button>
   </div>
   <div class="mb">
     <div style="font-size:12px;color:var(--t3);margin-bottom:14px">Code template : <code style="color:var(--acc)">${code}</code> — Variables disponibles : ${(t.variables||[]).map(v=>`<code style="font-size:11px;color:#2ECC8A">{{${v}}}</code>`).join(', ')}</div>
@@ -23678,7 +23678,7 @@ async function jourJAction(prestationId,newStatut,btn){
   }catch(e){toast('Erreur mise à jour.','er');btn.disabled=false;}
 }
 function modalSignalerIncidentJJ(prestationId){
-  openModal(`<div class="mh"><div class="mt">Signaler un incident</div><button class="mc" onclick="closeModal()">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Signaler un incident</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb">
       <div class="fg"><label class="fl">Description</label><textarea id="jj-inc-desc" class="fi" style="height:80px" placeholder="Décrivez l'incident…"></textarea></div>
       <div class="fg"><label class="fl">Niveau</label><select id="jj-inc-niv" class="fi"><option value="mineur">Mineur</option><option value="important">Important</option><option value="critique">Critique</option></select></div>
@@ -23738,7 +23738,7 @@ async function loadMobilePhotoDash(ct){
     let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div><div style="font-size:22px;font-weight:800;color:var(--t1)">Bonjour ${prenom} 👋</div>
       <div style="font-size:13px;color:var(--t3);margin-top:2px">${grade.ic} ${grade.nom} · ${xp} XP</div></div>
-      <button onclick="openMobSearch()" style="width:40px;height:40px;border-radius:50%;background:var(--s1);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-family:var(--ff)">🔍</button>
+      <button onclick="openMobSearch()" aria-label="Rechercher" style="width:40px;height:40px;border-radius:50%;background:var(--s1);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-family:var(--ff)">🔍</button>
     </div>`;
     if(invitations.length){
       html+=`<div class="mc" style="border-color:rgba(54,107,255,.35);background:rgba(54,107,255,.06);margin-bottom:13px">
@@ -23747,8 +23747,8 @@ async function loadMobilePhotoDash(ct){
           ${invitations.slice(0,2).map(inv=>{const p=inv.prestations;const date=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
             <div><div style="font-size:14px;font-weight:600;color:var(--t1)">${esc(p.clients?.nom||'—')}</div><div style="font-size:12px;color:var(--t3)">${p.type_prestation||'—'} · ${date}</div></div>
             <div style="display:flex;gap:6px">
-              <button onclick="repondreInvitation('${inv.id}','refusée')" style="padding:8px 12px;border-radius:var(--rp);background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);color:var(--er);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✗</button>
-              <button onclick="repondreInvitation('${inv.id}','acceptée')" style="padding:8px 12px;border-radius:var(--rp);background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓</button>
+              <button onclick="repondreInvitation('${inv.id}','refusée')" aria-label="Refuser l'invitation" style="padding:8px 12px;border-radius:var(--rp);background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);color:var(--er);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✗</button>
+              <button onclick="repondreInvitation('${inv.id}','acceptée')" aria-label="Accepter l'invitation" style="padding:8px 12px;border-radius:var(--rp);background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓</button>
             </div>
           </div>`;}).join('')}
         </div>
@@ -24036,7 +24036,7 @@ async function loadMobileAdminDash(ct){
     let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div><div style="font-size:20px;font-weight:800;color:var(--t1)">Bonjour ${prenom} 👋</div>
       <div style="font-size:13px;color:var(--t3);margin-top:2px">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div></div>
-      <button onclick="openMobSearch()" style="width:40px;height:40px;border-radius:50%;background:var(--s1);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-family:var(--ff)">🔍</button>
+      <button onclick="openMobSearch()" aria-label="Rechercher" style="width:40px;height:40px;border-radius:50%;background:var(--s1);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-family:var(--ff)">🔍</button>
     </div>
     <div class="mhero" style="margin-bottom:13px">
       <div class="mhero-label">CA ENCAISSÉ CE MOIS</div>
