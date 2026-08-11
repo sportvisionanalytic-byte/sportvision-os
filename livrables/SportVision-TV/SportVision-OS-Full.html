@@ -9719,24 +9719,17 @@ function _sigBadge(st){
   return`<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.03em;background:${c.bc};color:${c.cl}">${c.lb}</span>`;
 }
 
+// Désactivée le 11/08/2026 : le compte Youtrust (Yousign) de production n'est pas encore
+// activé (période d'intégration Yousign — clés de prod indisponibles tant que le compte
+// n'est pas passé en production auprès d'eux, cf. "Nous contacter" sur leur dashboard).
+// Sans ce blocage, l'edge function send-signature-request retombe silencieusement sur le
+// sandbox Yousign (YOUTRUST_API_URL absent) et un signataire "confirmé" n'aurait AUCUNE
+// valeur légale. Décision Fouka : lancer sans signature électronique pour l'instant,
+// process papier en attendant. Implémentation réelle (appel send-signature-request)
+// conservée dans l'historique git — à restaurer une fois la production Yousign active
+// et le secret YOUTRUST_API_URL configuré dans Supabase.
 async function demanderSignatureDoc(docType,id,ref){
-  if(!confirm('Envoyer "'+ref+'" en signature électronique réelle via Youtrust ? Le client recevra un e-mail avec un lien pour signer.'))return;
-  try{
-    const res=await fetch(SB_URL+'/functions/v1/send-signature-request',{
-      method:'POST',
-      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')},
-      body:JSON.stringify({doc_type:docType,doc_id:id})
-    });
-    let json={};
-    try{json=await res.json();}catch(e2){}
-    if(!res.ok){
-      if(res.status===404)throw new Error('Edge Function send-signature-request non déployée.');
-      throw new Error(json.error||('Erreur serveur ('+res.status+')'));
-    }
-    await logDocEvent('envoi',ref,docType,'Signature Youtrust envoyée — '+ref);
-    toast('Signature envoyée via Youtrust — le client va recevoir un e-mail.','ok');
-    await docsLoadAll();docsUpdateKPIs();await docsRenderTab();
-  }catch(e){toast('Erreur : '+e.message,'er');}
+  toast('Signature électronique temporairement indisponible (compte Yousign pas encore en production). Faites signer "'+ref+'" par un autre moyen (papier / PDF) en attendant.','er');
 }
 
 // Retirée le 2026-08-10 (audit Contrats/Signature) : cette fonction posait un PATCH
