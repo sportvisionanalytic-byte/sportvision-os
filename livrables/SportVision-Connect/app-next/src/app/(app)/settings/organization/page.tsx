@@ -14,6 +14,19 @@ export default function OrganizationSettingsPage() {
 
   if (!canAccess(ctx, "settings")) return <LockedModule title="Paramètres" />;
 
+  // Espace personnel (Joueur/Famille) : pas de vraie organisation derrière (organization.name
+  // reprend le nom de la personne, voir buildPlayerActiveContext/buildParentActiveContext). Cet
+  // onglet est déjà masqué depuis settings/layout.tsx dans ce cas — ce garde-fou couvre un accès
+  // direct par URL ou retour navigateur, pour ne jamais afficher un formulaire club (SIRET,
+  // couleurs du club) au nom d'un joueur ou d'un parent.
+  if (ctx.organization.type === "player" || ctx.organization.type === "parent") {
+    return (
+      <Card className="p-8 text-center text-[13.5px] text-text-soft">
+        Cet espace personnel n&apos;a pas d&apos;organisation associée.
+      </Card>
+    );
+  }
+
   const { organization } = ctx;
   const name = organization.name;
   const address = organization.address ?? "";
