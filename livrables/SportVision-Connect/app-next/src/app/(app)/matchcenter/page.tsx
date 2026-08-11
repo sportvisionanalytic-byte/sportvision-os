@@ -111,15 +111,15 @@ export default function MatchCenterPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Button variant="secondary" disabled title="Le studio de création de visuels arrive bientôt.">
-            Bientôt disponible
-          </Button>
           <Button
             variant="primary"
             disabled={pending.length === 0 || !canWrite}
             onClick={() => setModalMatchId(pending[0]!.id)}
           >
             Saisir un résultat
+          </Button>
+          <Button variant="secondary" disabled title="Le studio de création de visuels arrive bientôt.">
+            Bientôt disponible
           </Button>
         </div>
       </div>
