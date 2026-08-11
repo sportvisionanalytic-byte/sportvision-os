@@ -167,10 +167,17 @@ export async function buildClubActiveContext(
   // lié au client Portail relié au club — jamais d'un nouveau champ sur `clubs`. Un club sans
   // portail_client_id (jamais relié) ou sans contrat actif de ce type retombe sur club/performance
   // via mapClubPlan, comportement inchangé.
+  //
+  // Lit `client_contrats` (vue, migration-clubplus-v33), PAS `contrats` directement : `contrats`
+  // n'a de policy RLS que pour le staff (admin/sec/com/compta), fail-closed pour un membre de
+  // club — un accès direct renvoyait donc toujours 0 ligne, peu importe l'existence réelle du
+  // contrat. Confirmé indépendamment par 5 agents lors de l'audit UI/UX du 11/08/2026 : aucun
+  // vrai club Full Communication n'a jamais pu obtenir isFullCommunication=true (mauvais
+  // dashboard, mauvaise nav, jamais mis en avant Validations/Publications/Statistiques/Rapports).
   let isFullCommunication = false;
   if (club.portail_client_id) {
     const { data: contract } = await supabase
-      .from("contrats")
+      .from("client_contrats")
       .select("id")
       .eq("client_id", club.portail_client_id)
       .eq("type_contrat", "full_communication")
