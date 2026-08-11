@@ -544,7 +544,7 @@ section{position:relative}
           <li>Validations et galerie privée dans SportVision Connect</li>
         </ul>
         <div class="hero-ctas" style="justify-content:flex-start;margin-top:22px">
-          <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Accompagnement Joueur">Créer mon accompagnement joueur</a>
+          <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Accompagnement Joueur" data-devis-title="Parler de mon accompagnement joueur">Créer mon accompagnement joueur</a>
         </div>
       </div>
       <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/tennis-action-03.jpg) center/cover no-repeat">
@@ -575,7 +575,7 @@ section{position:relative}
     <p class="reveal">Réservez un shooting ponctuel ou créez votre accompagnement joueur sur toute la saison.</p>
     <div class="hero-ctas reveal">
       <a href="reserver.html?besoin=shooting" class="btn btn-grad">Réserver mon shooting</a>
-      <a href="#devis" class="btn btn-ghost-dark" data-action="open-devis" data-devis-context="Accompagnement Joueur">Créer mon accompagnement joueur</a>
+      <a href="#devis" class="btn btn-ghost-dark" data-action="open-devis" data-devis-context="Accompagnement Joueur" data-devis-title="Parler de mon accompagnement joueur">Créer mon accompagnement joueur</a>
     </div>
   </div>
 </section>
@@ -673,7 +673,7 @@ section{position:relative}
   <div class="sv-modal">
     <button class="sv-close" id="devis-close" aria-label="Fermer">✕</button>
     <div id="devis-form-wrap">
-      <h3>Demander un devis ou une démonstration</h3>
+      <h3 id="devis-title">Demander un devis ou une démonstration</h3>
       <p class="sub">Présentez-nous votre besoin, nous revenons vers vous rapidement.</p>
       <form id="devis-form">
         <div class="sv-honeypot"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
@@ -833,10 +833,11 @@ document.getElementById('cookie-manage').addEventListener('click', (e) => {
 
 // ── Modal demande de devis / démonstration ──
 const devisOverlay = document.getElementById('devis-overlay');
-function openDevis(context){
+function openDevis(context, title){
   document.getElementById('devis-form-wrap').style.display = '';
   document.getElementById('devis-ok-wrap').style.display = 'none';
   document.getElementById('devis-err').textContent = '';
+  document.getElementById('devis-title').textContent = title || 'Demander un devis ou une démonstration';
   const commentaireEl = document.getElementById('dv-commentaire');
   if (context && commentaireEl && !commentaireEl.value) commentaireEl.value = 'Intéressé par : ' + context;
   devisOverlay.classList.add('on');
@@ -844,7 +845,7 @@ function openDevis(context){
 function closeDevis(){ devisOverlay.classList.remove('on'); }
 document.addEventListener('click', (e) => {
   const opener = e.target.closest('[data-action="open-devis"]');
-  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context')); }
+  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context'), opener.getAttribute('data-devis-title')); }
 });
 document.getElementById('devis-close').addEventListener('click', closeDevis);
 document.getElementById('devis-ok-close').addEventListener('click', closeDevis);

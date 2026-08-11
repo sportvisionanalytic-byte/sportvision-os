@@ -471,7 +471,7 @@ section{position:relative}
       <h1>Vous vous occupez du sportif. <span>Nous nous occupons de votre communication.</span></h1>
       <p class="subtitle">Stratégie, contenus, réseaux sociaux, photo, vidéo et reporting : SportVision devient l'équipe communication de votre structure — club, académie, coach ou événement.</p>
       <div class="hero-ctas">
-        <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Full Communication">Demander mon audit</a>
+        <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Full Communication" data-devis-title="Demander mon audit Full Communication">Demander mon audit</a>
         <a href="#processus" class="btn btn-ghost-dark">Voir comment nous travaillons</a>
       </div>
       <p class="hero-micro">Pour les structures qui préfèrent déléguer leur communication à une équipe dédiée.</p>
@@ -643,7 +643,7 @@ section{position:relative}
     <h2 class="reveal">Laissez SportVision porter la communication de votre structure.</h2>
     <p class="reveal">Un audit initial, une stratégie claire, une équipe dédiée à votre structure.</p>
     <div class="hero-ctas reveal">
-      <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Full Communication">Demander mon audit</a>
+      <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Full Communication" data-devis-title="Demander mon audit Full Communication">Demander mon audit</a>
     </div>
     <div class="hero-tertiary reveal"><button type="button" class="btn-link" data-action="open-rdv">Ou prendre rendez-vous avec notre équipe →</button></div>
   </div>
@@ -741,7 +741,7 @@ section{position:relative}
   <div class="sv-modal">
     <button class="sv-close" id="devis-close" aria-label="Fermer">✕</button>
     <div id="devis-form-wrap">
-      <h3>Demander un devis ou une démonstration</h3>
+      <h3 id="devis-title">Demander un devis ou une démonstration</h3>
       <p class="sub">Présentez-nous votre besoin, nous revenons vers vous rapidement.</p>
       <form id="devis-form">
         <div class="sv-honeypot"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
@@ -940,10 +940,11 @@ document.getElementById('cookie-manage').addEventListener('click', (e) => {
 
 // ── Modal demande de devis / démonstration ──
 const devisOverlay = document.getElementById('devis-overlay');
-function openDevis(context){
+function openDevis(context, title){
   document.getElementById('devis-form-wrap').style.display = '';
   document.getElementById('devis-ok-wrap').style.display = 'none';
   document.getElementById('devis-err').textContent = '';
+  document.getElementById('devis-title').textContent = title || 'Demander un devis ou une démonstration';
   const commentaireEl = document.getElementById('dv-commentaire');
   if (context && commentaireEl && !commentaireEl.value) commentaireEl.value = 'Intéressé par : ' + context;
   devisOverlay.classList.add('on');
@@ -951,7 +952,7 @@ function openDevis(context){
 function closeDevis(){ devisOverlay.classList.remove('on'); }
 document.addEventListener('click', (e) => {
   const opener = e.target.closest('[data-action="open-devis"]');
-  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context')); }
+  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context'), opener.getAttribute('data-devis-title')); }
 });
 document.getElementById('devis-close').addEventListener('click', closeDevis);
 document.getElementById('devis-ok-close').addEventListener('click', closeDevis);
