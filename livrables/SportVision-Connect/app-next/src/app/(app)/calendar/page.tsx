@@ -12,9 +12,14 @@ import { LockedModule } from "@/components/ui/LockedModule";
 import { KIND_DOT } from "@/components/calendar/calendar-style";
 import { EventDetailPanel } from "@/components/calendar/EventDetailPanel";
 import { AddEventModal } from "@/components/calendar/AddEventModal";
-import { createClubCalendarEvent, fetchClubCalendarEvents } from "@/lib/data/club/calendar";
+import { CREATABLE_EVENT_TYPE_MAP, createClubCalendarEvent, fetchClubCalendarEvents } from "@/lib/data/club/calendar";
 import { fetchOrgCalendarEvents } from "@/lib/data/shared/calendar-events";
 import { createClient } from "@/lib/supabase/client";
+
+// Filtre "Type" : les 6 valeurs réellement possibles pour club_calendar_events.type (contrainte
+// check, migration-clubplus-v4.sql), pas les 10 CalendarEventKind du design — même restriction
+// que le <select> de création (AddEventModal.tsx), qui utilise déjà cette même map.
+const FILTERABLE_KINDS = Object.keys(CREATABLE_EVENT_TYPE_MAP) as CalendarEventKind[];
 
 // /calendar — voir ACTIONS.md § 15. Calendrier central agrégé (mois/semaine/jour/liste) :
 // « fusionne matchs, entraînements, prestations, tournages, réunions, publications, échéances de
@@ -58,6 +63,8 @@ export default function CalendarPage() {
   const [reference, setReference] = useState<Date>(today);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [teamFilter, setTeamFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState<CalendarEventKind | "">("");
 
   // calendar_events générique (Coach/Académie/Sponsor, Phase 4) est en lecture seule côté membre
   // (écriture réservée au staff SportVision) — contrairement à club_calendar_events.
@@ -88,6 +95,27 @@ export default function CalendarPage() {
     [events],
   );
 
+  // Liste dérivée des valeurs `team` réellement présentes pour ce club (jamais une liste
+  // inventée) — calculée sur `events` non filtré pour que les deux équipes restent proposables
+  // même quand un filtre de type est déjà actif.
+  const availableTeams = useMemo(
+    () =>
+      Array.from(new Set((events ?? []).map((e) => e.teamName).filter((t): t is string => Boolean(t)))).sort((a, b) =>
+        a.localeCompare(b, "fr"),
+      ),
+    [events],
+  );
+
+  const filteredEvents = useMemo(
+    () =>
+      sortedEvents.filter((e) => {
+        if (teamFilter && e.teamName !== teamFilter) return false;
+        if (typeFilter && e.kind !== typeFilter) return false;
+        return true;
+      }),
+    [sortedEvents, teamFilter, typeFilter],
+  );
+
   if (!canAccess(ctx, "calendar")) return <LockedModule title="Calendrier" />;
 
   if (loadError) {
@@ -99,7 +127,7 @@ export default function CalendarPage() {
   }
 
   function eventsOnDay(day: Date): CalendarEvent[] {
-    return sortedEvents.filter((e) => isSameDay(new Date(e.startsAt), day));
+    return filteredEvents.filter((e) => isSameDay(new Date(e.startsAt), day));
   }
 
   function navigate(direction: -1 | 1) {
@@ -211,6 +239,51 @@ export default function CalendarPage() {
         )}
       </div>
 
+      {!isGenericOrg && (
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="text-[11px] font-extrabold uppercase tracking-[.04em] text-text-faint">Filtrer</span>
+          {availableTeams.length > 0 && (
+            <select
+              value={teamFilter}
+              onChange={(e) => setTeamFilter(e.target.value)}
+              aria-label="Filtrer par équipe"
+              className="h-9 rounded-lg border border-border-strong bg-input-bg px-2.5 text-[12.5px] font-bold text-text outline-none focus-visible:border-brand-blue"
+            >
+              <option value="">Toutes les équipes</option>
+              {availableTeams.map((team) => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
+            </select>
+          )}
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as CalendarEventKind | "")}
+            aria-label="Filtrer par type"
+            className="h-9 rounded-lg border border-border-strong bg-input-bg px-2.5 text-[12.5px] font-bold text-text outline-none focus-visible:border-brand-blue"
+          >
+            <option value="">Tous les types</option>
+            {FILTERABLE_KINDS.map((kind) => (
+              <option key={kind} value={kind}>
+                {CALENDAR_EVENT_KIND_LABELS[kind]}
+              </option>
+            ))}
+          </select>
+          {(teamFilter || typeFilter) && (
+            <button
+              onClick={() => {
+                setTeamFilter("");
+                setTypeFilter("");
+              }}
+              className="text-[12px] font-bold text-brand-blue-electric"
+            >
+              Réinitialiser
+            </button>
+          )}
+        </div>
+      )}
+
       {view === "month" && (
         <MonthView reference={reference} eventsOnDay={eventsOnDay} onSelect={setSelectedEvent} today={today} />
       )}
@@ -218,7 +291,7 @@ export default function CalendarPage() {
         <WeekView reference={reference} eventsOnDay={eventsOnDay} onSelect={setSelectedEvent} today={today} />
       )}
       {view === "day" && <DayView reference={reference} events={eventsOnDay(reference)} onSelect={setSelectedEvent} />}
-      {view === "list" && <ListView events={sortedEvents} onSelect={setSelectedEvent} today={today} />}
+      {view === "list" && <ListView events={filteredEvents} onSelect={setSelectedEvent} today={today} />}
 
       {selectedEvent && <EventDetailPanel event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
       {addOpen && <AddEventModal onClose={() => setAddOpen(false)} onCreate={handleCreateEvent} />}
