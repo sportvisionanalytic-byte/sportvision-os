@@ -370,6 +370,15 @@ export async function buildParentActiveContext(
   };
 }
 
+interface ProjetOrgRow {
+  id: string;
+  nom: string;
+  organization_type: string;
+  created_at: string;
+  credits_balance: number;
+  credits_reserved: number;
+}
+
 /**
  * Construit l'ActiveContext pour un espace Projet (organizations.organization_type='projet',
  * client ponctuel indépendant — ex-Portail). Contrairement à joueur/parent, une vraie ligne
@@ -377,6 +386,13 @@ export async function buildParentActiveContext(
  * voir le plan Phase 3 § Décisions d'architecture n°1. Pas de `clubs`/`organization_entitlements` :
  * planCode "one_off" ("Facturé à la commande"), entitlements undefined (aucun module Projet n'est
  * gated par une clé connect_modules de toute façon).
+ *
+ * `creditsRemaining` lit désormais organizations.credits_balance/credits_reserved (migration-
+ * connect-v24-projet-credits.sql), même formule que buildClubActiveContext ci-dessus
+ * (Math.max(0, balance - reserved)) — plus de 0 en dur. Un espace Projet n'a pas de rechargement
+ * automatique (pas d'abonnement Stripe récurrent, "facturé à la commande") : le crédit est
+ * accordé manuellement par le staff SportVision via credit_organization() (fiche client Projet,
+ * SportVision OS). Un client jamais crédité affiche donc honnêtement 0, jamais une valeur inventée.
  */
 export async function buildProjetActiveContext(
   supabase: SupabaseClient,
@@ -387,10 +403,10 @@ export async function buildProjetActiveContext(
 
   const { data } = await supabase
     .from("organizations")
-    .select("id, nom, organization_type, created_at")
+    .select("id, nom, organization_type, created_at, credits_balance, credits_reserved")
     .eq("id", space.id)
     .maybeSingle();
-  const org = data as { id: string; nom: string; organization_type: string; created_at: string } | null;
+  const org = data as ProjetOrgRow | null;
   if (!org || !space.role) return null;
 
   return {
@@ -419,8 +435,8 @@ export async function buildProjetActiveContext(
       renewsAt: org.created_at,
       commitmentMonths: 0,
       noticeMonths: 0,
-      creditsRemaining: 0,
-      creditsReserved: 0,
+      creditsRemaining: Math.max(0, org.credits_balance - org.credits_reserved),
+      creditsReserved: org.credits_reserved,
       presencesUsed: 0,
       storageUsedBytes: 0,
       storageQuotaBytes: 1,
