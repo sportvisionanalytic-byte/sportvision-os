@@ -29,7 +29,13 @@ export function Switch({ checked, onChange, label, disabled }: SwitchProps) {
     >
       <span
         className={cn(
-          "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sv-card transition-transform duration-sv",
+          // left-0 est indispensable : sans point de départ explicite, la position statique d'un
+          // span absolutely positioned (seul contenu du bouton) se résout au bord DROIT du
+          // bouton, pas au bord gauche — translate-x partait donc du mauvais point et faisait
+          // sortir le curseur entièrement du rail, par-dessus le label juste à côté (trouvé en
+          // inspectant le DOM réel sur /notifications/preferences, où "coché" plaçait le curseur
+          // 20px hors du rail au lieu de dans sa moitié droite).
+          "absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white shadow-sv-card transition-transform duration-sv",
           checked ? "translate-x-[22px]" : "translate-x-0.5",
         )}
       />
