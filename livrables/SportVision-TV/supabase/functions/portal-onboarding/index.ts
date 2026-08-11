@@ -122,8 +122,8 @@ serve(async (req) => {
       const typeClient = TYPE_CLIENT_MAP[profil] || "particulier";
       const nomAffichage =
         typeClient === "particulier"
-          ? `${prenom || ""} ${nom || ""}`.trim() || "Client Portail"
-          : nom || prenom || "Client Portail";
+          ? `${prenom || ""} ${nom || ""}`.trim() || "Client Connect"
+          : nom || prenom || "Client Connect";
 
       const { data: created, error: createErr } = await admin
         .from("clients")
