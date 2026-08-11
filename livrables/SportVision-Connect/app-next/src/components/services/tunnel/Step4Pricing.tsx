@@ -1,4 +1,3 @@
-import { CreditCard, Wallet } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { PlanCode } from "@/lib/types";
 import { PLANS } from "@/lib/plans";
@@ -9,12 +8,10 @@ export function Step4Pricing({
   state,
   planCode,
   organizationAddress,
-  onChangeDepositMethod,
 }: {
   state: TunnelState;
   planCode: PlanCode;
   organizationAddress?: string;
-  onChangeDepositMethod: (method: "card" | "cash") => void;
 }) {
   if (!state.serviceType) return null;
 
@@ -30,7 +27,10 @@ export function Step4Pricing({
   return (
     <div>
       <h2 className="text-[18px] font-extrabold tracking-tight">Tarification</h2>
-      <p className="mt-1 text-[13.5px] text-text-soft">Détail du montant et de l&apos;acompte à régler pour confirmer.</p>
+      <p className="mt-1 text-[13.5px] text-text-soft">
+        Estimation avant qualification par notre équipe — le montant définitif et les modalités de règlement vous
+        seront communiqués dans le devis.
+      </p>
 
       <div className="mt-5 divide-y divide-divider rounded-sv-card border border-border bg-surface">
         <PriceLine label="Forfait" value={formatServicePrice(pricing.basePrice)} />
@@ -48,28 +48,8 @@ export function Step4Pricing({
           label="Déplacement"
           value={pricing.travelFees > 0 ? formatServicePrice(pricing.travelFees) : "Offert"}
         />
-        <PriceLine label="Total" value={formatServicePrice(pricing.totalPrice)} strong />
-        <PriceLine label="Acompte à régler maintenant (30 %)" value={formatServicePrice(pricing.depositAmount)} strong />
-      </div>
-
-      <div className="mt-5">
-        <span className="text-[12.5px] font-bold text-text-soft">Mode de règlement de l&apos;acompte</span>
-        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <DepositOption
-            active={state.depositMethod === "card"}
-            onClick={() => onChangeDepositMethod("card")}
-            icon={<CreditCard className="h-4 w-4" aria-hidden />}
-            label="Carte bancaire"
-            description="Paiement sécurisé via Stripe, immédiat."
-          />
-          <DepositOption
-            active={state.depositMethod === "cash"}
-            onClick={() => onChangeDepositMethod("cash")}
-            icon={<Wallet className="h-4 w-4" aria-hidden />}
-            label="Espèces"
-            description="À régler sur place le jour de la prestation."
-          />
-        </div>
+        <PriceLine label="Total estimé" value={formatServicePrice(pricing.totalPrice)} strong />
+        <PriceLine label="Acompte estimé (30 %)" value={formatServicePrice(pricing.depositAmount)} strong />
       </div>
     </div>
   );
@@ -98,37 +78,5 @@ function PriceLine({
         {value}
       </span>
     </div>
-  );
-}
-
-function DepositOption({
-  active,
-  onClick,
-  icon,
-  label,
-  description,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-  description: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "flex items-start gap-3 rounded-sv-card border p-3.5 text-left transition-[border-color,box-shadow] duration-sv",
-        active ? "border-brand-blue bg-info-bg shadow-sv-card-hover" : "border-border bg-surface hover:border-brand-blue-pale",
-      )}
-    >
-      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-info-bg text-info-fg">{icon}</span>
-      <span>
-        <span className="block text-[13.5px] font-extrabold text-text">{label}</span>
-        <span className="mt-0.5 block text-[12px] leading-relaxed text-text-soft">{description}</span>
-      </span>
-    </button>
   );
 }

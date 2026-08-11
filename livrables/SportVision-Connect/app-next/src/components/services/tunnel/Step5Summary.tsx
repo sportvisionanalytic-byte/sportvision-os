@@ -5,6 +5,7 @@ import {
   computeServicePricing,
   formatServiceDate,
   formatServicePrice,
+  needsRetractationWaiver,
 } from "@/lib/types/services";
 import type { TunnelState } from "./types";
 
@@ -13,11 +14,13 @@ export function Step5Summary({
   planCode,
   organizationAddress,
   onAcceptTermsChange,
+  onRetractationRenonceeChange,
 }: {
   state: TunnelState;
   planCode: PlanCode;
   organizationAddress?: string;
   onAcceptTermsChange: (accepted: boolean) => void;
+  onRetractationRenonceeChange: (renonce: boolean) => void;
 }) {
   if (!state.serviceType) return null;
 
@@ -28,6 +31,7 @@ export function Step5Summary({
     address: state.address,
     organizationAddress,
   });
+  const needsWaiver = needsRetractationWaiver(state.date);
 
   return (
     <div>
@@ -46,23 +50,33 @@ export function Step5Summary({
           label="Options"
           value={state.optionCodes.length ? state.optionCodes.map((c) => SERVICE_OPTION_BY_CODE[c].label).join(", ") : "Aucune"}
         />
-        <SummaryRow label="Montant total" value={formatServicePrice(pricing.totalPrice)} strong />
-        <SummaryRow
-          label="Acompte"
-          value={`${formatServicePrice(pricing.depositAmount)} · ${state.depositMethod === "card" ? "Carte bancaire" : "Espèces"}`}
-          strong
-        />
+        <SummaryRow label="Montant total estimé" value={formatServicePrice(pricing.totalPrice)} strong />
+        <SummaryRow label="Acompte estimé" value={formatServicePrice(pricing.depositAmount)} strong />
       </div>
 
-      <label className="mt-6 flex items-start gap-2.5 rounded-xl border border-border bg-surface-alt p-3.5 text-[12.5px] leading-relaxed text-text-soft">
+      {needsWaiver && (
+        <label className="mt-4 flex items-start gap-2.5 rounded-xl border border-warning-fg/30 bg-warning-bg p-3.5 text-[12.5px] leading-relaxed text-text-soft">
+          <input
+            type="checkbox"
+            checked={state.retractationRenoncee}
+            onChange={(e) => onRetractationRenonceeChange(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-brand-blue-electric"
+          />
+          Votre prestation est prévue dans moins de 14 jours. Je demande l&apos;exécution immédiate de la
+          prestation et je renonce expressément à mon droit de rétractation de 14 jours (article L221-18 du Code
+          de la consommation).
+        </label>
+      )}
+
+      <label className="mt-4 flex items-start gap-2.5 rounded-xl border border-border bg-surface-alt p-3.5 text-[12.5px] leading-relaxed text-text-soft">
         <input
           type="checkbox"
           checked={state.acceptedTerms}
           onChange={(e) => onAcceptTermsChange(e.target.checked)}
           className="mt-0.5 h-4 w-4 accent-brand-blue-electric"
         />
-        J&apos;accepte les conditions générales de prestation SportVision, notamment le mode de règlement de
-        l&apos;acompte et le nombre de corrections incluses (deux, la troisième étant facturée).
+        J&apos;accepte les conditions générales de prestation SportVision, notamment le nombre de corrections
+        incluses (deux, la troisième étant facturée).
       </label>
     </div>
   );
