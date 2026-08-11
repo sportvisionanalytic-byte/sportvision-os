@@ -31,7 +31,7 @@ import { fetchChildJoinRequests, fetchJoinableTeamsForClub, requestTeamMembershi
 // suivre pour un enfant déjà affilié). Backend entièrement réel — membership_requests,
 // confirm_request_educateur, validate_team_membership, reject_team_membership
 // (migration-clubplus-v14/v15.sql), complété par request_team_membership_for_existing_child et la
-// policy ctm_family_club_select (migration-connect-v24.sql). Gated par canAccess(ctx, "teams")
+// policy ctm_family_club_select (migration-connect-v26.sql). Gated par canAccess(ctx, "teams")
 // (même module que /teams — pas de nouvelle clé connect_modules, pas d'entitlement dédié : accès
 // core dès que "teams" est prêt, cf. entitlements.ts).
 

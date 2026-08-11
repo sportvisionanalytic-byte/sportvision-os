@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // fiche créée). Réutilise request_team_membership_as_player telle quelle (migration-clubplus-
 // v14/v15.sql) : appelée sans prenom/nom/date_naissance (déjà connus, la fonction ne les redemande
 // que pour la toute première demande d'un compte sans fiche). Liste des équipes disponibles via
-// club_teams, policy ctm_family_club_select (migration-connect-v24.sql).
+// club_teams, policy ctm_family_club_select (migration-connect-v26.sql).
 
 export interface JoinableTeam {
   id: string;

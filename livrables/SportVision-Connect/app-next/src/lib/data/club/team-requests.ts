@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // membership_requests × club_teams × player_profiles (migration-clubplus-v14/v15.sql, complétée
-// par migration-connect-v24 côté parent d'un enfant déjà affilié) — demandes d'adhésion à une
+// par migration-connect-v26 côté parent d'un enfant déjà affilié) — demandes d'adhésion à une
 // équipe, avec double validation éducateur→dirigeant quand clubs.membership_validation_mode =
 // 'double' (voir deriveStage ci-dessous pour la logique exacte, qui reproduit celle de
 // validate_team_membership côté serveur).

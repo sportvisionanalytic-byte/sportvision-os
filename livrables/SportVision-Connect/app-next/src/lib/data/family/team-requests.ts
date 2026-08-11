@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Demande d'adhésion à une équipe pour un enfant DÉJÀ affilié (parent_player_relationships
 // confirmé, voir data/family/children.ts) — RPC request_team_membership_for_existing_child
-// (migration-connect-v24.sql), qui comble le manque laissé par request_team_membership_for_child
+// (migration-connect-v26.sql), qui comble le manque laissé par request_team_membership_for_child
 // (v14 : toujours créé une nouvelle fiche joueur, jamais adapté à un enfant déjà connu). Liste des
 // équipes disponibles via club_teams, policy ctm_family_club_select (même migration).
 
