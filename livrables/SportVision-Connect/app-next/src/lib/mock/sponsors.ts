@@ -24,6 +24,7 @@ export const mockSponsors: Sponsor[] = [
     contractId: "contract-usv-sponsor-varenne-auto",
     signatories: ["Nadia Costa — Varenne Auto"],
     sector: "Concession automobile",
+    commitments: [],
   },
   {
     id: "sponsor-credit-fontaine",
@@ -37,6 +38,7 @@ export const mockSponsors: Sponsor[] = [
     status: "active",
     signatories: ["Rémi Salomon — Crédit Fontaine"],
     sector: "Banque",
+    commitments: [],
   },
   {
     id: "sponsor-boulangerie-du-stade",
@@ -50,6 +52,7 @@ export const mockSponsors: Sponsor[] = [
     status: "active",
     signatories: ["Isabelle Roy — Boulangerie du Stade"],
     sector: "Boulangerie-pâtisserie",
+    commitments: [],
   },
   {
     id: "sponsor-bricolage-plus",
@@ -63,6 +66,7 @@ export const mockSponsors: Sponsor[] = [
     status: "to_renew",
     signatories: ["Franck Auger — Bricolage Plus"],
     sector: "Bricolage et jardinage",
+    commitments: [],
   },
 ];
 

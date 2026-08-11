@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Sponsor, SponsorLevel, SponsorStatus } from "@/lib/types/sponsors";
+import { parseSponsorCommitments } from "@/lib/data/shared/sponsor-commitments";
 
 // club_sponsors filtré par sponsor_organization_id (migration-connect-v4-sponsor.sql) — un
 // sponsor peut sponsoriser plusieurs clubs : traité comme une LISTE de partenariats, jamais une
@@ -21,6 +22,7 @@ interface SponsorshipRow {
   date_debut: string | null;
   date_fin: string | null;
   montant: number;
+  commitments: unknown;
   clubs: { nom: string } | null;
 }
 
@@ -36,7 +38,7 @@ function deriveStatus(dateFin: string | null): SponsorStatus {
 export async function fetchSponsorPartnerships(supabase: SupabaseClient, sponsorOrganizationId: string): Promise<Sponsor[]> {
   const { data } = await supabase
     .from("club_sponsors")
-    .select("id, niveau, date_debut, date_fin, montant, clubs:club_id(nom)")
+    .select("id, niveau, date_debut, date_fin, montant, commitments, clubs:club_id(nom)")
     .eq("sponsor_organization_id", sponsorOrganizationId)
     .order("montant", { ascending: false });
 
@@ -51,5 +53,6 @@ export async function fetchSponsorPartnerships(supabase: SupabaseClient, sponsor
     paymentSchedule: null,
     status: deriveStatus(row.date_fin),
     signatories: [],
+    commitments: parseSponsorCommitments(row.commitments),
   }));
 }

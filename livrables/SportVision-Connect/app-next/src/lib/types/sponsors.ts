@@ -20,6 +20,17 @@ export interface Sponsor {
   contractId?: string;
   signatories: string[];
   sector?: string;
+  commitments: SponsorCommitment[];
+}
+
+/** Contrepartie suivie dans le temps — club_sponsors.commitments (jsonb, migration-clubplus-v5.sql).
+ * Table vide en prod au 11/08/2026, aucune UI d'écriture existante ailleurs (ni Connect legacy,
+ * ni OS, qui garde ce champ en lecture seule) : forme définie ici par ce module, pas déduite de
+ * données réelles inexistantes. */
+export interface SponsorCommitment {
+  id: string;
+  label: string;
+  done: boolean;
 }
 
 export type SponsorDeliverableStatus = "planifie" | "en_cours" | "livre" | "en_retard";
