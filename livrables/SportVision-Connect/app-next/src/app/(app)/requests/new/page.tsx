@@ -63,7 +63,18 @@ function NewRequestContent() {
   const [submitting, setSubmitting] = useState(false);
   const [teamNames, setTeamNames] = useState<string[]>([]);
 
-  const isGenericOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
+  // requests générique (table `requests`, RPC submit_request) vs club_requests : partagé par
+  // Coach/Académie/Sponsor ET désormais Projet (organization.type="generic", migration-connect-
+  // v24-projet-credits.sql) — aucun des 4 n'a de ligne `clubs`, submitClubRequest y échouerait
+  // (is_club_member(organization.id) ne trouve jamais de club). Distinct de noCreditSystemOrg
+  // ci-dessous : Projet a un vrai solde suivi contrairement à coach/académie/sponsor.
+  const usesGenericRequestsTable = ["coach", "academy", "sponsor", "generic"].includes(ctx.organization.type);
+  // coach/académie/sponsor n'ont aucun système de crédits réel suivi (plan "one_off",
+  // creditsRemaining toujours à 0 côté session.ts) : bloquer l'envoi sur ce quota qui
+  // n'existe pas pour eux rendrait le bouton définitivement inactif. Projet EXCLU de cette
+  // liste : depuis la v24, son creditsRemaining est réel (organizations.credits_balance/
+  // credits_reserved) et doit être contrôlé comme pour un club.
+  const noCreditSystemOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
 
   useEffect(() => {
     const prefillBody = searchParams.get("prefillBody");
@@ -74,7 +85,7 @@ function NewRequestContent() {
   }, []);
 
   useEffect(() => {
-    if (isGenericOrg) return;
+    if (usesGenericRequestsTable) return;
     const supabase = createClient();
     fetchClubTeams(supabase, ctx.organization.id).then((teams) => setTeamNames(teams.map((t) => t.name)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,10 +96,7 @@ function NewRequestContent() {
   const plan = PLANS[ctx.subscription.planCode];
   const cost = URGENCY_META[urgency].creditCost;
   const available = ctx.subscription.creditsRemaining;
-  // coach/académie/sponsor n'ont aucun système de crédits réel suivi (plan "one_off",
-  // creditsRemaining toujours à 0 côté session.ts) : bloquer l'envoi sur ce quota qui
-  // n'existe pas pour eux rendrait le bouton définitivement inactif.
-  const hasCreditSystem = plan.monthlyCredits !== null && !isGenericOrg;
+  const hasCreditSystem = plan.monthlyCredits !== null && !noCreditSystemOrg;
   const remainingAfter = hasCreditSystem ? available - cost : null;
   const hasEnoughCredits = !hasCreditSystem || available >= cost;
 
@@ -101,7 +109,7 @@ function NewRequestContent() {
     // ne rien perdre. Pour un club, `team` a une vraie colonne (passée à part) : pas dupliqué ici.
     const composedBody = [
       bodyText,
-      isGenericOrg && teamName && `Équipe : ${teamName}`,
+      usesGenericRequestsTable && teamName && `Équipe : ${teamName}`,
       eventName && `Événement : ${eventName}`,
       publishDate && `Publication visée : ${publishDate}`,
       `Format : ${VISUAL_FORMAT_LABELS[format]}`,
@@ -109,7 +117,7 @@ function NewRequestContent() {
     ]
       .filter(Boolean)
       .join("\n");
-    const submission = isGenericOrg
+    const submission = usesGenericRequestsTable
       ? submitOrgRequest(supabase, ctx.organization.id, { visualType, bodyText: composedBody, urgency, credits: cost })
       : submitClubRequest(supabase, ctx.organization.id, { visualType, teamName: teamName || undefined, bodyText: composedBody, urgency, credits: cost });
     submission

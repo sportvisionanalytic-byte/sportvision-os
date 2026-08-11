@@ -83,9 +83,12 @@ export default function RequestsPage() {
 
   const allowed = canAccess(ctx, "visual_requests");
   const canWrite = canCreate(ctx, "visual_request");
-  // club_requests (Espace Club) vs requests générique (Coach/Académie/Sponsor, Phase 4) — même
-  // forme VisualRequest en sortie, source différente selon le type d'organisation.
-  const isGenericOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
+  // club_requests (Espace Club) vs requests générique (Coach/Académie/Sponsor, et désormais
+  // Projet/"generic" — migration-connect-v24-projet-credits.sql) — même forme VisualRequest en
+  // sortie, source différente selon le type d'organisation. Doit rester en phase avec
+  // usesGenericRequestsTable de requests/new/page.tsx : une demande Projet est écrite dans
+  // `requests`, elle doit être relue depuis `requests`, pas `club_requests` (vide pour cet id).
+  const isGenericOrg = ["coach", "academy", "sponsor", "generic"].includes(ctx.organization.type);
 
   useEffect(() => {
     let cancelled = false;

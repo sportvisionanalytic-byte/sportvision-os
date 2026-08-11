@@ -47,7 +47,14 @@ function StudioTemplateContent() {
 
   const template = useMemo(() => findTemplate(params.template), [params.template]);
   const allowed = canAccess(ctx, "studio");
-  const isGenericOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
+  // Même routage que requests/new/page.tsx : Coach/Académie/Sponsor ET Projet/"generic" n'ont pas
+  // de ligne `clubs`, submitClubRequest y échoue toujours (is_club_member ne trouve jamais de
+  // club pour leur organization.id).
+  const usesGenericRequestsTable = ["coach", "academy", "sponsor", "generic"].includes(ctx.organization.type);
+  // Contrairement au routage ci-dessus, Projet EST exclu ici : depuis la v24, il a un vrai solde
+  // de crédits (session.ts) et doit afficher "X crédit(s) réservé(s)" comme un club — seuls
+  // coach/académie/sponsor n'ont aucun solde réel suivi.
+  const noCreditSystemOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -58,7 +65,7 @@ function StudioTemplateContent() {
     const matchId = searchParams.get("matchId");
     const prefillBody = searchParams.get("prefillBody");
 
-    if (matchId && !isGenericOrg) {
+    if (matchId && !usesGenericRequestsTable) {
       const supabase = createClient();
       fetchClubMatchById(supabase, ctx.organization.id, matchId).then((match) => {
         if (!match) return;
@@ -79,7 +86,7 @@ function StudioTemplateContent() {
   }, [template?.code]);
 
   useEffect(() => {
-    if (isGenericOrg) return;
+    if (usesGenericRequestsTable) return;
     const supabase = createClient();
     fetchClubTeams(supabase, ctx.organization.id).then((teams) => setTeamNames(teams.map((t) => t.name)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,7 +130,7 @@ function StudioTemplateContent() {
     setSubmitting(true);
     const supabase = createClient();
     const bodyText = composeBodyText();
-    const submission = isGenericOrg
+    const submission = usesGenericRequestsTable
       ? submitOrgRequest(supabase, ctx.organization.id, {
           visualType: inferVisualType(template!),
           bodyText,
@@ -139,7 +146,7 @@ function StudioTemplateContent() {
         });
     submission
       .then((request) => {
-        const creditsSuffix = isGenericOrg
+        const creditsSuffix = noCreditSystemOrg
           ? ""
           : ` · ${template!.creditCost} crédit${template!.creditCost > 1 ? "s" : ""} réservé${
               template!.creditCost > 1 ? "s" : ""
