@@ -363,6 +363,16 @@ section{position:relative}
   .gallery-grid{grid-template-columns:1fr 1fr}
   .footer-grid{grid-template-columns:1fr}
 }
+/* ── Comment ça marche (aligné avec full-communication.html) ── */
+.steps-list{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column}
+.steps-list li{display:flex;gap:22px;padding:26px 0;border-bottom:1px solid #e4e7ef}
+.steps-list li:last-child{border-bottom:none}
+.steps-list .num{flex-shrink:0;width:44px;height:44px;border-radius:50%;background:var(--grad-brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-family:var(--font-head);font-size:17px}
+.steps-list h4{font-size:16.5px}
+.steps-list p{font-size:14px;color:#5b6478;margin-top:6px}
+@media (max-width:700px){
+  .steps-list li{gap:16px}
+}
 </style>
 
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Qui produit réellement les contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Un Community Manager SportVision dédié à votre club, qui connaît vos équipes et vos sponsors — pas un prestataire différent à chaque publication."}}, {"@type": "Question", "name": "Quelle est la différence avec Club+ ?", "acceptedAnswer": {"@type": "Answer", "text": "Club+ vous donne les outils pour organiser vous-même votre communication. Full Communication va plus loin : une équipe SportVision s'en occupe à votre place, au quotidien."}}, {"@type": "Question", "name": "Combien de temps avant les premiers contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Après l'audit initial, le calendrier éditorial et les premières productions démarrent généralement sous 1 à 2 semaines."}}, {"@type": "Question", "name": "Le tarif est-il fixe ?", "acceptedAnswer": {"@type": "Answer", "text": "Il dépend du volume de contenus et de présences souhaité pour votre club. Nous établissons un devis après l'audit initial."}}]}</script>
@@ -489,6 +499,42 @@ section{position:relative}
   </div>
 </section>
 
+<section class="section-tint" id="processus">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Comment ça marche</span>
+      <h2>De l'audit de votre club au reporting mensuel.</h2>
+      <p>Une méthode claire, construite avec votre club avant toute production de contenu.</p>
+    </div>
+    <ol class="steps-list reveal">
+      <li><span class="num">1</span><div><h4>Vos besoins identifiés</h4><p>Nous échangeons avec le club pour comprendre vos objectifs, vos équipes, vos partenaires et votre situation actuelle.</p></div></li>
+      <li><span class="num">2</span><div><h4>Un audit initial</h4><p>Nous analysons votre communication existante : réseaux sociaux, visuels, régularité des publications.</p></div></li>
+      <li><span class="num">3</span><div><h4>Une stratégie définie avec vous</h4><p>Nous construisons ensemble les priorités de communication de votre club pour la saison.</p></div></li>
+      <li><span class="num">4</span><div><h4>Un calendrier éditorial</h4><p>Les publications ainsi que les présences photo et vidéo sont planifiées à l'avance, autour de votre calendrier sportif.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section-light">
+  <div class="container">
+    <div class="feature-row reveal">
+      <div class="feature-copy">
+        <span class="eyebrow">Déléguer sans perdre la main</span>
+        <h3>Vous gardez le contrôle.</h3>
+        <p class="desc">Confier la communication de votre club ne veut pas dire perdre le contrôle. Le niveau de validation est défini avec vous dès l'onboarding, comme le prévoit notre contrat : certains clubs valident chaque publication, d'autres pré-valident un calendrier mensuel. Les contenus nécessitant votre accord sont centralisés dans SportVision Connect.</p>
+        <ul class="feature-list">
+          <li>File de contenus à valider, directement dans votre espace</li>
+          <li>Retours et demandes de retouche en un message</li>
+          <li>Historique complet de ce qui a été publié, et quand</li>
+        </ul>
+      </div>
+      <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/foot-portrait-05.jpg) center/cover no-repeat">
+        <div class="gcard"><div class="k">À valider</div><div class="v">2 contenus en attente</div><div class="sub">Publication prévue demain 18h</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="section-tint">
   <div class="container">
     <div class="section-head reveal">
@@ -513,7 +559,7 @@ section{position:relative}
   </div>
 </section>
 
-<section class="cta-final" id="devis-cta">
+<section class="cta-final" id="devis">
   <div class="container">
     <h2>Prêt à déléguer la communication de votre club ?</h2>
     <p class="reveal">Un audit initial, une stratégie claire, une équipe dédiée à votre club.</p>
@@ -678,10 +724,13 @@ if ('IntersectionObserver' in window){
   revealEls.forEach(el => el.classList.add('in'));
 }
 
+document.querySelectorAll('#faq-list .faq-q').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
 document.getElementById('faq-list').addEventListener('click', (e) => {
   const q = e.target.closest('.faq-q');
   if (!q) return;
-  q.closest('.faq-item').classList.toggle('on');
+  const item = q.closest('.faq-item');
+  item.classList.toggle('on');
+  q.setAttribute('aria-expanded', item.classList.contains('on') ? 'true' : 'false');
 });
 
 // ── Bandeau cookies (RGPD) ──

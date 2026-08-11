@@ -363,6 +363,16 @@ section{position:relative}
   .gallery-grid{grid-template-columns:1fr 1fr}
   .footer-grid{grid-template-columns:1fr}
 }
+/* ── Comment ça marche (aligné avec full-communication.html) ── */
+.steps-list{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column}
+.steps-list li{display:flex;gap:22px;padding:26px 0;border-bottom:1px solid #e4e7ef}
+.steps-list li:last-child{border-bottom:none}
+.steps-list .num{flex-shrink:0;width:44px;height:44px;border-radius:50%;background:var(--grad-brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-family:var(--font-head);font-size:17px}
+.steps-list h4{font-size:16.5px}
+.steps-list p{font-size:14px;color:#5b6478;margin-top:6px}
+@media (max-width:700px){
+  .steps-list li{gap:16px}
+}
 </style>
 
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Combien de groupes pouvez-vous couvrir ?", "acceptedAnswer": {"@type": "Answer", "text": "Le nombre de groupes suivis est défini selon la taille de votre académie et votre budget. Nous établissons un devis après discussion de vos besoins."}}, {"@type": "Question", "name": "La communication est-elle la même toute l'année ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, le calendrier s'adapte aux temps forts de votre saison : rentrée, stages, événements internes, fin de saison."}}, {"@type": "Question", "name": "Peut-on ajouter une prestation ponctuelle en cours d'année ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, un Media Day ou un shooting supplémentaire peut être ajouté au calendrier selon vos besoins."}}]}</script>
@@ -489,6 +499,42 @@ section{position:relative}
   </div>
 </section>
 
+<section class="section-tint" id="processus">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Comment ça marche</span>
+      <h2>De l'audit de votre académie au reporting régulier.</h2>
+      <p>Une méthode claire, construite avec votre académie avant toute production de contenu.</p>
+    </div>
+    <ol class="steps-list reveal">
+      <li><span class="num">1</span><div><h4>Vos besoins identifiés</h4><p>Nous échangeons avec l'académie pour comprendre vos groupes, vos stages, vos éducateurs et votre situation actuelle.</p></div></li>
+      <li><span class="num">2</span><div><h4>Un audit initial</h4><p>Nous analysons votre communication existante : réseaux sociaux, visuels, régularité des publications.</p></div></li>
+      <li><span class="num">3</span><div><h4>Une stratégie définie avec vous</h4><p>Nous construisons ensemble les priorités de communication de votre académie pour la saison.</p></div></li>
+      <li><span class="num">4</span><div><h4>Un calendrier éditorial</h4><p>Les publications ainsi que les présences photo et vidéo sont planifiées à l'avance, autour de votre calendrier de groupes et de stages.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section-light">
+  <div class="container">
+    <div class="feature-row rev reveal">
+      <div class="feature-copy">
+        <span class="eyebrow">Déléguer sans perdre la main</span>
+        <h3>Vous gardez le contrôle.</h3>
+        <p class="desc">Confier la communication de votre académie ne veut pas dire perdre le contrôle. Le niveau de validation est défini avec vous dès l'onboarding, comme le prévoit notre contrat : certaines académies valident chaque publication, d'autres pré-valident un calendrier mensuel. Les contenus nécessitant votre accord sont centralisés dans SportVision Connect.</p>
+        <ul class="feature-list">
+          <li>File de contenus à valider, directement dans votre espace</li>
+          <li>Retours et demandes de retouche en un message</li>
+          <li>Historique complet de ce qui a été publié, et quand</li>
+        </ul>
+      </div>
+      <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/foot-portrait-07.jpg) center/cover no-repeat">
+        <div class="gcard"><div class="k">À valider</div><div class="v">2 contenus en attente</div><div class="sub">Publication prévue demain 18h</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="section-tint">
   <div class="container">
     <div class="section-head reveal">
@@ -513,7 +559,7 @@ section{position:relative}
   </div>
 </section>
 
-<section class="cta-final" id="devis-cta">
+<section class="cta-final" id="devis">
   <div class="container">
     <h2>Prêt à structurer la communication de votre académie ?</h2>
     <p class="reveal">Décrivez votre académie, nous revenons vers vous avec une proposition adaptée.</p>
@@ -678,10 +724,13 @@ if ('IntersectionObserver' in window){
   revealEls.forEach(el => el.classList.add('in'));
 }
 
+document.querySelectorAll('#faq-list .faq-q').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
 document.getElementById('faq-list').addEventListener('click', (e) => {
   const q = e.target.closest('.faq-q');
   if (!q) return;
-  q.closest('.faq-item').classList.toggle('on');
+  const item = q.closest('.faq-item');
+  item.classList.toggle('on');
+  q.setAttribute('aria-expanded', item.classList.contains('on') ? 'true' : 'false');
 });
 
 // ── Bandeau cookies (RGPD) ──

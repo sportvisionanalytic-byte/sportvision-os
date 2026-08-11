@@ -967,10 +967,13 @@ if ('IntersectionObserver' in window){
 }
 
 // ── FAQ accordéon ──
+document.querySelectorAll('#faq-list .faq-q').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
 document.getElementById('faq-list').addEventListener('click', (e) => {
   const q = e.target.closest('.faq-q');
   if (!q) return;
-  q.closest('.faq-item').classList.toggle('on');
+  const item = q.closest('.faq-item');
+  item.classList.toggle('on');
+  q.setAttribute('aria-expanded', item.classList.contains('on') ? 'true' : 'false');
 });
 
 // ── Année du footer ──
@@ -1112,9 +1115,9 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
 });
 
 // ── Modal "Prendre rendez-vous" ──
-// Même backend que l'ancien Portail (create-guest-rdv, jamais retiré du
-// projet), jamais repris jusqu'ici sur le nouveau site. Parcours invité
-// uniquement (pas de compte requis) — l'ancien Portail avait aussi un
+// Même backend que l'ancienne version de SportVision Connect (create-guest-rdv,
+// jamais retiré du projet), jamais repris jusqu'ici sur le nouveau site. Parcours
+// invité uniquement (pas de compte requis) — l'ancienne version avait aussi un
 // parcours "connecté" (client_id + table rendez_vous en direct), hors
 // périmètre ici puisque cette page n'a pas de session client.
 const rdvOverlay = document.getElementById('rdv-overlay');
