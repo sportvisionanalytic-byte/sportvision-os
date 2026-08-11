@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, HelpCircle, Moon, Plus, Search, Sun } from "lucide-react";
+import { Bell, HelpCircle, Menu, Moon, Plus, Search, Sun } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 import { resolveNavigation } from "@/lib/navigation";
 
 // Barre supérieure — voir CHARTE.md et ACTIONS.md § 4. Tous les contrôles de droite portent
-// une largeur fixe ; seul le bloc titre s'étire.
+// une largeur fixe ; seul le bloc titre s'étire. Sous `lg` (drawer mobile, voir Sidebar.tsx et
+// AppShell.tsx), un bouton hamburger ouvre la navigation. z-30 (plutôt que l'ancien z-40) pour
+// rester sous l'overlay du drawer (z-40) : sans ça le header resterait visible/net par-dessus
+// l'assombrissement de fond quand le drawer est ouvert.
 
 // Routes jamais présentes dans la sidebar de l'espace courant (voir src/lib/navigation.ts) : soit
 // jamais dans aucune nav (notifications, atteinte uniquement via la cloche), soit seulement dans
@@ -22,7 +25,11 @@ const TITLE_FALLBACKS: Record<string, string> = {
   "/authorizations": "Autorisations",
 };
 
-export function Header() {
+interface HeaderProps {
+  onOpenMobileNav: () => void;
+}
+
+export function Header({ onOpenMobileNav }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { ctx } = useSession();
@@ -50,7 +57,15 @@ export function Header() {
   const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";
 
   return (
-    <header className="sticky top-0 z-40 flex h-[66px] items-center gap-4 border-b border-divider bg-bg/85 px-7 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 flex h-[66px] items-center gap-4 border-b border-divider bg-bg/85 px-7 backdrop-blur-xl">
+      <button
+        aria-label="Ouvrir le menu"
+        onClick={onOpenMobileNav}
+        className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft lg:hidden"
+      >
+        <Menu className="h-4 w-4" aria-hidden />
+      </button>
+
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-bold text-text-faint">{ctx.organization.name}</div>
         <div className="truncate text-[18px] font-extrabold tracking-tight">{title}</div>
