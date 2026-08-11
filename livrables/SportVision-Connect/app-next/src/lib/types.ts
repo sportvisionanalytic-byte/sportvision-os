@@ -15,7 +15,6 @@ export type OrgType =
   | "generic";
 
 export type PlanCode =
-  | "essentiel"
   | "club_plus_start"
   | "club_plus_performance"
   | "full_communication"

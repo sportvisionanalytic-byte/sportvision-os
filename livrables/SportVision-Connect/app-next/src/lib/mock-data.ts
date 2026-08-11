@@ -287,7 +287,7 @@ export const mockSubscriptions: Record<string, Subscription> = {
   "org-elitesportcamp": {
     id: "sub-elitesportcamp",
     organizationId: "org-elitesportcamp",
-    planCode: "essentiel",
+    planCode: "one_off",
     status: "active",
     startsAt: "2025-12-05",
     renewsAt: "2026-12-05",
@@ -377,7 +377,7 @@ export const mockSubscriptions: Record<string, Subscription> = {
   "org-amine": {
     id: "sub-amine",
     organizationId: "org-amine",
-    planCode: "essentiel",
+    planCode: "club_access",
     status: "active",
     startsAt: "2026-02-11",
     renewsAt: "2027-02-11",

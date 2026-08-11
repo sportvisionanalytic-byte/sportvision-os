@@ -8,9 +8,18 @@ import type { PlanCode } from "./types";
 // Performance), et à la vitrine publique (club-plus.html). Les anciens montants
 // 390/690€ de cette maquette n'ont jamais été les vrais prix : la fonction Stripe
 // existait déjà avec les bons montants, seule cette maquette front n'avait jamais été
-// mise à jour en conséquence. Essentiel et Full Communication n'ont toujours aucun
-// montant réel branché côté backend (aucune table/Price Stripe ne les représente) —
-// gardés "sur devis" plutôt que d'afficher un chiffre inventé.
+// mise à jour en conséquence. Full Communication n'a toujours aucun montant réel
+// branché côté backend (aucune table/Price Stripe ne la représente) — gardé "sur
+// devis" plutôt que d'afficher un chiffre inventé.
+//
+// 11/08/2026 — offre "Essentiel" retirée (décision Fouka) : elle n'a jamais eu de vrai
+// tarif ("sur devis" en permanence), n'a jamais été proposée sur la vitrine publique
+// (club-plus.html ne montre que Club+ Start/Performance), et côté backend un club réel
+// n'a jamais ce plan (clubs.plan ne vaut que 'club'/'performance', voir mapClubPlan
+// dans supabase/mappers.ts) — c'était un choix mort du tunnel d'inscription front-end,
+// jamais connecté à rien de réel. L'offre réelle : Club+ Start, Club+ Performance, Full
+// Communication, plus "one_off" (aucun engagement, facturé à la commande) pour un club/
+// académie/coach qui veut juste réserver des prestations à la carte sans s'abonner.
 
 export interface PlanDefinition {
   code: PlanCode;
@@ -29,17 +38,6 @@ export interface PlanDefinition {
 }
 
 export const PLANS: Record<PlanCode, PlanDefinition> = {
-  essentiel: {
-    code: "essentiel",
-    name: "Essentiel",
-    tier: 1,
-    monthlyPrice: null,
-    monthlyPriceNoCommitment: null,
-    monthlyPriceConfirmed: false,
-    monthlyCredits: 0,
-    seasonPresences: 0,
-    maxUsers: 3,
-  },
   club_plus_start: {
     code: "club_plus_start",
     name: "Club+ Start",
@@ -123,7 +121,7 @@ export function formatPlanPriceRange(plan: PlanDefinition): string {
   return formatPlanPrice(plan);
 }
 
-/** Libellé de crédits prêt à afficher. Essentiel n'a pas de jauge, il travaille « à la carte ». */
+/** Libellé de crédits prêt à afficher. "Prestation unique" n'a pas de jauge, il travaille « à la carte ». */
 export function formatPlanCredits(plan: PlanDefinition): string {
   if (plan.monthlyCredits === null) return "Sur mesure";
   if (plan.monthlyCredits === 0) return "À la carte";

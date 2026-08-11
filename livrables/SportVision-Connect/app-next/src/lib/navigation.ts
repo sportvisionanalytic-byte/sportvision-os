@@ -146,21 +146,6 @@ const NAV_EVENT_FULLCOM: NavEntry[] = [
   item("settings", "Paramètres", "settings"),
 ];
 
-// Club standard — sans Club+ (offre Essentiel).
-const NAV_CLUB_STANDARD: NavEntry[] = [
-  item("dashboard", "Accueil", "dashboard"),
-  section("SportVision"),
-  item("services", "Prestations", "services"),
-  item("visual_requests" as ModuleKey, "Demandes", "requests"),
-  item("content", "Contenus", "content"),
-  section("Gestion"),
-  item("documents", "Documents", "documents"),
-  item("billing", "Factures", "billing"),
-  item("messages", "Messages", "messages"),
-  item("users", "Utilisateurs", "users"),
-  item("settings", "Paramètres", "settings"),
-];
-
 const NAV_SPONSOR: NavEntry[] = [
   item("dashboard", "Accueil", "dashboard"),
   section("Mon partenariat"),
@@ -286,7 +271,6 @@ const NAV_ONE_OFF: NavEntry[] = [
  *     if (type === 'event')    return tournoiFc
  *     return fullcom
  *   }
- *   if (type === 'club' && plan === 'Essentiel') return standard
  *   return NAVS[type]
  *
  * Un joueur rattaché à un club abonné perd Factures et Sponsors (voir README) : à filtrer par
@@ -299,7 +283,6 @@ export function resolveNavigation(orgType: OrgType, planCode: PlanCode): NavEntr
     if (orgType === "event") return NAV_EVENT_FULLCOM;
     return NAV_CLUB_FULLCOM;
   }
-  if (orgType === "club" && planCode === "essentiel") return NAV_CLUB_STANDARD;
   if (orgType === "club") return NAV_CLUB_PLUS;
   if (orgType === "academy") return NAV_ACADEMY_CLUBPLUS;
   if (orgType === "coach") return NAV_COACH_CLUBPLUS;

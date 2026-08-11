@@ -109,10 +109,9 @@ export const SERVICE_OPTION_BY_CODE: Record<ServiceOptionCode, ServiceOptionDefi
  * Remise liée à l'offre — voir ACTIONS.md § 12 étape 4 (« remise liée à l'offre »). Confirmée par
  * Fouka le 11/08/2026 : 5 % Club+ Start, 10 % Club+ Performance, 20 % Full Communication pour une
  * prestation supplémentaire commandée via ce tunnel (au-delà de ce qui est déjà inclus dans
- * l'offre). Essentiel/Club Access/one_off : pas d'abonnement, pas de remise.
+ * l'offre). Club Access/one_off : pas d'abonnement, pas de remise.
  */
 export const PLAN_SERVICE_DISCOUNT_PCT: Record<PlanCode, number> = {
-  essentiel: 0,
   club_plus_start: 5,
   club_plus_performance: 10,
   full_communication: 20,

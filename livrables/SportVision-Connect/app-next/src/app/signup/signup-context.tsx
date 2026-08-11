@@ -94,17 +94,18 @@ export function useSignup(): SignupContextValue {
   return value;
 }
 
-// Filtrage des offres par type — voir ACTIONS.md § 2, étape 5 : « club et académie voient les 4
-// offres, un coach 3, un joueur 2, un événement 2 ». Le document ne précise pas la structure
-// générique : choix raisonnable ici, aligné sur l'exemple README (Ligue du Gâtinais → Prestation
-// unique) — à confirmer avec Fouka si besoin d'un arbitrage différent.
+// Filtrage des offres par type — voir ACTIONS.md § 2, étape 5. "Essentiel" retiré le 11/08/2026
+// (décision Fouka, voir plans.ts) : n'a jamais eu de vrai tarif ni de vraie existence côté
+// backend pour un club réel. Remplacé par "one_off" (aucun engagement, facturé à la commande)
+// pour club/académie/coach — un club peut avoir son espace Connect et réserver des prestations à
+// la carte sans souscrire à Club+ ni à Full Communication.
 export const PLAN_OPTIONS_BY_TYPE: Record<OrgType, PlanCode[]> = {
-  club: ["essentiel", "club_plus_start", "club_plus_performance", "full_communication"],
-  academy: ["essentiel", "club_plus_start", "club_plus_performance", "full_communication"],
-  coach: ["essentiel", "club_plus_start", "full_communication"],
+  club: ["one_off", "club_plus_start", "club_plus_performance", "full_communication"],
+  academy: ["one_off", "club_plus_start", "club_plus_performance", "full_communication"],
+  coach: ["one_off", "club_plus_start", "full_communication"],
   event: ["one_off", "full_communication"],
-  player: ["essentiel", "one_off"],
-  generic: ["essentiel", "one_off"],
+  player: ["one_off"],
+  generic: ["one_off"],
   // Non proposés à l'inscription (rattachement uniquement) : parent, cm_agency, sponsor.
   parent: [],
   cm_agency: [],
