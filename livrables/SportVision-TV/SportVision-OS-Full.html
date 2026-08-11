@@ -702,6 +702,7 @@ const NAV={
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
     {id:'cmagency',lb:'Agences CM',ic:'cli'},
+    {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
     {type:'sep',lb:'Équipe & RH'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
     {id:'users',lb:'Utilisateurs & accès',ic:'col'},
@@ -759,6 +760,7 @@ const NAV={
     {id:'pre',lb:'Prestations',ic:'pre'},
     {id:'planning',lb:'Planning admin',ic:'cal'},
     {id:'livraisons',lb:'Livraisons',ic:'pub'},
+    {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
     {type:'sep',lb:'Documents & Suivi'},
     {id:'docs',lb:'Documents',ic:'doc'},
     {id:'rapports',lb:'Rapports admin',ic:'fin'},
@@ -883,6 +885,7 @@ const NAV={
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'objectifs',lb:'Objectifs',ic:'target'},
     {id:'commissions',lb:'Mes commissions',ic:'fin'},
+    {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
@@ -2016,6 +2019,10 @@ const VIEWS={
       <button class="btn bg2 bs" onclick="filterSecDemandes('confirmee')" id="dem-f-confirmee">Confirmées</button>
     </div>
     <div id="sec-demandes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'sec.reservationsclubs':()=>_clubBookingsView(),
+  'admin.reservationsclubs':()=>_clubBookingsView(),
+  'com.reservationsclubs':()=>_clubBookingsView(),
 
   'sec.relances':()=>`
     <div class="sh"><div class="sh-t">Suivi des relances</div><button class="btn bg2 bs" onclick="exportSecRapport('relances')">Export CSV</button></div>
@@ -3272,6 +3279,7 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='jourj') await loadJourJ();
   if(role==='sec'&&view==='dash') await loadSecDash();
   if(role==='sec'&&view==='demandes') await loadSecDemandes();
+  if(['admin','com','sec'].includes(role)&&view==='reservationsclubs') await loadClubBookings();
   if(role==='sec'&&view==='relances') await loadSecRelances();
   if(role==='sec'&&view==='contrats') await loadSecContrats();
   if(role==='sec'&&view==='abonnements') await loadSecAbonnements();
@@ -17812,6 +17820,132 @@ function renderSecDemandes(){
         <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
       </div></td>
     </tr>`).join('')+'</tbody></table></div>';
+}
+
+// ── Réservations clubs (club_bookings, migration-clubplus-v6.sql) ──────────
+// Écran staff manquant jusqu'ici (aucun résultat pour "club_bookings" dans tout
+// ce fichier avant ce soir) : le tunnel Connect club (ClubServicesBoard.tsx,
+// catalogue_offres → club_bookings) écrit maintenant réellement dans cette
+// table, mais sans cet écran une demande de club partait dans le vide, jamais
+// vue côté SportVision. RLS staff (select + update, roles admin/com/sec) ajoutée
+// par migration-connect-v34-club-bookings-staff-access.sql — NON EXÉCUTÉE en
+// prod à ce jour (voir son en-tête) : tant qu'elle n'est pas passée, cet écran
+// affichera une liste vide et tout changement de statut échouera en 42501.
+// Ouvert aux rôles admin/com/sec (mêmes rôles que clubs_staff_all), pas prod/
+// photo/cm/compta : ce n'est pas un écran de production ni de facturation, mais
+// de suivi du pipeline commercial/administratif d'une demande de club, au même
+// titre que "Demandes entrantes" (role sec) juste au-dessus.
+const CBK_STEPS=['recue','qualifiee','confirmee','operateur_affecte','mission_realisee','livree'];
+const CBK_STATUS_LABEL={recue:'Reçue',qualifiee:'Besoin qualifié',confirmee:'Confirmée',operateur_affecte:'Opérateur affecté',mission_realisee:'Mission réalisée',livree:'Livrée'};
+const CBK_STATUS_COLOR={recue:'bn',qualifiee:'bb',confirmee:'bb',operateur_affecte:'bw',mission_realisee:'bw',livree:'ba'};
+let _cbkData=[],_cbkFilter='all';
+
+function _clubBookingsView(){
+  return `
+    <div class="sh"><div class="sh-t">Réservations clubs</div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(54,107,255,.25)"><div class="fs-l">À traiter</div><div class="fs-v" id="cbk-kpi-att" style="color:var(--acc)">—</div></div>
+      <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">En cours</div><div class="fs-v" id="cbk-kpi-cours" style="color:var(--wa)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Livrées</div><div class="fs-v" id="cbk-kpi-liv" style="color:var(--ok)">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterClubBookings('all')" id="cbk-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterClubBookings('attente')" id="cbk-f-attente">À traiter</button>
+      <button class="btn bg2 bs" onclick="filterClubBookings('cours')" id="cbk-f-cours">En cours</button>
+      <button class="btn bg2 bs" onclick="filterClubBookings('livrees')" id="cbk-f-livrees">Livrées</button>
+    </div>
+    <div id="cbk-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+
+async function loadClubBookings(){
+  const el=document.getElementById('cbk-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('club_bookings?select=id,club_id,service_label,team,event_date,heure,adresse,contact,objectif,status,price_label,created_at,clubs(nom)&order=created_at.desc&limit=200');
+    if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
+    _cbkData=data;
+    const katt=_cbkData.filter(b=>['recue','qualifiee'].includes(b.status)).length;
+    const kcours=_cbkData.filter(b=>['confirmee','operateur_affecte','mission_realisee'].includes(b.status)).length;
+    const kliv=_cbkData.filter(b=>b.status==='livree').length;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('cbk-kpi-att',katt);set('cbk-kpi-cours',kcours);set('cbk-kpi-liv',kliv);
+    renderClubBookings();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';console.error(e);}
+}
+
+function filterClubBookings(f){
+  _cbkFilter=f;
+  ['all','attente','cours','livrees'].forEach(id=>{const b=document.getElementById('cbk-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  renderClubBookings();
+}
+
+function renderClubBookings(){
+  const el=document.getElementById('cbk-real');if(!el)return;
+  let list=_cbkData;
+  if(_cbkFilter==='attente')list=list.filter(b=>['recue','qualifiee'].includes(b.status));
+  else if(_cbkFilter==='cours')list=list.filter(b=>['confirmee','operateur_affecte','mission_realisee'].includes(b.status));
+  else if(_cbkFilter==='livrees')list=list.filter(b=>b.status==='livree');
+  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune réservation dans cette catégorie.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Club</th><th>Prestation</th><th>Équipe</th><th>Date</th><th>Tarif indicatif</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    list.map(b=>`<tr>
+      <td class="tp">${esc(b.clubs?.nom||'—')}</td>
+      <td>${esc(b.service_label||'—')}</td>
+      <td>${esc(b.team||'—')}</td>
+      <td>${b.event_date?new Date(b.event_date).toLocaleDateString('fr-FR'):'—'}</td>
+      <td class="tm">${esc(b.price_label||'—')}</td>
+      <td><span class="bd ${CBK_STATUS_COLOR[b.status]||'bn'}"><span class="bd-d"></span>${esc(CBK_STATUS_LABEL[b.status]||b.status)}</span></td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${b.status!=='livree'?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secAvancerReservation('${b.id}','${b.status}')">→ Étape suivante</button>`:''}
+        <button class="btn bg2 bs" onclick="modalReservationClub('${b.id}')">Ouvrir</button>
+      </div></td>
+    </tr>`).join('')+'</tbody></table></div>';
+}
+
+function modalReservationClub(id){
+  const b=_cbkData.find(x=>x.id===id);
+  if(!b){toast('Réservation introuvable.','error');return;}
+  const opts=CBK_STEPS.map(s=>`<option value="${s}" ${s===b.status?'selected':''}>${esc(CBK_STATUS_LABEL[s])}</option>`).join('');
+  openModal(`<div class="mh"><div class="mt">${esc(b.service_label||'Prestation')}</div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb">
+      <div style="font-size:12.5px;color:var(--t3);margin-bottom:14px">${esc(b.clubs?.nom||'—')} · ${esc(b.team||'—')} · ${b.event_date?new Date(b.event_date).toLocaleDateString('fr-FR'):'—'}</div>
+      <div class="fg"><label class="fl">Club</label><div style="font-size:13.5px;color:var(--t1)">${esc(b.clubs?.nom||'—')}</div></div>
+      <div class="fg"><label class="fl">Lieu</label><div style="font-size:13.5px;color:var(--t1)">${esc(b.adresse||'—')}</div></div>
+      <div class="fg"><label class="fl">Heure</label><div style="font-size:13.5px;color:var(--t1)">${esc(b.heure||'—')}</div></div>
+      ${b.contact?`<div class="fg"><label class="fl">Contact</label><div style="font-size:13.5px;color:var(--t1)">${esc(b.contact)}</div></div>`:''}
+      ${b.objectif?`<div class="fg"><label class="fl">Objectif</label><div style="font-size:13.5px;color:var(--t1)">${esc(b.objectif)}</div></div>`:''}
+      <div class="fg"><label class="fl">Tarif indicatif</label><div style="font-size:13.5px;color:var(--t1);font-weight:600">${esc(b.price_label||'Sur devis')}</div></div>
+      <div class="fg"><label class="fl">Statut</label>
+        <select id="cbk-status-select" class="fi">${opts}</select>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" onclick="secEnregistrerStatutReservation('${id}')">Enregistrer</button>
+    </div>`);
+}
+
+async function secEnregistrerStatutReservation(id){
+  const sel=document.getElementById('cbk-status-select');
+  const status=sel?sel.value:null;
+  if(!status)return;
+  try{
+    const r=await sbFetch('club_bookings?id=eq.'+id,{method:'PATCH',body:{status}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'error');return;}
+    closeModal();toast('Statut mis à jour : '+CBK_STATUS_LABEL[status]+'.','ok');
+    loadClubBookings();
+  }catch(e){toast('Erreur lors de la mise à jour.','error');}
+}
+
+async function secAvancerReservation(id,current){
+  const idx=CBK_STEPS.indexOf(current);
+  if(idx<0||idx>=CBK_STEPS.length-1)return;
+  const next=CBK_STEPS[idx+1];
+  try{
+    const r=await sbFetch('club_bookings?id=eq.'+id,{method:'PATCH',body:{status:next}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'error');return;}
+    toast('Réservation passée à « '+CBK_STATUS_LABEL[next]+' ».','ok');
+    loadClubBookings();
+  }catch(e){toast('Erreur lors de la mise à jour.','error');}
 }
 
 async function loadSecRelances(){
