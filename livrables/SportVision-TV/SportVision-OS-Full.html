@@ -3804,6 +3804,9 @@ function modalModifierClient(idx){
       <div><label style="${lbl}">Notes internes</label>
         <textarea id="fce-notes" class="l-inp" style="height:72px;resize:vertical;padding-top:8px" ${ro}>${esc(c.notes||'')}</textarea>
       </div>
+      <div><label style="${lbl}">Crédits Connect (Projet)</label>
+        <div id="fce-credits" style="font-size:11.5px;color:var(--t3)">Chargement…</div>
+      </div>
       <div id="fce-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div id="fce-tabs" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
         <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
@@ -3843,7 +3846,63 @@ function modalModifierClient(idx){
     </div>`);
   chargerPresByClient(c.id);
   if(canAssignCm)chargerCmAssignSelect(c.id,c.cm_id);
+  chargerCreditsProjetClient(c.id);
   window._fceClientId=c.id;
+}
+
+// Crédits Connect d'un espace Projet (organizations.credits_balance/credits_reserved,
+// migration-connect-v24-projet-credits.sql) — organizations.id RÉUTILISE clients.id (migration-
+// connect-v2), donc c.id ci-dessus EST déjà l'id à interroger, aucune jointure à faire. Un client
+// rattaché à un club n'a PAS de ligne organizations à son propre id (sync_client_to_organization
+// saute exprès cette création, migration-connect-v5) : ses crédits, s'il y en a, vivent côté club
+// (clubs.credits_balance), pas ici — d'où la vérification clubs.portail_client_id en premier.
+// Aucun mécanisme équivalent n'existe aujourd'hui pour créditer un club depuis l'OS (vérifié :
+// aucune RPC ni écran ne touche clubs.credits_balance à la hausse, seul le rechargement mensuel
+// Club+/Stripe existe) — ce bloc est donc le premier du genre, pas la reprise d'un patron déjà là.
+async function chargerCreditsProjetClient(clientId){
+  const el=document.getElementById('fce-credits');
+  if(!el)return;
+  try{
+    const clubLink=await sbFetch('clubs?select=id&portail_client_id=eq.'+clientId+'&limit=1');
+    if(sbErr(clubLink)){el.innerHTML='<span style="color:var(--er)">Crédits indisponibles.</span>';return;}
+    if(Array.isArray(clubLink)&&clubLink.length>0){
+      el.textContent='Ce client est rattaché à un club — les crédits Connect se gèrent au niveau du club.';
+      return;
+    }
+    const org=await sbFetch('organizations?select=organization_type,credits_balance,credits_reserved&id=eq.'+clientId+'&limit=1');
+    if(sbErr(org)||!Array.isArray(org)||!org.length||org[0].organization_type!=='projet'){
+      el.textContent='Système de crédits Projet non disponible pour ce client.';
+      return;
+    }
+    const o=org[0];
+    const solde=Math.max(0,(o.credits_balance||0)-(o.credits_reserved||0));
+    const canCredit=['admin','sec'].includes(S.role);
+    el.innerHTML=`<div style="margin-bottom:6px">Solde ${o.credits_balance} · Réservé ${o.credits_reserved} · Disponible <b style="color:var(--t1)">${solde}</b></div>`+
+      (canCredit?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="fce-credit-amount" type="number" step="1" placeholder="+2" class="l-inp" style="height:34px;width:90px">
+        <input id="fce-credit-label" type="text" placeholder="Motif (ex : pack 5 vidéos payé)" class="l-inp" style="height:34px;flex:1;min-width:160px">
+        <button class="btn bg2" style="height:34px" onclick="crediterOrganisationProjet('${clientId}')">Créditer</button>
+      </div>
+      <div id="fce-credit-err" style="font-size:11px;color:var(--er);min-height:14px;margin-top:4px"></div>`:'');
+  }catch(e){el.innerHTML='<span style="color:var(--er)">Erreur de chargement des crédits.</span>';}
+}
+
+// Geste staff : ajuste le solde via credit_organization() (SECURITY DEFINER, staff-only, trace
+// dans organization_credit_transactions) — jamais de PATCH direct sur organizations.credits_balance
+// depuis le client, cohérent avec org_staff_write qui n'ouvre aucune écriture aux membres. Montant
+// négatif accepté (correction), le solde ne descend jamais sous 0 côté serveur.
+async function crediterOrganisationProjet(clientId){
+  const inp=document.getElementById('fce-credit-amount');
+  const lblInp=document.getElementById('fce-credit-label');
+  const err=document.getElementById('fce-credit-err');
+  const amount=parseInt(inp.value,10);
+  if(!amount){err.textContent='Indiquez un montant non nul (positif pour créditer, négatif pour corriger).';return;}
+  err.textContent='Enregistrement…';
+  const r=await sbFetch('rpc/credit_organization',{method:'POST',body:{p_organization_id:clientId,p_amount:amount,p_label:lblInp.value.trim()||null}});
+  if(sbErr(r)){err.textContent=r.message||'Erreur lors du crédit.';return;}
+  toast('Crédits mis à jour','ok');
+  inp.value='';lblInp.value='';
+  chargerCreditsProjetClient(clientId);
 }
 
 async function chargerCmAssignSelect(clientId,currentCmId){
