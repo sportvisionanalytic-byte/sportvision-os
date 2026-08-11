@@ -53,13 +53,18 @@ function toContenu(row: ContenuRow): Contenu {
 }
 
 export async function fetchContenus(supabase: SupabaseClient, clientId: string): Promise<Contenu[]> {
-  const { data, error } = await supabase
-    .from("contenus")
-    .select(SELECT)
-    .eq("client_id", clientId)
-    .order("date_prevue", { ascending: false, nullsFirst: false });
+  const { data, error } = await supabase.from("contenus").select(SELECT).eq("client_id", clientId);
   if (error) throw error;
-  return ((data ?? []) as ContenuRow[]).map(toContenu);
+  const rows = ((data ?? []) as ContenuRow[]).map(toContenu);
+  // Tri côté client sur une date "effective" plutôt que sur la seule date_prevue : un contenu
+  // publié n'a jamais de date_prevue (seulement date_publication, posée à la publication), donc
+  // trier uniquement sur date_prevue faisait retomber tous les contenus déjà publiés en ordre
+  // d'insertion arbitraire, mélangés avec ceux encore en attente de validation.
+  return rows.sort((a, b) => {
+    const dateA = a.datePrevue ?? a.datePublication ?? a.createdAt;
+    const dateB = b.datePrevue ?? b.datePublication ?? b.createdAt;
+    return dateA < dateB ? 1 : dateA > dateB ? -1 : 0;
+  });
 }
 
 /** Nombre de contenus publiés ce mois-ci pour ce client, tous CM confondus — /accompagnement

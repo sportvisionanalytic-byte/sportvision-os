@@ -44,9 +44,14 @@ export default function CommunicationPage() {
     return (
       <div className="flex flex-col gap-5">
         <h1 className="text-[29px] font-extrabold tracking-tight">Communication</h1>
-        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-          <div className="max-w-md text-[13.5px] text-text-soft">
-            SportVision n&apos;a pas encore relié {ctx.organization.name} à un espace Communication.
+        <Card className="flex flex-col items-center gap-3 px-8 py-16 text-center">
+          <CalendarDays className="h-6 w-6 text-text-faint" aria-hidden />
+          <div className="max-w-md">
+            <h2 className="text-[18px] font-extrabold tracking-tight">Communication pas encore reliée</h2>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-text-soft">
+              SportVision n&apos;a pas encore relié {ctx.organization.name} à un espace Communication. Contactez votre
+              interlocuteur SportVision pour l&apos;activer.
+            </p>
           </div>
         </Card>
       </div>

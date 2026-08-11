@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Contract, ContractStatus, Invoice, InvoiceStatus } from "@/lib/types/billing";
+import { CONTRACT_TYPE_LABEL } from "@/components/contracts/format";
 
 // client_devis/client_factures/client_contrats (vues, migration-portail-v1/v8, étendues v33) —
 // seul chemin d'accès à devis/factures/contrats (tables sources fail-closed, aucune policy RLS
@@ -168,7 +169,7 @@ export async function fetchClientContracts(supabase: SupabaseClient, organizatio
   return ((data ?? []) as ContratRow[]).map((row) => ({
     id: row.id,
     organizationId,
-    name: row.type_contrat ?? "Contrat SportVision",
+    name: (row.type_contrat && CONTRACT_TYPE_LABEL[row.type_contrat]) ?? row.type_contrat ?? "Contrat SportVision",
     kind: "prestation_unique",
     startsAt: row.date_debut ?? row.created_at,
     endsAt: row.date_fin ?? "",
