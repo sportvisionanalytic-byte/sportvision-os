@@ -19340,6 +19340,13 @@ function toggleNavGroup(role,idx){
 // ── APP ──────────────────────────────────
 function goApp(role){
   S.role=role;
+  // S.uid est lu dans plus de 25 endroits (created_by, ajouteur_id,
+  // validateur_id, expediteur_id, modifie_par, filtres collaborateur_id=eq...)
+  // mais n'était jamais assigné : toujours undefined, silencieusement écrit
+  // comme valeur vide dans les inserts, ou littéralement "undefined" dans les
+  // URL de requête (→ 400 Postgres "invalid input syntax for type uuid").
+  // Repéré en testant l'écran Médias du rôle photo (audit du 11/08/2026).
+  S.uid=localStorage.getItem('sv_uid');
   const cfg=ROLES[role];
   const nav=NAV[role];
   const firstNav=nav.find(i=>!i.type);
