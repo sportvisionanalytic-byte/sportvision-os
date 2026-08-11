@@ -253,7 +253,12 @@ function DashboardBody({ clientId }: { clientId: string }) {
         <Card>
           <div className="flex items-center justify-between border-b border-divider px-5 py-4">
             <span className="text-[15px] font-extrabold tracking-tight">Ce que nous préparons</span>
-            <button onClick={() => router.push("/communication")} className="text-[12.5px] font-bold text-brand-blue-electric">
+            {/* -m-3/p-3 agrandit la zone tactile réelle sans changer la taille visuelle du lien
+                — même correctif que ClubPlusDashboard, trouvé trop petit à l'audit mobile. */}
+            <button
+              onClick={() => router.push("/communication")}
+              className="-m-3 p-3 text-[12.5px] font-bold text-brand-blue-electric"
+            >
               Planning complet
             </button>
           </div>

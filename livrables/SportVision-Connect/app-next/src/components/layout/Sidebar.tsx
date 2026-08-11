@@ -132,7 +132,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             <Link
               href="/billing"
               onClick={onClose}
-              className="mt-3 block w-full rounded-[9px] bg-white/[.13] py-1.5 text-center text-[12px] font-bold text-white transition-colors hover:bg-white/[.22]"
+              className="mt-3 block w-full rounded-[9px] bg-white/[.13] py-2.5 text-center text-[12px] font-bold text-white transition-colors hover:bg-white/[.22]"
             >
               Gérer mon offre
             </Link>
@@ -159,10 +159,12 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 <span className="block truncate text-[11px] text-[#7E8FA5]">{ctx.user.jobTitle}</span>
               )}
             </span>
+            {/* h-9/w-9 (36px, convention Header.tsx) au lieu de 26px — cible tactile trop petite
+                pour un bouton isolé, trouvé à l'audit mobile 375-430px. */}
             <button
               aria-label="Se déconnecter"
               onClick={handleLogout}
-              className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg text-[#7E8FA5] transition-colors hover:bg-white/10"
+              className="flex h-9 w-9 flex-none items-center justify-center rounded-lg text-[#7E8FA5] transition-colors hover:bg-white/10"
             >
               <LogOut className="h-3.5 w-3.5" aria-hidden />
             </button>

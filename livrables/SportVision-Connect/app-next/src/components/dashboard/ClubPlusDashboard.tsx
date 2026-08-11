@@ -131,7 +131,12 @@ export function ClubPlusDashboard() {
             <span className="text-[15px] font-extrabold tracking-tight">À traiter</span>
             <Badge tone="warning">{todo?.length ?? 0} élément{(todo?.length ?? 0) > 1 ? "s" : ""}</Badge>
           </div>
-          <button onClick={() => router.push("/content")} className="text-[12.5px] font-bold text-brand-blue-electric">
+          {/* -m-3/p-3 agrandit la zone tactile réelle (19px de texte -> ~43px) sans changer la
+              taille visuelle du lien — trouvé trop petit à l'audit mobile 375-430px. */}
+          <button
+            onClick={() => router.push("/content")}
+            className="-m-3 p-3 text-[12.5px] font-bold text-brand-blue-electric"
+          >
             Tout voir
           </button>
         </div>
