@@ -1,5 +1,5 @@
 -- ============================================================
--- SPORTVISION CONNECT — Migration v24
+-- SPORTVISION CONNECT — Migration v25
 -- Corrige le même défaut que migration-connect-v7-clubs-player-family-
 -- select.sql, mais sur `organizations` cette fois (pas `clubs`).
 --
