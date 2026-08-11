@@ -1,4 +1,4 @@
-import type { ActiveContext, FeatureKey, ModuleKey, QuotaKey, ResourceKey } from "./types";
+import type { ActiveContext, FeatureKey, ModuleKey, OrgType, QuotaKey, ResourceKey } from "./types";
 import { PLANS } from "./plans";
 import { MODULE_TO_CONNECT_MODULE, READY_MODULES } from "./supabase/entitlements";
 
@@ -13,19 +13,59 @@ import { MODULE_TO_CONNECT_MODULE, READY_MODULES } from "./supabase/entitlements
 const READ_ONLY_ROLES = new Set(["viewer"]);
 
 /**
+ * Types d'organisation pour qui le module "sponsors" a un sens métier — voir navigation.ts :
+ * seules ces navigations proposent une entrée "Sponsors"/"Partenaires"/"Mes sponsors"/"Ma
+ * visibilité" (club, académie et événement en Full Communication, l'espace propre d'un
+ * partenaire, un joueur indépendant). Ni coach, ni parent, ni agence CM, ni espace Projet
+ * (generic/one_off) n'ont cette entrée nulle part — leur ouvrir le module par défaut affichait
+ * une jauge "Full Communication" qui n'a aucun sens pour eux (audit nuit 09-10/08).
+ */
+const SPONSORS_ORG_TYPES: ReadonlySet<OrgType> = new Set(["club", "academy", "event", "sponsor", "player"]);
+
+/**
  * Un module absent de READY_MODULES est verrouillé, jamais ouvert par défaut — sinon un compte
  * réel (club, joueur, parent ou projet) verrait du contenu mock sur un module pas encore branché.
  * Pour un module prêt, l'accès réel est piloté par organization_entitlements (via
  * MODULE_TO_CONNECT_MODULE) — mais organization_entitlements n'existe que pour un espace CLUB
  * (c'est un plan/quota vendu). Un espace joueur, parent ou projet n'a pas d'entitlements réels
  * (ctx.entitlements toujours undefined pour eux, voir session.ts) : un module READY_MODULES leur
- * est donc toujours ouvert, jamais bloqué par une clé qui ne les concerne pas.
+ * est donc en général toujours ouvert, jamais bloqué par une clé qui ne les concerne pas.
  * Correction (Phase 3) : la version précédente appliquait le gate d'entitlement à tout le monde,
  * ce qui verrouillait silencieusement /content pour un espace joueur/parent (Phase 2) faute
  * d'entitlement "bibliotheque_contenus" — jamais détecté faute de compte réel pour tester.
+ *
+ * Exceptions (audit nuit 09-10/08) : "presences" et "sponsors" ne suivent PAS la règle
+ * générique ci-dessus — un module gated par entitlement pour le club ne doit jamais devenir
+ * "ouvert par défaut" pour un type d'organisation qui n'a jamais souscrit ce module. La règle
+ * générique est correcte pour /content ou /messages (aucun entitlement club-only n'a de sens
+ * pour un joueur/parent/projet), mais "presences" et "sponsors" désignent une vraie offre
+ * commerciale que seuls certains types d'organisation ont pu signer.
  */
 export function canAccess(ctx: ActiveContext, module: ModuleKey): boolean {
   if (!READY_MODULES.has(module)) return false;
+
+  // "presences" (Présences terrain, Full Communication) : vendu uniquement au club — jamais
+  // ouvert par défaut pour un coach, une académie, un événement ou un espace Projet, même si
+  // aucun d'eux n'a d'entitlements réels. Voir entitlements.ts § "presences" et
+  // FullCommunicationDashboard.tsx (canSeePresences) qui appliquait déjà ce garde-fou en aval.
+  if (module === "presences") {
+    if (ctx.organization.type !== "club") return false;
+    const connectModuleKey = MODULE_TO_CONNECT_MODULE.presences;
+    return connectModuleKey ? (ctx.entitlements?.[connectModuleKey]?.actif ?? false) : false;
+  }
+
+  // "sponsors" : CRM sponsors du club (gated par entitlement), inclus au contrat Full
+  // Communication pour académie/événement, espace propre d'un partenaire (sponsors/page.tsx
+  // bypass déjà canAccess pour lui via isPartner/PartnerView — inclus ici pour que le cadenas
+  // de la Sidebar reste cohérent), et "Mes sponsors" pour un joueur. Jamais ouvert pour un
+  // coach, un parent, une agence CM ou un espace Projet — voir SPONSORS_ORG_TYPES ci-dessus.
+  if (module === "sponsors") {
+    if (!SPONSORS_ORG_TYPES.has(ctx.organization.type)) return false;
+    if (ctx.organization.type !== "club") return true;
+    const connectModuleKey = MODULE_TO_CONNECT_MODULE.sponsors;
+    return connectModuleKey ? (ctx.entitlements?.[connectModuleKey]?.actif ?? false) : false;
+  }
+
   if (ctx.organization.type !== "club") return true;
   const connectModuleKey = MODULE_TO_CONNECT_MODULE[module];
   if (!connectModuleKey) return true;
