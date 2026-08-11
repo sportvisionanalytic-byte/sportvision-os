@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, HelpCircle, Menu, Moon, Plus, Search, Sun } from "lucide-react";
+import { Bell, HelpCircle, Menu, Moon, Plus, Search, Sun, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 import { resolveNavigation } from "@/lib/navigation";
 
-// Barre supérieure — voir CHARTE.md et ACTIONS.md § 4. Tous les contrôles de droite portent
-// une largeur fixe ; seul le bloc titre s'étire. Sous `lg` (drawer mobile, voir Sidebar.tsx et
-// AppShell.tsx), un bouton hamburger ouvre la navigation. z-30 (plutôt que l'ancien z-40) pour
-// rester sous l'overlay du drawer (z-40) : sans ça le header resterait visible/net par-dessus
-// l'assombrissement de fond quand le drawer est ouvert.
+// Barre supérieure — voir CHARTE.md et ACTIONS.md § 4. À partir de `lg` (voir Sidebar.tsx),
+// tous les contrôles de droite portent une largeur fixe comme à l'origine ; seul le bloc titre
+// s'étire. Sous `lg`, un bouton hamburger ouvre le drawer de navigation (état porté par
+// AppShell.tsx), et les contrôles se replient pour tenir sur un écran de téléphone : la
+// recherche devient une icône qui ouvre un champ plein écran sous `sm`, "Nouvelle demande" perd
+// son libellé sous `sm`, "Aide" se replie sous `lg` (déjà atteignable via "Aide & support" dans
+// la sidebar), le thème se replie sous `sm`.
 
 // Routes jamais présentes dans la sidebar de l'espace courant (voir src/lib/navigation.ts) : soit
 // jamais dans aucune nav (notifications, atteinte uniquement via la cloche), soit seulement dans
@@ -34,9 +36,29 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
   const router = useRouter();
   const { ctx } = useSession();
   const [theme, setTheme] = useState<Theme>("dark");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   useEffect(() => {
     setTheme(getStoredTheme());
+  }, []);
+
+  // La recherche plein écran mobile ne doit pas survivre à un changement de page.
+  useEffect(() => {
+    setMobileSearchOpen(false);
+  }, [pathname]);
+
+  // Filet de sécurité si la fenêtre grandit pendant que la recherche plein écran mobile est
+  // ouverte (redimensionnement, rotation) : sans ça le contenu "mode recherche" (pas de
+  // hamburger/cloche/etc.) resterait affiché à une largeur desktop.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(min-width: 640px)");
+    function handleChange(e: MediaQueryListEvent | MediaQueryList) {
+      if (e.matches) setMobileSearchOpen(false);
+    }
+    handleChange(mql);
+    mql.addEventListener("change", handleChange);
+    return () => mql.removeEventListener("change", handleChange);
   }, []);
 
   function toggleTheme() {
@@ -57,67 +79,98 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
   const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";
 
   return (
-    <header className="sticky top-0 z-30 flex h-[66px] items-center gap-4 border-b border-divider bg-bg/85 px-7 backdrop-blur-xl">
-      <button
-        aria-label="Ouvrir le menu"
-        onClick={onOpenMobileNav}
-        className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft lg:hidden"
-      >
-        <Menu className="h-4 w-4" aria-hidden />
-      </button>
+    <header className="sticky top-0 z-30 flex h-[60px] items-center gap-2 border-b border-divider bg-bg/85 px-4 backdrop-blur-xl sm:h-[66px] sm:gap-3 sm:px-5 lg:gap-4 lg:px-7">
+      {mobileSearchOpen ? (
+        <>
+          <button
+            aria-label="Fermer la recherche"
+            onClick={() => setMobileSearchOpen(false)}
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-text-faint" aria-hidden />
+            <input
+              autoFocus
+              placeholder="Rechercher un contenu, une demande…"
+              className="h-9 w-full rounded-[11px] border border-border-strong bg-input-bg pl-8 pr-3 text-[13px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.1)]"
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <button
+            aria-label="Ouvrir le menu"
+            onClick={onOpenMobileNav}
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft lg:hidden"
+          >
+            <Menu className="h-4 w-4" aria-hidden />
+          </button>
 
-      <div className="min-w-0 flex-1">
-        <div className="text-[11px] font-bold text-text-faint">{ctx.organization.name}</div>
-        <div className="truncate text-[18px] font-extrabold tracking-tight">{title}</div>
-      </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[11px] font-bold text-text-faint">{ctx.organization.name}</div>
+            <div className="truncate text-[16px] font-extrabold tracking-tight sm:text-[18px]">{title}</div>
+          </div>
 
-      <div className="relative w-[270px] flex-none">
-        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-text-faint" aria-hidden />
-        <input
-          placeholder="Rechercher un contenu, une demande…"
-          className="h-9 w-full rounded-[11px] border border-border-strong bg-input-bg pl-8 pr-3 text-[13px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.1)]"
-        />
-      </div>
+          <button
+            aria-label="Rechercher"
+            onClick={() => setMobileSearchOpen(true)}
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft sm:hidden"
+          >
+            <Search className="h-4 w-4" aria-hidden />
+          </button>
 
-      <button
-        onClick={() => router.push("/requests/new")}
-        className="flex h-9 flex-none items-center gap-1.5 rounded-[11px] bg-gradient-to-br from-brand-blue-electric to-brand-violet px-3.5 text-[13px] font-bold text-white shadow-sv-button"
-      >
-        <Plus className="h-3.5 w-3.5" aria-hidden />
-        Nouvelle demande
-      </button>
+          <div className="relative hidden flex-none sm:block sm:w-[170px] lg:w-[270px]">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-text-faint" aria-hidden />
+            <input
+              placeholder="Rechercher un contenu, une demande…"
+              className="h-9 w-full rounded-[11px] border border-border-strong bg-input-bg pl-8 pr-3 text-[13px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.1)]"
+            />
+          </div>
 
-      <button
-        aria-label="Notifications"
-        onClick={() => router.push("/notifications")}
-        className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
-      >
-        <Bell className="h-4 w-4" aria-hidden />
-      </button>
+          <button
+            aria-label="Nouvelle demande"
+            onClick={() => router.push("/requests/new")}
+            className="flex h-9 flex-none items-center justify-center gap-1.5 rounded-[11px] bg-gradient-to-br from-brand-blue-electric to-brand-violet px-2.5 text-[13px] font-bold text-white shadow-sv-button sm:px-3.5"
+          >
+            <Plus className="h-3.5 w-3.5 flex-none" aria-hidden />
+            <span className="hidden sm:inline">Nouvelle demande</span>
+          </button>
 
-      <button
-        aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-        onClick={toggleTheme}
-        className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
-      >
-        {theme === "dark" ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
-      </button>
+          <button
+            aria-label="Notifications"
+            onClick={() => router.push("/notifications")}
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
+          >
+            <Bell className="h-4 w-4" aria-hidden />
+          </button>
 
-      <button
-        aria-label="Aide"
-        onClick={() => router.push("/support")}
-        className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
-      >
-        <HelpCircle className="h-4 w-4" aria-hidden />
-      </button>
+          <button
+            aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+            onClick={toggleTheme}
+            className="hidden h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft sm:flex"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
+          </button>
 
-      <button
-        aria-label="Mon profil"
-        onClick={() => router.push("/settings/profile")}
-        className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-violet to-brand-blue-electric text-[12px] font-extrabold text-white"
-      >
-        {initials}
-      </button>
+          <button
+            aria-label="Aide"
+            onClick={() => router.push("/support")}
+            className="hidden h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft lg:flex"
+          >
+            <HelpCircle className="h-4 w-4" aria-hidden />
+          </button>
+
+          <button
+            aria-label="Mon profil"
+            onClick={() => router.push("/settings/profile")}
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-violet to-brand-blue-electric text-[12px] font-extrabold text-white"
+          >
+            {initials}
+          </button>
+        </>
+      )}
     </header>
   );
 }
