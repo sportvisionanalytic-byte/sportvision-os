@@ -1,5 +1,5 @@
 -- ============================================================
--- SPORTVISION CONNECT — Migration v24
+-- SPORTVISION CONNECT — Migration v26
 -- Comble un manque réel du module « Espace Joueur & Famille » (migration-
 -- clubplus-v13/v14/v15.sql) : demande d'adhésion à une équipe pour un
 -- enfant DÉJÀ affilié (player_profiles existant), demandée par son parent.
