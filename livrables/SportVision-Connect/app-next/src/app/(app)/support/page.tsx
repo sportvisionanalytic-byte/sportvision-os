@@ -36,7 +36,7 @@ export default function SupportPage() {
   const { ctx } = useSession();
   const [query, setQuery] = useState("");
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +68,7 @@ export default function SupportPage() {
     const supabase = createClient();
     const authorName = `${ctx.user.firstName} ${ctx.user.lastName}`.trim();
     return createClubSupportTicket(supabase, ctx.organization.id, authorName, ticket).then((created) => {
-      setTickets((prev) => [created, ...prev]);
+      setTickets((prev) => [created, ...(prev ?? [])]);
     });
   }
 
@@ -156,7 +156,9 @@ export default function SupportPage() {
       ) : (
         <Card>
           <div className="border-b border-divider px-5 py-4 text-[15px] font-extrabold tracking-tight">Mes tickets</div>
-          {tickets.length === 0 ? (
+          {tickets === null ? (
+            <div className="px-5 py-8 text-center text-[13px] text-text-soft">Chargement…</div>
+          ) : tickets.length === 0 ? (
             <div className="px-5 py-8 text-center text-[13px] text-text-soft">
               Vous n&apos;avez encore ouvert aucun ticket. Créez-en un si vous avez besoin d&apos;aide.
             </div>

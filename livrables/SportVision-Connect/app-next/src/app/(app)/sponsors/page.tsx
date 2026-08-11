@@ -29,7 +29,7 @@ import { SPONSOR_LEVEL_LABEL, SPONSOR_LEVEL_TONE } from "@/components/sponsors/f
 // sponsor sont toujours sur l'offre « Accès via le club » (tier 1).
 export default function SponsorsPage() {
   const { ctx } = useSession();
-  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [sponsors, setSponsors] = useState<Sponsor[] | null>(null);
 
   useEffect(() => {
     if (ctx.organization.type !== "club") return;
@@ -52,13 +52,14 @@ export default function SponsorsPage() {
 
   if (!canAccess(ctx, "sponsors")) return <LockedModule />;
 
-  const active = sponsors.filter((s) => s.status === "active").length;
-  const toRenew = sponsors.filter((s) => s.status === "to_renew").length;
-  const totalAmount = sponsors.reduce((sum, s) => sum + s.annualAmount, 0);
+  const sponsorsList = sponsors ?? [];
+  const active = sponsorsList.filter((s) => s.status === "active").length;
+  const toRenew = sponsorsList.filter((s) => s.status === "to_renew").length;
+  const totalAmount = sponsorsList.reduce((sum, s) => sum + s.annualAmount, 0);
   // Aucun sponsor réel n'a de livrables suivis (pas de table backend, voir
   // lib/mock/sponsors.ts § visibilityGauge) : ne pas fabriquer une moyenne à 0 % qui
   // affirmerait « rien n'a été livré » plutôt que « on ne suit rien ».
-  const gauges = sponsors.map((s) => visibilityGauge(s.id)).filter((g): g is number => g !== null);
+  const gauges = sponsorsList.map((s) => visibilityGauge(s.id)).filter((g): g is number => g !== null);
   const avgGauge = gauges.length ? Math.round(gauges.reduce((sum, g) => sum + g, 0) / gauges.length) : null;
 
   const stats = [
@@ -95,14 +96,16 @@ export default function SponsorsPage() {
         ))}
       </div>
 
-      {sponsors.length === 0 ? (
+      {sponsors === null ? (
+        <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>
+      ) : sponsorsList.length === 0 ? (
         <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
           <Award className="h-6 w-6 text-text-faint" aria-hidden />
           <div className="mt-1 text-[15px] font-extrabold">Aucun sponsor pour le moment.</div>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sponsors.map((s) => (
+          {sponsorsList.map((s) => (
             <SponsorCard key={s.id} sponsor={s} />
           ))}
         </div>
@@ -116,7 +119,7 @@ function PartnerView({ organizationId, partnerName }: { organizationId: string; 
   // partenariats (un par club), traités comme une liste. Pas de table réelle pour
   // livrables/publications détaillés (voir data/sponsor/sponsorships.ts) : ces sections restent
   // honnêtement vides plutôt que de montrer les données mock d'un seul sponsor fictif.
-  const [partnerships, setPartnerships] = useState<Sponsor[]>([]);
+  const [partnerships, setPartnerships] = useState<Sponsor[] | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -137,7 +140,9 @@ function PartnerView({ organizationId, partnerName }: { organizationId: string; 
 
       <Card className="p-4.5">
         <div className="text-[14px] font-extrabold tracking-tight">Mes partenariats</div>
-        {partnerships.length === 0 ? (
+        {partnerships === null ? (
+          <p className="mt-3 text-[12.5px] text-text-soft">Chargement…</p>
+        ) : partnerships.length === 0 ? (
           <p className="mt-3 text-[12.5px] text-text-soft">Aucun partenariat enregistré pour le moment.</p>
         ) : (
           <div className="mt-3 flex flex-col gap-2.5">

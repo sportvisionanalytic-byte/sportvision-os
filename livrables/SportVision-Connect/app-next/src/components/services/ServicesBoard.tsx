@@ -28,7 +28,7 @@ export function ServicesBoard() {
   const { ctx } = useSession();
   const [view, setView] = useState<ViewMode>("kanban");
   const isProjet = ctx.organization.type === "generic";
-  const [realServices, setRealServices] = useState<Service[]>([]);
+  const [realServices, setRealServices] = useState<Service[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export function ServicesBoard() {
   }, [isProjet, ctx.organization.id]);
 
   const services = useMemo(
-    () => (isProjet ? realServices : getServicesForOrganization(ctx.organization.id)),
+    () => (isProjet ? (realServices ?? []) : getServicesForOrganization(ctx.organization.id)),
     [isProjet, realServices, ctx.organization.id],
   );
 
@@ -120,6 +120,8 @@ export function ServicesBoard() {
             Une erreur est survenue lors du chargement. Réessayez dans quelques instants.
           </p>
         </Card>
+      ) : isProjet && realServices === null ? (
+        <div className="py-16 text-center text-[13px] text-text-soft">Chargement de vos prestations…</div>
       ) : services.length === 0 ? (
         <Card className="flex flex-col items-center gap-3 p-10 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-info-bg text-info-fg">

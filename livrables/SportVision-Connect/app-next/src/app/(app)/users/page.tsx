@@ -50,7 +50,7 @@ export default function UsersPage() {
   const { ctx } = useSession();
   const { toastMessage, toastTone, showToast } = useToast();
   const isClub = ctx.organization.type === "club";
-  const [users, setUsers] = useState<OrgUser[]>(() => (isClub ? [] : mockOrgUsers[ctx.organization.id] ?? []));
+  const [users, setUsers] = useState<OrgUser[] | null>(() => (isClub ? null : mockOrgUsers[ctx.organization.id] ?? []));
   const [inviteOpen, setInviteOpen] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
@@ -99,21 +99,21 @@ export default function UsersPage() {
         status: "invited",
         invitedAt: new Date().toISOString(),
       },
-      ...prev,
+      ...(prev ?? []),
     ]);
     return Promise.resolve();
   }
 
   function handleDisable(user: OrgUser) {
     if (!isClub) {
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: u.status === "disabled" ? "active" : "disabled" } : u)));
+      setUsers((prev) => (prev ?? []).map((u) => (u.id === user.id ? { ...u, status: u.status === "disabled" ? "active" : "disabled" } : u)));
       return;
     }
     const nextStatus = user.status === "disabled" ? "actif" : "suspendu";
     const supabase = createClient();
     setClubMemberStatus(supabase, user.membershipId, nextStatus)
       .then(() => {
-        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus === "actif" ? "active" : "disabled" } : u)));
+        setUsers((prev) => (prev ?? []).map((u) => (u.id === user.id ? { ...u, status: nextStatus === "actif" ? "active" : "disabled" } : u)));
       })
       .catch(() => showToast("Action impossible, réessayez.", "error"));
   }
@@ -141,6 +141,8 @@ export default function UsersPage() {
           <div className="p-9 text-center text-[13.5px] font-semibold text-danger-fg">
             Impossible de charger les membres. Réessayez plus tard.
           </div>
+        ) : users === null ? (
+          <div className="p-9 text-center text-[13.5px] text-text-soft">Chargement…</div>
         ) : users.length === 0 ? (
           <div className="p-9 text-center text-[13.5px] text-text-soft">Aucun utilisateur pour le moment.</div>
         ) : (
