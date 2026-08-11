@@ -1,0 +1,51 @@
+-- ============================================================
+-- Correctif : policy "profiles_read_all" jamais tracée dans aucune
+-- migration de ce repo (11/08/2026, suite à migration-audit-nocturne-
+-- securite-11-08.sql).
+--
+-- ─── Découverte ────────────────────────────────────────────────────────
+-- Après avoir exécuté migration-audit-nocturne-securite-11-08.sql (qui
+-- recrée "Staff lecture annuaire" avec is_staff()), l'annuaire staff
+-- restait pourtant lisible par un compte fraîchement créé sans aucune
+-- ligne profiles — vérifié en direct à plusieurs reprises. is_staff()
+-- appelée directement en RPC pour ce même compte renvoyait bien `false`,
+-- donc la fonction et la policy "Staff lecture annuaire" fonctionnaient
+-- correctement.
+--
+-- Cause trouvée en interrogeant pg_policies directement (Fouka, SQL
+-- Editor) : une SEPTIÈME policy SELECT sur `profiles`, nommée
+-- "profiles_read_all", condition `(auth.uid() IS NOT NULL)` — donnant
+-- accès en lecture complète à l'annuaire staff à tout utilisateur
+-- authentifié, sur n'importe quel produit SportVision. Cette policy
+-- n'apparaît dans AUCUN des 171 fichiers migration-*.sql de ce repo :
+-- elle a été créée directement dans le Dashboard Supabase (SQL Editor ou
+-- Table Editor > Policies) à un moment non identifié, jamais reportée
+-- dans le code versionné. Plusieurs policies permissives sur la même
+-- commande (SELECT) se combinent en OR sous Postgres — corriger
+-- "Staff lecture annuaire" seule ne suffisait donc pas tant que celle-ci
+-- restait active.
+--
+-- ─── Correctif ─────────────────────────────────────────────────────────
+-- Simple suppression : "Staff lecture annuaire" (is_staff()) couvre déjà
+-- exactement le même besoin légitime (un membre du staff peut lire
+-- l'annuaire des autres membres du staff), donc rien à recréer à la
+-- place.
+--
+-- Idempotente. NON EXÉCUTÉE PAR L'AGENT NI PAR MOI — à exécuter par
+-- Fouka dans Supabase → SQL Editor.
+-- ============================================================
+
+drop policy if exists "profiles_read_all" on profiles;
+
+-- ─── Vérification recommandée après exécution ─────────────────────────
+-- Vérifier qu'aucune policy du même type ("*_read_all", condition
+-- `auth.uid() is not null` sans vérification de rôle) n'existe sur
+-- d'autres tables sensibles, créée elle aussi hors du code versionné :
+--
+--   select tablename, policyname, cmd, qual
+--   from pg_policies
+--   where qual ilike '%auth.uid() is not null%'
+--     and qual not ilike '%role%';
+--
+-- (lecture seule, aucune modification — à exécuter et à me montrer le
+-- résultat si des lignes inattendues apparaissent).
