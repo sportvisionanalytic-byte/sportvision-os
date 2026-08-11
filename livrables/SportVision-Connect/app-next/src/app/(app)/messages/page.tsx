@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useClientId } from "@/lib/data/shared/use-client-id";
 import { createClient } from "@/lib/supabase/client";
+import { subscribeTable } from "@/lib/supabase/realtime";
 import { fetchClientMessages, sendClientMessage, type ClientMessage } from "@/lib/data/shared/messages";
 
 // /messages — un seul fil par client Portail (messages_client n'a pas de notion de thread/sujet,
@@ -62,6 +63,26 @@ function MessagesThread({ clientId }: { clientId: string }) {
 
   useEffect(() => {
     reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  // Sync temps réel (migration-connect-v42-enable-realtime-sync.sql) : nouveau message envoyé
+  // par le staff — même colonne de scoping que fetchClientMessages (mc_client_select filtre sur
+  // client_id, migration-portail-v1.sql, étendu club par v34). Rejoue reload() ci-dessus, ne
+  // duplique aucune logique de requête. Dégrade silencieusement tant que la migration v42 n'a
+  // pas été exécutée (voir realtime.ts).
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = subscribeTable(
+      supabase,
+      `messages-client-${clientId}`,
+      "messages_client",
+      `client_id=eq.${clientId}`,
+      reload,
+    );
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 

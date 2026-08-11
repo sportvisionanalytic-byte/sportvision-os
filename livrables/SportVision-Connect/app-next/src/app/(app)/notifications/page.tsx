@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Settings2 } from "lucide-react";
+import { useSession } from "@/lib/session-context";
 import { NOTIFICATION_CATEGORY_LABELS, type NotificationCategory } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
+import { subscribeTable } from "@/lib/supabase/realtime";
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -51,6 +53,7 @@ const CATEGORY_FILTERS: (NotificationCategory | "all")[] = [
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const { ctx } = useSession();
   const [items, setItems] = useState<MemberNotification[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState<NotificationCategory | "all">("all");
@@ -70,6 +73,26 @@ export default function NotificationsPage() {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync temps réel (migration-connect-v42-enable-realtime-sync.sql) : `member_notifications`
+  // est keyed directement sur auth.uid() (migration-connect-v16-member-notifications.sql), pas
+  // sur l'organisation active — même colonne que la policy mn_owner_select. Rejoue reload()
+  // ci-dessus, ne duplique aucune logique de requête. Dégrade silencieusement tant que la
+  // migration v42 n'a pas été exécutée (voir realtime.ts).
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = subscribeTable(
+      supabase,
+      `member-notifications-${ctx.user.id}`,
+      "member_notifications",
+      `user_id=eq.${ctx.user.id}`,
+      reload,
+    );
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx.user.id]);
 
   const filtered = (items ?? []).filter((n) => filter === "all" || n.category === filter);
 

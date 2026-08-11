@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useClientId } from "@/lib/data/shared/use-client-id";
 import { createClient } from "@/lib/supabase/client";
+import { subscribeTable } from "@/lib/supabase/realtime";
 import { fetchContenus, type Contenu } from "@/lib/data/shared/contenus";
 import { fetchContenuStatsByIds, type ContenuStat } from "@/lib/data/shared/contenu-stats";
 
@@ -77,6 +78,26 @@ function PublicationsHistory({ clientId }: { clientId: string }) {
 
   useEffect(() => {
     reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  // Sync temps réel (migration-connect-v42-enable-realtime-sync.sql) : nouveau contenu
+  // publié/programmé par le CM — même colonne de scoping que fetchContenus (contenus_client_select
+  // filtre sur client_id, migration-clubplus-v34-club-messages-contenus-access.sql). Rejoue
+  // reload() ci-dessus (contenus + stats), ne duplique aucune logique de requête. Dégrade
+  // silencieusement tant que la migration v42 n'a pas été exécutée (voir realtime.ts).
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = subscribeTable(
+      supabase,
+      `publications-contenus-${clientId}`,
+      "contenus",
+      `client_id=eq.${clientId}`,
+      reload,
+    );
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 

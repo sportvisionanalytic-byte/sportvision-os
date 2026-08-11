@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
+import { subscribeTable } from "@/lib/supabase/realtime";
 import {
   fetchCatalogueOffres,
   fetchClubBookings,
@@ -79,6 +80,34 @@ export function ClubServicesBoard({
       });
     return () => {
       cancelled = true;
+    };
+  }, [ctx.organization.id]);
+
+  // Sync temps réel (migration-connect-v42-enable-realtime-sync.sql) : `club_bookings` change
+  // quand le staff avance une réservation (confirmée, équipe affectée, terminée…) — même colonne
+  // de scoping que fetchClubBookings (RLS is_club_member(club_id), migration-clubplus-v6.sql).
+  // Ne rejoue que fetchClubBookings (pas offres/plan, jamais modifiés par ce type d'événement) —
+  // rejoue le fetch existant, ne duplique aucune logique de requête. Dégrade silencieusement tant
+  // que la migration v42 n'a pas été exécutée (voir realtime.ts).
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = subscribeTable(
+      supabase,
+      `services-club-bookings-${ctx.organization.id}`,
+      "club_bookings",
+      `club_id=eq.${ctx.organization.id}`,
+      () => {
+        fetchClubBookings(supabase, ctx.organization.id)
+          .then(setBookings)
+          .catch(() => {
+            // Échec d'un rechargement déclenché par un événement Realtime : pas d'erreur
+            // utilisateur pour un enrichissement live, l'affichage reste à sa dernière valeur
+            // connue (déjà chargée par le fetch initial ci-dessus).
+          });
+      },
+    );
+    return () => {
+      supabase.removeChannel(channel);
     };
   }, [ctx.organization.id]);
 
