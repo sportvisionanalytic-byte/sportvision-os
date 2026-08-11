@@ -4,15 +4,7 @@ import { useState } from "react";
 import { ChevronsUpDown } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { cn } from "@/lib/cn";
-
-const ROLE_LABELS: Record<string, string> = {
-  owner: "Propriétaire",
-  communication_manager: "Responsable communication",
-  player: "Joueur",
-  parent: "Parent",
-  coach: "Coach",
-  admin: "Administrateur",
-};
+import { ROLE_LABELS } from "@/lib/types/settings";
 
 function initials(name: string) {
   return name
