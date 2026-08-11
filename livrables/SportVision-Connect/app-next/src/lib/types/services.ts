@@ -27,6 +27,25 @@ export type ServiceType =
   | "contenu_reseaux"
   | "sur_mesure";
 
+/**
+ * Une prestation réelle du catalogue SportVision (`catalogue_offres`, migration-portail-v1.sql) —
+ * c'est la même table que le tunnel club (ClubServicesBoard) lit déjà, avec de vrais prix HT
+ * validés par Fouka. Le tunnel Espace Projet (étape 1 du tunnel) lit désormais CE catalogue au
+ * lieu de la grille SERVICE_TYPE_BASE_PRICE fixée arbitrairement (retirée le 11/08/2026, jamais
+ * validée et jusqu'à 4x supérieure aux vrais prix du catalogue pour des prestations comparables —
+ * décision explicite de Fouka : un seul catalogue de prix dans toute l'entreprise, pas deux
+ * grilles parallèles à maintenir).
+ */
+export interface CatalogueOffer {
+  id: string;
+  nom: string;
+  description: string | null;
+  categorie: string;
+  tarifType: "fixe" | "sur_devis";
+  prixHt: number | null;
+  dureeEstimee: string | null;
+}
+
 export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   match_complet: "Match complet",
   entrainement: "Reportage entraînement",
@@ -87,27 +106,6 @@ export const SERVICE_OPTION_BY_CODE: Record<ServiceOptionCode, ServiceOptionDefi
 ) as Record<ServiceOptionCode, ServiceOptionDefinition>;
 
 /**
- * Forfait de base par type de prestation.
- *
- * DÉCISION — non fourni par DATA_MODEL.md ni ACTIONS.md (seuls les 7 prix d'options sont
- * confirmés). Grille fixée en cohérence avec le positionnement SportVision, à valider par
- * Fouka avant tout usage commercial réel.
- */
-export const SERVICE_TYPE_BASE_PRICE: Record<ServiceType, number> = {
-  match_complet: 450,
-  entrainement: 220,
-  portraits_joueurs: 280,
-  interview: 150,
-  evenement_club: 380,
-  tournoi_stage: 650,
-  shooting_equipe: 320,
-  captation_drone: 300,
-  evenement_entreprise: 700,
-  contenu_reseaux: 250,
-  sur_mesure: 400,
-};
-
-/**
  * Remise liée à l'offre — voir ACTIONS.md § 12 étape 4 (« remise liée à l'offre »).
  *
  * DÉCISION — pourcentage non communiqué par le client. Fixé de façon croissante avec le tier
@@ -136,8 +134,15 @@ export function estimateTravelFees(address: string, organizationAddress?: string
   return normalizedCity && address.toLowerCase().includes(normalizedCity) ? 0 : 45;
 }
 
+/**
+ * `basePrice` vient désormais du vrai catalogue (`CatalogueOffer.prixHt`, `catalogue_offres`) —
+ * `null` quand l'offre choisie est `tarif_type = 'sur_devis'` (pas de prix fixe, ex. shooting,
+ * tournoi, stage, création de contenu). Dans ce cas `computeServicePricing` ne peut pas produire
+ * une estimation honnête : `totalPrice`/`depositAmount` valent `null`, à afficher "Sur devis",
+ * jamais un chiffre inventé.
+ */
 export interface ServicePricingInput {
-  serviceType: ServiceType;
+  basePrice: number | null;
   optionCodes: ServiceOptionCode[];
   planCode: PlanCode;
   address: string;
@@ -145,29 +150,44 @@ export interface ServicePricingInput {
 }
 
 export interface ServicePricing {
-  basePrice: number;
+  basePrice: number | null;
   optionsTotal: number;
   discountPct: number;
   discountAmount: number;
   travelFees: number;
-  totalPrice: number;
-  depositAmount: number;
+  totalPrice: number | null;
+  depositAmount: number | null;
 }
 
 export function computeServicePricing(input: ServicePricingInput): ServicePricing {
-  const basePrice = SERVICE_TYPE_BASE_PRICE[input.serviceType];
   const optionsTotal = input.optionCodes.reduce((sum, code) => sum + SERVICE_OPTION_BY_CODE[code].price, 0);
   const discountPct = PLAN_SERVICE_DISCOUNT_PCT[input.planCode];
-  const discountAmount = Math.round(((basePrice + optionsTotal) * discountPct) / 100);
   const travelFees = estimateTravelFees(input.address, input.organizationAddress);
-  const totalPrice = basePrice + optionsTotal - discountAmount + travelFees;
+  if (input.basePrice === null) {
+    return { basePrice: null, optionsTotal, discountPct, discountAmount: 0, travelFees, totalPrice: null, depositAmount: null };
+  }
+  const discountAmount = Math.round(((input.basePrice + optionsTotal) * discountPct) / 100);
+  const totalPrice = input.basePrice + optionsTotal - discountAmount + travelFees;
   const depositAmount = Math.round(totalPrice * SERVICE_DEPOSIT_RATE);
-  return { basePrice, optionsTotal, discountPct, discountAmount, travelFees, totalPrice, depositAmount };
+  return { basePrice: input.basePrice, optionsTotal, discountPct, discountAmount, travelFees, totalPrice, depositAmount };
 }
 
 /** Montant TTC prêt à afficher — voir README.md § Ton rédactionnel (« montants suivis de TTC ou HT »). */
 export function formatServicePrice(amount: number): string {
   return `${amount.toLocaleString("fr-FR")} € TTC`;
+}
+
+/** Montant HT — pour les prix issus du vrai catalogue (`catalogue_offres.prix_ht`), jamais
+ * convertis en TTC ici (aucune règle de TVA validée pour ce total combiné forfait+options), même
+ * étiquetage honnête "€ HT" que le tunnel club (ClubServicesBoard/offerPriceLabel). */
+export function formatServicePriceHT(amount: number): string {
+  return `${amount.toLocaleString("fr-FR")} € HT`;
+}
+
+/** "Sur devis" quand le montant est `null` — jamais un chiffre inventé pour une offre sans prix
+ * fixe (`tarif_type = 'sur_devis'`). */
+export function formatServicePriceHTOrDevis(amount: number | null): string {
+  return amount === null ? "Sur devis" : formatServicePriceHT(amount);
 }
 
 /** `null` = prestation demandée mais pas encore chiffrée par le staff (montant_ttc absent en

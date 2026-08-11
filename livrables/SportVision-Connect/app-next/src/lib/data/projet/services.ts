@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   SERVICE_OPTION_BY_CODE,
   SERVICE_TYPE_LABELS,
+  type CatalogueOffer,
   type Service,
   type ServiceOptionCode,
   type ServiceStatus,
@@ -14,29 +15,37 @@ function guessServiceType(typePrestation: string | null): ServiceType {
   return (typePrestation && SERVICE_TYPE_KEYS.has(typePrestation) ? typePrestation : "sur_mesure") as ServiceType;
 }
 
-/**
- * ServiceType (design, 11 valeurs, Step1Type) → prestations.type_prestation réel. Ce champ est
- * un simple `text default 'match'` sans contrainte CHECK côté schéma, mais le reste de l'OS
- * traite un domaine fixe de 8 valeurs (dropdown de création manuelle SportVision-OS-Full.html,
- * filtre du flux Brief) — même domaine que OFFRE_SLUG_TO_TYPE_PRESTATION dans l'edge function
- * create-guest-request. Un mapping naïf 1:1 est impossible (11 valeurs design vs 8 valeurs OS) :
- * le libellé précis choisi par le client est donc aussi reporté en tête de description_besoin
- * (voir buildDescription) pour ne perdre aucune information utile au staff qui qualifie la
- * demande, même quand deux types design retombent sur le même type_prestation OS.
- */
-const SERVICE_TYPE_TO_TYPE_PRESTATION: Record<ServiceType, string> = {
-  match_complet: "match",
-  entrainement: "entraînement",
-  portraits_joueurs: "portrait",
-  interview: "autre",
-  evenement_club: "événement",
-  tournoi_stage: "tournoi",
-  shooting_equipe: "portrait",
-  captation_drone: "autre",
-  evenement_entreprise: "événement",
-  contenu_reseaux: "réseaux_sociaux",
-  sur_mesure: "autre",
-};
+// catalogue_offres (migration-portail-v1.sql) — même table que le tunnel club
+// (ClubServicesBoard/lib/data/club/bookings.ts), lecture publique des lignes actif=true
+// (policy catalogue_public_read). Décision Fouka du 11/08/2026 : un seul catalogue de prix dans
+// toute l'entreprise, le tunnel Espace Projet ne fixe plus sa propre grille séparée.
+interface CatalogueOfferRow {
+  id: string;
+  nom: string;
+  description: string | null;
+  categorie: string;
+  tarif_type: "fixe" | "sur_devis";
+  prix_ht: number | null;
+  duree_estimee: string | null;
+}
+
+export async function fetchCatalogueOffres(supabase: SupabaseClient): Promise<CatalogueOffer[]> {
+  const { data, error } = await supabase
+    .from("catalogue_offres")
+    .select("id, nom, description, categorie, tarif_type, prix_ht, duree_estimee")
+    .eq("actif", true)
+    .order("ordre", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as CatalogueOfferRow[]).map((row) => ({
+    id: row.id,
+    nom: row.nom,
+    description: row.description,
+    categorie: row.categorie,
+    tarifType: row.tarif_type,
+    prixHt: row.tarif_type === "sur_devis" ? null : row.prix_ht,
+    dureeEstimee: row.duree_estimee,
+  }));
+}
 
 // client_prestations (vue, migration-portail-v2.sql, sur `prestations`) — contrairement à
 // club_bookings (verrouillé en Phase 1), cette table a des montants numériques réels
@@ -158,7 +167,7 @@ export async function cancelClientService(supabase: SupabaseClient, prestationId
 }
 
 export interface SubmitClientServiceInput {
-  serviceType: ServiceType;
+  offer: CatalogueOffer;
   date: string;
   startTime: string;
   endTime: string;
@@ -175,7 +184,7 @@ export interface SubmitClientServiceInput {
 
 function buildDescription(input: SubmitClientServiceInput): string | null {
   const parts = [
-    `Prestation demandée (Connect) : ${SERVICE_TYPE_LABELS[input.serviceType]}`,
+    `Prestation demandée (Connect) : ${input.offer.nom}`,
     input.needs.trim() ? `Besoins spécifiques : ${input.needs.trim()}` : null,
   ].filter((p): p is string => !!p);
   return parts.length ? parts.join("\n\n") : null;
@@ -193,8 +202,13 @@ function buildDescription(input: SubmitClientServiceInput): string | null {
  *
  * Aucun montant n'est jamais écrit ici (montant_ht/montant_ttc/acompte_montant restent null,
  * comme l'exige la policy) : la tarification affichée aux étapes 4/5 du tunnel est une
- * estimation client-side (computeServicePricing), jamais persistée comme un prix réel — c'est
- * le staff qui chiffre depuis Demandes entrantes une fois la demande qualifiée.
+ * estimation client-side (computeServicePricing) basée sur le vrai prix HT du catalogue
+ * (offre.prixHt), jamais persistée comme un prix réel — c'est le staff qui chiffre depuis
+ * Demandes entrantes une fois la demande qualifiée. `offre_id` (FK réelle vers catalogue_offres,
+ * migration-portail-v2.sql) est écrit pour que le staff retrouve l'offre exacte choisie ;
+ * `type_prestation` reprend `offre.categorie` (même domaine que OFFRE_SLUG_TO_TYPE_PRESTATION
+ * dans create-guest-request), le nom précis de l'offre reste de toute façon en tête de
+ * description_besoin pour ne perdre aucune information utile au staff.
  *
  * Notification staff : automatique via le trigger trg_prestations_notify_demande (migration-
  * portail-v10.sql), qui appelle notify_staff_by_role(['admin','sec'], ...) sur tout INSERT dans
@@ -220,7 +234,8 @@ export async function submitClientService(
   const { error } = await supabase.from("prestations").insert({
     statut: "demande_reçue",
     client_id: clientId,
-    type_prestation: SERVICE_TYPE_TO_TYPE_PRESTATION[input.serviceType],
+    offre_id: input.offer.id,
+    type_prestation: input.offer.categorie,
     date_prestation: input.date || null,
     heure_debut: input.startTime || null,
     heure_fin: input.endTime || null,

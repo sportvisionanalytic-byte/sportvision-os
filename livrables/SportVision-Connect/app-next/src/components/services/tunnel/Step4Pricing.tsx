@@ -1,22 +1,30 @@
 import { cn } from "@/lib/cn";
 import type { PlanCode } from "@/lib/types";
 import { PLANS } from "@/lib/plans";
-import { computeServicePricing, formatServicePrice, SERVICE_OPTION_BY_CODE } from "@/lib/types/services";
+import {
+  computeServicePricing,
+  formatServicePriceHT,
+  formatServicePriceHTOrDevis,
+  SERVICE_OPTION_BY_CODE,
+  type CatalogueOffer,
+} from "@/lib/types/services";
 import type { TunnelState } from "./types";
 
 export function Step4Pricing({
   state,
+  offer,
   planCode,
   organizationAddress,
 }: {
   state: TunnelState;
+  offer: CatalogueOffer | null;
   planCode: PlanCode;
   organizationAddress?: string;
 }) {
-  if (!state.serviceType) return null;
+  if (!offer) return null;
 
   const pricing = computeServicePricing({
-    serviceType: state.serviceType,
+    basePrice: offer.prixHt,
     optionCodes: state.optionCodes,
     planCode,
     address: state.address,
@@ -28,28 +36,32 @@ export function Step4Pricing({
     <div>
       <h2 className="text-[18px] font-extrabold tracking-tight">Tarification</h2>
       <p className="mt-1 text-[13.5px] text-text-soft">
-        Estimation avant qualification par notre équipe — le montant définitif et les modalités de règlement vous
-        seront communiqués dans le devis.
+        Estimation HT avant qualification par notre équipe — le montant définitif et les modalités de règlement
+        vous seront communiqués dans le devis.
       </p>
 
       <div className="mt-5 divide-y divide-divider rounded-sv-card border border-border bg-surface">
-        <PriceLine label="Forfait" value={formatServicePrice(pricing.basePrice)} />
+        <PriceLine label="Forfait" value={formatServicePriceHTOrDevis(offer.prixHt)} />
         {state.optionCodes.map((code) => (
-          <PriceLine key={code} label={SERVICE_OPTION_BY_CODE[code].label} value={`+ ${formatServicePrice(SERVICE_OPTION_BY_CODE[code].price)}`} />
+          <PriceLine key={code} label={SERVICE_OPTION_BY_CODE[code].label} value={`+ ${formatServicePriceHT(SERVICE_OPTION_BY_CODE[code].price)}`} />
         ))}
         {pricing.discountAmount > 0 && (
           <PriceLine
             label={`Remise ${plan.name} (-${pricing.discountPct} %)`}
-            value={`- ${formatServicePrice(pricing.discountAmount)}`}
+            value={`- ${formatServicePriceHT(pricing.discountAmount)}`}
             tone="positive"
           />
         )}
-        <PriceLine
-          label="Déplacement"
-          value={pricing.travelFees > 0 ? formatServicePrice(pricing.travelFees) : "Offert"}
-        />
-        <PriceLine label="Total estimé" value={formatServicePrice(pricing.totalPrice)} strong />
-        <PriceLine label="Acompte estimé (30 %)" value={formatServicePrice(pricing.depositAmount)} strong />
+        {pricing.totalPrice !== null && (
+          <PriceLine
+            label="Déplacement"
+            value={pricing.travelFees > 0 ? formatServicePriceHT(pricing.travelFees) : "Offert"}
+          />
+        )}
+        <PriceLine label="Total estimé" value={formatServicePriceHTOrDevis(pricing.totalPrice)} strong />
+        {pricing.depositAmount !== null && (
+          <PriceLine label="Acompte estimé (30 %)" value={formatServicePriceHT(pricing.depositAmount)} strong />
+        )}
       </div>
     </div>
   );

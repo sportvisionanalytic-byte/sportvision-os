@@ -1,31 +1,33 @@
 import type { PlanCode } from "@/lib/types";
 import {
   SERVICE_OPTION_BY_CODE,
-  SERVICE_TYPE_LABELS,
   computeServicePricing,
   formatServiceDate,
-  formatServicePrice,
+  formatServicePriceHTOrDevis,
   needsRetractationWaiver,
+  type CatalogueOffer,
 } from "@/lib/types/services";
 import type { TunnelState } from "./types";
 
 export function Step5Summary({
   state,
+  offer,
   planCode,
   organizationAddress,
   onAcceptTermsChange,
   onRetractationRenonceeChange,
 }: {
   state: TunnelState;
+  offer: CatalogueOffer | null;
   planCode: PlanCode;
   organizationAddress?: string;
   onAcceptTermsChange: (accepted: boolean) => void;
   onRetractationRenonceeChange: (renonce: boolean) => void;
 }) {
-  if (!state.serviceType) return null;
+  if (!offer) return null;
 
   const pricing = computeServicePricing({
-    serviceType: state.serviceType,
+    basePrice: offer.prixHt,
     optionCodes: state.optionCodes,
     planCode,
     address: state.address,
@@ -39,7 +41,7 @@ export function Step5Summary({
       <p className="mt-1 text-[13.5px] text-text-soft">Vérifiez les informations avant d&apos;envoyer votre demande.</p>
 
       <div className="mt-5 flex flex-col gap-3">
-        <SummaryRow label="Prestation" value={SERVICE_TYPE_LABELS[state.serviceType]} />
+        <SummaryRow label="Prestation" value={offer.nom} />
         <SummaryRow label="Date" value={state.date ? formatServiceDate(state.date) : "—"} />
         <SummaryRow label="Horaires" value={state.startTime && state.endTime ? `${state.startTime} – ${state.endTime}` : "—"} />
         <SummaryRow label="Adresse" value={state.address || "—"} />
@@ -50,8 +52,10 @@ export function Step5Summary({
           label="Options"
           value={state.optionCodes.length ? state.optionCodes.map((c) => SERVICE_OPTION_BY_CODE[c].label).join(", ") : "Aucune"}
         />
-        <SummaryRow label="Montant total estimé" value={formatServicePrice(pricing.totalPrice)} strong />
-        <SummaryRow label="Acompte estimé" value={formatServicePrice(pricing.depositAmount)} strong />
+        <SummaryRow label="Montant total estimé" value={formatServicePriceHTOrDevis(pricing.totalPrice)} strong />
+        {pricing.depositAmount !== null && (
+          <SummaryRow label="Acompte estimé" value={formatServicePriceHTOrDevis(pricing.depositAmount)} strong />
+        )}
       </div>
 
       {needsWaiver && (

@@ -6,6 +6,24 @@ import type { PlanCode } from "@/lib/types";
 // src/lib/mock-data.ts (org-fcf, org-usv, org-lucas). À remplacer par de vraies requêtes quand
 // le backend sera choisi (décision séparée, voir app-next/README.md).
 
+// Forfaits de démo uniquement — jamais montrés à un vrai client (le vrai tunnel, lui, lit
+// désormais catalogue_offres, voir lib/types/services.ts § CatalogueOffer). Ces montants
+// n'ont pas besoin d'être validés par Fouka : ils n'alimentent que les 14 fiches fictives
+// ci-dessous (org-fcf/usv/lucas), jamais une vraie soumission.
+const MOCK_BASE_PRICE: Record<ServiceType, number> = {
+  match_complet: 450,
+  entrainement: 220,
+  portraits_joueurs: 280,
+  interview: 150,
+  evenement_club: 380,
+  tournoi_stage: 650,
+  shooting_equipe: 320,
+  captation_drone: 300,
+  evenement_entreprise: 700,
+  contenu_reseaux: 250,
+  sur_mesure: 400,
+};
+
 interface BuildServiceInput {
   id: string;
   reference: string;
@@ -34,7 +52,7 @@ function nextId(prefix: string) {
 
 function buildService(input: BuildServiceInput): Service {
   const pricing = computeServicePricing({
-    serviceType: input.serviceType,
+    basePrice: MOCK_BASE_PRICE[input.serviceType],
     optionCodes: input.optionCodes ?? [],
     planCode: input.planCode,
     address: input.address,
@@ -66,7 +84,9 @@ function buildService(input: BuildServiceInput): Service {
     discountAmount: pricing.discountAmount,
     travelFees: pricing.travelFees,
     totalPrice: pricing.totalPrice,
-    depositAmount: pricing.depositAmount,
+    // Le mock fournit toujours un basePrice réel (MOCK_BASE_PRICE), computeServicePricing ne peut
+    // donc jamais renvoyer null ici (seule une offre "sur_devis" du vrai catalogue le ferait).
+    depositAmount: pricing.depositAmount ?? 0,
     depositMethod: "card",
     depositPaidAt: ["planifiee", "en_cours", "postproduction", "a_valider_livrables", "livree", "terminee"].includes(
       input.status,

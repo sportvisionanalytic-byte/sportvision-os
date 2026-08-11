@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/client";
-import { submitClientService } from "@/lib/data/projet/services";
-import { needsRetractationWaiver } from "@/lib/types/services";
+import { fetchCatalogueOffres, submitClientService } from "@/lib/data/projet/services";
+import { needsRetractationWaiver, type CatalogueOffer } from "@/lib/types/services";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "./tunnel/StepIndicator";
@@ -22,14 +22,36 @@ import { INITIAL_TUNNEL_STATE, TUNNEL_STEPS, type TunnelState } from "./tunnel/t
 // vrai INSERT dans `prestations` via lib/data/projet/services.ts:submitClientService, autorisé
 // par la policy RLS "prestations_client_insert" (migration-portail-v2.sql). Notification staff
 // automatique via le trigger trg_prestations_notify_demande (migration-portail-v10.sql).
+//
+// Étape 1 sur le vrai catalogue (catalogue_offres) depuis le 11/08/2026 — décision Fouka de ne
+// plus avoir de grille de prix séparée et inventée pour l'Espace Projet, voir
+// lib/types/services.ts § CatalogueOffer.
 export function NewServiceTunnel() {
   const router = useRouter();
   const { ctx } = useSession();
   const [step, setStep] = useState(1);
   const [state, setState] = useState<TunnelState>(INITIAL_TUNNEL_STATE);
+  const [offers, setOffers] = useState<CatalogueOffer[] | null>(null);
+  const [offersError, setOffersError] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCatalogueOffres(createClient())
+      .then((rows) => {
+        if (!cancelled) setOffers(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setOffersError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectedOffer = offers?.find((o) => o.id === state.offerId) ?? null;
 
   function patch(update: Partial<TunnelState>) {
     setState((prev) => ({ ...prev, ...update }));
@@ -38,7 +60,7 @@ export function NewServiceTunnel() {
   const canContinue = (() => {
     switch (step) {
       case 1:
-        return !!state.serviceType;
+        return !!state.offerId;
       case 2:
         return !!(state.date && state.startTime && state.endTime && state.address && state.contactName && state.contactPhone);
       case 3:
@@ -53,13 +75,13 @@ export function NewServiceTunnel() {
   })();
 
   async function handleSubmit() {
-    if (!state.serviceType || submitting) return;
+    if (!selectedOffer || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
       const supabase = createClient();
       await submitClientService(supabase, ctx.organization.id, {
-        serviceType: state.serviceType,
+        offer: selectedOffer,
         date: state.date,
         startTime: state.startTime,
         endTime: state.endTime,
@@ -114,31 +136,45 @@ export function NewServiceTunnel() {
       <StepIndicator current={step} />
 
       <Card className="p-6">
-        {step === 1 && <Step1Type value={state.serviceType} onChange={(serviceType) => patch({ serviceType })} />}
-        {step === 2 && <Step2Details state={state} onChange={patch} />}
-        {step === 3 && (
-          <Step3Options
-            selected={state.optionCodes}
-            onToggle={(code) =>
-              patch({
-                optionCodes: state.optionCodes.includes(code)
-                  ? state.optionCodes.filter((c) => c !== code)
-                  : [...state.optionCodes, code],
-              })
-            }
-          />
-        )}
-        {step === 4 && (
-          <Step4Pricing state={state} planCode={ctx.subscription.planCode} organizationAddress={ctx.organization.address} />
-        )}
-        {step === 5 && (
-          <Step5Summary
-            state={state}
-            planCode={ctx.subscription.planCode}
-            organizationAddress={ctx.organization.address}
-            onAcceptTermsChange={(acceptedTerms) => patch({ acceptedTerms })}
-            onRetractationRenonceeChange={(retractationRenoncee) => patch({ retractationRenoncee })}
-          />
+        {offersError ? (
+          <p className="py-8 text-center text-[13px] text-danger-fg">
+            Impossible de charger le catalogue pour le moment. Réessayez dans quelques instants.
+          </p>
+        ) : (
+          <>
+            {step === 1 && <Step1Type offers={offers ?? []} value={state.offerId} onChange={(offerId) => patch({ offerId })} />}
+            {step === 2 && <Step2Details state={state} onChange={patch} />}
+            {step === 3 && (
+              <Step3Options
+                selected={state.optionCodes}
+                onToggle={(code) =>
+                  patch({
+                    optionCodes: state.optionCodes.includes(code)
+                      ? state.optionCodes.filter((c) => c !== code)
+                      : [...state.optionCodes, code],
+                  })
+                }
+              />
+            )}
+            {step === 4 && (
+              <Step4Pricing
+                state={state}
+                offer={selectedOffer}
+                planCode={ctx.subscription.planCode}
+                organizationAddress={ctx.organization.address}
+              />
+            )}
+            {step === 5 && (
+              <Step5Summary
+                state={state}
+                offer={selectedOffer}
+                planCode={ctx.subscription.planCode}
+                organizationAddress={ctx.organization.address}
+                onAcceptTermsChange={(acceptedTerms) => patch({ acceptedTerms })}
+                onRetractationRenonceeChange={(retractationRenoncee) => patch({ retractationRenoncee })}
+              />
+            )}
+          </>
         )}
       </Card>
 
