@@ -26,6 +26,11 @@ export interface TunnelState {
   /** Renonciation au droit de rétractation — voir needsRetractationWaiver (lib/types/services.ts). */
   retractationRenoncee: boolean;
   acceptedTerms: boolean;
+  /** Résolus par Step2Details au blur du champ adresse (resolveTravelFees, appel réel à l'API
+   * Adresse) — 0/null tant que l'adresse n'a pas encore été résolue. `distanceKm` sert uniquement
+   * à l'affichage ("trajet estimé"), le calcul de prix n'utilise que `travelFees`. */
+  travelFees: number;
+  distanceKm: number | null;
 }
 
 export const INITIAL_TUNNEL_STATE: TunnelState = {
@@ -41,6 +46,8 @@ export const INITIAL_TUNNEL_STATE: TunnelState = {
   optionCodes: [],
   retractationRenoncee: false,
   acceptedTerms: false,
+  travelFees: 0,
+  distanceKm: null,
 };
 
 export const TUNNEL_STEPS = [

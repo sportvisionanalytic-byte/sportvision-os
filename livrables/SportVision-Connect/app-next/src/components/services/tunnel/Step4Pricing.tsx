@@ -14,12 +14,10 @@ export function Step4Pricing({
   state,
   offer,
   planCode,
-  organizationAddress,
 }: {
   state: TunnelState;
   offer: CatalogueOffer | null;
   planCode: PlanCode;
-  organizationAddress?: string;
 }) {
   if (!offer) return null;
 
@@ -27,8 +25,7 @@ export function Step4Pricing({
     basePrice: offer.prixHt,
     optionCodes: state.optionCodes,
     planCode,
-    address: state.address,
-    organizationAddress,
+    travelFees: state.travelFees,
   });
   const plan = PLANS[planCode];
 

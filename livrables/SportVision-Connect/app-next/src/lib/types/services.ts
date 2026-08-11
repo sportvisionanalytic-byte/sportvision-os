@@ -106,16 +106,15 @@ export const SERVICE_OPTION_BY_CODE: Record<ServiceOptionCode, ServiceOptionDefi
 ) as Record<ServiceOptionCode, ServiceOptionDefinition>;
 
 /**
- * Remise liée à l'offre — voir ACTIONS.md § 12 étape 4 (« remise liée à l'offre »).
- *
- * DÉCISION — pourcentage non communiqué par le client. Fixé de façon croissante avec le tier
- * de l'offre, à confirmer par Fouka en même temps que les tarifs mensuels des offres
- * (voir README.md § Logique d'abonnement, déjà marqués « à confirmer »).
+ * Remise liée à l'offre — voir ACTIONS.md § 12 étape 4 (« remise liée à l'offre »). Confirmée par
+ * Fouka le 11/08/2026 : 5 % Club+ Start, 10 % Club+ Performance, 20 % Full Communication pour une
+ * prestation supplémentaire commandée via ce tunnel (au-delà de ce qui est déjà inclus dans
+ * l'offre). Essentiel/Club Access/one_off : pas d'abonnement, pas de remise.
  */
 export const PLAN_SERVICE_DISCOUNT_PCT: Record<PlanCode, number> = {
   essentiel: 0,
-  club_plus_start: 10,
-  club_plus_performance: 15,
+  club_plus_start: 5,
+  club_plus_performance: 10,
   full_communication: 20,
   club_access: 0,
   one_off: 0,
@@ -123,15 +122,61 @@ export const PLAN_SERVICE_DISCOUNT_PCT: Record<PlanCode, number> = {
 
 export const SERVICE_DEPOSIT_RATE = 0.3;
 
-/** Estimation de déplacement — DATA_MODEL.md : « l'adresse alimente l'estimation de déplacement »,
- * sans donner de barème. DÉCISION — forfait plat de 45 € dès que l'adresse saisie ne semble pas
- * correspondre au lieu habituel de l'organisation (comparaison naïve de ville, mock uniquement). */
-export function estimateTravelFees(address: string, organizationAddress?: string): number {
-  if (!address.trim()) return 0;
-  if (!organizationAddress) return 45;
-  const city = organizationAddress.split(",").pop()?.trim().toLowerCase() ?? "";
-  const normalizedCity = city.replace(/^\d{5}\s*/, "");
-  return normalizedCity && address.toLowerCase().includes(normalizedCity) ? 0 : 45;
+/**
+ * Frais de déplacement réels — même règle que le tunnel public (create-guest-request, edge
+ * function) et SportVision-Portail.html : gratuit en Île-de-France, 0,50 €/km TTC aller-retour
+ * ailleurs, sans seuil de distance. Confirmée par Fouka le 11/08/2026 : reprendre exactement la
+ * même règle plutôt qu'un nouveau barème propre au tunnel Connect, pour rester cohérent dans
+ * toute l'entreprise. Siège et tarif identiques à create-guest-request/index.ts — toute
+ * modification du tarif doit être répercutée aux deux endroits (pas de source commune possible,
+ * l'edge function tourne sur Deno, ce module sur le navigateur).
+ *
+ * Best-effort comme l'edge function : en cas d'échec de géolocalisation, aucun frais plutôt que
+ * de bloquer le calcul (`distanceKm: null` signale l'échec à l'appelant, qui peut l'afficher
+ * honnêtement au lieu d'un montant).
+ */
+const SIEGE_LAT = 48.380247;
+const SIEGE_LON = 2.943271;
+const TARIF_KM_TTC = 0.5;
+
+function toRad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+export interface TravelFeesResult {
+  /** `null` = adresse non géolocalisée (échec de l'API ou adresse vide) — afficher "à confirmer",
+   * jamais un montant inventé. */
+  distanceKm: number | null;
+  travelFeesHT: number;
+}
+
+export async function resolveTravelFees(address: string): Promise<TravelFeesResult> {
+  const query = address.trim();
+  if (!query) return { distanceKm: null, travelFeesHT: 0 };
+  try {
+    const url = "https://api-adresse.data.gouv.fr/search/?q=" + encodeURIComponent(query) + "&limit=1";
+    const r = await fetch(url).then((res) => res.json());
+    const f = r.features?.[0];
+    if (!f) return { distanceKm: null, travelFeesHT: 0 };
+    const context: string = f.properties?.context ?? "";
+    if (context.includes("Île-de-France")) return { distanceKm: 0, travelFeesHT: 0 };
+    const [lon, lat] = f.geometry.coordinates;
+    const distanceAllerRetour = haversineKm(SIEGE_LAT, SIEGE_LON, lat, lon) * 2;
+    const distanceKm = Math.round(distanceAllerRetour * 10) / 10;
+    const fraisTtc = distanceAllerRetour * TARIF_KM_TTC;
+    const travelFeesHT = Math.round((fraisTtc / 1.2) * 100) / 100;
+    return { distanceKm, travelFeesHT };
+  } catch {
+    return { distanceKm: null, travelFeesHT: 0 };
+  }
 }
 
 /**
@@ -140,13 +185,15 @@ export function estimateTravelFees(address: string, organizationAddress?: string
  * tournoi, stage, création de contenu). Dans ce cas `computeServicePricing` ne peut pas produire
  * une estimation honnête : `totalPrice`/`depositAmount` valent `null`, à afficher "Sur devis",
  * jamais un chiffre inventé.
+ *
+ * `travelFees` est résolu en amont (resolveTravelFees, appel réel à l'API Adresse) et transmis
+ * déjà calculé — cette fonction reste synchrone, elle ne fait qu'agréger des montants déjà connus.
  */
 export interface ServicePricingInput {
   basePrice: number | null;
   optionCodes: ServiceOptionCode[];
   planCode: PlanCode;
-  address: string;
-  organizationAddress?: string;
+  travelFees: number;
 }
 
 export interface ServicePricing {
@@ -162,7 +209,7 @@ export interface ServicePricing {
 export function computeServicePricing(input: ServicePricingInput): ServicePricing {
   const optionsTotal = input.optionCodes.reduce((sum, code) => sum + SERVICE_OPTION_BY_CODE[code].price, 0);
   const discountPct = PLAN_SERVICE_DISCOUNT_PCT[input.planCode];
-  const travelFees = estimateTravelFees(input.address, input.organizationAddress);
+  const travelFees = input.travelFees;
   if (input.basePrice === null) {
     return { basePrice: null, optionsTotal, discountPct, discountAmount: 0, travelFees, totalPrice: null, depositAmount: null };
   }

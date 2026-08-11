@@ -156,20 +156,12 @@ export function NewServiceTunnel() {
                 }
               />
             )}
-            {step === 4 && (
-              <Step4Pricing
-                state={state}
-                offer={selectedOffer}
-                planCode={ctx.subscription.planCode}
-                organizationAddress={ctx.organization.address}
-              />
-            )}
+            {step === 4 && <Step4Pricing state={state} offer={selectedOffer} planCode={ctx.subscription.planCode} />}
             {step === 5 && (
               <Step5Summary
                 state={state}
                 offer={selectedOffer}
                 planCode={ctx.subscription.planCode}
-                organizationAddress={ctx.organization.address}
                 onAcceptTermsChange={(acceptedTerms) => patch({ acceptedTerms })}
                 onRetractationRenonceeChange={(retractationRenoncee) => patch({ retractationRenoncee })}
               />

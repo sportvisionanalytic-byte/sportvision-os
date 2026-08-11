@@ -13,14 +13,12 @@ export function Step5Summary({
   state,
   offer,
   planCode,
-  organizationAddress,
   onAcceptTermsChange,
   onRetractationRenonceeChange,
 }: {
   state: TunnelState;
   offer: CatalogueOffer | null;
   planCode: PlanCode;
-  organizationAddress?: string;
   onAcceptTermsChange: (accepted: boolean) => void;
   onRetractationRenonceeChange: (renonce: boolean) => void;
 }) {
@@ -30,8 +28,7 @@ export function Step5Summary({
     basePrice: offer.prixHt,
     optionCodes: state.optionCodes,
     planCode,
-    address: state.address,
-    organizationAddress,
+    travelFees: state.travelFees,
   });
   const needsWaiver = needsRetractationWaiver(state.date);
 

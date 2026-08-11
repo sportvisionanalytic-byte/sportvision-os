@@ -50,13 +50,23 @@ function nextId(prefix: string) {
   return `${prefix}-${seq}`;
 }
 
+/** Comparaison naïve de ville — mock uniquement, aucun rapport avec le vrai calcul de frais de
+ * déplacement du tunnel (resolveTravelFees, lib/types/services.ts), qui appelle l'API Adresse du
+ * gouvernement. Ces 14 fiches sont fictives, pas besoin d'un vrai appel réseau pour les générer. */
+function mockTravelFees(address: string, organizationAddress?: string): number {
+  if (!address.trim()) return 0;
+  if (!organizationAddress) return 45;
+  const city = organizationAddress.split(",").pop()?.trim().toLowerCase() ?? "";
+  const normalizedCity = city.replace(/^\d{5}\s*/, "");
+  return normalizedCity && address.toLowerCase().includes(normalizedCity) ? 0 : 45;
+}
+
 function buildService(input: BuildServiceInput): Service {
   const pricing = computeServicePricing({
     basePrice: MOCK_BASE_PRICE[input.serviceType],
     optionCodes: input.optionCodes ?? [],
     planCode: input.planCode,
-    address: input.address,
-    organizationAddress: input.organizationAddress,
+    travelFees: mockTravelFees(input.address, input.organizationAddress),
   });
 
   const serviceId = input.id;
