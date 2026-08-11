@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SessionProvider } from "@/lib/session-context";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Header } from "@/components/layout/Header";
+import { AppShell } from "@/components/layout/AppShell";
 import { NoActiveSpace } from "@/components/layout/NoActiveSpace";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -33,14 +32,16 @@ function buildActiveContext(supabase: SupabaseClient, user: SupabaseUser, space:
   return buildParentActiveContext(supabase, user, space);
 }
 
-// Coque de l'application authentifiée — barre latérale sticky 264 px + barre supérieure 66 px
-// + zone centrale. Voir README.md § Architecture d'interface. Toutes les routes applicatives
-// (dashboard, services, content, ...) vivent sous ce groupe de routes sans préfixe d'URL.
+// Coque de l'application authentifiée — barre latérale sticky 264 px (repliée en drawer sous
+// `lg`, voir Sidebar.tsx) + barre supérieure 66 px + zone centrale. Voir README.md § Architecture
+// d'interface. Toutes les routes applicatives (dashboard, services, content, ...) vivent sous ce
+// groupe de routes sans préfixe d'URL.
 //
 // Server Component : résout la session et l'espace actif réels avant de monter quoi que ce soit
 // (voir le plan Phase 1 § Décisions d'architecture n°2). Aucune page interne n'est jamais montée
 // sans un ActiveContext valide — SessionProvider garantit ctx non-nul aux 63 consommateurs
-// existants de useSession().
+// existants de useSession(). AppShell (client) porte l'état du drawer mobile partagé entre
+// Header et Sidebar.
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const {
@@ -61,13 +62,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <SessionProvider initialCtx={ctx} initialSpaces={spaces}>
-      <div className="flex min-h-screen bg-bg text-text">
-        <Sidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Header />
-          <main className="min-w-0 flex-1 px-7 py-6">{children}</main>
-        </div>
-      </div>
+      <AppShell>{children}</AppShell>
     </SessionProvider>
   );
 }
