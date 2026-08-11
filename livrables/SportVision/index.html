@@ -1056,10 +1056,13 @@ document.getElementById('gallery-grid').addEventListener('click', (e) => {
 });
 
 // ── FAQ accordéon ──
+document.querySelectorAll('#faq-list .faq-q').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
 document.getElementById('faq-list').addEventListener('click', (e) => {
   const q = e.target.closest('.faq-q');
   if (!q) return;
-  q.closest('.faq-item').classList.toggle('on');
+  const item = q.closest('.faq-item');
+  item.classList.toggle('on');
+  q.setAttribute('aria-expanded', item.classList.contains('on') ? 'true' : 'false');
 });
 
 // ── Année du footer ──
