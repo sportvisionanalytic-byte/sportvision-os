@@ -22976,9 +22976,10 @@ const SV_INTEGRATIONS=[
     name:'Google Calendar',
     icon:'📅',
     category:'Planning',
-    description:'Synchronisation bidirectionnelle du planning SportVision OS avec Google Calendar.',
-    enables:['Sync prestations → Calendar','Invitations automatiques','Rappels natifs','Vue agenda sur mobile'],
-    status:'not_configured',
+    description:'Ajout manuel d\'une prestation à Google Agenda via un lien pré-rempli, en un clic depuis le planning (aucun compte ni connexion API requis).',
+    enables:['Ajouter une prestation à l\'agenda Google en un clic (lien manuel)'],
+    status:'partial',
+    partialNote:'Fonctionne aujourd\'hui : un lien Google Agenda pré-rempli, sans API. Pas de synchronisation automatique ni bidirectionnelle : aucune mise à jour de l\'événement si l\'horaire change dans l\'OS, aucune lecture des agendas Google. Une synchronisation complète nécessiterait la connexion OAuth (Client ID/Secret) ci-dessous, non configurée à ce jour.',
     docsUrl:'https://developers.google.com/calendar',
     fields:[{label:'Client ID',key:'GCAL_CLIENT_ID'},{label:'Client Secret',key:'GCAL_CLIENT_SECRET'}],
   },
@@ -22989,7 +22990,8 @@ const SV_INTEGRATIONS=[
     category:'Paiements',
     description:'Traitement des paiements en ligne : acomptes, factures, abonnements récurrents.',
     enables:['Liens de paiement','Acomptes en ligne','Factures payables','Webhooks automatiques','Abonnements clubs'],
-    status:'not_configured',
+    status:'partial',
+    partialNote:'Les paiements sont initiés côté SportVision Connect (au moins une session de paiement en mode live déjà enregistrée). Cet écran de l\'OS lit en lecture seule le webhook déjà actif (table paiements) pour rapprochement avec les statuts financiers ; l\'OS ne crée ni ne modifie de session de paiement lui-même.',
     docsUrl:'https://stripe.com/docs/api',
     fields:[{label:'Clé publique',key:'STRIPE_PK'},{label:'Clé secrète',key:'STRIPE_SK'},{label:'Webhook secret',key:'STRIPE_WH'}],
   },
@@ -23011,7 +23013,8 @@ const SV_INTEGRATIONS=[
     category:'Emails',
     description:'Envoi professionnel des emails : devis, factures, confirmations, relances, livraisons.',
     enables:['Envoi devis PDF','Envoi factures','Confirmations client','Relances automatiques','Tracking ouverture'],
-    status:'not_configured',
+    status:'partial',
+    partialNote:'Domaine sportvision-an.fr authentifié et vérifié. Les Edge Functions d\'envoi (devis, factures) sont déployées et opérationnelles, mais aucun envoi réel n\'a encore été enregistré dans le suivi de l\'OS à ce jour.',
     docsUrl:'https://resend.com/docs',
     fields:[{label:'Clé API Resend',key:'RESEND_API_KEY'},{label:'Email expéditeur',key:'RESEND_FROM'}],
   },
@@ -23022,7 +23025,8 @@ const SV_INTEGRATIONS=[
     category:'Documents',
     description:'Signature électronique des contrats, devis et documents officiels.',
     enables:['Signature contrats','Signature devis','Suivi signature','Archivage légal','Historique signataires'],
-    status:'not_configured',
+    status:'partial',
+    partialNote:'La demande et la confirmation de signature électronique sont déployées et déjà utilisées en production (au moins un contrat confirmé signé). Le fournisseur exact et la configuration complète ne sont pas visibles depuis cet écran.',
     docsUrl:'https://developers.yousign.com',
     fields:[{label:'Clé API',key:'SIGN_API_KEY'},{label:'Fournisseur',key:'SIGN_PROVIDER'}],
   },
@@ -23069,7 +23073,8 @@ const SV_INTEGRATIONS=[
     category:'Finance',
     description:'Export vers Sage, QuickBooks, Pennylane ou votre logiciel comptable.',
     enables:['Export FEC','Format Sage','Synchronisation journaux','Envoi automatique','Rapprochement comptable'],
-    status:'not_configured',
+    status:'partial',
+    partialNote:'L\'envoi de factures vers Pennylane est déployé (bouton disponible sur chaque prestation facturée), mais aucune facture n\'a encore été transmise à ce jour.',
     docsUrl:'',
     fields:[{label:'Logiciel cible',key:'ACCT_SOFTWARE'},{label:'Clé API',key:'ACCT_KEY'}],
   },
@@ -23134,7 +23139,7 @@ function intCard(intg){
       ${intg.status==='not_configured'?`
         <button onclick="openIntegrationSetup('${intg.id}')" style="flex:1;padding:9px 14px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">⚙ Configurer</button>
         ${intg.docsUrl?`<a href="${intg.docsUrl}" target="_blank" style="padding:9px 14px;background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t3);font-size:12px;font-weight:500;cursor:pointer;text-decoration:none">Docs →</a>`:''}
-      `:`<button style="flex:1;padding:9px 14px;background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t3);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">⚙ Paramètres</button>`}
+      `:`<button onclick="openIntegrationSetup('${intg.id}')" style="flex:1;padding:9px 14px;background:rgba(255,255,255,.04);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t3);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">⚙ Paramètres</button>`}
     </div>
   </div>`;
 }
