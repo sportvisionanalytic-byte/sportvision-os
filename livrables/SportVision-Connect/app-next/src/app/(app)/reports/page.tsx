@@ -14,7 +14,14 @@ import { useToast } from "@/components/communication/useToast";
 import { cn } from "@/lib/cn";
 import { useClientId } from "@/lib/data/shared/use-client-id";
 import { createClient } from "@/lib/supabase/client";
-import { fetchContenusPubliesAvecStats, sumStat, type ContenuAvecStats } from "@/lib/data/shared/contenu-stats";
+import {
+  buildMonthlyReports,
+  fetchContenusPubliesAvecStats,
+  formatReportPeriod,
+  sumStat,
+  type ContenuAvecStats,
+  type MonthlyReport,
+} from "@/lib/data/shared/contenu-stats";
 
 // /reports — remplace le mock (lib/mock/communication.ts, type Report) par un vrai récapitulatif
 // mensuel construit sur `contenus` + `contenu_stats` (migration-cm-contenu-stats.sql, Phase 5 du
@@ -59,26 +66,6 @@ function ReportsGate() {
     );
   }
   return <ReportsScreen clientId={resolution.clientId} />;
-}
-
-interface MonthlyReport {
-  /** Format `2026-07`, dérivé de `datePublication`. */
-  period: string;
-  items: ContenuAvecStats[];
-}
-
-function buildMonthlyReports(items: ContenuAvecStats[]): MonthlyReport[] {
-  const byPeriod = new Map<string, ContenuAvecStats[]>();
-  for (const c of items) {
-    if (!c.datePublication) continue;
-    const period = c.datePublication.slice(0, 7);
-    const list = byPeriod.get(period) ?? [];
-    list.push(c);
-    byPeriod.set(period, list);
-  }
-  return [...byPeriod.entries()]
-    .map(([period, list]) => ({ period, items: list }))
-    .sort((a, b) => (a.period < b.period ? 1 : -1));
 }
 
 function ReportsScreen({ clientId }: { clientId: string }) {
@@ -132,7 +119,7 @@ function ReportsScreen({ clientId }: { clientId: string }) {
           onSelect={setSelectedPeriod}
           onCopy={(report) => {
             copyReportToClipboard(report);
-            showToast(`Rapport ${formatPeriod(report.period)} copié.`);
+            showToast(`Rapport ${formatReportPeriod(report.period)} copié.`);
           }}
         />
       )}
@@ -192,7 +179,7 @@ function ReportsBody({
             )}
           >
             <div className={cn("text-[13.5px] font-extrabold capitalize", r.period === selected.period ? "text-info-fg" : "text-text")}>
-              {formatPeriod(r.period)}
+              {formatReportPeriod(r.period)}
             </div>
             <div className="mt-1 text-[11.5px] text-text-soft">
               {r.items.length} contenu{r.items.length > 1 ? "s" : ""} publié{r.items.length > 1 ? "s" : ""}
@@ -206,7 +193,7 @@ function ReportsBody({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-brand-blue-pale">Rapport mensuel</div>
-              <div className="mt-1 text-[22px] font-extrabold capitalize tracking-tight">{formatPeriod(selected.period)}</div>
+              <div className="mt-1 text-[22px] font-extrabold capitalize tracking-tight">{formatReportPeriod(selected.period)}</div>
             </div>
             <Button
               variant="secondary"
@@ -255,20 +242,13 @@ function ReportsBody({
   );
 }
 
-function formatPeriod(period: string): string {
-  const [yearPart, monthPart] = period.split("-");
-  const year = Number(yearPart);
-  const month = Number(monthPart);
-  return new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-}
-
 function copyReportToClipboard(report: MonthlyReport) {
   const reach = sumStat(report.items, "portee");
   const views = sumStat(report.items, "vues");
   const engagement = sumStat(report.items, "engagement");
   const fmt = (n: number | null) => (n != null ? n.toLocaleString("fr-FR") : "non renseigné");
   const lines = [
-    `Rapport ${formatPeriod(report.period)}`,
+    `Rapport ${formatReportPeriod(report.period)}`,
     `Contenus publiés : ${report.items.length}`,
     `Portée : ${fmt(reach)} (saisi manuellement)`,
     `Vues : ${fmt(views)} (saisi manuellement)`,
