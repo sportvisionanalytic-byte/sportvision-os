@@ -60,8 +60,19 @@
 -- l'app aujourd'hui, mais la table reste correcte si ça change) ne soit
 -- pas bloqué non plus.
 --
--- Idempotente. Nouveau fichier, NON EXÉCUTÉ — à relire puis lancer dans
--- Supabase → SQL Editor.
+-- Idempotente.
+--
+-- ── MISE À JOUR 11/08 (audit pré-lancement Partie B) ──
+-- Ce fichier était marqué "NON EXÉCUTÉ" ci-dessus, mais c'est FAUX : le
+-- trigger trg_validate_prestation_statut_transition est bien actif en
+-- production. Vérifié empiriquement pendant l'audit (pas une supposition) :
+-- un PATCH statut='confirmée' sur une prestation en 'demande_reçue' a été
+-- rejeté avec exactement le message d'exception défini plus bas dans ce
+-- fichier ("Transition de statut non autorisée : demande_reçue → confirmée
+-- ne correspond à aucun enchaînement connu du workflow."). Un mécanisme qui
+-- n'existerait qu'en fichier ne pourrait pas produire ce message. À ne PAS
+-- relancer une seconde fois par réflexe — idempotent de toute façon (create
+-- or replace + drop/create trigger), mais inutile.
 -- ============================================================
 
 create or replace function validate_prestation_statut_transition()
