@@ -83,7 +83,7 @@ function buildService(input: BuildServiceInput): Service {
     quoteUrl: "/documents/devis-exemple.pdf",
     depositInvoiceUrl: "/documents/facture-acompte-exemple.pdf",
     team: [
-      { id: nextId("team"), name: "Théo Marchand", role: "Chargé de compte SportVision", side: "sportvision", email: "theo.marchand@sportvision.fr" },
+      { id: nextId("team"), name: "Théo Marchand", role: "Chargé de compte SportVision", side: "sportvision", email: "theo.marchand@sportvision-an.fr" },
       { id: nextId("team"), name: "Nina Berger", role: "Opérateur vidéo", side: "sportvision", phone: "06 45 12 33 90" },
       { id: nextId("team"), name: input.onSiteContactName ?? "Sophie Martin", role: "Contact sur place", side: "client", phone: input.onSiteContactPhone ?? "06 12 34 56 78" },
     ],

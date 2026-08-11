@@ -469,7 +469,7 @@ export function PersonaDashboard() {
   function handleShareBook() {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard
-        .writeText(`https://connect.sportvision.fr/book/${ctx.organization.id}`)
+        .writeText(`https://connect.sportvision-an.fr/book/${ctx.organization.id}`)
         .catch(() => undefined);
     }
     setShareCopied(true);
