@@ -12,13 +12,10 @@ import { fetchOrgRequests } from "@/lib/data/shared/requests";
 import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
 import { fetchCoachPlayers } from "@/lib/data/coach/players";
 import { fetchAcademieGroups } from "@/lib/data/academie/groups";
-import { fetchClubMatches } from "@/lib/data/club/matches";
-import { fetchPlayerMediaAssets } from "@/lib/data/player/media";
 import { fetchClientInvoices } from "@/lib/data/projet/billing";
 import { fetchClientServices } from "@/lib/data/projet/services";
 import { fetchClientLivrables } from "@/lib/data/projet/livrables";
 import type { Sponsor } from "@/lib/types/sponsors";
-import type { Match } from "@/lib/types/studio";
 import type { Invoice } from "@/lib/types/billing";
 import type { Service } from "@/lib/types/services";
 import { SERVICE_TYPE_LABELS } from "@/lib/types/services";
@@ -80,13 +77,11 @@ interface PersonaConfig {
   contents: PersonaContentItem[];
 }
 
-/** Données réelles chargées côté PersonaDashboard pour les cas player/parent (voir le plan
- * Phase 2 § Décisions d'architecture n°6) — vide tant que non chargées, buildConfig retombe alors
- * sur des valeurs à zéro plutôt que de bloquer le rendu du tableau de bord. */
+/** Données réelles chargées côté PersonaDashboard pour le cas parent (voir le plan Phase 2
+ * § Décisions d'architecture n°6) — vide tant que non chargées, buildConfig retombe alors sur des
+ * valeurs à zéro plutôt que de bloquer le rendu du tableau de bord. "player" retiré le 11/08/2026,
+ * voir PlayerDashboard.tsx. */
 interface PersonaExtra {
-  playerClubName?: string;
-  playerUpcomingMatches?: Match[];
-  playerContents?: MediaAsset[];
   children?: ConfirmedChild[];
   authByChild?: Record<string, ChildAuthorization[]>;
   openRequestsCount?: number;
@@ -111,44 +106,12 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra, extraLoading: bool
       : 0;
 
   switch (organization.type) {
-    case "player": {
-      const isAffiliated = !!organization.parentOrganizationId;
-      const upcomingMatches = extra.playerUpcomingMatches ?? [];
-      const playerContents = extra.playerContents ?? [];
-      return {
-        eyebrow: "Mon espace",
-        clubBadge: isAffiliated
-          ? { label: `CLUB ABONNÉ · ${extra.playerClubName ?? "…"}`, tone: "success" }
-          : { label: "SANS CLUB", tone: "neutral" },
-        title: `Bonjour ${user.firstName}, voici vos derniers contenus.`,
-        subtitle: isAffiliated
-          ? "Vos contenus sont produits et validés par votre club. Retrouvez-les ici dès qu'ils sont prêts."
-          : "Gérez vos prestations et partagez votre book à vos clubs et recruteurs.",
-        heroActionLabel: isAffiliated ? "Consulter mes contenus" : "Réserver une prestation",
-        heroActionHref: isAffiliated ? "/content" : "/services/new",
-        showShareBook: !isAffiliated,
-        // Aucune jauge crédits/présences/stockage n'a de sens pour un espace joueur : ces champs
-        // valent toujours 0 côté session.ts (pas d'organization_entitlements hors club, voir
-        // permissions.ts), ce ne sont pas des crédits/présences réellement suivis pour ce joueur.
-        gauges: [],
-        priorityTitle: "À traiter",
-        // Pas de source réelle "à valider" scopée à ce joueur (club_creations n'a pas de colonne
-        // joueur) — pas remplacé par une autre fiction, voir le plan Phase 1 § pas de fabrication.
-        priorityItems: [],
-        secondaryTitle: "Prochainement",
-        secondaryItems: isAffiliated
-          ? upcomingMatches.slice(0, 2).map((m) => ({
-              title: `${m.teamName} vs ${m.opponent}`,
-              meta: "Match à venir",
-              due: m.kickoffAt ? formatFrDate(m.kickoffAt) : undefined,
-            }))
-          : [{ title: "Aucune prestation planifiée", meta: "Réservez votre premier shooting avec SportVision" }],
-        contentsTitle: "Mes derniers contenus",
-        contents: isAffiliated
-          ? playerContents.slice(0, 4).map((a) => ({ label: a.name, kind: MEDIA_KIND_LABELS[a.kind] }))
-          : [],
-      };
-    }
+    // "player" retiré le 11/08/2026 : dashboard/page.tsx route désormais organization.type ===
+    // "player" directement vers PlayerDashboard.tsx (composant dédié, même pattern que
+    // ClubPlusDashboard/FullCommunicationDashboard) — voir PlayerDashboard.tsx pour le detail et
+    // le brief Fouka. Ce switch ne reçoit donc plus jamais organization.type === "player" ; la
+    // branche "SANS CLUB"/showShareBook ci-dessus n'a d'ailleurs jamais été atteignable pour un
+    // vrai compte (player_profiles.club_id est NOT NULL en base, voir session.ts).
 
     case "parent": {
       const children = extra.children ?? [];
@@ -383,23 +346,9 @@ export function PersonaDashboard() {
   useEffect(() => {
     const supabase = createClient();
     setExtraLoading(true);
-    if (ctx.organization.type === "player" && ctx.organization.parentOrganizationId) {
-      const clubId = ctx.organization.parentOrganizationId;
-      Promise.all([
-        supabase.from("organizations").select("nom").eq("id", clubId).maybeSingle(),
-        fetchClubMatches(supabase, clubId),
-        fetchPlayerMediaAssets(supabase, clubId),
-      ])
-        .then(([orgRes, matches, mediaAssets]) => {
-          setExtra({
-            playerClubName: (orgRes.data as { nom: string } | null)?.nom,
-            playerUpcomingMatches: matches.filter((m) => m.status === "upcoming"),
-            playerContents: mediaAssets.filter((a) => a.status === "validated"),
-          });
-        })
-        .catch(() => setExtra({}))
-        .finally(() => setExtraLoading(false));
-    } else if (ctx.organization.type === "parent") {
+    // "player" retiré le 11/08/2026 : ce composant ne reçoit plus jamais organization.type ===
+    // "player" (voir dashboard/page.tsx et PlayerDashboard.tsx).
+    if (ctx.organization.type === "parent") {
       fetchConfirmedChildren(supabase, ctx.organization.id)
         .then(async (children) => {
           const entries = await Promise.all(

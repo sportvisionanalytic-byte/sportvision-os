@@ -234,7 +234,13 @@ function buildPendingOnboarding(state: SignupState, quoteMessage: string): Pendi
     };
   }
 
-  // generic, event, joueur en accès personnel : client Portail (Espace Projet).
+  // generic, event : client Portail (Espace Projet). Un joueur (orgType === "player") n'atteint
+  // plus jamais cette branche depuis le 11/08/2026 : `isAffiliatedPlayer` ci-dessus est
+  // désormais toujours vrai pour lui (playerAffiliation ne vaut plus que "join_club", voir
+  // signup-context.tsx) et intercepte le cas avant d'arriver ici. Avant ce correctif, un joueur
+  // en "gérer mon espace moi-même" tombait dans cette branche generic/portal-onboarding et
+  // obtenait un compte organization_type='projet' (memberships.role toujours 'admin' via
+  // mapProjetRole) au lieu d'un vrai espace Joueur — c'est ce chemin que Fouka a testé.
   return {
     kind: "portal-onboarding",
     prenom,

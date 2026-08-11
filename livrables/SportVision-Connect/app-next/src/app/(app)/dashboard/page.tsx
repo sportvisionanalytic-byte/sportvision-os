@@ -4,6 +4,7 @@ import { useSession } from "@/lib/session-context";
 import { ClubPlusDashboard } from "@/components/dashboard/ClubPlusDashboard";
 import { FullCommunicationDashboard } from "@/components/dashboard/FullCommunicationDashboard";
 import { PersonaDashboard } from "@/components/dashboard/PersonaDashboard";
+import { PlayerDashboard } from "@/components/dashboard/PlayerDashboard";
 import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
 import { StripeReturnBanner } from "@/components/dashboard/StripeReturnBanner";
 
@@ -23,6 +24,8 @@ export default function DashboardPage() {
   const dashboard =
     ctx.subscription.planCode === "full_communication" ? (
       <FullCommunicationDashboard />
+    ) : ctx.organization.type === "player" ? (
+      <PlayerDashboard />
     ) : ctx.organization.type !== "club" ? (
       <PersonaDashboard />
     ) : (

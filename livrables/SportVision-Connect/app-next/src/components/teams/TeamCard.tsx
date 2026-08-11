@@ -43,11 +43,11 @@ export function TeamCard({ team }: { team: Team }) {
         )}
       </div>
 
-      {isRealId(team.id) ? (
-        <div className="mt-4 border-t border-divider pt-3 text-[12.5px] font-bold text-text-faint">
-          Détail par équipe bientôt disponible
-        </div>
-      ) : (
+      {/* Pour un id réel, aucune fiche équipe consultable n'existe (voir le commentaire en tête
+          de fichier) : pas de ligne "bientôt disponible" qui promettrait une page à venir, la
+          carte s'arrête simplement à ce qui est réellement affichable aujourd'hui (11/08/2026,
+          règle V1 : masquer plutôt que promettre). */}
+      {!isRealId(team.id) && (
         <div className="mt-4 border-t border-divider pt-3 text-[12.5px] font-bold text-brand-blue-electric group-hover:text-brand-violet">
           Ouvrir la fiche équipe →
         </div>

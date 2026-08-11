@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarClock, Sparkles } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -118,9 +118,6 @@ export default function MatchCenterPage() {
           >
             Saisir un résultat
           </Button>
-          <Button variant="secondary" disabled title="Le studio de création de visuels arrive bientôt.">
-            Bientôt disponible
-          </Button>
         </div>
       </div>
 
@@ -181,12 +178,6 @@ export default function MatchCenterPage() {
                   onClick={() => setModalMatchId(m.id)}
                 >
                   Saisir le résultat
-                </Button>
-              )}
-              {(m.status === "result_received" || m.status === "content_created") && (
-                <Button variant="secondary" className="h-9 px-3.5 text-[12.5px]" disabled title="Le studio de création de visuels arrive bientôt.">
-                  <Sparkles className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                  Bientôt disponible
                 </Button>
               )}
             </Card>

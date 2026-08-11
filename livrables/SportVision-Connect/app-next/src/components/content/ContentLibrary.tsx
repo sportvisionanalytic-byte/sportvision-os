@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LayoutGrid, List, Download, Images } from "lucide-react";
+import { LayoutGrid, List, Download, Heart, Images } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { fetchClubMediaAssets } from "@/lib/data/club/content";
 import { fetchPlayerMediaAssets } from "@/lib/data/player/media";
 import { fetchClientLivrables } from "@/lib/data/projet/livrables";
 import { createClient } from "@/lib/supabase/client";
 import { addLocalCollection, getLocalCollectionsForOrganization } from "@/lib/mock/content";
+import { addFavorite, fetchFavoriteIds, removeFavorite } from "@/lib/data/shared/favorites";
 import { MEDIA_FILTERS, matchesMediaFilter, type CollectionKind, type Collection, type MediaAsset, type MediaFilterKey } from "@/lib/types/content";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,6 +21,43 @@ import { CreateCollectionModal } from "./CreateCollectionModal";
 type ViewMode = "grid" | "list";
 
 let localCollectionSeq = 0;
+
+// Filtres joueur — Photos/Vidéos/Reels seulement (brief Fouka § 8 : "Je retirerais probablement
+// Affiches et Documents du joueur sauf s'ils sont réellement utilisés"). Un joueur ne reçoit
+// jamais de document/affiche club dans son book personnel — ces deux filtres n'ont donc jamais de
+// contenu à montrer pour lui.
+const PLAYER_MEDIA_FILTERS = MEDIA_FILTERS.filter((f) => f.key !== "posters" && f.key !== "documents");
+
+/** Regroupe par jour de création — brief § 8 : "les contenus devraient être regroupés par
+ * événement". `club_media`/`club_creations` (fetchClubMediaAssets) n'ont aucune colonne
+ * d'événement/match réelle (pas de FK vers club_matches, pas de titre de rencontre, voir
+ * data/club/content.ts) : le jour de `created_at` est la seule clé de regroupement honnête
+ * disponible sans inventer un champ. Décision documentée dans le rapport de l'agent. */
+function groupByDay(assets: MediaAsset[]): { key: string; label: string; assets: MediaAsset[] }[] {
+  const groups = new Map<string, MediaAsset[]>();
+  for (const asset of assets) {
+    const key = asset.createdAt.slice(0, 10);
+    groups.set(key, [...(groups.get(key) ?? []), asset]);
+  }
+  return Array.from(groups.entries())
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([key, groupAssets]) => ({
+      key,
+      label: new Date(`${key}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+      assets: groupAssets,
+    }));
+}
+
+function summarizeGroup(assets: MediaAsset[]): string {
+  const photos = assets.filter((a) => a.kind === "photo" || a.kind === "raw_photo").length;
+  const videos = assets.filter((a) => a.kind === "video" || a.kind === "raw_video" || a.kind === "highlight").length;
+  const reels = assets.filter((a) => a.kind === "reel" || a.kind === "story").length;
+  const parts: string[] = [];
+  if (photos > 0) parts.push(`📸 ${photos} photo${photos > 1 ? "s" : ""}`);
+  if (videos > 0) parts.push(`🎥 ${videos} vidéo${videos > 1 ? "s" : ""}`);
+  if (reels > 0) parts.push(`🎬 ${reels} reel${reels > 1 ? "s" : ""}`);
+  return parts.join(" · ") || `${assets.length} contenu${assets.length > 1 ? "s" : ""}`;
+}
 
 // Bibliothèque de contenus — /content et /media (alias), voir ACTIONS.md § 13. Une seule page,
 // filtrée par le contexte (README.md § Pas de duplication de pages) : le titre, le sous-titre,
@@ -37,6 +75,47 @@ export function ContentLibrary() {
   const isProjet = ctx.organization.type === "generic";
 
   const [allAssets, setAllAssets] = useState<MediaAsset[] | null>(null);
+
+  // Favoris — espace Joueur uniquement (brief § 9), voir data/shared/favorites.ts et
+  // contenu_favoris (migration-connect-v43-espace-joueur.sql).
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+
+  useEffect(() => {
+    if (!isPlayer) return;
+    const supabase = createClient();
+    fetchFavoriteIds(supabase, ctx.user.id).then(setFavoriteIds);
+  }, [isPlayer, ctx.user.id]);
+
+  function toggleFavorite(assetId: string) {
+    const supabase = createClient();
+    const isFav = favoriteIds.has(assetId);
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (isFav) next.delete(assetId);
+      else next.add(assetId);
+      return next;
+    });
+    const action = isFav ? removeFavorite(supabase, assetId, ctx.user.id) : addFavorite(supabase, assetId, ctx.user.id);
+    action.catch(() => {
+      // Rollback optimiste en cas d'échec réel (RLS, migration v43 pas encore exécutée...).
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (isFav) next.add(assetId);
+        else next.delete(assetId);
+        return next;
+      });
+      showToast("Impossible de mettre à jour vos favoris, réessayez.");
+    });
+  }
+
+  function downloadAsset(asset: MediaAsset) {
+    if (!asset.downloadAllowed || !asset.fileUrl) {
+      showToast("Le téléchargement de ce contenu n'est pas disponible.");
+      return;
+    }
+    window.open(asset.fileUrl, "_blank", "noopener,noreferrer");
+  }
 
   // Pour un joueur, les médias réels sont scopés par club_id (player_profiles.club_id, exposé via
   // organization.parentOrganizationId) — la RLS is_media_visible_to_family filtre déjà aux médias
@@ -63,7 +142,16 @@ export function ContentLibrary() {
     };
   }, [isPlayer, isProjet, playerClubId, ctx.organization.id]);
 
-  const assets = useMemo(() => (allAssets ?? []).filter((a) => matchesMediaFilter(a.kind, filter)), [allAssets, filter]);
+  const assets = useMemo(
+    () =>
+      (allAssets ?? [])
+        .filter((a) => matchesMediaFilter(a.kind, filter))
+        .filter((a) => !favoritesOnly || favoriteIds.has(a.id)),
+    [allAssets, filter, favoritesOnly, favoriteIds],
+  );
+
+  const groupedAssets = useMemo(() => (isPlayer ? groupByDay(assets) : []), [isPlayer, assets]);
+  const filtersToShow = isPlayer ? PLAYER_MEDIA_FILTERS : MEDIA_FILTERS;
 
   // Pas de table `collections` réelle (voir le plan Phase 1) — store en mémoire partagé avec la
   // fiche de collection (lib/mock/content.ts § localCollectionsStore), pas un `useState` isolé :
@@ -160,7 +248,7 @@ export function ContentLibrary() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          {MEDIA_FILTERS.map((f) => (
+          {filtersToShow.map((f) => (
             <button
               key={f.key}
               type="button"
@@ -176,6 +264,22 @@ export function ContentLibrary() {
               {f.label}
             </button>
           ))}
+          {isPlayer && (
+            <button
+              type="button"
+              aria-pressed={favoritesOnly}
+              onClick={() => setFavoritesOnly((v) => !v)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-bold transition-colors duration-sv",
+                favoritesOnly
+                  ? "border-transparent bg-gradient-to-br from-brand-blue to-brand-violet text-white"
+                  : "border-border-strong bg-surface text-text-soft hover:border-brand-blue-pale",
+              )}
+            >
+              <Heart className="h-3 w-3" fill={favoritesOnly ? "currentColor" : "none"} aria-hidden />
+              Mes favoris{favoriteIds.size > 0 ? ` (${favoriteIds.size})` : ""}
+            </button>
+          )}
         </div>
         <div className="flex rounded-[11px] border border-border-strong bg-input-bg p-0.5">
           <button
@@ -212,19 +316,45 @@ export function ContentLibrary() {
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-info-bg text-info-fg">
             <Images className="h-5 w-5" aria-hidden />
           </span>
-          <div className="text-[15px] font-extrabold tracking-tight">Aucun contenu pour ce filtre</div>
+          <div className="text-[15px] font-extrabold tracking-tight">
+            {favoritesOnly ? "Aucun favori pour l'instant" : "Aucun contenu pour ce filtre"}
+          </div>
           <p className="max-w-[360px] text-[13.5px] leading-relaxed text-text-soft">
-            Essayez un autre filtre, ou revenez plus tard : vos prochaines livraisons apparaîtront ici automatiquement.
+            {favoritesOnly
+              ? "Cliquez sur le cœur d'un contenu pour le retrouver ici."
+              : "Essayez un autre filtre, ou revenez plus tard : vos prochaines livraisons apparaîtront ici automatiquement."}
           </p>
         </Card>
-      ) : view === "grid" ? (
+      ) : view === "list" ? (
+        <MediaListTable assets={assets} />
+      ) : isPlayer ? (
+        <div className="flex flex-col gap-6">
+          {groupedAssets.map((group) => (
+            <div key={group.key} className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[13.5px] font-extrabold tracking-tight">{group.label}</span>
+                <span className="text-[12px] font-semibold text-text-soft">{summarizeGroup(group.assets)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
+                {group.assets.map((asset) => (
+                  <MediaCard
+                    key={asset.id}
+                    asset={asset}
+                    isFavorite={favoriteIds.has(asset.id)}
+                    onToggleFavorite={() => toggleFavorite(asset.id)}
+                    onDownload={() => downloadAsset(asset)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
         <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
           {assets.map((asset) => (
             <MediaCard key={asset.id} asset={asset} />
           ))}
         </div>
-      ) : (
-        <MediaListTable assets={assets} />
       )}
 
       {showCreateModal && <CreateCollectionModal onClose={() => setShowCreateModal(false)} onCreate={handleCreateCollection} />}

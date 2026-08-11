@@ -237,19 +237,25 @@ const NAV_COACH_CLUBPLUS: NavEntry[] = [
   item("settings", "Paramètres", "settings"),
 ];
 
+// Refonte 11/08/2026 (brief Fouka, test réel de l'espace Joueur) — voir ACTIONS.md/rapport de
+// l'agent pour le détail des 22 points. Principe directeur : une navigation pensée POUR un
+// joueur, pas une version bridée du menu club/admin. Tout ce qui relève de la gestion de la
+// structure (Prestations club, Demandes de visuels, Factures, Documents, Utilisateurs, Gérer
+// l'offre, Crédits, Contrats, Sponsors) est retiré du menu — pas verrouillé avec un cadenas, un
+// joueur n'a pas besoin de savoir que ces pages existent. "Mes prestations"/"Commander une
+// prestation" est volontairement ABSENT en V1 : le catalogue restreint joueur (Match Photo/Vidéo
+// + options Drone/Highlight, prix TTC — voir services.ts § formatServicePriceTTC) est prêt, mais
+// aucun `client_id` n'existe pour une commande personnelle de joueur sans backend supplémentaire
+// (voir le rapport de l'agent) — plutôt qu'un bouton qui mène à un module verrouillé, il est
+// retiré, conformément à la consigne explicite de Fouka ("sinon retire complètement ce bouton").
 const NAV_PLAYER: NavEntry[] = [
-  item("dashboard", "Mon espace", "dashboard"),
+  item("dashboard", "Accueil", "dashboard"),
   item("content", "Mes contenus", "content"),
-  item("calendar", "Mes matchs", "calendar"),
+  item("calendar", "Calendrier", "calendar"),
   item("teams", "Mon équipe", "team-requests"),
-  item("services", "Mes shootings", "services"),
-  item("communication", "Mes publications", "communication"),
-  item("sponsors", "Mes sponsors", "sponsors"),
-  item("billing", "Mes factures", "billing"),
-  item("authorizations", "Mes autorisations", "authorizations"),
   item("messages", "Messages", "messages"),
+  item("settings", "Mon profil", "settings/profile"),
   item("support", "Aide", "support"),
-  item("settings", "Paramètres", "settings"),
 ];
 
 const NAV_ONE_OFF: NavEntry[] = [

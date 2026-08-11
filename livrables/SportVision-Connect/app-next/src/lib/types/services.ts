@@ -236,6 +236,46 @@ export function formatServicePriceHTOrDevis(amount: number | null): string {
   return amount === null ? "Sur devis" : formatServicePriceHT(amount);
 }
 
+/**
+ * Montant TTC — variante dédiée aux écrans grand public (espace Joueur), voir brief Fouka § 6 :
+ * un particulier doit voir un prix commercial ("120€ TTC"), pas un calcul de TVA ("100€ HT").
+ * N'existait pas avant le 11/08/2026 — ajoutée à côté de formatServicePriceHT plutôt que d'y
+ * toucher : cette dernière est utilisée par ClubServicesBoard/Step4Pricing (écrans club/pro, où
+ * le HT reste le bon affichage) et ne doit pas changer de comportement pour eux.
+ *
+ * `amount` est un prix HT (`catalogue_offres.prix_ht`) ; la conversion applique la TVA standard
+ * 20 % et arrondit à l'euro le plus proche — vérifié par Fouka le 11/08/2026 : les 4 prix fixes
+ * du catalogue (100/100/91.67/150€ HT) tombent tous rond en TTC (120/120/110/180€), aucun
+ * arrondi disgracieux à afficher.
+ */
+export function formatServicePriceTTC(amountHT: number): string {
+  return `${Math.round(amountHT * 1.2).toLocaleString("fr-FR")} € TTC`;
+}
+
+/** "Sur devis" quand le montant HT est `null` — équivalent TTC de formatServicePriceHTOrDevis. */
+export function formatServicePriceTTCOrDevis(amountHT: number | null): string {
+  return amountHT === null ? "Sur devis" : formatServicePriceTTC(amountHT);
+}
+
+/**
+ * Catalogue restreint pour un espace Joueur — décision produit de Fouka (11/08/2026, brief
+ * espace Joueur § 5) : SEULES ces deux prestations de base du vrai catalogue (`catalogue_offres`)
+ * sont commandables individuellement par un joueur, avec les options Drone/Highlight déjà
+ * existantes (SERVICE_OPTIONS) en complément. Tout le reste du catalogue (Pack Match, Shooting,
+ * Tournoi, Stage, Veo, Combos...) reste des prestations d'organisation (club), pas des achats
+ * individuels — volontairement absentes ici, pas juste "non recommandées".
+ *
+ * Identification par NOM (`catalogue_offres.nom`), pas par id — la table n'a pas de code stable
+ * lisible côté frontend, voir CatalogueOffer ci-dessus.
+ */
+export const PLAYER_CATALOGUE_OFFER_NAMES: readonly string[] = ["Match Photo", "Match Vidéo"];
+
+/** Options autorisées pour une commande joueur — Drone et Highlight seulement (brief § 5 :
+ * "l'option veo drone" et "montage vidéo highlight" que Fouka évoque explicitement). Les 5 autres
+ * options existantes (Reel, Livraison express, Photographe supplémentaire, Interview, Stories en
+ * direct) restent réservées aux commandes club/organisation en V1. */
+export const PLAYER_ALLOWED_OPTION_CODES: readonly ServiceOptionCode[] = ["drone", "highlight"];
+
 /** `null` = prestation demandée mais pas encore chiffrée par le staff (montant_ttc absent en
  * base) — état normal, pas une erreur. Ne jamais afficher "0 € TTC" dans ce cas. */
 export function formatServicePriceOrPending(amount: number | null): string {

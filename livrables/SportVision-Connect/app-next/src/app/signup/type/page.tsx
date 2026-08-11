@@ -8,6 +8,11 @@ import { cn } from "@/lib/cn";
 import { ORG_TYPE_OPTIONS, useSignup } from "../signup-context";
 
 // Étape 1 · Structure (+ Affiliation pour un joueur) — voir ACTIONS.md § 2.
+//
+// 11/08/2026 — un joueur n'a plus qu'un seul chemin possible : rejoindre son club (voir
+// signup-context.tsx pour pourquoi "gérer mon espace moi-même" a été retiré). `playerAffiliation`
+// est donc posé automatiquement à "join_club" dès que "Joueur" est choisi, sans choix à afficher —
+// un sélecteur à une seule option réelle n'est pas un choix, juste un clic supplémentaire inutile.
 export default function SignupTypePage() {
   const router = useRouter();
   const { state, patch } = useSignup();
@@ -28,7 +33,7 @@ export default function SignupTypePage() {
             <button
               key={option.type}
               type="button"
-              onClick={() => patch({ orgType: option.type, playerAffiliation: null })}
+              onClick={() => patch({ orgType: option.type, playerAffiliation: option.type === "player" ? "join_club" : null })}
               className={cn(
                 "flex flex-col items-start gap-1 rounded-sv-card border p-4 text-left transition-[transform,border-color,box-shadow] duration-sv hover:-translate-y-0.5",
                 selected
@@ -52,35 +57,12 @@ export default function SignupTypePage() {
 
       {state.orgType === "player" && (
         <Card className="animate-svfade p-5">
-          <div className="text-[13.5px] font-extrabold">Comment souhaitez-vous gérer votre espace ?</div>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => patch({ playerAffiliation: "self" })}
-              className={cn(
-                "rounded-xl border p-3.5 text-left transition-colors duration-sv",
-                state.playerAffiliation === "self"
-                  ? "border-brand-blue bg-info-bg"
-                  : "border-border hover:border-border-strong",
-              )}
-            >
-              <div className="text-[13px] font-bold">Gérer mon espace moi-même</div>
-              <div className="mt-1 text-[12px] text-text-soft">Vous choisissez votre offre et réglez directement.</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => patch({ playerAffiliation: "join_club" })}
-              className={cn(
-                "rounded-xl border p-3.5 text-left transition-colors duration-sv",
-                state.playerAffiliation === "join_club"
-                  ? "border-brand-blue bg-info-bg"
-                  : "border-border hover:border-border-strong",
-              )}
-            >
-              <div className="text-[13px] font-bold">Rejoindre un club sur Connect</div>
-              <div className="mt-1 text-[12px] text-text-soft">Votre accès est financé par votre club, sans paiement.</div>
-            </button>
-          </div>
+          <div className="text-[13.5px] font-extrabold">Votre espace Joueur</div>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-soft">
+            Un espace Joueur est toujours rattaché à un club — c&apos;est votre club qui finance votre accès et
+            valide vos contenus. À l&apos;étape suivante, vous indiquerez le nom de votre club ; un administrateur
+            devra confirmer votre demande.
+          </p>
         </Card>
       )}
 

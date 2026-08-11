@@ -107,7 +107,17 @@ function MessagesThread({ clientId }: { clientId: string }) {
 
   return (
     <div className="flex h-[calc(100vh-140px)] flex-col gap-5">
-      <h1 className="text-[29px] font-extrabold tracking-tight">Messages</h1>
+      <div>
+        <h1 className="text-[29px] font-extrabold tracking-tight">Messages</h1>
+        <div className="mt-1.5 flex items-center gap-2">
+          <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[9px] font-extrabold text-white">
+            SV
+          </span>
+          <span className="text-[12.5px] font-semibold text-text-soft">
+            Votre interlocuteur : <span className="font-bold text-text">Équipe SportVision</span>
+          </span>
+        </div>
+      </div>
 
       <Card className="flex flex-1 flex-col overflow-hidden p-0">
         <div className="flex-1 overflow-y-auto p-5">
@@ -118,7 +128,7 @@ function MessagesThread({ clientId }: { clientId: string }) {
             <div className="py-10 text-center text-[13px] text-text-soft">Chargement…</div>
           ) : messages.length === 0 ? (
             <div className="py-10 text-center text-[13px] text-text-soft">
-              Aucun message pour le moment. Écrivez à votre interlocuteur SportVision ci-dessous.
+              Aucun message pour le moment. Écrivez à l&apos;équipe SportVision ci-dessous.
             </div>
           ) : (
             <div className="flex flex-col gap-3">
