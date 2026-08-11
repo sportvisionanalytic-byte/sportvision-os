@@ -2,30 +2,59 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { createClient } from "@/lib/supabase/client";
+import { sendClientMessage } from "@/lib/data/shared/messages";
 import { Modal } from "./Modal";
 
 // Dashboard Full Communication — ACTIONS.md § 5 : « Transmettre une information » (principal)
 // ouvre une modale de transmission. Aucun champ détaillé n'est spécifié par la maquette : on
 // reste volontairement simple (catégorie + message), cohérent avec le ton éditorial du produit.
+//
+// 11/08/2026 — jusqu'ici, ce formulaire n'écrivait nulle part : `handleSubmit` appelait
+// directement `onSubmitted()` sans jamais envoyer `message`/`category`, qui disparaissaient. Le
+// dashboard affichait pourtant un toast de succès ("Information transmise à votre Community
+// Manager") — un mensonge fonctionnel, pas seulement une donnée d'affichage fabriquée. Il n'existe
+// aucune table dédiée "information transmise" : la vraie destination, déjà utilisée par /messages
+// pour parler à SportVision, est `messages_client` (data/shared/messages.ts:sendClientMessage) —
+// mêmes RLS, même fil que celui lu par /mycm et /messages. Le message posté est préfixé par la
+// catégorie choisie pour rester exploitable côté CM sans nouvelle colonne.
 const CATEGORIES = ["Résultat", "Actualité du club", "Événement à venir", "Autre"];
 
 export function TransmitInfoModal({
   open,
   onClose,
+  clientId,
   onSubmitted,
 }: {
   open: boolean;
   onClose: () => void;
+  /** `client_id` résolu (useClientId) — la transmission écrit dans `messages_client` pour ce
+   * client. Le bouton qui ouvre cette modale doit rester désactivé tant qu'il n'est pas prêt. */
+  clientId: string;
   onSubmitted: () => void;
 }) {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSubmitted();
-    setMessage("");
-    setCategory(CATEGORIES[0]);
+    const text = message.trim();
+    if (!text || sending) return;
+    setSending(true);
+    setSendError(false);
+    try {
+      const supabase = createClient();
+      await sendClientMessage(supabase, clientId, `[${category}] ${text}`);
+      setMessage("");
+      setCategory(CATEGORIES[0]);
+      onSubmitted();
+    } catch {
+      setSendError(true);
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -63,11 +92,15 @@ export function TransmitInfoModal({
           />
         </label>
 
+        {sendError && (
+          <p className="text-[12.5px] font-semibold text-danger-fg">Envoi impossible, réessayez.</p>
+        )}
+
         <div className="mt-1 flex justify-end gap-2.5">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={sending}>
             Annuler
           </Button>
-          <Button type="submit" variant="primary" disabled={!message.trim()}>
+          <Button type="submit" variant="primary" disabled={!message.trim() || sending} loading={sending}>
             Envoyer
           </Button>
         </div>

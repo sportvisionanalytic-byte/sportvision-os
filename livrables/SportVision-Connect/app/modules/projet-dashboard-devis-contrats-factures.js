@@ -80,8 +80,41 @@
       '.pj-todo .go{color:var(--accent);font-size:12.5px;font-weight:700;flex-shrink:0}',
       '.pj-shortcuts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}',
       '.pj-shortcuts .btn{width:auto;margin-top:0}',
+      '.pj-consent{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px}',
+      '.pj-consent-row{display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12.5px;line-height:1.5;color:var(--text)}',
+      '.pj-consent-row input{margin-top:3px;flex-shrink:0}',
+      '.pj-consent-row a{color:var(--accent);font-weight:600}',
+      '.pj-consent-err{color:var(--danger);font-size:12.5px;min-height:0}',
     ].join('\n');
     document.head.appendChild(style);
+  }
+
+  // Version des CGV en vigueur — à mettre à jour manuellement à chaque
+  // nouvelle version publiée sur la vitrine (cf. cgv.html, balise
+  // <p class="legal-updated">, "Version finale ..."). Enregistrée telle
+  // quelle dans devis.cgv_version_acceptee au moment de l'acceptation
+  // (CGV Art. 6.3 : c'est l'acceptation du devis qui forme le contrat,
+  // donc la version des CGV qui compte juridiquement est celle en
+  // vigueur à CE moment, pas celle en vigueur à la demande initiale).
+  var CGV_VERSION = 'V1.0 (9 août 2026)';
+  var CGV_URL = 'https://sportvision-an.fr/cgv.html';
+
+  // Même règle que reserver.html (updateRetractationField(), avant son
+  // retrait de ce fichier le 11/08/2026) : la demande expresse
+  // d'exécution anticipée (CGV Art. 35.1) n'a de sens que si la
+  // prestation a lieu avant l'expiration du délai légal de rétractation
+  // de 14 jours. `d.date_prestation` est exposée par client_devis depuis
+  // la migration migration-devis-cgv-execution-anticipee-11-08.sql (join
+  // sur prestations) ; si absente (devis sans prestation liée, ex.
+  // Club+/Full Communication), on ne montre jamais la case — c'est un
+  // choix conservateur, pas une omission.
+  function needsExecutionAnticipee(d) {
+    if (!d.date_prestation) return false;
+    var prestationDate = new Date(d.date_prestation + 'T00:00:00');
+    if (isNaN(prestationDate.getTime())) return false;
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var joursAvant = Math.round((prestationDate - today) / (24 * 60 * 60 * 1000));
+    return joursAvant >= 0 && joursAvant < 14;
   }
 
   /* ── Formattage partagé ── */
@@ -313,6 +346,12 @@
       ensureStyles();
       var list = [];
       var loadFailed = false;
+      // Id du devis actuellement en cours de confirmation (case CGV +
+      // éventuellement exécution anticipée affichées avant l'appel RPC
+      // réel). Recréé à chaque render(), comme le reste de l'état de ce
+      // module (cf. en-tête du fichier).
+      var confirmingId = null;
+      var confirmErr = '';
 
       async function load() {
         var r = await sbFetch('client_devis?client_id=eq.' + orgId + '&order=created_at.desc');
@@ -324,7 +363,30 @@
         var canDecide = d.statut === 'envoyé' || d.statut === 'en_attente';
         var canPay = d.statut === 'accepté';
         var actions = '';
-        if (canDecide) {
+        if (canDecide && confirmingId === d.id) {
+          // Écran de confirmation : c'est ICI, au moment où le client
+          // accepte le devis (CGV Art. 6.3 — c'est cette acceptation qui
+          // rend la prestation ferme), que les CGV sont réellement
+          // acceptées et que la demande expresse d'exécution anticipée
+          // (CGV Art. 35.1) est recueillie si applicable. Ni l'une ni
+          // l'autre ne sont plus capturées à la simple demande initiale
+          // sur reserver.html (cf. migration-devis-cgv-execution-
+          // anticipee-11-08.sql).
+          var showExec = needsExecutionAnticipee(d);
+          actions = '<div class="pj-consent">'
+            + '<label class="pj-consent-row"><input type="checkbox" class="pj-consent-cgv" data-devis="' + esc(d.id) + '"> '
+            + '<span>J\'ai lu et j\'accepte les <a href="' + CGV_URL + '" target="_blank" rel="noopener">Conditions Générales de Vente</a> (version en vigueur : ' + esc(CGV_VERSION) + ').</span></label>'
+            + (showExec
+              ? '<label class="pj-consent-row"><input type="checkbox" class="pj-consent-exec" data-devis="' + esc(d.id) + '"> '
+                + '<span>Je demande expressément que l\'exécution de la prestation commence avant l\'expiration de mon délai légal de rétractation de 14 jours. Si je me rétracte ensuite, un montant proportionnel au service déjà fourni pourra rester dû (<a href="' + CGV_URL + '#article-35" target="_blank" rel="noopener">Article 35 des CGV</a>).</span></label>'
+              : '')
+            + (confirmErr ? '<div class="pj-consent-err">' + esc(confirmErr) + '</div>' : '')
+            + '<div class="pj-actions">'
+            + '<button class="btn btn-ghost" data-action="cancel-accept" data-id="' + esc(d.id) + '">Annuler</button>'
+            + '<button class="btn btn-primary" data-action="confirm-accept" data-id="' + esc(d.id) + '">Confirmer l\'acceptation</button>'
+            + '</div>'
+            + '</div>';
+        } else if (canDecide) {
           actions = '<div class="pj-actions">'
             + '<button class="btn btn-ghost" data-action="refuse" data-id="' + esc(d.id) + '">Refuser</button>'
             + '<button class="btn btn-primary" data-action="accept" data-id="' + esc(d.id) + '">Accepter</button>'
@@ -339,7 +401,9 @@
           + '<div class="pj-meta">Reçu le ' + fmtDate(d.created_at)
           + (d.date_expiration ? ' · Valable jusqu\'au ' + fmtDate(d.date_expiration) : '') + '</div></div>'
           + badge(DEVIS_STATUT, d.statut) + '</div>'
-          + '<div class="pj-row-bottom"><span class="pj-amount">' + fmtEUR(d.total_ttc) + '</span>' + actions + '</div>'
+          + '<div class="pj-row-bottom"><span class="pj-amount">' + fmtEUR(d.total_ttc) + '</span>'
+          + (confirmingId === d.id ? '' : actions) + '</div>'
+          + (confirmingId === d.id ? actions : '')
           + '</div>';
       }
 
@@ -359,11 +423,52 @@
         if (action === 'retry') {
           await load();
           paint();
-        } else if (action === 'accept' || action === 'refuse') {
+        } else if (action === 'refuse') {
+          // Refuser un devis ne forme aucun contrat : aucun consentement
+          // CGV / exécution anticipée à recueillir dans ce cas.
           btn.disabled = true;
-          var r = await sbRpc('client_decide_devis', { p_devis_id: id, p_decision: action === 'accept' ? 'accepté' : 'refusé' });
-          if (!r.ok) { toast('Action impossible sur ce devis.'); btn.disabled = false; return; }
-          toast(action === 'accept' ? 'Devis accepté.' : 'Devis refusé.');
+          var rRefuse = await sbRpc('client_decide_devis', { p_devis_id: id, p_decision: 'refusé' });
+          if (!rRefuse.ok) { toast('Action impossible sur ce devis.'); btn.disabled = false; return; }
+          toast('Devis refusé.');
+          await load();
+          paint();
+        } else if (action === 'accept') {
+          // N'appelle plus le RPC directement : ouvre d'abord l'écran de
+          // consentement (CGV + exécution anticipée si applicable) — voir
+          // row() ci-dessus.
+          confirmingId = id;
+          confirmErr = '';
+          paint();
+        } else if (action === 'cancel-accept') {
+          confirmingId = null;
+          confirmErr = '';
+          paint();
+        } else if (action === 'confirm-accept') {
+          var d = list.find(function (x) { return x.id === id; });
+          var cgvBox = container.querySelector('.pj-consent-cgv[data-devis="' + id + '"]');
+          var execBox = container.querySelector('.pj-consent-exec[data-devis="' + id + '"]');
+          if (!cgvBox || !cgvBox.checked) {
+            confirmErr = "Merci d'accepter les CGV pour confirmer ce devis.";
+            paint();
+            return;
+          }
+          if (d && needsExecutionAnticipee(d) && (!execBox || !execBox.checked)) {
+            confirmErr = 'Cette prestation a lieu dans moins de 14 jours : merci de cocher la case d\'exécution anticipée pour confirmer.';
+            paint();
+            return;
+          }
+          confirmErr = '';
+          btn.disabled = true;
+          var rAccept = await sbRpc('client_decide_devis', {
+            p_devis_id: id,
+            p_decision: 'accepté',
+            p_cgv_acceptee: true,
+            p_cgv_version: CGV_VERSION,
+            p_execution_anticipee_demandee: !!(execBox && execBox.checked),
+          });
+          if (!rAccept.ok) { toast('Action impossible sur ce devis.'); btn.disabled = false; return; }
+          toast('Devis accepté.');
+          confirmingId = null;
           await load();
           paint();
         } else if (action === 'pay') {

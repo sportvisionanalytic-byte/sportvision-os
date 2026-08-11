@@ -93,3 +93,40 @@ export function sumStat(items: ContenuAvecStats[], field: "portee" | "engagement
   }
   return hasValue ? total : null;
 }
+
+/** Un rapport mensuel = tous les contenus publiés d'une même période `datePublication` (format
+ * `YYYY-MM`). Pas une entité stockée — dérivée à l'affichage, voir /reports. Réutilisé par le
+ * dashboard Full Communication pour sa tuile "Dernier rapport" (même définition de "rapport" que
+ * l'écran /reports, pas une seconde notion inventée). */
+export interface MonthlyReport {
+  /** Format `2026-07`, dérivé de `datePublication`. */
+  period: string;
+  items: ContenuAvecStats[];
+}
+
+/** Groupe des contenus déjà enrichis de leurs stats (fetchContenusPubliesAvecStats) par mois de
+ * publication, du plus récent au plus ancien. Un contenu publié sans `datePublication` (ne
+ * devrait pas arriver en pratique, la colonne est posée à la publication) est exclu plutôt que
+ * groupé sous une période fictive. */
+export function buildMonthlyReports(items: ContenuAvecStats[]): MonthlyReport[] {
+  const byPeriod = new Map<string, ContenuAvecStats[]>();
+  for (const c of items) {
+    if (!c.datePublication) continue;
+    const period = c.datePublication.slice(0, 7);
+    const list = byPeriod.get(period) ?? [];
+    list.push(c);
+    byPeriod.set(period, list);
+  }
+  return [...byPeriod.entries()]
+    .map(([period, list]) => ({ period, items: list }))
+    .sort((a, b) => (a.period < b.period ? 1 : -1));
+}
+
+/** Libellé lisible d'une période `YYYY-MM` (ex. "2026-07" → "juillet 2026") — même format utilisé
+ * par /reports et par la tuile "Rapport" du dashboard Full Communication. */
+export function formatReportPeriod(period: string): string {
+  const [yearPart, monthPart] = period.split("-");
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+  return new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}

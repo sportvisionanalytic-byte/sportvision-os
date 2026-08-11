@@ -221,6 +221,7 @@ section{position:relative}
 .feature-list li::before{content:'';flex-shrink:0;width:18px;height:18px;margin-top:2px;border-radius:6px;background:var(--grad-brand);position:relative}
 .feature-list li::after{content:'✓';position:absolute;color:#fff;font-size:11px;font-weight:900;margin-left:3.5px;margin-top:2.5px}
 .feature-visual{border-radius:var(--radius-lg);overflow:hidden;background:linear-gradient(160deg,#0d1330,#171f45);padding:22px;box-shadow:var(--shadow-lg);min-height:240px;position:relative}
+.soon-tag{display:inline-block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#B54708;background:rgba(181,71,8,.1);border:1px solid rgba(181,71,8,.25);border-radius:999px;padding:2px 8px;margin-left:8px;vertical-align:middle}
 
 /* ── Accompagnements spécialisés (cartes d'orientation) ── */
 .accomp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:8px}
@@ -408,7 +409,7 @@ section{position:relative}
   .callout-box{flex-direction:column;text-align:center}
 }
 </style>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Puis-je changer d'offre en cours de contrat ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, vous pouvez évoluer de Club+ Start vers Club+ Performance selon les besoins de votre club. Contactez-nous pour ajuster votre formule."}}, {"@type": "Question", "name": "Les crédits sont-ils reportables ?", "acceptedAnswer": {"@type": "Answer", "text": "Les conditions de report des crédits mensuels sont précisées lors de l'établissement de votre devis, selon la formule choisie."}}, {"@type": "Question", "name": "Combien de temps dure l'engagement ?", "acceptedAnswer": {"@type": "Answer", "text": "L'engagement est de 12 mois, aux tarifs de 49 €/mois (Start) ou 129 €/mois (Performance). Une formule sans engagement est aussi disponible, à 59 €/mois ou 139 €/mois."}}, {"@type": "Question", "name": "Club+ inclut-il Full Communication ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, Full Communication est une offre séparée : une équipe SportVision prend en charge votre communication au quotidien. Voir Full Communication."}}, {"@type": "Question", "name": "Comment sont protégés les mineurs sur les médias diffusés ?", "acceptedAnswer": {"@type": "Answer", "text": "Chaque joueur identifié sur un média doit avoir une autorisation de diffusion en cours de validité. Sans autorisation valide, le média reste bloqué automatiquement — ce n'est jamais laissé à l'appréciation de la personne qui publie."}}, {"@type": "Question", "name": "Les familles ont-elles besoin d'un compte séparé ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, un seul compte SportVision Connect suffit pour tout le monde. Un parent ou un joueur qui rejoint un club voit automatiquement apparaître son espace dédié, sans application supplémentaire à installer."}}]}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Puis-je changer d'offre en cours de contrat ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, vous pouvez évoluer de Club+ Start vers Club+ Performance selon les besoins de votre club. Contactez-nous pour ajuster votre formule."}}, {"@type": "Question", "name": "Les crédits sont-ils reportables ?", "acceptedAnswer": {"@type": "Answer", "text": "Les conditions de report des crédits mensuels sont précisées lors de l'établissement de votre devis, selon la formule choisie."}}, {"@type": "Question", "name": "Combien de temps dure l'engagement ?", "acceptedAnswer": {"@type": "Answer", "text": "L'engagement est de 12 mois, aux tarifs de 49 €/mois (Start) ou 129 €/mois (Performance). Une formule sans engagement est aussi disponible, à 59 €/mois ou 139 €/mois."}}, {"@type": "Question", "name": "L'engagement se renouvelle-t-il automatiquement après 12 mois ?", "acceptedAnswer": {"@type": "Answer", "text": "À l'issue des 12 mois, l'engagement ne repart pas automatiquement pour 12 nouveaux mois. SportVision vous propose le renouvellement, qui nécessite votre accord."}}, {"@type": "Question", "name": "Club+ inclut-il Full Communication ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, Full Communication est une offre séparée : une équipe SportVision prend en charge votre communication au quotidien. Voir Full Communication."}}, {"@type": "Question", "name": "Comment sont protégés les mineurs sur les médias diffusés ?", "acceptedAnswer": {"@type": "Answer", "text": "Chaque joueur identifié sur un média doit avoir une autorisation de diffusion en cours de validité. Sans autorisation valide, le média reste bloqué automatiquement — ce n'est jamais laissé à l'appréciation de la personne qui publie."}}, {"@type": "Question", "name": "Les familles ont-elles besoin d'un compte séparé ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, un seul compte SportVision Connect suffit pour tout le monde. Un parent ou un joueur qui rejoint un club voit automatiquement apparaître son espace dédié, sans application supplémentaire à installer."}}]}</script>
 </head>
 <body>
 
@@ -500,7 +501,7 @@ section{position:relative}
       <p class="subtitle">Centralisez les demandes, les visuels, les équipes, les contenus et les prestations dans SportVision Connect.</p>
       <div class="hero-ctas">
         <a href="#formules" class="btn btn-grad">Découvrir les formules</a>
-        <a href="#devis" class="btn btn-ghost-dark" data-action="open-devis">Demander une démonstration</a>
+        <a href="#devis" class="btn btn-ghost-dark" data-action="open-devis" data-devis-context="Club+" data-devis-title="Découvrir Club+ pour mon club">Demander une démonstration</a>
       </div>
       <p class="hero-micro">Pour les clubs qui veulent garder la main sur leur communication, avec les outils SportVision. Choisissez votre formule et créez votre espace SportVision Connect en quelques minutes — ou demandez une démonstration accompagnée.</p>
       <div class="hero-tertiary"><button type="button" class="btn-link" data-action="open-rdv">Vous préférez qu'on en discute ? Prendre rendez-vous →</button></div>
@@ -532,7 +533,7 @@ section{position:relative}
           <li>Contenus et demandes de prestations</li>
           <li>5 % de remise sur les prestations</li>
         </ul>
-        <a href="#devis" class="btn btn-ghost-light" data-action="open-devis" data-devis-context="Club+ Start (49 €/mois)">Demander Club+ Start</a>
+        <a href="#devis" class="btn btn-ghost-light" data-action="open-devis" data-devis-context="Club+ Start (49 €/mois)" data-devis-title="Souscrire à Club+ Start pour mon club">Demander Club+ Start</a>
       </div>
       <div class="offer-card featured">
         <span class="tag">Club+ Performance</span>
@@ -549,7 +550,7 @@ section{position:relative}
           <li>Statistiques et fonctionnalités avancées</li>
           <li>10 % de remise sur les prestations</li>
         </ul>
-        <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Club+ Performance (129 €/mois)">Demander Club+ Performance</a>
+        <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Club+ Performance (129 €/mois)" data-devis-title="Souscrire à Club+ Performance pour mon club">Demander Club+ Performance</a>
       </div>
     </div>
     <div class="compare-wrap reveal">
@@ -633,7 +634,7 @@ section{position:relative}
         <h3>Chaque photo, chaque vidéo, sous contrôle.</h3>
         <p class="desc">Vos éducateurs identifient les joueurs présents sur chaque photo et chaque vidéo directement dans Connect. Si un joueur n'a pas d'autorisation de diffusion valide, le média concerné est automatiquement signalé, sans intervention manuelle à faire à chaque publication.</p>
         <ul class="feature-list">
-          <li>Identification des joueurs sur les médias, un par un</li>
+          <li>Identification des joueurs sur les médias, un par un <span class="soon-tag">Prochainement</span></li>
           <li>Blocage automatique si une autorisation manque</li>
           <li>Téléchargement et partage gérés média par média</li>
         </ul>
@@ -654,7 +655,7 @@ section{position:relative}
         <h3>Un espace pour vos joueurs et leurs familles.</h3>
         <p class="desc">Les demandes d'adhésion à une équipe, les autorisations parentales et les signalements se gèrent en ligne, avec une validation à deux niveaux quand c'est nécessaire (éducateur puis dirigeant). Chaque famille suit ensuite le calendrier, les médias et les services de son enfant depuis son propre compte — fini les « c'est pour quand les photos ? » répétés par message ou à la sortie des vestiaires : le statut de chaque prestation est visible en direct, sans avoir à demander à personne.</p>
         <ul class="feature-list">
-          <li>Demandes d'adhésion et rattachement aux équipes en ligne</li>
+          <li>Demandes d'adhésion et rattachement aux équipes en ligne <span class="soon-tag">Prochainement</span></li>
           <li>Autorisations parentales numériques, traçables et révocables</li>
           <li>Espace dédié pour chaque famille, par enfant</li>
           <li>Statut des photos et vidéos suivi en direct, sans solliciter le club</li>
@@ -677,7 +678,7 @@ section{position:relative}
         <p class="desc">Matchs, entraînements, échéances sponsors et prestations SportVision : tout apparaît au même endroit, filtrable par équipe, visible par tout le bureau du club sans échange de fichiers.</p>
         <ul class="feature-list">
           <li>Vue mensuelle et vue agenda</li>
-          <li>Filtres par équipe et par type d'événement</li>
+          <li>Filtres par équipe et par type d'événement <span class="soon-tag">Prochainement</span></li>
           <li>Ajout d'un événement en quelques secondes</li>
         </ul>
       </div>
@@ -697,7 +698,8 @@ section{position:relative}
         <h3>Vos sponsors et votre suivi, sous les yeux de votre bureau.</h3>
         <p class="desc">Fiches sponsors, contreparties à honorer, devis, factures, contrats et rapports d'activité : votre bureau garde une vue claire sur la partie administrative du club, sans reconstituer un tableau à part.</p>
         <ul class="feature-list">
-          <li>Fiches sponsors et contreparties suivies dans le temps</li>
+          <li>Fiches sponsors consultables dans Connect</li>
+          <li>Suivi des contreparties dans le temps <span class="soon-tag">Prochainement</span></li>
           <li>Devis, factures et contrats du club consultables directement</li>
           <li>Rapports d'activité pour présenter au bureau</li>
         </ul>
@@ -738,6 +740,7 @@ section{position:relative}
       <div class="faq-item"><button class="faq-q"><span>Puis-je changer d'offre en cours de contrat ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui, vous pouvez évoluer de Club+ Start vers Club+ Performance selon les besoins de votre club. Contactez-nous pour ajuster votre formule.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Les crédits sont-ils reportables ?</span><span class="chev">+</span></button><div class="faq-a"><p>Les conditions de report des crédits mensuels sont précisées lors de l'établissement de votre devis, selon la formule choisie.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Combien de temps dure l'engagement ?</span><span class="chev">+</span></button><div class="faq-a"><p>L'engagement est de 12 mois, aux tarifs de 49 €/mois (Start) ou 129 €/mois (Performance). Une formule sans engagement est aussi disponible, à 59 €/mois ou 139 €/mois.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>L'engagement se renouvelle-t-il automatiquement après 12 mois ?</span><span class="chev">+</span></button><div class="faq-a"><p>À l'issue des 12 mois, l'engagement ne repart pas automatiquement pour 12 nouveaux mois. SportVision vous propose le renouvellement, qui nécessite votre accord.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Club+ inclut-il Full Communication ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non, Full Communication est une offre séparée : une équipe SportVision prend en charge votre communication au quotidien. <a href="full-communication.html" style="color:var(--blue);font-weight:700">Voir Full Communication</a>.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Comment sont protégés les mineurs sur les médias diffusés ?</span><span class="chev">+</span></button><div class="faq-a"><p>Chaque joueur identifié sur un média doit avoir une autorisation de diffusion en cours de validité. Sans autorisation valide, le média reste bloqué automatiquement — ce n'est jamais laissé à l'appréciation de la personne qui publie.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Les familles ont-elles besoin d'un compte séparé ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non, un seul compte SportVision Connect suffit pour tout le monde. Un parent ou un joueur qui rejoint un club voit automatiquement apparaître son espace dédié, sans application supplémentaire à installer.</p></div></div>
@@ -850,7 +853,7 @@ section{position:relative}
   <div class="sv-modal">
     <button class="sv-close" id="devis-close" aria-label="Fermer">✕</button>
     <div id="devis-form-wrap">
-      <h3>Demander un devis ou une démonstration</h3>
+      <h3 id="devis-title">Demander un devis ou une démonstration</h3>
       <p class="sub">Présentez-nous votre besoin, nous revenons vers vous rapidement.</p>
       <form id="devis-form">
         <div class="sv-honeypot"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
@@ -1048,10 +1051,11 @@ document.getElementById('cookie-manage').addEventListener('click', (e) => {
 
 // ── Modal demande de devis / démonstration ──
 const devisOverlay = document.getElementById('devis-overlay');
-function openDevis(context){
+function openDevis(context, title){
   document.getElementById('devis-form-wrap').style.display = '';
   document.getElementById('devis-ok-wrap').style.display = 'none';
   document.getElementById('devis-err').textContent = '';
+  document.getElementById('devis-title').textContent = title || 'Demander un devis ou une démonstration';
   const commentaireEl = document.getElementById('dv-commentaire');
   if (context && commentaireEl && !commentaireEl.value) commentaireEl.value = 'Intéressé par : ' + context;
   devisOverlay.classList.add('on');
@@ -1059,7 +1063,7 @@ function openDevis(context){
 function closeDevis(){ devisOverlay.classList.remove('on'); }
 document.addEventListener('click', (e) => {
   const opener = e.target.closest('[data-action="open-devis"]');
-  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context')); }
+  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context'), opener.getAttribute('data-devis-title')); }
 });
 document.getElementById('devis-close').addEventListener('click', closeDevis);
 document.getElementById('devis-ok-close').addEventListener('click', closeDevis);

@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Camera, FileBarChart, ListChecks, MessageCircle, Send } from "lucide-react";
+import { AlertTriangle, Calendar, Camera, FileBarChart, ListChecks, MessageCircle, Send } from "lucide-react";
 import { useSession } from "@/lib/session-context";
+import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -11,48 +12,39 @@ import { MetricCard } from "@/components/communication/MetricCard";
 import { TransmitInfoModal } from "@/components/communication/TransmitInfoModal";
 import { ToastViewport } from "@/components/communication/ToastViewport";
 import { useToast } from "@/components/communication/useToast";
-import { publicationStatusTone } from "@/components/communication/statusTone";
+import { CONTENU_STATUT_LABEL, CONTENU_STATUT_TONE } from "@/components/communication/contenuStatusTone";
+import { useClientId } from "@/lib/data/shared/use-client-id";
+import { createClient } from "@/lib/supabase/client";
+import { fetchContenus, type Contenu } from "@/lib/data/shared/contenus";
 import {
-  ELITE_CUP_EVENT_DATE,
-  getCommunityManagerProfile,
-  getPresencesByOrg,
-  getPublicationsByOrg,
-  getReportsByOrg,
-  getThreadForOrg,
-} from "@/lib/mock/communication";
-import { PLATFORM_LABELS, PUBLICATION_STATUS_LABELS } from "@/lib/types/communication";
+  buildMonthlyReports,
+  fetchContenuStatsByIds,
+  formatReportPeriod,
+  sumStat,
+  type ContenuAvecStats,
+  type MonthlyReport,
+} from "@/lib/data/shared/contenu-stats";
+import { fetchCommunityManager, type CommunityManager } from "@/lib/data/shared/community-manager";
+import { fetchClubPresences, type ClubPresence } from "@/lib/data/club/presences";
 
-// Tableau de bord Full Communication — ACTIONS.md § 5 « Full Communication ». Le titre et le
-// contenu varient par type d'organisation : club, coach, académie, événement (voir README.md
-// § Les treize expériences). Une seule action principale par écran : « Transmettre une
-// information » (les autres CTA en secondaire/discret, cohérent avec CHARTE.md § Boutons).
+// Tableau de bord Full Communication — ACTIONS.md § 5 « Full Communication ». Le titre varie par
+// type d'organisation (voir heroContent), le contenu est identique pour tous.
+//
+// 11/08/2026 — jusqu'à cette nuit, cet écran lisait intégralement lib/mock/communication.ts (CM,
+// publications, présences, rapports fictifs). Un bug de session.ts (buildClubActiveContext lisait
+// `contrats` — fail-closed pour un club — au lieu de la vue `client_contrats`) empêchait tout vrai
+// club Full Communication d'être détecté comme tel, donc ce dashboard n'avait jamais été vu par un
+// client réel (corrigé commit 0be09cd). Reconstruit ici sur les mêmes sources `data/*` déjà
+// réelles et vérifiées ailleurs dans l'app (/communication, /mycm, /reports, /analytics,
+// /publications, /validations) — aucune logique nouvelle inventée, seulement réutilisée. Chaque
+// section sans source réelle équivalente (disponibilité du CM, délai de réponse, prochain point,
+// résumé narratif du rapport) est explicitement omise plutôt que fabriquée — voir le détail
+// section par section ci-dessous.
 export function FullCommunicationDashboard() {
   const { ctx } = useSession();
-  const router = useRouter();
+  const resolution = useClientId();
   const { toasts, showToast } = useToast();
   const [transmitOpen, setTransmitOpen] = useState(false);
-
-  const publications = useMemo(() => getPublicationsByOrg(ctx.organization.id), [ctx.organization.id]);
-  const presences = useMemo(() => getPresencesByOrg(ctx.organization.id), [ctx.organization.id]);
-  const reports = useMemo(() => getReportsByOrg(ctx.organization.id), [ctx.organization.id]);
-  const cm = getCommunityManagerProfile(ctx.organization.id);
-  const thread = getThreadForOrg(ctx.organization.id);
-
-  const now = Date.now();
-  const inSevenDays = now + 7 * 86_400_000;
-
-  const toValidate = publications.filter((p) => p.status === "to_validate");
-  const scheduledThisWeek = publications.filter((p) => {
-    const t = new Date(p.scheduledAt).getTime();
-    return t >= now - 86_400_000 && t <= inSevenDays && p.status !== "cancelled";
-  });
-  const nextPresence = presences.find((p) => p.status === "scheduled");
-  const latestReport = reports[0];
-
-  const upcoming = publications
-    .filter((p) => p.status !== "published" && p.status !== "cancelled" && p.status !== "publish_error")
-    .slice(0, 4);
-
   const { title, subtitle } = heroContent(ctx.organization);
 
   return (
@@ -63,12 +55,155 @@ export function FullCommunicationDashboard() {
           <h1 className="mt-1.5 max-w-2xl text-balance text-[29px] font-extrabold leading-tight tracking-tight">{title}</h1>
           {subtitle && <p className="mt-1.5 max-w-xl text-[13.5px] leading-relaxed text-text-soft">{subtitle}</p>}
         </div>
-        <Button variant="primary" onClick={() => setTransmitOpen(true)}>
+        <Button variant="primary" disabled={resolution.status !== "ready"} onClick={() => setTransmitOpen(true)}>
           <Send className="h-3.5 w-3.5" aria-hidden />
           Transmettre une information
         </Button>
       </div>
 
+      {resolution.status === "loading" && (
+        <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>
+      )}
+
+      {/* Non atteignable aujourd'hui en pratique (seul un club obtient le plan "full_communication",
+          voir dashboard/page.tsx et session.ts:buildClubActiveContext) — gardé par défense en
+          profondeur, honnête plutôt qu'un écran cassé si ça change un jour. */}
+      {resolution.status === "locked" && (
+        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
+          <div className="max-w-md text-[13.5px] text-text-soft">
+            Aucune donnée réelle n&apos;est disponible pour ce type d&apos;espace pour le moment.
+          </div>
+        </Card>
+      )}
+
+      {resolution.status === "not_linked" && (
+        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
+          <div className="max-w-md text-[13.5px] text-text-soft">
+            SportVision n&apos;a pas encore relié {ctx.organization.name} à un espace de communication. Contactez
+            votre interlocuteur SportVision pour l&apos;activer.
+          </div>
+        </Card>
+      )}
+
+      {resolution.status === "ready" && <DashboardBody clientId={resolution.clientId} />}
+
+      {resolution.status === "ready" && (
+        <TransmitInfoModal
+          open={transmitOpen}
+          onClose={() => setTransmitOpen(false)}
+          clientId={resolution.clientId}
+          onSubmitted={() => {
+            setTransmitOpen(false);
+            showToast("Information transmise à votre Community Manager.");
+          }}
+        />
+      )}
+      <ToastViewport toasts={toasts} />
+    </div>
+  );
+}
+
+function DashboardBody({ clientId }: { clientId: string }) {
+  const { ctx } = useSession();
+  const router = useRouter();
+  // "Présence" (module /presences) : réservé aux clubs, gated par un entitlement
+  // organization_entitlements réel (voir data/club/presences.ts et permissions.ts) — jamais
+  // affiché pour un espace qui n'a pas ce module sur son contrat.
+  const canSeePresences = ctx.organization.type === "club" && canAccess(ctx, "presences");
+
+  const [contenus, setContenus] = useState<Contenu[] | null>(null);
+  const [monthlyReports, setMonthlyReports] = useState<MonthlyReport[]>([]);
+  const [cm, setCm] = useState<CommunityManager | null>(null);
+  const [presences, setPresences] = useState<ClubPresence[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+
+  async function reload() {
+    setLoadError(false);
+    setContenus(null);
+    try {
+      const supabase = createClient();
+      const [items, cmProfile] = await Promise.all([
+        fetchContenus(supabase, clientId),
+        fetchCommunityManager(supabase, clientId),
+      ]);
+      setContenus(items);
+      setCm(cmProfile);
+
+      // "Dernier rapport" — même définition qu'/reports (contenus publiés groupés par mois de
+      // date_publication, enrichis de leurs contenu_stats si saisies). fetchContenuStatsByIds
+      // plutôt que fetchContenusPubliesAvecStats : évite un second appel fetchContenus, `items`
+      // ci-dessus sert déjà de base.
+      const publishedIds = items.filter((c) => c.statut === "publie").map((c) => c.id);
+      const statsById = await fetchContenuStatsByIds(supabase, publishedIds);
+      const withStats: ContenuAvecStats[] = items
+        .filter((c) => c.statut === "publie")
+        .map((c) => ({ ...c, stats: statsById.get(c.id) ?? null }));
+      setMonthlyReports(buildMonthlyReports(withStats));
+
+      if (canSeePresences) {
+        setPresences(await fetchClubPresences(supabase, ctx.organization.id));
+      }
+    } catch {
+      setLoadError(true);
+      setContenus([]);
+    }
+  }
+
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  if (loadError) {
+    return (
+      <Card className="flex flex-wrap items-center gap-3 border-danger-fg/30 bg-danger-bg px-5 py-4">
+        <AlertTriangle className="h-[18px] w-[18px] flex-none text-danger-fg" aria-hidden />
+        <span className="min-w-0 flex-1 text-[13px] font-semibold text-danger-fg">
+          Impossible de charger votre communication.
+        </span>
+        <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={reload}>
+          Réessayer
+        </Button>
+      </Card>
+    );
+  }
+
+  if (contenus === null) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  }
+
+  const now = Date.now();
+  const inSevenDays = now + 7 * 86_400_000;
+  const effectiveDate = (c: Contenu) => new Date(c.datePrevue ?? c.datePublication ?? c.createdAt).getTime();
+
+  // "Contenu à valider" / bandeau — file réelle de /validations (statut a_valider_client).
+  const toValidate = contenus.filter((c) => c.statut === "a_valider_client");
+
+  // "Publications programmées" — traduction du même concept que le mock ("actif dans les 7
+  // prochains jours, hors annulé"), adaptée au vocabulaire réel de `contenus` : `archive` est
+  // l'équivalent terminal réel de "cancelled"/"publish_error" (aucun de ces deux statuts n'existe
+  // côté `contenus`).
+  const scheduledThisWeek = contenus.filter((c) => {
+    if (c.statut === "archive") return false;
+    const t = effectiveDate(c);
+    return t >= now - 86_400_000 && t <= inSevenDays;
+  });
+
+  // "Ce que nous préparons" — tout ce qui n'est pas encore publié ni archivé, trié par échéance la
+  // plus proche. Lignes non cliquables (contrairement au mock) : la fiche détail
+  // /communication/publications/[id] reste bâtie sur des identifiants mock et ne sait pas résoudre
+  // un vrai id `contenus` — même choix que /analytics pour la même raison (voir son commentaire).
+  const upcoming = contenus
+    .filter((c) => c.statut !== "publie" && c.statut !== "archive")
+    .sort((a, b) => effectiveDate(a) - effectiveDate(b))
+    .slice(0, 4);
+
+  const latestReport = monthlyReports[0];
+  const latestReportReach = latestReport ? sumStat(latestReport.items, "portee") : null;
+  const nextPresence = (presences ?? []).find((p) => p.status === "scheduled");
+
+  return (
+    <>
       {toValidate.length > 0 && (
         <Card className="flex flex-wrap items-center justify-between gap-3 border-brand-blue/30 bg-info-bg px-5 py-4">
           <div className="flex items-center gap-3">
@@ -99,14 +234,18 @@ export function FullCommunicationDashboard() {
         <MetricCard
           icon={Camera}
           label="Présence"
-          value={nextPresence ? formatDateShort(nextPresence.date) : "Aucune prévue"}
-          hint={nextPresence?.eventLabel ?? "Aucune présence programmée"}
+          value={!canSeePresences ? "Non disponible" : nextPresence ? formatDateShort(nextPresence.date) : "Aucune prévue"}
+          hint={
+            !canSeePresences
+              ? "Module non activé sur ce contrat"
+              : (nextPresence?.eventLabel ?? "Aucune présence programmée")
+          }
         />
         <MetricCard
           icon={FileBarChart}
           label="Rapport"
-          value={latestReport ? formatPeriod(latestReport.period) : "À venir"}
-          hint={latestReport ? (latestReport.status === "available" ? "Disponible" : "Déjà consulté") : "Après le premier mois"}
+          value={latestReport ? formatReportPeriod(latestReport.period) : "À venir"}
+          hint={latestReport ? "Disponible" : "Après votre première publication"}
         />
       </div>
 
@@ -114,57 +253,48 @@ export function FullCommunicationDashboard() {
         <Card>
           <div className="flex items-center justify-between border-b border-divider px-5 py-4">
             <span className="text-[15px] font-extrabold tracking-tight">Ce que nous préparons</span>
-            <button
-              onClick={() => router.push("/communication")}
-              className="text-[12.5px] font-bold text-brand-blue-electric"
-            >
+            <button onClick={() => router.push("/communication")} className="text-[12.5px] font-bold text-brand-blue-electric">
               Planning complet
             </button>
           </div>
           {upcoming.length === 0 ? (
             <div className="px-5 py-8 text-center text-[13px] text-text-soft">Rien de programmé pour le moment.</div>
           ) : (
-            upcoming.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => router.push(`/communication/publications/${p.id}`)}
-                className="flex w-full items-center gap-3.5 border-b border-divider px-5 py-3.5 text-left last:border-0 hover:bg-row-hover"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-bold text-text">{p.title}</span>
-                  <span className="mt-0.5 block text-[12px] text-text-soft">
-                    {PLATFORM_LABELS[p.platform]} · {formatDateTime(p.scheduledAt)}
+            upcoming.map((c) => {
+              const date = c.datePrevue ?? c.datePublication;
+              return (
+                <div key={c.id} className="flex w-full items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px] font-bold text-text">{c.titre}</span>
+                    <span className="mt-0.5 block text-[12px] text-text-soft">
+                      {[c.plateforme, c.typeContenu].filter(Boolean).join(" · ") || "—"}
+                      {date && ` · ${formatDateShort(date)}`}
+                    </span>
                   </span>
-                </span>
-                <Badge tone={publicationStatusTone(p.status)}>{PUBLICATION_STATUS_LABELS[p.status]}</Badge>
-              </button>
-            ))
+                  <Badge tone={CONTENU_STATUT_TONE[c.statut]}>{CONTENU_STATUT_LABEL[c.statut]}</Badge>
+                </div>
+              );
+            })
           )}
         </Card>
 
         <div className="flex flex-col gap-4">
+          {/* Fiche CM — mêmes champs réels que /mycm (data/shared/community-manager.ts). Pas de
+              badge de disponibilité ni de "délai de réponse" : aucune table réelle ne les porte
+              (voir le commentaire de fetchContentsProducedThisMonth) — /mycm fait le même choix
+              en affichant ces indicateurs "Non disponible" plutôt que de les fabriquer ici. */}
           {cm && (
             <CardPremium>
               <div className="flex items-center gap-3">
                 <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-white/15 text-[13px] font-extrabold text-white">
-                  {cm.avatarInitials}
+                  {((cm.firstName[0] ?? "") + (cm.lastName[0] ?? "")).toUpperCase() || "CM"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[15px] font-extrabold tracking-tight">{cm.name}</div>
-                  <div className="truncate text-[12px] text-[#B9C7EB]">{cm.role}</div>
+                  <div className="truncate text-[15px] font-extrabold tracking-tight">
+                    {`${cm.firstName} ${cm.lastName}`.trim() || "Community Manager"}
+                  </div>
+                  <div className="truncate text-[12px] text-[#B9C7EB]">{cm.levelLabel ?? "Community Manager SportVision"}</div>
                 </div>
-                <span
-                  className={`inline-flex flex-none items-center gap-1.5 rounded-full px-2 py-1 text-[10.5px] font-extrabold ${
-                    cm.availability === "available" ? "bg-[rgba(40,201,149,.2)] text-[#7BE8C3]" : "bg-white/10 text-[#C6D3F0]"
-                  }`}
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                  {cm.availability === "available" ? "Disponible" : cm.availability === "filming" ? "En tournage" : "Absente"}
-                </span>
-              </div>
-              <div className="mt-4 flex justify-between text-[12px] font-semibold text-[#C6D3F0]">
-                <span>Délai de réponse habituel</span>
-                <span className="font-extrabold text-white">{cm.responseTime}</span>
               </div>
               <Button
                 variant="secondary"
@@ -172,23 +302,25 @@ export function FullCommunicationDashboard() {
                 onClick={() => router.push("/mycm")}
               >
                 <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-                Envoyer un message
+                Voir ma fiche Community Manager
               </Button>
-              {thread && (
-                <button
-                  onClick={() => router.push("/messages")}
-                  className="mt-2.5 w-full text-center text-[12px] font-bold text-brand-blue-pale hover:text-white"
-                >
-                  Écrire à {cm.name.split(" ")[0]}
-                </button>
-              )}
+              <button
+                onClick={() => router.push("/messages")}
+                className="mt-2.5 w-full text-center text-[12px] font-bold text-brand-blue-pale hover:text-white"
+              >
+                Écrire à {cm.firstName || "votre Community Manager"}
+              </button>
             </CardPremium>
           )}
 
           {latestReport && (
             <Card className="p-4">
               <div className="text-[13.5px] font-extrabold tracking-tight">Dernier rapport</div>
-              <div className="mt-1 text-[12.5px] text-text-soft">{formatPeriod(latestReport.period)} — {latestReport.summary}</div>
+              <div className="mt-1 text-[12.5px] text-text-soft">
+                {formatReportPeriod(latestReport.period)} — {latestReport.items.length} contenu
+                {latestReport.items.length > 1 ? "s" : ""} publié{latestReport.items.length > 1 ? "s" : ""}
+                {latestReportReach != null && ` · ${latestReportReach.toLocaleString("fr-FR")} portée (saisi manuellement)`}
+              </div>
               <Button variant="secondary" className="mt-3.5 w-full" onClick={() => router.push("/reports")}>
                 Lire le rapport
               </Button>
@@ -196,17 +328,7 @@ export function FullCommunicationDashboard() {
           )}
         </div>
       </div>
-
-      <TransmitInfoModal
-        open={transmitOpen}
-        onClose={() => setTransmitOpen(false)}
-        onSubmitted={() => {
-          setTransmitOpen(false);
-          showToast("Information transmise à votre Community Manager.");
-        }}
-      />
-      <ToastViewport toasts={toasts} />
-    </div>
+    </>
   );
 }
 
@@ -224,9 +346,15 @@ function heroContent(organization: { type: string; name: string }): { title: str
     };
   }
   if (organization.type === "event") {
-    const daysLeft = Math.max(0, Math.ceil((new Date(ELITE_CUP_EVENT_DATE).getTime() - Date.now()) / 86_400_000));
+    // Le mock affichait un compte à rebours "J-N" calé sur une date d'événement fictive
+    // (ELITE_CUP_EVENT_DATE, une constante du mock). Aucune table réelle ne porte de date
+    // d'événement pour organizations.organization_type='event' à ce jour — retiré plutôt
+    // qu'affiché sur une donnée inventée. Chemin non atteignable en pratique aujourd'hui de toute
+    // façon : seul un club obtient le plan "full_communication" (session.ts:buildClubActiveContext),
+    // un espace event reste toujours en plan "one_off" (buildOrgSpaceActiveContext) et n'affiche
+    // donc jamais ce dashboard pour l'instant.
     return {
-      title: `${organization.name} — J-${daysLeft} avant l'événement`,
+      title: `${organization.name} — communication de l'événement`,
       subtitle: "Toute la communication de l'événement, du teasing au bilan.",
     };
   }
@@ -238,15 +366,4 @@ function heroContent(organization: { type: string; name: string }): { title: str
 
 function formatDateShort(date: string): string {
   return new Date(date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
-}
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-}
-
-function formatPeriod(period: string): string {
-  const [yearPart, monthPart] = period.split("-");
-  const year = Number(yearPart);
-  const month = Number(monthPart);
-  return new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 }

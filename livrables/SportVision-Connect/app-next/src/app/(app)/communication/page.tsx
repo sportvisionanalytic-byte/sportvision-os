@@ -9,25 +9,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useClientId } from "@/lib/data/shared/use-client-id";
 import { createClient } from "@/lib/supabase/client";
-import { fetchContenus, type Contenu, type ContenuStatut } from "@/lib/data/shared/contenus";
-
-const STATUT_LABEL: Record<ContenuStatut, string> = {
-  a_valider_client: "À valider",
-  corrections: "Corrections demandées",
-  valide: "Validé",
-  programme: "Programmé",
-  publie: "Publié",
-  archive: "Archivé",
-};
-
-const STATUT_TONE: Record<ContenuStatut, "success" | "warning" | "danger" | "info" | "neutral"> = {
-  a_valider_client: "warning",
-  corrections: "danger",
-  valide: "info",
-  programme: "info",
-  publie: "success",
-  archive: "neutral",
-};
+import { fetchContenus, type Contenu } from "@/lib/data/shared/contenus";
+import { CONTENU_STATUT_LABEL, CONTENU_STATUT_TONE } from "@/components/communication/contenuStatusTone";
 
 // /communication — planning éditorial réel (table `contenus`, voir data/shared/contenus.ts).
 // Lecture seule : `contenus` n'a aucune policy update accessible côté client, la replanification
@@ -126,7 +109,7 @@ function PlanningView({ clientId }: { clientId: string }) {
               <span className="w-28 flex-none text-right text-[12px] text-text-soft">
                 {c.datePrevue ?? c.datePublication ?? "Date à définir"}
               </span>
-              <Badge tone={STATUT_TONE[c.statut]}>{STATUT_LABEL[c.statut]}</Badge>
+              <Badge tone={CONTENU_STATUT_TONE[c.statut]}>{CONTENU_STATUT_LABEL[c.statut]}</Badge>
             </div>
           ))}
         </Card>

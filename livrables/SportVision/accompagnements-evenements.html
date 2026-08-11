@@ -457,7 +457,7 @@ section{position:relative}
       <h1>Faites vivre votre <span>événement</span> avant, pendant et après.</h1>
       <p class="subtitle">Photo, vidéo, contenus en direct, interviews, partenaires et aftermovie : une couverture complète adaptée à votre événement.</p>
       <div class="hero-ctas">
-        <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Accompagnement Tournoi / événement">Obtenir un devis événement</a>
+        <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Accompagnement Tournoi / événement" data-devis-title="Obtenir un devis pour mon événement">Obtenir un devis événement</a>
       </div>
         <div class="hero-tertiary"><button type="button" class="btn-link" data-action="open-rdv">Vous préférez qu'on en discute ? Prendre rendez-vous →</button></div>
       <p class="hero-micro">Pour les organisateurs de tournois, stages et événements sportifs, quelle que soit leur taille.</p>
@@ -607,7 +607,7 @@ section{position:relative}
     <h2 class="reveal">Donnez à votre événement la couverture qu'il mérite.</h2>
     <p class="reveal">Photo, vidéo, direct, partenaires et aftermovie : demandez un devis adapté à votre événement.</p>
     <div class="hero-ctas reveal">
-      <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Accompagnement Tournoi / événement">Obtenir un devis événement</a>
+      <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Accompagnement Tournoi / événement" data-devis-title="Obtenir un devis pour mon événement">Obtenir un devis événement</a>
     </div>
   </div>
 </section>
@@ -703,7 +703,7 @@ section{position:relative}
   <div class="sv-modal">
     <button class="sv-close" id="devis-close" aria-label="Fermer">✕</button>
     <div id="devis-form-wrap">
-      <h3>Demander un devis ou une démonstration</h3>
+      <h3 id="devis-title">Demander un devis ou une démonstration</h3>
       <p class="sub">Présentez-nous votre besoin, nous revenons vers vous rapidement.</p>
       <form id="devis-form">
         <div class="sv-honeypot"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
@@ -863,10 +863,11 @@ document.getElementById('cookie-manage').addEventListener('click', (e) => {
 
 // ── Modal demande de devis / démonstration ──
 const devisOverlay = document.getElementById('devis-overlay');
-function openDevis(context){
+function openDevis(context, title){
   document.getElementById('devis-form-wrap').style.display = '';
   document.getElementById('devis-ok-wrap').style.display = 'none';
   document.getElementById('devis-err').textContent = '';
+  document.getElementById('devis-title').textContent = title || 'Demander un devis ou une démonstration';
   const commentaireEl = document.getElementById('dv-commentaire');
   if (context && commentaireEl && !commentaireEl.value) commentaireEl.value = 'Intéressé par : ' + context;
   devisOverlay.classList.add('on');
@@ -874,7 +875,7 @@ function openDevis(context){
 function closeDevis(){ devisOverlay.classList.remove('on'); }
 document.addEventListener('click', (e) => {
   const opener = e.target.closest('[data-action="open-devis"]');
-  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context')); }
+  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context'), opener.getAttribute('data-devis-title')); }
 });
 document.getElementById('devis-close').addEventListener('click', closeDevis);
 document.getElementById('devis-ok-close').addEventListener('click', closeDevis);
