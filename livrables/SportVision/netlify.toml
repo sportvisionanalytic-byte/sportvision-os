@@ -42,6 +42,16 @@
   to = "/confidentialite.html"
   status = 200
 
+[[redirects]]
+  from = "/cookies"
+  to = "/cookies.html"
+  status = 200
+
+[[redirects]]
+  from = "/retractation"
+  to = "/retractation.html"
+  status = 200
+
 # Architecture commerciale séparée (2026-08-06) : prestations ponctuelles,
 # Club+, Full Communication et accompagnements par profil ont chacun leur
 # page dédiée au lieu d'une seule page "offres" mélangée.
