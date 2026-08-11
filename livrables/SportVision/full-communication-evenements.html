@@ -524,7 +524,7 @@ section{position:relative}
   </div>
 </section>
 
-<section class="cta-final" id="devis-cta">
+<section class="cta-final" id="devis">
   <div class="container">
     <h2>Prêt à donner à votre événement la communication qu'il mérite ?</h2>
     <p class="reveal">Dites-nous quelle formule vous intéresse, nous revenons vers vous rapidement.</p>
@@ -689,10 +689,13 @@ if ('IntersectionObserver' in window){
   revealEls.forEach(el => el.classList.add('in'));
 }
 
+document.querySelectorAll('#faq-list .faq-q').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
 document.getElementById('faq-list').addEventListener('click', (e) => {
   const q = e.target.closest('.faq-q');
   if (!q) return;
-  q.closest('.faq-item').classList.toggle('on');
+  const item = q.closest('.faq-item');
+  item.classList.toggle('on');
+  q.setAttribute('aria-expanded', item.classList.contains('on') ? 'true' : 'false');
 });
 
 // ── Bandeau cookies (RGPD) ──
