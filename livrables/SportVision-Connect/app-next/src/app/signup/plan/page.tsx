@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
+import { formatPlanCredits, formatPlanPriceRange, PLANS } from "@/lib/plans";
 import { cn } from "@/lib/cn";
 import { PLAN_OPTIONS_BY_TYPE, useSignup } from "../signup-context";
 import { inputClass } from "../signup-styles";
@@ -77,7 +77,12 @@ export default function SignupPlanPage() {
                       </span>
                     )}
                   </span>
-                  <span className="text-[13px] font-bold text-brand-blue-electric">{formatPlanPrice(plan)}</span>
+                  {/* Prix avec ET sans engagement affichés directement sur la carte (au lieu de
+                      formatPlanPrice, un seul montant) — demande Fouka du 12/08/2026 : le choix
+                      d'engagement ci-dessous restait caché tant que l'offre n'était pas
+                      sélectionnée. formatPlanPriceRange retombe déjà sur un montant unique pour
+                      les offres sans second tarif (Full Communication, Prestation unique). */}
+                  <span className="text-[13px] font-bold text-brand-blue-electric">{formatPlanPriceRange(plan)}</span>
                   <span className="text-[12px] text-text-soft">
                     {formatPlanCredits(plan)} · {plan.maxUsers === null ? "Utilisateurs illimités" : `${plan.maxUsers} utilisateurs`}
                   </span>
