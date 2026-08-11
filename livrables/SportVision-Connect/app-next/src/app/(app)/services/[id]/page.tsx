@@ -2,17 +2,24 @@
 
 import Link from "next/link";
 import { useSession } from "@/lib/session-context";
-import { canAccess } from "@/lib/permissions";
 import { getServiceById } from "@/lib/mock/services";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { ClubServiceRequestNotice } from "@/components/services/ClubServiceRequestNotice";
 import { ServiceDetail } from "@/components/services/ServiceDetail";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
-// /services/:id — fiche prestation à 10 onglets, voir ACTIONS.md § 12.
+// /services/:id — fiche prestation à 10 onglets, voir ACTIONS.md § 12. Même gate que
+// /services/new (voir son commentaire) : organization.type piloté directement, "services" hors
+// READY_MODULES. La fiche à 10 onglets (équipe, jalons, livrables, fichiers, messages — aucun
+// n'a d'équivalent réel côté `prestations`) reste hors scope de branchement réel pour l'Espace
+// Projet : getServiceById (mock) résout honnêtement "introuvable" pour une vraie prestation
+// créée par le tunnel plutôt que d'afficher une fiche à moitié fabriquée — voir lib/data/projet/
+// services.ts en tête de fichier pour la décision documentée (plan Phase 3 § Hors scope).
 export default function ServiceDetailPage({ params }: { params: { id: string } }) {
   const { ctx } = useSession();
-  if (!canAccess(ctx, "services")) return <LockedModule />;
+  if (ctx.organization.type === "club") return <ClubServiceRequestNotice />;
+  if (ctx.organization.type !== "generic") return <LockedModule />;
 
   const service = getServiceById(params.id);
 
