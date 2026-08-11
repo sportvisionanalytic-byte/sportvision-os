@@ -200,36 +200,40 @@ function buildDescription(input: SubmitClientServiceInput): string | null {
  * portail-v10.sql), qui appelle notify_staff_by_role(['admin','sec'], ...) sur tout INSERT dans
  * `prestations` où `statut = 'demande_reçue' and created_by is null` — exactement le cas ici
  * (created_by n'est jamais renseigné par un client). Aucun appel explicite requis côté front.
+ *
+ * Pas de `.select()` après l'insert : PostgREST relit sinon la ligne insérée pour la renvoyer
+ * (RETURNING), ce qui exige une policy RLS SELECT sur `prestations` — or seule la vue
+ * `client_prestations` (qui filtre déjà côté client, voir fetchClientServices ci-dessus) donne
+ * lecture à un client, jamais la table `prestations` elle-même (les colonnes internes comme
+ * notes_internes/responsable_prod_id n'ont rien à y faire). Sans `.select()`, l'insert seul
+ * suffit (policy prestations_client_insert, migration-connect-v33) — vérifié en direct : la
+ * même requête échouait systématiquement en 42501 avec `.select()`, réussissait sans. Le seul
+ * appelant (NewServiceTunnel.tsx) n'utilise de toute façon jamais l'id/reference retournés.
  */
 export async function submitClientService(
   supabase: SupabaseClient,
   clientId: string,
   input: SubmitClientServiceInput,
-): Promise<{ id: string; reference: string | null }> {
+): Promise<void> {
   const nowIso = new Date().toISOString();
 
-  const { data, error } = await supabase
-    .from("prestations")
-    .insert({
-      statut: "demande_reçue",
-      client_id: clientId,
-      type_prestation: SERVICE_TYPE_TO_TYPE_PRESTATION[input.serviceType],
-      date_prestation: input.date || null,
-      heure_debut: input.startTime || null,
-      heure_fin: input.endTime || null,
-      adresse_complete: input.address || null,
-      equipes: input.teamLabel || null,
-      contact_sur_place: input.contactName || null,
-      telephone_sur_place: input.contactPhone || null,
-      description_besoin: buildDescription(input),
-      options_selectionnees: input.optionCodes.map((code) => SERVICE_OPTION_BY_CODE[code].label),
-      retractation_renoncee: input.retractationRenoncee,
-      retractation_renoncee_at: input.retractationRenoncee ? nowIso : null,
-      cgv_acceptee: true,
-      cgv_acceptee_le: nowIso,
-    })
-    .select("id, reference")
-    .single();
-  if (error || !data) throw error ?? new Error("Envoi de la demande impossible.");
-  return data as { id: string; reference: string | null };
+  const { error } = await supabase.from("prestations").insert({
+    statut: "demande_reçue",
+    client_id: clientId,
+    type_prestation: SERVICE_TYPE_TO_TYPE_PRESTATION[input.serviceType],
+    date_prestation: input.date || null,
+    heure_debut: input.startTime || null,
+    heure_fin: input.endTime || null,
+    adresse_complete: input.address || null,
+    equipes: input.teamLabel || null,
+    contact_sur_place: input.contactName || null,
+    telephone_sur_place: input.contactPhone || null,
+    description_besoin: buildDescription(input),
+    options_selectionnees: input.optionCodes.map((code) => SERVICE_OPTION_BY_CODE[code].label),
+    retractation_renoncee: input.retractationRenoncee,
+    retractation_renoncee_at: input.retractationRenoncee ? nowIso : null,
+    cgv_acceptee: true,
+    cgv_acceptee_le: nowIso,
+  });
+  if (error) throw error;
 }
