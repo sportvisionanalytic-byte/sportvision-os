@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export interface ConfirmedChild {
   relationshipId: string;
   playerId: string;
+  clubId: string;
   firstName: string;
   lastName: string;
   dateNaissance: string;
@@ -22,6 +23,7 @@ interface RelationshipRow {
   id: string;
   player_profiles: {
     id: string;
+    club_id: string;
     prenom: string;
     nom: string;
     date_naissance: string;
@@ -38,7 +40,7 @@ interface TeamMembershipRow {
 }
 
 const SELECT =
-  "id, player_profiles(id, prenom, nom, date_naissance, numero_licence, numero_maillot, account_status)";
+  "id, player_profiles(id, club_id, prenom, nom, date_naissance, numero_licence, numero_maillot, account_status)";
 
 export async function fetchConfirmedChildren(supabase: SupabaseClient, parentId: string): Promise<ConfirmedChild[]> {
   const { data } = await supabase
@@ -52,6 +54,7 @@ export async function fetchConfirmedChildren(supabase: SupabaseClient, parentId:
     .map((row) => ({
       relationshipId: row.id,
       playerId: row.player_profiles!.id,
+      clubId: row.player_profiles!.club_id,
       firstName: row.player_profiles!.prenom,
       lastName: row.player_profiles!.nom,
       dateNaissance: row.player_profiles!.date_naissance,
