@@ -91,6 +91,11 @@ export interface ClientDevis {
   totalTtc: number;
   dateExpiration: string | null;
   decidable: boolean;
+  /** Date de la prestation liée (client_devis, étendue par migration-devis-cgv-execution-
+   * anticipee-11-08.sql) — null si aucune prestation liée (Club+/Full Communication). Sert
+   * uniquement à décider si la case "exécution anticipée" doit être proposée à l'acceptation,
+   * voir components/contracts/format.ts:needsExecutionAnticipee. */
+  datePrestation: string | null;
 }
 
 interface DevisRow {
@@ -99,12 +104,13 @@ interface DevisRow {
   statut: string;
   total_ttc: number;
   date_expiration: string | null;
+  date_prestation: string | null;
 }
 
 export async function fetchClientDevis(supabase: SupabaseClient, organizationId: string): Promise<ClientDevis[]> {
   const { data, error } = await supabase
     .from("client_devis")
-    .select("id, numero, statut, total_ttc, date_expiration")
+    .select("id, numero, statut, total_ttc, date_expiration, date_prestation")
     .eq("client_id", organizationId)
     .order("date_envoi", { ascending: false });
   if (error) throw error;
@@ -117,11 +123,39 @@ export async function fetchClientDevis(supabase: SupabaseClient, organizationId:
     totalTtc: row.total_ttc,
     dateExpiration: row.date_expiration,
     decidable: DECIDABLE_DEVIS_STATUSES.has(row.statut),
+    datePrestation: row.date_prestation,
   }));
 }
 
-export async function decideDevis(supabase: SupabaseClient, devisId: string, decision: "accepté" | "refusé"): Promise<void> {
-  const { error } = await supabase.rpc("client_decide_devis", { p_devis_id: devisId, p_decision: decision });
+// L'acceptation d'un devis vaut formation du contrat (CGV Art. 6.3) : les CGV sont acceptées et,
+// le cas échéant, la demande expresse d'exécution anticipée (CGV Art. 35.1) recueillie à CE
+// moment précis, jamais avant — voir migration-devis-cgv-execution-anticipee-11-08.sql et le
+// commentaire de tête de billing/page.tsx. `consent` est obligatoire pour "accepté" (imposé par
+// le type, pas seulement une convention) ; ignoré pour "refusé", qui ne forme aucun contrat.
+export async function decideDevis(
+  supabase: SupabaseClient,
+  devisId: string,
+  decision: "refusé",
+): Promise<void>;
+export async function decideDevis(
+  supabase: SupabaseClient,
+  devisId: string,
+  decision: "accepté",
+  consent: { cgvVersion: string; executionAnticipeeDemandee: boolean },
+): Promise<void>;
+export async function decideDevis(
+  supabase: SupabaseClient,
+  devisId: string,
+  decision: "accepté" | "refusé",
+  consent?: { cgvVersion: string; executionAnticipeeDemandee: boolean },
+): Promise<void> {
+  const { error } = await supabase.rpc("client_decide_devis", {
+    p_devis_id: devisId,
+    p_decision: decision,
+    p_cgv_acceptee: decision === "accepté",
+    p_cgv_version: decision === "accepté" ? (consent?.cgvVersion ?? null) : null,
+    p_execution_anticipee_demandee: decision === "accepté" ? !!consent?.executionAnticipeeDemandee : false,
+  });
   if (error) throw error;
 }
 

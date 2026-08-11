@@ -21,6 +21,29 @@ export const CONTRACT_TYPE_LABEL: Record<string, string> = {
   autre: "Autre",
 };
 
+// Version des CGV en vigueur — à mettre à jour manuellement à chaque nouvelle version publiée
+// sur la vitrine (cf. cgv.html, balise <p class="legal-updated">, "Version finale ..."). Même
+// valeur que le module vanilla équivalent (SportVision-Connect/app/modules/projet-dashboard-
+// devis-contrats-factures.js) — les deux doivent rester synchronisés à chaque changement de CGV.
+export const CGV_VERSION = "V1.0 (9 août 2026)";
+export const CGV_URL = "https://sportvision-an.fr/cgv.html";
+
+// Même règle que reserver.html / le module vanilla : la demande expresse d'exécution anticipée
+// (CGV Art. 35.1) n'a de sens que si la prestation liée au devis a lieu avant l'expiration du
+// délai légal de rétractation de 14 jours. `datePrestation` vient de client_devis (étendue par
+// migration-devis-cgv-execution-anticipee-11-08.sql, join sur prestations) ; absente pour un
+// devis sans prestation liée (Club+/Full Communication) → jamais affichée dans ce cas, choix
+// conservateur plutôt qu'une omission.
+export function needsExecutionAnticipee(datePrestation: string | null): boolean {
+  if (!datePrestation) return false;
+  const prestationDate = new Date(`${datePrestation}T00:00:00`);
+  if (Number.isNaN(prestationDate.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const joursAvant = Math.round((prestationDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  return joursAvant >= 0 && joursAvant < 14;
+}
+
 export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
   brouillon: "Brouillon",
   envoye: "Envoyé",

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC } from "@/components/billing/format";
-import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE } from "@/components/contracts/format";
+import { CGV_URL, CGV_VERSION, CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE, needsExecutionAnticipee } from "@/components/contracts/format";
 import { createClient } from "@/lib/supabase/client";
 import {
   decideDevis,
@@ -84,6 +84,16 @@ function BillingDocumentsView({ clientId, allowDevisDecision }: { clientId: stri
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [decidingDevisId, setDecidingDevisId] = useState<string | null>(null);
+  // Écran de consentement à l'acceptation (CGV Art. 6.3 : c'est cette acceptation, pas la simple
+  // demande initiale, qui forme le contrat) — voir decideDevis (data/projet/billing.ts) et
+  // migration-devis-cgv-execution-anticipee-11-08.sql. Même logique que le module vanilla
+  // équivalent (SportVision-Connect/app/modules/projet-dashboard-devis-contrats-factures.js),
+  // reconstruite ici pour app-next qui est le vrai point d'entrée de production
+  // (connect.sportvision-an.fr) — l'app vanilla n'est plus atteinte par de vrais clients.
+  const [confirmingDevisId, setConfirmingDevisId] = useState<string | null>(null);
+  const [cgvChecked, setCgvChecked] = useState(false);
+  const [execChecked, setExecChecked] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   async function reload() {
     setLoadError(false);
@@ -115,11 +125,46 @@ function BillingDocumentsView({ clientId, allowDevisDecision }: { clientId: stri
   // reprendre ici doublonnerait le même montant sous deux étiquettes différentes.
   const upcoming = invoices.filter((i) => i.status === "emise").sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1))[0];
 
-  async function handleDevisDecision(devisId: string, decision: "accepté" | "refusé") {
+  async function handleRefuse(devisId: string) {
     setDecidingDevisId(devisId);
     try {
       const supabase = createClient();
-      await decideDevis(supabase, devisId, decision);
+      await decideDevis(supabase, devisId, "refusé");
+      await reload();
+    } catch {
+      showToast("Action impossible, réessayez.", "error");
+    } finally {
+      setDecidingDevisId(null);
+    }
+  }
+
+  function openConfirm(devisId: string) {
+    setConfirmingDevisId(devisId);
+    setCgvChecked(false);
+    setExecChecked(false);
+    setConfirmError(null);
+  }
+
+  function cancelConfirm() {
+    setConfirmingDevisId(null);
+    setConfirmError(null);
+  }
+
+  async function handleConfirmAccept(d: ClientDevis) {
+    if (!cgvChecked) {
+      setConfirmError("Merci d'accepter les CGV pour confirmer ce devis.");
+      return;
+    }
+    if (needsExecutionAnticipee(d.datePrestation) && !execChecked) {
+      setConfirmError("Cette prestation a lieu dans moins de 14 jours : merci de cocher la case d'exécution anticipée pour confirmer.");
+      return;
+    }
+    setConfirmError(null);
+    setDecidingDevisId(d.id);
+    try {
+      const supabase = createClient();
+      await decideDevis(supabase, d.id, "accepté", { cgvVersion: CGV_VERSION, executionAnticipeeDemandee: execChecked });
+      setConfirmingDevisId(null);
       await reload();
     } catch {
       showToast("Action impossible, réessayez.", "error");
@@ -165,30 +210,86 @@ function BillingDocumentsView({ clientId, allowDevisDecision }: { clientId: stri
         </Card>
       )}
 
-      {pendingDevisList.map((d) => (
-        <Card key={d.id} className="flex flex-wrap items-center gap-3 border-brand-blue-pale/40 bg-info-bg px-5 py-4">
-          <FileText className="h-[18px] w-[18px] flex-none text-info-fg" aria-hidden />
-          <span className="min-w-0 flex-1 text-[13px] font-semibold text-info-fg">
-            Devis {d.numero} · {formatEuroTTC(d.totalTtc)} — en attente de votre décision.
-          </span>
-          <Button
-            variant="secondary"
-            className="h-8 flex-none px-3 text-[12px]"
-            disabled={decidingDevisId === d.id}
-            onClick={() => handleDevisDecision(d.id, "refusé")}
-          >
-            Refuser
-          </Button>
-          <Button
-            variant="primary"
-            className="h-8 flex-none px-3 text-[12px]"
-            disabled={decidingDevisId === d.id}
-            onClick={() => handleDevisDecision(d.id, "accepté")}
-          >
-            Accepter
-          </Button>
-        </Card>
-      ))}
+      {pendingDevisList.map((d) =>
+        confirmingDevisId === d.id ? (
+          <Card key={d.id} className="flex flex-col gap-3 border-brand-blue-pale/40 bg-info-bg px-5 py-4">
+            <span className="text-[13px] font-semibold text-info-fg">
+              Devis {d.numero} · {formatEuroTTC(d.totalTtc)}
+            </span>
+            <label className="flex items-start gap-2.5 text-[12.5px] leading-relaxed text-text">
+              <input
+                type="checkbox"
+                className="mt-0.5 flex-none"
+                checked={cgvChecked}
+                onChange={(e) => setCgvChecked(e.target.checked)}
+              />
+              <span>
+                J&apos;ai lu et j&apos;accepte les{" "}
+                <a href={CGV_URL} target="_blank" rel="noopener noreferrer" className="font-bold text-info-fg underline">
+                  Conditions Générales de Vente
+                </a>{" "}
+                (version en vigueur : {CGV_VERSION}).
+              </span>
+            </label>
+            {needsExecutionAnticipee(d.datePrestation) && (
+              <label className="flex items-start gap-2.5 text-[12.5px] leading-relaxed text-text">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 flex-none"
+                  checked={execChecked}
+                  onChange={(e) => setExecChecked(e.target.checked)}
+                />
+                <span>
+                  Je demande expressément que l&apos;exécution de la prestation commence avant l&apos;expiration de
+                  mon délai légal de rétractation de 14 jours. Si je me rétracte ensuite, un montant proportionnel
+                  au service déjà fourni pourra rester dû (
+                  <a href={`${CGV_URL}#article-35`} target="_blank" rel="noopener noreferrer" className="font-bold text-info-fg underline">
+                    Article 35 des CGV
+                  </a>
+                  ).
+                </span>
+              </label>
+            )}
+            {confirmError && <p className="text-[12.5px] font-semibold text-danger-fg">{confirmError}</p>}
+            <div className="flex justify-end gap-2.5">
+              <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={cancelConfirm} disabled={decidingDevisId === d.id}>
+                Annuler
+              </Button>
+              <Button
+                variant="primary"
+                className="h-8 flex-none px-3 text-[12px]"
+                disabled={decidingDevisId === d.id}
+                onClick={() => handleConfirmAccept(d)}
+              >
+                Confirmer l&apos;acceptation
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Card key={d.id} className="flex flex-wrap items-center gap-3 border-brand-blue-pale/40 bg-info-bg px-5 py-4">
+            <FileText className="h-[18px] w-[18px] flex-none text-info-fg" aria-hidden />
+            <span className="min-w-0 flex-1 text-[13px] font-semibold text-info-fg">
+              Devis {d.numero} · {formatEuroTTC(d.totalTtc)} — en attente de votre décision.
+            </span>
+            <Button
+              variant="secondary"
+              className="h-8 flex-none px-3 text-[12px]"
+              disabled={decidingDevisId === d.id}
+              onClick={() => handleRefuse(d.id)}
+            >
+              Refuser
+            </Button>
+            <Button
+              variant="primary"
+              className="h-8 flex-none px-3 text-[12px]"
+              disabled={decidingDevisId === d.id}
+              onClick={() => openConfirm(d.id)}
+            >
+              Accepter
+            </Button>
+          </Card>
+        ),
+      )}
 
       {contracts.length > 0 && (
         <Card>
