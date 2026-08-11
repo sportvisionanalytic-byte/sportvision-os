@@ -46,6 +46,19 @@ export default function IntegrationsSettingsPage() {
     setIntegrations((prev) => prev.map((i) => (i.id === id ? { ...i, status: "connected" } : i)));
   }
 
+  if (integrations.length === 0) {
+    // mockIntegrations n'est peuplé que pour 3 organisations de démo (voir src/lib/mock/settings.ts,
+    // "à remplacer par de vraies requêtes plus tard" — jamais branché sur de vraies données pour
+    // cet écran) : toute organisation réelle tombe ici. Un état vide honnête plutôt qu'un écran
+    // qui semble cassé (trouvé en testant avec un vrai club) — voir le rapport pour le vrai trou
+    // fonctionnel derrière (aucune intégration n'est réellement branchée à ce jour).
+    return (
+      <Card className="p-9 text-center text-[13.5px] text-text-soft">
+        Aucune intégration disponible pour le moment.
+      </Card>
+    );
+  }
+
   return (
     <>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
