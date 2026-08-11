@@ -7,6 +7,7 @@ import { useSession } from "@/lib/session-context";
 import { getServicesForOrganization } from "@/lib/mock/services";
 import { fetchClientServices } from "@/lib/data/projet/services";
 import { createClient } from "@/lib/supabase/client";
+import { subscribeTable } from "@/lib/supabase/realtime";
 import type { Service } from "@/lib/types/services";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -37,6 +38,47 @@ export function ServicesBoard() {
     fetchClientServices(supabase, ctx.organization.id)
       .then(setRealServices)
       .catch(() => setLoadError(true));
+  }, [isProjet, ctx.organization.id]);
+
+  // Sync temps réel (migration-connect-v42-enable-realtime-sync.sql) : `prestations` change
+  // dès que le staff avance une demande (devis envoyé, contrat à signer, planifiée…) — même
+  // colonne de scoping que fetchClientServices (client_prestations filtre déjà sur
+  // client_users.client_id, ici organization.id EST le client_id pour l'Espace Projet, voir
+  // use-client-id.ts). Rejoue le même fetch existant, ne duplique aucune logique de requête.
+  // Dégrade silencieusement tant que la migration v42 n'a pas été exécutée (voir realtime.ts).
+  //
+  // ATTENTION (constaté le 11/08/2026, non corrigé ici) : contrairement à club_bookings/
+  // messages_client/contenus/member_notifications, `prestations` n'a AUCUNE policy RLS select
+  // pour un rôle client — seule la vue client_prestations (créée avec les droits de son
+  // propriétaire) lit la table pour un client, jamais prestations elle-même (voir le commentaire
+  // de fetchClientServices/submitClientService dans data/projet/services.ts : un select direct
+  // sur `prestations` échoue en 42501 pour un client). Supabase Realtime applique les policies
+  // RLS de la TABLE SOURCE (jamais d'une vue) avec le rôle du client abonné : ce canal restera
+  // donc probablement muet indéfiniment pour l'Espace Projet, même une fois la migration v42
+  // exécutée, tant qu'aucune policy select client n'existe sur `prestations`. Ajouter une telle
+  // policy n'est PAS anodin : Realtime diffuse la ligne complète (tous les champs, y compris
+  // notes_internes/responsable_prod_id/responsable_prestation_id, volontairement absents de la
+  // vue) — une simple policy scoping par client_id réglerait la visibilité par ligne mais pas
+  // l'exposition de ces colonnes internes. Nécessite une vraie décision produit/sécurité avant
+  // toute migration corrective ; le code ci-dessous reste branché et sans risque en l'état
+  // (aucun événement ne peut fuiter tant qu'aucune policy select n'existe).
+  useEffect(() => {
+    if (!isProjet) return;
+    const supabase = createClient();
+    const channel = subscribeTable(
+      supabase,
+      `services-prestations-${ctx.organization.id}`,
+      "prestations",
+      `client_id=eq.${ctx.organization.id}`,
+      () => {
+        fetchClientServices(supabase, ctx.organization.id)
+          .then(setRealServices)
+          .catch(() => setLoadError(true));
+      },
+    );
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [isProjet, ctx.organization.id]);
 
   const services = useMemo(
