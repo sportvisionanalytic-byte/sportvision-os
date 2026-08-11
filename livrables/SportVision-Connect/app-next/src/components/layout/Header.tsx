@@ -5,9 +5,22 @@ import { usePathname, useRouter } from "next/navigation";
 import { Bell, HelpCircle, Moon, Plus, Search, Sun } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
+import { resolveNavigation } from "@/lib/navigation";
 
 // Barre supérieure — voir CHARTE.md et ACTIONS.md § 4. Tous les contrôles de droite portent
 // une largeur fixe ; seul le bloc titre s'étire.
+
+// Routes jamais présentes dans la sidebar de l'espace courant (voir src/lib/navigation.ts) : soit
+// jamais dans aucune nav (notifications, atteinte uniquement via la cloche), soit seulement dans
+// la nav d'un autre type d'organisation (ex. /children et /authorizations, présentes uniquement
+// pour l'espace Parent/Joueur — un admin de club qui y accède directement, par exemple depuis un
+// lien partagé, ne doit pas voir le slug d'URL brut en titre). resolveNavigation() ne peut pas
+// leur trouver de libellé pour l'espace actif : ce petit repli couvre ces cas précis.
+const TITLE_FALLBACKS: Record<string, string> = {
+  "/notifications": "Notifications",
+  "/children": "Profils associés",
+  "/authorizations": "Autorisations",
+};
 
 export function Header() {
   const pathname = usePathname();
@@ -25,14 +38,22 @@ export function Header() {
     applyTheme(next);
   }
 
-  const title = pathname === "/dashboard" ? "Tableau de bord" : pathname?.slice(1) || "Accueil";
+  // Même source que la sidebar (resolveNavigation) : garantit le même libellé qu'elle affiche
+  // pour la page courante (ex. "Mon espace" pour un joueur, "Accueil" pour un club — jamais un
+  // "Tableau de bord" générique qui contredirait la sidebar). Repli sur TITLE_FALLBACKS pour les
+  // routes volontairement absentes de la navigation, puis sur le segment d'URL brut en dernier
+  // recours plutôt que de laisser le titre vide.
+  const firstSegment = `/${pathname?.split("/")[1] ?? ""}`;
+  const navEntries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
+  const navLabel = navEntries.find((e) => e.kind === "item" && e.href === firstSegment)?.label;
+  const title = navLabel ?? TITLE_FALLBACKS[firstSegment] ?? (pathname?.slice(1) || "Accueil");
   const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";
 
   return (
     <header className="sticky top-0 z-40 flex h-[66px] items-center gap-4 border-b border-divider bg-bg/85 px-7 backdrop-blur-xl">
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-bold text-text-faint">{ctx.organization.name}</div>
-        <div className="truncate text-[18px] font-extrabold capitalize tracking-tight">{title}</div>
+        <div className="truncate text-[18px] font-extrabold tracking-tight">{title}</div>
       </div>
 
       <div className="relative w-[270px] flex-none">

@@ -63,7 +63,11 @@ export default function SignupCheckoutPage() {
         email: state.account.email,
         password: state.account.password,
         options: {
-          data: { first_name: state.account.firstName, last_name: state.account.lastName },
+          // Mêmes clés que updateUserProfile() (src/lib/data/shared/profile.ts) et
+          // buildUserFromAuth() (session.ts) — prenom/nom, pas first_name/last_name. Avec les
+          // mauvaises clés, le nom et les initiales restaient vides partout (sidebar, header)
+          // jusqu'à ce que l'utilisateur repasse par /settings/profile pour les ressaisir.
+          data: { prenom: state.account.firstName, nom: state.account.lastName },
         },
       });
       if (signUpError) throw signUpError;

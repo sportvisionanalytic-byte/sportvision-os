@@ -1,18 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronsUpDown } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { cn } from "@/lib/cn";
-
-const ROLE_LABELS: Record<string, string> = {
-  owner: "Propriétaire",
-  communication_manager: "Responsable communication",
-  player: "Joueur",
-  parent: "Parent",
-  coach: "Coach",
-  admin: "Administrateur",
-};
+import { ROLE_LABELS } from "@/lib/types/settings";
 
 function initials(name: string) {
   return name
@@ -26,9 +18,29 @@ function initials(name: string) {
 export function OrganizationSwitcher() {
   const { ctx, spaces, setActiveSpace } = useSession();
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Aucun clic-extérieur ni touche Échap ne fermait le menu : il restait ouvert par-dessus la
+  // nav tant qu'on ne cliquait pas explicitement sur une de ses propres options. Trouvé en
+  // testant le sélecteur en changeant plusieurs fois d'espace d'affilée.
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   return (
-    <div className="relative px-3.5">
+    <div ref={containerRef} className="relative px-3.5">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.045] p-2.5 text-left transition-colors hover:bg-white/[.09]"
