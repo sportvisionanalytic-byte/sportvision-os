@@ -414,7 +414,10 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   /* ── Section header ── */
   .ms-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;margin-top:4px}
   .ms-title{font-size:15px;font-weight:700;color:var(--t1)}
-  .ms-link{font-size:12px;color:var(--acc);font-weight:600;cursor:pointer;background:none;border:none;font-family:var(--ff)}
+  /* -m-2.5/p-2.5 agrandit la zone tactile réelle (texte de 15px de haut -> ~35px) sans
+     changer l'apparence visuelle du lien — trouvé trop petit (15px) à l'audit mobile
+     375-430px, utilisé sur les 4 dashboards mobiles (photo/prod/etc.). */
+  .ms-link{font-size:12px;color:var(--acc);font-weight:600;cursor:pointer;background:none;border:none;font-family:var(--ff);margin:-10px;padding:10px}
   /* ── Action grid ── */
   .mob-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px}
   .mob-action-btn{flex:1;min-width:calc(50% - 4px);display:flex;align-items:center;gap:8px;padding:13px 14px;background:var(--s1);border:1px solid var(--b1);border-radius:12px;cursor:pointer;font-family:var(--ff)}
@@ -19925,9 +19928,14 @@ function renderBottomNav(){
   nav.innerHTML=items.slice(0,4).map(id=>{
     const item=getItem(id);
     const isOn=S.view===id;
+    // Libellé complet (pas juste le 1er mot) : .mbn-lb tronque déjà proprement en
+    // ellipsis (max-width:56px) — couper au 1er mot faisait afficher "Mes"/"Mes"
+    // pour "Mes prestations" et "Mes médias" (rôle photo), deux onglets bas
+    // indiscernables l'un de l'autre pour un collaborateur terrain. Trouvé à
+    // l'audit mobile 375-430px.
     return`<button class="mbn-i${isOn?' on':''}" data-bnav="${id}" onclick="switchView('${id}')">
       <span class="mbn-ic" style="color:${isOn?'var(--acc)':'var(--t3)'}">${IC[item.ic]||IC.dash}</span>
-      <span class="mbn-lb">${item.lb.split(' ')[0]}</span>
+      <span class="mbn-lb">${item.lb}</span>
     </button>`;
   }).join('')+
   `<button class="mbn-i" onclick="openMobMore()" style="color:var(--t3)">
@@ -23746,9 +23754,13 @@ async function loadMobilePhotoDash(ct){
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--acc);margin-bottom:8px">${invitations.length} INVITATION${invitations.length>1?'S':''} EN ATTENTE</div>
           ${invitations.slice(0,2).map(inv=>{const p=inv.prestations;const date=p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'—';return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
             <div><div style="font-size:14px;font-weight:600;color:var(--t1)">${esc(p.clients?.nom||'—')}</div><div style="font-size:12px;color:var(--t3)">${p.type_prestation||'—'} · ${date}</div></div>
-            <div style="display:flex;gap:6px">
-              <button onclick="repondreInvitation('${inv.id}','refusée')" style="padding:8px 12px;border-radius:var(--rp);background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);color:var(--er);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✗</button>
-              <button onclick="repondreInvitation('${inv.id}','acceptée')" style="padding:8px 12px;border-radius:var(--rp);background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);color:var(--ok);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓</button>
+            <!-- min-height/min-width:44px + gap:10px (au lieu de 6px) : accepter/refuser une
+                 invitation de mission est une action engageante, deux boutons de 33px collés
+                 à 6px l'un de l'autre étaient trouvés à risque de mauvaise manipulation à
+                 l'audit mobile 375-430px (cf. version desktop loadPhotoDash, déjà en min-height:40px). -->
+            <div style="display:flex;gap:10px">
+              <button onclick="repondreInvitation('${inv.id}','refusée')" style="padding:8px 14px;min-height:44px;min-width:44px;border-radius:var(--rp);background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);color:var(--er);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--ff)">✗</button>
+              <button onclick="repondreInvitation('${inv.id}','acceptée')" style="padding:8px 14px;min-height:44px;min-width:44px;border-radius:var(--rp);background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);color:var(--ok);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--ff)">✓</button>
             </div>
           </div>`;}).join('')}
         </div>

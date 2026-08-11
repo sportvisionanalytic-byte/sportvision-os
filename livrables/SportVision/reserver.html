@@ -218,6 +218,12 @@ section{position:relative}
   .sv-field-2col{grid-template-columns:1fr}
   .step-dot span.lbl{display:none}
   .footer-grid{grid-template-columns:1fr}
+  /* "Envoyer ma demande" + "Précédent" cote à cote dépassaient l'écran à 375/390px (.btn est en
+     white-space:nowrap, donc jamais compressé par le flex row) — trouvé à l'audit mobile,
+     confirmé avec une vraie capture d'écran. Empilés en pleine largeur en dessous de 640px,
+     l'action principale en premier (plus accessible au pouce). */
+  .booking-nav{flex-direction:column-reverse}
+  .booking-nav .btn{width:100%}
 }
 </style>
 </head>
