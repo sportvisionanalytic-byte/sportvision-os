@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +24,15 @@ export default function SignupOrgPage() {
   const { org } = state;
   const showTeamFields = state.orgType === "club" || state.orgType === "academy";
   const canContinue = org.name.trim().length > 0;
+
+  // Un joueur n'a aucun champ pertinent sur cet écran (nom de projet/adresse/Instagram/SIRET —
+  // son "organisation" est son club, recherché à l'étape Offre) : saut automatique, aller comme
+  // retour, plutôt qu'un écran vide à traverser manuellement. Couvre l'accès direct par URL ou un
+  // retour navigateur, en plus du CTA "Continuer" déjà corrigé côté account/page.tsx.
+  useEffect(() => {
+    if (state.orgType === "player") router.replace("/signup/plan");
+  }, [state.orgType, router]);
+  if (state.orgType === "player") return null;
 
   function set(field: keyof typeof org, value: string) {
     patch({ org: { ...org, [field]: value } });

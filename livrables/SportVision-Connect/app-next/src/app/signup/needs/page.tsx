@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +14,13 @@ export default function SignupNeedsPage() {
   const router = useRouter();
   const { state, patch } = useSignup();
   const { needs } = state;
+
+  // Aucune des 8 options n'est pertinente pour un joueur individuel — même saut automatique
+  // qu'org/page.tsx, aller comme retour.
+  useEffect(() => {
+    if (state.orgType === "player") router.replace("/signup/plan");
+  }, [state.orgType, router]);
+  if (state.orgType === "player") return null;
 
   function toggle(option: string) {
     const selected = needs.selected.includes(option)

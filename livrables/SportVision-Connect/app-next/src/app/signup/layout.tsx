@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { SignupProvider, STEPS } from "./signup-context";
+import { getSteps, SignupProvider, useSignup } from "./signup-context";
 
 // Coque commune aux 7 étapes d'inscription — voir ACTIONS.md § 2. Même famille visuelle que
 // /auth (pas de sidebar), avec une frise de progression numérotée propre au tunnel. Fichier
@@ -44,11 +44,16 @@ export default function SignupLayout({ children }: { children: React.ReactNode }
 
 function ProgressBar() {
   const pathname = usePathname();
+  // Frise dépendante du type d'organisation — un joueur ne traverse jamais "Organisation"/
+  // "Besoins" (voir getSteps, signup-context.tsx), la frise ne doit donc pas les compter comme
+  // des étapes à venir pour lui.
+  const { state } = useSignup();
+  const steps = getSteps(state.orgType);
   const currentIndex = Math.max(
     0,
-    STEPS.findIndex((s) => pathname === s.href),
+    steps.findIndex((s) => pathname === s.href),
   );
-  const pct = (currentIndex / (STEPS.length - 1)) * 100;
+  const pct = (currentIndex / (steps.length - 1)) * 100;
 
   return (
     <div className="mx-auto max-w-[880px] px-6 pb-5">
@@ -59,7 +64,7 @@ function ProgressBar() {
         />
       </div>
       <ol className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2 text-[11.5px] font-bold">
-        {STEPS.map((step, i) => {
+        {steps.map((step, i) => {
           const done = i < currentIndex;
           const active = i === currentIndex;
           return (
@@ -75,7 +80,7 @@ function ProgressBar() {
                 {done ? <Check className="h-3 w-3" aria-hidden /> : i + 1}
               </span>
               <span className={cn(active ? "text-text" : "text-text-faint")}>{step.label}</span>
-              {i < STEPS.length - 1 && <span className="mx-1 h-px w-4 flex-none bg-border" aria-hidden />}
+              {i < steps.length - 1 && <span className="mx-1 h-px w-4 flex-none bg-border" aria-hidden />}
             </li>
           );
         })}

@@ -119,7 +119,9 @@ export default function SignupPlanPage() {
       )}
 
       <div className="flex justify-between">
-        <Button variant="secondary" onClick={() => router.push("/signup/needs")}>
+        {/* Un joueur revient à Vous (Organisation/Besoins sont sautées à l'aller, voir
+            account/page.tsx et getSteps § signup-context.tsx) — même logique au retour. */}
+        <Button variant="secondary" onClick={() => router.push(isAffiliatedPlayer ? "/signup/account" : "/signup/needs")}>
           Retour
         </Button>
         <Button disabled={!canContinue} onClick={() => router.push("/signup/checkout")}>

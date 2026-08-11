@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Play, Share2 } from "lucide-react";
+import { ArrowLeft, Heart, Play, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -21,7 +21,15 @@ import { MediaThumb } from "./MediaThumb";
 // faisaient un setState local (status/revisionCount/comments) suivi d'un toast de confirmation
 // sans aucune écriture réelle, exactement l'anti-pattern documenté au README § Conventions n°9.
 // Statut et commentaires restent donc affichés en lecture seule depuis `asset`.
-export function MediaDetail({ asset }: { asset: MediaAsset }) {
+interface MediaDetailProps {
+  asset: MediaAsset;
+  /** Espace Joueur uniquement (brief § 9) — voir content/[id]/page.tsx. `undefined` = pas de
+   * coeur affiché, comportement inchangé pour club/générique. */
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
+}
+
+export function MediaDetail({ asset, isFavorite, onToggleFavorite }: MediaDetailProps) {
   const isTimeBased = asset.durationSeconds !== undefined;
   const duration = asset.durationSeconds ?? 0;
   const status: MediaAssetStatus = asset.status;
@@ -88,6 +96,20 @@ export function MediaDetail({ asset }: { asset: MediaAsset }) {
           </div>
           <h1 className="mt-1 truncate text-[22px] font-extrabold tracking-tight">{asset.name}</h1>
         </div>
+        {onToggleFavorite && (
+          <button
+            type="button"
+            aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+            aria-pressed={isFavorite}
+            onClick={onToggleFavorite}
+            className={cn(
+              "mt-1 flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg transition-colors",
+              isFavorite ? "text-[#FF6B81]" : "text-text-soft hover:text-[#FF6B81]",
+            )}
+          >
+            <Heart className="h-4 w-4" fill={isFavorite ? "currentColor" : "none"} aria-hidden />
+          </button>
+        )}
       </div>
 
       <Card className="overflow-hidden">
@@ -198,7 +220,7 @@ export function MediaDetail({ asset }: { asset: MediaAsset }) {
       </div>
       <p className="text-[11.5px] text-text-faint">
         Deux corrections incluses, la troisième facturée. {revisionCount > 0 && `${revisionCount} déjà demandée${revisionCount > 1 ? "s" : ""}.`}
-        {" "}Validation et demande de correction directement ici : bientôt disponible — en attendant, passez par votre Community Manager.
+        {" "}Pour valider ce contenu ou demander une correction, contactez votre Community Manager.
       </p>
 
       <div>
@@ -228,7 +250,6 @@ export function MediaDetail({ asset }: { asset: MediaAsset }) {
             ))
           )}
         </div>
-        <p className="mt-2 text-[11.5px] text-text-faint">Ajouter un commentaire ici : bientôt disponible.</p>
       </div>
 
       {toast && (

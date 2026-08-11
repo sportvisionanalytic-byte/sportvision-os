@@ -7,6 +7,7 @@ import { canAccess } from "@/lib/permissions";
 import { fetchClubMediaAssets } from "@/lib/data/club/content";
 import { fetchClientLivrables } from "@/lib/data/projet/livrables";
 import { createClient } from "@/lib/supabase/client";
+import { addFavorite, fetchFavoriteIds, removeFavorite } from "@/lib/data/shared/favorites";
 import type { MediaAsset } from "@/lib/types/content";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { MediaDetail } from "@/components/content/MediaDetail";
@@ -23,7 +24,25 @@ export default function MediaDetailPage({ params }: { params: { id: string } }) 
   // pas par ctx.organization.id (= player_profiles.id). La RLS is_media_visible_to_family filtre
   // déjà aux médias visibles pour cette famille, quel que soit le club_id transmis.
   const isProjet = ctx.organization.type === "generic";
-  const clubId = ctx.organization.type === "player" ? ctx.organization.parentOrganizationId : ctx.organization.id;
+  const isPlayer = ctx.organization.type === "player";
+  const clubId = isPlayer ? ctx.organization.parentOrganizationId : ctx.organization.id;
+
+  const [isFavorite, setIsFavorite] = useState(false);
+  useEffect(() => {
+    if (!isPlayer) return;
+    const supabase = createClient();
+    fetchFavoriteIds(supabase, ctx.user.id).then((ids) => setIsFavorite(ids.has(params.id)));
+  }, [isPlayer, ctx.user.id, params.id]);
+
+  function toggleFavorite() {
+    const supabase = createClient();
+    const next = !isFavorite;
+    setIsFavorite(next);
+    const action = next
+      ? addFavorite(supabase, params.id, ctx.user.id)
+      : removeFavorite(supabase, params.id, ctx.user.id);
+    action.catch(() => setIsFavorite(!next));
+  }
 
   useEffect(() => {
     if (!clubId) return;
@@ -60,5 +79,11 @@ export default function MediaDetailPage({ params }: { params: { id: string } }) 
     );
   }
 
-  return <MediaDetail asset={asset} />;
+  return (
+    <MediaDetail
+      asset={asset}
+      isFavorite={isPlayer ? isFavorite : undefined}
+      onToggleFavorite={isPlayer ? toggleFavorite : undefined}
+    />
+  );
 }

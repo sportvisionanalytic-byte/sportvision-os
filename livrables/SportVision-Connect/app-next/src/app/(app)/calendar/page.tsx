@@ -69,13 +69,22 @@ export default function CalendarPage() {
   // calendar_events générique (Coach/Académie/Sponsor, Phase 4) est en lecture seule côté membre
   // (écriture réservée au staff SportVision) — contrairement à club_calendar_events.
   const isGenericOrg = ["coach", "academy", "sponsor"].includes(ctx.organization.type);
+  const isPlayer = ctx.organization.type === "player";
+  // Un joueur n'a pas son propre calendrier : il lit celui de son club (brief Fouka § 11 — "voir
+  // matchs, shootings SportVision, Media Days, tournages, événements du club"). club_calendar_events
+  // /club_matches sont scopés par club_id, PAS par ctx.organization.id (= player_profiles.id pour
+  // un joueur) — passer ctx.organization.id ici ne matchait jamais aucun club réel et affichait
+  // toujours un calendrier vide, bug trouvé en construisant cette vue. parentOrganizationId est le
+  // club_id réel (toujours renseigné pour un joueur, voir session.ts:buildPlayerActiveContext).
+  const calendarOrgId = isPlayer ? ctx.organization.parentOrganizationId : ctx.organization.id;
 
   useEffect(() => {
+    if (!calendarOrgId) return;
     let cancelled = false;
     const supabase = createClient();
     const fetcher = isGenericOrg
-      ? fetchOrgCalendarEvents(supabase, ctx.organization.id)
-      : fetchClubCalendarEvents(supabase, ctx.organization.id);
+      ? fetchOrgCalendarEvents(supabase, calendarOrgId)
+      : fetchClubCalendarEvents(supabase, calendarOrgId);
     fetcher
       .then((rows) => {
         if (!cancelled) setEvents(rows);
@@ -86,7 +95,7 @@ export default function CalendarPage() {
     return () => {
       cancelled = true;
     };
-  }, [ctx.organization.id, isGenericOrg]);
+  }, [calendarOrgId, isGenericOrg]);
 
   // Hooks appelés inconditionnellement avant tout `return` — sortedEvents doit être calculé ici,
   // pas après le early-return de canAccess ci-dessous (règle des Hooks React).
@@ -183,14 +192,21 @@ export default function CalendarPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-[29px] font-extrabold tracking-tight">Calendrier</h1>
-          <p className="mt-1 text-[13.5px] text-text-soft">Matchs, prestations, tournages, publications et échéances au même endroit.</p>
+          <p className="mt-1 text-[13.5px] text-text-soft">
+            {isPlayer
+              ? "Matchs, shootings SportVision et événements de votre club."
+              : "Matchs, prestations, tournages, publications et échéances au même endroit."}
+          </p>
         </div>
         <div className="flex items-center gap-2.5">
           <Button variant="secondary" onClick={exportIcal}>
             <Download className="h-4 w-4" aria-hidden />
             Exporter (iCal)
           </Button>
-          {!isGenericOrg && (
+          {/* Un joueur consulte le calendrier de son club, il ne le modifie pas (brief § 11 :
+              "le joueur ne devrait pas modifier le planning officiel") — même retrait que pour
+              coach/académie/sponsor (calendrier en lecture seule côté membre). */}
+          {!isGenericOrg && !isPlayer && (
             <Button disabled={!canCreate(ctx, "calendar_event")} onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" aria-hidden />
               Ajouter un événement

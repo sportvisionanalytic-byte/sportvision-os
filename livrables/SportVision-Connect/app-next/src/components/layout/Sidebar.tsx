@@ -1,14 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Lock, HelpCircle, LogOut, X } from "lucide-react";
+import { Lock, HelpCircle, LogOut, Shield, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { filterAffiliatedPlayerNav, resolveNavigation } from "@/lib/navigation";
 import { formatPlanCredits, PLANS } from "@/lib/plans";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
+import { fetchPlayerClubInfo, type PlayerClubInfo } from "@/lib/data/player/club-info";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 
 interface SidebarProps {
@@ -30,12 +32,25 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     router.refresh();
   }
 
-  const isAffiliatedPlayer = ctx.organization.type === "player" && !!ctx.organization.parentOrganizationId;
+  const isPlayer = ctx.organization.type === "player";
+  const isAffiliatedPlayer = isPlayer && !!ctx.organization.parentOrganizationId;
   let entries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
   if (isAffiliatedPlayer) entries = filterAffiliatedPlayerNav(entries);
 
   const plan = PLANS[ctx.subscription.planCode];
   const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";
+
+  // Carte "offre/crédits" remplacée par une carte club pour un espace Joueur : "Prestation
+  // unique / 1 crédit par mois / Gérer mon offre" n'a aucun sens pour un joueur affilié à un club
+  // (brief Fouka § 18) — il n'a ni offre ni crédits personnels, juste un club et une équipe.
+  const [clubInfo, setClubInfo] = useState<PlayerClubInfo | null>(null);
+  useEffect(() => {
+    if (!isAffiliatedPlayer || !ctx.organization.parentOrganizationId) return;
+    const supabase = createClient();
+    fetchPlayerClubInfo(supabase, ctx.organization.parentOrganizationId, ctx.organization.id)
+      .then(setClubInfo)
+      .catch(() => setClubInfo(null));
+  }, [isAffiliatedPlayer, ctx.organization.parentOrganizationId, ctx.organization.id]);
 
   return (
     <>
@@ -118,25 +133,51 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </nav>
 
         <div className="flex flex-col gap-2.5 px-3.5 pb-3.5 pt-3">
-          <div className="rounded-[14px] border border-white/10 bg-gradient-to-br from-[rgba(36,75,255,.28)] to-[rgba(138,46,255,.24)] p-3.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[12.5px] font-extrabold tracking-tight text-white">{plan.name}</span>
-              <span className="rounded-full bg-[rgba(18,183,106,.2)] px-1.5 py-0.5 text-[10px] font-extrabold text-[#7BE8C3]">
-                ACTIF
-              </span>
+          {isPlayer ? (
+            <div className="rounded-[14px] border border-white/10 bg-gradient-to-br from-[rgba(36,75,255,.28)] to-[rgba(138,46,255,.24)] p-3.5">
+              <div className="flex items-center gap-2">
+                <Shield className="h-3.5 w-3.5 flex-none text-brand-blue-pale" aria-hidden />
+                <span className="truncate text-[12.5px] font-extrabold uppercase tracking-tight text-white">
+                  {clubInfo?.clubName ?? "Votre club"}
+                </span>
+              </div>
+              <div className="mt-2.5 flex flex-col gap-1 text-[11px] font-semibold text-[#C6D3F0]">
+                <div className="flex justify-between">
+                  <span>Rôle</span>
+                  <span className="font-extrabold text-white">Joueur</span>
+                </div>
+                {clubInfo?.teamName && (
+                  <div className="flex justify-between">
+                    <span>Équipe</span>
+                    <span className="font-extrabold text-white">
+                      {clubInfo.teamName}
+                      {clubInfo.categorie ? ` · ${clubInfo.categorie}` : ""}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="mt-2.5 flex justify-between text-[11px] font-semibold text-[#C6D3F0]">
-              <span>Crédits</span>
-              <span className="font-extrabold text-white">{formatPlanCredits(plan)}</span>
+          ) : (
+            <div className="rounded-[14px] border border-white/10 bg-gradient-to-br from-[rgba(36,75,255,.28)] to-[rgba(138,46,255,.24)] p-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[12.5px] font-extrabold tracking-tight text-white">{plan.name}</span>
+                <span className="rounded-full bg-[rgba(18,183,106,.2)] px-1.5 py-0.5 text-[10px] font-extrabold text-[#7BE8C3]">
+                  ACTIF
+                </span>
+              </div>
+              <div className="mt-2.5 flex justify-between text-[11px] font-semibold text-[#C6D3F0]">
+                <span>Crédits</span>
+                <span className="font-extrabold text-white">{formatPlanCredits(plan)}</span>
+              </div>
+              <Link
+                href="/billing"
+                onClick={onClose}
+                className="mt-3 block w-full rounded-[9px] bg-white/[.13] py-2.5 text-center text-[12px] font-bold text-white transition-colors hover:bg-white/[.22]"
+              >
+                Gérer mon offre
+              </Link>
             </div>
-            <Link
-              href="/billing"
-              onClick={onClose}
-              className="mt-3 block w-full rounded-[9px] bg-white/[.13] py-2.5 text-center text-[12px] font-bold text-white transition-colors hover:bg-white/[.22]"
-            >
-              Gérer mon offre
-            </Link>
-          </div>
+          )}
 
           <Link
             href="/support"

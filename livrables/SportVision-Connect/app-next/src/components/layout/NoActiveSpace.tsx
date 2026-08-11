@@ -93,7 +93,7 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
                       <span className="block truncate text-[11px] text-text-soft">{space.subtitle}</span>
                     </span>
                     <span className="flex-none rounded-full bg-surface-sunken px-2.5 py-1 text-[10.5px] font-bold text-text-soft">
-                      Bientôt disponible
+                      Sur l&apos;app actuelle
                     </span>
                   </div>
                 );
