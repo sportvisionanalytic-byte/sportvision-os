@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useSession } from "@/lib/session-context";
+import { createClient } from "@/lib/supabase/client";
+import { submitClientService } from "@/lib/data/projet/services";
+import { needsRetractationWaiver } from "@/lib/types/services";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StepIndicator } from "./tunnel/StepIndicator";
@@ -14,15 +17,19 @@ import { Step4Pricing } from "./tunnel/Step4Pricing";
 import { Step5Summary } from "./tunnel/Step5Summary";
 import { INITIAL_TUNNEL_STATE, TUNNEL_STEPS, type TunnelState } from "./tunnel/types";
 
-// Tunnel de demande de prestation — 5 étapes, voir ACTIONS.md § 12. Aucune requête serveur :
-// la soumission finale renvoie vers /services (voir app-next/README.md § Décision volontairement
-// pas prise ici — pas de backend branché).
+// Tunnel de demande de prestation — 5 étapes, voir ACTIONS.md § 12. Espace Projet uniquement
+// (organization.type === "generic", voir services/new/page.tsx) : la soumission finale fait un
+// vrai INSERT dans `prestations` via lib/data/projet/services.ts:submitClientService, autorisé
+// par la policy RLS "prestations_client_insert" (migration-portail-v2.sql). Notification staff
+// automatique via le trigger trg_prestations_notify_demande (migration-portail-v10.sql).
 export function NewServiceTunnel() {
   const router = useRouter();
   const { ctx } = useSession();
   const [step, setStep] = useState(1);
   const [state, setState] = useState<TunnelState>(INITIAL_TUNNEL_STATE);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   function patch(update: Partial<TunnelState>) {
     setState((prev) => ({ ...prev, ...update }));
@@ -39,18 +46,37 @@ export function NewServiceTunnel() {
       case 4:
         return true;
       case 5:
-        return state.acceptedTerms;
+        return state.acceptedTerms && (!needsRetractationWaiver(state.date) || state.retractationRenoncee);
       default:
         return false;
     }
   })();
 
-  function handleSubmit() {
-    setSubmitted(true);
-    // Pas de backend branché : la demande est simulée, l'utilisateur retrouve le kanban où sa
-    // prestation apparaîtrait en colonne « Demande reçue » une fois la couche de données réelle
-    // branchée. Voir séquences serveur DATA_MODEL.md.
-    setTimeout(() => router.push("/services"), 900);
+  async function handleSubmit() {
+    if (!state.serviceType || submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const supabase = createClient();
+      await submitClientService(supabase, ctx.organization.id, {
+        serviceType: state.serviceType,
+        date: state.date,
+        startTime: state.startTime,
+        endTime: state.endTime,
+        address: state.address,
+        teamLabel: state.teamLabel,
+        contactName: state.contactName,
+        contactPhone: state.contactPhone,
+        needs: state.needs,
+        optionCodes: state.optionCodes,
+        retractationRenoncee: state.retractationRenoncee,
+      });
+      setSubmitted(true);
+      setTimeout(() => router.push("/services"), 900);
+    } catch {
+      setSubmitError("Impossible d'envoyer votre demande pour le moment. Réessayez dans quelques instants.");
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -103,12 +129,7 @@ export function NewServiceTunnel() {
           />
         )}
         {step === 4 && (
-          <Step4Pricing
-            state={state}
-            planCode={ctx.subscription.planCode}
-            organizationAddress={ctx.organization.address}
-            onChangeDepositMethod={(depositMethod) => patch({ depositMethod })}
-          />
+          <Step4Pricing state={state} planCode={ctx.subscription.planCode} organizationAddress={ctx.organization.address} />
         )}
         {step === 5 && (
           <Step5Summary
@@ -116,12 +137,19 @@ export function NewServiceTunnel() {
             planCode={ctx.subscription.planCode}
             organizationAddress={ctx.organization.address}
             onAcceptTermsChange={(acceptedTerms) => patch({ acceptedTerms })}
+            onRetractationRenonceeChange={(retractationRenoncee) => patch({ retractationRenoncee })}
           />
         )}
       </Card>
 
+      {submitError && (
+        <p className="rounded-xl border border-danger-fg/30 bg-danger-bg px-4 py-3 text-[13px] font-semibold text-danger-fg">
+          {submitError}
+        </p>
+      )}
+
       <div className="flex items-center justify-between">
-        <Button variant="secondary" onClick={() => setStep((s) => Math.max(1, s - 1))} disabled={step === 1}>
+        <Button variant="secondary" onClick={() => setStep((s) => Math.max(1, s - 1))} disabled={step === 1 || submitting}>
           Retour
         </Button>
         {step < TUNNEL_STEPS.length ? (
@@ -129,7 +157,7 @@ export function NewServiceTunnel() {
             Continuer
           </Button>
         ) : (
-          <Button variant="primary" onClick={handleSubmit} disabled={!canContinue}>
+          <Button variant="primary" onClick={handleSubmit} disabled={!canContinue || submitting} loading={submitting}>
             Envoyer ma demande
           </Button>
         )}

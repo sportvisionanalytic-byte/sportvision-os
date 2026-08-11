@@ -184,6 +184,25 @@ export function formatServiceDateShort(iso: string): string {
   return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(iso));
 }
 
+/**
+ * Droit de rétractation (article L221-18 du Code de la consommation) : une prestation
+ * programmée dans moins de 14 jours nécessite une renonciation explicite du client pour être
+ * exécutée avant la fin du délai légal. Même formule que le configurateur Projet vanilla
+ * (projet-configurateur.js:needsRetractationWaiver) et create-guest-request (édge function
+ * vitrine) — les deux autres points d'entrée qui écrivent dans `prestations` appliquent déjà
+ * cette règle ; le tunnel Connect doit la reprendre à l'identique pour ne pas laisser un client
+ * Espace Projet réserver une prestation imminente sans ce garde-fou légal.
+ */
+export function needsRetractationWaiver(dateIso: string): boolean {
+  if (!dateIso) return false;
+  const target = new Date(`${dateIso}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86400000);
+  return diffDays >= 0 && diffDays < 14;
+}
+
 /** Décale une heure "HH:MM" de `delta` minutes (peut être négatif). Utilisé pour dériver le
  * déroulé heure par heure de l'onglet Planning à partir des horaires de la prestation. */
 export function addMinutesToTime(time: string, delta: number): string {

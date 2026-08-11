@@ -1,8 +1,13 @@
 import type { ServiceOptionCode, ServiceType } from "@/lib/types/services";
 
-// État local du tunnel de demande — voir ACTIONS.md § 12 « Tunnel — 5 étapes ». Aucune
-// persistance : la demande est simulée côté client, il n'y a pas encore de backend
-// (voir app-next/README.md § Décision volontairement pas prise ici).
+// État local du tunnel de demande — voir ACTIONS.md § 12 « Tunnel — 5 étapes ». Espace Projet
+// (organization.type === "generic") uniquement : la soumission finale déclenche un vrai INSERT
+// dans `prestations` — voir NewServiceTunnel.tsx:handleSubmit et lib/data/projet/services.ts.
+//
+// Pas de champ `depositMethod` (carte/espèces) : le choix du mode de règlement de l'acompte a
+// été retiré du tunnel de réservation public (reserver.html, 09/08/2026) et n'a jamais eu de
+// colonne dédiée côté `prestations` pour un client Connect authentifié (mode_paiement_choisi
+// n'existe que côté vitrine/invité) — décision reprise ici à l'identique pour rester cohérent.
 export interface TunnelState {
   serviceType: ServiceType | null;
   date: string;
@@ -14,7 +19,8 @@ export interface TunnelState {
   contactPhone: string;
   needs: string;
   optionCodes: ServiceOptionCode[];
-  depositMethod: "card" | "cash";
+  /** Renonciation au droit de rétractation — voir needsRetractationWaiver (lib/types/services.ts). */
+  retractationRenoncee: boolean;
   acceptedTerms: boolean;
 }
 
@@ -29,7 +35,7 @@ export const INITIAL_TUNNEL_STATE: TunnelState = {
   contactPhone: "",
   needs: "",
   optionCodes: [],
-  depositMethod: "card",
+  retractationRenoncee: false,
   acceptedTerms: false,
 };
 
