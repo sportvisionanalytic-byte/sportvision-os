@@ -70,8 +70,35 @@
 -- Un admin/sec/prod/compta garde l'accès complet déjà permis par la
 -- policy RLS — ce trigger ne change rien pour eux.
 --
--- Idempotente. Nouveau fichier, NON EXÉCUTÉ — à relire puis lancer dans
--- Supabase → SQL Editor.
+-- Idempotente.
+--
+-- ── MISE À JOUR 11/08 (audit pré-lancement Partie B) ──
+-- Ce fichier était marqué "NON EXÉCUTÉ" ci-dessus, mais c'est FAUX : le
+-- trigger trg_protect_prestation_operational_fields est bien actif en
+-- production. Vérifié empiriquement (pas une supposition) : un appel
+-- service_role (donc auth.uid() IS NULL) tentant statut='confirmée' depuis
+-- 'demande_reçue' a été rejeté avec exactement le message d'exception
+-- défini plus bas ("...réservé au secrétariat/à la production."). À ne PAS
+-- relancer par réflexe (idempotent de toute façon, mais inutile).
+--
+-- ⚠ Incohérence P2 constatée avec migration-prestations-transitions-statut.sql
+-- (qui, elle, exempte explicitement auth.uid() IS NULL "pour ne jamais te
+-- bloquer toi-même", cf. son propre commentaire) : cette fonction-ci
+-- (protect_prestation_operational_fields) N'A PAS cette exemption — un
+-- auth.uid() NULL (SQL Editor avec tes identifiants, ou correction manuelle
+-- via service_role) tombe dans la branche "non privilégié" (is_privileged
+-- reste false faute de ligne profiles avec id = NULL) et se fait donc
+-- bloquer sur toute modification de lieu/horaire/adresse ou sur un
+-- changement de statut hors whitelist Jour J. Concrètement : si tu dois un
+-- jour corriger à la main lieu/date_prestation/heure_debut d'une
+-- prestation depuis le SQL Editor, ce trigger te bloquera avec l'exception
+-- ci-dessous, contrairement à l'intention affichée dans l'autre migration.
+-- Non corrigé ici (scope de cet audit = lecture/tests, pas de nouvelle
+-- migration écrite pour ce point précis) — à trancher toi-même : soit
+-- ajouter `if auth.uid() is null then return new; end if;` en tête de
+-- protect_prestation_operational_fields() pour aligner les deux triggers,
+-- soit laisser en l'état si tu préfères qu'aucune correction manuelle
+-- silencieuse ne soit possible même pour toi sur ces champs.
 -- ============================================================
 
 create or replace function protect_prestation_operational_fields()
