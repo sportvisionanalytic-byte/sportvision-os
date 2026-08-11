@@ -644,6 +644,15 @@ select.fi{appearance:none;-webkit-appearance:none;background-image:url("data:ima
   </div>
 </div>
 
+<!-- Supabase JS (UMD) : uniquement pour les abonnements Realtime
+     (postgres_changes — sync live docs/réservations clubs/notifications,
+     migration-connect-v42-enable-realtime-sync.sql). Le reste de l'app
+     continue d'utiliser sbFetch() (appels REST bruts, apikey/Bearer manuels)
+     sans dépendance à ce SDK. Si le CDN est injoignable (offline PWA),
+     window.supabase reste undefined : _rtGetClient() le détecte et toutes
+     les fonctions _rt* dégradent en silence, sans erreur visible pour
+     l'utilisateur ni impact sur le reste de l'app. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ── ICONS ────────────────────────────────
 const IC={
@@ -2628,6 +2637,10 @@ async function doLogout(){
     method:'POST',
     headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')}
   }).catch(()=>{});
+  // Coupe tous les abonnements Realtime ouverts (notifications + éventuel
+  // écran docs/réservations clubs) : sinon ils continueraient d'utiliser le
+  // JWT de la session qu'on vient de fermer.
+  _rtNotifCleanup();_rtDocsCleanup();_rtCbkCleanup();
   svClear();
   goLogin();
 }
@@ -2739,6 +2752,62 @@ async function sbFetch(path,opts={}){
 // sbErr() détecte donc la vraie forme d'erreur sans planter sur le null de succès
 // ni ignorer silencieusement un objet d'erreur comme si c'était un succès.
 function sbErr(r){return !!(r&&typeof r==='object'&&!Array.isArray(r)&&(r.code||r.message));}
+
+// ── REALTIME (Supabase postgres_changes) ────────────────────────────────
+// Sync live pour les écrans les plus consultés en continu par le staff :
+// Centre documentaire (devis/contrats — onglet "Signatures en cours"),
+// Réservations clubs, Notifications. Avant ceci, aucune synchro live
+// n'existait dans SportVision OS : un rechargement de page manuel était le
+// seul moyen de voir une nouvelle demande/un changement de statut.
+//
+// Repose sur SB_URL/SB_KEY déjà utilisés partout ailleurs dans ce fichier
+// (aucune nouvelle façon de se connecter) + le JWT sv_tok déjà géré par
+// svSave/sbFetch, transmis à Realtime via .setAuth() pour que les policies
+// RLS s'appliquent aussi aux événements postgres_changes (sans ça, un
+// utilisateur ne recevrait des événements que si la table autorisait le
+// rôle anonyme, ce qui n'est le cas d'aucune table ciblée ici).
+//
+// Double dégradation silencieuse, sans jamais bloquer ni afficher d'erreur
+// visible à l'utilisateur :
+//  1) window.supabase absent (CDN injoignable, offline PWA) → _rtGetClient()
+//     renvoie null, _rtSubscribe() renvoie null, l'écran fonctionne comme
+//     avant (chargement au clic/à l'entrée dans l'écran uniquement).
+//  2) window.supabase présent mais la table n'a pas encore été ajoutée à la
+//     publication `supabase_realtime` côté base (migration v42 pas encore
+//     exécutée en prod à ce jour) → le channel s'abonne sans erreur mais ne
+//     reçoit jamais aucun événement. Même résultat : dégradation silencieuse.
+let _rtClient=null;
+function _rtGetClient(){
+  if(_rtClient)return _rtClient;
+  try{
+    if(!(window.supabase&&typeof window.supabase.createClient==='function'))return null;
+    _rtClient=window.supabase.createClient(SB_URL,SB_KEY);
+    const tok=localStorage.getItem('sv_tok');
+    if(tok&&_rtClient.realtime&&typeof _rtClient.realtime.setAuth==='function'){
+      _rtClient.realtime.setAuth(tok);
+    }
+  }catch(e){console.warn('[realtime] client indisponible :',e);_rtClient=null;}
+  return _rtClient;
+}
+// S'abonne aux INSERT/UPDATE/DELETE d'une table publique. onChange est appelé
+// (avec un léger anti-rebond) à chaque événement reçu — à charge de
+// l'appelant de rappeler ses fonctions de chargement/rendu existantes
+// (jamais un rechargement de page complet). Renvoie le channel pour un
+// nettoyage ultérieur via _rtUnsubscribe, ou null si Realtime indisponible.
+function _rtSubscribe(table,onChange){
+  try{
+    const client=_rtGetClient();
+    if(!client)return null;
+    let deb=null;
+    const debounced=()=>{clearTimeout(deb);deb=setTimeout(()=>{try{onChange();}catch(e){console.warn('[realtime] callback',table,e);}},400);};
+    return client.channel('os-'+table+'-'+Math.random().toString(36).slice(2))
+      .on('postgres_changes',{event:'*',schema:'public',table},debounced)
+      .subscribe();
+  }catch(e){console.warn('[realtime] abonnement impossible :',table,e);return null;}
+}
+function _rtUnsubscribe(channel){
+  try{if(channel&&_rtClient)_rtClient.removeChannel(channel);}catch(e){}
+}
 
 // Échappe le texte libre injecté dans du HTML via template literal (innerHTML).
 // Nécessaire partout où une donnée saisie par un utilisateur (client, collaborateur,
@@ -3279,7 +3348,7 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='jourj') await loadJourJ();
   if(role==='sec'&&view==='dash') await loadSecDash();
   if(role==='sec'&&view==='demandes') await loadSecDemandes();
-  if(['admin','com','sec'].includes(role)&&view==='reservationsclubs') await loadClubBookings();
+  if(['admin','com','sec'].includes(role)&&view==='reservationsclubs'){await loadClubBookings();_rtCbkEnsure();}
   if(role==='sec'&&view==='relances') await loadSecRelances();
   if(role==='sec'&&view==='contrats') await loadSecContrats();
   if(role==='sec'&&view==='abonnements') await loadSecAbonnements();
@@ -9408,6 +9477,20 @@ async function loadDocuments(role){
   await docsLoadAll();
   docsUpdateKPIs();
   await docsRenderTab();
+  _rtDocsEnsure();
+}
+
+// Realtime : nouveau devis, changement de statut/signature sur un devis ou
+// un contrat (tables 'devis'/'contrats' de la publication supabase_realtime,
+// migration v42) → rafraîchit le Centre documentaire (KPIs + onglet actif,
+// dont "Signatures en cours") sans recharger toute la page. _rtDocsCh est
+// nettoyé à la sortie de l'écran (voir switchView).
+let _rtDocsCh=[];
+function _rtDocsCleanup(){_rtDocsCh.forEach(_rtUnsubscribe);_rtDocsCh=[];}
+function _rtDocsEnsure(){
+  _rtDocsCleanup();
+  const refresh=()=>docsLoadAll().then(()=>{docsUpdateKPIs();docsRenderTab();});
+  [_rtSubscribe('devis',refresh),_rtSubscribe('contrats',refresh)].forEach(ch=>{if(ch)_rtDocsCh.push(ch);});
 }
 
 async function docsLoadAll(){
@@ -17866,6 +17949,20 @@ async function loadClubBookings(){
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';console.error(e);}
 }
 
+// Realtime : nouvelle demande de club ou changement de statut (table
+// 'club_bookings' de la publication supabase_realtime, migration v42) →
+// rappelle loadClubBookings() (déjà idempotent) sans recharger la page.
+// _rtCbkEnsure() est appelé une seule fois à l'entrée de l'écran
+// (loadViewData), pas depuis loadClubBookings() elle-même, pour ne pas
+// recréer un channel à chaque rafraîchissement. Nettoyé à la sortie de
+// l'écran (voir switchView).
+let _rtCbkCh=null;
+function _rtCbkCleanup(){if(_rtCbkCh){_rtUnsubscribe(_rtCbkCh);_rtCbkCh=null;}}
+function _rtCbkEnsure(){
+  _rtCbkCleanup();
+  _rtCbkCh=_rtSubscribe('club_bookings',()=>loadClubBookings());
+}
+
 function filterClubBookings(f){
   _cbkFilter=f;
   ['all','attente','cours','livrees'].forEach(id=>{const b=document.getElementById('cbk-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
@@ -19612,6 +19709,25 @@ function goApp(role){
   // Rafraîchir les badges toutes les 60 secondes
   if(window._badgeTimer)clearInterval(window._badgeTimer);
   window._badgeTimer=setInterval(()=>{if(S.screen==='app')updateNavBadges(S.role);},60000);
+  _rtNotifEnsure(role);
+}
+
+// Realtime : nouvelle notification (table 'notifications' de la publication
+// supabase_realtime, migration v42) → point d'entrée global (le clochette
+// est dans le header, visible sur tous les écrans, pas seulement une vue
+// précise) mis en place une fois par session dans goApp(), nettoyé à la
+// déconnexion (doLogout()). Rafraîchit le badge/pastille immédiatement et,
+// si le panneau de notifications est déjà ouvert, son contenu aussi —
+// réutilise updateNavBadges()/openNotifPanel() existants, pas de nouveau
+// rendu.
+let _rtNotifCh=null;
+function _rtNotifCleanup(){if(_rtNotifCh){_rtUnsubscribe(_rtNotifCh);_rtNotifCh=null;}}
+function _rtNotifEnsure(role){
+  _rtNotifCleanup();
+  _rtNotifCh=_rtSubscribe('notifications',()=>{
+    updateNavBadges(role);
+    if(document.getElementById('notif-panel-body'))openNotifPanel();
+  });
 }
 
 async function updateNavBadges(role){
@@ -20470,6 +20586,11 @@ async function toggleAvisStatut(id,statut){
 function switchView(id){
   if(_msgInterval){clearInterval(_msgInterval);_msgInterval=null;}
   if(_jourjTimer){clearInterval(_jourjTimer);_jourjTimer=null;}
+  // Nettoyage des abonnements Realtime propres à l'écran qu'on quitte
+  // (docs / réservations clubs) — la notification (_rtNotifCh) reste active
+  // en continu tant que la session est ouverte, voir goApp()/doLogout().
+  _rtDocsCleanup();
+  _rtCbkCleanup();
   S.view=id;
   closeMobNav();
   document.querySelectorAll('.ni[data-id]').forEach(n=>n.classList.toggle('on',n.dataset.id===id));
