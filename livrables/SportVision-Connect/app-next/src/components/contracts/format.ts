@@ -5,6 +5,22 @@ import type { ContractScheduleStatus, ContractStatus } from "@/lib/types/billing
 // statuts « Contrat » : Brouillon → Envoyé → Consulté → Signé → Actif → À renouveler → Résilié ·
 // Expiré.
 
+// contrats.type_contrat (migration-contrats-v2-types-banque.sql, CHECK) : ponctuel,
+// full_communication, club_plus, coach_academie, evenement, joueur, sponsoring, pilote, autre.
+// Sert de nom de contrat affiché côté client (voir data/projet/billing.ts::fetchClientContracts) —
+// sans ce libellé, le client voyait la valeur brute de la colonne ("club_plus", "full_communication"…).
+export const CONTRACT_TYPE_LABEL: Record<string, string> = {
+  ponctuel: "Prestation ponctuelle",
+  full_communication: "Full Communication",
+  club_plus: "Club+",
+  coach_academie: "Coach / Académie",
+  evenement: "Événement",
+  joueur: "Joueur",
+  sponsoring: "Sponsoring",
+  pilote: "Pilote",
+  autre: "Autre",
+};
+
 export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
   brouillon: "Brouillon",
   envoye: "Envoyé",
