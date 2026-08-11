@@ -7,8 +7,8 @@ import type { Team } from "@/lib/types/teams";
 
 // Carte d'équipe — ACTIONS.md § 16, écran /teams. Un id réel (uuid Supabase) n'a pas de fiche
 // équipe consultable : club_players n'existe pas, teams/[id]/page.tsx verrouille l'écran ou
-// affiche "Équipe introuvable" (voir le TODO de ce fichier). On évite donc de router vers une
-// page dont l'issue est déjà connue.
+// affiche "Équipe introuvable". On évite donc de router vers une page dont l'issue est déjà
+// connue.
 export function TeamCard({ team }: { team: Team }) {
   const clickable = !isRealId(team.id);
   const body = (
