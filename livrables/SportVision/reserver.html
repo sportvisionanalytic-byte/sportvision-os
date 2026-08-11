@@ -410,16 +410,22 @@ section{position:relative}
               </select>
             </div>
             <div class="sv-field" id="paiement-field">
-              <p class="sub" style="margin:4px 0 0;font-size:12.5px">Votre demande est enregistrée immédiatement, avec une référence à l'appui. Aucun paiement n'est effectué à cette étape : une fois la disponibilité confirmée, vous réglerez votre prestation depuis SportVision Connect, au plus tard avant le début de la prestation le jour J.</p>
-              <div class="sv-field" id="retractation-field" style="margin-top:10px">
-                <label class="opt-check" style="align-items:flex-start"><input type="checkbox" id="bk-retractation" style="margin-top:3px"> <span>Je demande expressément que l'exécution de la prestation commence avant l'expiration de mon délai légal de rétractation de 14 jours. Si je me rétracte ensuite, un montant proportionnel au service déjà fourni pourra rester dû (<a href="cgv.html#article-35" target="_blank" style="color:var(--blue);font-weight:700">Article 35 des CGV</a>).</span></label>
-              </div>
+              <p class="sub" style="margin:4px 0 0;font-size:12.5px">Votre demande est enregistrée immédiatement, avec une référence à l'appui. Aucun paiement n'est effectué à cette étape : une fois la disponibilité confirmée, vous validerez le récapitulatif de commande depuis SportVision Connect, où vous réglerez ensuite votre prestation, au plus tard avant le début de la prestation le jour J.</p>
             </div>
             <div class="sv-field" id="devis-field" style="display:none">
               <p class="sub" style="margin:4px 0 0;font-size:12.5px">Cette prestation est sur devis : aucun paiement n'est demandé à cette étape. Notre équipe revient vers vous rapidement avec un devis personnalisé.</p>
             </div>
+            <!-- Simple prise de connaissance des CGV à ce stade — cette demande n'emporte PAS
+                 formation du contrat (CGV Art. 6.3 : la prestation ne devient ferme qu'après
+                 validation de la disponibilité par SportVision ET acceptation par le client du
+                 devis/récapitulatif, dans SportVision Connect). L'acceptation des CGV qui
+                 compte juridiquement, ainsi que la demande expresse d'exécution anticipée avant
+                 la fin du délai de rétractation de 14 jours (CGV Art. 35.1) le cas échéant, sont
+                 recueillies à CE moment-là (module Devis de Connect), pas ici. Voir la migration
+                 additive migration-devis-cgv-execution-anticipee-11-08.sql et
+                 SportVision-Connect/app/modules/projet-dashboard-devis-contrats-factures.js. -->
             <div class="sv-field" id="cgv-field" style="margin-top:10px">
-              <label class="opt-check" style="align-items:flex-start"><input type="checkbox" id="bk-cgv" required style="margin-top:3px"> <span>J'ai lu et j'accepte les <a href="cgv.html" target="_blank" style="color:var(--blue);font-weight:700">Conditions Générales de Vente</a>.</span></label>
+              <label class="opt-check" style="align-items:flex-start"><input type="checkbox" id="bk-cgv" required style="margin-top:3px"> <span>J'ai pris connaissance des <a href="cgv.html" target="_blank" style="color:var(--blue);font-weight:700">Conditions Générales de Vente</a>. (L'acceptation définitive des CGV et, le cas échéant, la demande d'exécution anticipée avant la fin du délai de rétractation vous seront demandées lors de la validation du récapitulatif dans votre espace Connect.)</span></label>
             </div>
             <div class="sv-err" id="booking-err"></div>
             <p class="sub" style="margin:2px 0 10px;font-size:12px;color:var(--text-secondary)">Les informations renseignées sont utilisées par SportVision pour traiter votre demande et vous recontacter. <a href="confidentialite.html" target="_blank">En savoir plus</a>.</p>
@@ -749,29 +755,16 @@ document.getElementById('btn-step3-next').addEventListener('click', () => {
   const estPrixFixe = state.slug && OFFRES_PRIX_FIXE.has(state.slug);
   document.getElementById('paiement-field').style.display = estPrixFixe ? '' : 'none';
   document.getElementById('devis-field').style.display = estPrixFixe ? 'none' : '';
-  updateRetractationField();
   goToStep(4);
 });
 
-// Le droit de rétractation (CGV Art. 35) s'attache au contrat conclu à distance — la
-// réservation en ligne elle-même — pas au moyen de paiement choisi ensuite. La case ne
-// concerne donc que le cas où la prestation aurait lieu avant l'expiration du délai légal de
-// 14 jours (peu importe carte ou espèces) : c'est uniquement dans ce cas qu'une exécution
-// anticipée doit être expressément demandée par le Client (CGV Art. 35.1).
-function updateRetractationField(){
-  const field = document.getElementById('retractation-field');
-  const checkbox = document.getElementById('bk-retractation');
-  let showIt = false;
-  if (state.date) {
-    const prestationDate = new Date(state.date + 'T00:00:00');
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const joursAvant = Math.round((prestationDate - today) / (24 * 60 * 60 * 1000));
-    showIt = joursAvant >= 0 && joursAvant < 14;
-  }
-  field.style.display = showIt ? '' : 'none';
-  checkbox.required = showIt;
-  if (!showIt) checkbox.checked = false;
-}
+// Note (11/08) : la case "exécution anticipée avant la fin du délai de rétractation de 14
+// jours" (CGV Art. 35.1) a été retirée de cette étape. Cette simple demande initiale ne forme
+// pas encore le contrat (CGV Art. 6.3) : elle n'est donc pas le bon moment pour recueillir
+// cette demande expresse, qui suppose une exécution réelle et imminente déjà engagée. Elle est
+// désormais recueillie au moment où le client accepte le devis/récapitulatif dans SportVision
+// Connect (module Devis) — voir projet-dashboard-devis-contrats-factures.js et la migration
+// migration-devis-cgv-execution-anticipee-11-08.sql.
 
 function buildRecap(){
   const parts = [];
@@ -811,11 +804,7 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     return;
   }
   if (!document.getElementById('bk-cgv').checked){
-    errEl.textContent = "Merci d'accepter les Conditions Générales de Vente pour envoyer votre demande.";
-    return;
-  }
-  if (document.getElementById('retractation-field').style.display !== 'none' && !document.getElementById('bk-retractation').checked){
-    errEl.textContent = "Votre prestation a lieu dans moins de 14 jours : merci de cocher la case d'exécution anticipée pour confirmer votre demande.";
+    errEl.textContent = "Merci de cocher la case de prise de connaissance des Conditions Générales de Vente pour envoyer votre demande.";
     return;
   }
 
@@ -838,9 +827,12 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     adresse: state.adresse || undefined,
     commentaire: commentaireComplet || null,
     site_web: siteWeb,
+    // "Prise de connaissance" des CGV à ce stade uniquement — pas une acceptation formant le
+    // contrat (voir commentaire au-dessus du champ #cgv-field). retractation_renoncee n'est
+    // volontairement plus envoyé depuis ce formulaire : cette demande expresse d'exécution
+    // anticipée n'a pas sa place à la simple demande initiale, voir Partie 1 du rapport.
     cgv_acceptee: document.getElementById('bk-cgv').checked,
     cgv_acceptee_le: new Date().toISOString(),
-    retractation_renoncee: document.getElementById('bk-retractation').checked,
   };
 
   btn.disabled = true; btn.textContent = 'Envoi…';
