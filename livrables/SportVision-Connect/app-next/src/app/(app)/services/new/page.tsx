@@ -3,7 +3,7 @@
 import { useSession } from "@/lib/session-context";
 import { canCreate } from "@/lib/permissions";
 import { LockedModule } from "@/components/ui/LockedModule";
-import { ClubServiceRequestNotice } from "@/components/services/ClubServiceRequestNotice";
+import { ClubServicesBoard } from "@/components/services/ClubServicesBoard";
 import { NewServiceTunnel } from "@/components/services/NewServiceTunnel";
 import { Card } from "@/components/ui/Card";
 
@@ -11,13 +11,16 @@ import { Card } from "@/components/ui/Card";
 // délibérément absent de READY_MODULES (voir entitlements.ts) : le gate se fait donc ici
 // directement sur organization.type, même pattern que /services (page.tsx) et /appointments.
 // Espace Projet (client_prestations, réel) : seul type dont le tunnel écrit vraiment dans
-// `prestations`, voir NewServiceTunnel.tsx. Club : écran honnête dédié plutôt que le message
-// générique "module non activé" (LockedModule), voir ClubServiceRequestNotice. Tout autre type
-// (coach/académie/sponsor/événement/agence CM/joueur/parent) : LockedModule générique, aucune
-// régression par rapport à avant (canAccess(ctx, "services") était déjà toujours faux pour eux).
+// `prestations`, voir NewServiceTunnel.tsx. Club : catalogue_offres + club_bookings (réel) — même
+// composant que /services, avec l'assistant de réservation ouvert directement au montage (voir
+// ClubServicesBoard § autoOpenWizard). Remplace l'ancien écran ClubServiceRequestNotice
+// ("contactez votre interlocuteur SportVision"), devenu inutile maintenant que le flux réel existe.
+// Tout autre type (coach/académie/sponsor/événement/agence CM/joueur/parent) : LockedModule
+// générique, aucune régression par rapport à avant (canAccess(ctx, "services") était déjà
+// toujours faux pour eux).
 export default function NewServicePage() {
   const { ctx } = useSession();
-  if (ctx.organization.type === "club") return <ClubServiceRequestNotice />;
+  if (ctx.organization.type === "club") return <ClubServicesBoard autoOpenWizard />;
   if (ctx.organization.type !== "generic") return <LockedModule />;
   if (!canCreate(ctx, "service_request")) {
     return (
