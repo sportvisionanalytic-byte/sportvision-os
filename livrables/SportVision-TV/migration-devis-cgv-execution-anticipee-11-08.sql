@@ -152,7 +152,7 @@ begin
   end if;
 
   update devis
-  set statut = p_decision,
+  set statut = p_decision::statut_devis,
       date_acceptation = case when p_decision = 'accepté' then current_date else date_acceptation end,
       cgv_version_acceptee = case when p_decision = 'accepté' then p_cgv_version else cgv_version_acceptee end,
       cgv_acceptee_le = case when p_decision = 'accepté' then now() else cgv_acceptee_le end,
