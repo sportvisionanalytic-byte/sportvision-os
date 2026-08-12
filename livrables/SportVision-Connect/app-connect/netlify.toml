@@ -1,0 +1,14 @@
+[build]
+  base = "livrables/SportVision-Connect/app-connect"
+  command = "npm run build"
+  # Même raison que app-next/netlify.toml : "publish" vide se résout sur le même chemin que
+  # "base", ce que le plugin Next.js refuse. .next est la valeur attendue par le Next Runtime.
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Variables d'environnement à définir dans Netlify (Site settings → Environment variables),
+# jamais ici :
+#   NEXT_PUBLIC_SUPABASE_URL
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY
