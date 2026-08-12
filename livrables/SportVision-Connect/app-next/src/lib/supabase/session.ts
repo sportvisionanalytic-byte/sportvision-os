@@ -74,7 +74,19 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
       id: row.organizations.id,
       name: row.organizations.nom,
       subtitle: SPACE_TYPE_LABELS[orgType] ?? orgType,
-      clickable: orgType === "club" || orgType === "projet" || orgType === "coach" || orgType === "academie" || orgType === "sponsor",
+      // event/cm_agency (migration-connect-v20, 10/08) : buildOrgSpaceActiveContext (plus bas
+      // dans ce fichier) les gère déjà pleinement, mais restaient absents de cette liste — un
+      // espace event/cm_agency réel n'était donc jamais cliquable, malgré un backend complet.
+      // Trouvé le 12/08/2026 en creusant pourquoi un compte se retrouvait sur l'écran "aucun
+      // espace" et redirigé vers l'ancienne app.
+      clickable:
+        orgType === "club" ||
+        orgType === "projet" ||
+        orgType === "coach" ||
+        orgType === "academie" ||
+        orgType === "sponsor" ||
+        orgType === "event" ||
+        orgType === "cm_agency",
       organizationType: orgType,
       membershipId: row.id,
       role: row.role,

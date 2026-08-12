@@ -9,8 +9,6 @@ import { createClient } from "@/lib/supabase/client";
 import { switchActiveSpace } from "@/lib/supabase/actions";
 import type { Space } from "@/lib/supabase/session";
 
-const VANILLA_APP_URL = "https://connectsportvisionfr.netlify.app";
-
 function initials(name: string) {
   return name
     .split(" ")
@@ -22,14 +20,19 @@ function initials(name: string) {
 
 // Affiché à la place de la coque applicative quand aucun espace n'a pu être sélectionné
 // automatiquement pour l'utilisateur connecté (voir pickActiveSpace, src/lib/supabase/session.ts) :
-// soit il n'a aucun espace du tout, soit il n'a que des espaces non-club/personnels non encore
-// déployés (bascule progressive, plan Phase 1 § Décisions d'architecture n°3), soit — cas corrigé
-// le 10-11/08 — il a PLUSIEURS espaces déjà cliquables (ex. admin de deux clubs, ou parent ET
-// membre d'un club) sans qu'aucun ne soit mémorisé pour trancher l'ambiguïté. Ce dernier cas
-// affichait auparavant TOUS les espaces comme « Bientôt disponible », y compris ceux réellement
-// disponibles, sans aucun moyen de les activer : l'utilisateur restait bloqué dès sa première
-// connexion. Réutilise switchActiveSpace (même Server Action que OrganizationSwitcher) pour que
-// cet écran serve aussi de vrai sélecteur quand c'est le cas, honnêtement.
+// soit il n'a aucun espace du tout, soit — cas corrigé le 10-11/08 — il a PLUSIEURS espaces déjà
+// cliquables (ex. admin de deux clubs, ou parent ET membre d'un club) sans qu'aucun ne soit
+// mémorisé pour trancher l'ambiguïté. Ce dernier cas affichait auparavant TOUS les espaces comme
+// « Bientôt disponible », y compris ceux réellement disponibles, sans aucun moyen de les activer :
+// l'utilisateur restait bloqué dès sa première connexion. Réutilise switchActiveSpace (même Server
+// Action que OrganizationSwitcher) pour que cet écran serve aussi de vrai sélecteur quand c'est le
+// cas, honnêtement.
+//
+// Le lien vers l'ancienne app vanilla (connectsportvisionfr.netlify.app) a été retiré le
+// 12/08/2026 : cette app est retirée, plus rien ne doit y renvoyer un utilisateur — trouvé en
+// creusant un signalement de Fouka ("ça m'a redirigé vers l'ancien Connect"). Le vrai bug était
+// en amont (event/cm_agency absents du calcul de `clickable`, session.ts) : un espace non
+// cliquable ne devrait plus jamais arriver pour un type d'organisation réel désormais.
 export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
   const router = useRouter();
   const [activating, setActivating] = useState<string | null>(null);
@@ -68,14 +71,14 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
         </div>
 
         <h1 className="mt-7 text-[22px] font-extrabold tracking-tight">
-          {spaces.length === 0 ? "Aucun espace disponible" : hasChoice ? "Choisissez un espace" : "Vos espaces arrivent bientôt ici"}
+          {spaces.length === 0 ? "Aucun espace disponible" : hasChoice ? "Choisissez un espace" : "Espace pas encore disponible"}
         </h1>
         <p className="mt-2 text-[14px] leading-relaxed text-text-soft">
           {spaces.length === 0
             ? "Votre compte n'est rattaché à aucun espace pour le moment. Contactez votre interlocuteur SportVision."
             : hasChoice
               ? "Plusieurs espaces sont disponibles sur votre compte. Sélectionnez celui que vous voulez ouvrir."
-              : "La nouvelle plateforme est déployée espace par espace. Vos espaces ci-dessous restent accessibles sur l'application actuelle en attendant leur tour."}
+              : "Cet espace n'est pas encore disponible sur SportVision Connect. Contactez votre interlocuteur SportVision."}
         </p>
 
         {spaces.length > 0 && (
@@ -93,7 +96,7 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
                       <span className="block truncate text-[11px] text-text-soft">{space.subtitle}</span>
                     </span>
                     <span className="flex-none rounded-full bg-surface-sunken px-2.5 py-1 text-[10.5px] font-bold text-text-soft">
-                      Sur l&apos;app actuelle
+                      Pas encore disponible
                     </span>
                   </div>
                 );
@@ -125,9 +128,6 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-2.5">
-          <a href={VANILLA_APP_URL} target="_blank" rel="noreferrer">
-            <Button variant="primary">Continuer sur l&apos;application actuelle</Button>
-          </a>
           <Button variant="secondary" onClick={handleLogout}>
             Se déconnecter
           </Button>

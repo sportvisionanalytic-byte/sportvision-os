@@ -130,4 +130,6 @@ export const SPACE_TYPE_LABELS: Record<string, string> = {
   sponsor: "Sponsor / Partenaire",
   player: "Joueur",
   parent: "Parent / Famille",
+  event: "Événement",
+  cm_agency: "Agence CM",
 };
