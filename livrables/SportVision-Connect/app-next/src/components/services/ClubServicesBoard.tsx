@@ -196,6 +196,21 @@ export function ClubServicesBoard({
 
   const openBooking = openBookingId && bookings ? (bookings.find((b) => b.id === openBookingId) ?? null) : null;
 
+  // "Lecture ciblée" pour un éducateur (§14 du master doc) : ne montre, dans la liste des
+  // réservations, que celles de son équipe — best-effort par correspondance de texte
+  // (club_bookings.team et club_members.teams sont tous deux du texte libre, pas de table
+  // `teams` normalisée à ce jour reliant les deux, voir data/club/users.ts § inviteClubMember).
+  // Si l'éducateur n'a aucune équipe renseignée (invitation antérieure à ce champ, ou laissée
+  // vide), on ne filtre rien plutôt que de tout cacher : ce n'est qu'un confort d'affichage, pas
+  // une frontière de sécurité (RLS reste is_club_member, inchangée). Le catalogue et l'ouverture
+  // directe d'une réservation par id (autoOpenBookingId) ne sont volontairement pas filtrés.
+  const isScopedCoach = ctx.membership.role === "coach" && ctx.membership.teamScope.length > 0;
+  const scopedTeams = isScopedCoach ? ctx.membership.teamScope.map((t) => t.trim().toLowerCase()) : [];
+  const visibleBookings =
+    isScopedCoach && bookings
+      ? bookings.filter((b) => !!b.team && scopedTeams.includes(b.team.trim().toLowerCase()))
+      : bookings;
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -232,15 +247,15 @@ export function ClubServicesBoard({
             ))}
           </div>
         )
-      ) : bookings === null ? (
+      ) : visibleBookings === null ? (
         <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>
-      ) : bookings.length === 0 ? (
+      ) : visibleBookings.length === 0 ? (
         <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
           <div className="text-[15px] font-extrabold">Aucune réservation pour le moment.</div>
         </Card>
       ) : (
         <div className="flex flex-col gap-2">
-          {bookings.map((b) => (
+          {visibleBookings.map((b) => (
             <button
               key={b.id}
               onClick={() => setOpenBookingId(b.id)}

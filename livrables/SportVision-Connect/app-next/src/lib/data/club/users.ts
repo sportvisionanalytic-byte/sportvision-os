@@ -15,6 +15,7 @@ interface ClubMemberRow {
   role: string;
   status: string;
   created_at: string;
+  teams: string[] | null;
 }
 
 const STATUS_MAP: Record<string, OrgUser["status"]> = {
@@ -26,7 +27,7 @@ const STATUS_MAP: Record<string, OrgUser["status"]> = {
 export async function fetchClubMembers(supabase: SupabaseClient, clubId: string): Promise<OrgUser[]> {
   const { data, error } = await supabase
     .from("club_members")
-    .select("id, user_id, prenom, nom, role, status, created_at")
+    .select("id, user_id, prenom, nom, role, status, created_at, teams")
     .eq("club_id", clubId)
     .order("created_at", { ascending: true });
 
@@ -39,7 +40,7 @@ export async function fetchClubMembers(supabase: SupabaseClient, clubId: string)
     lastName: row.nom ?? "",
     email: "",
     role: mapClubRole(row.role),
-    teamScope: [],
+    teamScope: Array.isArray(row.teams) ? row.teams : [],
     status: STATUS_MAP[row.status] ?? "active",
     invitedAt: row.status === "invitation" ? row.created_at : undefined,
   }));
@@ -48,11 +49,17 @@ export async function fetchClubMembers(supabase: SupabaseClient, clubId: string)
 /** Invite un membre — edge function clubplus-invite (crée le compte auth.users via l'API Admin,
  * envoie l'e-mail d'invitation Supabase, insère la ligne club_members en status='invitation').
  * Vérifie elle-même côté serveur que l'appelant est admin actif du club (jamais de confiance dans
- * un rôle envoyé par le client). Idempotente : réinviter un e-mail déjà membre ne duplique pas. */
+ * un rôle envoyé par le client). Idempotente : réinviter un e-mail déjà membre ne duplique pas.
+ *
+ * `team` (§7.1 du master doc : "équipe/catégorie facultative" dans le formulaire d'invitation) —
+ * l'edge function acceptait déjà un tableau `teams` (voir clubplus-invite/index.ts) mais rien côté
+ * Connect ne l'envoyait jusqu'ici : club_members.teams restait toujours '[]', rendant impossible
+ * tout filtrage "lecture ciblée" pour un éducateur (§14). Un seul texte libre en V1 (pas de
+ * multi-sélection, pas de table `teams` normalisée à ce jour côté club_bookings.team non plus). */
 export async function inviteClubMember(
   supabase: SupabaseClient,
   clubId: string,
-  input: { email: string; firstName: string; lastName: string; role: MembershipRole },
+  input: { email: string; firstName: string; lastName: string; role: MembershipRole; team?: string },
 ): Promise<void> {
   const { data, error } = await supabase.functions.invoke("clubplus-invite", {
     body: {
@@ -61,6 +68,7 @@ export async function inviteClubMember(
       nom: input.lastName,
       club_id: clubId,
       role: mapClubRoleToReal(input.role),
+      teams: input.team?.trim() ? [input.team.trim()] : [],
     },
   });
   if (error) throw error;

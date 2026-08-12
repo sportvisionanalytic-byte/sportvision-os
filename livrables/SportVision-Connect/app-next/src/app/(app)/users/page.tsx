@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, isClubCommunicationOrEducateur } from "@/lib/permissions";
 import type { MembershipRole, OrgType } from "@/lib/types";
 import { mockOrgUsers } from "@/lib/mock/settings";
 import { ROLE_LABELS, type OrgUser } from "@/lib/types/settings";
@@ -54,13 +54,33 @@ export default function UsersPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
+  // Communication et Éducateur ne voient jamais Utilisateurs (§11 du master doc, les deux =
+  // "Non") — club_members reste lisible par tout membre actif côté RLS (cm_same_club_select,
+  // migration-clubplus-v1.sql, aucune restriction de rôle), donc rien n'empêcherait la requête de
+  // renvoyer la liste : c'est ce garde côté frontend qui l'arrête avant même de la lancer.
+  const isRestrictedClubRole = isClubCommunicationOrEducateur(ctx);
+
   useEffect(() => {
-    if (!isClub) return;
+    if (!isClub || isRestrictedClubRole) return;
     const supabase = createClient();
     fetchClubMembers(supabase, ctx.organization.id)
       .then(setUsers)
       .catch(() => setLoadError(true));
-  }, [isClub, ctx.organization.id]);
+  }, [isClub, isRestrictedClubRole, ctx.organization.id]);
+
+  if (isRestrictedClubRole) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Card className="mx-auto flex max-w-lg flex-col items-center gap-3 p-9 text-center">
+          <h1 className="text-[20px] font-extrabold tracking-tight">Utilisateurs</h1>
+          <p className="max-w-md text-[13.5px] leading-relaxed text-text-soft">
+            La gestion des utilisateurs est réservée à l&apos;administrateur du club. Contactez-le si vous avez besoin
+            d&apos;un accès supplémentaire.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   // club_members réel (Phase suivante) : seul le club a de vraies données ici — les autres
   // types d'organisation restent verrouillés ("users" hors READY_MODULES) plutôt que de montrer
@@ -74,7 +94,7 @@ export default function UsersPage() {
 
   const availableRoles = ROLES_BY_ORG_TYPE[ctx.organization.type] ?? ["viewer"];
 
-  function handleInvite(input: { email: string; firstName: string; lastName: string; role: MembershipRole }) {
+  function handleInvite(input: { email: string; firstName: string; lastName: string; role: MembershipRole; team?: string }) {
     if (isClub) {
       // clubplus-invite (edge function réelle) : crée le compte auth.users, envoie l'e-mail
       // d'invitation Supabase, insère la ligne club_members. On recharge la liste plutôt que
@@ -95,7 +115,7 @@ export default function UsersPage() {
         lastName: input.lastName,
         email: input.email,
         role: input.role,
-        teamScope: [],
+        teamScope: input.team?.trim() ? [input.team.trim()] : [],
         status: "invited",
         invitedAt: new Date().toISOString(),
       },
@@ -174,6 +194,7 @@ export default function UsersPage() {
                 </span>
                 <span className="w-44 flex-none text-[12.5px] font-semibold text-text-soft">
                   {ROLE_LABELS[user.role] ?? user.role}
+                  {user.teamScope.length > 0 && ` · ${user.teamScope.join(", ")}`}
                 </span>
                 <Badge tone={STATUS_TONE[user.status]}>{STATUS_LABEL[user.status]}</Badge>
                 {isSelf ? (

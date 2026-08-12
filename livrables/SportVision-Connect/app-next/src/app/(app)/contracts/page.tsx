@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, FileText } from "lucide-react";
 import { useSession } from "@/lib/session-context";
+import { hasClubFinancialAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { RestrictedToBureau } from "@/components/ui/RestrictedToBureau";
 import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE, formatMonthlyAmount } from "@/components/contracts/format";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClientContracts, type ClientContract } from "@/lib/data/projet/billing";
@@ -33,6 +35,13 @@ function ClubContractsView() {
     const supabase = createClient();
     resolveClubPortailClientId(supabase, ctx.organization.id).then(setClientId);
   }, [ctx.organization.id]);
+
+  // "Contrats globaux" explicitement cités en exemple de ce que Communication ne reçoit pas
+  // automatiquement (§13, "PERMISSION FINANCIÈRE") ; Éducateur = "Non" (§14). Même garde que
+  // documents/page.tsx § ClubDocumentsView.
+  if (!hasClubFinancialAccess(ctx)) {
+    return <RestrictedToBureau title="Contrats" />;
+  }
 
   if (clientId === undefined) {
     return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;

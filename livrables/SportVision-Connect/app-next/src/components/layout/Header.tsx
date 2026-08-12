@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Bell, HelpCircle, Menu, Moon, Plus, Search, Sun, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
-import { resolveNavigation } from "@/lib/navigation";
+import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 
 // Barre supérieure — voir CHARTE.md et ACTIONS.md § 4. À partir de `lg` (voir Sidebar.tsx),
 // tous les contrôles de droite portent une largeur fixe comme à l'origine ; seul le bloc titre
@@ -73,7 +73,8 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
   // routes volontairement absentes de la navigation, puis sur le segment d'URL brut en dernier
   // recours plutôt que de laisser le titre vide.
   const firstSegment = `/${pathname?.split("/")[1] ?? ""}`;
-  const navEntries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
+  let navEntries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
+  if (ctx.organization.type === "club") navEntries = filterClubRoleNav(navEntries, ctx.membership.role);
   const navLabel = navEntries.find((e) => e.kind === "item" && e.href === firstSegment)?.label;
   const title = navLabel ?? TITLE_FALLBACKS[firstSegment] ?? (pathname?.slice(1) || "Accueil");
   const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";

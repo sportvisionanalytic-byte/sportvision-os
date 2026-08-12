@@ -1,4 +1,4 @@
-import type { ActiveContext, FeatureKey, ModuleKey, OrgType, QuotaKey, ResourceKey } from "./types";
+import type { ActiveContext, FeatureKey, MembershipRole, ModuleKey, OrgType, QuotaKey, ResourceKey } from "./types";
 import { PLANS } from "./plans";
 import { MODULE_TO_CONNECT_MODULE, READY_MODULES } from "./supabase/entitlements";
 
@@ -101,4 +101,37 @@ export function hasQuota(ctx: ActiveContext, quota: QuotaKey): boolean {
 /** Raison lisible à afficher sur l'écran « module verrouillé » — voir ACTIONS.md § 26. */
 export function lockedModuleMessage(ctx: ActiveContext): string {
   return `Ce module n'est pas activé sur votre contrat actuel (${PLANS[ctx.subscription.planCode].name}). Votre interlocuteur SportVision peut l'ajouter à tout moment.`;
+}
+
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// Audit Communication/Éducateur (§13/§14 du master doc, 12/08/2026) — un club_members.role n'a
+// jamais filtré ni la navigation ni ces écrans (canAccess ci-dessus ne teste que type
+// d'organisation + entitlements, jamais `ctx.membership.role`) : un communication_manager ou un
+// coach voyait exactement le même menu qu'un admin, avec Contrats/Factures/Utilisateurs/Documents
+// grand ouverts. Les 3 vues financières (client_devis/client_factures/client_contrats) sont déjà
+// correctement restreintes au bureau côté RLS (club_member_has_financial_access, migration-
+// connect-v41, 11/08) — ces deux helpers reproduisent la MÊME liste de rôles côté frontend, pour
+// remplacer un "Aucun document pour le moment" trompeur (la requête renvoie [] silencieusement)
+// par un message explicite, et pour piloter la navigation/les pages Utilisateurs et Paramètres
+// (qui elles n'ont aucune protection RLS par rôle : club_members reste lisible par tout membre
+// actif du club, cm_same_club_select, migration-clubplus-v1.sql).
+// ───────────────────────────────────────────────────────────────────────────────────────────
+
+/** Mêmes 4 rôles que club_member_has_financial_access() (migration-connect-v41-decisions-
+ * produit-11-08.sql : admin/president/tresorier/membre_bureau), traduits via mapClubRole. */
+const CLUB_BUREAU_ROLES: ReadonlySet<MembershipRole> = new Set(["admin", "president", "treasurer", "board_member"]);
+
+/** Un membre de club voit-il les devis/factures/contrats du club ? Toujours vrai hors club (les
+ * autres types d'organisation n'ont pas cette distinction de rôle). */
+export function hasClubFinancialAccess(ctx: ActiveContext): boolean {
+  if (ctx.organization.type !== "club") return true;
+  return CLUB_BUREAU_ROLES.has(ctx.membership.role);
+}
+
+/** Communication et Éducateur (§11 du master doc) : jamais Utilisateurs, jamais l'onglet
+ * Paramètres > Organisation, jamais les documents financiers par défaut. */
+const CLUB_COMM_EDUCATEUR_ROLES: ReadonlySet<MembershipRole> = new Set(["communication_manager", "coach"]);
+
+export function isClubCommunicationOrEducateur(ctx: ActiveContext): boolean {
+  return ctx.organization.type === "club" && CLUB_COMM_EDUCATEUR_ROLES.has(ctx.membership.role);
 }

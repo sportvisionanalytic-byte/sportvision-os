@@ -13,14 +13,20 @@ import { Button } from "@/components/ui/Button";
 interface InviteUserModalProps {
   roles: MembershipRole[];
   onClose: () => void;
-  onInvite: (input: { email: string; firstName: string; lastName: string; role: MembershipRole }) => Promise<unknown>;
+  onInvite: (input: { email: string; firstName: string; lastName: string; role: MembershipRole; team?: string }) => Promise<unknown>;
 }
+
+// Rôles pour qui l'équipe/catégorie a un sens réel (§7.1 : "équipe/catégorie facultative" dans le
+// formulaire d'invitation, utile pour cibler qui suit quoi — voir §14, "Lecture ciblée" pour
+// l'éducateur). Affiché aussi pour le responsable d'équipe, cohérent avec son rôle.
+const TEAM_AWARE_ROLES = new Set<MembershipRole>(["coach", "team_manager"]);
 
 export function InviteUserModal({ roles, onClose, onInvite }: InviteUserModalProps) {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<MembershipRole>(roles[0] ?? "viewer");
+  const [team, setTeam] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +35,7 @@ export function InviteUserModal({ roles, onClose, onInvite }: InviteUserModalPro
   function handleSubmit() {
     setSubmitting(true);
     setError(null);
-    onInvite({ email, firstName, lastName, role })
+    onInvite({ email, firstName, lastName, role, team: TEAM_AWARE_ROLES.has(role) ? team : undefined })
       .then(() => onClose())
       .catch((err) => {
         setSubmitting(false);
@@ -95,6 +101,21 @@ export function InviteUserModal({ roles, onClose, onInvite }: InviteUserModalPro
             ))}
           </select>
         </label>
+
+        {TEAM_AWARE_ROLES.has(role) && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Équipe / catégorie (facultatif)</span>
+            <input
+              value={team}
+              onChange={(e) => setTeam(e.target.value)}
+              placeholder="Ex. U15, Seniors A…"
+              className="h-11 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
+            />
+            <span className="text-[11.5px] text-text-faint">
+              Limite ce que cette personne voit dans les prestations SportVision à son périmètre.
+            </span>
+          </label>
+        )}
 
         {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
 

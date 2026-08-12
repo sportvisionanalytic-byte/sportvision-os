@@ -2,7 +2,7 @@
 
 import { ImagePlus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, isClubCommunicationOrEducateur } from "@/lib/permissions";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -23,6 +23,16 @@ export default function OrganizationSettingsPage() {
     return (
       <Card className="p-8 text-center text-[13.5px] text-text-soft">
         Cet espace personnel n&apos;a pas d&apos;organisation associée.
+      </Card>
+    );
+  }
+
+  // §31 : Communication/Éducateur n'ont "pas d'onglet organisation complet par défaut" — déjà
+  // masqué dans settings/layout.tsx, même garde-fou pour un accès direct par URL.
+  if (isClubCommunicationOrEducateur(ctx)) {
+    return (
+      <Card className="p-8 text-center text-[13.5px] text-text-soft">
+        Les informations de l&apos;organisation sont réservées à l&apos;administrateur du club.
       </Card>
     );
   }

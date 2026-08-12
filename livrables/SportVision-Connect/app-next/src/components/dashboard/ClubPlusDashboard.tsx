@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Images, Sparkles, UserPlus } from "lucide-react";
+import { Calendar, Images, Sparkles, UserPlus, type LucideIcon } from "lucide-react";
 import { useSession } from "@/lib/session-context";
+import { isClubCommunicationOrEducateur } from "@/lib/permissions";
 import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
@@ -22,16 +23,30 @@ interface TodoItem {
 // conventions du scaffold ; copiez ses patterns pour les autres variantes de dashboard
 // (src/components/dashboard/) plutôt que d'en inventer de nouveaux.
 
-const QUICK_ACTIONS = [
+interface QuickAction {
+  icon: LucideIcon;
+  label: string;
+  href: string;
+  /** Non renseigné = visible pour tout rôle. */
+  module?: "users";
+}
+
+const QUICK_ACTIONS: QuickAction[] = [
   { icon: Sparkles, label: "Demander un visuel", href: "/studio" },
   { icon: Calendar, label: "Ajouter un événement", href: "/calendar" },
   { icon: Images, label: "Consulter les contenus", href: "/content" },
-  { icon: UserPlus, label: "Inviter un utilisateur", href: "/users" },
+  // "users" — retiré à l'affichage pour Communication/Éducateur (§11 : "Utilisateurs" = Non pour
+  // les deux), voir la construction de `quickActions` dans le composant : ce bouton menait déjà à
+  // un module désormais absent de leur menu (navigation.ts § filterClubRoleNav).
+  { icon: UserPlus, label: "Inviter un utilisateur", href: "/users", module: "users" },
 ];
 
 export function ClubPlusDashboard() {
   const { ctx } = useSession();
   const router = useRouter();
+  const quickActions = isClubCommunicationOrEducateur(ctx)
+    ? QUICK_ACTIONS.filter((a) => a.module !== "users")
+    : QUICK_ACTIONS;
   const plan = PLANS[ctx.subscription.planCode];
   const creditsPct =
     plan.monthlyCredits && plan.monthlyCredits > 0
@@ -108,7 +123,7 @@ export function ClubPlusDashboard() {
         <Card className="p-4">
           <div className="text-[14px] font-extrabold tracking-tight">Actions rapides</div>
           <div className="mt-3.5 grid grid-cols-2 gap-2">
-            {QUICK_ACTIONS.map(({ icon: Icon, label, href }) => (
+            {quickActions.map(({ icon: Icon, label, href }) => (
               <button
                 key={label}
                 onClick={() => router.push(href)}

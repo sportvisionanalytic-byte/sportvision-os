@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, FileText } from "lucide-react";
 import { useSession } from "@/lib/session-context";
+import { hasClubFinancialAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { RestrictedToBureau } from "@/components/ui/RestrictedToBureau";
 import { cn } from "@/lib/cn";
 import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC } from "@/components/billing/format";
 import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE } from "@/components/contracts/format";
@@ -60,6 +62,16 @@ function ClubDocumentsView() {
     const supabase = createClient();
     resolveClubPortailClientId(supabase, ctx.organization.id).then(setClientId);
   }, [ctx.organization.id]);
+
+  // Communication ("Selon permission", pas automatique) et Éducateur ("Non") — §11/§13/§14 du
+  // master doc. Retiré du menu (navigation.ts § filterClubRoleNav) : ce garde couvre l'accès
+  // direct par URL. client_devis/client_factures/client_contrats renvoient déjà [] pour ces
+  // rôles côté RLS (club_member_has_financial_access, migration-connect-v41) — sans ce message,
+  // l'écran affichait "Aucun document pour le moment", trompeur (les documents existent, l'accès
+  // est refusé, ce n'est pas la même chose).
+  if (!hasClubFinancialAccess(ctx)) {
+    return <RestrictedToBureau />;
+  }
 
   if (clientId === undefined) {
     return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
