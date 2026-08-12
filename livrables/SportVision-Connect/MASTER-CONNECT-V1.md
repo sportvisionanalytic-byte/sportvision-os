@@ -1,592 +1,629 @@
-# MASTER PROMPT — SPORTVISION CONNECT V1
+# SPORTVISION CONNECT — MASTER PROMPT COMPLET V1
 
-Architecture fonctionnelle complète, interfaces, rôles, inscription et parcours utilisateurs.
+Architecture fonctionnelle, rôles, interfaces, inscriptions, parcours, permissions, workflows et contrôle qualité.
 
-**Document maître de référence produit pour SportVision Connect V1**, rédigé par Fouka le 11/08/2026. À donner en contexte avant de faire auditer ou modifier une page précise de Connect ("audite la page Prestations en respectant strictement le Master Connect"). Objectif : éviter qu'un agent recrée des fonctions qui contredisent le reste de l'application.
+**Document maître de référence produit, version complète (12/08/2026, remplace la version précédente du 11/08).** Fourni par Fouka en PDF. À donner en contexte avant de faire auditer ou modifier une page précise de Connect. Objectif : éviter qu'un agent recrée des fonctions qui contredisent le reste de l'application.
 
-Tu travailles sur SportVision Connect, la plateforme client centrale de SportVision.
+Version de référence — Août 2026.
 
-Ce document constitue la référence fonctionnelle générale de SportVision Connect V1.
+## 0. Instruction maître à l'agent
 
-Avant de modifier ou créer une fonctionnalité, comprends cette logique globale.
+Tu prends en charge SportVision Connect V1 comme un développeur senior, Product Owner et QA. Ta mission n'est pas seulement de lire ce document : tu dois inspecter l'existant, comprendre les choix techniques déjà présents, conserver ce qui fonctionne, corriger les incohérences, compléter les interfaces et parcours manquants, sécuriser les permissions et tester chaque flux de bout en bout.
 
-L'objectif n'est pas de créer un simple dashboard SaaS générique.
+Ne reconstruis pas Connect depuis zéro. Le projet existe déjà. Tu dois partir de la base de code, du schéma de données et des composants existants. Quand la fonctionnalité actuelle est cohérente avec ce cahier, conserve-la. Quand elle est partiellement correcte, améliore-la. Quand elle est dangereuse ou contradictoire, corrige-la.
 
-SportVision Connect doit devenir le point de contact numérique entre :
+**Autonomie attendue** : pendant la session, ne demande pas d'autorisation pour corriger les bugs évidents, les problèmes responsive, les permissions incorrectes, les états vides, les erreurs de navigation, les textes incohérents ou les formulaires cassés. Ne demande une décision que lorsqu'elle change réellement le modèle commercial ou exige une information impossible à déduire.
 
-SPORTVISION
-↓
-CLUBS / ACADÉMIES / STRUCTURES / CLIENTS
-↓
-MEMBRES AUTORISÉS / JOUEURS
-↓
-PRESTATIONS / CONTENUS / DOCUMENTS / ÉCHANGES
+- Analyser l'architecture actuelle avant les modifications lourdes.
+- Créer un inventaire des routes, rôles, modules, tables, API et intégrations utilisées par Connect.
+- Faire un état des écarts entre l'existant et ce document.
+- Corriger d'abord les écarts qui cassent un parcours utilisateur ou créent un risque de sécurité.
+- Tester sur desktop, tablette et mobile.
+- Vérifier que chaque action Connect remonte correctement dans SportVision OS lorsque cela est prévu.
+- Ne laisser aucun bouton décoratif qui simule une action non fonctionnelle.
+- Ne pas afficher de données mockées comme si elles étaient réelles.
+- Ne pas développer les fonctionnalités V2 explicitement exclues (§57).
 
-## 1. QU'EST-CE QUE SPORTVISION CONNECT ?
+## 1. Vision produit et frontière de Connect
 
-SportVision Connect est l'espace client officiel de SportVision.
+SportVision Connect est le portail externe officiel de SportVision. Il centralise la relation entre SportVision et ses clients, leurs responsables autorisés et, dans certains cas, les membres ou joueurs auxquels un accès a été accordé.
 
-Il permet aux clients et utilisateurs autorisés de centraliser leur relation avec SportVision.
+Connect ne doit pas devenir un logiciel généraliste de gestion sportive. Il ne remplace pas un logiciel de licences, de convocations, d'absences, de statistiques sportives, de feuilles de match ou de cotisations. Son périmètre est la relation média, communication, prestation, contenu, document, paiement et échange avec SportVision.
 
-Depuis Connect, selon leurs droits, ils peuvent notamment :
+**Principe produit** : Un président vient piloter la relation du club avec SportVision. Un responsable communication vient gérer ses demandes et récupérer ses contenus. Un éducateur vient suivre ce qui concerne son équipe. Un joueur vient retrouver ses contenus et les informations SportVision qui le concernent. Un client individuel vient suivre sa prestation personnelle.
 
-consulter leurs prestations ; demander une prestation ; suivre une demande ; demander un visuel ; récupérer leurs contenus ; voir leur calendrier ; consulter leurs rendez-vous ; consulter leurs devis ; consulter leurs contrats ; consulter leurs factures ; signer certains documents via le processus prévu ; échanger avec SportVision ; gérer leur organisation ; inviter des utilisateurs ; gérer leur profil ; suivre leur offre SportVision ; consulter leurs crédits lorsque l'offre en utilise.
+### 1.1 Connect et SportVision OS
 
-Connect ne doit PAS devenir un logiciel généraliste de gestion de club.
+Connect est l'interface externe. SportVision OS est l'interface interne de l'équipe SportVision. Ils ne doivent pas créer deux versions indépendantes de la même prestation ou de la même demande.
 
-Il ne doit pas chercher à remplacer : SportEasy ; TeamPulse ; un logiciel de licences ; un ERP de club ; un logiciel de comptabilité.
+- Connect : le client consulte, demande, répond, télécharge, signe ou paie selon ses droits.
+- OS : SportVision reçoit, traite, planifie, attribue, produit, facture et pilote.
+- Une demande créée dans Connect doit apparaître dans OS.
+- Une prestation validée ou modifiée dans OS doit être reflétée dans Connect.
+- Un contenu livré depuis le processus interne doit devenir visible dans Connect.
+- Un contrat ou une facture créé côté SportVision doit devenir visible uniquement aux utilisateurs Connect autorisés.
 
-SportVision Connect reste centré sur : la relation entre le client et SportVision.
+### 1.2 Objets métier partagés
 
-## 2. CONNECT ET SPORTVISION OS SONT DEUX CHOSES DIFFÉRENTES
+Avant de créer une nouvelle table ou un nouvel objet métier, vérifier si la donnée existe déjà dans l'OS ou dans la base commune. Éviter les doublons tels que `connect_service` et `os_service` pour une seule et même prestation. Préférer un objet unique avec des vues, permissions et états adaptés aux deux applications.
 
-**SportVision Connect** : côté CLIENT. L'utilisateur demande, consulte, échange et récupère.
+## 2. Types de clients et d'organisations
 
-**SportVision OS** : côté SPORTVISION. L'équipe SportVision reçoit, traite, attribue, produit, facture et pilote.
+| Type | Utilisation | Profils habituels |
+|---|---|---|
+| Club | Club amateur ou structure sportive avec plusieurs utilisateurs. | Admin, communication, éducateur, joueur. |
+| Académie | Académie ou structure de formation sportive. | Admin, communication, éducateur selon besoin. |
+| Stage / Camp | Organisation temporaire liée à un stage. | Admin ou responsable projet. Module Famille exclu de la V1. |
+| Organisateur de tournoi | Structure organisant des tournois ou événements. | Admin / responsable événement. |
+| Préparateur physique | Professionnel accompagné par SportVision. | Admin simple ou espace projet. |
+| Entreprise / marque | Client communication, création de contenu ou média. | Admin / communication. |
+| Client individuel | Joueur ou particulier achetant une prestation pour lui-même. | Compte individuel. |
+| Espace Projet | Mission ponctuelle B2B sans besoin de structure complète. | Compte projet simplifié. |
 
-Exemple : Club crée une demande dans Connect → La demande apparaît dans SportVision OS → SportVision la traite → Le statut est mis à jour → La mise à jour revient dans Connect.
+## 3. Architecture des comptes
 
-Il ne faut pas créer deux données séparées. Il doit s'agir du même objet métier, vu depuis deux interfaces différentes.
+Trois niveaux distincts : utilisateur, organisation, appartenance.
 
-## 3. ARCHITECTURE DES COMPTES
+- `user` : identité, email, authentification, profil personnel.
+- `organization` : club, académie, entreprise ou autre structure.
+- `membership` : lien entre user et organization, rôle, statut et permissions.
+- `offer/plan` : offre SportVision active pour l'organisation ou le client.
+- `module entitlements` : fonctionnalités réellement disponibles selon l'offre.
 
-Connect fonctionne selon : ORGANISATION puis : UTILISATEURS.
+**RÈGLE DE SÉCURITÉ** : Le rôle technique n'est jamais déterminé par une simple valeur envoyée par le navigateur. L'utilisateur peut déclarer sa fonction réelle dans un formulaire, mais ce champ n'accorde aucune permission. Les permissions sont attribuées côté serveur par SportVision ou par une invitation autorisée.
 
-Exemple : FC Montereau peut contenir : Président ; Responsable communication ; Community Manager ; éducateur ; joueur.
+## 4. Processus public : demande d'inscription d'un club
 
-Tous disposent éventuellement d'un compte Connect mais ils n'ont PAS les mêmes permissions.
+La V1 doit permettre à une structure qui n'utilise pas encore Connect de faire une demande d'ouverture. Ce parcours est public mais il ne crée pas immédiatement une organisation active ni un administrateur. Il crée une demande à vérifier par SportVision.
 
-## 4. TYPES DE CLIENTS
+### 4.1 Point d'entrée
 
-Prévoir notamment : CLUB, ACADÉMIE, STAGE / CAMP, PRÉPARATEUR PHYSIQUE, ORGANISATEUR DE TOURNOI, ASSOCIATION, ENTREPRISE / MARQUE, CLIENT INDIVIDUEL, ESPACE PROJET.
+- Depuis la vitrine : bouton « Rejoindre SportVision Connect », « Demander un accès » ou équivalent.
+- Depuis la page de connexion : lien secondaire « Votre structure n'utilise pas encore Connect ? Faire une demande ».
+- La page doit clairement distinguer « Mon club utilise déjà Connect » et « Je souhaite inscrire ma structure ».
 
-« Espace Projet » peut être utilisé lorsqu'un client travaille avec SportVision sur une mission ponctuelle sans nécessiter toute l'architecture d'un club.
+### 4.2 Étape 1 - Votre structure
 
-## 5. RÈGLE ABSOLUE D'INSCRIPTION
+- Nom de la structure - obligatoire.
+- Type : Club, Académie, Stage/Camp, Tournoi, Préparateur physique, Entreprise/Marque, Autre.
+- Ville - obligatoire.
+- Code postal - recommandé.
+- Pays - France par défaut si cohérent avec l'implantation actuelle.
+- Site internet - facultatif.
+- Instagram / réseau principal - facultatif.
 
-Un utilisateur ne doit JAMAIS pouvoir choisir librement son rôle lors d'une inscription publique.
+### 4.3 Étape 2 - Votre identité et votre fonction
 
-INTERDIT : Nom / Email / Mot de passe / « Je suis : Admin ».
+- Prénom - obligatoire. Nom - obligatoire. Email professionnel/contact - obligatoire. Téléphone - obligatoire.
+- Fonction dans la structure - obligatoire, via liste déroulante : Président(e), Vice-président(e), Directeur / Directrice, Secrétaire, Trésorier / Trésorière, Responsable communication, Community Manager, Responsable sportif / Directeur sportif, Responsable administratif, Responsable partenariat / sponsoring, Éducateur / Éducatrice, Entraîneur / Entraîneuse, Responsable d'équipe, Photographe / Vidéaste du club, Joueur / Joueuse, Bénévole, Membre du bureau, Autre.
+- Si « Autre » : champ texte « Précisez votre fonction » obligatoire.
 
-La permission est déterminée côté serveur. C'est une règle de sécurité fondamentale.
+**IMPORTANT** : Choisir « Président(e) » dans cette liste ne crée jamais `organization_admin`. Le système enregistre par exemple `declared_function="Président"`. Le rôle Connect réel est attribué plus tard après validation.
 
-## 6. CRÉATION D'UNE NOUVELLE ORGANISATION
+### 4.4 Étape 3 - Besoins SportVision
 
-Pour la V1, privilégier un processus contrôlé. Lorsqu'un nouveau client signe avec SportVision :
+Choix multiples, servent à qualifier la demande commerciale, n'activent rien automatiquement : Prestations photo/vidéo, Communication du club, Création de visuels, Full Communication, Club+, Couverture de matchs, Tournoi/stage, Veo/captation, Création de contenu, Je souhaite découvrir SportVision, Autre (champ de précision).
 
-SportVision crée l'organisation dans SportVision OS ; l'organisation est synchronisée avec Connect ; SportVision désigne le premier administrateur client ; Connect génère une invitation ; le client reçoit un e-mail ; il crée son mot de passe ; son compte est associé à son organisation ; son rôle est attribué côté serveur ; il accède à Connect.
+### 4.5 Étape 4 - Récapitulatif et validation
 
-Exemple : « Bienvenue sur SportVision Connect — FC Montereau vous invite à accéder à son espace SportVision. » CTA : Activer mon compte.
+Récap modifiable sans perte de données. Case obligatoire : « Je certifie être autorisé(e) à effectuer cette demande au nom de cette structure. » Consentements/liens juridiques. CTA « Envoyer ma demande ».
 
-## 7. PREMIER ADMINISTRATEUR DU CLIENT
+### 4.6 Après envoi
 
-Le premier compte créé reçoit par exemple : organization_admin.
+1. Créer une demande d'ouverture Connect en base, pas une organisation active.
+2. Confirmation claire au demandeur.
+3. Confirmation par e-mail.
+4. Entrée dans SportVision OS (file de demandes).
+5. Notifier l'équipe SportVision.
+6. Conserver fonction déclarée + besoins.
 
-Ce rôle ne doit jamais être obtenu depuis une valeur envoyée directement par le navigateur. Il doit être créé par : SportVision ; une invitation sécurisée ; ou une procédure serveur autorisée.
+Message recommandé : « Votre demande a bien été transmise à SportVision. Notre équipe va vérifier les informations de votre structure avant l'activation de votre espace Connect. »
 
-## 8. INVITER D'AUTRES UTILISATEURS
+## 5. Validation d'une nouvelle structure par SportVision
 
-Depuis : Utilisateurs — un administrateur autorisé peut inviter un autre membre.
+Fiche exploitable dans l'OS : infos club, contact, fonction déclarée, besoins, date. Actions : « Valider et créer la structure », « Demander des informations », « Refuser / archiver » (motif interne). SportVision confirme type d'organisation, offre, date d'activation, premier utilisateur autorisé — et choisit explicitement le rôle Connect du premier utilisateur (par défaut Administrateur proposé pour le contact principal, mais décision serveur contrôlée, jamais automatique).
 
-Champs : prénom ; nom ; e-mail ; rôle. Les rôles proposés dépendent de l'organisation.
+### 5.1 Création de l'organisation
 
-Exemple club : Administrateur ; Communication ; Éducateur ; Joueur.
+1. Créer/activer l'organisation client dans la base commune.
+2. Associer l'identifiant client OS existant si applicable.
+3. Configurer l'offre active et les modules autorisés.
+4. Créer une invitation pour le contact principal.
+5. Ne pas créer de mot de passe au nom du client.
+6. Envoyer un lien d'activation sécurisé.
 
-L'utilisateur reçoit : « FC Montereau vous invite sur SportVision Connect. »
+## 6. Processus d'invitation et d'activation
 
-Le token d'invitation doit : être sécurisé ; être temporaire ; ne pas être prédictible ; être invalidé après utilisation.
+### 6.1 Invitation
 
-## 9. CONNEXION
+Token aléatoire non prédictible, date d'expiration, organisation, email invité, rôle prévu, émetteur. Rôle fixé côté serveur, non modifiable par le formulaire d'activation.
 
-Page : Se connecter à SportVision Connect. Champs : adresse e-mail ; mot de passe. Actions : Se connecter / Mot de passe oublié ? / Besoin d'aide ?
+### 6.2 Email d'invitation
 
-Ne pas présenter de rôle à sélectionner. Connect retrouve automatiquement : le compte ; l'organisation ; le rôle ; les modules autorisés.
+Nom de la structure, nom SportVision Connect, rôle/type d'accès si utile, CTA « Activer mon compte », durée de validité, lien d'aide.
 
-## 10. MOT DE PASSE OUBLIÉ
+### 6.3 Écran d'activation
 
-Processus : saisie email ; email sécurisé ; lien temporaire ; nouveau mot de passe ; confirmation ; retour connexion.
+Organisation qui invite, email préréempli non modifiable, prénom/nom si inconnus, mot de passe + confirmation, acceptations, CTA « Créer mon compte ».
 
-Ne jamais révéler publiquement si une adresse appartient ou non à un client lorsque ce n'est pas nécessaire.
+### 6.4 Invitation expirée
 
-## 11. PREMIÈRE CONNEXION
+« Cette invitation n'est plus valide. » + action pour redemander un lien / contacter l'admin. Ne jamais créer de membership incomplet à partir d'un token expiré.
 
-Étape 1 : Bienvenue. Étape 2 : Informations personnelles (prénom ; nom ; téléphone facultatif selon besoin ; photo facultative). Étape 3 : Acceptations nécessaires. Étape 4 : Présentation courte de Connect.
+## 7. Processus : inviter un membre dans une organisation existante
 
-Maximum 3 écrans. Ne pas créer un onboarding de 15 étapes.
+Un administrateur autorisé invite depuis Connect. Rôle choisi par l'administrateur à l'invitation. L'invité ne choisit pas son rôle à l'activation.
 
-## 12. INTERFACE GLOBALE
+### 7.1 Formulaire d'invitation
 
-Toutes les interfaces Connect reposent sur la même architecture visuelle.
+Prénom, nom, email, rôle Connect, équipe/catégorie facultative, fonction réelle facultative si différente du rôle technique.
 
-**Sidebar** : Logo SportVision Connect, puis profil ; organisation ; rôle. Navigation adaptée automatiquement aux permissions.
+### 7.2 Rôles proposés pour un club
 
-**Topbar** : recherche ; nouvelle demande lorsque autorisée ; notifications ; aide ; thème si disponible ; avatar.
+Administrateur, Responsable communication, Éducateur / responsable sportif, Joueur, autre rôle interne uniquement si les permissions correspondantes sont réellement implémentées.
 
-## 13. RECHERCHE GLOBALE
+**NE PAS CONFONDRE** : la liste publique « fonction dans le club » est descriptive et large. La liste d'invitation « rôle Connect » doit rester courte et contrôlée, car elle détermine les permissions.
 
-La barre « Rechercher un contenu, une demande... » doit pouvoir chercher uniquement dans les données accessibles à l'utilisateur (contenu ; prestation ; demande ; document). Jamais dans les données d'une autre organisation.
+## 8. Connexion, session et récupération de compte
 
-## 14. NOTIFICATIONS
+### 8.1 Page de connexion
 
-Centre de notifications. Exemples : « Votre prestation a été confirmée. » « Votre contrat est disponible. » « Votre demande de visuel est en cours. » « 23 nouveaux contenus ont été livrés. » « Vous avez reçu un message. » « Votre rendez-vous est demain à 14h. »
+Logo, champ email, champ mot de passe, afficher/masquer, CTA « Se connecter », « Mot de passe oublié ? », « Besoin d'aide ? », lien secondaire structures non inscrites.
 
-Chaque notification doit rediriger vers la bonne ressource.
+Ne jamais demander à l'utilisateur de sélectionner « joueur », « président » ou « admin » à la connexion. Le serveur connaît son membership et charge l'interface correspondante.
 
-## 15. INTERFACE ADAPTATIVE
+### 8.2 Mot de passe oublié
 
-IMPORTANT : Connect ne doit PAS simplement afficher toutes les pages avec des cadenas.
+Email → message générique (compte existe ou non) → lien temporaire → nouveau mot de passe → invalider le token → retour connexion avec confirmation.
 
-Les menus doivent être générés selon : rôle ; contrat ; organisation ; permissions ; modules actifs.
+### 8.3 Session
 
-Si un joueur n'a pas accès à « Utilisateurs » : ne pas afficher Utilisateurs.
+Session sécurisée entre rafraîchissements. Expiration → redirection connexion + message clair. Déconnexion → invalidation locale et serveur. Changement de mot de passe sensible → politique de renouvellement de session appropriée.
 
-Si un module n'existe pas dans son offre : soit il est caché ; soit exceptionnellement présenté comme upsell lorsqu'il existe une vraie raison commerciale.
+## 9. Première connexion et onboarding
 
-Éviter une interface remplie de cadenas.
+Court, dashboard atteignable en moins d'une minute. Écran Bienvenue (organisation + rôle) → compléter éventuellement téléphone/photo (jamais obligatoire si pas nécessaire) → 2-3 cartes max des fonctions principales → CTA « Accéder à mon espace ».
 
-## 16. RÔLE — ADMINISTRATEUR D'ORGANISATION
+Messages par rôle : Admin « Demandez une prestation, suivez vos contenus et retrouvez vos documents. » Communication « Envoyez vos demandes, suivez leur production et récupérez vos contenus. » Éducateur « Retrouvez les prestations et contenus liés à votre équipe. » Joueur « Retrouvez vos contenus et les prochains événements SportVision liés à votre club. » Client individuel « Suivez votre prestation, vos documents et vos contenus. »
 
-Exemple : Président de club / dirigeant / responsable principal.
+## 10. Structure visuelle commune
 
-Navigation complète : Accueil, SportVision, Prestations, Demandes, Contenus, Calendrier, Rendez-vous, Gestion, Documents, Factures, Utilisateurs, Messages, Compte, Paramètres, Aide.
+**Desktop** : sidebar gauche, topbar (recherche/notifications/aide/profil), zone centrale largeur confortable, un seul système de composants.
 
-Peut également voir son offre.
+**Mobile** : sidebar → drawer/menu, CTA au pouce, tableaux → cartes/listes, galeries optimisées scroll/swipe, aucun débordement à 375px.
 
-## 17. DASHBOARD ADMINISTRATEUR
+**Sidebar dynamique** : ne jamais afficher systématiquement tous les modules avec des cadenas. Module non pertinent/interdit → absent. Upsell affiché seulement s'il a une vraie utilité commerciale pour le rôle.
 
-Titre : « Bonjour [Prénom], voici ce qui nécessite votre attention. »
+## 11. Rôles Connect et matrice de permissions
 
-Afficher prioritairement :
-- **À traiter** : documents à signer ; factures ; demandes nécessitant une réponse ; rendez-vous ; autres actions.
-- **Prochainement** : prochaine prestation ; prochain tournage ; prochain rendez-vous.
-- **Derniers contenus**
-- **Dernières demandes**
-- **État de l'offre**
+| Fonction | Admin | Communication | Éducateur | Joueur | Individuel |
+|---|---|---|---|---|---|
+| Accueil | Oui | Oui | Oui | Oui | Oui |
+| Prestations organisation | Oui | Selon droits | Lecture ciblée | Non | Non |
+| Prestations personnelles | Selon cas | Non | Non | Option | Oui |
+| Demandes de visuels | Oui | Oui | Non | Non | Non |
+| Contenus | Oui | Oui | Oui | Oui | Oui |
+| Calendrier | Oui | Oui | Oui | Lecture | Selon besoin |
+| Rendez-vous | Oui | Selon offre | Selon besoin | Selon besoin | Oui |
+| Documents du club | Oui | Selon permission | Non | Non | Non |
+| Factures du club | Oui | Permission spéciale | Non | Non | Non |
+| Utilisateurs | Oui | Non | Non | Non | Non |
+| Messages | Oui | Oui | Oui | Oui | Oui |
+| Paramètres organisation | Oui | Non | Non | Non | Non |
+| Offre / crédits | Oui | Selon besoin | Non | Non | Selon offre |
 
-Ne pas remplir artificiellement le dashboard. S'il n'existe aucune donnée : utiliser un état vide professionnel.
+Comportement par défaut. Des permissions fines peuvent compléter mais ne doivent jamais élargir silencieusement les accès financiers ou administratifs.
 
-## 18. ESPACE JOUEUR
+## 12. Interface administrateur d'organisation
 
-Le compte joueur doit être une interface spécifique. Il ne doit PAS être une copie du compte administrateur.
+Référent principal (président/dirigeant/responsable mandaté pour un club). Interface la plus complète.
 
-Navigation recommandée : Accueil, Mon espace, Mes contenus, Calendrier, Mon club, SportVision, Messages, Compte, Mon profil, Aide.
+**Navigation** : Accueil, Prestations, Demandes, Contenus, Calendrier, Rendez-vous si actif, Documents, Factures, Utilisateurs, Messages, Paramètres, Aide & support.
 
-Si les prestations individuelles sont activées : Prestations, Mes demandes peuvent également apparaître.
+**Dashboard** : orienté action — « qu'est-ce que je dois faire ? » puis « qu'est-ce qui arrive ? » puis « qu'est-ce qui vient d'être livré ? ». Blocs : À traiter (contrats à signer, factures, infos manquantes, réponses attendues) ; Prochainement ; Derniers contenus ; Demandes ; Offre (si pertinent). État vide : « Rien à traiter pour le moment. Tout est à jour. » Jamais de KPI fictifs.
 
-## 19. DASHBOARD JOUEUR
+## 13. Interface responsable communication
 
-Titre : « Bonjour [Prénom] 👋 Bienvenue dans votre espace joueur. » Ou : « Retrouvez vos contenus et les prochains événements liés à votre club. »
+Concentré communication + récupération contenus. Ne voit pas les finances par défaut.
 
-Afficher : Prochain événement ; Derniers contenus ; Nouveaux contenus disponibles ; Mon club ; Messages récents ; Favoris si disponible.
+**Navigation** : Accueil, Demandes de visuels/communication, Contenus, Calendrier, Prestations utiles selon droits, Messages, Mon profil, Aide.
 
-Ne pas afficher : CA ; contrats du club ; factures du club ; crédits du club ; utilisateurs ; gestion d'offre.
+**Dashboard** : demandes en cours, crédits disponibles si l'offre en utilise, derniers contenus livrés, prochain événement SportVision, messages/actions en attente.
 
-## 20. MON CLUB — JOUEUR
+**PERMISSION FINANCIÈRE** : ne doit pas automatiquement voir factures, devis financiers ou contrats globaux. Accès documentaire spécifique possible si besoin réel, mais explicite.
 
-Page simple. Afficher : logo ; nom du club ; équipe/catégorie si renseignée ; rôle ; saison.
+## 14. Interface éducateur / responsable sportif
 
-Exemple : « FC Montereau — U18 R2 — Joueur »
+Rôle opérationnel. Voit ce qui concerne son équipe/événements autorisés, pas la gestion administrative générale.
 
-Ne pas transformer cette page en outil de gestion sportive.
+**Navigation** : Accueil, Prestations/événements liés à son périmètre, Contenus, Calendrier, Messages, Mon profil, Aide.
 
-## 21. PRESTATIONS
+**Dashboard** : prochaine présence SportVision, événements à venir, derniers contenus, messages importants.
 
-Page : Prestations. Montre les prestations SportVision associées au client.
+Ne pas afficher : Factures, Utilisateurs, Gestion de l'offre, Paramètres organisation, Intégrations.
 
-Statuts possibles : demande ; à valider ; confirmée ; planifiée ; en cours ; en production ; livrée ; terminée ; annulée.
+## 15. Interface joueur
 
-Chaque prestation dispose d'une fiche.
+Expérience à part entière — jamais un compte admin auquel on aurait ajouté des cadenas.
 
-## 22. FICHE PRESTATION
+**Navigation V1** : Accueil, Mes contenus, Calendrier, Mon club, Messages, Mon profil, Aide.
 
-Afficher selon le besoin :
-- **Informations** : type ; date ; heure ; lieu ; client ; statut.
-- **Production** : état ; livrables ; délais.
-- **Équipe SportVision** si pertinent.
-- **Documents liés**
-- **Paiement** uniquement pour utilisateurs financiers autorisés.
-- **Historique**
+**Dashboard** : titre « Bonjour [Prénom] », sous-titre « Retrouvez vos contenus et les prochains événements liés à votre club. » Prochain événement, Nouveaux contenus, Mon club (logo/nom/équipe/catégorie/rôle), Messages récents, Favoris si implémenté.
 
-## 23. NOUVELLE DEMANDE DE PRESTATION
+**Ce que le joueur ne voit jamais** : Factures du club, Devis du club, Contrats du club, Liste d'utilisateurs, Crédits organisation, Gestion de l'offre, Paramètres organisation, Intégrations, données financières/admin d'un autre membre, prestations B2B réservées aux dirigeants sauf module personnel explicitement activé.
 
-CTA : Demander une prestation. Parcours en 5 étapes.
+## 16. Interface client individuel / Espace Projet
 
-**ÉTAPE 1 — TYPE DE PRESTATION** : Catalogue contrôlé depuis une source centrale. Exemples : Match Photo, Match Vidéo, Pack Match Complet, Shooting, Couverture Tournoi, Couverture Stage, Création de contenu, Match filmé caméra Veo, Veo + Photo, Drone, Drone + Photo.
+Pas toute l'interface Club. Accueil, Mes prestations/Mon projet, Mes contenus, Mes rendez-vous si nécessaire, Mes documents, Mes factures personnelles si applicable, Messages, Mon profil.
 
-Ne pas hardcoder des prix dans plusieurs composants. Utiliser une seule source tarifaire.
+Dashboard : prochaine prestation, document à signer, paiement éventuel, contenu disponible, message SportVision.
 
-## 24. AFFICHAGE DES PRIX
+## 17. Module Prestations
 
-Entreprise / club : prix HT. Particulier : prix TTC.
+**Liste** : filtres Toutes/À venir/En cours-production/Livrées/Terminées/Annulées. Carte : type, date, lieu, statut, action « Voir ». Contenu livré/documents liés si pertinent. Uniquement les prestations de son organisation/périmètre.
 
-Ne jamais afficher automatiquement « 133,33 € HT » simplement parce qu'on a divisé un tarif TTC si ce prix n'a pas été commercialement validé.
+**Fiche** : informations (type/date/heure/lieu/statut), détails métier (adversaire/catégorie/participants/brief), équipe SportVision si valeur, production (état/livrables), documents liés selon droits, paiement selon autorisation, historique.
 
-Tous les tarifs de production doivent venir du catalogue validé. Pour les prestations variables : Sur devis.
+**Statuts normalisés** : Demandée, En validation, Confirmée, Planifiée, En cours, En production, Livrée, Terminée, Annulée.
 
-## 25. ÉTAPE 2 — INFORMATIONS ET LIEU
+## 18. Wizard « Demander une prestation »
 
-Champs possibles : date ; heure ; adresse ; équipe ; adversaire ; niveau/catégorie ; description ; nombre de participants selon prestation.
+Doit créer une vraie demande backend, visible dans OS, jamais une simulation frontend.
 
-Les champs doivent être dynamiques selon le service. Un shooting n'a pas besoin exactement des mêmes informations qu'un tournoi.
+**Étape 1 - Prestation** : Match Photo, Match Vidéo, Pack Match Complet, Shooting, Couverture Tournoi, Couverture Stage, Création de contenu, Veo/captation, Drone, autres services réellement commercialisés. Catalogue centralisé, jamais de tarifs dupliqués dans plusieurs composants. Filtrage possible selon type de client/offre.
 
-## 26. ÉTAPE 3 — OPTIONS
+**Étape 2 - Informations** dynamiques selon le service (match/shooting/tournoi/stage/création de contenu ont des champs différents).
 
-Selon prestation : drone ; seconde caméra ; montage supplémentaire ; livraison particulière ; autre option réellement disponible.
+**Étape 3 - Options** : seulement celles compatibles et réellement disponibles ; si validation commerciale nécessaire, l'indiquer plutôt qu'inventer un tarif.
 
-Ne jamais afficher une option indisponible.
+**Étape 4 - Tarification** : pro → HT/TTC selon logique réelle ; particulier → TTC prioritaire ; prix fixe → source catalogue ; tarif variable → « Sur devis ». Jamais de prix à décimales artificielles non validées. Prendre en compte options/frais sans dupliquer les formules.
 
-## 27. ÉTAPE 4 — TARIFICATION
+**Étape 5 - Récapitulatif** : type, date/heure, lieu, options, prix ou « sur devis », infos complémentaires, CTA « Envoyer ma demande ».
 
-Afficher : prestation ; options ; frais connus ; estimation ; TVA ; total selon type client.
+**Après envoi** : créer la demande (organization_id + créateur), enregistrer les données, notification interne OS, afficher dans la liste Connect, confirmation client, traitement possible depuis OS.
 
-Si le tarif ne peut pas être déterminé : Demande de devis, et non un faux prix.
+## 19. Module Demandes de visuels
 
-## 28. ÉTAPE 5 — RÉCAPITULATIF
+Réservé aux offres qui l'incluent (Club+/Full Communication selon config). Pas affiché au joueur.
 
-Résumé : service ; date ; lieu ; options ; estimation ; informations importantes.
+**Liste** : filtres Toutes/À traiter-En cours/En validation/Livrées/Annulées. CTA « Nouvelle demande de visuel ».
 
-CTA : Envoyer ma demande. Puis : « Votre demande a bien été envoyée. »
+**Nouveau visuel** : type (avant-match/composition/résultat/joueur du match/événement/annonce/autre), titre, brief/texte, date souhaitée, fichiers/logos, instructions, coût en crédits si applicable.
 
-## 29. APRÈS UNE DEMANDE
+**Statuts** : Nouvelle, À traiter, En production, En validation, Livrée, Annulée.
 
-Créer une demande réelle en base. La transmettre à SportVision OS. Créer notification SportVision.
+## 20. Crédits Club+
 
-Afficher dans Connect : Demande reçue, puis les statuts.
+Source unique, visibles uniquement aux utilisateurs utiles, cohérents entre Connect et OS. Solde + période de renouvellement si pertinent. Coût indiqué avant validation d'une demande. Décrément via logique serveur transactionnelle, pas frontend. Éviter solde négatif sauf règle métier explicite. Historiser les mouvements importants. Le joueur ne voit pas les crédits organisation.
 
-Ne jamais simuler un succès frontend sans enregistrement réel.
+## 21. Module Contenus
 
-## 30. CLUB VS JOUEUR POUR LES PRESTATIONS
+**Vocabulaire** : « Mes contenus » plutôt que « Mes livrables » pour joueurs/non-techniques. Documents administratifs restent dans Documents.
 
-Un club peut avoir accès aux prestations B2B : match ; tournoi ; stage ; Veo ; drone ; Full Communication ; création contenu.
+**Organisation** : filtres Tous/Photos/Vidéos/Reels/Affiches selon accès. Regroupement par événement/prestation (ex. « FC Montereau vs Sens - 42 photos, 3 vidéos, 1 reel »). Date de livraison/statut si utile. CTA « Voir les contenus ».
 
-Un joueur particulier ne doit pas nécessairement voir ces prestations.
+**Galerie/détail** : aperçus optimisés web, téléchargement individuel, « Tout télécharger » si le backend le supporte, favoris personnels si implémentés, lazy loading/pagination pour gros volumes, URLs privées/signées.
 
-Si l'offre joueur existe, montrer seulement : shooting individuel ; suivi individuel ; contenu joueur ; prestations personnelles réellement commercialisées.
+**Contenus joueur** : uniquement les contenus autorisés par son club/droits. Jamais d'accès élargi en modifiant un identifiant d'URL — toute autorisation vérifiée côté serveur.
 
-## 31. DEMANDES DE VISUELS
+## 22. Module Calendrier
 
-Pour les clients disposant de cette fonctionnalité : Demandes de visuels. Filtres : Toutes ; En cours ; Livrées. CTA : Nouvelle demande de visuel.
+**Vues** : Mois, Semaine, Jour, Liste.
 
-## 32. CRÉATION D'UNE DEMANDE DE VISUEL
+**Événements** : prestations SportVision, tournages, shootings, rendez-vous, échéances pertinentes, événements autorisés liés au club/utilisateur.
 
-Demander : type de visuel ; titre ; brief ; textes ; couleurs/instructions ; fichiers ; date souhaitée.
+**Permissions** : Admin gestion selon fonctions disponibles ; Communication édition limitée ; Éducateur lecture/actions dans son périmètre ; Joueur lecture principalement, ne modifie jamais le calendrier officiel du club.
 
-Types possibles : affiche avant-match ; composition ; résultat ; joueur du match ; événement ; autre.
+**Google Calendar** : si l'app ne fait qu'ouvrir un lien de création d'événement, nommer l'action « Ajouter à Google Calendar »/« Ajouter à mon calendrier ». Ne jamais promettre une « synchronisation automatique » sans vraie intégration bidirectionnelle.
 
-Envoi : Connect → OS → équipe concernée.
+## 23. Module Rendez-vous
 
-## 33. CRÉDITS
+N'afficher que si le parcours est réellement fonctionnel et utile au rôle. Prochains/passés, date/heure, interlocuteur SportVision, lieu/lien visio, CTA « Prendre un rendez-vous » uniquement si réel. Si le joueur n'a pas besoin de rendez-vous en V1, retirer l'entrée de menu plutôt que laisser un cadenas.
 
-Si l'offre utilise des crédits : Afficher Crédits disponibles, ex. « 8 / 20 crédits ».
+## 24. Module Documents
 
-Lors de la demande : Connect doit indiquer le coût éventuel. Ne jamais permettre un solde négatif sauf autorisation métier explicite.
+**Catégories** : Devis, Contrats, Factures/documents administratifs selon structure existante.
 
-## 34. CONTENUS
+**RÈGLE CRITIQUE** : Un joueur ne voit jamais les devis, contrats et factures de son club. Un responsable communication ne reçoit pas automatiquement l'accès aux finances. Le backend doit contrôler `organization_id` + `membership` + `permission` à chaque requête.
 
-Page : Mes contenus. Préférer « contenus » à « livrables » pour les utilisateurs non techniques.
+**Devis** : référence, objet, date, montant, statut (disponible/accepté/refusé/expiré), télécharger/accepter selon workflow réel.
 
-Catégories : Tous, Photos, Vidéos, Reels, Affiches. Documents administratifs restent dans « Documents ».
+**Contrats** : nom, période, statut (brouillon/envoyé/à signer/signé/expiré/annulé), CTA signature via processus sécurisé uniquement, le client ne peut jamais modifier directement le statut de signature.
 
-## 35. ORGANISATION DES CONTENUS
+**Factures** : numéro, date, échéance, montant, statut (à venir/en attente/payée/en retard/annulée), téléchargement, paiement si Stripe réellement activé.
 
-Regrouper idéalement par événement / prestation. Exemple : « FC Montereau vs Sens — 12 août 2026 » puis « 42 photos ; 3 vidéos ; 1 reel ». CTA : Voir les contenus.
+## 25. Paiements Stripe
 
-## 36. FICHE CONTENU
+Stripe = source de vérité externe, le webhook serveur confirme l'état avant de débloquer un statut « payé ».
 
-Permettre selon droits : aperçu ; téléchargement ; téléchargement HD ; téléchargement multiple. Possibilité V1 simple : Tout télécharger.
+1. Créer l'objet paiement/checkout côté serveur.
+2. Rediriger/afficher le composant Stripe sécurisé.
+3. Ne pas considérer le simple retour navigateur comme confirmation.
+4. Recevoir le webhook Stripe.
+5. Vérifier signature + idempotence.
+6. Mettre à jour la facture/commande côté serveur.
+7. Répercuter l'état dans OS et Connect.
+8. Notifier le client si nécessaire.
 
-## 37. FAVORIS
+**TEST OBLIGATOIRE AVANT PRODUCTION** : succès, échec, abandon, webhook reçu, webhook dupliqué, remboursement selon les fonctions réellement utilisées. Un paiement réel ne doit pas rester indéfiniment « en attente ».
 
-Si implémenté : ❤️ Ajouter aux favoris. Le favori est personnel. Une organisation ne doit pas voir automatiquement les favoris d'un utilisateur.
+## 26. Signature électronique / Yousign
 
-## 38. CALENDRIER
+Réutiliser l'intégration existante si fonctionnelle. Ne jamais exposer de clé API au frontend. OS crée/prépare le document → client voit « À signer » dans Connect → processus de signature externe initié via le backend → statut signé revient via API/webhook sécurisé → OS et Connect affichent le même état. En cas d'erreur, message humain au client + trace exploitable pour l'équipe.
 
-Page : Calendrier. Vues : Mois, Semaine, Jour, Liste. Afficher : prestations ; tournages ; publications si pertinentes ; rendez-vous ; échéances.
+## 27. Module Utilisateurs
 
-## 39. PERMISSIONS CALENDRIER
+Réservé aux administrateurs d'organisation et rôles explicitement autorisés. Liste (nom/email/rôle/statut), inviter, renvoyer invitation, modifier rôle selon permissions, désactiver un accès, ne pas supprimer brutalement l'historique métier.
 
-Admin client : peut éventuellement créer certains événements autorisés. Joueur : lecture principalement. Ne pas permettre au joueur de modifier le calendrier officiel du club.
+**Désactivation** : préférer `membership=inactive`. Plus d'accès aux nouvelles données privées. Politique d'accès aux anciens contenus cohérente et explicitement définie.
 
-## 40. EXPORT CALENDRIER
+## 28. Module Messages
 
-Possibilité : Exporter iCal, ou Ajouter à Google Calendar.
+Simplifie la relation avec SportVision — pas un réseau social ni un clone de Slack. Liste des conversations desktop / plein écran mobile. Interlocuteur « Équipe SportVision » ou responsable désigné. Champ message, pièces jointes si upload sécurisé et utile, date/heure, état lu/non lu si réellement supporté. Ne jamais afficher « En ligne » sans véritable présence temps réel.
 
-Si aucune vraie synchronisation bidirectionnelle n'existe : ne jamais écrire « Synchronisation automatique Google Calendar. »
+## 29. Notifications
 
-## 41. RENDEZ-VOUS
+| Type | Exemple de message |
+|---|---|
+| Demande | Votre demande a été reçue / mise à jour. |
+| Prestation | Votre prestation a été confirmée ou modifiée. |
+| Contenu | De nouveaux contenus sont disponibles. |
+| Contrat | Un document attend votre signature. |
+| Facture | Une facture est disponible ou arrive à échéance. |
+| Message | Vous avez reçu un message. |
+| Rendez-vous | Rappel d'un rendez-vous proche. |
+| Invitation | Invitation à rejoindre une organisation. |
 
-Page : Mes rendez-vous. Lorsqu'activé : rendez-vous à venir ; rendez-vous passés ; date ; heure ; interlocuteur ; lien ou lieu.
+Compteur non lu, tout marquer comme lu, marquer lu à l'ouverture selon comportement choisi, pas de doublons provoqués par des webhooks répétés. Chaque notification doit rediriger vers la bonne ressource.
 
-CTA : Prendre un rendez-vous si réellement disponible. Sinon masquer le module plutôt que montrer un cadenas permanent.
+## 30. Recherche globale
 
-## 42. DOCUMENTS
+Interroge uniquement les données autorisées (contenus/prestations/demandes/documents selon rôle).
 
-Page : Mes documents. Catégories : Tous, Devis, Factures, Contrats. Mais uniquement pour les personnes autorisées.
+**SÉCURITÉ** : une recherche « facture » depuis un compte joueur ne doit JAMAIS faire apparaître une facture du club, même si la base contient ce document. La sécurité ne repose pas sur le masquage de l'interface.
 
-## 43. DOCUMENTS — PERMISSIONS
+## 31. Paramètres et profil
 
-Administrateur financier : peut accéder aux documents de son organisation.
+**Administrateur** : Personnel, Organisation, Intégrations (si réellement actives), Notifications, Sécurité/mot de passe.
 
-Joueur : ne voit PAS contrats club ; devis club ; factures club.
+**Communication/Éducateur** : Personnel, Notifications, Mot de passe/sécurité. Pas d'onglet organisation complet par défaut.
 
-Responsable communication : ne doit pas automatiquement accéder aux finances. Utiliser permissions fines.
+**Joueur** : Photo, Prénom, Nom, Téléphone si utile, Email, Mot de passe, Notifications, Mon club en lecture seule si souhaité.
 
-## 44. DOCUMENTS JOUEUR
+Masquer les fonctionnalités « Bientôt disponible » (ex. double authentification non prête). Une fonction existe et fonctionne, ou elle n'est pas présentée dans la V1.
 
-Si un joueur achète une prestation personnellement : il peut uniquement consulter ses propres documents. Jamais ceux du club.
+## 32. Offres, modules et affichage conditionnel
 
-## 45. DEVIS
+L'offre active détermine les modules disponibles, mais le rôle détermine ce que l'utilisateur voit réellement. Un joueur d'un club Full Communication ne doit pas voir la gestion de l'offre Full Communication.
 
-Statuts : disponible ; accepté ; refusé ; expiré. Afficher : numéro ; date ; montant ; prestation ; téléchargement.
+| Offre / contexte | Modules possibles |
+|---|---|
+| Prestation ponctuelle | Prestations, contenus, documents autorisés, messages. |
+| Club+ | Ajoute demandes de visuels, crédits, avantages configurés. |
+| Full Communication | Ajoute modules communication, planning, suivi prévus. |
+| Client individuel | Prestations personnelles, contenus, documents personnels, messages. |
+| Espace Projet | Projet, contenus, documents, échanges adaptés à la mission. |
 
-## 46. CONTRATS
+Club+ est une offre dans SportVision Connect, pas une application séparée. Ne pas recréer un ancien « Portail SportVision » ou une application Club+ distincte.
 
-Afficher : contrat ; statut ; date ; signature. Statuts : brouillon ; envoyé ; à signer ; signé ; expiré ; annulé.
+## 33. Carte d'offre dans la sidebar
 
-La signature passe par le processus sécurisé de signature électronique. Un client ne doit jamais pouvoir modifier directement son statut en : signé.
+Visible aux administrateurs si utile : nom de l'offre, statut actif, crédits/présences pertinents, CTA de gestion si une vraie page existe.
 
-## 47. FACTURES
+Pour un joueur : remplacer par une information légère sur le club, ou ne rien afficher. Ne jamais afficher « 1 crédit / mois », « Gérer mon offre » ou des informations contractuelles organisation au joueur.
 
-Afficher aux personnes autorisées : numéro ; date ; montant ; statut ; échéance ; téléchargement. Statuts : à venir ; en attente ; payée ; en retard ; annulée.
+## 34. Aide & support
 
-## 48. PAIEMENTS
+FAQ courte, contacter SportVision, accès aux messages, email de support approprié, résolution de problèmes fréquents. Pas de système de tickets lourd en V1 s'il n'existe pas déjà.
 
-Stripe doit être la source de vérité pour les paiements qui passent par Stripe.
+## 35. Empty states, loading et erreurs
 
-Workflow : Connect → Stripe → Webhook serveur → mise à jour base → OS → Connect.
+| Page | État vide attendu |
+|---|---|
+| Contenus | Aucun contenu pour le moment. Vos prochains contenus apparaîtront ici après leur livraison. |
+| Prestations | Vous n'avez aucune prestation en cours. CTA de demande uniquement pour les rôles autorisés. |
+| Documents | Aucun document disponible pour le moment. |
+| Messages | Aucun message pour le moment. Vous pourrez échanger avec SportVision depuis cet espace. |
+| Calendrier | Aucun événement SportVision prévu sur cette période. |
 
-Le frontend seul ne doit jamais transformer une commande en « payée ».
+**Loading** : skeletons/indicateurs cohérents, CTA désactivés pendant l'envoi, éviter double demande/upload/paiement.
 
-## 49. UTILISATEURS
+**Erreurs** : message humain, action de réessai si possible, journal technique côté serveur, jamais de stack trace ou secret affiché.
 
-Page réservée aux administrateurs autorisés. Afficher : nom ; email ; rôle ; statut. Actions : inviter ; changer rôle ; désactiver ; renvoyer invitation.
+## 36. Sécurité et isolation multi-organisation
 
-## 50. RÔLES D'UNE ORGANISATION
+Club A ne lit jamais Club B. Changer un ID dans l'URL ne donne jamais accès à une autre ressource. Les endpoints admin vérifient le rôle côté serveur. Les documents financiers nécessitent une permission dédiée. Les fichiers privés nécessitent des URLs signées ou un contrôle d'accès. Les fonctions serverless/edge sensibles vérifient authentification + organisation. **Rate limiting sur login, reset et formulaires publics.** Validation backend des entrées/montants/dates/IDs/fichiers. Aucun secret dans le bundle frontend.
 
-- **ADMINISTRATEUR** : Tout le périmètre client autorisé.
-- **COMMUNICATION** : Contenus + demandes visuels + calendrier éventuellement.
-- **ÉDUCATEUR** : Contenus/calendrier selon configuration.
-- **JOUEUR** : Contenus + calendrier + messages + profil.
+### 36.1 Fonction déclarée vs rôle système
 
-Les rôles doivent être extensibles.
+Cette séparation doit être explicitement vérifiée dans le code. `declared_function` peut contenir « Président », « Joueur » ou « Autre ». `system_role`/`membership_role` est attribué uniquement par une action serveur autorisée. Aucun mapping automatique depuis un formulaire public ne doit créer un administrateur.
 
-## 51. MESSAGERIE
+## 37. Fichiers et uploads
 
-Page : Messages. Objectif : permettre d'échanger simplement avec SportVision. Ne pas recréer WhatsApp ou Slack. Une conversation claire suffit.
+Limiter formats/tailles, afficher progression si upload long, refuser fichiers invalides avec message clair, sanitiser les noms de stockage, stocker clés/URLs privées correctement, vérifier permissions au téléchargement, tester fichiers volumineux/noms spéciaux/upload interrompu.
 
-## 52. STRUCTURE MESSAGERIE
+## 38. Responsive et priorité mobile
 
-Liste à gauche sur desktop. Conversation à droite. Afficher : interlocuteur ; messages ; date ; statut lecture si disponible. Champ : « Écrivez votre message... » Actions possibles : envoyer ; joindre fichier si nécessaire.
+Tester au minimum 375, 390, 430, 768, 1280, 1440px. Joueur et responsable communication utilisent probablement Connect majoritairement sur smartphone. Aucun débordement horizontal involontaire, menu mobile clair, boutons tactiles confortables, galerie rapide/fluide, calendrier lisible en liste sur petit écran, documents/tableaux en cartes si nécessaire, modales/formulaires adaptés au clavier mobile.
 
-## 53. INTERLOCUTEUR
+## 39. Accessibilité et qualité visuelle
 
-Afficher par exemple : « Équipe SportVision » ou « Votre interlocuteur SportVision ». Éviter d'inventer un système de présence (« En ligne ») si aucune vraie présence temps réel n'existe.
+Labels de formulaires, focus clavier visible, contrastes suffisants, texte alternatif pour images fonctionnelles, messages d'erreur associés aux champs, design system unique (boutons/cartes/badges/radius/spacing/typographies cohérents). Ne pas modifier inutilement la DA actuelle si déjà cohérente.
 
-## 54. PARAMÈTRES ADMINISTRATEUR
+## 40-47. Parcours complets (référence)
 
-Onglets possibles : Personnel, Organisation, Intégrations — uniquement quand ces modules sont réellement accessibles.
+Nouveau club, Responsable communication, Éducateur, Joueur, Client individuel, Demande de prestation Connect→OS, Contrat et signature, Facture et paiement — chacun décrit étape par étape dans le PDF source. Principe commun : chaque étape a un état vérifiable côté backend, jamais une simulation frontend seule.
 
-## 55. PARAMÈTRES PERSONNELS
+## 48. Processus multi-organisation — préparation future
 
-photo ; prénom ; nom ; téléphone ; email ; langue ; mot de passe ; préférences notifications.
+Si l'architecture permet qu'un utilisateur appartienne à plusieurs organisations, prévoir un sélecteur « Changer d'espace » (déjà existant côté Connect — `OrganizationSwitcher`). Nécessaire en V1 seulement si le besoin existe déjà. Chaque changement d'espace recalcule permissions et données visibles. Ne jamais mélanger les données de deux memberships sur le même écran sans contexte explicite.
 
-## 56. PARAMÈTRES ORGANISATION
+## 49. Données et schéma fonctionnel recommandé
 
-Pour administrateur uniquement : logo ; nom ; type ; informations de contact ; utilisateurs ; informations nécessaires.
+Ne pas imposer de refonte si les tables existantes couvrent déjà ces concepts — vérifier que l'équivalent fonctionnel existe :
 
-Ne pas permettre de modifier des données juridiques sensibles sans contrôle si celles-ci impactent les contrats.
+| Concept | Champs / logique minimum |
+|---|---|
+| users | Identité, email, auth, statut, profil. |
+| organizations | Nom, type, statut, données client. |
+| memberships | user_id, organization_id, rôle système, statut, permissions. |
+| organization_invites | email, org, rôle prévu, token hash, expiration, invité par, accepté le. |
+| connect_access_requests | Structure, demandeur, fonction déclarée, besoins, statut. |
+| service_requests | Organisation, créateur, type, données, statut. |
+| services / prestations | Objet métier partagé avec OS, planning, production, statut. |
+| visual_requests | Brief, fichiers, crédits, statut. |
+| contents | Prestation, type, fichier, permissions, livraison. |
+| documents | Type, organisation/client, statut, permissions, fichier. |
+| invoices/orders | Montant, statut, Stripe IDs si nécessaire. |
+| messages | Conversation, auteur, contenu, horodatage. |
+| notifications | Utilisateur, type, ressource, lu/non lu. |
+| audit_logs | Action sensible, auteur, ressource, contexte. |
 
-## 57. PARAMÈTRES JOUEUR
+## 50. Règles de nommage et cohérence
 
-Pour joueur : ne pas afficher Organisation, Intégrations.
+Nom produit : SportVision Connect. Club+ = offre intégrée à Connect, pas une application séparée. Supprimer les anciens noms obsolètes si encore présents. Vocabulaire de statut cohérent partout. « Mes contenus » plutôt que « Livrables » pour le joueur. Nommer précisément « Demandes de visuels » si la page ne concerne que les visuels. Ne pas appeler « Synchronisation Google Calendar » un simple bouton d'ajout.
 
-Afficher Mon profil (photo ; prénom ; nom ; téléphone ; email ; mot de passe ; notifications). Puis éventuellement Mon club en lecture seule.
+## 51. Qualité des données et tarifs
 
-## 58. INTÉGRATIONS
+Aucune fausse statistique en production. Aucun prix hardcodé dans plusieurs écrans. Catalogue central de prestations et options. Tarifs variables = sur devis. HT/TTC selon la nature du client et la politique commerciale réelle. Ne pas afficher de conversions type « 91,67 € HT » ou « 133,33 € HT » si elles ne correspondent pas à un tarif commercial validé. Toutes les dates en fuseau Europe/Paris pour l'affichage métier.
 
-Afficher uniquement les intégrations réellement disponibles. Ne pas créer « Bientôt disponible » partout.
+## 52. États et automatismes à tester
 
-À cinq jours d'un lancement : si une fonctionnalité n'existe pas réellement, la masquer.
+| Objet | États recommandés |
+|---|---|
+| Prestation | Demandée, En validation, Confirmée, Planifiée, En cours, En production, Livrée, Terminée, Annulée. |
+| Demande visuel | Nouvelle, À traiter, En production, En validation, Livrée, Annulée. |
+| Contrat | Brouillon, Envoyé, À signer, Signé, Expiré, Annulé. |
+| Facture | À venir, En attente, Payée, En retard, Annulée. |
+| Invitation | Pending, Accepted, Expired, Revoked. |
+| Membership | Active, Inactive, Suspended si nécessaire. |
+| Demande ouverture Connect | Nouvelle, À vérifier, Informations demandées, Validée, Refusée/Archivée. |
 
-## 59. OFFRES SPORTVISION
+## 53. Tests end-to-end obligatoires
 
-Connect doit comprendre le contrat du client. Exemples : Prestation ponctuelle, Club+, Full Communication, autre abonnement.
+**Inscription publique d'un club** : soumettre avec fonction standard ; soumettre avec « Autre » (précision obligatoire) ; vérifier qu'aucune organisation active/admin n'est créée automatiquement ; vérifier la réception dans OS ; valider depuis OS ; recevoir l'invitation ; activer le compte ; contrôler le rôle attribué côté serveur.
 
-Les modules disponibles changent selon cette offre.
+**Invitation** : valide, expirée, déjà utilisée, email différent, renvoi, révocation.
 
-## 60. CARTE OFFRE
+**Connexion** : bonne connexion, mauvais mot de passe, reset password, session expirée, déconnexion.
 
-Sur un compte administrateur, on peut afficher : « Full Communication — ACTIF » ou « Club+ Performance — ACTIF ». Puis éventuellement : crédits ; présence ; renouvellement ; informations utiles.
+**Rôles** : admin voit ses modules ; communication ne voit pas finances ; éducateur ne voit pas utilisateurs ; joueur ne voit pas documents du club ; URL directe vers page interdite = 403/404.
 
-CTA : Gérer mon offre uniquement si une vraie page existe.
+**Prestations** : créer demande, réception OS, changement statut OS, mise à jour Connect, planning, livraison contenu.
 
-## 61. OFFRE SUR COMPTE JOUEUR
+**Paiement et contrat** : Stripe succès/échec/webhook ; contrat Yousign test si environnement disponible ; permissions documents.
 
-Ne PAS afficher : crédits du club, gérer mon offre à un simple joueur.
+**Mobile** : admin 390px, communication 390px, joueur 375px, galerie contenu, calendrier, messagerie, formulaires.
 
-À la place, éventuellement afficher : « FC Montereau — Joueur — U18 R2 » ou rien.
+## 54. Checklist écran par écran
 
-## 62. FULL COMMUNICATION
+| Interface | À valider |
+|---|---|
+| Connexion | Auth, reset, erreurs, responsive, liens. |
+| Demande inscription | 4 étapes, fonction déroulante + Autre, validation serveur. |
+| Activation invitation | Token, rôle serveur, mot de passe, expiration. |
+| Dashboard Admin | À traiter, prochainement, contenus, demandes, offre. |
+| Dashboard Communication | Demandes, crédits, contenus, événement, messages. |
+| Dashboard Éducateur | Prestations, calendrier, contenus, messages. |
+| Dashboard Joueur | Prochain événement, contenus, club, messages. |
+| Prestations | Liste, filtre, détail, permissions. |
+| Nouvelle prestation | Wizard, données dynamiques, prix, création backend. |
+| Demandes visuels | Liste, création, crédits, statut. |
+| Contenus | Galerie, téléchargement, permissions, mobile. |
+| Calendrier | Vues, droits édition, fuseau, wording Google Calendar. |
+| Rendez-vous | Fonctionnel ou masqué. |
+| Documents | Devis, contrats, factures, permissions. |
+| Utilisateurs | Invitation, rôle, désactivation. |
+| Messages | Conversation, fichiers, non-lus. |
+| Notifications | Cloche, liens, lecture. |
+| Paramètres | Onglets adaptés au rôle. |
+| Aide | FAQ/contact. |
+| 404/403/500 | Pages propres, pas d'erreur technique exposée. |
 
-Pour un client Full Communication, Connect peut donner accès à : prestations ; calendrier ; contenus ; demandes ; communication ; documents ; messages.
+## 55. Règles de travail pendant la session
 
-L'administration détaillée reste dans OS.
+1. Cartographier routes et composants actuels de Connect.
+2. Identifier rôles et permissions réellement implémentés.
+3. Comparer à la matrice de ce document.
+4. Corriger d'abord les risques de sécurité et parcours cassés.
+5. Puis corriger interfaces/menus selon le rôle.
+6. Puis finaliser inscription, invitation, demande de prestation.
+7. Puis vérifier contenus, calendrier, documents, messages, paramètres.
+8. Tester les flux Connect↔OS.
+9. Tester mobile et desktop.
+10. Refaire un build production, corriger les erreurs bloquantes.
+11. Produire un rapport final de ce qui a été modifié, testé, et ce qui reste.
 
-## 63. CLUB+
+**NE PAS S'ARRÊTER À L'AUDIT** : quand le problème est clair et la correction sûre, corriger puis tester. Le rapport final ne doit pas être une liste de recommandations non appliquées.
 
-Club+ est une OFFRE de SportVision. Ce n'est plus une application séparée. Tout se passe dans SPORTVISION CONNECT.
+## 56. Ordre de priorité à J-5 du lancement
 
-Ne jamais recréer « Portail SportVision » ou « application Club+ ».
+| Priorité | Exemples |
+|---|---|
+| P0 - Bloquant | Auth cassée, fuite cross-tenant, build impossible, paiement critique cassé, prise de contrôle admin. |
+| P1 - Critique | Demande prestation inutilisable, documents exposés au joueur, invitation cassée, mobile principal inutilisable. |
+| P2 - Important | UX confuse, états vides médiocres, filtre non essentiel cassé, wording incohérent. |
+| P3 - Amélioration | Animation, micro-polish, fonction future, refactor esthétique. |
 
-## 64. ACCÈS CONDITIONNELS
+Ne pas sacrifier la stabilité pour une nouveauté P3. À J-5, fiabilité > élégance architecturale.
 
-Utiliser une matrice du type :
+## 57. Explicitement hors scope V1
 
-| Fonction | Admin club | Communication | Joueur |
-|---|---|---|---|
-| Dashboard | ✅ | ✅ | ✅ |
-| Prestations club | ✅ | selon droits | ❌ |
-| Demandes visuels | ✅ | ✅ | ❌ |
-| Contenus | ✅ | ✅ | ✅ |
-| Calendrier | ✅ | ✅ | ✅ lecture |
-| Rendez-vous | ✅ | selon offre | si nécessaire |
-| Documents financiers | ✅ | selon permission | ❌ |
-| Utilisateurs | ✅ | ❌ | ❌ |
-| Messages | ✅ | ✅ | ✅ |
-| Organisation | ✅ | ❌ | ❌ |
-| Offre/crédits | ✅ | selon besoin | ❌ |
+Espace Famille, comptes parents, rattachement enfants, albums individuels enfants, vente d'albums aux parents, reconnaissance faciale, pass photo saison, statistiques sportives avancées, scouting, réseau social interne, licences joueurs, convocations, absences entraînement, paiement des cotisations club, messagerie entre joueurs, marketplace, fonctions « bientôt disponibles » non essentielles.
 
-## 65. AIDE & SUPPORT
+## 58. Rapport final attendu
 
-Accessible depuis tous les comptes. Page : Aide SportVision. Possibilités simples : FAQ ; nous contacter ; message SportVision ; email/support.
+Résumé global + niveau de préparation Connect. Liste précise des modifications. Bugs corrigés. Bugs encore ouverts avec priorité. État inscriptions/invitations/auth. État de chaque rôle/interface. État du parcours de demande de prestation. État contenus/calendrier/documents/messages/paramètres. État Stripe/Yousign/services externes réellement testés. Tests cross-tenant et permissions. Tests mobile. Actions humaines encore nécessaires. Verdict GO / GO sous conditions / NO-GO.
 
-Ne pas développer un centre de tickets complexe en V1 sauf s'il existe déjà.
+## 59. Critères de finition V1
 
-## 66. EMPTY STATES
+Un nouveau club peut demander un accès sans obtenir de droits non vérifiés. SportVision peut valider la structure et inviter le premier administrateur. L'administrateur peut inviter ses membres avec des rôles contrôlés. Chaque rôle voit un menu et un dashboard adaptés. Le joueur n'a aucun accès aux finances ou à l'administration du club. Une demande de prestation part de Connect et arrive dans OS. Une mise à jour OS revient dans Connect. Les contenus livrés sont accessibles/téléchargeables selon droits. Documents et paiements protégés. Calendrier et messages exploitables. Pages propres sur mobile. Aucun cross-tenant possible. Aucun bouton majeur décoratif. Aucune donnée fictive présentée comme réelle. Les fonctionnalités V2 sont absentes de la V1.
 
-Chaque interface vide doit expliquer : ce qu'est la page ; pourquoi elle est vide ; quelle action faire.
+## 60. Instruction finale
 
-Mauvais : « Aucun élément. »
+Confronter systématiquement cette cible à l'application existante avant de modifier. Objectif : rendre l'existant cohérent, sûr et opérationnel — pas réécrire le produit. Quand une fonction existe déjà et répond correctement au besoin, la conserver. Quand un libellé est différent mais plus clair et cohérent avec l'ensemble, ne pas le changer juste pour reproduire mot à mot le PDF. En revanche, les règles de permissions, de séparation des rôles, de sécurité, de création de club et de non-attribution automatique d'un rôle admin sont **obligatoires**.
 
-Meilleur : « Aucun contenu pour le moment. Vos prochains contenus apparaîtront automatiquement ici après leur livraison. »
+**Méthode** : ANALYSE → CORRIGE → TESTE → RETESTE → CONTINUE. Ne jamais terminer une section sur une simple hypothèse — vérifier le comportement réel dans le code et, si possible, dans l'application.
 
-## 67. LOADING
+## Annexe A — Navigation finale par rôle
 
-Chaque requête doit disposer d'un état loading. Prévoir : skeleton ; spinner raisonnable ; bouton désactivé.
+| Rôle | Menu V1 recommandé |
+|---|---|
+| Administrateur | Accueil · Prestations · Demandes · Contenus · Calendrier · Rendez-vous* · Documents · Factures · Utilisateurs · Messages · Paramètres · Aide |
+| Communication | Accueil · Demandes · Contenus · Calendrier · Prestations utiles* · Messages · Profil · Aide |
+| Éducateur | Accueil · Prestations ciblées · Contenus · Calendrier · Messages · Profil · Aide |
+| Joueur | Accueil · Mes contenus · Calendrier · Mon club · Messages · Mon profil · Aide |
+| Client individuel | Accueil · Mes prestations · Mes contenus · Rendez-vous* · Mes documents · Mes factures* · Messages · Profil |
 
-Éviter : double envoi ; double réservation ; double paiement.
+*uniquement lorsque le module est réellement actif et pertinent.
 
-## 68. ERREURS
+## Annexe B — Résumé du processus d'accès
 
-Messages humains. Exemple : « Impossible d'envoyer votre demande. Réessayez dans quelques instants. » Pas : « PostgreSQL constraint violation 23505. »
+**Nouveau club** : Vitrine → Demande d'ouverture → Validation SportVision dans OS → Création organisation → Invitation sécurisée → Activation → Onboarding → Dashboard Admin.
 
-## 69. RESPONSIVE
+**Membre d'un club** : Admin Connect → Invitation avec rôle préattribué → Activation → Dashboard adapté au rôle.
 
-Toutes les interfaces doivent être utilisables sur mobile ; tablette ; desktop.
+**Connexion** : Email + mot de passe → Serveur charge memberships, rôle, offre, permissions → Interface adaptée. Aucun sélecteur de rôle.
 
-Sur téléphone : la sidebar devient menu/drawer. Les tableaux complexes deviennent : cartes ; listes ; scroll contrôlé.
+**Mot de passe oublié** : Email → lien temporaire → nouveau mot de passe → connexion.
 
-## 70. SÉCURITÉ MULTI-ORGANISATION
+## Annexe C — Checklist de test rapide avant GO
 
-Club A ne doit jamais accéder aux données Club B. Même en modifiant : URL ; ID ; API request ; payload.
-
-Les contrôles doivent exister côté serveur.
-
-## 71. SÉCURITÉ DES JOUEURS
-
-Un joueur ne doit jamais obtenir accidentellement : finances club ; annuaire complet ; contrats ; données administratives ; paramètres organisation ; informations d'un autre club.
-
-## 72. FICHIERS
-
-Les fichiers privés ne doivent pas avoir des URLs publiques permanentes. Utiliser : stockage sécurisé ; contrôle permissions ; URLs signées/temporaire lorsque nécessaire.
-
-## 73. AUDIT LOG
-
-Journaliser les actions sensibles : invitation ; rôle ; suppression utilisateur ; document ; signature ; paiement ; changement organisation ; prestation.
-
-## 74. PARCOURS COMPLET — NOUVEAU CLUB
-
-SportVision signe FC Montereau → SportVision OS crée FC Montereau → SportVision crée/invite le président → Président reçoit email → Il active son compte → Il se connecte → Dashboard Connect → Il demande une prestation → La demande apparaît dans SportVision OS → SportVision valide → Connect affiche : Confirmée → La prestation apparaît dans le calendrier → SportVision réalise la prestation → Contenus livrés → Notification Connect → Le client récupère ses fichiers → Documents associés restent accessibles selon permissions.
-
-## 75. PARCOURS — NOUVEAU JOUEUR
-
-Président/admin autorisé : Inviter un joueur → Le joueur reçoit l'invitation → Il active son compte → Il arrive dans Espace Joueur.
-
-Il voit : club ; prochains événements ; contenus ; messages ; calendrier ; profil.
-
-Il ne voit PAS : factures club ; devis ; contrats club ; autres utilisateurs ; gestion offre.
-
-## 76. PARCOURS — CLIENT PONCTUEL
-
-SportVision crée Espace Projet ou compte client ponctuel. Le client reçoit son accès.
-
-Son Connect simplifié peut afficher : prestation ; statut ; messages ; documents propres ; contenus ; calendrier/rendez-vous si nécessaire.
-
-Ne pas lui donner toute l'interface Club.
-
-## 77. PARCOURS — DEMANDE VISUEL
-
-Connect → Nouvelle demande de visuel → Brief → Pièces jointes → Validation crédits si applicable → Envoi → SportVision OS → Attribution interne → En production → Livrée → Notification → Connect → Téléchargement.
-
-## 78. PARCOURS — CONTRAT
-
-OS crée le contrat → Connect affiche : Document à signer → Processus de signature électronique → Webhook sécurisé → Statut : Signé → OS + Connect mis à jour.
-
-## 79. PARCOURS — FACTURE
-
-Facture créée → Utilisateur financier autorisé la voit → Notification si nécessaire → Paiement si paiement Connect réellement prévu → Webhook Stripe → Statut : Payée.
-
-## 80. CE QUI EST EXCLU DE CONNECT V1
-
-NE PAS implémenter maintenant : Espace Famille ; comptes parents ; albums enfants ; vente photos parents ; reconnaissance faciale ; réseau social ; scouting ; statistiques sportives avancées ; licences joueurs ; convocations équipe ; absences entraînement ; classement ; paiement cotisations club ; chat interne entre joueurs ; marketplace ; fonctionnalités non validées.
-
-## 81. PHILOSOPHIE PRODUIT
-
-Pour chaque écran, se poser la question : Pourquoi cet utilisateur vient-il ici ?
-
-Un président vient pour : gérer la relation de son club avec SportVision.
-Un responsable communication vient pour : organiser les demandes et récupérer les contenus.
-Un joueur vient pour : retrouver ses contenus et les informations SportVision qui le concernent.
-Un client ponctuel vient pour : suivre sa prestation.
-
-L'interface doit changer en conséquence.
-
-## 82. RÈGLE UX FONDAMENTALE
-
-Ne pas construire : une interface admin unique + 50 cadenas.
-
-Construire : UNE INTERFACE ADAPTÉE AU RÔLE.
-
-Chaque utilisateur ne voit que : ce qui lui est utile ; ce qu'il est autorisé à utiliser.
-
-## 83. RÈGLE DE DÉVELOPPEMENT
-
-Avant d'ajouter une nouvelle page : vérifier si une page existante remplit déjà le besoin.
-Avant d'ajouter une table : vérifier si la donnée existe déjà.
-Avant de créer une nouvelle logique : vérifier SportVision OS.
-
-Éviter toute duplication entre OS et Connect.
-
-## 84. SOURCE DE VÉRITÉ
-
-SportVision OS et Connect utilisent les mêmes objets métier.
-
-Exemple : `service_request` ne doit pas avoir `connect_request` puis `os_request` sans relation claire. Un seul objet. Différentes interfaces.
-
-## 85. OBJECTIF FINAL DE CONNECT V1
-
-Lorsqu'un nouveau club reçoit ses accès, il doit pouvoir comprendre l'application sans formation lourde. En moins de quelques minutes, il doit savoir : où sont mes prestations ? comment demander quelque chose ? où récupérer mes contenus ? où sont mes documents ? comment contacter SportVision ?
-
-Et un joueur doit immédiatement comprendre : où sont mes contenus ? quel est mon prochain événement ? comment contacter SportVision ?
-
-Si cette compréhension n'est pas immédiate, simplifier l'interface.
-
-## 86. RÉSULTAT ATTENDU
-
-SportVision Connect V1 doit donner l'impression d'un produit professionnel conçu spécifiquement pour SportVision. Pas d'un template SaaS générique.
-
-Le fonctionnement global doit être :
-
-CLIENT demande → CONNECT centralise → SPORTVISION OS traite → ÉQUIPE SPORTVISION réalise → CONNECT restitue → CLIENT consulte et récupère.
-
-L'ensemble doit être : simple, cohérent, sécurisé, rapide et compréhensible.
+- Créer une demande publique de club avec « Autre ».
+- Vérifier qu'aucun admin n'est créé automatiquement.
+- Valider depuis OS et activer le premier admin.
+- Inviter Communication, Éducateur et Joueur.
+- Se connecter avec chaque rôle.
+- Vérifier les menus et URLs directes interdites.
+- Créer une demande prestation depuis Admin.
+- Vérifier sa réception dans OS.
+- Modifier le statut depuis OS et vérifier Connect.
+- Livrer un contenu et le télécharger avec le bon rôle.
+- Vérifier qu'un joueur ne voit aucun document financier.
+- Tester messages et notifications.
+- Tester reset password.
+- Tester mobile 375/390px.
+- Tester Club A contre Club B.
+- Tester build production et console.
+- Tester Stripe/Yousign si actifs.
+- Faire un dernier smoke test en navigation privée.
