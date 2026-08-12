@@ -6,3 +6,6 @@ export const inputClass =
 
 export const textareaClass =
   "min-h-[110px] w-full resize-none rounded-xl border border-border-strong bg-input-bg px-3.5 py-3 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]";
+
+export const selectClass =
+  "h-[46px] w-full rounded-xl border border-border-strong bg-input-bg px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]";

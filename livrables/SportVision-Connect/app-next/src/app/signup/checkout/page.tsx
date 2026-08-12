@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -31,11 +31,24 @@ export default function SignupCheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [quoteMessage, setQuoteMessage] = useState(state.quoteMessage);
 
+  // Un club ne passe plus jamais par cette page — voir /signup/club-request/*. Garde
+  // défensive (accès direct par URL, retour navigateur) : sans ça, un club atteignant quand
+  // même cet écran retomberait dans buildPendingOnboarding() sur la branche générique
+  // connect-signup-lead (aucun privilège accordé, voir plus bas), mais autant ne jamais
+  // laisser un club afficher un écran de paiement qui ne le concerne plus du tout.
+  useEffect(() => {
+    if (state.orgType === "club") router.replace("/signup/club-request");
+  }, [state.orgType, router]);
+  if (state.orgType === "club") return null;
+
   const isAffiliatedPlayer = state.orgType === "player" && state.playerAffiliation === "join_club";
   const plan = state.planCode ? PLANS[state.planCode] : null;
   const isFullCom = plan?.code === "full_communication";
   const orgLabel = ORG_TYPE_OPTIONS.find((o) => o.type === state.orgType)?.label ?? "Structure";
-  const isRealBilling = state.orgType === "club" && (plan?.code === "club_plus_start" || plan?.code === "club_plus_performance");
+  // Le paiement Stripe en self-service pour Club+ Start/Performance n'existe plus sur cette
+  // page (orgType==='club' ne l'atteint plus jamais, voir le garde ci-dessus) : la
+  // souscription payante n'a lieu qu'après activation par un lien staff (clubplus-activate),
+  // jamais depuis une inscription publique.
 
   const canContinue =
     state.account.email.trim().length > 0 &&
@@ -46,7 +59,6 @@ export default function SignupCheckoutPage() {
     if (submitting) return "Un instant…";
     if (isAffiliatedPlayer) return "Envoyer ma demande de rattachement";
     if (isFullCom) return "Envoyer ma demande de devis";
-    if (isRealBilling) return "Continuer vers le paiement";
     return "Créer mon compte";
   }
 
@@ -100,9 +112,7 @@ export default function SignupCheckoutPage() {
             ? "Un administrateur du club devra valider votre demande de rattachement."
             : isFullCom
               ? "Full Communication est sur devis : un conseiller vous recontacte sous 24h ouvrées."
-              : isRealBilling
-                ? "L'étape suivante vous redirige vers Stripe pour renseigner votre moyen de paiement en toute sécurité."
-                : "Un conseiller SportVision finalise votre offre avec vous."}
+              : "Un conseiller SportVision finalise votre offre avec vous."}
         </p>
       </div>
 
@@ -123,11 +133,8 @@ export default function SignupCheckoutPage() {
               <Row label="Offre" value={plan?.name ?? "—"} />
               <Row label="Tarif" value={plan ? formatPlanPrice(plan) : "—"} />
               <Row label="Crédits inclus" value={plan ? formatPlanCredits(plan) : "—"} />
-              <Row label="Engagement" value={isRealBilling ? (state.engagement === "12mois" ? "12 mois" : "Sans engagement") : "—"} />
-              <Row
-                label="Paiement"
-                value={isRealBilling ? "Sur la page suivante (Stripe)" : "Aucun — finalisé avec votre conseiller"}
-              />
+              <Row label="Engagement" value="—" />
+              <Row label="Paiement" value="Aucun — finalisé avec votre conseiller" />
             </>
           )}
         </dl>
@@ -148,11 +155,11 @@ export default function SignupCheckoutPage() {
             placeholder="Décrivez votre projet pour que votre conseiller prépare une proposition adaptée."
           />
         </label>
-      ) : !isRealBilling ? (
+      ) : (
         <div className="rounded-xl border border-border-strong bg-surface-alt p-4 text-[13px] text-text-soft">
           Cette offre est finalisée manuellement avec un conseiller SportVision — aucun paiement n&apos;est demandé à cette étape.
         </div>
-      ) : null}
+      )}
 
       {error && (
         <div className="flex gap-2.5 rounded-xl border border-[#FDA29B] bg-danger-bg px-3.5 py-3">
@@ -194,19 +201,17 @@ function buildPendingOnboarding(state: SignupState, quoteMessage: string): Pendi
     };
   }
 
-  if (state.orgType === "club" && (plan?.code === "club_plus_start" || plan?.code === "club_plus_performance")) {
-    return {
-      kind: "clubplus",
-      prenom,
-      nom: nomContact,
-      telephone,
-      orgName: state.org.name,
-      ville: "",
-      plan: plan.code === "club_plus_performance" ? "performance" : "club",
-      engagement: state.engagement,
-    };
-  }
-
+  // 12/08/2026 — FAILLE CORRIGÉE : cette branche appelait clubplus-onboarding avec
+  // kind:"clubplus" juste après auth.signUp(), ce qui créait un club ACTIF et posait
+  // l'appelant ADMIN immédiatement (role:"admin" en dur côté Edge Function), sans AUCUNE
+  // validation humaine — n'importe quel visiteur pouvait taper "Paris Saint-Germain" et en
+  // devenir admin. orgType==='club' ne traverse plus cette page du tout (voir le garde
+  // useEffect plus haut et /signup/club-request/*, le nouveau tunnel en 4 étapes qui crée une
+  // simple DEMANDE, validée manuellement par le staff SportVision avant toute création réelle
+  // — migration-connect-v44-club-signup-requests.sql). Le bloc `if (state.orgType === "club")`
+  // ci-dessous reste comme filet de sécurité : si ce garde était un jour contourné, un club
+  // tombe alors sur la branche connect-signup-lead (aucun privilège accordé, suivi manuel),
+  // jamais sur une création de club automatique.
   if (state.orgType === "club") {
     return {
       kind: "connect-signup-lead",

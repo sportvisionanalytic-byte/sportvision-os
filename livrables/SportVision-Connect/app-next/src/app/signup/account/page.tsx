@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -13,6 +14,14 @@ export default function SignupAccountPage() {
   const { state, patch } = useSignup();
   const { account } = state;
   const isPlayer = state.orgType === "player";
+
+  // Un club ne crée plus de compte à cette étape — voir /signup/club-request/*. Ce garde
+  // couvre l'accès direct par URL ou un retour navigateur, en plus du routage déjà corrigé
+  // côté type/page.tsx.
+  useEffect(() => {
+    if (state.orgType === "club") router.replace("/signup/club-request");
+  }, [state.orgType, router]);
+  if (state.orgType === "club") return null;
 
   const strength = passwordStrength(account.password);
   const canContinue =

@@ -134,7 +134,7 @@ serve(async (req) => {
     // clubplus-check-activation-token, qui n'existe que pour l'affichage.
     const { data: tokenRow } = await admin
       .from("clubplus_activation_tokens")
-      .select("id, client_id, club_nom_prefill, plan, expires_at, used_at, revoked_at")
+      .select("id, client_id, club_nom_prefill, plan, initial_role, expires_at, used_at, revoked_at")
       .eq("token", token)
       .maybeSingle();
 
@@ -194,10 +194,21 @@ serve(async (req) => {
       return json({ error: clubErr.message }, 500);
     }
 
+    // Rôle Connect posé par le token, jamais en dur — voir migration-connect-v44-
+    // club-signup-requests.sql : un lien généré depuis une demande d'ouverture
+    // publique (connect-club-signup-review) porte le rôle EXPLICITEMENT choisi par
+    // le staff au moment de la validation, qui peut être différent d'admin (ex.
+    // fonction déclarée "Secrétaire" mais rôle Connect "Administrateur" si c'est
+    // elle qui gère réellement le compte). Défaut "admin" pour les tokens plus
+    // anciens ou générés par clubplus-generate-activation (fiche client déjà
+    // suivie), qui n'ont jamais eu ce choix et visent toujours un dirigeant déjà
+    // identifié comme admin — comportement inchangé pour ce flux.
+    const role = tokenRow.initial_role || "admin";
+
     const { error: cmErr } = await admin.from("club_members").insert({
       user_id: user.id,
       club_id: createdClub.id,
-      role: "admin",
+      role,
       prenom: prenom || null,
       nom: nom || null,
       telephone: telephone || null,
@@ -255,7 +266,7 @@ serve(async (req) => {
 
     return json({
       club_id: createdClub.id,
-      role: "admin",
+      role,
       already_activated: false,
       portail_lie: portailLie,
     });

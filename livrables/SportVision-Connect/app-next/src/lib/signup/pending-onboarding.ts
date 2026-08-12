@@ -11,17 +11,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 const STORAGE_KEY = "sv_pending_signup";
 
+// 12/08/2026 — la variante "clubplus" (appel direct de clubplus-onboarding juste après
+// auth.signUp(), club actif + admin posés en dur sans aucune validation humaine) a été
+// retirée d'ici : c'était la faille de sécurité corrigée par ce chantier (voir
+// migration-connect-v44-club-signup-requests.sql et /signup/club-request/*, le nouveau
+// tunnel qui crée une simple demande, jamais un compte ni un club). Aucun code de ce
+// module ne doit plus jamais construire un objet { kind: "clubplus" } pour orgType==='club'.
 export type PendingOnboarding =
-  | {
-      kind: "clubplus";
-      prenom: string;
-      nom: string;
-      telephone: string;
-      orgName: string;
-      ville: string;
-      plan: "club" | "performance";
-      engagement: "12mois" | "sans";
-    }
   | {
       kind: "connect-org-signup";
       organizationType: "coach" | "academie";
@@ -95,31 +91,6 @@ export async function consumePendingOnboarding(supabase: SupabaseClient): Promis
   } catch {
     localStorage.removeItem(STORAGE_KEY);
     return null;
-  }
-
-  if (pending.kind === "clubplus") {
-    const { data: onboarding, error: onboardingError } = await supabase.functions.invoke("clubplus-onboarding", {
-      body: {
-        prenom: pending.prenom,
-        nom: pending.nom,
-        telephone: pending.telephone,
-        club: { nom: pending.orgName, ville: pending.ville || undefined },
-        plan: pending.plan,
-        engagement: pending.engagement,
-      },
-    });
-    if (onboardingError) throw onboardingError;
-    if (onboarding?.error) throw new Error(onboarding.error);
-
-    const { data: checkout, error: checkoutError } = await supabase.functions.invoke(
-      "create-clubplus-subscription-checkout",
-      { body: { club_id: onboarding.club_id, plan: pending.plan, engagement: pending.engagement } },
-    );
-    if (checkoutError) throw checkoutError;
-    if (checkout?.error) throw new Error(checkout.error);
-
-    localStorage.removeItem(STORAGE_KEY);
-    return { redirectUrl: checkout.url };
   }
 
   if (pending.kind === "connect-org-signup") {
