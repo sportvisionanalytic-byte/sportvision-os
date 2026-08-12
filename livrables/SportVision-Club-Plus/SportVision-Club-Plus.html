@@ -723,7 +723,7 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
           <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--t2);margin-bottom:18px"><input type="checkbox" checked style="width:auto"> Se souvenir de moi</label>
           <button class="btn btn-p btn-block" id="lg-btn" style="margin-bottom:10px" onclick="handleLogin()">Se connecter</button>
           <button class="btn btn-o btn-block" style="margin-bottom:16px" onclick="showToast('Lien de connexion envoyé (simulation).')">Recevoir un lien de connexion</button>
-          <div style="text-align:center;font-size:12.5px" class="muted"><a onclick="authShow('mdp')">Mot de passe oublié</a> · Pas encore de compte ? <a onclick="authShow('inscription')">Créer un compte</a></div>
+          <div style="text-align:center;font-size:12.5px" class="muted"><a onclick="authShow('mdp')">Mot de passe oublié</a> · Votre club n'a pas encore d'espace Connect ? <a onclick="authShow('inscription')">Demander l'ouverture</a></div>
           <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid #24415E"><a href="app.html" style="font-size:12px">Explorer l'application en mode démonstration →</a></div>
         </div>
 
@@ -745,10 +745,10 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
 
         <div id="auth-inscription" style="display:none">
           <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-            <div class="auth-title" style="margin:0">Créer un compte</div>
-            <div class="muted" style="font-size:11.5px" id="signupStepLabel">Étape 1/5</div>
+            <div class="auth-title" style="margin:0">Demande d'ouverture Connect</div>
+            <div class="muted" style="font-size:11.5px" id="signupStepLabel">Étape 1/4</div>
           </div>
-          <div class="progress"><i id="signupProgress" style="width:20%"></i></div>
+          <div class="progress"><i id="signupProgress" style="width:25%"></i></div>
 
           <div id="signup-1">
             <div class="row2">
@@ -757,51 +757,73 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
             </div>
             <div class="field"><label>E-mail professionnel</label><input id="ins-email" type="email"></div>
             <div class="field"><label>Téléphone</label><input id="ins-tel" type="text"></div>
-            <div class="row2">
-              <div class="field"><label>Mot de passe</label><input id="ins-pass" type="password"></div>
-              <div class="field"><label>Confirmation</label><input id="ins-pass2" type="password"></div>
+            <div class="field"><label>Votre fonction</label>
+              <select id="ins-fonction" onchange="document.getElementById('ins-fonction-autre-wrap').style.display=(this.value==='Autre'?'block':'none')">
+                <option value="">Sélectionnez…</option>
+                <option>Président(e)</option>
+                <option>Vice-président(e)</option>
+                <option>Directeur / Directrice</option>
+                <option>Secrétaire</option>
+                <option>Trésorier / Trésorière</option>
+                <option>Responsable communication</option>
+                <option>Community Manager</option>
+                <option>Responsable sportif / Directeur sportif</option>
+                <option>Responsable administratif</option>
+                <option>Responsable partenariat / sponsoring</option>
+                <option>Éducateur / Éducatrice</option>
+                <option>Entraîneur / Entraîneuse</option>
+                <option>Responsable d'équipe</option>
+                <option>Photographe / Vidéaste du club</option>
+                <option>Joueur / Joueuse</option>
+                <option>Bénévole</option>
+                <option>Membre du bureau</option>
+                <option>Autre</option>
+              </select>
             </div>
+            <div class="field" id="ins-fonction-autre-wrap" style="display:none"><label>Précisez votre fonction</label><input id="ins-fonction-autre" type="text"></div>
             <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--t2)"><input id="ins-cgu" type="checkbox" style="width:auto;margin-top:2px"> J'accepte les CGU et la politique de confidentialité</label>
           </div>
 
           <div id="signup-2" style="display:none">
             <div class="field"><label>Nom du club</label><input id="ins-club-nom" type="text"></div>
             <div class="row2">
-              <div class="field"><label>Discipline</label><input id="ins-club-discipline" type="text"></div>
-              <div class="field"><label>Nombre d'équipes</label><input type="text"></div>
+              <div class="field"><label>Type de structure</label>
+                <select id="ins-club-structure">
+                  <option value="">Sélectionnez…</option>
+                  <option>Association loi 1901</option>
+                  <option>Club professionnel / société sportive</option>
+                  <option>Section d'un club omnisports</option>
+                  <option>Structure municipale ou collectivité</option>
+                  <option>Autre</option>
+                </select>
+              </div>
+              <div class="field"><label>Ville</label><input id="ins-club-ville" type="text"></div>
             </div>
             <div class="row2">
-              <div class="field"><label>Ville</label><input id="ins-club-ville" type="text"></div>
-              <div class="field"><label>Code postal</label><input type="text"></div>
+              <div class="field"><label>Code postal <span class="muted" style="font-weight:400">(optionnel)</span></label><input id="ins-club-cp" type="text"></div>
+              <div class="field"><label>Site web / Instagram <span class="muted" style="font-weight:400">(optionnel)</span></label><input id="ins-club-web" type="text"></div>
             </div>
-            <div class="field"><label>Votre rôle</label><input type="text" placeholder="ex: Président, Responsable communication"></div>
           </div>
 
           <div id="signup-3" style="display:none">
-            <div class="muted" style="font-size:13px;margin-bottom:16px">Choisissez la formule de votre club — modifiable à tout moment.</div>
-            <button class="opt-btn on" data-plan="club"><b>Club+</b> <span style="color:var(--cyan)">49 €/mois</span><div class="muted" style="font-size:11.5px;margin-top:4px">5 crédits mensuels, Newsroom, Match Center, calendrier, sponsors, 5 % de réduction.</div></button>
-            <button class="opt-btn" data-plan="performance"><b>Club+ Performance</b> <span style="color:var(--cyan)">129 €/mois</span><div class="muted" style="font-size:11.5px;margin-top:4px">20 crédits mensuels, traitement prioritaire, rapports avancés, 10 % de réduction.</div></button>
+            <div class="muted" style="font-size:13px;margin-bottom:16px">Sélectionnez au moins un besoin qui vous intéresse.</div>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px"><input type="checkbox" class="besoin-chk" value="Prestations photo / vidéo" style="width:auto;margin-top:2px"> Prestations photo / vidéo</label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px"><input type="checkbox" class="besoin-chk" value="Communication du club" style="width:auto;margin-top:2px"> Communication du club</label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px"><input type="checkbox" class="besoin-chk" value="Création de visuels" style="width:auto;margin-top:2px"> Création de visuels</label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px"><input type="checkbox" class="besoin-chk" value="Full Communication" style="width:auto;margin-top:2px"> Full Communication</label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px"><input type="checkbox" class="besoin-chk" value="Club+" style="width:auto;margin-top:2px"> Club+</label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px"><input type="checkbox" class="besoin-chk" value="Couverture de matchs" style="width:auto;margin-top:2px"> Couverture de matchs</label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px"><input type="checkbox" class="besoin-chk" value="Tournoi / stage" style="width:auto;margin-top:2px"> Tournoi / stage</label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px"><input type="checkbox" class="besoin-chk" value="Veo / captation" style="width:auto;margin-top:2px"> Veo / captation</label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px"><input type="checkbox" class="besoin-chk" value="Je souhaite simplement découvrir SportVision" style="width:auto;margin-top:2px"> Je souhaite simplement découvrir SportVision</label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px"><input type="checkbox" class="besoin-chk" id="besoin-autre-chk" value="Autre" style="width:auto;margin-top:2px" onchange="document.getElementById('ins-besoin-autre-wrap').style.display=(this.checked?'block':'none')"> Autre</label>
+            <div class="field" id="ins-besoin-autre-wrap" style="display:none"><label>Précisez votre besoin</label><input id="ins-besoin-autre" type="text"></div>
           </div>
 
           <div id="signup-4" style="display:none">
-            <div style="font-size:13.5px;font-weight:700;margin-bottom:14px">Résumé de commande</div>
-            <div class="recap-box">
-              <div class="recap-row"><span>Formule</span><span>Club+ Performance</span></div>
-              <div class="recap-row"><span>Engagement</span><span>12 mois</span></div>
-              <div class="recap-row"><span>Prix TTC</span><span>129 €/mois</span></div>
-              <div class="recap-row"><span>Premier prélèvement</span><span>après le mois offert</span></div>
-            </div>
-          </div>
-
-          <div id="signup-5" style="display:none">
-            <div style="font-size:13.5px;font-weight:700;margin-bottom:14px">Enregistrer le moyen de paiement</div>
-            <div style="color:var(--cyan);font-size:12px;margin-bottom:16px">Aucun prélèvement immédiat pendant votre mois offert.</div>
-            <div class="field"><label>Titulaire de la carte</label><input type="text"></div>
-            <div class="field"><label>Numéro de carte</label><input type="text" placeholder="4242 4242 4242 4242"></div>
-            <div class="row2">
-              <div class="field"><label>Expiration</label><input type="text" placeholder="MM/AA"></div>
-              <div class="field"><label>CVC</label><input type="text"></div>
-            </div>
+            <div style="font-size:13.5px;font-weight:700;margin-bottom:10px">Validation de votre demande</div>
+            <div class="muted" style="font-size:12.5px;margin-bottom:16px">Aucun compte n'est créé à cette étape. SportVision examine chaque demande avant l'ouverture d'un espace Connect ; vous serez recontacté(e) sous 24 à 48h.</div>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--t2)"><input id="ins-certif" type="checkbox" style="width:auto;margin-top:2px"> Je certifie être autorisé(e) à effectuer cette demande au nom de cette structure.</label>
           </div>
 
           <div id="ins-err" style="font-size:12.5px;color:var(--er);min-height:16px;margin-top:14px"></div>
@@ -813,10 +835,9 @@ footer .links{display:flex;gap:18px;flex-wrap:wrap}
 
         <div id="auth-success" style="display:none;text-align:center;padding:6px 0">
           <div class="state-icon" style="background:#28C99522;color:var(--ok)">✓</div>
-          <div style="font-size:18px;font-weight:800;margin-bottom:14px">Bienvenue dans SportVision Club+</div>
-          <div class="muted" style="font-size:12px;margin-bottom:20px">Votre compte est prêt. L'application sera connectée à vos vraies données une fois Supabase branché — en attendant, explorez-la en mode démonstration.</div>
-          <button class="btn btn-p btn-block" style="margin-bottom:10px" onclick="window.location.href='app.html'">Accéder à mon espace Club+</button>
-          <button class="btn btn-o btn-block" onclick="nav('home')">Retour à l'accueil</button>
+          <div style="font-size:18px;font-weight:800;margin-bottom:14px">Votre demande a été transmise</div>
+          <div class="muted" style="font-size:12px;margin-bottom:20px">SportVision examine votre demande et vous recontacte sous 24 à 48h. Aucun compte n'a été créé : vous recevrez un lien d'activation sécurisé une fois votre espace Connect validé.</div>
+          <button class="btn btn-p btn-block" onclick="nav('home')">Retour à l'accueil</button>
         </div>
 
       </div>
@@ -1045,13 +1066,12 @@ async function handleSetPassword(){
   }
 }
 let signupStep=1;
-let selectedPlan='club';
 function signupRender(){
-  for(let i=1;i<=5;i++) document.getElementById('signup-'+i).style.display = (i===signupStep?'block':'none');
-  document.getElementById('signupStepLabel').textContent = 'Étape '+signupStep+'/5';
-  document.getElementById('signupProgress').style.width = (signupStep/5*100)+'%';
+  for(let i=1;i<=4;i++) document.getElementById('signup-'+i).style.display = (i===signupStep?'block':'none');
+  document.getElementById('signupStepLabel').textContent = 'Étape '+signupStep+'/4';
+  document.getElementById('signupProgress').style.width = (signupStep/4*100)+'%';
   document.getElementById('signupBack').style.visibility = signupStep===1?'hidden':'visible';
-  document.getElementById('signupNext').textContent = signupStep===5?'Créer mon club':(signupStep===4?'Continuer vers le paiement':'Continuer');
+  document.getElementById('signupNext').textContent = signupStep===4?'Envoyer ma demande':'Continuer';
   document.getElementById('ins-err').textContent='';
 }
 function signupPrev(){ signupStep=Math.max(1,signupStep-1); signupRender(); }
@@ -1059,23 +1079,35 @@ function signupNext(){
   const errEl=document.getElementById('ins-err'); errEl.style.color='var(--er)'; errEl.textContent='';
   if(signupStep===1){
     const prenom=document.getElementById('ins-prenom').value.trim();
+    const nom=document.getElementById('ins-nom').value.trim();
     const email=document.getElementById('ins-email').value.trim();
-    const pass=document.getElementById('ins-pass').value;
-    const pass2=document.getElementById('ins-pass2').value;
-    if(!prenom||!email||!pass){ errEl.textContent='Merci de compléter tous les champs obligatoires.'; return; }
-    if(pass.length<6){ errEl.textContent='Le mot de passe doit contenir au moins 6 caractères.'; return; }
-    if(pass!==pass2){ errEl.textContent='Les mots de passe ne correspondent pas.'; return; }
+    const tel=document.getElementById('ins-tel').value.trim();
+    const fonction=document.getElementById('ins-fonction').value;
+    const fonctionAutre=document.getElementById('ins-fonction-autre').value.trim();
+    if(!prenom||!nom||!email||!tel){ errEl.textContent='Merci de compléter tous les champs obligatoires.'; return; }
+    if(!fonction){ errEl.textContent='Merci d\'indiquer votre fonction.'; return; }
+    if(fonction==='Autre' && !fonctionAutre){ errEl.textContent='Merci de préciser votre fonction.'; return; }
     if(!document.getElementById('ins-cgu').checked){ errEl.textContent="Merci d'accepter les CGU pour continuer."; return; }
   }
-  if(signupStep===2 && !document.getElementById('ins-club-nom').value.trim()){ errEl.textContent='Le nom du club est obligatoire.'; return; }
-  if(signupStep===5){ handleSignupFinish(); return; }
-  signupStep=Math.min(5,signupStep+1); signupRender();
+  if(signupStep===2){
+    const clubNom=document.getElementById('ins-club-nom').value.trim();
+    const structureType=document.getElementById('ins-club-structure').value;
+    const clubVille=document.getElementById('ins-club-ville').value.trim();
+    if(!clubNom){ errEl.textContent='Le nom du club est obligatoire.'; return; }
+    if(!structureType){ errEl.textContent='Merci d\'indiquer le type de structure.'; return; }
+    if(!clubVille){ errEl.textContent='La ville est obligatoire.'; return; }
+  }
+  if(signupStep===3){
+    const besoins=document.querySelectorAll('.besoin-chk:checked');
+    if(!besoins.length){ errEl.textContent='Sélectionnez au moins un besoin.'; return; }
+    if(document.getElementById('besoin-autre-chk').checked && !document.getElementById('ins-besoin-autre').value.trim()){ errEl.textContent='Merci de préciser votre besoin.'; return; }
+  }
+  if(signupStep===4){
+    if(!document.getElementById('ins-certif').checked){ errEl.textContent="Merci de certifier être autorisé(e) à effectuer cette demande."; return; }
+    handleSignupFinish(); return;
+  }
+  signupStep=Math.min(4,signupStep+1); signupRender();
 }
-document.querySelectorAll('#signup-3 .opt-btn').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('#signup-3 .opt-btn').forEach(x=>x.classList.remove('on'));
-  b.classList.add('on');
-  selectedPlan = b.dataset.plan;
-}));
 
 async function handleLogin(){
   const email=document.getElementById('lg-email').value.trim();
@@ -1091,9 +1123,17 @@ async function handleLogin(){
     svSave(d.access_token, d.refresh_token, d.user.id);
     const cm=await sbFetch('club_members?user_id=eq.'+d.user.id+'&select=id');
     if(!cm.data || !cm.data.length){
-      // Filet de sécurité : confirmation e-mail activée sur le projet, ou onboarding
-      // interrompu au signup. On le complète maintenant depuis les métadonnées du
-      // compte (enregistrées dès le signup) — clubplus-onboarding est idempotent.
+      // Filet de sécurité : confirmation e-mail activée sur le projet, on rejoue
+      // l'activation laissée en attente. Il n'existe plus de branche "onboarding
+      // depuis les métadonnées" ici : appeler clubplus-onboarding depuis ce filet de
+      // sécurité créait un club actif + admin sans validation humaine, exactement la
+      // faille corrigée dans le tunnel /signup (voir handleSignupFinish ci-dessous et
+      // migration-connect-v44-club-signup-requests.sql). Le nouveau tunnel ne pose
+      // plus club_nom dans user_metadata (aucun compte Auth n'y est créé), donc ce cas
+      // ne devrait plus se produire pour de nouvelles inscriptions ; s'il reste un
+      // compte pré-correctif avec club_nom en métadonnées et sans club_members, il
+      // n'est plus onboardé automatiquement ici et doit être traité manuellement par
+      // le staff.
       const meta=(d.user && d.user.user_metadata) || {};
       // Activation par lien privé laissée en attente (compte créé, e-mail à
       // confirmer) : on rejoue maintenant clubplus-activate, qui revérifie le
@@ -1105,9 +1145,6 @@ async function handleLogin(){
         localStorage.removeItem('svcp_act_club');
         await sbFunction('clubplus-activate', {token:pendingAct, prenom:meta.prenom||'', nom:meta.nom||'', telephone:meta.telephone||'', club_nom:clubNom});
       }
-      else if(meta.club_nom){
-        await sbFunction('clubplus-onboarding', {prenom:meta.prenom||'', nom:meta.nom||'', telephone:meta.telephone||'', club:{nom:meta.club_nom, ville:meta.club_ville||'', discipline:meta.club_discipline||''}, plan:meta.plan||'club'});
-      }
     }
     window.location.href='app.html';
   }catch(e){
@@ -1117,6 +1154,16 @@ async function handleLogin(){
   }
 }
 
+// Envoie une "Demande d'ouverture Connect" — remplace l'ancien chemin qui appelait
+// clubplus-onboarding immédiatement après un auth.signup() fait par le visiteur
+// lui-même (compte Supabase Auth créé par le visiteur, club actif + admin posés en
+// dur à la même seconde, AUCUNE validation humaine). Faille corrigée dans ce même
+// esprit que app-next (voir migration-connect-v44-club-signup-requests.sql et
+// supabase/functions/connect-club-signup-request/index.ts). Ne crée AUCUN compte
+// Supabase Auth : appel public, sans session, à l'edge function
+// connect-club-signup-request via sbFunction() (qui retombe sur la clé anonyme
+// SB_KEY en l'absence de token stocké). Le club réel n'est créé qu'après validation
+// staff, à l'activation.
 async function handleSignupFinish(){
   const errEl=document.getElementById('ins-err'); errEl.style.color='var(--er)'; errEl.textContent='';
   const btn=document.getElementById('signupNext');
@@ -1124,30 +1171,32 @@ async function handleSignupFinish(){
   const nom=document.getElementById('ins-nom').value.trim();
   const email=document.getElementById('ins-email').value.trim();
   const tel=document.getElementById('ins-tel').value.trim();
-  const pass=document.getElementById('ins-pass').value;
+  const fonction=document.getElementById('ins-fonction').value;
+  const fonctionAutre=document.getElementById('ins-fonction-autre').value.trim();
   const clubNom=document.getElementById('ins-club-nom').value.trim();
+  const structureType=document.getElementById('ins-club-structure').value;
   const clubVille=document.getElementById('ins-club-ville').value.trim();
-  const clubDiscipline=document.getElementById('ins-club-discipline').value.trim();
-  btn.disabled=true; btn.textContent='Création…';
+  const clubCp=document.getElementById('ins-club-cp').value.trim();
+  const clubWeb=document.getElementById('ins-club-web').value.trim();
+  const besoins=Array.from(document.querySelectorAll('.besoin-chk:checked')).map(c=>c.value);
+  const besoinAutre=document.getElementById('ins-besoin-autre').value.trim();
+  btn.disabled=true; btn.textContent='Envoi…';
   try{
-    const res=await fetch(SB_URL+'/auth/v1/signup', {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify({email, password:pass, data:{prenom,nom,telephone:tel,club_nom:clubNom,club_ville:clubVille,club_discipline:clubDiscipline,plan:selectedPlan}})});
-    const d=await res.json();
-    if(!res.ok) throw new Error(d.msg || d.error_description || 'Inscription impossible, cet e-mail est peut-être déjà utilisé.');
-    if(!d.access_token){
-      errEl.style.color='var(--ok)';
-      errEl.textContent='Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse avant de vous connecter.';
-      btn.disabled=false; btn.textContent='Créer mon club';
-      return;
-    }
-    svSave(d.access_token, d.refresh_token, d.user.id);
-    const onboard=await sbFunction('clubplus-onboarding', {prenom, nom, telephone:tel, club:{nom:clubNom, ville:clubVille, discipline:clubDiscipline}, plan:selectedPlan});
-    if(!onboard.ok) throw new Error(onboard.data?.error || 'Erreur lors de la création de votre club.');
+    const req=await sbFunction('connect-club-signup-request', {
+      club_nom:clubNom, structure_type:structureType, ville:clubVille,
+      code_postal:clubCp||undefined, site_web:clubWeb||undefined,
+      contact_prenom:prenom, contact_nom:nom, contact_email:email, contact_telephone:tel,
+      fonction, fonction_autre: fonction==='Autre' ? fonctionAutre : undefined,
+      besoins, besoin_autre_precision: besoins.includes('Autre') ? (besoinAutre||undefined) : undefined,
+      certification_acceptee:true
+    });
+    if(!req.ok) throw new Error(req.data?.error || "Erreur lors de l'envoi de votre demande.");
     document.getElementById('auth-inscription').style.display='none';
     document.getElementById('auth-success').style.display='block';
   }catch(e){
     errEl.textContent=e.message;
   }finally{
-    btn.disabled=false; btn.textContent='Créer mon club';
+    btn.disabled=false; btn.textContent='Envoyer ma demande';
   }
 }
 
@@ -1231,9 +1280,9 @@ async function handleActivation(){
     if(!res.ok) throw new Error(d.msg || d.error_description || "Inscription impossible, cet e-mail a peut-être déjà un compte. Connectez-vous, puis rouvrez ce lien d'activation.");
     // Confirmation d'e-mail activée sur le projet : pas de session immédiate, donc
     // pas d'appel possible à clubplus-activate (qui exige un JWT). On mémorise le
-    // token pour le rejouer au premier login — même filet de sécurité que
-    // clubplus-onboarding dans handleLogin(). Les deux fonctions revérifient de
-    // toute façon le token côté serveur.
+    // token pour le rejouer au premier login, voir le filet de sécurité `pendingAct`
+    // dans handleLogin() ci-dessus. clubplus-activate revérifie de toute façon le
+    // token côté serveur.
     if(!d.access_token){
       localStorage.setItem('svcp_act', _actToken);
       localStorage.setItem('svcp_act_club', clubNom);
