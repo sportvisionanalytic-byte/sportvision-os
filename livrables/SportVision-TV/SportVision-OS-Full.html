@@ -715,6 +715,7 @@ const NAV={
     {id:'contrats',lb:'Contrats',ic:'doc'},
     {id:'cmagency',lb:'Agences CM',ic:'cli'},
     {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
+    {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
     {type:'sep',lb:'Équipe & RH'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
     {id:'users',lb:'Utilisateurs & accès',ic:'col'},
@@ -768,6 +769,7 @@ const NAV={
     {id:'contrats',lb:'Contrats',ic:'doc'},
     {id:'abonnements',lb:'Abonnements',ic:'pre'},
     {id:'cmagency',lb:'Agences CM',ic:'cli'},
+    {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
     {type:'sep',lb:'Prestations'},
     {id:'pre',lb:'Prestations',ic:'pre'},
     {id:'planning',lb:'Planning admin',ic:'cal'},
@@ -898,6 +900,7 @@ const NAV={
     {id:'objectifs',lb:'Objectifs',ic:'target'},
     {id:'commissions',lb:'Mes commissions',ic:'fin'},
     {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
+    {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
@@ -4235,6 +4238,168 @@ async function genererLienCreationOrg(clientId){
     if(err)err.textContent='Erreur réseau.';
   }finally{
     if(btn){btn.disabled=false;if(!_lienCreationOrg)btn.textContent='Générer le lien';}
+  }
+}
+
+// ── Demandes d'ouverture Connect (club) ──────────────────────────────────────
+// migration-connect-v44-club-signup-requests.sql — écran de triage pour la faille de sécurité
+// corrigée le 12/08/2026 : une inscription publique de club (app-next /signup/club-request)
+// ne crée plus jamais un club actif + admin immédiatement, elle crée une DEMANDE, listée ici.
+// Le staff (admin/sec/com) doit choisir/confirmer EXPLICITEMENT le rôle Connect initial du
+// contact avant toute création réelle — jamais déduit de sa fonction déclarée dans le club
+// (fonction ci-dessous, purement informative). Même patron que modalInviterClubPlus/
+// modalCreerOrgEventCmAgency ci-dessus : le lien d'activation généré à la validation n'est
+// JAMAIS envoyé automatiquement, c'est le staff qui le copie et le transmet lui-même. Le club
+// réel n'est créé qu'à la consommation du lien (clubplus-activate), jamais ici.
+const CCSR_ROLE_LABELS={
+  admin:'Administrateur',president:'Président(e)',secretaire:'Secrétaire',comm:'Communication',
+  cm_externe:'CM externe',coach:'Coach',resp_equipe:"Responsable d'équipe",sponsor_mgr:'Responsable sponsoring',
+  tresorier:'Trésorier(ère)',membre_bureau:'Membre du bureau',lecture_seule:'Lecture seule',
+};
+async function modalDemandesClubConnect(){
+  openModal(`<div class="mh"><div class="mt">Demandes d'ouverture Connect</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" id="ccsr-body" style="display:flex;flex-direction:column;gap:10px;min-height:120px">
+      <div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+  await ccsrReloadList();
+}
+async function ccsrReloadList(){
+  const body=document.getElementById('ccsr-body');
+  if(!body)return;
+  body.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>';
+  try{
+    const data=await sbFetch('connect_club_signup_requests?select=id,club_nom,structure_type,ville,code_postal,site_web,contact_prenom,contact_nom,contact_email,contact_telephone,fonction,fonction_autre,besoins,besoin_autre_precision,statut,notes_staff,created_at&statut=in.(a_traiter,infos_demandees)&order=created_at.asc');
+    if(!data||!data.length){
+      body.innerHTML='<div style="text-align:center;padding:36px;color:var(--t3);font-size:13px"><div style="font-size:28px;margin-bottom:8px;opacity:.3">📥</div>Aucune demande à traiter.</div>';
+      return;
+    }
+    body.innerHTML=data.map(r=>{
+      const fonction=r.fonction==='Autre'?(r.fonction_autre||'Autre'):r.fonction;
+      const besoins=(r.besoins||[]).map(b=>`<span style="font-size:10.5px;padding:2px 8px;border-radius:99px;background:var(--s2);border:1px solid var(--b1);color:var(--t2)">${esc(b)}</span>`).join(' ');
+      const infosBadge=r.statut==='infos_demandees'?`<span class="bd bw" style="font-size:10px;flex-shrink:0"><span class="bd-d"></span>Infos demandées</span>`:'';
+      return `<div style="border:1px solid var(--b1);border-radius:var(--rb);padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(r.club_nom)}</div>
+            <div style="font-size:11.5px;color:var(--t3)">${esc(r.structure_type||'—')} · ${esc(r.ville||'—')}${r.code_postal?' ('+esc(r.code_postal)+')':''}${r.site_web?' · '+esc(r.site_web):''}</div>
+          </div>
+          ${infosBadge}
+        </div>
+        <div style="font-size:12px;color:var(--t2)">
+          <b style="color:var(--t1)">${esc(r.contact_prenom)} ${esc(r.contact_nom)}</b> — ${esc(fonction)}<br>
+          ${esc(r.contact_email)} · ${esc(r.contact_telephone)}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${besoins}</div>
+        ${r.besoin_autre_precision?`<div style="font-size:11.5px;color:var(--t3);font-style:italic">« ${esc(r.besoin_autre_precision)} »</div>`:''}
+        ${r.notes_staff?`<div style="font-size:11.5px;color:var(--t3);background:var(--s2);border-radius:8px;padding:6px 10px">Note staff : ${esc(r.notes_staff)}</div>`:''}
+        <div style="font-size:10.5px;color:var(--t3)">Reçue le ${new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:2px">
+          <button class="btn bp bs" onclick="modalTraiterDemandeClub('${escJs(r.id)}','valider','${escJs(r.club_nom)}')">Valider</button>
+          <button class="btn bg2 bs" onclick="modalTraiterDemandeClub('${escJs(r.id)}','demander_infos','${escJs(r.club_nom)}')">Demander des infos</button>
+          <button class="btn bg2 bs" style="color:var(--er)" onclick="modalTraiterDemandeClub('${escJs(r.id)}','refuser','${escJs(r.club_nom)}')">Refuser</button>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML='<div style="color:var(--er);font-size:12px;padding:8px">Erreur de chargement.</div>';
+  }
+}
+
+let _lienValidationDemandeClub='';
+function modalTraiterDemandeClub(id,action,clubNom){
+  _lienValidationDemandeClub='';
+  const titles={valider:'Valider la demande',demander_infos:"Demander des informations",refuser:'Refuser la demande'};
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  let fields='';
+  if(action==='valider'){
+    fields=`
+      <div><label style="${lbl}">Rôle Connect initial du contact *</label>
+        <select id="tdc-role" class="l-inp" style="height:38px">
+          ${Object.entries(CCSR_ROLE_LABELS).map(([k,v])=>`<option value="${k}"${k==='admin'?' selected':''}>${esc(v)}</option>`).join('')}
+        </select>
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">Jamais déduit de la fonction déclarée par le contact dans le formulaire — à choisir explicitement.</div>
+      </div>
+      <div><label style="${lbl}">Formule ouverte</label>
+        <select id="tdc-plan" class="l-inp" style="height:38px">
+          <option value="club">Club+ — 5 crédits / mois</option>
+          <option value="performance">Club+ Performance — 20 crédits / mois</option>
+        </select>
+      </div>
+      <div><label style="${lbl}">Nom du club (pré-rempli)</label>
+        <input id="tdc-nom" type="text" class="l-inp" style="height:38px" value="${esc(clubNom)}">
+      </div>
+      <div><label style="${lbl}">Note interne (facultatif)</label>
+        <textarea id="tdc-notes" class="l-inp" style="height:60px;resize:vertical"></textarea>
+      </div>`;
+  }else if(action==='demander_infos'){
+    fields=`<div><label style="${lbl}">Qu'est-ce qui manque ? *</label>
+      <textarea id="tdc-notes" class="l-inp" style="height:80px;resize:vertical" placeholder="Ex. : ville à préciser, numéro de téléphone injoignable..."></textarea>
+    </div>`;
+  }else{
+    fields=`<div><label style="${lbl}">Motif du refus (facultatif)</label>
+      <textarea id="tdc-notes" class="l-inp" style="height:80px;resize:vertical"></textarea>
+    </div>`;
+  }
+  openModal(`<div class="mh"><div class="mt">${titles[action]} — ${esc(clubNom)}</div><button class="mc" onclick="modalDemandesClubConnect()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      ${fields}
+      <div id="tdc-res" style="display:none"></div>
+      <div id="tdc-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="modalDemandesClubConnect()">Annuler</button>
+      <button class="btn bp" id="tdc-btn" onclick="envoyerTraitementDemandeClub('${escJs(id)}','${escJs(action)}')">${action==='valider'?'Valider et générer le lien':action==='demander_infos'?'Envoyer':'Refuser la demande'}</button>
+    </div>`);
+}
+
+async function envoyerTraitementDemandeClub(id,action){
+  const err=document.getElementById('tdc-err');
+  const btn=document.getElementById('tdc-btn');
+  const notes=document.getElementById('tdc-notes')?.value?.trim()||'';
+  if(err)err.textContent='';
+  if(action==='demander_infos' && !notes){ if(err)err.textContent="Précisez ce qui manque."; return; }
+  const body={request_id:id,action,notes};
+  if(action==='valider'){
+    body.initial_role=document.getElementById('tdc-role')?.value||'admin';
+    body.plan=document.getElementById('tdc-plan')?.value||'club';
+    body.club_nom_override=document.getElementById('tdc-nom')?.value?.trim()||'';
+  }
+  if(btn){btn.disabled=true;btn.textContent='Envoi…';}
+  try{
+    const tok=localStorage.getItem('sv_tok');
+    const r=await fetch(SB_URL+'/functions/v1/connect-club-signup-review',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(tok||'')},
+      body:JSON.stringify(body)
+    });
+    const d=await r.json();
+    if(!r.ok||d.error){ if(err)err.textContent=d.error||'Erreur lors du traitement.'; if(btn){btn.disabled=false;} return; }
+    if(action==='valider'){
+      _lienValidationDemandeClub=d.activation_url||'';
+      const exp=d.expires_at?new Date(d.expires_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
+      const res=document.getElementById('tdc-res');
+      if(res){
+        res.style.display='block';
+        res.innerHTML=`<div style="padding:12px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.25);border-radius:var(--rb)">
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ok);margin-bottom:8px">Demande validée — lien d'activation généré</div>
+          <textarea readonly class="l-inp" style="height:64px;resize:vertical;padding:8px;font-size:11.5px;word-break:break-all" onclick="this.select()">${esc(_lienValidationDemandeClub)}</textarea>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <button class="btn bp" onclick="copier(_lienValidationDemandeClub)">⎘ Copier le lien</button>
+            <span style="font-size:11px;color:var(--t3)">Valable jusqu'au ${exp}</span>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:8px">Ce lien n'est jamais envoyé automatiquement : transmettez-le vous-même au contact.</div>
+        </div>`;
+      }
+      if(btn){btn.style.display='none';}
+      toast('Demande validée, lien généré.','ok');
+    }else{
+      toast(action==='refuser'?'Demande refusée.':'Informations demandées.','ok');
+      modalDemandesClubConnect();
+    }
+  }catch(e){
+    if(err)err.textContent='Erreur réseau.';
+    if(btn)btn.disabled=false;
   }
 }
 
@@ -19665,7 +19830,12 @@ function renderSidebarNav(role,activeId){
         <div class="nav-grp-items">`;
       inGroup=true;
     }else{
-      html+=`<button class="ni${item.id===activeId?' on':''}" data-id="${item.id}" onclick="switchView('${item.id}')">
+      // item.modal (ex. demandesclub) : ouvre une modale directement au lieu de switchView —
+      // pour un écran de traitement qui n'a pas besoin d'occuper tout l'espace de contenu
+      // (suit le patron des modaux existants type modalInviterClubPlus), voir demandesclub
+      // ci-dessous. Jamais marqué "on" (aucune vue associée à activer/désactiver).
+      const action=item.modal?`${item.modal}()`:`switchView('${item.id}')`;
+      html+=`<button class="ni${item.id===activeId?' on':''}" data-id="${item.id}" onclick="${action}">
         <span class="ni-ic">${IC[item.ic]||''}</span>
         <span class="ni-lb">${item.lb}</span>
         <span class="nb" id="nb-${item.id}" style="display:none"></span>
@@ -19806,6 +19976,13 @@ async function updateNavBadges(role){
     if(role==='com'){
       const prospects=await sbFetch('clients?select=id&statut=in.(prospect,qualifié)');
       setBadge('pipeline',(prospects||[]).length,'nb-o');
+    }
+    if(['admin','sec','com'].includes(role)){
+      // Demandes d'ouverture Connect (club) à traiter — migration-connect-v44-club-signup-
+      // requests.sql. RLS déjà limitée au staff admin/sec/com (même garde que la policy),
+      // ce fetch échoue silencieusement (catch) pour tout autre rôle.
+      const demClub=await sbFetch('connect_club_signup_requests?select=id&statut=eq.a_traiter').catch(()=>[]);
+      setBadge('demandesclub',(demClub||[]).length,'nb-r');
     }
     if(['com','admin','sec'].includes(role)){
       const devisAtt=await sbFetch('devis?select=id&statut=in.(envoyé,en_attente)');
@@ -19976,7 +20153,7 @@ async function openNotifPanel(){
   openModal(`<div class="mh"><div class="mt">Notifications</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="padding-top:4px" id="notif-panel-body"><div style="text-align:center;padding:30px;color:var(--t3);font-size:13px">Chargement…</div></div>`);
   try{
-    const data=await sbFetch('notifications?select=id,type,titre,message,lue,created_at,priorite,lien_prestation_id,lien_client_id&destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)&order=lue.asc,created_at.desc&limit=30');
+    const data=await sbFetch('notifications?select=id,type,titre,message,lue,created_at,priorite,lien_prestation_id,lien_client_id,lien_club_signup_request_id&destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)&order=lue.asc,created_at.desc&limit=30');
     const el=document.getElementById('notif-panel-body');
     if(!el)return;
     if(!data||!data.length){
@@ -20003,7 +20180,9 @@ async function openNotifPanel(){
           ?`closeModal();modalDetailById('${n.lien_prestation_id}')`
           :n.lien_client_id
             ?`closeModal();modalModifierClientById('${n.lien_client_id}')`
-            :`marquerNotifLu('${n.id}')`;
+            :n.lien_club_signup_request_id
+              ?`closeModal();modalDemandesClubConnect()`
+              :`marquerNotifLu('${n.id}')`;
         return`<div onclick="${action}" style="display:flex;gap:12px;padding:11px 12px;border-radius:8px;margin-bottom:3px;background:${!n.lue?p.bg:'transparent'};border:1px solid ${!n.lue?p.border:'transparent'};cursor:pointer;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='${!n.lue?p.bg:'transparent'}'">
           <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;padding-top:2px">
             <div style="width:8px;height:8px;border-radius:50%;background:${!n.lue?p.dot:'var(--b2)'};flex-shrink:0"></div>
@@ -20014,7 +20193,7 @@ async function openNotifPanel(){
               <div style="font-size:10px;color:var(--t3);white-space:nowrap;flex-shrink:0">${relTime(n.created_at)}</div>
             </div>
             ${n.message?`<div style="font-size:12px;color:var(--t2);line-height:1.45">${esc(n.message)}</div>`:''}
-            ${(n.lien_prestation_id||n.lien_client_id)?`<div style="font-size:10.5px;color:var(--acc);margin-top:5px;font-weight:600">${n.lien_prestation_id?'→ Voir la prestation':'→ Voir le client'}</div>`:''}
+            ${(n.lien_prestation_id||n.lien_client_id||n.lien_club_signup_request_id)?`<div style="font-size:10.5px;color:var(--acc);margin-top:5px;font-weight:600">${n.lien_prestation_id?'→ Voir la prestation':n.lien_client_id?'→ Voir le client':'→ Traiter la demande'}</div>`:''}
           </div>
         </div>`;
       }).join('');

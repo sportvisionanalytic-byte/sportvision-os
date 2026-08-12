@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +19,16 @@ export default function SignupPlanPage() {
   const router = useRouter();
   const { state, patch } = useSignup();
 
+  // Un club ne choisit plus d'offre self-service à cette étape — voir /signup/club-request/*
+  // (une inscription publique de club crée désormais toujours une demande à valider par le
+  // staff, jamais un club actif + admin directement). Couvre l'accès direct par URL ou un
+  // retour navigateur. Le early return arrive APRÈS tous les hooks (useMemo ci-dessous) pour
+  // ne jamais violer les Rules of Hooks — un ordre d'appel des hooks doit rester identique à
+  // chaque rendu, quel que soit orgType.
+  useEffect(() => {
+    if (state.orgType === "club") router.replace("/signup/club-request");
+  }, [state.orgType, router]);
+
   const isAffiliatedPlayer = state.orgType === "player" && state.playerAffiliation === "join_club";
   const availablePlans = useMemo(
     () => (state.orgType ? PLAN_OPTIONS_BY_TYPE[state.orgType].map((code) => PLANS[code]) : []),
@@ -28,6 +38,8 @@ export default function SignupPlanPage() {
   const needsEngagementChoice = selectedPlan !== null && ENGAGEMENT_PLANS.has(selectedPlan.code);
 
   const canContinue = isAffiliatedPlayer ? state.clubSearch.trim().length > 0 : state.planCode !== null;
+
+  if (state.orgType === "club") return null;
 
   return (
     <div className="flex flex-col gap-7">

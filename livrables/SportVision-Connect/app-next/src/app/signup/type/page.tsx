@@ -67,7 +67,15 @@ export default function SignupTypePage() {
       )}
 
       <div className="flex justify-end">
-        <Button disabled={!canContinue} onClick={() => router.push("/signup/account")}>
+        {/* Un club ne traverse plus le tunnel standard (compte + club actif immédiat) : voir
+            /signup/club-request/*, 4 étapes, sans mot de passe, qui aboutit à une demande
+            transmise au staff pour validation manuelle — jamais un club actif + admin créés
+            directement depuis une inscription publique (faille corrigée le 12/08/2026,
+            migration-connect-v44-club-signup-requests.sql). */}
+        <Button
+          disabled={!canContinue}
+          onClick={() => router.push(state.orgType === "club" ? "/signup/club-request" : "/signup/account")}
+        >
           Continuer
         </Button>
       </div>

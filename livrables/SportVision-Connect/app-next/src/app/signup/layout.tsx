@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { getSteps, SignupProvider, useSignup } from "./signup-context";
+import { CLUB_REQUEST_STEPS, getSteps, SignupProvider, useSignup } from "./signup-context";
 
 // Coque commune aux 7 étapes d'inscription — voir ACTIONS.md § 2. Même famille visuelle que
 // /auth (pas de sidebar), avec une frise de progression numérotée propre au tunnel. Fichier
@@ -46,9 +46,11 @@ function ProgressBar() {
   const pathname = usePathname();
   // Frise dépendante du type d'organisation — un joueur ne traverse jamais "Organisation"/
   // "Besoins" (voir getSteps, signup-context.tsx), la frise ne doit donc pas les compter comme
-  // des étapes à venir pour lui.
+  // des étapes à venir pour lui. /signup/club-request/* est un tunnel entièrement séparé (4
+  // étapes propres, aucun compte créé) : sa propre frise, jamais celle des 7 étapes standard.
   const { state } = useSignup();
-  const steps = getSteps(state.orgType);
+  const isClubRequest = pathname.startsWith("/signup/club-request");
+  const steps = isClubRequest ? CLUB_REQUEST_STEPS : getSteps(state.orgType);
   const currentIndex = Math.max(
     0,
     steps.findIndex((s) => pathname === s.href),
