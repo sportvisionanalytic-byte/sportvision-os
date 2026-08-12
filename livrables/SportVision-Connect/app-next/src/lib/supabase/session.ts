@@ -156,7 +156,7 @@ export async function buildClubActiveContext(
 ): Promise<ActiveContext | null> {
   if (space.kind !== "organization" || !space.clickable) return null;
 
-  const [orgRes, clubRes, entitlementsRes] = await Promise.all([
+  const [orgRes, clubRes, entitlementsRes, memberRes] = await Promise.all([
     supabase.from("organizations").select("id, nom, organization_type, created_at").eq("id", space.id).maybeSingle(),
     supabase
       .from("clubs")
@@ -167,6 +167,12 @@ export async function buildClubActiveContext(
       .from("organization_entitlements")
       .select("module_key, actif, quota_credits, priorite")
       .eq("organization_id", space.id),
+    // `teams` (§7.1 du master doc, "équipe/catégorie facultative" à l'invitation) — pas porté par
+    // `memberships` (qui ne reprend que role/status, voir sync_club_member_to_membership,
+    // migration-connect-v10), une requête dédiée sur club_members est nécessaire pour la "lecture
+    // ciblée" d'un éducateur (§14) — voir ClubServicesBoard.tsx. cm_self_select (auth.uid() =
+    // user_id, migration-clubplus-v1.sql) l'autorise sans condition de statut.
+    supabase.from("club_members").select("teams").eq("club_id", space.id).eq("user_id", authUser.id).maybeSingle(),
   ]);
 
   const org = orgRes.data as { id: string; nom: string; organization_type: string; created_at: string } | null;
@@ -221,7 +227,7 @@ export async function buildClubActiveContext(
       userId: authUser.id,
       organizationId: org.id,
       role: mapClubRole(space.role),
-      teamScope: [],
+      teamScope: Array.isArray(memberRes.data?.teams) ? (memberRes.data!.teams as string[]) : [],
       capabilities: [],
       status: space.status === "actif" ? "active" : space.status === "invitation" ? "invited" : "disabled",
     },

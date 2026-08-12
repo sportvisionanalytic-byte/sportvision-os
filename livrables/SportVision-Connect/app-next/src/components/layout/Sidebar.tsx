@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Lock, HelpCircle, LogOut, Shield, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
-import { filterAffiliatedPlayerNav, resolveNavigation } from "@/lib/navigation";
+import { filterAffiliatedPlayerNav, filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 import { formatPlanCredits, PLANS } from "@/lib/plans";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
@@ -36,6 +36,13 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const isAffiliatedPlayer = isPlayer && !!ctx.organization.parentOrganizationId;
   let entries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
   if (isAffiliatedPlayer) entries = filterAffiliatedPlayerNav(entries);
+  if (ctx.organization.type === "club") entries = filterClubRoleNav(entries, ctx.membership.role);
+
+  // Un éducateur (coach) de club n'a pas de crédits/offre à gérer (§11 du master doc, ligne
+  // "Offre / crédits" = Non) : le lien "Gérer mon offre" mènerait de toute façon à /billing,
+  // retiré de son menu ci-dessus. Remplacé par une carte club légère (même famille visuelle que
+  // la carte joueur) plutôt que masquée, pour ne pas laisser un vide en bas de sidebar.
+  const isClubEducateur = ctx.organization.type === "club" && ctx.membership.role === "coach";
 
   const plan = PLANS[ctx.subscription.planCode];
   const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";
@@ -153,6 +160,27 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                       {clubInfo.teamName}
                       {clubInfo.categorie ? ` · ${clubInfo.categorie}` : ""}
                     </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : isClubEducateur ? (
+            <div className="rounded-[14px] border border-white/10 bg-gradient-to-br from-[rgba(36,75,255,.28)] to-[rgba(138,46,255,.24)] p-3.5">
+              <div className="flex items-center gap-2">
+                <Shield className="h-3.5 w-3.5 flex-none text-brand-blue-pale" aria-hidden />
+                <span className="truncate text-[12.5px] font-extrabold uppercase tracking-tight text-white">
+                  {ctx.organization.name}
+                </span>
+              </div>
+              <div className="mt-2.5 flex flex-col gap-1 text-[11px] font-semibold text-[#C6D3F0]">
+                <div className="flex justify-between">
+                  <span>Rôle</span>
+                  <span className="font-extrabold text-white">Éducateur</span>
+                </div>
+                {ctx.membership.teamScope.length > 0 && (
+                  <div className="flex justify-between">
+                    <span>Équipe</span>
+                    <span className="font-extrabold text-white">{ctx.membership.teamScope.join(", ")}</span>
                   </div>
                 )}
               </div>

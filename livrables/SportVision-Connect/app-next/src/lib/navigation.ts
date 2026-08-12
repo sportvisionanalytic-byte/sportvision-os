@@ -1,4 +1,4 @@
-import type { ModuleKey, OrgType, PlanCode } from "./types";
+import type { MembershipRole, ModuleKey, OrgType, PlanCode } from "./types";
 
 // Navigation par profil — voir README.md § Les treize expériences et § Navigation groupée.
 // L'offre décide de la navigation avant le type d'organisation (voir la logique dans
@@ -303,4 +303,72 @@ export function resolveNavigation(orgType: OrgType, planCode: PlanCode): NavEntr
 /** Un joueur rattaché à un club abonné n'a ni Factures ni Sponsors : le club les porte. */
 export function filterAffiliatedPlayerNav(entries: NavEntry[]): NavEntry[] {
   return entries.filter((e) => e.kind !== "item" || (e.module !== "billing" && e.module !== "sponsors"));
+}
+
+// Audit Communication/Éducateur (12/08/2026, brief Fouka §13/§14 du master doc) — même principe
+// que filterAffiliatedPlayerNav ci-dessus et que le rebuild NAV_PLAYER : resolveNavigation()
+// n'a jamais eu de dimension "rôle", seulement (type d'organisation, offre). Un communication_
+// manager ou un coach de club voyait donc EXACTEMENT le même menu qu'un admin/président —
+// Contrats, Factures, Utilisateurs et Documents compris — alors que ces 4 modules sont réservés
+// au bureau du club (§11 : "Documents du club"/"Factures du club" = Non ou "permission
+// spéciale" ; "Utilisateurs" = Non pour les deux). Les 3 vues financières sont déjà bien
+// restreintes côté RLS (club_member_has_financial_access, migration-connect-v41) : cette
+// fonction aligne le MENU sur cette même frontière plutôt que de laisser une entrée qui mène à
+// un "Aucun document pour le moment" trompeur — retirée, pas verrouillée avec un cadenas, même
+// principe que le brief joueur du 11/08 ("sinon retire complètement ce bouton").
+//
+// Un coach, en plus, ne fait pas de communication (§14 : pas de "Demandes de visuels", pas de
+// planning éditorial/validations/publications, pas de Studio/Newsroom/Match Center — outils de
+// création/diffusion de contenu, pas de suivi "périmètre équipe") — ces modules restent réservés
+// au rôle Communication.
+//
+// "Sponsors" (CRM partenariats/business du club) n'apparaît dans AUCUNE des deux navs Annexe A —
+// retiré pour les deux rôles, contrairement au reste de cette liste qui distingue Communication
+// de Coach.
+const CLUB_FINANCIAL_ADMIN_MODULES: ReadonlySet<ModuleKey> = new Set(["contracts", "billing", "users", "documents"]);
+const CLUB_NOT_RELEVANT_EITHER_ROLE: ReadonlySet<ModuleKey> = new Set(["sponsors"]);
+const CLUB_COMMUNICATION_ONLY_MODULES: ReadonlySet<ModuleKey> = new Set([
+  "communication",
+  "visual_requests",
+  "validations",
+  "publications",
+  "studio",
+  "newsroom",
+  "matchcenter",
+]);
+
+/** Applique le menu Communication/Éducateur (§11/§13/§14/Annexe A) par-dessus la navigation club
+ * de base (Club+ ou Full Communication). Retourne `entries` telle quelle pour tout autre rôle
+ * (admin/président/trésorier/membre du bureau/...) — cette fonction ne fait QUE retirer des
+ * entrées non pertinentes pour ces deux rôles précis, jamais en ajouter ni en réordonner.
+ *
+ * Reste volontairement conservateur au-delà des 6 lignes de la matrice explicitement en jeu
+ * (Prestations/Demandes de visuels/Documents/Factures/Utilisateurs/Paramètres) : "Équipes",
+ * "Adhésions" et "Accompagnement" restent visibles pour les deux rôles (pertinents en pratique —
+ * un éducateur suit le roster de son équipe — et non nommément exclus par le master doc), à
+ * réévaluer si Fouka veut coller à l'Annexe A à la lettre. */
+export function filterClubRoleNav(entries: NavEntry[], role: MembershipRole): NavEntry[] {
+  if (role !== "communication_manager" && role !== "coach") return entries;
+
+  const filtered = entries
+    .filter((e) => e.kind !== "item" || !CLUB_FINANCIAL_ADMIN_MODULES.has(e.module))
+    .filter((e) => e.kind !== "item" || !CLUB_NOT_RELEVANT_EITHER_ROLE.has(e.module))
+    .filter((e) => e.kind !== "item" || role !== "coach" || !CLUB_COMMUNICATION_ONLY_MODULES.has(e.module))
+    // "Paramètres" (onglet Organisation/Intégrations inclus, voir settings/layout.tsx) devient
+    // "Mon profil" pointant directement sur l'onglet personnel — §31 : ces deux rôles n'ont "pas
+    // d'onglet organisation complet par défaut".
+    .map((e): NavEntry =>
+      e.kind === "item" && e.module === "settings" && e.href === "/settings"
+        ? { ...e, label: "Mon profil", href: "/settings/profile" }
+        : e,
+    );
+
+  // Retire les titres de section devenus vides (ex. "Communication" pour un coach une fois
+  // communication/visual_requests/validations/publications retirés) — une navigation "pensée
+  // pour" le rôle, pas une version bridée qui laisse des en-têtes sans rien dessous.
+  return filtered.filter((e, i) => {
+    if (e.kind !== "section") return true;
+    const next = filtered[i + 1];
+    return !!next && next.kind === "item";
+  });
 }

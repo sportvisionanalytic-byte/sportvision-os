@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "@/lib/session-context";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, isClubCommunicationOrEducateur } from "@/lib/permissions";
 import { mockIntegrations } from "@/lib/mock/settings";
 import type { Integration } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
@@ -28,6 +28,16 @@ export default function IntegrationsSettingsPage() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   if (!canAccess(ctx, "settings")) return <LockedModule title="Paramètres" />;
+
+  // §31 : "Pas d'onglet organisation complet par défaut" pour Communication/Éducateur — déjà
+  // masqué dans settings/layout.tsx, même garde-fou pour un accès direct par URL.
+  if (isClubCommunicationOrEducateur(ctx)) {
+    return (
+      <Card className="p-8 text-center text-[13.5px] text-text-soft">
+        Les intégrations sont réservées à l&apos;administrateur du club.
+      </Card>
+    );
+  }
 
   const open = integrations.find((i) => i.id === openId) ?? null;
 

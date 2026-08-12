@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/session-context";
+import { isClubCommunicationOrEducateur } from "@/lib/permissions";
 
 // Coque des 3 écrans Paramètres — voir ACTIONS.md § 25. Fichier nouveau (aucun `settings/
 // layout.tsx` n'existait), propre à mon périmètre : il ne touche à aucun layout partagé.
@@ -29,8 +30,12 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const { ctx } = useSession();
   const isPersonal = PERSONAL_ORG_TYPES.has(ctx.organization.type);
+  // §31 du master doc : "Communication/Éducateur : Personnel, Notifications, Mot de passe/
+  // sécurité. Pas d'onglet organisation complet par défaut." — même traitement que
+  // player/parent ci-dessus, casse séparée pour garder le commentaire d'origine intact.
+  const hideOrgTabs = isPersonal || isClubCommunicationOrEducateur(ctx);
   const tabs = TABS.filter(
-    (tab) => !isPersonal || (tab.href !== "/settings/organization" && tab.href !== "/settings/integrations"),
+    (tab) => !hideOrgTabs || (tab.href !== "/settings/organization" && tab.href !== "/settings/integrations"),
   );
 
   return (
@@ -38,7 +43,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       <div>
         <h1 className="text-[29px] font-extrabold tracking-tight">Paramètres</h1>
         <p className="mt-1 text-[13.5px] text-text-soft">
-          {isPersonal ? "Votre profil et votre club." : "Votre profil, votre organisation et vos intégrations."}
+          {hideOrgTabs ? "Votre profil et votre club." : "Votre profil, votre organisation et vos intégrations."}
         </p>
       </div>
 
