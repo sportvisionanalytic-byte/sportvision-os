@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#050507; }
+  a { color:#7FA6FF; text-decoration:none; }
+  a:hover { color:#A9C4FF; }
+</style>
+</helmet>
+
+<section style="padding:56px 64px 96px;background:#050507;font-family:Archivo,Helvetica,sans-serif">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:900px;margin-bottom:44px">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6E6E7A">Tour 1 · SportVision Connect · refonte</span>
+    <h1 style="margin:0;font-size:40px;font-weight:800;letter-spacing:-.03em;color:#F5F5F7;line-height:1.05">Deux directions pour Connect</h1>
+    <p style="margin:0;font-size:16px;line-height:1.6;color:#8B8B95;text-wrap:pretty">Même architecture, même contenu, deux personnalités. <a href="#1a">1a</a> joue la carte média sportif : fond quasi noir, typo condensée, photo au premier plan, un seul accent. <a href="#1b">1b</a> joue l'application grand public : fond indigo, surfaces vitrées, dégradé du logo, une couleur par pilier. Chaque direction est présentée sur les fondations, l'accueil desktop, l'accueil mobile et la page publique de cotisation.</p>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:80px;align-items:flex-start">
+
+    <!-- ======================= 1a ======================= -->
+    <div id="1a" style="display:flex;flex-direction:column;gap:24px;width:1280px">
+      <div style="display:flex;align-items:baseline;gap:14px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#08080A;background:#F5F5F7;border-radius:5px;padding:4px 8px">1a</span>
+        <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.02em;color:#F5F5F7">Terrain — média sportif</h2>
+        <span style="font-size:14px;color:#8B8B95">Archivo + IBM Plex Mono · accent unique #2E6BFF · rayons 14px</span>
+      </div>
+
+      <!-- Fondations A -->
+      <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:28px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:28px">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8B8B95">Palette</span>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:6px;background:#08080A;border:1px solid rgba(255,255,255,.12)"></span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8B95">#08080A · fond</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:6px;background:#101014;border:1px solid rgba(255,255,255,.12)"></span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8B95">#101014 · carte</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:6px;background:#2E6BFF"></span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8B95">#2E6BFF · accent</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:6px;background:#34D399"></span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8B95">#34D399 · validé</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:6px;background:#F5B841"></span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8B95">#F5B841 · attente</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8B8B95">Typographie</span>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:30px;font-weight:800;letter-spacing:-.03em;color:#F5F5F7;line-height:1">H1 · 30/800</span>
+            <span style="font-size:21px;font-weight:700;letter-spacing:-.02em;color:#F5F5F7;line-height:1">H2 · 21/700</span>
+            <span style="font-size:16px;font-weight:600;color:#F5F5F7;line-height:1">H3 · 16/600</span>
+            <span style="font-size:15px;color:#C9C9D1;line-height:1.5">Body · 15/400 — texte courant, 1,5 d'interligne.</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8B8B95">Label · mono 11 caps</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8B8B95">Boutons · 44px</span>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <button style="height:44px;border:0;border-radius:10px;background:#2E6BFF;color:#fff;font-family:Archivo,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:#4A80FF">Primary</button>
+            <button style="height:44px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:transparent;color:#F5F5F7;font-family:Archivo,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="border-color:rgba(255,255,255,.4)">Secondary</button>
+            <button style="height:44px;border:0;border-radius:10px;background:transparent;color:#8B8B95;font-family:Archivo,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="color:#F5F5F7">Ghost</button>
+            <button style="height:44px;border:1px solid rgba(248,113,113,.35);border-radius:10px;background:transparent;color:#F87171;font-family:Archivo,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:rgba(248,113,113,.1)">Danger</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8B8B95">Badges &amp; piliers</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span style="font-size:12px;font-weight:600;color:#34D399;background:rgba(52,211,153,.12);border-radius:5px;padding:4px 9px">✓ Affilié</span>
+            <span style="font-size:12px;font-weight:600;color:#F5B841;background:rgba(245,184,65,.12);border-radius:5px;padding:4px 9px">En attente</span>
+            <span style="font-size:12px;font-weight:600;color:#7FA6FF;background:rgba(46,107,255,.14);border-radius:5px;padding:4px 9px">Confirmée</span>
+            <span style="font-size:12px;font-weight:600;color:#C9C9D1;background:rgba(255,255,255,.07);border-radius:5px;padding:4px 9px">En production</span>
+            <span style="font-size:12px;font-weight:600;color:#8B8B95;background:rgba(255,255,255,.05);border-radius:5px;padding:4px 9px">Terminée</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px">
+            <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#F5F5F7">shield</span><span style="font-size:13px;color:#C9C9D1">Affiliation</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#F5F5F7">photo_library</span><span style="font-size:13px;color:#C9C9D1">Contenu</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#F5F5F7">camera_alt</span><span style="font-size:13px;color:#C9C9D1">Prestation</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#F5F5F7">savings</span><span style="font-size:13px;color:#C9C9D1">Cotisation</span></div>
+          </div>
+        </div>
+      </div>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5E5E68">Fondations</span>
+
+      <!-- Desktop A -->
+      <div data-screen-label="1a Accueil desktop" style="width:1280px;background:#08080A;border:1px solid rgba(255,255,255,.09);border-radius:14px;overflow:hidden;display:flex">
+        <aside style="width:248px;flex:none;background:#0B0B0F;border-right:1px solid rgba(255,255,255,.07);padding:22px 16px;display:flex;flex-direction:column;gap:26px">
+          <div style="display:flex;align-items:center;gap:9px;padding:0 6px">
+            <img src="uploads/logo.png" alt="SportVision" style="width:30px;height:30px;object-fit:contain">
+            <div style="display:flex;flex-direction:column;line-height:1.1">
+              <span style="font-size:15px;font-weight:800;letter-spacing:-.02em;color:#F5F5F7">SportVision</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#2E6BFF">Connect</span>
+            </div>
+          </div>
+          <nav style="display:flex;flex-direction:column;gap:22px">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:9px;background:rgba(46,107,255,.14);color:#F5F5F7">
+                <span style="font-family:'Material Symbols Rounded';font-size:20px;font-variation-settings:'FILL' 1;color:#7FA6FF">home</span>
+                <span style="font-size:14px;font-weight:600">Accueil</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5E5E68;padding:0 11px;margin-bottom:6px">Mon univers</span>
+              <div style="display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:9px;color:#C9C9D1;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:20px">shield</span><span style="font-size:14px">Mes affiliations</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:9px;color:#C9C9D1;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:20px">groups</span><span style="font-size:14px">Mes équipes</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5E5E68;padding:0 11px;margin-bottom:6px">SportVision</span>
+              <div style="display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:9px;color:#C9C9D1;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:20px">camera_alt</span><span style="font-size:14px">Prestations</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:9px;color:#C9C9D1;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:20px">savings</span><span style="font-size:14px">Cotisations</span><span style="margin-left:auto;font-size:11px;font-weight:600;color:#F5B841;background:rgba(245,184,65,.14);border-radius:4px;padding:2px 6px">1</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:9px;color:#C9C9D1;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:20px">photo_library</span><span style="font-size:14px">Mes contenus</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:9px;color:#C9C9D1;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:20px">calendar_month</span><span style="font-size:14px">Calendrier</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:9px;color:#C9C9D1;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:20px">chat_bubble</span><span style="font-size:14px">Messages</span><span style="margin-left:auto;width:7px;height:7px;border-radius:50%;background:#2E6BFF"></span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5E5E68;padding:0 11px;margin-bottom:6px">Compte</span>
+              <div style="display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:9px;color:#C9C9D1;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:20px">person</span><span style="font-size:14px">Mon profil</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:9px;color:#C9C9D1;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:20px">help</span><span style="font-size:14px">Aide</span></div>
+            </div>
+          </nav>
+          <div style="margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.07)">
+            <span style="width:34px;height:34px;border-radius:50%;flex:none;background-color:#1B1B22;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 6px,transparent 6px 12px)"></span>
+            <div style="display:flex;flex-direction:column;line-height:1.25;overflow:hidden">
+              <span style="font-size:13px;font-weight:600;color:#F5F5F7">Lucas Moreau</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8B8B95">FC Montereau · U18 R2</span>
+            </div>
+          </div>
+        </aside>
+
+        <main style="flex:1;min-width:0;padding:26px 32px 34px;display:flex;flex-direction:column;gap:22px">
+          <header style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px">
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <h1 style="margin:0;font-size:34px;font-weight:800;letter-spacing:-.03em;color:#F5F5F7;line-height:1">Bonjour Lucas 👋</h1>
+              <p style="margin:0;font-size:15px;color:#8B8B95">Tout votre univers SportVision au même endroit.</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="width:40px;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;color:#C9C9D1;cursor:pointer" style-hover="border-color:rgba(255,255,255,.28)"><span style="font-family:'Material Symbols Rounded';font-size:20px">notifications</span></span>
+              <span style="width:40px;height:40px;border-radius:50%;background-color:#1B1B22;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 6px,transparent 6px 12px)"></span>
+            </div>
+          </header>
+
+          <div style="display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:18px;align-items:start">
+            <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+              <!-- Affiliation -->
+              <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;display:flex;align-items:center;gap:18px">
+                <span style="width:58px;height:58px;flex:none;border-radius:12px;background-color:#1B1B22;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 6px,transparent 6px 12px);display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#6E6E7A">logo</span>
+                </span>
+                <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5E5E68">Mon club</span>
+                  <span style="font-size:20px;font-weight:700;letter-spacing:-.02em;color:#F5F5F7">FC Montereau</span>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:13px;color:#8B8B95">U18 R2 · Joueur</span>
+                    <span style="font-size:12px;font-weight:600;color:#34D399;background:rgba(52,211,153,.12);border-radius:5px;padding:3px 8px">✓ Affilié</span>
+                  </div>
+                </div>
+                <a href="#1a" style="margin-left:auto;flex:none;display:flex;align-items:center;gap:5px;height:40px;padding:0 14px;border-radius:10px;border:1px solid rgba(255,255,255,.18);color:#F5F5F7;font-size:14px;font-weight:600" style-hover="border-color:rgba(255,255,255,.4)">Voir mes affiliations<span style="font-family:'Material Symbols Rounded';font-size:18px">chevron_right</span></a>
+              </div>
+
+              <!-- Contenus -->
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <h2 style="margin:0;font-size:19px;font-weight:700;letter-spacing:-.02em;color:#F5F5F7">Vos derniers contenus</h2>
+                  <a href="#1a" style="font-size:13px;font-weight:600;color:#7FA6FF">Tout voir</a>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                  <div style="border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden;background:#101014;cursor:pointer" style-hover="border-color:rgba(255,255,255,.2)">
+                    <div style="height:150px;background-color:#16161B;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 8px,transparent 8px 18px);display:flex;align-items:flex-end;padding:10px">
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6E6E7A">photo match · 16:9</span>
+                    </div>
+                    <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px">
+                      <span style="font-size:16px;font-weight:600;color:#F5F5F7">Match vs Fontainebleau</span>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8B95">47 photos · 2 vidéos</span>
+                      <span style="margin-top:6px;font-size:14px;font-weight:600;color:#7FA6FF">Découvrir</span>
+                    </div>
+                  </div>
+                  <div style="border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden;background:#101014;cursor:pointer" style-hover="border-color:rgba(255,255,255,.2)">
+                    <div style="height:150px;background-color:#16161B;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 8px,transparent 8px 18px);display:flex;align-items:flex-end;padding:10px">
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6E6E7A">reel vertical · 9:16</span>
+                    </div>
+                    <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px">
+                      <span style="font-size:16px;font-weight:600;color:#F5F5F7">Shooting individuel</span>
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8B95">12 photos · 1 reel</span>
+                      <span style="margin-top:6px;font-size:14px;font-weight:600;color:#7FA6FF">Découvrir</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Prochain événement -->
+              <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;display:flex;gap:20px;align-items:center">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:64px;height:64px;flex:none;border-radius:12px;background:rgba(46,107,255,.12);border:1px solid rgba(46,107,255,.2)">
+                  <span style="font-size:22px;font-weight:800;color:#F5F5F7;line-height:1">16</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7FA6FF">août</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5E5E68">Prochain événement</span>
+                  <span style="font-size:18px;font-weight:700;letter-spacing:-.02em;color:#F5F5F7">FC Montereau vs Sens</span>
+                  <span style="font-size:13px;color:#8B8B95">Dimanche 16 août · 15:00 · Stade Bernard-Bruhat</span>
+                </div>
+                <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex:none">
+                  <span style="font-size:12px;font-weight:600;color:#7FA6FF;background:rgba(46,107,255,.14);border-radius:5px;padding:4px 9px">📸 SportVision présent</span>
+                  <a href="#1a" style="font-size:13px;font-weight:600;color:#C9C9D1">Voir dans le calendrier</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Colonne droite -->
+            <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+              <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-family:'Material Symbols Rounded';font-size:18px;color:#7FA6FF">savings</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8B8B95">Cotisation en cours</span>
+                </div>
+                <span style="font-size:19px;font-weight:700;letter-spacing:-.02em;color:#F5F5F7">Pack Match Complet</span>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;align-items:baseline;gap:6px">
+                    <span style="font-size:26px;font-weight:800;letter-spacing:-.03em;color:#F5F5F7;line-height:1">112 €</span>
+                    <span style="font-size:14px;color:#8B8B95">/ 160 €</span>
+                  </div>
+                  <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:70%;height:100%;background:#2E6BFF"></div></div>
+                  <span style="font-size:13px;color:#8B8B95">Plus que 48 € · 7 participants</span>
+                </div>
+                <div style="display:flex;gap:9px">
+                  <button style="flex:1;height:44px;border:0;border-radius:10px;background:#2E6BFF;color:#fff;font-family:Archivo,sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px" style-hover="background:#4A80FF"><span style="font-family:'Material Symbols Rounded';font-size:18px">ios_share</span>Partager</button>
+                  <button style="height:44px;padding:0 16px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:transparent;color:#F5F5F7;font-family:Archivo,sans-serif;font-size:14px;font-weight:600;cursor:pointer" style-hover="border-color:rgba(255,255,255,.4)">Voir</button>
+                </div>
+              </div>
+
+              <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8B8B95">Prochaine prestation</span>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <span style="width:44px;height:44px;flex:none;border-radius:10px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;color:#F5F5F7"><span style="font-family:'Material Symbols Rounded';font-size:22px">camera_alt</span></span>
+                  <div style="display:flex;flex-direction:column;gap:3px">
+                    <span style="font-size:16px;font-weight:600;color:#F5F5F7">Shooting individuel</span>
+                    <span style="font-size:13px;color:#8B8B95">22 août · 14h</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span style="font-size:12px;font-weight:600;color:#7FA6FF;background:rgba(46,107,255,.14);border-radius:5px;padding:4px 9px">Confirmée</span>
+                  <a href="#1a" style="font-size:13px;font-weight:600;color:#C9C9D1">Voir ma prestation</a>
+                </div>
+              </div>
+
+              <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:12px">
+                <span style="width:40px;height:40px;flex:none;border-radius:10px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;color:#F5F5F7;position:relative"><span style="font-family:'Material Symbols Rounded';font-size:20px">chat_bubble</span></span>
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-size:15px;font-weight:600;color:#F5F5F7">Messages</span>
+                  <span style="font-size:13px;color:#8B8B95">1 nouveau message SportVision</span>
+                </div>
+                <a href="#1a" style="margin-left:auto;flex:none;font-size:13px;font-weight:600;color:#7FA6FF">Ouvrir</a>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5E5E68">Desktop 1280 · Accueil</span>
+
+      <!-- Mobiles A -->
+      <div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div data-screen-label="1a Accueil mobile" style="width:390px;background:#08080A;border:1px solid rgba(255,255,255,.12);border-radius:34px;overflow:hidden;display:flex;flex-direction:column">
+            <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#F5F5F7">9:41</span>
+              <div style="display:flex;gap:5px;align-items:center"><span style="width:16px;height:9px;border-radius:2px;background:rgba(255,255,255,.5)"></span><span style="width:18px;height:9px;border-radius:2px;border:1px solid rgba(255,255,255,.5)"></span></div>
+            </div>
+            <div style="padding:6px 18px 0;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:7px">
+                <img src="uploads/logo.png" alt="SportVision" style="width:26px;height:26px;object-fit:contain">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#2E6BFF">Connect</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-family:'Material Symbols Rounded';font-size:22px;color:#C9C9D1">notifications</span>
+                <span style="width:32px;height:32px;border-radius:50%;background-color:#1B1B22;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 6px,transparent 6px 12px)"></span>
+              </div>
+            </div>
+            <div style="padding:20px 18px 8px;display:flex;flex-direction:column;gap:6px">
+              <h1 style="margin:0;font-size:27px;font-weight:800;letter-spacing:-.03em;color:#F5F5F7;line-height:1.05">Bonjour Lucas 👋</h1>
+              <p style="margin:0;font-size:14px;color:#8B8B95">Tout votre univers SportVision au même endroit.</p>
+            </div>
+            <div style="padding:12px 18px 0;display:flex;flex-direction:column;gap:14px">
+              <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px;display:flex;align-items:center;gap:13px">
+                <span style="width:44px;height:44px;flex:none;border-radius:10px;background-color:#1B1B22;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 6px,transparent 6px 12px)"></span>
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                  <span style="font-size:16px;font-weight:700;letter-spacing:-.02em;color:#F5F5F7">FC Montereau</span>
+                  <div style="display:flex;align-items:center;gap:7px">
+                    <span style="font-size:12px;color:#8B8B95">U18 R2</span>
+                    <span style="font-size:11px;font-weight:600;color:#34D399;background:rgba(52,211,153,.12);border-radius:4px;padding:2px 7px">✓ Affilié</span>
+                  </div>
+                </div>
+                <span style="margin-left:auto;font-family:'Material Symbols Rounded';font-size:20px;color:#5E5E68">chevron_right</span>
+              </div>
+
+              <div style="background:#101014;border:1px solid rgba(46,107,255,.28);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8B8B95">Cotisation en cours</span>
+                  <span style="font-size:11px;font-weight:600;color:#7FA6FF">70 %</span>
+                </div>
+                <span style="font-size:17px;font-weight:700;letter-spacing:-.02em;color:#F5F5F7">Pack Match Complet</span>
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <div style="display:flex;align-items:baseline;gap:5px"><span style="font-size:24px;font-weight:800;letter-spacing:-.03em;color:#F5F5F7;line-height:1">112 €</span><span style="font-size:13px;color:#8B8B95">/ 160 €</span></div>
+                  <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:70%;height:100%;background:#2E6BFF"></div></div>
+                  <span style="font-size:12px;color:#8B8B95">Plus que 48 €</span>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button style="flex:1;height:46px;border:0;border-radius:11px;background:#2E6BFF;color:#fff;font-family:Archivo,sans-serif;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer"><span style="font-family:'Material Symbols Rounded';font-size:18px">ios_share</span>Partager</button>
+                  <button style="width:76px;height:46px;border:1px solid rgba(255,255,255,.18);border-radius:11px;background:transparent;color:#F5F5F7;font-family:Archivo,sans-serif;font-size:15px;font-weight:600;cursor:pointer">Voir</button>
+                </div>
+              </div>
+
+              <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px;display:flex;gap:13px;align-items:center">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:48px;height:48px;flex:none;border-radius:11px;background:rgba(46,107,255,.12)">
+                  <span style="font-size:17px;font-weight:800;color:#F5F5F7;line-height:1">16</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;color:#7FA6FF">août</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                  <span style="font-size:15px;font-weight:700;letter-spacing:-.02em;color:#F5F5F7">FC Montereau vs Sens</span>
+                  <span style="font-size:12px;color:#8B8B95">15:00 · Stade Bernard-Bruhat</span>
+                  <span style="font-size:11px;font-weight:600;color:#7FA6FF;background:rgba(46,107,255,.14);border-radius:4px;padding:2px 7px;align-self:flex-start">📸 SportVision présent</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding:22px 0 0;display:flex;flex-direction:column;gap:12px">
+              <div style="padding:0 18px;display:flex;align-items:baseline;justify-content:space-between">
+                <h2 style="margin:0;font-size:18px;font-weight:700;letter-spacing:-.02em;color:#F5F5F7">Vos derniers contenus</h2>
+                <span style="font-size:13px;font-weight:600;color:#7FA6FF">Tout voir</span>
+              </div>
+              <div style="display:flex;gap:12px;padding:0 18px;overflow:hidden">
+                <div style="width:224px;flex:none;border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden;background:#101014">
+                  <div style="height:126px;background-color:#16161B;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 8px,transparent 8px 18px);display:flex;align-items:flex-end;padding:9px"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6E6E7A">photo match · 16:9</span></div>
+                  <div style="padding:12px 13px 14px;display:flex;flex-direction:column;gap:4px">
+                    <span style="font-size:15px;font-weight:600;color:#F5F5F7">Match vs Fontainebleau</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8B8B95">47 photos · 2 vidéos</span>
+                  </div>
+                </div>
+                <div style="width:224px;flex:none;border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden;background:#101014">
+                  <div style="height:126px;background-color:#16161B;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 8px,transparent 8px 18px);display:flex;align-items:flex-end;padding:9px"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6E6E7A">reel · 9:16</span></div>
+                  <div style="padding:12px 13px 14px;display:flex;flex-direction:column;gap:4px">
+                    <span style="font-size:15px;font-weight:600;color:#F5F5F7">Shooting individuel</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8B8B95">12 photos · 1 reel</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding:18px 18px 22px;display:flex;flex-direction:column;gap:12px">
+              <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px">
+                <span style="width:40px;height:40px;flex:none;border-radius:10px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;color:#F5F5F7"><span style="font-family:'Material Symbols Rounded';font-size:20px">camera_alt</span></span>
+                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:600;color:#F5F5F7">Shooting individuel</span><span style="font-size:12px;color:#8B8B95">22 août · 14h · Confirmée</span></div>
+                <span style="margin-left:auto;font-family:'Material Symbols Rounded';font-size:20px;color:#5E5E68">chevron_right</span>
+              </div>
+              <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px">
+                <span style="width:40px;height:40px;flex:none;border-radius:10px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;color:#F5F5F7"><span style="font-family:'Material Symbols Rounded';font-size:20px">chat_bubble</span></span>
+                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:600;color:#F5F5F7">Messages</span><span style="font-size:12px;color:#8B8B95">1 nouveau message SportVision</span></div>
+                <span style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:#2E6BFF"></span>
+              </div>
+            </div>
+
+            <div style="margin-top:auto;border-top:1px solid rgba(255,255,255,.07);background:#0B0B0F;padding:9px 8px 22px;display:grid;grid-template-columns:repeat(5,1fr)">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-height:46px;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;font-variation-settings:'FILL' 1;color:#7FA6FF">home</span><span style="font-size:10px;font-weight:600;color:#7FA6FF">Accueil</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-height:46px;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;color:#8B8B95">photo_library</span><span style="font-size:10px;color:#8B8B95">Contenus</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-height:46px;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;color:#8B8B95">camera_alt</span><span style="font-size:10px;color:#8B8B95">Prestations</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-height:46px;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;color:#8B8B95">savings</span><span style="font-size:10px;color:#8B8B95">Cotisations</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-height:46px;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;color:#8B8B95">person</span><span style="font-size:10px;color:#8B8B95">Profil</span></div>
+            </div>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5E5E68">Mobile 390 · Accueil</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div data-screen-label="1a Cotisation publique" style="width:390px;background:#08080A;border:1px solid rgba(255,255,255,.12);border-radius:34px;overflow:hidden;display:flex;flex-direction:column">
+            <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#F5F5F7">9:41</span>
+              <div style="display:flex;gap:5px;align-items:center"><span style="width:16px;height:9px;border-radius:2px;background:rgba(255,255,255,.5)"></span><span style="width:18px;height:9px;border-radius:2px;border:1px solid rgba(255,255,255,.5)"></span></div>
+            </div>
+            <div style="padding:8px 18px 18px;display:flex;align-items:center;justify-content:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.07)">
+              <img src="uploads/logo.png" alt="SportVision" style="width:24px;height:24px;object-fit:contain">
+              <span style="font-size:14px;font-weight:700;letter-spacing:-.01em;color:#F5F5F7">SportVision</span>
+            </div>
+            <div style="padding:26px 18px 0;display:flex;flex-direction:column;gap:20px">
+              <div style="display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#7FA6FF">Cotisation collective</span>
+                <h1 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.03em;color:#F5F5F7;line-height:1.1">Pack Match Complet</h1>
+                <span style="font-size:14px;color:#8B8B95">FC Exemple vs Sens · 28 août</span>
+              </div>
+              <div style="height:150px;border-radius:14px;background-color:#16161B;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 8px,transparent 8px 18px);display:flex;align-items:flex-end;padding:10px"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6E6E7A">photo équipe · 16:9</span></div>
+              <div style="background:#101014;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <div style="display:flex;align-items:baseline;gap:5px"><span style="font-size:30px;font-weight:800;letter-spacing:-.03em;color:#F5F5F7;line-height:1">112 €</span><span style="font-size:14px;color:#8B8B95">/ 160 €</span></div>
+                  <span style="font-size:13px;font-weight:600;color:#7FA6FF">70 % financé</span>
+                </div>
+                <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:70%;height:100%;background:#2E6BFF"></div></div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="display:flex">
+                    <span style="width:26px;height:26px;border-radius:50%;border:2px solid #101014;background-color:#1B1B22;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 5px,transparent 5px 10px)"></span>
+                    <span style="width:26px;height:26px;border-radius:50%;border:2px solid #101014;margin-left:-9px;background-color:#22222A;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 5px,transparent 5px 10px)"></span>
+                    <span style="width:26px;height:26px;border-radius:50%;border:2px solid #101014;margin-left:-9px;background-color:#1B1B22;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 5px,transparent 5px 10px)"></span>
+                    <span style="width:26px;height:26px;border-radius:50%;border:2px solid #101014;margin-left:-9px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#C9C9D1">+4</span>
+                  </div>
+                  <span style="font-size:13px;color:#8B8B95">7 participants · ouverte jusqu'au 26 août à 18h</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label style="font-size:13px;font-weight:600;color:#C9C9D1">Votre participation</label>
+                <div style="display:flex;align-items:center;height:52px;border:1px solid rgba(255,255,255,.18);border-radius:12px;background:#101014;padding:0 16px">
+                  <span style="font-size:20px;font-weight:700;color:#F5F5F7">16</span>
+                  <span style="font-size:16px;color:#8B8B95;margin-left:4px">€</span>
+                  <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6E6E7A">16 € recommandé</span>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:26px;padding:14px 18px 24px;border-top:1px solid rgba(255,255,255,.07);background:#0B0B0F;display:flex;flex-direction:column;gap:10px">
+              <button style="height:52px;border:0;border-radius:12px;background:#2E6BFF;color:#fff;font-family:Archivo,sans-serif;font-size:17px;font-weight:700;cursor:pointer" style-hover="background:#4A80FF">Participer — 16 €</button>
+              <span style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6E6E7A">Paiement sécurisé · aucun compte requis</span>
+            </div>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5E5E68">Mobile 390 · Page publique cotisation</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================= 1b ======================= -->
+    <div id="1b" style="display:flex;flex-direction:column;gap:24px;width:1280px;font-family:'DM Sans',sans-serif">
+      <div style="display:flex;align-items:baseline;gap:14px;font-family:Archivo,sans-serif">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:#08080A;background:#F5F5F7;border-radius:5px;padding:4px 8px">1b</span>
+        <h2 style="margin:0;font-size:26px;font-weight:800;letter-spacing:-.02em;color:#F5F5F7">Pulse — application grand public</h2>
+        <span style="font-size:14px;color:#8B8B95">Sora + DM Sans · dégradé du logo · une couleur par pilier · rayons 24px</span>
+      </div>
+
+      <!-- Fondations B -->
+      <div style="background:#0D0B22;border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:28px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:28px">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-family:Sora,sans-serif;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#9A9AB8">Palette</span>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:9px;background:#09081A;border:1px solid rgba(255,255,255,.14)"></span><span style="font-size:12px;color:#9A9AB8">#09081A · fond</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)"></span><span style="font-size:12px;color:#9A9AB8">surface vitrée 6 %</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:9px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE)"></span><span style="font-size:12px;color:#9A9AB8">dégradé signature</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:9px;background:#22D3EE"></span><span style="font-size:12px;color:#9A9AB8">#22D3EE · affiliation</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:9px;background:#A855F7"></span><span style="font-size:12px;color:#9A9AB8">#A855F7 · contenu</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:9px;background:#4F7DFF"></span><span style="font-size:12px;color:#9A9AB8">#4F7DFF · prestation</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:9px;background:#F472B6"></span><span style="font-size:12px;color:#9A9AB8">#F472B6 · cotisation</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-family:Sora,sans-serif;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#9A9AB8">Typographie</span>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-family:Sora,sans-serif;font-size:29px;font-weight:700;letter-spacing:-.03em;color:#F7F7FB;line-height:1">H1 · Sora 29/700</span>
+            <span style="font-family:Sora,sans-serif;font-size:21px;font-weight:600;letter-spacing:-.02em;color:#F7F7FB;line-height:1">H2 · Sora 21/600</span>
+            <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600;color:#F7F7FB;line-height:1">H3 · Sora 16/600</span>
+            <span style="font-size:15px;color:#C7C7DE;line-height:1.55">Body · DM Sans 15/400 — texte courant.</span>
+            <span style="font-size:12px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:#9A9AB8">Label · DM Sans 12 caps</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-family:Sora,sans-serif;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#9A9AB8">Boutons · 48px</span>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <button style="height:48px;border:0;border-radius:14px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="filter:brightness(1.12)">Primary</button>
+            <button style="height:48px;border:1px solid rgba(255,255,255,.2);border-radius:14px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.1)">Secondary</button>
+            <button style="height:48px;border:0;border-radius:14px;background:transparent;color:#9A9AB8;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="color:#F7F7FB">Ghost</button>
+            <button style="height:48px;border:1px solid rgba(244,114,182,.4);border-radius:14px;background:rgba(244,114,182,.08);color:#F472B6;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:rgba(244,114,182,.16)">Danger</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-family:Sora,sans-serif;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#9A9AB8">Badges &amp; piliers</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span style="font-size:12px;font-weight:500;color:#22D3EE;background:rgba(34,211,238,.14);border-radius:999px;padding:5px 11px">✓ Affilié</span>
+            <span style="font-size:12px;font-weight:500;color:#FBBF24;background:rgba(251,191,36,.14);border-radius:999px;padding:5px 11px">En attente</span>
+            <span style="font-size:12px;font-weight:500;color:#8CA9FF;background:rgba(79,125,255,.16);border-radius:999px;padding:5px 11px">Confirmée</span>
+            <span style="font-size:12px;font-weight:500;color:#D8B4FE;background:rgba(168,85,247,.16);border-radius:999px;padding:5px 11px">En production</span>
+            <span style="font-size:12px;font-weight:500;color:#9A9AB8;background:rgba(255,255,255,.07);border-radius:999px;padding:5px 11px">Terminée</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px">
+            <div style="display:flex;align-items:center;gap:8px"><span style="width:32px;height:32px;border-radius:11px;background:rgba(34,211,238,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:18px;color:#22D3EE">shield</span></span><span style="font-size:13px;color:#C7C7DE">Affiliation</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><span style="width:32px;height:32px;border-radius:11px;background:rgba(168,85,247,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:18px;color:#C084FC">photo_library</span></span><span style="font-size:13px;color:#C7C7DE">Contenu</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><span style="width:32px;height:32px;border-radius:11px;background:rgba(79,125,255,.16);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:18px;color:#8CA9FF">camera_alt</span></span><span style="font-size:13px;color:#C7C7DE">Prestation</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><span style="width:32px;height:32px;border-radius:11px;background:rgba(244,114,182,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:18px;color:#F472B6">savings</span></span><span style="font-size:13px;color:#C7C7DE">Cotisation</span></div>
+          </div>
+        </div>
+      </div>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5E5E68">Fondations</span>
+
+      <!-- Desktop B -->
+      <div data-screen-label="1b Accueil desktop" style="width:1280px;border:1px solid rgba(255,255,255,.1);border-radius:24px;overflow:hidden;display:flex;background:#09081A;background-image:radial-gradient(760px 420px at 78% -12%,rgba(79,125,255,.22),transparent 70%),radial-gradient(620px 360px at 8% 4%,rgba(168,85,247,.16),transparent 70%)">
+        <aside style="width:252px;flex:none;border-right:1px solid rgba(255,255,255,.07);padding:24px 16px;display:flex;flex-direction:column;gap:24px">
+          <div style="display:flex;align-items:center;gap:10px;padding:0 6px">
+            <img src="uploads/logo.png" alt="SportVision" style="width:32px;height:32px;object-fit:contain">
+            <div style="display:flex;flex-direction:column;line-height:1.15">
+              <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:700;letter-spacing:-.02em;color:#F7F7FB">SportVision</span>
+              <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;background:linear-gradient(120deg,#C084FC,#8CA9FF 55%,#22D3EE);-webkit-background-clip:text;background-clip:text;color:transparent">Connect</span>
+            </div>
+          </div>
+          <nav style="display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;align-items:center;gap:11px;height:44px;padding:0 12px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#F7F7FB">
+              <span style="font-family:'Material Symbols Rounded';font-size:21px;font-variation-settings:'FILL' 1;color:#8CA9FF">home</span>
+              <span style="font-family:Sora,sans-serif;font-size:14px;font-weight:600">Accueil</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#6C6C90;padding:0 12px;margin-bottom:6px">Mon univers</span>
+              <div style="display:flex;align-items:center;gap:11px;height:44px;padding:0 12px;border-radius:14px;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#22D3EE">shield</span><span style="font-size:14px">Mes affiliations</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:44px;padding:0 12px;border-radius:14px;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#22D3EE">groups</span><span style="font-size:14px">Mes équipes</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#6C6C90;padding:0 12px;margin-bottom:6px">SportVision</span>
+              <div style="display:flex;align-items:center;gap:11px;height:44px;padding:0 12px;border-radius:14px;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#8CA9FF">camera_alt</span><span style="font-size:14px">Prestations</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:44px;padding:0 12px;border-radius:14px;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#F472B6">savings</span><span style="font-size:14px">Cotisations</span><span style="margin-left:auto;font-size:11px;font-weight:600;color:#0B0B18;background:#F472B6;border-radius:999px;padding:1px 7px">1</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:44px;padding:0 12px;border-radius:14px;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#C084FC">photo_library</span><span style="font-size:14px">Mes contenus</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:44px;padding:0 12px;border-radius:14px;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#9A9AB8">calendar_month</span><span style="font-size:14px">Calendrier</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:44px;padding:0 12px;border-radius:14px;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#9A9AB8">chat_bubble</span><span style="font-size:14px">Messages</span><span style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:#22D3EE"></span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#6C6C90;padding:0 12px;margin-bottom:6px">Compte</span>
+              <div style="display:flex;align-items:center;gap:11px;height:44px;padding:0 12px;border-radius:14px;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#9A9AB8">person</span><span style="font-size:14px">Mon profil</span></div>
+              <div style="display:flex;align-items:center;gap:11px;height:44px;padding:0 12px;border-radius:14px;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.05)"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#9A9AB8">help</span><span style="font-size:14px">Aide</span></div>
+            </div>
+          </nav>
+          <div style="margin-top:auto;display:flex;align-items:center;gap:10px;padding:11px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)">
+            <span style="width:36px;height:36px;border-radius:50%;flex:none;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 6px,transparent 6px 12px)"></span>
+            <div style="display:flex;flex-direction:column;line-height:1.25;overflow:hidden">
+              <span style="font-family:Sora,sans-serif;font-size:13px;font-weight:600;color:#F7F7FB">Lucas Moreau</span>
+              <span style="font-size:11px;color:#9A9AB8">FC Montereau · U18 R2</span>
+            </div>
+            <span style="margin-left:auto;font-family:'Material Symbols Rounded';font-size:18px;color:#6C6C90">unfold_more</span>
+          </div>
+        </aside>
+
+        <main style="flex:1;min-width:0;padding:28px 34px 36px;display:flex;flex-direction:column;gap:24px">
+          <header style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:34px;font-weight:700;letter-spacing:-.03em;color:#F7F7FB;line-height:1.05">Bonjour Lucas 👋</h1>
+              <p style="margin:0;font-size:15px;color:#9A9AB8">Tout votre univers SportVision au même endroit.</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.1)"><span style="font-family:'Material Symbols Rounded';font-size:21px">notifications</span></span>
+              <span style="width:44px;height:44px;border-radius:50%;padding:2px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);display:flex"><span style="flex:1;border-radius:50%;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 6px,transparent 6px 12px)"></span></span>
+            </div>
+          </header>
+
+          <div style="display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:20px;align-items:start">
+            <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+              <div style="border-radius:24px;padding:1px;background:linear-gradient(120deg,rgba(34,211,238,.5),rgba(79,125,255,.18) 60%,transparent)">
+                <div style="border-radius:23px;background:#0D0B22;padding:22px;display:flex;align-items:center;gap:18px">
+                  <span style="width:60px;height:60px;flex:none;border-radius:18px;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 6px,transparent 6px 12px);display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#7A7A9C">logo</span></span>
+                  <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                    <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#22D3EE">Mon club</span>
+                    <span style="font-family:Sora,sans-serif;font-size:21px;font-weight:600;letter-spacing:-.02em;color:#F7F7FB">FC Montereau</span>
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <span style="font-size:13px;color:#9A9AB8">U18 R2 · Joueur</span>
+                      <span style="font-size:12px;font-weight:500;color:#22D3EE;background:rgba(34,211,238,.14);border-radius:999px;padding:3px 10px">✓ Affilié</span>
+                    </div>
+                  </div>
+                  <a href="#1b" style="margin-left:auto;flex:none;display:flex;align-items:center;gap:5px;height:44px;padding:0 16px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#F7F7FB;font-family:Sora,sans-serif;font-size:14px;font-weight:600" style-hover="background:rgba(255,255,255,.12)">Voir mes affiliations<span style="font-family:'Material Symbols Rounded';font-size:18px">chevron_right</span></a>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <h2 style="margin:0;font-family:Sora,sans-serif;font-size:20px;font-weight:600;letter-spacing:-.02em;color:#F7F7FB">Vos derniers contenus</h2>
+                  <a href="#1b" style="font-size:13px;font-weight:500;color:#C084FC">Tout voir</a>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                  <div style="border-radius:22px;overflow:hidden;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);cursor:pointer" style-hover="border-color:rgba(192,132,252,.5)">
+                    <div style="height:154px;background-color:#171432;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 8px,transparent 8px 18px);display:flex;align-items:flex-start;justify-content:flex-end;padding:12px">
+                      <span style="font-size:11px;font-weight:500;color:#F7F7FB;background:rgba(9,8,26,.6);border-radius:999px;padding:4px 10px">47 photos · 2 vidéos</span>
+                    </div>
+                    <div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:8px">
+                      <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600;color:#F7F7FB">Match vs Fontainebleau</span>
+                      <span style="font-size:13px;color:#9A9AB8">12 août 2026</span>
+                      <span style="margin-top:4px;display:flex;align-items:center;gap:5px;font-family:Sora,sans-serif;font-size:14px;font-weight:600;color:#C084FC">Découvrir<span style="font-family:'Material Symbols Rounded';font-size:17px">arrow_forward</span></span>
+                    </div>
+                  </div>
+                  <div style="border-radius:22px;overflow:hidden;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);cursor:pointer" style-hover="border-color:rgba(192,132,252,.5)">
+                    <div style="height:154px;background-color:#171432;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 8px,transparent 8px 18px);display:flex;align-items:flex-start;justify-content:flex-end;padding:12px">
+                      <span style="font-size:11px;font-weight:500;color:#F7F7FB;background:rgba(9,8,26,.6);border-radius:999px;padding:4px 10px">12 photos · 1 reel</span>
+                    </div>
+                    <div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:8px">
+                      <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600;color:#F7F7FB">Shooting individuel</span>
+                      <span style="font-size:13px;color:#9A9AB8">2 août 2026</span>
+                      <span style="margin-top:4px;display:flex;align-items:center;gap:5px;font-family:Sora,sans-serif;font-size:14px;font-weight:600;color:#C084FC">Découvrir<span style="font-family:'Material Symbols Rounded';font-size:17px">arrow_forward</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="border-radius:22px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:22px;display:flex;gap:20px;align-items:center">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:66px;height:66px;flex:none;border-radius:20px;background:linear-gradient(150deg,rgba(79,125,255,.3),rgba(34,211,238,.14))">
+                  <span style="font-family:Sora,sans-serif;font-size:22px;font-weight:700;color:#F7F7FB;line-height:1">16</span>
+                  <span style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:#8CA9FF">août</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                  <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#6C6C90">Prochain événement</span>
+                  <span style="font-family:Sora,sans-serif;font-size:18px;font-weight:600;letter-spacing:-.02em;color:#F7F7FB">FC Montereau vs Sens</span>
+                  <span style="font-size:13px;color:#9A9AB8">Dimanche 16 août · 15:00 · Stade Bernard-Bruhat</span>
+                </div>
+                <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex:none">
+                  <span style="font-size:12px;font-weight:500;color:#8CA9FF;background:rgba(79,125,255,.16);border-radius:999px;padding:5px 11px">📸 SportVision présent</span>
+                  <a href="#1b" style="font-size:13px;font-weight:500;color:#C7C7DE">Voir dans le calendrier</a>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+              <div style="border-radius:24px;padding:1px;background:linear-gradient(150deg,rgba(244,114,182,.6),rgba(168,85,247,.25) 55%,transparent)">
+                <div style="border-radius:23px;background:#100C24;padding:22px;display:flex;flex-direction:column;gap:16px">
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <span style="width:30px;height:30px;border-radius:10px;background:rgba(244,114,182,.16);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:18px;color:#F472B6">savings</span></span>
+                    <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#F472B6">Cotisation en cours</span>
+                  </div>
+                  <span style="font-family:Sora,sans-serif;font-size:19px;font-weight:600;letter-spacing:-.02em;color:#F7F7FB">Pack Match Complet</span>
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between">
+                      <div style="display:flex;align-items:baseline;gap:6px"><span style="font-family:Sora,sans-serif;font-size:27px;font-weight:700;letter-spacing:-.03em;color:#F7F7FB;line-height:1">112 €</span><span style="font-size:14px;color:#9A9AB8">/ 160 €</span></div>
+                      <span style="font-size:13px;font-weight:500;color:#F472B6">70 %</span>
+                    </div>
+                    <div style="height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:70%;height:100%;border-radius:999px;background:linear-gradient(90deg,#A855F7,#F472B6)"></div></div>
+                    <span style="font-size:13px;color:#9A9AB8">Plus que 48 € · 7 participants</span>
+                  </div>
+                  <div style="display:flex;gap:10px">
+                    <button style="flex:1;height:48px;border:0;border-radius:14px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px" style-hover="filter:brightness(1.12)"><span style="font-family:'Material Symbols Rounded';font-size:18px">ios_share</span>Partager</button>
+                    <button style="height:48px;padding:0 18px;border:1px solid rgba(255,255,255,.2);border-radius:14px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.1)">Voir</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="border-radius:22px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:22px;display:flex;flex-direction:column;gap:14px">
+                <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#6C6C90">Prochaine prestation</span>
+                <div style="display:flex;align-items:center;gap:13px">
+                  <span style="width:46px;height:46px;flex:none;border-radius:15px;background:rgba(79,125,255,.16);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:22px;color:#8CA9FF">camera_alt</span></span>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600;color:#F7F7FB">Shooting individuel</span>
+                    <span style="font-size:13px;color:#9A9AB8">22 août · 14h</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span style="font-size:12px;font-weight:500;color:#8CA9FF;background:rgba(79,125,255,.16);border-radius:999px;padding:5px 11px">Confirmée</span>
+                  <a href="#1b" style="font-size:13px;font-weight:500;color:#C7C7DE">Voir ma prestation</a>
+                </div>
+              </div>
+
+              <div style="border-radius:22px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:18px 22px;display:flex;align-items:center;gap:13px">
+                <span style="width:42px;height:42px;flex:none;border-radius:14px;background:rgba(34,211,238,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#22D3EE">chat_bubble</span></span>
+                <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                  <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600;color:#F7F7FB">Messages</span>
+                  <span style="font-size:13px;color:#9A9AB8">1 nouveau message SportVision</span>
+                </div>
+                <a href="#1b" style="margin-left:auto;flex:none;font-size:13px;font-weight:500;color:#22D3EE">Ouvrir</a>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5E5E68">Desktop 1280 · Accueil</span>
+
+      <!-- Mobiles B -->
+      <div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div data-screen-label="1b Accueil mobile" style="width:390px;border:1px solid rgba(255,255,255,.14);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;background:#09081A;background-image:radial-gradient(420px 300px at 82% -6%,rgba(168,85,247,.24),transparent 70%),radial-gradient(360px 280px at 0% 12%,rgba(79,125,255,.18),transparent 70%)">
+            <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px">
+              <span style="font-family:Sora,sans-serif;font-size:12px;font-weight:600;color:#F7F7FB">9:41</span>
+              <div style="display:flex;gap:5px;align-items:center"><span style="width:16px;height:9px;border-radius:2px;background:rgba(255,255,255,.5)"></span><span style="width:18px;height:9px;border-radius:2px;border:1px solid rgba(255,255,255,.5)"></span></div>
+            </div>
+            <div style="padding:6px 18px 0;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:8px">
+                <img src="uploads/logo.png" alt="SportVision" style="width:28px;height:28px;object-fit:contain">
+                <span style="font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;background:linear-gradient(120deg,#C084FC,#8CA9FF 55%,#22D3EE);-webkit-background-clip:text;background-clip:text;color:transparent">Connect</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="font-family:'Material Symbols Rounded';font-size:22px;color:#C7C7DE">notifications</span>
+                <span style="width:34px;height:34px;border-radius:50%;padding:2px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);display:flex"><span style="flex:1;border-radius:50%;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 6px,transparent 6px 12px)"></span></span>
+              </div>
+            </div>
+            <div style="padding:20px 18px 6px;display:flex;flex-direction:column;gap:7px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:26px;font-weight:700;letter-spacing:-.03em;color:#F7F7FB;line-height:1.1">Bonjour Lucas 👋</h1>
+              <p style="margin:0;font-size:14px;color:#9A9AB8">Tout votre univers SportVision au même endroit.</p>
+            </div>
+            <div style="padding:14px 18px 0;display:flex;flex-direction:column;gap:14px">
+              <div style="border-radius:20px;padding:1px;background:linear-gradient(120deg,rgba(34,211,238,.5),transparent 70%)">
+                <div style="border-radius:19px;background:#0D0B22;padding:14px;display:flex;align-items:center;gap:13px">
+                  <span style="width:46px;height:46px;flex:none;border-radius:15px;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 6px,transparent 6px 12px)"></span>
+                  <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+                    <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600;letter-spacing:-.02em;color:#F7F7FB">FC Montereau</span>
+                    <div style="display:flex;align-items:center;gap:7px">
+                      <span style="font-size:12px;color:#9A9AB8">U18 R2</span>
+                      <span style="font-size:11px;font-weight:500;color:#22D3EE;background:rgba(34,211,238,.14);border-radius:999px;padding:2px 9px">✓ Affilié</span>
+                    </div>
+                  </div>
+                  <span style="margin-left:auto;font-family:'Material Symbols Rounded';font-size:20px;color:#6C6C90">chevron_right</span>
+                </div>
+              </div>
+
+              <div style="border-radius:22px;padding:1px;background:linear-gradient(140deg,rgba(244,114,182,.65),rgba(168,85,247,.3) 55%,transparent)">
+                <div style="border-radius:21px;background:#100C24;padding:16px;display:flex;flex-direction:column;gap:13px">
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#F472B6">Cotisation en cours</span>
+                    <span style="font-size:12px;font-weight:600;color:#F472B6">70 %</span>
+                  </div>
+                  <span style="font-family:Sora,sans-serif;font-size:17px;font-weight:600;letter-spacing:-.02em;color:#F7F7FB">Pack Match Complet</span>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <div style="display:flex;align-items:baseline;gap:5px"><span style="font-family:Sora,sans-serif;font-size:25px;font-weight:700;letter-spacing:-.03em;color:#F7F7FB;line-height:1">112 €</span><span style="font-size:13px;color:#9A9AB8">/ 160 €</span></div>
+                    <div style="height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:70%;height:100%;border-radius:999px;background:linear-gradient(90deg,#A855F7,#F472B6)"></div></div>
+                    <span style="font-size:12px;color:#9A9AB8">Plus que 48 €</span>
+                  </div>
+                  <div style="display:flex;gap:9px">
+                    <button style="flex:1;height:48px;border:0;border-radius:15px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer"><span style="font-family:'Material Symbols Rounded';font-size:18px">ios_share</span>Partager</button>
+                    <button style="width:78px;height:48px;border:1px solid rgba(255,255,255,.2);border-radius:15px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer">Voir</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:14px;display:flex;gap:13px;align-items:center">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:50px;height:50px;flex:none;border-radius:16px;background:linear-gradient(150deg,rgba(79,125,255,.32),rgba(34,211,238,.14))">
+                  <span style="font-family:Sora,sans-serif;font-size:17px;font-weight:700;color:#F7F7FB;line-height:1">16</span>
+                  <span style="font-size:10px;font-weight:500;text-transform:uppercase;color:#8CA9FF">août</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+                  <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600;letter-spacing:-.02em;color:#F7F7FB">FC Montereau vs Sens</span>
+                  <span style="font-size:12px;color:#9A9AB8">15:00 · Stade Bernard-Bruhat</span>
+                  <span style="font-size:11px;font-weight:500;color:#8CA9FF;background:rgba(79,125,255,.16);border-radius:999px;padding:2px 9px;align-self:flex-start">📸 SportVision présent</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding:22px 0 0;display:flex;flex-direction:column;gap:12px">
+              <div style="padding:0 18px;display:flex;align-items:baseline;justify-content:space-between">
+                <h2 style="margin:0;font-family:Sora,sans-serif;font-size:18px;font-weight:600;letter-spacing:-.02em;color:#F7F7FB">Vos derniers contenus</h2>
+                <span style="font-size:13px;font-weight:500;color:#C084FC">Tout voir</span>
+              </div>
+              <div style="display:flex;gap:12px;padding:0 18px;overflow:hidden">
+                <div style="width:228px;flex:none;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)">
+                  <div style="height:132px;background-color:#171432;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 8px,transparent 8px 18px);display:flex;align-items:flex-start;justify-content:flex-end;padding:10px"><span style="font-size:10px;font-weight:500;color:#F7F7FB;background:rgba(9,8,26,.6);border-radius:999px;padding:3px 9px">47 photos</span></div>
+                  <div style="padding:13px 14px 15px;display:flex;flex-direction:column;gap:5px">
+                    <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600;color:#F7F7FB">Match vs Fontainebleau</span>
+                    <span style="font-size:12px;color:#9A9AB8">12 août 2026</span>
+                  </div>
+                </div>
+                <div style="width:228px;flex:none;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)">
+                  <div style="height:132px;background-color:#171432;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 8px,transparent 8px 18px);display:flex;align-items:flex-start;justify-content:flex-end;padding:10px"><span style="font-size:10px;font-weight:500;color:#F7F7FB;background:rgba(9,8,26,.6);border-radius:999px;padding:3px 9px">1 reel</span></div>
+                  <div style="padding:13px 14px 15px;display:flex;flex-direction:column;gap:5px">
+                    <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600;color:#F7F7FB">Shooting individuel</span>
+                    <span style="font-size:12px;color:#9A9AB8">2 août 2026</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding:18px 18px 22px;display:flex;flex-direction:column;gap:12px">
+              <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:14px;display:flex;align-items:center;gap:12px">
+                <span style="width:42px;height:42px;flex:none;border-radius:14px;background:rgba(79,125,255,.16);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#8CA9FF">camera_alt</span></span>
+                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600;color:#F7F7FB">Shooting individuel</span><span style="font-size:12px;color:#9A9AB8">22 août · 14h · Confirmée</span></div>
+                <span style="margin-left:auto;font-family:'Material Symbols Rounded';font-size:20px;color:#6C6C90">chevron_right</span>
+              </div>
+              <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:14px;display:flex;align-items:center;gap:12px">
+                <span style="width:42px;height:42px;flex:none;border-radius:14px;background:rgba(34,211,238,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#22D3EE">chat_bubble</span></span>
+                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600;color:#F7F7FB">Messages</span><span style="font-size:12px;color:#9A9AB8">1 nouveau message SportVision</span></div>
+                <span style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:#22D3EE"></span>
+              </div>
+            </div>
+
+            <div style="margin-top:auto;border-top:1px solid rgba(255,255,255,.08);background:rgba(9,8,26,.9);padding:10px 8px 22px;display:grid;grid-template-columns:repeat(5,1fr)">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;min-height:48px;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:25px;font-variation-settings:'FILL' 1;color:#8CA9FF">home</span><span style="font-size:10px;font-weight:500;color:#8CA9FF">Accueil</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;min-height:48px;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:25px;color:#7A7A9C">photo_library</span><span style="font-size:10px;color:#7A7A9C">Contenus</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;min-height:48px;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:25px;color:#7A7A9C">camera_alt</span><span style="font-size:10px;color:#7A7A9C">Prestations</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;min-height:48px;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:25px;color:#7A7A9C">savings</span><span style="font-size:10px;color:#7A7A9C">Cotisations</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;min-height:48px;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:25px;color:#7A7A9C">person</span><span style="font-size:10px;color:#7A7A9C">Profil</span></div>
+            </div>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5E5E68">Mobile 390 · Accueil</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div data-screen-label="1b Cotisation publique" style="width:390px;border:1px solid rgba(255,255,255,.14);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;background:#09081A;background-image:radial-gradient(440px 320px at 50% -8%,rgba(168,85,247,.28),transparent 72%)">
+            <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px">
+              <span style="font-family:Sora,sans-serif;font-size:12px;font-weight:600;color:#F7F7FB">9:41</span>
+              <div style="display:flex;gap:5px;align-items:center"><span style="width:16px;height:9px;border-radius:2px;background:rgba(255,255,255,.5)"></span><span style="width:18px;height:9px;border-radius:2px;border:1px solid rgba(255,255,255,.5)"></span></div>
+            </div>
+            <div style="padding:8px 18px 18px;display:flex;align-items:center;justify-content:center;gap:9px">
+              <img src="uploads/logo.png" alt="SportVision" style="width:26px;height:26px;object-fit:contain">
+              <span style="font-family:Sora,sans-serif;font-size:14px;font-weight:600;letter-spacing:-.01em;color:#F7F7FB">SportVision</span>
+            </div>
+            <div style="padding:14px 18px 0;display:flex;flex-direction:column;gap:20px">
+              <div style="display:flex;flex-direction:column;gap:9px;align-items:center;text-align:center">
+                <span style="font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;background:linear-gradient(120deg,#C084FC,#8CA9FF 55%,#22D3EE);-webkit-background-clip:text;background-clip:text;color:transparent">Cotisation collective</span>
+                <h1 style="margin:0;font-family:Sora,sans-serif;font-size:26px;font-weight:700;letter-spacing:-.03em;color:#F7F7FB;line-height:1.12">Pack Match Complet</h1>
+                <span style="font-size:14px;color:#9A9AB8">FC Exemple vs Sens · 28 août</span>
+              </div>
+              <div style="height:152px;border-radius:22px;background-color:#171432;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 8px,transparent 8px 18px);display:flex;align-items:flex-end;padding:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7A7A9C">photo équipe · 16:9</span></div>
+              <div style="border-radius:24px;padding:1px;background:linear-gradient(140deg,rgba(168,85,247,.6),rgba(244,114,182,.35) 55%,transparent)">
+                <div style="border-radius:23px;background:#100C24;padding:20px;display:flex;flex-direction:column;gap:14px">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between">
+                    <div style="display:flex;align-items:baseline;gap:6px"><span style="font-family:Sora,sans-serif;font-size:31px;font-weight:700;letter-spacing:-.03em;color:#F7F7FB;line-height:1">112 €</span><span style="font-size:14px;color:#9A9AB8">/ 160 €</span></div>
+                    <span style="font-size:13px;font-weight:600;color:#F472B6">70 % financé</span>
+                  </div>
+                  <div style="height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:70%;height:100%;border-radius:999px;background:linear-gradient(90deg,#A855F7,#F472B6)"></div></div>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="display:flex">
+                      <span style="width:28px;height:28px;border-radius:50%;border:2px solid #100C24;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.1) 0 5px,transparent 5px 10px)"></span>
+                      <span style="width:28px;height:28px;border-radius:50%;border:2px solid #100C24;margin-left:-10px;background-color:#221E42;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.1) 0 5px,transparent 5px 10px)"></span>
+                      <span style="width:28px;height:28px;border-radius:50%;border:2px solid #100C24;margin-left:-10px;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.1) 0 5px,transparent 5px 10px)"></span>
+                      <span style="width:28px;height:28px;border-radius:50%;border:2px solid #100C24;margin-left:-10px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#C7C7DE">+4</span>
+                    </div>
+                    <span style="font-size:13px;color:#9A9AB8">7 participants · jusqu'au 26 août à 18h</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <label style="font-size:13px;font-weight:500;color:#C7C7DE">Votre participation</label>
+                <div style="display:flex;align-items:center;height:56px;border:1px solid rgba(255,255,255,.2);border-radius:16px;background:rgba(255,255,255,.05);padding:0 18px">
+                  <span style="font-family:Sora,sans-serif;font-size:21px;font-weight:600;color:#F7F7FB">16</span>
+                  <span style="font-size:16px;color:#9A9AB8;margin-left:4px">€</span>
+                  <span style="margin-left:auto;font-size:12px;color:#7A7A9C">16 € recommandé</span>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:24px;padding:14px 18px 24px;border-top:1px solid rgba(255,255,255,.08);background:rgba(9,8,26,.9);display:flex;flex-direction:column;gap:10px">
+              <button style="height:56px;border:0;border-radius:17px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:17px;font-weight:600;cursor:pointer" style-hover="filter:brightness(1.12)">Participer — 16 €</button>
+              <span style="text-align:center;font-size:11px;color:#7A7A9C">Paiement sécurisé · aucun compte requis</span>
+            </div>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5E5E68">Mobile 390 · Page publique cotisation</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: #09081a;
+  color: #f7f7fb;
+}
+
+a {
+  color: #8ca9ff;
+}
+a:hover {
+  color: #b6c7ff;
+}
+
+input::placeholder {
+  color: #6c6c90;
+}
+
+/* Material Symbols Rounded — icônes du design de référence (variable, FILL 0/1). */
+.material-symbols-rounded {
+  font-family: "Material Symbols Rounded";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}
+.material-symbols-rounded.filled {
+  font-variation-settings: "FILL" 1;
+}

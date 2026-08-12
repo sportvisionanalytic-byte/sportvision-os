@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin:0; background:#09081A; }
+  a { color:#8CA9FF; text-decoration:none; }
+  a:hover { color:#B6C7FF; }
+  input { outline:none; }
+  input::placeholder { color:#6C6C90; }
+  @keyframes sv-spin { to { transform:rotate(360deg); } }
+  @keyframes sv-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;background:#09081A;font-family:'DM Sans',sans-serif;color:#F7F7FB">
+
+  <!-- ============ STORYTELLING · 55% ============ -->
+  <sc-if value="{{ showVisual }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1.22;min-width:0;display:flex;flex-direction:column;background:#0C0A1E">
+      <div style="position:relative;flex:1;min-height:150px;overflow:hidden">
+        <div style="position:absolute;inset:0">
+          <image-slot id="sv-auth-visual" shape="rect" fit="cover" placeholder="Photo sportive"></image-slot>
+        </div>
+        <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(9,8,26,.34) 0%,rgba(12,10,30,0) 34%,rgba(12,10,30,.72) 84%,#0C0A1E 100%)"></div>
+        <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(680px 460px at 88% -12%,rgba(168,85,247,.3),transparent 68%)"></div>
+        <div style="position:absolute;top:36px;left:44px;display:flex;align-items:center;gap:11px;pointer-events:none">
+          <img src="uploads/logo.png" alt="SportVision Connect" style="width:38px;height:38px;object-fit:contain">
+          <div style="display:flex;flex-direction:column;line-height:1.15">
+            <span style="font-family:Sora,sans-serif;font-size:17px;font-weight:700;letter-spacing:-.02em">SportVision</span>
+            <span style="font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(120deg,#C084FC,#8CA9FF 55%,#22D3EE);-webkit-background-clip:text;background-clip:text;color:transparent">Connect</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none;padding:4px 44px 32px;display:flex;flex-direction:column;gap:14px;max-width:560px">
+        <h2 style="margin:0;font-family:Sora,sans-serif;font-size:42px;font-weight:700;letter-spacing:-.035em;line-height:1.08;text-wrap:pretty">Votre sport.<br>Vos contenus.<br>Votre équipe.</h2>
+        <p style="margin:0;font-size:17px;line-height:1.6;color:#DCDCEC;text-wrap:pretty">Rejoignez votre club, réservez vos prestations SportVision et cotisez avec vos coéquipiers depuis un seul espace.</p>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#AEAECB;text-wrap:pretty">Sans club aussi : réservez une prestation ou retrouvez les photos et vidéos de vos proches.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+          <span style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#22D3EE;background:rgba(34,211,238,.16);border-radius:999px;padding:7px 13px"><span style="font-family:'Material Symbols Rounded';font-size:17px">shield</span>Clubs &amp; équipes</span>
+          <span style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#C084FC;background:rgba(168,85,247,.18);border-radius:999px;padding:7px 13px"><span style="font-family:'Material Symbols Rounded';font-size:17px">photo_library</span>Contenus</span>
+          <span style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#8CA9FF;background:rgba(79,125,255,.18);border-radius:999px;padding:7px 13px"><span style="font-family:'Material Symbols Rounded';font-size:17px">camera_alt</span>Prestations</span>
+          <span style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#F472B6;background:rgba(244,114,182,.16);border-radius:999px;padding:7px 13px"><span style="font-family:'Material Symbols Rounded';font-size:17px">savings</span>Cotisations</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:6px">
+          <span style="font-size:13px;letter-spacing:.02em;color:#A9A9C6">Photo • Vidéo • Contenu • Expérience joueur</span>
+          <span style="font-size:12px;color:#7A7A9C;flex:none">© 2026 SportVision</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ ACTION · 45% ============ -->
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;background-image:radial-gradient(620px 460px at 78% 0%,rgba(168,85,247,.16),transparent 70%),radial-gradient(520px 400px at 10% 100%,rgba(34,211,238,.1),transparent 70%)">
+
+    <sc-if value="{{ showMobileHeader }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:none;padding:26px 24px 0;display:flex;align-items:center;gap:10px">
+        <img src="uploads/logo.png" alt="SportVision Connect" style="width:34px;height:34px;object-fit:contain">
+        <div style="display:flex;flex-direction:column;line-height:1.15">
+          <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:700;letter-spacing:-.02em">SportVision</span>
+          <span style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(120deg,#C084FC,#8CA9FF 55%,#22D3EE);-webkit-background-clip:text;background-clip:text;color:transparent">Connect</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:44px 32px">
+      <div style="width:100%;max-width:404px;display:flex;flex-direction:column">
+
+        <!-- CONNEXION -->
+        <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:24px;animation:sv-in .3s ease both">
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:32px;font-weight:700;letter-spacing:-.03em;line-height:1.1">Bienvenue sur Connect</h1>
+              <p style="margin:0;font-size:15px;color:#9A9AB8">Connectez-vous à votre espace personnel SportVision.</p>
+            </div>
+
+            <sc-if value="{{ hasFormError }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:flex-start;gap:10px;border-radius:14px;background:rgba(244,114,182,.1);border:1px solid rgba(244,114,182,.35);padding:13px 15px">
+                <span style="font-family:'Material Symbols Rounded';font-size:19px;color:#F472B6">error</span>
+                <span style="font-size:13px;line-height:1.5;color:#FBCFE8">{{ formError }}</span>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label for="sv-email" style="font-size:13px;font-weight:500;color:#C7C7DE">Adresse e-mail</label>
+                <input id="sv-email" type="email" name="email" autocomplete="username" inputmode="email" placeholder="votre@email.com" value="{{ email }}" onChange="{{ onEmail }}" onKeyDown="{{ onKey }}" style="height:54px;border-radius:15px;border:1px solid {{ emailBorder }};background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB;width:100%;box-sizing:border-box;transition:border-color .18s ease,box-shadow .18s ease" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+                <sc-if value="{{ emailError }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:12px;color:#F472B6">{{ emailError }}</span>
+                </sc-if>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+                  <label for="sv-pw" style="font-size:13px;font-weight:500;color:#C7C7DE">Mot de passe</label>
+                  <span onClick="{{ goForgot }}" style="font-size:12px;font-weight:500;color:#8CA9FF;cursor:pointer" style-hover="color:#B6C7FF">Mot de passe oublié ?</span>
+                </div>
+                <div style="position:relative;display:flex">
+                  <input id="sv-pw" type="{{ pwType }}" name="password" autocomplete="current-password" placeholder="Votre mot de passe" value="{{ pw }}" onChange="{{ onPw }}" onKeyDown="{{ onKey }}" style="flex:1;height:54px;border-radius:15px;border:1px solid {{ pwBorder }};background:rgba(255,255,255,.05);padding:0 50px 0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB;box-sizing:border-box;transition:border-color .18s ease,box-shadow .18s ease" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+                  <span onClick="{{ togglePw }}" title="{{ pwToggleLabel }}" style="position:absolute;right:6px;top:6px;width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#9A9AB8;cursor:pointer" style-hover="background:rgba(255,255,255,.08);color:#F7F7FB"><span style="font-family:'Material Symbols Rounded';font-size:20px">{{ pwIcon }}</span></span>
+                </div>
+                <sc-if value="{{ pwError }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:12px;color:#F472B6">{{ pwError }}</span>
+                </sc-if>
+              </div>
+
+              <div onClick="{{ toggleRemember }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
+                <span style="width:20px;height:20px;border-radius:6px;border:1px solid {{ rememberBorder }};background:{{ rememberBg }};display:flex;align-items:center;justify-content:center;transition:all .18s ease"><span style="font-family:'Material Symbols Rounded';font-size:15px;color:#fff;opacity:{{ rememberOpacity }}">check</span></span>
+                <span style="font-size:13px;color:#C7C7DE">Rester connecté</span>
+              </div>
+
+              <button onClick="{{ submit }}" disabled="{{ busy }}" style="height:56px;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:16px;font-weight:600;cursor:{{ submitCursor }};display:flex;align-items:center;justify-content:center;gap:10px;opacity:{{ submitOpacity }};transition:filter .18s ease" style-hover="filter:brightness(1.12)">
+                <sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">
+                  <span style="width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:sv-spin .7s linear infinite"></span>
+                </sc-if>
+                {{ submitLabel }}
+              </button>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="flex:1;height:1px;background:rgba(255,255,255,.1)"></span>
+              <span style="font-size:12px;color:#6C6C90">Pas encore de compte ?</span>
+              <span style="flex:1;height:1px;background:rgba(255,255,255,.1)"></span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <a href="Connect Inscription.dc.html" style="height:54px;box-sizing:border-box;border:1px solid rgba(255,255,255,.2);border-radius:16px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;transition:background .18s ease" style-hover="background:rgba(255,255,255,.1);color:#F7F7FB">Créer mon compte</a>
+              <span onClick="{{ goHelp }}" style="align-self:center;margin-top:10px;display:flex;align-items:center;gap:6px;font-size:13px;color:#9A9AB8;cursor:pointer" style-hover="color:#F7F7FB"><span style="font-family:'Material Symbols Rounded';font-size:17px">help</span>Besoin d'aide ?</span>
+              <sc-if value="{{ showMobilePillars }}" hint-placeholder-val="{{ false }}">
+                <span style="align-self:center;margin-top:10px;font-size:12px;color:#7A7A9C">Clubs • Contenus • Prestations • Cotisations</span>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- MOT DE PASSE OUBLIÉ -->
+        <sc-if value="{{ isForgot }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:24px;animation:sv-in .3s ease both">
+            <div onClick="{{ goLogin }}" style="align-self:flex-start;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#9A9AB8;cursor:pointer" style-hover="color:#F7F7FB"><span style="font-family:'Material Symbols Rounded';font-size:18px">arrow_back</span>Retour à la connexion</div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.12">Mot de passe oublié</h1>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Indiquez votre adresse e-mail, nous vous envoyons un lien de réinitialisation.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="sv-fg" style="font-size:13px;font-weight:500;color:#C7C7DE">Adresse e-mail</label>
+              <input id="sv-fg" type="email" autocomplete="email" inputmode="email" placeholder="votre@email.com" value="{{ forgotEmail }}" onChange="{{ onForgotEmail }}" onKeyDown="{{ onForgotKey }}" style="height:54px;border-radius:15px;border:1px solid {{ forgotBorder }};background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB;width:100%;box-sizing:border-box;transition:border-color .18s ease" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+              <sc-if value="{{ forgotError }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:12px;color:#F472B6">{{ forgotError }}</span>
+              </sc-if>
+            </div>
+            <button onClick="{{ sendReset }}" disabled="{{ busy }}" style="height:56px;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="filter:brightness(1.12)">
+              <sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">
+                <span style="width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:sv-spin .7s linear infinite"></span>
+              </sc-if>
+              {{ resetLabel }}
+            </button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isSent }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:20px;align-items:flex-start;animation:sv-in .3s ease both">
+            <span style="width:66px;height:66px;border-radius:22px;background:rgba(34,211,238,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:32px;color:#22D3EE">mark_email_read</span></span>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.15">Vérifiez votre boîte mail</h1>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Si un compte existe pour <span style="color:#F7F7FB;font-weight:500">{{ sentTo }}</span>, un lien de réinitialisation vient d'être envoyé. Il expire dans 30 minutes.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;width:100%;margin-top:4px">
+              <button onClick="{{ goLogin }}" style="height:54px;border:1px solid rgba(255,255,255,.2);border-radius:16px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:16px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.1)">Retour à la connexion</button>
+              <span onClick="{{ goReset }}" style="align-self:center;font-size:13px;font-weight:500;color:#8CA9FF;cursor:pointer" style-hover="color:#B6C7FF">Simuler l'ouverture du lien reçu</span>
+              <span onClick="{{ goForgot }}" style="align-self:center;font-size:13px;color:#9A9AB8;cursor:pointer" style-hover="color:#F7F7FB">Je n'ai rien reçu, réessayer</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:20px;align-items:flex-start;animation:sv-in .3s ease both">
+            <span style="width:66px;height:66px;border-radius:22px;background:linear-gradient(140deg,rgba(168,85,247,.25),rgba(34,211,238,.2));display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:34px;font-variation-settings:'FILL' 1;color:#22D3EE">check_circle</span></span>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.15">Connexion réussie</h1>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Bienvenue {{ hello }}. Votre espace personnel SportVision vous attend.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;width:100%;margin-top:4px">
+              <a href="Connect Espace Joueur.dc.html" style="height:54px;box-sizing:border-box;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center" style-hover="filter:brightness(1.12);color:#fff">Accéder à mon espace joueur</a>
+              <a href="Connect Espace Particulier.dc.html" style="height:54px;box-sizing:border-box;border:1px solid rgba(255,255,255,.2);border-radius:16px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center" style-hover="background:rgba(255,255,255,.1);color:#F7F7FB">J'accompagne un sportif</a>
+              <button onClick="{{ goLogin }}" style="height:54px;border:1px solid rgba(255,255,255,.2);border-radius:16px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.1)">Revenir à la connexion</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- NOUVEAU MOT DE PASSE -->
+        <sc-if value="{{ isReset }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:24px;animation:sv-in .3s ease both">
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.12">Nouveau mot de passe</h1>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Choisissez un mot de passe pour <span style="color:#F7F7FB;font-weight:500">{{ resetFor }}</span>.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label for="sv-np" style="font-size:13px;font-weight:500;color:#C7C7DE">Nouveau mot de passe</label>
+                <div style="position:relative;display:flex">
+                  <input id="sv-np" type="{{ pwType }}" autocomplete="new-password" placeholder="8 caractères minimum" value="{{ newPw }}" onChange="{{ onNewPw }}" style="flex:1;height:54px;box-sizing:border-box;border-radius:15px;border:1px solid {{ newPwBorder }};background:rgba(255,255,255,.05);padding:0 50px 0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+                  <span onClick="{{ togglePw }}" style="position:absolute;right:6px;top:6px;width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#9A9AB8;cursor:pointer" style-hover="background:rgba(255,255,255,.08);color:#F7F7FB"><span style="font-family:'Material Symbols Rounded';font-size:20px">{{ pwIcon }}</span></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:2px">
+                  <div style="flex:1;height:4px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden"><div style="height:100%;border-radius:999px;transition:width .3s ease;width:{{ strength }};background:{{ strengthColor }}"></div></div>
+                  <span style="font-size:11px;color:#9A9AB8;flex:none">{{ strengthLabel }}</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label for="sv-np2" style="font-size:13px;font-weight:500;color:#C7C7DE">Confirmer le mot de passe</label>
+                <input id="sv-np2" type="{{ pwType }}" autocomplete="new-password" placeholder="Retapez votre mot de passe" value="{{ newPw2 }}" onChange="{{ onNewPw2 }}" style="height:54px;box-sizing:border-box;border-radius:15px;border:1px solid {{ newPw2Border }};background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB;width:100%" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+                <sc-if value="{{ newPwError }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:12px;color:#F472B6">{{ newPwError }}</span>
+                </sc-if>
+              </div>
+              <button onClick="{{ saveNewPw }}" style="height:56px;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:16px;font-weight:600;cursor:pointer" style-hover="filter:brightness(1.12)">Enregistrer et me connecter</button>
+            </div>
+            <span onClick="{{ expireReset }}" style="align-self:flex-start;font-size:12px;color:#7A7A9C;cursor:pointer;text-decoration:underline" style-hover="color:#F7F7FB">Voir l'état « lien expiré »</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isExpired }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:20px;align-items:flex-start;animation:sv-in .3s ease both">
+            <span style="width:66px;height:66px;border-radius:22px;background:rgba(251,191,36,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:32px;color:#FBBF24">timer_off</span></span>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.15">Ce lien a expiré</h1>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Les liens de réinitialisation sont valables 30 minutes. Demandez-en un nouveau, il arrive en quelques instants.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;width:100%;margin-top:4px">
+              <button onClick="{{ goForgot }}" style="height:54px;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:16px;font-weight:600;cursor:pointer" style-hover="filter:brightness(1.12)">Recevoir un nouveau lien</button>
+              <button onClick="{{ goLogin }}" style="height:54px;border:1px solid rgba(255,255,255,.2);border-radius:16px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.1)">Retour à la connexion</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ACTIVATION -->
+        <sc-if value="{{ isActivation }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:20px;align-items:flex-start;animation:sv-in .3s ease both">
+            <span style="width:66px;height:66px;border-radius:22px;background:linear-gradient(140deg,rgba(168,85,247,.25),rgba(34,211,238,.2));display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:34px;font-variation-settings:'FILL' 1;color:#22D3EE">verified</span></span>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.15">Compte activé</h1>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Votre adresse e-mail est confirmée. Connectez-vous pour terminer la création de votre espace.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;width:100%;margin-top:4px">
+              <a href="Connect Espace Joueur.dc.html" style="height:54px;box-sizing:border-box;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center" style-hover="filter:brightness(1.12);color:#fff">Continuer vers Connect</a>
+              <button onClick="{{ goLogin }}" style="height:54px;border:1px solid rgba(255,255,255,.2);border-radius:16px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.1)">Retour à la connexion</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- COMPTE BLOQUÉ -->
+        <sc-if value="{{ isLocked }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:20px;align-items:flex-start;animation:sv-in .3s ease both">
+            <span style="width:66px;height:66px;border-radius:22px;background:rgba(244,114,182,.12);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:32px;color:#F472B6">lock_clock</span></span>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.15">Connexion temporairement bloquée</h1>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Trop de tentatives ont échoué. Vous pourrez réessayer dans {{ lockedIn }}, ou réinitialiser votre mot de passe dès maintenant.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;width:100%;margin-top:4px">
+              <button onClick="{{ goForgot }}" style="height:54px;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:16px;font-weight:600;cursor:pointer" style-hover="filter:brightness(1.12)">Réinitialiser mon mot de passe</button>
+              <button onClick="{{ goHelp }}" style="height:54px;border:1px solid rgba(255,255,255,.2);border-radius:16px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.1)">Contacter SportVision</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isHelp }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+            <div onClick="{{ goLogin }}" style="align-self:flex-start;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#9A9AB8;cursor:pointer" style-hover="color:#F7F7FB"><span style="font-family:'Material Symbols Rounded';font-size:18px">arrow_back</span>Retour à la connexion</div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.12">Besoin d'aide ?</h1>
+              <p style="margin:0;font-size:15px;color:#9A9AB8">Deux cas, deux réponses.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div onClick="{{ goActivation }}" style="border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:16px;display:flex;align-items:center;gap:13px;cursor:pointer" style-hover="background:rgba(255,255,255,.09)">
+                <span style="width:42px;height:42px;flex:none;border-radius:14px;background:rgba(34,211,238,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#22D3EE">verified</span></span>
+                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Je viens d'activer mon compte</span><span style="font-size:12px;color:#9A9AB8">Voir l'écran de confirmation</span></div>
+                <span style="margin-left:auto;font-family:'Material Symbols Rounded';font-size:20px;color:#6C6C90">chevron_right</span>
+              </div>
+              <div onClick="{{ goForgot }}" style="border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:16px;display:flex;align-items:center;gap:13px;cursor:pointer" style-hover="background:rgba(255,255,255,.09)">
+                <span style="width:42px;height:42px;flex:none;border-radius:14px;background:rgba(79,125,255,.16);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#8CA9FF">lock_reset</span></span>
+                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Je n'accède plus à mon compte</span><span style="font-size:12px;color:#9A9AB8">Réinitialiser le mot de passe</span></div>
+                <span style="margin-left:auto;font-family:'Material Symbols Rounded';font-size:20px;color:#6C6C90">chevron_right</span>
+              </div>
+              <div style="border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:16px;display:flex;align-items:center;gap:13px;cursor:pointer" style-hover="background:rgba(255,255,255,.09)">
+                <span style="width:42px;height:42px;flex:none;border-radius:14px;background:rgba(34,211,238,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#22D3EE">chat_bubble</span></span>
+                <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Un problème pour vous connecter ?</span><span style="font-size:12px;color:#9A9AB8">Contacter SportVision</span></div>
+                <span style="margin-left:auto;font-family:'Material Symbols Rounded';font-size:20px;color:#6C6C90">chevron_right</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = {
+    view: "login", email: "", pw: "", showPw: false, remember: true,
+    busy: false, touched: false, authFailed: false,
+    forgotEmail: "", forgotTouched: false, sentTo: "", narrow: false,
+    newPw: "", newPw2: "", newTouched: false, attempts: 0
+  };
+
+  componentDidMount() {
+    this._mq = window.matchMedia("(max-width: 900px)");
+    this._onMq = () => this.setState({ narrow: this._mq.matches });
+    this._onMq();
+    this._mq.addEventListener("change", this._onMq);
+  }
+  componentWillUnmount() {
+    clearTimeout(this._t);
+    if (this._mq) this._mq.removeEventListener("change", this._onMq);
+  }
+
+  set(k, v) { this.setState({ [k]: v }); }
+  validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v).trim()); }
+
+  submit = () => {
+    const { email, pw, busy } = this.state;
+    if (busy) return;
+    this.setState({ touched: true, authFailed: false });
+    if (!this.validEmail(email) || pw.length < 6) return;
+    this.setState({ busy: true });
+    this._t = setTimeout(() => {
+      // "erreur" simule un refus d'authentification côté serveur
+      if (pw.trim().toLowerCase() === "erreur") {
+        const n = this.state.attempts + 1;
+        this.setState({ busy: false, authFailed: n < 3, attempts: n, view: n >= 3 ? "locked" : "login" });
+      } else this.setState({ busy: false, view: "done", attempts: 0 });
+    }, 900);
+  };
+
+  sendReset = () => {
+    const { forgotEmail, busy } = this.state;
+    if (busy) return;
+    this.setState({ forgotTouched: true });
+    if (!this.validEmail(forgotEmail)) return;
+    this.setState({ busy: true });
+    this._t = setTimeout(() => this.setState({ busy: false, view: "sent", sentTo: forgotEmail.trim() }), 800);
+  };
+
+  renderVals() {
+    const s = this.state;
+    const emailBad = s.touched && !this.validEmail(s.email);
+    const pwBad = s.touched && s.pw.length < 6;
+    const fgBad = s.forgotTouched && !this.validEmail(s.forgotEmail);
+    const bad = "#F472B6", idle = "rgba(255,255,255,.16)";
+
+    return {
+      isLogin: s.view === "login", isForgot: s.view === "forgot", isSent: s.view === "sent",
+      isDone: s.view === "done", isHelp: s.view === "help",
+      isReset: s.view === "reset", isExpired: s.view === "expired",
+      isActivation: s.view === "activation", isLocked: s.view === "locked",
+      resetFor: s.sentTo || s.email.trim() || "votre compte",
+      newPw: s.newPw, newPw2: s.newPw2,
+      onNewPw: e => this.setState({ newPw: e.target.value }),
+      onNewPw2: e => this.setState({ newPw2: e.target.value }),
+      newPwBorder: s.newTouched && s.newPw.length < 8 ? bad : idle,
+      newPw2Border: s.newTouched && s.newPw2 !== s.newPw ? bad : idle,
+      newPwError: s.newTouched && s.newPw2 !== s.newPw ? "Les deux mots de passe ne correspondent pas." : (s.newTouched && s.newPw.length < 8 ? "8 caractères minimum." : null),
+      strength: (Math.min(4, (s.newPw.length >= 8 ? 1 : 0) + (/[A-Z]/.test(s.newPw) ? 1 : 0) + (/[0-9]/.test(s.newPw) ? 1 : 0) + (/[^A-Za-z0-9]/.test(s.newPw) ? 1 : 0)) * 25) + "%",
+      strengthColor: s.newPw.length >= 8 && /[0-9]/.test(s.newPw) ? "#22D3EE" : "#FBBF24",
+      strengthLabel: s.newPw ? (s.newPw.length < 8 ? "Trop court" : "Correct") : "8 caractères minimum",
+      saveNewPw: () => {
+        this.setState({ newTouched: true });
+        if (s.newPw.length >= 8 && s.newPw === s.newPw2) this.setState({ view: "done", newPw: "", newPw2: "", newTouched: false });
+      },
+      expireReset: () => this.setState({ view: "expired" }),
+      lockedIn: "15 minutes",
+      showVisual: !s.narrow,
+      showMobileHeader: s.narrow,
+      showMobilePillars: s.narrow,
+
+      email: s.email, pw: s.pw, forgotEmail: s.forgotEmail,
+      onEmail: e => this.setState({ email: e.target.value, authFailed: false }),
+      onPw: e => this.setState({ pw: e.target.value, authFailed: false }),
+      onForgotEmail: e => this.set("forgotEmail", e.target.value),
+      onKey: e => { if (e.key === "Enter") this.submit(); },
+      onForgotKey: e => { if (e.key === "Enter") this.sendReset(); },
+
+      pwType: s.showPw ? "text" : "password",
+      pwIcon: s.showPw ? "visibility" : "visibility_off",
+      pwToggleLabel: s.showPw ? "Masquer le mot de passe" : "Afficher le mot de passe",
+      togglePw: () => this.set("showPw", !s.showPw),
+
+      toggleRemember: () => this.set("remember", !s.remember),
+      rememberBg: s.remember ? "linear-gradient(120deg,#A855F7,#4F7DFF)" : "transparent",
+      rememberBorder: s.remember ? "transparent" : "rgba(255,255,255,.28)",
+      rememberOpacity: s.remember ? 1 : 0,
+
+      emailBorder: emailBad || s.authFailed ? bad : idle,
+      pwBorder: pwBad || s.authFailed ? bad : idle,
+      forgotBorder: fgBad ? bad : idle,
+      emailError: emailBad ? (s.email.trim() ? "Saisissez une adresse e-mail valide." : "Renseignez votre adresse e-mail.") : null,
+      pwError: pwBad ? (s.pw ? "6 caractères minimum." : "Renseignez votre mot de passe.") : null,
+      forgotError: fgBad ? "Saisissez une adresse e-mail valide." : null,
+      hasFormError: s.authFailed || (s.touched && (emailBad || pwBad)),
+      formError: s.authFailed ? "Adresse e-mail ou mot de passe incorrect." : "Vérifiez les champs signalés ci-dessous.",
+
+      busy: s.busy,
+      submit: this.submit,
+      sendReset: this.sendReset,
+      submitLabel: s.busy ? "Connexion…" : "Se connecter",
+      resetLabel: s.busy ? "Envoi…" : "Envoyer le lien",
+      submitCursor: s.busy ? "default" : "pointer",
+      submitOpacity: s.busy ? 0.75 : 1,
+
+      sentTo: s.sentTo,
+      hello: s.email.trim().split("@")[0] || "",
+
+      goForgot: () => this.setState({ view: "forgot", forgotEmail: s.email, forgotTouched: false }),
+      goLogin: () => this.setState({ view: "login", touched: false, authFailed: false }),
+      goHelp: () => this.set("view", "help"),
+      goReset: () => this.setState({ view: "reset", newTouched: false }),
+      goActivation: () => this.set("view", "activation")
+    };
+  }
+}
+</script>
+</body>
+</html>

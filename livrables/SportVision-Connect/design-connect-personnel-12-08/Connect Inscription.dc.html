@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin:0; background:#09081A; }
+  a { color:#8CA9FF; text-decoration:none; }
+  a:hover { color:#B6C7FF; }
+  input { outline:none; }
+  input::placeholder { color:#6C6C90; }
+  @keyframes sv-spin { to { transform:rotate(360deg); } }
+  @keyframes sv-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#09081A;background-image:radial-gradient(900px 620px at 78% -12%,rgba(168,85,247,.2),transparent 70%),radial-gradient(760px 520px at 4% 104%,rgba(34,211,238,.12),transparent 70%);font-family:'DM Sans',sans-serif;color:#F7F7FB">
+
+  <!-- Barre haute -->
+  <div style="flex:none;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px">
+    <a href="Connect Connexion Web.dc.html" style="display:flex;align-items:center;gap:10px;color:#F7F7FB">
+      <img src="uploads/logo.png" alt="SportVision Connect" style="width:32px;height:32px;object-fit:contain">
+      <div style="display:flex;flex-direction:column;line-height:1.15">
+        <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:700;letter-spacing:-.02em">SportVision</span>
+        <span style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(120deg,#C084FC,#8CA9FF 55%,#22D3EE);-webkit-background-clip:text;background-clip:text;color:transparent">Connect</span>
+      </div>
+    </a>
+    <a href="Connect Connexion Web.dc.html" style="font-size:13px;font-weight:500;color:#9A9AB8">J'ai déjà un compte</a>
+  </div>
+
+  <div style="flex:1;min-height:0;display:flex;justify-content:center;padding:8px 24px 0">
+    <div style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:26px">
+
+      <!-- Progression -->
+      <sc-if value="{{ showProgress }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div onClick="{{ back }}" style="width:40px;height:40px;flex:none;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;color:#C7C7DE;cursor:pointer" style-hover="background:rgba(255,255,255,.1)"><span style="font-family:'Material Symbols Rounded';font-size:20px">arrow_back</span></div>
+            <div style="flex:1;height:5px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden">
+              <div style="height:100%;border-radius:999px;background:linear-gradient(90deg,#A855F7,#4F7DFF 60%,#22D3EE);transition:width .4s ease;width:{{ progress }}"></div>
+            </div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8;flex:none">{{ stepCount }}</span>
+          </div>
+          <div style="display:flex;gap:16px;padding-left:54px">
+            <sc-for list="{{ crumbs }}" as="c" hint-placeholder-count="4">
+              <span style="font-size:12px;font-weight:500;color:{{ c.color }}">{{ c.label }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ========== 1 · IDENTITÉ ========== -->
+      <sc-if value="{{ isIdentity }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:24px;animation:sv-in .3s ease both">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:32px;font-weight:700;letter-spacing:-.03em;line-height:1.12">Créons votre espace Connect</h1>
+            <p style="margin:0;font-size:15px;color:#9A9AB8">Quelques informations suffisent pour commencer.</p>
+          </div>
+
+          <sc-if value="{{ inviteContext }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;border-radius:16px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.28);padding:14px 16px">
+              <span style="width:38px;height:38px;flex:none;border-radius:12px;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.1) 0 5px,transparent 5px 11px)"></span>
+              <span style="font-size:13px;line-height:1.5;color:#C7F5FD">Invitation de <span style="font-weight:600;color:#fff">FC Montereau</span> · U18 R2 — vos informations ont été pré-remplies.</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ emailExists }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:12px;border-radius:16px;background:rgba(244,114,182,.1);border:1px solid rgba(244,114,182,.35);padding:16px">
+              <div style="display:flex;align-items:flex-start;gap:10px">
+                <span style="font-family:'Material Symbols Rounded';font-size:19px;color:#F472B6">error</span>
+                <span style="font-size:14px;font-weight:500;line-height:1.5;color:#FBCFE8">Un compte SportVision utilise déjà cette adresse.</span>
+              </div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;padding-left:29px">
+                <a href="Connect Connexion Web.dc.html" style="height:40px;padding:0 16px;border-radius:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#F7F7FB;font-family:Sora,sans-serif;font-size:13px;font-weight:600;display:flex;align-items:center">Se connecter</a>
+                <a href="Connect Connexion Web.dc.html" style="height:40px;padding:0 14px;border-radius:12px;color:#F9A8D4;font-size:13px;font-weight:500;display:flex;align-items:center">Mot de passe oublié ?</a>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px">
+                <label for="su-fn" style="font-size:13px;font-weight:500;color:#C7C7DE">Prénom</label>
+                <input id="su-fn" autocomplete="given-name" placeholder="Lucas" value="{{ firstName }}" onChange="{{ onFirstName }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid {{ fnBorder }};background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+              </div>
+              <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px">
+                <label for="su-ln" style="font-size:13px;font-weight:500;color:#C7C7DE">Nom</label>
+                <input id="su-ln" autocomplete="family-name" placeholder="Moreau" value="{{ lastName }}" onChange="{{ onLastName }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid {{ lnBorder }};background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="su-em" style="font-size:13px;font-weight:500;color:#C7C7DE">Adresse e-mail</label>
+              <input id="su-em" type="email" inputmode="email" autocomplete="email" placeholder="votre@email.com" value="{{ email }}" onChange="{{ onEmail }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid {{ emBorder }};background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+              <sc-if value="{{ emError }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:12px;color:#F472B6">{{ emError }}</span>
+              </sc-if>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="su-pw" style="font-size:13px;font-weight:500;color:#C7C7DE">Mot de passe</label>
+              <div style="position:relative;display:flex">
+                <input id="su-pw" type="{{ pwType }}" autocomplete="new-password" placeholder="8 caractères minimum" value="{{ pw }}" onChange="{{ onPw }}" style="flex:1;height:54px;box-sizing:border-box;border-radius:15px;border:1px solid {{ pwBorder }};background:rgba(255,255,255,.05);padding:0 50px 0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+                <span onClick="{{ togglePw }}" title="{{ pwToggleLabel }}" style="position:absolute;right:6px;top:6px;width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#9A9AB8;cursor:pointer" style-hover="background:rgba(255,255,255,.08);color:#F7F7FB"><span style="font-family:'Material Symbols Rounded';font-size:20px">{{ pwIcon }}</span></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:2px">
+                <div style="flex:1;height:4px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden"><div style="height:100%;border-radius:999px;transition:width .3s ease;width:{{ pwStrength }};background:{{ pwStrengthColor }}"></div></div>
+                <span style="font-size:11px;color:#9A9AB8;flex:none">{{ pwStrengthLabel }}</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="su-pw2" style="font-size:13px;font-weight:500;color:#C7C7DE">Confirmer le mot de passe</label>
+              <div style="position:relative;display:flex">
+                <input id="su-pw2" type="{{ pwType }}" autocomplete="new-password" placeholder="Retapez votre mot de passe" value="{{ pw2 }}" onChange="{{ onPw2 }}" style="flex:1;height:54px;box-sizing:border-box;border-radius:15px;border:1px solid {{ pw2Border }};background:rgba(255,255,255,.05);padding:0 50px 0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+                <span style="position:absolute;right:16px;top:17px;font-family:'Material Symbols Rounded';font-size:20px;color:#22D3EE;opacity:{{ pw2Ok }}">check_circle</span>
+              </div>
+              <sc-if value="{{ pw2Error }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:12px;color:#F472B6">{{ pw2Error }}</span>
+              </sc-if>
+            </div>
+          </div>
+
+          <p style="margin:0;font-size:12px;line-height:1.6;color:#8B8BA8">En créant votre compte, vous acceptez les <a href="#cgu">Conditions d'utilisation</a> et reconnaissez avoir pris connaissance de la <a href="#privacy">Politique de confidentialité</a>.</p>
+
+          <div style="display:flex;flex-wrap:wrap;gap:18px">
+            <span onClick="{{ goInvite }}" style="font-size:12px;color:#8B8BA8;cursor:pointer;text-decoration:underline" style-hover="color:#F7F7FB">J'ai reçu une invitation de mon club</span>
+            <sc-if value="{{ hasSaved }}" hint-placeholder-val="{{ false }}">
+              <span onClick="{{ reset }}" style="font-size:12px;color:#8B8BA8;cursor:pointer;text-decoration:underline" style-hover="color:#F7F7FB">Recommencer une inscription</span>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ========== VÉRIFICATION E-MAIL ========== -->
+      <sc-if value="{{ isVerify }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <span style="width:70px;height:70px;border-radius:24px;background:rgba(79,125,255,.16);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:34px;color:#8CA9FF">mail</span></span>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Vérifiez votre boîte mail</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Nous avons envoyé un lien de confirmation à <span style="color:#F7F7FB;font-weight:500">{{ emailShown }}</span>. Ouvrez-le pour activer votre espace Connect.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div onClick="{{ resend }}" style="border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:15px 16px;display:flex;align-items:center;gap:12px;cursor:{{ resendCursor }}" style-hover="background:rgba(255,255,255,.09)">
+              <span style="font-family:'Material Symbols Rounded';font-size:20px;color:#C084FC">refresh</span>
+              <span style="font-size:14px;font-weight:500">{{ resendLabel }}</span>
+            </div>
+            <div onClick="{{ editEmail }}" style="border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:15px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" style-hover="background:rgba(255,255,255,.09)">
+              <span style="font-family:'Material Symbols Rounded';font-size:20px;color:#9A9AB8">edit</span>
+              <span style="font-size:14px;font-weight:500">Modifier l'adresse e-mail</span>
+            </div>
+          </div>
+          <span onClick="{{ expireLink }}" style="align-self:flex-start;font-size:12px;color:#8B8BA8;cursor:pointer;text-decoration:underline" style-hover="color:#F7F7FB">Voir l'état « lien expiré »</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isExpired }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <span style="width:70px;height:70px;border-radius:24px;background:rgba(251,191,36,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:34px;color:#FBBF24">timer_off</span></span>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Ce lien de confirmation a expiré</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Les liens sont valables 24 heures. Nous pouvons vous en envoyer un nouveau à {{ emailShown }}.</p>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isConfirmed }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <span style="width:70px;height:70px;border-radius:24px;background:linear-gradient(140deg,rgba(168,85,247,.25),rgba(34,211,238,.22));display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:36px;font-variation-settings:'FILL' 1;color:#22D3EE">verified</span></span>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Adresse confirmée</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Continuons la création de votre espace, {{ firstNameShown }}.</p>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ========== 2 · PROFIL ========== -->
+      <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Comment allez-vous utiliser Connect ?</h1>
+            <p style="margin:0;font-size:15px;color:#9A9AB8">Cela nous permet simplement de personnaliser votre espace.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ profiles }}" as="p" hint-placeholder-count="5">
+              <div onClick="{{ p.select }}" style="border-radius:20px;padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;min-height:76px;box-sizing:border-box;border:1px solid {{ p.border }};background:{{ p.bg }};transition:background .18s ease,border-color .18s ease">
+                <span style="width:48px;height:48px;flex:none;border-radius:16px;display:flex;align-items:center;justify-content:center;background:{{ p.iconBg }}"><span style="font-family:'Material Symbols Rounded';font-size:24px;color:{{ p.iconColor }}">{{ p.icon }}</span></span>
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                  <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600;color:#F7F7FB">{{ p.label }}</span>
+                  <span style="font-size:13px;line-height:1.45;color:#9A9AB8">{{ p.sub }}</span>
+                </div>
+                <span style="margin-left:auto;flex:none;font-family:'Material Symbols Rounded';font-size:22px;font-variation-settings:'FILL' 1;color:#22D3EE;opacity:{{ p.checkOpacity }}">check_circle</span>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ isOther }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="su-other" style="font-size:13px;font-weight:500;color:#C7C7DE">Précisez votre profil</label>
+              <input id="su-other" placeholder="Entraîneur individuel, arbitre, journaliste…" value="{{ otherProfile }}" onChange="{{ onOtherProfile }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ========== 3 · SPORT (joueur / sportif) ========== -->
+      <sc-if value="{{ isSport }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:24px;animation:sv-in .3s ease both">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Parlez-nous de votre sport</h1>
+            <p style="margin:0;font-size:15px;color:#9A9AB8">Quelques informations pour personnaliser votre expérience.</p>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span style="font-size:13px;font-weight:500;color:#C7C7DE">Sport</span>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ sports }}" as="sp" hint-placeholder-count="9">
+                <span onClick="{{ sp.select }}" style="font-size:14px;font-weight:500;border-radius:999px;padding:11px 16px;cursor:pointer;transition:all .18s ease;color:{{ sp.color }};background:{{ sp.bg }};border:1px solid {{ sp.border }}">{{ sp.label }}</span>
+              </sc-for>
+            </div>
+            <sc-if value="{{ isOtherSport }}" hint-placeholder-val="{{ false }}">
+              <input id="su-sport-other" placeholder="Précisez votre sport" value="{{ otherSport }}" onChange="{{ onOtherSport }}" style="margin-top:4px;height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ showPositions }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <span style="font-size:13px;font-weight:500;color:#C7C7DE">Poste <span style="color:#7A7A9C;font-weight:400">· facultatif</span></span>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <sc-for list="{{ positions }}" as="po" hint-placeholder-count="6">
+                  <span onClick="{{ po.select }}" style="font-size:14px;font-weight:500;border-radius:999px;padding:11px 16px;cursor:pointer;transition:all .18s ease;color:{{ po.color }};background:{{ po.bg }};border:1px solid {{ po.border }}">{{ po.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span style="font-size:13px;font-weight:500;color:#C7C7DE">Catégorie <span style="color:#7A7A9C;font-weight:400">· facultatif</span></span>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ categories }}" as="ca" hint-placeholder-count="7">
+                <span onClick="{{ ca.select }}" style="font-size:14px;font-weight:500;border-radius:999px;padding:11px 16px;cursor:pointer;transition:all .18s ease;color:{{ ca.color }};background:{{ ca.bg }};border:1px solid {{ ca.border }}">{{ ca.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label for="su-city" style="font-size:13px;font-weight:500;color:#C7C7DE">Ville <span style="color:#7A7A9C;font-weight:400">· facultatif</span></label>
+            <input id="su-city" autocomplete="address-level2" placeholder="Montereau-Fault-Yonne" value="{{ city }}" onChange="{{ onCity }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+          </div>
+
+          <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:16px;display:flex;align-items:center;gap:16px">
+            <div style="width:64px;height:64px;flex:none;border-radius:50%;overflow:hidden">
+              <image-slot id="sv-signup-avatar" shape="circle" fit="cover" placeholder="Photo"></image-slot>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+              <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600">Ajoutez une photo</span>
+              <span style="font-size:13px;color:#9A9AB8">Facultatif — vous pourrez la modifier plus tard.</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ========== 3 · BESOIN (particulier) ========== -->
+      <sc-if value="{{ isNeeds }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Que souhaitez-vous faire avec SportVision ?</h1>
+            <p style="margin:0;font-size:15px;color:#9A9AB8">Nous adaptons votre accueil en conséquence.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ needs }}" as="n" hint-placeholder-count="5">
+              <div onClick="{{ n.select }}" style="border-radius:18px;padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;min-height:66px;box-sizing:border-box;border:1px solid {{ n.border }};background:{{ n.bg }};transition:all .18s ease">
+                <span style="width:42px;height:42px;flex:none;border-radius:14px;background:{{ n.iconBg }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:{{ n.iconColor }}">{{ n.icon }}</span></span>
+                <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600;color:#F7F7FB">{{ n.label }}</span>
+                <span style="margin-left:auto;flex:none;font-family:'Material Symbols Rounded';font-size:21px;font-variation-settings:'FILL' 1;color:#22D3EE;opacity:{{ n.checkOpacity }}">check_circle</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ========== 3 · PARENT ========== -->
+      <sc-if value="{{ isParent }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Votre espace personnel</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Connect crée d'abord votre espace personnel. Vous pourrez y suivre vos prestations, vos contenus et vos cotisations.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label for="su-city-p" style="font-size:13px;font-weight:500;color:#C7C7DE">Ville <span style="color:#7A7A9C;font-weight:400">· facultatif</span></label>
+            <input id="su-city-p" autocomplete="address-level2" placeholder="Montereau-Fault-Yonne" value="{{ city }}" onChange="{{ onCity }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+          </div>
+          <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:16px;display:flex;align-items:center;gap:16px">
+            <div style="width:64px;height:64px;flex:none;border-radius:50%;overflow:hidden">
+              <image-slot id="sv-signup-avatar-parent" shape="circle" fit="cover" placeholder="Photo"></image-slot>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+              <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600">Ajoutez une photo</span>
+              <span style="font-size:13px;color:#9A9AB8">Facultatif — vous pourrez la modifier plus tard.</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ========== 4 · CLUB : QUESTION ========== -->
+      <sc-if value="{{ isClubQuestion }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Vous jouez actuellement dans un club ou une structure ?</h1>
+            <p style="margin:0;font-size:15px;color:#9A9AB8">Ce n'est pas obligatoire pour utiliser Connect.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ clubChoices }}" as="cc" hint-placeholder-count="3">
+              <div onClick="{{ cc.select }}" style="border-radius:20px;padding:18px;display:flex;align-items:center;gap:14px;cursor:pointer;min-height:74px;box-sizing:border-box;border:1px solid {{ cc.border }};background:{{ cc.bg }};transition:all .18s ease">
+                <span style="width:46px;height:46px;flex:none;border-radius:15px;background:{{ cc.iconBg }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:23px;color:{{ cc.iconColor }}">{{ cc.icon }}</span></span>
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                  <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600;color:#F7F7FB">{{ cc.label }}</span>
+                  <span style="font-size:13px;line-height:1.45;color:#9A9AB8">{{ cc.sub }}</span>
+                </div>
+                <span style="margin-left:auto;flex:none;font-family:'Material Symbols Rounded';font-size:22px;color:#6C6C90">chevron_right</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isNoClub }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <span style="width:70px;height:70px;border-radius:24px;background:rgba(34,211,238,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:34px;color:#22D3EE">check</span></span>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Aucun problème</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Vous pouvez utiliser SportVision Connect sans être affilié à un club. Vous pourrez ajouter une structure à tout moment depuis <span style="color:#F7F7FB;font-weight:500">Mes affiliations</span>.</p>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ========== 4 · RECHERCHE CLUB ========== -->
+      <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:20px;animation:sv-in .3s ease both">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Trouvez votre club</h1>
+            <p style="margin:0;font-size:15px;color:#9A9AB8">Club, académie ou structure sportive.</p>
+          </div>
+          <div style="position:relative;display:flex">
+            <span style="position:absolute;left:16px;top:16px;font-family:'Material Symbols Rounded';font-size:22px;color:#7A7A9C">search</span>
+            <input id="su-search" placeholder="Rechercher un club, une académie ou une structure…" value="{{ query }}" onChange="{{ onQuery }}" style="flex:1;height:54px;box-sizing:border-box;border-radius:15px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);padding:0 16px 0 48px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+          </div>
+
+          <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ results }}" as="c" hint-placeholder-count="4">
+                <div onClick="{{ c.select }}" style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid {{ c.border }};padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .18s ease" style-hover="background:rgba(255,255,255,.09)">
+                  <span style="width:50px;height:50px;flex:none;border-radius:16px;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 6px,transparent 6px 13px);display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px"><span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#7A7A9C">logo</span></span>
+                  <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                    <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600;color:#F7F7FB">{{ c.name }}</span>
+                    <span style="font-size:13px;color:#9A9AB8">{{ c.city }}</span>
+                    <span style="align-self:flex-start;font-size:11px;font-weight:500;border-radius:999px;padding:4px 10px;color:{{ c.badgeColor }};background:{{ c.badgeBg }}">{{ c.badge }}</span>
+                  </div>
+                  <span style="margin-left:auto;flex:none;font-size:13px;font-weight:600;color:#8CA9FF">{{ c.cta }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+            <div style="border-radius:20px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.16);padding:26px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+              <span style="width:48px;height:48px;border-radius:16px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;color:#9A9AB8">search_off</span></span>
+              <span style="font-family:Sora,sans-serif;font-size:17px;font-weight:600">Votre club n'apparaît pas ?</span>
+              <span style="font-size:13px;line-height:1.5;color:#9A9AB8;max-width:320px">Ajoutez-le à votre profil. Il sera visible dans vos affiliations comme club déclaré.</span>
+              <button onClick="{{ goDeclare }}" style="margin-top:4px;height:46px;padding:0 20px;border:1px solid rgba(255,255,255,.2);border-radius:14px;background:rgba(255,255,255,.06);color:#F7F7FB;font-family:Sora,sans-serif;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.12)">Ajouter mon club</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ pendingWarning }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:flex-start;gap:10px;border-radius:16px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.32);padding:14px 16px">
+              <span style="font-family:'Material Symbols Rounded';font-size:19px;color:#FBBF24">hourglass_top</span>
+              <span style="font-size:13px;line-height:1.5;color:#FDE68A">{{ pendingWarning }}</span>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ========== 4 · FICHE CLUB + ÉQUIPES ========== -->
+      <sc-if value="{{ isTeams }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <div style="border-radius:22px;padding:1px;background:linear-gradient(130deg,rgba(34,211,238,.6),rgba(79,125,255,.25) 60%,transparent)">
+            <div style="border-radius:21px;background:#0D0B22;padding:20px;display:flex;align-items:center;gap:16px">
+              <span style="width:58px;height:58px;flex:none;border-radius:18px;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 6px,transparent 6px 13px);display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#7A7A9C">logo</span></span>
+              <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                <span style="font-family:Sora,sans-serif;font-size:20px;font-weight:600;letter-spacing:-.02em">{{ clubName }}</span>
+                <span style="font-size:13px;color:#9A9AB8">{{ clubCity }}</span>
+                <span style="align-self:flex-start;font-size:11px;font-weight:500;border-radius:999px;padding:4px 10px;color:#22D3EE;background:rgba(34,211,238,.14)">✓ Partenaire SportVision · Club+</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.2">Quelle équipe souhaitez-vous rejoindre ?</h1>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ teams }}" as="t" hint-placeholder-count="6">
+                <span onClick="{{ t.select }}" style="font-size:14px;font-weight:500;border-radius:999px;padding:12px 17px;cursor:pointer;transition:all .18s ease;color:{{ t.color }};background:{{ t.bg }};border:1px solid {{ t.border }}">{{ t.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <sc-if value="{{ teamFreeText }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="su-team-free" style="font-size:13px;font-weight:500;color:#C7C7DE">Votre équipe ou catégorie</label>
+              <input id="su-team-free" placeholder="U18 R2, Loisir, Futsal…" value="{{ teamOther }}" onChange="{{ onTeamOther }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+            </div>
+          </sc-if>
+          <div style="display:flex;align-items:flex-start;gap:10px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:14px 16px">
+            <span style="font-family:'Material Symbols Rounded';font-size:19px;color:#9A9AB8">info</span>
+            <span style="font-size:13px;line-height:1.5;color:#9A9AB8">Votre rôle sera <span style="color:#F7F7FB;font-weight:500">Joueur</span>. Les fonctions de gestion du club restent sur Club+.</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ========== 4 · DEMANDE ENVOYÉE ========== -->
+      <sc-if value="{{ isRequested }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <span style="width:70px;height:70px;border-radius:24px;background:linear-gradient(140deg,rgba(168,85,247,.25),rgba(34,211,238,.2));display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:34px;font-variation-settings:'FILL' 1;color:#22D3EE">send</span></span>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Demande envoyée</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">{{ clubName }} doit maintenant confirmer votre affiliation.</p>
+          </div>
+          <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:18px;display:flex;align-items:center;gap:14px">
+            <span style="width:50px;height:50px;flex:none;border-radius:16px;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 6px,transparent 6px 13px)"></span>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+              <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600">{{ clubName }}</span>
+              <span style="font-size:13px;color:#9A9AB8">{{ teamShown }} · Joueur</span>
+            </div>
+            <span style="margin-left:auto;flex:none;font-size:12px;font-weight:500;border-radius:999px;padding:5px 11px;color:#FBBF24;background:rgba(251,191,36,.14)">En attente</span>
+          </div>
+          <p style="margin:0;font-size:14px;line-height:1.6;color:#9A9AB8">Vous pouvez déjà utiliser Connect normalement pendant ce temps : prestations, équipes, cotisations et contenus personnels restent accessibles.</p>
+        </div>
+      </sc-if>
+
+      <!-- ========== 4 · DÉCLARER UN CLUB ========== -->
+      <sc-if value="{{ isDeclare }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Ajouter mon club</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Ce club sera ajouté à votre profil comme club déclaré. Il ne devient pas partenaire SportVision pour autant.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="dc-name" style="font-size:13px;font-weight:500;color:#C7C7DE">Nom du club</label>
+              <input id="dc-name" placeholder="US Exemple" value="{{ declName }}" onChange="{{ onDeclName }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid {{ declNameBorder }};background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="dc-city" style="font-size:13px;font-weight:500;color:#C7C7DE">Ville</label>
+              <input id="dc-city" placeholder="Nemours" value="{{ declCity }}" onChange="{{ onDeclCity }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid {{ declCityBorder }};background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="dc-team" style="font-size:13px;font-weight:500;color:#C7C7DE">Équipe ou catégorie <span style="color:#7A7A9C;font-weight:400">· facultatif</span></label>
+              <input id="dc-team" placeholder="U18" value="{{ declTeam }}" onChange="{{ onDeclTeam }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28)">
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDeclared }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <span style="width:70px;height:70px;border-radius:24px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:34px;color:#C7C7DE">shield</span></span>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Club ajouté à votre profil</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">{{ clubName }} n'utilise pas encore SportVision Club+. Vous le retrouverez dans vos affiliations comme club déclaré.</p>
+          </div>
+          <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:18px;display:flex;align-items:center;gap:14px">
+            <span style="width:50px;height:50px;flex:none;border-radius:16px;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 6px,transparent 6px 13px)"></span>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+              <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600">{{ clubName }}</span>
+              <span style="font-size:13px;color:#9A9AB8">{{ clubCity }} · {{ teamShown }}</span>
+            </div>
+            <span style="margin-left:auto;flex:none;font-size:12px;font-weight:500;border-radius:999px;padding:5px 11px;color:#C7C7DE;background:rgba(255,255,255,.08)">Club déclaré</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ========== INVITATION CLUB+ ========== -->
+      <sc-if value="{{ isInvite }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:24px;animation:sv-in .3s ease both">
+          <div style="border-radius:24px;padding:1px;background:linear-gradient(130deg,rgba(34,211,238,.6),rgba(168,85,247,.35) 60%,transparent)">
+            <div style="border-radius:23px;background:#0D0B22;padding:24px;display:flex;flex-direction:column;gap:16px;align-items:flex-start">
+              <span style="width:62px;height:62px;border-radius:20px;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 6px,transparent 6px 13px);display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#7A7A9C">logo</span></span>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <h1 style="margin:0;font-family:Sora,sans-serif;font-size:29px;font-weight:700;letter-spacing:-.03em;line-height:1.15">FC Montereau vous invite</h1>
+                <span style="font-size:15px;color:#22D3EE;font-weight:500">U18 R2 · Joueur</span>
+                <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Créez votre compte personnel SportVision Connect pour rejoindre votre équipe et accéder à vos contenus.</p>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <span onClick="{{ inviteExisting }}" style="align-self:center;font-size:13px;color:#9A9AB8;cursor:pointer;text-decoration:underline" style-hover="color:#F7F7FB">J'ai déjà un compte SportVision</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isInviteExisting }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <span style="width:70px;height:70px;border-radius:24px;background:rgba(79,125,255,.16);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:34px;color:#8CA9FF">account_circle</span></span>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Vous avez déjà un compte SportVision</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Connectez-vous pour rejoindre FC Montereau. Aucun second compte n'est créé.</p>
+          </div>
+          <a href="Connect Connexion Web.dc.html" style="height:56px;box-sizing:border-box;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center" style-hover="filter:brightness(1.12);color:#fff">Se connecter pour rejoindre FC Montereau</a>
+          <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:18px;display:flex;flex-direction:column;gap:14px">
+            <span style="font-size:14px;line-height:1.55;color:#C7C7DE">Après connexion : <span style="color:#F7F7FB;font-weight:500">FC Montereau vous invite à rejoindre U18 R2.</span></span>
+            <div style="display:flex;gap:10px">
+              <button onClick="{{ acceptInvite }}" style="flex:1;height:48px;border:0;border-radius:14px;background:rgba(34,211,238,.16);color:#22D3EE;font-family:Sora,sans-serif;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:rgba(34,211,238,.24)">Accepter</button>
+              <button onClick="{{ declineInvite }}" style="flex:1;height:48px;border:1px solid rgba(244,114,182,.4);border-radius:14px;background:rgba(244,114,182,.08);color:#F472B6;font-family:Sora,sans-serif;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:rgba(244,114,182,.16)">Refuser</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isInviteAccepted }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <span style="width:70px;height:70px;border-radius:24px;background:linear-gradient(140deg,rgba(168,85,247,.3),rgba(34,211,238,.24));display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:36px;font-variation-settings:'FILL' 1;color:#22D3EE">verified</span></span>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Bienvenue au FC Montereau 🎉</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">Votre club est maintenant relié à votre espace Connect. Équipe U18 R2, rôle Joueur.</p>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isInviteDeclined }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px;animation:sv-in .3s ease both">
+          <span style="width:70px;height:70px;border-radius:24px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:34px;color:#9A9AB8">do_not_disturb_on</span></span>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Invitation refusée</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">FC Montereau n'est pas ajouté à votre espace. Vous pouvez continuer sur Connect et demander une affiliation plus tard.</p>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ========== FIN D'ONBOARDING ========== -->
+      <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:24px;animation:sv-in .3s ease both">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1.1">Votre espace Connect est prêt 🎉</h1>
+            <p style="margin:0;font-size:15px;color:#9A9AB8">Voici ce que nous avons enregistré.</p>
+          </div>
+
+          <div style="border-radius:24px;padding:1px;background:linear-gradient(130deg,rgba(168,85,247,.55),rgba(34,211,238,.3) 60%,transparent)">
+            <div style="border-radius:23px;background:#0D0B22;padding:22px;display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;align-items:center;gap:16px">
+                <div style="width:62px;height:62px;flex:none;border-radius:50%;overflow:hidden">
+                  <image-slot id="sv-signup-avatar-done" shape="circle" fit="cover" placeholder="Photo"></image-slot>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+                  <span style="font-family:Sora,sans-serif;font-size:20px;font-weight:600;letter-spacing:-.02em">{{ fullName }}</span>
+                  <span style="font-size:14px;color:#9A9AB8">{{ profileSummary }}</span>
+                </div>
+              </div>
+              <div style="height:1px;background:rgba(255,255,255,.08)"></div>
+              <sc-if value="{{ hasClub }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:center;gap:14px">
+                  <span style="width:46px;height:46px;flex:none;border-radius:15px;background-color:#1A1832;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 6px,transparent 6px 13px)"></span>
+                  <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                    <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600">{{ clubName }}</span>
+                    <span style="font-size:13px;color:#9A9AB8">{{ teamShown }}</span>
+                  </div>
+                  <span style="margin-left:auto;flex:none;font-size:12px;font-weight:500;border-radius:999px;padding:5px 11px;color:{{ statusColor }};background:{{ statusBg }}">{{ statusLabel }}</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ noClubSummary }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:14px;line-height:1.55;color:#9A9AB8">Aucun club pour le moment. Vous pourrez en ajouter un depuis Mes affiliations.</span>
+              </sc-if>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span style="font-size:13px;font-weight:500;color:#C7C7DE">Pour bien commencer</span>
+            <div style="display:flex;flex-wrap:wrap;gap:10px">
+              <span style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:#8CA9FF;background:rgba(79,125,255,.14);border:1px solid rgba(79,125,255,.28);border-radius:999px;padding:11px 16px;cursor:pointer" style-hover="background:rgba(79,125,255,.22)"><span style="font-family:'Material Symbols Rounded';font-size:18px">camera_alt</span>Découvrir les prestations</span>
+              <span style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:#22D3EE;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.26);border-radius:999px;padding:11px 16px;cursor:pointer" style-hover="background:rgba(34,211,238,.2)"><span style="font-family:'Material Symbols Rounded';font-size:18px">groups</span>Créer mon équipe</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="height:14px"></div>
+    </div>
+  </div>
+
+  <!-- CTA sticky -->
+  <sc-if value="{{ showCta }}" hint-placeholder-val="{{ true }}">
+    <div style="position:sticky;bottom:0;flex:none;background:linear-gradient(180deg,rgba(9,8,26,0),rgba(9,8,26,.92) 42%);padding:18px 24px 26px;display:flex;justify-content:center">
+      <div style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px">
+        <button onClick="{{ cta }}" disabled="{{ busy }}" style="height:56px;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:16px;font-weight:600;cursor:{{ ctaCursor }};opacity:{{ ctaOpacity }};display:flex;align-items:center;justify-content:center;gap:10px;transition:opacity .18s ease" style-hover="filter:brightness(1.12)">
+          <sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">
+            <span style="width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:sv-spin .7s linear infinite"></span>
+          </sc-if>
+          {{ ctaLabel }}
+        </button>
+        <sc-if value="{{ secondaryLabel }}" hint-placeholder-val="{{ false }}">
+          <span onClick="{{ secondary }}" style="align-self:center;font-size:13px;font-weight:500;color:#9A9AB8;cursor:pointer" style-hover="color:#F7F7FB">{{ secondaryLabel }}</span>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:940}}">
+const CLUBS = [
+  { id: "montereau", name: "FC Montereau", city: "Montereau-Fault-Yonne", partner: true, teams: ["Seniors R1", "Seniors R2", "U20", "U18 R2", "U17", "U16"] },
+  { id: "fontainebleau", name: "AS Fontainebleau", city: "Fontainebleau", partner: true, pending: true, teams: ["Seniors", "U19", "U17"] },
+  { id: "sens", name: "Futsal Club Sens", city: "Sens", partner: true, teams: ["Seniors", "U18"] },
+  { id: "vision", name: "Académie Vision Sport", city: "Melun", partner: true, teams: ["Perfectionnement", "Préparation physique"] },
+  { id: "exemple", name: "US Exemple", city: "Nemours", partner: false, teams: [] }
+];
+
+const PROFILES = [
+  { id: "joueur", label: "Joueur / Joueuse", sub: "Je pratique dans un club, une équipe ou individuellement.", icon: "sports_soccer", hue: "#8CA9FF", bg: "rgba(79,125,255,.16)" },
+  { id: "sportif", label: "Sportif / Sportive", sub: "Je pratique un autre sport ou j'utilise SportVision personnellement.", icon: "fitness_center", hue: "#22D3EE", bg: "rgba(34,211,238,.14)" },
+  { id: "particulier", label: "Particulier", sub: "Je souhaite réserver ou suivre une prestation SportVision.", icon: "person", hue: "#C084FC", bg: "rgba(168,85,247,.16)" },
+  { id: "parent", label: "Parent / Responsable légal", sub: "J'utilise SportVision pour moi ou pour accompagner un jeune sportif.", icon: "family_restroom", hue: "#F472B6", bg: "rgba(244,114,182,.14)" },
+  { id: "autre", label: "Autre", sub: "Mon profil ne correspond pas exactement aux choix proposés.", icon: "more_horiz", hue: "#9A9AB8", bg: "rgba(255,255,255,.07)" }
+];
+
+const SPORTS = ["Football", "Futsal", "Basketball", "Handball", "Rugby", "Volleyball", "Athlétisme", "Tennis", "Autre"];
+const POSITIONS = ["Gardien", "Défenseur", "Milieu", "Attaquant", "Polyvalent", "Je préfère ne pas renseigner"];
+const CATEGORIES = ["Senior", "U20", "U19", "U18", "U17", "U16", "Autre"];
+
+const NEEDS = [
+  { id: "reserver", label: "Réserver une prestation", icon: "camera_alt", hue: "#8CA9FF", bg: "rgba(79,125,255,.16)" },
+  { id: "suivre", label: "Suivre une prestation existante", icon: "event_available", hue: "#22D3EE", bg: "rgba(34,211,238,.14)" },
+  { id: "contenus", label: "Récupérer mes contenus", icon: "photo_library", hue: "#C084FC", bg: "rgba(168,85,247,.16)" },
+  { id: "decouvrir", label: "Découvrir SportVision", icon: "explore", hue: "#F472B6", bg: "rgba(244,114,182,.14)" },
+  { id: "plustard", label: "Plus tard", icon: "schedule", hue: "#9A9AB8", bg: "rgba(255,255,255,.07)" }
+];
+
+const CLUB_CHOICES = [
+  { id: "oui", label: "Oui", sub: "Je cherche mon club, mon académie ou ma structure.", icon: "search", hue: "#22D3EE", bg: "rgba(34,211,238,.14)" },
+  { id: "autre", label: "Autre — mon club n'est pas sur SportVision", sub: "Je l'ajoute moi-même comme club déclaré.", icon: "add_home_work", hue: "#C084FC", bg: "rgba(168,85,247,.16)" },
+  { id: "non", label: "Non", sub: "Je pratique sans structure pour le moment.", icon: "person", hue: "#8CA9FF", bg: "rgba(79,125,255,.16)" },
+  { id: "plustard", label: "Plus tard", sub: "Je l'ajouterai depuis Mes affiliations.", icon: "schedule", hue: "#9A9AB8", bg: "rgba(255,255,255,.07)" }
+];
+
+const KEY = "sv-connect-signup-v1";
+const SEL_BORDER = "rgba(140,169,255,.65)", IDLE_BORDER = "rgba(255,255,255,.09)";
+const CHIP_ON_BG = "rgba(79,125,255,.2)", CHIP_OFF_BG = "rgba(255,255,255,.05)";
+
+class Component extends DCLogic {
+  state = {
+    step: "identity", history: [], busy: false, hasSaved: false, invite: false,
+    firstName: "", lastName: "", email: "", pw: "", pw2: "", showPw: false, touched: false, emailExists: false,
+    profile: "", otherProfile: "", sport: "", otherSport: "", position: "", category: "", city: "", need: "",
+    query: "", club: null, team: "", teamOther: "", clubMode: "",
+    declName: "", declCity: "", declTeam: "", declTouched: false,
+    pendingWarning: "", resendIn: 0
+  };
+
+  componentDidMount() {
+    try {
+      const raw = window.localStorage.getItem(KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved && saved.step) this.setState(Object.assign({}, saved, { hasSaved: true, busy: false }));
+      }
+    } catch (e) { /* stockage indisponible */ }
+  }
+  componentDidUpdate() {
+    try {
+      const s = this.state;
+      window.localStorage.setItem(KEY, JSON.stringify({
+        step: s.step, history: s.history, invite: s.invite, firstName: s.firstName, lastName: s.lastName,
+        email: s.email, profile: s.profile, otherProfile: s.otherProfile, sport: s.sport, otherSport: s.otherSport,
+        position: s.position, category: s.category, city: s.city, need: s.need, club: s.club, team: s.team,
+        teamOther: s.teamOther, clubMode: s.clubMode, declName: s.declName, declCity: s.declCity, declTeam: s.declTeam
+      }));
+    } catch (e) { /* stockage indisponible */ }
+  }
+  componentWillUnmount() { clearTimeout(this._t); clearInterval(this._i); }
+
+  go(step) { this.setState(s => ({ step, history: s.history.concat([s.step]), busy: false })); }
+  back = () => {
+    this.setState(s => {
+      const h = s.history.slice();
+      const prev = h.pop();
+      return prev ? { step: prev, history: h, busy: false } : {};
+    });
+  };
+  reset = () => {
+    clearInterval(this._i);
+    try { window.localStorage.removeItem(KEY); } catch (e) {}
+    this.setState({
+      step: "identity", history: [], busy: false, hasSaved: false, invite: false, firstName: "", lastName: "",
+      email: "", pw: "", pw2: "", touched: false, emailExists: false, profile: "", otherProfile: "", sport: "",
+      otherSport: "", position: "", category: "", city: "", need: "", query: "", club: null, team: "", teamOther: "",
+      clubMode: "", declName: "", declCity: "", declTeam: "", declTouched: false, pendingWarning: "", resendIn: 0
+    });
+  };
+
+  validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v).trim()); }
+  pwScore(v) {
+    let n = 0;
+    if (v.length >= 8) n++;
+    if (/[A-Z]/.test(v)) n++;
+    if (/[0-9]/.test(v)) n++;
+    if (/[^A-Za-z0-9]/.test(v)) n++;
+    return n;
+  }
+
+  startResend() {
+    clearInterval(this._i);
+    this.setState({ resendIn: 30 });
+    this._i = setInterval(() => {
+      this.setState(s => {
+        if (s.resendIn <= 1) { clearInterval(this._i); return { resendIn: 0 }; }
+        return { resendIn: s.resendIn - 1 };
+      });
+    }, 1000);
+  }
+
+  createAccount = () => {
+    const s = this.state;
+    if (s.busy) return;
+    this.setState({ touched: true, emailExists: false });
+    const ok = s.firstName.trim() && s.lastName.trim() && this.validEmail(s.email) && s.pw.length >= 8 && s.pw === s.pw2;
+    if (!ok) return;
+    this.setState({ busy: true });
+    this._t = setTimeout(() => {
+      const taken = ["lucas@email.com", "deja@email.com"].indexOf(s.email.trim().toLowerCase()) > -1;
+      if (taken) { this.setState({ busy: false, emailExists: true }); return; }
+      this.setState({ busy: false });
+      this.startResend();
+      this.go("verify");
+    }, 1000);
+  };
+
+  afterProfile() {
+    const p = this.state.profile;
+    if (p === "particulier") this.go("needs");
+    else if (p === "parent") this.go("parent");
+    else this.go("sport");
+  }
+
+  selectClub(c) {
+    if (c.pending) { this.setState({ pendingWarning: "Votre demande auprès de " + c.name + " est déjà en attente." }); return; }
+    this.setState({ club: c, team: "", teamOther: "", pendingWarning: "" });
+    if (c.partner) this.go("teams");
+    else { this.setState({ declName: c.name, declCity: c.city }); this.go("declare"); }
+  }
+
+  renderVals() {
+    const s = this.state;
+    const step = s.step;
+    const bad = "#F472B6", idle = "rgba(255,255,255,.16)";
+    const score = this.pwScore(s.pw);
+    const strengthColors = ["#F472B6", "#F472B6", "#FBBF24", "#22D3EE", "#22D3EE"];
+    const strengthLabels = ["8 caractères minimum", "Trop simple", "Correct", "Bon", "Excellent"];
+
+    const groupOf = {
+      identity: 1, verify: 1, expired: 1, confirmed: 1, profile: 2,
+      sport: 3, needs: 3, parent: 3, clubQuestion: 4, noClub: 4, search: 4,
+      teams: 4, requested: 4, declare: 4, declared: 4
+    };
+    const group = groupOf[step] || 0;
+    const crumbLabels = ["Compte", "Profil", "Sport", "Club"];
+
+    const sel = id => (s.profile === id);
+    const chip = (on, hue) => ({
+      color: on ? "#F7F7FB" : "#C7C7DE",
+      bg: on ? CHIP_ON_BG : CHIP_OFF_BG,
+      border: on ? (hue || SEL_BORDER) : "rgba(255,255,255,.12)"
+    });
+
+    const q = s.query.trim().toLowerCase();
+    const results = q ? CLUBS.filter(c => (c.name + " " + c.city).toLowerCase().indexOf(q) > -1) : CLUBS;
+
+    const teamShown = s.team === "Je ne trouve pas mon équipe" ? (s.teamOther || "Équipe à préciser") : (s.team || s.declTeam || "Équipe non précisée");
+    const sportShown = s.sport === "Autre" ? (s.otherSport || "Autre sport") : s.sport;
+    const profileLabel = (PROFILES.find(p => p.id === s.profile) || {}).label || "";
+    const summaryBits = [];
+    if (sportShown) summaryBits.push(sportShown);
+    if (s.position && s.position !== "Je préfère ne pas renseigner") summaryBits.push(s.position);
+    if (s.category && s.category !== "Autre") summaryBits.push(s.category);
+    if (!summaryBits.length && profileLabel) summaryBits.push(profileLabel);
+    if (s.city) summaryBits.push(s.city);
+
+    // CTA par étape
+    let ctaLabel = "Continuer", ctaAction = () => {}, ctaEnabled = true, secondaryLabel = null, secondaryAction = null, showCta = true;
+    if (step === "identity") {
+      ctaLabel = s.busy ? "Création…" : "Continuer";
+      ctaAction = this.createAccount;
+      secondaryLabel = "J'ai déjà un compte";
+      secondaryAction = () => { window.location.href = "Connect Connexion Web.dc.html"; };
+    } else if (step === "verify") {
+      ctaLabel = "J'ai confirmé mon adresse";
+      ctaAction = () => this.go("confirmed");
+    } else if (step === "expired") {
+      ctaLabel = "Recevoir un nouveau lien";
+      ctaAction = () => { this.startResend(); this.go("verify"); };
+    } else if (step === "confirmed") {
+      ctaAction = () => this.go("profile");
+    } else if (step === "profile") {
+      ctaEnabled = !!s.profile && (s.profile !== "autre" || !!s.otherProfile.trim());
+      ctaAction = () => { if (ctaEnabled) this.afterProfile(); };
+    } else if (step === "sport") {
+      ctaEnabled = !!s.sport && (s.sport !== "Autre" || !!s.otherSport.trim());
+      ctaAction = () => { if (ctaEnabled) this.go("clubQuestion"); };
+      secondaryLabel = "Passer cette étape";
+      secondaryAction = () => this.go("clubQuestion");
+    } else if (step === "needs") {
+      ctaEnabled = !!s.need;
+      ctaAction = () => { if (ctaEnabled) this.go("done"); };
+      secondaryLabel = "Passer cette étape";
+      secondaryAction = () => this.go("done");
+    } else if (step === "parent") {
+      ctaAction = () => this.go("done");
+    } else if (step === "clubQuestion") {
+      showCta = false;
+    } else if (step === "noClub") {
+      ctaAction = () => this.go("done");
+    } else if (step === "search") {
+      showCta = false;
+    } else if (step === "teams") {
+      ctaLabel = "Demander à rejoindre";
+      ctaEnabled = !!s.team && (s.team !== "Je ne trouve pas mon équipe" || !!s.teamOther.trim());
+      ctaAction = () => { if (ctaEnabled) this.go("requested"); };
+    } else if (step === "requested") {
+      ctaAction = () => this.go("done");
+    } else if (step === "declare") {
+      ctaLabel = "Ajouter à mon profil";
+      ctaEnabled = !!s.declName.trim() && !!s.declCity.trim();
+      ctaAction = () => {
+        this.setState({ declTouched: true });
+        if (!ctaEnabled) return;
+        this.setState({ club: { name: s.declName.trim(), city: s.declCity.trim(), partner: false } });
+        this.go("declared");
+      };
+    } else if (step === "declared") {
+      ctaAction = () => this.go("done");
+    } else if (step === "invite") {
+      ctaLabel = "Créer mon compte";
+      ctaAction = () => {
+        this.setState({
+          invite: true, firstName: s.firstName || "Lucas", lastName: s.lastName || "Moreau",
+          email: s.email || "lucas.moreau@email.com", profile: "joueur", sport: "Football",
+          club: CLUBS[0], team: "U18 R2", clubMode: "oui"
+        });
+        this.go("identity");
+      };
+    } else if (step === "inviteExisting" || step === "inviteAccepted" || step === "inviteDeclined") {
+      showCta = step !== "inviteExisting";
+      ctaLabel = "Accéder à Connect";
+      ctaAction = () => this.go("done");
+    } else if (step === "done") {
+      ctaLabel = "Découvrir mon espace";
+      ctaAction = () => { window.location.href = "Connect Espace Joueur.dc.html"; };
+      secondaryLabel = "Revenir à la connexion";
+      secondaryAction = () => { window.location.href = "Connect Connexion Web.dc.html"; };
+    }
+
+    return {
+      // étapes
+      isIdentity: step === "identity", isVerify: step === "verify", isExpired: step === "expired",
+      isConfirmed: step === "confirmed", isProfile: step === "profile", isSport: step === "sport",
+      isNeeds: step === "needs", isParent: step === "parent", isClubQuestion: step === "clubQuestion",
+      isNoClub: step === "noClub", isSearch: step === "search", isTeams: step === "teams",
+      isRequested: step === "requested", isDeclare: step === "declare", isDeclared: step === "declared",
+      isInvite: step === "invite", isInviteExisting: step === "inviteExisting",
+      isInviteAccepted: step === "inviteAccepted", isInviteDeclined: step === "inviteDeclined",
+      isDone: step === "done",
+
+      showProgress: group > 0,
+      progress: (group * 25) + "%",
+      stepCount: "Étape " + Math.max(group, 1) + " sur 4",
+      crumbs: crumbLabels.map((label, i) => ({ label, color: i + 1 === group ? "#F7F7FB" : (i + 1 < group ? "#8CA9FF" : "#6C6C90") })),
+      back: this.back,
+      reset: this.reset,
+      goInvite: () => this.go("invite"),
+      hasSaved: s.hasSaved && step === "identity",
+
+      // identité
+      firstName: s.firstName, lastName: s.lastName, email: s.email, pw: s.pw, pw2: s.pw2,
+      onFirstName: e => this.setState({ firstName: e.target.value }),
+      onLastName: e => this.setState({ lastName: e.target.value }),
+      onEmail: e => this.setState({ email: e.target.value, emailExists: false }),
+      onPw: e => this.setState({ pw: e.target.value }),
+      onPw2: e => this.setState({ pw2: e.target.value }),
+      pwType: s.showPw ? "text" : "password",
+      pwIcon: s.showPw ? "visibility" : "visibility_off",
+      pwToggleLabel: s.showPw ? "Masquer le mot de passe" : "Afficher le mot de passe",
+      togglePw: () => this.setState({ showPw: !s.showPw }),
+      fnBorder: s.touched && !s.firstName.trim() ? bad : idle,
+      lnBorder: s.touched && !s.lastName.trim() ? bad : idle,
+      emBorder: (s.touched && !this.validEmail(s.email)) || s.emailExists ? bad : idle,
+      emError: s.touched && !this.validEmail(s.email) ? (s.email.trim() ? "Saisissez une adresse e-mail valide." : "Renseignez votre adresse e-mail.") : null,
+      pwBorder: s.touched && s.pw.length < 8 ? bad : idle,
+      pw2Border: s.touched && s.pw2 !== s.pw ? bad : idle,
+      pw2Error: s.touched && s.pw2 !== s.pw ? "Les deux mots de passe ne correspondent pas." : null,
+      pw2Ok: s.pw2 && s.pw2 === s.pw ? 1 : 0,
+      pwStrength: (score * 25) + "%",
+      pwStrengthColor: strengthColors[score],
+      pwStrengthLabel: s.pw ? strengthLabels[score] : "8 caractères minimum",
+      emailExists: s.emailExists,
+      inviteContext: s.invite && step === "identity",
+
+      // vérification
+      emailShown: s.email.trim() || "votre adresse",
+      firstNameShown: s.firstName.trim() || "bienvenue",
+      resendLabel: s.resendIn > 0 ? "Renvoyer l'e-mail dans " + s.resendIn + " s" : "Renvoyer l'e-mail",
+      resendCursor: s.resendIn > 0 ? "default" : "pointer",
+      resend: () => { if (s.resendIn === 0) this.startResend(); },
+      editEmail: () => this.go("identity"),
+      expireLink: () => this.go("expired"),
+
+      // profil
+      profiles: PROFILES.map(p => ({
+        label: p.label, sub: p.sub, icon: p.icon, iconBg: p.bg, iconColor: p.hue,
+        border: sel(p.id) ? SEL_BORDER : IDLE_BORDER,
+        bg: sel(p.id) ? "rgba(79,125,255,.12)" : "rgba(255,255,255,.05)",
+        checkOpacity: sel(p.id) ? 1 : 0,
+        select: () => this.setState({ profile: p.id })
+      })),
+      isOther: s.profile === "autre",
+      otherProfile: s.otherProfile,
+      onOtherProfile: e => this.setState({ otherProfile: e.target.value }),
+
+      // sport
+      sports: SPORTS.map(label => Object.assign({ label, select: () => this.setState({ sport: label, position: "" }) }, chip(s.sport === label))),
+      isOtherSport: s.sport === "Autre",
+      otherSport: s.otherSport,
+      onOtherSport: e => this.setState({ otherSport: e.target.value }),
+      showPositions: s.sport === "Football" || s.sport === "Futsal",
+      positions: POSITIONS.map(label => Object.assign({ label, select: () => this.setState({ position: s.position === label ? "" : label }) }, chip(s.position === label))),
+      categories: CATEGORIES.map(label => Object.assign({ label, select: () => this.setState({ category: s.category === label ? "" : label }) }, chip(s.category === label))),
+      city: s.city,
+      onCity: e => this.setState({ city: e.target.value }),
+
+      // besoin particulier
+      needs: NEEDS.map(n => ({
+        label: n.label, icon: n.icon, iconBg: n.bg, iconColor: n.hue,
+        border: s.need === n.id ? SEL_BORDER : IDLE_BORDER,
+        bg: s.need === n.id ? "rgba(79,125,255,.12)" : "rgba(255,255,255,.05)",
+        checkOpacity: s.need === n.id ? 1 : 0,
+        select: () => this.setState({ need: n.id })
+      })),
+
+      // club
+      clubChoices: CLUB_CHOICES.filter(c => c.id !== "autre" || s.profile !== "particulier").map(c => ({
+        label: c.label, sub: c.sub, icon: c.icon, iconBg: c.bg, iconColor: c.hue,
+        border: IDLE_BORDER, bg: "rgba(255,255,255,.05)",
+        select: () => {
+          this.setState({ clubMode: c.id });
+          if (c.id === "oui") this.go("search");
+          else if (c.id === "autre") { this.setState({ club: null, declName: "", declCity: "", declTeam: "", declTouched: false }); this.go("declare"); }
+          else this.go("noClub");
+        }
+      })),
+      query: s.query,
+      onQuery: e => this.setState({ query: e.target.value, pendingWarning: "" }),
+      hasResults: results.length > 0,
+      noResults: results.length === 0,
+      results: results.map(c => ({
+        name: c.name, city: c.city,
+        badge: c.partner ? "✓ Partenaire SportVision · Club+" : "Non partenaire SportVision",
+        badgeColor: c.partner ? "#22D3EE" : "#9A9AB8",
+        badgeBg: c.partner ? "rgba(34,211,238,.14)" : "rgba(255,255,255,.07)",
+        cta: c.partner ? "Sélectionner" : "Ajouter",
+        border: c.partner ? "rgba(34,211,238,.22)" : "rgba(255,255,255,.09)",
+        select: () => this.selectClub(c)
+      })),
+      pendingWarning: s.pendingWarning || null,
+      goDeclare: () => { this.setState({ declName: s.query.trim(), declCity: "" }); this.go("declare"); },
+
+      clubName: (s.club && s.club.name) || "",
+      clubCity: (s.club && s.club.city) || "",
+      teams: ((s.club && s.club.teams) || []).concat(["Je ne trouve pas mon équipe"]).map(label =>
+        Object.assign({ label, select: () => this.setState({ team: label }) }, chip(s.team === label))),
+      teamFreeText: s.team === "Je ne trouve pas mon équipe",
+      teamOther: s.teamOther,
+      onTeamOther: e => this.setState({ teamOther: e.target.value }),
+      teamShown: teamShown,
+
+      declName: s.declName, declCity: s.declCity, declTeam: s.declTeam,
+      onDeclName: e => this.setState({ declName: e.target.value }),
+      onDeclCity: e => this.setState({ declCity: e.target.value }),
+      onDeclTeam: e => this.setState({ declTeam: e.target.value }),
+      declNameBorder: s.declTouched && !s.declName.trim() ? bad : idle,
+      declCityBorder: s.declTouched && !s.declCity.trim() ? bad : idle,
+
+      // invitation
+      inviteExisting: () => this.go("inviteExisting"),
+      acceptInvite: () => { this.setState({ club: CLUBS[0], team: "U18 R2" }); this.go("inviteAccepted"); },
+      declineInvite: () => this.go("inviteDeclined"),
+
+      // fin
+      fullName: (s.firstName.trim() + " " + s.lastName.trim()).trim() || "Votre profil",
+      profileSummary: summaryBits.join(" · ") || "Profil personnel",
+      hasClub: !!s.club,
+      noClubSummary: !s.club,
+      statusLabel: s.club ? (s.club.partner ? (step === "inviteAccepted" ? "Affilié" : "En attente") : "Club déclaré") : "",
+      statusColor: s.club && s.club.partner ? (step === "inviteAccepted" ? "#22D3EE" : "#FBBF24") : "#C7C7DE",
+      statusBg: s.club && s.club.partner ? (step === "inviteAccepted" ? "rgba(34,211,238,.14)" : "rgba(251,191,36,.14)") : "rgba(255,255,255,.08)",
+
+      // CTA
+      showCta, ctaLabel, cta: ctaAction, busy: s.busy,
+      ctaCursor: ctaEnabled && !s.busy ? "pointer" : "default",
+      ctaOpacity: ctaEnabled && !s.busy ? 1 : 0.45,
+      secondaryLabel, secondary: secondaryAction || (() => {})
+    };
+  }
+}
+</script>
+</body>
+</html>

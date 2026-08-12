@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#09081A; }
+  a { color:#8CA9FF; text-decoration:none; }
+  a:hover { color:#B6C7FF; }
+</style>
+</helmet>
+
+<div style="min-height:100vh;box-sizing:border-box;padding:44px 28px 64px;display:flex;justify-content:center;background:#09081A;background-image:radial-gradient(900px 620px at 78% -12%,rgba(168,85,247,.2),transparent 70%),radial-gradient(760px 520px at 4% 104%,rgba(34,211,238,.12),transparent 70%);font-family:'DM Sans',sans-serif;color:#F7F7FB">
+  <div style="width:100%;max-width:1080px;display:flex;flex-direction:column;gap:34px">
+
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="uploads/logo.png" alt="SportVision Connect" style="width:38px;height:38px;object-fit:contain">
+      <div style="display:flex;flex-direction:column;line-height:1.15">
+        <span style="font-family:Sora,sans-serif;font-size:17px;font-weight:700;letter-spacing:-.02em">SportVision</span>
+        <span style="font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(120deg,#C084FC,#8CA9FF 55%,#22D3EE);-webkit-background-clip:text;background-clip:text;color:transparent">Connect</span>
+      </div>
+      <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#6C6C90">Prototype · août 2026</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:720px">
+      <h1 style="margin:0;font-family:Sora,sans-serif;font-size:40px;font-weight:700;letter-spacing:-.035em;line-height:1.05">Parcourir le prototype</h1>
+      <p style="margin:0;font-size:17px;line-height:1.6;color:#9A9AB8;text-wrap:pretty">Cinq fichiers cliquables. Le fil conducteur reste le même : je me connecte, je rejoins mon club, je réserve, je paie seul ou je cotise, je retrouve mes contenus.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px">
+      <sc-for list="{{ files }}" as="f" hint-placeholder-count="6">
+        <a href="{{ f.href }}" style="border-radius:24px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:24px;display:flex;flex-direction:column;gap:14px;color:#F7F7FB;min-height:250px;box-sizing:border-box;transition:border-color .18s ease,background .18s ease" style-hover="border-color:rgba(140,169,255,.5);background:rgba(255,255,255,.08);color:#F7F7FB">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="width:50px;height:50px;flex:none;border-radius:17px;background:{{ f.iconBg }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:25px;color:{{ f.iconColor }}">{{ f.icon }}</span></span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6C6C90">{{ f.step }}</span>
+          </div>
+          <span style="font-family:Sora,sans-serif;font-size:20px;font-weight:600;letter-spacing:-.02em">{{ f.title }}</span>
+          <span style="font-size:14px;line-height:1.55;color:#9A9AB8">{{ f.desc }}</span>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:2px">
+            <sc-for list="{{ f.tags }}" as="t" hint-placeholder-count="3">
+              <span style="font-size:11px;font-weight:500;border-radius:999px;padding:4px 10px;color:{{ t.color }};background:{{ t.bg }}">{{ t.label }}</span>
+            </sc-for>
+          </div>
+          <span style="margin-top:auto;display:flex;align-items:center;gap:6px;font-family:Sora,sans-serif;font-size:14px;font-weight:600;color:#8CA9FF">Ouvrir<span style="font-family:'Material Symbols Rounded';font-size:17px">arrow_forward</span></span>
+        </a>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">Parcours à tester</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+        <sc-for list="{{ flows }}" as="fl" hint-placeholder-count="4">
+          <div style="border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:20px;display:flex;flex-direction:column;gap:11px">
+            <span style="font-family:Sora,sans-serif;font-size:16px;font-weight:600">{{ fl.title }}</span>
+            <span style="font-size:13px;line-height:1.6;color:#9A9AB8">{{ fl.steps }}</span>
+            <a href="{{ fl.href }}" style="font-size:13px;font-weight:600;color:#8CA9FF">{{ fl.cta }}</a>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">Où en est le produit</h2>
+      <div style="border-radius:22px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);overflow:hidden">
+        <sc-for list="{{ status }}" as="st" hint-placeholder-count="4">
+          <div style="padding:16px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
+            <span style="width:38px;height:38px;flex:none;border-radius:13px;background:{{ st.bg }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:19px;color:{{ st.color }}">{{ st.icon }}</span></span>
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+              <span style="font-size:14px;font-weight:500">{{ st.label }}</span>
+              <span style="font-size:13px;line-height:1.5;color:#9A9AB8">{{ st.detail }}</span>
+            </div>
+            <span style="margin-left:auto;flex:none;font-size:11px;font-weight:500;border-radius:999px;padding:4px 10px;color:{{ st.color }};background:{{ st.bg }}">{{ st.tag }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:1.6;color:#7A7A9C;max-width:760px">Le prototype est une maquette cliquable : les données sont simulées, aucun paiement, aucune permission et aucun envoi d'e-mail ne sont réellement exécutés. Les règles concernant les mineurs et les profils gérés doivent être validées juridiquement avant mise en production.</p>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:900}}">
+const T = {
+  ui: { label: "UI terminée", color: "#22D3EE", bg: "rgba(34,211,238,.14)" },
+  proto: { label: "Cliquable", color: "#8CA9FF", bg: "rgba(79,125,255,.16)" },
+  data: { label: "Données simulées", color: "#C084FC", bg: "rgba(168,85,247,.16)" },
+  back: { label: "Backend à connecter", color: "#FBBF24", bg: "rgba(251,191,36,.14)" },
+  legal: { label: "À valider juridiquement", color: "#F472B6", bg: "rgba(244,114,182,.14)" }
+};
+
+class Component extends DCLogic {
+  renderVals() {
+    const tag = keys => keys.map(k => ({ label: T[k].label, color: T[k].color, bg: T[k].bg }));
+    return {
+      files: [
+        { step: "Étape 1", title: "Connexion", href: "Connect Connexion Web.dc.html", icon: "login", iconColor: "#8CA9FF", iconBg: "rgba(79,125,255,.16)",
+          desc: "Page de connexion web, mot de passe oublié, aide et erreurs de saisie réelles.", tags: tag(["ui", "proto", "back"]) },
+        { step: "Étape 2", title: "Créer mon compte", href: "Connect Inscription.dc.html", icon: "person_add", iconColor: "#C084FC", iconBg: "rgba(168,85,247,.16)",
+          desc: "Identité, profil, sport, club : recherche d'un club partenaire, club déclaré, invitation reçue.", tags: tag(["ui", "proto", "back"]) },
+        { step: "Étape 3", title: "Espace joueur", href: "Connect Espace Joueur.dc.html", icon: "sports_soccer", iconColor: "#22D3EE", iconBg: "rgba(34,211,238,.14)",
+          desc: "Accueil, affiliations, équipes, prestations, cotisations, contenus, commandes, factures, profil, accès à mon profil.", tags: tag(["ui", "proto", "data"]) },
+        { step: "Étape 3 bis", title: "Espace particulier", href: "Connect Espace Particulier.dc.html", icon: "diversity_3", iconColor: "#F472B6", iconBg: "rgba(244,114,182,.14)",
+          desc: "Parent, proche ou agent : mes sportifs, autorisations, réservation pour un sportif, cotisations et contenus autorisés.", tags: tag(["ui", "proto", "legal"]) },
+        { step: "Entrée publique", title: "Page publique de cotisation", href: "Connect Cotisation Publique.dc.html", icon: "savings", iconColor: "#C084FC", iconBg: "rgba(168,85,247,.16)",
+          desc: "Ce que voit un coéquipier qui reçoit le lien : participer sans compte, puis créer son espace.", tags: tag(["ui", "proto", "back"]) },
+        { step: "E-mails", title: "E-mails SportVision", href: "Connect Emails.dc.html", icon: "mail", iconColor: "#8CA9FF", iconBg: "rgba(79,125,255,.16)",
+          desc: "Demande d'accès, lien de cotisation, contenus disponibles : trois fichiers HTML prêts à envoyer.", tags: tag(["ui", "back"]) },
+        { step: "Références", title: "Directions visuelles", href: "Connect Directions.dc.html", icon: "palette", iconColor: "#9A9AB8", iconBg: "rgba(255,255,255,.07)",
+          desc: "Les deux directions comparées au départ, avec les fondations retenues pour Connect.", tags: tag(["ui"]) }
+      ],
+      flows: [
+        { title: "Joueur sans club", steps: "Connexion → Accueil → Rejoignez votre club → recherche → club partenaire ou club déclaré → retour à l'accueil.", href: "Connect Espace Joueur.dc.html", cta: "Ouvrir l'espace joueur" },
+        { title: "Réserver et cotiser", steps: "Prestations → Pack Match Photo + Vidéo → Votre match → Payer à plusieurs → cotisation partagée → suivi du financement.", href: "Connect Espace Joueur.dc.html", cta: "Tester le parcours" },
+        { title: "Highlight", steps: "Prestations → Montage Highlight → Essentiel ou Multi-match → envoi des fichiers → paiement → demande en validation.", href: "Connect Espace Joueur.dc.html", cta: "Tester l'upload" },
+        { title: "Parent et enfant", steps: "Espace particulier → Mes sportifs → Ajouter un sportif → profil géré ou invitation → réserver pour lui → suivre la commande.", href: "Connect Espace Particulier.dc.html", cta: "Ouvrir l'espace particulier" },
+        { title: "Accès accordé", steps: "Espace joueur → Mon profil → Accès à mon profil → accepter la demande → ajuster les autorisations → retirer l'accès.", href: "Connect Espace Joueur.dc.html", cta: "Voir les autorisations" },
+        { title: "Contenus", steps: "Mes contenus → album d'un événement → galerie → lightbox → favori et téléchargement.", href: "Connect Espace Joueur.dc.html", cta: "Ouvrir les contenus" }
+      ],
+      status: [
+        { label: "Interfaces et parcours", detail: "Auth, onboarding, espace joueur et espace particulier au complet, desktop et mobile.", icon: "check_circle", color: T.ui.color, bg: T.ui.bg, tag: "UI terminée" },
+        { label: "Navigation cliquable", detail: "Toutes les pages sont atteignables et les états vides, loading et erreur sont couverts.", icon: "touch_app", color: T.proto.color, bg: T.proto.bg, tag: "Cliquable" },
+        { label: "Paiements, e-mails, uploads", detail: "Stripe, envoi d'invitations, transfert de fichiers et génération de documents restent à brancher.", icon: "cable", color: T.back.color, bg: T.back.bg, tag: "Backend" },
+        { label: "Permissions et mineurs", detail: "Les autorisations sont affichées et simulées ; leur application et la vérification du responsable légal restent à valider.", icon: "gavel", color: T.legal.color, bg: T.legal.bg, tag: "À valider" }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

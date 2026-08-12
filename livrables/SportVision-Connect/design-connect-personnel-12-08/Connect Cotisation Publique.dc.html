@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#09081A; }
+  a { color:#8CA9FF; text-decoration:none; }
+  a:hover { color:#B6C7FF; }
+  input { outline:none; }
+  input::placeholder { color:#6C6C90; }
+  @keyframes sv-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+  @keyframes sv-spin { to { transform:rotate(360deg); } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#09081A;background-image:radial-gradient(820px 560px at 50% -12%,rgba(168,85,247,.24),transparent 70%),radial-gradient(620px 460px at 0% 100%,rgba(34,211,238,.1),transparent 70%);font-family:'DM Sans',sans-serif;color:#F7F7FB">
+
+  <div style="flex:none;padding:20px 24px;display:flex;align-items:center;justify-content:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.06)">
+    <img src="uploads/logo.png" alt="SportVision Connect" style="width:30px;height:30px;object-fit:contain">
+    <div style="display:flex;align-items:baseline;gap:7px">
+      <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:700;letter-spacing:-.02em">SportVision</span>
+      <span style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(120deg,#C084FC,#8CA9FF 55%,#22D3EE);-webkit-background-clip:text;background-clip:text;color:transparent">Connect</span>
+    </div>
+  </div>
+
+  <div style="flex:1;min-height:0;display:flex;justify-content:center;padding:28px 20px 0">
+    <div style="width:100%;max-width:460px;display:flex;flex-direction:column;gap:20px">
+
+      <!-- ÉTAT 1 · la cotisation -->
+      <sc-if value="{{ isView }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:20px;animation:sv-in .28s ease both">
+          <div style="display:flex;flex-direction:column;gap:9px;align-items:center;text-align:center">
+            <span style="font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;background:linear-gradient(120deg,#C084FC,#8CA9FF 55%,#22D3EE);-webkit-background-clip:text;background-clip:text;color:transparent">Cotisation collective</span>
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.12">Pack Match Complet</h1>
+            <span style="font-size:14px;color:#9A9AB8">FC Montereau vs Sens · 28 août 2026</span>
+          </div>
+
+          <div style="height:150px;border-radius:22px;background:linear-gradient(135deg,#4C1D95 0%,#3A2A86 50%,#155E75 100%);display:flex;align-items:center;justify-content:center">
+            <span style="width:56px;height:56px;border-radius:18px;background:rgba(9,8,26,.4);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:28px;color:#F7F7FB">auto_awesome_motion</span></span>
+          </div>
+
+          <div style="border-radius:24px;padding:1px;background:linear-gradient(140deg,rgba(168,85,247,.6),rgba(244,114,182,.35) 55%,transparent)">
+            <div style="border-radius:23px;background:#100C24;padding:22px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+                <div style="display:flex;align-items:baseline;gap:6px"><span style="font-family:Sora,sans-serif;font-size:32px;font-weight:700;letter-spacing:-.035em;line-height:1">{{ collected }}</span><span style="font-size:14px;color:#9A9AB8">/ {{ goal }}</span></div>
+                <span style="font-size:13px;font-weight:600;color:{{ pctColor }}">{{ pct }} financé</span>
+              </div>
+              <div style="height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden"><div style="height:100%;border-radius:999px;background:{{ barBg }};transition:width .4s ease;width:{{ pct }}"></div></div>
+              <div style="display:flex;align-items:center;gap:11px">
+                <div style="display:flex">
+                  <sc-for list="{{ avatars }}" as="av" hint-placeholder-count="4">
+                    <span style="width:28px;height:28px;border-radius:50%;border:2px solid #100C24;margin-left:{{ av.offset }};background:{{ av.bg }};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff">{{ av.label }}</span>
+                  </sc-for>
+                </div>
+                <span style="font-size:13px;color:#9A9AB8">{{ participantsLine }}</span>
+              </div>
+              <span style="font-size:13px;color:#C7C7DE">{{ deadlineLine }}</span>
+            </div>
+          </div>
+
+          <sc-if value="{{ notReached }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <label for="pc-amount" style="font-size:13px;font-weight:500;color:#C7C7DE">Votre participation</label>
+              <div style="display:flex;align-items:center;height:56px;border:1px solid {{ amountBorder }};border-radius:16px;background:rgba(255,255,255,.05);padding:0 18px;gap:6px">
+                <input id="pc-amount" type="number" inputmode="numeric" value="{{ amount }}" onChange="{{ onAmount }}" style="flex:1;min-width:0;height:100%;border:0;background:transparent;font-family:Sora,sans-serif;font-size:21px;font-weight:600;color:#F7F7FB;padding:0">
+                <span style="font-size:16px;color:#9A9AB8">€</span>
+                <span style="margin-left:8px;flex:none;font-size:12px;color:#7A7A9C">{{ suggestion }}</span>
+              </div>
+              <sc-if value="{{ amountError }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:12px;color:#F472B6">{{ amountError }}</span>
+              </sc-if>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:2px">
+                <sc-for list="{{ quickAmounts }}" as="q" hint-placeholder-count="3">
+                  <span onClick="{{ q.select }}" style="font-size:13px;font-weight:500;border-radius:999px;padding:9px 14px;cursor:pointer;color:{{ q.color }};background:{{ q.bg }};border:1px solid {{ q.border }}">{{ q.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ reached }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;border-radius:18px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.3);padding:16px 18px">
+              <span style="font-family:'Material Symbols Rounded';font-size:22px;font-variation-settings:'FILL' 1;color:#22D3EE">check_circle</span>
+              <span style="font-size:14px;line-height:1.5;color:#C7F5FD">Objectif atteint 🎉 Cette prestation est entièrement financée.</span>
+            </div>
+          </sc-if>
+
+          <div style="border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:Sora,sans-serif;font-size:14px;font-weight:600">Ce que finance cette cotisation</span>
+            <span style="font-size:13px;line-height:1.55;color:#9A9AB8">Reportage photo, captation vidéo et montage du match, livrés aux joueurs via SportVision Connect.</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ÉTAT 2 · paiement visiteur -->
+      <sc-if value="{{ isPay }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:20px;animation:sv-in .28s ease both">
+          <div onClick="{{ backToView }}" style="align-self:flex-start;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#9A9AB8;cursor:pointer" style-hover="color:#F7F7FB"><span style="font-family:'Material Symbols Rounded';font-size:18px">arrow_back</span>Retour</div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.14">Votre participation</h1>
+            <p style="margin:0;font-size:15px;color:#9A9AB8">Pack Match Complet · {{ amountLabel }}</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="pc-first" style="font-size:13px;font-weight:500;color:#C7C7DE">Prénom</label>
+              <input id="pc-first" autocomplete="given-name" placeholder="Noah" value="{{ first }}" onChange="{{ onFirst }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid {{ firstBorder }};background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.22)">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label for="pc-email" style="font-size:13px;font-weight:500;color:#C7C7DE">Adresse e-mail</label>
+              <input id="pc-email" type="email" inputmode="email" autocomplete="email" placeholder="votre@email.com" value="{{ email }}" onChange="{{ onEmail }}" style="height:54px;width:100%;box-sizing:border-box;border-radius:15px;border:1px solid {{ emailBorder }};background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB" style-focus="border-color:#8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.22)">
+              <span style="font-size:12px;color:#7A7A9C">Sert uniquement au reçu de paiement.</span>
+            </div>
+          </div>
+          <div style="border-radius:18px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.14);padding:18px;display:flex;align-items:center;gap:13px">
+            <span style="width:42px;height:42px;flex:none;border-radius:14px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:#C7C7DE">lock</span></span>
+            <span style="font-size:13px;line-height:1.55;color:#9A9AB8">Le module de paiement sécurisé s'insère ici. Aucun compte n'est nécessaire pour participer.</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ÉTAT 3 · merci -->
+      <sc-if value="{{ isThanks }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:20px;animation:sv-in .28s ease both">
+          <span style="width:70px;height:70px;border-radius:24px;background:linear-gradient(140deg,rgba(168,85,247,.3),rgba(34,211,238,.24));display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:36px;font-variation-settings:'FILL' 1;color:#22D3EE">check_circle</span></span>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="margin:0;font-family:Sora,sans-serif;font-size:27px;font-weight:700;letter-spacing:-.03em;line-height:1.12">Merci pour votre participation 🎉</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8">{{ thanksLine }}</p>
+          </div>
+
+          <div style="border-radius:22px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:20px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+              <div style="display:flex;align-items:baseline;gap:6px"><span style="font-family:Sora,sans-serif;font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1">{{ collected }}</span><span style="font-size:14px;color:#9A9AB8">/ {{ goal }}</span></div>
+              <span style="font-size:13px;font-weight:600;color:{{ pctColor }}">{{ pct }}</span>
+            </div>
+            <div style="height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden"><div style="height:100%;border-radius:999px;background:{{ barBg }};width:{{ pct }}"></div></div>
+            <span style="font-size:13px;color:#9A9AB8">{{ remainingLine }}</span>
+          </div>
+
+          <div style="border-radius:24px;padding:1px;background:linear-gradient(140deg,rgba(34,211,238,.5),rgba(168,85,247,.28) 60%,transparent)">
+            <div style="border-radius:23px;background:#0D0B22;padding:22px;display:flex;flex-direction:column;gap:14px">
+              <span style="font-family:Sora,sans-serif;font-size:18px;font-weight:600;letter-spacing:-.02em;line-height:1.3">Créez votre espace Connect</span>
+              <span style="font-size:14px;line-height:1.55;color:#9A9AB8">Suivez cette cotisation et retrouvez vos contenus SportVision au même endroit.</span>
+              <a href="Connect Inscription.dc.html" style="height:52px;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center" style-hover="filter:brightness(1.12);color:#fff">Créer mon compte</a>
+              <span onClick="{{ backToView }}" style="align-self:center;font-size:13px;color:#9A9AB8;cursor:pointer" style-hover="color:#F7F7FB">Revenir à la cotisation</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="height:120px"></div>
+    </div>
+  </div>
+
+  <!-- CTA sticky -->
+  <sc-if value="{{ ctaLabel }}" hint-placeholder-val="{{ true }}">
+    <div style="position:sticky;bottom:0;flex:none;background:linear-gradient(180deg,rgba(9,8,26,0),rgba(9,8,26,.94) 40%);padding:16px 20px calc(20px + env(safe-area-inset-bottom));display:flex;justify-content:center">
+      <div style="width:100%;max-width:460px;display:flex;flex-direction:column;gap:10px">
+        <div onClick="{{ cta }}" style="height:56px;border-radius:17px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px;cursor:{{ ctaCursor }};opacity:{{ ctaOpacity }}" style-hover="filter:brightness(1.12)">
+          <sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">
+            <span style="width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:sv-spin .7s linear infinite"></span>
+          </sc-if>
+          {{ ctaLabel }}
+        </div>
+        <span style="text-align:center;font-size:11px;color:#7A7A9C">Paiement sécurisé · aucun compte requis</span>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:460,&quot;height&quot;:900}}">
+const AV_BGS = ["linear-gradient(140deg,#A855F7,#4F7DFF)", "linear-gradient(140deg,#4F7DFF,#22D3EE)", "linear-gradient(140deg,#22D3EE,#A855F7)", "linear-gradient(140deg,#F472B6,#A855F7)"];
+
+class Component extends DCLogic {
+  state = { view: "view", collected: 112, goal: 160, per: 16, participants: 7, amount: 16, first: "", email: "", touched: false, busy: false, myAmount: 0 };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v).trim()); }
+
+  pay = () => {
+    const s = this.state;
+    if (s.busy) return;
+    this.setState({ touched: true });
+    if (!s.first.trim() || !this.validEmail(s.email)) return;
+    this.setState({ busy: true });
+    this._t = setTimeout(() => {
+      const add = Math.max(1, Math.min(Number(s.amount) || 0, s.goal - s.collected));
+      this.setState({ busy: false, view: "thanks", collected: s.collected + add, participants: s.participants + 1, myAmount: add });
+    }, 900);
+  };
+
+  renderVals() {
+    const s = this.state;
+    const pct = Math.min(100, Math.round((s.collected / s.goal) * 100));
+    const rest = Math.max(0, s.goal - s.collected);
+    const done = s.collected >= s.goal;
+    const amountNum = Number(s.amount) || 0;
+    const amountBad = s.view === "view" && s.touched && (amountNum < 1 || amountNum > rest);
+
+    let ctaLabel = null, cta = () => {}, enabled = true;
+    if (s.view === "view") {
+      if (done) { ctaLabel = "Voir SportVision Connect"; cta = () => { window.location.href = "Connect Inscription.dc.html"; }; }
+      else {
+        ctaLabel = "Participer — " + (amountNum || 0) + " €";
+        cta = () => {
+          this.setState({ touched: true });
+          if (amountNum >= 1 && amountNum <= rest) this.setState({ view: "pay", touched: false });
+        };
+      }
+    } else if (s.view === "pay") {
+      ctaLabel = s.busy ? "Paiement…" : "Payer " + amountNum + " €";
+      cta = this.pay;
+    }
+
+    const quick = [s.per, Math.round(s.per * 2), rest].filter((v, i, arr) => v > 0 && v <= rest && arr.indexOf(v) === i);
+
+    return {
+      isView: s.view === "view", isPay: s.view === "pay", isThanks: s.view === "thanks",
+      collected: s.collected + " €", goal: s.goal + " €", pct: pct + "%",
+      pctColor: done ? "#22D3EE" : "#F472B6",
+      barBg: done ? "linear-gradient(90deg,#4F7DFF,#22D3EE)" : "linear-gradient(90deg,#A855F7,#F472B6)",
+      reached: done, notReached: !done,
+      participantsLine: s.participants + " participants",
+      deadlineLine: "Cotisation ouverte jusqu'au 26 août à 18h00",
+      remainingLine: done ? "Objectif atteint, la prestation est financée." : "Il reste " + rest + " € pour atteindre l'objectif.",
+      avatars: [0, 1, 2, 3].map(i => ({
+        label: i === 3 ? "+" + Math.max(0, s.participants - 3) : ["LM", "NM", "ED"][i],
+        bg: i === 3 ? "rgba(255,255,255,.1)" : AV_BGS[i], offset: i === 0 ? "0" : "-10px"
+      })),
+
+      amount: s.amount,
+      onAmount: e => this.setState({ amount: e.target.value }),
+      amountBorder: amountBad ? "#F472B6" : "rgba(255,255,255,.18)",
+      amountError: amountBad ? (amountNum > rest ? "Il ne reste que " + rest + " € à financer." : "Indiquez un montant d'au moins 1 €.") : null,
+      suggestion: s.per + " € conseillé",
+      amountLabel: amountNum + " €",
+      quickAmounts: quick.map(v => ({
+        label: v === rest && v !== s.per ? "Solde " + v + " €" : v + " €",
+        select: () => this.setState({ amount: v }),
+        color: amountNum === v ? "#F7F7FB" : "#C7C7DE",
+        bg: amountNum === v ? "rgba(244,114,182,.18)" : "rgba(255,255,255,.05)",
+        border: amountNum === v ? "rgba(244,114,182,.6)" : "rgba(255,255,255,.12)"
+      })),
+
+      first: s.first, email: s.email,
+      onFirst: e => this.setState({ first: e.target.value }),
+      onEmail: e => this.setState({ email: e.target.value }),
+      firstBorder: s.touched && !s.first.trim() ? "#F472B6" : "rgba(255,255,255,.14)",
+      emailBorder: s.touched && !this.validEmail(s.email) ? "#F472B6" : "rgba(255,255,255,.14)",
+
+      thanksLine: "Votre participation de " + s.myAmount + " € est enregistrée. Un reçu vous est envoyé par e-mail.",
+      backToView: () => this.setState({ view: "view", touched: false }),
+
+      ctaLabel, cta, busy: s.busy,
+      ctaCursor: enabled && !s.busy ? "pointer" : "default",
+      ctaOpacity: s.busy ? 0.75 : 1
+    };
+  }
+}
+</script>
+</body>
+</html>

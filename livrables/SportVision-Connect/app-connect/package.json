@@ -1,0 +1,32 @@
+{
+  "name": "sportvision-connect-personnel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SportVision Connect — espace personnel (joueurs, sportifs, particuliers). Application séparée de Club+ (organisations) — voir MASTER-ECOSYSTEME-V2.md et RAPPORT-MIGRATION-CONNECT-PERSONNEL.md dans le dossier parent. Design de référence : design-connect-personnel-12-08/README.md.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.2",
+    "clsx": "^2.1.1",
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.10",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.15",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#09081A; }
+  a { color:#8CA9FF; text-decoration:none; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.12); border-radius:99px; }
+</style>
+</helmet>
+
+<div style="min-height:100vh;box-sizing:border-box;display:flex;background:#09081A;font-family:'DM Sans',sans-serif;color:#F7F7FB">
+
+  <aside style="width:220px;flex:none;border-right:1px solid rgba(255,255,255,.07);padding:22px 14px;position:sticky;top:0;height:100vh;box-sizing:border-box;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 8px 20px">
+      <img src="uploads/logo.png" alt="" style="width:28px;height:28px;object-fit:contain">
+      <span style="font-family:Sora,sans-serif;font-size:14px;font-weight:700">Design system</span>
+    </div>
+    <sc-for list="{{ sections }}" as="s" hint-placeholder-count="10">
+      <a href="{{ s.href }}" style="display:flex;align-items:center;height:38px;padding:0 12px;border-radius:11px;font-size:14px;color:#C7C7DE" style-hover="background:rgba(255,255,255,.07);color:#F7F7FB">{{ s.label }}</a>
+    </sc-for>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:34px 40px 80px;display:flex;flex-direction:column;gap:56px;max-width:1160px">
+
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#6E6E7A">SportVision Connect · design system</span>
+      <h1 style="margin:0;font-family:Sora,sans-serif;font-size:34px;font-weight:700;letter-spacing:-.03em">Composants de référence</h1>
+      <p style="margin:0;font-size:15px;line-height:1.6;color:#9A9AB8;max-width:680px">Chaque composant listé ici est le seul de sa famille dans Connect — ne pas en créer de variante supplémentaire sans mise à jour de cette page.</p>
+    </div>
+
+    <!-- COULEURS -->
+    <section id="couleurs" style="display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">Couleurs</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+        <sc-for list="{{ colors }}" as="c" hint-placeholder-count="10">
+          <div style="border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:14px;display:flex;flex-direction:column;gap:10px">
+            <span style="height:44px;border-radius:11px;background:{{ c.value }};border:1px solid rgba(255,255,255,.1)"></span>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <span style="font-size:13px;font-weight:600">{{ c.label }}</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">{{ c.value }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- TYPOGRAPHIE -->
+    <section id="typo" style="display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">Typographie</h2>
+      <div style="border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);overflow:hidden">
+        <sc-for list="{{ typeScale }}" as="t" hint-placeholder-count="6">
+          <div style="padding:16px 20px;display:flex;align-items:baseline;gap:20px;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
+            <span style="width:120px;flex:none;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">{{ t.name }}</span>
+            <span style="font-family:{{ t.font }};font-weight:{{ t.weight }};font-size:{{ t.size }};letter-spacing:{{ t.tracking }};color:#F7F7FB">{{ t.sample }}</span>
+            <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6C6C90">{{ t.spec }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- SPACING / RADIUS -->
+    <section id="spacing" style="display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">Spacing &amp; rayons</h2>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <sc-for list="{{ spacing }}" as="sp" hint-placeholder-count="8">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <span style="width:{{ sp.px }};height:{{ sp.px }};background:#4F7DFF;border-radius:4px"></span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8B8BA8">{{ sp.px }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
+          <sc-for list="{{ radii }}" as="r" hint-placeholder-count="5">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <span style="width:64px;height:64px;background:rgba(79,125,255,.16);border:1px solid rgba(79,125,255,.3);border-radius:{{ r.px }}"></span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8B8BA8">{{ r.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <!-- BOUTONS -->
+    <section id="boutons" style="display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">Boutons</h2>
+      <p style="margin:0;font-size:14px;color:#9A9AB8">Quatre familles seulement, hauteur 44–56 px selon contexte. États : default, hover (`filter:brightness(1.12)` sur Primary, fond éclairci sur Secondary), loading (spinner + libellé modifié), disabled (opacité 0,45).</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Primary</span>
+          <button style="height:52px;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer">Réserver</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Secondary</span>
+          <button style="height:52px;border:1px solid rgba(255,255,255,.16);border-radius:16px;background:rgba(255,255,255,.05);color:#F7F7FB;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer">Voir</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Ghost</span>
+          <button style="height:52px;border:0;background:transparent;color:#8CA9FF;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer">Tout voir</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Danger</span>
+          <button style="height:52px;border:1px solid rgba(244,114,182,.4);border-radius:16px;background:rgba(244,114,182,.08);color:#F472B6;font-family:Sora,sans-serif;font-size:15px;font-weight:600;cursor:pointer">Retirer</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Primary · loading</span>
+          <button style="height:52px;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:15px;font-weight:600;opacity:.75;display:flex;align-items:center;justify-content:center;gap:8px">
+            <span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff"></span>Connexion…
+          </button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Primary · disabled</span>
+          <button style="height:52px;border:0;border-radius:16px;background:linear-gradient(120deg,#A855F7,#4F7DFF 55%,#22D3EE);color:#fff;font-family:Sora,sans-serif;font-size:15px;font-weight:600;opacity:.45">Continuer</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- INPUTS -->
+    <section id="inputs" style="display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">Champs</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Default</span>
+          <input placeholder="votre@email.com" style="height:52px;box-sizing:border-box;border-radius:15px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Focus</span>
+          <input placeholder="votre@email.com" style="height:52px;box-sizing:border-box;border-radius:15px;border:1px solid #8CA9FF;box-shadow:0 0 0 3px rgba(79,125,255,.28);background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Error</span>
+          <input value="pas-un-email" style="height:52px;box-sizing:border-box;border-radius:15px;border:1px solid #F472B6;background:rgba(255,255,255,.05);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#F7F7FB">
+          <span style="font-size:12px;color:#F472B6">Adresse e-mail invalide.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Disabled</span>
+          <input value="Champ verrouillé" disabled style="height:52px;box-sizing:border-box;border-radius:15px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);padding:0 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:#6C6C90">
+        </div>
+      </div>
+    </section>
+
+    <!-- BADGES -->
+    <section id="badges" style="display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">Badges — référentiel unique</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <sc-for list="{{ badges }}" as="b" hint-placeholder-count="11">
+          <span style="font-size:12px;font-weight:500;border-radius:999px;padding:6px 13px;color:{{ b.color }};background:{{ b.bg }}">{{ b.label }}</span>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- CARDS -->
+    <section id="cards" style="display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">Familles de cartes</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+        <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:18px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">CardStandard</span>
+          <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">FC Montereau</span>
+          <span style="font-size:13px;color:#9A9AB8">U18 R2 · Joueur</span>
+        </div>
+        <div style="border-radius:20px;overflow:hidden;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)">
+          <div style="height:90px;background:linear-gradient(135deg,#3B1E6E,#0F4C63)"></div>
+          <div style="padding:14px;display:flex;flex-direction:column;gap:5px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">CardMedia</span>
+            <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Match vs Fontainebleau</span>
+          </div>
+        </div>
+        <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:18px;display:flex;align-items:center;gap:12px">
+          <span style="width:38px;height:38px;flex:none;border-radius:13px;background:rgba(79,125,255,.16);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:19px;color:#8CA9FF">camera_alt</span></span>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">CardAction</span>
+            <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Prestations</span>
+          </div>
+          <span style="margin-left:auto;font-family:'Material Symbols Rounded';font-size:19px;color:#6C6C90">chevron_right</span>
+        </div>
+        <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:18px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">CardStatus</span>
+          <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Shooting individuel</span>
+          <span style="align-self:flex-start;font-size:11px;font-weight:500;border-radius:999px;padding:4px 9px;color:#FBBF24;background:rgba(251,191,36,.14)">En validation</span>
+        </div>
+        <div style="border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:18px;display:flex;flex-direction:column;gap:9px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">CardProgress</span>
+          <span style="font-family:Sora,sans-serif;font-size:19px;font-weight:700">112 € <span style="font-size:13px;font-weight:400;color:#9A9AB8">/ 160 €</span></span>
+          <div style="height:7px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:70%;height:100%;background:linear-gradient(90deg,#A855F7,#F472B6)"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ÉTATS -->
+    <section id="etats" style="display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">États obligatoires</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+        <div style="border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px;display:flex;flex-direction:column;gap:9px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Loading — skeleton</span>
+          <span style="width:70%;height:16px;border-radius:6px;background:rgba(255,255,255,.08)"></span>
+          <span style="width:90%;height:70px;border-radius:14px;background:rgba(255,255,255,.06)"></span>
+        </div>
+        <div style="border-radius:20px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.14);padding:16px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Empty</span>
+          <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Aucune commande</span>
+          <span style="font-size:12px;color:#8CA9FF">Découvrir les prestations</span>
+        </div>
+        <div style="border-radius:20px;background:rgba(244,114,182,.08);border:1px solid rgba(244,114,182,.3);padding:16px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Error</span>
+          <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Impossible de charger vos contenus.</span>
+          <span style="font-size:12px;color:#F472B6">Réessayer</span>
+        </div>
+        <div style="border-radius:20px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.3);padding:16px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Success — toast</span>
+          <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">✓ Lien copié.</span>
+        </div>
+        <div style="border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px;display:flex;flex-direction:column;gap:8px;opacity:.55">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Disabled</span>
+          <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Réserver pour Emma</span>
+        </div>
+        <div style="border-radius:20px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);padding:16px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Permission denied</span>
+          <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Vous n'êtes pas autorisé à réserver pour Emma.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODALS / TOASTS -->
+    <section id="overlays" style="display:flex;flex-direction:column;gap:18px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.02em">Modales, bottom sheets, toasts</h2>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#9A9AB8">Desktop : panneau ancré en haut à droite, animation <code style="color:#C7C7DE">sv-in</code> 200 ms. Mobile : bottom sheet plein largeur, animation <code style="color:#C7C7DE">sv-sheet</code> 260 ms. Toast : bas centré, 2,4 s, icône de validation.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+        <div style="border-radius:20px;background:#0D0B22;border:1px solid rgba(255,255,255,.1);padding:18px;display:flex;flex-direction:column;gap:10px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8B8BA8">Confirmation</span>
+          <span style="font-family:Sora,sans-serif;font-size:15px;font-weight:600">Retirer ce sportif ?</span>
+          <span style="font-size:13px;color:#9A9AB8">Action réversible côté données, jamais destructive.</span>
+        </div>
+        <div style="border-radius:14px;background:#141032;border:1px solid rgba(255,255,255,.14);padding:13px 17px;display:flex;align-items:center;gap:10px;align-self:flex-start">
+          <span style="font-family:'Material Symbols Rounded';font-size:19px;color:#22D3EE">check_circle</span>
+          <span style="font-size:14px">Profil mis à jour.</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:960}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      sections: [
+        { label: "Couleurs", href: "#couleurs" }, { label: "Typographie", href: "#typo" },
+        { label: "Spacing & rayons", href: "#spacing" }, { label: "Boutons", href: "#boutons" },
+        { label: "Champs", href: "#inputs" }, { label: "Badges", href: "#badges" },
+        { label: "Cartes", href: "#cards" }, { label: "États", href: "#etats" },
+        { label: "Overlays & toasts", href: "#overlays" }
+      ],
+      colors: [
+        { label: "Fond principal", value: "#09081A" }, { label: "Fond élevé", value: "#0D0B22" },
+        { label: "Surface", value: "rgba(255,255,255,.05)" }, { label: "Bordure", value: "rgba(255,255,255,.09)" },
+        { label: "Texte primaire", value: "#F7F7FB" }, { label: "Texte secondaire", value: "#9A9AB8" },
+        { label: "Affiliations", value: "#22D3EE" }, { label: "Contenus", value: "#C084FC" },
+        { label: "Prestations", value: "#8CA9FF" }, { label: "Cotisations", value: "#F472B6" },
+        { label: "Attente", value: "#FBBF24" }, { label: "Danger", value: "#F472B6" }
+      ],
+      typeScale: [
+        { name: "H1 page", font: "Sora,sans-serif", weight: 700, size: "33px", tracking: "-.03em", sample: "Mes commandes", spec: "27px mobile" },
+        { name: "H1 hero", font: "Sora,sans-serif", weight: 700, size: "40px", tracking: "-.035em", sample: "Bienvenue sur Connect", spec: "26px mobile" },
+        { name: "H2 section", font: "Sora,sans-serif", weight: 600, size: "20px", tracking: "-.02em", sample: "Nouveaux contenus", spec: "18px mobile" },
+        { name: "Corps", font: "'DM Sans',sans-serif", weight: 400, size: "15px", tracking: "0", sample: "Retrouvez vos prestations SportVision.", spec: "line-height 1.6" },
+        { name: "Label", font: "'DM Sans',sans-serif", weight: 500, size: "11px", tracking: ".1em", sample: "AFFILIATION PRINCIPALE", spec: "uppercase" },
+        { name: "Mono", font: "'IBM Plex Mono',monospace", weight: 400, size: "11px", tracking: ".04em", sample: "SV-C-2026-0098", spec: "références" }
+      ],
+      spacing: [4, 8, 12, 16, 24, 32, 48].map(n => ({ px: n + "px" })),
+      radii: [{ label: "10-14", px: "12px" }, { label: "15-16", px: "16px" }, { label: "20", px: "20px" }, { label: "22-24", px: "22px" }, { label: "999", px: "999px" }],
+      badges: [
+        { label: "Recommandé", color: "#0B0B18", bg: "#F7F7FB" }, { label: "✓ Affilié", color: "#22D3EE", bg: "rgba(34,211,238,.14)" },
+        { label: "En attente", color: "#FBBF24", bg: "rgba(251,191,36,.14)" }, { label: "En validation", color: "#FBBF24", bg: "rgba(251,191,36,.14)" },
+        { label: "Confirmée", color: "#8CA9FF", bg: "rgba(79,125,255,.16)" }, { label: "En production", color: "#C084FC", bg: "rgba(168,85,247,.16)" },
+        { label: "Livrée", color: "#22D3EE", bg: "rgba(34,211,238,.14)" }, { label: "Terminée", color: "#9A9AB8", bg: "rgba(255,255,255,.07)" },
+        { label: "Annulée", color: "#9A9AB8", bg: "rgba(255,255,255,.07)" }, { label: "Paiement à plusieurs", color: "#F472B6", bg: "rgba(244,114,182,.14)" },
+        { label: "Sur devis", color: "#C7C7DE", bg: "rgba(255,255,255,.08)" }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

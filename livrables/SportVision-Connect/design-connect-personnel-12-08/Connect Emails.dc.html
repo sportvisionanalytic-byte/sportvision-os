@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#09081A; }
+  a { color:#8CA9FF; text-decoration:none; }
+  a:hover { color:#B6C7FF; }
+</style>
+</helmet>
+
+<div style="min-height:100vh;box-sizing:border-box;padding:40px 24px 60px;display:flex;justify-content:center;background:#09081A;background-image:radial-gradient(880px 600px at 80% -12%,rgba(168,85,247,.18),transparent 70%);font-family:'DM Sans',sans-serif;color:#F7F7FB">
+  <div style="width:100%;max-width:1120px;display:flex;flex-direction:column;gap:28px">
+
+    <div style="display:flex;flex-direction:column;gap:11px;max-width:760px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6E6E7A">SportVision Connect · e-mails transactionnels</span>
+      <h1 style="margin:0;font-family:Sora,sans-serif;font-size:36px;font-weight:700;letter-spacing:-.035em;line-height:1.08">Trois e-mails prêts à envoyer</h1>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#9A9AB8;text-wrap:pretty">Fichiers HTML autonomes, testés pour Gmail, Outlook et Apple Mail : tables imbriquées, styles en ligne, polices système, boutons sans image. Ouvrez-les pour voir le rendu à 600 px.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px">
+      <sc-for list="{{ mails }}" as="m" hint-placeholder-count="3">
+        <a href="{{ m.href }}" style="border-radius:24px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:24px;display:flex;flex-direction:column;gap:13px;color:#F7F7FB;min-height:280px;box-sizing:border-box;transition:border-color .18s ease,background .18s ease" style-hover="border-color:rgba(140,169,255,.5);background:rgba(255,255,255,.08);color:#F7F7FB">
+          <span style="width:48px;height:48px;border-radius:16px;background:{{ m.iconBg }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;color:{{ m.iconColor }}">{{ m.icon }}</span></span>
+          <span style="font-family:Sora,sans-serif;font-size:19px;font-weight:600;letter-spacing:-.02em">{{ m.title }}</span>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#6C6C90">Objet</span>
+            <span style="font-size:14px;line-height:1.5;color:#C7C7DE">{{ m.subject }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <span style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#6C6C90">Preheader</span>
+            <span style="font-size:13px;line-height:1.5;color:#9A9AB8">{{ m.preheader }}</span>
+          </div>
+          <span style="margin-top:auto;display:flex;align-items:center;gap:6px;font-family:Sora,sans-serif;font-size:14px;font-weight:600;color:#8CA9FF">Ouvrir l'e-mail<span style="font-family:'Material Symbols Rounded';font-size:17px">arrow_forward</span></span>
+        </a>
+      </sc-for>
+    </div>
+
+    <div style="border-radius:22px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);padding:24px;display:flex;flex-direction:column;gap:14px;max-width:820px">
+      <h2 style="margin:0;font-family:Sora,sans-serif;font-size:20px;font-weight:600;letter-spacing:-.02em">Avant l'envoi</h2>
+      <sc-for list="{{ notes }}" as="n" hint-placeholder-count="4">
+        <div style="display:flex;align-items:flex-start;gap:11px">
+          <span style="font-family:'Material Symbols Rounded';font-size:19px;color:{{ n.color }};flex:none">{{ n.icon }}</span>
+          <span style="font-size:14px;line-height:1.6;color:#C7C7DE">{{ n.label }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1120,&quot;height&quot;:880}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      mails: [
+        { title: "Demande d'accès au profil", href: "emails/Invitation sportif.html", icon: "lock_person", iconColor: "#22D3EE", iconBg: "rgba(34,211,238,.14)",
+          subject: "Sophie souhaite être liée à votre profil SportVision",
+          preheader: "Sophie Moreau demande l'accès à votre profil Connect. Vous décidez ce qu'elle peut voir." },
+        { title: "Lien de cotisation", href: "emails/Lien de cotisation.html", icon: "savings", iconColor: "#F472B6", iconBg: "rgba(244,114,182,.14)",
+          subject: "Lucas vous invite à financer le Pack Match du 23 août",
+          preheader: "112 € sur 160 € déjà réunis, 16 € par joueur." },
+        { title: "Contenus disponibles", href: "emails/Contenus disponibles.html", icon: "photo_library", iconColor: "#C084FC", iconBg: "rgba(168,85,247,.16)",
+          subject: "Vos contenus du match sont disponibles",
+          preheader: "42 photos et 3 vidéos du match contre Fontainebleau vous attendent." }
+      ],
+      notes: [
+        { icon: "image", color: "#FBBF24", label: "L'e-mail « Contenus disponibles » contient un emplacement image : remplacez-le par une photo hébergée en https avant envoi, avec un texte alternatif." },
+        { icon: "link", color: "#8CA9FF", label: "Les liens pointent vers connect.sportvision.fr : adaptez-les aux URL réelles et ajoutez les paramètres de suivi si nécessaire." },
+        { icon: "place", color: "#9A9AB8", label: "Le pied de page reprend une adresse postale et un lien de désinscription à remplacer par vos mentions réelles." },
+        { icon: "science", color: "#22D3EE", label: "Testez sur Gmail, Outlook et Apple Mail, en mode clair et sombre : les couleurs choisies résistent à l'inversion." }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

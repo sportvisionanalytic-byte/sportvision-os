@@ -1,0 +1,245 @@
+// ⚠️  REDÉPLOIEMENT MANUEL REQUIS après toute modification de ce fichier.
+// Ce code ne se déploie PAS automatiquement sur Supabase depuis le repo.
+// Étape à faire à chaque édition : Supabase Dashboard → Edge Functions →
+// connect-player-onboarding → coller ce code → Deploy (nouvelle fonction, jamais déployée).
+// Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (déjà présents
+// par défaut sur le projet).
+
+// Supabase Edge Function — connect-player-onboarding
+//
+// Sert le nouveau tunnel d'inscription du Connect personnel (12/08/2026, voir
+// livrables/SportVision-Connect/app-connect et RAPPORT-MIGRATION-CONNECT-PERSONNEL.md).
+//
+// Pourquoi une Edge Function plutôt que des appels client directs :
+// 1. `organizations` n'a AUCUNE policy de lecture publique pour un visiteur non affilié
+//    (seulement org_member_select et organizations_player_family_select, qui exigent déjà
+//    une affiliation existante — migration-connect-v25). La recherche se fait ici côté
+//    serveur (service role) et ne renvoie que id/nom/ville au client.
+// 2. `membership_requests` n'a AUCUNE policy INSERT (seulement des SELECT — migration-
+//    clubplus-v14.sql). La demande est créée ici, jamais par un INSERT client direct.
+//
+// Schéma réel vérifié en direct (service role, requêtes ponctuelles le 12/08/2026 — ne pas
+// deviner ces valeurs, elles ont une contrainte CHECK en base) :
+//   organizations.statut       ∈ actif_premium | actif_standard | limite_fin_contrat |
+//                                 suspendu_impaye | archive | desactive
+//   organizations.organization_type ∈ club | academie | coach | projet | sponsor
+//   player_profiles.club_id    NOT NULL, référence clubs(id) — PAS organizations(id) — mais
+//                               organizations.id RÉUTILISE clubs.id pour une organisation de
+//                               type club (migration-connect-v2, "Couche d'unification
+//                               Connect"), donc chercher dans organizations et écrire ce même
+//                               id dans player_profiles.club_id est correct pour un vrai club.
+//   player_profiles.prenom/nom/date_naissance NOT NULL.
+//   player_profiles.account_status ∈ sans_compte | invite | en_attente_activation | actif |
+//                                     suspendu | retire
+//   membership_requests.source ∈ invitation | spontanee | code_equipe
+//   membership_requests.statut ∈ a_verifier | autorisation_manquante | en_attente_parent |
+//                                 pret_a_valider | validee | refusee | doublon_signale |
+//                                 transferee_admin
+//   membership_requests.validation_mode ∈ standard | controle | double
+//
+// Aucun concept de "club non partenaire/déclaré" n'existe dans le schéma actuel
+// (organizations.organization_type et clubs.plan n'ont pas de valeur pour ça, et créer une
+// fausse ligne clubs/organizations polluerait les décomptes/dashboards réels — le master doc
+// interdit justement "un vrai compte Club+ administrable" créé automatiquement). Le cas
+// "club non partenaire" est donc traité comme connect-signup-lead : une notification staff,
+// AUCUNE écriture organizations/clubs/player_profiles. Un vrai statut "déclaré" nécessiterait
+// une migration schéma dédiée — à construire si Fouka veut vraiment persister cette relation
+// plutôt que la traiter au cas par cas par le staff.
+//
+// Actions (`action` dans le body) :
+//  - "search"  { query } → clubs partenaires actifs correspondant (recherche sur le nom)
+//  - "join"    { orgId, teamName? } → crée player_profiles (si absent) + membership_requests
+//               (statut "a_verifier"), le joueur peut utiliser Connect pendant l'attente
+//  - "declare" { name, city, team?, prenom, nom } → notifie le staff (aucune écriture DB),
+//               même mécanisme que connect-signup-lead
+//  - "skip"    {} → ne crée rien, confirme juste la réception
+//
+// Appelée uniquement après confirmation d'e-mail (par le rejeu de pending-onboarding au
+// premier login réussi, jamais juste après signUp() — voir lib/signup/pending-onboarding.ts).
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// deno-lint-ignore no-explicit-any
+async function checkRateLimit(admin: any, identifiant: string) {
+  const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  const { count } = await admin
+    .from("guest_rate_limits")
+    .select("id", { count: "exact", head: true })
+    .eq("identifiant", identifiant)
+    .gte("created_at", since);
+  if ((count || 0) >= RATE_LIMIT_MAX) return false;
+  await admin.from("guest_rate_limits").insert({ identifiant });
+  return true;
+}
+
+const ACTIVE_ORG_STATUSES = ["actif_premium", "actif_standard"];
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const admin = createClient(supabaseUrl, serviceKey);
+
+    const body = await req.json();
+    const action = body?.action as string;
+
+    // "search" est la seule action accessible SANS session : elle intervient pendant l'étape
+    // 4 du tunnel d'inscription, AVANT l'appel à auth.signUp() (voir signup-context.tsx —
+    // le compte n'existe pas encore à ce stade). Faible sensibilité (nom/ville de clubs
+    // partenaires déjà destinés à être trouvés par un visiteur), donc limitée par IP plutôt
+    // que par utilisateur.
+    if (action === "search") {
+      const query = String(body?.query || "").trim();
+      if (query.length < 2) return json({ results: [] });
+      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      const rateOk = await checkRateLimit(admin, `connect-player-onboarding-search:${ip}`);
+      if (!rateOk) return json({ error: "Trop de recherches. Réessayez dans une heure." }, 429);
+      const { data, error } = await admin
+        .from("organizations")
+        .select("id, nom, ville, organization_type")
+        .eq("organization_type", "club")
+        .in("statut", ACTIVE_ORG_STATUSES)
+        .ilike("nom", `%${query}%`)
+        .limit(20);
+      if (error) return json({ error: error.message }, 500);
+      return json({
+        results: (data || []).map((o) => ({ id: o.id, nom: o.nom, ville: o.ville })),
+      });
+    }
+
+    // Toute action au-delà de "search" mute des données ou notifie le staff : session requise,
+    // et confirmée (voir en-tête du fichier — jamais appelée juste après signUp()).
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return json({ error: "Authentification requise" }, 401);
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData?.user) return json({ error: "Session invalide" }, 401);
+    const user = userData.user;
+    if (!user.email_confirmed_at) return json({ error: "Adresse e-mail non confirmée" }, 403);
+
+    const rateOk = await checkRateLimit(admin, `connect-player-onboarding:${user.id}`);
+    if (!rateOk) return json({ error: "Trop de tentatives. Réessayez dans une heure." }, 429);
+
+    if (action === "skip") {
+      return json({ ok: true, hasClub: false });
+    }
+
+    if (action === "declare") {
+      const name = String(body?.name || "").trim();
+      const city = String(body?.city || "").trim();
+      const team = String(body?.team || "").trim();
+      if (!name || !city) return json({ error: "Nom et ville du club requis" }, 400);
+
+      const contact = `${body?.prenom || ""} ${body?.nom || ""}`.trim() || user.email || "contact inconnu";
+      const titre = `Club non partenaire déclaré — ${name}`;
+      const texte = `${contact} (${user.email}) a déclaré « ${name} » (${city}${team ? ", " + team : ""}) comme club non partenaire lors de son inscription Connect. Aucun compte Club+ n'a été créé — vérifier et rattacher manuellement si opportunité B2B.`;
+
+      try {
+        await admin.rpc("notify_staff_by_role", {
+          p_roles: ["admin", "sec"],
+          p_titre: titre,
+          p_message: texte,
+          p_priorite: "normale",
+          p_prestation_id: null,
+          p_client_id: null,
+        });
+      } catch (_e) {
+        console.error("[connect-player-onboarding] notify_staff_by_role a échoué :", _e);
+        return json({ error: "Notification impossible pour le moment." }, 500);
+      }
+
+      return json({ ok: true, hasClub: false, declared: true, name, city });
+    }
+
+    if (action === "join") {
+      const orgId = String(body?.orgId || "").trim();
+      if (!orgId) return json({ error: "Club requis" }, 400);
+      const prenom = String(body?.prenom || "").trim();
+      const nom = String(body?.nom || "").trim();
+      const dateNaissance = String(body?.dateNaissance || "").trim();
+      if (!prenom || !nom || !dateNaissance) {
+        return json({ error: "Prénom, nom et date de naissance requis" }, 400);
+      }
+
+      const { data: org, error: orgLookupErr } = await admin
+        .from("organizations")
+        .select("id, nom")
+        .eq("id", orgId)
+        .eq("organization_type", "club")
+        .in("statut", ACTIVE_ORG_STATUSES)
+        .maybeSingle();
+      if (orgLookupErr) return json({ error: orgLookupErr.message }, 500);
+      if (!org) return json({ error: "Club introuvable" }, 404);
+
+      const { data: existingProfile } = await admin
+        .from("player_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      let playerId: string;
+      if (existingProfile) {
+        playerId = existingProfile.id;
+        const { error: updErr } = await admin
+          .from("player_profiles")
+          .update({ club_id: org.id, prenom, nom, date_naissance: dateNaissance })
+          .eq("id", playerId);
+        if (updErr) return json({ error: updErr.message }, 500);
+      } else {
+        const { data: created, error: insErr } = await admin
+          .from("player_profiles")
+          .insert({
+            user_id: user.id,
+            club_id: org.id,
+            prenom,
+            nom,
+            date_naissance: dateNaissance,
+            account_status: "actif",
+          })
+          .select("id")
+          .single();
+        if (insErr) return json({ error: insErr.message }, 500);
+        playerId = created.id;
+      }
+
+      const { error: mrErr } = await admin.from("membership_requests").insert({
+        club_id: org.id,
+        requested_by_user_id: user.id,
+        player_id: playerId,
+        source: "spontanee",
+        statut: "a_verifier",
+        validation_mode: "standard",
+      });
+      if (mrErr) return json({ error: mrErr.message }, 500);
+
+      return json({ ok: true, hasClub: true, orgNom: org.nom, statut: "a_verifier" });
+    }
+
+    return json({ error: "Action inconnue" }, 400);
+  } catch (e) {
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
+  }
+});
