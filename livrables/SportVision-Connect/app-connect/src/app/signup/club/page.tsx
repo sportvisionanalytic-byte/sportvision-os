@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
-import { savePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { savePendingOnboarding, consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
 import { useSignup } from "../signup-context";
 
 type ClubChoice = "search" | "declare" | "none" | null;
@@ -76,7 +76,7 @@ export default function SignupClubPage() {
     setSubmitError(null);
     const supabase = createClient();
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: state.email,
       password: state.password,
       options: {
@@ -128,6 +128,24 @@ export default function SignupClubPage() {
       declareCity,
       declareTeam,
     });
+
+    // Si le projet Supabase a la confirmation d'e-mail désactivée (ou si ce compte était déjà
+    // confirmé), signUp() renvoie directement une session exploitable : pas besoin de l'écran
+    // "Vérifiez votre boîte mail", on rejoue tout de suite l'action club en attente. Sinon
+    // (cas normal, confirmation active), pas de session avant le clic sur le lien reçu par
+    // e-mail — voir lib/signup/pending-onboarding.ts pour le rejeu au premier login.
+    if (signUpData.session) {
+      try {
+        await consumePendingOnboarding(supabase);
+      } catch (e) {
+        console.error("[signup/club] rejeu immédiat de l'action club échoué :", e);
+      }
+      setBusy(false);
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
     setBusy(false);
     router.push("/signup/verify");
   }
