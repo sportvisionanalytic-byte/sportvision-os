@@ -238,6 +238,34 @@ serve(async (req) => {
       return json({ ok: true, hasClub: true, orgNom: org.nom, statut: "a_verifier" });
     }
 
+    // "leave" : player_profiles.account_status était protégé par le trigger
+    // guard_player_profile_update() (migration-clubplus-v13.sql) pour TOUT appelant non-admin,
+    // service role inclus (les triggers s'exécutent toujours, contrairement aux policies RLS
+    // que le service role contourne — is_club_admin() s'appuie sur auth.uid(), NULL en service
+    // role, donc même cette edge function était bloquée). migration-clubplus-v36 ajoute une
+    // exception étroite : un joueur peut mettre SA PROPRE fiche à 'retire', rien d'autre.
+    // L'update passe donc par userClient (JWT du joueur forwardé), pas admin, pour que
+    // auth.uid() se résolve dans le trigger — cohérent avec la policy pp_self_update déjà
+    // existante (user_id = auth.uid()). Reste strictement scopé à la ligne du joueur
+    // authentifié (jamais un id fourni par le body) et au seul champ account_status='retire'.
+    if (action === "leave") {
+      const { data: profile, error: profileErr } = await admin
+        .from("player_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (profileErr) return json({ error: profileErr.message }, 500);
+      if (!profile) return json({ error: "Aucune affiliation à quitter" }, 404);
+
+      const { error: updErr } = await userClient
+        .from("player_profiles")
+        .update({ account_status: "retire" })
+        .eq("id", profile.id);
+      if (updErr) return json({ error: updErr.message }, 500);
+
+      return json({ ok: true });
+    }
+
     return json({ error: "Action inconnue" }, 400);
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);

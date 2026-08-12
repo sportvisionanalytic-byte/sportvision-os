@@ -23,6 +23,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Accueil", icon: "home" },
+  { href: "/affiliations", label: "Mes affiliations", icon: "shield" },
   { href: "/profil", label: "Mon profil", icon: "person" },
 ];
 
@@ -153,7 +154,7 @@ export function AppShell({
       </main>
 
       {/* ============ BOTTOM NAV MOBILE ============ */}
-      <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-2 border-t border-border bg-bg/95 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t border-border bg-bg/95 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:hidden">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href;
           return (
