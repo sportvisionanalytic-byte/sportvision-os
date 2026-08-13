@@ -3,7 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Rafraîchit le cookie de session Supabase sur chaque requête et protège les routes
 // applicatives — appelé depuis src/middleware.ts (racine, requis par Next.js).
-const PUBLIC_PATHS = ["/auth/login", "/auth/forgot", "/auth/reset", "/signup", "/cotisation"];
+// "/aide" doit rester public : c'est un lien affiché sur l'écran de connexion, atteignable par
+// un visiteur non authentifié ("Besoin d'aide ?") — sans cette entrée, un visiteur non connecté
+// qui clique sur ce lien était renvoyé silencieusement vers /auth/login (bug corrigé le 13/08).
+const PUBLIC_PATHS = ["/auth/login", "/auth/forgot", "/auth/reset", "/signup", "/cotisation", "/aide"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

@@ -203,9 +203,16 @@ serve(async (req) => {
       let playerId: string;
       if (existingProfile) {
         playerId = existingProfile.id;
+        // BUGFIX 13/08 : un joueur qui a quitté un club (account_status="retire", voir action
+        // "leave") et rejoint ensuite un club (même le même club, ou un autre) doit redevenir
+        // "actif" — sans ce reset, club_id pointait bien vers le nouveau club et une nouvelle
+        // membership_requests était bien créée, mais buildPlayerContext (app-connect,
+        // lib/supabase/session.ts) ignore tout profil dont account_status="retire" : le joueur
+        // restait invisible sur son propre Dashboard/Mes affiliations malgré une demande créée
+        // avec succès — parcours "rejoindre après avoir quitté" silencieusement cassé.
         const { error: updErr } = await admin
           .from("player_profiles")
-          .update({ club_id: org.id, prenom, nom, date_naissance: dateNaissance })
+          .update({ club_id: org.id, prenom, nom, date_naissance: dateNaissance, account_status: "actif" })
           .eq("id", playerId);
         if (updErr) return json({ error: updErr.message }, 500);
       } else {

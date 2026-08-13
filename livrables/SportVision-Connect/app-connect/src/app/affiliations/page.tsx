@@ -96,7 +96,7 @@ export default async function AffiliationsPage() {
               contenus et événements liés à votre équipe.
             </p>
             <Link
-              href="/signup/club"
+              href="/affiliations/ajouter"
               className="self-start rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[14px] font-semibold text-white"
             >
               Ajouter un club
