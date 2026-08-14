@@ -1,0 +1,197 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/Button";
+import type { PlayerOrder, PlayerOrderDocument } from "@/lib/prestations/types";
+import { TIMELINE_STAGES, STAGE_LABEL, STAGE_COLOR, stageFromStatut, type OrderStage } from "@/lib/prestations/status";
+import { formatDateLong, formatEUR } from "@/lib/prestations/format";
+
+const SUPPORT_EMAIL = "contact@sportvision-an.fr";
+
+export function CommandeDetailView({ id }: { id: string }) {
+  const [order, setOrder] = useState<PlayerOrder | null>(null);
+  const [documents, setDocuments] = useState<PlayerOrderDocument[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    supabase.functions.invoke("connect-player-prestations", { body: { action: "get_order", id } }).then(({ data, error: fnError }) => {
+      if (cancelled) return;
+      if (fnError || data?.error) {
+        setError(data?.error || "Commande introuvable.");
+        return;
+      }
+      setOrder(data.order as PlayerOrder);
+      setDocuments((data.documents || []) as PlayerOrderDocument[]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  async function payNow() {
+    if (!order) return;
+    setBusy(true);
+    setCheckoutError(null);
+    const supabase = createClient();
+    const { data, error: fnError } = await supabase.functions.invoke("create-checkout-session", {
+      body: { prestation_id: order.id, type_paiement: "totalite" },
+    });
+    setBusy(false);
+    if (fnError || data?.error || !data?.url) {
+      setCheckoutError(data?.error || "Le paiement en ligne est momentanément indisponible.");
+      return;
+    }
+    window.location.href = data.url;
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
+        <span className="material-symbols-rounded !text-[24px] text-danger">error</span>
+        <span className="text-[14px] text-text-tertiary">{error}</span>
+        <Link href="/commandes" className="text-[13px] font-semibold text-[#8CA9FF]">Retour à mes commandes</Link>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="h-8 w-48 animate-pulse rounded-sv bg-surface" />
+        <div className="h-[280px] animate-pulse rounded-sv-card border border-border bg-surface" />
+      </div>
+    );
+  }
+
+  const stage = stageFromStatut(order.statut);
+  const color = STAGE_COLOR[stage];
+  const amount = order.montantTtc ?? order.montantEstime;
+  const isPaid = order.statutFinancier === "payée" || order.statutFinancier === "partiellement_payée" || order.acompteRecu;
+  const canPay = stage !== "annulee" && amount !== null && !isPaid;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Link href="/commandes" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+        <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+        Mes commandes
+      </Link>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-sora text-[26px] font-bold tracking-tight">{order.offreNom || "Prestation"}</h1>
+          <span className="rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: color.fg, background: color.bg }}>
+            {STAGE_LABEL[stage]}
+          </span>
+        </div>
+        <span className="text-[13px] text-text-tertiary">Réf. {order.reference}</span>
+      </div>
+
+      {/* Timeline */}
+      {stage !== "annulee" ? (
+        <div className="flex flex-col gap-2 rounded-sv-card border border-border bg-surface p-5">
+          <div className="flex items-center">
+            {TIMELINE_STAGES.map((s, i) => (
+              <TimelineStep key={s} stage={s} active={TIMELINE_STAGES.indexOf(stage) >= i} isLast={i === TIMELINE_STAGES.length - 1} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
+          <span className="material-symbols-rounded !text-[19px] text-danger">cancel</span>
+          <span className="text-[13.5px] text-text-secondary">Cette commande a été annulée.</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Fact label="Date" value={formatDateLong(order.datePrestation)} />
+        <Fact label="Heure" value={order.heureDebut || "—"} />
+        <Fact label="Lieu" value={order.lieu || order.adresseComplete || "—"} />
+        <Fact label="Équipe" value={order.equipes || "—"} />
+        <Fact label="Montant" value={amount !== null ? `${formatEUR(amount)} TTC${order.montantTtc === null ? " (estimé)" : ""}` : "Sur devis"} />
+        <Fact label="Options" value={order.optionsSelectionnees.length ? order.optionsSelectionnees.join(", ") : "Aucune"} />
+      </div>
+
+      {order.descriptionBesoin && (
+        <div className="flex flex-col gap-2 rounded-sv-card border border-border bg-surface p-5">
+          <h2 className="font-sora text-[15px] font-semibold">Détails de la demande</h2>
+          <p className="whitespace-pre-line text-[13.5px] leading-relaxed text-text-tertiary">{order.descriptionBesoin}</p>
+        </div>
+      )}
+
+      {canPay && (
+        <div className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-5">
+          <h2 className="font-sora text-[15px] font-semibold">Paiement</h2>
+          <p className="text-[13px] text-text-tertiary">Cette commande n&apos;a pas encore été réglée.</p>
+          {checkoutError && <span className="text-[12.5px] text-danger">{checkoutError}</span>}
+          <Button onClick={payNow} loading={busy} className="self-start">
+            Payer {formatEUR(amount)}
+          </Button>
+        </div>
+      )}
+
+      {documents.length > 0 && (
+        <div className="flex flex-col gap-2.5">
+          <h2 className="font-sora text-[15px] font-semibold">Documents liés</h2>
+          {documents.map((doc) => (
+            <div key={`${doc.kind}-${doc.id}`} className="flex items-center gap-3.5 rounded-sv border border-border bg-surface px-4 py-3.5">
+              <span className="material-symbols-rounded !text-[19px] text-text-tertiary">{doc.kind === "facture" ? "description" : "payments"}</span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate text-[13.5px] font-medium text-text">{doc.kind === "facture" ? `Facture ${doc.reference}` : `Paiement ${doc.reference}`}</span>
+                <span className="text-[12px] text-text-tertiary">{formatDateLong(doc.date)} · {doc.statut}</span>
+              </div>
+              <span className="flex-none font-sora text-[13px] font-semibold">{formatEUR(doc.montant)}</span>
+              {doc.pdfUrl && (
+                <a href={doc.pdfUrl} target="_blank" rel="noreferrer" className="flex-none text-[#8CA9FF]">
+                  <span className="material-symbols-rounded !text-[20px]">download</span>
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-3 rounded-sv-card border border-border bg-surface p-5">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-sora text-[14.5px] font-semibold">Une question sur cette commande ?</span>
+          <span className="text-[13px] text-text-tertiary">L&apos;équipe SportVision vous répond rapidement.</span>
+        </div>
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="flex-none rounded-sv border border-border-strong bg-bg-elevated px-4 py-2.5 font-sora text-[13px] font-semibold hover:bg-surface-hover">
+          Contacter SportVision
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function TimelineStep({ stage, active, isLast }: { stage: OrderStage; active: boolean; isLast: boolean }) {
+  const color = STAGE_COLOR[stage];
+  return (
+    <div className="flex flex-1 flex-col items-center gap-1.5">
+      <div className="flex w-full items-center">
+        <span
+          className="flex h-6 w-6 flex-none items-center justify-center rounded-full border-2 text-[11px] font-bold"
+          style={active ? { borderColor: color.fg, background: color.bg, color: color.fg } : { borderColor: "rgba(255,255,255,.16)", color: "#6C6C90" }}
+        >
+          {active && <span className="material-symbols-rounded !text-[14px]">check</span>}
+        </span>
+        {!isLast && <span className="mx-1 h-[2px] flex-1" style={{ background: active ? color.fg : "rgba(255,255,255,.12)" }} />}
+      </div>
+      <span className="text-center text-[10.5px] leading-tight text-text-faint">{STAGE_LABEL[stage]}</span>
+    </div>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-sv border border-border bg-surface p-3.5">
+      <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">{label}</span>
+      <span className="font-sora text-[14px] font-semibold">{value}</span>
+    </div>
+  );
+}
