@@ -30,9 +30,9 @@ export default async function AffiliationsPage() {
 
   return (
     <AppShell firstName={firstName}>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 animate-sv-in">
         <div className="flex flex-col gap-2">
-          <h1 className="font-sora text-[33px] font-bold tracking-tight">Mes affiliations</h1>
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Mes affiliations</h1>
           <p className="max-w-[560px] text-[15px] text-text-tertiary">
             Retrouvez les clubs et structures sportives liés à votre profil.
           </p>

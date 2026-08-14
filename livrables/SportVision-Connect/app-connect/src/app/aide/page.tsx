@@ -1,7 +1,120 @@
-export default function AidePage() {
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { buildPlayerContext } from "@/lib/supabase/session";
+import { AppShell } from "@/components/layout/AppShell";
+import { AideFaq } from "./AideFaq";
+
+const SUPPORT_EMAIL = "contact@sportvision-an.fr";
+
+// Aide — voir design-connect-personnel-12-08/README.md § Espace joueur → Aide et
+// Connect Espace Joueur.dc.html (section "AIDE", helpCards/helpFaq). Reconstruit le 14/08 :
+// cette page n'était qu'un stub sans AppShell ("Aide — à porter en Phase 2"), ce qui laissait
+// l'utilisateur sans navigation possible dès qu'il cliquait sur le "?" de la sidebar/du header
+// mobile (seul accès à cette page, voir AppShell.tsx). Contenu 100% statique et fidèle au
+// prototype (FAQ figée, contact par e-mail, renvoi vers Messages) : aucune fonctionnalité
+// nouvelle, aucun backend — la vraie FAQ complète et l'assistance compte restent "à connecter"
+// (le prototype lui-même les marque flash()/à rédiger, jamais un vrai écran).
+export default async function AidePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/login");
+
+  const player = await buildPlayerContext(supabase, user.id);
+  const firstName = player?.firstName || user.email?.split("@")[0] || "";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-6 font-sans text-text">
-      <p className="text-text-tertiary">Aide — à porter en Phase 2.</p>
-    </div>
+    <AppShell firstName={firstName}>
+      <div className="flex max-w-[760px] flex-col gap-[22px] animate-sv-in">
+        <div className="flex flex-col gap-2">
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">
+            Comment pouvons-nous vous aider ?
+          </h1>
+          <p className="text-[15px] text-text-tertiary">Choisissez le sujet le plus proche de votre besoin.</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+          <HelpCard
+            icon="support_agent"
+            color="#22D3EE"
+            bg="rgba(34,211,238,.14)"
+            title="Contacter SportVision"
+            sub="Une question précise ? Écrivez-nous."
+            href="/messages"
+          />
+          <HelpCard
+            icon="chat_bubble"
+            color="#F472B6"
+            bg="rgba(244,114,182,.14)"
+            title="Messages"
+            sub="Reprendre une conversation en cours."
+            href="/messages"
+          />
+          <HelpCard
+            icon="account_circle"
+            color="#C084FC"
+            bg="rgba(168,85,247,.16)"
+            title="Problème avec mon compte"
+            sub="Connexion, e-mail, mot de passe."
+            href={`mailto:${SUPPORT_EMAIL}`}
+          />
+          <HelpCard
+            icon="quiz"
+            color="#8CA9FF"
+            bg="rgba(79,125,255,.16)"
+            title="Questions fréquentes"
+            sub="Contenus, prestations, cotisations et affiliations."
+            href="#faq"
+          />
+        </div>
+
+        <AideFaq />
+
+        <div className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-5">
+          <div className="flex flex-col gap-0.5">
+            <span className="font-sora text-[14.5px] font-semibold">Toujours besoin d&apos;aide ?</span>
+            <span className="text-[13px] text-text-tertiary">L&apos;équipe SportVision vous répond rapidement.</span>
+          </div>
+          <a
+            href={`mailto:${SUPPORT_EMAIL}`}
+            className="ml-auto flex-none rounded-sv border border-border-strong bg-bg-elevated px-4 py-2.5 font-sora text-[13px] font-semibold hover:bg-surface-hover"
+          >
+            {SUPPORT_EMAIL}
+          </a>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+function HelpCard({
+  icon,
+  color,
+  bg,
+  title,
+  sub,
+  href,
+}: {
+  icon: string;
+  color: string;
+  bg: string;
+  title: string;
+  sub: string;
+  href: string;
+}) {
+  return (
+    <a
+      href={href}
+      className="flex flex-col gap-2.5 rounded-sv-card border border-border bg-surface p-5 transition-colors duration-150 hover:bg-surface-hover"
+    >
+      <span className="flex h-11 w-11 items-center justify-center rounded-sv" style={{ background: bg }}>
+        <span className="material-symbols-rounded !text-[22px]" style={{ color }}>
+          {icon}
+        </span>
+      </span>
+      <span className="font-sora text-[16px] font-semibold">{title}</span>
+      <span className="text-[13px] leading-relaxed text-text-tertiary">{sub}</span>
+    </a>
   );
 }

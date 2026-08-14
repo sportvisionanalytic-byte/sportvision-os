@@ -123,7 +123,7 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
   }
 
   return (
-    <div className="mx-auto flex max-w-[640px] flex-col gap-6">
+    <div className="mx-auto flex max-w-[640px] flex-col gap-6 pb-24 animate-sv-in lg:pb-0">
       <div className="flex flex-col gap-2">
         <Link href={`/prestations/${offer.id}`} className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
           <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
@@ -299,12 +299,37 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
       </div>
 
       {step < 4 && (
-        <div className="flex gap-2.5">
+        <div className="hidden gap-2.5 lg:flex">
           {step > 1 && (
             <button
               type="button"
               onClick={() => setStep((s) => Math.max(1, s - 1))}
               className="h-14 rounded-sv border border-border-strong bg-surface px-5 font-sora text-[15px] font-semibold text-text hover:bg-surface-hover"
+            >
+              Retour
+            </button>
+          )}
+          {step < 3 ? (
+            <Button onClick={goNext} className="flex-1">
+              Continuer
+            </Button>
+          ) : (
+            <Button onClick={submit} loading={busy} className="flex-1">
+              Envoyer ma demande
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* CTA sticky mobile (README § Mobile : "wizard de réservation") — même offset que la
+          fiche prestation, au-dessus de la bottom nav de l'AppShell (safe-area incluse). */}
+      {step < 4 && (
+        <div className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 flex gap-2.5 border-t border-border bg-bg/95 p-3.5 backdrop-blur-md lg:hidden">
+          {step > 1 && (
+            <button
+              type="button"
+              onClick={() => setStep((s) => Math.max(1, s - 1))}
+              className="h-14 flex-none rounded-sv border border-border-strong bg-surface px-5 font-sora text-[15px] font-semibold text-text hover:bg-surface-hover"
             >
               Retour
             </button>

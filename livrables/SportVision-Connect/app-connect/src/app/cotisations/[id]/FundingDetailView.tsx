@@ -64,7 +64,7 @@ export function FundingDetailView({
   const isTerminal = funding.statut === "expiree" || funding.statut === "annulee";
 
   return (
-    <div className="flex flex-col gap-[22px]">
+    <div className="flex flex-col gap-[22px] animate-sv-in">
       <Link href={listHref} className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
         <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
         Cotisations
@@ -101,7 +101,7 @@ export function FundingDetailView({
             >
               {{ ouverte: "En cours", objectif_atteint: "Objectif atteint", expiree: "Expirée", annulee: "Annulée" }[funding.statut]}
             </span>
-            <h1 className="font-sora text-[27px] font-bold tracking-tight">{funding.titre}</h1>
+            <h1 className="font-sora text-[24px] font-bold tracking-tight lg:text-[27px]">{funding.titre}</h1>
             <span className="text-[14px] text-text-tertiary">
               {funding.group_name || funding.contexte || "Partage libre"}
               {funding.beneficiary_label ? ` · Pour ${funding.beneficiary_label}` : ""}

@@ -80,7 +80,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
   const canPay = stage !== "annulee" && amount !== null && !isPaid;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 animate-sv-in">
       <Link href={backHref} className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
         <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
         Mes commandes

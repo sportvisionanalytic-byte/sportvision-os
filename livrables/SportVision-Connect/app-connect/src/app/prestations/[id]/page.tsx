@@ -34,7 +34,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
 
   return (
     <AppShell firstName={firstName}>
-      <div className="flex flex-col gap-6 pb-24 lg:pb-0">
+      <div className="flex flex-col gap-6 pb-24 animate-sv-in lg:pb-0">
         <Link href="/prestations" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
           <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
           Prestations
@@ -140,8 +140,10 @@ export default async function PrestationFichePage({ params }: { params: Promise<
         </div>
       </div>
 
-      {/* CTA sticky mobile */}
-      <div className="fixed inset-x-0 bottom-[70px] z-20 border-t border-border bg-bg/95 p-3.5 backdrop-blur-md lg:hidden">
+      {/* CTA sticky mobile — au-dessus de la bottom nav (AppShell), qui grandit avec
+          env(safe-area-inset-bottom) sur les téléphones à encoche : même calc que le bouton
+          "Plus" flottant de l'AppShell pour ne jamais passer sous la nav. */}
+      <div className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-bg/95 p-3.5 backdrop-blur-md lg:hidden">
         <Link
           href={`/prestations/${offer.id}/reserver`}
           className="flex h-14 items-center justify-center rounded-sv bg-sv-gradient px-5 font-sora text-[15px] font-semibold text-white"

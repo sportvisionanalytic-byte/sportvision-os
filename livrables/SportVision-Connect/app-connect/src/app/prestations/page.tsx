@@ -25,9 +25,9 @@ export default async function PrestationsPage() {
 
   return (
     <AppShell firstName={firstName}>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 animate-sv-in">
         <div className="flex flex-col gap-2">
-          <h1 className="font-sora text-[33px] font-bold tracking-tight">Prestations</h1>
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Prestations</h1>
           <p className="max-w-[560px] text-[15px] text-text-tertiary">
             Réservez une couverture photo, vidéo ou une captation pour votre prochain match.
           </p>

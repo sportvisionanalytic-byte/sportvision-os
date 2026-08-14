@@ -49,10 +49,10 @@ export default async function DashboardPage() {
 
   return (
     <AppShell firstName={firstName}>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 animate-sv-in">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div className="flex flex-col gap-2">
-            <h1 className="font-sora text-[33px] font-bold tracking-tight">Bonjour {firstName} 👋</h1>
+            <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Bonjour {firstName} 👋</h1>
             <p className="text-[15px] text-text-tertiary">Retrouvez votre univers SportVision en un coup d&apos;œil.</p>
           </div>
           <Link

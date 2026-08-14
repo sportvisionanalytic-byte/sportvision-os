@@ -35,7 +35,7 @@ export default async function AjouterClubPage() {
 
   return (
     <AppShell firstName={firstName}>
-      <div className="flex max-w-[560px] flex-col gap-6">
+      <div className="flex max-w-[560px] flex-col gap-6 animate-sv-in">
         <div className="flex flex-col gap-2">
           <h1 className="font-sora text-[28px] font-bold tracking-tight">Ajouter mon club</h1>
           <p className="text-[15px] leading-relaxed text-text-tertiary">

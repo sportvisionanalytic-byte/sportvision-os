@@ -178,7 +178,7 @@ export function ContentGallery({
   const lbItem = lightboxIndex !== null ? galleryItems[lightboxIndex] : null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 animate-sv-in">
       {!openGroup && (
         <>
           <div className="flex flex-col gap-2">
@@ -361,7 +361,7 @@ function MediaGrid({
                 e.stopPropagation();
                 onToggleFavorite(item);
               }}
-              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-[11px] bg-black/55 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus:opacity-100"
+              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-[11px] bg-black/55 opacity-100 transition-opacity duration-150 lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100"
               style={fav ? { opacity: 1 } : undefined}
               aria-label={fav ? "Retirer des favoris" : "Ajouter aux favoris"}
             >
