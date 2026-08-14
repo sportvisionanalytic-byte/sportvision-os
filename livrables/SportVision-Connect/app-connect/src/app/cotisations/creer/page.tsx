@@ -12,9 +12,9 @@ import { CreateFundingWizard, type OffreOption, type GroupOption } from "./Creat
 export default async function CreerCotisationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ groupe?: string }>;
+  searchParams: Promise<{ groupe?: string; offreId?: string }>;
 }) {
-  const { groupe } = await searchParams;
+  const { groupe, offreId } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -41,6 +41,7 @@ export default async function CreerCotisationPage({
         offres={(offres || []) as OffreOption[]}
         groups={(groups || []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name })) as GroupOption[]}
         initialGroupId={groupe || null}
+        initialOfferId={offreId || null}
       />
     </AppShell>
   );

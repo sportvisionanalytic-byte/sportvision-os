@@ -16,12 +16,14 @@ import { formatEUR, needsRetractationWaiver } from "@/lib/prestations/format";
 // frontend) — voir son commentaire d'en-tête pour le détail du calcul de prix et de la
 // résolution client_id.
 //
-// Paiement collectif ("à plusieurs") : AUCUN backend cotisations n'existe encore (voir
-// RAPPORT-MIGRATION-CONNECT-PERSONNEL.md §6, "à créer entièrement" — chantier séparé, en
-// parallèle). Ce wizard expose le choix (point d'entrée UI demandé par le brief) mais ne bloque
-// jamais le paiement solo : sélectionner "à plusieurs" crée quand même la demande (statut En
-// validation) et affiche clairement que le paiement collectif n'est pas encore branché, avec un
-// repli explicite vers "payer seul".
+// Paiement collectif ("à plusieurs") : le backend cotisations existe depuis le 14/08
+// (migration-connect-v50/v51, group_fundings/funding_contributions) mais reste un objet
+// indépendant, rattaché à un `catalogue_offre_id` — PAS à une ligne `prestations` précise
+// (pas de colonne group_fundings.prestation_id). On ne peut donc pas relier automatiquement
+// "cette cotisation a atteint son objectif" à "cette demande précise est payée" : sélectionner
+// "à plusieurs" crée quand même la demande (statut En validation), puis propose de créer une
+// cotisation pré-remplie avec cette offre (même pattern que ReservationWizardParticulier.tsx →
+// /particulier/cotisations/creer?offreId=), avec un repli explicite vers "payer seul".
 const STEPS = ["Informations", "Options", "Paiement", "Confirmation"] as const;
 
 type PaiementMode = "seul" | "collectif";
@@ -223,8 +225,8 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
               <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
                 <span className="material-symbols-rounded !text-[19px] text-attente">info</span>
                 <span className="text-[12.5px] leading-relaxed text-text-secondary">
-                  Le paiement à plusieurs (cotisation) n&apos;est pas encore disponible. Votre demande sera tout de même enregistrée au
-                  statut « En validation » — vous pourrez organiser le partage du coût avec SportVision, ou basculer sur « Payer seul ».
+                  Votre demande sera tout de même enregistrée au statut « En validation ». Créez ensuite une cotisation
+                  depuis cette page pour partager le coût, ou basculez sur « Payer seul ».
                 </span>
               </div>
             )}
@@ -286,8 +288,8 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
               </div>
             )}
             {paiementMode === "collectif" && (
-              <Button onClick={() => launchCheckout(result.id)} loading={busy} className="w-full max-w-[320px]">
-                Payer seul maintenant
+              <Button onClick={() => router.push(`/cotisations/creer?offreId=${offer.id}`)} className="w-full max-w-[320px]">
+                Créer une cotisation
               </Button>
             )}
 
