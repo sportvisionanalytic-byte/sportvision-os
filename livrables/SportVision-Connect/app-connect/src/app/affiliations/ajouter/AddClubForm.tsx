@@ -41,6 +41,7 @@ export function AddClubForm({
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [declaredDone, setDeclaredDone] = useState(false);
 
   useEffect(() => {
     if (choice !== "search" || query.trim().length < 2) {
@@ -109,8 +110,33 @@ export function AddClubForm({
       setError("Impossible d'enregistrer votre club pour le moment. Réessayez dans un instant.");
       return;
     }
-    router.push("/affiliations");
-    router.refresh();
+    // Un club déclaré non partenaire ne crée aucune ligne visible sur le profil (aucune écriture
+    // organizations/clubs/player_profiles, voir l'en-tête de connect-player-onboarding — seule
+    // une notification staff part) : rediriger silencieusement vers /affiliations, qui n'affiche
+    // aucune section "Clubs déclarés", donnait l'impression que rien ne s'était passé (bug
+    // remonté le 15/08). Écran de confirmation explicite à la place.
+    setDeclaredDone(true);
+  }
+
+  if (declaredDone) {
+    return (
+      <div className="flex flex-col items-center gap-4 rounded-sv-card border border-border bg-surface p-6 text-center animate-sv-in">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-affiliations-bg">
+          <span className="material-symbols-rounded !text-[26px] text-affiliations">check</span>
+        </span>
+        <div className="flex flex-col gap-2">
+          <span className="font-sora text-[18px] font-semibold">Club transmis à SportVision</span>
+          <p className="max-w-[320px] text-[13px] leading-relaxed text-text-tertiary">
+            « {declareName} » a été signalé à notre équipe comme club non partenaire. Il n&apos;apparaît pas
+            comme une affiliation active dans votre profil pour l&apos;instant — nous vous recontacterons si
+            SportVision peut travailler avec cette structure.
+          </p>
+        </div>
+        <Button onClick={() => { router.push("/affiliations"); router.refresh(); }} className="w-full">
+          Retour à mes affiliations
+        </Button>
+      </div>
+    );
   }
 
   if (choice === null) {
