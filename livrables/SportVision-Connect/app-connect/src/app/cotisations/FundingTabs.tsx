@@ -47,7 +47,11 @@ function formatDeadline(iso: string | null) {
   return `Jusqu'au ${new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`;
 }
 
-export function FundingTabs({ fundings }: { fundings: FundingRow[] }) {
+// basePath : "/cotisations" (Espace joueur, défaut — comportement strictement inchangé) ou
+// "/particulier/cotisations" (Espace particulier, même composant réutilisé tel quel : la RPC
+// list_my_fundings() renvoie déjà, sans changement, toutes les cotisations créées par l'appelant
+// — y compris celles créées par un particulier pour un sportif qu'il accompagne).
+export function FundingTabs({ fundings, basePath = "/cotisations" }: { fundings: FundingRow[]; basePath?: string }) {
   const [tab, setTab] = useState<Tab>("en-cours");
 
   const filtered = useMemo(() => {
@@ -71,7 +75,7 @@ export function FundingTabs({ fundings }: { fundings: FundingRow[] }) {
           <p className="text-[15px] text-text-tertiary">Financez vos prestations SportVision à plusieurs.</p>
         </div>
         <Link
-          href="/cotisations/creer"
+          href={`${basePath}/creer`}
           className="flex h-[46px] flex-none items-center gap-2 rounded-sv bg-sv-gradient px-[18px] font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
         >
           <span className="material-symbols-rounded !text-[20px]">add</span>
@@ -149,7 +153,7 @@ export function FundingTabs({ fundings }: { fundings: FundingRow[] }) {
                   </div>
                 </div>
                 <Link
-                  href={`/cotisations/${f.id}`}
+                  href={`${basePath}/${f.id}`}
                   className="mt-auto flex h-[46px] items-center justify-center rounded-sv border border-border-strong bg-white/[.06] font-sora text-[14px] font-semibold hover:bg-white/[.12]"
                 >
                   Voir

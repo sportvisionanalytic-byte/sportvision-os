@@ -1,0 +1,364 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+// Shell de l'Espace particulier — voir design-connect-personnel-12-08/README.md § Shell et
+// navigation ("Espace particulier") + § Espace particulier. NE remplace PAS AppShell.tsx (shell
+// joueur, non modifié — contrainte explicite de la mission) : composant entièrement séparé,
+// choisi plutôt qu'une extension d'AppShell car le README documente une sidebar structurellement
+// différente pour ce second espace (sélecteur de contexte sous le logo, section "MES SPORTIFS"
+// au lieu de "MON UNIVERS", bottom nav mobile à 5 items différents) — assez de divergence pour
+// justifier un composant dédié plutôt que des branches conditionnelles dans AppShell.
+//
+// Décision documentée (rapport final) : les DEUX espaces partagent volontairement les mêmes
+// routes pour les modules communs (Prestations, Cotisations, Mes contenus, Mes commandes,
+// Calendrier, Messages, Factures & paiements) côté Espace joueur — mais l'Espace particulier a
+// SES PROPRES routes sous /particulier/** pour ces mêmes modules (au lieu de réutiliser tel
+// quel /prestations, /commandes, etc.) : un compte est TOUJOURS l'un OU l'autre (jamais les
+// deux), et les pages existantes sous /prestations etc. sont bâties autour de buildPlayerContext
+// (player_profiles), qui n'existe jamais pour un particulier — les dupliquer sous /particulier
+// évite de complexifier ces pages déjà construites avec des branches account_type, au prix d'une
+// petite duplication de route, jugée plus sûre pour ne rien casser côté Espace joueur.
+
+export interface AthleteNavItem {
+  kind: "linked" | "managed";
+  refId: string;
+  firstName: string;
+  lastName: string;
+}
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: string;
+}
+
+const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
+  { title: null, items: [{ href: "/particulier", label: "Accueil", icon: "home" }] },
+  {
+    title: "Mes sportifs",
+    items: [{ href: "/particulier/sportifs", label: "Mes sportifs", icon: "group" }],
+  },
+  {
+    title: "SportVision",
+    items: [
+      { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt" },
+      { href: "/particulier/cotisations", label: "Cotisations", icon: "savings" },
+      { href: "/particulier/contenus", label: "Mes contenus", icon: "photo_library" },
+      { href: "/particulier/commandes", label: "Mes commandes", icon: "receipt_long" },
+      { href: "/particulier/calendrier", label: "Calendrier", icon: "calendar_month" },
+      { href: "/particulier/messages", label: "Messages", icon: "forum" },
+    ],
+  },
+  {
+    title: "Mon compte",
+    items: [
+      { href: "/particulier/factures", label: "Factures & paiements", icon: "payments" },
+      { href: "/particulier/profil", label: "Mon profil", icon: "person" },
+    ],
+  },
+];
+
+const ALL_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
+
+// 5 onglets mobiles (README § Mobile → "Particulier : Accueil · Sportifs · Prestations ·
+// Contenus · Profil"), le reste dans la feuille "Plus".
+const MOBILE_TABS: NavItem[] = [
+  { href: "/particulier", label: "Accueil", icon: "home" },
+  { href: "/particulier/sportifs", label: "Sportifs", icon: "group" },
+  { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt" },
+  { href: "/particulier/contenus", label: "Contenus", icon: "photo_library" },
+  { href: "/particulier/profil", label: "Profil", icon: "person" },
+];
+const MOBILE_MORE_ITEMS: NavItem[] = ALL_ITEMS.filter((item) => !MOBILE_TABS.some((t) => t.href === item.href));
+
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function ParticularShell({
+  firstName,
+  athletes,
+  children,
+}: {
+  firstName: string;
+  athletes: AthleteNavItem[];
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/auth/login");
+    router.refresh();
+  }
+
+  const monogram = (firstName[0] || "?").toUpperCase();
+
+  const contextSelector = (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setContextOpen((v) => !v)}
+        className="flex h-10 w-full items-center gap-2 rounded-sv border border-border-strong bg-surface px-3 text-left text-[13px] font-medium text-text-secondary hover:bg-surface-hover"
+      >
+        <span className="material-symbols-rounded !text-[18px] text-text-tertiary">group</span>
+        <span className="truncate">Vous consultez : {athletes.length ? "Tous mes sportifs" : "Aucun sportif"}</span>
+        <span className="material-symbols-rounded ml-auto !text-[18px] text-text-faint">expand_more</span>
+      </button>
+      {contextOpen && (
+        <div className="fixed inset-0 z-40" onClick={() => setContextOpen(false)}>
+          <div
+            className="absolute left-3.5 right-3.5 top-[130px] z-50 flex max-h-[60vh] flex-col gap-0.5 overflow-y-auto rounded-sv-card border border-border bg-bg-elevated p-2 lg:left-auto lg:top-auto lg:mt-2 lg:w-[260px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Link
+              href="/particulier"
+              onClick={() => setContextOpen(false)}
+              className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
+            >
+              <span className="material-symbols-rounded !text-[19px]">apps</span>
+              Tous mes sportifs
+            </Link>
+            {athletes.map((a) => (
+              <Link
+                key={`${a.kind}:${a.refId}`}
+                href={`/particulier/sportifs/${a.kind}/${a.refId}`}
+                onClick={() => setContextOpen(false)}
+                className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
+              >
+                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-sv-gradient font-sora text-[10px] font-semibold text-white">
+                  {(a.firstName[0] || "?").toUpperCase()}
+                </span>
+                {a.firstName} {a.lastName}
+              </Link>
+            ))}
+            {athletes.length === 0 && (
+              <span className="px-3 py-2.5 text-[13px] text-text-faint">Aucun sportif ajouté pour le moment.</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="flex min-h-screen bg-bg font-sans text-text">
+      {/* ============ SIDEBAR DESKTOP ============ */}
+      <aside className="sticky top-0 hidden h-screen w-[252px] flex-none flex-col gap-4 overflow-y-auto border-r border-border p-3.5 lg:flex">
+        <div className="flex items-center gap-2.5 px-2">
+          <Link href="/particulier" className="flex flex-1 items-center gap-2.5">
+            <Image src="/uploads/logo.png" alt="SportVision Connect" width={32} height={32} className="object-contain" />
+            <div className="flex flex-col leading-tight">
+              <span className="font-sora text-[15px] font-bold tracking-tight">SportVision</span>
+              <span className="bg-sv-gradient bg-clip-text text-[10px] font-medium uppercase tracking-[.14em] text-transparent">
+                Connect
+              </span>
+            </div>
+          </Link>
+          <Link
+            href="/aide"
+            aria-label="Aide"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-text-tertiary hover:bg-white/[.06] hover:text-text"
+          >
+            <span className="material-symbols-rounded !text-[19px]">help</span>
+          </Link>
+        </div>
+
+        {contextSelector}
+
+        <nav className="flex flex-1 flex-col gap-4">
+          {NAV_SECTIONS.map((section, i) => (
+            <div key={section.title ?? `section-${i}`} className="flex flex-col gap-1">
+              {section.title && (
+                <span className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[.1em] text-text-faint">
+                  {section.title}
+                </span>
+              )}
+              {section.items.map((item) => {
+                const active = isActive(pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex h-[42px] items-center gap-2.5 rounded-sv px-3 text-[14px] transition-colors duration-150 ${
+                      active ? "bg-white/8 font-medium text-text" : "text-text-secondary hover:bg-white/[.05]"
+                    }`}
+                  >
+                    <span
+                      className="material-symbols-rounded !text-[21px]"
+                      style={{ color: active ? "#8CA9FF" : undefined }}
+                    >
+                      {item.icon}
+                    </span>
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-2.5 rounded-sv border border-border bg-surface px-3 py-2.5 text-left hover:bg-surface-hover"
+        >
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-sv-gradient font-sora text-[13px] font-semibold text-white">
+            {monogram}
+          </span>
+          <span className="flex flex-col gap-0.5 leading-tight">
+            <span className="font-sora text-[13px] font-semibold">{firstName}</span>
+            <span className="text-[11px] text-text-tertiary">Se déconnecter</span>
+          </span>
+        </button>
+      </aside>
+
+      {/* ============ HEADER MOBILE ============ */}
+      <div className="fixed inset-x-0 top-0 z-30 flex flex-col gap-2.5 border-b border-border bg-bg/90 px-4 py-3 backdrop-blur-md lg:hidden">
+        <div className="flex items-center gap-3">
+          <Image src="/uploads/logo.png" alt="SportVision Connect" width={28} height={28} className="object-contain" />
+          <span className="bg-sv-gradient bg-clip-text text-[10px] font-medium uppercase tracking-[.14em] text-transparent">
+            Connect
+          </span>
+          <Link
+            href="/aide"
+            aria-label="Aide"
+            className="ml-auto flex h-9 w-9 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
+          >
+            <span className="material-symbols-rounded !text-[20px]">help</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="flex h-9 w-9 items-center justify-center rounded-sv bg-surface"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sv-gradient font-sora text-[12px] font-semibold text-white">
+              {monogram}
+            </span>
+          </button>
+        </div>
+        {contextSelector}
+      </div>
+
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+        >
+          <div
+            className="absolute right-3 top-[120px] flex max-h-[calc(100vh-140px)] w-64 flex-col gap-3 overflow-y-auto rounded-sv-card border border-border bg-bg-elevated p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {NAV_SECTIONS.map((section, i) => (
+              <div key={section.title ?? `msection-${i}`} className="flex flex-col gap-1">
+                {section.title && (
+                  <span className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[.1em] text-text-faint">
+                    {section.title}
+                  </span>
+                )}
+                {section.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
+                  >
+                    <span className="material-symbols-rounded !text-[20px]">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-left text-[14px] text-danger hover:bg-white/5"
+            >
+              <span className="material-symbols-rounded !text-[20px]">logout</span>
+              Se déconnecter
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ============ CONTENU ============ */}
+      <main className="flex-1 pb-16 pt-[112px] lg:pb-0 lg:pt-0">
+        <div className="mx-auto max-w-[1160px] px-5 py-7 lg:px-8">{children}</div>
+      </main>
+
+      {/* ============ BOTTOM NAV MOBILE (5 onglets + feuille "Plus") ============ */}
+      <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-bg/95 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:hidden">
+        {MOBILE_TABS.map((item) => {
+          const active = isActive(pathname, item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex min-h-[48px] flex-col items-center justify-center gap-1"
+            >
+              <span
+                className="material-symbols-rounded !text-[22px]"
+                style={{ color: active ? "#8CA9FF" : "#7A7A9C" }}
+              >
+                {item.icon}
+              </span>
+              <span className="text-[10px]" style={{ color: active ? "#8CA9FF" : "#7A7A9C" }}>
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setMoreOpen(true)}
+        aria-label="Plus d'options"
+        className="fixed bottom-[calc(66px+env(safe-area-inset-bottom))] right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-sv-gradient text-white shadow-lg lg:hidden"
+      >
+        <span className="material-symbols-rounded !text-[22px]">apps</span>
+      </button>
+
+      {moreOpen && (
+        <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setMoreOpen(false)}>
+          <div
+            className="absolute inset-x-0 bottom-0 flex max-h-[70vh] flex-col gap-1 overflow-y-auto rounded-t-sv-card border-t border-border bg-bg-elevated p-3 pb-[max(16px,env(safe-area-inset-bottom))]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-1 h-1 w-10 rounded-full bg-white/15" />
+            <span className="px-2 pb-1 font-sora text-[15px] font-semibold">Plus</span>
+            {MOBILE_MORE_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMoreOpen(false)}
+                className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
+              >
+                <span className="material-symbols-rounded !text-[21px]">{item.icon}</span>
+                {item.label}
+              </Link>
+            ))}
+            <Link
+              href="/aide"
+              onClick={() => setMoreOpen(false)}
+              className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
+            >
+              <span className="material-symbols-rounded !text-[21px]">help</span>
+              Aide
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

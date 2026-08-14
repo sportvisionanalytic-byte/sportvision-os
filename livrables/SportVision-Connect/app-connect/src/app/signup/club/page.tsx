@@ -99,6 +99,14 @@ export default function SignupClubPage() {
       return;
     }
 
+    // Type de compte (joueur vs particulier) — voir lib/signup/pending-onboarding.ts et
+    // migration-connect-v51-espace-particulier.sql §1 : c'est ICI, au tout premier point où le
+    // choix de l'étape Profil (signup-context.tsx) peut être capturé de façon durable, que le
+    // filet "pending" est amorcé — pour TOUS les profils, pas seulement joueur/sportif (avant ce
+    // correctif, un profil particulier/parent/autre ne déclenchait aucun savePendingOnboarding
+    // du tout, donc aucun account_type n'était jamais écrit).
+    const accountType: "joueur" | "particulier" = isSportLike ? "joueur" : "particulier";
+
     if (isSportLike) {
       if (choice === "search" && selected) {
         savePendingOnboarding({
@@ -108,6 +116,7 @@ export default function SignupClubPage() {
           prenom: state.firstName,
           nom: state.lastName,
           dateNaissance: state.dateNaissance,
+          accountType,
         });
       } else if (choice === "declare") {
         savePendingOnboarding({
@@ -117,10 +126,15 @@ export default function SignupClubPage() {
           team: declareTeam,
           prenom: state.firstName,
           nom: state.lastName,
+          accountType,
         });
       } else {
-        savePendingOnboarding({ action: "skip" });
+        savePendingOnboarding({ action: "skip", accountType });
       }
+    } else {
+      // Particulier / parent / autre : pas d'étape club (voir le rendu conditionnel ci-dessous),
+      // mais le type de compte doit être rejoué au premier login comme pour un profil joueur.
+      savePendingOnboarding({ action: "skip", accountType });
     }
 
     patch({

@@ -1,0 +1,109 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { MessagesThread, type MessageData } from "@/app/messages/MessagesThread";
+import type { AthleteRow } from "@/lib/supabase/particulier";
+
+type Subject = { kind: "self" | "linked" | "managed"; id: string | null; label: string };
+
+export function MessagesParticulierView({ firstName, athletes }: { firstName: string; athletes: AthleteRow[] }) {
+  const subjects: Subject[] = [
+    { kind: "self", id: null, label: "Mon compte" },
+    ...athletes.map((a) => ({ kind: a.kind, id: a.refId, label: `${a.firstName} ${a.lastName}`.trim() })),
+  ];
+
+  const [subjectIndex, setSubjectIndex] = useState(0);
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<MessageData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const subject = subjects[subjectIndex] ?? subjects[0]!;
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    const supabase = createClient();
+    (async () => {
+      const { data: resolvedId, error: rpcError } = await supabase.rpc("connect_resolve_beneficiary_client_id", {
+        p_kind: subject.kind,
+        p_ref_id: subject.id,
+      });
+      if (cancelled) return;
+      if (rpcError || !resolvedId) {
+        setError("Messages indisponible pour ce contexte pour le moment.");
+        setLoading(false);
+        return;
+      }
+      setClientId(resolvedId as string);
+      const { data } = await supabase
+        .from("messages_client")
+        .select("id, auteur_type, contenu, piece_jointe_url, lu, created_at")
+        .eq("client_id", resolvedId)
+        .order("created_at", { ascending: true });
+      if (cancelled) return;
+      setMessages(
+        (data || []).map((row) => ({
+          id: row.id as string,
+          auteur: row.auteur_type === "staff" ? "staff" : "client",
+          contenu: row.contenu as string,
+          pieceJointeUrl: (row.piece_jointe_url as string | null) ?? null,
+          lu: row.lu as boolean,
+          createdAt: row.created_at as string,
+        })),
+      );
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subject.kind, subject.id]);
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Messages</h1>
+        <p className="text-[15px] text-text-tertiary">Votre lien direct avec SportVision.</p>
+      </div>
+
+      {subjects.length > 1 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-[13px] font-medium text-text-secondary">Ce message concerne :</span>
+          <div className="flex flex-wrap gap-2">
+            {subjects.map((s, i) => (
+              <button
+                key={`${s.kind}:${s.id}`}
+                type="button"
+                onClick={() => setSubjectIndex(i)}
+                className={`rounded-sv-pill border px-3.5 py-2 text-[13px] font-medium transition-colors duration-150 ${
+                  subjectIndex === i ? "border-[rgba(34,211,238,.5)] bg-[rgba(34,211,238,.18)] text-text" : "border-border text-text-tertiary hover:text-text"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="h-[420px] animate-pulse rounded-sv-card border border-border bg-surface" />
+      ) : (
+        <MessagesThread
+          key={`${subject.kind}:${subject.id}`}
+          clientId={clientId}
+          initialMessages={messages}
+          unavailable={!!error}
+        />
+      )}
+      {!loading && !error && subject.kind !== "self" && (
+        <p className="text-[12.5px] text-text-faint">
+          {firstName}, ce fil concerne {subject.label} — l&apos;équipe SportVision voit qui écrit.
+        </p>
+      )}
+    </div>
+  );
+}

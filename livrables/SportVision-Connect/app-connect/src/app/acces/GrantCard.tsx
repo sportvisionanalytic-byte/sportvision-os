@@ -13,11 +13,21 @@ const RELATION_LABEL: Record<string, string> = {
   autre: "Autre",
 };
 
+// 9 droits (design-connect-personnel-12-08/design .../Connect Espace Particulier.dc.html,
+// PERM_LABELS) — les 4 derniers ajoutés par migration-connect-v51-espace-particulier.sql §3 :
+// seuls voir/download/reserver/commandes/factures existaient avant (14/08, Accès à mon profil
+// espace joueur). Le propriétaire du profil (ici, potentiellement un particulier lui-même s'il
+// a été invité par un autre particulier — l'invitation n'est pas réservée aux joueurs) est
+// toujours celui qui accorde/retire ces droits, jamais l'accompagnant.
 const RIGHTS: { key: string; label: string }[] = [
   { key: "voir", label: "Voir mes contenus" },
   { key: "download", label: "Télécharger mes contenus" },
   { key: "reserver", label: "Réserver une prestation pour moi" },
+  { key: "payer", label: "Effectuer des paiements pour moi" },
+  { key: "cotisation", label: "Créer ou participer à une cotisation pour moi" },
+  { key: "calendrier", label: "Voir mon calendrier SportVision" },
   { key: "commandes", label: "Suivre mes commandes" },
+  { key: "modifier", label: "Modifier mon profil" },
   { key: "factures", label: "Voir mes factures" },
 ];
 
@@ -27,6 +37,10 @@ export interface GrantRights {
   reserver: boolean;
   commandes: boolean;
   factures: boolean;
+  payer: boolean;
+  cotisation: boolean;
+  calendrier: boolean;
+  modifier: boolean;
 }
 
 // Bascules réelles par droit (connect_update_profile_access_right, RPC SECURITY DEFINER) +

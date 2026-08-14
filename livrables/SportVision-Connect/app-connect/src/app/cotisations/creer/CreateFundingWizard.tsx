@@ -39,18 +39,35 @@ const CATEGORY_ICON: Record<string, string> = {
   contenu: "movie",
 };
 
+// Bénéficiaire (Espace particulier uniquement, migration-connect-v51-espace-particulier.sql
+// §6) : quand fourni, envoyé à create_group_funding() qui revérifie lui-même le droit
+// "cotisation" côté serveur avant toute écriture — jamais une confiance dans ce prop. `null`
+// (défaut) reproduit exactement le comportement existant côté Espace joueur (cotisation pour
+// soi-même, colonnes beneficiary_* laissées NULL).
+export interface FundingBeneficiary {
+  kind: "linked" | "managed";
+  id: string;
+  label: string;
+}
+
 export function CreateFundingWizard({
   offres,
   groups,
   initialGroupId,
+  initialOfferId = null,
+  beneficiary = null,
+  basePath = "/cotisations",
 }: {
   offres: OffreOption[];
   groups: GroupOption[];
   initialGroupId: string | null;
+  initialOfferId?: string | null;
+  beneficiary?: FundingBeneficiary | null;
+  basePath?: string;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | "success">(1);
-  const [offreId, setOffreId] = useState<string | null>(null);
+  const [offreId, setOffreId] = useState<string | null>(initialOfferId);
   const [contexte, setContexte] = useState("");
   const [groupId, setGroupId] = useState<string | null>(initialGroupId);
   const [mode, setMode] = useState<RepartitionMode>("egale");
@@ -90,6 +107,9 @@ export function CreateFundingWizard({
       p_repartition_mode: mode,
       p_nb_participants: mode === "egale" ? count : null,
       p_date_limite: deadline,
+      p_beneficiary_kind: beneficiary?.kind ?? null,
+      p_beneficiary_owner_user_id: beneficiary?.kind === "linked" ? beneficiary.id : null,
+      p_beneficiary_managed_id: beneficiary?.kind === "managed" ? beneficiary.id : null,
     });
     setBusy(false);
     if (rpcError || !data) {
@@ -170,7 +190,7 @@ export function CreateFundingWizard({
             <button
               type="button"
               onClick={() => {
-                router.push(`/cotisations/${result.id}`);
+                router.push(`${basePath}/${result.id}`);
                 router.refresh();
               }}
               className="flex h-[50px] flex-1 items-center justify-center rounded-sv border border-border-strong bg-white/[.06] font-sora text-[14px] font-semibold hover:bg-white/[.12]"
@@ -400,6 +420,7 @@ export function CreateFundingWizard({
             <p className="text-[15px] text-text-tertiary">Vérifiez avant de créer le lien de partage.</p>
           </div>
           <div className="flex flex-col gap-3.5 rounded-sv-card border border-border-strong bg-surface p-[22px]">
+            {beneficiary && <RecapLine label="Bénéficiaire" value={beneficiary.label} />}
             <RecapLine label="Prestation" value={offre.nom} />
             {contexte.trim() && <RecapLine label="Contexte" value={contexte.trim()} />}
             <RecapLine label="Groupe" value={selectedGroup ? selectedGroup.name : "Partage libre (sans groupe)"} />

@@ -10,8 +10,12 @@ import { formatDateLong, formatEUR } from "@/lib/prestations/format";
 
 const SUPPORT_EMAIL = "contact@sportvision-an.fr";
 
-export function CommandeDetailView({ id }: { id: string }) {
-  const [order, setOrder] = useState<PlayerOrder | null>(null);
+// multi/backHref (Espace particulier, migration-connect-v51) : quand multi=true, interroge la
+// commande parmi TOUS les client_id accessibles à l'appelant (pas seulement les siens) — voir
+// l'en-tête de l'edge function pour le détail. Défauts inchangés : reproduit exactement le
+// comportement existant côté Espace joueur.
+export function CommandeDetailView({ id, multi = false, backHref = "/commandes" }: { id: string; multi?: boolean; backHref?: string }) {
+  const [order, setOrder] = useState<(PlayerOrder & { forWho?: string | null }) | null>(null);
   const [documents, setDocuments] = useState<PlayerOrderDocument[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,7 +24,7 @@ export function CommandeDetailView({ id }: { id: string }) {
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
-    supabase.functions.invoke("connect-player-prestations", { body: { action: "get_order", id } }).then(({ data, error: fnError }) => {
+    supabase.functions.invoke("connect-player-prestations", { body: { action: "get_order", id, multi } }).then(({ data, error: fnError }) => {
       if (cancelled) return;
       if (fnError || data?.error) {
         setError(data?.error || "Commande introuvable.");
@@ -55,7 +59,7 @@ export function CommandeDetailView({ id }: { id: string }) {
       <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
         <span className="material-symbols-rounded !text-[24px] text-danger">error</span>
         <span className="text-[14px] text-text-tertiary">{error}</span>
-        <Link href="/commandes" className="text-[13px] font-semibold text-[#8CA9FF]">Retour à mes commandes</Link>
+        <Link href={backHref} className="text-[13px] font-semibold text-[#8CA9FF]">Retour à mes commandes</Link>
       </div>
     );
   }
@@ -77,7 +81,7 @@ export function CommandeDetailView({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/commandes" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+      <Link href={backHref} className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
         <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
         Mes commandes
       </Link>
@@ -88,6 +92,9 @@ export function CommandeDetailView({ id }: { id: string }) {
           <span className="rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: color.fg, background: color.bg }}>
             {STAGE_LABEL[stage]}
           </span>
+          {order.forWho && (
+            <span className="rounded-sv-pill bg-white/[.07] px-2.5 py-1 text-[12px] font-medium text-text-tertiary">Pour {order.forWho}</span>
+          )}
         </div>
         <span className="text-[13px] text-text-tertiary">Réf. {order.reference}</span>
       </div>

@@ -170,6 +170,24 @@ export async function getProfileSettings(
   };
 }
 
+// Type de compte (Espace joueur vs. Espace particulier) — colonne connect_profile_settings.
+// account_type (migration-connect-v51-espace-particulier.sql §1). Défaut 'joueur' si aucune
+// ligne n'existe encore (comportement inchangé pour tout compte créé avant cette migration —
+// aucune régression) ou si le rejeu du pending onboarding (lib/signup/pending-onboarding.ts)
+// n'a jamais pu s'exécuter (localStorage vidé avant le premier login, par exemple) : dans ce
+// cas de bord documenté au rapport final, l'utilisateur atterrit sur l'Espace joueur par défaut
+// plutôt que sur une page blanche.
+export type AccountType = "joueur" | "particulier";
+
+export async function getAccountType(supabase: SupabaseClient, userId: string): Promise<AccountType> {
+  const { data } = await supabase
+    .from("connect_profile_settings")
+    .select("account_type")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data?.account_type === "particulier" ? "particulier" : "joueur";
+}
+
 // "Mes espaces" (Mon profil) ne doit apparaître QUE si un accès Club+ existe réellement — jamais
 // un cadenas décoratif (principe déjà établi dans ce projet). club_members est le roster
 // staff/dirigeants de Club+ (rôle admin/president/... — voir migration-clubplus-v1.sql), donc sa

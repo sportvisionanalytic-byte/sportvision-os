@@ -21,6 +21,12 @@ export interface PendingPlayerOnboarding {
   prenom?: string;
   nom?: string;
   dateNaissance?: string;
+  // Type de compte choisi à l'étape Profil du tunnel (signup-context.tsx) — 'joueur' pour
+  // joueur/sportif, 'particulier' pour particulier/parent/autre (voir migration-connect-v51-
+  // espace-particulier.sql §1). Rejoué ici pour la même raison que l'action club : auth.signUp()
+  // ne renvoie aucune session tant que l'e-mail n'est pas confirmé, donc rien n'est écrivable
+  // avant le premier login réel — voir consumePendingOnboarding ci-dessous.
+  accountType?: "joueur" | "particulier";
 }
 
 export function savePendingOnboarding(pending: PendingPlayerOnboarding) {
@@ -63,6 +69,26 @@ export async function consumePendingOnboarding(
   } catch {
     localStorage.removeItem(STORAGE_KEY);
     return null;
+  }
+
+  // Type de compte — écriture directe (pas d'edge function nécessaire : la policy
+  // "cps_self_all" de connect_profile_settings autorise déjà un self-upsert, voir migration-
+  // connect-personnel-accueil-profil-acces.sql §1). Fait AVANT l'appel à connect-player-
+  // onboarding : un échec de résolution club (rate limit, réseau) ne doit jamais empêcher le
+  // compte de se retrouver dans le bon espace (particulier vs joueur) au prochain chargement du
+  // dashboard. On ne vide jamais explicitement le localStorage ici — en cas d'échec, l'exception
+  // remonte et laisse l'entrée disponible pour être rejouée au prochain login, comme le reste de
+  // cette fonction.
+  if (pending.accountType) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { error: cpsError } = await supabase
+        .from("connect_profile_settings")
+        .upsert({ user_id: user.id, account_type: pending.accountType }, { onConflict: "user_id" });
+      if (cpsError) throw cpsError;
+    }
   }
 
   const { data, error } = await supabase.functions.invoke("connect-player-onboarding", {

@@ -1,0 +1,115 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import type { AthleteRow } from "@/lib/supabase/particulier";
+
+export interface ParticulierEvent {
+  id: string;
+  title: string;
+  type: string;
+  date: string;
+  time: string | null;
+  location: string | null;
+  team: string | null;
+  athleteKey: string;
+  athleteLabel: string;
+}
+
+const TYPE_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+  match: { label: "Match", color: "#8CA9FF", bg: "rgba(79,125,255,.16)" },
+  shooting: { label: "Shooting", color: "#C084FC", bg: "rgba(168,85,247,.16)" },
+  tournoi: { label: "Événement SportVision", color: "#22D3EE", bg: "rgba(34,211,238,.14)" },
+};
+
+function formatDate(iso: string) {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+}
+
+// Vue "À venir" (README § Mobile : liste par défaut) — pas de grille mensuelle complète en V1
+// pour l'Espace particulier (simplification documentée, cf. rapport final) : la liste couvre
+// déjà le besoin réel (événements SportVision à venir, filtrables par sportif).
+export function CalendrierParticulierView({
+  events,
+  athletes,
+  initialSportif,
+}: {
+  events: ParticulierEvent[];
+  athletes: AthleteRow[];
+  initialSportif: string | null;
+}) {
+  const [filter, setFilter] = useState<string | null>(initialSportif);
+
+  const filterOptions = useMemo(
+    () => [{ key: null, label: "Tous" }, ...athletes.filter((a) => a.rights.calendrier).map((a) => ({ key: `${a.kind}:${a.refId}`, label: `${a.firstName} ${a.lastName}`.trim() }))],
+    [athletes],
+  );
+
+  const today = new Date().toISOString().slice(0, 10);
+  const visible = events
+    .filter((e) => e.date >= today)
+    .filter((e) => !filter || e.athleteKey === filter)
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <h1 className="font-sora text-[33px] font-bold tracking-tight">Calendrier</h1>
+        <p className="max-w-[560px] text-[15px] text-text-tertiary">Les événements SportVision à venir pour les sportifs que vous accompagnez.</p>
+      </div>
+
+      {athletes.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {filterOptions.map((f) => (
+            <button
+              key={f.key ?? "all"}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              className={`rounded-sv-pill border px-3.5 py-2 text-[13px] font-medium transition-colors duration-150 ${
+                filter === f.key ? "border-[rgba(140,169,255,.65)] bg-[rgba(79,125,255,.2)] text-text" : "border-border text-text-tertiary hover:text-text"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {visible.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
+          <span className="material-symbols-rounded !text-[24px] text-text-tertiary">event_busy</span>
+          <span className="text-[14px] text-text-tertiary">Aucun événement SportVision prévu sur cette période.</span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {visible.map((event) => {
+            const meta = TYPE_LABEL[event.type] || { label: "Événement", color: "#9A9AB8", bg: "rgba(255,255,255,.07)" };
+            return (
+              <div key={event.id} className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-[18px]">
+                <div className="flex h-[54px] w-[54px] flex-none flex-col items-center justify-center rounded-sv" style={{ background: "linear-gradient(150deg,rgba(79,125,255,.3),rgba(34,211,238,.14))" }}>
+                  <span className="font-sora text-[17px] font-bold leading-none">{new Date(`${event.date}T00:00:00`).getDate()}</span>
+                  <span className="text-[10px] font-medium uppercase text-prestations">
+                    {new Date(`${event.date}T00:00:00`).toLocaleDateString("fr-FR", { month: "short" })}
+                  </span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-sora text-[15.5px] font-semibold">{event.title}</span>
+                    <span className="rounded-sv-pill px-2 py-0.5 text-[11px] font-medium" style={{ color: meta.color, background: meta.bg }}>
+                      {meta.label}
+                    </span>
+                  </div>
+                  <span className="text-[13px] text-text-tertiary">
+                    {formatDate(event.date)}
+                    {event.time ? ` · ${event.time.slice(0, 5)}` : ""}
+                    {event.location ? ` · ${event.location}` : ""}
+                  </span>
+                </div>
+                <span className="ml-auto flex-none rounded-sv-pill bg-white/[.07] px-2.5 py-1 text-[11px] font-medium text-text-tertiary">Pour {event.athleteLabel}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
