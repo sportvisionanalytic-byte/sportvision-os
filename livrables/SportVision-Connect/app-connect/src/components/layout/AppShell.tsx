@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getAvatarUrl } from "@/lib/supabase/session";
+import { Avatar } from "@/components/ui/Avatar";
 import { Topbar } from "./Topbar";
 import { NotificationBell } from "./NotificationBell";
 import { MobileSearchOverlay } from "./MobileSearchOverlay";
@@ -92,6 +94,27 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // Photo de profil (migration-connect-v55-photo-profil.sql) — chargée une fois côté client
+  // (le shell ne reçoit que firstName/lastName/email en props depuis les ~20 pages qui le
+  // rendent ; ajouter avatarUrl à chacune aurait été un changement mécanique bien plus large
+  // pour le même résultat). getAvatarUrl fonctionne aussi bien avec le client navigateur
+  // qu'avec le client serveur (aucune dépendance à next/headers), voir lib/supabase/session.ts.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      const userId = data.user?.id;
+      if (!userId) return;
+      const url = await getAvatarUrl(supabase, userId);
+      if (!cancelled) setAvatarUrl(url);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -100,7 +123,6 @@ export function AppShell({
     router.refresh();
   }
 
-  const monogram = (firstName[0] || "?").toUpperCase();
 
   return (
     <div className="flex min-h-screen bg-bg font-sans text-text">
@@ -155,9 +177,7 @@ export function AppShell({
           onClick={handleLogout}
           className="flex items-center gap-2.5 rounded-sv border border-border bg-surface px-3 py-2.5 text-left hover:bg-surface-hover"
         >
-          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-sv-gradient font-sora text-[13px] font-semibold text-white">
-            {monogram}
-          </span>
+          <Avatar url={avatarUrl} label={firstName} size={36} className="text-[13px]" />
           <span className="flex flex-col gap-0.5 leading-tight">
             <span className="font-sora text-[13px] font-semibold">{firstName}</span>
             <span className="text-[11px] text-text-tertiary">Se déconnecter</span>
@@ -192,9 +212,7 @@ export function AppShell({
           onClick={() => setMenuOpen((v) => !v)}
           className="flex h-9 w-9 items-center justify-center rounded-sv bg-surface"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sv-gradient font-sora text-[12px] font-semibold text-white">
-            {monogram}
-          </span>
+          <Avatar url={avatarUrl} label={firstName} size={32} className="text-[12px]" />
         </button>
       </div>
 
@@ -243,7 +261,7 @@ export function AppShell({
 
       {/* ============ COLONNE DE CONTENU (topbar desktop + contenu) ============ */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar space="joueur" firstName={firstName} lastName={lastName} email={email} profileHref="/profil" />
+        <Topbar space="joueur" firstName={firstName} lastName={lastName} email={email} avatarUrl={avatarUrl} profileHref="/profil" />
         <main className="flex-1 pb-16 pt-[68px] lg:pb-0 lg:pt-0">
           <div className="mx-auto max-w-[1160px] px-5 py-7 lg:px-8">{children}</div>
         </main>

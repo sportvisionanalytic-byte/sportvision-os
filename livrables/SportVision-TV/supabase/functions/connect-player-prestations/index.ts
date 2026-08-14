@@ -36,9 +36,12 @@
 //
 // ──────────────────────────────────────────────────────────────────────────────────────────
 // EXTENSION 14/08 (migration-connect-v51-espace-particulier.sql) — Espace particulier.
-// Un particulier n'a JAMAIS de ligne player_profiles (voir la migration, §1) : l'appeler sans
-// adaptation renvoyait donc systématiquement "Profil joueur introuvable" (resolvePlayerAndClient
-// ci-dessous), y compris pour réserver pour lui-même. Deux ajouts, tous deux rétrocompatibles
+// Un particulier n'a JAMAIS de ligne player_profiles (voir la migration, §1) : la résolution
+// legacy (player_profiles obligatoire) renvoyait donc systématiquement "Profil joueur
+// introuvable", y compris pour réserver pour lui-même — même bug qui touchait un joueur SANS
+// club côté Espace joueur, corrigé le 15/08 en remplaçant cette résolution par
+// resolveBeneficiaryClientId(kind:"self") partout (voir plus bas). Deux ajouts, tous deux
+// rétrocompatibles
 // (aucun appel existant côté Espace joueur n'est modifié — testé en relisant chaque appelant
 // dans app-connect : aucun n'envoie `beneficiary` ni `multi`) :
 //
@@ -127,22 +130,6 @@ function needsRetractationWaiver(dateIso: string): boolean {
   return diffDays >= 0 && diffDays < 14;
 }
 
-// deno-lint-ignore no-explicit-any
-async function resolvePlayerAndClient(admin: any, userClient: any, userId: string) {
-  const { data: profile } = await admin
-    .from("player_profiles")
-    .select("id, prenom, nom")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!profile) return { error: "Profil joueur introuvable. Complétez votre profil avant de réserver une prestation." as const };
-
-  const { data: clientId, error: rpcErr } = await userClient.rpc("resolve_player_client_id", { p_player_id: profile.id });
-  if (rpcErr || !clientId) {
-    return { error: "Impossible d'identifier votre dossier client pour le moment. Réessayez dans un instant." as const };
-  }
-  return { playerId: profile.id as string, clientId: clientId as string, prenom: profile.prenom as string, nom: profile.nom as string };
-}
-
 // Bénéficiaire explicite (Espace particulier, migration-connect-v51) : { kind: "self"|"linked"|
 // "managed", refId?: string }. La vérification du droit "reserver" pour "linked" est faite CÔTÉ
 // SERVEUR dans connect_resolve_beneficiary_client_id (SECURITY DEFINER) — jamais ici, jamais côté
@@ -191,8 +178,7 @@ serve(async (req) => {
     const beneficiary = body?.beneficiary as { kind?: string; refId?: string } | undefined;
 
     // "multi" (listes multi-sportifs, Espace particulier) : pas de résolution joueur unique —
-    // court-circuite complètement resolvePlayerAndClient (qui échouerait pour un compte
-    // particulier sans player_profiles).
+    // court-circuite entièrement la résolution self/beneficiary ci-dessous.
     if (multi && (action === "list_orders" || action === "get_order" || action === "list_invoices" || action === "list_payments")) {
       const right = action === "list_invoices" || action === "list_payments" ? "factures" : "commandes";
       const { data: accessRows, error: accessErr } = await userClient.rpc("connect_client_ids_for_caller", { p_right: right });
@@ -417,7 +403,14 @@ serve(async (req) => {
       clientId = resolvedBenef.clientId;
       bookedByUserId = resolvedBenef.bookedByUserId;
     } else {
-      const resolved = await resolvePlayerAndClient(admin, userClient, user.id);
+      // Bug corrigé le 15/08 : appelait auparavant resolvePlayerAndClient, qui exigeait sans
+      // exception une ligne player_profiles (donc un club affilié) — un joueur SANS club
+      // (parcours signup "Non / plus tard", tout à fait valide, voir MASTER-CONNECT-V1.md §4)
+      // recevait systématiquement "Profil joueur introuvable" sur Mes commandes/Factures/
+      // Prestations, alors que ces pages n'exigent aucun club. resolveBeneficiaryClientId avec
+      // kind:"self" couvre déjà ce cas (retombe sur connect_profile_settings.client_id quand
+      // player_profiles n'existe pas — même RPC déjà utilisée pour l'Espace particulier).
+      const resolved = await resolveBeneficiaryClientId(userClient, user.id, { kind: "self" });
       if ("error" in resolved) return json({ error: resolved.error }, 404);
       clientId = resolved.clientId;
     }

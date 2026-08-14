@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Avatar } from "@/components/ui/Avatar";
 import { GlobalSearch } from "./GlobalSearch";
 import { NotificationBell } from "./NotificationBell";
 import type { SearchSpace } from "@/lib/search";
@@ -29,12 +30,14 @@ export function Topbar({
   firstName,
   lastName,
   email,
+  avatarUrl,
   profileHref,
 }: {
   space: SearchSpace;
   firstName: string;
   lastName?: string;
   email?: string;
+  avatarUrl?: string | null;
   profileHref: string;
 }) {
   const router = useRouter();
@@ -56,7 +59,6 @@ export function Topbar({
     router.refresh();
   }
 
-  const monogram = (firstName[0] || "?").toUpperCase();
   const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
 
   return (
@@ -79,9 +81,9 @@ export function Topbar({
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Menu profil"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-sv-gradient font-sora text-[13px] font-semibold text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full"
           >
-            {monogram}
+            <Avatar url={avatarUrl} label={firstName} size={40} className="text-[13px]" />
           </button>
 
           {menuOpen && (

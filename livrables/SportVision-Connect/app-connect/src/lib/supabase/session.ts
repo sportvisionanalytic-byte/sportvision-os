@@ -129,6 +129,9 @@ export interface ProfileSettings {
   notifPrestations: boolean;
   notifMessages: boolean;
   notifAffiliations: boolean;
+  // Photo de profil (migration-connect-v55-photo-profil.sql) — URL publique du bucket
+  // portail-media (chemin avatars/<user_id>/...), null tant que rien n'est uploadé.
+  avatarUrl: string | null;
 }
 
 export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
@@ -142,6 +145,7 @@ export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
   notifPrestations: true,
   notifMessages: true,
   notifAffiliations: false,
+  avatarUrl: null,
 };
 
 export async function getProfileSettings(
@@ -150,7 +154,7 @@ export async function getProfileSettings(
 ): Promise<ProfileSettings> {
   const { data } = await supabase
     .from("connect_profile_settings")
-    .select("telephone, sport, poste, categorie, ville, notif_contenus, notif_cotisations, notif_prestations, notif_messages, notif_affiliations")
+    .select("telephone, sport, poste, categorie, ville, notif_contenus, notif_cotisations, notif_prestations, notif_messages, notif_affiliations, avatar_url")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -167,7 +171,19 @@ export async function getProfileSettings(
     notifPrestations: data.notif_prestations,
     notifMessages: data.notif_messages,
     notifAffiliations: data.notif_affiliations,
+    avatarUrl: data.avatar_url || null,
   };
+}
+
+// Lecture légère (une seule colonne) pour l'avatar affiché dans les shells (AppShell/
+// ParticularShell/Topbar) — évite de dupliquer tout getProfileSettings() juste pour une URL.
+export async function getAvatarUrl(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("connect_profile_settings")
+    .select("avatar_url")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data?.avatar_url || null;
 }
 
 // Type de compte (Espace joueur vs. Espace particulier) — colonne connect_profile_settings.

@@ -95,6 +95,7 @@ export default async function ProfilPage() {
               email={identity.email}
               telephone={settings.telephone}
               playerId={player?.playerId ?? null}
+              avatarUrl={settings.avatarUrl}
             />
             <SportProfileSection sport={settings.sport} poste={settings.poste} categorie={settings.categorie} ville={settings.ville} />
             <NotificationsSection

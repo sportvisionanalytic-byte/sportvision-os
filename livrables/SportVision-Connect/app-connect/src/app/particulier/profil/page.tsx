@@ -8,6 +8,7 @@ import { PersonalInfoSection } from "@/app/profil/PersonalInfoSection";
 import { NotificationsSection } from "@/app/profil/NotificationsSection";
 import { SecuritySection } from "@/app/profil/SecuritySection";
 import { gradientFor } from "@/lib/avatarGradients";
+import { Avatar } from "@/components/ui/Avatar";
 
 // Mon profil (variante particulier) — voir design-connect-personnel-12-08/README.md § Mon
 // profil : "informations personnelles éditables, notifications, Mes sportifs, Sécurité. Pas de
@@ -29,7 +30,6 @@ export default async function ProfilParticulierPage() {
   ]);
 
   const identity = resolveDisplayIdentity(user, player);
-  const monogram = (identity.firstName[0] || "?").toUpperCase();
   const fullName = `${identity.firstName} ${identity.lastName}`.trim() || identity.email;
 
   return (
@@ -37,9 +37,7 @@ export default async function ProfilParticulierPage() {
       <div className="flex flex-col gap-6">
         <div className="rounded-sv-card p-px" style={{ background: "linear-gradient(130deg, rgba(168,85,247,.5), rgba(34,211,238,.24) 60%, transparent)" }}>
           <div className="flex flex-wrap items-center gap-4 rounded-[calc(theme(borderRadius.sv-card)-1px)] bg-bg-elevated p-5">
-            <span className="flex h-[60px] w-[60px] flex-none items-center justify-center rounded-full bg-sv-gradient font-sora text-[20px] font-semibold text-white">
-              {monogram}
-            </span>
+            <Avatar url={settings.avatarUrl} label={identity.firstName} size={60} className="text-[20px]" />
             <div className="flex flex-col gap-1.5">
               <h1 className="font-sora text-[26px] font-bold tracking-tight">{fullName}</h1>
               <span className="text-[13px] text-text-tertiary">
@@ -57,6 +55,7 @@ export default async function ProfilParticulierPage() {
               email={identity.email}
               telephone={settings.telephone}
               playerId={player?.playerId ?? null}
+              avatarUrl={settings.avatarUrl}
             />
             <NotificationsSection
               initial={{

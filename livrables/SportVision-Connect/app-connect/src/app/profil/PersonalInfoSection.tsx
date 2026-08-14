@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { EditModal } from "@/components/ui/EditModal";
+import { Avatar } from "@/components/ui/Avatar";
 import { createClient } from "@/lib/supabase/client";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const MAX_AVATAR_BYTES = 4 * 1024 * 1024;
+const ACCEPTED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export function PersonalInfoSection({
   firstName,
@@ -15,12 +18,14 @@ export function PersonalInfoSection({
   email,
   telephone,
   playerId,
+  avatarUrl,
 }: {
   firstName: string;
   lastName: string;
   email: string;
   telephone: string;
   playerId: string | null;
+  avatarUrl: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -32,6 +37,63 @@ export function PersonalInfoSection({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailPending, setEmailPending] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState(avatarUrl);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Upload direct client → Storage (bucket portail-media, migration-connect-v55-photo-profil.sql,
+  // même schéma que la pièce jointe des messages) : chemin toujours avatars/<user_id>/photo.<ext>
+  // (nom fixe, pas d'horodatage) pour que remplacer sa photo écrase l'ancienne plutôt que
+  // d'accumuler des fichiers orphelins dans le bucket.
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!ACCEPTED_AVATAR_TYPES.includes(file.type)) {
+      setPhotoError("Format non supporté (JPG, PNG ou WebP uniquement).");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setPhotoError("Image trop lourde (4 Mo maximum).");
+      return;
+    }
+    setPhotoBusy(true);
+    setPhotoError(null);
+    const supabase = createClient();
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) {
+      setPhotoBusy(false);
+      setPhotoError("Session expirée, reconnectez-vous.");
+      return;
+    }
+    const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const path = `avatars/${userId}/photo.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("portail-media")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadError) {
+      setPhotoBusy(false);
+      setPhotoError("Impossible d'envoyer la photo pour le moment.");
+      return;
+    }
+    const { data: pub } = supabase.storage.from("portail-media").getPublicUrl(path);
+    // Suffixe de cache-busting : le chemin est fixe (toujours photo.<ext>), donc sans ce
+    // paramètre le navigateur continuerait d'afficher l'ancienne photo en cache après un
+    // remplacement.
+    const publicUrl = `${pub.publicUrl}?v=${Date.now()}`;
+    const { error: dbError } = await supabase
+      .from("connect_profile_settings")
+      .upsert({ user_id: userId, avatar_url: publicUrl }, { onConflict: "user_id" });
+    setPhotoBusy(false);
+    if (dbError) {
+      setPhotoError("Photo envoyée mais impossible de l'enregistrer sur votre profil.");
+      return;
+    }
+    setPhotoUrl(publicUrl);
+    router.refresh();
+  }
 
   function openModal() {
     setFn(firstName);
@@ -103,6 +165,36 @@ export function PersonalInfoSection({
           Modifier
         </button>
       </div>
+
+      <div className="flex items-center gap-4">
+        <div className="relative flex-none">
+          <Avatar url={photoUrl} label={firstName} size={64} />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={photoBusy}
+            aria-label="Changer la photo de profil"
+            className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-sv-gradient text-white disabled:opacity-60"
+          >
+            <span className="material-symbols-rounded !text-[13px]">
+              {photoBusy ? "hourglass_empty" : "photo_camera"}
+            </span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handlePhotoChange}
+          />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[13px] font-medium text-text">Photo de profil</span>
+          <span className="text-[12px] text-text-tertiary">JPG, PNG ou WebP · 4 Mo maximum</span>
+          {photoError && <span className="text-[12px] text-danger">{photoError}</span>}
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3.5">
         <InfoField label="Prénom" value={firstName || "—"} />
         <InfoField label="Nom" value={lastName || "—"} />
