@@ -738,6 +738,13 @@ alter table group_fundings add column if not exists beneficiary_label text;
 -- CreateFundingWizard.tsx — donc aucune régression : les nouveaux
 -- paramètres restent à leurs valeurs par défaut pour tout appelant
 -- inchangé). Le montant cible reste calculé ici, jamais par le client.
+-- DROP d'abord : la signature (nombre de paramètres) change par rapport à la
+-- version v50 (6 → 9 paramètres) — Postgres traiterait sinon un simple CREATE
+-- OR REPLACE comme une surcharge distincte, laissant coexister l'ancienne et
+-- la nouvelle version et provoquant une ambiguïté d'appel (42725) pour tout
+-- appelant qui passe encore exactement 6 arguments nommés (cas de l'Espace
+-- joueur, inchangé).
+drop function if exists create_group_funding(uuid, uuid, text, text, integer, date);
 create or replace function create_group_funding(
   p_group_id uuid,
   p_catalogue_offre_id uuid,
@@ -901,6 +908,11 @@ grant execute on function connect_list_calendar_for_athletes() to authenticated;
 -- migration-connect-v50 sinon (aucune régression pour l'Espace joueur, qui
 -- reçoit simplement une colonne supplémentaire toujours NULL pour ses
 -- propres cotisations).
+-- DROP d'abord : le jeu de colonnes retourné change (ajout de beneficiary_label
+-- en fin de liste) — Postgres refuse un CREATE OR REPLACE qui change le type
+-- de retour d'une fonction TABLE (erreur 42P13 "cannot change return type of
+-- existing function... Row type defined by OUT parameters is different").
+drop function if exists list_my_fundings();
 create or replace function list_my_fundings()
 returns table (
   id uuid,
