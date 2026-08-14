@@ -153,9 +153,39 @@ serve(async (req) => {
       const team = String(body?.team || "").trim();
       if (!name || !city) return json({ error: "Nom et ville du club requis" }, 400);
 
-      const contact = `${body?.prenom || ""} ${body?.nom || ""}`.trim() || user.email || "contact inconnu";
-      const titre = `Club non partenaire déclaré — ${name}`;
-      const texte = `${contact} (${user.email}) a déclaré « ${name} » (${city}${team ? ", " + team : ""}) comme club non partenaire lors de son inscription Connect. Aucun compte Club+ n'a été créé — vérifier et rattacher manuellement si opportunité B2B.`;
+      const prenom = String(body?.prenom || "").trim();
+      const nom = String(body?.nom || "").trim();
+      const contact = `${prenom} ${nom}`.trim() || user.email || "contact inconnu";
+
+      // Rapprochement par nom+ville normalisés (migration-connect-v54-declared-clubs-dedup.sql) :
+      // sans ça, 3 joueurs qui déclarent indépendamment le même club non partenaire génèrent 3
+      // notifications staff isolées, sans aucun moyen de savoir que c'est le même club. Ne crée
+      // jamais de ligne organizations/clubs — reste un simple compteur staff, même principe que
+      // le reste de cette action (aucune activation automatique).
+      let playersCount = 1;
+      try {
+        const { data: dedup, error: dedupErr } = await admin.rpc("connect_declare_club", {
+          p_name: name,
+          p_city: city,
+          p_team: team,
+          p_user_id: user.id,
+          p_prenom: prenom,
+          p_nom: nom,
+        });
+        if (dedupErr) throw dedupErr;
+        playersCount = Number(dedup?.players_count) || 1;
+      } catch (_e) {
+        console.error("[connect-player-onboarding] connect_declare_club a échoué :", _e);
+        // Non bloquant : la notification staff isolée reste préférable à un échec total.
+      }
+
+      const titre = playersCount > 1
+        ? `Club non partenaire déclaré — ${name} (${playersCount} joueurs intéressés)`
+        : `Club non partenaire déclaré — ${name}`;
+      const texte = `${contact} (${user.email}) a déclaré « ${name} » (${city}${team ? ", " + team : ""}) comme club non partenaire lors de son inscription Connect.` +
+        (playersCount > 1
+          ? ` C'est le ${playersCount}e joueur à déclarer ce club (même nom/ville) — vérifier l'opportunité B2B.`
+          : ` Aucun compte Club+ n'a été créé — vérifier et rattacher manuellement si opportunité B2B.`);
 
       try {
         await admin.rpc("notify_staff_by_role", {
