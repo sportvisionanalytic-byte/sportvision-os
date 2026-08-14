@@ -155,34 +155,43 @@ export interface CotisationEnCours {
   participants: number;
 }
 
-// Le module Cotisations (group_fundings/funding_contributions) n'existe pas encore côté backend
-// au 14/08/2026 (vérifié : aucune migration ne crée ces tables — voir RAPPORT-MIGRATION-CONNECT-
-// PERSONNEL.md §6, "à créer entièrement", chantier d'un agent parallèle "équipes/cotisations").
-// Cette fonction interroge la table par son nom probable et traite TOUTE erreur (table absente
-// incluse) comme "pas de cotisation en cours" — jamais un throw. Dès que l'agent parallèle aura
-// fusionné son schéma réel, si le nom de table/les colonnes diffèrent de cette hypothèse, il
-// suffit d'ajuster cette seule fonction pour que la carte s'active automatiquement.
+// Le module Cotisations (group_fundings/funding_contributions) a été fusionné le 14/08 par
+// l'agent parallèle "équipes/cotisations" (migration-connect-v50-groupes-cotisations-
+// personnelles.sql). Corrigé le 14/08 (audit) : cette fonction interrogeait encore la table
+// group_fundings par un nom/schéma hypothétique (title/collected/target/participants_count/
+// status="en_cours"/beneficiary_user_id) écrit avant la fusion — aucune de ces colonnes n'existe
+// réellement (schéma réel : titre/montant_collecte/montant_cible/statut="ouverte", pas de colonne
+// beneficiary_user_id ni participants_count sur la table). Résultat avant correctif : erreur
+// Postgres "column does not exist" avalée par le catch, donc la carte "Cotisation en cours" ne
+// s'affichait jamais, même quand une cotisation existait réellement. Utilise désormais la RPC
+// list_my_fundings() (même source que /cotisations), qui applique déjà les bons noms de colonnes
+// et le calcul de participants_count.
 export async function getCotisationEnCours(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<CotisationEnCours | null> {
   try {
-    const { data, error } = await supabase
-      .from("group_fundings")
-      .select("id, title, collected, target, participants_count")
-      .or(`created_by.eq.${userId},beneficiary_user_id.eq.${userId}`)
-      .eq("status", "en_cours")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
+    const { data, error } = await supabase.rpc("list_my_fundings");
     if (error || !data) return null;
+
+    const rows = data as Array<{
+      id: string;
+      titre: string;
+      montant_collecte: number;
+      montant_cible: number;
+      participants_count: number;
+      statut: string;
+    }>;
+
+    const active = rows.find((r) => r.statut === "ouverte");
+    if (!active) return null;
+
     return {
-      id: data.id,
-      title: data.title,
-      collected: Number(data.collected) || 0,
-      target: Number(data.target) || 0,
-      participants: Number(data.participants_count) || 0,
+      id: active.id,
+      title: active.titre,
+      collected: Number(active.montant_collecte) || 0,
+      target: Number(active.montant_cible) || 0,
+      participants: Number(active.participants_count) || 0,
     };
   } catch {
     return null;

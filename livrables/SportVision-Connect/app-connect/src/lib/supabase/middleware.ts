@@ -44,7 +44,14 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isPublic = PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
+  // Comparaison par segment de chemin, jamais un startsWith brut : "/cotisation" (page publique
+  // /cotisation/[token], sans compte) matchait aussi "/cotisations" (liste/création, protégées)
+  // avec un simple startsWith — "cotisations" commence par "cotisation" caractère à caractère.
+  // Bug corrigé le 14/08 (audit) : aucune fuite de données n'en résultait (chaque page sous
+  // /cotisations fait elle-même un redirect(/auth/login) si !user), mais le middleware laissait
+  // passer ces requêtes sans le filet de sécurité qu'il est censé fournir en premier rideau.
+  const { pathname } = request.nextUrl;
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";

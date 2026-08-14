@@ -70,11 +70,10 @@ export function MessagesThread({
   useEffect(() => {
     if (unreadStaffIds.length === 0) return;
     const supabase = createClient();
-    // Best-effort : la RPC client_mark_message_read (migration-portail-v4.sql) ne reconnaît
-    // aujourd'hui que client_users, pas encore un joueur — voir
-    // migration-connect-v46-client-mark-message-read-player.sql pour le correctif décrit dans le
-    // rapport final. En attendant, l'appel échoue silencieusement (aucune conséquence visible :
-    // le badge non-lu restera simplement affiché jusqu'à l'exécution de la migration).
+    // Best-effort : client_mark_message_read reconnaît un compte Joueur depuis l'exécution de
+    // migration-connect-v46-client-mark-message-read-player.sql (confirmée en base le 14/08,
+    // audit). Reste en best-effort par prudence (aucune conséquence visible en cas d'échec
+    // ponctuel : le badge non-lu resterait simplement affiché).
     (async () => {
       for (const id of unreadStaffIds) {
         try {
