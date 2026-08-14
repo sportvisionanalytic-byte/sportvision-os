@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { type CatalogueOffer, baseTtc, categorieIcon, perPersonTtc } from "@/lib/prestations/catalogue";
+import { type CatalogueOffer, baseTtc, categorieIcon, isCollectif, isRecommended, perPersonTtc } from "@/lib/prestations/catalogue";
 import { formatEUR } from "@/lib/prestations/format";
 
 // Filtres dynamiques : "Tous" + uniquement les familles réellement présentes dans le catalogue
@@ -52,6 +52,8 @@ export function PrestationsCatalogueView({ offers }: { offers: CatalogueOffer[] 
 
 function OfferCard({ offer }: { offer: CatalogueOffer }) {
   const ttc = baseTtc(offer);
+  const recommended = isRecommended(offer);
+  const collectif = isCollectif(offer);
   return (
     <Link
       href={`/prestations/${offer.id}`}
@@ -61,16 +63,33 @@ function OfferCard({ offer }: { offer: CatalogueOffer }) {
         <span className="flex h-12 w-12 flex-none items-center justify-center rounded-sv bg-prestations-bg">
           <span className="material-symbols-rounded !text-[24px] text-prestations">{categorieIcon(offer.categorie)}</span>
         </span>
-        {offer.family && (
-          <span className="rounded-sv-pill bg-white/5 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[.08em] text-text-tertiary">
-            {offer.family}
-          </span>
-        )}
+        <div className="flex flex-none flex-col items-end gap-1.5">
+          {recommended && (
+            <span className="rounded-sv-pill bg-text px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[.04em] text-bg">
+              Recommandé
+            </span>
+          )}
+          {offer.family && (
+            <span className="rounded-sv-pill bg-white/5 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[.08em] text-text-tertiary">
+              {offer.family}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <span className="font-sora text-[17px] font-semibold tracking-tight">{offer.nom}</span>
         {offer.description && <p className="text-[13.5px] leading-relaxed text-text-tertiary line-clamp-2">{offer.description}</p>}
+        <span
+          className="self-start rounded-sv-pill px-2.5 py-1 text-[11px] font-medium"
+          style={
+            collectif
+              ? { color: "#F472B6", background: "rgba(244,114,182,.14)" }
+              : { color: "#8CA9FF", background: "rgba(79,125,255,.16)" }
+          }
+        >
+          {collectif ? "Paiement à plusieurs disponible" : "Individuel"}
+        </span>
       </div>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-border pt-3.5">

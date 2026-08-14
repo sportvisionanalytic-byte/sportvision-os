@@ -7,20 +7,18 @@ import {
   getNextPrestation,
   getUnreadMessagesCount,
   getCotisationEnCours,
+  getRecentContentGroups,
   prestationStatusLabel,
 } from "@/lib/supabase/dashboard";
 import { AppShell } from "@/components/layout/AppShell";
 
-// Accueil — voir design-connect-personnel-12-08/README.md § Espace joueur → Accueil. Cartes
-// affichées UNIQUEMENT si pertinentes (principe du design) : chaque carte a une source de
-// données réelle vérifiée avant d'être construite (voir src/lib/supabase/dashboard.ts pour le
-// détail par carte). "Nouveaux contenus" n'est délibérément PAS construite : la seule table
-// nommée `contenus` dans le schéma actuel est le planning éditorial CM (migration-contenus.sql,
-// scope client_id/cm_id), pas les médias qu'un joueur consulte — aucune donnée réelle de ce type
-// n'existe encore côté Connect personnel (confirmé en lisant migration-connect-v43-espace-
-// joueur.sql : les contenus joueur viennent de club_media/club_creations, agrégés uniquement
-// côté app-next, pas encore portés ici). Construire cette carte aurait donc soit affiché les
-// mauvaises données (planning CM), soit une fausse promesse — ni l'un ni l'autre n'est acceptable.
+// Accueil — voir design-connect-personnel-12-08/README.md § Espace joueur → Accueil, et
+// Connect Espace Joueur.dc.html (bloc ACCUEIL) pour le texte exact de chaque carte. Cartes
+// "club"/"prestation"/"événement" affichées UNIQUEMENT si pertinentes (principe du design) :
+// chaque carte a une source de données réelle vérifiée avant d'être construite (voir
+// src/lib/supabase/dashboard.ts). "Nouveaux contenus" (ci-dessous) est la seule carte TOUJOURS
+// affichée, avec son propre état vide — voir getRecentContentGroups pour l'historique de cette
+// carte (absente jusqu'au 15/08, ajoutée en comparant l'implémentation à la maquette réelle).
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
@@ -40,11 +38,12 @@ export default async function DashboardPage() {
   const player = await buildPlayerContext(supabase, user.id);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";
 
-  const [nextEvent, nextPrestation, unreadMessages, cotisation] = await Promise.all([
+  const [nextEvent, nextPrestation, unreadMessages, cotisation, contentGroups] = await Promise.all([
     player?.club ? getNextClubEvent(supabase, player.club.id) : Promise.resolve(null),
     player?.clientId ? getNextPrestation(supabase, player.clientId) : Promise.resolve(null),
     player?.clientId ? getUnreadMessagesCount(supabase, player.clientId) : Promise.resolve(0),
     getCotisationEnCours(supabase, user.id),
+    player?.club ? getRecentContentGroups(supabase, player.club.id) : Promise.resolve([]),
   ]);
 
   return (
@@ -119,7 +118,65 @@ export default async function DashboardPage() {
               </div>
             )}
 
-            {nextEvent && (
+            {/* Nouveaux contenus — voir Connect Espace Joueur.dc.html bloc ACCUEIL : seule
+                section toujours affichée, avec son propre état vide (jamais masquée comme les
+                cartes club/prestation/événement ci-dessus). */}
+            <div className="flex flex-col gap-3.5">
+              <div className="flex items-baseline justify-between gap-3.5">
+                <h2 className="font-sora text-[20px] font-semibold tracking-tight">Nouveaux contenus</h2>
+                {contentGroups.length > 0 && (
+                  <Link href="/contenus" className="text-[13px] font-medium text-contenus hover:brightness-110">
+                    Tout voir
+                  </Link>
+                )}
+              </div>
+
+              {contentGroups.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {contentGroups.map((g) => (
+                    <Link
+                      key={g.key}
+                      href="/contenus"
+                      className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface transition-colors duration-150 hover:border-[rgba(192,132,252,.5)]"
+                    >
+                      <div className="relative h-[158px]" style={{ background: g.cover }}>
+                        <span className="absolute right-3 top-3 rounded-sv-pill bg-black/45 px-2.5 py-1 text-[11px] font-medium text-text">
+                          {g.count}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1.5 p-4.5">
+                        <span className="font-sora text-[16px] font-semibold">{g.title}</span>
+                        <span className="text-[13px] text-text-tertiary">
+                          {[g.photoCount ? `${g.photoCount} photo${g.photoCount > 1 ? "s" : ""}` : null, g.videoCount ? `${g.videoCount} vidéo${g.videoCount > 1 ? "s" : ""}` : null]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                        <span className="mt-0.5 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus">
+                          Découvrir
+                          <span className="material-symbols-rounded !text-[17px]">arrow_forward</span>
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 rounded-sv-card border border-dashed border-border-strong bg-white/[.04] p-6">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-sv bg-contenus-bg">
+                    <span className="material-symbols-rounded !text-[22px] text-contenus">photo_library</span>
+                  </span>
+                  <span className="font-sora text-[17px] font-semibold">Vos futurs contenus apparaîtront ici</span>
+                  <p className="max-w-[460px] text-[14px] leading-relaxed text-text-tertiary">
+                    Photos, vidéos et reels seront ajoutés automatiquement après les prestations SportVision
+                    auxquelles vous avez accès.
+                  </p>
+                  <Link href="/prestations" className="self-start text-[14px] font-semibold text-[#8CA9FF]">
+                    Découvrir les prestations
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {nextEvent ? (
               <div className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-5">
                 <div className="flex h-16 w-16 flex-none flex-col items-center justify-center rounded-sv" style={{ background: "linear-gradient(150deg,rgba(79,125,255,.32),rgba(34,211,238,.14))" }}>
                   <span className="font-sora text-[21px] font-bold leading-none">{nextEvent.day}</span>
@@ -140,6 +197,14 @@ export default async function DashboardPage() {
                     Voir l&apos;événement
                   </Link>
                 </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 rounded-sv border border-border bg-white/[.04] px-4.5 py-4">
+                <span className="material-symbols-rounded !text-[20px] text-text-faint">event_busy</span>
+                <span className="text-[14px] text-text-tertiary">Aucun événement SportVision prévu pour le moment.</span>
+                <Link href="/calendrier" className="ml-auto flex-none text-[13px] font-medium text-[#8CA9FF]">
+                  Calendrier
+                </Link>
               </div>
             )}
           </div>
@@ -187,7 +252,7 @@ export default async function DashboardPage() {
               </div>
             )}
 
-            {nextPrestation && (
+            {nextPrestation ? (
               <div className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5">
                 <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Prochaine prestation</span>
                 <div className="flex items-center gap-3">
@@ -212,6 +277,25 @@ export default async function DashboardPage() {
                     Voir ma commande
                   </Link>
                 </div>
+              </div>
+            ) : (
+              // "Aucune prestation prévue" (Connect Espace Joueur.dc.html) : la maquette liste
+              // "Match Photo, Match Vidéo, Pack Match, Veo, Drone ou Highlight" — texte adapté ici
+              // (Highlight omis) car aucune offre "Montage"/Highlight n'existe dans le catalogue
+              // réel (voir src/lib/prestations/catalogue.ts, même principe déjà appliqué au
+              // catalogue et aux filtres : jamais citer une offre qui n'existe pas réellement).
+              <div className="flex flex-col gap-3 rounded-sv-card border border-dashed border-border-strong bg-white/[.04] p-5">
+                <span className="flex h-11 w-11 items-center justify-center rounded-sv bg-prestations-bg">
+                  <span className="material-symbols-rounded !text-[22px] text-prestations">camera_alt</span>
+                </span>
+                <span className="font-sora text-[17px] font-semibold">Aucune prestation prévue</span>
+                <p className="text-[14px] leading-relaxed text-text-tertiary">Match Photo, Match Vidéo, Pack Match, Veo, Drone.</p>
+                <Link
+                  href="/prestations"
+                  className="self-start rounded-sv border border-border-strong bg-white/[.06] px-4 py-2.5 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
+                >
+                  Découvrir les prestations
+                </Link>
               </div>
             )}
 

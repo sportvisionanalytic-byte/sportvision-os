@@ -58,7 +58,7 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
     <div className="flex flex-col gap-6 animate-sv-in">
       <div className="flex flex-col gap-2">
         <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Factures & paiements</h1>
-        <p className="max-w-[560px] text-[15px] text-text-tertiary">Retrouvez vos factures et l&apos;historique de vos paiements.</p>
+        <p className="max-w-[560px] text-[15px] text-text-tertiary">Retrouvez vos règlements et vos factures SportVision.</p>
       </div>
 
       {due.length > 0 && due[0] && (
@@ -107,7 +107,7 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
       {tab === "factures" && (
         <>
           {invoices === null && !error && <ListSkeleton />}
-          {invoices !== null && invoices.length === 0 && <EmptyState label="Aucune facture pour le moment." />}
+          {invoices !== null && invoices.length === 0 && <EmptyState tabLabel="Factures" />}
           {invoices !== null && invoices.length > 0 && (
             <div className="flex flex-col gap-2.5">
               {invoices.map((inv) => {
@@ -145,7 +145,7 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
       {tab === "paiements" && (
         <>
           {payments === null && !error && <ListSkeleton />}
-          {payments !== null && payments.length === 0 && <EmptyState label="Aucun paiement pour le moment." />}
+          {payments !== null && payments.length === 0 && <EmptyState tabLabel="Paiements" />}
           {payments !== null && payments.length > 0 && (
             <div className="flex flex-col gap-2.5">
               {payments.map((p) => {
@@ -186,11 +186,21 @@ function ListSkeleton() {
   );
 }
 
-function EmptyState({ label }: { label: string }) {
+// État vide — voir design-connect-personnel-12-08/Connect Espace Joueur.dc.html (bloc
+// DOCUMENTS & PAIEMENTS, "noDocs") : icône document, titre « Aucun document dans « {onglet} » »,
+// texte "Ce type de document apparaîtra ici dès qu'un sera émis à votre nom." (le nom de
+// l'onglet actif s'insère dans le titre — tabLabel reprend le même libellé que les boutons
+// d'onglet "Factures"/"Paiements").
+function EmptyState({ tabLabel }: { tabLabel: string }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
-      <span className="material-symbols-rounded !text-[24px] text-text-tertiary">receipt_long</span>
-      <span className="text-[14px] text-text-tertiary">{label}</span>
+    <div className="flex max-w-[560px] flex-col gap-3.5 rounded-[24px] border border-dashed border-border-strong bg-white/[.04] p-7">
+      <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-white/[.06]">
+        <span className="material-symbols-rounded !text-[24px] text-text-tertiary">description</span>
+      </span>
+      <span className="font-sora text-[19px] font-semibold">Aucun document dans « {tabLabel} »</span>
+      <span className="text-[14px] leading-[1.55] text-text-tertiary">
+        Ce type de document apparaîtra ici dès qu&apos;un sera émis à votre nom.
+      </span>
     </div>
   );
 }

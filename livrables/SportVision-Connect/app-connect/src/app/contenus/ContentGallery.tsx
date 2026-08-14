@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { coverFor, groupContentsByTeam } from "@/lib/contenus/groups";
 
 export interface ContentItem {
   id: string;
@@ -49,56 +50,8 @@ function matchesTab(item: ContentItem, tab: TabKey, favoriteIds: Set<string>): b
   }
 }
 
-function isNew(createdAt: string): boolean {
-  return Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
-}
-
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-}
-
-const COVER_GRADIENTS = [
-  "linear-gradient(135deg,#3B1E6E,#22307A 55%,#0F4C63)",
-  "linear-gradient(135deg,#4C1D95,#3A2A86 50%,#155E75)",
-  "linear-gradient(135deg,#5B1E5B,#3F2280 55%,#1E3A8A)",
-];
-
-function coverFor(seed: string): string {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  return COVER_GRADIENTS[hash % COVER_GRADIENTS.length] ?? COVER_GRADIENTS[0]!;
-}
-
-interface Group {
-  key: string;
-  title: string;
-  items: ContentItem[];
-  photoCount: number;
-  videoCount: number;
-  hasNew: boolean;
-  lastDate: string;
-}
-
-function groupByTeam(items: ContentItem[]): Group[] {
-  const map = new Map<string, ContentItem[]>();
-  for (const item of items) {
-    const key = item.team?.trim() || "Général";
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
-  }
-  const groups: Group[] = Array.from(map.entries()).map(([key, groupItems]) => {
-    const sorted = [...groupItems].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return {
-      key,
-      title: key,
-      items: sorted,
-      photoCount: sorted.filter((i) => i.type === "photo").length,
-      videoCount: sorted.filter((i) => i.type === "video").length,
-      hasNew: sorted.some((i) => isNew(i.createdAt)),
-      lastDate: sorted[0]?.createdAt ?? "",
-    };
-  });
-  return groups.sort((a, b) => b.lastDate.localeCompare(a.lastDate));
 }
 
 export function ContentGallery({
@@ -117,7 +70,7 @@ export function ContentGallery({
   const [favBusy, setFavBusy] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => items.filter((it) => matchesTab(it, tab, favoriteIds)), [items, tab, favoriteIds]);
-  const groups = useMemo(() => groupByTeam(filtered), [filtered]);
+  const groups = useMemo(() => groupContentsByTeam(filtered), [filtered]);
   const flatView = tab === "favoris";
 
   const flatSorted = useMemo(

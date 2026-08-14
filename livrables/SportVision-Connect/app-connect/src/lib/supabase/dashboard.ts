@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { coverFor, groupContentsByTeam } from "@/lib/contenus/groups";
 
 // Données de l'Accueil (cartes optionnelles) — voir design-connect-personnel-12-08/README.md §
 // Espace joueur → Accueil : "Cartes affichées UNIQUEMENT si pertinentes [...] Pas de raccourcis
@@ -196,4 +197,58 @@ export async function getCotisationEnCours(
   } catch {
     return null;
   }
+}
+
+export interface RecentContentGroup {
+  key: string;
+  title: string;
+  count: number;
+  photoCount: number;
+  videoCount: number;
+  cover: string;
+  hasNew: boolean;
+}
+
+// "Nouveaux contenus" (Accueil) — le commentaire d'en-tête de dashboard/page.tsx datant du 14/08
+// (commit faad3744, 17:37) documentait cette carte comme volontairement absente faute de source
+// réelle portée côté Connect personnel. Corrigé le 15/08 (polish design vs maquette réelle) :
+// ce constat était déjà caduc 10 minutes plus tard, le même jour (commit 25c132d, 17:47, "module
+// Mes contenus") — `club_media` est bien la source réelle utilisée par /contenus depuis cette
+// date (voir src/app/contenus/page.tsx et ContentGallery.tsx). Réutilise donc exactement la même
+// table/policy RLS et le même regroupement par équipe (src/lib/contenus/groups.ts, extrait de
+// ContentGallery.tsx pour éviter de dupliquer la logique), pas de nouvelle donnée inventée.
+export async function getRecentContentGroups(
+  supabase: SupabaseClient,
+  clubId: string,
+  max = 2,
+): Promise<RecentContentGroup[]> {
+  const { data, error } = await supabase
+    .from("club_media")
+    .select("id, title, type, team, created_at")
+    .eq("club_id", clubId)
+    .eq("expired", false)
+    .order("created_at", { ascending: false })
+    .limit(60);
+
+  if (error || !data) return [];
+
+  const items = data.map((row) => ({
+    id: row.id as string,
+    title: row.title as string,
+    type: row.type as string,
+    team: (row.team as string | null) ?? null,
+    createdAt: row.created_at as string,
+  }));
+
+  return groupContentsByTeam(items)
+    .slice(0, max)
+    .map((g) => ({
+      key: g.key,
+      title: g.title,
+      count: g.items.length,
+      photoCount: g.photoCount,
+      videoCount: g.videoCount,
+      cover: coverFor(g.key),
+      hasNew: g.hasNew,
+    }));
 }

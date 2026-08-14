@@ -83,7 +83,7 @@ export function Topbar({
             aria-label="Menu profil"
             className="flex h-10 w-10 items-center justify-center rounded-full"
           >
-            <Avatar url={avatarUrl} label={firstName} size={40} className="text-[13px]" />
+            <Avatar url={avatarUrl} label={firstName} size={40} className="text-[13px]" ring />
           </button>
 
           {menuOpen && (

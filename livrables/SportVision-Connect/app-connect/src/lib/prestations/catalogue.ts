@@ -161,6 +161,24 @@ export function perPersonTtc(ttc: number, headcount = 10): number {
   return Math.round((ttc / headcount) * 100) / 100;
 }
 
+/** Badge "Paiement à plusieurs disponible" / "Individuel" (design de référence, Connect Espace
+ * Joueur.dc.html, B_COLLECTIF / B_INDIV) — dérivé de `categorie`, pas d'une nouvelle donnée : le
+ * wizard de réservation (ReservationWizard.tsx step "Paiement") propose déjà "Payer à plusieurs"
+ * sans restriction pour toute offre du catalogue réel actuel (aucune n'est individuelle-only,
+ * voir perPersonTtc ci-dessus). Seule une offre "montage" (aucune aujourd'hui, voir commentaire
+ * d'en-tête) serait individuelle, comme "Montage Highlight" dans la maquette. */
+export function isCollectif(offer: Pick<CatalogueOffer, "categorie">): boolean {
+  return offer.categorie !== "montage";
+}
+
+/** Badge "Recommandé" (pastille blanche, design de référence) — porté par l'équivalent réel de
+ * la "Pack Match Photo + Vidéo" mise en avant dans la maquette : `pack-match` ("Pack Match
+ * Complet", migration-portail-seed.sql) est le même produit (photo + vidéo réunies pour une
+ * couverture complète du match). Pas une nouvelle donnée : juste l'identification du bon slug. */
+export function isRecommended(offer: Pick<CatalogueOffer, "slug">): boolean {
+  return offer.slug === "pack-match";
+}
+
 export const FAMILY_ICON: Record<CatalogueFamily, string> = {
   Match: "sports_soccer",
   Captation: "videocam",

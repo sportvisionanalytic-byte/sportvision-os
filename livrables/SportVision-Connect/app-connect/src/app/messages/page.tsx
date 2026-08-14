@@ -14,6 +14,11 @@ import { MessagesThread, type MessageData } from "./MessagesThread";
 // page (jamais sur /calendrier) : c'est un effet de bord volontaire et documenté par la migration
 // elle-même ("provisionné à la demande, pas en masse, pour ne jamais créer de ligne clients
 // fantôme pour un joueur qui n'ouvre jamais Messages").
+//
+// Message d'accueil du staff (visible dans la maquette dès une conversation neuve) : voir
+// migration-connect-v56-messages-welcome.sql (NON EXÉCUTÉE) — insère le premier message dans
+// `messages_client` au moment même où `resolve_player_client_id` crée le client, pas ici côté
+// frontend (aucun message fictif affiché sans exister en base).
 export default async function MessagesPage() {
   const supabase = await createClient();
   const {
