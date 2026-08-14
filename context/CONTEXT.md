@@ -55,6 +55,7 @@ Liste des projets ou chantiers actifs :
 - Développer la base clients (clubs, joueurs, familles)
 - Structurer et optimiser la communication de SportVision
 - **Retrait du Portail au profit de SportVision Connect** (décidé le 2026-08-06, exécuté le 2026-08-07) : le Portail (espace client historique) est abandonné comme produit — dossier supprimé du repo (site + app mobile iOS/Android) — et remplacé par l'espace "Projet" de SportVision Connect. Toutes les priorités techniques préalables sont closes (sécurité, recette fonctionnelle, mot de passe oublié/suppression de compte) et les e-mails automatiques/l'app Club+ pointent désormais vers Connect. Le site public (catalogue, offres) reste séparé, sur `livrables/SportVision/`, non concerné par ce changement.
+- **Feuille de route écosystème SportVision** (fixée le 2026-08-15) : SportVision Connect (personnel, Espace joueur + Espace particulier) a été entièrement construit le 14-15/08/2026 — reste à tester en conditions réelles puis peaufiner. Ordre de priorité ensuite : (1) peaufinage/tests de Connect, (2) reprise de Club+ (application séparée, B2B clubs), (3) applications mobiles.
 
 ---
 

@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-08-15
+
+### SportVision Connect (personnel) entièrement construit + feuille de route écosystème fixée
+
+- Chantier massif sur 2 jours (14-15/08) : Espace joueur (Accueil, Affiliations, Équipes, Cotisations, Prestations, Commandes, Factures, Contenus, Calendrier, Messages, Profil, Accès) et Espace particulier (Mes sportifs, réservation/cotisation pour un sportif, listes multi-sportifs) entièrement construits par vagues d'agents en parallèle, revus et fusionnés
+- Ajouts transverses : navigation consolidée sur les deux espaces, topbar avec recherche globale et notifications réelles, vue Cotisations ajoutée côté SportVision OS (angle mort corrigé), lien Connect↔OS et systèmes de paiement Stripe audités (aucun bug de sécurité trouvé)
+- Décisions produit encore en attente, volontairement non tranchées par Claude : politique de remboursement des cotisations, vérification légale pour un "profil géré" avant mineurs réels, lien cotisation↔prestation précise
+- Reste technique en suspens : domaine `connect.sportvision-an.fr` pas encore branché sur le nouveau site Netlify
+- Feuille de route fixée : tester Connect en conditions réelles → peaufiner → reprendre Club+ → applications mobiles
+
+---
+
 ## 2026-08-07
 
 ### Retrait du Portail exécuté (pas juste décidé)
