@@ -1,0 +1,265 @@
+import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { buildPlayerContext } from "@/lib/supabase/session";
+import { AppShell } from "@/components/layout/AppShell";
+import { gradientFor } from "@/lib/avatarGradients";
+import { ShareFundingButtons } from "./ShareFundingButtons";
+import { ParticipateButton } from "./ParticipateButton";
+
+interface Contribution {
+  id: string;
+  name: string;
+  is_guest: boolean;
+  montant: number;
+  created_at: string;
+}
+
+interface FundingDetail {
+  id: string;
+  group_id: string | null;
+  group_name: string | null;
+  created_by: string;
+  is_creator: boolean;
+  titre: string;
+  contexte: string | null;
+  catalogue_offre_nom: string | null;
+  montant_cible: number;
+  montant_collecte: number;
+  repartition_mode: "egale" | "libre";
+  nb_participants_prevu: number | null;
+  date_limite: string | null;
+  statut: "ouverte" | "objectif_atteint" | "expiree" | "annulee";
+  share_token: string;
+  created_at: string;
+  my_contribution_amount: number | null;
+  contributions: Contribution[];
+}
+
+function euros(n: number) {
+  return `${n.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
+}
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
+
+const PAY_REST_THRESHOLD = 48;
+
+// Détail d'une cotisation — voir design-connect-personnel-12-08/README.md § Cotisations.
+// Backend : get_funding_detail() (migration-connect-v50), null si non autorisé => 404 (§35
+// du master doc : jamais d'erreur technique exposée).
+export default async function CotisationDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ paiement?: string }>;
+}) {
+  const { id } = await params;
+  const { paiement } = await searchParams;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/login");
+
+  const player = await buildPlayerContext(supabase, user.id);
+  const firstName = player?.firstName || user.email?.split("@")[0] || "";
+
+  const { data } = await supabase.rpc("get_funding_detail", { p_funding_id: id });
+  const funding = data as FundingDetail | null;
+  if (!funding) notFound();
+
+  const pct = Math.min(100, Math.round((funding.montant_collecte / funding.montant_cible) * 100));
+  const reached = funding.statut === "objectif_atteint";
+  const remaining = Math.max(0, Math.round((funding.montant_cible - funding.montant_collecte) * 100) / 100);
+  const canParticipate = funding.statut === "ouverte" && remaining > 0;
+  const canPayRest = canParticipate && remaining <= PAY_REST_THRESHOLD;
+  const isTerminal = funding.statut === "expiree" || funding.statut === "annulee";
+
+  return (
+    <AppShell firstName={firstName}>
+      <div className="flex flex-col gap-[22px]">
+        <Link href="/cotisations" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+          <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+          Cotisations
+        </Link>
+
+        {paiement === "succes" && (
+          <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
+            <span className="material-symbols-rounded !text-[19px] text-affiliations">hourglass_top</span>
+            <span className="text-[13px] leading-relaxed text-text-secondary">
+              Votre paiement est en cours de confirmation par Stripe. Le montant collecté ci-dessous se mettra à jour
+              automatiquement dès la confirmation — rafraîchissez la page dans quelques instants si besoin.
+            </span>
+          </div>
+        )}
+        {paiement === "annule" && (
+          <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
+            <span className="material-symbols-rounded !text-[19px] text-attente">info</span>
+            <span className="text-[13px] leading-relaxed text-text-secondary">Paiement annulé, vous pouvez réessayer.</span>
+          </div>
+        )}
+
+        <div
+          className="rounded-sv-card p-px"
+          style={{ background: `linear-gradient(150deg,${reached ? "rgba(34,211,238,.5)" : "rgba(244,114,182,.5)"},rgba(168,85,247,.28) 55%,transparent)` }}
+        >
+          <div className="flex flex-col gap-[18px] rounded-[calc(theme(borderRadius.sv-modal)-1px)] bg-bg-elevated-accent p-6">
+            <div className="flex flex-col gap-2">
+              <span
+                className="self-start rounded-sv-pill px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[.06em]"
+                style={{
+                  color: reached ? "#22D3EE" : isTerminal ? "#9A9AB8" : "#F472B6",
+                  background: reached ? "rgba(34,211,238,.14)" : isTerminal ? "rgba(255,255,255,.08)" : "rgba(244,114,182,.14)",
+                }}
+              >
+                {{ ouverte: "En cours", objectif_atteint: "Objectif atteint", expiree: "Expirée", annulee: "Annulée" }[funding.statut]}
+              </span>
+              <h1 className="font-sora text-[27px] font-bold tracking-tight">{funding.titre}</h1>
+              <span className="text-[14px] text-text-tertiary">{funding.group_name || funding.contexte || "Partage libre"}</span>
+            </div>
+
+            {reached && (
+              <div className="flex items-center gap-3 rounded-sv border border-affiliations/30 bg-affiliations-bg px-[17px] py-[15px]">
+                <span className="material-symbols-rounded !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  check_circle
+                </span>
+                <span className="text-[14px] leading-relaxed text-text-secondary">
+                  Objectif atteint 🎉 Votre prestation est entièrement financée.
+                </span>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-sora text-[38px] font-bold tracking-tight">{euros(funding.montant_collecte)}</span>
+                  <span className="text-[16px] text-text-tertiary">/ {euros(funding.montant_cible)}</span>
+                </div>
+                <span className="font-sora text-[17px] font-semibold" style={{ color: reached ? "#22D3EE" : "#F472B6" }}>
+                  {pct}%
+                </span>
+              </div>
+              <div className="h-3 overflow-hidden rounded-sv-pill bg-white/[.08]">
+                <div className={`h-full rounded-sv-pill ${reached ? "bg-sv-gradient-financee" : "bg-sv-gradient-cotisation"}`} style={{ width: `${pct}%` }} />
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="text-[14px] text-text-secondary">
+                  {reached ? "Objectif atteint" : `Reste ${euros(remaining)}`}
+                </span>
+                <span className="text-[14px] text-text-tertiary">
+                  {funding.contributions.length} participation{funding.contributions.length > 1 ? "s" : ""}
+                </span>
+                {funding.date_limite && (
+                  <span className="text-[14px]" style={{ color: isTerminal ? "#F472B6" : "#9A9AB8" }}>
+                    Jusqu&apos;au {formatDate(funding.date_limite)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2.5">
+              {!isTerminal && <ShareFundingButtons shareToken={funding.share_token} titre={funding.titre} />}
+              {canParticipate && !canPayRest && <ParticipateButton fundingId={funding.id} remaining={remaining} suggested={funding.repartition_mode === "egale" && funding.nb_participants_prevu ? Math.ceil((funding.montant_cible / funding.nb_participants_prevu) * 100) / 100 : null} />}
+              {canPayRest && <ParticipateButton fundingId={funding.id} remaining={remaining} suggested={remaining} payRestLabel={`Payer le reste — ${euros(remaining)}`} />}
+              {reached && (
+                <Link
+                  href="/prestations"
+                  className="flex h-[50px] items-center rounded-sv border border-border-strong bg-white/[.06] px-5 font-sora text-[15px] font-semibold hover:bg-white/[.12]"
+                >
+                  Voir ma prestation
+                </Link>
+              )}
+            </div>
+
+            {isTerminal && (
+              <div className="flex items-start gap-2.5 rounded-sv border border-dashed border-border-strong bg-white/[.04] px-4 py-3.5">
+                <span className="material-symbols-rounded !text-[19px] text-text-tertiary">construction</span>
+                <span className="text-[13px] leading-relaxed text-text-tertiary">
+                  Cette cotisation est {funding.statut === "expiree" ? "expirée" : "annulée"}. Les actions « demander
+                  malgré tout » et « rembourser les participants » sont en cours de finalisation et ne sont pas encore
+                  disponibles ici — contactez SportVision depuis Messages pour un traitement manuel.
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1.62fr)_minmax(0,1fr)]">
+          <div className="flex min-w-0 flex-col gap-[13px]">
+            <div className="flex items-center gap-2.5">
+              <h2 className="font-sora text-[18px] font-semibold tracking-tight">Participants</h2>
+              <span className="rounded-sv-pill bg-white/[.07] px-2.5 py-1 text-[12px] font-medium text-text-tertiary">
+                {funding.contributions.length}
+              </span>
+            </div>
+            {funding.contributions.length > 0 ? (
+              <div className="flex flex-col gap-2.5">
+                {funding.contributions.map((c) => (
+                  <div key={c.id} className="flex items-center gap-3 rounded-sv border border-border bg-surface px-3.5 py-3">
+                    <span
+                      className="flex h-[38px] w-[38px] flex-none items-center justify-center rounded-full font-sora text-[13px] font-semibold text-white"
+                      style={{ background: gradientFor(c.id) }}
+                    >
+                      {c.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[14px] font-medium">{c.name}</span>
+                      <span className="text-[12px] text-text-tertiary">{formatDate(c.created_at)}</span>
+                    </div>
+                    <span className="ml-auto flex-none text-[13px] font-semibold text-affiliations">{euros(c.montant)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 rounded-sv border border-dashed border-border-strong bg-white/[.04] p-[18px]">
+                <span className="text-[13px] leading-relaxed text-text-tertiary">Aucune participation pour le moment.</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-[18px]">
+            <div className="flex flex-col gap-3 rounded-sv border border-border bg-surface p-5">
+              <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Détails</span>
+              <RecapLine label="Prestation" value={funding.catalogue_offre_nom || "—"} />
+              <RecapLine label="Groupe" value={funding.group_name || "Partage libre"} />
+              <RecapLine label="Répartition" value={funding.repartition_mode === "egale" ? `Parts égales${funding.nb_participants_prevu ? ` · ${funding.nb_participants_prevu} participants` : ""}` : "Participation libre"} />
+              <RecapLine label="Créée le" value={formatDate(funding.created_at)} />
+              {funding.date_limite && <RecapLine label="Date limite" value={formatDate(funding.date_limite)} />}
+              {funding.my_contribution_amount != null && (
+                <RecapLine label="Ma participation" value={euros(funding.my_contribution_amount)} />
+              )}
+            </div>
+
+            {!isTerminal && (
+              <div className="flex flex-col gap-2.5 rounded-sv border border-border bg-white/[.04] p-5">
+                <span className="font-sora text-[15px] font-semibold">Page publique</span>
+                <span className="text-[13px] leading-relaxed text-text-tertiary">
+                  Voici ce que voient vos coéquipiers en ouvrant le lien.
+                </span>
+                <Link
+                  href={`/cotisation/${funding.share_token}`}
+                  target="_blank"
+                  className="flex h-11 w-fit items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
+                >
+                  <span className="material-symbols-rounded !text-[18px]">open_in_new</span>
+                  Aperçu du lien
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+function RecapLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline gap-3">
+      <span className="text-[14px] text-text-tertiary">{label}</span>
+      <span className="ml-auto text-right text-[14px] font-medium">{value}</span>
+    </div>
+  );
+}

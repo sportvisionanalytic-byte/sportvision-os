@@ -244,7 +244,15 @@ serve(async (req) => {
         ? (session.metadata.club_id as string)
         : null;
       const contributionId = abonnementClubId ? null : ((session.metadata?.contribution_id as string) || null);
-      const paiementId = (abonnementClubId || contributionId)
+      // Cotisation personnelle Connect (group_fundings / funding_contributions,
+      // migration-connect-v50) — même principe de branchement AVANT le repli sur
+      // paiementId que contributionId ci-dessus, avec une clé de metadata distincte
+      // ("funding_contribution_id") pour ne jamais être confondue avec une
+      // contribution à un projet collectif Club+ (contributionId, team_project_contributions).
+      const fundingContributionId = (abonnementClubId || contributionId)
+        ? null
+        : ((session.metadata?.funding_contribution_id as string) || null);
+      const paiementId = (abonnementClubId || contributionId || fundingContributionId)
         ? null
         : ((session.metadata?.paiement_id as string) || (session.client_reference_id as string) || null);
 
@@ -345,6 +353,26 @@ serve(async (req) => {
         }
       }
 
+      // Cotisation personnelle Connect (group_fundings / funding_contributions,
+      // migration-connect-v50) — même logique que la branche contributionId
+      // ci-dessus : group_fundings.montant_collecte et le passage à
+      // 'objectif_atteint' se recalculent automatiquement via le trigger
+      // trg_fc_recompute, jamais écrits ici directement.
+      if (fundingContributionId) {
+        const { data: contribution } = await admin
+          .from("funding_contributions")
+          .select("id, funding_id, montant, statut")
+          .eq("id", fundingContributionId)
+          .maybeSingle();
+
+        if (contribution && contribution.statut !== "paye") {
+          await admin
+            .from("funding_contributions")
+            .update({ statut: "paye", stripe_payment_intent_id: session.payment_intent as string })
+            .eq("id", fundingContributionId);
+        }
+      }
+
       if (paiementId) {
         const { data: paiement } = await admin.from("paiements").select("*").eq("id", paiementId).maybeSingle();
 
@@ -442,6 +470,7 @@ serve(async (req) => {
       const intent = event.data.object as Stripe.PaymentIntent;
       await admin.from("paiements").update({ statut: "echoue" }).eq("stripe_payment_intent_id", intent.id);
       await admin.from("team_project_contributions").update({ statut: "echoue" }).eq("stripe_payment_intent_id", intent.id);
+      await admin.from("funding_contributions").update({ statut: "echoue" }).eq("stripe_payment_intent_id", intent.id);
     }
 
     // Remboursement (manuel depuis le dashboard Stripe, ou via l'API) — jusqu'ici
@@ -546,6 +575,27 @@ serve(async (req) => {
               });
             } catch (_e) {
               console.error("[stripe-webhook] journalisation team_project_events (remboursement contribution) a échoué :", _e);
+            }
+          }
+
+          // Toujours pas trouvé : peut être une participation à une cotisation
+          // personnelle Connect (funding_contributions, migration-connect-v50).
+          // Même principe que ci-dessus — reflète passivement un remboursement
+          // déjà décidé côté dashboard Stripe, n'invente aucune politique de
+          // remboursement (le master doc et le README design laissent
+          // explicitement cette décision produit à trancher avant toute
+          // automatisation plus poussée).
+          if (!contribution) {
+            const { data: fundingContribution } = await admin
+              .from("funding_contributions")
+              .select("*")
+              .eq("stripe_payment_intent_id", intentId)
+              .maybeSingle();
+
+            if (fundingContribution && fundingContribution.statut !== "rembourse" && estTotal) {
+              await admin.from("funding_contributions").update({ statut: "rembourse" }).eq("id", fundingContribution.id);
+              // recompute_group_funding_amount() se déclenche automatiquement
+              // (trigger after update) et corrige group_fundings.montant_collecte.
             }
           }
         }
