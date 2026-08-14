@@ -68,10 +68,10 @@ export function FundingTabs({ fundings, basePath = "/cotisations" }: { fundings:
   }, [fundings, tab]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 animate-sv-in">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="font-sora text-[33px] font-bold tracking-tight">Cotisations</h1>
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Cotisations</h1>
           <p className="text-[15px] text-text-tertiary">Financez vos prestations SportVision à plusieurs.</p>
         </div>
         <Link

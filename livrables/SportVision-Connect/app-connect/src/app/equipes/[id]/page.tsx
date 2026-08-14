@@ -60,7 +60,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
 
   return (
     <AppShell firstName={firstName}>
-      <div className="flex flex-col gap-[22px]">
+      <div className="flex flex-col gap-[22px] animate-sv-in">
         <Link href="/equipes" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
           <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
           Mes équipes

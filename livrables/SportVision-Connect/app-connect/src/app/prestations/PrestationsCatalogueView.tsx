@@ -18,7 +18,7 @@ export function PrestationsCatalogueView({ offers }: { offers: CatalogueOffer[] 
   const visible = tab === "Tous" ? offers : offers.filter((o) => o.family === tab);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 animate-sv-in">
       <div className="flex flex-wrap gap-2">
         {["Tous", ...families].map((f) => (
           <button

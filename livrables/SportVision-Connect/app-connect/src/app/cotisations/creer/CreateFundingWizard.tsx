@@ -204,7 +204,7 @@ export function CreateFundingWizard({
   }
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-[22px]">
+    <div className="flex max-w-[720px] flex-col gap-[22px] pb-24 animate-sv-in lg:pb-0">
       <div className="flex items-center gap-3.5">
         <button
           type="button"
@@ -439,13 +439,58 @@ export function CreateFundingWizard({
             type="button"
             onClick={handleCreate}
             disabled={busy}
-            className="flex h-[54px] items-center justify-center gap-2 self-start rounded-sv bg-sv-gradient px-6 font-sora text-[16px] font-semibold text-white hover:brightness-[1.12] disabled:cursor-wait disabled:opacity-75"
+            className="hidden h-[54px] items-center justify-center gap-2 self-start rounded-sv bg-sv-gradient px-6 font-sora text-[16px] font-semibold text-white hover:brightness-[1.12] disabled:cursor-wait disabled:opacity-75 lg:flex"
           >
             {busy && <span className="h-[18px] w-[18px] animate-sv-spin rounded-full border-2 border-white/35 border-t-white" />}
             Créer la cotisation
           </button>
         </div>
       )}
+
+      {/* CTA sticky mobile (README § Mobile : "création de cotisation") — reprend l'action du
+          pas courant, au-dessus de la bottom nav de l'AppShell (safe-area incluse). */}
+      <div className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-bg/95 p-3.5 backdrop-blur-md lg:hidden">
+        {step === 1 && (
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            disabled={!offreId}
+            className="flex h-14 w-full items-center justify-center rounded-sv bg-sv-gradient font-sora text-[15px] font-semibold text-white hover:brightness-[1.12] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            Continuer
+          </button>
+        )}
+        {step === 2 && (
+          <button
+            type="button"
+            onClick={() => setStep(3)}
+            className="flex h-14 w-full items-center justify-center rounded-sv bg-sv-gradient font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
+          >
+            Continuer
+          </button>
+        )}
+        {step === 3 && (
+          <button
+            type="button"
+            onClick={() => setStep(4)}
+            disabled={!deadline}
+            className="flex h-14 w-full items-center justify-center rounded-sv bg-sv-gradient font-sora text-[15px] font-semibold text-white hover:brightness-[1.12] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            Continuer
+          </button>
+        )}
+        {step === 4 && (
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={busy}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-sv bg-sv-gradient font-sora text-[15px] font-semibold text-white hover:brightness-[1.12] disabled:cursor-wait disabled:opacity-75"
+          >
+            {busy && <span className="h-[18px] w-[18px] animate-sv-spin rounded-full border-2 border-white/35 border-t-white" />}
+            Créer la cotisation
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -480,7 +525,7 @@ function NextButton({ onClick, disabled }: { onClick: () => void; disabled?: boo
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex h-[52px] items-center justify-center self-start rounded-sv bg-sv-gradient px-6 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12] disabled:cursor-not-allowed disabled:opacity-45"
+      className="hidden h-[52px] items-center justify-center self-start rounded-sv bg-sv-gradient px-6 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12] disabled:cursor-not-allowed disabled:opacity-45 lg:flex"
     >
       Continuer
     </button>

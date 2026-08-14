@@ -23,7 +23,7 @@ export default async function RejoindreEquipePage({ params }: { params: Promise<
 
   return (
     <AppShell firstName={firstName}>
-      <div className="mx-auto flex max-w-[460px] flex-col items-center gap-5 py-10 text-center">
+      <div className="mx-auto flex max-w-[460px] flex-col items-center gap-5 py-10 text-center animate-sv-in">
         <span className="flex h-14 w-14 items-center justify-center rounded-sv bg-affiliations-bg">
           <span className="material-symbols-rounded !text-[28px] text-affiliations">groups</span>
         </span>

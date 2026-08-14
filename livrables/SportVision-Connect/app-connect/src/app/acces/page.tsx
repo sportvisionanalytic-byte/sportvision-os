@@ -46,9 +46,9 @@ export default async function AccesPage() {
 
   return (
     <AppShell firstName={firstName}>
-      <div className="flex max-w-[760px] flex-col gap-7">
+      <div className="flex max-w-[760px] flex-col gap-7 animate-sv-in">
         <div className="flex flex-col gap-2">
-          <h1 className="font-sora text-[33px] font-bold tracking-tight">Accès à mon profil</h1>
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Accès à mon profil</h1>
           <p className="max-w-[620px] text-[15px] text-text-tertiary">
             Les personnes qui vous accompagnent et ce que vous les autorisez à voir. Vous pouvez
             retirer un accès à tout moment.

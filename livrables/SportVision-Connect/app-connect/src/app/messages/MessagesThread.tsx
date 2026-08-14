@@ -235,7 +235,7 @@ export function MessagesThread({
   let lastDay = "";
 
   return (
-    <div className="flex h-[calc(100vh-140px)] flex-col gap-5 lg:h-[calc(100vh-120px)]">
+    <div className="flex h-[calc(100vh-140px)] flex-col gap-5 animate-sv-in lg:h-[calc(100vh-120px)]">
       <div className="flex flex-col gap-2">
         <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Messages</h1>
         <p className="text-[15px] text-text-tertiary">Votre lien direct avec SportVision.</p>

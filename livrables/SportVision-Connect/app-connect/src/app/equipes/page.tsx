@@ -34,10 +34,10 @@ export default async function EquipesPage() {
 
   return (
     <AppShell firstName={firstName}>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 animate-sv-in">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-2">
-            <h1 className="font-sora text-[33px] font-bold tracking-tight">Mes équipes</h1>
+            <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Mes équipes</h1>
             <p className="max-w-[560px] text-[15px] text-text-tertiary">
               Créez vos groupes, invitez vos coéquipiers et organisez vos prestations ensemble.
             </p>
