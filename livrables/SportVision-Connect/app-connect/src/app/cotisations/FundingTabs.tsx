@@ -20,6 +20,11 @@ export interface FundingRow {
   participants_count: number;
   my_contribution_amount: number | null;
   created_at: string;
+  // Absent du type d'origine alors que list_my_fundings()/get_funding_detail() le renvoient déjà
+  // (migration-connect-v51-espace-particulier.sql §6) — non NULL uniquement pour une cotisation
+  // créée avec un bénéficiaire (sportif lié ou profil géré, Espace particulier). Bug corrigé
+  // le 14/08 (audit) : le badge "Pour X" n'était jamais affiché faute d'être typé/lu ici.
+  beneficiary_label?: string | null;
 }
 
 type Tab = "en-cours" | "creees" | "participations" | "terminees";
@@ -122,6 +127,11 @@ export function FundingTabs({ fundings, basePath = "/cotisations" }: { fundings:
                   {f.is_creator && (
                     <span className="rounded-sv-pill bg-white/[.07] px-2.5 py-1 text-[11px] font-medium text-text-tertiary">
                       Créée par moi
+                    </span>
+                  )}
+                  {f.beneficiary_label && (
+                    <span className="rounded-sv-pill bg-white/[.07] px-2.5 py-1 text-[11px] font-medium text-text-tertiary">
+                      Pour {f.beneficiary_label}
                     </span>
                   )}
                 </div>
