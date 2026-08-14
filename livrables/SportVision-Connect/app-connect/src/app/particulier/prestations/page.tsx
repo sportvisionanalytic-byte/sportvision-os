@@ -33,7 +33,7 @@ export default async function PrestationsParticulierPage({
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
       <PrestationsParticulierView
         firstName={firstName}
-        athletes={athletes.filter((a) => a.rights.reserver)}
+        athletes={athletes}
         offers={offers}
         initialBenefKind={benefKind === "linked" || benefKind === "managed" ? benefKind : "self"}
         initialBenefId={benefId || null}

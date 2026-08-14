@@ -15,6 +15,13 @@ import type { PlayerOrder } from "@/lib/prestations/types";
 // carte indique "Pour qui") plutôt que de dupliquer un état de filtrage global côté serveur —
 // voir ParticularShell.tsx pour la décision documentée sur le sélecteur de contexte (navigation
 // directe vers la fiche du sportif plutôt qu'un filtre in-place).
+//
+// Les 5 types de cartes d'activité du README (prestation, contenus, événement, cotisation,
+// messages) sont TOUTES représentées ici (contenus/événement ajoutés le 14/08 — absents de la
+// première passe) en réutilisant connect_list_contents_for_athletes()/
+// connect_list_calendar_for_athletes(), déjà déployées et déjà appelées par /particulier/contenus
+// et /particulier/calendrier : aucune nouvelle fonction, uniquement une lecture supplémentaire
+// sur l'accueil.
 export default async function ParticulierHomePage() {
   const supabase = await createClient();
   const {
@@ -28,10 +35,12 @@ export default async function ParticulierHomePage() {
 
   const athletes = await fetchMyAthletes(supabase).catch(() => []);
 
-  const [ordersRes, fundingsRes, unreadCount] = await Promise.all([
+  const [ordersRes, fundingsRes, unreadCount, contentsRes, eventsRes] = await Promise.all([
     supabase.functions.invoke("connect-player-prestations", { body: { action: "list_orders", multi: true } }),
     supabase.rpc("list_my_fundings"),
     getOwnUnreadCount(supabase, user.id),
+    supabase.rpc("connect_list_contents_for_athletes"),
+    supabase.rpc("connect_list_calendar_for_athletes"),
   ]);
 
   const orders = ((ordersRes.data?.orders || []) as (PlayerOrder & { forWho: string | null })[]).filter(
@@ -51,6 +60,29 @@ export default async function ParticulierHomePage() {
     beneficiary_label?: string | null;
   }>;
   const cotisation = fundings.find((f) => f.statut === "ouverte" || f.statut === "objectif_atteint");
+
+  const recentContents = ((contentsRes.data || []) as Array<{
+    id: string;
+    title: string;
+    team: string | null;
+    created_at: string;
+    athlete_label: string;
+  }>)
+    .slice()
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    .slice(0, 2);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const nextEvent = ((eventsRes.data || []) as Array<{
+    id: string;
+    title: string;
+    event_date: string;
+    event_time: string | null;
+    location: string | null;
+    athlete_label: string;
+  }>)
+    .filter((e) => e.event_date >= today)
+    .sort((a, b) => (a.event_date < b.event_date ? -1 : 1))[0];
 
   return (
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
@@ -176,6 +208,64 @@ export default async function ParticulierHomePage() {
                   </div>
                 </Link>
               )}
+
+              {recentContents.length > 0 && (
+                <div className="flex flex-col gap-3.5">
+                  <div className="flex items-baseline justify-between gap-3.5">
+                    <h2 className="font-sora text-[18px] font-semibold tracking-tight lg:text-[20px]">Nouveaux contenus</h2>
+                    <Link href="/particulier/contenus" className="text-[13px] font-medium text-contenus">
+                      Tout voir
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {recentContents.map((c) => (
+                      <Link
+                        key={c.id}
+                        href="/particulier/contenus"
+                        className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface hover:border-[rgba(192,132,252,.45)]"
+                      >
+                        <div className="flex h-[130px] items-start justify-between p-3" style={{ background: "linear-gradient(135deg,#3B1E6E 0%,#22307A 55%,#0F4C63 100%)" }}>
+                          <span className="rounded-sv-pill bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-bg">Pour {c.athlete_label}</span>
+                        </div>
+                        <div className="flex flex-col gap-1.5 p-4">
+                          <span className="truncate font-sora text-[15px] font-semibold">{c.title}</span>
+                          <span className="text-[12.5px] text-text-tertiary">{c.team ? `${c.team} · ` : ""}{formatDateLong(c.created_at)}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {nextEvent && (
+                <Link
+                  href="/particulier/calendrier"
+                  className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-5 hover:bg-white/[.09]"
+                >
+                  <div
+                    className="flex h-[54px] w-[54px] flex-none flex-col items-center justify-center rounded-sv"
+                    style={{ background: "linear-gradient(150deg,rgba(79,125,255,.3),rgba(34,211,238,.14))" }}
+                  >
+                    <span className="font-sora text-[17px] font-bold leading-none">{new Date(`${nextEvent.event_date}T00:00:00`).getDate()}</span>
+                    <span className="text-[10px] font-medium uppercase text-prestations">
+                      {new Date(`${nextEvent.event_date}T00:00:00`).toLocaleDateString("fr-FR", { month: "short" })}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">
+                      Prochain événement · Pour {nextEvent.athlete_label}
+                    </span>
+                    <span className="font-sora text-[17px] font-semibold tracking-tight">{nextEvent.title}</span>
+                    <span className="text-[13px] text-text-tertiary">
+                      {formatDateLong(nextEvent.event_date)}
+                      {nextEvent.location ? ` · ${nextEvent.location}` : ""}
+                    </span>
+                  </div>
+                  <span className="ml-auto flex-none rounded-sv-pill bg-prestations-bg px-2.5 py-1 text-[12px] font-medium text-prestations">
+                    📸 SportVision présent
+                  </span>
+                </Link>
+              )}
             </div>
 
             <div className="flex flex-col gap-4.5">
@@ -232,6 +322,17 @@ export default async function ParticulierHomePage() {
                   <span className="ml-auto flex-none text-[13px] font-medium text-affiliations">Ouvrir</span>
                 </Link>
               )}
+
+              <Link
+                href="/particulier/prestations"
+                className="flex items-center gap-3.5 rounded-sv-card border border-border bg-white/[.04] p-5 hover:bg-white/[.08] lg:hidden"
+              >
+                <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-prestations-bg">
+                  <span className="material-symbols-rounded !text-[20px] text-prestations">add</span>
+                </span>
+                <span className="font-sora text-[15px] font-semibold">Réserver une prestation</span>
+                <span className="material-symbols-rounded ml-auto !text-[20px] text-text-label">chevron_right</span>
+              </Link>
             </div>
           </div>
         )}

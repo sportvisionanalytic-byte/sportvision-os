@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { gradientFor } from "@/lib/avatarGradients";
 
 // Shell de l'Espace particulier — voir design-connect-personnel-12-08/README.md § Shell et
 // navigation ("Espace particulier") + § Espace particulier. NE remplace PAS AppShell.tsx (shell
@@ -104,6 +105,22 @@ export function ParticularShell({
 
   const monogram = (firstName[0] || "?").toUpperCase();
 
+  // Le sélecteur de contexte (README § Shell et navigation) reflète où l'on se trouve : "Vous
+  // consultez : Lucas" sur la fiche de Lucas, "Tous mes sportifs" partout ailleurs — jamais un
+  // libellé figé (bug corrigé le 14/08, cf. rapport de l'agent Design review). Il reste un
+  // raccourci de NAVIGATION vers la fiche du sportif (pas un filtre global in-place répercuté sur
+  // toutes les pages) : les listes multi-sportifs (commandes, contenus, calendrier) filtrent via
+  // leur propre sélecteur `?sportif=`, déjà couvert par chaque vue.
+  const activeAthleteMatch = pathname.match(/^\/particulier\/sportifs\/(linked|managed)\/([^/]+)/);
+  const activeAthlete = activeAthleteMatch
+    ? athletes.find((a) => a.kind === activeAthleteMatch[1] && a.refId === activeAthleteMatch[2]) || null
+    : null;
+  const contextLabel = activeAthlete
+    ? `${activeAthlete.firstName} ${activeAthlete.lastName}`.trim()
+    : athletes.length
+      ? "Tous mes sportifs"
+      : "Aucun sportif";
+
   const contextSelector = (
     <div className="relative">
       <button
@@ -111,8 +128,17 @@ export function ParticularShell({
         onClick={() => setContextOpen((v) => !v)}
         className="flex h-10 w-full items-center gap-2 rounded-sv border border-border-strong bg-surface px-3 text-left text-[13px] font-medium text-text-secondary hover:bg-surface-hover"
       >
-        <span className="material-symbols-rounded !text-[18px] text-text-tertiary">group</span>
-        <span className="truncate">Vous consultez : {athletes.length ? "Tous mes sportifs" : "Aucun sportif"}</span>
+        {activeAthlete ? (
+          <span
+            className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full font-sora text-[8px] font-semibold text-white"
+            style={{ background: gradientFor(`${activeAthlete.kind}:${activeAthlete.refId}`) }}
+          >
+            {(activeAthlete.firstName[0] || "?").toUpperCase()}
+          </span>
+        ) : (
+          <span className="material-symbols-rounded !text-[18px] text-text-tertiary">group</span>
+        )}
+        <span className="truncate">Vous consultez : {contextLabel}</span>
         <span className="material-symbols-rounded ml-auto !text-[18px] text-text-faint">expand_more</span>
       </button>
       {contextOpen && (
@@ -121,30 +147,63 @@ export function ParticularShell({
             className="absolute left-3.5 right-3.5 top-[130px] z-50 flex max-h-[60vh] flex-col gap-0.5 overflow-y-auto rounded-sv-card border border-border bg-bg-elevated p-2 lg:left-auto lg:top-auto lg:mt-2 lg:w-[260px]"
             onClick={(e) => e.stopPropagation()}
           >
+            <span className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[.1em] text-text-faint">
+              Vous consultez
+            </span>
             <Link
               href="/particulier"
               onClick={() => setContextOpen(false)}
-              className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
+              className={`flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] ${
+                !activeAthlete ? "bg-white/8 text-text" : "text-text-secondary hover:bg-white/5"
+              }`}
             >
               <span className="material-symbols-rounded !text-[19px]">apps</span>
               Tous mes sportifs
-            </Link>
-            {athletes.map((a) => (
-              <Link
-                key={`${a.kind}:${a.refId}`}
-                href={`/particulier/sportifs/${a.kind}/${a.refId}`}
-                onClick={() => setContextOpen(false)}
-                className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
-              >
-                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-sv-gradient font-sora text-[10px] font-semibold text-white">
-                  {(a.firstName[0] || "?").toUpperCase()}
+              {!activeAthlete && (
+                <span className="material-symbols-rounded ml-auto !text-[19px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  check_circle
                 </span>
-                {a.firstName} {a.lastName}
-              </Link>
-            ))}
+              )}
+            </Link>
+            {athletes.map((a) => {
+              const isActive = activeAthlete?.kind === a.kind && activeAthlete?.refId === a.refId;
+              return (
+                <Link
+                  key={`${a.kind}:${a.refId}`}
+                  href={`/particulier/sportifs/${a.kind}/${a.refId}`}
+                  onClick={() => setContextOpen(false)}
+                  className={`flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] ${
+                    isActive ? "bg-white/8 text-text" : "text-text-secondary hover:bg-white/5"
+                  }`}
+                >
+                  <span
+                    className="flex h-6 w-6 flex-none items-center justify-center rounded-full font-sora text-[10px] font-semibold text-white"
+                    style={{ background: gradientFor(`${a.kind}:${a.refId}`) }}
+                  >
+                    {(a.firstName[0] || "?").toUpperCase()}
+                  </span>
+                  {a.firstName} {a.lastName}
+                  {isActive && (
+                    <span className="material-symbols-rounded ml-auto !text-[19px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      check_circle
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
             {athletes.length === 0 && (
               <span className="px-3 py-2.5 text-[13px] text-text-faint">Aucun sportif ajouté pour le moment.</span>
             )}
+            <Link
+              href="/particulier/sportifs/ajouter"
+              onClick={() => setContextOpen(false)}
+              className="mt-1.5 flex h-11 items-center gap-2.5 rounded-sv border-t border-border px-3 pt-2.5 text-[14px] text-text-secondary hover:bg-white/5"
+            >
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-white/[.07]">
+                <span className="material-symbols-rounded !text-[15px] text-affiliations">add</span>
+              </span>
+              Ajouter un sportif
+            </Link>
           </div>
         </div>
       )}

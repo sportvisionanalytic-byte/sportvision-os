@@ -142,7 +142,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
               {(detail.first_name[0] || "?").toUpperCase()}
             </span>
             <div className="flex min-w-0 flex-col gap-1.5">
-              <h1 className="font-sora text-[27px] font-bold tracking-tight">{fullName}</h1>
+              <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">{fullName}</h1>
               <span className="text-[14px] text-text-tertiary">{[detail.sport, detail.categorie].filter(Boolean).join(" · ") || "—"}</span>
               <div className="flex flex-wrap items-center gap-2">
                 {detail.club_nom && <span className="text-[13px] text-text-secondary">{detail.club_nom}</span>}

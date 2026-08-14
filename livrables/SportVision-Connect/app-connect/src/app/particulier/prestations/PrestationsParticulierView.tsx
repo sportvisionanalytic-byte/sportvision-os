@@ -40,7 +40,14 @@ export function PrestationsParticulierView({
     setBenefId(id);
   }
 
+  const selectedAthlete = benefKind === "self" ? null : athletes.find((a) => a.kind === benefKind && a.refId === benefId) || null;
+  const blockedReason =
+    selectedAthlete && !selectedAthlete.rights.reserver
+      ? `Vous n'êtes pas autorisé à réserver pour ${selectedAthlete.firstName}. Demandez-lui d'activer cette autorisation.`
+      : null;
+
   function goToOffer(offerId: string) {
+    if (blockedReason) return;
     const params = new URLSearchParams({ benefKind });
     if (benefId) params.set("benefId", benefId);
     router.push(`/particulier/reserver/${offerId}?${params.toString()}`);
@@ -83,6 +90,12 @@ export function PrestationsParticulierView({
             Aucun sportif ne vous a encore autorisé à réserver pour lui. Vous pouvez réserver pour vous-même.
           </span>
         )}
+        {blockedReason && (
+          <div className="flex items-start gap-2.5 rounded-sv border border-attente/30 bg-attente-bg px-4 py-3.5">
+            <span className="material-symbols-rounded !text-[19px] text-attente">lock</span>
+            <span className="text-[13px] leading-relaxed text-text-secondary">{blockedReason}</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -93,7 +106,10 @@ export function PrestationsParticulierView({
               key={offer.id}
               type="button"
               onClick={() => goToOffer(offer.id)}
-              className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface text-left transition-colors duration-150 hover:border-[rgba(140,169,255,.45)]"
+              aria-disabled={!!blockedReason}
+              className={`flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface text-left transition-colors duration-150 ${
+                blockedReason ? "cursor-not-allowed opacity-45" : "hover:border-[rgba(140,169,255,.45)]"
+              }`}
             >
               <div
                 className="flex h-[100px] items-center px-[18px]"
