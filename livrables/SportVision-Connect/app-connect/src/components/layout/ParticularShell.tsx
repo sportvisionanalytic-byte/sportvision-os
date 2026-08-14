@@ -6,6 +6,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { gradientFor } from "@/lib/avatarGradients";
+import { Topbar } from "./Topbar";
+import { NotificationBell } from "./NotificationBell";
+import { MobileSearchOverlay } from "./MobileSearchOverlay";
 
 // Shell de l'Espace particulier — voir design-connect-personnel-12-08/README.md § Shell et
 // navigation ("Espace particulier") + § Espace particulier. NE remplace PAS AppShell.tsx (shell
@@ -24,6 +27,13 @@ import { gradientFor } from "@/lib/avatarGradients";
 // (player_profiles), qui n'existe jamais pour un particulier — les dupliquer sous /particulier
 // évite de complexifier ces pages déjà construites avec des branches account_type, au prix d'une
 // petite duplication de route, jugée plus sûre pour ne rien casser côté Espace joueur.
+//
+// Exception explicite à "NE remplace PAS AppShell.tsx" ci-dessus, pour la Topbar UNIQUEMENT
+// (chantier du 14/08, migration-connect-v53-topbar-notifications-recherche.sql) : la topbar est
+// un système transverse construit une fois (Topbar.tsx/NotificationBell.tsx/GlobalSearch.tsx/
+// MobileSearchOverlay.tsx) et appliqué aux DEUX shells — contrairement au reste (sidebar, bottom
+// nav), volontairement cloisonné par espace. Le `?` d'aide quitte la sidebar (même raison que
+// AppShell.tsx : accès unique désormais dans Topbar.tsx).
 
 export interface AthleteNavItem {
   kind: "linked" | "managed";
@@ -83,10 +93,14 @@ function isActive(pathname: string, href: string) {
 
 export function ParticularShell({
   firstName,
+  lastName,
+  email,
   athletes,
   children,
 }: {
   firstName: string;
+  lastName?: string;
+  email?: string;
   athletes: AthleteNavItem[];
   children: React.ReactNode;
 }) {
@@ -95,6 +109,7 @@ export function ParticularShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -224,13 +239,6 @@ export function ParticularShell({
               </span>
             </div>
           </Link>
-          <Link
-            href="/aide"
-            aria-label="Aide"
-            className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-text-tertiary hover:bg-white/[.06] hover:text-text"
-          >
-            <span className="material-symbols-rounded !text-[19px]">help</span>
-          </Link>
         </div>
 
         {contextSelector}
@@ -289,10 +297,19 @@ export function ParticularShell({
           <span className="bg-sv-gradient bg-clip-text text-[10px] font-medium uppercase tracking-[.14em] text-transparent">
             Connect
           </span>
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen(true)}
+            aria-label="Rechercher"
+            className="ml-auto flex h-9 w-9 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
+          >
+            <span className="material-symbols-rounded !text-[20px]">search</span>
+          </button>
+          <NotificationBell />
           <Link
             href="/aide"
             aria-label="Aide"
-            className="ml-auto flex h-9 w-9 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
+            className="flex h-9 w-9 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
           >
             <span className="material-symbols-rounded !text-[20px]">help</span>
           </Link>
@@ -308,6 +325,8 @@ export function ParticularShell({
         </div>
         {contextSelector}
       </div>
+
+      {mobileSearchOpen && <MobileSearchOverlay space="particulier" onClose={() => setMobileSearchOpen(false)} />}
 
       {menuOpen && (
         <div
@@ -350,10 +369,13 @@ export function ParticularShell({
         </div>
       )}
 
-      {/* ============ CONTENU ============ */}
-      <main className="flex-1 pb-16 pt-[112px] lg:pb-0 lg:pt-0">
-        <div className="mx-auto max-w-[1160px] px-5 py-7 lg:px-8">{children}</div>
-      </main>
+      {/* ============ COLONNE DE CONTENU (topbar desktop + contenu) ============ */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar space="particulier" firstName={firstName} lastName={lastName} email={email} profileHref="/particulier/profil" />
+        <main className="flex-1 pb-16 pt-[112px] lg:pb-0 lg:pt-0">
+          <div className="mx-auto max-w-[1160px] px-5 py-7 lg:px-8">{children}</div>
+        </main>
+      </div>
 
       {/* ============ BOTTOM NAV MOBILE (5 onglets + feuille "Plus") ============ */}
       <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-bg/95 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:hidden">

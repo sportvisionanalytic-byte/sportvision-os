@@ -5,6 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Topbar } from "./Topbar";
+import { NotificationBell } from "./NotificationBell";
+import { MobileSearchOverlay } from "./MobileSearchOverlay";
 
 // Shell de l'espace joueur — voir design-connect-personnel-12-08/README.md § Shell et
 // navigation. Structure consolidée le 14/08 une fois tous les écrans du design réellement
@@ -14,6 +17,11 @@ import { createClient } from "@/lib/supabase/client";
 // utilisée pendant la construction progressive. "Accès à mon profil" reste volontairement
 // hors navigation (le design ne l'y met pas non plus — atteint depuis la carte dédiée dans Mon
 // profil et une notification, cf. rapport de l'agent Accueil/Profil/Accès du 14/08).
+//
+// Topbar (desktop, 76 px) + notifications/recherche mobile ajoutées le 14/08 (chantier topbar
+// transverse, voir migration-connect-v53-topbar-notifications-recherche.sql) : le `?` d'aide
+// quitte la sidebar (unique accès désormais dans Topbar.tsx, README § Shell : "L'aide n'est pas
+// dans la sidebar"), inchangé côté header mobile (pattern distinct, hors périmètre topbar 76 px).
 
 interface NavItem {
   href: string;
@@ -70,15 +78,20 @@ function isActive(pathname: string, href: string) {
 
 export function AppShell({
   firstName,
+  lastName,
+  email,
   children,
 }: {
   firstName: string;
+  lastName?: string;
+  email?: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -102,13 +115,6 @@ export function AppShell({
                 Connect
               </span>
             </div>
-          </Link>
-          <Link
-            href="/aide"
-            aria-label="Aide"
-            className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-text-tertiary hover:bg-white/[.06] hover:text-text"
-          >
-            <span className="material-symbols-rounded !text-[19px]">help</span>
           </Link>
         </div>
 
@@ -165,10 +171,19 @@ export function AppShell({
         <span className="bg-sv-gradient bg-clip-text text-[10px] font-medium uppercase tracking-[.14em] text-transparent">
           Connect
         </span>
+        <button
+          type="button"
+          onClick={() => setMobileSearchOpen(true)}
+          aria-label="Rechercher"
+          className="ml-auto flex h-9 w-9 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
+        >
+          <span className="material-symbols-rounded !text-[20px]">search</span>
+        </button>
+        <NotificationBell />
         <Link
           href="/aide"
           aria-label="Aide"
-          className="ml-auto flex h-9 w-9 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
+          className="flex h-9 w-9 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
         >
           <span className="material-symbols-rounded !text-[20px]">help</span>
         </Link>
@@ -182,6 +197,8 @@ export function AppShell({
           </span>
         </button>
       </div>
+
+      {mobileSearchOpen && <MobileSearchOverlay space="joueur" onClose={() => setMobileSearchOpen(false)} />}
 
       {menuOpen && (
         <div
@@ -224,10 +241,13 @@ export function AppShell({
         </div>
       )}
 
-      {/* ============ CONTENU ============ */}
-      <main className="flex-1 pb-16 pt-[68px] lg:pb-0 lg:pt-0">
-        <div className="mx-auto max-w-[1160px] px-5 py-7 lg:px-8">{children}</div>
-      </main>
+      {/* ============ COLONNE DE CONTENU (topbar desktop + contenu) ============ */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar space="joueur" firstName={firstName} lastName={lastName} email={email} profileHref="/profil" />
+        <main className="flex-1 pb-16 pt-[68px] lg:pb-0 lg:pt-0">
+          <div className="mx-auto max-w-[1160px] px-5 py-7 lg:px-8">{children}</div>
+        </main>
+      </div>
 
       {/* ============ BOTTOM NAV MOBILE (5 onglets + feuille "Plus") ============ */}
       <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-bg/95 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:hidden">
