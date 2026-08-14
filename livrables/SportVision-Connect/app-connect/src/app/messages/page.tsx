@@ -19,6 +19,13 @@ import { MessagesThread, type MessageData } from "./MessagesThread";
 // migration-connect-v56-messages-welcome.sql (NON EXÉCUTÉE) — insère le premier message dans
 // `messages_client` au moment même où `resolve_player_client_id` crée le client, pas ici côté
 // frontend (aucun message fictif affiché sans exister en base).
+//
+// BUG CORRIGÉ le 15/08 : le code ne tentait resolve_player_client_id que si player?.playerId
+// existait (donc un club affilié, player_profiles) — un joueur SANS club (parcours signup
+// "Non / plus tard", tout à fait valide) n'avait jamais de clientId résolu, Messages restait
+// vide/indisponible même après avoir déjà réservé une prestation. Même classe de bug que celui
+// corrigé sur connect-player-prestations (Mes commandes/Factures) : repli sur
+// connect_resolve_beneficiary_client_id(kind:"self") quand player_profiles n'existe pas.
 export default async function MessagesPage() {
   const supabase = await createClient();
   const {
@@ -33,31 +40,28 @@ export default async function MessagesPage() {
   let messages: MessageData[] = [];
   let unavailable = false;
 
-  if (player?.playerId) {
-    const { data: resolvedId, error } = await supabase.rpc("resolve_player_client_id", {
-      p_player_id: player.playerId,
-    });
-    if (error || !resolvedId) {
-      unavailable = true;
-    } else {
-      clientId = resolvedId as string;
-      const { data } = await supabase
-        .from("messages_client")
-        .select("id, auteur_type, contenu, piece_jointe_url, lu, created_at")
-        .eq("client_id", clientId)
-        .order("created_at", { ascending: true });
+  const { data: resolvedId, error } = player?.playerId
+    ? await supabase.rpc("resolve_player_client_id", { p_player_id: player.playerId })
+    : await supabase.rpc("connect_resolve_beneficiary_client_id", { p_kind: "self", p_ref_id: null });
 
-      messages = (data ?? []).map((row) => ({
-        id: row.id as string,
-        auteur: row.auteur_type === "staff" ? "staff" : "client",
-        contenu: row.contenu as string,
-        pieceJointeUrl: (row.piece_jointe_url as string | null) ?? null,
-        lu: row.lu as boolean,
-        createdAt: row.created_at as string,
-      }));
-    }
-  } else {
+  if (error || !resolvedId) {
     unavailable = true;
+  } else {
+    clientId = resolvedId as string;
+    const { data } = await supabase
+      .from("messages_client")
+      .select("id, auteur_type, contenu, piece_jointe_url, lu, created_at")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: true });
+
+    messages = (data ?? []).map((row) => ({
+      id: row.id as string,
+      auteur: row.auteur_type === "staff" ? "staff" : "client",
+      contenu: row.contenu as string,
+      pieceJointeUrl: (row.piece_jointe_url as string | null) ?? null,
+      lu: row.lu as boolean,
+      createdAt: row.created_at as string,
+    }));
   }
 
   return (
