@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,6 +22,17 @@ export default function LoginPage() {
   const [touched, setTouched] = useState(false);
   const [authFailed, setAuthFailed] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Redirection post-connexion vers ?next=... (ex. lien d'invitation à un groupe
+  // /equipes/rejoindre/[id] — sans ça, un visiteur non connecté qui clique sur ce lien
+  // atterrissait sur /dashboard après connexion, invitation perdue). Lu depuis
+  // window.location plutôt que useSearchParams pour ne pas exiger de bornage <Suspense>
+  // sur cette page. Restreint aux chemins internes ("/xxx", jamais "//" = protocole-relatif)
+  // pour ne jamais devenir une redirection ouverte.
+  const [nextPath, setNextPath] = useState("/dashboard");
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get("next");
+    if (next && next.startsWith("/") && !next.startsWith("//")) setNextPath(next);
+  }, []);
 
   const validEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
   const emailBad = touched && !validEmail(email);
@@ -54,7 +65,7 @@ export default function LoginPage() {
     }
 
     setBusy(false);
-    router.push("/dashboard");
+    router.push(nextPath);
     router.refresh();
   }
 
