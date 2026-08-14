@@ -61,12 +61,33 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
+    // Résolution du client payeur — deux profils possibles :
+    // 1. Compte "Espace Projet"/club via `client_users` (cas historique, portail).
+    // 2. Compte joueur Connect (Espace joueur, 12/08/2026) : pas de ligne `client_users`, le
+    //    client_id est résolu (et provisionné à la demande) via `resolve_player_client_id`,
+    //    exactement comme useClientId.ts côté app-next et connect-player-prestations côté
+    //    app-connect. Appelée avec le JWT utilisateur (userClient), jamais service_role : la
+    //    fonction SQL est SECURITY DEFINER et vérifie elle-même auth.uid() en interne.
+    let resolvedClientId: string | null = null;
     const { data: clientUser } = await admin
       .from("client_users")
       .select("client_id")
       .eq("id", user.id)
       .maybeSingle();
-    if (!clientUser) return json({ error: "Compte client introuvable" }, 403);
+    if (clientUser) {
+      resolvedClientId = clientUser.client_id;
+    } else {
+      const { data: playerProfile } = await admin
+        .from("player_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (playerProfile) {
+        const { data: playerClientId } = await userClient.rpc("resolve_player_client_id", { p_player_id: playerProfile.id });
+        if (playerClientId) resolvedClientId = playerClientId as string;
+      }
+    }
+    if (!resolvedClientId) return json({ error: "Compte client introuvable" }, 403);
 
     // Résout la prestation cible et vérifie qu'elle appartient bien au client authentifié
     let prestation: {
@@ -111,7 +132,7 @@ serve(async (req) => {
       }
     }
 
-    if (!prestation || prestation.client_id !== clientUser.client_id) {
+    if (!prestation || prestation.client_id !== resolvedClientId) {
       return json({ error: "Non autorisé" }, 403);
     }
 
@@ -164,7 +185,7 @@ serve(async (req) => {
       .insert({
         prestation_id: prestation.id,
         devis_id: devis_id || null,
-        client_id: clientUser.client_id,
+        client_id: resolvedClientId,
         type_paiement,
         montant,
         statut: "en_attente",
@@ -196,8 +217,13 @@ serve(async (req) => {
       // SportVision Portail a été entièrement retiré (2026-08-07) — Connect
       // est désormais la seule app appelante possible, plus besoin de
       // distinguer par "caller" ni de fallback vers un domaine retiré.
-      success_url: `${connectUrl}/?paiement=succes&paiement_id=${paiement.id}`,
-      cancel_url: `${connectUrl}/?paiement=annule&paiement_id=${paiement.id}`,
+      // Redirige vers /commandes (13/08/2026, module Prestations/Mes commandes) plutôt que la
+      // racine : c'est la page qui affiche l'état RÉEL de la commande (jamais déduit du simple
+      // retour navigateur — MASTER-CONNECT-V1.md §25 — uniquement de statut_financier/paiements
+      // en base, mis à jour par stripe-webhook). Les query params ne servent qu'à afficher un
+      // message d'attente ("paiement en cours de confirmation"), jamais un statut "payé" direct.
+      success_url: `${connectUrl}/commandes?paiement=succes&paiement_id=${paiement.id}`,
+      cancel_url: `${connectUrl}/commandes?paiement=annule&paiement_id=${paiement.id}`,
       client_reference_id: paiement.id,
       metadata: { paiement_id: paiement.id },
       customer_email: user.email ?? undefined,
