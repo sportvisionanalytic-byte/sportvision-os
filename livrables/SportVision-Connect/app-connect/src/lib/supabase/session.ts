@@ -25,6 +25,11 @@ export interface PlayerContext {
   playerId: string | null;
   firstName: string;
   lastName: string;
+  // Résolu par resolve_player_client_id() (migration-connect-v43), lazy — null tant que le
+  // joueur n'a jamais ouvert un module qui en a besoin (Messages, Prestations). Ne JAMAIS
+  // appeler resolve_player_client_id() depuis une simple lecture (Accueil) : ça créerait une
+  // ligne `clients` fantôme à chaque visite d'un joueur qui n'a encore rien demandé.
+  clientId: string | null;
   club: {
     id: string;
     nom: string;
@@ -41,7 +46,7 @@ export async function buildPlayerContext(
 ): Promise<PlayerContext | null> {
   const { data: profile } = await supabase
     .from("player_profiles")
-    .select("id, prenom, nom, club_id, account_status, created_at")
+    .select("id, prenom, nom, club_id, account_status, created_at, client_id")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -79,5 +84,118 @@ export async function buildPlayerContext(
     }
   }
 
-  return { playerId: profile.id, firstName: profile.prenom, lastName: profile.nom, club };
+  return {
+    playerId: profile.id,
+    firstName: profile.prenom,
+    lastName: profile.nom,
+    clientId: profile.client_id ?? null,
+    club,
+  };
+}
+
+// Identité affichée/éditable dans Mon profil. Prénom/Nom/E-mail viennent de auth.users (source
+// de vérité pour TOUT compte Connect, avec ou sans club — voir migration-connect-personnel-
+// accueil-profil-acces.sql §1) ; player_profiles, quand il existe, ne fait que les recopier
+// depuis l'inscription et n'est jamais la seule source (sinon un utilisateur sans club n'aurait
+// aucune identité éditable).
+export interface DisplayIdentity {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export function resolveDisplayIdentity(
+  user: { email?: string | null; user_metadata?: Record<string, unknown> },
+  player: PlayerContext | null,
+): DisplayIdentity {
+  const meta = user.user_metadata || {};
+  const firstName = player?.firstName || (typeof meta.first_name === "string" ? meta.first_name : "") || user.email?.split("@")[0] || "";
+  const lastName = player?.lastName || (typeof meta.last_name === "string" ? meta.last_name : "") || "";
+  return { firstName, lastName, email: user.email || "" };
+}
+
+// Profil sportif + notifications — table connect_profile_settings (migration ci-dessus §1).
+// Toujours une valeur par défaut : l'absence de ligne n'est pas un état d'erreur, juste un
+// utilisateur qui n'a encore rien personnalisé (mêmes valeurs par défaut que le design de
+// référence : contenus/cotisations/prestations/messages activés, affiliations désactivé).
+export interface ProfileSettings {
+  telephone: string;
+  sport: string;
+  poste: string;
+  categorie: string;
+  ville: string;
+  notifContenus: boolean;
+  notifCotisations: boolean;
+  notifPrestations: boolean;
+  notifMessages: boolean;
+  notifAffiliations: boolean;
+}
+
+export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
+  telephone: "",
+  sport: "",
+  poste: "",
+  categorie: "",
+  ville: "",
+  notifContenus: true,
+  notifCotisations: true,
+  notifPrestations: true,
+  notifMessages: true,
+  notifAffiliations: false,
+};
+
+export async function getProfileSettings(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<ProfileSettings> {
+  const { data } = await supabase
+    .from("connect_profile_settings")
+    .select("telephone, sport, poste, categorie, ville, notif_contenus, notif_cotisations, notif_prestations, notif_messages, notif_affiliations")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!data) return DEFAULT_PROFILE_SETTINGS;
+
+  return {
+    telephone: data.telephone || "",
+    sport: data.sport || "",
+    poste: data.poste || "",
+    categorie: data.categorie || "",
+    ville: data.ville || "",
+    notifContenus: data.notif_contenus,
+    notifCotisations: data.notif_cotisations,
+    notifPrestations: data.notif_prestations,
+    notifMessages: data.notif_messages,
+    notifAffiliations: data.notif_affiliations,
+  };
+}
+
+// "Mes espaces" (Mon profil) ne doit apparaître QUE si un accès Club+ existe réellement — jamais
+// un cadenas décoratif (principe déjà établi dans ce projet). club_members est le roster
+// staff/dirigeants de Club+ (rôle admin/president/... — voir migration-clubplus-v1.sql), donc sa
+// présence est le seul signal fiable d'un accès Club+ réel pour cet utilisateur.
+export interface ClubPlusAccess {
+  clubId: string;
+  clubNom: string;
+  role: string;
+}
+
+export async function getClubPlusAccess(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<ClubPlusAccess | null> {
+  const { data } = await supabase
+    .from("club_members")
+    .select("role, club_id, clubs(nom)")
+    .eq("user_id", userId)
+    .eq("status", "actif")
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  const clubs = data.clubs as unknown as { nom: string } | { nom: string }[] | null;
+  const clubNom = Array.isArray(clubs) ? clubs[0]?.nom : clubs?.nom;
+  if (!clubNom) return null;
+
+  return { clubId: data.club_id, clubNom, role: data.role };
 }

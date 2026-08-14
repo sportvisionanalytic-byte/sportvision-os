@@ -2,13 +2,25 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { buildPlayerContext } from "@/lib/supabase/session";
+import {
+  getNextClubEvent,
+  getNextPrestation,
+  getUnreadMessagesCount,
+  getCotisationEnCours,
+  prestationStatusLabel,
+} from "@/lib/supabase/dashboard";
 import { AppShell } from "@/components/layout/AppShell";
 
 // Accueil — voir design-connect-personnel-12-08/README.md § Espace joueur → Accueil. Cartes
-// affichées UNIQUEMENT si pertinentes (principe du design) : pour l'instant, seule la carte
-// club existe réellement (memberships/organizations en base) — les autres cartes du design
-// (contenus, prestations, cotisations, messages) n'ont encore aucune donnée réelle derrière,
-// donc pas construites ici plutôt que montrées vides/décoratives.
+// affichées UNIQUEMENT si pertinentes (principe du design) : chaque carte a une source de
+// données réelle vérifiée avant d'être construite (voir src/lib/supabase/dashboard.ts pour le
+// détail par carte). "Nouveaux contenus" n'est délibérément PAS construite : la seule table
+// nommée `contenus` dans le schéma actuel est le planning éditorial CM (migration-contenus.sql,
+// scope client_id/cm_id), pas les médias qu'un joueur consulte — aucune donnée réelle de ce type
+// n'existe encore côté Connect personnel (confirmé en lisant migration-connect-v43-espace-
+// joueur.sql : les contenus joueur viennent de club_media/club_creations, agrégés uniquement
+// côté app-next, pas encore portés ici). Construire cette carte aurait donc soit affiché les
+// mauvaises données (planning CM), soit une fausse promesse — ni l'un ni l'autre n'est acceptable.
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
@@ -19,65 +31,200 @@ export default async function DashboardPage() {
   const player = await buildPlayerContext(supabase, user.id);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";
 
+  const [nextEvent, nextPrestation, unreadMessages, cotisation] = await Promise.all([
+    player?.club ? getNextClubEvent(supabase, player.club.id) : Promise.resolve(null),
+    player?.clientId ? getNextPrestation(supabase, player.clientId) : Promise.resolve(null),
+    player?.clientId ? getUnreadMessagesCount(supabase, player.clientId) : Promise.resolve(0),
+    getCotisationEnCours(supabase, user.id),
+  ]);
+
   return (
     <AppShell firstName={firstName}>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-sora text-[33px] font-bold tracking-tight">Bonjour {firstName} 👋</h1>
-          <p className="text-[15px] text-text-tertiary">Retrouvez votre univers SportVision en un coup d&apos;œil.</p>
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div className="flex flex-col gap-2">
+            <h1 className="font-sora text-[33px] font-bold tracking-tight">Bonjour {firstName} 👋</h1>
+            <p className="text-[15px] text-text-tertiary">Retrouvez votre univers SportVision en un coup d&apos;œil.</p>
+          </div>
+          <Link
+            href="/prestations"
+            className="hidden h-[46px] flex-none items-center gap-2 rounded-sv bg-sv-gradient px-5 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12] lg:flex"
+          >
+            <span className="material-symbols-rounded !text-[20px]">add</span>
+            Réserver une prestation
+          </Link>
         </div>
 
-        {player?.club && player.club.status === "affilie" && (
-          <ClubCard variant="affilie">
-            <ClubHeader nom={player.club.nom} ville={player.club.ville} />
-            <span className="mt-1 self-start rounded-sv-pill bg-affiliations-bg px-2.5 py-1 text-[12px] font-medium text-affiliations">
-              ✓ Affilié
-            </span>
-          </ClubCard>
-        )}
+        <div className="grid grid-cols-1 gap-4.5 lg:grid-cols-[minmax(0,1.62fr)_minmax(0,1fr)] lg:items-start">
+          {/* Colonne gauche */}
+          <div className="flex flex-col gap-4.5">
+            {player?.club && player.club.status === "affilie" && (
+              <ClubCard variant="affilie">
+                <ClubHeader nom={player.club.nom} ville={player.club.ville} />
+                <span className="mt-1 self-start rounded-sv-pill bg-affiliations-bg px-2.5 py-1 text-[12px] font-medium text-affiliations">
+                  ✓ Affilié
+                </span>
+              </ClubCard>
+            )}
 
-        {player?.club && player.club.status === "attente" && (
-          <ClubCard variant="attente">
-            <ClubHeader nom={player.club.nom} ville={player.club.ville} />
-            <span className="mt-1 self-start rounded-sv-pill bg-attente-bg px-2.5 py-1 text-[12px] font-medium text-attente">
-              En attente
-            </span>
-            <p className="mt-2 text-[13px] leading-relaxed text-text-tertiary">
-              Votre demande d&apos;affiliation doit encore être confirmée par le club. Vous pouvez
-              utiliser Connect normalement pendant ce temps.
-            </p>
-          </ClubCard>
-        )}
+            {player?.club && player.club.status === "attente" && (
+              <ClubCard variant="attente">
+                <ClubHeader nom={player.club.nom} ville={player.club.ville} />
+                <span className="mt-1 self-start rounded-sv-pill bg-attente-bg px-2.5 py-1 text-[12px] font-medium text-attente">
+                  En attente
+                </span>
+                <p className="mt-2 text-[13px] leading-relaxed text-text-tertiary">
+                  Votre demande d&apos;affiliation doit encore être confirmée par le club. Vous pouvez
+                  utiliser Connect normalement pendant ce temps.
+                </p>
+              </ClubCard>
+            )}
 
-        {player?.club && player.club.status === "refuse" && (
-          <ClubCard variant="refuse">
-            <ClubHeader nom={player.club.nom} ville={player.club.ville} />
-            <span className="mt-1 self-start rounded-sv-pill bg-danger-bg px-2.5 py-1 text-[12px] font-medium text-danger">
-              Demande refusée
-            </span>
-          </ClubCard>
-        )}
+            {player?.club && player.club.status === "refuse" && (
+              <ClubCard variant="refuse">
+                <ClubHeader nom={player.club.nom} ville={player.club.ville} />
+                <span className="mt-1 self-start rounded-sv-pill bg-danger-bg px-2.5 py-1 text-[12px] font-medium text-danger">
+                  Demande refusée
+                </span>
+              </ClubCard>
+            )}
 
-        {!player?.club && (
-          <div className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5">
-            <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-affiliations-bg">
-              <span className="material-symbols-rounded !text-[24px] text-affiliations">shield</span>
-            </span>
-            <div className="flex flex-col gap-2">
-              <span className="font-sora text-[18px] font-semibold">Rejoignez votre club</span>
-              <p className="text-[14px] leading-relaxed text-text-tertiary">
-                Associez votre profil à votre club ou académie pour retrouver les contenus et
-                événements liés à votre équipe.
-              </p>
-            </div>
-            <Link
-              href="/affiliations/ajouter"
-              className="self-start rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[14px] font-semibold text-white"
-            >
-              Ajouter mon club
-            </Link>
+            {!player?.club && (
+              <div className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5">
+                <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-affiliations-bg">
+                  <span className="material-symbols-rounded !text-[24px] text-affiliations">shield</span>
+                </span>
+                <div className="flex flex-col gap-2">
+                  <span className="font-sora text-[18px] font-semibold">Rejoignez votre club</span>
+                  <p className="text-[14px] leading-relaxed text-text-tertiary">
+                    Associez votre profil à votre club ou académie pour retrouver les contenus et
+                    événements liés à votre équipe.
+                  </p>
+                </div>
+                <Link
+                  href="/affiliations/ajouter"
+                  className="self-start rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[14px] font-semibold text-white"
+                >
+                  Ajouter mon club
+                </Link>
+              </div>
+            )}
+
+            {nextEvent && (
+              <div className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-5">
+                <div className="flex h-16 w-16 flex-none flex-col items-center justify-center rounded-sv" style={{ background: "linear-gradient(150deg,rgba(79,125,255,.32),rgba(34,211,238,.14))" }}>
+                  <span className="font-sora text-[21px] font-bold leading-none">{nextEvent.day}</span>
+                  <span className="text-[11px] font-medium uppercase tracking-[.06em] text-prestations">{nextEvent.month}</span>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Prochainement</span>
+                  <span className="font-sora text-[18px] font-semibold tracking-tight">{nextEvent.title}</span>
+                  <span className="text-[13px] text-text-tertiary">
+                    {nextEvent.date}
+                    {nextEvent.time && ` · ${nextEvent.time}`}
+                    {nextEvent.location && ` · ${nextEvent.location}`}
+                  </span>
+                </div>
+                <div className="ml-auto flex flex-none flex-col items-end gap-2.5">
+                  <span className="rounded-sv-pill bg-prestations-bg px-2.5 py-1 text-[12px] font-medium text-prestations">📸 SportVision présent</span>
+                  <Link href="/calendrier" className="text-[13px] font-medium text-text-secondary hover:text-text">
+                    Voir l&apos;événement
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Colonne droite */}
+          <div className="flex flex-col gap-4.5">
+            {cotisation && cotisation.target > 0 && (
+              <div className="rounded-sv-card p-px" style={{ background: "linear-gradient(150deg,rgba(244,114,182,.6),rgba(168,85,247,.25) 55%,transparent)" }}>
+                <div className="flex flex-col gap-4 rounded-[calc(theme(borderRadius.sv-card)-1px)] bg-bg-elevated-accent p-5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-[30px] w-[30px] items-center justify-center rounded-sv bg-cotisations-bg">
+                      <span className="material-symbols-rounded !text-[18px] text-cotisations">savings</span>
+                    </span>
+                    <span className="text-[11px] font-medium uppercase tracking-[.1em] text-cotisations">Cotisation en cours</span>
+                  </div>
+                  <span className="font-sora text-[19px] font-semibold tracking-tight">{cotisation.title}</span>
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex items-baseline justify-between gap-2.5">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="font-sora text-[27px] font-bold tracking-tight">{cotisation.collected} €</span>
+                        <span className="text-[14px] text-text-tertiary">/ {cotisation.target} €</span>
+                      </div>
+                      <span className="text-[13px] font-medium text-cotisations">
+                        {Math.round((cotisation.collected / cotisation.target) * 100)} %
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-sv-pill bg-white/[.08]">
+                      <div
+                        className="h-full rounded-sv-pill bg-sv-gradient-cotisation"
+                        style={{ width: `${Math.min(100, Math.round((cotisation.collected / cotisation.target) * 100))}%` }}
+                      />
+                    </div>
+                    <span className="text-[13px] text-text-tertiary">
+                      Plus que {Math.max(0, cotisation.target - cotisation.collected)} € pour atteindre l&apos;objectif
+                      {cotisation.participants > 0 && ` · ${cotisation.participants} participants`}
+                    </span>
+                  </div>
+                  <Link
+                    href={`/cotisations/${cotisation.id}`}
+                    className="flex h-12 items-center justify-center rounded-sv border border-border-strong bg-white/5 font-sora text-[14px] font-semibold hover:bg-white/10"
+                  >
+                    Voir la cotisation
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {nextPrestation && (
+              <div className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5">
+                <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Prochaine prestation</span>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-sv bg-prestations-bg">
+                    <span className="material-symbols-rounded !text-[22px] text-prestations">camera_alt</span>
+                  </span>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="font-sora text-[16px] font-semibold">{nextPrestation.type || nextPrestation.reference || "Prestation"}</span>
+                    {nextPrestation.date && (
+                      <span className="text-[13px] text-text-tertiary">
+                        {nextPrestation.date}
+                        {nextPrestation.time && ` · ${nextPrestation.time}`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2.5">
+                  <span className="rounded-sv-pill bg-attente-bg px-2.5 py-1 text-[12px] font-medium text-attente">
+                    {prestationStatusLabel(nextPrestation.statut)}
+                  </span>
+                  <Link href="/commandes" className="text-[13px] font-medium text-text-secondary hover:text-text">
+                    Voir ma commande
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {unreadMessages > 0 && (
+              <Link
+                href="/messages"
+                className="flex items-center gap-3.5 rounded-sv-card border border-border bg-surface p-4.5 hover:bg-white/[.06]"
+              >
+                <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-affiliations-bg">
+                  <span className="material-symbols-rounded !text-[20px] text-affiliations">chat_bubble</span>
+                </span>
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-sora text-[15px] font-semibold">Messages</span>
+                  <span className="text-[13px] text-text-tertiary">
+                    {unreadMessages} nouveau{unreadMessages > 1 ? "x" : ""} message{unreadMessages > 1 ? "s" : ""} SportVision
+                  </span>
+                </div>
+                <span className="ml-auto flex-none text-[13px] font-medium text-affiliations">Ouvrir</span>
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
     </AppShell>
   );
