@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { buildPlayerContext } from "@/lib/supabase/session";
+import { buildPlayerContext, getAccountType } from "@/lib/supabase/session";
 import {
   getNextClubEvent,
   getNextPrestation,
@@ -27,6 +27,15 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
+
+  // Résolution du shell — voir migration-connect-v51-espace-particulier.sql §1 et
+  // src/components/layout/ParticularShell.tsx. /dashboard est LE point d'entrée unique après
+  // chaque connexion (auth/login, auth/confirming, signup/club redirigent tous ici), donc c'est
+  // le bon (et seul) endroit pour brancher ce choix sans dupliquer la vérification sur chaque
+  // route — voir le rapport final pour la limite documentée de cette approche (une route Espace
+  // joueur ouverte directement par URL par un compte particulier n'est pas re-vérifiée ici).
+  const accountType = await getAccountType(supabase, user.id);
+  if (accountType === "particulier") redirect("/particulier");
 
   const player = await buildPlayerContext(supabase, user.id);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";

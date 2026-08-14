@@ -34,7 +34,9 @@ export default async function AccesPage() {
 
   const { data: granted } = await supabase
     .from("connect_access_relationships")
-    .select("id, grantee_display_name, relation_type, responded_at, right_voir, right_download, right_reserver, right_commandes, right_factures")
+    .select(
+      "id, grantee_display_name, relation_type, responded_at, right_voir, right_download, right_reserver, right_commandes, right_factures, right_payer, right_cotisation, right_calendrier, right_modifier",
+    )
     .eq("owner_user_id", user.id)
     .eq("status", "acceptee")
     .order("responded_at", { ascending: false });
@@ -89,6 +91,10 @@ export default async function AccesPage() {
                   reserver: g.right_reserver,
                   commandes: g.right_commandes,
                   factures: g.right_factures,
+                  payer: g.right_payer,
+                  cotisation: g.right_cotisation,
+                  calendrier: g.right_calendrier,
+                  modifier: g.right_modifier,
                 };
                 return (
                   <GrantCard

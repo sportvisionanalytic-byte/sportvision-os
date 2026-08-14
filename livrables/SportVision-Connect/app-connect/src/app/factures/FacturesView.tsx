@@ -23,18 +23,20 @@ const PAYMENT_STATUS_LABEL: Record<string, { label: string; fg: string; bg: stri
   annule: { label: "Annulé", fg: "#9A9AB8", bg: "rgba(255,255,255,.07)" },
 };
 
-export function FacturesView() {
+// multi/commandeHref (Espace particulier, migration-connect-v51) : voir le commentaire
+// équivalent de CommandeDetailView.tsx. Défauts inchangés pour l'Espace joueur.
+export function FacturesView({ multi = false, commandeHref = "/commandes" }: { multi?: boolean; commandeHref?: string } = {}) {
   const [tab, setTab] = useState<"factures" | "paiements">("factures");
-  const [invoices, setInvoices] = useState<PlayerInvoice[] | null>(null);
-  const [payments, setPayments] = useState<PlayerPayment[] | null>(null);
+  const [invoices, setInvoices] = useState<(PlayerInvoice & { forWho?: string | null })[] | null>(null);
+  const [payments, setPayments] = useState<(PlayerPayment & { forWho?: string | null })[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
     Promise.all([
-      supabase.functions.invoke("connect-player-prestations", { body: { action: "list_invoices" } }),
-      supabase.functions.invoke("connect-player-prestations", { body: { action: "list_payments" } }),
+      supabase.functions.invoke("connect-player-prestations", { body: { action: "list_invoices", multi } }),
+      supabase.functions.invoke("connect-player-prestations", { body: { action: "list_payments", multi } }),
     ]).then(([invRes, payRes]) => {
       if (cancelled) return;
       if (invRes.error || invRes.data?.error || payRes.error || payRes.data?.error) {
@@ -72,7 +74,7 @@ export function FacturesView() {
             </span>
           </div>
           {due[0].prestationId && (
-            <Link href={`/commandes/${due[0].prestationId}`} className="flex-none rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[13px] font-semibold text-white">
+            <Link href={`${commandeHref}/${due[0].prestationId}`} className="flex-none rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[13px] font-semibold text-white">
               Régler
             </Link>
           )}
