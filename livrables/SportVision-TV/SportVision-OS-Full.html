@@ -715,6 +715,7 @@ const NAV={
     {id:'contrats',lb:'Contrats',ic:'doc'},
     {id:'cmagency',lb:'Agences CM',ic:'cli'},
     {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
+    {id:'cotisations',lb:'Cotisations',ic:'target'},
     {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
     {type:'sep',lb:'Équipe & RH'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
@@ -768,6 +769,7 @@ const NAV={
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
     {id:'abonnements',lb:'Abonnements',ic:'pre'},
+    {id:'cotisations',lb:'Cotisations',ic:'target'},
     {id:'cmagency',lb:'Agences CM',ic:'cli'},
     {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
     {type:'sep',lb:'Prestations'},
@@ -871,6 +873,7 @@ const NAV={
     {id:'impayes',lb:'Impayés',ic:'alert'},
     {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
     {id:'encaissements',lb:'Encaissements Stripe',ic:'fin'},
+    {id:'cotisations',lb:'Cotisations',ic:'target'},
     {id:'documents',lb:'Centre documentaire',ic:'doc'},
     {type:'sep',lb:'Paiements'},
     {id:'paiements',lb:'Paiements équipe',ic:'fin'},
@@ -2072,6 +2075,17 @@ const VIEWS={
       <div class="fs"><div class="fs-l">CA mensuel récurrent</div><div class="fs-v" id="abo-kpi-ca">—</div></div>
     </div>
     <div id="sec-abonnements-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // Cotisations Connect (financement collectif de prestations, migration-
+  // connect-v50/v51 du 14/08/2026) : jamais visible côté OS jusqu'ici alors
+  // que prestations/factures/messages remontent déjà — voir audit du 14/08.
+  // Lecture seule volontaire : la création/gestion d'une cotisation reste une
+  // action du client dans Connect, l'OS donne seulement au staff la
+  // visibilité qui manquait totalement. Vue partagée entre admin/sec/compta
+  // (_cotisationsView), même patron que _clubBookingsView().
+  'admin.cotisations':()=>_cotisationsView(),
+  'sec.cotisations':()=>_cotisationsView(),
+  'compta.cotisations':()=>_cotisationsView(),
 
   'sec.livraisons':()=>`
     <div class="sh"><div class="sh-t">Livraisons clients</div></div>
@@ -3355,6 +3369,7 @@ async function loadViewData(role,view){
   if(role==='sec'&&view==='dash') await loadSecDash();
   if(role==='sec'&&view==='demandes') await loadSecDemandes();
   if(['admin','com','sec'].includes(role)&&view==='reservationsclubs'){await loadClubBookings();_rtCbkEnsure();}
+  if(['admin','sec','compta'].includes(role)&&view==='cotisations') await loadCotisations();
   if(role==='sec'&&view==='relances') await loadSecRelances();
   if(role==='sec'&&view==='contrats') await loadSecContrats();
   if(role==='sec'&&view==='abonnements') await loadSecAbonnements();
@@ -18366,6 +18381,164 @@ function renderSecLivraisons(){
         <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Détail</button>
       </div></td>
     </tr>`).join('')+'</tbody></table></div>';
+}
+
+// ── Cotisations (SportVision Connect) ─────────────────────────────────────
+// Financement collectif de prestations (migration-connect-v50-groupes-
+// cotisations-personnelles.sql + migration-connect-v51-espace-particulier.sql,
+// 14/08/2026). Lecture seule (V1) : aucune écriture depuis l'OS, cf. commentaire
+// sur VIEWS['admin.cotisations'].
+//
+// ⚠ IMPORTANT — dépendance non résolue par ce chantier : aucune des deux
+// migrations n'ajoute de policy RLS staff (is_staff()) sur group_fundings /
+// funding_contributions / user_groups — elles ne couvrent que créateur,
+// membre du groupe ou contributeur (voir leur §4 "RLS"). sbFetch() utilise
+// ici le même jeton staff que partout ailleurs dans ce fichier (pas de clé
+// service_role dans ce fichier, volontairement — voir sbFetch() plus haut) :
+// tant qu'une migration ajoutant ces policies n'a pas été exécutée, ces
+// requêtes ne renvoient PAS d'erreur mais un tableau vide (comportement
+// normal de PostgREST sous RLS), et cet écran affichera "Aucune cotisation"
+// même s'il en existe réellement en base. Voir le rapport de livraison pour
+// le SQL exact proposé (nouvelle policy "for select using (is_staff())",
+// même patron que migration-audit-nocturne-securite-11-08.sql).
+let _cotData=[],_cotFilter='all';
+
+function _cotisationsView(){
+  return `
+    <div class="sh"><div><div class="sh-t">Cotisations</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Financements collectifs de prestations lancés depuis Connect (paiement à plusieurs) — lecture seule.</div></div></div>
+    <div class="g3" style="margin-bottom:13px">
+      <div class="fs" style="border-color:rgba(54,107,255,.25)"><div class="fs-l">Ouvertes</div><div class="fs-v" id="cot-kpi-ouv" style="color:var(--acc)">—</div></div>
+      <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Objectif atteint</div><div class="fs-v" id="cot-kpi-att" style="color:var(--ok)">—</div></div>
+      <div class="fs"><div class="fs-l">Montant collecté (total)</div><div class="fs-v" id="cot-kpi-montant">—</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterCotisations('all')" id="cot-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterCotisations('ouverte')" id="cot-f-ouverte">Ouvertes</button>
+      <button class="btn bg2 bs" onclick="filterCotisations('objectif_atteint')" id="cot-f-objectif_atteint">Objectif atteint</button>
+      <button class="btn bg2 bs" onclick="filterCotisations('expiree')" id="cot-f-expiree">Expirées</button>
+      <button class="btn bg2 bs" onclick="filterCotisations('annulee')" id="cot-f-annulee">Annulées</button>
+    </div>
+    <div id="cot-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+
+// Même dérivation "ouverte + date_limite dépassée => affichée expirée" que
+// list_my_fundings()/get_funding_detail() côté RPC Connect (pas de cron pour
+// écrire réellement le statut en base) — comparaison en chaîne ISO locale
+// (ymdLocal(), déjà utilisé partout ailleurs dans ce fichier), jamais via
+// new Date(dateLimite) brut, cf. note "DATES — Europe/Paris" en tête de fichier.
+function _cotDisplayStatut(f){
+  if(f.statut==='ouverte'&&f.date_limite&&f.date_limite<ymdLocal())return'expiree';
+  return f.statut;
+}
+
+async function loadCotisations(){
+  const el=document.getElementById('cot-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('group_fundings?select=id,titre,contexte,montant_cible,montant_collecte,repartition_mode,nb_participants_prevu,date_limite,statut,created_by,created_at,group_id,beneficiary_kind,beneficiary_label,catalogue_offre_id,catalogue_offres(nom),user_groups(name)&order=created_at.desc&limit=200');
+    if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
+    _cotData=data.map(f=>({...f,_displayStatut:_cotDisplayStatut(f)}));
+    // Nombre de participations payées par cotisation — un seul aller-retour
+    // groupé (funding_id=in.(...)) plutôt qu'une requête par ligne, même
+    // logique que le regroupement prestations_equipe de loadKanban().
+    if(_cotData.length){
+      const ids=_cotData.map(f=>f.id).join(',');
+      const contribs=await sbFetch('funding_contributions?select=id,funding_id,statut&funding_id=in.('+ids+')&statut=eq.paye').catch(()=>[]);
+      const counts={};
+      (Array.isArray(contribs)?contribs:[]).forEach(c=>{counts[c.funding_id]=(counts[c.funding_id]||0)+1;});
+      _cotData.forEach(f=>{f._participants=counts[f.id]||0;});
+    }
+    const kouv=_cotData.filter(f=>f._displayStatut==='ouverte').length;
+    const katt=_cotData.filter(f=>f._displayStatut==='objectif_atteint').length;
+    const kmontant=_cotData.reduce((s,f)=>s+(f.montant_collecte||0),0);
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('cot-kpi-ouv',kouv);set('cot-kpi-att',katt);set('cot-kpi-montant',kmontant.toLocaleString('fr-FR')+' €');
+    renderCotisations();
+  }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucune cotisation visible (table vide, ou policy RLS staff manquante — voir commentaire en tête de bloc « Cotisations »).</div>';console.error(e);}
+}
+
+function filterCotisations(f){
+  _cotFilter=f;
+  ['all','ouverte','objectif_atteint','expiree','annulee'].forEach(id=>{const b=document.getElementById('cot-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  renderCotisations();
+}
+
+const COT_STATUT_LB={ouverte:'Ouverte',objectif_atteint:'Objectif atteint',expiree:'Expirée',annulee:'Annulée'};
+const COT_STATUT_CLR={ouverte:'bb',objectif_atteint:'ba',expiree:'bn',annulee:'br'};
+
+function renderCotisations(){
+  const el=document.getElementById('cot-real');if(!el)return;
+  let list=_cotData;
+  if(_cotFilter!=='all')list=list.filter(f=>f._displayStatut===_cotFilter);
+  if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune cotisation dans cette catégorie.</div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Titre</th><th>Prestation</th><th>Bénéficiaire</th><th>Collecté / Cible</th><th>Participants</th><th>Date limite</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    list.map(f=>{
+      const pct=f.montant_cible?Math.min(100,Math.round((f.montant_collecte/f.montant_cible)*100)):0;
+      const benefRaw=f.beneficiary_label||(f.group_id?'Groupe « '+(f.user_groups?.name||'—')+' »':'Le créateur');
+      return`<tr>
+        <td class="tp">${esc(f.titre||'—')}</td>
+        <td>${esc(f.catalogue_offres?.nom||'—')}</td>
+        <td>${esc(benefRaw)}</td>
+        <td class="tm">
+          <div style="font-weight:600;color:var(--t1);margin-bottom:3px">${(f.montant_collecte||0).toLocaleString('fr-FR')} € / ${(f.montant_cible||0).toLocaleString('fr-FR')} €</div>
+          <div style="height:4px;background:var(--s2);border-radius:2px;overflow:hidden;width:90px"><div style="height:100%;width:${pct}%;background:var(--gr)"></div></div>
+        </td>
+        <td class="tm">${f._participants||0}${f.nb_participants_prevu?' / '+f.nb_participants_prevu:''}</td>
+        <td>${f.date_limite?new Date(f.date_limite).toLocaleDateString('fr-FR'):'—'}</td>
+        <td><span class="bd ${COT_STATUT_CLR[f._displayStatut]||'bn'}"><span class="bd-d"></span>${COT_STATUT_LB[f._displayStatut]||f._displayStatut}</span></td>
+        <td><button class="btn bg2 bs" onclick="modalCotisationDetail('${f.id}')">Ouvrir</button></td>
+      </tr>`;
+    }).join('')+'</tbody></table></div>';
+}
+
+const COT_CONTRIB_LB={paye:'Payé',en_attente:'En attente',rembourse:'Remboursé',echoue:'Échoué'};
+const COT_CONTRIB_CLR={paye:'ba',en_attente:'bw',rembourse:'bn',echoue:'br'};
+
+// Détail d'une cotisation + liste des participations, TOUS statuts confondus
+// (contrairement à get_funding_detail() côté Connect, qui ne renvoie que les
+// paiements réussis au sportif lui-même — le staff a besoin de voir aussi
+// les échecs/remboursements pour comprendre une collecte qui stagne).
+// Identité des participants : guest_prenom est une colonne publique (visible
+// dès que la policy RLS staff existe), mais un contributeur avec compte
+// (contributor_user_id) n'a son nom résolu nulle part en dehors d'auth.users
+// (schéma non exposé via PostgREST) — les RPC get_funding_detail()/
+// list_my_fundings() le font, mais restent scopées à l'appelant lui-même
+// (can_view_group_funding), pas au staff. Affiché honnêtement comme
+// "Participant (compte Connect)" plutôt qu'un nom inventé ou un uid brut —
+// voir rapport de livraison pour la RPC staff qui résoudrait ce point.
+async function modalCotisationDetail(id){
+  const f=_cotData.find(x=>x.id===id);
+  if(!f){toast('Cotisation introuvable.','error');return;}
+  openModal(`<div class="mh"><div><div class="mt">${esc(f.titre||'Cotisation')}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(f.catalogue_offres?.nom||'—')}</div></div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" id="cot-detail-body"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement des participations…</div></div>`);
+  const pct=f.montant_cible?Math.min(100,Math.round((f.montant_collecte/f.montant_cible)*100)):0;
+  const benefRaw=f.beneficiary_label||(f.group_id?'Groupe « '+(f.user_groups?.name||'—')+' »':'Le créateur, pour lui-même');
+  const contribs=await sbFetch('funding_contributions?select=id,contributor_user_id,guest_prenom,guest_email,montant,statut,created_at&funding_id=eq.'+id+'&order=created_at.desc').catch(()=>[]);
+  const body=document.getElementById('cot-detail-body');
+  if(!body)return;
+  const list=Array.isArray(contribs)?contribs:[];
+  const rows=list.map(c=>{
+    const nom=c.guest_prenom?esc(c.guest_prenom)+' <span style="color:var(--t3);font-weight:500">(invité)</span>':'Participant (compte Connect)';
+    return`<tr>
+      <td class="tp">${nom}</td>
+      <td class="tm" style="font-weight:600">${(c.montant||0).toLocaleString('fr-FR')} €</td>
+      <td><span class="bd ${COT_CONTRIB_CLR[c.statut]||'bn'}"><span class="bd-d"></span>${COT_CONTRIB_LB[c.statut]||c.statut}</span></td>
+      <td>${c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR'):'—'}</td>
+    </tr>`;
+  }).join('');
+  body.innerHTML=`
+    <div class="fg"><label class="fl">Bénéficiaire</label><div style="font-size:13.5px;color:var(--t1)">${esc(benefRaw)}</div></div>
+    ${f.contexte?`<div class="fg"><label class="fl">Contexte</label><div style="font-size:13.5px;color:var(--t1);white-space:pre-wrap">${esc(f.contexte)}</div></div>`:''}
+    <div class="fg"><label class="fl">Montant</label>
+      <div style="font-size:16px;font-weight:700;color:var(--t1)">${(f.montant_collecte||0).toLocaleString('fr-FR')} € <span style="font-size:12px;font-weight:500;color:var(--t3)">/ ${(f.montant_cible||0).toLocaleString('fr-FR')} € cible</span></div>
+      <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden;margin-top:6px"><div style="height:100%;width:${pct}%;background:var(--gr)"></div></div>
+    </div>
+    <div class="fg"><label class="fl">Répartition</label><div style="font-size:13.5px;color:var(--t1)">${f.repartition_mode==='egale'?'À parts égales'+(f.nb_participants_prevu?' ('+f.nb_participants_prevu+' participants prévus)':''):'Libre'}</div></div>
+    <div class="fg"><label class="fl">Date limite</label><div style="font-size:13.5px;color:var(--t1)">${f.date_limite?new Date(f.date_limite).toLocaleDateString('fr-FR'):'—'}</div></div>
+    <div class="fg"><label class="fl">Statut</label><span class="bd ${COT_STATUT_CLR[f._displayStatut]||'bn'}"><span class="bd-d"></span>${COT_STATUT_LB[f._displayStatut]||f._displayStatut}</span></div>
+    <div class="fg"><label class="fl">Participations (${list.length})</label>
+      ${rows?`<div class="tw"><table><thead><tr><th>Participant</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div style="padding:16px;text-align:center;color:var(--t3);font-size:12px">Aucune participation enregistrée.</div>'}
+    </div>`;
 }
 
 async function exportSecRapport(type){
