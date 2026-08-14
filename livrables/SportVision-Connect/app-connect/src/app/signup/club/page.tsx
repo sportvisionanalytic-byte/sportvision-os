@@ -84,6 +84,9 @@ export default function SignupClubPage() {
           first_name: state.firstName,
           last_name: state.lastName,
         },
+        // Sans ça, le lien du mail de confirmation redirige vers "/" avec ?code=... jamais
+        // traité (bug corrigé le 14/08) — voir auth/callback/route.ts pour l'échange du code.
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (signUpError) {

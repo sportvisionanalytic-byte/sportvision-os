@@ -6,7 +6,21 @@ import { NextResponse, type NextRequest } from "next/server";
 // "/aide" doit rester public : c'est un lien affiché sur l'écran de connexion, atteignable par
 // un visiteur non authentifié ("Besoin d'aide ?") — sans cette entrée, un visiteur non connecté
 // qui clique sur ce lien était renvoyé silencieusement vers /auth/login (bug corrigé le 13/08).
-const PUBLIC_PATHS = ["/auth/login", "/auth/forgot", "/auth/reset", "/signup", "/cotisation", "/aide"];
+// "/auth/callback" doit rester public : c'est la route qui échange le code de confirmation
+// contre une session, donc appelée AVANT qu'aucune session n'existe (sinon le middleware
+// redirige vers /auth/login avant même que la route ait pu poser le cookie — bug corrigé le
+// 14/08, voir auth/callback/route.ts). "/auth/confirming" aussi, le temps que la session tout
+// juste posée soit lisible par le middleware sur la requête suivante.
+const PUBLIC_PATHS = [
+  "/auth/login",
+  "/auth/forgot",
+  "/auth/reset",
+  "/auth/callback",
+  "/auth/confirming",
+  "/signup",
+  "/cotisation",
+  "/aide",
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
