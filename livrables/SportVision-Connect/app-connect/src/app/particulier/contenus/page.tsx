@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext } from "@/lib/supabase/session";
+import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
 import { ParticularShell } from "@/components/layout/ParticularShell";
 import { ContenusParticulierView, type ParticulierContentItem } from "./ContenusParticulierView";
@@ -17,10 +16,7 @@ export default async function ContenusParticulierPage({
 }) {
   const { sportif } = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireParticulierAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
   const identity = resolveDisplayIdentity(user, player);

@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext, getProfileSettings } from "@/lib/supabase/session";
+import { resolveDisplayIdentity, buildPlayerContext, getProfileSettings, requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchMyAthletes, toNavItems, ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR } from "@/lib/supabase/particulier";
 import { ParticularShell } from "@/components/layout/ParticularShell";
 import { PersonalInfoSection } from "@/app/profil/PersonalInfoSection";
@@ -18,10 +17,7 @@ import { Avatar } from "@/components/ui/Avatar";
 // conformément au README.
 export default async function ProfilParticulierPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireParticulierAccount(supabase);
 
   const [player, settings, athletes] = await Promise.all([
     buildPlayerContext(supabase, user.id),

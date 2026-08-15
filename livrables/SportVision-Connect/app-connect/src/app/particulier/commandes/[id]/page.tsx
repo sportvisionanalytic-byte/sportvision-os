@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext } from "@/lib/supabase/session";
+import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
 import { ParticularShell } from "@/components/layout/ParticularShell";
 import { CommandeDetailView } from "@/app/commandes/[id]/CommandeDetailView";
@@ -11,10 +10,7 @@ import { CommandeDetailView } from "@/app/commandes/[id]/CommandeDetailView";
 export default async function CommandeDetailParticulierPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireParticulierAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
   const identity = resolveDisplayIdentity(user, player);

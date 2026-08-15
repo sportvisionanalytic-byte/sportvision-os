@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { buildPlayerContext } from "@/lib/supabase/session";
+import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
 import { AppShell } from "@/components/layout/AppShell";
 import { CalendarView, type CalendarEventData } from "./CalendarView";
 
@@ -27,10 +26,7 @@ import { CalendarView, type CalendarEventData } from "./CalendarView";
 // déjà remplie, pour ne rien créer de fantôme depuis une simple consultation du calendrier.
 export default async function CalendrierPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireJoueurAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";

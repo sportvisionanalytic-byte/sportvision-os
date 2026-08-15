@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { buildPlayerContext } from "@/lib/supabase/session";
+import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
 import { AppShell } from "@/components/layout/AppShell";
 import { MessagesThread, type MessageData } from "./MessagesThread";
 
@@ -28,10 +27,7 @@ import { MessagesThread, type MessageData } from "./MessagesThread";
 // connect_resolve_beneficiary_client_id(kind:"self") quand player_profiles n'existe pas.
 export default async function MessagesPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireJoueurAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";

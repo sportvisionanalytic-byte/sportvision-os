@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext } from "@/lib/supabase/session";
+import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
 import { fetchAgentSubscriptionInfo } from "@/lib/supabase/agentSubscription";
 import { ParticularShell } from "@/components/layout/ParticularShell";
@@ -14,10 +13,7 @@ import { AthletesListView } from "./AthletesListView";
 // raisonnement complet.
 export default async function AthletesPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireParticulierAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
   const identity = resolveDisplayIdentity(user, player);

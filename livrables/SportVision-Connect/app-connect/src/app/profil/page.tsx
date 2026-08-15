@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -6,6 +5,7 @@ import {
   resolveDisplayIdentity,
   getProfileSettings,
   getClubPlusAccess,
+  requireJoueurAccount,
 } from "@/lib/supabase/session";
 import { AppShell } from "@/components/layout/AppShell";
 import { PersonalInfoSection } from "./PersonalInfoSection";
@@ -19,10 +19,7 @@ import { SecuritySection } from "./SecuritySection";
 // uniquement si un accès Club+ existe réellement (club_members, jamais un cadenas décoratif).
 export default async function ProfilPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireJoueurAccount(supabase);
 
   const [player, settings, clubPlus] = await Promise.all([
     buildPlayerContext(supabase, user.id),

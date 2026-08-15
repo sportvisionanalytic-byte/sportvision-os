@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext } from "@/lib/supabase/session";
+import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchMyAthletes, toNavItems, ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR } from "@/lib/supabase/particulier";
 import { ParticularShell } from "@/components/layout/ParticularShell";
 import { gradientFor } from "@/lib/avatarGradients";
@@ -24,10 +23,7 @@ import type { PlayerOrder } from "@/lib/prestations/types";
 // sur l'accueil.
 export default async function ParticulierHomePage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireParticulierAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
   const identity = resolveDisplayIdentity(user, player);

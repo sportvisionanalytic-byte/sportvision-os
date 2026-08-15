@@ -1,7 +1,7 @@
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { buildPlayerContext } from "@/lib/supabase/session";
+import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
 import { AppShell } from "@/components/layout/AppShell";
 import { fetchPlayerOfferById } from "@/lib/prestations/catalogue";
 import { ReservationWizard } from "./ReservationWizard";
@@ -9,10 +9,7 @@ import { ReservationWizard } from "./ReservationWizard";
 export default async function ReserverPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireJoueurAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";

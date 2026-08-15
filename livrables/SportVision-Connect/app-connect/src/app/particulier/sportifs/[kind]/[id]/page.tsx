@@ -1,6 +1,6 @@
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext } from "@/lib/supabase/session";
+import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
 import { ParticularShell } from "@/components/layout/ParticularShell";
 import { AthleteDetailView, type AthleteDetail } from "./AthleteDetailView";
@@ -14,10 +14,7 @@ export default async function AthleteDetailPage({ params }: { params: Promise<{ 
   if (kind !== "linked" && kind !== "managed") notFound();
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireParticulierAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
   const identity = resolveDisplayIdentity(user, player);

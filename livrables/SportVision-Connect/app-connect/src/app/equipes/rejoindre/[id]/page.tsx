@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { buildPlayerContext } from "@/lib/supabase/session";
+import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
 import { AppShell } from "@/components/layout/AppShell";
 import { JoinGroupAction } from "./JoinGroupAction";
 
@@ -11,12 +10,7 @@ import { JoinGroupAction } from "./JoinGroupAction";
 export default async function RejoindreEquipePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect(`/auth/login?next=/equipes/rejoindre/${id}`);
-  }
+  const { user } = await requireJoueurAccount(supabase, `/equipes/rejoindre/${id}`);
 
   const player = await buildPlayerContext(supabase, user.id);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";

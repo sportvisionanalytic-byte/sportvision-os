@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { buildPlayerContext } from "@/lib/supabase/session";
+import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
 import { AppShell } from "@/components/layout/AppShell";
 import { AddClubForm } from "./AddClubForm";
 
@@ -17,10 +17,7 @@ import { AddClubForm } from "./AddClubForm";
 // déjà active, sans jamais rappeler auth.signUp().
 export default async function AjouterClubPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireJoueurAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
   // Une seule affiliation à la fois (voir note dans lib/supabase/session.ts) : rien à faire ici

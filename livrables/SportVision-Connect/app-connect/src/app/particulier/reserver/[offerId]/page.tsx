@@ -1,6 +1,6 @@
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext } from "@/lib/supabase/session";
+import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
 import { fetchPlayerOfferById } from "@/lib/prestations/catalogue";
 import { fetchAgentDiscount } from "@/lib/supabase/agentSubscription";
@@ -24,10 +24,7 @@ export default async function ReservationParticulierPage({
   const { offerId } = await params;
   const { benefKind, benefId } = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { user } = await requireParticulierAccount(supabase);
 
   const player = await buildPlayerContext(supabase, user.id);
   const identity = resolveDisplayIdentity(user, player);

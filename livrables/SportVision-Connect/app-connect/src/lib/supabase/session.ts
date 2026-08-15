@@ -1,4 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { redirect } from "next/navigation";
 
 // Contexte joueur — construit à partir des tables réelles (player_profiles, organizations,
 // membership_requests), jamais de données inventées. Un utilisateur sans ligne player_profiles
@@ -207,6 +208,50 @@ export async function getAccountType(supabase: SupabaseClient, userId: string): 
     .eq("user_id", userId)
     .maybeSingle();
   return data?.account_type === "particulier" ? "particulier" : "joueur";
+}
+
+// Garde-fou centralisé Espace joueur — voir dashboard/page.tsx (seule route qui vérifiait déjà
+// account_type avant ce chantier). Toutes les routes sous l'Espace joueur (AppShell) doivent
+// appeler ce helper au lieu de répéter `if (!user) redirect(...)` : un compte 'particulier' qui
+// ouvre une URL de l'Espace joueur directement/via favori (le bouton Aide de la Topbar, partagé
+// entre les deux shells, en est un exemple réel) était jusqu'ici scotché dans toute la navigation
+// Joueur sans jamais être redirigé, puisque seule /dashboard revérifiait account_type. Bug
+// corrigé le 15/08 — voir rapport final pour la liste complète des routes protégées.
+//
+// `loginRedirectTo`, optionnel, préserve le comportement existant de
+// /equipes/rejoindre/[id] (`redirect("/auth/login?next=/equipes/rejoindre/" + id)`), seule route
+// à avoir un besoin de "next" réel — toutes les autres redirigent vers "/auth/login" nu.
+export async function requireJoueurAccount(
+  supabase: SupabaseClient,
+  loginRedirectTo?: string,
+): Promise<{ user: User }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect(loginRedirectTo ? `/auth/login?next=${encodeURIComponent(loginRedirectTo)}` : "/auth/login");
+  }
+
+  const accountType = await getAccountType(supabase, user.id);
+  if (accountType === "particulier") redirect("/particulier");
+
+  return { user };
+}
+
+// Symétrique de requireJoueurAccount() pour l'Espace particulier (ParticularShell) — même trou
+// trouvé en miroir en creusant ce chantier : chaque route /particulier/** ne vérifiait que
+// l'authentification, jamais account_type, donc un compte 'joueur' pouvait ouvrir n'importe
+// quelle URL /particulier/* directement/via favori sans être redirigé vers son propre espace.
+export async function requireParticulierAccount(supabase: SupabaseClient): Promise<{ user: User }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/login");
+
+  const accountType = await getAccountType(supabase, user.id);
+  if (accountType === "joueur") redirect("/dashboard");
+
+  return { user };
 }
 
 // "Mes espaces" (Mon profil) ne doit apparaître QUE si un accès Club+ existe réellement — jamais
