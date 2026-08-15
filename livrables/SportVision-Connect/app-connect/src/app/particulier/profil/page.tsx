@@ -17,7 +17,7 @@ import { Avatar } from "@/components/ui/Avatar";
 // conformément au README.
 export default async function ProfilParticulierPage() {
   const supabase = await createClient();
-  const { user } = await requireParticulierAccount(supabase);
+  const { user, profilParticulier } = await requireParticulierAccount(supabase);
 
   const [player, settings, athletes] = await Promise.all([
     buildPlayerContext(supabase, user.id),
@@ -52,6 +52,8 @@ export default async function ProfilParticulierPage() {
               telephone={settings.telephone}
               playerId={player?.playerId ?? null}
               avatarUrl={settings.avatarUrl}
+              isAgent={profilParticulier === "agent"}
+              nomAgence={settings.nomAgence}
             />
             <NotificationsSection
               initial={{

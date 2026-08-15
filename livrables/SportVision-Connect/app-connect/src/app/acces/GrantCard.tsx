@@ -53,12 +53,17 @@ export function GrantCard({
   relationType,
   since,
   initialRights,
+  agencyName,
 }: {
   id: string;
   name: string;
   relationType: string;
   since: string;
   initialRights: GrantRights;
+  // Nom de l'agence (connect_profile_settings.nom_agence, migration-connect-v69) — n'a de sens
+  // QUE pour relationType === 'agent' ; le champ n'est de toute façon jamais transmis par
+  // page.tsx pour les autres types de relation (voir appelant), mais on reste défensif ici aussi.
+  agencyName?: string | null;
 }) {
   const router = useRouter();
   const [rights, setRights] = useState(initialRights);
@@ -108,6 +113,9 @@ export function GrantCard({
         <div className="flex flex-col gap-0.5">
           <span className="font-sora text-[16px] font-semibold">{name}</span>
           <span className="text-[13px] text-text-tertiary">{RELATION_LABEL[relationType] || relationType} · depuis {since}</span>
+          {relationType === "agent" && agencyName && (
+            <span className="text-[12px] text-text-tertiary">{agencyName}</span>
+          )}
         </div>
         <button
           type="button"

@@ -138,6 +138,11 @@ export interface ProfileSettings {
   // Photo de profil (migration-connect-v55-photo-profil.sql) — URL publique du bucket
   // portail-media (chemin avatars/<user_id>/...), null tant que rien n'est uploadé.
   avatarUrl: string | null;
+  // Nom d'agence (migration-connect-v69-nom-agence.sql), facultatif — pertinent uniquement pour
+  // profil_particulier='agent' (migration-connect-v67), affiché aux sportifs qui ont accepté une
+  // relation 'agent' avec ce compte. "" quand non renseigné (même convention que les autres
+  // champs texte de cette table).
+  nomAgence: string;
 }
 
 export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
@@ -152,6 +157,7 @@ export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
   notifMessages: true,
   notifAffiliations: false,
   avatarUrl: null,
+  nomAgence: "",
 };
 
 export async function getProfileSettings(
@@ -160,7 +166,7 @@ export async function getProfileSettings(
 ): Promise<ProfileSettings> {
   const { data } = await supabase
     .from("connect_profile_settings")
-    .select("telephone, sport, poste, categorie, ville, notif_contenus, notif_cotisations, notif_prestations, notif_messages, notif_affiliations, avatar_url")
+    .select("telephone, sport, poste, categorie, ville, notif_contenus, notif_cotisations, notif_prestations, notif_messages, notif_affiliations, avatar_url, nom_agence")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -178,6 +184,7 @@ export async function getProfileSettings(
     notifMessages: data.notif_messages,
     notifAffiliations: data.notif_affiliations,
     avatarUrl: data.avatar_url || null,
+    nomAgence: data.nom_agence || "",
   };
 }
 

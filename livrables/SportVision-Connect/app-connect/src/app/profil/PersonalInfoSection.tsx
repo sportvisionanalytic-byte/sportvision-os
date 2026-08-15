@@ -19,6 +19,8 @@ export function PersonalInfoSection({
   telephone,
   playerId,
   avatarUrl,
+  isAgent,
+  nomAgence,
 }: {
   firstName: string;
   lastName: string;
@@ -26,6 +28,12 @@ export function PersonalInfoSection({
   telephone: string;
   playerId: string | null;
   avatarUrl: string | null;
+  // Nom de l'agence (connect_profile_settings.nom_agence, migration-connect-v69) — facultatif,
+  // n'affecte QUE l'Espace particulier avec profil_particulier='agent' (voir particulier/profil/
+  // page.tsx). Non transmis par l'Espace joueur (profil/page.tsx), donc absent (undefined) là-bas
+  // et sans effet sur cet écran.
+  isAgent?: boolean;
+  nomAgence?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -33,6 +41,7 @@ export function PersonalInfoSection({
   const [ln, setLn] = useState(lastName);
   const [em, setEm] = useState(email);
   const [ph, setPh] = useState(telephone);
+  const [ag, setAg] = useState(nomAgence || "");
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +109,7 @@ export function PersonalInfoSection({
     setLn(lastName);
     setEm(email);
     setPh(telephone);
+    setAg(nomAgence || "");
     setTouched(false);
     setError(null);
     setEmailPending(false);
@@ -133,7 +143,11 @@ export function PersonalInfoSection({
     const userId = userData.user?.id;
     if (userId) {
       await supabase.from("connect_profile_settings").upsert(
-        { user_id: userId, telephone: ph.trim() || null },
+        {
+          user_id: userId,
+          telephone: ph.trim() || null,
+          ...(isAgent ? { nom_agence: ag.trim() || null } : {}),
+        },
         { onConflict: "user_id" },
       );
       // Garde player_profiles (roster Club+) cohérent avec l'identité éditée ici, quand une
@@ -200,6 +214,7 @@ export function PersonalInfoSection({
         <InfoField label="Nom" value={lastName || "—"} />
         <InfoField label="E-mail" value={email || "—"} />
         <InfoField label="Téléphone" value={telephone || "—"} />
+        {isAgent && <InfoField label="Nom de l'agence" value={nomAgence || "—"} />}
       </div>
 
       {open && (
@@ -235,6 +250,15 @@ export function PersonalInfoSection({
               <Field id="pi-ln" label="Nom" value={ln} onChange={(e) => setLn(e.target.value)} error={lnError} />
               <Field id="pi-em" label="Adresse e-mail" type="email" value={em} onChange={(e) => setEm(e.target.value)} error={emError} />
               <Field id="pi-ph" label="Téléphone" type="tel" placeholder="06 12 34 56 78" value={ph} onChange={(e) => setPh(e.target.value)} />
+              {isAgent && (
+                <Field
+                  id="pi-ag"
+                  label="Nom de l'agence"
+                  placeholder="Nom de votre agence"
+                  value={ag}
+                  onChange={(e) => setAg(e.target.value)}
+                />
+              )}
               <Button onClick={handleSave} loading={busy} disabled={!ok && touched} className="w-full">
                 Enregistrer
               </Button>
