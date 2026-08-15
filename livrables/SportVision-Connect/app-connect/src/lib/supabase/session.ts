@@ -192,6 +192,24 @@ export async function getAvatarUrl(supabase: SupabaseClient, userId: string): Pr
   return data?.avatar_url || null;
 }
 
+// Variante ParticularShell.tsx (client, useEffect) : l'avatar ET profil_particulier (migration-
+// connect-v67-distinction-parent-agent.sql §1, pour le vocabulaire de la sidebar "Mes sportifs"/
+// "Mes enfants") dans LA MÊME requête — ParticularShell est le seul composant à afficher sur
+// TOUTES les routes /particulier/** (contrairement à requireParticulierAccount, qui tourne côté
+// serveur par page), donc lire profil_particulier ici plutôt qu'en le passant en prop depuis
+// chaque page évite de modifier la vingtaine d'appelants de <ParticularShell>.
+export async function getAvatarAndProfilParticulier(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ avatarUrl: string | null; profilParticulier: string | null }> {
+  const { data } = await supabase
+    .from("connect_profile_settings")
+    .select("avatar_url, profil_particulier")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return { avatarUrl: data?.avatar_url || null, profilParticulier: data?.profil_particulier || null };
+}
+
 // Type de compte (Espace joueur vs. Espace particulier) — colonne connect_profile_settings.
 // account_type (migration-connect-v51-espace-particulier.sql §1). Défaut 'joueur' si aucune
 // ligne n'existe encore (comportement inchangé pour tout compte créé avant cette migration —
@@ -242,16 +260,32 @@ export async function requireJoueurAccount(
 // trouvé en miroir en creusant ce chantier : chaque route /particulier/** ne vérifiait que
 // l'authentification, jamais account_type, donc un compte 'joueur' pouvait ouvrir n'importe
 // quelle URL /particulier/* directement/via favori sans être redirigé vers son propre espace.
-export async function requireParticulierAccount(supabase: SupabaseClient): Promise<{ user: User }> {
+//
+// Renvoie aussi `profilParticulier` (colonne connect_profile_settings.profil_particulier,
+// migration-connect-v67-distinction-parent-agent.sql) : cette fonction est déjà appelée par
+// TOUTE route /particulier/** pour le garde-fou account_type ci-dessus, donc lire
+// profil_particulier dans la MÊME requête (plutôt qu'un second select ailleurs) couvre
+// gratuitement les écrans qui en ont besoin (Mes sportifs, Accueil particulier) sans requête
+// supplémentaire — les appelants qui n'utilisent pas ce champ (la majorité des routes
+// /particulier/**) continuent de ne déstructurer que `{ user }`, comme avant.
+export async function requireParticulierAccount(
+  supabase: SupabaseClient,
+): Promise<{ user: User; profilParticulier: string | null }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const accountType = await getAccountType(supabase, user.id);
+  const { data } = await supabase
+    .from("connect_profile_settings")
+    .select("account_type, profil_particulier")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const accountType: AccountType = data?.account_type === "particulier" ? "particulier" : "joueur";
   if (accountType === "joueur") redirect("/dashboard");
 
-  return { user };
+  return { user, profilParticulier: data?.profil_particulier ?? null };
 }
 
 // "Mes espaces" (Mon profil) ne doit apparaître QUE si un accès Club+ existe réellement — jamais

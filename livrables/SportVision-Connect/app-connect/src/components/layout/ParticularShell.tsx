@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { getAvatarUrl } from "@/lib/supabase/session";
+import { getAvatarAndProfilParticulier } from "@/lib/supabase/session";
+import { particulierSportifsLabel, particulierSportifsShortLabel } from "@/lib/supabase/particulier";
 import { Avatar } from "@/components/ui/Avatar";
 import { gradientFor } from "@/lib/avatarGradients";
 import { Topbar } from "./Topbar";
@@ -50,49 +51,54 @@ interface NavItem {
   icon: string;
 }
 
-const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
-  { title: null, items: [{ href: "/particulier", label: "Accueil", icon: "home" }] },
-  {
-    title: "Mes sportifs",
-    items: [{ href: "/particulier/sportifs", label: "Mes sportifs", icon: "group" }],
-  },
-  {
-    title: "SportVision",
-    items: [
-      { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt" },
-      { href: "/particulier/cotisations", label: "Cotisations", icon: "savings" },
-      { href: "/particulier/contenus", label: "Mes contenus", icon: "photo_library" },
-      { href: "/particulier/commandes", label: "Mes commandes", icon: "receipt_long" },
-      { href: "/particulier/calendrier", label: "Calendrier", icon: "calendar_month" },
-      { href: "/particulier/messages", label: "Messages", icon: "forum" },
-    ],
-  },
-  {
-    title: "Mon compte",
-    items: [
-      { href: "/particulier/factures", label: "Factures & paiements", icon: "payments" },
-      // Abonnement Agent (migration-connect-v57-abonnement-agent.sql) — visible pour tout compte
-      // particulier, pas seulement les comptes "agent" : n'importe quel compte peut envoyer une
-      // demande de type "agent" à tout moment (InviteAthleteForm.tsx) et a donc besoin de pouvoir
-      // consulter son palier avant d'en arriver là, jamais un onglet qui n'apparaît qu'après coup.
-      { href: "/particulier/abonnement", label: "Mon abonnement", icon: "workspace_premium" },
-      { href: "/particulier/profil", label: "Mon profil", icon: "person" },
-    ],
-  },
-];
-
-const ALL_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
+// NAV_SECTIONS/MOBILE_TABS sont des FONCTIONS de `sportifsLabel` (et non des constantes figées)
+// depuis la migration-connect-v67-distinction-parent-agent.sql §1 : le libellé "Mes sportifs"
+// devient "Mes enfants" pour un parent/tuteur, "Mes sportifs suivis" pour un agent — voir
+// particulierSportifsLabel()/particulierSportifsShortLabel() dans lib/supabase/particulier.ts.
+function buildNavSections(sportifsLabel: string): { title: string | null; items: NavItem[] }[] {
+  return [
+    { title: null, items: [{ href: "/particulier", label: "Accueil", icon: "home" }] },
+    {
+      title: sportifsLabel,
+      items: [{ href: "/particulier/sportifs", label: sportifsLabel, icon: "group" }],
+    },
+    {
+      title: "SportVision",
+      items: [
+        { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt" },
+        { href: "/particulier/cotisations", label: "Cotisations", icon: "savings" },
+        { href: "/particulier/contenus", label: "Mes contenus", icon: "photo_library" },
+        { href: "/particulier/commandes", label: "Mes commandes", icon: "receipt_long" },
+        { href: "/particulier/calendrier", label: "Calendrier", icon: "calendar_month" },
+        { href: "/particulier/messages", label: "Messages", icon: "forum" },
+      ],
+    },
+    {
+      title: "Mon compte",
+      items: [
+        { href: "/particulier/factures", label: "Factures & paiements", icon: "payments" },
+        // Abonnement Agent (migration-connect-v57-abonnement-agent.sql) — visible pour tout compte
+        // particulier, pas seulement les comptes "agent" : n'importe quel compte peut envoyer une
+        // demande de type "agent" à tout moment (InviteAthleteForm.tsx) et a donc besoin de pouvoir
+        // consulter son palier avant d'en arriver là, jamais un onglet qui n'apparaît qu'après coup.
+        { href: "/particulier/abonnement", label: "Mon abonnement", icon: "workspace_premium" },
+        { href: "/particulier/profil", label: "Mon profil", icon: "person" },
+      ],
+    },
+  ];
+}
 
 // 5 onglets mobiles (README § Mobile → "Particulier : Accueil · Sportifs · Prestations ·
 // Contenus · Profil"), le reste dans la feuille "Plus".
-const MOBILE_TABS: NavItem[] = [
-  { href: "/particulier", label: "Accueil", icon: "home" },
-  { href: "/particulier/sportifs", label: "Sportifs", icon: "group" },
-  { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt" },
-  { href: "/particulier/contenus", label: "Contenus", icon: "photo_library" },
-  { href: "/particulier/profil", label: "Profil", icon: "person" },
-];
-const MOBILE_MORE_ITEMS: NavItem[] = ALL_ITEMS.filter((item) => !MOBILE_TABS.some((t) => t.href === item.href));
+function buildMobileTabs(sportifsShortLabel: string): NavItem[] {
+  return [
+    { href: "/particulier", label: "Accueil", icon: "home" },
+    { href: "/particulier/sportifs", label: sportifsShortLabel, icon: "group" },
+    { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt" },
+    { href: "/particulier/contenus", label: "Contenus", icon: "photo_library" },
+    { href: "/particulier/profil", label: "Profil", icon: "person" },
+  ];
+}
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -118,9 +124,12 @@ export function ParticularShell({
   const [contextOpen, setContextOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [profilParticulier, setProfilParticulier] = useState<string | null>(null);
 
-  // Photo de profil (migration-connect-v55-photo-profil.sql) — même chargement client que
-  // AppShell.tsx, voir son commentaire pour le détail.
+  // Photo de profil (migration-connect-v55-photo-profil.sql) + profil_particulier (migration-
+  // connect-v67-distinction-parent-agent.sql §1, pour le vocabulaire "Mes sportifs"/"Mes
+  // enfants"/"Mes sportifs suivis" de la sidebar) — même chargement client que AppShell.tsx pour
+  // l'avatar, voir son commentaire pour le détail ; une seule requête pour les deux colonnes.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -128,13 +137,26 @@ export function ParticularShell({
       const { data } = await supabase.auth.getUser();
       const userId = data.user?.id;
       if (!userId) return;
-      const url = await getAvatarUrl(supabase, userId);
-      if (!cancelled) setAvatarUrl(url);
+      const info = await getAvatarAndProfilParticulier(supabase, userId);
+      if (!cancelled) {
+        setAvatarUrl(info.avatarUrl);
+        setProfilParticulier(info.profilParticulier);
+      }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const sportifsLabel = useMemo(() => particulierSportifsLabel(profilParticulier), [profilParticulier]);
+  const sportifsShortLabel = useMemo(() => particulierSportifsShortLabel(profilParticulier), [profilParticulier]);
+  const NAV_SECTIONS = useMemo(() => buildNavSections(sportifsLabel), [sportifsLabel]);
+  const ALL_ITEMS = useMemo(() => NAV_SECTIONS.flatMap((s) => s.items), [NAV_SECTIONS]);
+  const MOBILE_TABS = useMemo(() => buildMobileTabs(sportifsShortLabel), [sportifsShortLabel]);
+  const MOBILE_MORE_ITEMS = useMemo(
+    () => ALL_ITEMS.filter((item) => !MOBILE_TABS.some((t) => t.href === item.href)),
+    [ALL_ITEMS, MOBILE_TABS],
+  );
 
   async function handleLogout() {
     const supabase = createClient();

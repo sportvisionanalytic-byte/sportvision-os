@@ -5,8 +5,26 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
-import { savePendingOnboarding, consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { savePendingOnboarding, consumePendingOnboarding, type PendingPlayerOnboarding } from "@/lib/signup/pending-onboarding";
 import { useSignup } from "../signup-context";
+import type { SignupProfile } from "../signup-context";
+
+// Choix précis du profil particulier (migration-connect-v67-distinction-parent-agent.sql §1) —
+// dérivé de l'étape Profil du tunnel (signup-context.tsx). Seuls "agent"/"parent"/"autre" (avec
+// détection "tuteur" en texte libre) ont une valeur dans le CHECK de la colonne
+// profil_particulier ; le choix générique "particulier" n'a pas d'équivalent (undefined), la
+// colonne reste alors NULL — voir le commentaire de PendingPlayerOnboarding.profilParticulier.
+function resolveProfilParticulier(
+  profile: SignupProfile | null,
+  otherProfile: string,
+): PendingPlayerOnboarding["profilParticulier"] {
+  if (profile === "agent") return "agent";
+  if (profile === "parent") return "parent";
+  if (profile === "autre") {
+    return otherProfile.toLowerCase().includes("tuteur") ? "tuteur" : "autre";
+  }
+  return undefined;
+}
 
 type ClubChoice = "search" | "declare" | "none" | null;
 interface ClubResult {
@@ -133,8 +151,13 @@ export default function SignupClubPage() {
       }
     } else {
       // Particulier / parent / autre : pas d'étape club (voir le rendu conditionnel ci-dessous),
-      // mais le type de compte doit être rejoué au premier login comme pour un profil joueur.
-      savePendingOnboarding({ action: "skip", accountType });
+      // mais le type de compte doit être rejoué au premier login comme pour un profil joueur —
+      // et, depuis la migration-connect-v67, le choix précis (agent/parent/tuteur/autre) avec.
+      savePendingOnboarding({
+        action: "skip",
+        accountType,
+        profilParticulier: resolveProfilParticulier(state.profile, state.otherProfile),
+      });
     }
 
     patch({

@@ -3,10 +3,26 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { gradientFor } from "@/lib/avatarGradients";
-import { ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR, type AthleteRow } from "@/lib/supabase/particulier";
+import { ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR, particulierSportifsLabel, type AthleteRow } from "@/lib/supabase/particulier";
 import { AGENT_TIER_LABEL, type AgentSubscriptionInfo } from "@/lib/supabase/agentSubscription";
 
-export function AthletesListView({ athletes, agentInfo }: { athletes: AthleteRow[]; agentInfo: AgentSubscriptionInfo }) {
+export function AthletesListView({
+  athletes,
+  agentInfo,
+  profilParticulier,
+  particulierLimit,
+  particulierTotal,
+}: {
+  athletes: AthleteRow[];
+  agentInfo: AgentSubscriptionInfo;
+  // profil_particulier (migration-connect-v67-distinction-parent-agent.sql §1) — pilote le
+  // libellé "Mes sportifs"/"Mes enfants"/"Mes sportifs suivis" ci-dessous, et la bannière de
+  // plafond parent/tuteur/autre plus bas (jamais affichée pour un compte agent, qui a déjà sa
+  // propre bannière palier Stripe ci-dessous, plus riche — voir son commentaire).
+  profilParticulier: string | null;
+  particulierLimit: number | null;
+  particulierTotal: number | null;
+}) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -20,11 +36,30 @@ export function AthletesListView({ athletes, agentInfo }: { athletes: AthleteRow
     );
   }, [athletes, query]);
 
+  const sportifsLabel = particulierSportifsLabel(profilParticulier);
+
+  // Plafond dur parent/tuteur/autre (connect_particulier_limit/connect_particulier_total_
+  // sportifs_count, migration-connect-v67 §2-3) — jamais affiché pour un compte agent : son
+  // palier payant a déjà sa propre bannière ci-dessous (agentInfo, liée à Stripe), plus riche
+  // (statut d'abonnement, CTA "Gérer mon abonnement"). 999 = pas de plafond réel (profil jamais
+  // choisi, compte antérieur à la migration) — jamais de bannière dans ce cas non plus.
+  const showParticulierLimitBanner =
+    profilParticulier !== null &&
+    profilParticulier !== "agent" &&
+    particulierLimit !== null &&
+    particulierLimit < 999 &&
+    particulierTotal !== null;
+  const particulierUsagePct =
+    showParticulierLimitBanner && particulierLimit! > 0
+      ? Math.min(100, Math.round((particulierTotal! / particulierLimit!) * 100))
+      : 0;
+  const particulierLimitReached = showParticulierLimitBanner && particulierTotal! >= particulierLimit!;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="font-sora text-[33px] font-bold tracking-tight">Mes sportifs</h1>
+          <h1 className="font-sora text-[33px] font-bold tracking-tight">{sportifsLabel}</h1>
           <p className="max-w-[560px] text-[15px] text-text-tertiary">
             Les sportifs que vous accompagnez et ce que vous êtes autorisé à consulter.
           </p>
@@ -37,6 +72,35 @@ export function AthletesListView({ athletes, agentInfo }: { athletes: AthleteRow
           Ajouter un sportif
         </Link>
       </div>
+
+      {/* Bannière plafond particulier (parent/tuteur/autre, migration-connect-v67) — même pattern
+          visuel que la barre de progression de AbonnementView.tsx (usagePct), adapté au contexte
+          "Mes sportifs" plutôt que "Mon abonnement" : pas de palier payant à proposer ici (plafond
+          dur à 3), donc pas de CTA, juste "contactez SportVision" une fois la limite atteinte. */}
+      {showParticulierLimitBanner && (
+        <div
+          className={`flex flex-col gap-2 rounded-sv-card border px-[18px] py-4 ${
+            particulierLimitReached ? "border-attente/40 bg-attente-bg" : "border-border bg-white/[.04]"
+          }`}
+        >
+          <div className="flex items-center justify-between text-[13px]">
+            <span className="text-text-secondary">
+              {particulierTotal} / {particulierLimit} sportifs suivis
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-white/[.08]">
+            <div
+              className="h-full rounded-full bg-sv-gradient transition-[width] duration-300"
+              style={{ width: `${particulierUsagePct}%` }}
+            />
+          </div>
+          {particulierLimitReached && (
+            <span className="text-[12.5px] leading-relaxed text-attente">
+              Vous avez atteint votre limite de sportifs suivis. Contactez SportVision pour en suivre davantage.
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Bannière palier Agent — visible seulement si l'utilisateur suit au moins un sportif en
           tant qu'agent (athletesCount > 0) : un compte purement parent/proche n'a jamais besoin

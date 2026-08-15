@@ -21,6 +21,11 @@ export function ManagedAthleteForm() {
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // true seulement pour PAYWALL_AGENT_LIMIT : le CTA "Changer de palier" n'a de sens QUE là — un
+  // compte agent a un palier payant vers lequel monter. PAYWALL_PARTICULIER_LIMIT (parent/tuteur/
+  // autre, plafond dur à 3, migration-connect-v67 §4) n'a rien à proposer au-delà d'un contact
+  // manuel avec SportVision, donc jamais de CTA pour ce cas.
+  const [errorIsAgentLimit, setErrorIsAgentLimit] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
 
   const valid = firstName.trim() !== "" && lastName.trim() !== "";
@@ -30,6 +35,7 @@ export function ManagedAthleteForm() {
     if (!valid || busy) return;
     setBusy(true);
     setError(null);
+    setErrorIsAgentLimit(false);
     const supabase = createClient();
     const { data, error: rpcError } = await supabase.rpc("connect_create_managed_athlete", {
       p_prenom: firstName.trim(),
@@ -41,7 +47,15 @@ export function ManagedAthleteForm() {
     });
     setBusy(false);
     if (rpcError) {
-      setError(rpcError.message || "Impossible de créer le profil pour le moment.");
+      const msg = rpcError.message || "";
+      if (msg.includes("PAYWALL_AGENT_LIMIT")) {
+        setError("Vous avez atteint la limite de sportifs suivis de votre palier Agent actuel.");
+        setErrorIsAgentLimit(true);
+      } else if (msg.includes("PAYWALL_PARTICULIER_LIMIT")) {
+        setError("Vous avez atteint votre limite de sportifs suivis. Contactez SportVision pour en suivre davantage.");
+      } else {
+        setError(msg || "Impossible de créer le profil pour le moment.");
+      }
       return;
     }
     setCreatedId(data as string);
@@ -160,9 +174,16 @@ export function ManagedAthleteForm() {
       </div>
 
       {error && (
-        <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
-          <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
+        <div className="flex flex-col items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
+          <div className="flex items-start gap-2.5">
+            <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
+            <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
+          </div>
+          {errorIsAgentLimit && (
+            <Link href="/particulier/abonnement" className="ml-[29px] text-[13px] font-semibold text-affiliations hover:underline">
+              Changer de palier
+            </Link>
+          )}
         </div>
       )}
 

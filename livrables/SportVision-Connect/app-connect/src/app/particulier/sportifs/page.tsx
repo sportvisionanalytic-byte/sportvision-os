@@ -13,20 +13,30 @@ import { AthletesListView } from "./AthletesListView";
 // raisonnement complet.
 export default async function AthletesPage() {
   const supabase = await createClient();
-  const { user } = await requireParticulierAccount(supabase);
+  const { user, profilParticulier } = await requireParticulierAccount(supabase);
 
-  // player, athletes et agentInfo sont indépendants — voir rapport fluidité perçue 15/08.
-  const [player, athletes, agentInfo] = await Promise.all([
+  // player, athletes, agentInfo et le plafond particulier (migration-connect-v67, RPC
+  // connect_particulier_limit/connect_particulier_total_sportifs_count — bannière parent/tuteur/
+  // autre, voir AthletesListView.tsx) sont indépendants — voir rapport fluidité perçue 15/08.
+  const [player, athletes, agentInfo, limitRes, totalRes] = await Promise.all([
     buildPlayerContext(supabase, user.id),
     fetchMyAthletes(supabase).catch(() => []),
     fetchAgentSubscriptionInfo(supabase),
+    supabase.rpc("connect_particulier_limit", { p_user_id: user.id }),
+    supabase.rpc("connect_particulier_total_sportifs_count", { p_user_id: user.id }),
   ]);
   const identity = resolveDisplayIdentity(user, player);
   const firstName = identity.firstName || user.email?.split("@")[0] || "";
 
   return (
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <AthletesListView athletes={athletes} agentInfo={agentInfo} />
+      <AthletesListView
+        athletes={athletes}
+        agentInfo={agentInfo}
+        profilParticulier={profilParticulier}
+        particulierLimit={typeof limitRes.data === "number" ? limitRes.data : null}
+        particulierTotal={typeof totalRes.data === "number" ? totalRes.data : null}
+      />
     </ParticularShell>
   );
 }
