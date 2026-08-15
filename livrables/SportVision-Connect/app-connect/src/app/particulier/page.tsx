@@ -13,6 +13,7 @@ import { ParticularShell } from "@/components/layout/ParticularShell";
 import { gradientFor } from "@/lib/avatarGradients";
 import { formatDateLong } from "@/lib/prestations/format";
 import type { PlayerOrder } from "@/lib/prestations/types";
+import { fetchAgentSubscriptionInfo, AGENT_TIER_LABEL, type AgentSubscriptionInfo } from "@/lib/supabase/agentSubscription";
 
 // Accueil Espace particulier — voir design-connect-personnel-12-08/README.md § Espace
 // particulier → Accueil. "Bonjour [Prénom]" + cartes sportifs + activité filtrée par le contexte
@@ -35,7 +36,12 @@ export default async function ParticulierHomePage() {
   // player, athletes et les 5 requêtes ci-dessous sont toutes indépendantes (aucune ne dépend
   // du résultat d'une autre — voir rapport fluidité perçue 15/08) : un seul Promise.all au lieu
   // de deux awaits séquentiels puis un groupe, pour démarrer les 7 requêtes en parallèle.
-  const [player, athletes, ordersRes, fundingsRes, unreadCount, contentsRes, eventsRes] = await Promise.all([
+  // agentInfo : uniquement utile pour un compte 'agent' (voir rendu plus bas), mais appelée pour
+  // tout le monde ici plutôt que conditionnée sur profilParticulier — fetchAgentSubscriptionInfo
+  // renvoie DEFAULT_INFO sans erreur pour un compte sans abonnement (voir son implémentation),
+  // donc aucun risque à l'appeler systématiquement, et ça évite une 8e requête séquentielle après
+  // coup pour le seul cas agent.
+  const [player, athletes, ordersRes, fundingsRes, unreadCount, contentsRes, eventsRes, agentInfo] = await Promise.all([
     buildPlayerContext(supabase, user.id),
     fetchMyAthletes(supabase).catch(() => []),
     supabase.functions.invoke("connect-player-prestations", { body: { action: "list_orders", multi: true } }),
@@ -43,6 +49,7 @@ export default async function ParticulierHomePage() {
     getOwnUnreadCount(supabase, user.id),
     supabase.rpc("connect_list_contents_for_athletes"),
     supabase.rpc("connect_list_calendar_for_athletes"),
+    fetchAgentSubscriptionInfo(supabase),
   ]);
   const identity = resolveDisplayIdentity(user, player);
   const firstName = identity.firstName || user.email?.split("@")[0] || "";
@@ -106,6 +113,8 @@ export default async function ParticulierHomePage() {
             Réserver une prestation
           </Link>
         </div>
+
+        {profilParticulier === "agent" && <AgentStatusPanel info={agentInfo} />}
 
         {athletes.length === 0 && (
           <div className="flex max-w-[600px] flex-col gap-3.5 rounded-sv-card border border-dashed border-border-strong bg-white/[.04] p-[30px]">
@@ -342,6 +351,69 @@ export default async function ParticulierHomePage() {
         )}
       </div>
     </ParticularShell>
+  );
+}
+
+// Panneau statut Agent — accueil Espace particulier, compte profil_particulier='agent'
+// UNIQUEMENT (migration-connect-v67-distinction-parent-agent.sql). Absent pour un parent/tuteur/
+// autre : ces infos (palier payant, remise mensuelle) n'existent que pour l'agent, un panneau
+// vide ou "Gratuit ∞" n'aurait aucun sens pour quelqu'un qui n'a jamais de palier à gérer.
+//
+// Avant ce composant, ces infos (palier, X/Y sportifs suivis, remise mensuelle disponible)
+// n'étaient visibles que sur /particulier/abonnement — jamais sur l'accueil, alors que c'est
+// justement ce qu'un agent professionnel veut voir en premier en arrivant (retour utilisateur du
+// 15/08 : "pas assez d'infos pro d'un coup d'œil"). Réutilise fetchAgentSubscriptionInfo/
+// AGENT_TIER_LABEL déjà exportés par agentSubscription.ts (mêmes données que AbonnementView.tsx,
+// aucune nouvelle RPC) — ne fait qu'agréger l'existant à un nouvel endroit.
+function AgentStatusPanel({ info }: { info: AgentSubscriptionInfo }) {
+  const usagePct = info.limit > 0 ? Math.min(100, Math.round((info.athletesCount / info.limit) * 100)) : 0;
+  const isPro = info.tier === "pro" && info.status === "active";
+  const monthlyDiscountAvailable = isPro && !info.monthlyDiscountUsedAt;
+
+  return (
+    <div className="flex flex-col gap-4 rounded-sv-card border border-border bg-surface p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-sv bg-affiliations-bg">
+            <span className="material-symbols-rounded !text-[18px] text-affiliations">badge</span>
+          </span>
+          <div className="flex flex-col">
+            <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Espace Agent</span>
+            <span className="font-sora text-[16px] font-semibold tracking-tight">Palier {AGENT_TIER_LABEL[info.tier]}</span>
+          </div>
+        </div>
+        <Link
+          href="/particulier/abonnement"
+          className="rounded-sv border border-border-strong bg-white/5 px-4 py-2 font-sora text-[13px] font-semibold hover:bg-white/10"
+        >
+          Gérer mon abonnement
+        </Link>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between text-[13px]">
+          <span className="text-text-secondary">Sportifs suivis</span>
+          <span className="font-sora font-semibold">
+            {info.athletesCount} / {info.limit}
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-white/[.08]">
+          <div
+            className="h-full rounded-full bg-sv-gradient transition-[width] duration-300 motion-reduce:transition-none"
+            style={{ width: `${usagePct}%` }}
+          />
+        </div>
+      </div>
+
+      {monthlyDiscountAvailable && (
+        <div className="flex items-center gap-2.5 rounded-sv border border-[rgba(140,169,255,.35)] bg-[rgba(79,125,255,.08)] px-4 py-3">
+          <span className="material-symbols-rounded !text-[18px] text-prestations">percent</span>
+          <span className="text-[12.5px] leading-relaxed text-text-secondary">
+            Votre remise -10% mensuelle sur une prestation au choix est disponible.
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
