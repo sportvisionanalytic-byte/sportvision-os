@@ -1011,8 +1011,27 @@ serve(async (req) => {
       }
     }
   } catch (e) {
-    // On accuse toujours réception à Stripe (200) pour éviter des re-livraisons en boucle ;
-    // l'erreur applicative reste tracée dans la réponse pour le debug via les logs Supabase.
+    // Bug corrigé (audit paiements, 2026-08-15) : la ligne stripe_events est insérée EN TOUT DÉBUT
+    // (déduplication atomique, cf. plus haut) — donc AVANT que le traitement ci-dessus ait réussi.
+    // Si ce traitement lève une exception non rattrapée localement (ex. incident réseau Supabase en
+    // plein milieu d'un update), l'événement était jusqu'ici marqué "déjà vu" pour toujours : ni un
+    // retry automatique Stripe, ni un renvoi manuel depuis le dashboard Stripe ne le retraiteraient
+    // jamais (la vérification d'idempotence en tête de fonction les aurait tous deux ignorés comme
+    // doublons). Un paiement pouvait donc rester indéfiniment "en attente" — exactement ce que
+    // MASTER-CONNECT-V1.md §25 interdit explicitement. On supprime donc la ligne stripe_events ici
+    // pour que l'événement reste rejouable, et on logue systématiquement l'erreur (console.error)
+    // pour qu'un incident soit visible dans les logs Supabase et pas seulement dans le corps de la
+    // réponse HTTP, que personne ne consulte en pratique.
+    console.error(`[stripe-webhook] échec du traitement de l'événement ${event.id} (${event.type}) :`, e);
+    try {
+      await admin.from("stripe_events").delete().eq("id", event.id);
+    } catch (delErr) {
+      console.error(`[stripe-webhook] échec de la suppression de stripe_events après erreur (event ${event.id}) :`, delErr);
+    }
+    // On accuse toujours réception à Stripe (200) pour éviter des re-livraisons en boucle sur un
+    // bug permanent (par opposition à un incident transitoire) ; la ligne stripe_events supprimée
+    // ci-dessus permet malgré tout un nouvel essai via renvoi manuel du webhook depuis le dashboard
+    // Stripe si besoin.
     return new Response(JSON.stringify({ received: true, error: e instanceof Error ? e.message : String(e) }), { status: 200 });
   }
 
