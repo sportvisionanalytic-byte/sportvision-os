@@ -37,6 +37,10 @@ export interface PlayerContext {
     since: string;
     // "affilie" = demande validée · "attente" = demande pas encore traitée · "refuse" = refusée
     status: "affilie" | "attente" | "refuse";
+    // URL publique du logo club (colonne organizations.logo_url, migration-connect-v66),
+    // synchronisée depuis clubs.logo_url à chaque upload côté Club+. null tant qu'aucun logo
+    // n'a jamais été uploadé — jamais une erreur, juste un club sans logo pour l'instant.
+    logoUrl: string | null;
   } | null;
 }
 
@@ -56,7 +60,7 @@ export async function buildPlayerContext(
   if (profile.club_id && profile.account_status !== "retire") {
     const { data: org } = await supabase
       .from("organizations")
-      .select("id, nom, ville")
+      .select("id, nom, ville, logo_url")
       .eq("id", profile.club_id)
       .maybeSingle();
 
@@ -80,6 +84,7 @@ export async function buildPlayerContext(
         ville: org.ville,
         status,
         since: request?.created_at || profile.created_at,
+        logoUrl: org.logo_url || null,
       };
     }
   }

@@ -114,9 +114,18 @@ export default async function ProfilPage() {
               <h2 className="font-sora text-[17px] font-semibold">Mes affiliations</h2>
               {player?.club ? (
                 <div className="flex items-center gap-3">
-                  <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-white/5 font-mono text-[7px] text-text-faint">
-                    logo
-                  </span>
+                  {player.club.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- logo club distant (bucket Storage clubplus-media), pas un asset local optimisable par next/image
+                    <img
+                      src={player.club.logoUrl}
+                      alt={`Logo ${player.club.nom}`}
+                      className="h-[42px] w-[42px] flex-none rounded-sv bg-white/5 object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-white/5 font-mono text-[7px] text-text-faint">
+                      logo
+                    </span>
+                  )}
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[14px] font-medium">{player.club.nom}</span>
                     {player.club.ville && <span className="text-[12px] text-text-tertiary">{player.club.ville}</span>}

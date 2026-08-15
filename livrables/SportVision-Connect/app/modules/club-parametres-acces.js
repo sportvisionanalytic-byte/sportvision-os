@@ -385,7 +385,16 @@
         const bustedUrl = url + '?t=' + Date.now();
         const col = kind === 'logo' ? 'logo_url' : 'ecusson_url';
         const body = {}; body[col] = bustedUrl;
-        const res = await sbFetch('clubs?id=eq.' + orgId, { method: 'PATCH', body: body });
+        // clubs reste la source de vérité première (résultat déterminant pour le toast/l'UI) ;
+        // organizations.logo_url (migration-connect-v66) n'est synchronisé qu'en best-effort,
+        // pour que le logo remonte côté app-connect (session.ts) sans jamais faire échouer
+        // cette sauvegarde si ce PATCH échoue silencieusement.
+        const clubPatch = sbFetch('clubs?id=eq.' + orgId, { method: 'PATCH', body: body });
+        const orgPatch = kind === 'logo'
+          ? sbFetch('organizations?id=eq.' + orgId, { method: 'PATCH', body: { logo_url: bustedUrl } }).catch(function (e) { console.error('organizations.logo_url sync failed', e); return { ok: false }; })
+          : Promise.resolve(null);
+        const results = await Promise.all([clubPatch, orgPatch]);
+        const res = results[0];
         if (!res.ok) { toast("Échec de l'enregistrement."); return; }
         club[col] = bustedUrl;
         paint();

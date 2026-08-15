@@ -2674,7 +2674,15 @@ async function uploadClubImage(input,kind){
   if(!url){ toast("Échec de l'import."); return; }
   const bustedUrl=url+'?t='+Date.now();
   const col = kind==='logo' ? 'logo_url' : 'ecusson_url';
-  const res=await sbFetch('clubs?id=eq.'+REAL.clubId, {method:'PATCH', body:{[col]:bustedUrl}});
+  // clubs reste la source de vérité première (résultat déterminant pour le toast/l'UI) ;
+  // organizations.logo_url (migration-connect-v66) n'est synchronisé qu'en best-effort, pour
+  // que le logo remonte côté Connect (session.ts) sans jamais faire échouer cette sauvegarde
+  // si ce PATCH échoue silencieusement.
+  const clubPatch=sbFetch('clubs?id=eq.'+REAL.clubId, {method:'PATCH', body:{[col]:bustedUrl}});
+  const orgPatch = kind==='logo'
+    ? sbFetch('organizations?id=eq.'+REAL.clubId, {method:'PATCH', body:{logo_url:bustedUrl}}).catch(function(e){ console.error('organizations.logo_url sync failed', e); return {ok:false}; })
+    : Promise.resolve(null);
+  const [res]=await Promise.all([clubPatch, orgPatch]);
   if(!res.ok){ toast("Échec de l'enregistrement."); return; }
   if(kind==='logo') REAL.logoUrl=bustedUrl; else { REAL.ecussonUrl=bustedUrl; updateClubCrestSb(); }
   renderContent(); toast('Image mise à jour.');

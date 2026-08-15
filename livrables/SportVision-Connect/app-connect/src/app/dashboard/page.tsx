@@ -68,7 +68,7 @@ export default async function DashboardPage() {
           <div className="flex flex-col gap-4.5">
             {player?.club && player.club.status === "affilie" && (
               <ClubCard variant="affilie">
-                <ClubHeader nom={player.club.nom} ville={player.club.ville} />
+                <ClubHeader nom={player.club.nom} ville={player.club.ville} logoUrl={player.club.logoUrl} />
                 <span className="mt-1 self-start rounded-sv-pill bg-affiliations-bg px-2.5 py-1 text-[12px] font-medium text-affiliations">
                   ✓ Affilié
                 </span>
@@ -77,7 +77,7 @@ export default async function DashboardPage() {
 
             {player?.club && player.club.status === "attente" && (
               <ClubCard variant="attente">
-                <ClubHeader nom={player.club.nom} ville={player.club.ville} />
+                <ClubHeader nom={player.club.nom} ville={player.club.ville} logoUrl={player.club.logoUrl} />
                 <span className="mt-1 self-start rounded-sv-pill bg-attente-bg px-2.5 py-1 text-[12px] font-medium text-attente">
                   En attente
                 </span>
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
 
             {player?.club && player.club.status === "refuse" && (
               <ClubCard variant="refuse">
-                <ClubHeader nom={player.club.nom} ville={player.club.ville} />
+                <ClubHeader nom={player.club.nom} ville={player.club.ville} logoUrl={player.club.logoUrl} />
                 <span className="mt-1 self-start rounded-sv-pill bg-danger-bg px-2.5 py-1 text-[12px] font-medium text-danger">
                   Demande refusée
                 </span>
@@ -323,12 +323,21 @@ export default async function DashboardPage() {
   );
 }
 
-function ClubHeader({ nom, ville }: { nom: string; ville: string | null }) {
+function ClubHeader({ nom, ville, logoUrl }: { nom: string; ville: string | null; logoUrl: string | null }) {
   return (
     <div className="flex items-center gap-3.5">
-      <span className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-sv bg-white/5 font-mono text-[8px] text-text-faint">
-        logo
-      </span>
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- logo club distant (bucket Storage clubplus-media), pas un asset local optimisable par next/image
+        <img
+          src={logoUrl}
+          alt={`Logo ${nom}`}
+          className="h-[52px] w-[52px] flex-none rounded-sv bg-white/5 object-cover"
+        />
+      ) : (
+        <span className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-sv bg-white/5 font-mono text-[8px] text-text-faint">
+          logo
+        </span>
+      )}
       <div className="flex flex-col gap-1">
         <span className="text-[11px] font-medium uppercase tracking-[.1em] text-affiliations">Mon club</span>
         <span className="font-sora text-[20px] font-semibold tracking-tight">{nom}</span>
