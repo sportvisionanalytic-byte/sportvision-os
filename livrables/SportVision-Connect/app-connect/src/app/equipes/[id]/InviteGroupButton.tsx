@@ -71,7 +71,7 @@ export function InviteGroupButton({ groupId, groupName }: { groupId: string; gro
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="ml-auto flex h-9 w-9 flex-none items-center justify-center rounded-sv bg-white/[.06] text-text-secondary hover:bg-white/[.12]"
+                className="ml-auto flex h-10 w-10 flex-none items-center justify-center rounded-sv bg-white/[.06] text-text-secondary hover:bg-white/[.12]"
               >
                 <span className="material-symbols-rounded !text-[20px]">close</span>
               </button>

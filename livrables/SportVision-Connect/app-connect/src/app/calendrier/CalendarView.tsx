@@ -402,7 +402,7 @@ function EventDetail({ event, onClose }: { event: CalendarEventData; onClose: ()
           <span className="rounded-sv-pill px-2.5 py-1 text-[11px] font-medium" style={{ color: badge.color, background: badge.bg }}>
             {badge.label}
           </span>
-          <button type="button" onClick={onClose} className="ml-auto flex h-9 w-9 items-center justify-center rounded-sv bg-white/[.06] hover:bg-white/[.12]">
+          <button type="button" onClick={onClose} className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv bg-white/[.06] hover:bg-white/[.12]">
             <span className="material-symbols-rounded !text-[19px]">close</span>
           </button>
         </div>

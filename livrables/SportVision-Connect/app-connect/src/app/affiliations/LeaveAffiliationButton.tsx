@@ -47,7 +47,7 @@ export function LeaveAffiliationButton({ clubName }: { clubName: string }) {
           onClick={() => !busy && setConfirming(false)}
         >
           <div
-            className="flex w-full max-w-[420px] flex-col gap-4 rounded-sv-modal border border-border bg-bg-elevated p-6"
+            className="flex max-h-[90vh] w-full max-w-[420px] flex-col gap-4 overflow-y-auto rounded-sv-modal border border-border bg-bg-elevated p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-danger-bg">

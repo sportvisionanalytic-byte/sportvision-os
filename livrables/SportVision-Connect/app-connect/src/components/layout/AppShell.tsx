@@ -201,7 +201,7 @@ export function AppShell({
           type="button"
           onClick={() => setMobileSearchOpen(true)}
           aria-label="Rechercher"
-          className="ml-auto flex h-9 w-9 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
+          className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
         >
           <span className="material-symbols-rounded !text-[20px]">search</span>
         </button>
@@ -209,14 +209,14 @@ export function AppShell({
         <Link
           href="/aide"
           aria-label="Aide"
-          className="flex h-9 w-9 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
+          className="flex h-10 w-10 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
         >
           <span className="material-symbols-rounded !text-[20px]">help</span>
         </Link>
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          className="flex h-9 w-9 items-center justify-center rounded-sv bg-surface"
+          className="flex h-10 w-10 items-center justify-center rounded-sv bg-surface"
         >
           <Avatar url={avatarUrl} label={firstName} size={32} className="text-[12px]" />
         </button>

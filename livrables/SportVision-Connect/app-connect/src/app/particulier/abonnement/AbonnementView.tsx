@@ -266,7 +266,7 @@ export function AbonnementView({
 
       {confirmingCancel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/66 p-6" onClick={() => !cancelBusy && setConfirmingCancel(false)}>
-          <div className="flex w-full max-w-[420px] flex-col gap-4 rounded-sv-modal border border-border bg-bg-elevated p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="flex max-h-[90vh] w-full max-w-[420px] flex-col gap-4 overflow-y-auto rounded-sv-modal border border-border bg-bg-elevated p-6" onClick={(e) => e.stopPropagation()}>
             <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-danger-bg">
               <span className="material-symbols-rounded !text-[24px] text-danger">warning</span>
             </span>
