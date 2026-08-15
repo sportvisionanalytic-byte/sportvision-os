@@ -79,13 +79,19 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // Résolution du client payeur — deux profils possibles :
+    // Résolution du client payeur — trois profils possibles :
     // 1. Compte "Espace Projet"/club via `client_users` (cas historique, portail).
     // 2. Compte joueur Connect (Espace joueur, 12/08/2026) : pas de ligne `client_users`, le
     //    client_id est résolu (et provisionné à la demande) via `resolve_player_client_id`,
     //    exactement comme useClientId.ts côté app-next et connect-player-prestations côté
     //    app-connect. Appelée avec le JWT utilisateur (userClient), jamais service_role : la
     //    fonction SQL est SECURITY DEFINER et vérifie elle-même auth.uid() en interne.
+    // 3. Compte Espace particulier (self/linked/managed, migration-connect-v51) : ni l'un ni
+    //    l'autre ci-dessus dans le cas général — AJOUT migration-connect-v71 (bug trouvé par QA
+    //    fonctionnelle le 15/08 : tout paiement particulier renvoyait 403 avant même d'atteindre
+    //    ce point). Résolu plus bas, une fois la prestation chargée, via
+    //    connect_particulier_can_pay_client(prestation.client_id) — voir son commentaire en tête
+    //    de migration pour le détail (pourquoi pas connect_resolve_beneficiary_client_id ici).
     let resolvedClientId: string | null = null;
     const { data: clientUser } = await admin
       .from("client_users")
@@ -105,7 +111,6 @@ serve(async (req) => {
         if (playerClientId) resolvedClientId = playerClientId as string;
       }
     }
-    if (!resolvedClientId) return json({ error: "Compte client introuvable" }, 403);
 
     // Résout la prestation cible et vérifie qu'elle appartient bien au client authentifié
     let prestation: {
@@ -153,7 +158,20 @@ serve(async (req) => {
       }
     }
 
-    if (!prestation || prestation.client_id !== resolvedClientId) {
+    if (!prestation) return json({ error: "Non autorisé" }, 403);
+
+    // Cas 3 (migration-connect-v71) : ni club ni joueur n'ont résolu de client_id — vérifie si
+    // l'appelant a le droit de payer POUR CETTE prestation précise (self/managed/linked avec
+    // right_payer), via une fonction SECURITY DEFINER qui revérifie tout en base (jamais une
+    // confiance aveugle en prestation.client_id). userClient, pas admin : auth.uid() doit être
+    // celui du JWT appelant.
+    if (!resolvedClientId) {
+      const { data: canPay } = await userClient.rpc("connect_particulier_can_pay_client", { p_client_id: prestation.client_id });
+      if (canPay) resolvedClientId = prestation.client_id;
+    }
+    if (!resolvedClientId) return json({ error: "Compte client introuvable" }, 403);
+
+    if (prestation.client_id !== resolvedClientId) {
       return json({ error: "Non autorisé" }, 403);
     }
 
