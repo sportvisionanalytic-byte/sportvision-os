@@ -19,6 +19,10 @@
 // IMPORTANT : ajouter aussi customer.subscription.updated, customer.subscription.deleted,
 //             invoice.paid et invoice.payment_failed (abonnement Club+, 2026-08-06) —
 //             sans ça, un impayé ou une résiliation ne serait jamais reflété côté SportVision.
+// IMPORTANT : ajouter aussi customer.subscription.created et invoice.payment_succeeded
+//             (abonnement Agent, Espace particulier, migration-connect-v57, 2026-08-15) —
+//             customer.subscription.updated/deleted et invoice.payment_failed sont DÉJÀ écoutés
+//             depuis l'abonnement Club+ ci-dessus, aucun ajout requis pour ceux-là côté Agent.
 // Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
 //                  PENNYLANE_API_KEY (pour l'avoir automatique sur remboursement — optionnel : si
 //                  absente, le remboursement est quand même resynchronisé, seul l'avoir Pennylane
@@ -105,6 +109,76 @@ function planFromSubscription(sub: Stripe.Subscription): { plan: string | null; 
   if (plan && !CLUBPLUS_PLAN_CREDITS[plan]) plan = null;
   if (engagement !== "12mois" && engagement !== "sans") engagement = null;
   return { plan, engagement };
+}
+
+/* ── Abonnement Agent (Espace particulier, migration-connect-v57, 2026-08-15) ──
+   Première intégration Stripe RÉCURRENTE côté Espace particulier. Suit le même principe que
+   l'abonnement Club+ ci-dessus ("le webhook confirme, jamais le retour navigateur") avec UNE
+   différence : les 3 Price (Starter/Growth/Pro) sont créés MANUELLEMENT par Fouka dans le
+   dashboard Stripe (pas de création dynamique comme CLUBPLUS_TARIFS/ensurePrice ci-dessus) — le
+   webhook ne connaît donc jamais le tarif en euros, seulement le Price ID, lu depuis 3 variables
+   d'environnement partagées avec create-agent-subscription-checkout et manage-agent-subscription. */
+
+// Palier réellement facturé : résolu en comparant l'ID du Price de la ligne d'abonnement aux 3
+// variables d'environnement STRIPE_PRICE_AGENT_* — jamais depuis une metadata posée sur le Price
+// lui-même (impossible à garantir sur un Price créé à la main dans le dashboard). Retourne null si
+// le Price ne correspond à aucun des 3 (abonnement non-Agent sur ce même compte Stripe, ou
+// variable d'environnement pas encore configurée) — auquel cas syncAgentSubscription ci-dessous
+// n'écrase jamais un palier déjà connu par une valeur fausse.
+function agentTierFromPriceId(priceId: string | undefined): "starter" | "growth" | "pro" | null {
+  if (!priceId) return null;
+  if (priceId === Deno.env.get("STRIPE_PRICE_AGENT_STARTER")) return "starter";
+  if (priceId === Deno.env.get("STRIPE_PRICE_AGENT_GROWTH")) return "growth";
+  if (priceId === Deno.env.get("STRIPE_PRICE_AGENT_PRO")) return "pro";
+  return null;
+}
+
+// Statut Stripe → connect_agent_subscriptions.status. `incomplete` (3-D Secure jamais confirmé)
+// reste 'incomplete' plutôt qu'un repli sur 'past_due' (contrairement à mapSubscriptionStatus
+// pour Club+) : un abonnement jamais confirmé ne doit ni compter comme actif (connect_agent_
+// effective_tier le traite déjà comme 'gratuit', seul status='active' compte), ni s'afficher côté
+// Mon abonnement comme "paiement en échec" avant même une première tentative réelle.
+function agentSubscriptionStatus(status: string): "active" | "past_due" | "canceled" | "incomplete" {
+  if (status === "active" || status === "trialing") return "active";
+  if (status === "past_due" || status === "unpaid") return "past_due";
+  if (status === "canceled" || status === "incomplete_expired") return "canceled";
+  return "incomplete";
+}
+
+// Point d'entrée unique pour synchroniser connect_agent_subscriptions depuis un objet Stripe
+// Subscription — appelé par customer.subscription.created ET customer.subscription.updated
+// (identique dans les deux cas). Retrouve la ligne via sub.metadata.user_id (posé à la création
+// par create-agent-subscription-checkout, subscription_data.metadata), jamais via
+// stripe_subscription_id : ce champ n'est écrit qu'APRÈS le premier passage ici, une recherche par
+// lui échouerait précisément sur le tout premier événement reçu. Ignore silencieusement tout
+// abonnement sans metadata.user_id (abonnement Club+ sur ce même compte Stripe, ou tout autre
+// usage futur) — même principe que le reste de ce webhook : un événement qui ne correspond à
+// aucun compte Agent connu est ignoré silencieusement.
+// deno-lint-ignore no-explicit-any
+async function syncAgentSubscription(admin: any, sub: Stripe.Subscription) {
+  const userId = sub.metadata?.user_id as string | undefined;
+  if (!userId) return;
+
+  const priceId = sub.items?.data?.[0]?.price?.id;
+  const tier = agentTierFromPriceId(priceId);
+  const status = agentSubscriptionStatus(sub.status);
+  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
+
+  const updates: Record<string, unknown> = {
+    user_id: userId,
+    stripe_customer_id: customerId,
+    stripe_subscription_id: sub.id,
+    status,
+    current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+    cancel_at_period_end: sub.cancel_at_period_end,
+  };
+  // tier a une contrainte check (starter|growth|pro) : omettre la colonne plutôt qu'écrire null
+  // ou une valeur non résolue, sinon l'upsert entier échouerait (et donc même la mise à jour du
+  // statut/cancel_at_period_end) — un nouvel utilisateur sans tier résolu reprend simplement le
+  // défaut de la colonne ('starter').
+  if (tier) updates.tier = tier;
+
+  await admin.from("connect_agent_subscriptions").upsert(updates, { onConflict: "user_id" });
 }
 
 function vatRateCode(tvaPct: number | null | undefined): string {
@@ -243,16 +317,24 @@ serve(async (req) => {
       const abonnementClubId = (session.mode === "subscription" && session.metadata?.club_id)
         ? (session.metadata.club_id as string)
         : null;
-      const contributionId = abonnementClubId ? null : ((session.metadata?.contribution_id as string) || null);
+      // Abonnement Agent (Espace particulier, mode 'subscription', migration-connect-v57,
+      // 2026-08-15) — même branchement EN PREMIER que abonnementClubId ci-dessus et pour la même
+      // raison : cette session renseigne elle aussi client_reference_id (= user_id, pour le
+      // retrouver depuis le dashboard Stripe), qui serait sinon interprété à tort comme un
+      // paiement_id Portail par le repli de paiementId plus bas.
+      const agentUserId = (session.mode === "subscription" && session.metadata?.user_id && session.metadata?.tier)
+        ? (session.metadata.user_id as string)
+        : null;
+      const contributionId = (abonnementClubId || agentUserId) ? null : ((session.metadata?.contribution_id as string) || null);
       // Cotisation personnelle Connect (group_fundings / funding_contributions,
       // migration-connect-v50) — même principe de branchement AVANT le repli sur
       // paiementId que contributionId ci-dessus, avec une clé de metadata distincte
       // ("funding_contribution_id") pour ne jamais être confondue avec une
       // contribution à un projet collectif Club+ (contributionId, team_project_contributions).
-      const fundingContributionId = (abonnementClubId || contributionId)
+      const fundingContributionId = (abonnementClubId || agentUserId || contributionId)
         ? null
         : ((session.metadata?.funding_contribution_id as string) || null);
-      const paiementId = (abonnementClubId || contributionId || fundingContributionId)
+      const paiementId = (abonnementClubId || agentUserId || contributionId || fundingContributionId)
         ? null
         : ((session.metadata?.paiement_id as string) || (session.client_reference_id as string) || null);
 
@@ -328,6 +410,51 @@ serve(async (req) => {
           }
         } catch (_e) {
           console.error("[stripe-webhook] enqueue_notification (e-mail activation Club+) a échoué :", _e);
+        }
+      }
+
+      // Activation initiale de l'abonnement Agent — utilise DIRECTEMENT session.metadata.tier
+      // (posé et validé côté serveur par create-agent-subscription-checkout, jamais une valeur
+      // transmise telle quelle par le client sans passer par la résolution du Price d'abord) au
+      // lieu de re-dériver le palier depuis le Price via un appel API supplémentaire — même
+      // simplification que le repli sur session.metadata.plan côté Club+ ci-dessus.
+      // customer.subscription.created/updated (ci-dessous) prennent ensuite le relais pour tout
+      // changement ultérieur (Portail, ou manage-agent-subscription), où la résolution se fait
+      // alors par comparaison de Price ID (syncAgentSubscription).
+      if (agentUserId) {
+        const tier = (session.metadata?.tier as string) || "";
+        if (["starter", "growth", "pro"].includes(tier)) {
+          const subscriptionId = typeof session.subscription === "string"
+            ? session.subscription
+            : session.subscription?.id ?? null;
+          const customerId = typeof session.customer === "string"
+            ? session.customer
+            : session.customer?.id ?? null;
+
+          await admin.from("connect_agent_subscriptions").upsert(
+            {
+              user_id: agentUserId,
+              stripe_customer_id: customerId,
+              stripe_subscription_id: subscriptionId,
+              tier,
+              status: "active",
+              cancel_at_period_end: false,
+            },
+            { onConflict: "user_id" },
+          );
+
+          try {
+            const tierLabel = tier === "starter" ? "Starter" : tier === "growth" ? "Growth" : "Pro";
+            await admin.from("member_notifications").insert({
+              user_id: agentUserId,
+              category: "payments",
+              title: "Abonnement Agent activé",
+              body: `Votre abonnement Agent ${tierLabel} est actif.`,
+              target_href: "/particulier/abonnement",
+            });
+          } catch (_e) {
+            console.error("[stripe-webhook] notification activation abonnement Agent a échoué :", _e);
+          }
         }
       }
 
@@ -624,6 +751,18 @@ serve(async (req) => {
     // facturation, et credits_balance se réaligne sur la nouvelle formule au
     // renouvellement suivant (invoice.paid). Seul credits_monthly change tout
     // de suite, pour que le quota affiché corresponde à la formule payée.
+    // Abonnement Agent (Espace particulier, migration-connect-v57) — événement DÉDIÉ, distinct de
+    // "updated" : Stripe l'émet une seule fois, à la création de la Subscription (juste après
+    // checkout.session.completed pour un premier abonnement). checkout.session.completed reste
+    // l'activation AUTORITATIVE (cf. son commentaire ci-dessus), ce handler-ci est un filet de
+    // sécurité idempotent (syncAgentSubscription fait un upsert) qui couvre aussi le cas où
+    // l'ordre d'arrivée des deux événements serait inversé — n'a aucun équivalent côté Club+
+    // (qui ne traite pas cet événement), donc purement additif, aucune branche existante touchée.
+    if (event.type === "customer.subscription.created") {
+      const sub = event.data.object as Stripe.Subscription;
+      await syncAgentSubscription(admin, sub);
+    }
+
     if (event.type === "customer.subscription.updated") {
       const sub = event.data.object as Stripe.Subscription;
       const { data: club } = await admin
@@ -663,6 +802,14 @@ serve(async (req) => {
           }
         }
       }
+
+      // Abonnement Agent — additif, indépendant du bloc `if (club)` ci-dessus (un même
+      // customer.subscription.updated ne peut évidemment concerner que l'un OU l'autre, jamais
+      // les deux, mais on ne le sait qu'en lisant metadata.user_id à l'intérieur de la fonction :
+      // syncAgentSubscription no-op silencieusement si ce n'est pas un abonnement Agent). Couvre
+      // aussi bien un changement de palier via manage-agent-subscription (API directe) qu'un
+      // changement de statut Stripe (échec de paiement récupéré, etc.).
+      await syncAgentSubscription(admin, sub);
     }
 
     // Renouvellement mensuel encaissé : le quota de crédits repart à neuf.
@@ -697,6 +844,38 @@ serve(async (req) => {
       }
     }
 
+    // Abonnement Agent — facture payée (première facture ou renouvellement) : événement DÉDIÉ
+    // (invoice.payment_succeeded, distinct de invoice.paid utilisé par Club+ ci-dessus, à ajouter
+    // séparément côté dashboard Stripe, cf. en-tête de ce fichier). Repart sur une période vierge
+    // à CHAQUE facture payée : monthly_discount_used_at (remise -10%/mois, palier Pro) est remis à
+    // NULL sans comparer de dates — plus simple et plus fiable qu'une comparaison de bornes de
+    // période, cf. le commentaire de la colonne dans migration-connect-v57. current_period_end et
+    // status sont aussi resynchronisés ici (une facture payée après un incident remet l'abonnement
+    // au vert, même principe que invoice.paid côté Club+ ci-dessus) — indépendamment de
+    // syncAgentSubscription (qui ne tourne que sur customer.subscription.*), cette écriture est
+    // directe et minimale, scopée aux 3 colonnes concernées par un paiement de facture.
+    if (event.type === "invoice.payment_succeeded") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id ?? null;
+      if (subId) {
+        const { data: agentSub } = await admin
+          .from("connect_agent_subscriptions")
+          .select("id")
+          .eq("stripe_subscription_id", subId)
+          .maybeSingle();
+        if (agentSub) {
+          await admin
+            .from("connect_agent_subscriptions")
+            .update({
+              status: "active",
+              current_period_end: invoice.period_end ? new Date(invoice.period_end * 1000).toISOString() : null,
+              monthly_discount_used_at: null,
+            })
+            .eq("stripe_subscription_id", subId);
+        }
+      }
+    }
+
     // Échec de prélèvement sur un abonnement : le club reste utilisable (Stripe
     // va retenter selon sa politique de relance) mais l'état est visible dans
     // l'app et le staff est alerté pour relancer le club avant la résiliation
@@ -704,6 +883,17 @@ serve(async (req) => {
     if (event.type === "invoice.payment_failed") {
       const invoice = event.data.object as Stripe.Invoice;
       const subId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id ?? null;
+
+      // Abonnement Agent — additif, avant la branche Club+ ci-dessous (les deux lookups sont
+      // indépendants par construction : un stripe_subscription_id donné n'existe jamais dans les
+      // deux tables à la fois). Statut 'past_due' immédiat : Stripe retente automatiquement selon
+      // sa politique de relance, l'utilisateur voit "Paiement en échec" côté Mon abonnement en
+      // attendant (jamais un blocage silencieux) — pas d'e-mail dédié en V1 (pas de gabarit
+      // "clubplus.paiement_echoue" équivalent pour l'Agent, chantier futur si besoin).
+      if (subId) {
+        await admin.from("connect_agent_subscriptions").update({ status: "past_due" }).eq("stripe_subscription_id", subId);
+      }
+
       if (subId) {
         const { data: club } = await admin
           .from("clubs")
@@ -764,6 +954,13 @@ serve(async (req) => {
     // nouvelle souscription écrasera l'ancien identifiant.
     if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object as Stripe.Subscription;
+
+      // Abonnement Agent — additif, même raisonnement "stripe_subscription_id conservé" que
+      // Club+ ci-dessous : la ligne connect_agent_subscriptions n'est jamais supprimée, seul son
+      // status passe à 'canceled' (connect_agent_effective_tier() la traite alors comme
+      // 'gratuit' — même effet pratique qu'une suppression, sans perdre l'historique).
+      await admin.from("connect_agent_subscriptions").update({ status: "canceled" }).eq("stripe_subscription_id", sub.id);
+
       const { data: club } = await admin
         .from("clubs")
         .select("id, nom")

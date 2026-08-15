@@ -37,6 +37,7 @@ export default async function CalendrierParticulierPage({
     team: string | null;
     event_time: string | null;
     location: string | null;
+    source: "club" | "manual";
   }>).map((r) => ({
     id: r.id,
     title: r.title,
@@ -47,6 +48,7 @@ export default async function CalendrierParticulierPage({
     team: r.team,
     athleteKey: `${r.athlete_kind}:${r.athlete_ref_id}`,
     athleteLabel: r.athlete_label,
+    source: r.source,
   })) as ParticulierEvent[];
 
   return (

@@ -4,15 +4,19 @@ import { resolveDisplayIdentity, buildPlayerContext } from "@/lib/supabase/sessi
 import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
 import { fetchAgentSubscriptionInfo } from "@/lib/supabase/agentSubscription";
 import { ParticularShell } from "@/components/layout/ParticularShell";
-import { AthletesListView } from "./AthletesListView";
+import { AbonnementView } from "./AbonnementView";
 
-// Mes sportifs — voir design-connect-personnel-12-08/README.md § Espace particulier → Mes
-// sportifs. Liste, recherche au-delà de 3 sportifs, statuts Accès actif/limité/Profil géré.
-// Bannière palier Agent (migration-connect-v57-abonnement-agent.sql) : c'est ICI, côté compte
-// AGENT lui-même (pas côté RequestCard.tsx du propriétaire qui accepte), que se trouve le seul CTA
-// actionnable vers /particulier/abonnement — voir le commentaire de RequestCard.tsx pour le
-// raisonnement complet.
-export default async function AthletesPage() {
+// Mon abonnement (Espace particulier) — voir migration-connect-v57-abonnement-agent.sql. Palier
+// actuel, sportifs suivis en tant qu'agent / limite du palier, changement de palier, résiliation.
+// Backend : connect_agent_subscription_status() (RPC, lecture) + create-agent-subscription-
+// checkout / manage-agent-subscription / connect-agent-billing-portal (edge functions, écriture —
+// jamais un statut posé directement par cette page, seul le webhook Stripe confirme).
+export default async function AbonnementPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ abonnement?: string }>;
+}) {
+  const { abonnement } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,15 +26,14 @@ export default async function AthletesPage() {
   const player = await buildPlayerContext(supabase, user.id);
   const identity = resolveDisplayIdentity(user, player);
   const firstName = identity.firstName || user.email?.split("@")[0] || "";
-
-  const [athletes, agentInfo] = await Promise.all([
+  const [athletes, info] = await Promise.all([
     fetchMyAthletes(supabase).catch(() => []),
     fetchAgentSubscriptionInfo(supabase),
   ]);
 
   return (
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <AthletesListView athletes={athletes} agentInfo={agentInfo} />
+      <AbonnementView initialInfo={info} returnStatus={abonnement === "succes" ? "succes" : abonnement === "annule" ? "annule" : null} />
     </ParticularShell>
   );
 }

@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { gradientFor } from "@/lib/avatarGradients";
 import { ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR, type AthleteRow } from "@/lib/supabase/particulier";
+import { AGENT_TIER_LABEL, type AgentSubscriptionInfo } from "@/lib/supabase/agentSubscription";
 
-export function AthletesListView({ athletes }: { athletes: AthleteRow[] }) {
+export function AthletesListView({ athletes, agentInfo }: { athletes: AthleteRow[]; agentInfo: AgentSubscriptionInfo }) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -36,6 +37,30 @@ export function AthletesListView({ athletes }: { athletes: AthleteRow[] }) {
           Ajouter un sportif
         </Link>
       </div>
+
+      {/* Bannière palier Agent — visible seulement si l'utilisateur suit au moins un sportif en
+          tant qu'agent (athletesCount > 0) : un compte purement parent/proche n'a jamais besoin
+          de voir son abonnement Agent, jamais un rappel décoratif hors contexte. Seul endroit de
+          l'app où un CTA "Gérer mon abonnement" a du sens pour CE compte-là — voir le commentaire
+          de RequestCard.tsx pour ce qui se passe côté propriétaire du profil. */}
+      {agentInfo.athletesCount > 0 && (
+        <div
+          className={`flex flex-wrap items-center gap-3 rounded-sv-card border px-[18px] py-4 ${
+            agentInfo.canAcceptMore ? "border-border bg-white/[.04]" : "border-attente/40 bg-attente-bg"
+          }`}
+        >
+          <span className="material-symbols-rounded !text-[19px]" style={{ color: agentInfo.canAcceptMore ? undefined : "#FBBF24" }}>
+            workspace_premium
+          </span>
+          <span className="text-[13px] leading-relaxed text-text-secondary">
+            Palier {AGENT_TIER_LABEL[agentInfo.tier]} · {agentInfo.athletesCount} / {agentInfo.limit} sportifs suivis en tant qu&apos;agent
+            {!agentInfo.canAcceptMore && " — limite atteinte, les nouvelles demandes ne pourront pas être acceptées"}
+          </span>
+          <Link href="/particulier/abonnement" className="ml-auto flex-none text-[13px] font-semibold text-affiliations hover:underline">
+            Gérer mon abonnement
+          </Link>
+        </div>
+      )}
 
       {athletes.length > 3 && (
         <div className="relative flex max-w-[420px]">
