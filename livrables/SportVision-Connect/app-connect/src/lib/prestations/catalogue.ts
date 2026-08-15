@@ -43,6 +43,14 @@ export interface CatalogueTarifPalier {
   prixHtAuDela: number;
 }
 
+// Tarif par nombre de matchs fournis en lien (migration-connect-v64-montage-compilation-lien-
+// match.sql) — 2e mode de livraison de Montage Compilation, alternatif à tarifPalier (rushs déjà
+// découpés). Triée croissant par nbMatchs. Aucune entrée au-delà du nbMatchs max = sur devis.
+export interface CatalogueTarifLienMatchTier {
+  nbMatchs: number;
+  prixHt: number;
+}
+
 export interface CatalogueOffer {
   id: string;
   slug: string;
@@ -57,6 +65,7 @@ export interface CatalogueOffer {
   livrablesInclus: string | null;
   options: CatalogueOption[];
   tarifPalier: CatalogueTarifPalier | null;
+  tarifLienMatch: CatalogueTarifLienMatchTier[] | null;
   ordre: number;
 }
 
@@ -73,6 +82,7 @@ interface CatalogueOffreRow {
   livrables_inclus: string | null;
   options: unknown;
   tarif_palier: unknown;
+  tarif_lien_match: unknown;
   ordre: number | null;
 }
 
@@ -88,6 +98,32 @@ function parseTarifPalier(raw: unknown): CatalogueTarifPalier | null {
   const prixHtAuDela = Number(o.prix_ht_au_dela);
   if (!Number.isFinite(seuilMinutes) || !Number.isFinite(prixHtAuDela)) return null;
   return { seuilMinutes, prixHtAuDela };
+}
+
+function parseTarifLienMatch(raw: unknown): CatalogueTarifLienMatchTier[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const tiers = raw
+    .filter((t): t is { nb_matchs?: unknown; prix_ht?: unknown } => !!t && typeof t === "object")
+    .map((t) => ({ nbMatchs: Number(t.nb_matchs), prixHt: Number(t.prix_ht) }))
+    .filter((t) => Number.isFinite(t.nbMatchs) && Number.isFinite(t.prixHt))
+    .sort((a, b) => a.nbMatchs - b.nbMatchs);
+  return tiers.length > 0 ? tiers : null;
+}
+
+/** Prix HT pour le mode "lien_match" (nombre de matchs fournis en lien, migration-connect-v64) —
+ * la ligne dont nbMatchs correspond EXACTEMENT, ou null si aucune (au-delà du max déclaré : sur
+ * devis, aucun montant ne peut être calculé côté client). AFFICHAGE UNIQUEMENT (préview avant
+ * paiement) — le montant réellement facturé est toujours recalculé côté serveur par
+ * create-checkout-session à partir de `prestations.nombre_matchs_lien` en base. */
+export function prixHtLienMatch(tiers: CatalogueTarifLienMatchTier[] | null, nbMatchs: number | null): number | null {
+  if (!tiers || nbMatchs == null) return null;
+  return tiers.find((t) => t.nbMatchs === nbMatchs)?.prixHt ?? null;
+}
+
+/** Nombre de matchs maximum couvert par un tarif "lien_match" fixe (au-delà : sur devis). */
+export function tarifLienMatchMax(tiers: CatalogueTarifLienMatchTier[] | null): number | null {
+  if (!tiers || tiers.length === 0) return null;
+  return tiers[tiers.length - 1]?.nbMatchs ?? null;
 }
 
 // Familles commerciales affichées à un joueur — volontairement plus restreintes que le
@@ -119,7 +155,7 @@ function parseOptions(raw: unknown): CatalogueOption[] {
     .filter((o) => o.nom);
 }
 
-const SELECT = "id, slug, nom, description, categorie, tarif_type, prix_ht, tva_pct, duree_estimee, livrables_inclus, options, tarif_palier, ordre";
+const SELECT = "id, slug, nom, description, categorie, tarif_type, prix_ht, tva_pct, duree_estimee, livrables_inclus, options, tarif_palier, tarif_lien_match, ordre";
 
 /** Catalogue complet visible par un joueur — lecture publique (policy `catalogue_public_read`,
  * actif=true), aucune authentification requise, mais toujours appelée depuis une page protégée
@@ -147,6 +183,7 @@ export async function fetchPlayerCatalogue(supabase: SupabaseClient): Promise<Ca
       livrablesInclus: row.livrables_inclus,
       options: parseOptions(row.options),
       tarifPalier: parseTarifPalier(row.tarif_palier),
+      tarifLienMatch: parseTarifLienMatch(row.tarif_lien_match),
       ordre: row.ordre ?? 0,
     }))
     .filter((o) => o.family !== null);
@@ -173,6 +210,7 @@ export async function fetchPlayerOfferById(supabase: SupabaseClient, id: string)
     livrablesInclus: row.livrables_inclus,
     options: parseOptions(row.options),
     tarifPalier: parseTarifPalier(row.tarif_palier),
+    tarifLienMatch: parseTarifLienMatch(row.tarif_lien_match),
     ordre: row.ordre ?? 0,
   };
 }
@@ -217,6 +255,25 @@ export function estimatedTtc(
 ): number | null {
   if (offer.tarifType !== "fixe") return null;
   const baseHt = baseHtForDuration(offer, dureeMinutes);
+  if (baseHt == null) return null;
+  const optionsHt = offer.options.filter((o) => selectedOptionNames.includes(o.nom)).reduce((sum, o) => sum + o.prixHt, 0);
+  const totalHtRemise = Math.round((baseHt + optionsHt) * (1 - remisePct / 100) * 100) / 100;
+  return Math.round(totalHtRemise * (1 + offer.tvaPct / 100) * 100) / 100;
+}
+
+/** Équivalent d'`estimatedTtc` pour le mode "lien_match" (nombre de matchs fournis en lien,
+ * migration-connect-v64) — mêmes principes (options, remise, TVA), mais le prix de base vient de
+ * `tarifLienMatch` plutôt que de `tarifPalier`/`prixHt`. null si `nbMatchs` dépasse le tarif
+ * maximum déclaré (sur devis, aucun montant calculable côté client) — voir `tarifLienMatchMax`
+ * pour afficher ce cas distinctement d'un simple "chargement". AFFICHAGE UNIQUEMENT. */
+export function estimatedTtcLienMatch(
+  offer: Pick<CatalogueOffer, "tarifType" | "tvaPct" | "options" | "tarifLienMatch">,
+  nbMatchs: number | null,
+  selectedOptionNames: string[],
+  remisePct = 0,
+): number | null {
+  if (offer.tarifType !== "fixe") return null;
+  const baseHt = prixHtLienMatch(offer.tarifLienMatch, nbMatchs);
   if (baseHt == null) return null;
   const optionsHt = offer.options.filter((o) => selectedOptionNames.includes(o.nom)).reduce((sum, o) => sum + o.prixHt, 0);
   const totalHtRemise = Math.round((baseHt + optionsHt) * (1 - remisePct / 100) * 100) / 100;

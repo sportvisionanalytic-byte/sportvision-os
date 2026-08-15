@@ -117,12 +117,14 @@ serve(async (req) => {
       offre_id?: string | null;
       options_selectionnees?: string[] | null;
       duree_rush_minutes?: number | null;
+      mode_livraison_montage?: "rushs_decoupes" | "lien_match" | null;
+      nombre_matchs_lien?: number | null;
     } | null = null;
 
     if (prestation_id) {
       const { data } = await admin
         .from("prestations")
-        .select("id, client_id, montant_ttc, acompte_montant, reference, offre_id, options_selectionnees, duree_rush_minutes")
+        .select("id, client_id, montant_ttc, acompte_montant, reference, offre_id, options_selectionnees, duree_rush_minutes, mode_livraison_montage, nombre_matchs_lien")
         .eq("id", prestation_id)
         .maybeSingle();
       prestation = data;
@@ -136,7 +138,7 @@ serve(async (req) => {
       if (devis.prestation_id) {
         const { data } = await admin
           .from("prestations")
-          .select("id, client_id, montant_ttc, acompte_montant, reference, offre_id, options_selectionnees, duree_rush_minutes")
+          .select("id, client_id, montant_ttc, acompte_montant, reference, offre_id, options_selectionnees, duree_rush_minutes, mode_livraison_montage, nombre_matchs_lien")
           .eq("id", devis.prestation_id)
           .maybeSingle();
         prestation = data;
@@ -171,31 +173,50 @@ serve(async (req) => {
     if (!totalTtc && prestation.offre_id) {
       const { data: offre } = await admin
         .from("catalogue_offres")
-        .select("slug, prix_ht, tva_pct, tarif_type, options, tarif_palier")
+        .select("slug, prix_ht, tva_pct, tarif_type, options, tarif_palier, tarif_lien_match")
         .eq("id", prestation.offre_id)
         .maybeSingle();
-      if (offre && offre.tarif_type === "fixe" && offre.prix_ht != null) {
+      if (offre && offre.tarif_type === "fixe") {
         const selected: string[] = prestation.options_selectionnees || [];
         const catalogOptions: Array<{ nom?: string; prix_ht?: number }> = Array.isArray(offre.options) ? offre.options : [];
         const optionsHt = catalogOptions
           .filter((o) => o.nom && selected.includes(o.nom))
           .reduce((sum, o) => sum + Number(o.prix_ht || 0), 0);
 
-        // Tarif à palier (ex. Montage Compilation : rush > 6 min → 80 € HT, PROVISOIRE — cf.
-        // migration-connect-v63). Lu depuis catalogue_offres.tarif_palier, comparé à
-        // prestations.duree_rush_minutes tel que DÉCLARÉ À LA CRÉATION de la demande (jamais une
-        // valeur envoyée dans CETTE requête de paiement) : ni le seuil, ni le prix au-delà, ni la
-        // durée ne viennent du client à cet instant.
-        let baseHt = Number(offre.prix_ht);
-        const palier = offre.tarif_palier as { seuil_minutes?: number; prix_ht_au_dela?: number } | null;
-        if (
-          palier?.seuil_minutes != null &&
-          palier?.prix_ht_au_dela != null &&
-          prestation.duree_rush_minutes != null &&
-          Number(prestation.duree_rush_minutes) > Number(palier.seuil_minutes)
-        ) {
-          baseHt = Number(palier.prix_ht_au_dela);
+        // Deux modes de tarification possibles pour cette prestation, DÉCLARÉS À LA CRÉATION de
+        // la demande (jamais une valeur envoyée dans CETTE requête de paiement) :
+        //   - 'lien_match' (migration-connect-v64) : nombre de matchs fournis en lien, tarif
+        //     catalogue_offres.tarif_lien_match ([{nb_matchs, prix_ht}, ...]). Au-delà du nombre
+        //     de matchs maximum couvert par ce tarif, AUCUNE ligne ne correspond : baseHt reste
+        //     null, totalTtc restera à 0 plus bas (sur devis, cf. message d'erreur dédié).
+        //   - 'rushs_decoupes' (v63, comportement historique par défaut) : tarif à palier sur la
+        //     durée de rush déclarée (catalogue_offres.tarif_palier vs prestations.
+        //     duree_rush_minutes) — rush > seuil_minutes → prix_ht_au_dela au lieu du prix de
+        //     base, PROVISOIRE (cf. v63).
+        let baseHt: number | null = null;
+        if (prestation.mode_livraison_montage === "lien_match") {
+          const tiers = Array.isArray(offre.tarif_lien_match)
+            ? (offre.tarif_lien_match as Array<{ nb_matchs?: number; prix_ht?: number }>)
+            : [];
+          const tier = tiers.find((t) => Number(t.nb_matchs) === Number(prestation.nombre_matchs_lien));
+          baseHt = tier?.prix_ht != null ? Number(tier.prix_ht) : null;
+        } else if (offre.prix_ht != null) {
+          baseHt = Number(offre.prix_ht);
+          const palier = offre.tarif_palier as { seuil_minutes?: number; prix_ht_au_dela?: number } | null;
+          if (
+            palier?.seuil_minutes != null &&
+            palier?.prix_ht_au_dela != null &&
+            prestation.duree_rush_minutes != null &&
+            Number(prestation.duree_rush_minutes) > Number(palier.seuil_minutes)
+          ) {
+            baseHt = Number(palier.prix_ht_au_dela);
+          }
         }
+        if (baseHt == null) {
+          if (prestation.mode_livraison_montage === "lien_match") {
+            return json({ error: "Plus de 4 matchs en lien : cette demande passe par un devis, contactez SportVision." }, 400);
+          }
+        } else {
         baseHt += optionsHt;
 
         // Remises Agent (Espace particulier, migration-connect-v57 + v63) — recalculées ICI
@@ -231,6 +252,7 @@ serve(async (req) => {
 
         const baseHtRemise = Math.round(baseHt * (1 - remisePct / 100) * 100) / 100;
         totalTtc = Math.round(baseHtRemise * (1 + Number(offre.tva_pct ?? 20) / 100) * 100) / 100;
+        }
       }
     }
 

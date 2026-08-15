@@ -6,7 +6,13 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
-import { type CatalogueOffer, MONTAGE_COMPILATION_SLUG, estimatedTtc } from "@/lib/prestations/catalogue";
+import {
+  type CatalogueOffer,
+  MONTAGE_COMPILATION_SLUG,
+  estimatedTtc,
+  estimatedTtcLienMatch,
+  tarifLienMatchMax,
+} from "@/lib/prestations/catalogue";
 import { formatEUR, needsRetractationWaiver } from "@/lib/prestations/format";
 import type { AgentDiscountInfo } from "@/lib/supabase/agentSubscription";
 
@@ -56,9 +62,16 @@ export function ReservationWizardParticulier({
 
   const [optionNames, setOptionNames] = useState<string[]>([]);
 
-  // Durée totale de rush déclarée (minutes) — Montage Compilation uniquement (migration-connect-
-  // v63). Déclaratif : jamais de détection automatique de durée vidéo, hors scope.
+  // Montage Compilation propose 2 modes de livraison (migration-connect-v63/v64), choisis par le
+  // client : rushs déjà découpés (durée déclarée) ou lien vers le/les match(s) complet(s) (nombre
+  // de matchs + lien). 'rushs_decoupes' par défaut (mode historique, v63).
+  const [modeLivraisonMontage, setModeLivraisonMontage] = useState<"rushs_decoupes" | "lien_match">("rushs_decoupes");
+  // Durée totale de rush déclarée (minutes) — mode 'rushs_decoupes' uniquement. Déclaratif :
+  // jamais de détection automatique de durée vidéo, hors scope.
   const [dureeRushMinutes, setDureeRushMinutes] = useState("");
+  // Nombre de matchs + lien(s) — mode 'lien_match' uniquement (migration-connect-v64).
+  const [nombreMatchsLien, setNombreMatchsLien] = useState("");
+  const [lienMatchUrl, setLienMatchUrl] = useState("");
   // Remise mensuelle Agent (-10%, palier Pro, une fois par période) — case à cocher, uniquement
   // affichée/activable si `agentDiscount.monthlyPct > 0` (donc ni déjà utilisée, ni palier < Pro).
   const [applyMonthlyDiscount, setApplyMonthlyDiscount] = useState(false);
@@ -74,7 +87,13 @@ export function ReservationWizardParticulier({
 
   const isMontageCompilation = offer.slug === MONTAGE_COMPILATION_SLUG;
   const dureeRushMinutesNum = dureeRushMinutes.trim() !== "" ? Number(dureeRushMinutes) : null;
-  const dureeValid = !isMontageCompilation || (dureeRushMinutesNum != null && Number.isFinite(dureeRushMinutesNum) && dureeRushMinutesNum > 0);
+  const nombreMatchsLienNum = nombreMatchsLien.trim() !== "" ? Number(nombreMatchsLien) : null;
+  const lienMatchMax = tarifLienMatchMax(offer.tarifLienMatch);
+  const dureeValid =
+    !isMontageCompilation ||
+    (modeLivraisonMontage === "rushs_decoupes"
+      ? dureeRushMinutesNum != null && Number.isFinite(dureeRushMinutesNum) && dureeRushMinutesNum > 0
+      : nombreMatchsLienNum != null && Number.isFinite(nombreMatchsLienNum) && nombreMatchsLienNum > 0 && lienMatchUrl.trim() !== "");
 
   // montage_pct : -5% permanent, UNIQUEMENT sur "Montage Compilation" (jamais sur une autre
   // offre, même pour un abonné Agent). monthly_pct : -10% une fois par période, applicable à
@@ -85,7 +104,10 @@ export function ReservationWizardParticulier({
   const monthlyDiscountSelected = monthlyPctApplicable && applyMonthlyDiscount;
   const remisePct = (montagePctApplicable ? agentDiscount.montagePct : 0) + (monthlyDiscountSelected ? agentDiscount.monthlyPct : 0);
 
-  const ttc = estimatedTtc(offer, dureeRushMinutesNum, optionNames, remisePct);
+  const ttc =
+    isMontageCompilation && modeLivraisonMontage === "lien_match"
+      ? estimatedTtcLienMatch(offer, nombreMatchsLienNum, optionNames, remisePct)
+      : estimatedTtc(offer, dureeRushMinutesNum, optionNames, remisePct);
   const waiverNeeded = needsRetractationWaiver(date);
 
   const step1Valid = !!equipe.trim() && !!date && !!lieu.trim() && dureeValid;
@@ -142,10 +164,13 @@ export function ReservationWizardParticulier({
         retractationRenoncee,
         paiementMode,
         beneficiary: { kind: beneficiary.kind, refId: beneficiary.id },
-        // Durée de rush déclarée (Montage Compilation uniquement) — connect-player-prestations
-        // l'exige et la persiste sur `prestations.duree_rush_minutes` ; create-checkout-session
-        // relira CETTE valeur en base au moment du paiement, jamais une valeur reçue ici.
-        dureeRushMinutes: isMontageCompilation ? dureeRushMinutesNum : undefined,
+        // Montage Compilation uniquement — connect-player-prestations exige et persiste ces
+        // champs selon le mode choisi ; create-checkout-session relira CES valeurs en base au
+        // moment du paiement, jamais une valeur reçue ici.
+        modeLivraisonMontage: isMontageCompilation ? modeLivraisonMontage : undefined,
+        dureeRushMinutes: isMontageCompilation && modeLivraisonMontage === "rushs_decoupes" ? dureeRushMinutesNum : undefined,
+        nombreMatchsLien: isMontageCompilation && modeLivraisonMontage === "lien_match" ? nombreMatchsLienNum : undefined,
+        lienMatchUrl: isMontageCompilation && modeLivraisonMontage === "lien_match" ? lienMatchUrl.trim() : undefined,
       },
     });
 
@@ -221,21 +246,78 @@ export function ReservationWizardParticulier({
             </div>
             <Field id="rw-lieu" label="Lieu" placeholder="Stade, adresse" value={lieu} onChange={(e) => setLieu(e.target.value)} error={touched && !lieu.trim() ? "Requis." : null} />
             {isMontageCompilation && (
-              <div className="flex flex-col gap-2">
-                <Field
-                  id="rw-duree-rush"
-                  label="Durée totale de vos rushs (minutes)"
-                  type="number"
-                  min={1}
-                  inputMode="numeric"
-                  value={dureeRushMinutes}
-                  onChange={(e) => setDureeRushMinutes(e.target.value)}
-                  error={touched && !dureeValid ? "Requise (en minutes, supérieure à 0)." : null}
-                />
-                <span className="text-[12px] leading-relaxed text-text-tertiary">
-                  Durée totale de vos rushs, en minutes — au-delà de {offer.tarifPalier?.seuilMinutes ?? 6} min, le tarif
-                  passe à {offer.tarifPalier ? formatEUR(Math.round(offer.tarifPalier.prixHtAuDela * (1 + offer.tvaPct / 100) * 100) / 100) : "un tarif supérieur"} TTC.
-                </span>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
+                  <span className="text-[13px] font-medium text-text-secondary">Comment nous envoyez-vous vos images ?</span>
+                  <div className="flex flex-col gap-2">
+                    <ModeLivraisonChoice
+                      label="Je fournis mes rushs déjà découpés"
+                      sub="Vous avez déjà sélectionné vos meilleures actions."
+                      selected={modeLivraisonMontage === "rushs_decoupes"}
+                      onClick={() => setModeLivraisonMontage("rushs_decoupes")}
+                    />
+                    <ModeLivraisonChoice
+                      label="Je vous envoie le lien de mon/mes match(s)"
+                      sub="SportVision repère et découpe les temps forts pour vous."
+                      selected={modeLivraisonMontage === "lien_match"}
+                      onClick={() => setModeLivraisonMontage("lien_match")}
+                    />
+                  </div>
+                </div>
+
+                {modeLivraisonMontage === "rushs_decoupes" ? (
+                  <div className="flex flex-col gap-2">
+                    <Field
+                      id="rw-duree-rush"
+                      label="Durée totale de vos rushs (minutes)"
+                      type="number"
+                      min={1}
+                      inputMode="numeric"
+                      value={dureeRushMinutes}
+                      onChange={(e) => setDureeRushMinutes(e.target.value)}
+                      error={touched && !dureeValid ? "Requise (en minutes, supérieure à 0)." : null}
+                    />
+                    <span className="text-[12px] leading-relaxed text-text-tertiary">
+                      Durée totale de vos rushs, en minutes — au-delà de {offer.tarifPalier?.seuilMinutes ?? 6} min, le tarif
+                      passe à {offer.tarifPalier ? formatEUR(Math.round(offer.tarifPalier.prixHtAuDela * (1 + offer.tvaPct / 100) * 100) / 100) : "un tarif supérieur"} TTC.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <Field
+                      id="rw-nb-matchs-lien"
+                      label="Nombre de matchs"
+                      type="number"
+                      min={1}
+                      inputMode="numeric"
+                      value={nombreMatchsLien}
+                      onChange={(e) => setNombreMatchsLien(e.target.value)}
+                      error={touched && !dureeValid && !nombreMatchsLienNum ? "Requis, supérieur à 0." : null}
+                    />
+                    <div className="flex flex-col gap-2">
+                      <label htmlFor="rw-lien-match" className="text-[13px] font-medium text-text-secondary">
+                        Lien(s) vers votre/vos match(s)
+                      </label>
+                      <textarea
+                        id="rw-lien-match"
+                        value={lienMatchUrl}
+                        onChange={(e) => setLienMatchUrl(e.target.value)}
+                        rows={2}
+                        className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
+                        placeholder="Un lien par ligne (Veo, YouTube, Drive…)"
+                      />
+                      {touched && !dureeValid && nombreMatchsLienNum && !lienMatchUrl.trim() && (
+                        <span className="text-[12px] text-danger">Lien(s) requis.</span>
+                      )}
+                    </div>
+                    {lienMatchMax != null && nombreMatchsLienNum != null && nombreMatchsLienNum > lienMatchMax && (
+                      <span className="text-[12px] leading-relaxed text-attente">
+                        Au-delà de {lienMatchMax} matchs, cette demande passe par un devis personnalisé (livraison
+                        expresse) — contactez SportVision après l&apos;envoi de votre demande.
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             <Field id="rw-categorie" label="Catégorie · facultatif" placeholder="U18 R2" value={categorie} onChange={(e) => setCategorie(e.target.value)} />
@@ -436,6 +518,12 @@ export function ReservationWizardParticulier({
       )}
     </div>
   );
+}
+
+// Réutilise exactement le même style que PaymentChoice (juste en dessous) — deux choix
+// exclusifs, même pattern visuel.
+function ModeLivraisonChoice({ label, sub, selected, onClick }: { label: string; sub: string; selected: boolean; onClick: () => void }) {
+  return <PaymentChoice label={label} sub={sub} selected={selected} onClick={onClick} />;
 }
 
 function PaymentChoice({ label, sub, selected, onClick }: { label: string; sub: string; selected: boolean; onClick: () => void }) {

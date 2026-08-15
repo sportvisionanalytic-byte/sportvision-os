@@ -446,19 +446,39 @@ serve(async (req) => {
         return json({ error: "Cette date est dans moins de 14 jours : la renonciation au délai de rétractation est requise." }, 400);
       }
 
-      // Durée totale de rush déclarée (migration-connect-v63) — requise UNIQUEMENT pour "Montage
-      // Compilation" (aucune autre offre du catalogue ne l'utilise, dureeRushMinutes est ignoré
-      // silencieusement s'il est envoyé pour une autre offre). Déclaratif, jamais recalculé
-      // depuis le fichier vidéo lui-même (hors scope, cf. migration §2). create-checkout-session
-      // relit CETTE valeur en base au moment du paiement — jamais une valeur renvoyée par le
-      // client à l'instant du paiement.
+      // Montage Compilation (migration-connect-v63/v64) propose 2 modes de livraison, choisis par
+      // le client, mutuellement exclusifs — requis UNIQUEMENT pour cette offre (ignorés
+      // silencieusement pour toute autre). Déclaratif dans les deux cas, jamais recalculé depuis
+      // un fichier vidéo (hors scope). create-checkout-session relit CES valeurs en base au
+      // moment du paiement — jamais une valeur renvoyée par le client à l'instant du paiement.
+      //   - 'rushs_decoupes' (v63, par défaut si modeLivraisonMontage absent, rétrocompatible) :
+      //     durée totale de rush en minutes.
+      //   - 'lien_match' (v64) : nombre de matchs fournis en lien (1 à 4, au-delà sur devis) + le
+      //     ou les lien(s) lui/eux-même(s), texte libre non vide.
       let dureeRushMinutes: number | null = null;
+      let modeLivraisonMontage: "rushs_decoupes" | "lien_match" | null = null;
+      let nombreMatchsLien: number | null = null;
+      let lienMatchUrl: string | null = null;
       if (offer.slug === MONTAGE_COMPILATION_SLUG) {
-        const n = Number(body?.dureeRushMinutes);
-        if (!Number.isFinite(n) || n <= 0) {
-          return json({ error: "Durée totale de vos rushs requise (en minutes, supérieure à 0)." }, 400);
+        modeLivraisonMontage = body?.modeLivraisonMontage === "lien_match" ? "lien_match" : "rushs_decoupes";
+        if (modeLivraisonMontage === "lien_match") {
+          const n = Number(body?.nombreMatchsLien);
+          if (!Number.isFinite(n) || n <= 0) {
+            return json({ error: "Nombre de matchs requis (supérieur à 0)." }, 400);
+          }
+          nombreMatchsLien = Math.round(n);
+          const url = typeof body?.lienMatchUrl === "string" ? body.lienMatchUrl.trim() : "";
+          if (!url) {
+            return json({ error: "Lien(s) vers votre/vos match(s) requis." }, 400);
+          }
+          lienMatchUrl = url;
+        } else {
+          const n = Number(body?.dureeRushMinutes);
+          if (!Number.isFinite(n) || n <= 0) {
+            return json({ error: "Durée totale de vos rushs requise (en minutes, supérieure à 0)." }, 400);
+          }
+          dureeRushMinutes = Math.round(n);
         }
-        dureeRushMinutes = Math.round(n);
       }
 
       const nowIso = new Date().toISOString();
@@ -468,6 +488,8 @@ serve(async (req) => {
         body?.adversaire ? `Adversaire : ${String(body.adversaire).trim()}` : null,
         body?.categorie ? `Catégorie : ${String(body.categorie).trim()}` : null,
         dureeRushMinutes != null ? `Durée totale des rushs déclarée : ${dureeRushMinutes} min` : null,
+        nombreMatchsLien != null ? `Montage depuis lien(s) — nombre de matchs : ${nombreMatchsLien}${nombreMatchsLien > 4 ? " (sur devis, livraison expresse à prévoir)" : ""}` : null,
+        lienMatchUrl ? `Lien(s) fourni(s) : ${lienMatchUrl}` : null,
         body?.notes ? `Notes : ${String(body.notes).trim()}` : null,
         paiementMode === "collectif"
           ? "Paiement souhaité : à plusieurs (cotisation) — fonctionnalité de paiement collectif pas encore branchée au moment de la demande, à confirmer avec le client."
@@ -491,6 +513,9 @@ serve(async (req) => {
           description_besoin: descriptionParts.join("\n"),
           options_selectionnees: optionNames,
           duree_rush_minutes: dureeRushMinutes,
+          mode_livraison_montage: modeLivraisonMontage,
+          nombre_matchs_lien: nombreMatchsLien,
+          lien_match_url: lienMatchUrl,
           retractation_renoncee: body?.retractationRenoncee === true,
           retractation_renoncee_at: body?.retractationRenoncee === true ? nowIso : null,
           cgv_acceptee: true,
