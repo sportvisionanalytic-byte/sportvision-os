@@ -52,7 +52,15 @@
 //               (statut "a_verifier"), le joueur peut utiliser Connect pendant l'attente
 //  - "declare" { name, city, team?, prenom, nom } → notifie le staff (aucune écriture DB),
 //               même mécanisme que connect-signup-lead
-//  - "skip"    {} → ne crée rien, confirme juste la réception
+//  - "skip"    { prenom?, nom?, dateNaissance? } → migration-connect-v72 (15/08) :
+//               player_profiles.club_id est désormais nullable. Si les 3 champs sont fournis
+//               (compte Espace joueur qui choisit "Non/plus tard"), crée une ligne
+//               player_profiles avec club_id = null (idempotent — no-op si une ligne existe déjà
+//               pour ce user_id), pour que buildPlayerContext() cesse de renvoyer null et que ce
+//               compte puisse réserver une prestation. Si un des 3 champs manque (compte Espace
+//               particulier, qui n'a jamais de player_profiles — voir migration-connect-v51 §1 —
+//               ou rejeu d'un ancien "skip" enregistré en localStorage avant ce correctif), ne
+//               crée rien, comportement historique inchangé.
 //
 // Appelée uniquement après confirmation d'e-mail (par le rejeu de pending-onboarding au
 // premier login réussi, jamais juste après signUp() — voir lib/signup/pending-onboarding.ts).
@@ -144,6 +152,48 @@ serve(async (req) => {
     if (!rateOk) return json({ error: "Trop de tentatives. Réessayez dans une heure." }, 429);
 
     if (action === "skip") {
+      const prenom = String(body?.prenom || "").trim();
+      const nom = String(body?.nom || "").trim();
+      const dateNaissance = String(body?.dateNaissance || "").trim();
+
+      // migration-connect-v72 : compte particulier (jamais de player_profiles, voir migration-
+      // connect-v51 §1) ou rejeu d'un ancien "skip" enregistré avant ce correctif (localStorage
+      // pré-15/08, sans ces 3 champs) — comportement historique inchangé, ne crée rien.
+      if (!prenom || !nom || !dateNaissance) {
+        return json({ ok: true, hasClub: false });
+      }
+
+      const { data: existingProfile } = await admin
+        .from("player_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existingProfile) {
+        // Idempotent (rejeu, ou 2e appel depuis "Continuer sans club" — voir AddClubForm.tsx) :
+        // ne PAS mettre à jour club_id/account_status/date_naissance ici — ce sont les colonnes
+        // protégées par le trigger guard_player_profile_update() (migration-clubplus-v13/v36),
+        // qui bloquerait un UPDATE service role dessus (is_club_admin() est faux en contexte
+        // service role, faute de JWT utilisateur forwardé — même constat que documenté pour
+        // l'action "leave" ci-dessous). prenom/nom ne sont pas gardés par ce trigger, rafraîchis
+        // sans risque.
+        await admin.from("player_profiles").update({ prenom, nom }).eq("id", existingProfile.id);
+        return json({ ok: true, hasClub: false });
+      }
+
+      // club_id = null (migration-connect-v72, colonne rendue nullable) : un joueur qui choisit
+      // "Non/plus tard" peut désormais utiliser Connect (dont réserver une prestation) sans être
+      // rattaché à un club. account_status="actif" comme pour "join" : ce joueur peut utiliser
+      // Connect immédiatement, rien n'est en attente de validation ici (aucun club à valider).
+      const { error: insErr } = await admin.from("player_profiles").insert({
+        user_id: user.id,
+        club_id: null,
+        prenom,
+        nom,
+        date_naissance: dateNaissance,
+        account_status: "actif",
+      });
+      if (insErr) return json({ error: insErr.message }, 500);
       return json({ ok: true, hasClub: false });
     }
 

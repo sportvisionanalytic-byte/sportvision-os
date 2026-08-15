@@ -1,0 +1,104 @@
+-- ============================================================
+-- SPORTVISION CONNECT (personnel) — Migration v72
+-- Corrige un bug bloquant confirmé en conditions réelles par Fouka (compte réel
+-- "trouvetoutpro") : un compte Espace joueur (account_type='joueur') qui choisit "Non / plus
+-- tard" à l'étape Club de l'inscription (src/app/signup/club/page.tsx, choice="none") ne peut
+-- PLUS JAMAIS réserver une prestation. buildPlayerContext() (lib/supabase/session.ts) renvoie
+-- null dès qu'AUCUNE ligne player_profiles n'existe pour ce user_id, et la page
+-- /prestations/[id]/reserver affiche alors un mur "Complétez votre profil" — définitif, ce
+-- compte ne repasse jamais par le tunnel d'inscription.
+--
+-- Cause racine : player_profiles.club_id est NOT NULL (migration-clubplus-v13.sql). Sur les 3
+-- actions de l'edge function connect-player-onboarding, SEULE "join" (rejoindre un club
+-- partenaire déjà dans SportVision) crée une ligne player_profiles — "declare" (club non
+-- partenaire) et "skip" (Non/plus tard) ne créent rien. Un joueur sans club ou avec un club non
+-- partenaire n'a donc jamais de ligne player_profiles, pour toujours.
+--
+-- Cette migration rend player_profiles.club_id nullable. Le pendant applicatif (edge function
+-- connect-player-onboarding, action "skip" qui crée désormais une ligne player_profiles avec
+-- club_id = null ; 3e option "Continuer sans club" dans /affiliations/ajouter pour débloquer
+-- les comptes déjà cassés) est livré dans le même lot mais déployé séparément (edge function =
+-- redéploiement manuel Supabase Dashboard, comme toujours sur ce projet).
+--
+-- ────────────────────────────────────────────────────────────────────────
+-- AUDIT PRÉALABLE — tout ce qui référence player_profiles.club_id (grep exhaustif sur les 216
+-- fichiers .sql de ce dossier avant d'écrire cette migration, le 15/08/2026)
+-- ────────────────────────────────────────────────────────────────────────
+--
+-- Rappel du principe : NULL dans une comparaison classique (=) ou une jointure ne matche
+-- JAMAIS rien par défaut (contrairement à `IS DISTINCT FROM`, qui traite NULL comme une valeur
+-- distincte de tout le reste) — donc une ligne player_profiles avec club_id = null est déjà, par
+-- construction SQL, invisible de tout ce qui la cherche "par club". Vérifié un par un plutôt que
+-- supposé, en particulier les policies RLS d'exposition staff/club :
+--
+--  1. Policies `is_club_admin(club_id)` — pp_admin_select/update/delete (migration-clubplus-
+--     v13.sql), sur parent_profiles/parent_player_relationships (v13), pae_admin_select sur
+--     player_access_events (migration-clubplus-v32), et les RPC verify/withdraw_parental_
+--     authorization + suspend_or_reactivate_player_access (v15/v32) qui appellent aussi
+--     is_club_admin(v_player.club_id ou v_club_id) : is_club_admin() (migration-clubplus-v2.sql)
+--     fait `where club_id = target_club_id and user_id = auth.uid()` — avec target_club_id =
+--     NULL, cette comparaison ne matche jamais, la fonction renvoie systématiquement false.
+--     CONFIRMÉ : un joueur sans club n'expose donc AUCUN droit d'administration club à personne
+--     (aucun admin de club n'obtient jamais accès à sa fiche via ces policies), tandis que
+--     pp_self_update (user_id = auth.uid(), indépendante de club_id) continue de fonctionner
+--     normalement — exactement le comportement voulu : "aucun droit club-scope, droits
+--     self-scope intacts".
+--
+--  2. Policies d'exposition "famille" scopées club (`pp.club_id = <table>.id`) —
+--     organizations_player_family_select (v25), clubs_player_family_select (v7),
+--     ctm_family_club_select sur club_teams (v26), ccal_player_select sur club_calendar_events
+--     (migration-connect-personnel-accueil-profil-acces.sql) : toutes des `exists (select 1 from
+--     player_profiles pp where pp.club_id = X.id and ...)`. CONFIRMÉ : club_id = null ne matche
+--     jamais X.id (jamais null lui-même sur ces tables), donc un joueur sans club ne voit aucune
+--     organisation/club/équipe/événement — comportement déjà correct, rien à changer.
+--
+--  3. Jointures applicatives (pas des policies) sur club_id — migration-connect-v53 (topbar
+--     recherche : `join club_media cm on cm.club_id = pp.club_id`), migration-connect-v51 et
+--     v57 (agent) pour les calendriers/médias visibles par un proche via
+--     connect_access_relationships (`join club_calendar_events cc on cc.club_id = pp.club_id`) :
+--     ce sont des INNER JOIN sur une égalité — club_id = null exclut naturellement la ligne
+--     (aucun média/événement club retourné), sans erreur. Les LEFT JOIN du même fichier
+--     (résolution organizations/club dans les RPC de lecture de profil, ex. v51 lignes
+--     504-559) renvoient déjà org = null proprement dans ce cas — CONFIRMÉ aucun de ces select
+--     into ne fait d'hypothèse "org existe forcément".
+--
+--  4. resolve_player_client_id(p_player_id) (migration-connect-v43, dernière définition dans
+--     migration-connect-v56-messages-welcome.sql) : sélectionne uniquement client_id/prenom/nom
+--     sur player_profiles, ne référence PAS club_id — CONFIRMÉ aucun changement nécessaire, un
+--     joueur sans club obtient un client_id de paiement exactement comme aujourd'hui.
+--
+--  5. guard_player_profile_update() (trigger trg_pp_guard, migration-clubplus-v13 puis v36) :
+--     ne s'exécute que sur UPDATE, jamais sur INSERT — l'insertion d'une ligne player_profiles
+--     avec club_id = null par l'edge function (service role) n'est donc jamais concernée par ce
+--     trigger. Vérifié aussi pour l'usage existant : ce trigger continue de bloquer toute
+--     tentative de faire passer club_id de null à une vraie valeur (ou l'inverse) par un appelant
+--     qui n'est ni un admin du club cible ni le propriétaire de la ligne pour le seul champ
+--     account_status='retire' — comportement inchangé, déjà strict avant cette migration.
+--
+--  6. RISQUE IDENTIFIÉ, NON CORRIGÉ ICI (hors périmètre de cette migration) : les fonctions
+--     accept_player_invitation et request_team_membership_as_player (dernières définitions
+--     dans migration-clubplus-v23.sql, utilisées par l'app Club+ séparée — app-next/lib/data/
+--     player|family/team-requests.ts — PAS par app-connect) font
+--     `if v_player.id is not null and v_player.club_id <> p_club_id then raise exception ...`
+--     puis, seulement `if v_player.id is null then insert ... end if`. Avec club_id = null sur
+--     une ligne existante (créée par un "skip" côté Connect personnel), `null <> p_club_id`
+--     s'évalue à NULL — le IF ne se déclenche pas (pas de faux blocage, comportement correct :
+--     NULL veut dire "pas de club, donc pas de conflit"), MAIS `v_player.id is null` est alors
+--     FAUX (la ligne existe déjà), donc le bloc INSERT qui écrirait le vrai club_id est sauté :
+--     la fonction crée quand même une ligne membership_requests pointant vers le club de
+--     l'invitation, tandis que player_profiles.club_id reste null. État incohérent (pas un
+--     crash, pas une fuite RLS — juste une demande d'adhésion "orpheline" côté player_profiles),
+--     qui ne pouvait PAS se produire avant cette migration (aucune ligne player_profiles à
+--     club_id null n'existait). À corriger dans une migration Club+ dédiée si un joueur qui a
+--     fait "Non/plus tard" côté Connect personnel accepte ensuite une invitation Club+ — flux
+--     rare (nécessite d'avoir d'abord skip, puis d'être invité nommément par un club), mais réel.
+--
+-- Conclusion de l'audit : le comportement par défaut de NULL en SQL (exclusion silencieuse des
+-- comparaisons club-scope) rend l'ALTER ci-dessous sûr pour tout le périmètre app-connect. Un
+-- seul angle mort documenté ci-dessus (point 6), propre à l'app Club+ séparée, à traiter à part.
+--
+-- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- (drop not null ne fait rien si la colonne est déjà nullable).
+-- ============================================================
+
+alter table player_profiles alter column club_id drop not null;

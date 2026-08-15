@@ -147,7 +147,18 @@ export default function SignupClubPage() {
           accountType,
         });
       } else {
-        savePendingOnboarding({ action: "skip", accountType });
+        // "Non / plus tard" (migration-connect-v72, 15/08) : prenom/nom/dateNaissance sont
+        // désormais transportés pour que connect-player-onboarding puisse créer une ligne
+        // player_profiles avec club_id = null au premier login — sans quoi buildPlayerContext()
+        // renvoie null pour toujours et ce compte ne peut plus jamais réserver de prestation
+        // (bug confirmé en conditions réelles). Voir en-tête de l'edge function.
+        savePendingOnboarding({
+          action: "skip",
+          accountType,
+          prenom: state.firstName,
+          nom: state.lastName,
+          dateNaissance: state.dateNaissance,
+        });
       }
     } else {
       // Particulier / parent / autre : pas d'étape club (voir le rendu conditionnel ci-dessous),

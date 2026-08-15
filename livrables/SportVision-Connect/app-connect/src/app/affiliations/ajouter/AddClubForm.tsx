@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
 
-type Choice = "search" | "declare" | null;
+type Choice = "search" | "declare" | "none" | null;
 interface ClubResult {
   id: string;
   nom: string;
@@ -89,6 +89,35 @@ export function AddClubForm({
     router.refresh();
   }
 
+  async function handleSkip() {
+    setTouched(true);
+    if (!firstName.trim() || !lastName.trim() || !dateNaissance || busy) return;
+    setBusy(true);
+    setError(null);
+    const supabase = createClient();
+    // migration-connect-v72 (15/08) : débloque en self-service les comptes Espace joueur créés
+    // avant ce correctif, qui n'ont ZÉRO ligne player_profiles (choix "Non/plus tard" ou "club
+    // non partenaire" à l'inscription) et ne repasseront jamais par le tunnel d'inscription —
+    // même action "skip" que le tunnel, avec club_id = null. Une fois la ligne créée,
+    // buildPlayerContext() cesse de renvoyer null et le mur "Complétez votre profil" de
+    // /prestations/[id]/reserver disparaît.
+    const { data, error: fnError } = await supabase.functions.invoke("connect-player-onboarding", {
+      body: {
+        action: "skip",
+        prenom: firstName.trim(),
+        nom: lastName.trim(),
+        dateNaissance,
+      },
+    });
+    setBusy(false);
+    if (fnError || data?.error) {
+      setError("Impossible de mettre à jour votre profil pour le moment. Réessayez dans un instant.");
+      return;
+    }
+    router.push("/affiliations");
+    router.refresh();
+  }
+
   async function handleDeclare() {
     setTouched(true);
     if (!declareName.trim() || !declareCity.trim() || busy) return;
@@ -156,6 +185,47 @@ export function AddClubForm({
           sub="Je l'ajoute moi-même comme club déclaré."
           onClick={() => setChoice("declare")}
         />
+        <ChoiceCard
+          icon="schedule"
+          iconColor="#9A9AB8"
+          label="Continuer sans club"
+          sub="Je réserve une prestation sans être affilié à un club."
+          onClick={() => setChoice("none")}
+        />
+      </div>
+    );
+  }
+
+  if (choice === "none") {
+    return (
+      <div className="flex flex-col gap-5 animate-sv-in">
+        <BackLink onClick={() => { setChoice(null); setError(null); }} />
+        <p className="text-[13px] leading-relaxed text-text-tertiary">
+          Confirmez vos informations pour activer votre profil joueur. Vous pourrez ajouter un
+          club à tout moment depuis cette page.
+        </p>
+        <div className="flex flex-col gap-4 rounded-sv-card border border-border bg-surface p-4">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <Field id="ac-none-fn" label="Prénom" value={firstName} onChange={(e) => setFirstName(e.target.value)} error={touched && !firstName.trim() ? "Requis." : null} />
+            </div>
+            <div className="flex-1">
+              <Field id="ac-none-ln" label="Nom" value={lastName} onChange={(e) => setLastName(e.target.value)} error={touched && !lastName.trim() ? "Requis." : null} />
+            </div>
+          </div>
+          <Field
+            id="ac-none-birth"
+            label="Date de naissance"
+            type="date"
+            value={dateNaissance}
+            onChange={(e) => setDateNaissance(e.target.value)}
+            error={touched && !dateNaissance ? "Requise." : null}
+          />
+        </div>
+        {error && <ErrorBanner message={error} />}
+        <Button onClick={handleSkip} loading={busy} className="w-full">
+          Activer mon profil
+        </Button>
       </div>
     );
   }
