@@ -137,7 +137,7 @@ export function PublicFundingView({
                 </span>
               </div>
               <div className="h-2.5 overflow-hidden rounded-sv-pill bg-white/[.08]">
-                <div className={`h-full rounded-sv-pill ${reached ? "bg-sv-gradient-financee" : "bg-sv-gradient-cotisation"}`} style={{ width: `${pct}%` }} />
+                <div className={`h-full rounded-sv-pill transition-[width] duration-300 motion-reduce:transition-none ${reached ? "bg-sv-gradient-financee" : "bg-sv-gradient-cotisation"}`} style={{ width: `${pct}%` }} />
               </div>
               <span className="text-[13px] text-text-tertiary">
                 {funding.participants_count} participant{funding.participants_count > 1 ? "s" : ""}

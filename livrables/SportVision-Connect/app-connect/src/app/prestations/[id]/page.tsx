@@ -151,7 +151,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
       <div className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-bg/95 p-3.5 backdrop-blur-md lg:hidden">
         <Link
           href={`/prestations/${offer.id}/reserver`}
-          className="flex h-14 items-center justify-center rounded-sv bg-sv-gradient px-5 font-sora text-[15px] font-semibold text-white"
+          className="flex h-14 items-center justify-center rounded-sv bg-sv-gradient px-5 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
         >
           Réserver{ttc !== null ? ` — ${formatEUR(ttc)}` : ""}
         </Link>

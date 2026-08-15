@@ -151,7 +151,7 @@ export function FundingTabs({ fundings, basePath = "/cotisations" }: { fundings:
                   </div>
                   <div className="h-2 overflow-hidden rounded-sv-pill bg-white/[.08]">
                     <div
-                      className={`h-full rounded-sv-pill ${reached ? "bg-sv-gradient-financee" : "bg-sv-gradient-cotisation"}`}
+                      className={`h-full rounded-sv-pill transition-[width] duration-300 motion-reduce:transition-none ${reached ? "bg-sv-gradient-financee" : "bg-sv-gradient-cotisation"}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -183,7 +183,7 @@ export function FundingTabs({ fundings, basePath = "/cotisations" }: { fundings:
           </p>
           <Link
             href="/prestations"
-            className="self-start rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[15px] font-semibold text-white"
+            className="self-start rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
           >
             Découvrir les prestations
           </Link>

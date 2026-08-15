@@ -111,7 +111,7 @@ export default async function DashboardPage() {
                 </div>
                 <Link
                   href="/affiliations/ajouter"
-                  className="self-start rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[14px] font-semibold text-white"
+                  className="self-start rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[14px] font-semibold text-white hover:brightness-[1.12]"
                 >
                   Ajouter mon club
                 </Link>
@@ -133,11 +133,12 @@ export default async function DashboardPage() {
 
               {contentGroups.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {contentGroups.map((g) => (
+                  {contentGroups.map((g, i) => (
                     <Link
                       key={g.key}
                       href="/contenus"
-                      className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface transition-colors duration-150 hover:border-[rgba(192,132,252,.5)]"
+                      className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface transition-colors duration-150 hover:border-[rgba(192,132,252,.5)] animate-sv-in motion-reduce:animate-none"
+                      style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                     >
                       <div className="relative h-[158px]" style={{ background: g.cover }}>
                         <span className="absolute right-3 top-3 rounded-sv-pill bg-black/45 px-2.5 py-1 text-[11px] font-medium text-text">
@@ -233,7 +234,7 @@ export default async function DashboardPage() {
                     </div>
                     <div className="h-2 overflow-hidden rounded-sv-pill bg-white/[.08]">
                       <div
-                        className="h-full rounded-sv-pill bg-sv-gradient-cotisation"
+                        className="h-full rounded-sv-pill bg-sv-gradient-cotisation transition-[width] duration-300 motion-reduce:transition-none"
                         style={{ width: `${Math.min(100, Math.round((cotisation.collected / cotisation.target) * 100))}%` }}
                       />
                     </div>

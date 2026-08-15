@@ -292,7 +292,7 @@ function MediaGrid({
         return (
           <div
             key={item.id}
-            className="group relative aspect-square cursor-pointer overflow-hidden rounded-sv border border-white/[.07]"
+            className="group relative aspect-square cursor-pointer overflow-hidden rounded-sv border border-white/[.07] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
             style={{ background: coverFor(item.id) }}
             onClick={() => onOpen(item.id)}
           >

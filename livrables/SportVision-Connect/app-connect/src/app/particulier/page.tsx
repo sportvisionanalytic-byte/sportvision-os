@@ -294,7 +294,7 @@ export default async function ParticulierHomePage() {
                       </div>
                       <div className="h-2 overflow-hidden rounded-sv-pill bg-white/[.08]">
                         <div
-                          className="h-full rounded-sv-pill bg-sv-gradient-cotisation"
+                          className="h-full rounded-sv-pill bg-sv-gradient-cotisation transition-[width] duration-300 motion-reduce:transition-none"
                           style={{ width: `${Math.min(100, Math.round((cotisation.montant_collecte / cotisation.montant_cible) * 100))}%` }}
                         />
                       </div>

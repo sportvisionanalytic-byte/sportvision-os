@@ -130,7 +130,7 @@ export function FundingDetailView({
               </span>
             </div>
             <div className="h-3 overflow-hidden rounded-sv-pill bg-white/[.08]">
-              <div className={`h-full rounded-sv-pill ${reached ? "bg-sv-gradient-financee" : "bg-sv-gradient-cotisation"}`} style={{ width: `${pct}%` }} />
+              <div className={`h-full rounded-sv-pill transition-[width] duration-300 motion-reduce:transition-none ${reached ? "bg-sv-gradient-financee" : "bg-sv-gradient-cotisation"}`} style={{ width: `${pct}%` }} />
             </div>
             <div className="flex flex-wrap items-center gap-4">
               <span className="text-[14px] text-text-secondary">

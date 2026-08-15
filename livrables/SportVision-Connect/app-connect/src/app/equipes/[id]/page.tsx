@@ -158,7 +158,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
                     <span className="text-[13px] text-text-tertiary">/ {euros(funding.montant_cible)}</span>
                   </div>
                   <div className="h-[7px] overflow-hidden rounded-sv-pill bg-white/[.08]">
-                    <div className="h-full rounded-sv-pill bg-sv-gradient-cotisation" style={{ width: `${pct}%` }} />
+                    <div className="h-full rounded-sv-pill bg-sv-gradient-cotisation transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${pct}%` }} />
                   </div>
                 </Link>
               ) : (

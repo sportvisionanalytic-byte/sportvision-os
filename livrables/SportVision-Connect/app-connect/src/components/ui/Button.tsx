@@ -10,7 +10,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: "bg-sv-gradient text-white hover:brightness-[1.12]",
+  primary: "bg-sv-gradient text-white hover:brightness-[1.12] hover:-translate-y-px active:translate-y-0 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100",
   secondary: "bg-surface border border-border-strong text-text hover:bg-surface-hover",
   ghost: "bg-transparent text-[#8CA9FF] hover:text-[#B6C7FF]",
   danger: "bg-danger-bg border border-danger-border text-danger hover:bg-[rgba(244,114,182,.16)]",
@@ -23,7 +23,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          "inline-flex h-14 items-center justify-center gap-2.5 rounded-sv px-5 font-sora text-[16px] font-semibold transition-[filter,background-color,opacity] duration-150",
+          "inline-flex h-14 items-center justify-center gap-2.5 rounded-sv px-5 font-sora text-[16px] font-semibold transition-[filter,background-color,opacity,transform] duration-150",
           "disabled:cursor-not-allowed disabled:opacity-45",
           loading && "cursor-wait opacity-75",
           VARIANT_CLASSES[variant],
