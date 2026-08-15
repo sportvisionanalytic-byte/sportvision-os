@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
-import { fetchMyAthletes, toNavItems, ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR } from "@/lib/supabase/particulier";
+import {
+  fetchMyAthletes,
+  toNavItems,
+  ATHLETE_STATUS_LABEL,
+  ATHLETE_STATUS_COLOR,
+  particulierSportifsLabel,
+  particulierSportifsSectionLabel,
+} from "@/lib/supabase/particulier";
 import { ParticularShell } from "@/components/layout/ParticularShell";
 import { gradientFor } from "@/lib/avatarGradients";
 import { formatDateLong } from "@/lib/prestations/format";
@@ -23,7 +30,7 @@ import type { PlayerOrder } from "@/lib/prestations/types";
 // sur l'accueil.
 export default async function ParticulierHomePage() {
   const supabase = await createClient();
-  const { user } = await requireParticulierAccount(supabase);
+  const { user, profilParticulier } = await requireParticulierAccount(supabase);
 
   // player, athletes et les 5 requêtes ci-dessous sont toutes indépendantes (aucune ne dépend
   // du résultat d'une autre — voir rapport fluidité perçue 15/08) : un seul Promise.all au lieu
@@ -125,10 +132,10 @@ export default async function ParticulierHomePage() {
           <div className="flex flex-col gap-4">
             <div className="flex items-baseline justify-between gap-4">
               <h2 className="font-sora text-[20px] font-semibold tracking-tight">
-                {athletes.length === 1 ? "Votre sportif" : "Vos sportifs"}
+                {particulierSportifsSectionLabel(profilParticulier, athletes.length)}
               </h2>
               <Link href="/particulier/sportifs" className="text-[13px] font-medium text-affiliations">
-                Gérer mes sportifs
+                Gérer {particulierSportifsLabel(profilParticulier).toLowerCase()}
               </Link>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

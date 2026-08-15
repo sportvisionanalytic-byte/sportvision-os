@@ -108,3 +108,33 @@ export const ATHLETE_STATUS_COLOR: Record<AthleteRow["status"], { fg: string; bg
   limite: { fg: "#FBBF24", bg: "rgba(251,191,36,.14)" },
   gere: { fg: "#C084FC", bg: "rgba(168,85,247,.16)" },
 };
+
+// Vocabulaire adapté selon connect_profile_settings.profil_particulier (migration-connect-v67-
+// distinction-parent-agent.sql §1) — "Mes enfants" pour un parent/tuteur, "Mes sportifs suivis"
+// pour un agent (vocabulaire pro déjà utilisé ailleurs, ex. AbonnementView.tsx), "Mes sportifs"
+// pour le reste (choix générique "autre", ou NULL pour un compte antérieur à la migration qui
+// n'a jamais fait ce choix). Partagé entre composants serveur (AthletesListView via
+// sportifs/page.tsx, Accueil particulier) et client (ParticularShell.tsx) — module TS neutre,
+// pas de dépendance "use client"/"use server".
+export function particulierSportifsLabel(profilParticulier: string | null | undefined): string {
+  if (profilParticulier === "parent" || profilParticulier === "tuteur") return "Mes enfants";
+  if (profilParticulier === "agent") return "Mes sportifs suivis";
+  return "Mes sportifs";
+}
+
+// Variante courte pour les espaces contraints (bottom nav mobile à 5 onglets) — même logique,
+// vocabulaire raccourci.
+export function particulierSportifsShortLabel(profilParticulier: string | null | undefined): string {
+  if (profilParticulier === "parent" || profilParticulier === "tuteur") return "Enfants";
+  return "Sportifs";
+}
+
+// Variante "vos/votre" pour l'Accueil particulier (formulation à la 2e personne, différente du
+// "Mes ..." de la sidebar/liste) — même bascule parent/tuteur vs agent vs défaut, accordée au
+// singulier/pluriel selon le nombre de sportifs affichés.
+export function particulierSportifsSectionLabel(profilParticulier: string | null | undefined, count: number): string {
+  const single = count === 1;
+  if (profilParticulier === "parent" || profilParticulier === "tuteur") return single ? "Votre enfant" : "Vos enfants";
+  if (profilParticulier === "agent") return single ? "Votre sportif suivi" : "Vos sportifs suivis";
+  return single ? "Votre sportif" : "Vos sportifs";
+}

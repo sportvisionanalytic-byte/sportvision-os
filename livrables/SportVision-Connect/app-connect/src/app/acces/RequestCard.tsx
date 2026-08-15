@@ -34,12 +34,15 @@ export function RequestCard({
   const [busy, setBusy] = useState<"accept" | "refuse" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Paywall Agent (migration-connect-v57-abonnement-agent.sql) : connect_respond_profile_access_
-  // request lève une exception préfixée "PAYWALL_AGENT_LIMIT:" quand la demande vient d'un compte
-  // "agent" qui a atteint la limite de son palier — ce préfixe est le CONTRAT que ce composant lit
-  // pour distinguer ce refus d'une erreur technique générique. Message volontairement sans CTA
-  // d'action ici : c'est le compte DEMANDEUR (l'agent) qui doit changer de palier, pas vous — voir
-  // la bannière côté /particulier/sportifs pour le CTA réel, affiché au bon endroit.
+  // Paywall Agent (migration-connect-v57-abonnement-agent.sql) et paywall particulier générique
+  // (migration-connect-v67-distinction-parent-agent.sql §4) : connect_respond_profile_access_
+  // request lève une exception préfixée "PAYWALL_AGENT_LIMIT:" (compte demandeur "agent", palier
+  // payant existant) ou "PAYWALL_PARTICULIER_LIMIT:" (compte demandeur parent/tuteur/autre, plafond
+  // dur à 3, jamais payant) — ces préfixes sont le CONTRAT que ce composant lit pour distinguer ce
+  // refus d'une erreur technique générique. Message volontairement sans CTA d'action dans LES DEUX
+  // cas ici : c'est le compte DEMANDEUR qui doit agir (changer de palier pour un agent, contacter
+  // SportVision pour un parent/tuteur/autre — aucun palier payant à lui proposer), pas vous — voir
+  // la bannière côté /particulier/sportifs pour le CTA réel côté agent, affiché au bon endroit.
   async function respond(accept: boolean) {
     setBusy(accept ? "accept" : "refuse");
     setError(null);
@@ -53,6 +56,10 @@ export function RequestCard({
       if (rpcError.message?.includes("PAYWALL_AGENT_LIMIT")) {
         setError(
           "Cette personne a atteint la limite de sportifs suivis pour son abonnement Agent actuel. Elle doit changer de palier depuis son propre espace avant que vous puissiez accepter.",
+        );
+      } else if (rpcError.message?.includes("PAYWALL_PARTICULIER_LIMIT")) {
+        setError(
+          "Cette personne a atteint sa limite de sportifs suivis. Elle doit contacter SportVision avant que vous puissiez accepter.",
         );
       } else {
         setError("Impossible de traiter cette demande pour le moment.");

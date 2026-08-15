@@ -27,6 +27,13 @@ export interface PendingPlayerOnboarding {
   // ne renvoie aucune session tant que l'e-mail n'est pas confirmé, donc rien n'est écrivable
   // avant le premier login réel — voir consumePendingOnboarding ci-dessous.
   accountType?: "joueur" | "particulier";
+  // Choix précis fait à l'étape Profil pour un compte particulier (agent/parent/tuteur/autre —
+  // colonne connect_profile_settings.profil_particulier, migration-connect-v67-distinction-
+  // parent-agent.sql §1). Absent (undefined) pour un profil joueur/sportif ou pour le choix
+  // générique "particulier" (aucune valeur du CHECK ne correspond à ce cas précis) — la colonne
+  // reste alors NULL, traitée comme "pas de plafond" par connect_particulier_limit(), exactement
+  // comme un compte antérieur à la migration.
+  profilParticulier?: "agent" | "parent" | "tuteur" | "autre";
 }
 
 export function savePendingOnboarding(pending: PendingPlayerOnboarding) {
@@ -84,9 +91,18 @@ export async function consumePendingOnboarding(
       data: { user },
     } = await supabase.auth.getUser();
     if (user) {
+      const payload: { user_id: string; account_type: "joueur" | "particulier"; profil_particulier?: string } = {
+        user_id: user.id,
+        account_type: pending.accountType,
+      };
+      // profil_particulier (migration-connect-v67) : n'écrit la colonne QUE si un choix précis a
+      // été capturé (voir le commentaire de PendingPlayerOnboarding.profilParticulier ci-dessus) —
+      // ne jamais envoyer explicitement `undefined`/`null` dans le payload upsert, ce qui
+      // écraserait une valeur déjà posée par un rejeu précédent avec NULL.
+      if (pending.profilParticulier) payload.profil_particulier = pending.profilParticulier;
       const { error: cpsError } = await supabase
         .from("connect_profile_settings")
-        .upsert({ user_id: user.id, account_type: pending.accountType }, { onConflict: "user_id" });
+        .upsert(payload, { onConflict: "user_id" });
       if (cpsError) throw cpsError;
     }
   }
