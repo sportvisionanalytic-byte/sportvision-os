@@ -20,7 +20,10 @@ export default function SignupSportPage() {
 
   const isSportLike = state.profile === "joueur" || state.profile === "sportif";
   const isParticulier = state.profile === "particulier";
-  const isParent = state.profile === "parent" || state.profile === "autre";
+  // "agent" rejoint la variante simplifiée (comme "parent") plutôt que "particulier" : un agent
+  // gère l'activité d'autres sportifs, pas une prestation pour lui-même — même logique que le
+  // regroupement déjà en place pour "parent"/"autre".
+  const isParent = state.profile === "parent" || state.profile === "agent" || state.profile === "autre";
 
   const canContinue = isSportLike
     ? !!state.sport && (state.sport !== "Autre" || !!state.otherSport.trim()) && !!state.dateNaissance

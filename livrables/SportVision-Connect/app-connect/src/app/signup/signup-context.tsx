@@ -7,7 +7,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 // interrompu, exactement comme documenté dans le design de référence. Le mot de passe n'est
 // PAS persisté (jamais en clair dans localStorage) — voir STORAGE_KEYS ci-dessous.
 
-export type SignupProfile = "joueur" | "sportif" | "particulier" | "parent" | "autre";
+export type SignupProfile = "joueur" | "sportif" | "particulier" | "parent" | "agent" | "autre";
 
 export interface SignupState {
   // Étape 1 · Identité
@@ -131,6 +131,7 @@ export const PROFILES: { id: SignupProfile; label: string; sub: string; icon: st
   { id: "sportif", label: "Sportif / Sportive", sub: "Je pratique un autre sport ou j'utilise SportVision personnellement.", icon: "fitness_center" },
   { id: "particulier", label: "Particulier", sub: "Je souhaite réserver ou suivre une prestation SportVision.", icon: "person" },
   { id: "parent", label: "Parent / Responsable légal", sub: "J'utilise SportVision pour moi ou pour accompagner un jeune sportif.", icon: "family_restroom" },
+  { id: "agent", label: "Agent / représentant", sub: "Je représente ou j'accompagne un ou plusieurs sportifs professionnellement.", icon: "badge" },
   { id: "autre", label: "Autre", sub: "Mon profil ne correspond pas exactement aux choix proposés.", icon: "more_horiz" },
 ];
 
