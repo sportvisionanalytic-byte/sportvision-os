@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CatalogueOffer } from "@/lib/prestations/catalogue";
-import { baseTtc, categorieIcon } from "@/lib/prestations/catalogue";
+import { baseTtc, categorieIcon, MONTAGE_COMPILATION_SLUG } from "@/lib/prestations/catalogue";
 import { formatEUR } from "@/lib/prestations/format";
 import { gradientFor } from "@/lib/avatarGradients";
 import type { AthleteRow } from "@/lib/supabase/particulier";
+import { MontageCompilationModes } from "@/components/prestations/MontageCompilationModes";
 
 type BenefKind = "self" | "linked" | "managed";
 
@@ -101,6 +102,57 @@ export function PrestationsParticulierView({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {offers.map((offer) => {
           const ttc = baseTtc(offer);
+          const isMontageCompilation = offer.slug === MONTAGE_COMPILATION_SLUG;
+
+          // "Montage Compilation" propose 2 modes de livraison à des tarifs différents (voir
+          // MontageCompilationModes) — Fouka veut ces 2 options visibles dès la carte du
+          // catalogue, avant même d'entrer dans le tunnel de réservation. Seule cette offre sort
+          // donc du pattern "carte = un seul <button> cliquable" : le contenu informatif est
+          // affiché directement dans la carte (dépliée), avec un bouton "Réserver" dédié en bas —
+          // toutes les autres offres gardent leur carte 100% cliquable, inchangée.
+          if (isMontageCompilation) {
+            return (
+              <div
+                key={offer.id}
+                className={`flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface sm:col-span-2 lg:col-span-3 ${
+                  blockedReason ? "opacity-45" : ""
+                }`}
+              >
+                <div
+                  className="flex h-[100px] items-center px-[18px]"
+                  style={{ background: "linear-gradient(135deg,#3B1E6E 0%,#22307A 55%,#0F4C63 100%)" }}
+                >
+                  <span className="flex h-[46px] w-[46px] items-center justify-center rounded-sv bg-[rgba(9,8,26,.42)]">
+                    <span className="material-symbols-rounded !text-[23px] text-white">{categorieIcon(offer.categorie)}</span>
+                  </span>
+                </div>
+                <div className="flex flex-col gap-3.5 p-[18px]">
+                  <div className="flex flex-col gap-2.5">
+                    <span className="font-sora text-[16px] font-semibold tracking-tight">{offer.nom}</span>
+                    <span className="text-[13px] leading-relaxed text-text-tertiary">{offer.description || ""}</span>
+                  </div>
+
+                  <MontageCompilationModes offer={offer} />
+
+                  <div className="flex items-center justify-between gap-2.5 pt-1">
+                    <span className="font-sora text-[15px] font-semibold">{ttc !== null ? `${formatEUR(ttc)} TTC` : "Sur devis"}</span>
+                    <button
+                      type="button"
+                      onClick={() => goToOffer(offer.id)}
+                      disabled={!!blockedReason}
+                      className={`flex items-center gap-1.5 rounded-sv-pill bg-sv-gradient px-4 py-2 font-sora text-[13.5px] font-semibold text-white transition-opacity duration-150 ${
+                        blockedReason ? "cursor-not-allowed opacity-60" : "hover:brightness-[1.1]"
+                      }`}
+                    >
+                      Réserver
+                      <span className="material-symbols-rounded !text-[16px]">arrow_forward</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <button
               key={offer.id}

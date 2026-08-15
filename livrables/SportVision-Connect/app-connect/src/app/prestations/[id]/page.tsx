@@ -3,8 +3,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
 import { AppShell } from "@/components/layout/AppShell";
-import { fetchPlayerOfferById, baseTtc, categorieIcon, perPersonTtc } from "@/lib/prestations/catalogue";
+import { fetchPlayerOfferById, baseTtc, categorieIcon, perPersonTtc, MONTAGE_COMPILATION_SLUG } from "@/lib/prestations/catalogue";
 import { formatEUR } from "@/lib/prestations/format";
+import { MontageCompilationModes } from "@/components/prestations/MontageCompilationModes";
 
 const HOW_IT_WORKS = [
   { icon: "edit_note", title: "1. Vous envoyez votre demande", text: "Renseignez le match, la date et le lieu — votre demande passe au statut « En validation »." },
@@ -61,6 +62,13 @@ export default async function PrestationFichePage({ params }: { params: Promise<
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
           <div className="flex flex-col gap-6">
+            {offer.slug === MONTAGE_COMPILATION_SLUG && (
+              <Section title="2 façons de nous envoyer vos images">
+                <MontageCompilationModes offer={offer} />
+                <p className="text-[12px] leading-relaxed text-text-faint">Le mode d&apos;envoi se choisit à l&apos;étape suivante de la réservation.</p>
+              </Section>
+            )}
+
             {included.length > 0 && (
               <Section title="Inclus dans cette prestation">
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
