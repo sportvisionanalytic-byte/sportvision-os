@@ -717,6 +717,7 @@ const NAV={
     {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
     {id:'cotisations',lb:'Cotisations',ic:'target'},
     {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
+    {id:'connectcomptes',lb:'Comptes Connect',ic:'cli'},
     {type:'sep',lb:'Équipe & RH'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
     {id:'users',lb:'Utilisateurs & accès',ic:'col'},
@@ -772,6 +773,7 @@ const NAV={
     {id:'cotisations',lb:'Cotisations',ic:'target'},
     {id:'cmagency',lb:'Agences CM',ic:'cli'},
     {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
+    {id:'connectcomptes',lb:'Comptes Connect',ic:'cli'},
     {type:'sep',lb:'Prestations'},
     {id:'pre',lb:'Prestations',ic:'pre'},
     {id:'planning',lb:'Planning admin',ic:'cal'},
@@ -904,6 +906,7 @@ const NAV={
     {id:'commissions',lb:'Mes commissions',ic:'fin'},
     {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
     {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
+    {id:'connectcomptes',lb:'Comptes Connect',ic:'cli'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
@@ -1258,6 +1261,13 @@ const VIEWS={
   'sec.crm':()=>`
     <div class="sh"><div class="sh-t">CRM Clients</div><button class="btn bp bs" onclick="modalNouveauClient()">+ Nouveau client</button></div>
     <div id="crm-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  // ── Comptes Connect (lecture seule, migration v59) : distinct du CRM Clients
+  // ci-dessus (pipeline commercial B2B `clients`) — ici les vrais comptes
+  // utilisateurs Connect (club+/joueur/particulier), staff-only via RPC.
+  'admin.connectcomptes':()=>_connectComptesView(),
+  'sec.connectcomptes':()=>_connectComptesView(),
+  'com.connectcomptes':()=>_connectComptesView(),
 
   'sec.planning':()=>`
     <div class="sh">
@@ -2551,7 +2561,7 @@ function filterPre(){
 
 // ── FALLBACK VIEW ────────────────────────
 function fallbackView(role,view){
-  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',documents:'Centre documentaire',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Analytics',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs',avoirs:'Avoirs & remises',contrats:'Contrats'};
+  const labels={dash:'Tableau de bord',pre:'Prestations',col:'Collaborateurs',kits:'Kits',fin:'Finances',set:'Paramètres',crm:'CRM Clients',planning:'Planning',taches:'Tâches',docs:'Documents',documents:'Centre documentaire',kanban:'Kanban',equipes:'Équipes',incidents:'Incidents',msg:'Messagerie',jourj:'Mode Jour J',medias:'Mes médias',revenus:'Mes revenus',form:'Formation',cal:'Calendrier éditorial',contenus:'Contenus',publications:'Publications',analytics:'Analytics',factures:'Factures',paiements:'Paiements',rapprochement:'Rapprochement',export:'Export',devis:'Devis',objectifs:'Objectifs',avoirs:'Avoirs & remises',contrats:'Contrats',connectcomptes:'Comptes Connect'};
   return`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:14px;color:var(--t3);text-align:center">
     <div style="font-size:44px;opacity:.2">📋</div>
     <div style="font-size:15px;font-weight:650;color:var(--t2)">${labels[view]||view}</div>
@@ -3342,6 +3352,7 @@ async function creerCollaborateur(){
 async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='prod')&&view==='pre') await loadPrestations();
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
+  if((role==='admin'||role==='sec'||role==='com')&&view==='connectcomptes') await loadConnectComptes();
   if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
   if(role==='admin'&&view==='col') await loadCollaborateurs();
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';await loadKits();}
@@ -3809,6 +3820,15 @@ let _crmFiltre='';
 let _crmStFiltre='';
 let _pipData={clients:[],lastPre:{},lastCon:{},devisMap:{}};
 
+// ── Comptes Connect (lecture seule) ─────────────────────────────────────
+// Distinct du CRM Clients ci-dessus : ici les vrais comptes utilisateurs
+// Connect (club+/joueur/particulier), lus via les RPC staff-only de la
+// migration v59 (connect_os_accounts_list / connect_os_account_detail).
+// Aucune écriture depuis cet écran.
+let _connectComptesCache=[];
+let _connectComptesTab='club';
+let _connectComptesFiltre='';
+
 function _buildPipelineShell(titre){
   return`<div class="kpi-g" style="grid-template-columns:repeat(5,1fr)">
     <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Prospects</div><div class="kpi-v" id="pip-kpi-pr">—</div><span class="kpi-d dnt">à qualifier</span></div>
@@ -3890,6 +3910,141 @@ async function crmAvancerStatut(id,statut){
   const lb={qualifié:'Client qualifié.',devis_envoyé:'Devis à envoyer.',négociation:'En négociation.',partenaire:'Nouveau partenaire !',client:'Client signé !'}[statut]||'Statut mis à jour.';
   toast(lb,'ok');
   loadClients();
+}
+
+// ── Comptes Connect (lecture seule) ─────────────────────────────────────
+function _connectComptesView(){
+  return`<div class="sh"><div class="sh-t">Comptes Connect</div></div>
+    <div id="connectcomptes-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
+
+function _ccFmtD(d){return d?new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';}
+
+async function loadConnectComptes(){
+  const el=document.getElementById('connectcomptes-real');
+  if(!el)return;
+  try{
+    const data=await sbFetch('rpc/connect_os_accounts_list',{method:'POST',body:{}});
+    if(sbErr(data)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
+    _connectComptesCache=Array.isArray(data)?data:[];
+    renderConnectComptes();
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function setConnectComptesTab(tab){
+  _connectComptesTab=tab;
+  renderConnectComptes();
+}
+
+function renderConnectComptes(){
+  const el=document.getElementById('connectcomptes-real');
+  if(!el)return;
+  if(!_connectComptesCache.length){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👤</div><div>Aucun compte Connect trouvé.</div></div>';return;}
+  const tab=_connectComptesTab;
+  const q=(_connectComptesFiltre||'').toLowerCase();
+  const counts={club:0,joueur:0,particulier:0};
+  _connectComptesCache.forEach(c=>{if(counts[c.type]!==undefined)counts[c.type]++;});
+  const TABS=[{id:'club',lb:'Club+'},{id:'joueur',lb:'Joueur'},{id:'particulier',lb:'Particulier'}];
+  const list=_connectComptesCache.filter(c=>c.type===tab).filter(c=>{
+    if(!q)return true;
+    const full=[c.prenom,c.nom,c.email].filter(Boolean).join(' ').toLowerCase();
+    return full.includes(q);
+  });
+  const tabsHtml=TABS.map(t=>{const on=tab===t.id;
+    return`<button onclick="setConnectComptesTab('${t.id}')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${on?'var(--acc)':'var(--b1)'};background:${on?'var(--acc)':'var(--s2)'};color:${on?'#fff':'var(--t2)'}">${t.lb} <span style="opacity:.75">(${counts[t.id]||0})</span></button>`;
+  }).join('');
+  let cols,rows;
+  const nameCell=c=>`<td class="tp" style="cursor:pointer" onclick="modalConnectCompteDetail('${escJs(c.user_id)}')">${esc([c.prenom,c.nom].filter(Boolean).join(' ')||'—')}</td>`;
+  if(tab==='club'){
+    cols=['Nom','Email','Club','Créé le'];
+    rows=list.map(c=>`<tr>
+      ${nameCell(c)}
+      <td style="font-size:12px">${esc(c.email||'—')}</td>
+      <td>${esc(c.club_nom||'—')}</td>
+      <td>${_ccFmtD(c.created_at)}</td>
+    </tr>`).join('');
+  }else if(tab==='joueur'){
+    cols=['Nom','Email','Ville','Club déclaré','Créé le'];
+    rows=list.map(c=>`<tr>
+      ${nameCell(c)}
+      <td style="font-size:12px">${esc(c.email||'—')}</td>
+      <td>${esc(c.ville||'—')}</td>
+      <td>${esc(c.club_nom||'—')}</td>
+      <td>${_ccFmtD(c.created_at)}</td>
+    </tr>`).join('');
+  }else{
+    cols=['Nom','Email','Ville','Abonnement agent','Athlètes','Créé le'];
+    rows=list.map(c=>{
+      const ag=c.agent_tier?`<span class="bd ${c.agent_status==='active'?'ba':'bw'}"><span class="bd-d"></span>${esc(c.agent_tier)}${c.agent_status?' · '+esc(c.agent_status):''}</span>`:'—';
+      return`<tr>
+        ${nameCell(c)}
+        <td style="font-size:12px">${esc(c.email||'—')}</td>
+        <td>${esc(c.ville||'—')}</td>
+        <td>${ag}</td>
+        <td>${c.nb_athletes||0}</td>
+        <td>${_ccFmtD(c.created_at)}</td>
+      </tr>`;
+    }).join('');
+  }
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px">${tabsHtml}</div>
+    <input id="cc-search" type="text" class="l-inp" placeholder="Rechercher nom, email…" value="${esc(_connectComptesFiltre)}" oninput="_connectComptesFiltre=this.value;renderConnectComptes()" style="height:34px;flex:1;max-width:280px;margin-left:auto">
+    <span style="font-size:11px;color:var(--t3);white-space:nowrap">${list.length} compte${list.length>1?'s':''}</span>
+  </div>
+  ${list.length?`<div class="tw"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`:'<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Aucun résultat.</div>'}`;
+}
+
+async function modalConnectCompteDetail(userId){
+  openModal('<div style="padding:32px;text-align:center;color:var(--t3)">Chargement de la fiche…</div>');
+  try{
+    const d=await sbFetch('rpc/connect_os_account_detail',{method:'POST',body:{p_user_id:userId}});
+    if(sbErr(d)||!d){openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">Compte introuvable.</div>`);return;}
+    const name=esc([d.prenom,d.nom].filter(Boolean).join(' ')||'—');
+    const TYPE_LBL={club:'Club+',joueur:'Joueur (Connect personnel)',particulier:'Particulier (parent/tuteur/agent)'};
+    const ic=(lbl,val)=>`<div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:14px"><div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">${lbl}</div><div style="font-size:13.5px;color:var(--t1);font-weight:500">${val}</div></div>`;
+    let body;
+    if(d.type==='club'){
+      body=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${ic('Email',esc(d.email||'—'))}
+        ${ic('Date de naissance',_ccFmtD(d.date_naissance))}
+        ${ic('N° licence',esc(d.numero_licence||'—'))}
+        ${ic('N° maillot',esc(d.numero_maillot||'—'))}
+        ${ic('Club',esc(d.club_nom||'—'))}
+        ${ic('Statut du compte',esc(d.account_status||'—'))}
+        ${ic('Créé le',_ccFmtD(d.created_at))}
+      </div>`;
+    }else{
+      const club=d.club_declare?[esc(d.club_declare.nom||'—'),d.club_declare.ville?esc(d.club_declare.ville):null,d.club_declare.equipe?esc(d.club_declare.equipe):null].filter(Boolean).join(' · '):'—';
+      const agent=d.agent_subscription?[esc(d.agent_subscription.tier||'—'),esc(d.agent_subscription.status||'—'),d.agent_subscription.current_period_end?'jusqu\'au '+_ccFmtD(d.agent_subscription.current_period_end):null,d.agent_subscription.cancel_at_period_end?'(résiliation prévue)':null].filter(Boolean).join(' · '):'—';
+      body=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${ic('Email',esc(d.email||'—'))}
+        ${ic('Téléphone',esc(d.telephone||'—'))}
+        ${ic('Ville',esc(d.ville||'—'))}
+        ${ic('Sport',esc(d.sport||'—'))}
+        ${ic('Poste',esc(d.poste||'—'))}
+        ${ic('Catégorie',esc(d.categorie||'—'))}
+        ${ic('Club déclaré',club)}
+        ${ic('Abonnement agent',agent)}
+        ${ic('Créé le',_ccFmtD(d.created_at))}
+      </div>`;
+      const managed=Array.isArray(d.managed_athletes)?d.managed_athletes:[];
+      if(managed.length){
+        body+=`<div style="margin-top:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Athlètes gérés (${managed.length})</div>
+        <div class="tw"><table><thead><tr><th>Nom</th><th>Sport</th><th>Catégorie</th><th>Relation</th></tr></thead><tbody>
+        ${managed.map(a=>`<tr><td>${esc([a.prenom,a.nom].filter(Boolean).join(' ')||'—')}</td><td>${esc(a.sport||'—')}</td><td>${esc(a.categorie||'—')}</td><td>${esc(a.relation_label||'—')}</td></tr>`).join('')}
+        </tbody></table></div></div>`;
+      }
+      const linked=Array.isArray(d.athletes_linked)?d.athletes_linked:[];
+      if(linked.length){
+        body+=`<div style="margin-top:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Athlètes liés (accès accepté, ${linked.length})</div>
+        <div class="tw"><table><thead><tr><th>Relation</th><th>Statut</th></tr></thead><tbody>
+        ${linked.map(a=>`<tr><td>${esc(a.relation_label||a.relation_type||'—')}</td><td>${esc(a.status||'—')}</td></tr>`).join('')}
+        </tbody></table></div></div>`;
+      }
+    }
+    openModal(`<div class="mh"><div class="mt">${name} <span style="font-size:11px;font-weight:600;color:var(--t3);margin-left:6px">${TYPE_LBL[d.type]||d.type}</span></div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+      <div class="mb">${body}</div>`);
+  }catch(e){openModal(`<div class="mh"><div class="mt">Erreur</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div><div class="mb">Erreur de chargement.</div>`);}
 }
 
 function modalModifierClient(idx){
