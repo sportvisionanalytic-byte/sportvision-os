@@ -92,10 +92,12 @@ export function CommandesView() {
 
       {orders !== null && visible.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
-          <span className="material-symbols-rounded !text-[24px] text-text-tertiary">receipt_long</span>
+          <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-prestations-bg">
+            <span className="material-symbols-rounded !text-[24px] text-prestations">receipt_long</span>
+          </span>
           <span className="font-sora text-[16px] font-semibold">{orders.length === 0 ? "Aucune commande pour le moment" : "Aucune commande dans cette catégorie"}</span>
           {orders.length === 0 && (
-            <Link href="/prestations" className="mt-1 rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[14px] font-semibold text-white">
+            <Link href="/prestations" className="mt-1 rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[14px] font-semibold text-white hover:brightness-[1.12]">
               Découvrir les prestations
             </Link>
           )}

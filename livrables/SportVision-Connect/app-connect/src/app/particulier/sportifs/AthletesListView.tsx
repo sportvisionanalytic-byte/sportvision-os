@@ -130,7 +130,7 @@ export function AthletesListView({ athletes, agentInfo }: { athletes: AthleteRow
           </p>
           <Link
             href="/particulier/sportifs/ajouter"
-            className="mt-1 self-start rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[15px] font-semibold text-white"
+            className="mt-1 self-start rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
           >
             Ajouter un sportif
           </Link>

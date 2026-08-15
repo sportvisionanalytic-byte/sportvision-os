@@ -269,7 +269,9 @@ export function MessagesThread({
           <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 lg:p-5">
             {messages.length === 0 && (
               <div className="m-auto flex max-w-[380px] flex-col items-center gap-2 text-center">
-                <span className="material-symbols-rounded !text-[32px] text-text-faint">forum</span>
+                <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-affiliations-bg">
+                  <span className="material-symbols-rounded !text-[24px] text-affiliations">forum</span>
+                </span>
                 <span className="font-sora text-[16px] font-semibold">Aucun message pour le moment</span>
                 <p className="text-[13px] text-text-tertiary">
                   Vous pourrez échanger avec SportVision depuis cet espace.

@@ -36,13 +36,15 @@ export function PrestationsCatalogueView({ offers }: { offers: CatalogueOffer[] 
 
       {visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
-          <span className="material-symbols-rounded !text-[24px] text-text-tertiary">camera_alt</span>
+          <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-prestations-bg">
+            <span className="material-symbols-rounded !text-[24px] text-prestations">camera_alt</span>
+          </span>
           <span className="text-[14px] text-text-tertiary">Aucune prestation dans cette catégorie pour le moment.</span>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((offer) => (
-            <OfferCard key={offer.id} offer={offer} />
+          {visible.map((offer, i) => (
+            <OfferCard key={offer.id} offer={offer} index={i} />
           ))}
         </div>
       )}
@@ -50,14 +52,15 @@ export function PrestationsCatalogueView({ offers }: { offers: CatalogueOffer[] 
   );
 }
 
-function OfferCard({ offer }: { offer: CatalogueOffer }) {
+function OfferCard({ offer, index }: { offer: CatalogueOffer; index: number }) {
   const ttc = baseTtc(offer);
   const recommended = isRecommended(offer);
   const collectif = isCollectif(offer);
   return (
     <Link
       href={`/prestations/${offer.id}`}
-      className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5 transition-colors duration-150 hover:bg-surface-hover"
+      className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5 transition-colors duration-150 hover:bg-surface-hover animate-sv-in motion-reduce:animate-none"
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
     >
       <div className="flex items-start justify-between gap-3">
         <span className="flex h-12 w-12 flex-none items-center justify-center rounded-sv bg-prestations-bg">
