@@ -55,7 +55,7 @@ interface NavItem {
 // depuis la migration-connect-v67-distinction-parent-agent.sql §1 : le libellé "Mes sportifs"
 // devient "Mes enfants" pour un parent/tuteur, "Mes sportifs suivis" pour un agent — voir
 // particulierSportifsLabel()/particulierSportifsShortLabel() dans lib/supabase/particulier.ts.
-function buildNavSections(sportifsLabel: string): { title: string | null; items: NavItem[] }[] {
+function buildNavSections(sportifsLabel: string, profilParticulier: string | null): { title: string | null; items: NavItem[] }[] {
   return [
     { title: null, items: [{ href: "/particulier", label: "Accueil", icon: "home" }] },
     {
@@ -77,11 +77,16 @@ function buildNavSections(sportifsLabel: string): { title: string | null; items:
       title: "Mon compte",
       items: [
         { href: "/particulier/factures", label: "Factures & paiements", icon: "payments" },
-        // Abonnement Agent (migration-connect-v57-abonnement-agent.sql) — visible pour tout compte
-        // particulier, pas seulement les comptes "agent" : n'importe quel compte peut envoyer une
-        // demande de type "agent" à tout moment (InviteAthleteForm.tsx) et a donc besoin de pouvoir
-        // consulter son palier avant d'en arriver là, jamais un onglet qui n'apparaît qu'après coup.
-        { href: "/particulier/abonnement", label: "Mon abonnement", icon: "workspace_premium" },
+        // Abonnement Agent (migration-connect-v57-abonnement-agent.sql) — réservé aux comptes
+        // profil_particulier='agent' (migration-connect-v67) depuis le 15/08 : un parent/tuteur/
+        // autre est plafonné à 3 sportifs de façon DURE, jamais payante (voir connect_particulier_
+        // limit() en base) — cet onglet n'a donc plus aucune utilité pour lui, contrairement à
+        // l'ancien raisonnement (repris ci-dessous par cohérence historique) qui datait d'avant
+        // cette distinction, quand le plafond payant s'appliquait uniquement via relation_type
+        // ='agent' sur chaque relation, indépendamment du compte. Retiré à la demande de Fouka.
+        ...(profilParticulier === "agent"
+          ? [{ href: "/particulier/abonnement", label: "Mon abonnement", icon: "workspace_premium" }]
+          : []),
         { href: "/particulier/profil", label: "Mon profil", icon: "person" },
       ],
     },
@@ -150,7 +155,7 @@ export function ParticularShell({
 
   const sportifsLabel = useMemo(() => particulierSportifsLabel(profilParticulier), [profilParticulier]);
   const sportifsShortLabel = useMemo(() => particulierSportifsShortLabel(profilParticulier), [profilParticulier]);
-  const NAV_SECTIONS = useMemo(() => buildNavSections(sportifsLabel), [sportifsLabel]);
+  const NAV_SECTIONS = useMemo(() => buildNavSections(sportifsLabel, profilParticulier), [sportifsLabel, profilParticulier]);
   const ALL_ITEMS = useMemo(() => NAV_SECTIONS.flatMap((s) => s.items), [NAV_SECTIONS]);
   const MOBILE_TABS = useMemo(() => buildMobileTabs(sportifsShortLabel), [sportifsShortLabel]);
   const MOBILE_MORE_ITEMS = useMemo(
