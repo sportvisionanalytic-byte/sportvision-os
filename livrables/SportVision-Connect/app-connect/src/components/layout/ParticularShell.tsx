@@ -49,6 +49,14 @@ interface NavItem {
   href: string;
   label: string;
   icon: string;
+  /** Couleur de l'icône de nav — même logique et mêmes valeurs que AppShell.tsx (voir son
+   * commentaire NavItem) : reprend la couleur déjà établie par CETTE section ailleurs dans
+   * l'app, jamais inventée. Identique à AppShell.tsx pour les items communs aux deux espaces
+   * (cohérence Espace joueur / Espace particulier demandée dans le rapport du 15/08). Mes
+   * sportifs et Mon abonnement (propres à l'Espace particulier) reprennent #22D3EE (affiliations)
+   * — group_add/hourglass_top/"Actuel"/check sont déjà en affiliations dans leurs écrans propres
+   * (AthletesListView.tsx, particulier/page.tsx, AbonnementView.tsx). */
+  color: string;
 }
 
 // NAV_SECTIONS/MOBILE_TABS sont des FONCTIONS de `sportifsLabel` (et non des constantes figées)
@@ -57,26 +65,26 @@ interface NavItem {
 // particulierSportifsLabel()/particulierSportifsShortLabel() dans lib/supabase/particulier.ts.
 function buildNavSections(sportifsLabel: string, profilParticulier: string | null): { title: string | null; items: NavItem[] }[] {
   return [
-    { title: null, items: [{ href: "/particulier", label: "Accueil", icon: "home" }] },
+    { title: null, items: [{ href: "/particulier", label: "Accueil", icon: "home", color: "#8CA9FF" }] },
     {
       title: sportifsLabel,
-      items: [{ href: "/particulier/sportifs", label: sportifsLabel, icon: "group" }],
+      items: [{ href: "/particulier/sportifs", label: sportifsLabel, icon: "group", color: "#22D3EE" }],
     },
     {
       title: "SportVision",
       items: [
-        { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt" },
-        { href: "/particulier/cotisations", label: "Cotisations", icon: "savings" },
-        { href: "/particulier/contenus", label: "Mes contenus", icon: "photo_library" },
-        { href: "/particulier/commandes", label: "Mes commandes", icon: "receipt_long" },
-        { href: "/particulier/calendrier", label: "Calendrier", icon: "calendar_month" },
-        { href: "/particulier/messages", label: "Messages", icon: "forum" },
+        { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
+        { href: "/particulier/cotisations", label: "Cotisations", icon: "savings", color: "#F472B6" },
+        { href: "/particulier/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
+        { href: "/particulier/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
+        { href: "/particulier/calendrier", label: "Calendrier", icon: "calendar_month", color: "#8CA9FF" },
+        { href: "/particulier/messages", label: "Messages", icon: "forum", color: "#22D3EE" },
       ],
     },
     {
       title: "Mon compte",
       items: [
-        { href: "/particulier/factures", label: "Factures & paiements", icon: "payments" },
+        { href: "/particulier/factures", label: "Factures & paiements", icon: "payments", color: "#FBBF24" },
         // Abonnement Agent (migration-connect-v57-abonnement-agent.sql) — réservé aux comptes
         // profil_particulier='agent' (migration-connect-v67) depuis le 15/08 : un parent/tuteur/
         // autre est plafonné à 3 sportifs de façon DURE, jamais payante (voir connect_particulier_
@@ -85,9 +93,9 @@ function buildNavSections(sportifsLabel: string, profilParticulier: string | nul
         // cette distinction, quand le plafond payant s'appliquait uniquement via relation_type
         // ='agent' sur chaque relation, indépendamment du compte. Retiré à la demande de Fouka.
         ...(profilParticulier === "agent"
-          ? [{ href: "/particulier/abonnement", label: "Mon abonnement", icon: "workspace_premium" }]
+          ? [{ href: "/particulier/abonnement", label: "Mon abonnement", icon: "workspace_premium", color: "#22D3EE" }]
           : []),
-        { href: "/particulier/profil", label: "Mon profil", icon: "person" },
+        { href: "/particulier/profil", label: "Mon profil", icon: "person", color: "#22D3EE" },
       ],
     },
   ];
@@ -97,11 +105,11 @@ function buildNavSections(sportifsLabel: string, profilParticulier: string | nul
 // Contenus · Profil"), le reste dans la feuille "Plus".
 function buildMobileTabs(sportifsShortLabel: string): NavItem[] {
   return [
-    { href: "/particulier", label: "Accueil", icon: "home" },
-    { href: "/particulier/sportifs", label: sportifsShortLabel, icon: "group" },
-    { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt" },
-    { href: "/particulier/contenus", label: "Contenus", icon: "photo_library" },
-    { href: "/particulier/profil", label: "Profil", icon: "person" },
+    { href: "/particulier", label: "Accueil", icon: "home", color: "#8CA9FF" },
+    { href: "/particulier/sportifs", label: sportifsShortLabel, icon: "group", color: "#22D3EE" },
+    { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
+    { href: "/particulier/contenus", label: "Contenus", icon: "photo_library", color: "#C084FC" },
+    { href: "/particulier/profil", label: "Profil", icon: "person", color: "#22D3EE" },
   ];
 }
 
@@ -314,7 +322,7 @@ export function ParticularShell({
                   >
                     <span
                       className="material-symbols-rounded !text-[21px]"
-                      style={{ color: active ? "#8CA9FF" : undefined }}
+                      style={{ color: item.color, opacity: active ? 1 : 0.62 }}
                     >
                       {item.icon}
                     </span>
@@ -414,7 +422,9 @@ export function ParticularShell({
                     onClick={() => setMenuOpen(false)}
                     className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
                   >
-                    <span className="material-symbols-rounded !text-[20px]">{item.icon}</span>
+                    <span className="material-symbols-rounded !text-[20px]" style={{ color: item.color }}>
+                      {item.icon}
+                    </span>
                     {item.label}
                   </Link>
                 ))}
@@ -452,7 +462,7 @@ export function ParticularShell({
             >
               <span
                 className="material-symbols-rounded !text-[22px]"
-                style={{ color: active ? "#8CA9FF" : "#7A7A9C" }}
+                style={{ color: item.color, opacity: active ? 1 : 0.62 }}
               >
                 {item.icon}
               </span>
@@ -488,7 +498,9 @@ export function ParticularShell({
                 onClick={() => setMoreOpen(false)}
                 className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
               >
-                <span className="material-symbols-rounded !text-[21px]">{item.icon}</span>
+                <span className="material-symbols-rounded !text-[21px]" style={{ color: item.color }}>
+                  {item.icon}
+                </span>
                 {item.label}
               </Link>
             ))}

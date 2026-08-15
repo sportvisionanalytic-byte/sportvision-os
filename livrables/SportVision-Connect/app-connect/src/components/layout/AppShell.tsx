@@ -29,33 +29,39 @@ interface NavItem {
   href: string;
   label: string;
   icon: string;
+  /** Couleur de l'icône de nav — reprend la couleur déjà utilisée par CETTE section ailleurs
+   * dans l'app (voir rapport de l'agent Couleurs sidebar, 15/08) plutôt qu'une couleur inventée.
+   * Affiliations #22D3EE, Contenus #C084FC, Prestations #8CA9FF, Cotisations #F472B6 (piliers,
+   * tailwind.config.ts) ; Factures #FBBF24 (attente) reprend la bannière "à régler" de
+   * FacturesView.tsx, seul signal de couleur propre à cette page. */
+  color: string;
 }
 
 const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
-  { title: null, items: [{ href: "/dashboard", label: "Accueil", icon: "home" }] },
+  { title: null, items: [{ href: "/dashboard", label: "Accueil", icon: "home", color: "#8CA9FF" }] },
   {
     title: "Mon univers",
     items: [
-      { href: "/affiliations", label: "Mes affiliations", icon: "shield" },
-      { href: "/equipes", label: "Mes équipes", icon: "groups" },
+      { href: "/affiliations", label: "Mes affiliations", icon: "shield", color: "#22D3EE" },
+      { href: "/equipes", label: "Mes équipes", icon: "groups", color: "#22D3EE" },
     ],
   },
   {
     title: "SportVision",
     items: [
-      { href: "/prestations", label: "Prestations", icon: "camera_alt" },
-      { href: "/cotisations", label: "Cotisations", icon: "savings" },
-      { href: "/contenus", label: "Mes contenus", icon: "photo_library" },
-      { href: "/commandes", label: "Mes commandes", icon: "receipt_long" },
-      { href: "/calendrier", label: "Calendrier", icon: "calendar_month" },
-      { href: "/messages", label: "Messages", icon: "forum" },
+      { href: "/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
+      { href: "/cotisations", label: "Cotisations", icon: "savings", color: "#F472B6" },
+      { href: "/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
+      { href: "/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
+      { href: "/calendrier", label: "Calendrier", icon: "calendar_month", color: "#8CA9FF" },
+      { href: "/messages", label: "Messages", icon: "forum", color: "#22D3EE" },
     ],
   },
   {
     title: "Mon compte",
     items: [
-      { href: "/factures", label: "Factures & paiements", icon: "payments" },
-      { href: "/profil", label: "Mon profil", icon: "person" },
+      { href: "/factures", label: "Factures & paiements", icon: "payments", color: "#FBBF24" },
+      { href: "/profil", label: "Mon profil", icon: "person", color: "#22D3EE" },
     ],
   },
 ];
@@ -64,11 +70,11 @@ const ALL_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
 
 // 5 onglets principaux mobile (README § Mobile) : le reste passe par la feuille "Plus".
 const MOBILE_TABS: NavItem[] = [
-  { href: "/dashboard", label: "Accueil", icon: "home" },
-  { href: "/contenus", label: "Contenus", icon: "photo_library" },
-  { href: "/prestations", label: "Prestations", icon: "camera_alt" },
-  { href: "/cotisations", label: "Cotisations", icon: "savings" },
-  { href: "/profil", label: "Profil", icon: "person" },
+  { href: "/dashboard", label: "Accueil", icon: "home", color: "#8CA9FF" },
+  { href: "/contenus", label: "Contenus", icon: "photo_library", color: "#C084FC" },
+  { href: "/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
+  { href: "/cotisations", label: "Cotisations", icon: "savings", color: "#F472B6" },
+  { href: "/profil", label: "Profil", icon: "person", color: "#22D3EE" },
 ];
 const MOBILE_MORE_ITEMS: NavItem[] = ALL_ITEMS.filter(
   (item) => !MOBILE_TABS.some((t) => t.href === item.href),
@@ -160,7 +166,7 @@ export function AppShell({
                   >
                     <span
                       className="material-symbols-rounded !text-[21px]"
-                      style={{ color: active ? "#8CA9FF" : undefined }}
+                      style={{ color: item.color, opacity: active ? 1 : 0.62 }}
                     >
                       {item.icon}
                     </span>
@@ -241,7 +247,9 @@ export function AppShell({
                     onClick={() => setMenuOpen(false)}
                     className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
                   >
-                    <span className="material-symbols-rounded !text-[20px]">{item.icon}</span>
+                    <span className="material-symbols-rounded !text-[20px]" style={{ color: item.color }}>
+                      {item.icon}
+                    </span>
                     {item.label}
                   </Link>
                 ))}
@@ -279,7 +287,7 @@ export function AppShell({
             >
               <span
                 className="material-symbols-rounded !text-[22px]"
-                style={{ color: active ? "#8CA9FF" : "#7A7A9C" }}
+                style={{ color: item.color, opacity: active ? 1 : 0.62 }}
               >
                 {item.icon}
               </span>
@@ -316,7 +324,9 @@ export function AppShell({
                 onClick={() => setMoreOpen(false)}
                 className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
               >
-                <span className="material-symbols-rounded !text-[21px]">{item.icon}</span>
+                <span className="material-symbols-rounded !text-[21px]" style={{ color: item.color }}>
+                  {item.icon}
+                </span>
                 {item.label}
               </Link>
             ))}
