@@ -113,27 +113,35 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
               {invoices.map((inv) => {
                 const status = INVOICE_STATUS_LABEL[inv.statut] || (INVOICE_STATUS_LABEL.brouillon as { label: string; fg: string; bg: string });
                 return (
-                  <div key={inv.id} className="flex items-center gap-3.5 rounded-sv-card border border-border bg-surface p-4">
-                    <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/5">
-                      <span className="material-symbols-rounded !text-[20px] text-text-tertiary">description</span>
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate text-[14px] font-medium text-text">{inv.offreNom || inv.numero}</span>
-                      <span className="text-[12.5px] text-text-tertiary">
-                        {inv.numero} · {formatDateLong(inv.dateEmission)}
+                  // Empilé sur mobile (icône+titre puis statut/montant/téléchargement en dessous) :
+                  // en une seule ligne, le pill de statut + le montant + l'icône de téléchargement
+                  // ne laissaient plus qu'une vingtaine de px au titre sur 375px, quasi illisible.
+                  // Revient à une seule ligne dès sm: où la largeur suffit.
+                  <div key={inv.id} className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-4 sm:flex-row sm:items-center sm:gap-3.5">
+                    <div className="flex min-w-0 items-center gap-3.5">
+                      <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/5">
+                        <span className="material-symbols-rounded !text-[20px] text-text-tertiary">description</span>
                       </span>
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="truncate text-[14px] font-medium text-text">{inv.offreNom || inv.numero}</span>
+                        <span className="truncate text-[12.5px] text-text-tertiary">
+                          {inv.numero} · {formatDateLong(inv.dateEmission)}
+                        </span>
+                      </div>
                     </div>
-                    <span className="flex-none rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: status.fg, background: status.bg }}>
-                      {status.label}
-                    </span>
-                    <span className="flex-none font-sora text-[14px] font-semibold">{formatEUR(inv.montantTtc)}</span>
-                    {inv.pdfUrl ? (
-                      <a href={inv.pdfUrl} target="_blank" rel="noreferrer" className="flex-none text-[#8CA9FF]">
-                        <span className="material-symbols-rounded !text-[20px]">download</span>
-                      </a>
-                    ) : (
-                      <span className="flex-none w-5" />
-                    )}
+                    <div className="flex items-center gap-3.5 sm:ml-auto sm:flex-none">
+                      <span className="flex-none rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: status.fg, background: status.bg }}>
+                        {status.label}
+                      </span>
+                      <span className="ml-auto flex-none font-sora text-[14px] font-semibold sm:ml-0">{formatEUR(inv.montantTtc)}</span>
+                      {inv.pdfUrl ? (
+                        <a href={inv.pdfUrl} target="_blank" rel="noreferrer" className="flex-none text-[#8CA9FF]">
+                          <span className="material-symbols-rounded !text-[20px]">download</span>
+                        </a>
+                      ) : (
+                        <span className="flex-none w-5" />
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -151,20 +159,25 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
               {payments.map((p) => {
                 const status = PAYMENT_STATUS_LABEL[p.statut] || (PAYMENT_STATUS_LABEL.en_attente as { label: string; fg: string; bg: string });
                 return (
-                  <div key={p.id} className="flex items-center gap-3.5 rounded-sv-card border border-border bg-surface p-4">
-                    <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/5">
-                      <span className="material-symbols-rounded !text-[20px] text-text-tertiary">payments</span>
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate text-[14px] font-medium text-text">{p.offreNom || "Paiement"}</span>
-                      <span className="text-[12.5px] text-text-tertiary">
-                        {p.prestationRef || "—"} · {formatDateLong(p.createdAt)}
+                  // Même correctif d'empilement mobile que la liste Factures ci-dessus.
+                  <div key={p.id} className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-4 sm:flex-row sm:items-center sm:gap-3.5">
+                    <div className="flex min-w-0 items-center gap-3.5">
+                      <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/5">
+                        <span className="material-symbols-rounded !text-[20px] text-text-tertiary">payments</span>
                       </span>
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="truncate text-[14px] font-medium text-text">{p.offreNom || "Paiement"}</span>
+                        <span className="truncate text-[12.5px] text-text-tertiary">
+                          {p.prestationRef || "—"} · {formatDateLong(p.createdAt)}
+                        </span>
+                      </div>
                     </div>
-                    <span className="flex-none rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: status.fg, background: status.bg }}>
-                      {status.label}
-                    </span>
-                    <span className="flex-none font-sora text-[14px] font-semibold">{formatEUR(p.montant)}</span>
+                    <div className="flex items-center gap-3.5 sm:ml-auto sm:flex-none">
+                      <span className="flex-none rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: status.fg, background: status.bg }}>
+                        {status.label}
+                      </span>
+                      <span className="ml-auto flex-none font-sora text-[14px] font-semibold sm:ml-0">{formatEUR(p.montant)}</span>
+                    </div>
                   </div>
                 );
               })}

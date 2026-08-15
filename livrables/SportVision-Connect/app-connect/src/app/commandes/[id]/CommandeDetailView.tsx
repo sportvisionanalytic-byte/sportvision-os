@@ -107,6 +107,13 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
               <TimelineStep key={s} stage={s} active={TIMELINE_STAGES.indexOf(stage) >= i} isLast={i === TIMELINE_STAGES.length - 1} />
             ))}
           </div>
+          {/* Sur mobile, les 6 libellés ("En production", 13 caractères) se retrouvaient sur
+              ~50px de colonne chacun — repliés sur 2-3 lignes, quasi illisibles (voir
+              TimelineStep : labels masqués sous sm: ci-dessous). Un résumé texte unique "Étape
+              X/6 · Libellé" reste toujours lisible, quelle que soit la longueur du libellé. */}
+          <span className="text-center text-[12.5px] font-medium text-text-secondary sm:hidden">
+            Étape {TIMELINE_STAGES.indexOf(stage) + 1}/{TIMELINE_STAGES.length} · {STAGE_LABEL[stage]}
+          </span>
         </div>
       ) : (
         <div className="flex items-center gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
@@ -189,7 +196,10 @@ function TimelineStep({ stage, active, isLast }: { stage: OrderStage; active: bo
         </span>
         {!isLast && <span className="mx-1 h-[2px] flex-1" style={{ background: active ? color.fg : "rgba(255,255,255,.12)" }} />}
       </div>
-      <span className="text-center text-[10.5px] leading-tight text-text-faint">{STAGE_LABEL[stage]}</span>
+      {/* Masqué sur mobile (6 colonnes ~50px chacune, libellés jusqu'à "En production" qui s'y
+          repliaient sur plusieurs lignes) — résumé texte unique affiché juste en dessous à la
+          place, voir l'appelant. */}
+      <span className="hidden text-center text-[10.5px] leading-tight text-text-faint sm:block">{STAGE_LABEL[stage]}</span>
     </div>
   );
 }

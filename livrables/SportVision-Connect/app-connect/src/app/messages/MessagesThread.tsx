@@ -241,8 +241,19 @@ export function MessagesThread({
 
   let lastDay = "";
 
+  // Hauteur mobile calculée depuis les chrome réels du shell (jamais un h-screen simple) :
+  // AppShell = pt-[68px]+pb-16 sur <main> + py-7 sur le conteneur = 188px de chrome hors de ce
+  // composant (hideHeader=false, /messages joueur direct). ParticularShell = pt-[112px]+pb-16+
+  // py-7 = 232px, PLUS le bloc titre + sélecteur "Ce message concerne :" rendu par
+  // MessagesParticulierView au-dessus de ce composant (hideHeader=true) — ~160px au pire (voir
+  // MessagesParticulierView.tsx, ligne des pills bornée à une seule ligne mobile pour rester
+  // prévisible). Avant ce correctif, un unique -140px pour les deux cas poussait la zone de
+  // saisie sous la bottom nav fixe sur mobile (jamais visible sans un scroll de page cassant le
+  // pattern "liste défile, saisie fixe") — bug trouvé lors de l'audit responsive du 15/08.
+  const mobileHeight = hideHeader ? "h-[calc(100vh-400px)]" : "h-[calc(100vh-195px)]";
+
   return (
-    <div className="flex h-[calc(100vh-140px)] flex-col gap-5 animate-sv-in lg:h-[calc(100vh-120px)]">
+    <div className={`flex ${mobileHeight} flex-col gap-5 animate-sv-in lg:h-[calc(100vh-120px)]`}>
       {!hideHeader && (
         <div className="flex flex-col gap-2">
           <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Messages</h1>
