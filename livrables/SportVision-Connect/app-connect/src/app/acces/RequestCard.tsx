@@ -34,6 +34,12 @@ export function RequestCard({
   const [busy, setBusy] = useState<"accept" | "refuse" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Paywall Agent (migration-connect-v57-abonnement-agent.sql) : connect_respond_profile_access_
+  // request lève une exception préfixée "PAYWALL_AGENT_LIMIT:" quand la demande vient d'un compte
+  // "agent" qui a atteint la limite de son palier — ce préfixe est le CONTRAT que ce composant lit
+  // pour distinguer ce refus d'une erreur technique générique. Message volontairement sans CTA
+  // d'action ici : c'est le compte DEMANDEUR (l'agent) qui doit changer de palier, pas vous — voir
+  // la bannière côté /particulier/sportifs pour le CTA réel, affiché au bon endroit.
   async function respond(accept: boolean) {
     setBusy(accept ? "accept" : "refuse");
     setError(null);
@@ -44,7 +50,13 @@ export function RequestCard({
     });
     setBusy(null);
     if (rpcError) {
-      setError("Impossible de traiter cette demande pour le moment.");
+      if (rpcError.message?.includes("PAYWALL_AGENT_LIMIT")) {
+        setError(
+          "Cette personne a atteint la limite de sportifs suivis pour son abonnement Agent actuel. Elle doit changer de palier depuis son propre espace avant que vous puissiez accepter.",
+        );
+      } else {
+        setError("Impossible de traiter cette demande pour le moment.");
+      }
       return;
     }
     router.refresh();

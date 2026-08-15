@@ -71,6 +71,11 @@ const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
     title: "Mon compte",
     items: [
       { href: "/particulier/factures", label: "Factures & paiements", icon: "payments" },
+      // Abonnement Agent (migration-connect-v57-abonnement-agent.sql) — visible pour tout compte
+      // particulier, pas seulement les comptes "agent" : n'importe quel compte peut envoyer une
+      // demande de type "agent" à tout moment (InviteAthleteForm.tsx) et a donc besoin de pouvoir
+      // consulter son palier avant d'en arriver là, jamais un onglet qui n'apparaît qu'après coup.
+      { href: "/particulier/abonnement", label: "Mon abonnement", icon: "workspace_premium" },
       { href: "/particulier/profil", label: "Mon profil", icon: "person" },
     ],
   },

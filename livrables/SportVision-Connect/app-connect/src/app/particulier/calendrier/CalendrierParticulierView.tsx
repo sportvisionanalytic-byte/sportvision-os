@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AthleteRow } from "@/lib/supabase/particulier";
+import { AddManualMatchForm } from "./AddManualMatchForm";
 
 export interface ParticulierEvent {
   id: string;
@@ -13,6 +15,12 @@ export interface ParticulierEvent {
   team: string | null;
   athleteKey: string;
   athleteLabel: string;
+  // 'club' = événement SportVision réel (club_calendar_events) · 'manual' = match saisi à la main
+  // par un agent/accompagnant (connect_manual_calendar_events, droit "modifier" —
+  // migration-connect-v57-abonnement-agent.sql §3). Le badge ci-dessous est la seule chose qui
+  // distingue les deux : ne JAMAIS laisser croire qu'un match saisi à la main est un événement
+  // SportVision officiel (consigne explicite du brief).
+  source: "club" | "manual";
 }
 
 const TYPE_LABEL: Record<string, { label: string; color: string; bg: string }> = {
@@ -37,12 +45,20 @@ export function CalendrierParticulierView({
   athletes: AthleteRow[];
   initialSportif: string | null;
 }) {
+  const router = useRouter();
   const [filter, setFilter] = useState<string | null>(initialSportif);
+  const [addingMatch, setAddingMatch] = useState(false);
 
   const filterOptions = useMemo(
     () => [{ key: null, label: "Tous" }, ...athletes.filter((a) => a.rights.calendrier).map((a) => ({ key: `${a.kind}:${a.refId}`, label: `${a.firstName} ${a.lastName}`.trim() }))],
     [athletes],
   );
+
+  // Sportifs pour lesquels l'ajout manuel de match est possible — droit "modifier"
+  // (migration-connect-v57-abonnement-agent.sql §3, right_modifier, premier branchement réel de
+  // ce droit). Un profil géré a toujours ce droit (rights.modifier = true par construction, cf.
+  // connect_list_my_athletes()) ; un sportif lié doit l'avoir explicitement accordé.
+  const modifiableAthletes = useMemo(() => athletes.filter((a) => a.rights.modifier), [athletes]);
 
   const today = new Date().toISOString().slice(0, 10);
   const visible = events
@@ -52,10 +68,36 @@ export function CalendrierParticulierView({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Calendrier</h1>
-        <p className="max-w-[560px] text-[15px] text-text-tertiary">Les événements SportVision à venir pour les sportifs que vous accompagnez.</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Calendrier</h1>
+          <p className="max-w-[560px] text-[15px] text-text-tertiary">Les événements SportVision à venir pour les sportifs que vous accompagnez.</p>
+        </div>
+        {/* Jamais un bouton décoratif : n'apparaît que si au moins un sportif accorde réellement
+            le droit "modifier" — cf. le principe déjà établi ailleurs dans ce projet ("une
+            fonction existe et fonctionne, ou elle n'est pas présentée"). */}
+        {modifiableAthletes.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setAddingMatch((v) => !v)}
+            className="flex h-[46px] flex-none items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-[18px] font-sora text-[15px] font-semibold hover:bg-white/[.12]"
+          >
+            <span className="material-symbols-rounded !text-[20px]">add</span>
+            Ajouter un match
+          </button>
+        )}
       </div>
+
+      {addingMatch && (
+        <AddManualMatchForm
+          athletes={modifiableAthletes}
+          onDone={() => {
+            setAddingMatch(false);
+            router.refresh();
+          }}
+          onCancel={() => setAddingMatch(false)}
+        />
+      )}
 
       {athletes.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -97,6 +139,13 @@ export function CalendrierParticulierView({
                     <span className="rounded-sv-pill px-2 py-0.5 text-[11px] font-medium" style={{ color: meta.color, background: meta.bg }}>
                       {meta.label}
                     </span>
+                    {/* Jamais confondu avec un événement SportVision officiel — consigne
+                        explicite du brief (migration-connect-v57 §3). */}
+                    {event.source === "manual" && (
+                      <span className="rounded-sv-pill bg-white/[.08] px-2 py-0.5 text-[11px] font-medium text-text-faint">
+                        Ajouté manuellement
+                      </span>
+                    )}
                   </div>
                   <span className="text-[13px] text-text-tertiary">
                     {formatDate(event.date)}
