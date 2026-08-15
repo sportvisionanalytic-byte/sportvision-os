@@ -278,8 +278,13 @@ export function ReservationWizardParticulier({
                       error={touched && !dureeValid ? "Requise (en minutes, supérieure à 0)." : null}
                     />
                     <span className="text-[12px] leading-relaxed text-text-tertiary">
-                      Durée totale de vos rushs, en minutes — au-delà de {offer.tarifPalier?.seuilMinutes ?? 6} min, le tarif
-                      passe à {offer.tarifPalier ? formatEUR(Math.round(offer.tarifPalier.prixHtAuDela * (1 + offer.tvaPct / 100) * 100) / 100) : "un tarif supérieur"} TTC.
+                      Durée totale de vos rushs, en minutes — au-delà de {offer.tarifPalier?.seuilMinutes ?? 6} min,
+                      {(() => {
+                        const prixAuDela = offer.tarifPalier?.prixHtAuDela;
+                        return prixAuDela != null
+                          ? ` le tarif passe à ${formatEUR(Math.round(prixAuDela * (1 + offer.tvaPct / 100) * 100) / 100)} TTC.`
+                          : " cette demande passe par un devis personnalisé (livraison expresse) — contactez SportVision après l'envoi de votre demande.";
+                      })()}
                     </span>
                   </div>
                 ) : (

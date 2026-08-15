@@ -202,19 +202,24 @@ serve(async (req) => {
           baseHt = tier?.prix_ht != null ? Number(tier.prix_ht) : null;
         } else if (offre.prix_ht != null) {
           baseHt = Number(offre.prix_ht);
-          const palier = offre.tarif_palier as { seuil_minutes?: number; prix_ht_au_dela?: number } | null;
+          const palier = offre.tarif_palier as { seuil_minutes?: number; prix_ht_au_dela?: number | null } | null;
           if (
             palier?.seuil_minutes != null &&
-            palier?.prix_ht_au_dela != null &&
             prestation.duree_rush_minutes != null &&
             Number(prestation.duree_rush_minutes) > Number(palier.seuil_minutes)
           ) {
-            baseHt = Number(palier.prix_ht_au_dela);
+            // Au-delà du seuil (migration-connect-v65) : prix_ht_au_dela peut être NULL — dans ce
+            // cas AUCUN montant n'est calculable (sur devis), baseHt devient null ci-dessous,
+            // volontairement PAS le prix de base (voir le "return" juste en dessous).
+            baseHt = palier.prix_ht_au_dela != null ? Number(palier.prix_ht_au_dela) : null;
           }
         }
         if (baseHt == null) {
           if (prestation.mode_livraison_montage === "lien_match") {
             return json({ error: "Plus de 4 matchs en lien : cette demande passe par un devis, contactez SportVision." }, 400);
+          }
+          if (prestation.duree_rush_minutes != null) {
+            return json({ error: "Rush de plus de 6 minutes : cette demande passe par un devis, contactez SportVision." }, 400);
           }
         } else {
         baseHt += optionsHt;

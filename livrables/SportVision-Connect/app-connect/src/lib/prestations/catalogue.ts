@@ -36,11 +36,13 @@ export interface CatalogueOption {
 
 // Tarif à palier générique (migration-connect-v63-prestation-montage-compilation.sql) — ex.
 // Montage Compilation : au-delà de `seuilMinutes` minutes de rush déclarées par le client, le
-// prix de base HT est remplacé par `prixHtAuDela` (jamais additionné). null pour toute offre à
-// tarif simple (l'immense majorité du catalogue).
+// prix de base HT est remplacé par `prixHtAuDela` (jamais additionné) — ou, si `prixHtAuDela` est
+// null (migration-connect-v65), AUCUN montant n'est calculable : la demande passe par un devis
+// (même traitement qu'un nombre de matchs hors barème en mode lien_match). `tarifPalier` lui-même
+// est null pour toute offre à tarif simple (l'immense majorité du catalogue).
 export interface CatalogueTarifPalier {
   seuilMinutes: number;
-  prixHtAuDela: number;
+  prixHtAuDela: number | null;
 }
 
 // Tarif par nombre de matchs fournis en lien (migration-connect-v64-montage-compilation-lien-
@@ -95,8 +97,11 @@ function parseTarifPalier(raw: unknown): CatalogueTarifPalier | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as { seuil_minutes?: unknown; prix_ht_au_dela?: unknown };
   const seuilMinutes = Number(o.seuil_minutes);
-  const prixHtAuDela = Number(o.prix_ht_au_dela);
-  if (!Number.isFinite(seuilMinutes) || !Number.isFinite(prixHtAuDela)) return null;
+  if (!Number.isFinite(seuilMinutes)) return null;
+  // prix_ht_au_dela absent/null = sur devis au-delà du seuil (migration-connect-v65) — pas une
+  // donnée invalide, un cas normal, à la différence de seuil_minutes qui reste obligatoire.
+  const prixHtAuDelaNum = Number(o.prix_ht_au_dela);
+  const prixHtAuDela = o.prix_ht_au_dela != null && Number.isFinite(prixHtAuDelaNum) ? prixHtAuDelaNum : null;
   return { seuilMinutes, prixHtAuDela };
 }
 
@@ -229,8 +234,9 @@ export function totalTtcWithOptions(offer: Pick<CatalogueOffer, "tarifType" | "p
 }
 
 /** Prix de base HT tenant compte du palier de durée (ex. Montage Compilation, rush > 6 min →
- * 80 € HT PROVISOIRE — cf. migration-connect-v63) : `offer.prixHt` si `dureeMinutes` est vide ou
- * sous le seuil, `tarifPalier.prixHtAuDela` au-delà. AFFICHAGE UNIQUEMENT (préview avant
+ * rush > 6 min → sur devis, migration-connect-v65) : `offer.prixHt` si `dureeMinutes` est vide ou
+ * sous le seuil, `tarifPalier.prixHtAuDela` au-delà (peut être `null` = sur devis, voir
+ * `CatalogueTarifPalier`). AFFICHAGE UNIQUEMENT (préview avant
  * paiement) — le montant réellement facturé est toujours recalculé côté serveur par
  * create-checkout-session à partir de `prestations.duree_rush_minutes` en base, jamais depuis
  * cette valeur côté client. */
