@@ -19,13 +19,14 @@ export default async function AbonnementPage({
   const supabase = await createClient();
   const { user } = await requireParticulierAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
-  const identity = resolveDisplayIdentity(user, player);
-  const firstName = identity.firstName || user.email?.split("@")[0] || "";
-  const [athletes, info] = await Promise.all([
+  // player, athletes et info sont indépendants — voir rapport fluidité perçue 15/08.
+  const [player, athletes, info] = await Promise.all([
+    buildPlayerContext(supabase, user.id),
     fetchMyAthletes(supabase).catch(() => []),
     fetchAgentSubscriptionInfo(supabase),
   ]);
+  const identity = resolveDisplayIdentity(user, player);
+  const firstName = identity.firstName || user.email?.split("@")[0] || "";
 
   return (
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>

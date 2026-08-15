@@ -15,9 +15,10 @@ export default async function PrestationsPage() {
   const supabase = await createClient();
   const { user } = await requireJoueurAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
+  // player et offers sont indépendants (fetchPlayerCatalogue ne dépend pas du profil joueur) —
+  // voir rapport fluidité perçue 15/08.
+  const [player, offers] = await Promise.all([buildPlayerContext(supabase, user.id), fetchPlayerCatalogue(supabase)]);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";
-  const offers = await fetchPlayerCatalogue(supabase);
 
   return (
     <AppShell firstName={firstName}>

@@ -30,7 +30,17 @@ export default async function ContenusPage() {
   const supabase = await createClient();
   const { user } = await requireJoueurAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
+  // player et favRows sont indépendants (contenu_favoris ne dépend que de user.id, pas du
+  // profil joueur) — voir rapport fluidité perçue 15/08. club_media, en revanche, a besoin de
+  // player.club.id une fois résolu : dépendance réelle, reste séquentiel après le Promise.all.
+  const [player, favRows] = await Promise.all([
+    buildPlayerContext(supabase, user.id),
+    supabase
+      .from("contenu_favoris")
+      .select("media_asset_id")
+      .eq("user_id", user.id)
+      .then((res) => res.data),
+  ]);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";
 
   let items: ContentItem[] = [];
@@ -53,10 +63,6 @@ export default async function ContenusPage() {
     }));
   }
 
-  const { data: favRows } = await supabase
-    .from("contenu_favoris")
-    .select("media_asset_id")
-    .eq("user_id", user.id);
   const favoriteIds = (favRows ?? []).map((r) => r.media_asset_id as string);
 
   return (

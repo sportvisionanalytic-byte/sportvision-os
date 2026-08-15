@@ -11,11 +11,11 @@ export default async function CotisationsPage() {
   const supabase = await createClient();
   const { user } = await requireJoueurAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
+  // player et fundings sont indépendants (list_my_fundings ne prend aucun paramètre dérivé de
+  // player) — voir rapport fluidité perçue 15/08.
+  const [player, fundingsRes] = await Promise.all([buildPlayerContext(supabase, user.id), supabase.rpc("list_my_fundings")]);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";
-
-  const { data } = await supabase.rpc("list_my_fundings");
-  const fundings = (data || []) as FundingRow[];
+  const fundings = (fundingsRes.data || []) as FundingRow[];
 
   return (
     <AppShell firstName={firstName}>

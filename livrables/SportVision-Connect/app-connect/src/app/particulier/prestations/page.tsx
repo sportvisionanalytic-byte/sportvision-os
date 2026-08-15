@@ -19,11 +19,14 @@ export default async function PrestationsParticulierPage({
   const supabase = await createClient();
   const { user } = await requireParticulierAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
+  // player, athletes et offers sont indépendants — voir rapport fluidité perçue 15/08.
+  const [player, athletes, offers] = await Promise.all([
+    buildPlayerContext(supabase, user.id),
+    fetchMyAthletes(supabase).catch(() => []),
+    fetchPlayerCatalogue(supabase),
+  ]);
   const identity = resolveDisplayIdentity(user, player);
   const firstName = identity.firstName || user.email?.split("@")[0] || "";
-
-  const [athletes, offers] = await Promise.all([fetchMyAthletes(supabase).catch(() => []), fetchPlayerCatalogue(supabase)]);
 
   return (
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>

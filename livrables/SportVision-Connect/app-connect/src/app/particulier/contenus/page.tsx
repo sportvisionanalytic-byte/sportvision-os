@@ -18,12 +18,17 @@ export default async function ContenusParticulierPage({
   const supabase = await createClient();
   const { user } = await requireParticulierAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
+  // player, athletes et l'appel RPC contenus sont indépendants (connect_list_contents_for_
+  // athletes résout lui-même la liste de sportifs côté serveur) — voir rapport fluidité perçue
+  // 15/08.
+  const [player, athletes, contentsRes] = await Promise.all([
+    buildPlayerContext(supabase, user.id),
+    fetchMyAthletes(supabase).catch(() => []),
+    supabase.rpc("connect_list_contents_for_athletes"),
+  ]);
   const identity = resolveDisplayIdentity(user, player);
   const firstName = identity.firstName || user.email?.split("@")[0] || "";
-  const athletes = await fetchMyAthletes(supabase).catch(() => []);
-
-  const { data } = await supabase.rpc("connect_list_contents_for_athletes");
+  const { data } = contentsRes;
   const items = ((data || []) as Array<{
     athlete_kind: string;
     athlete_ref_id: string;

@@ -16,12 +16,17 @@ export default async function CalendrierParticulierPage({
   const supabase = await createClient();
   const { user } = await requireParticulierAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
+  // player, athletes et l'appel RPC calendrier sont indépendants (connect_list_calendar_for_
+  // athletes résout lui-même la liste de sportifs côté serveur) — voir rapport fluidité perçue
+  // 15/08.
+  const [player, athletes, calendarRes] = await Promise.all([
+    buildPlayerContext(supabase, user.id),
+    fetchMyAthletes(supabase).catch(() => []),
+    supabase.rpc("connect_list_calendar_for_athletes"),
+  ]);
   const identity = resolveDisplayIdentity(user, player);
   const firstName = identity.firstName || user.email?.split("@")[0] || "";
-  const athletes = await fetchMyAthletes(supabase).catch(() => []);
-
-  const { data } = await supabase.rpc("connect_list_calendar_for_athletes");
+  const { data } = calendarRes;
   const events = ((data || []) as Array<{
     athlete_kind: string;
     athlete_ref_id: string;

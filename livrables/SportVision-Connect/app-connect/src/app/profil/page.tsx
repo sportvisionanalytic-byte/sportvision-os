@@ -31,17 +31,20 @@ export default async function ProfilPage() {
   const monogram = (identity.firstName[0] || "?").toUpperCase();
   const fullName = `${identity.firstName} ${identity.lastName}`.trim() || identity.email;
 
-  const { count: pendingCount } = await supabase
-    .from("connect_access_relationships")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_user_id", user.id)
-    .eq("status", "en_attente");
-
-  const { count: grantedCount } = await supabase
-    .from("connect_access_relationships")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_user_id", user.id)
-    .eq("status", "acceptee");
+  // pendingCount et grantedCount sont deux comptages indépendants (statuts différents), ni l'un
+  // ni l'autre ne dépend du Promise.all ci-dessus — voir rapport fluidité perçue 15/08.
+  const [{ count: pendingCount }, { count: grantedCount }] = await Promise.all([
+    supabase
+      .from("connect_access_relationships")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_user_id", user.id)
+      .eq("status", "en_attente"),
+    supabase
+      .from("connect_access_relationships")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_user_id", user.id)
+      .eq("status", "acceptee"),
+  ]);
 
   const pending = pendingCount || 0;
   const granted = grantedCount || 0;

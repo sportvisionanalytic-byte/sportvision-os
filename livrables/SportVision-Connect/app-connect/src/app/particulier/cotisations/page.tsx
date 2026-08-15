@@ -12,13 +12,16 @@ export default async function CotisationsParticulierPage() {
   const supabase = await createClient();
   const { user } = await requireParticulierAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
+  // player, athletes et fundings sont indépendants (list_my_fundings ne prend aucun paramètre
+  // dérivé de player/athletes) — voir rapport fluidité perçue 15/08.
+  const [player, athletes, fundingsRes] = await Promise.all([
+    buildPlayerContext(supabase, user.id),
+    fetchMyAthletes(supabase).catch(() => []),
+    supabase.rpc("list_my_fundings"),
+  ]);
   const identity = resolveDisplayIdentity(user, player);
   const firstName = identity.firstName || user.email?.split("@")[0] || "";
-  const athletes = await fetchMyAthletes(supabase).catch(() => []);
-
-  const { data } = await supabase.rpc("list_my_fundings");
-  const fundings = (data || []) as FundingRow[];
+  const fundings = (fundingsRes.data || []) as FundingRow[];
 
   return (
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>

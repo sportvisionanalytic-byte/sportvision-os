@@ -25,19 +25,20 @@ export default async function ParticulierHomePage() {
   const supabase = await createClient();
   const { user } = await requireParticulierAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
-  const identity = resolveDisplayIdentity(user, player);
-  const firstName = identity.firstName || user.email?.split("@")[0] || "";
-
-  const athletes = await fetchMyAthletes(supabase).catch(() => []);
-
-  const [ordersRes, fundingsRes, unreadCount, contentsRes, eventsRes] = await Promise.all([
+  // player, athletes et les 5 requêtes ci-dessous sont toutes indépendantes (aucune ne dépend
+  // du résultat d'une autre — voir rapport fluidité perçue 15/08) : un seul Promise.all au lieu
+  // de deux awaits séquentiels puis un groupe, pour démarrer les 7 requêtes en parallèle.
+  const [player, athletes, ordersRes, fundingsRes, unreadCount, contentsRes, eventsRes] = await Promise.all([
+    buildPlayerContext(supabase, user.id),
+    fetchMyAthletes(supabase).catch(() => []),
     supabase.functions.invoke("connect-player-prestations", { body: { action: "list_orders", multi: true } }),
     supabase.rpc("list_my_fundings"),
     getOwnUnreadCount(supabase, user.id),
     supabase.rpc("connect_list_contents_for_athletes"),
     supabase.rpc("connect_list_calendar_for_athletes"),
   ]);
+  const identity = resolveDisplayIdentity(user, player);
+  const firstName = identity.firstName || user.email?.split("@")[0] || "";
 
   const orders = ((ordersRes.data?.orders || []) as (PlayerOrder & { forWho: string | null })[]).filter(
     (o) => !["annulée", "refusée", "annulee"].includes(o.statut),
@@ -82,7 +83,7 @@ export default async function ParticulierHomePage() {
 
   return (
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 animate-sv-in">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div className="flex flex-col gap-2">
             <h1 className="font-sora text-[33px] font-bold tracking-tight">Bonjour {firstName} 👋</h1>

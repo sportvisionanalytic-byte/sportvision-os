@@ -345,10 +345,14 @@ export function MessagesThread({
               type="button"
               onClick={() => void handleSend()}
               disabled={!draft.trim() || sending}
-              className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-sv-gradient text-white disabled:opacity-45"
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-sv-gradient text-white disabled:cursor-wait disabled:opacity-75"
               aria-label="Envoyer"
             >
-              <span className="material-symbols-rounded !text-[20px]">send</span>
+              {sending ? (
+                <span className="h-[18px] w-[18px] animate-sv-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
+              ) : (
+                <span className="material-symbols-rounded !text-[20px]">send</span>
+              )}
             </button>
           </div>
         </div>

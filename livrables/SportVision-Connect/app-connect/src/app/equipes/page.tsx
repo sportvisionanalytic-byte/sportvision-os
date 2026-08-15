@@ -22,11 +22,11 @@ export default async function EquipesPage() {
   const supabase = await createClient();
   const { user } = await requireJoueurAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
+  // player et groups sont indépendants (list_my_groups ne prend aucun paramètre dérivé de
+  // player) — voir rapport fluidité perçue 15/08.
+  const [player, groupsRes] = await Promise.all([buildPlayerContext(supabase, user.id), supabase.rpc("list_my_groups")]);
   const firstName = player?.firstName || user.email?.split("@")[0] || "";
-
-  const { data: groups } = await supabase.rpc("list_my_groups");
-  const list = (groups || []) as GroupRow[];
+  const list = (groupsRes.data || []) as GroupRow[];
 
   return (
     <AppShell firstName={firstName}>

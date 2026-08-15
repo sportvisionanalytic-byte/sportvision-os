@@ -30,7 +30,7 @@ export default async function ProfilParticulierPage() {
 
   return (
     <ParticularShell firstName={identity.firstName} athletes={toNavItems(athletes)}>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 animate-sv-in">
         <div className="rounded-sv-card p-px" style={{ background: "linear-gradient(130deg, rgba(168,85,247,.5), rgba(34,211,238,.24) 60%, transparent)" }}>
           <div className="flex flex-wrap items-center gap-4 rounded-[calc(theme(borderRadius.sv-card)-1px)] bg-bg-elevated p-5">
             <Avatar url={settings.avatarUrl} label={identity.firstName} size={60} className="text-[20px]" />

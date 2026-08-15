@@ -11,10 +11,13 @@ export default async function FacturesParticulierPage() {
   const supabase = await createClient();
   const { user } = await requireParticulierAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
+  // player et athletes sont indépendants — voir rapport fluidité perçue 15/08.
+  const [player, athletes] = await Promise.all([
+    buildPlayerContext(supabase, user.id),
+    fetchMyAthletes(supabase).catch(() => []),
+  ]);
   const identity = resolveDisplayIdentity(user, player);
   const firstName = identity.firstName || user.email?.split("@")[0] || "";
-  const athletes = await fetchMyAthletes(supabase).catch(() => []);
 
   return (
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
