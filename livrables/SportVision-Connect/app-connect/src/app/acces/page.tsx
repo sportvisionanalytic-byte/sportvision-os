@@ -31,7 +31,7 @@ export default async function AccesPage() {
   const { data: granted } = await supabase
     .from("connect_access_relationships")
     .select(
-      "id, grantee_display_name, relation_type, responded_at, right_voir, right_download, right_reserver, right_commandes, right_factures, right_payer, right_cotisation, right_calendrier, right_modifier",
+      "id, grantee_user_id, grantee_display_name, relation_type, responded_at, right_voir, right_download, right_reserver, right_commandes, right_factures, right_payer, right_cotisation, right_calendrier, right_modifier",
     )
     .eq("owner_user_id", user.id)
     .eq("status", "acceptee")
@@ -39,6 +39,28 @@ export default async function AccesPage() {
 
   const requestList = requests || [];
   const grantedList = granted || [];
+
+  // Nom d'agence (connect_profile_settings.nom_agence, migration-connect-v70) pour les relations
+  // 'agent' uniquement. La policy RLS de connect_profile_settings ("cps_self_all") ne laisse lire
+  // que sa propre ligne — un select direct ici (session du sportif) ne pourrait donc jamais lire
+  // la ligne de l'agent. connect_get_agent_agency_names() (RPC SECURITY DEFINER, migration-
+  // connect-v70) contourne ça proprement : elle ne renvoie QUE (user_id, nom_agence), jamais le
+  // reste de la ligne de l'agent (téléphone, ville, etc.), et uniquement pour les agents avec
+  // lesquels L'APPELANT (auth.uid(), vérifié en interne) a une relation 'agent' acceptée — jamais
+  // un paramètre à fournir pour ce filtre, impossible de la détourner pour lire l'agence d'un
+  // agent avec qui on n'a aucune relation.
+  const agentGranteeIds = grantedList
+    .filter((g) => g.relation_type === "agent")
+    .map((g) => g.grantee_user_id);
+  const agencyNameByUserId: Record<string, string | null> = {};
+  if (agentGranteeIds.length > 0) {
+    const { data: agencies } = await supabase.rpc("connect_get_agent_agency_names", {
+      p_agent_user_ids: agentGranteeIds,
+    });
+    for (const a of (agencies || []) as Array<{ user_id: string; nom_agence: string | null }>) {
+      agencyNameByUserId[a.user_id] = a.nom_agence;
+    }
+  }
 
   return (
     <AppShell firstName={firstName}>
@@ -100,6 +122,7 @@ export default async function AccesPage() {
                     relationType={g.relation_type}
                     since={g.responded_at ? formatSince(g.responded_at) : "récemment"}
                     initialRights={rights}
+                    agencyName={g.relation_type === "agent" ? agencyNameByUserId[g.grantee_user_id] ?? null : null}
                   />
                 );
               })}
