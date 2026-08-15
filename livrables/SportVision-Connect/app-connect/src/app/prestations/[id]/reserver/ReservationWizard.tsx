@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
-import { type CatalogueOffer, totalTtcWithOptions } from "@/lib/prestations/catalogue";
+import { type CatalogueOffer, MONTAGE_COMPILATION_SLUG, estimatedTtc } from "@/lib/prestations/catalogue";
 import { formatEUR, needsRetractationWaiver } from "@/lib/prestations/format";
 
 // Wizard « Demander une prestation » — 4 étapes (MASTER-CONNECT-V1.md §18, design-connect-
@@ -43,6 +43,13 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
 
   const [optionNames, setOptionNames] = useState<string[]>([]);
 
+  // Durée totale de rush déclarée (minutes) — Montage Compilation uniquement (migration-connect-
+  // v63). Déclaratif : jamais de détection automatique de durée vidéo, hors scope. Aucune remise
+  // Agent affichée ici (réservée à l'Espace particulier, cf. ReservationWizardParticulier.tsx) :
+  // un compte joueur n'a jamais d'abonnement Agent actif à ce titre, connect-checkout-session
+  // recalcule de toute façon 0% côté serveur pour ce flux.
+  const [dureeRushMinutes, setDureeRushMinutes] = useState("");
+
   const [paiementMode, setPaiementMode] = useState<PaiementMode>("seul");
   const [retractationRenoncee, setRetractationRenoncee] = useState(false);
   const [cgvAcceptee, setCgvAcceptee] = useState(false);
@@ -52,10 +59,14 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
   const [result, setResult] = useState<{ id: string; reference: string } | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const ttc = totalTtcWithOptions(offer, optionNames);
+  const isMontageCompilation = offer.slug === MONTAGE_COMPILATION_SLUG;
+  const dureeRushMinutesNum = dureeRushMinutes.trim() !== "" ? Number(dureeRushMinutes) : null;
+  const dureeValid = !isMontageCompilation || (dureeRushMinutesNum != null && Number.isFinite(dureeRushMinutesNum) && dureeRushMinutesNum > 0);
+
+  const ttc = estimatedTtc(offer, dureeRushMinutesNum, optionNames);
   const waiverNeeded = needsRetractationWaiver(date);
 
-  const step1Valid = !!equipe.trim() && !!date && !!lieu.trim();
+  const step1Valid = !!equipe.trim() && !!date && !!lieu.trim() && dureeValid;
   const step3Valid = cgvAcceptee && (!waiverNeeded || retractationRenoncee);
 
   function toggleOption(nom: string) {
@@ -90,6 +101,9 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
         optionNames,
         retractationRenoncee,
         paiementMode,
+        // Durée de rush déclarée (Montage Compilation uniquement) — voir le commentaire
+        // équivalent dans ReservationWizardParticulier.tsx.
+        dureeRushMinutes: isMontageCompilation ? dureeRushMinutesNum : undefined,
       },
     });
 
@@ -160,6 +174,24 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
               <Field id="rw-heure" label="Heure · facultatif" type="time" value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} />
             </div>
             <Field id="rw-lieu" label="Lieu" placeholder="Stade, adresse" value={lieu} onChange={(e) => setLieu(e.target.value)} error={touched && !lieu.trim() ? "Requis." : null} />
+            {isMontageCompilation && (
+              <div className="flex flex-col gap-2">
+                <Field
+                  id="rw-duree-rush"
+                  label="Durée totale de vos rushs (minutes)"
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  value={dureeRushMinutes}
+                  onChange={(e) => setDureeRushMinutes(e.target.value)}
+                  error={touched && !dureeValid ? "Requise (en minutes, supérieure à 0)." : null}
+                />
+                <span className="text-[12px] leading-relaxed text-text-tertiary">
+                  Durée totale de vos rushs, en minutes — au-delà de {offer.tarifPalier?.seuilMinutes ?? 6} min, le tarif
+                  passe à {offer.tarifPalier ? formatEUR(Math.round(offer.tarifPalier.prixHtAuDela * (1 + offer.tvaPct / 100) * 100) / 100) : "un tarif supérieur"} TTC.
+                </span>
+              </div>
+            )}
             <Field id="rw-categorie" label="Catégorie · facultatif" placeholder="U18 R2" value={categorie} onChange={(e) => setCategorie(e.target.value)} />
             <div className="flex flex-col gap-2">
               <label htmlFor="rw-notes" className="text-[13px] font-medium text-text-secondary">Notes · facultatif</label>

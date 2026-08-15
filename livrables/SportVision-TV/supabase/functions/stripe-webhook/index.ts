@@ -23,6 +23,11 @@
 //             (abonnement Agent, Espace particulier, migration-connect-v57, 2026-08-15) —
 //             customer.subscription.updated/deleted et invoice.payment_failed sont DÉJÀ écoutés
 //             depuis l'abonnement Club+ ci-dessus, aucun ajout requis pour ceux-là côté Agent.
+// AJOUT 15/08/2026 (migration-connect-v63-prestation-montage-compilation.sql) : la branche
+//             checkout.session.completed / paiementId consomme désormais aussi la remise
+//             mensuelle Agent (-10%, palier Pro) quand create-checkout-session l'a appliquée
+//             (metadata apply_monthly_discount/agent_user_id) — aucun nouvel événement Stripe à
+//             ajouter côté dashboard pour ça, checkout.session.completed est déjà écouté.
 // Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
 //                  PENNYLANE_API_KEY (pour l'avoir automatique sur remboursement — optionnel : si
 //                  absente, le remboursement est quand même resynchronisé, seul l'avoir Pennylane
@@ -589,6 +594,28 @@ serve(async (req) => {
             document_type: "paiement",
             description: `Paiement ${paiement.type_paiement} de ${paiement.montant} € reçu via Stripe`,
           });
+
+          // Remise mensuelle Agent (-10%, palier Pro, une fois par période — migration-connect-
+          // v57 §2 + v63-prestation-montage-compilation.sql) : consommée ICI, uniquement
+          // maintenant que Stripe a confirmé le paiement (jamais avant, jamais côté client —
+          // même principe que le reste de ce fichier). create-checkout-session ne renseigne
+          // apply_monthly_discount/agent_user_id sur la session que lorsque
+          // connect_agent_discount() a confirmé monthly_pct > 0 pour ce payeur au moment du
+          // checkout ; on ne revérifie pas ici (la garde `paiement.statut !== "reussi"`
+          // ci-dessus empêche déjà toute double consommation sur un retry webhook), on écrit
+          // simplement l'état "consommée pour la période en cours" — exactement le mécanisme
+          // documenté dans le commentaire de connect_agent_discount() (migration-connect-v57).
+          if (session.metadata?.apply_monthly_discount === "true" && session.metadata?.agent_user_id) {
+            try {
+              await admin
+                .from("connect_agent_subscriptions")
+                .update({ monthly_discount_used_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+                .eq("user_id", session.metadata.agent_user_id as string)
+                .eq("status", "active");
+            } catch (_e) {
+              console.error("[stripe-webhook] consommation de la remise mensuelle Agent a échoué :", _e);
+            }
+          }
         }
       }
     }
