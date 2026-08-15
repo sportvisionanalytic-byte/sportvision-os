@@ -85,6 +85,7 @@ begin
   left join connect_declared_clubs dc on dc.id = dcp.declared_club_id
   left join connect_agent_subscriptions cas on cas.user_id = cps.user_id
   order by 11 desc;
+end;
 $$;
 
 revoke all on function connect_os_accounts_list() from public;
