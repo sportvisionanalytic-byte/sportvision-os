@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getAvatarAndProfilParticulier } from "@/lib/supabase/session";
-import { particulierSportifsLabel, particulierSportifsShortLabel } from "@/lib/supabase/particulier";
+import { particulierSportifsLabel, particulierSportifsShortLabel, particulierRoleLabel } from "@/lib/supabase/particulier";
 import { Avatar } from "@/components/ui/Avatar";
 import { gradientFor } from "@/lib/avatarGradients";
 import { Topbar } from "./Topbar";
@@ -153,6 +153,7 @@ export function ParticularShell({
     };
   }, []);
 
+  const roleLabel = useMemo(() => particulierRoleLabel(profilParticulier), [profilParticulier]);
   const sportifsLabel = useMemo(() => particulierSportifsLabel(profilParticulier), [profilParticulier]);
   const sportifsShortLabel = useMemo(() => particulierSportifsShortLabel(profilParticulier), [profilParticulier]);
   const NAV_SECTIONS = useMemo(() => buildNavSections(sportifsLabel, profilParticulier), [sportifsLabel, profilParticulier]);
@@ -331,8 +332,13 @@ export function ParticularShell({
           className="flex items-center gap-2.5 rounded-sv border border-border bg-surface px-3 py-2.5 text-left hover:bg-surface-hover"
         >
           <Avatar url={avatarUrl} label={firstName} size={36} className="text-[13px]" />
-          <span className="flex flex-col gap-0.5 leading-tight">
-            <span className="font-sora text-[13px] font-semibold">{firstName}</span>
+          <span className="flex min-w-0 flex-col gap-0.5 leading-tight">
+            <span className="flex items-center gap-1.5">
+              <span className="truncate font-sora text-[13px] font-semibold">{firstName}</span>
+              <span className="flex-none rounded-sv-pill bg-white/[.08] px-1.5 py-0.5 text-[10px] font-medium text-text-tertiary">
+                {roleLabel}
+              </span>
+            </span>
             <span className="text-[11px] text-text-tertiary">Se déconnecter</span>
           </span>
         </button>
@@ -383,6 +389,17 @@ export function ParticularShell({
             className="absolute right-3 top-[120px] flex max-h-[calc(100vh-140px)] w-64 flex-col gap-3 overflow-y-auto rounded-sv-card border border-border bg-bg-elevated p-2"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Rôle visible dès l'ouverture du menu mobile (avatar seul dans le header compact,
+                pas de place pour le nom/rôle là-bas) — demande de Fouka le 15/08. */}
+            <div className="flex items-center gap-2.5 rounded-sv px-3 py-2">
+              <Avatar url={avatarUrl} label={firstName} size={32} className="text-[12px]" />
+              <span className="flex min-w-0 flex-col gap-0.5 leading-tight">
+                <span className="truncate font-sora text-[13px] font-semibold">{firstName}</span>
+                <span className="w-fit rounded-sv-pill bg-white/[.08] px-1.5 py-0.5 text-[10px] font-medium text-text-tertiary">
+                  {roleLabel}
+                </span>
+              </span>
+            </div>
             {NAV_SECTIONS.map((section, i) => (
               <div key={section.title ?? `msection-${i}`} className="flex flex-col gap-1">
                 {section.title && (

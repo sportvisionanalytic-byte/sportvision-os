@@ -122,6 +122,19 @@ export function particulierSportifsLabel(profilParticulier: string | null | unde
   return "Mes sportifs";
 }
 
+// Libellé du rôle affiché à l'utilisateur lui-même (sidebar, profil) — demande de Fouka le 15/08 :
+// "il faut qu'il voie son rôle joueur/parent/agent/particulier". `null`/`undefined` couvre les
+// comptes créés avant migration-connect-v67 (jamais redemandé rétroactivement) ET le choix
+// générique "particulier" du tunnel d'inscription (aucune valeur du CHECK ne lui correspond, voir
+// resolveProfilParticulier dans signup/club/page.tsx) — les deux cas affichent "Particulier",
+// jamais une valeur inventée.
+export function particulierRoleLabel(profilParticulier: string | null | undefined): string {
+  if (profilParticulier === "agent") return "Agent";
+  if (profilParticulier === "parent") return "Parent";
+  if (profilParticulier === "tuteur") return "Tuteur légal";
+  return "Particulier";
+}
+
 // Variante courte pour les espaces contraints (bottom nav mobile à 5 onglets) — même logique,
 // vocabulaire raccourci.
 export function particulierSportifsShortLabel(profilParticulier: string | null | undefined): string {
