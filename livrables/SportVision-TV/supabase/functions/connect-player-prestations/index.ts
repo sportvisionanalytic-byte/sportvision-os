@@ -63,13 +63,22 @@
 // Actions (`action` dans le body, toutes authentifiées) :
 //  - "create_request" { offerId, dateMatch, heureDebut?, heureFin?, lieu?, adversaire?,
 //                        categorie?, equipe?, notes?, optionNames?: string[],
-//                        retractationRenoncee?, beneficiary? }
+//                        retractationRenoncee?, beneficiary?,
+//                        tailleCm?, poidsKg?, poste?, numeroMaillot?, couleurMaillot? }
 //      → crée la ligne `prestations` (statut initial 'demande_reçue', jamais un statut inventé).
 //        Ne persiste JAMAIS de montant (montant_ht/montant_ttc restent NULL, exactement comme
 //        submitClientService côté Espace Projet) : c'est create-checkout-session qui calcule le
 //        montant à la volée depuis le catalogue au moment du paiement (déjà son comportement
 //        existant pour une prestation tout juste créée par un client, cf. son commentaire
 //        "vient d'être créée par le client et n'a pas encore été chiffrée par le staff").
+//        tailleCm/poidsKg/poste/numeroMaillot/couleurMaillot (migration-connect-v68) : UNIQUEMENT
+//        pertinents si offer.slug === MONTAGE_COMPILATION_SLUG (ignorés silencieusement sinon,
+//        même garde que modeLivraisonMontage/dureeRushMinutes/nombreMatchsLien/lienMatchUrl déjà
+//        en place, v63/v64). numeroMaillot/couleurMaillot sont persistés sur CETTE prestation
+//        (prestations.numero_maillot/couleur_maillot) ; les 4 valeurs sont EN PLUS réécrites sur
+//        le profil du bénéficiaire (player_profiles ou managed_athlete_profiles) via
+//        connect_athlete_profile_coalesce_update (migration-connect-v69) — jamais un écrasement
+//        d'une valeur déjà connue du profil, coalesce atomique côté SQL (voir son en-tête).
 //  - "list_orders" { multi? } → les prestations du joueur authentifié (Mes commandes), ou de
 //        tous ses bénéficiaires accessibles si multi=true.
 //  - "get_order" { id, beneficiary? } → une prestation + ses factures/paiements liés (fiche détail).
@@ -481,6 +490,30 @@ serve(async (req) => {
         }
       }
 
+      // "Informations pour le montage" (migration-connect-v68-fiche-joueur-montage-compilation) —
+      // requis UNIQUEMENT pour Montage Compilation (même garde que modeLivraisonMontage/
+      // dureeRushMinutes ci-dessus, ignorés silencieusement pour toute autre offre). Tous
+      // facultatifs (aucune de ces valeurs ne bloque la création de la demande) : numeroMaillot/
+      // couleurMaillot sont propres à CETTE réservation (prestations.numero_maillot/
+      // couleur_maillot, migration-connect-v68 §3, jamais relues depuis le profil), tandis que
+      // taille/poids/poste/numeroMaillot sont réécrites en retour sur le profil du bénéficiaire
+      // plus bas — voir connect_athlete_profile_coalesce_update (migration-connect-v69) — mais
+      // UNIQUEMENT sur les colonnes actuellement NULL, jamais un écrasement.
+      let tailleCm: number | null = null;
+      let poidsKg: number | null = null;
+      let poste: string | null = null;
+      let numeroMaillot: string | null = null;
+      let couleurMaillot: string | null = null;
+      if (offer.slug === MONTAGE_COMPILATION_SLUG) {
+        const t = Number(body?.tailleCm);
+        tailleCm = Number.isFinite(t) && t > 0 ? Math.round(t) : null;
+        const p = Number(body?.poidsKg);
+        poidsKg = Number.isFinite(p) && p > 0 ? Math.round(p * 100) / 100 : null;
+        poste = typeof body?.poste === "string" && body.poste.trim() !== "" ? body.poste.trim() : null;
+        numeroMaillot = typeof body?.numeroMaillot === "string" && body.numeroMaillot.trim() !== "" ? body.numeroMaillot.trim() : null;
+        couleurMaillot = typeof body?.couleurMaillot === "string" && body.couleurMaillot.trim() !== "" ? body.couleurMaillot.trim() : null;
+      }
+
       const nowIso = new Date().toISOString();
       const paiementMode = body?.paiementMode === "collectif" ? "collectif" : "seul";
       const descriptionParts = [
@@ -490,6 +523,11 @@ serve(async (req) => {
         dureeRushMinutes != null ? `Durée totale des rushs déclarée : ${dureeRushMinutes} min` : null,
         nombreMatchsLien != null ? `Montage depuis lien(s) — nombre de matchs : ${nombreMatchsLien}${nombreMatchsLien > 4 ? " (sur devis, livraison expresse à prévoir)" : ""}` : null,
         lienMatchUrl ? `Lien(s) fourni(s) : ${lienMatchUrl}` : null,
+        tailleCm != null ? `Taille du sportif : ${tailleCm} cm` : null,
+        poidsKg != null ? `Poids du sportif : ${poidsKg} kg` : null,
+        poste ? `Poste : ${poste}` : null,
+        numeroMaillot ? `N° de maillot (ce match) : ${numeroMaillot}` : null,
+        couleurMaillot ? `Couleur de maillot (ce match) : ${couleurMaillot}` : null,
         body?.notes ? `Notes : ${String(body.notes).trim()}` : null,
         paiementMode === "collectif"
           ? "Paiement souhaité : à plusieurs (cotisation) — fonctionnalité de paiement collectif pas encore branchée au moment de la demande, à confirmer avec le client."
@@ -516,6 +554,10 @@ serve(async (req) => {
           mode_livraison_montage: modeLivraisonMontage,
           nombre_matchs_lien: nombreMatchsLien,
           lien_match_url: lienMatchUrl,
+          // Valeurs propres à CETTE réservation (migration-connect-v68 §3) — peuvent différer du
+          // profil (sélection nationale, maillot extérieur...), jamais relues depuis le profil.
+          numero_maillot: numeroMaillot,
+          couleur_maillot: couleurMaillot,
           retractation_renoncee: body?.retractationRenoncee === true,
           retractation_renoncee_at: body?.retractationRenoncee === true ? nowIso : null,
           cgv_acceptee: true,
@@ -524,6 +566,30 @@ serve(async (req) => {
         .select("id, reference")
         .single();
       if (insErr) return json({ error: insErr.message }, 500);
+
+      // Écriture retour sur le profil du bénéficiaire (migration-connect-v69) — UNIQUEMENT pour
+      // Montage Compilation, UNIQUEMENT si au moins une des 4 valeurs a été fournie, jamais
+      // bloquant : un échec ici (ex. profil introuvable) ne doit jamais faire échouer une demande
+      // déjà enregistrée avec succès. `beneficiary` (kind/refId bruts du body, distincts du
+      // résultat déjà consommé de resolveBeneficiaryClientId ci-dessus) porte l'identité du
+      // bénéficiaire ; kind "self" implicite quand `beneficiary` est absent (Espace joueur legacy,
+      // voir le commentaire de resolveBeneficiaryClientId plus haut).
+      if (offer.slug === MONTAGE_COMPILATION_SLUG && (tailleCm != null || poidsKg != null || poste != null || numeroMaillot != null)) {
+        const writebackKind = beneficiary?.kind === "linked" || beneficiary?.kind === "managed" ? beneficiary.kind : "self";
+        const writebackRefId = writebackKind !== "self" ? beneficiary?.refId || null : null;
+        const { error: writebackErr } = await admin.rpc("connect_athlete_profile_coalesce_update", {
+          p_kind: writebackKind,
+          p_target_user_id: writebackKind === "managed" ? null : writebackKind === "self" ? user.id : writebackRefId,
+          p_managed_id: writebackKind === "managed" ? writebackRefId : null,
+          p_taille_cm: tailleCm,
+          p_poids_kg: poidsKg,
+          p_poste: poste,
+          p_numero_maillot: numeroMaillot,
+        });
+        if (writebackErr) {
+          console.error("connect_athlete_profile_coalesce_update a échoué (non bloquant) :", writebackErr.message);
+        }
+      }
 
       return json({ ok: true, id: inserted.id, reference: inserted.reference });
     }

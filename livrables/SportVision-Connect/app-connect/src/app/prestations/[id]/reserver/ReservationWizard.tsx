@@ -14,6 +14,25 @@ import {
   tarifLienMatchMax,
 } from "@/lib/prestations/catalogue";
 import { formatEUR, needsRetractationWaiver } from "@/lib/prestations/format";
+import type { AthleteProfileInfo } from "@/lib/prestations/athleteProfile";
+
+// Couleurs de maillot courantes (suggestions <datalist>, champ texte libre) — voir le commentaire
+// équivalent dans ReservationWizardParticulier.tsx (choix texte libre + suggestions plutôt qu'un
+// <select> fermé, justifié une fois là-bas).
+const COULEURS_MAILLOT_COURANTES = [
+  "Blanc",
+  "Noir",
+  "Rouge",
+  "Bleu",
+  "Vert",
+  "Jaune",
+  "Orange",
+  "Violet",
+  "Rose",
+  "Gris",
+  "Bleu et blanc",
+  "Rouge et noir",
+];
 
 // Wizard « Demander une prestation » — 4 étapes (MASTER-CONNECT-V1.md §18, design-connect-
 // personnel-12-08/README.md § Réservation) : informations du match, options, paiement
@@ -34,7 +53,19 @@ const STEPS = ["Informations", "Options", "Paiement", "Confirmation"] as const;
 
 type PaiementMode = "seul" | "collectif";
 
-export function ReservationWizard({ offer, defaultTeamLabel }: { offer: CatalogueOffer; defaultTeamLabel: string }) {
+export function ReservationWizard({
+  offer,
+  defaultTeamLabel,
+  athleteProfile,
+}: {
+  offer: CatalogueOffer;
+  defaultTeamLabel: string;
+  // Pré-remplissage "Informations pour le montage" (migration-connect-v68), Montage Compilation
+  // UNIQUEMENT — résolu côté serveur (page.tsx) depuis player_profiles (toujours "self" ici,
+  // l'Espace joueur n'a pas de notion de bénéficiaire). null si le profil n'a encore aucune
+  // donnée : tous les champs du bloc deviennent alors de simples champs de saisie vides.
+  athleteProfile: AthleteProfileInfo | null;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [touched, setTouched] = useState(false);
@@ -46,6 +77,17 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
   const [lieu, setLieu] = useState("");
   const [categorie, setCategorie] = useState("");
   const [notes, setNotes] = useState("");
+
+  // "Informations pour le montage" (migration-connect-v68) — Montage Compilation UNIQUEMENT, voir
+  // le commentaire équivalent (et plus détaillé) dans ReservationWizardParticulier.tsx.
+  const [tailleCm, setTailleCm] = useState(athleteProfile?.tailleCm != null ? String(athleteProfile.tailleCm) : "");
+  const [poidsKg, setPoidsKg] = useState(athleteProfile?.poidsKg != null ? String(athleteProfile.poidsKg) : "");
+  const [poste, setPoste] = useState(athleteProfile?.poste || "");
+  const [numeroMaillot, setNumeroMaillot] = useState(athleteProfile?.numeroMaillot || "");
+  const [couleurMaillot, setCouleurMaillot] = useState("");
+  const [editTaille, setEditTaille] = useState(false);
+  const [editPoids, setEditPoids] = useState(false);
+  const [editPoste, setEditPoste] = useState(false);
 
   const [optionNames, setOptionNames] = useState<string[]>([]);
 
@@ -85,7 +127,9 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
       : estimatedTtc(offer, dureeRushMinutesNum, optionNames);
   const waiverNeeded = needsRetractationWaiver(date);
 
-  const step1Valid = !!equipe.trim() && !!date && !!lieu.trim() && dureeValid;
+  // Lieu retiré des champs requis pour Montage Compilation — voir le bloc step 1 plus bas, où le
+  // champ lui-même n'est plus rendu du tout pour cette offre.
+  const step1Valid = isMontageCompilation ? !!equipe.trim() && !!date && dureeValid : !!equipe.trim() && !!date && !!lieu.trim() && dureeValid;
   const step3Valid = cgvAcceptee && (!waiverNeeded || retractationRenoncee);
 
   function toggleOption(nom: string) {
@@ -126,6 +170,13 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
         dureeRushMinutes: isMontageCompilation && modeLivraisonMontage === "rushs_decoupes" ? dureeRushMinutesNum : undefined,
         nombreMatchsLien: isMontageCompilation && modeLivraisonMontage === "lien_match" ? nombreMatchsLienNum : undefined,
         lienMatchUrl: isMontageCompilation && modeLivraisonMontage === "lien_match" ? lienMatchUrl.trim() : undefined,
+        // "Informations pour le montage" (migration-connect-v68) — voir le commentaire équivalent
+        // dans ReservationWizardParticulier.tsx.
+        tailleCm: isMontageCompilation && tailleCm.trim() !== "" ? Number(tailleCm) : undefined,
+        poidsKg: isMontageCompilation && poidsKg.trim() !== "" ? Number(poidsKg) : undefined,
+        poste: isMontageCompilation && poste.trim() !== "" ? poste.trim() : undefined,
+        numeroMaillot: isMontageCompilation && numeroMaillot.trim() !== "" ? numeroMaillot.trim() : undefined,
+        couleurMaillot: isMontageCompilation && couleurMaillot.trim() !== "" ? couleurMaillot.trim() : undefined,
       },
     });
 
@@ -188,14 +239,24 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
       <div className="flex flex-col gap-5 rounded-sv-card border border-border bg-surface p-5">
         {step === 1 && (
           <div className="flex flex-col gap-4 animate-sv-in">
-            <h2 className="font-sora text-[17px] font-semibold">Informations du match</h2>
+            <h2 className="font-sora text-[17px] font-semibold">{isMontageCompilation ? "Informations du montage" : "Informations du match"}</h2>
             <Field id="rw-equipe" label="Équipe" value={equipe} onChange={(e) => setEquipe(e.target.value)} error={touched && !equipe.trim() ? "Requis." : null} />
-            <Field id="rw-adversaire" label="Adversaire · facultatif" value={adversaire} onChange={(e) => setAdversaire(e.target.value)} />
-            <div className="grid grid-cols-2 gap-3">
+            {!isMontageCompilation && (
+              <Field id="rw-adversaire" label="Adversaire · facultatif" value={adversaire} onChange={(e) => setAdversaire(e.target.value)} />
+            )}
+            {isMontageCompilation ? (
+              // Adversaire/Heure/Lieu retirés pour Montage Compilation — aucun déplacement
+              // SportVision. Date conservée seule (référence utile du match).
               <Field id="rw-date" label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} error={touched && !date ? "Requise." : null} />
-              <Field id="rw-heure" label="Heure · facultatif" type="time" value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} />
-            </div>
-            <Field id="rw-lieu" label="Lieu" placeholder="Stade, adresse" value={lieu} onChange={(e) => setLieu(e.target.value)} error={touched && !lieu.trim() ? "Requis." : null} />
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <Field id="rw-date" label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} error={touched && !date ? "Requise." : null} />
+                <Field id="rw-heure" label="Heure · facultatif" type="time" value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} />
+              </div>
+            )}
+            {!isMontageCompilation && (
+              <Field id="rw-lieu" label="Lieu" placeholder="Stade, adresse" value={lieu} onChange={(e) => setLieu(e.target.value)} error={touched && !lieu.trim() ? "Requis." : null} />
+            )}
             {isMontageCompilation && (
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2">
@@ -276,6 +337,79 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
                 )}
               </div>
             )}
+            {isMontageCompilation && (
+              <div className="flex flex-col gap-3 border-t border-border pt-4">
+                <span className="text-[13px] font-medium text-text-secondary">
+                  Informations pour le montage
+                </span>
+                <span className="-mt-2 text-[12px] leading-relaxed text-text-tertiary">
+                  Pour vous identifier dans les rushs. Les infos déjà connues de votre profil ne
+                  sont demandées qu&apos;une fois.
+                </span>
+                <PhysiqueField
+                  id="rw-taille"
+                  label="Taille"
+                  unit="cm"
+                  profileValue={athleteProfile?.tailleCm ?? null}
+                  editing={editTaille}
+                  onEdit={() => setEditTaille(true)}
+                  inputType="number"
+                  inputProps={{ min: 100, max: 250, inputMode: "numeric" }}
+                  value={tailleCm}
+                  onChange={setTailleCm}
+                />
+                <PhysiqueField
+                  id="rw-poids"
+                  label="Poids"
+                  unit="kg"
+                  profileValue={athleteProfile?.poidsKg ?? null}
+                  editing={editPoids}
+                  onEdit={() => setEditPoids(true)}
+                  inputType="number"
+                  inputProps={{ min: 20, max: 200, step: 0.1, inputMode: "decimal" }}
+                  value={poidsKg}
+                  onChange={setPoidsKg}
+                />
+                <PhysiqueField
+                  id="rw-poste"
+                  label="Poste"
+                  profileValue={athleteProfile?.poste ?? null}
+                  editing={editPoste}
+                  onEdit={() => setEditPoste(true)}
+                  inputProps={{ placeholder: "Attaquant, Gardien…" }}
+                  value={poste}
+                  onChange={setPoste}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Field
+                    id="rw-numero-maillot"
+                    label="N° de maillot"
+                    inputMode="numeric"
+                    placeholder="9"
+                    value={numeroMaillot}
+                    onChange={(e) => setNumeroMaillot(e.target.value)}
+                  />
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="rw-couleur-maillot" className="text-[13px] font-medium text-text-secondary">
+                      Couleur de maillot
+                    </label>
+                    <input
+                      id="rw-couleur-maillot"
+                      list="rw-couleurs-maillot-joueur"
+                      value={couleurMaillot}
+                      onChange={(e) => setCouleurMaillot(e.target.value)}
+                      placeholder="Bleu, Domicile…"
+                      className="h-[54px] w-full rounded-sv border border-border-strong bg-surface px-4 font-sans text-[15px] text-text outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-text-label focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
+                    />
+                    <datalist id="rw-couleurs-maillot-joueur">
+                      {COULEURS_MAILLOT_COURANTES.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+              </div>
+            )}
             <Field id="rw-categorie" label="Catégorie · facultatif" placeholder="U18 R2" value={categorie} onChange={(e) => setCategorie(e.target.value)} />
             <div className="flex flex-col gap-2">
               <label htmlFor="rw-notes" className="text-[13px] font-medium text-text-secondary">Notes · facultatif</label>
@@ -350,7 +484,11 @@ export function ReservationWizard({ offer, defaultTeamLabel }: { offer: Catalogu
             <div className="flex flex-col gap-2 border-t border-border pt-4">
               <SummaryRow label="Prestation" value={offer.nom} />
               <SummaryRow label="Date" value={date || "—"} />
-              <SummaryRow label="Lieu" value={lieu || "—"} />
+              {isMontageCompilation ? (
+                <SummaryRow label="Maillot" value={numeroMaillot || couleurMaillot ? `${numeroMaillot ? `#${numeroMaillot}` : ""} ${couleurMaillot}`.trim() : "—"} />
+              ) : (
+                <SummaryRow label="Lieu" value={lieu || "—"} />
+              )}
               <SummaryRow label="Options" value={optionNames.length ? optionNames.join(", ") : "Aucune"} />
               <SummaryRow label="Montant" value={ttc !== null ? `${formatEUR(ttc)} TTC` : "Sur devis"} strong />
             </div>
@@ -493,5 +631,56 @@ function SummaryRow({ label, value, strong }: { label: string; value: string; st
       <span className="flex-none text-[12.5px] font-medium text-text-tertiary">{label}</span>
       <span className={strong ? "text-right font-sora text-[15px] font-bold text-text" : "text-right text-[13px] text-text"}>{value}</span>
     </div>
+  );
+}
+
+// Champ "Informations pour le montage" (migration-connect-v68) — voir le commentaire équivalent
+// (plus détaillé) dans ReservationWizardParticulier.tsx.
+function PhysiqueField({
+  id,
+  label,
+  unit,
+  profileValue,
+  editing,
+  onEdit,
+  value,
+  onChange,
+  inputType = "text",
+  inputProps,
+}: {
+  id: string;
+  label: string;
+  unit?: string;
+  profileValue: number | string | null;
+  editing: boolean;
+  onEdit: () => void;
+  value: string;
+  onChange: (value: string) => void;
+  inputType?: string;
+  inputProps?: Record<string, unknown>;
+}) {
+  const known = profileValue != null && String(profileValue).trim() !== "" && !editing;
+  if (known) {
+    return (
+      <div className="flex items-center justify-between rounded-sv border border-border bg-bg-elevated px-4 py-3.5">
+        <span className="flex items-center gap-1.5 text-[13.5px] text-text-secondary">
+          <span className="material-symbols-rounded !text-[16px] text-affiliations">check_circle</span>
+          {label} : <strong className="font-sora text-text">{profileValue}{unit ? ` ${unit}` : ""}</strong>
+        </span>
+        <button type="button" onClick={onEdit} className="text-[12.5px] font-medium text-[#8CA9FF] hover:underline">
+          Modifier
+        </button>
+      </div>
+    );
+  }
+  return (
+    <Field
+      id={id}
+      label={unit ? `${label} (${unit})` : label}
+      type={inputType}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      {...inputProps}
+    />
   );
 }

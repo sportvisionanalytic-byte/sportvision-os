@@ -3,7 +3,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { buildPlayerContext, requireJoueurAccount } from "@/lib/supabase/session";
 import { AppShell } from "@/components/layout/AppShell";
-import { fetchPlayerOfferById } from "@/lib/prestations/catalogue";
+import { fetchPlayerOfferById, MONTAGE_COMPILATION_SLUG } from "@/lib/prestations/catalogue";
+import { fetchAthleteProfile } from "@/lib/prestations/athleteProfile";
 import { ReservationWizard } from "./ReservationWizard";
 
 export default async function ReserverPage({ params }: { params: Promise<{ id: string }> }) {
@@ -42,9 +43,14 @@ export default async function ReserverPage({ params }: { params: Promise<{ id: s
     );
   }
 
+  // Pré-remplissage "Informations pour le montage" (migration-connect-v68) — Montage Compilation
+  // UNIQUEMENT. Espace joueur = toujours "self" (aucun beneficiary ici), matché par user_id sur
+  // player_profiles — voir le commentaire équivalent dans particulier/reserver/[offerId]/page.tsx.
+  const athleteProfile = offer.slug === MONTAGE_COMPILATION_SLUG ? await fetchAthleteProfile(supabase, { kind: "self", userId: user.id, managedId: null }) : null;
+
   return (
     <AppShell firstName={firstName}>
-      <ReservationWizard offer={offer} defaultTeamLabel={player.club?.nom || ""} />
+      <ReservationWizard offer={offer} defaultTeamLabel={player.club?.nom || ""} athleteProfile={athleteProfile} />
     </AppShell>
   );
 }

@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
-import { fetchPlayerOfferById } from "@/lib/prestations/catalogue";
+import { fetchPlayerOfferById, MONTAGE_COMPILATION_SLUG } from "@/lib/prestations/catalogue";
 import { fetchAgentDiscount } from "@/lib/supabase/agentSubscription";
+import { fetchAthleteProfile } from "@/lib/prestations/athleteProfile";
 import { ParticularShell } from "@/components/layout/ParticularShell";
 import { ReservationWizardParticulier, type Beneficiary } from "./ReservationWizardParticulier";
 
@@ -48,6 +49,20 @@ export default async function ReservationParticulierPage({
           return result;
         })();
 
+  // Pré-remplissage "Informations pour le montage" (migration-connect-v68) — Montage Compilation
+  // UNIQUEMENT, résolu depuis player_profiles ("self"/"linked", matché par user_id — pour
+  // "linked" beneficiary.id porte déjà owner_user_id, voir connect_list_my_athletes) ou
+  // managed_athlete_profiles ("managed", matché par id). null si aucun bénéficiaire résolu, ou
+  // si l'offre n'est pas Montage Compilation, ou si le profil n'a encore aucune donnée.
+  const athleteProfile =
+    beneficiary && offer.slug === MONTAGE_COMPILATION_SLUG
+      ? await fetchAthleteProfile(supabase, {
+          kind: beneficiary.kind,
+          userId: beneficiary.kind === "managed" ? null : beneficiary.kind === "self" ? user.id : beneficiary.id,
+          managedId: beneficiary.kind === "managed" ? beneficiary.id : null,
+        })
+      : null;
+
   return (
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
       <ReservationWizardParticulier
@@ -55,6 +70,7 @@ export default async function ReservationParticulierPage({
         beneficiary={beneficiary}
         commanditaireLabel={`${identity.firstName} ${identity.lastName}`.trim() || identity.email}
         agentDiscount={agentDiscount}
+        athleteProfile={athleteProfile}
       />
     </ParticularShell>
   );
