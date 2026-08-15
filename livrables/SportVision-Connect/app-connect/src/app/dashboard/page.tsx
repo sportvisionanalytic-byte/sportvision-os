@@ -42,7 +42,7 @@ export default async function DashboardPage() {
     player?.club ? getNextClubEvent(supabase, player.club.id) : Promise.resolve(null),
     player?.clientId ? getNextPrestation(supabase, player.clientId) : Promise.resolve(null),
     player?.clientId ? getUnreadMessagesCount(supabase, player.clientId) : Promise.resolve(0),
-    getCotisationEnCours(supabase, user.id),
+    getCotisationEnCours(supabase),
     player?.club ? getRecentContentGroups(supabase, player.club.id) : Promise.resolve([]),
   ]);
 

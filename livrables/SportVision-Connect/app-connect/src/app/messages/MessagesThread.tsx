@@ -45,10 +45,15 @@ export function MessagesThread({
   clientId,
   initialMessages,
   unavailable,
+  hideHeader,
 }: {
   clientId: string | null;
   initialMessages: MessageData[];
   unavailable: boolean;
+  // Le conteneur appelant affiche déjà son propre titre "Messages" (cas de l'espace particulier,
+  // qui ajoute un sélecteur "Ce message concerne :" entre le titre et le fil) — évite un doublon
+  // visuel du même h1+sous-titre à l'écran.
+  hideHeader?: boolean;
 }) {
   const [messages, setMessages] = useState<MessageData[]>(initialMessages);
   const [draft, setDraft] = useState("");
@@ -215,10 +220,12 @@ export function MessagesThread({
   if (unavailable) {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Messages</h1>
-          <p className="text-[15px] text-text-tertiary">Votre lien direct avec SportVision.</p>
-        </div>
+        {!hideHeader && (
+          <div className="flex flex-col gap-2">
+            <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Messages</h1>
+            <p className="text-[15px] text-text-tertiary">Votre lien direct avec SportVision.</p>
+          </div>
+        )}
         <div className="flex max-w-[560px] flex-col gap-3.5 rounded-sv-card border border-dashed border-border-strong bg-surface p-6">
           <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-white/[.06]">
             <span className="material-symbols-rounded !text-[24px] text-text-tertiary">forum</span>
@@ -236,10 +243,12 @@ export function MessagesThread({
 
   return (
     <div className="flex h-[calc(100vh-140px)] flex-col gap-5 animate-sv-in lg:h-[calc(100vh-120px)]">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Messages</h1>
-        <p className="text-[15px] text-text-tertiary">Votre lien direct avec SportVision.</p>
-      </div>
+      {!hideHeader && (
+        <div className="flex flex-col gap-2">
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Messages</h1>
+          <p className="text-[15px] text-text-tertiary">Votre lien direct avec SportVision.</p>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sv-card border border-border bg-surface lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
         <div className="hidden flex-none flex-col border-r border-border p-3 lg:flex">

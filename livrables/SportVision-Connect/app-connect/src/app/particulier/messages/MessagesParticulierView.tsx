@@ -63,7 +63,7 @@ export function MessagesParticulierView({ firstName, athletes }: { firstName: st
   }, [subject.kind, subject.id]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 animate-sv-in">
       <div className="flex flex-col gap-2">
         <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Messages</h1>
         <p className="text-[15px] text-text-tertiary">Votre lien direct avec SportVision.</p>
@@ -97,6 +97,7 @@ export function MessagesParticulierView({ firstName, athletes }: { firstName: st
           clientId={clientId}
           initialMessages={messages}
           unavailable={!!error}
+          hideHeader
         />
       )}
       {!loading && !error && subject.kind !== "self" && (

@@ -90,8 +90,10 @@ const LINK_TABS: Record<"contenus" | "prestations" | "calendrier" | "cotisations
 export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("apercu");
-  const [rights, setRights] = useState(detail.rights);
-  const [pendingRight, setPendingRight] = useState<string | null>(null);
+  // Lecture seule ici (voir commentaire LINK_TABS ci-dessus) : rights ne provient que de detail,
+  // aucune action de cette vue ne les modifie — un useState avec un setter jamais appelé était du
+  // code mort.
+  const rights = detail.rights;
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);

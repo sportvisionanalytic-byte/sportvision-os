@@ -67,7 +67,7 @@ export function CalendrierParticulierView({
     .sort((a, b) => (a.date < b.date ? -1 : 1));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 animate-sv-in">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Calendrier</h1>

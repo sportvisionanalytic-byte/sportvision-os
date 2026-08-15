@@ -169,7 +169,6 @@ export interface CotisationEnCours {
 // et le calcul de participants_count.
 export async function getCotisationEnCours(
   supabase: SupabaseClient,
-  userId: string,
 ): Promise<CotisationEnCours | null> {
   try {
     const { data, error } = await supabase.rpc("list_my_fundings");
