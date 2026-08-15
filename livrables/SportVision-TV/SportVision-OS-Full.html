@@ -966,14 +966,6 @@ const NAV={
 };
 
 // ── HELPERS ──────────────────────────────
-function stBadge(s){
-  if(s==='en cours')return`<span class="bd bl"><span class="bd-d"></span>En cours</span>`;
-  if(s==='à venir')return`<span class="bd bw"><span class="bd-d"></span>À venir</span>`;
-  return`<span class="bd bn"><span class="bd-d"></span>Livré</span>`;
-}
-function avStack(eq){
-  return'<div style="display:flex;align-items:center">'+eq.map(i=>`<div class="av-xs" style="background:${AVC[i]||'#366BFF'};margin-right:-5px;border:2px solid var(--s1)">${i}</div>`).join('')+'</div>';
-}
 function finBars(id,h){
   const el=document.getElementById(id);if(!el)return;
   const mx=Math.max(...FD.map(d=>d.v));
@@ -2539,24 +2531,6 @@ function _settingsView(){
         <button class="btn" style="background:rgba(240,68,94,.12);color:var(--er);border:1px solid rgba(240,68,94,.3);white-space:nowrap;flex-shrink:0" onclick="doLogout()">Se déconnecter</button>
       </div>
     </div>`;
-}
-
-// ── HELPERS NON GLOBAUX ───────────────────
-function taskRow(t,hasDate){
-  return`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.035)">
-    <div style="width:18px;height:18px;border-radius:5px;border:1.5px solid ${t.done?'var(--ok)':'var(--b2)'};background:${t.done?'rgba(46,204,138,.15)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${t.done?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#2ECC8A" stroke-width="2" stroke-linecap="round"><path d="M2 5l2.5 2.5 4.5-5"/></svg>':''}</div>
-    <div style="flex:1"><div style="font-size:12.5px;color:${t.done?'var(--t3)':'var(--t1)'};text-decoration:${t.done?'line-through':''}">${t.t}</div>${hasDate?`<div style="font-size:10.5px;color:var(--t3);margin-top:2px">${t.dt}</div>`:''}</div>
-  </div>`;
-}
-
-function filterPre(){
-  const q=(document.getElementById('s-q')||{value:''}).value.toLowerCase();
-  const f=(document.getElementById('s-st')||{value:''}).value;
-  document.querySelectorAll('#pre-tb tr').forEach(tr=>{
-    const txt=tr.textContent.toLowerCase();
-    const st=tr.dataset.st||'';
-    tr.style.display=(!q||txt.includes(q))&&(!f||st===f)?'':'none';
-  });
 }
 
 // ── FALLBACK VIEW ────────────────────────
