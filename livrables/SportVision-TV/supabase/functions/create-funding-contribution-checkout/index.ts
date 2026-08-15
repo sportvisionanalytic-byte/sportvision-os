@@ -87,11 +87,20 @@ serve(async (req) => {
 
     const { data: funding } = await admin
       .from("group_fundings")
-      .select("id, titre, statut, montant_cible, montant_collecte")
+      .select("id, titre, statut, montant_cible, montant_collecte, date_limite")
       .eq("id", funding_id)
       .maybeSingle();
     if (!funding) return json({ error: "Cotisation introuvable" }, 404);
-    if (funding.statut !== "ouverte") {
+    // Pas de cron qui bascule group_fundings.statut à 'expiree' (voir migration-connect-v50,
+    // list_my_fundings()/get_funding_detail() dérivent l'expiration à la lecture) — la colonne
+    // `statut` en base reste donc 'ouverte' indéfiniment après la date limite. Le bouton
+    // "Participer" est déjà masqué côté UI une fois expirée (get_funding_detail renvoie le
+    // statut dérivé), mais cette fonction doit revérifier elle-même la date limite pour ne pas
+    // dépendre uniquement de ce que l'écran affiche — même correctif déjà en place côté
+    // create-guest-funding-contribution-checkout (bug trouvé lors de l'audit du 15/08 : cette
+    // fonction-ci ne le vérifiait pas, contrairement à la version invité).
+    const expiree = funding.statut === "ouverte" && funding.date_limite && funding.date_limite < new Date().toISOString().slice(0, 10);
+    if (funding.statut !== "ouverte" || expiree) {
       return json({ error: "Cette cotisation n'accepte plus de nouvelles participations." }, 400);
     }
 
