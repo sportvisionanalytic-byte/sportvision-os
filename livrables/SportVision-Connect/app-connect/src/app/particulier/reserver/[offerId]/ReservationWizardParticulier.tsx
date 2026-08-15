@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
-import { type CatalogueOffer, totalTtcWithOptions } from "@/lib/prestations/catalogue";
+import { type CatalogueOffer, MONTAGE_COMPILATION_SLUG, estimatedTtc } from "@/lib/prestations/catalogue";
 import { formatEUR, needsRetractationWaiver } from "@/lib/prestations/format";
+import type { AgentDiscountInfo } from "@/lib/supabase/agentSubscription";
 
 export interface Beneficiary {
   kind: "self" | "linked" | "managed";
@@ -30,10 +31,16 @@ export function ReservationWizardParticulier({
   offer,
   beneficiary,
   commanditaireLabel,
+  agentDiscount,
 }: {
   offer: CatalogueOffer;
   beneficiary: Beneficiary | null;
   commanditaireLabel: string;
+  // Remises Agent (Espace particulier, migration-connect-v57 §2 + v63) — résolues côté serveur
+  // (page.tsx, connect_agent_discount du PAYEUR authentifié) et transmises ici pour AFFICHAGE
+  // uniquement. Le montant réellement facturé est toujours recalculé côté serveur par
+  // create-checkout-session au moment du paiement, jamais depuis cette prop.
+  agentDiscount: AgentDiscountInfo;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -49,6 +56,13 @@ export function ReservationWizardParticulier({
 
   const [optionNames, setOptionNames] = useState<string[]>([]);
 
+  // Durée totale de rush déclarée (minutes) — Montage Compilation uniquement (migration-connect-
+  // v63). Déclaratif : jamais de détection automatique de durée vidéo, hors scope.
+  const [dureeRushMinutes, setDureeRushMinutes] = useState("");
+  // Remise mensuelle Agent (-10%, palier Pro, une fois par période) — case à cocher, uniquement
+  // affichée/activable si `agentDiscount.monthlyPct > 0` (donc ni déjà utilisée, ni palier < Pro).
+  const [applyMonthlyDiscount, setApplyMonthlyDiscount] = useState(false);
+
   const [paiementMode, setPaiementMode] = useState<PaiementMode>("seul");
   const [retractationRenoncee, setRetractationRenoncee] = useState(false);
   const [cgvAcceptee, setCgvAcceptee] = useState(false);
@@ -58,10 +72,23 @@ export function ReservationWizardParticulier({
   const [result, setResult] = useState<{ id: string; reference: string } | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const ttc = totalTtcWithOptions(offer, optionNames);
+  const isMontageCompilation = offer.slug === MONTAGE_COMPILATION_SLUG;
+  const dureeRushMinutesNum = dureeRushMinutes.trim() !== "" ? Number(dureeRushMinutes) : null;
+  const dureeValid = !isMontageCompilation || (dureeRushMinutesNum != null && Number.isFinite(dureeRushMinutesNum) && dureeRushMinutesNum > 0);
+
+  // montage_pct : -5% permanent, UNIQUEMENT sur "Montage Compilation" (jamais sur une autre
+  // offre, même pour un abonné Agent). monthly_pct : -10% une fois par période, applicable à
+  // N'IMPORTE QUELLE offre, uniquement si le payeur coche la case (jamais automatique — c'est au
+  // payeur de choisir sur quelle prestation la consommer).
+  const montagePctApplicable = isMontageCompilation && agentDiscount.montagePct > 0;
+  const monthlyPctApplicable = agentDiscount.monthlyPct > 0 && !agentDiscount.monthlyUsedThisPeriod;
+  const monthlyDiscountSelected = monthlyPctApplicable && applyMonthlyDiscount;
+  const remisePct = (montagePctApplicable ? agentDiscount.montagePct : 0) + (monthlyDiscountSelected ? agentDiscount.monthlyPct : 0);
+
+  const ttc = estimatedTtc(offer, dureeRushMinutesNum, optionNames, remisePct);
   const waiverNeeded = needsRetractationWaiver(date);
 
-  const step1Valid = !!equipe.trim() && !!date && !!lieu.trim();
+  const step1Valid = !!equipe.trim() && !!date && !!lieu.trim() && dureeValid;
   const step3Valid = cgvAcceptee && (!waiverNeeded || retractationRenoncee);
 
   if (!beneficiary) {
@@ -115,6 +142,10 @@ export function ReservationWizardParticulier({
         retractationRenoncee,
         paiementMode,
         beneficiary: { kind: beneficiary.kind, refId: beneficiary.id },
+        // Durée de rush déclarée (Montage Compilation uniquement) — connect-player-prestations
+        // l'exige et la persiste sur `prestations.duree_rush_minutes` ; create-checkout-session
+        // relira CETTE valeur en base au moment du paiement, jamais une valeur reçue ici.
+        dureeRushMinutes: isMontageCompilation ? dureeRushMinutesNum : undefined,
       },
     });
 
@@ -139,7 +170,10 @@ export function ReservationWizardParticulier({
     setCheckoutError(null);
     const supabase = createClient();
     const { data, error: fnError } = await supabase.functions.invoke("create-checkout-session", {
-      body: { prestation_id: prestationId, type_paiement: "totalite" },
+      // apply_monthly_discount : simple intention transmise au serveur — create-checkout-session
+      // revérifie l'éligibilité (connect_agent_discount) avant de l'honorer, jamais un montant
+      // ou un pourcentage transmis ici (voir son en-tête).
+      body: { prestation_id: prestationId, type_paiement: "totalite", apply_monthly_discount: monthlyDiscountSelected },
     });
     setBusy(false);
     if (fnError || data?.error || !data?.url) {
@@ -186,6 +220,24 @@ export function ReservationWizardParticulier({
               <Field id="rw-heure" label="Heure · facultatif" type="time" value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} />
             </div>
             <Field id="rw-lieu" label="Lieu" placeholder="Stade, adresse" value={lieu} onChange={(e) => setLieu(e.target.value)} error={touched && !lieu.trim() ? "Requis." : null} />
+            {isMontageCompilation && (
+              <div className="flex flex-col gap-2">
+                <Field
+                  id="rw-duree-rush"
+                  label="Durée totale de vos rushs (minutes)"
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  value={dureeRushMinutes}
+                  onChange={(e) => setDureeRushMinutes(e.target.value)}
+                  error={touched && !dureeValid ? "Requise (en minutes, supérieure à 0)." : null}
+                />
+                <span className="text-[12px] leading-relaxed text-text-tertiary">
+                  Durée totale de vos rushs, en minutes — au-delà de {offer.tarifPalier?.seuilMinutes ?? 6} min, le tarif
+                  passe à {offer.tarifPalier ? formatEUR(Math.round(offer.tarifPalier.prixHtAuDela * (1 + offer.tvaPct / 100) * 100) / 100) : "un tarif supérieur"} TTC.
+                </span>
+              </div>
+            )}
             <Field id="rw-categorie" label="Catégorie · facultatif" placeholder="U18 R2" value={categorie} onChange={(e) => setCategorie(e.target.value)} />
             <div className="flex flex-col gap-2">
               <label htmlFor="rw-notes" className="text-[13px] font-medium text-text-secondary">Notes · facultatif</label>
@@ -257,6 +309,36 @@ export function ReservationWizardParticulier({
               </div>
             )}
 
+            {(montagePctApplicable || monthlyPctApplicable || agentDiscount.monthlyUsedThisPeriod) && (
+              <div className="flex flex-col gap-2.5 rounded-sv border border-[rgba(140,169,255,.35)] bg-[rgba(79,125,255,.08)] p-3.5">
+                <span className="flex items-center gap-2 font-sora text-[13.5px] font-semibold text-text">
+                  <span className="material-symbols-rounded !text-[18px] text-prestations">percent</span>
+                  Réduction Agent
+                </span>
+                {montagePctApplicable && (
+                  <span className="text-[12.5px] leading-relaxed text-text-secondary">
+                    -{agentDiscount.montagePct}% appliqués automatiquement sur Montage Compilation (abonnement Agent actif).
+                  </span>
+                )}
+                {monthlyPctApplicable ? (
+                  <label className="flex items-start gap-2.5 text-[12.5px] leading-relaxed text-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={applyMonthlyDiscount}
+                      onChange={(e) => setApplyMonthlyDiscount(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-[#8CA9FF]"
+                    />
+                    Appliquer ma remise mensuelle Agent (-{agentDiscount.monthlyPct}%, une fois par période, valable sur
+                    n&apos;importe quelle prestation — palier Pro).
+                  </label>
+                ) : (
+                  agentDiscount.monthlyUsedThisPeriod && (
+                    <span className="text-[12px] text-text-faint">Remise mensuelle Agent déjà utilisée cette période.</span>
+                  )
+                )}
+              </div>
+            )}
+
             <div className="flex flex-col gap-2 border-t border-border pt-4">
               <SummaryRow label="Prestation" value={offer.nom} />
               <SummaryRow label="Bénéficiaire" value={beneficiary.label} />
@@ -265,6 +347,7 @@ export function ReservationWizardParticulier({
               <SummaryRow label="Date" value={date || "—"} />
               <SummaryRow label="Lieu" value={lieu || "—"} />
               <SummaryRow label="Options" value={optionNames.length ? optionNames.join(", ") : "Aucune"} />
+              {remisePct > 0 && <SummaryRow label="Remise Agent" value={`-${remisePct}%`} />}
               <SummaryRow label="Montant" value={ttc !== null ? `${formatEUR(ttc)} TTC` : "Sur devis"} strong />
             </div>
 

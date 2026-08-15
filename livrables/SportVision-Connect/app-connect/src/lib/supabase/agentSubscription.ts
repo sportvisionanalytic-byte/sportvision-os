@@ -113,3 +113,37 @@ export const AGENT_STATUS_LABEL: Record<AgentSubscriptionStatus, string> = {
   past_due: "Paiement en échec",
   canceled: "Résilié",
 };
+
+// Remises Agent (migration-connect-v57 §2, RPC connect_agent_discount — NON MODIFIÉE, PUREMENT
+// EN LECTURE) — branchées sur une vraie prestation par migration-connect-v63-prestation-montage-
+// compilation.sql. Utilisé au moment de la sélection d'une prestation (Espace particulier) pour
+// AFFICHER la remise applicable avant paiement (transparence prix) — le montant réellement
+// facturé est toujours recalculé côté serveur par create-checkout-session, jamais depuis cette
+// valeur affichée côté client.
+export interface AgentDiscountInfo {
+  montagePct: number;
+  monthlyPct: number;
+  monthlyUsedThisPeriod: boolean;
+}
+
+interface DiscountRpcResult {
+  montage_pct?: number;
+  monthly_pct?: number;
+  monthly_used_this_period?: boolean;
+}
+
+const DEFAULT_DISCOUNT: AgentDiscountInfo = { montagePct: 0, monthlyPct: 0, monthlyUsedThisPeriod: false };
+
+/** p_userId : le PAYEUR (toujours l'appelant authentifié dans Connect — connect_agent_discount
+ * n'a pas de vérification "auto-lecture seule" côté SQL, voir son commentaire en tête de
+ * migration-connect-v57, mais aucun appelant Connect ne passe jamais un id autre que le sien). */
+export async function fetchAgentDiscount(supabase: SupabaseClient, userId: string): Promise<AgentDiscountInfo> {
+  const { data, error } = await supabase.rpc("connect_agent_discount", { p_user_id: userId });
+  if (error || !data) return DEFAULT_DISCOUNT;
+  const r = data as DiscountRpcResult;
+  return {
+    montagePct: Number(r.montage_pct ?? 0),
+    monthlyPct: Number(r.monthly_pct ?? 0),
+    monthlyUsedThisPeriod: r.monthly_used_this_period === true,
+  };
+}

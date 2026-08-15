@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveDisplayIdentity, buildPlayerContext } from "@/lib/supabase/session";
 import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
 import { fetchPlayerOfferById } from "@/lib/prestations/catalogue";
+import { fetchAgentDiscount } from "@/lib/supabase/agentSubscription";
 import { ParticularShell } from "@/components/layout/ParticularShell";
 import { ReservationWizardParticulier, type Beneficiary } from "./ReservationWizardParticulier";
 
@@ -32,7 +33,11 @@ export default async function ReservationParticulierPage({
   const identity = resolveDisplayIdentity(user, player);
   const firstName = identity.firstName || user.email?.split("@")[0] || "";
 
-  const [athletes, offer] = await Promise.all([fetchMyAthletes(supabase).catch(() => []), fetchPlayerOfferById(supabase, offerId)]);
+  const [athletes, offer, agentDiscount] = await Promise.all([
+    fetchMyAthletes(supabase).catch(() => []),
+    fetchPlayerOfferById(supabase, offerId),
+    fetchAgentDiscount(supabase, user.id),
+  ]);
   if (!offer) notFound();
 
   const kind: "self" | "linked" | "managed" = benefKind === "linked" || benefKind === "managed" ? benefKind : "self";
@@ -48,7 +53,12 @@ export default async function ReservationParticulierPage({
 
   return (
     <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <ReservationWizardParticulier offer={offer} beneficiary={beneficiary} commanditaireLabel={`${identity.firstName} ${identity.lastName}`.trim() || identity.email} />
+      <ReservationWizardParticulier
+        offer={offer}
+        beneficiary={beneficiary}
+        commanditaireLabel={`${identity.firstName} ${identity.lastName}`.trim() || identity.email}
+        agentDiscount={agentDiscount}
+      />
     </ParticularShell>
   );
 }

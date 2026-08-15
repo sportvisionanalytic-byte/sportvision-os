@@ -17,12 +17,30 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // modifier des tarifs Veo déjà en production, ce module affiche fidèlement le catalogue réel et
 // dérive dynamiquement les familles disponibles (l'onglet "Montage" apparaîtra tout seul le jour
 // où une offre categorie='montage' existera réellement).
+//
+// MISE À JOUR 15/08/2026 (migration-connect-v63-prestation-montage-compilation.sql) : "Montage
+// Compilation" a été ajoutée au catalogue réel, mais avec categorie='video' (PAS 'montage' —
+// cette valeur n'est pas autorisée par le check constraint de catalogue_offres, cf. migration-
+// portail-v1.sql §3), donc classée family="Match" par CATEGORIE_FAMILY ci-dessous comme toute
+// autre offre 'video'. Le paragraphe ci-dessus reste exact tel quel (aucune offre categorie=
+// 'montage' n'existe). Voir MONTAGE_COMPILATION_SLUG plus bas pour le branchement de son tarif à
+// palier et de ses remises Agent (RÉCUPÉRÉ POUR AFFICHAGE UNIQUEMENT ici — le montant réellement
+// facturé est toujours recalculé côté serveur, jamais depuis ce module).
 
 export type CatalogueFamily = "Match" | "Captation";
 
 export interface CatalogueOption {
   nom: string;
   prixHt: number;
+}
+
+// Tarif à palier générique (migration-connect-v63-prestation-montage-compilation.sql) — ex.
+// Montage Compilation : au-delà de `seuilMinutes` minutes de rush déclarées par le client, le
+// prix de base HT est remplacé par `prixHtAuDela` (jamais additionné). null pour toute offre à
+// tarif simple (l'immense majorité du catalogue).
+export interface CatalogueTarifPalier {
+  seuilMinutes: number;
+  prixHtAuDela: number;
 }
 
 export interface CatalogueOffer {
@@ -38,6 +56,7 @@ export interface CatalogueOffer {
   dureeEstimee: string | null;
   livrablesInclus: string | null;
   options: CatalogueOption[];
+  tarifPalier: CatalogueTarifPalier | null;
   ordre: number;
 }
 
@@ -53,7 +72,22 @@ interface CatalogueOffreRow {
   duree_estimee: string | null;
   livrables_inclus: string | null;
   options: unknown;
+  tarif_palier: unknown;
   ordre: number | null;
+}
+
+// Slug de la prestation "Montage Compilation" (migration-connect-v63) — seule offre du catalogue
+// à demander une durée de rush déclarée au moment de la commande. Constante partagée avec
+// ReservationWizardParticulier.tsx.
+export const MONTAGE_COMPILATION_SLUG = "montage-compilation";
+
+function parseTarifPalier(raw: unknown): CatalogueTarifPalier | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as { seuil_minutes?: unknown; prix_ht_au_dela?: unknown };
+  const seuilMinutes = Number(o.seuil_minutes);
+  const prixHtAuDela = Number(o.prix_ht_au_dela);
+  if (!Number.isFinite(seuilMinutes) || !Number.isFinite(prixHtAuDela)) return null;
+  return { seuilMinutes, prixHtAuDela };
 }
 
 // Familles commerciales affichées à un joueur — volontairement plus restreintes que le
@@ -85,7 +119,7 @@ function parseOptions(raw: unknown): CatalogueOption[] {
     .filter((o) => o.nom);
 }
 
-const SELECT = "id, slug, nom, description, categorie, tarif_type, prix_ht, tva_pct, duree_estimee, livrables_inclus, options, ordre";
+const SELECT = "id, slug, nom, description, categorie, tarif_type, prix_ht, tva_pct, duree_estimee, livrables_inclus, options, tarif_palier, ordre";
 
 /** Catalogue complet visible par un joueur — lecture publique (policy `catalogue_public_read`,
  * actif=true), aucune authentification requise, mais toujours appelée depuis une page protégée
@@ -112,6 +146,7 @@ export async function fetchPlayerCatalogue(supabase: SupabaseClient): Promise<Ca
       dureeEstimee: row.duree_estimee,
       livrablesInclus: row.livrables_inclus,
       options: parseOptions(row.options),
+      tarifPalier: parseTarifPalier(row.tarif_palier),
       ordre: row.ordre ?? 0,
     }))
     .filter((o) => o.family !== null);
@@ -137,6 +172,7 @@ export async function fetchPlayerOfferById(supabase: SupabaseClient, id: string)
     dureeEstimee: row.duree_estimee,
     livrablesInclus: row.livrables_inclus,
     options: parseOptions(row.options),
+    tarifPalier: parseTarifPalier(row.tarif_palier),
     ordre: row.ordre ?? 0,
   };
 }
@@ -152,6 +188,39 @@ export function totalTtcWithOptions(offer: Pick<CatalogueOffer, "tarifType" | "p
   if (offer.tarifType !== "fixe" || offer.prixHt == null) return null;
   const optionsHt = offer.options.filter((o) => selectedOptionNames.includes(o.nom)).reduce((sum, o) => sum + o.prixHt, 0);
   return Math.round((offer.prixHt + optionsHt) * (1 + offer.tvaPct / 100) * 100) / 100;
+}
+
+/** Prix de base HT tenant compte du palier de durée (ex. Montage Compilation, rush > 6 min →
+ * 80 € HT PROVISOIRE — cf. migration-connect-v63) : `offer.prixHt` si `dureeMinutes` est vide ou
+ * sous le seuil, `tarifPalier.prixHtAuDela` au-delà. AFFICHAGE UNIQUEMENT (préview avant
+ * paiement) — le montant réellement facturé est toujours recalculé côté serveur par
+ * create-checkout-session à partir de `prestations.duree_rush_minutes` en base, jamais depuis
+ * cette valeur côté client. */
+export function baseHtForDuration(offer: Pick<CatalogueOffer, "prixHt" | "tarifPalier">, dureeMinutes: number | null): number | null {
+  if (offer.prixHt == null) return null;
+  if (offer.tarifPalier && dureeMinutes != null && dureeMinutes > offer.tarifPalier.seuilMinutes) {
+    return offer.tarifPalier.prixHtAuDela;
+  }
+  return offer.prixHt;
+}
+
+/** TTC estimé tenant compte du palier de durée, des options sélectionnées ET d'une remise Agent
+ * en pourcentage (0 si non applicable) — même formule que create-checkout-session/index.ts
+ * (base + options, PUIS remise, PUIS TVA) : doit rester en phase avec ce calcul serveur, seule
+ * source de vérité pour le montant réellement facturé. AFFICHAGE UNIQUEMENT (préview avant
+ * paiement), voir `baseHtForDuration`. */
+export function estimatedTtc(
+  offer: Pick<CatalogueOffer, "tarifType" | "prixHt" | "tvaPct" | "options" | "tarifPalier">,
+  dureeMinutes: number | null,
+  selectedOptionNames: string[],
+  remisePct = 0,
+): number | null {
+  if (offer.tarifType !== "fixe") return null;
+  const baseHt = baseHtForDuration(offer, dureeMinutes);
+  if (baseHt == null) return null;
+  const optionsHt = offer.options.filter((o) => selectedOptionNames.includes(o.nom)).reduce((sum, o) => sum + o.prixHt, 0);
+  const totalHtRemise = Math.round((baseHt + optionsHt) * (1 - remisePct / 100) * 100) / 100;
+  return Math.round(totalHtRemise * (1 + offer.tvaPct / 100) * 100) / 100;
 }
 
 /** Mention "À 10 joueurs : X €/personne" — toutes les offres Match/Captation sont collectives

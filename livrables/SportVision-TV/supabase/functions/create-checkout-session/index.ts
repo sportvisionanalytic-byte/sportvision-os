@@ -12,6 +12,18 @@
 // lié à un devis et/ou une prestation. Insère la ligne `paiements` correspondante en 'en_attente'.
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: create-checkout-session)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, CONNECT_URL
+//
+// AJOUT 15/08/2026 (migration-connect-v63-prestation-montage-compilation.sql) : deux nouveaux
+// éléments, tous deux dans le seul chemin où le montant est calculé depuis le catalogue (offre
+// pas encore chiffrée par le staff) — AUCUN changement pour une prestation déjà chiffrée
+// manuellement (montant_ttc déjà renseigné) :
+//   1. Tarif à palier générique (catalogue_offres.tarif_palier vs prestations.duree_rush_
+//      minutes) — ex. Montage Compilation, rush > 6 min → 80 € HT au lieu du prix de base.
+//   2. Remises Agent (connect_agent_discount(), migration-connect-v57 — NON MODIFIÉE) :
+//      montage_pct (-5% permanent sur "Montage Compilation" slug exact) + monthly_pct (-10% une
+//      fois par période, sur n'importe quelle prestation, si le body porte
+//      `apply_monthly_discount: true` ET que le payeur est account_type='particulier'). Seule
+//      cette fonction décide du montant réellement facturé — jamais une valeur reçue du client.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -53,11 +65,17 @@ serve(async (req) => {
     if (userErr || !userData?.user) return json({ error: "Session invalide" }, 401);
     const user = userData.user;
 
-    const { devis_id, prestation_id, type_paiement } = await req.json();
+    const { devis_id, prestation_id, type_paiement, apply_monthly_discount } = await req.json();
     if (!devis_id && !prestation_id) return json({ error: "devis_id ou prestation_id requis" }, 400);
     if (!["acompte", "solde", "totalite"].includes(type_paiement)) {
       return json({ error: "type_paiement invalide" }, 400);
     }
+    // Choix du payeur d'appliquer sa remise mensuelle Agent (-10%, palier Pro, une fois par
+    // période — migration-connect-v57 §2 + v63) à CETTE prestation précise. Une simple intention
+    // côté client : n'a AUCUN effet tant que ce n'est pas revérifié plus bas via
+    // connect_agent_discount() (monthly_pct > 0, jamais déjà consommée) — jamais un pourcentage
+    // ou un montant transmis par le client.
+    const applyMonthlyDiscount = apply_monthly_discount === true;
 
     const admin = createClient(supabaseUrl, serviceKey);
 
@@ -98,12 +116,13 @@ serve(async (req) => {
       reference: string | null;
       offre_id?: string | null;
       options_selectionnees?: string[] | null;
+      duree_rush_minutes?: number | null;
     } | null = null;
 
     if (prestation_id) {
       const { data } = await admin
         .from("prestations")
-        .select("id, client_id, montant_ttc, acompte_montant, reference, offre_id, options_selectionnees")
+        .select("id, client_id, montant_ttc, acompte_montant, reference, offre_id, options_selectionnees, duree_rush_minutes")
         .eq("id", prestation_id)
         .maybeSingle();
       prestation = data;
@@ -117,7 +136,7 @@ serve(async (req) => {
       if (devis.prestation_id) {
         const { data } = await admin
           .from("prestations")
-          .select("id, client_id, montant_ttc, acompte_montant, reference, offre_id, options_selectionnees")
+          .select("id, client_id, montant_ttc, acompte_montant, reference, offre_id, options_selectionnees, duree_rush_minutes")
           .eq("id", devis.prestation_id)
           .maybeSingle();
         prestation = data;
@@ -137,6 +156,14 @@ serve(async (req) => {
     }
 
     let totalTtc = Number(prestation.montant_ttc || 0);
+    // Pourcentage de remise Agent réellement appliqué (montage_pct + éventuellement monthly_pct)
+    // — recalculé ci-dessous, jamais transmis par le client. N'affecte que le libellé Stripe
+    // (transparence) : le montant lui-même est déjà recalculé avec la remise incluse.
+    let appliedDiscountPct = 0;
+    // true seulement si la remise mensuelle Agent (-10%, palier Pro) a réellement été appliquée à
+    // CE paiement — transporté jusqu'au webhook via les metadata Stripe pour que la consommation
+    // (monthly_discount_used_at) ne soit écrite qu'après confirmation du paiement (jamais ici).
+    let monthlyDiscountApplied = false;
 
     // La prestation vient d'être créée par le client et n'a pas encore été chiffrée par le staff :
     // si elle référence une offre catalogue à tarif fixe, on calcule le montant depuis le catalogue
@@ -144,7 +171,7 @@ serve(async (req) => {
     if (!totalTtc && prestation.offre_id) {
       const { data: offre } = await admin
         .from("catalogue_offres")
-        .select("prix_ht, tva_pct, tarif_type, options")
+        .select("slug, prix_ht, tva_pct, tarif_type, options, tarif_palier")
         .eq("id", prestation.offre_id)
         .maybeSingle();
       if (offre && offre.tarif_type === "fixe" && offre.prix_ht != null) {
@@ -153,8 +180,57 @@ serve(async (req) => {
         const optionsHt = catalogOptions
           .filter((o) => o.nom && selected.includes(o.nom))
           .reduce((sum, o) => sum + Number(o.prix_ht || 0), 0);
-        const baseHt = Number(offre.prix_ht) + optionsHt;
-        totalTtc = Math.round(baseHt * (1 + Number(offre.tva_pct ?? 20) / 100) * 100) / 100;
+
+        // Tarif à palier (ex. Montage Compilation : rush > 6 min → 80 € HT, PROVISOIRE — cf.
+        // migration-connect-v63). Lu depuis catalogue_offres.tarif_palier, comparé à
+        // prestations.duree_rush_minutes tel que DÉCLARÉ À LA CRÉATION de la demande (jamais une
+        // valeur envoyée dans CETTE requête de paiement) : ni le seuil, ni le prix au-delà, ni la
+        // durée ne viennent du client à cet instant.
+        let baseHt = Number(offre.prix_ht);
+        const palier = offre.tarif_palier as { seuil_minutes?: number; prix_ht_au_dela?: number } | null;
+        if (
+          palier?.seuil_minutes != null &&
+          palier?.prix_ht_au_dela != null &&
+          prestation.duree_rush_minutes != null &&
+          Number(prestation.duree_rush_minutes) > Number(palier.seuil_minutes)
+        ) {
+          baseHt = Number(palier.prix_ht_au_dela);
+        }
+        baseHt += optionsHt;
+
+        // Remises Agent (Espace particulier, migration-connect-v57 + v63) — recalculées ICI
+        // depuis connect_agent_discount(), jamais depuis un pourcentage transmis par le client.
+        // Scope strict : uniquement pour un payeur connect_profile_settings.account_type =
+        // 'particulier' (comportement strictement inchangé pour tout paiement club/Espace Projet
+        // — aucune de ces requêtes n'a de ligne 'particulier', donc remisePct reste à 0).
+        //   - montage_pct : -5% permanent, UNIQUEMENT sur "Montage Compilation" (slug exact).
+        //   - monthly_pct : -10% une fois par période, sur N'IMPORTE QUELLE prestation, palier
+        //     Pro uniquement, et seulement si le payeur a coché "Appliquer ma remise mensuelle"
+        //     (apply_monthly_discount du body) — jamais appliquée automatiquement, c'est au
+        //     payeur de choisir sur quelle prestation la consommer.
+        let remisePct = 0;
+        const { data: profileSettings } = await admin
+          .from("connect_profile_settings")
+          .select("account_type")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (profileSettings?.account_type === "particulier") {
+          const { data: discount } = await userClient.rpc("connect_agent_discount", { p_user_id: user.id });
+          const d = discount as { montage_pct?: number; monthly_pct?: number } | null;
+          if (d) {
+            if (offre.slug === "montage-compilation" && d.montage_pct) {
+              remisePct += Number(d.montage_pct);
+            }
+            if (applyMonthlyDiscount && d.monthly_pct) {
+              remisePct += Number(d.monthly_pct);
+              monthlyDiscountApplied = true;
+            }
+          }
+        }
+        appliedDiscountPct = remisePct;
+
+        const baseHtRemise = Math.round(baseHt * (1 - remisePct / 100) * 100) / 100;
+        totalTtc = Math.round(baseHtRemise * (1 + Number(offre.tva_pct ?? 20) / 100) * 100) / 100;
       }
     }
 
@@ -199,7 +275,8 @@ serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    const label = `SportVision — ${type_paiement} ${prestation.reference || ""}`.trim();
+    const label = `SportVision — ${type_paiement} ${prestation.reference || ""}`.trim()
+      + (appliedDiscountPct > 0 ? ` (remise Agent -${appliedDiscountPct}%)` : "");
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -225,7 +302,15 @@ serve(async (req) => {
       success_url: `${connectUrl}/commandes?paiement=succes&paiement_id=${paiement.id}`,
       cancel_url: `${connectUrl}/commandes?paiement=annule&paiement_id=${paiement.id}`,
       client_reference_id: paiement.id,
-      metadata: { paiement_id: paiement.id },
+      // apply_monthly_discount/agent_user_id : uniquement présents quand la remise mensuelle
+      // Agent (-10%, palier Pro, une fois par période — migration-connect-v57 §2 + v63) a
+      // réellement été appliquée au calcul de `montant` ci-dessus. stripe-webhook les lit sur
+      // checkout.session.completed pour écrire monthly_discount_used_at APRÈS confirmation du
+      // paiement uniquement (jamais ici, jamais avant) — voir son en-tête.
+      metadata: {
+        paiement_id: paiement.id,
+        ...(monthlyDiscountApplied ? { apply_monthly_discount: "true", agent_user_id: user.id } : {}),
+      },
       customer_email: user.email ?? undefined,
     });
 

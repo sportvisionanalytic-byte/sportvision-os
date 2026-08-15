@@ -97,6 +97,7 @@ function json(body: unknown, status = 200) {
 
 interface CatalogueOfferRow {
   id: string;
+  slug: string;
   nom: string;
   categorie: string;
   tarif_type: "fixe" | "sur_devis";
@@ -105,6 +106,12 @@ interface CatalogueOfferRow {
   options: Array<{ nom?: string; prix_ht?: number }> | null;
   actif: boolean;
 }
+
+// Slug de la prestation "Montage Compilation" (migration-connect-v63) — seule offre du catalogue
+// à demander une durée de rush déclarée au moment de la commande. Constante partagée avec
+// create-checkout-session/index.ts (doit rester en phase — aucune des deux ne doit gater sur un
+// slug différent).
+const MONTAGE_COMPILATION_SLUG = "montage-compilation";
 
 // Même calcul que create-checkout-session/index.ts (doit rester en phase avec cette fonction —
 // aucune des deux ne doit dupliquer un tarif différent) : base HT + options sélectionnées, TTC
@@ -423,7 +430,7 @@ serve(async (req) => {
 
       const { data: offer, error: offerErr } = await admin
         .from("catalogue_offres")
-        .select("id, nom, categorie, tarif_type, prix_ht, tva_pct, options, actif")
+        .select("id, slug, nom, categorie, tarif_type, prix_ht, tva_pct, options, actif")
         .eq("id", offerId)
         .eq("actif", true)
         .maybeSingle();
@@ -439,12 +446,28 @@ serve(async (req) => {
         return json({ error: "Cette date est dans moins de 14 jours : la renonciation au délai de rétractation est requise." }, 400);
       }
 
+      // Durée totale de rush déclarée (migration-connect-v63) — requise UNIQUEMENT pour "Montage
+      // Compilation" (aucune autre offre du catalogue ne l'utilise, dureeRushMinutes est ignoré
+      // silencieusement s'il est envoyé pour une autre offre). Déclaratif, jamais recalculé
+      // depuis le fichier vidéo lui-même (hors scope, cf. migration §2). create-checkout-session
+      // relit CETTE valeur en base au moment du paiement — jamais une valeur renvoyée par le
+      // client à l'instant du paiement.
+      let dureeRushMinutes: number | null = null;
+      if (offer.slug === MONTAGE_COMPILATION_SLUG) {
+        const n = Number(body?.dureeRushMinutes);
+        if (!Number.isFinite(n) || n <= 0) {
+          return json({ error: "Durée totale de vos rushs requise (en minutes, supérieure à 0)." }, 400);
+        }
+        dureeRushMinutes = Math.round(n);
+      }
+
       const nowIso = new Date().toISOString();
       const paiementMode = body?.paiementMode === "collectif" ? "collectif" : "seul";
       const descriptionParts = [
         `Prestation demandée (Connect — ${beneficiary && beneficiary.kind !== "self" ? "Espace particulier" : "Espace joueur"}) : ${offer.nom}`,
         body?.adversaire ? `Adversaire : ${String(body.adversaire).trim()}` : null,
         body?.categorie ? `Catégorie : ${String(body.categorie).trim()}` : null,
+        dureeRushMinutes != null ? `Durée totale des rushs déclarée : ${dureeRushMinutes} min` : null,
         body?.notes ? `Notes : ${String(body.notes).trim()}` : null,
         paiementMode === "collectif"
           ? "Paiement souhaité : à plusieurs (cotisation) — fonctionnalité de paiement collectif pas encore branchée au moment de la demande, à confirmer avec le client."
@@ -467,6 +490,7 @@ serve(async (req) => {
           equipes: body?.equipe || null,
           description_besoin: descriptionParts.join("\n"),
           options_selectionnees: optionNames,
+          duree_rush_minutes: dureeRushMinutes,
           retractation_renoncee: body?.retractationRenoncee === true,
           retractation_renoncee_at: body?.retractationRenoncee === true ? nowIso : null,
           cgv_acceptee: true,
