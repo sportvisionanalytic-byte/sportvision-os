@@ -28,6 +28,11 @@
 //             mensuelle Agent (-10%, palier Pro) quand create-checkout-session l'a appliquée
 //             (metadata apply_monthly_discount/agent_user_id) — aucun nouvel événement Stripe à
 //             ajouter côté dashboard pour ça, checkout.session.completed est déjà écouté.
+// IMPORTANT : ajouter aussi checkout.session.expired (audit paiements du 16/08/2026) — sans ça,
+//             un client qui abandonne la page Stripe sans jamais échouer de tentative de carte
+//             (donc sans déclencher payment_intent.payment_failed) laisse sa ligne paiements/
+//             team_project_contributions/funding_contributions bloquée à 'en_attente' pour
+//             toujours. Voir le commentaire du handler plus bas pour le détail.
 // Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
 //                  PENNYLANE_API_KEY (pour l'avoir automatique sur remboursement — optionnel : si
 //                  absente, le remboursement est quand même resynchronisé, seul l'avoir Pennylane
@@ -627,6 +632,33 @@ serve(async (req) => {
       await admin.from("funding_contributions").update({ statut: "echoue" }).eq("stripe_payment_intent_id", intent.id);
     }
 
+    // Session Stripe Checkout expirée (24h par défaut en mode 'payment') SANS jamais avoir été
+    // payée — cas jusqu'ici NON géré, distinct de payment_intent.payment_failed ci-dessus :
+    // celui-ci ne se déclenche que sur une tentative de carte concrètement refusée. Un client qui
+    // abandonne simplement la page Stripe (ferme l'onglet, ne saisit jamais de carte) ne déclenche
+    // AUCUN des deux événements déjà écoutés — la ligne paiements/team_project_contributions/
+    // funding_contributions créée en 'en_attente' au moment de create-checkout-session /
+    // create-team-contribution-checkout / create-(guest-)funding-contribution-checkout restait
+    // bloquée à 'en_attente' indéfiniment, sans aucun signal.
+    // Réutilise le statut 'echoue' déjà existant (même sémantique côté client que payment_intent.
+    // payment_failed : "ce paiement n'a pas abouti") plutôt que d'inventer un nouveau statut — pas
+    // de décision produit nouvelle, seulement une résynchronisation d'un état déjà défini pour un
+    // événement Stripe qui ne l'écrivait pas encore. Ne touche que les lignes encore 'en_attente'
+    // (jamais une ligne déjà 'paye'/'rembourse'/'echoue') pour rester un no-op sur toute session
+    // expirée après un paiement déjà confirmé par ailleurs (ordre d'arrivée des événements Stripe
+    // non garanti).
+    // Découvert lors de l'audit paiements du 16/08/2026 — n'a pas d'équivalent pour l'abonnement
+    // Club+/Agent (mode 'subscription') : ces sessions ne pré-créent aucune ligne 'en_attente',
+    // l'activation n'a lieu qu'à checkout.session.completed, donc rien n'y reste jamais bloqué.
+    // IMPORTANT : ajouter checkout.session.expired aux événements écoutés côté dashboard Stripe
+    // (Webhooks) — non fait automatiquement, cf. les autres IMPORTANT en tête de ce fichier.
+    if (event.type === "checkout.session.expired") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      await admin.from("paiements").update({ statut: "echoue" }).eq("stripe_checkout_session_id", session.id).eq("statut", "en_attente");
+      await admin.from("team_project_contributions").update({ statut: "echoue" }).eq("stripe_checkout_session_id", session.id).eq("statut", "en_attente");
+      await admin.from("funding_contributions").update({ statut: "echoue" }).eq("stripe_checkout_session_id", session.id).eq("statut", "en_attente");
+    }
+
     // Remboursement (manuel depuis le dashboard Stripe, ou via l'API) — jusqu'ici
     // aucun événement de remboursement n'était géré : paiements.statut,
     // prestations.statut_financier et factures.statut restaient à "payé(e)"
@@ -717,18 +749,41 @@ serve(async (req) => {
             .eq("stripe_payment_intent_id", intentId)
             .maybeSingle();
 
-          if (contribution && contribution.statut !== "rembourse" && estTotal) {
-            await admin.from("team_project_contributions").update({ statut: "rembourse" }).eq("id", contribution.id);
-            // recompute_team_project_amount() se déclenche automatiquement
-            // (trigger after update) et corrige team_projects.montant_collecte.
+          if (contribution && contribution.statut !== "rembourse") {
+            if (estTotal) {
+              await admin.from("team_project_contributions").update({ statut: "rembourse" }).eq("id", contribution.id);
+              // recompute_team_project_amount() se déclenche automatiquement
+              // (trigger after update) et corrige team_projects.montant_collecte.
+              try {
+                await admin.from("team_project_events").insert({
+                  project_id: contribution.project_id,
+                  event_type: "contribution_remboursee",
+                  note: `${contribution.montant} € remboursés via Stripe`,
+                });
+              } catch (_e) {
+                console.error("[stripe-webhook] journalisation team_project_events (remboursement contribution) a échoué :", _e);
+              }
+            }
+
+            // Notifie le staff — même filet de sécurité que la branche `paiement` ci-dessus
+            // (best-effort, aucune écriture supplémentaire). Jusqu'ici AUCUNE notification n'était
+            // envoyée sur un remboursement de contribution à un projet collectif Club+, ni total
+            // ni partiel (le seul signal était l'entrée team_project_events sur un remboursement
+            // total, jamais consultée activement) — découvert lors de l'audit paiements du
+            // 16/08/2026. Purement additif : ne change aucune écriture existante.
             try {
-              await admin.from("team_project_events").insert({
-                project_id: contribution.project_id,
-                event_type: "contribution_remboursee",
-                note: `${contribution.montant} € remboursés via Stripe`,
+              await admin.rpc("notify_staff_by_role", {
+                p_roles: ["sec", "compta"],
+                p_titre: estTotal ? "Remboursement Stripe confirmé — contribution projet collectif" : "Remboursement Stripe PARTIEL — contribution projet collectif",
+                p_message: estTotal
+                  ? `La contribution de ${contribution.montant} € à un projet collectif a été intégralement remboursée. Le montant collecté du projet a été recalculé automatiquement.`
+                  : `Remboursement partiel détecté (${(charge.amount_refunded / 100).toFixed(2)} € sur ${(charge.amount / 100).toFixed(2)} €) sur une contribution à un projet collectif. Aucune mise à jour automatique du statut — à traiter manuellement.`,
+                p_priorite: estTotal ? "normale" : "haute",
+                p_prestation_id: null,
+                p_client_id: null,
               });
             } catch (_e) {
-              console.error("[stripe-webhook] journalisation team_project_events (remboursement contribution) a échoué :", _e);
+              console.error("[stripe-webhook] notify_staff_by_role (remboursement contribution projet) a échoué :", _e);
             }
           }
 
@@ -746,10 +801,32 @@ serve(async (req) => {
               .eq("stripe_payment_intent_id", intentId)
               .maybeSingle();
 
-            if (fundingContribution && fundingContribution.statut !== "rembourse" && estTotal) {
-              await admin.from("funding_contributions").update({ statut: "rembourse" }).eq("id", fundingContribution.id);
-              // recompute_group_funding_amount() se déclenche automatiquement
-              // (trigger after update) et corrige group_fundings.montant_collecte.
+            if (fundingContribution && fundingContribution.statut !== "rembourse") {
+              if (estTotal) {
+                await admin.from("funding_contributions").update({ statut: "rembourse" }).eq("id", fundingContribution.id);
+                // recompute_group_funding_amount() se déclenche automatiquement
+                // (trigger after update) et corrige group_fundings.montant_collecte.
+              }
+
+              // Notifie le staff — même fix de parité que team_project_contributions ci-dessus :
+              // jusqu'ici un remboursement (total OU partiel) sur une participation à une
+              // cotisation personnelle Connect ne déclenchait STRICTEMENT rien (ni écriture, ni
+              // notification) sur un remboursement partiel — le webhook ignorait silencieusement
+              // l'événement. Purement additif (best-effort), ne change aucune écriture existante.
+              try {
+                await admin.rpc("notify_staff_by_role", {
+                  p_roles: ["sec", "compta"],
+                  p_titre: estTotal ? "Remboursement Stripe confirmé — cotisation collective" : "Remboursement Stripe PARTIEL — cotisation collective",
+                  p_message: estTotal
+                    ? `La participation de ${fundingContribution.montant} € à une cotisation collective a été intégralement remboursée. Le montant collecté a été recalculé automatiquement.`
+                    : `Remboursement partiel détecté (${(charge.amount_refunded / 100).toFixed(2)} € sur ${(charge.amount / 100).toFixed(2)} €) sur une participation à une cotisation collective. Aucune mise à jour automatique du statut — à traiter manuellement.`,
+                  p_priorite: estTotal ? "normale" : "haute",
+                  p_prestation_id: null,
+                  p_client_id: null,
+                });
+              } catch (_e) {
+                console.error("[stripe-webhook] notify_staff_by_role (remboursement participation cotisation) a échoué :", _e);
+              }
             }
           }
         }
