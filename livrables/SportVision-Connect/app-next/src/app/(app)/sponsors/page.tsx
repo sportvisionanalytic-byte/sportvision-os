@@ -11,11 +11,15 @@ import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { SponsorCard } from "@/components/sponsors/SponsorCard";
 import { SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/components/sponsors/format";
-import { mockSponsorOperations, mockSponsorPublications, visibilityGauge } from "@/lib/mock/sponsors";
-import { fetchClubSponsors } from "@/lib/data/club/sponsors";
+import { visibilityGauge } from "@/lib/mock/sponsors";
+import {
+  fetchClubSponsors,
+  fetchSponsorOperationsForPartner,
+  fetchSponsorPublicationsForPartner,
+} from "@/lib/data/club/sponsors";
 import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
 import { createClient } from "@/lib/supabase/client";
-import type { Sponsor } from "@/lib/types/sponsors";
+import type { Sponsor, SponsorOperation, SponsorPublication } from "@/lib/types/sponsors";
 import { SPONSOR_LEVEL_LABEL, SPONSOR_LEVEL_TONE } from "@/components/sponsors/format";
 
 // Écran Sponsors — ACTIONS.md § 17 (vue club) et § 20 bis (espace partenaire). Le partenaire a
@@ -116,18 +120,24 @@ export default function SponsorsPage() {
 
 function PartnerView({ organizationId, partnerName }: { organizationId: string; partnerName: string }) {
   // club_sponsors filtré par sponsor_organization_id (Phase 4) — un sponsor peut avoir plusieurs
-  // partenariats (un par club), traités comme une liste. Pas de table réelle pour
-  // livrables/publications détaillés (voir data/sponsor/sponsorships.ts) : ces sections restent
-  // honnêtement vides plutôt que de montrer les données mock d'un seul sponsor fictif.
+  // partenariats (un par club), traités comme une liste. Livrables détaillés (SponsorDeliverable)
+  // restent hors périmètre (pas de table réelle, voir data/sponsor/sponsorships.ts) : cette
+  // section reste honnêtement vide. Publications et Opérations ont un vrai backend depuis
+  // migration-clubplus-v38-studio-sponsors.sql (voir data/club/sponsors.ts).
   const [partnerships, setPartnerships] = useState<Sponsor[] | null>(null);
+  const [publications, setPublications] = useState<SponsorPublication[] | null>(null);
+  const [operations, setOperations] = useState<SponsorOperation[] | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
     fetchSponsorPartnerships(supabase, organizationId).then(setPartnerships);
+    fetchSponsorPublicationsForPartner(supabase, organizationId)
+      .then(setPublications)
+      .catch(() => setPublications([]));
+    fetchSponsorOperationsForPartner(supabase, organizationId)
+      .then(setOperations)
+      .catch(() => setOperations([]));
   }, [organizationId]);
-
-  const publications: typeof mockSponsorPublications = [];
-  const operations: typeof mockSponsorOperations = [];
 
   return (
     <div className="flex flex-col gap-5">
@@ -163,7 +173,9 @@ function PartnerView({ organizationId, partnerName }: { organizationId: string; 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-4.5">
           <div className="text-[14px] font-extrabold tracking-tight">Contenus sponsorisés</div>
-          {publications.length === 0 ? (
+          {publications === null ? (
+            <p className="mt-3 text-[12.5px] text-text-soft">Chargement…</p>
+          ) : publications.length === 0 ? (
             <p className="mt-3 text-[12.5px] text-text-soft">Aucune publication où votre logo apparaît pour le moment.</p>
           ) : (
             <div className="mt-3 flex flex-col gap-2.5">
@@ -181,7 +193,9 @@ function PartnerView({ organizationId, partnerName }: { organizationId: string; 
 
         <Card className="p-4.5">
           <div className="text-[14px] font-extrabold tracking-tight">Opérations</div>
-          {operations.length === 0 ? (
+          {operations === null ? (
+            <p className="mt-3 text-[12.5px] text-text-soft">Chargement…</p>
+          ) : operations.length === 0 ? (
             <p className="mt-3 text-[12.5px] text-text-soft">Aucune activation prévue pour le moment.</p>
           ) : (
             <div className="mt-3 flex flex-col gap-2.5">

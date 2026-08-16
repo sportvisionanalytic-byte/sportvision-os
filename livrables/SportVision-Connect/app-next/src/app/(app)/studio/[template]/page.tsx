@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Check, Sparkles, UploadCloud } from "lucide-react";
@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
-import { currentSeasonLabel, findTemplate, inferVisualType } from "@/lib/mock/studio";
+import { currentSeasonLabel, inferVisualType } from "@/lib/mock/studio";
+import { fetchStudioTemplate } from "@/lib/data/club/studio";
 import { submitClubRequest } from "@/lib/data/club/requests";
 import { submitOrgRequest } from "@/lib/data/shared/requests";
 import { fetchClubMatchById } from "@/lib/data/club/matches";
@@ -23,9 +24,13 @@ import {
   STUDIO_FIELD_LABELS,
   STUDIO_PREFILLED_FIELDS,
   type StudioFieldKey,
+  type StudioTemplate,
 } from "@/lib/types/studio";
 
 // Fiche modèle du Studio — formulaire préempli, bandeau de coût en crédits. Voir ACTIONS.md § 6.
+// Le modèle est chargé depuis studio_templates (migration-clubplus-v38-studio-sponsors.sql, voir
+// data/club/studio.ts) au lieu de la constante STUDIO_TEMPLATES — d'où le chargement asynchrone
+// (findTemplate() était synchrone sur le tableau en mémoire, fetchStudioTemplate() ne l'est pas).
 // À l'envoi, submitClubRequest/submitOrgRequest appellent la vraie RPC serveur qui réserve les
 // crédits (club_requests) ou stocke credits_reserved sur la ligne (requests générique, aucun
 // solde réel déduit — voir data/shared/requests.ts). `ctx.subscription.creditsRemaining` ne se
@@ -45,7 +50,7 @@ function StudioTemplateContent() {
   const { ctx } = useSession();
   const { toastMessage, showToast } = useToast();
 
-  const template = useMemo(() => findTemplate(params.template), [params.template]);
+  const [template, setTemplate] = useState<StudioTemplate | null | undefined>(undefined);
   const allowed = canAccess(ctx, "studio");
   // Même routage que requests/new/page.tsx : Coach/Académie/Sponsor ET Projet/"generic" n'ont pas
   // de ligne `clubs`, submitClubRequest y échoue toujours (is_club_member ne trouve jamais de
@@ -59,6 +64,23 @@ function StudioTemplateContent() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [teamNames, setTeamNames] = useState<string[]>([]);
+
+  // `undefined` = en cours de chargement, `null` = confirmé introuvable (code absent ou
+  // désactivé en base), voir data/club/studio.ts § fetchStudioTemplate.
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    fetchStudioTemplate(supabase, params.template)
+      .then((t) => {
+        if (!cancelled) setTemplate(t);
+      })
+      .catch(() => {
+        if (!cancelled) setTemplate(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.template]);
 
   useEffect(() => {
     if (!template) return;
@@ -93,6 +115,10 @@ function StudioTemplateContent() {
   }, [ctx.organization.id]);
 
   if (!allowed) return <LockedModule title={template ? template.name : "Studio Club+"} />;
+
+  if (template === undefined) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  }
 
   if (!template) {
     return (

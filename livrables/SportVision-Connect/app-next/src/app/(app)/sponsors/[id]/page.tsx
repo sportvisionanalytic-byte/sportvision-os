@@ -7,14 +7,14 @@ import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { SPONSOR_LEVEL_LABEL, SPONSOR_LEVEL_TONE, SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/components/sponsors/format";
 import { deliverablesForSponsor, visibilityGauge } from "@/lib/mock/sponsors";
-import { fetchClubSponsors, updateSponsorCommitments } from "@/lib/data/club/sponsors";
+import { fetchClubSponsors, fetchSponsorPublications, updateSponsorCommitments } from "@/lib/data/club/sponsors";
 import { fetchSponsorPartnerships } from "@/lib/data/sponsor/sponsorships";
 import { createClient } from "@/lib/supabase/client";
-import type { Sponsor, SponsorCommitment } from "@/lib/types/sponsors";
+import type { Sponsor, SponsorCommitment, SponsorPublication, SponsorPublicationStatus } from "@/lib/types/sponsors";
 import { cn } from "@/lib/cn";
 
 // Fiche sponsor — 5 onglets : Livrables · Contreparties · Contrat · Publications · Documents.
@@ -298,15 +298,61 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-// Publications et Documents : pas de table backend pour ces entités par sponsor (voir le plan
-// Phase 4 § Gaps de données, même limite que "Contenus sponsorisés"/"Opérations" dans la vue
-// partenaire de /sponsors). Listes honnêtement vides plutôt que d'afficher les exemples fictifs
-// de lib/mock/sponsors.ts sur un sponsor réel — sponsorId gardé dans la signature pour le jour
-// où une vraie table existera.
-function PublicationsTab({ sponsorId: _sponsorId }: { sponsorId: string }) {
-  return <EmptyTab icon={Images} label="Aucune publication où le logo apparaît." />;
+const PUBLICATION_STATUS_LABEL: Record<SponsorPublicationStatus, string> = {
+  publie: "Publié",
+  programme: "Programmé",
+  en_creation: "En création",
+};
+
+const PUBLICATION_STATUS_TONE: Record<SponsorPublicationStatus, BadgeTone> = {
+  publie: "success",
+  programme: "info",
+  en_creation: "accent",
+};
+
+// Publications — club_creations filtré par sponsor_id (migration-clubplus-v38-studio-sponsors.sql
+// § 3, voir data/club/sponsors.ts § fetchSponsorPublications). Liste honnêtement vide tant
+// qu'aucun contenu n'a ce sponsor_id renseigné (0 ligne club_creations en prod au 16/08/2026) —
+// comportement attendu, pas une régression.
+function PublicationsTab({ sponsorId }: { sponsorId: string }) {
+  const [items, setItems] = useState<SponsorPublication[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    fetchSponsorPublications(supabase, sponsorId)
+      .then((rows) => {
+        if (!cancelled) setItems(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setItems([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sponsorId]);
+
+  if (items === null) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  }
+  if (items.length === 0) return <EmptyTab icon={Images} label="Aucune publication où le logo apparaît." />;
+
+  return (
+    <Card>
+      {items.map((p) => (
+        <div key={p.id} className="flex items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
+          <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold text-text">{p.label}</span>
+          <Badge tone={PUBLICATION_STATUS_TONE[p.status]}>{PUBLICATION_STATUS_LABEL[p.status]}</Badge>
+        </div>
+      ))}
+    </Card>
+  );
 }
 
+// Documents : aucune table backend pour cette entité (SponsorDocument) — hors périmètre du
+// chantier "Studio dynamique + Sponsors backend réel" du 16/08/2026 (voir son rapport). Liste
+// honnêtement vide plutôt que d'afficher les exemples fictifs de lib/mock/sponsors.ts sur un
+// sponsor réel — sponsorId gardé dans la signature pour le jour où une vraie table existera.
 function DocumentsTab({ sponsorId: _sponsorId }: { sponsorId: string }) {
   return <EmptyTab icon={FileText} label="Aucun document pour ce sponsor." />;
 }

@@ -1,74 +1,13 @@
-import type {
-  Sponsor,
-  SponsorDeliverable,
-  SponsorDocument,
-  SponsorOperation,
-  SponsorPublication,
-} from "../types/sponsors";
+import type { SponsorDeliverable } from "../types/sponsors";
 
-// Données fictives mais réalistes — voir README.md § Fidélité. « Varenne Auto » sponsorise US
-// Varenne et dispose aussi de son propre espace partenaire (organisation `org-varenneauto`,
-// voir mock-data.ts) — c'est le même partenariat vu des deux côtés : club et sponsor.
-
-export const mockSponsors: Sponsor[] = [
-  {
-    id: "sponsor-varenne-auto",
-    organizationId: "org-usv",
-    name: "Varenne Auto",
-    level: "or",
-    startsAt: "2025-11-03",
-    endsAt: "2026-11-03",
-    annualAmount: 8000,
-    paymentSchedule: "annual",
-    status: "active",
-    contractId: "contract-usv-sponsor-varenne-auto",
-    signatories: ["Nadia Costa — Varenne Auto"],
-    sector: "Concession automobile",
-    commitments: [],
-  },
-  {
-    id: "sponsor-credit-fontaine",
-    organizationId: "org-usv",
-    name: "Crédit Fontaine",
-    level: "platine",
-    startsAt: "2025-11-03",
-    endsAt: "2026-11-03",
-    annualAmount: 15000,
-    paymentSchedule: "biannual",
-    status: "active",
-    signatories: ["Rémi Salomon — Crédit Fontaine"],
-    sector: "Banque",
-    commitments: [],
-  },
-  {
-    id: "sponsor-boulangerie-du-stade",
-    organizationId: "org-fcf",
-    name: "Boulangerie du Stade",
-    level: "argent",
-    startsAt: "2025-09-01",
-    endsAt: "2026-09-01",
-    annualAmount: 3500,
-    paymentSchedule: "quarterly",
-    status: "active",
-    signatories: ["Isabelle Roy — Boulangerie du Stade"],
-    sector: "Boulangerie-pâtisserie",
-    commitments: [],
-  },
-  {
-    id: "sponsor-bricolage-plus",
-    organizationId: "org-fcf",
-    name: "Bricolage Plus",
-    level: "bronze",
-    startsAt: "2025-09-01",
-    endsAt: "2026-09-01",
-    annualAmount: 1800,
-    paymentSchedule: "annual",
-    status: "to_renew",
-    signatories: ["Franck Auger — Bricolage Plus"],
-    sector: "Bricolage et jardinage",
-    commitments: [],
-  },
-];
+// Données fictives — voir README.md § Fidélité. Réduit le 16/08/2026 (chantier "Studio dynamique
+// + Sponsors backend réel") : mockSponsors/mockSponsorPublications/mockSponsorOperations/
+// mockSponsorDocuments/mockSponsorSelfView/sponsorsForOrganization retirés, plus aucun appelant
+// ne les utilisait (fetchClubSponsors/fetchSponsorPartnerships lisent déjà club_sponsors réel
+// depuis longtemps ; Publications et Opérations ont désormais un vrai backend, voir
+// data/club/sponsors.ts). SponsorDeliverable reste en mock : aucune table backend pour cette
+// entité (hors périmètre de ce chantier, voir son rapport) — fichier conservé pour cette seule
+// raison, pas supprimé.
 
 export const mockSponsorDeliverables: SponsorDeliverable[] = [
   { id: "sd-1", sponsorId: "sponsor-varenne-auto", label: "Logo sur maillot domicile", period: "Saison 2026/2027", plannedCount: 22, deliveredCount: 22, status: "livre" },
@@ -79,36 +18,6 @@ export const mockSponsorDeliverables: SponsorDeliverable[] = [
   { id: "sd-6", sponsorId: "sponsor-boulangerie-du-stade", label: "Logo pied de page newsletter", period: "Saison 2026/2027", plannedCount: 10, deliveredCount: 7, status: "en_cours" },
   { id: "sd-7", sponsorId: "sponsor-bricolage-plus", label: "Bâche stade", period: "Saison 2025/2026", plannedCount: 8, deliveredCount: 5, status: "en_retard" },
 ];
-
-export const mockSponsorPublications: SponsorPublication[] = [
-  { id: "sp-1", sponsorId: "sponsor-varenne-auto", label: "Affiche Matchday — logo Varenne Auto", status: "publie", publishedAt: "2026-08-05", reach: 3200 },
-  { id: "sp-2", sponsorId: "sponsor-varenne-auto", label: "Story reprise des entraînements", status: "programme" },
-  { id: "sp-3", sponsorId: "sponsor-credit-fontaine", label: "Portrait joueur du mois", status: "publie", publishedAt: "2026-07-30", reach: 2100 },
-  { id: "sp-4", sponsorId: "sponsor-boulangerie-du-stade", label: "Récap de match — logo pied de publication", status: "en_creation" },
-];
-
-export const mockSponsorOperations: SponsorOperation[] = [
-  { id: "so-1", sponsorId: "sponsor-varenne-auto", label: "Stand véhicule au stade — journée d'ouverture", date: "2026-08-16", status: "prevue" },
-  { id: "so-2", sponsorId: "sponsor-varenne-auto", label: "Remise des maillots floqués", date: "2026-07-20", status: "realisee" },
-  { id: "so-3", sponsorId: "sponsor-credit-fontaine", label: "Tirage au sort partenaire — mi-temps", date: "2026-08-16", status: "prevue" },
-];
-
-export const mockSponsorDocuments: SponsorDocument[] = [
-  { id: "sdoc-1", sponsorId: "sponsor-varenne-auto", name: "Contrat de partenariat 2025-2026", kind: "contract", updatedAt: "2025-10-20" },
-  { id: "sdoc-2", sponsorId: "sponsor-varenne-auto", name: "Charte graphique Varenne Auto", kind: "brand_guidelines", updatedAt: "2025-11-03" },
-  { id: "sdoc-3", sponsorId: "sponsor-varenne-auto", name: "Pack logos HD", kind: "logo_pack", updatedAt: "2025-11-03" },
-  { id: "sdoc-4", sponsorId: "sponsor-credit-fontaine", name: "Contrat de partenariat 2025-2026", kind: "contract", updatedAt: "2025-10-28" },
-];
-
-/** Une organisation de type `sponsor` (son propre espace) peut être liée à un ou plusieurs
- * partenariats côté club — voir ACTIONS.md § 20 bis. */
-export const mockSponsorSelfView: Record<string, string[]> = {
-  "org-varenneauto": ["sponsor-varenne-auto"],
-};
-
-export function sponsorsForOrganization(organizationId: string): Sponsor[] {
-  return mockSponsors.filter((s) => s.organizationId === organizationId);
-}
 
 export function deliverablesForSponsor(sponsorId: string): SponsorDeliverable[] {
   return mockSponsorDeliverables.filter((d) => d.sponsorId === sponsorId);

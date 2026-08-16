@@ -1,14 +1,32 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Sponsor, SponsorCommitment, SponsorLevel, SponsorStatus } from "@/lib/types/sponsors";
+import type {
+  Sponsor,
+  SponsorCommitment,
+  SponsorLevel,
+  SponsorOperation,
+  SponsorPublication,
+  SponsorPublicationStatus,
+  SponsorStatus,
+} from "@/lib/types/sponsors";
 import { parseSponsorCommitments } from "@/lib/data/shared/sponsor-commitments";
 
 // club_sponsors (migration-clubplus-v5.sql) — pas de colonne `status` réelle ni de
 // `paymentSchedule`/`contractId`/`signatories` : status dérivé de date_fin, le reste laissé
 // honnêtement absent (`null`/`[]`/`undefined`) plutôt que comblé par une valeur par défaut
 // affichée comme un fait (corrigé lors de l'audit du 09/08 — `paymentSchedule: "annual"` en dur
-// était affiché comme réel dans /sponsors/:id § Contrat pour TOUT sponsor réel). Pas de table
-// pour SponsorDeliverable/Publication/Operation/Document (voir le plan Phase 1) — ces onglets
-// restent vides plutôt que d'inventer une donnée. RLS : is_club_member(club_id).
+// était affiché comme réel dans /sponsors/:id § Contrat pour TOUT sponsor réel). RLS :
+// is_club_member(club_id).
+//
+// SponsorDeliverable/SponsorDocument restent en mock (voir plan Phase 1, hors périmètre du
+// chantier "Studio dynamique + Sponsors backend réel" du 16/08/2026 — pas de table dédiée créée
+// pour ces deux entités, voir le rapport de ce chantier pour la justification détaillée).
+//
+// SponsorPublication (fetchSponsorPublications/fetchSponsorPublicationsForPartner ci-dessous) et
+// SponsorOperation (fetchSponsorOperations/fetchSponsorOperationsForPartner, plus bas) ont
+// désormais un vrai backend (migration-clubplus-v38-studio-sponsors.sql) : club_creations
+// (table "Mes contenus" réelle du club — PAS `contenus`, qui appartient au planning éditorial CM
+// de Connect, sans rapport avec ce module Club+, voir le commentaire de la migration) pour les
+// publications, nouvelle table `sponsor_operations` pour les activations.
 //
 // `commitments` (jsonb, colonne réelle) : vide pour tous les sponsors en prod au 11/08/2026,
 // contrairement aux champs ci-dessus il n'y a pas de table absente — juste aucune UI d'écriture
@@ -74,4 +92,119 @@ export async function updateSponsorCommitments(
 ): Promise<void> {
   const { error } = await supabase.from("club_sponsors").update({ commitments }).eq("id", sponsorId);
   if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Publications — club_creations filtré par sponsor_id (migration-clubplus-v38-studio-sponsors.sql
+// § 3). club_creations.status ('brouillon'/'a_valider'/'valide'/'publie') n'a pas de valeur
+// "programmé" littérale : mapping retenu ci-dessous — brouillon/a_valider restent "en_creation"
+// (le contenu n'est ni prêt ni planifié), valide devient "programme" (approuvé, le plus proche
+// analogue de "prêt à sortir" disponible dans ce schéma), publie reste publie. Documenté ici
+// plutôt que dans le composant pour rester à côté de la requête qui le produit.
+// ---------------------------------------------------------------------------------------------
+
+const CREATION_STATUS_TO_PUBLICATION: Record<string, SponsorPublicationStatus> = {
+  brouillon: "en_creation",
+  a_valider: "en_creation",
+  valide: "programme",
+  publie: "publie",
+};
+
+interface ClubCreationRow {
+  id: string;
+  title: string;
+  status: string;
+}
+
+function toPublication(row: ClubCreationRow, sponsorId: string): SponsorPublication {
+  return {
+    id: row.id,
+    sponsorId,
+    label: row.title,
+    status: CREATION_STATUS_TO_PUBLICATION[row.status] ?? "en_creation",
+    // publishedAt/reach : aucune colonne réelle de date de publication ni de portée sur
+    // club_creations (seulement created_at/updated_at, qui ne représentent pas fiablement
+    // l'instant de publication) — laissés absents plutôt qu'approximés par une donnée qui n'est
+    // pas la vraie information, même conduite que le reste de ce fichier (paymentSchedule, etc.).
+  };
+}
+
+/** Publications d'UN partenariat précis (une ligne club_sponsors) — onglet Publications de
+ * /sponsors/:id (vue club). RLS : ccr_member_select (is_club_member). */
+export async function fetchSponsorPublications(supabase: SupabaseClient, sponsorId: string): Promise<SponsorPublication[]> {
+  const { data, error } = await supabase
+    .from("club_creations")
+    .select("id, title, status")
+    .eq("sponsor_id", sponsorId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as ClubCreationRow[]).map((row) => toPublication(row, sponsorId));
+}
+
+/** Publications agrégées, tous clubs confondus, pour le propre espace du sponsor — via
+ * club_creations.sponsor_organization_id (déjà ajoutée par migration-connect-v4-sponsor.sql).
+ * `sponsor_id` peut être absent sur une ligne liée seulement via sponsor_organization_id : les
+ * deux colonnes sont complémentaires (voir migration v38 § 3), on retombe alors sur la chaîne
+ * vide plutôt que d'inventer un identifiant de partenariat. RLS : ccr_sponsor_org_select
+ * (is_org_member). */
+export async function fetchSponsorPublicationsForPartner(
+  supabase: SupabaseClient,
+  sponsorOrganizationId: string,
+): Promise<SponsorPublication[]> {
+  const { data, error } = await supabase
+    .from("club_creations")
+    .select("id, title, status, sponsor_id")
+    .eq("sponsor_organization_id", sponsorOrganizationId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as (ClubCreationRow & { sponsor_id: string | null })[]).map((row) =>
+    toPublication(row, row.sponsor_id ?? ""),
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Opérations (activations) — nouvelle table sponsor_operations (migration-clubplus-v38). Ce sont
+// des interventions organisées PAR SportVision pour le compte du sponsor (voir le commentaire de
+// SponsorOperation dans lib/types/sponsors.ts) : écriture strictement staff, pas d'écriture club
+// exposée ici.
+// ---------------------------------------------------------------------------------------------
+
+interface SponsorOperationRow {
+  id: string;
+  sponsor_id: string;
+  label: string;
+  date: string;
+  status: "prevue" | "realisee";
+}
+
+function toOperation(row: SponsorOperationRow): SponsorOperation {
+  return { id: row.id, sponsorId: row.sponsor_id, label: row.label, date: row.date, status: row.status };
+}
+
+/** Opérations d'UN partenariat précis. RLS : sop_club_member_select (is_club_member via
+ * club_sponsors) ou sop_sponsor_org_select (is_org_member). */
+export async function fetchSponsorOperations(supabase: SupabaseClient, sponsorId: string): Promise<SponsorOperation[]> {
+  const { data, error } = await supabase
+    .from("sponsor_operations")
+    .select("id, sponsor_id, label, date, status")
+    .eq("sponsor_id", sponsorId)
+    .order("date", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as SponsorOperationRow[]).map(toOperation);
+}
+
+/** Opérations agrégées, tous clubs confondus, pour le propre espace du sponsor — jointure vers
+ * club_sponsors.sponsor_organization_id (`!inner` : exclut les lignes sponsor_operations dont le
+ * partenariat n'est pas lié à CETTE organisation sponsor). RLS : sop_sponsor_org_select. */
+export async function fetchSponsorOperationsForPartner(
+  supabase: SupabaseClient,
+  sponsorOrganizationId: string,
+): Promise<SponsorOperation[]> {
+  const { data, error } = await supabase
+    .from("sponsor_operations")
+    .select("id, sponsor_id, label, date, status, club_sponsors!inner(sponsor_organization_id)")
+    .eq("club_sponsors.sponsor_organization_id", sponsorOrganizationId)
+    .order("date", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as SponsorOperationRow[]).map(toOperation);
 }

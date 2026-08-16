@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Sparkles } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -9,11 +9,19 @@ import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
-import { STUDIO_TEMPLATES } from "@/lib/mock/studio";
-import { STUDIO_CATEGORY_LABELS, STUDIO_CATEGORY_ORDER, type StudioCategory } from "@/lib/types/studio";
+import { fetchStudioTemplates } from "@/lib/data/club/studio";
+import { createClient } from "@/lib/supabase/client";
+import {
+  STUDIO_CATEGORY_LABELS,
+  STUDIO_CATEGORY_ORDER,
+  type StudioCategory,
+  type StudioTemplate,
+} from "@/lib/types/studio";
 
 // Studio Club+ — marketplace de modèles. Voir ACTIONS.md § 6 et DATA_MODEL.md § StudioTemplate.
-// 47 modèles répartis sur 7 catégories, liste reprise telle quelle dans src/lib/mock/studio.ts.
+// 47 modèles répartis sur 7 catégories, désormais lus depuis la table `studio_templates`
+// (migration-clubplus-v38-studio-sponsors.sql) au lieu de la constante STUDIO_TEMPLATES —
+// catalogue dynamique, pilotable par le staff SportVision sans déploiement.
 
 type CategoryFilter = "all" | StudioCategory;
 
@@ -22,19 +30,36 @@ export default function StudioPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("all");
+  const [templates, setTemplates] = useState<StudioTemplate[] | null>(null);
 
   const allowed = canAccess(ctx, "studio");
 
+  useEffect(() => {
+    if (!allowed) return;
+    let cancelled = false;
+    const supabase = createClient();
+    fetchStudioTemplates(supabase)
+      .then((rows) => {
+        if (!cancelled) setTemplates(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setTemplates([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [allowed]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return STUDIO_TEMPLATES.filter((t) => {
+    return (templates ?? []).filter((t) => {
       if (category !== "all" && t.category !== category) return false;
       if (q && !t.name.toLowerCase().includes(q) && !STUDIO_CATEGORY_LABELS[t.category].toLowerCase().includes(q)) {
         return false;
       }
       return true;
     });
-  }, [search, category]);
+  }, [templates, search, category]);
 
   if (!allowed) return <LockedModule title="Studio Club+" />;
 
@@ -72,7 +97,9 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {templates === null ? (
+        <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>
+      ) : filtered.length === 0 ? (
         <Card className="p-8 text-center text-[13.5px] text-text-soft">
           Aucun modèle ne correspond à votre recherche.
         </Card>
