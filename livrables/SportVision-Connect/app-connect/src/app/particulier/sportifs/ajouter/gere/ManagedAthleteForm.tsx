@@ -100,7 +100,7 @@ export function ManagedAthleteForm() {
 
   return (
     <div className="flex max-w-[620px] flex-col gap-6">
-      <Link href="/particulier/sportifs/ajouter" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+      <Link href="/particulier/sportifs/ajouter" className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
         <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Retour
       </Link>
@@ -121,7 +121,7 @@ export function ManagedAthleteForm() {
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <span className="text-[13px] font-medium text-text-secondary">Sport</span>
+        <span className="text-[14px] font-medium text-text-secondary lg:text-[13px]">Sport</span>
         <div className="flex flex-wrap gap-2">
           {SPORTS.map((s) => (
             <button
@@ -148,7 +148,7 @@ export function ManagedAthleteForm() {
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <span className="text-[13px] font-medium text-text-secondary">Votre lien avec ce sportif</span>
+        <span className="text-[14px] font-medium text-text-secondary lg:text-[13px]">Votre lien avec ce sportif</span>
         <div className="flex flex-wrap gap-2">
           {RELATIONS.map((r) => (
             <button
@@ -167,7 +167,7 @@ export function ManagedAthleteForm() {
 
       <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
         <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
-        <span className="text-[13px] leading-relaxed text-text-tertiary">
+        <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
           Un profil géré n&apos;est pas un compte autonome. La qualité de responsable légal doit être vérifiée avant
           toute mise en production.
         </span>
@@ -177,10 +177,10 @@ export function ManagedAthleteForm() {
         <div className="flex flex-col items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
           <div className="flex items-start gap-2.5">
             <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-            <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
+            <span className="text-[14px] leading-relaxed text-[#FBCFE8] lg:text-[13px]">{error}</span>
           </div>
           {errorIsAgentLimit && (
-            <Link href="/particulier/abonnement" className="ml-[29px] text-[13px] font-semibold text-affiliations hover:underline">
+            <Link href="/particulier/abonnement" className="ml-[29px] text-[14px] font-semibold text-affiliations hover:underline lg:text-[13px]">
               Changer de palier
             </Link>
           )}

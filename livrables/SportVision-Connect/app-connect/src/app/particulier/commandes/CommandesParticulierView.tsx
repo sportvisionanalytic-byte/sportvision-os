@@ -69,7 +69,7 @@ export function CommandesParticulierView({ athletes, initialSportif }: { athlete
               key={f.key ?? "all"}
               type="button"
               onClick={() => setSportifFilter(f.key)}
-              className={`rounded-sv-pill border px-3.5 py-2 text-[13px] font-medium transition-colors duration-150 ${
+              className={`rounded-sv-pill border px-3.5 py-2 text-[14px] font-medium transition-colors duration-150 lg:text-[13px] ${
                 sportifFilter === f.key ? "border-[rgba(140,169,255,.65)] bg-[rgba(79,125,255,.2)] text-text" : "border-border text-text-tertiary hover:text-text"
               }`}
             >
@@ -85,7 +85,7 @@ export function CommandesParticulierView({ athletes, initialSportif }: { athlete
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`h-10 rounded-sv-pill px-4 text-[13px] font-semibold transition-colors duration-150 ${
+            className={`h-10 rounded-sv-pill px-4 text-[14px] font-semibold transition-colors duration-150 lg:text-[13px] ${
               tab === t ? "bg-sv-gradient text-white" : "border border-border-strong bg-surface text-text-secondary hover:bg-surface-hover"
             }`}
           >
@@ -94,7 +94,7 @@ export function CommandesParticulierView({ athletes, initialSportif }: { athlete
         ))}
       </div>
 
-      {error && <span className="text-[13px] text-danger">{error}</span>}
+      {error && <span className="text-[14px] text-danger lg:text-[13px]">{error}</span>}
 
       {orders === null && !error && (
         <div className="flex flex-col gap-3">
@@ -140,7 +140,7 @@ export function CommandesParticulierView({ athletes, initialSportif }: { athlete
                       <span className="rounded-sv-pill bg-white/[.07] px-2 py-0.5 text-[11px] font-medium text-text-tertiary">Pour {order.forWho}</span>
                     )}
                   </div>
-                  <span className="truncate text-[13px] text-text-tertiary">
+                  <span className="truncate text-[14px] text-text-tertiary lg:text-[13px]">
                     {formatDateLong(order.datePrestation)} {order.lieu ? `· ${order.lieu}` : ""}
                   </span>
                 </div>
@@ -148,7 +148,7 @@ export function CommandesParticulierView({ athletes, initialSportif }: { athlete
                   <span className="rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: color.fg, background: color.bg }}>
                     {STAGE_LABEL[stage]}
                   </span>
-                  {amount !== null && <span className="font-sora text-[13px] font-semibold text-text">{formatEUR(amount)}</span>}
+                  {amount !== null && <span className="font-sora text-[14px] font-semibold text-text lg:text-[13px]">{formatEUR(amount)}</span>}
                 </div>
               </Link>
             );

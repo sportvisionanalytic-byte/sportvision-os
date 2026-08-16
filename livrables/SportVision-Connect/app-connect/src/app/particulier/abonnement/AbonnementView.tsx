@@ -134,7 +134,7 @@ export function AbonnementView({
       {returnStatus === "succes" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
-          <span className="text-[13px] leading-relaxed text-text-secondary">
+          <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
             Paiement reçu par Stripe — confirmation de votre abonnement en cours. Cette page se met à jour automatiquement.
           </span>
         </div>
@@ -142,7 +142,7 @@ export function AbonnementView({
       {returnStatus === "annule" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
-          <span className="text-[13px] leading-relaxed text-text-tertiary">Paiement annulé — aucun changement n&apos;a été effectué.</span>
+          <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">Paiement annulé — aucun changement n&apos;a été effectué.</span>
         </div>
       )}
 
@@ -155,7 +155,7 @@ export function AbonnementView({
             </span>
             <div className="flex flex-col gap-0.5">
               <span className="font-sora text-[19px] font-semibold">Palier {AGENT_TIER_LABEL[info.tier]}</span>
-              <span className="text-[13px] text-text-tertiary">
+              <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                 {info.status === "past_due" ? "Paiement en échec — Stripe va retenter automatiquement." : AGENT_STATUS_LABEL[info.status]}
                 {info.currentPeriodEnd && info.status === "active" && !info.cancelAtPeriodEnd && ` · renouvellement le ${formatDateLong(info.currentPeriodEnd)}`}
               </span>
@@ -168,7 +168,7 @@ export function AbonnementView({
           </div>
 
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between text-[13px]">
+            <div className="flex items-center justify-between text-[14px] lg:text-[13px]">
               <span className="text-text-secondary">
                 {info.athletesCount} sportif{info.athletesCount > 1 ? "s" : ""} suivi{info.athletesCount > 1 ? "s" : ""} en tant qu&apos;agent
               </span>
@@ -181,7 +181,7 @@ export function AbonnementView({
               />
             </div>
             {!info.canAcceptMore && (
-              <span className="text-[12.5px] leading-relaxed text-attente">
+              <span className="text-[14px] leading-relaxed text-attente lg:text-[12.5px]">
                 Vous avez atteint la limite de votre palier — les nouvelles demandes d&apos;accès agent ne pourront pas être
                 acceptées tant que vous n&apos;aurez pas changé de palier.
               </span>
@@ -210,7 +210,7 @@ export function AbonnementView({
       {error && (
         <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-          <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
+          <span className="text-[14px] leading-relaxed text-[#FBCFE8] lg:text-[13px]">{error}</span>
         </div>
       )}
 
@@ -234,12 +234,12 @@ export function AbonnementView({
                   )}
                 </div>
                 <span className="font-sora text-[24px] font-bold">{plan.priceLabel}</span>
-                <span className="text-[13px] text-text-tertiary">{plan.rangeLabel}</span>
+                <span className="text-[14px] text-text-tertiary lg:text-[13px]">{plan.rangeLabel}</span>
                 <div className="flex flex-col gap-2">
                   {plan.benefits.map((b) => (
                     <div key={b} className="flex items-start gap-2">
                       <span className="material-symbols-rounded mt-0.5 !text-[16px] text-affiliations" aria-hidden="true">check</span>
-                      <span className="text-[13px] leading-snug text-text-secondary">{b}</span>
+                      <span className="text-[14px] leading-snug text-text-secondary lg:text-[13px]">{b}</span>
                     </div>
                   ))}
                 </div>
@@ -258,7 +258,7 @@ export function AbonnementView({
         </div>
         <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
           <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
-          <span className="text-[13px] leading-relaxed text-text-tertiary">
+          <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
             Plus de 20 sportifs suivis ? Contactez SportVision directement, aucune inscription en ligne au-delà du palier Pro.
           </span>
         </div>

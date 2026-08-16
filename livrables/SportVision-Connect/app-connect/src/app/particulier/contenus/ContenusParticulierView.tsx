@@ -52,7 +52,7 @@ export function ContenusParticulierView({
               key={f.key ?? "all"}
               type="button"
               onClick={() => setFilter(f.key)}
-              className={`rounded-sv-pill border px-3.5 py-2 text-[13px] font-medium transition-colors duration-150 ${
+              className={`rounded-sv-pill border px-3.5 py-2 text-[14px] font-medium transition-colors duration-150 lg:text-[13px] ${
                 filter === f.key ? "border-[rgba(192,132,252,.55)] bg-[rgba(168,85,247,.18)] text-text" : "border-border text-text-tertiary hover:text-text"
               }`}
             >
@@ -66,7 +66,7 @@ export function ContenusParticulierView({
         <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
           <span className="material-symbols-rounded !text-[24px] text-text-tertiary" aria-hidden="true">photo_library</span>
           <span className="font-sora text-[16px] font-semibold">Aucun contenu pour le moment</span>
-          <p className="max-w-[420px] text-[13.5px] leading-relaxed text-text-tertiary">
+          <p className="max-w-[420px] text-[14px] leading-relaxed text-text-tertiary lg:text-[13.5px]">
             Les prochains contenus livrés pour vos sportifs apparaîtront ici, une fois qu&apos;un droit « Voir les
             contenus » vous aura été accordé.
           </p>

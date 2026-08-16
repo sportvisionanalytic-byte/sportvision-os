@@ -74,7 +74,7 @@ export function InviteAthleteForm() {
           </span>
           <div className="flex min-w-0 flex-col gap-1">
             <span className="font-sora text-[15px] font-semibold">{email}</span>
-            <span className="text-[13px] text-text-tertiary">Relation déclarée : {RELATIONS.find((r) => r.value === relation)?.label}</span>
+            <span className="text-[14px] text-text-tertiary lg:text-[13px]">Relation déclarée : {RELATIONS.find((r) => r.value === relation)?.label}</span>
           </div>
           <span className="ml-auto flex-none rounded-sv-pill bg-attente-bg px-2.5 py-1 text-[12px] font-medium text-attente">En attente</span>
         </div>
@@ -91,7 +91,7 @@ export function InviteAthleteForm() {
 
   return (
     <div className="flex max-w-[620px] flex-col gap-6">
-      <Link href="/particulier/sportifs/ajouter" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+      <Link href="/particulier/sportifs/ajouter" className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
         <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Retour
       </Link>
@@ -103,7 +103,7 @@ export function InviteAthleteForm() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="iv-email" className="text-[13px] font-medium text-text-secondary">
+        <label htmlFor="iv-email" className="text-[14px] font-medium text-text-secondary lg:text-[13px]">
           Adresse e-mail du sportif
         </label>
         <input
@@ -116,11 +116,11 @@ export function InviteAthleteForm() {
             touched && !validEmail ? "border-danger" : "border-border-strong"
           }`}
         />
-        {touched && !validEmail && <span className="text-[12px] text-danger">Saisissez une adresse e-mail valide.</span>}
+        {touched && !validEmail && <span className="text-[14px] text-danger lg:text-[12px]">Saisissez une adresse e-mail valide.</span>}
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <span className="text-[13px] font-medium text-text-secondary">Quel est votre lien avec ce sportif ?</span>
+        <span className="text-[14px] font-medium text-text-secondary lg:text-[13px]">Quel est votre lien avec ce sportif ?</span>
         <div className="flex flex-wrap gap-2">
           {RELATIONS.map((r) => {
             const active = relation === r.value;
@@ -141,7 +141,7 @@ export function InviteAthleteForm() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="iv-msg" className="text-[13px] font-medium text-text-secondary">
+        <label htmlFor="iv-msg" className="text-[14px] font-medium text-text-secondary lg:text-[13px]">
           Message <span className="font-normal text-text-faint">· facultatif</span>
         </label>
         <input
@@ -155,7 +155,7 @@ export function InviteAthleteForm() {
 
       <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
         <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">lock</span>
-        <span className="text-[13px] leading-relaxed text-text-tertiary">
+        <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
           Aucun annuaire public : le sportif est invité par e-mail et reste seul à décider des accès accordés.
         </span>
       </div>
@@ -163,7 +163,7 @@ export function InviteAthleteForm() {
       {error && (
         <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-          <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
+          <span className="text-[14px] leading-relaxed text-[#FBCFE8] lg:text-[13px]">{error}</span>
         </div>
       )}
 

@@ -13,7 +13,7 @@ export default async function AddAthletePage() {
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
-      <Link href="/particulier/sportifs" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+      <Link href="/particulier/sportifs" className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
         <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Mes sportifs
       </Link>
@@ -63,7 +63,7 @@ export default async function AddAthletePage() {
 
       <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
         <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
-        <span className="text-[13px] leading-relaxed text-text-tertiary">
+        <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
           Le lien déclaré (parent, proche, agent…) est descriptif. Il ne donne aucun accès automatique : les
           autorisations sont accordées par le sportif ou son responsable légal.
         </span>

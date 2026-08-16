@@ -97,7 +97,7 @@ export default async function ParticulierHomePage() {
     <div className="flex flex-col gap-6 animate-sv-in">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div className="flex flex-col gap-2">
-            <h1 className="font-sora text-[33px] font-bold tracking-tight">Bonjour {firstName} 👋</h1>
+            <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Bonjour {firstName} 👋</h1>
             <p className="text-[15px] text-text-tertiary">
               Retrouvez les sportifs que vous accompagnez et leurs activités SportVision.
             </p>
@@ -140,7 +140,7 @@ export default async function ParticulierHomePage() {
               <h2 className="font-sora text-[20px] font-semibold tracking-tight">
                 {particulierSportifsSectionLabel(profilParticulier, athletes.length)}
               </h2>
-              <Link href="/particulier/sportifs" className="text-[13px] font-medium text-affiliations">
+              <Link href="/particulier/sportifs" className="text-[14px] font-medium text-affiliations lg:text-[13px]">
                 Gérer {particulierSportifsLabel(profilParticulier).toLowerCase()}
               </Link>
             </div>
@@ -167,7 +167,7 @@ export default async function ParticulierHomePage() {
                         <span className="font-sora text-[18px] font-semibold tracking-tight">
                           {a.firstName} {a.lastName}
                         </span>
-                        {a.sport && <span className="text-[13px] text-text-tertiary">{a.sport}</span>}
+                        {a.sport && <span className="text-[14px] text-text-tertiary lg:text-[13px]">{a.sport}</span>}
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -186,7 +186,7 @@ export default async function ParticulierHomePage() {
                         {facts.map((f) => (
                           <div key={f} className="flex items-center gap-2">
                             <span className="material-symbols-rounded !text-[16px] text-text-faint" aria-hidden="true">check</span>
-                            <span className="text-[13px] text-text-secondary">{f}</span>
+                            <span className="text-[14px] text-text-secondary lg:text-[13px]">{f}</span>
                           </div>
                         ))}
                       </div>
@@ -325,11 +325,11 @@ export default async function ParticulierHomePage() {
                   </span>
                   <div className="flex flex-col gap-0.5">
                     <span className="font-sora text-[15px] font-semibold">Messages</span>
-                    <span className="text-[13px] text-text-tertiary">
+                    <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                       {unreadCount} nouveau{unreadCount > 1 ? "x" : ""} message{unreadCount > 1 ? "s" : ""} SportVision
                     </span>
                   </div>
-                  <span className="ml-auto flex-none text-[13px] font-medium text-affiliations">Ouvrir</span>
+                  <span className="ml-auto flex-none text-[14px] font-medium text-affiliations lg:text-[13px]">Ouvrir</span>
                 </Link>
               )}
 
@@ -380,14 +380,14 @@ function AgentStatusPanel({ info }: { info: AgentSubscriptionInfo }) {
         </div>
         <Link
           href="/particulier/abonnement"
-          className="rounded-sv border border-border-strong bg-white/5 px-4 py-2 font-sora text-[13px] font-semibold hover:bg-white/10"
+          className="rounded-sv border border-border-strong bg-white/5 px-4 py-2 font-sora text-[14px] font-semibold hover:bg-white/10 lg:text-[13px]"
         >
           Gérer mon abonnement
         </Link>
       </div>
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between text-[13px]">
+        <div className="flex items-center justify-between text-[14px] lg:text-[13px]">
           <span className="text-text-secondary">Sportifs suivis</span>
           <span className="font-sora font-semibold">
             {info.athletesCount} / {info.limit}
@@ -404,7 +404,7 @@ function AgentStatusPanel({ info }: { info: AgentSubscriptionInfo }) {
       {monthlyDiscountAvailable && (
         <div className="flex items-center gap-2.5 rounded-sv border border-[rgba(140,169,255,.35)] bg-[rgba(79,125,255,.08)] px-4 py-3">
           <span className="material-symbols-rounded !text-[18px] text-prestations" aria-hidden="true">percent</span>
-          <span className="text-[12.5px] leading-relaxed text-text-secondary">
+          <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[12.5px]">
             Votre remise -10% mensuelle sur une prestation au choix est disponible.
           </span>
         </div>

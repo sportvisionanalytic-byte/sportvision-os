@@ -65,7 +65,7 @@ export function AddManualMatchForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="amf-athlete" className="text-[13px] font-medium text-text-secondary">
+        <label htmlFor="amf-athlete" className="text-[14px] font-medium text-text-secondary lg:text-[13px]">
           Sportif
         </label>
         <select
@@ -83,13 +83,13 @@ export function AddManualMatchForm({
       </div>
 
       <Field id="amf-adversaire" label="Adversaire · facultatif" value={adversaire} onChange={(e) => setAdversaire(e.target.value)} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field id="amf-date" label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} error={touched && !date ? "Requise." : null} />
         <Field id="amf-heure" label="Heure · facultatif" type="time" value={heure} onChange={(e) => setHeure(e.target.value)} />
       </div>
       <Field id="amf-lieu" label="Lieu · facultatif" value={lieu} onChange={(e) => setLieu(e.target.value)} />
 
-      {error && <span className="text-[13px] text-danger">{error}</span>}
+      {error && <span className="text-[14px] text-danger lg:text-[13px]">{error}</span>}
 
       <div className="flex gap-2.5">
         <button
