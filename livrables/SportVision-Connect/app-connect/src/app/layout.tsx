@@ -27,6 +27,18 @@ export const metadata: Metadata = {
   title: "SportVision Connect",
   description: "Votre sport. Vos contenus. Votre équipe.",
   manifest: "/manifest.json",
+  // Espace personnel authentifié : ne doit jamais être indexé par les moteurs de
+  // recherche (audit SEO externe du 16/08/2026). Aucune balise noindex n'existait
+  // avant, ni ici ni dans middleware.ts.
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
   icons: {
     icon: [
       { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
