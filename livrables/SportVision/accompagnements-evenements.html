@@ -706,7 +706,7 @@ section{position:relative}
       <h3 id="devis-title">Demander un devis ou une démonstration</h3>
       <p class="sub">Présentez-nous votre besoin, nous revenons vers vous rapidement.</p>
       <form id="devis-form">
-        <div class="sv-honeypot"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
+        <div class="sv-honeypot" aria-hidden="true"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
         <div class="sv-field"><label for="dv-prenom">Prénom</label><input id="dv-prenom" name="prenom" type="text" required></div>
         <div class="sv-field"><label for="dv-nom">Nom</label><input id="dv-nom" name="nom" type="text" required></div>
         <div class="sv-field"><label for="dv-email">E-mail</label><input id="dv-email" name="email" type="email" required></div>
@@ -936,7 +936,7 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
       <h3>Prendre rendez-vous</h3>
       <p class="sub">Choisissez librement une date et un horaire, nous confirmons la disponibilité sous 24h.</p>
       <form id="rdv-form">
-        <div class="sv-honeypot"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
+        <div class="sv-honeypot" aria-hidden="true"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
         <div class="sv-field">
           <label for="rdv-type">Type de rendez-vous</label>
           <select id="rdv-type" name="type_rdv" required>
