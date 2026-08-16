@@ -29,6 +29,32 @@ function mediaAssetId(item: ContentItem): string {
   return `media-${item.id}`;
 }
 
+// Vraie vignette quand un média photo a un lien (club_media.link, bucket Storage public) : évite le
+// dégradé décoratif coverFor() partout où on peut afficher le contenu réel (audit perf 16/08). Les
+// vidéos n'ont pas de colonne poster/thumbnail en base (club_media, migration-clubplus-v7.sql) —
+// génèrer une miniature côté client serait hors scope (trop lourd) donc elles gardent le dégradé +
+// icône play. `<img>` classique plutôt que next/image : le domaine du bucket Supabase Storage n'est
+// pas déclaré dans next.config.js (mêmes raisons que le `<img>` déjà utilisé dans le Lightbox
+// ci-dessous), et onError bascule sur le dégradé si le lien est mort/expiré.
+function MediaThumbnail({ item }: { item: ContentItem }) {
+  const [errored, setErrored] = useState(false);
+  const showImage = item.type === "photo" && !!item.link && !errored;
+  return (
+    <div className="absolute inset-0" style={{ background: coverFor(item.id) }}>
+      {showImage && (
+        // eslint-disable-next-line @next/next/no-img-element -- média distant (bucket Storage club_media), pas un domaine autorisé pour next/image
+        <img
+          src={item.link!}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-cover"
+          onError={() => setErrored(true)}
+        />
+      )}
+    </div>
+  );
+}
+
 function isReel(item: ContentItem): boolean {
   // Le CHECK constraint de club_media n'autorise pas encore la valeur 'reel' — heuristique sur le
   // tag posé par le club en attendant (voir page.tsx pour le détail de la décision).
@@ -176,7 +202,9 @@ export function ContentGallery({
             />
           ) : groups.length > 0 ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groups.map((g) => (
+              {groups.map((g) => {
+                const coverItem = g.items.find((i) => i.type === "photo" && i.link);
+                return (
                 <button
                   key={g.key}
                   type="button"
@@ -184,6 +212,15 @@ export function ContentGallery({
                   className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface text-left transition-colors duration-150 hover:border-[rgba(192,132,252,.5)]"
                 >
                   <div className="relative h-[130px]" style={{ background: coverFor(g.key) }}>
+                    {coverItem && (
+                      // eslint-disable-next-line @next/next/no-img-element -- média distant (bucket Storage club_media), pas un domaine autorisé pour next/image
+                      <img
+                        src={coverItem.link!}
+                        alt=""
+                        loading="lazy"
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    )}
                     {g.hasNew && (
                       <span className="absolute left-3 top-3 rounded-sv-pill bg-text px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[.04em] text-bg">
                         Nouveau
@@ -206,7 +243,8 @@ export function ContentGallery({
                     </span>
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <EmptyState hasClub={hasClub} tab={tab} />
@@ -293,9 +331,9 @@ function MediaGrid({
           <div
             key={item.id}
             className="group relative aspect-square cursor-pointer overflow-hidden rounded-sv border border-white/[.07] transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
-            style={{ background: coverFor(item.id) }}
             onClick={() => onOpen(item.id)}
           >
+            <MediaThumbnail item={item} />
             {item.type === "video" && (
               <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/55">

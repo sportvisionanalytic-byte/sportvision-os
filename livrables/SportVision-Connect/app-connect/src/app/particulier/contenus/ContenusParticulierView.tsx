@@ -20,6 +20,32 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }
 
+// Vraie vignette quand un média photo a un lien (club_media.link, bucket Storage public) au lieu du
+// dégradé décoratif fixe (audit perf 16/08). Pas de colonne poster/thumbnail pour les vidéos côté
+// club_media (migration-clubplus-v7.sql) — générer une miniature côté client serait hors scope, donc
+// elles gardent le dégradé. `<img>` classique (pas next/image, domaine du bucket non déclaré dans
+// next.config.js — même choix que ContentGallery.tsx/Lightbox) ; onError rebascule sur le dégradé si
+// le lien est mort/expiré.
+function CardCover({ item }: { item: ParticulierContentItem }) {
+  const [errored, setErrored] = useState(false);
+  const showImage = item.type === "photo" && !!item.link && !errored;
+  return (
+    <div className="relative flex h-[130px] items-end overflow-hidden p-3" style={{ background: "linear-gradient(135deg,#3B1E6E 0%,#22307A 55%,#0F4C63 100%)" }}>
+      {showImage && (
+        // eslint-disable-next-line @next/next/no-img-element -- média distant (bucket Storage club_media), pas un domaine autorisé pour next/image
+        <img
+          src={item.link!}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={() => setErrored(true)}
+        />
+      )}
+      <span className="relative rounded-sv-pill bg-[rgba(9,8,26,.6)] px-2.5 py-1 text-[11px] font-medium text-white">Pour {item.athleteLabel}</span>
+    </div>
+  );
+}
+
 export function ContenusParticulierView({
   items,
   athletes,
@@ -76,9 +102,7 @@ export function ContenusParticulierView({
           {visible.map((item) => {
             const content = (
               <div className="flex flex-col overflow-hidden rounded-sv-card border border-border bg-surface transition-colors duration-150 hover:border-[rgba(192,132,252,.45)]">
-                <div className="flex h-[130px] items-end p-3" style={{ background: "linear-gradient(135deg,#3B1E6E 0%,#22307A 55%,#0F4C63 100%)" }}>
-                  <span className="rounded-sv-pill bg-[rgba(9,8,26,.6)] px-2.5 py-1 text-[11px] font-medium text-white">Pour {item.athleteLabel}</span>
-                </div>
+                <CardCover item={item} />
                 <div className="flex flex-col gap-1.5 p-4">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-rounded !text-[17px] text-contenus" aria-hidden="true">{TYPE_ICON[item.type] || "photo_library"}</span>
