@@ -36,7 +36,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const isAffiliatedPlayer = isPlayer && !!ctx.organization.parentOrganizationId;
   let entries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
   if (isAffiliatedPlayer) entries = filterAffiliatedPlayerNav(entries);
-  if (ctx.organization.type === "club") entries = filterClubRoleNav(entries, ctx.membership.role);
+  if (ctx.organization.type === "club") entries = filterClubRoleNav(entries, ctx.membership.role, ctx.membership.teamScope);
 
   // Un éducateur (coach) de club n'a pas de crédits/offre à gérer (§11 du master doc, ligne
   // "Offre / crédits" = Non) : le lien "Gérer mon offre" mènerait de toute façon à /billing,

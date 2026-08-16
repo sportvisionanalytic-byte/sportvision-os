@@ -11,9 +11,18 @@ import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { MatchResultModal } from "@/components/matchcenter/MatchResultModal";
 import { cn } from "@/lib/cn";
-import { fetchClubMatches, saveClubMatchResult, type MatchOutcome } from "@/lib/data/club/matches";
+import {
+  assignClubMatchTeam,
+  fetchClubMatches,
+  fetchClubRequiresResultVerification,
+  saveClubMatchResult,
+  verifyClubMatchResult,
+  type MatchOutcome,
+} from "@/lib/data/club/matches";
+import { fetchClubTeams } from "@/lib/data/club/teams";
 import { createClient } from "@/lib/supabase/client";
 import { MATCH_STATUS_LABELS, MATCH_STATUS_TONE, type Match, type MatchStatus } from "@/lib/types/studio";
+import type { Team } from "@/lib/types/teams";
 
 // Match Center — saisie de résultats. Voir ACTIONS.md § 8 et DATA_MODEL.md § Match.
 // "content_created" (visuel généré) n'a pas d'équivalent réel en base (voir data/club/matches.ts)
@@ -22,6 +31,25 @@ import { MATCH_STATUS_LABELS, MATCH_STATUS_TONE, type Match, type MatchStatus } 
 // "postponed"/"cancelled" (migration-clubplus-v37.sql) : 16/08/2026, ces statuts sont désormais
 // réellement actionnables — menu "..." sur chaque ligne à venir/à transmettre (Reporter/Annuler),
 // qui ouvre MatchResultModal avec le statut cible préréglé. Voir ce composant pour le détail.
+//
+// 17/08/2026 (chantier "Autres rôles Club+") :
+//   - Assignation d'équipe (team_id) : correctif du gap trouvé en amont — team_id existe en base
+//     et porte la RLS équipe-level (migration-clubplus-v37.sql) mais aucune UI ne l'écrivait, donc
+//     tout match restait visible/modifiable par tout membre du club quel que soit son scope. Un
+//     sélecteur "Équipe (scope)" apparaît sur chaque ligne, réservé Admin/Directeur sportif
+//     (canAssignTeam) — pas de flux de création de match dans ce repo (matchs créés côté
+//     staff/backend SportVision), donc l'assignation se fait en édition sur un match existant.
+//     Le Directeur sportif ne voit que ses propres équipes dans le sélecteur (assignableTeams) ;
+//     la vraie garantie qu'il ne peut pas s'assigner un match hors scope reste la RLS
+//     (cma_member_update, voir le docstring de assignClubMatchTeam) — le filtrage ici n'est qu'un
+//     confort pour ne pas proposer une option qui échouerait de toute façon côté serveur.
+//   - Vérification du résultat (Bible §8) : bouton "Vérifier le résultat" sur un match "recu" non
+//     encore vérifié, visible seulement si `clubs.requires_result_verification` est actif et pour
+//     Admin/Directeur sportif (canVerifyResults). Ouvre MatchResultModal en mode `verifying` (le
+//     Directeur peut corriger le score avant de confirmer, jamais une validation à l'aveugle), et
+//     handleVerifyResult sauvegarde puis appelle verifyClubMatchResult (verified_by/verified_at).
+//     Si le club n'utilise pas ce workflow (colonne à false/absente tant que la migration v40
+//     n'est pas exécutée), rien de neuf ne s'affiche — comportement actuel inchangé.
 
 const TABS: { key: MatchStatus; label: string }[] = [
   { key: "upcoming", label: "À venir" },
@@ -38,12 +66,24 @@ export default function MatchCenterPage() {
   const [tab, setTab] = useState<MatchStatus>("upcoming");
   const [modalMatchId, setModalMatchId] = useState<string | null>(null);
   const [modalDefaultStatus, setModalDefaultStatus] = useState<MatchOutcome>("completed");
+  const [modalMode, setModalMode] = useState<"edit" | "verify">("edit");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [matches, setMatches] = useState<Match[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [teams, setTeams] = useState<Team[] | null>(null);
+  const [assigningTeamMatchId, setAssigningTeamMatchId] = useState<string | null>(null);
+  const [requiresVerification, setRequiresVerification] = useState(false);
 
   const allowed = canAccess(ctx, "matchcenter");
   const canWrite = canCreate(ctx, "match_result");
+
+  // Assignation d'équipe / vérification de résultat : réservées Admin/Directeur sportif (Bible
+  // §7/§8/§18/§24) — un Coach ne doit ni réassigner un match hors de son scope, ni vérifier son
+  // propre résultat. Le vrai garde-fou reste la RLS (voir les docstrings de assignClubMatchTeam et
+  // verifyClubMatchResult dans data/club/matches.ts) ; ce masquage frontend n'est qu'un confort.
+  const role = ctx.membership.role;
+  const canAssignTeam = ctx.organization.type === "club" && (role === "admin" || role === "sports_director");
+  const canVerifyResults = ctx.organization.type === "club" && (role === "admin" || role === "sports_director");
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +99,33 @@ export default function MatchCenterPage() {
       cancelled = true;
     };
   }, [ctx.organization.id]);
+
+  useEffect(() => {
+    if (!canAssignTeam) return;
+    let cancelled = false;
+    fetchClubTeams(createClient(), ctx.organization.id)
+      .then((rows) => {
+        if (!cancelled) setTeams(rows);
+      })
+      .catch(() => {
+        /* Sélecteur d'assignation simplement absent si le chargement échoue — pas de blocage de
+           l'écran principal pour un module secondaire. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canAssignTeam, ctx.organization.id]);
+
+  useEffect(() => {
+    if (!canVerifyResults) return;
+    let cancelled = false;
+    fetchClubRequiresResultVerification(createClient(), ctx.organization.id).then((value) => {
+      if (!cancelled) setRequiresVerification(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [canVerifyResults, ctx.organization.id]);
 
   if (!allowed) return <LockedModule title="Match Center" />;
 
@@ -78,6 +145,11 @@ export default function MatchCenterPage() {
   const orgMatches = matches;
   const pending = orgMatches.filter((m) => m.status === "result_pending");
   const rows = orgMatches.filter((m) => m.status === tab);
+
+  // Directeur sportif : ne propose que SES équipes (club_members.teams) dans le sélecteur
+  // d'assignation — is_team_educateur() (RLS) ne le laisserait de toute façon écrire que sur
+  // celles-là, autant ne pas afficher une option qui échouerait à la sauvegarde. Admin = toutes.
+  const assignableTeams = role === "admin" ? (teams ?? []) : (teams ?? []).filter((t) => ctx.membership.teamScope.includes(t.name));
 
   const OUTCOME_TO_STATUS: Record<MatchOutcome, MatchStatus> = {
     completed: "result_received",
@@ -121,6 +193,56 @@ export default function MatchCenterPage() {
       .catch(() => showToast("Enregistrement impossible, réessayez.", "error"));
   }
 
+  /** Vérification Directeur sportif (Bible §8) : même sauvegarde que handleSaveResult (le
+   * Directeur peut avoir corrigé le score) suivie de verifyClubMatchResult (pose verified_by/
+   * verified_at) — un seul geste utilisateur ("Confirmer la vérification"), deux écritures. */
+  function handleVerifyResult(
+    matchId: string,
+    matchStatus: MatchOutcome,
+    patch: Partial<Match> & { attendance?: number; assists?: string; cards?: string; comment?: string },
+  ) {
+    const { attendance, assists, cards, comment, ...matchFields } = patch;
+    const supabase = createClient();
+    saveClubMatchResult(supabase, matchId, matchStatus, patch)
+      .then(() => verifyClubMatchResult(supabase, matchId, ctx.user.id))
+      .then(() => {
+        setMatches((prev) =>
+          prev
+            ? prev.map((m) =>
+                m.id === matchId
+                  ? {
+                      ...m,
+                      ...matchFields,
+                      status: OUTCOME_TO_STATUS[matchStatus],
+                      extendedReport:
+                        matchStatus === "completed" ? { attendance, assists, cards, comment } : m.extendedReport,
+                      verifiedBy: ctx.user.id,
+                      verifiedAt: new Date().toISOString(),
+                    }
+                  : m,
+              )
+            : prev,
+        );
+        setModalMatchId(null);
+        showToast("Résultat vérifié.");
+      })
+      .catch(() => showToast("Vérification impossible, réessayez.", "error"));
+  }
+
+  /** Assignation d'équipe (team_id) — voir le commentaire en tête de fichier et le docstring de
+   * assignClubMatchTeam (data/club/matches.ts). teamId vide ("Non assignée") écrit `null`. */
+  function handleAssignTeam(matchId: string, teamId: string) {
+    setAssigningTeamMatchId(matchId);
+    const supabase = createClient();
+    assignClubMatchTeam(supabase, matchId, teamId || null)
+      .then(() => {
+        setMatches((prev) => (prev ? prev.map((m) => (m.id === matchId ? { ...m, teamId } : m)) : prev));
+        showToast("Équipe mise à jour.");
+      })
+      .catch(() => showToast("Assignation impossible, réessayez.", "error"))
+      .finally(() => setAssigningTeamMatchId(null));
+  }
+
   // Le sélecteur multi-match de la modale ne reste pertinent que pour le flux "Saisir un
   // résultat" lancé depuis un match à transmettre (toute la liste "pending" reste choisissable) ;
   // pour un report/annulation déclenché depuis une ligne précise, la modale ne porte que sur ce
@@ -144,6 +266,7 @@ export default function MatchCenterPage() {
             variant="primary"
             disabled={pending.length === 0 || !canWrite}
             onClick={() => {
+              setModalMode("edit");
               setModalDefaultStatus("completed");
               setModalMatchId(pending[0]!.id);
             }}
@@ -189,6 +312,10 @@ export default function MatchCenterPage() {
                     {m.teamName} {m.isHome ? "vs" : "@"} {m.opponent}
                   </span>
                   <Badge tone={MATCH_STATUS_TONE[m.status]}>{MATCH_STATUS_LABELS[m.status]}</Badge>
+                  {/* Vérifié (Bible §8) : uniquement pour un club qui utilise ce workflow — un
+                      badge "Vérifié" sur tous les clubs (requires_result_verification=false, cas
+                      par défaut) n'aurait aucun sens, personne ne l'a jamais "vérifié". */}
+                  {requiresVerification && m.verifiedAt && <Badge tone="success">Vérifié</Badge>}
                   {m.scoreFor !== undefined && m.scoreAgainst !== undefined && (
                     <span className="font-mono text-[13px] font-bold text-brand-blue-pale">
                       {m.scoreFor} - {m.scoreAgainst}
@@ -201,6 +328,27 @@ export default function MatchCenterPage() {
                   {m.competition ? ` · ${m.competition}` : ""}
                   {m.venue ? ` · ${m.venue}` : ""}
                 </div>
+                {/* Assignation d'équipe (team_id) — réservée Admin/Directeur sportif, voir le
+                    commentaire en tête de fichier. Purement un scope RLS, indépendant du nom
+                    d'équipe texte affiché ci-dessus (m.teamName). */}
+                {canAssignTeam && (
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <span className="text-[10.5px] font-bold uppercase tracking-[.04em] text-text-faint">Équipe (scope)</span>
+                    <select
+                      value={m.teamId}
+                      disabled={teams === null || assigningTeamMatchId === m.id}
+                      onChange={(e) => handleAssignTeam(m.id, e.target.value)}
+                      className="h-7 rounded-md border border-border-strong bg-input-bg px-1.5 text-[11.5px] font-semibold outline-none focus-visible:border-brand-blue disabled:opacity-60"
+                    >
+                      <option value="">Non assignée</option>
+                      {assignableTeams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               {/* "postponed" inclus : un match reporté est rejoué à une date ultérieure et doit
                   pouvoir recevoir un résultat sans repasser par un statut intermédiaire — sinon un
@@ -211,11 +359,28 @@ export default function MatchCenterPage() {
                   className="h-9 px-3.5 text-[12.5px]"
                   disabled={!canWrite}
                   onClick={() => {
+                    setModalMode("edit");
                     setModalDefaultStatus("completed");
                     setModalMatchId(m.id);
                   }}
                 >
                   Saisir le résultat
+                </Button>
+              )}
+              {/* Vérification (Bible §8) : match déjà reçu, non encore vérifié, club utilisant ce
+                  workflow, réservé Admin/Directeur sportif. */}
+              {m.status === "result_received" && requiresVerification && canVerifyResults && !m.verifiedAt && (
+                <Button
+                  variant="secondary"
+                  className="h-9 px-3.5 text-[12.5px]"
+                  disabled={!canWrite}
+                  onClick={() => {
+                    setModalMode("verify");
+                    setModalDefaultStatus("completed");
+                    setModalMatchId(m.id);
+                  }}
+                >
+                  Vérifier le résultat
                 </Button>
               )}
               {/* Reporter/annuler : pas pertinent une fois annulé (pas de workflow de
@@ -246,6 +411,7 @@ export default function MatchCenterPage() {
                           type="button"
                           onClick={() => {
                             setOpenMenuId(null);
+                            setModalMode("edit");
                             setModalDefaultStatus("postponed");
                             setModalMatchId(m.id);
                           }}
@@ -257,6 +423,7 @@ export default function MatchCenterPage() {
                           type="button"
                           onClick={() => {
                             setOpenMenuId(null);
+                            setModalMode("edit");
                             setModalDefaultStatus("cancelled");
                             setModalMatchId(m.id);
                           }}
@@ -279,8 +446,9 @@ export default function MatchCenterPage() {
           matches={modalMatches}
           initialMatchId={modalMatchId}
           defaultStatus={modalDefaultStatus}
+          verifying={modalMode === "verify"}
           onClose={() => setModalMatchId(null)}
-          onSubmit={handleSaveResult}
+          onSubmit={modalMode === "verify" ? handleVerifyResult : handleSaveResult}
         />
       )}
 

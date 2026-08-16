@@ -9,7 +9,7 @@ import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 import type { ModuleKey } from "@/lib/types";
 import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/client";
-import { fetchClubMatches } from "@/lib/data/club/matches";
+import { fetchClubMatches, fetchClubRequiresResultVerification } from "@/lib/data/club/matches";
 import { fetchClientDevis, fetchClientInvoices } from "@/lib/data/projet/billing";
 import { resolveClubPortailClientId } from "@/lib/data/club/portail-link";
 import { formatEuroTTC } from "@/components/billing/format";
@@ -98,7 +98,11 @@ export function ClubPlusDashboard() {
   // trésorier ou un secrétaire, par exemple, voyaient auparavant "Demander un visuel"/"Consulter
   // les contenus" alors que ces modules n'apparaissent nulle part dans leur propre menu.
   const roleNavModules = new Set(
-    filterClubRoleNav(resolveNavigation(ctx.organization.type, ctx.subscription.planCode), ctx.membership.role)
+    filterClubRoleNav(
+      resolveNavigation(ctx.organization.type, ctx.subscription.planCode),
+      ctx.membership.role,
+      ctx.membership.teamScope,
+    )
       .filter((e) => e.kind === "item")
       .map((e) => (e.kind === "item" ? e.module : undefined)),
   );
@@ -156,12 +160,17 @@ export function ClubPlusDashboard() {
 
   // Résultat(s) à traiter — Bible §7 : "prioritaire lorsqu'un match est terminé" pour le Coach ;
   // Bible §8 : "Résultats à vérifier" pour le Directeur sportif, couche intermédiaire qui confirme
-  // ce que le coach a déjà saisi une seule fois. team_id reste NULL sur toute donnée existante
-  // (voir data/club/matches.ts), la RLS team-scoping n'est donc pas encore exploitable : on
-  // rapproche côté client sur le nom d'équipe texte (Match.teamName) contre
-  // ctx.membership.teamScope, tableau déjà multi-valeurs pour un Directeur sportif qui supervise
-  // plusieurs équipes — équipe vide = scope non renseigné, on ne filtre alors pas (mieux vaut
-  // montrer un peu trop que cacher un résultat réel à traiter).
+  // ce que le coach a déjà saisi une seule fois. team_id est désormais réellement assignable
+  // (matchcenter/page.tsx § canAssignTeam, 17/08/2026) mais reste NULL sur beaucoup de matchs tant
+  // qu'un Admin/Directeur sportif ne l'a pas assigné à la main : on continue donc de rapprocher
+  // côté client sur le nom d'équipe texte (Match.teamName) contre ctx.membership.teamScope —
+  // équipe vide = scope non renseigné, on ne filtre alors pas (mieux vaut montrer un peu trop que
+  // cacher un résultat réel à traiter).
+  //
+  // Directeur sportif : la vérification est "Optionnelle selon requires_result_verification"
+  // (Bible §8) — un club qui n'utilise pas ce workflow ne doit voir AUCUN résultat "à vérifier"
+  // (rien à confirmer, le CM lit directement le résultat saisi par le coach). Et un résultat déjà
+  // vérifié (`verifiedAt` posé) ne compte plus, sinon le compteur ne redescend jamais à 0.
   const isCoach = ctx.membership.role === "coach";
   const isSportsDirector = ctx.membership.role === "sports_director";
   const [pendingResultsCount, setPendingResultsCount] = useState<number | null>(null);
@@ -170,13 +179,21 @@ export function ClubPlusDashboard() {
     if (!isCoach && !isSportsDirector) return;
     const supabase = createClient();
     try {
-      const matches = await fetchClubMatches(supabase, ctx.organization.id);
+      const [matches, requiresVerification] = await Promise.all([
+        fetchClubMatches(supabase, ctx.organization.id),
+        isSportsDirector ? fetchClubRequiresResultVerification(supabase, ctx.organization.id) : Promise.resolve(false),
+      ]);
       const inScope =
         ctx.membership.teamScope.length === 0
           ? matches
           : matches.filter((m) => ctx.membership.teamScope.includes(m.teamName));
-      const relevantStatus = isCoach ? "result_pending" : "result_received";
-      setPendingResultsCount(inScope.filter((m) => m.status === relevantStatus).length);
+      if (isCoach) {
+        setPendingResultsCount(inScope.filter((m) => m.status === "result_pending").length);
+      } else {
+        setPendingResultsCount(
+          requiresVerification ? inScope.filter((m) => m.status === "result_received" && !m.verifiedAt).length : 0,
+        );
+      }
     } catch {
       setPendingResultsCount(null);
     }

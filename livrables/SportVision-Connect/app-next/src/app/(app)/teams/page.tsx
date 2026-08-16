@@ -30,6 +30,14 @@ export default function TeamsPage() {
   const isAcademy = ctx.organization.type === "academy";
   const isCoach = ctx.organization.type === "coach";
 
+  // Coach/Directeur sportif de club (Bible §7/§8, 17/08/2026) : à ne pas confondre avec `isCoach`
+  // ci-dessus, qui teste le TYPE d'organisation "Coach indépendant" (KD Performance), pas le RÔLE
+  // dans un club. myTeams reste vide (pas de filtrage) si le rôle n'est ni coach ni sports_director,
+  // ou si teamScope est vide (scope non renseigné : mieux vaut montrer tout que cacher à tort).
+  const isClubEducateurRole = ctx.organization.type === "club" && (ctx.membership.role === "coach" || ctx.membership.role === "sports_director");
+  const myTeams = isClubEducateurRole ? (teams ?? []).filter((t) => ctx.membership.teamScope.includes(t.name)) : [];
+  const otherTeams = myTeams.length > 0 ? (teams ?? []).filter((t) => !ctx.membership.teamScope.includes(t.name)) : [];
+
   const loadTeams = useCallback(() => {
     if (isCoach) return;
     let cancelled = false;
@@ -93,6 +101,35 @@ export default function TeamsPage() {
             description={`Créez votre ${isAcademy ? "premier groupe" : "première équipe"} pour commencer à gérer l'effectif, le calendrier et les contenus.`}
           />
         </Card>
+      ) : myTeams.length > 0 ? (
+        // Coach/Directeur sportif (Bible §7/§8, 17/08/2026) : la liste complète du club reste
+        // chargée (RLS is_club_member volontairement non restreinte par équipe, voir
+        // data/club/teams.ts) mais l'expérience met en avant SON/SES équipe(s) plutôt que de les
+        // noyer dans tout l'effectif du club — le reste reste accessible, replié sous <details>.
+        <div className="flex flex-col gap-5">
+          <div>
+            <div className="mb-2.5 text-[13px] font-extrabold tracking-tight">
+              {myTeams.length === 1 ? `Mon équipe ${myTeams[0]!.name}` : "Mes équipes"}
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {myTeams.map((team) => (
+                <TeamCard key={team.id} team={team} />
+              ))}
+            </div>
+          </div>
+          {otherTeams.length > 0 && (
+            <details>
+              <summary className="cursor-pointer text-[12.5px] font-bold text-text-soft">
+                Voir les {otherTeams.length} autre{otherTeams.length > 1 ? "s" : ""} équipe{otherTeams.length > 1 ? "s" : ""} du club
+              </summary>
+              <div className="mt-3.5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {otherTeams.map((team) => (
+                  <TeamCard key={team.id} team={team} />
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((team) => (
