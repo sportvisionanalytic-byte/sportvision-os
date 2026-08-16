@@ -487,6 +487,37 @@ serve(async (req) => {
             event_type: "contribution_payee",
             note: `${contribution.montant} € reçus via Stripe`,
           });
+
+          // AJOUT (audit paiements 16/08/2026) — garde-fou dépassement objectif : create-team-
+          // contribution-checkout ne vérifie le montant restant QU'AU MOMENT de la création de la
+          // session Stripe, jamais revérifié ici à la confirmation. Deux contributeurs qui cliquent
+          // "payer le reste" au même instant peuvent chacun créer une session valide pour tout le
+          // solde restant — si les deux paient, le total dépasse montant_cible. Décision produit
+          // déjà tranchée : ne JAMAIS bloquer/annuler un paiement déjà effectué côté Stripe
+          // (rembourser automatiquement serait plus risqué qu'utile, refuser un paiement déjà
+          // encaissé est de toute façon impossible) — seulement notifier le staff pour un
+          // arbitrage au cas par cas. Purement additif, best-effort : ne fait jamais échouer le
+          // traitement du webhook, et ne change aucune écriture existante ci-dessus.
+          try {
+            const { data: project } = await admin
+              .from("team_projects")
+              .select("montant_cible, montant_collecte")
+              .eq("id", contribution.project_id)
+              .maybeSingle();
+            if (project && Number(project.montant_collecte) > Number(project.montant_cible)) {
+              const depassement = Math.round((Number(project.montant_collecte) - Number(project.montant_cible)) * 100) / 100;
+              await admin.rpc("notify_staff_by_role", {
+                p_roles: ["sec", "compta"],
+                p_titre: "Projet collectif dépassé — vérification manuelle nécessaire",
+                p_message: `Le montant collecté (${project.montant_collecte} €) dépasse désormais l'objectif (${project.montant_cible} €) de ${depassement} € — probablement deux paiements simultanés reçus sur le solde restant. À traiter au cas par cas (rembourser le dernier contributeur, garder l'excédent avec son accord...).`,
+                p_priorite: "haute",
+                p_prestation_id: null,
+                p_client_id: null,
+              });
+            }
+          } catch (_e) {
+            console.error("[stripe-webhook] vérification dépassement objectif (projet collectif) a échoué :", _e);
+          }
         }
       }
 
@@ -507,6 +538,39 @@ serve(async (req) => {
             .from("funding_contributions")
             .update({ statut: "paye", stripe_payment_intent_id: session.payment_intent as string })
             .eq("id", fundingContributionId);
+
+          // AJOUT (audit paiements 16/08/2026) — garde-fou dépassement objectif : create-funding-
+          // contribution-checkout / create-guest-funding-contribution-checkout ne vérifient le
+          // montant restant QU'AU MOMENT de la création de la session Stripe, jamais revérifié ici
+          // à la confirmation. Deux contributeurs qui cliquent "Payer le solde" au même instant
+          // peuvent chacun créer une session valide pour tout le solde restant — si les deux
+          // paient, le total dépasse montant_cible. Décision produit déjà tranchée : ne JAMAIS
+          // bloquer/annuler un paiement déjà effectué côté Stripe (rembourser automatiquement
+          // serait plus risqué qu'utile, refuser un paiement déjà encaissé est de toute façon
+          // impossible) — seulement notifier le staff pour un arbitrage au cas par cas (rembourser
+          // le dernier contributeur, garder l'excédent avec son accord, etc.). Purement additif,
+          // best-effort : ne fait jamais échouer le traitement du webhook, et ne change aucune
+          // écriture existante ci-dessus.
+          try {
+            const { data: funding } = await admin
+              .from("group_fundings")
+              .select("montant_cible, montant_collecte")
+              .eq("id", contribution.funding_id)
+              .maybeSingle();
+            if (funding && Number(funding.montant_collecte) > Number(funding.montant_cible)) {
+              const depassement = Math.round((Number(funding.montant_collecte) - Number(funding.montant_cible)) * 100) / 100;
+              await admin.rpc("notify_staff_by_role", {
+                p_roles: ["sec", "compta"],
+                p_titre: "Cotisation dépassée — vérification manuelle nécessaire",
+                p_message: `Le montant collecté (${funding.montant_collecte} €) dépasse désormais l'objectif (${funding.montant_cible} €) de ${depassement} € — probablement deux paiements simultanés reçus sur le solde restant. À traiter au cas par cas (rembourser le dernier contributeur, garder l'excédent avec son accord...).`,
+                p_priorite: "haute",
+                p_prestation_id: null,
+                p_client_id: null,
+              });
+            }
+          } catch (_e) {
+            console.error("[stripe-webhook] vérification dépassement objectif (cotisation) a échoué :", _e);
+          }
         }
       }
 
