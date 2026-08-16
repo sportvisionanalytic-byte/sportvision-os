@@ -5,8 +5,9 @@ import type { Match, MatchScorer, MatchStatus } from "@/lib/types/studio";
 // (a_venir/a_transmettre/recu/reportee/annulee), contrainte check en base : "content_created" (6e
 // statut du design, purement un marqueur Connect "visuel généré") n'a PAS d'équivalent réel et ne
 // doit JAMAIS être écrit dans `status` (violerait la contrainte). Voir fetchClubMatches/
-// saveClubMatchResult. RLS : is_club_member(club_id) + is_club_team_scoped_member(club_id,
-// team_id) pour select/insert/update (migration-clubplus-v37.sql) — team_id reste NULL pour
+// saveClubMatchResult. RLS : is_club_member(club_id) + is_team_educateur(team_id) (fonction
+// existante depuis migration-clubplus-v13.sql, déjà utilisée par team_memberships/membership_
+// requests) pour select/insert/update (migration-clubplus-v37.sql) — team_id reste NULL pour
 // toute donnée existante ou écrite par ce fichier, aucune UI de ce repo ne le renseigne encore.
 //
 // competition/is_home/attendance/assists/cards/comment : colonnes ajoutées par
