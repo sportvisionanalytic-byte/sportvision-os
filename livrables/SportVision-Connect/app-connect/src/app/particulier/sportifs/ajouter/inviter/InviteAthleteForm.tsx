@@ -44,7 +44,7 @@ export function InviteAthleteForm() {
     });
     setBusy(false);
     if (rpcError) {
-      setError(rpcError.message || "Impossible d'envoyer la demande pour le moment.");
+      setError("Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.");
       return;
     }
     setSent(true);

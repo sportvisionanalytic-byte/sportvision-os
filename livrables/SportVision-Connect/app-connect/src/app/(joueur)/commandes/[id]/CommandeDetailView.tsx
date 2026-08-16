@@ -89,7 +89,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
     const { data, error: rpcError } = await supabase.rpc("connect_choose_especes_for_prestation", { p_prestation_id: order.id });
     setBusy(false);
     if (rpcError || !data?.ok) {
-      setCheckoutError(rpcError?.message || "Impossible d'enregistrer ce choix pour le moment.");
+      setCheckoutError("Impossible d'enregistrer ce choix pour le moment. Réessayez dans un instant.");
       return;
     }
     setOrder({ ...order, modePaiementChoisi: "especes" });

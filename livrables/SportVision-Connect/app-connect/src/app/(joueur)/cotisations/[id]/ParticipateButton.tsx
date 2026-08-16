@@ -55,7 +55,7 @@ export function ParticipateButton({
       });
       if (rpcError || !data?.ok) {
         setBusy(false);
-        setError(rpcError?.message || "Impossible d'enregistrer cette participation pour le moment. Réessayez dans un instant.");
+        setError("Impossible d'enregistrer cette participation pour le moment. Réessayez dans un instant.");
         return;
       }
       setBusy(false);

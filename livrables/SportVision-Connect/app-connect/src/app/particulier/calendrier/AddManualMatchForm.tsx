@@ -49,7 +49,7 @@ export function AddManualMatchForm({
     });
     setBusy(false);
     if (rpcError) {
-      setError(rpcError.message || "Impossible d'ajouter ce match pour le moment.");
+      setError("Impossible d'ajouter ce match pour le moment. Réessayez dans un instant.");
       return;
     }
     onDone();
