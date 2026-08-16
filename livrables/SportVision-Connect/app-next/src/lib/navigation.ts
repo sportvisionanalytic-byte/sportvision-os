@@ -328,9 +328,10 @@ export function filterAffiliatedPlayerNav(entries: NavEntry[]): NavEntry[] {
 // Gaps connus vs la Bible, laissés pour l'agent qui construira l'interface détaillée de chaque
 // rôle (pas de nouvelle page créée dans ce chantier, périmètre = navigation.ts/types.ts/
 // permissions.ts/mappers.ts/settings.ts/matches.ts/ClubPlusDashboard.tsx/users/page.tsx) :
-//   - "Crédits" (Bible §9, Communication) n'a aucune page dédiée dans ce dépôt aujourd'hui (le
-//     solde existe déjà : Subscription.creditsRemaining/creditsReserved, affiché en gauge sur
-//     ClubPlusDashboard) — omis plutôt qu'un lien mort.
+//   - "Crédits" (Bible §9, Communication) construit le 17/08/2026 (chantier Centre communication) :
+//     /communication/credits, entrée ajoutée ci-dessous à NAV_CLUB_COMMUNICATION (module
+//     "communication" réutilisé, pas de nouveau ModuleKey — le solde/gating de ce module est déjà
+//     ouvert à tout membre actif, voir permissions.ts § canAccess). Gap refermé.
 //   - "Résultats & informations" (Bible §9) est mappé sur le module "matchcenter" existant (même
 //     écran de saisie/consultation des résultats que Coach/Directeur sportif) — la Bible envisage
 //     peut-être un écran de consultation distinct pour la Communication, pas construit ici.
@@ -401,6 +402,7 @@ const NAV_CLUB_COMMUNICATION: NavEntry[] = [
   item("communication", "Centre communication", "communication"),
   item("matchcenter", "Résultats & informations", "matchcenter"),
   item("visual_requests" as ModuleKey, "Demandes de visuels", "requests"),
+  item("communication", "Crédits", "communication/credits"),
   item("content", "Mes contenus", "content"),
   section("SportVision"),
   item("services", "Prestations", "services"),
@@ -462,6 +464,15 @@ const CLUB_ROLE_NAV: Partial<Record<MembershipRole, NavEntry[]>> = {
   coach: NAV_CLUB_COACH,
   sports_director: NAV_CLUB_DIRECTEUR_SPORTIF,
   communication_manager: NAV_CLUB_COMMUNICATION,
+  // external_cm (Bible §9 "CM externe") : "il ne devient jamais administrateur" — avant ce
+  // chantier (17/08/2026), ce rôle était absent de CLUB_ROLE_NAV et retombait donc sur `entries`
+  // inchangée (NAV_CLUB_PLUS), c'est-à-dire le menu Admin complet (Factures, Contrats, Membres &
+  // accès...) : un vrai bug vis-à-vis de la Bible, pas juste un gap. La Bible §9 décrit UNE seule
+  // table de navigation pour "CM interne et externe" (pas deux) : même nav que
+  // communication_manager. La finance reste fermée séparément par hasClubFinancialAccess()
+  // (permissions.ts, CLUB_BUREAU_ROLES n'inclut pas external_cm — déjà correct, vérifié, non
+  // modifié ici) même si un lien Factures apparaissait un jour dans ce bloc.
+  external_cm: NAV_CLUB_COMMUNICATION,
   secretary: NAV_CLUB_SECRETAIRE,
   treasurer: NAV_CLUB_TRESORIER,
   admin_staff: NAV_CLUB_ADMINISTRATIF,

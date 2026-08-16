@@ -205,3 +205,78 @@ export async function verifyClubMatchResult(supabase: SupabaseClient, matchId: s
   if (error) throw error;
   if (!data || data.length === 0) throw new Error("Vérification refusée : match introuvable ou accès refusé.");
 }
+
+/**
+ * Prise en charge "Prendre en charge" / "Pris en compte" (Bible §9/§18) — anti-doublon entre
+ * plusieurs CM d'un même club sur le Centre communication (communication/page.tsx). Colonne
+ * `taken_by` posée par migration-clubplus-v41-centre-communication-prise-en-charge.sql (NON
+ * EXÉCUTÉE) — voir ce fichier pour la vérification de schéma (curl) et le raisonnement RLS
+ * (aucune nouvelle policy nécessaire, "cma_member_update" est déjà column-agnostic).
+ *
+ * Volontairement une fonction à part de `Match`/`fetchClubMatches` ci-dessus plutôt qu'un champ
+ * ajouté à l'interface `Match` (src/lib/types/studio.ts, hors périmètre de ce chantier, fichier
+ * partagé avec d'autres agents) : le Centre communication réconcilie les deux listes par id.
+ */
+export interface ClubMatchClaim {
+  id: string;
+  takenBy: string | null;
+}
+
+export async function fetchClubMatchClaims(supabase: SupabaseClient, organizationId: string): Promise<ClubMatchClaim[]> {
+  const { data } = await supabase.from("club_matches").select("id, taken_by").eq("club_id", organizationId);
+  return ((data ?? []) as { id: string; taken_by: string | null }[]).map((row) => ({ id: row.id, takenBy: row.taken_by }));
+}
+
+/** `null` pour relâcher (repasse `taken_by` à NULL) — voir bouton "Relâcher" du Centre
+ * communication. Même garde-fou `.select("id")` + vérification de longueur que
+ * saveClubMatchResult/verifyClubMatchResult ci-dessus (une RLS qui bloque silencieusement
+ * renverrait sinon un faux succès). */
+export async function setClubMatchClaim(supabase: SupabaseClient, matchId: string, userId: string | null): Promise<void> {
+  const { data, error } = await supabase.from("club_matches").update({ taken_by: userId }).eq("id", matchId).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Action refusée : match introuvable ou accès refusé.");
+}
+
+/**
+ * "Résultat -> Visuel" (Bible §9/§18) : brief pré-rempli équipe/adversaire/score/buteurs/MVP/
+ * commentaire pour une demande de visuel depuis un résultat de match. Utilisé par matchcenter/
+ * page.tsx (CTA "Demander un visuel" sur une ligne de match reçu) et communication/page.tsx
+ * (Centre communication, carte "Résultat disponible") — centralisé ici plutôt que dupliqué dans
+ * les deux pages, et gardé dans ce fichier (périmètre autorisé) plutôt que dans
+ * src/lib/types/studio.ts (hors périmètre, partagé avec d'autres agents).
+ *
+ * Pointe vers /requests/new (club_requests, réellement accessible — canAccess "visual_requests"
+ * est dans READY_MODULES) plutôt que /studio/[template] (canAccess "studio" : "studio" est
+ * ABSENT de READY_MODULES, src/lib/supabase/entitlements.ts — verrouillé pour 100% des comptes
+ * réels aujourd'hui, vérifié en lisant ce fichier avant d'écrire cette fonction). Le prefill de
+ * studio/[template]/page.tsx (fetchClubMatchById + ?matchId=) reste correct et inchangé pour
+ * quand ce module sera un jour déverrouillé, mais n'est aujourd'hui atteignable par aucun compte
+ * réel — un CTA qui y mènerait serait un lien mort en pratique.
+ */
+export function composeMatchVisualBrief(match: Match): { teamName?: string; bodyText: string } {
+  const parts: string[] = [];
+  if (match.scoreFor !== undefined && match.scoreAgainst !== undefined) {
+    parts.push(`${match.teamName} ${match.scoreFor} - ${match.scoreAgainst} ${match.opponent}`);
+  } else {
+    parts.push(`${match.teamName} ${match.isHome ? "vs" : "@"} ${match.opponent}`);
+  }
+  if (match.scorers?.length) parts.push(`Buteurs : ${match.scorers.map((s) => s.playerName).join(", ")}`);
+  if (match.manOfTheMatch) parts.push(`Joueur du match : ${match.manOfTheMatch}`);
+  if (match.extendedReport?.comment) parts.push(match.extendedReport.comment);
+  return { teamName: match.teamName || undefined, bodyText: parts.join("\n") };
+}
+
+/** /requests/new?teamName=...&prefillBody=... — mêmes paramètres que ceux déjà lus par cette
+ * page (voir requests/new/page.tsx, useEffect ligne ~79). Vit ici (pas dans matchcenter/page.tsx)
+ * parce qu'un fichier `page.tsx` de l'App Router ne peut exporter QUE les champs reconnus par
+ * Next.js (default, metadata, generateStaticParams...) — un export nommé arbitraire y fait
+ * échouer `next build` ("is not a valid Page export field"), trouvé en buildant ce chantier.
+ * Utilisée par matchcenter/page.tsx (CTA "Demander un visuel" sur une ligne de match reçu) et
+ * communication/page.tsx (Centre communication, carte "Résultat disponible"). */
+export function requestVisualHref(match: Match): string {
+  const { teamName, bodyText } = composeMatchVisualBrief(match);
+  const params = new URLSearchParams();
+  if (teamName) params.set("teamName", teamName);
+  if (bodyText) params.set("prefillBody", bodyText);
+  return `/requests/new?${params.toString()}`;
+}

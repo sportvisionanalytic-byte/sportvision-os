@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarClock, MoreVertical } from "lucide-react";
+import Link from "next/link";
+import { CalendarClock, MoreVertical, Sparkles } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -11,7 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { MatchResultModal } from "@/components/matchcenter/MatchResultModal";
 import { cn } from "@/lib/cn";
-import { fetchClubMatches, saveClubMatchResult, type MatchOutcome } from "@/lib/data/club/matches";
+import { fetchClubMatches, requestVisualHref, saveClubMatchResult, type MatchOutcome } from "@/lib/data/club/matches";
 import { createClient } from "@/lib/supabase/client";
 import { MATCH_STATUS_LABELS, MATCH_STATUS_TONE, type Match, type MatchStatus } from "@/lib/types/studio";
 
@@ -44,6 +45,10 @@ export default function MatchCenterPage() {
 
   const allowed = canAccess(ctx, "matchcenter");
   const canWrite = canCreate(ctx, "match_result");
+  // CTA "Demander un visuel" (Bible §9/§18, "Résultat -> Visuel") sur un match reçu — voir
+  // composeMatchVisualBrief (data/club/matches.ts) pour pourquoi ça pointe vers /requests/new et
+  // pas /studio/[template] (module "studio" verrouillé pour tout compte réel aujourd'hui).
+  const canRequestVisual = canAccess(ctx, "visual_requests") && canCreate(ctx, "visual_request");
 
   useEffect(() => {
     let cancelled = false;
@@ -217,6 +222,17 @@ export default function MatchCenterPage() {
                 >
                   Saisir le résultat
                 </Button>
+              )}
+              {/* "Résultat -> Visuel" (Bible §9/§18) : un match reçu peut nourrir directement une
+                  demande de visuel, brief pré-rempli équipe/adversaire/score/buteurs/MVP/
+                  commentaire — voir composeMatchVisualBrief. */}
+              {m.status === "result_received" && canRequestVisual && (
+                <Link href={requestVisualHref(m)}>
+                  <Button variant="secondary" className="h-9 px-3.5 text-[12.5px]">
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                    Demander un visuel
+                  </Button>
+                </Link>
               )}
               {/* Reporter/annuler : pas pertinent une fois annulé (pas de workflow de
                   "dé-annulation" dans ce chantier) — mais un match déjà reporté peut l'être à
