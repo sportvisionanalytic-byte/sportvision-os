@@ -19,12 +19,17 @@ import { MATCH_STATUS_LABELS, MATCH_STATUS_TONE, type Match, type MatchStatus } 
 // "content_created" (visuel généré) n'a pas d'équivalent réel en base (voir data/club/matches.ts)
 // et aucun marquage local ne le simule plus : /studio est verrouillé (hors READY_MODULES), il n'y
 // a donc aujourd'hui aucun chemin réel pour faire transiter un match vers ce statut.
+// "postponed"/"cancelled" (migration-clubplus-v37.sql) : onglets ajoutés pour que ces statuts
+// restent consultables s'ils apparaissent un jour (aucune action de ce module ne les déclenche
+// encore, voir studio.ts § MatchStatus).
 
 const TABS: { key: MatchStatus; label: string }[] = [
   { key: "upcoming", label: "À venir" },
   { key: "result_pending", label: "À transmettre" },
   { key: "result_received", label: "Reçus" },
   { key: "content_created", label: "Contenus créés" },
+  { key: "postponed", label: "Reportés" },
+  { key: "cancelled", label: "Annulés" },
 ];
 
 export default function MatchCenterPage() {
