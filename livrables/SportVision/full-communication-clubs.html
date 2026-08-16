@@ -96,6 +96,8 @@ section{position:relative}
 .main-nav>a.active,.main-nav .nav-item>a.active{color:#fff}
 .nav-item{position:relative}
 .nav-item>a{display:flex;align-items:center;gap:5px}
+.nav-item>button{all:unset;display:flex;align-items:center;gap:5px;font-size:14px;font-weight:600;color:rgba(255,255,255,.82);cursor:pointer;transition:color .15s}
+.nav-item>button:hover,.nav-item>button.active{color:#fff}
 .nav-caret{font-size:9px;opacity:.55;transition:transform .15s}
 .nav-item:hover .nav-caret,.nav-item:focus-within .nav-caret{transform:rotate(180deg)}
 .nav-dropdown{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(6px);min-width:240px;background:rgba(7,10,23,.98);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px;box-shadow:0 24px 48px rgba(0,0,0,.45);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease, transform .15s ease;display:flex;flex-direction:column;gap:1px;z-index:1100}
@@ -375,7 +377,7 @@ section{position:relative}
 }
 </style>
 
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Qui produit réellement les contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Un Community Manager SportVision dédié à votre club, qui connaît vos équipes et vos sponsors — pas un prestataire différent à chaque publication."}}, {"@type": "Question", "name": "Quelle est la différence avec Club+ ?", "acceptedAnswer": {"@type": "Answer", "text": "Club+ vous donne les outils pour organiser vous-même votre communication. Full Communication va plus loin : une équipe SportVision s'en occupe à votre place, au quotidien."}}, {"@type": "Question", "name": "Combien de temps avant les premiers contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Après l'audit initial, le calendrier éditorial et les premières productions démarrent généralement sous 1 à 2 semaines."}}, {"@type": "Question", "name": "Le tarif est-il fixe ?", "acceptedAnswer": {"@type": "Answer", "text": "Il dépend du volume de contenus et de présences souhaité pour votre club. Nous établissons un devis après l'audit initial."}}]}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Qui produit réellement les contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Un Community Manager SportVision dédié à votre club, qui connaît vos équipes et vos sponsors sur la durée."}}, {"@type": "Question", "name": "Quelle est la différence avec Club+ ?", "acceptedAnswer": {"@type": "Answer", "text": "Club+ vous donne les outils pour organiser vous-même votre communication. Full Communication va plus loin : une équipe SportVision s'en occupe à votre place, au quotidien."}}, {"@type": "Question", "name": "Combien de temps avant les premiers contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Après l'audit initial, le calendrier éditorial et les premières productions démarrent généralement sous 1 à 2 semaines."}}, {"@type": "Question", "name": "Le tarif est-il fixe ?", "acceptedAnswer": {"@type": "Answer", "text": "Il dépend du volume de contenus et de présences souhaité pour votre club. Nous établissons un devis après l'audit initial."}}]}</script>
 </head>
 <body>
 
@@ -398,11 +400,11 @@ section{position:relative}
           <a href="prestations.html" class="nav-dropdown-all">Toutes les prestations →</a>
         </div>
       </div>
-      <a href="club-plus.html">Club+</a>
-      <a href="full-communication.html" class="active">Full Communication</a>
       <div class="nav-item">
-        <a href="accompagnements.html">Accompagnements <span class="nav-caret">▾</span></a>
+        <button type="button" class="active">Solutions <span class="nav-caret">▾</span></button>
         <div class="nav-dropdown">
+          <a href="club-plus.html">Club+</a>
+          <a href="full-communication.html">Full Communication</a>
           <a href="accompagnements-academies.html">Académies</a>
           <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
           <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -437,11 +439,11 @@ section{position:relative}
       <a href="prestations.html">Toutes les prestations →</a>
     </div>
   </details>
-  <a href="club-plus.html">Club+</a>
-  <a href="full-communication.html">Full Communication</a>
   <details class="mobile-nav-group">
-    <summary>Accompagnements</summary>
+    <summary>Solutions</summary>
     <div class="sub-links">
+      <a href="club-plus.html">Club+</a>
+      <a href="full-communication.html">Full Communication</a>
       <a href="accompagnements-academies.html">Académies</a>
       <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
       <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -551,7 +553,7 @@ section{position:relative}
   <div class="container">
     <div class="section-head reveal"><h2>Questions fréquentes</h2></div>
     <div class="faq-list reveal" id="faq-list">
-      <div class="faq-item"><button class="faq-q"><span>Qui produit réellement les contenus ?</span><span class="chev">+</span></button><div class="faq-a"><p>Un Community Manager SportVision dédié à votre club, qui connaît vos équipes et vos sponsors — pas un prestataire différent à chaque publication.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Qui produit réellement les contenus ?</span><span class="chev">+</span></button><div class="faq-a"><p>Un Community Manager SportVision dédié à votre club, qui connaît vos équipes et vos sponsors sur la durée.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Quelle est la différence avec Club+ ?</span><span class="chev">+</span></button><div class="faq-a"><p>Club+ vous donne les outils pour organiser vous-même votre communication. Full Communication va plus loin : une équipe SportVision s'en occupe à votre place, au quotidien.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Combien de temps avant les premiers contenus ?</span><span class="chev">+</span></button><div class="faq-a"><p>Après l'audit initial, le calendrier éditorial et les premières productions démarrent généralement sous 1 à 2 semaines.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Le tarif est-il fixe ?</span><span class="chev">+</span></button><div class="faq-a"><p>Il dépend du volume de contenus et de présences souhaité pour votre club. Nous établissons un devis après l'audit initial.</p></div></div>

@@ -91,6 +91,8 @@ section{position:relative}
 .main-nav>a.active,.main-nav .nav-item>a.active{color:#fff}
 .nav-item{position:relative}
 .nav-item>a{display:flex;align-items:center;gap:5px}
+.nav-item>button{all:unset;display:flex;align-items:center;gap:5px;font-size:14px;font-weight:600;color:rgba(255,255,255,.82);cursor:pointer;transition:color .15s}
+.nav-item>button:hover,.nav-item>button.active{color:#fff}
 .nav-caret{font-size:9px;opacity:.55;transition:transform .15s}
 .nav-item:hover .nav-caret,.nav-item:focus-within .nav-caret{transform:rotate(180deg)}
 .nav-dropdown{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(6px);min-width:240px;background:rgba(7,10,23,.98);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px;box-shadow:0 24px 48px rgba(0,0,0,.45);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease, transform .15s ease;display:flex;flex-direction:column;gap:1px;z-index:1100}
@@ -394,11 +396,11 @@ section{position:relative}
           <a href="prestations.html" class="nav-dropdown-all">Toutes les prestations →</a>
         </div>
       </div>
-      <a href="club-plus.html">Club+</a>
-      <a href="full-communication.html">Full Communication</a>
       <div class="nav-item">
-        <a href="accompagnements.html">Accompagnements <span class="nav-caret">▾</span></a>
+        <button type="button">Solutions <span class="nav-caret">▾</span></button>
         <div class="nav-dropdown">
+          <a href="club-plus.html">Club+</a>
+          <a href="full-communication.html">Full Communication</a>
           <a href="accompagnements-academies.html">Académies</a>
           <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
           <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -433,11 +435,11 @@ section{position:relative}
       <a href="prestations.html">Toutes les prestations →</a>
     </div>
   </details>
-  <a href="club-plus.html">Club+</a>
-  <a href="full-communication.html">Full Communication</a>
   <details class="mobile-nav-group">
-    <summary>Accompagnements</summary>
+    <summary>Solutions</summary>
     <div class="sub-links">
+      <a href="club-plus.html">Club+</a>
+      <a href="full-communication.html">Full Communication</a>
       <a href="accompagnements-academies.html">Académies</a>
       <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
       <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -449,7 +451,7 @@ section{position:relative}
   <a href="a-propos.html">À propos</a>
   <div class="mobile-ctas">
     <a href="https://connect.sportvision-an.fr/" class="btn btn-ghost-dark">Se connecter</a>
-    <a href="reserver.html?besoin=pack-match" class="btn btn-grad">Réserver une prestation</a>
+    <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
   </div>
 </div>
 
@@ -557,10 +559,10 @@ section{position:relative}
     <div class="prestation-grid reveal" style="max-width:520px;margin-left:auto;margin-right:auto">
       <div class="prestation-card">
         <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 6h9M12 6v4M6 6V3.5M8 10h6.5a3.5 3.5 0 0 1 3.5 3.5V15a2 2 0 0 1-2 2H10a4 4 0 0 1-4-4v-1z"/><path d="M17 12h4M2 17l3-2M22 17l-3-2"/></svg></div><span class="sans-abo">En option</span></div>
-        <h4>Drone</h4>
-        <p class="desc">Plans aériens en complément, sous réserve de la réglementation, de la météo et de la zone survolée.</p>
-        <div class="price-row"><span class="price">+25 € <small>en option</small></span></div>
-        <a href="#devis" class="btn btn-grad btn-sm" data-action="open-devis" style="margin-top:14px;width:100%">Ajouter le drone</a>
+        <h4>Plans drone complémentaires</h4>
+        <p class="desc">Un complément à cette prestation existante : plans aériens sous réserve de la réglementation, de la météo et de la zone survolée.</p>
+        <div class="price-row"><span class="price">+25 € <small>sur cette prestation</small></span></div>
+        <a href="#devis" class="btn btn-grad btn-sm" data-action="open-devis" style="margin-top:14px;width:100%">Ajouter les plans drone</a>
       </div>
     </div>
     <p style="text-align:center;margin-top:40px;color:var(--text-secondary);font-size:13px" class="reveal">Déplacement calculé selon la distance depuis notre siège (Montereau-Fault-Yonne).</p>

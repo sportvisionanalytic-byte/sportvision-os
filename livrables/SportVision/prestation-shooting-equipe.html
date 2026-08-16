@@ -96,6 +96,8 @@ section{position:relative}
 .main-nav>a.active,.main-nav .nav-item>a.active{color:#fff}
 .nav-item{position:relative}
 .nav-item>a{display:flex;align-items:center;gap:5px}
+.nav-item>button{all:unset;display:flex;align-items:center;gap:5px;font-size:14px;font-weight:600;color:rgba(255,255,255,.82);cursor:pointer;transition:color .15s}
+.nav-item>button:hover,.nav-item>button.active{color:#fff}
 .nav-caret{font-size:9px;opacity:.55;transition:transform .15s}
 .nav-item:hover .nav-caret,.nav-item:focus-within .nav-caret{transform:rotate(180deg)}
 .nav-dropdown{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(6px);min-width:240px;background:rgba(7,10,23,.98);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px;box-shadow:0 24px 48px rgba(0,0,0,.45);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease, transform .15s ease;display:flex;flex-direction:column;gap:1px;z-index:1100}
@@ -391,11 +393,11 @@ section{position:relative}
           <a href="prestations.html" class="nav-dropdown-all">Toutes les prestations →</a>
         </div>
       </div>
-      <a href="club-plus.html">Club+</a>
-      <a href="full-communication.html">Full Communication</a>
       <div class="nav-item">
-        <a href="accompagnements.html">Accompagnements <span class="nav-caret">▾</span></a>
+        <button type="button">Solutions <span class="nav-caret">▾</span></button>
         <div class="nav-dropdown">
+          <a href="club-plus.html">Club+</a>
+          <a href="full-communication.html">Full Communication</a>
           <a href="accompagnements-academies.html">Académies</a>
           <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
           <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -430,11 +432,11 @@ section{position:relative}
       <a href="prestations.html">Toutes les prestations →</a>
     </div>
   </details>
-  <a href="club-plus.html">Club+</a>
-  <a href="full-communication.html">Full Communication</a>
   <details class="mobile-nav-group">
-    <summary>Accompagnements</summary>
+    <summary>Solutions</summary>
     <div class="sub-links">
+      <a href="club-plus.html">Club+</a>
+      <a href="full-communication.html">Full Communication</a>
       <a href="accompagnements-academies.html">Académies</a>
       <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
       <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -446,7 +448,7 @@ section{position:relative}
   <a href="a-propos.html">À propos</a>
   <div class="mobile-ctas">
     <a href="https://connect.sportvision-an.fr/" class="btn btn-ghost-dark">Se connecter</a>
-    <a href="reserver.html?besoin=shooting" class="btn btn-grad">Réserver une prestation</a>
+    <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
   </div>
 </div>
 
@@ -501,8 +503,8 @@ section{position:relative}
     <div class="feature-row rev reveal">
       <div class="feature-copy">
         <span class="eyebrow">Pourquoi SportVision</span>
-        <h3>Une vraie mise en scène pour toute votre équipe, pas une photo de groupe prise à la volée.</h3>
-        <p class="desc">Vous réservez une séance organisée, avec le temps de bien faire les choses — pas 30 secondes entre deux exercices.</p>
+        <h3>Une vraie mise en scène pour toute votre équipe, pensée dans les moindres détails.</h3>
+        <p class="desc">Vous réservez une séance organisée, avec le temps nécessaire pour soigner chaque cadrage.</p>
         <ul class="feature-list">
           <li>Demande en quelques minutes, sans créer de compte</li>
           <li>Aucun paiement à cette étape. Après validation du devis et de la disponibilité, votre règlement et votre suivi sont centralisés dans SportVision Connect.</li>

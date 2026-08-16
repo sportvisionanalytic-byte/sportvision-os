@@ -96,6 +96,8 @@ section{position:relative}
 .main-nav>a.active,.main-nav .nav-item>a.active{color:#fff}
 .nav-item{position:relative}
 .nav-item>a{display:flex;align-items:center;gap:5px}
+.nav-item>button{all:unset;display:flex;align-items:center;gap:5px;font-size:14px;font-weight:600;color:rgba(255,255,255,.82);cursor:pointer;transition:color .15s}
+.nav-item>button:hover,.nav-item>button.active{color:#fff}
 .nav-caret{font-size:9px;opacity:.55;transition:transform .15s}
 .nav-item:hover .nav-caret,.nav-item:focus-within .nav-caret{transform:rotate(180deg)}
 .nav-dropdown{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(6px);min-width:240px;background:rgba(7,10,23,.98);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px;box-shadow:0 24px 48px rgba(0,0,0,.45);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease, transform .15s ease;display:flex;flex-direction:column;gap:1px;z-index:1100}
@@ -380,7 +382,7 @@ section{position:relative}
   .steps-list li{gap:16px}
 }
 </style>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Qui produit réellement les contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Un Community Manager SportVision dédié à votre structure, qui connaît vos équipes ou groupes et vos partenaires — pas un prestataire différent à chaque publication."}}, {"@type": "Question", "name": "Est-ce que je perds la main sur ce qui est publié ?", "acceptedAnswer": {"@type": "Answer", "text": "Le niveau de validation est défini avec vous dès l'onboarding : certains clients valident chaque publication, d'autres un calendrier mensuel. Tout est centralisé dans SportVision Connect."}}, {"@type": "Question", "name": "Les présences photo et vidéo sont-elles incluses ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, des présences régulières sur vos matchs et événements font partie de l'offre, planifiées à l'avance autour de votre calendrier sportif."}}, {"@type": "Question", "name": "Full Communication remplace-t-il Club+ ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, ce sont deux offres différentes. Club+ vous donne les outils pour gérer vous-même votre communication ; Full Communication délègue cette gestion à une équipe SportVision. Voir Club+."}}]}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Qui produit réellement les contenus ?", "acceptedAnswer": {"@type": "Answer", "text": "Un Community Manager SportVision dédié à votre structure, qui connaît vos équipes ou groupes et vos partenaires sur la durée."}}, {"@type": "Question", "name": "Est-ce que je perds la main sur ce qui est publié ?", "acceptedAnswer": {"@type": "Answer", "text": "Le niveau de validation est défini avec vous dès l'onboarding : certains clients valident chaque publication, d'autres un calendrier mensuel. Tout est centralisé dans SportVision Connect."}}, {"@type": "Question", "name": "Les présences photo et vidéo sont-elles incluses ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, des présences régulières sur vos matchs et événements font partie de l'offre, planifiées à l'avance autour de votre calendrier sportif."}}, {"@type": "Question", "name": "Full Communication remplace-t-il Club+ ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, ce sont deux offres différentes. Club+ vous donne les outils pour gérer vous-même votre communication ; Full Communication délègue cette gestion à une équipe SportVision. Voir Club+."}}]}</script>
 </head>
 <body>
 
@@ -404,11 +406,11 @@ section{position:relative}
           <a href="prestations.html" class="nav-dropdown-all">Toutes les prestations →</a>
         </div>
       </div>
-      <a href="club-plus.html">Club+</a>
-      <a href="full-communication.html" class="active">Full Communication</a>
       <div class="nav-item">
-        <a href="accompagnements.html">Accompagnements <span class="nav-caret">▾</span></a>
+        <button type="button" class="active">Solutions <span class="nav-caret">▾</span></button>
         <div class="nav-dropdown">
+          <a href="club-plus.html">Club+</a>
+          <a href="full-communication.html">Full Communication</a>
           <a href="accompagnements-academies.html">Académies</a>
           <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
           <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -443,11 +445,11 @@ section{position:relative}
       <a href="prestations.html">Toutes les prestations →</a>
     </div>
   </details>
-  <a href="club-plus.html">Club+</a>
-  <a href="full-communication.html">Full Communication</a>
   <details class="mobile-nav-group">
-    <summary>Accompagnements</summary>
+    <summary>Solutions</summary>
     <div class="sub-links">
+      <a href="club-plus.html">Club+</a>
+      <a href="full-communication.html">Full Communication</a>
       <a href="accompagnements-academies.html">Académies</a>
       <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
       <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -627,7 +629,7 @@ section{position:relative}
   <div class="container">
     <div class="section-head reveal"><h2>Questions fréquentes</h2></div>
     <div class="faq-list reveal" id="faq-list">
-      <div class="faq-item"><button class="faq-q"><span>Qui produit réellement les contenus ?</span><span class="chev">+</span></button><div class="faq-a"><p>Un Community Manager SportVision dédié à votre structure, qui connaît vos équipes ou groupes et vos partenaires — pas un prestataire différent à chaque publication.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Qui produit réellement les contenus ?</span><span class="chev">+</span></button><div class="faq-a"><p>Un Community Manager SportVision dédié à votre structure, qui connaît vos équipes ou groupes et vos partenaires sur la durée.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Est-ce que je perds la main sur ce qui est publié ?</span><span class="chev">+</span></button><div class="faq-a"><p>Le niveau de validation est défini avec vous dès l'onboarding : certains clients valident chaque publication, d'autres un calendrier mensuel. Tout est centralisé dans SportVision Connect.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Les présences photo et vidéo sont-elles incluses ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui, des présences régulières sur vos matchs et événements font partie de l'offre, planifiées à l'avance autour de votre calendrier sportif.</p></div></div>
       <div class="faq-item"><button class="faq-q"><span>Full Communication remplace-t-il Club+ ?</span><span class="chev">+</span></button><div class="faq-a"><p>Non, ce sont deux offres différentes. Club+ vous donne les outils pour gérer vous-même votre communication ; Full Communication délègue cette gestion à une équipe SportVision. <a href="club-plus.html" style="color:var(--blue);font-weight:700">Voir Club+</a>.</p></div></div>

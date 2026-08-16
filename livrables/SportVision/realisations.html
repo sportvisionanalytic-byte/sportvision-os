@@ -96,6 +96,8 @@ section{position:relative}
 .main-nav>a.active,.main-nav .nav-item>a.active{color:#fff}
 .nav-item{position:relative}
 .nav-item>a{display:flex;align-items:center;gap:5px}
+.nav-item>button{all:unset;display:flex;align-items:center;gap:5px;font-size:14px;font-weight:600;color:rgba(255,255,255,.82);cursor:pointer;transition:color .15s}
+.nav-item>button:hover,.nav-item>button.active{color:#fff}
 .nav-caret{font-size:9px;opacity:.55;transition:transform .15s}
 .nav-item:hover .nav-caret,.nav-item:focus-within .nav-caret{transform:rotate(180deg)}
 .nav-dropdown{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(6px);min-width:240px;background:rgba(7,10,23,.98);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px;box-shadow:0 24px 48px rgba(0,0,0,.45);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease, transform .15s ease;display:flex;flex-direction:column;gap:1px;z-index:1100}
@@ -400,11 +402,11 @@ section{position:relative}
           <a href="prestations.html" class="nav-dropdown-all">Toutes les prestations →</a>
         </div>
       </div>
-      <a href="club-plus.html">Club+</a>
-      <a href="full-communication.html">Full Communication</a>
       <div class="nav-item">
-        <a href="accompagnements.html">Accompagnements <span class="nav-caret">▾</span></a>
+        <button type="button">Solutions <span class="nav-caret">▾</span></button>
         <div class="nav-dropdown">
+          <a href="club-plus.html">Club+</a>
+          <a href="full-communication.html">Full Communication</a>
           <a href="accompagnements-academies.html">Académies</a>
           <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
           <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -439,11 +441,11 @@ section{position:relative}
       <a href="prestations.html">Toutes les prestations →</a>
     </div>
   </details>
-  <a href="club-plus.html">Club+</a>
-  <a href="full-communication.html">Full Communication</a>
   <details class="mobile-nav-group">
-    <summary>Accompagnements</summary>
+    <summary>Solutions</summary>
     <div class="sub-links">
+      <a href="club-plus.html">Club+</a>
+      <a href="full-communication.html">Full Communication</a>
       <a href="accompagnements-academies.html">Académies</a>
       <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
       <a href="accompagnements-joueurs.html">Joueurs</a>
@@ -532,7 +534,6 @@ section{position:relative}
       <div class="gallery-item gallery-extra" data-type="video" data-sport="" data-video="assets/realisations/videos/reel-technique-freestyle-04.mp4"><img src="assets/realisations/reel-technique-freestyle-04-poster.jpg" alt="Séance technique — Extrait réel — travail individuel" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Séance technique</b><span>Extrait réel — travail individuel</span></div></div></div>
       <div class="gallery-item gallery-extra" data-type="video" data-sport="" data-video="assets/realisations/videos/reel-duel-chasse-05.mp4"><img src="assets/realisations/reel-duel-chasse-05-poster.jpg" alt="Duel — Extrait réel — course-poursuite" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Duel</b><span>Extrait réel — course-poursuite</span></div></div></div>
       <div class="gallery-item gallery-extra" data-type="video" data-sport="" data-video="assets/realisations/videos/reel-complicite-06.mp4"><img src="assets/realisations/reel-complicite-06-poster.jpg" alt="Complicité d'équipe — Extrait réel — instant capté" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Complicité d'équipe</b><span>Extrait réel — instant capté</span></div></div></div>
-      <div class="gallery-item gallery-extra" data-type="video" data-sport="" data-video="assets/realisations/videos/reel-complicite-07.mp4"><img src="assets/realisations/reel-complicite-07-poster.jpg" alt="Complicité d'équipe — Extrait réel — instant capté" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Complicité d'équipe</b><span>Extrait réel — instant capté</span></div></div></div>
       <div class="gallery-item gallery-extra" data-type="video" data-sport="" data-video="assets/realisations/videos/reel-celebration-08.mp4"><img src="assets/realisations/reel-celebration-08-poster.jpg" alt="Célébration — Extrait réel — victoire d'équipe" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Célébration</b><span>Extrait réel — victoire d'équipe</span></div></div></div>
       <div class="gallery-item gallery-extra" data-type="video" data-sport="football" data-video="assets/realisations/videos/reel-action-but-09.mp4"><img src="assets/realisations/reel-action-but-09-poster.jpg" alt="Action devant le but — Extrait réel — captation match" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Action devant le but</b><span>Extrait réel — captation match</span></div></div></div>
       <div class="gallery-item gallery-extra" data-type="video" data-sport="" data-video="assets/realisations/videos/reel-action-coupe-12.mp4"><img src="assets/realisations/reel-action-coupe-12-poster.jpg" alt="Finale de coupe — Extrait réel — action de match" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Finale de coupe</b><span>Extrait réel — action de match</span></div></div></div>
