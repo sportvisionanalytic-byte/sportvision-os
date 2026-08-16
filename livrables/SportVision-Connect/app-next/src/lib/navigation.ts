@@ -343,11 +343,8 @@ export function filterAffiliatedPlayerNav(entries: NavEntry[]): NavEntry[] {
 //   - "informations structure" (Administratif, Bible §10) n'a pas d'écran de consultation
 //     dédié (lecture seule du profil organisation) distinct de Paramètres > Organisation (réservé
 //     au bureau) — mappé sur "Mon profil" comme les autres rôles non-bureau, par défaut fermé.
-//   - "Mon équipe [Nom]" (Coach, Bible §7) : le nom réel de l'équipe (ou "Mes équipes" au pluriel
-//     si plusieurs) vient de `ctx.membership.teamScope`, non disponible dans cette fonction pure
-//     (entries, role) — Sidebar.tsx/Header.tsx (hors périmètre de ce chantier) devront passer
-//     teamScope pour personnaliser ; en attendant, libellé générique "Mon équipe" (fallback
-//     explicitement toléré par le brief).
+//   - "Mon équipe [Nom]" (Coach, Bible §7) : résolu le 17/08/2026 — filterClubRoleNav prend
+//     désormais un 3ᵉ paramètre optionnel `teamNames` (ctx.membership.teamScope), voir plus bas.
 //
 // Correctif au passage : l'ancienne rustine rangeait "matchcenter" (Match Center = saisie/suivi
 // des résultats de match, voir data/club/matches.ts et matchcenter/page.tsx) dans les modules
@@ -468,10 +465,20 @@ const CLUB_ROLE_NAV: Partial<Record<MembershipRole, NavEntry[]>> = {
 };
 
 /** Remplace `entries` (résolue par resolveNavigation) par la navigation dédiée du rôle si ce
- * rôle en a une (voir CLUB_ROLE_NAV ci-dessus) ; sinon la retourne inchangée. Le nom et la
- * signature de cette fonction sont conservés à l'identique (Sidebar.tsx/Header.tsx l'appellent
- * déjà avec `(entries, ctx.membership.role)` pour tout org type club — pas de nouveau site
- * d'appel à câbler). */
-export function filterClubRoleNav(entries: NavEntry[], role: MembershipRole): NavEntry[] {
-  return CLUB_ROLE_NAV[role] ?? entries;
+ * rôle en a une (voir CLUB_ROLE_NAV ci-dessus) ; sinon la retourne inchangée.
+ *
+ * `teamNames` (17/08/2026, Bible §7 : "Mon équipe [Nom]") : optionnel, à passer par l'appelant
+ * avec `ctx.membership.teamScope` — seul le Coach en a l'usage aujourd'hui (une seule équipe
+ * typique dans son scope). Un seul nom trouvé -> "Mon équipe {Nom}" ; 0, 2+ noms, ou paramètre
+ * omis -> "Mes équipes" (le Directeur sportif garde ce pluriel par défaut, cohérent avec son
+ * scope multi-équipes habituel — NAV_CLUB_DIRECTEUR_SPORTIF n'a d'ailleurs aucun libellé "Mon
+ * équipe" à remplacer, seule NAV_CLUB_COACH en a). Ne complexifie pas plus : pas de liste de noms
+ * concaténés au pluriel, pas de distinction "0 équipe" vs "équipe introuvable". */
+export function filterClubRoleNav(entries: NavEntry[], role: MembershipRole, teamNames: string[] = []): NavEntry[] {
+  const roleNav = CLUB_ROLE_NAV[role];
+  if (!roleNav) return entries;
+  if (role !== "coach") return roleNav;
+
+  const label = teamNames.length === 1 ? `Mon équipe ${teamNames[0]}` : "Mes équipes";
+  return roleNav.map((entry) => (entry.label === "Mon équipe" ? { ...entry, label } : entry));
 }

@@ -7,8 +7,7 @@ import type { Match, MatchScorer, MatchStatus } from "@/lib/types/studio";
 // doit JAMAIS être écrit dans `status` (violerait la contrainte). Voir fetchClubMatches/
 // saveClubMatchResult. RLS : is_club_member(club_id) + is_team_educateur(team_id) (fonction
 // existante depuis migration-clubplus-v13.sql, déjà utilisée par team_memberships/membership_
-// requests) pour select/insert/update (migration-clubplus-v37.sql) — team_id reste NULL pour
-// toute donnée existante ou écrite par ce fichier, aucune UI de ce repo ne le renseigne encore.
+// requests) pour select/insert/update (migration-clubplus-v37.sql).
 //
 // competition/is_home/attendance/assists/cards/comment : colonnes ajoutées par
 // migration-clubplus-v34-match-champs-complementaires.sql (exécutée par Fouka le 09/08/2026) —
@@ -16,10 +15,18 @@ import type { Match, MatchScorer, MatchStatus } from "@/lib/types/studio";
 // réellement persistés.
 //
 // verified_by/verified_at (migration-clubplus-v37.sql) : colonnes du workflow de vérification
-// Directeur sportif (§8) — voir verifyClubMatchResult ci-dessous (fondations "Autres rôles Club+"
-// du 17/08/2026). Aucune UI de ce repo ne les consomme encore (bouton/écran réservés à un futur
-// agent) ; fetchClubMatches/fetchClubMatchById ne les sélectionnent pas non plus (SELECT ci-dessous
-// inchangé), seule verifyClubMatchResult y écrit pour l'instant.
+// Directeur sportif (§8) — voir verifyClubMatchResult ci-dessous. Désormais sélectionnées par
+// fetchClubMatches/fetchClubMatchById et exposées sur Match (types/studio.ts), consommées par
+// matchcenter/page.tsx (bouton "Vérifier le résultat", chantier "Autres rôles Club+" du
+// 17/08/2026).
+//
+// team_id (migration-clubplus-v37.sql, référence club_teams) : gap corrigé le 17/08/2026 —
+// jusque-là aucune UI de ce repo ne le lisait ni ne l'écrivait (toMatch hardcodait `teamId: ""`),
+// ce qui rendait la RLS équipe-level (cma_member_select/update, is_team_educateur(team_id))
+// inopérante en pratique : tout match restait team_id=NULL, donc visible/modifiable par tout
+// membre du club. Désormais réellement sélectionné ; voir assignClubMatchTeam ci-dessous pour
+// l'action d'assignation (réservée Admin/Directeur sportif côté UI dans matchcenter/page.tsx — la
+// vraie frontière reste la RLS, voir son docstring).
 //
 // 16/08/2026 : saveClubMatchResult accepte désormais un statut cible explicite ("completed" /
 // "postponed" / "cancelled") — auparavant la fonction forçait toujours status="recu", il n'existait
@@ -60,6 +67,9 @@ interface ClubMatchRow {
   assists: string | null;
   cards: string | null;
   comment: string | null;
+  team_id: string | null;
+  verified_by: string | null;
+  verified_at: string | null;
 }
 
 function parseScorers(raw: string | null): MatchScorer[] | undefined {
@@ -79,7 +89,7 @@ function toMatch(row: ClubMatchRow, organizationId: string): Match {
   return {
     id: row.id,
     organizationId,
-    teamId: "",
+    teamId: row.team_id ?? "",
     teamName: row.team,
     opponent: row.opponent,
     competition: row.competition ?? "",
@@ -98,11 +108,13 @@ function toMatch(row: ClubMatchRow, organizationId: string): Match {
           comment: row.comment ?? undefined,
         }
       : undefined,
+    verifiedBy: row.verified_by ?? undefined,
+    verifiedAt: row.verified_at ?? undefined,
   };
 }
 
 const SELECT =
-  "id, team, opponent, match_date, lieu, status, score, scorers, man_of_match, competition, is_home, attendance, assists, cards, comment";
+  "id, team, opponent, match_date, lieu, status, score, scorers, man_of_match, competition, is_home, attendance, assists, cards, comment, team_id, verified_by, verified_at";
 
 export async function fetchClubMatches(supabase: SupabaseClient, organizationId: string): Promise<Match[]> {
   const { data } = await supabase
@@ -190,11 +202,10 @@ export async function saveClubMatchResult(
  * l'utilisateur courant ; à défaut d'un id explicite, appelez avec l'id de l'utilisateur en
  * session (ctx.user.id côté appelant).
  *
- * Pas d'UI construite ici (bouton/écran) — fournie pour l'agent qui construira l'interface
- * Directeur sportif. Ne construit pas non plus la lecture/écriture de clubs.requires_result_
- * verification (migration-clubplus-v40.sql) : c'est ce booléen qui doit décider, côté appelant,
- * si l'étape de vérification est proposée du tout — pas cette fonction, qui se contente d'écrire
- * la trace une fois l'action déclenchée.
+ * UI construite dans matchcenter/page.tsx (bouton "Vérifier le résultat", visible seulement si
+ * `fetchClubRequiresResultVerification` renvoie true et pour Admin/Directeur sportif), qui rouvre
+ * MatchResultModal en mode vérification (permet de corriger le score avant de confirmer) puis
+ * appelle cette fonction juste après saveClubMatchResult — deux appels, un seul geste utilisateur.
  */
 export async function verifyClubMatchResult(supabase: SupabaseClient, matchId: string, verifiedByUserId: string): Promise<void> {
   const { data, error } = await supabase
@@ -204,4 +215,48 @@ export async function verifyClubMatchResult(supabase: SupabaseClient, matchId: s
     .select("id");
   if (error) throw error;
   if (!data || data.length === 0) throw new Error("Vérification refusée : match introuvable ou accès refusé.");
+}
+
+/**
+ * Lit `clubs.requires_result_verification` (colonne posée par migration-clubplus-v40.sql, NON
+ * ENCORE EXÉCUTÉE par Fouka au moment où cette fonction est écrite, default false) pour le club
+ * courant — même pattern que `fetchClubTeams` (data/club/teams.ts), qui lit déjà `clubs.saison`
+ * de la même façon (un .select ciblé sur `clubs`, `.eq("id", organizationId).maybeSingle()`).
+ * Bible §8 : "Optionnelle selon requires_result_verification" — c'est ce booléen qui décide,
+ * côté appelant (matchcenter/page.tsx), si l'action "Vérifier le résultat" est proposée du tout.
+ *
+ * Tant que la migration v40 n'est pas exécutée, la colonne n'existe pas encore côté base :
+ * PostgREST renvoie alors une erreur (colonne inconnue), avalée ici en `false` — même
+ * comportement que la valeur par défaut de la colonne une fois créée — plutôt que de faire
+ * planter l'écran en attendant l'exécution.
+ */
+export async function fetchClubRequiresResultVerification(supabase: SupabaseClient, organizationId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("clubs")
+    .select("requires_result_verification")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (error) return false;
+  return (data as { requires_result_verification: boolean } | null)?.requires_result_verification ?? false;
+}
+
+/**
+ * Assigne/change l'équipe (`team_id`, référence `club_teams`) d'un match existant — corrige le
+ * gap identifié le 17/08/2026 : migration-clubplus-v37.sql pose `team_id` et la RLS équipe-level
+ * dessus, mais aucune UI de ce repo ne l'écrivait (voir le commentaire en tête de fichier). Sans
+ * cette fonction, la RLS team-scoping ne sert à rien : tout match reste team_id=NULL, visible et
+ * modifiable par tout membre du club quel que soit son scope d'équipe.
+ *
+ * Réservée côté UI à Admin/Directeur sportif (matchcenter/page.tsx § canAssignTeam) — pas au
+ * Coach, qui ne doit pas pouvoir se réassigner un match hors de son scope. Mais la vraie
+ * frontière reste la RLS, pas ce masquage frontend (Bible §24) : `cma_member_update` n'a pas de
+ * clause WITH CHECK dédiée, donc Postgres applique sa clause USING ("team_id is null or
+ * is_team_educateur(team_id)") à la fois à l'ancienne ET à la nouvelle valeur de la ligne — un
+ * coach qui appellerait cette fonction directement sur un `team_id` hors de son propre scope
+ * échouerait donc de toute façon côté serveur (0 ligne affectée, voir la garde ci-dessous).
+ */
+export async function assignClubMatchTeam(supabase: SupabaseClient, matchId: string, teamId: string | null): Promise<void> {
+  const { data, error } = await supabase.from("club_matches").update({ team_id: teamId }).eq("id", matchId).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Assignation refusée : match introuvable ou accès refusé.");
 }

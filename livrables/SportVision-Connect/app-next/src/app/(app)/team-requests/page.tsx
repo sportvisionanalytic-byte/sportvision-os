@@ -86,7 +86,12 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
   const [actionError, setActionError] = useState<string | null>(null);
 
   const isAdmin = role === "admin";
-  const isEducateur = role === "coach" || role === "team_manager";
+  // sports_director (17/08/2026, Bible §8) : le Directeur sportif confirme/valide les demandes
+  // d'affiliation des équipes qu'il supervise, au même titre qu'un éducateur — is_team_educateur()
+  // (migration-clubplus-v40.sql, NON EXÉCUTÉE) inclut déjà 'directeur_sportif' dans son scope
+  // équipe, donc fetchClubJoinRequests (RLS) ne renvoie déjà que les demandes de son périmètre ;
+  // seul l'affichage des actions ci-dessous devait encore le reconnaître.
+  const isEducateur = role === "coach" || role === "team_manager" || role === "sports_director";
 
   async function reload() {
     const supabase = createClient();

@@ -25,6 +25,15 @@ import type { MatchOutcome } from "@/lib/data/club/matches";
 // saisir le score et confirmer en moins d'une minute, le mobile est prioritaire" — un statut +
 // score visibles immédiatement, tout le reste facultatif et replié par défaut.
 //
+// 17/08/2026 (chantier "Autres rôles Club+") : prop `verifying` — réutilise ce même formulaire
+// pour l'action "Vérifier le résultat" du Directeur sportif (Bible §8) plutôt que d'en dupliquer
+// un : "le Directeur confirme/corrige si nécessaire" est exactement la même opération que "saisir
+// un résultat" (mêmes champs, même risque de faute de frappe à corriger), seuls le titre et le
+// libellé du bouton changent pour ne pas dire "Enregistrer" à quelqu'un qui vérifie plutôt que
+// saisit. Le sélecteur de statut est masqué en mode vérification : un résultat déjà reçu
+// (status='recu') n'a pas vocation à être reporté/annulé depuis cet écran-là. Voir matchcenter/
+// page.tsx § handleVerifyResult pour l'appel à verifyClubMatchResult qui suit la sauvegarde.
+//
 // Champs Bible non couverts ici, volontairement non inventés :
 // - "Média" : club_matches.contents (jsonb) existe en base mais aucun pattern d'upload Supabase
 //   Storage n'existe nulle part dans app-next (aucune référence à supabase.storage dans le repo) —
@@ -61,6 +70,10 @@ interface MatchResultModalProps {
   matches: Match[];
   initialMatchId: string;
   defaultStatus?: MatchOutcome;
+  /** Directeur sportif (Bible §8) : même formulaire, titre/CTA "Vérifier"/"Confirmer" au lieu de
+   * "Saisir"/"Enregistrer", sélecteur de statut masqué (un résultat déjà reçu ne se reporte pas
+   * depuis cet écran) — voir le commentaire en tête de fichier. */
+  verifying?: boolean;
   onClose: () => void;
   onSubmit: (
     matchId: string,
@@ -77,7 +90,14 @@ interface MatchResultModalProps {
   ) => void;
 }
 
-export function MatchResultModal({ matches, initialMatchId, defaultStatus = "completed", onClose, onSubmit }: MatchResultModalProps) {
+export function MatchResultModal({
+  matches,
+  initialMatchId,
+  defaultStatus = "completed",
+  verifying = false,
+  onClose,
+  onSubmit,
+}: MatchResultModalProps) {
   const [matchId, setMatchId] = useState(initialMatchId);
   const match = matches.find((m) => m.id === matchId) ?? matches[0]!;
 
@@ -146,7 +166,9 @@ export function MatchResultModal({ matches, initialMatchId, defaultStatus = "com
       <div className="animate-svfade max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-sv-modal border border-border bg-elevated p-5 shadow-sv-modal sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[16px] font-extrabold tracking-tight">{TITLE_LABEL[matchStatus]}</div>
+            <div className="text-[16px] font-extrabold tracking-tight">
+              {verifying ? "Vérifier le résultat" : TITLE_LABEL[matchStatus]}
+            </div>
             <p className="mt-1 text-[12.5px] text-text-soft">
               {match.teamName} vs {match.opponent}
               {match.kickoffAt ? ` · ${new Date(match.kickoffAt).toLocaleDateString("fr-FR")}` : ""}
@@ -178,7 +200,9 @@ export function MatchResultModal({ matches, initialMatchId, defaultStatus = "com
           </div>
         )}
 
-        {/* Statut — champ prioritaire, en tête de formulaire (Bible §7). */}
+        {/* Statut — champ prioritaire, en tête de formulaire (Bible §7). Masqué en mode
+            vérification : un résultat déjà reçu ne se reporte/annule pas depuis cet écran. */}
+        {!verifying && (
         <div className="mt-4 flex flex-col gap-1.5">
           <span className="text-[12.5px] font-bold text-text-soft">Statut</span>
           <div className="grid grid-cols-3 gap-2">
@@ -198,6 +222,7 @@ export function MatchResultModal({ matches, initialMatchId, defaultStatus = "com
             ))}
           </div>
         </div>
+        )}
 
         {matchStatus === "completed" && (
           <>
@@ -290,7 +315,7 @@ export function MatchResultModal({ matches, initialMatchId, defaultStatus = "com
             Annuler
           </Button>
           <Button variant={matchStatus === "cancelled" ? "danger" : "primary"} onClick={handleSubmit} disabled={!canSubmit}>
-            {SUBMIT_LABEL[matchStatus]}
+            {verifying ? "Confirmer la vérification" : SUBMIT_LABEL[matchStatus]}
           </Button>
         </div>
       </div>

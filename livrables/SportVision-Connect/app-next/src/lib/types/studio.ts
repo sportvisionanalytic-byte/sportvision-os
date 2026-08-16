@@ -318,4 +318,10 @@ export interface Match {
   manOfTheMatch?: string;
   status: MatchStatus;
   extendedReport?: MatchExtendedReport;
+  /** Workflow de vérification Directeur sportif (Bible §8) — posés par verifyClubMatchResult
+   * (data/club/matches.ts), lus par matchcenter/page.tsx pour afficher/masquer l'action "Vérifier
+   * le résultat" selon `clubs.requires_result_verification`. Absents tant qu'aucun Directeur
+   * sportif n'a vérifié le match. */
+  verifiedBy?: string;
+  verifiedAt?: string;
 }

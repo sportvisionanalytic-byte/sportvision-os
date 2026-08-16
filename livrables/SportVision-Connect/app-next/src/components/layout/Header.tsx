@@ -74,7 +74,7 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
   // recours plutôt que de laisser le titre vide.
   const firstSegment = `/${pathname?.split("/")[1] ?? ""}`;
   let navEntries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
-  if (ctx.organization.type === "club") navEntries = filterClubRoleNav(navEntries, ctx.membership.role);
+  if (ctx.organization.type === "club") navEntries = filterClubRoleNav(navEntries, ctx.membership.role, ctx.membership.teamScope);
   const navLabel = navEntries.find((e) => e.kind === "item" && e.href === firstSegment)?.label;
   const title = navLabel ?? TITLE_FALLBACKS[firstSegment] ?? (pathname?.slice(1) || "Accueil");
   const initials = `${ctx.user.firstName[0] ?? ""}${ctx.user.lastName[0] ?? ""}`.toUpperCase() || "?";
