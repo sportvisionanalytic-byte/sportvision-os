@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Download, FileText, Upload } from "lucide-react";
 import type { ServiceFile } from "@/lib/types/services";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 function formatFileSize(bytes: number): string {
   if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} Mo`;
@@ -38,9 +39,7 @@ export function FilesTab({
 
       <div className="mt-3.5 flex flex-col gap-2.5">
         {files.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-strong px-3 py-6 text-center text-[12px] text-text-faint">
-            Aucun fichier partagé pour le moment
-          </div>
+          <EmptyState variant="compact" title="Aucun fichier partagé pour le moment" />
         ) : (
           files.map((file) => (
             <div key={file.id} className="flex items-center gap-3 rounded-xl border border-border bg-surface-alt p-3">

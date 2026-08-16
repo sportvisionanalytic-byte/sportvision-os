@@ -6,6 +6,9 @@ import { useSession } from "@/lib/session-context";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { useClientId } from "@/lib/data/shared/use-client-id";
 import { createClient } from "@/lib/supabase/client";
 import { subscribeTable } from "@/lib/supabase/realtime";
@@ -20,7 +23,21 @@ export default function MessagesPage() {
   const resolution = useClientId();
 
   if (resolution.status === "locked") return <LockedModule title="Messages" />;
-  if (resolution.status === "loading") return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  if (resolution.status === "loading") {
+    return (
+      <div className="flex h-[calc(100vh-140px)] flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-52" />
+        </div>
+        <Card className="flex flex-1 flex-col gap-3 p-5">
+          <Skeleton className="h-14 w-2/3 self-start rounded-2xl" />
+          <Skeleton className="h-10 w-1/2 self-end rounded-2xl" />
+          <Skeleton className="h-14 w-3/5 self-start rounded-2xl" />
+        </Card>
+      </div>
+    );
+  }
 
   if (resolution.status === "not_linked") {
     return (
@@ -121,15 +138,20 @@ function MessagesThread({ clientId }: { clientId: string }) {
 
       <Card className="flex flex-1 flex-col overflow-hidden p-0">
         <div className="flex-1 overflow-y-auto p-5">
-          {loadError && (
-            <p className="mb-3 text-[12.5px] font-semibold text-danger-fg">Impossible de charger les messages.</p>
-          )}
-          {messages === null ? (
-            <div className="py-10 text-center text-[13px] text-text-soft">Chargement…</div>
-          ) : messages.length === 0 ? (
-            <div className="py-10 text-center text-[13px] text-text-soft">
-              Aucun message pour le moment. Écrivez à l&apos;équipe SportVision ci-dessous.
+          {loadError ? (
+            <ErrorState message="Impossible de charger les messages." onRetry={reload} />
+          ) : messages === null ? (
+            <div className="flex flex-col gap-3">
+              <Skeleton className="h-14 w-2/3 self-start rounded-2xl" />
+              <Skeleton className="h-10 w-1/2 self-end rounded-2xl" />
+              <Skeleton className="h-14 w-3/5 self-start rounded-2xl" />
             </div>
+          ) : messages.length === 0 ? (
+            <EmptyState
+              icon={MessageSquare}
+              title="Aucun message pour le moment"
+              description="Écrivez à l'équipe SportVision ci-dessous."
+            />
           ) : (
             <div className="flex flex-col gap-3">
               {messages.map((m) => (

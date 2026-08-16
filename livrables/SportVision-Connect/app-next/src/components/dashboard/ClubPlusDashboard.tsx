@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Images, Sparkles, UserPlus, type LucideIcon } from "lucide-react";
+import { CheckCircle2, Calendar, Images, Sparkles, UserPlus, type LucideIcon } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { isClubCommunicationOrEducateur } from "@/lib/permissions";
 import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
@@ -10,6 +10,9 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { SkeletonRow } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 interface TodoItem {
   title: string;
@@ -62,34 +65,35 @@ export function ClubPlusDashboard() {
   const [todo, setTodo] = useState<TodoItem[] | null>(null);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const loadTodo = useCallback(async () => {
     const supabase = createClient();
     setError(false);
-    async function load() {
-      try {
-        const { data, error: queryError } = await supabase
-          .from("club_creations")
-          .select("id, title, created_at")
-          .eq("club_id", ctx.organization.id)
-          .eq("status", "a_valider")
-          .order("created_at", { ascending: false });
-        if (queryError) {
-          setError(true);
-          return;
-        }
-        setTodo(
-          ((data ?? []) as { id: string; title: string }[]).map((row) => ({
-            title: row.title,
-            meta: "Contenu à valider · Studio SportVision",
-            action: "Valider",
-          })),
-        );
-      } catch {
+    try {
+      const { data, error: queryError } = await supabase
+        .from("club_creations")
+        .select("id, title, created_at")
+        .eq("club_id", ctx.organization.id)
+        .eq("status", "a_valider")
+        .order("created_at", { ascending: false });
+      if (queryError) {
         setError(true);
+        return;
       }
+      setTodo(
+        ((data ?? []) as { id: string; title: string }[]).map((row) => ({
+          title: row.title,
+          meta: "Contenu à valider · Studio SportVision",
+          action: "Valider",
+        })),
+      );
+    } catch {
+      setError(true);
     }
-    load();
   }, [ctx.organization.id]);
+
+  useEffect(() => {
+    loadTodo();
+  }, [loadTodo]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -156,11 +160,15 @@ export function ClubPlusDashboard() {
           </button>
         </div>
         {error ? (
-          <div className="px-5 py-6 text-center text-[13px] text-text-soft">Impossible de charger le contenu à traiter.</div>
+          <ErrorState message="Impossible de charger le contenu à traiter." onRetry={loadTodo} />
         ) : todo === null ? (
-          <div className="px-5 py-6 text-center text-[13px] text-text-soft">Chargement…</div>
+          <div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonRow key={i} />
+            ))}
+          </div>
         ) : todo.length === 0 ? (
-          <div className="px-5 py-6 text-center text-[13px] text-text-soft">Rien à traiter pour le moment.</div>
+          <EmptyState icon={CheckCircle2} title="Rien à traiter pour le moment" />
         ) : (
           todo.map((t) => (
             <div

@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { SkeletonCard } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
@@ -60,7 +63,7 @@ export function ClubServicesBoard({
   const [submitting, setSubmitting] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
-  useEffect(() => {
+  const loadAll = useCallback(() => {
     let cancelled = false;
     const supabase = createClient();
     setLoadError(false);
@@ -82,6 +85,8 @@ export function ClubServicesBoard({
       cancelled = true;
     };
   }, [ctx.organization.id]);
+
+  useEffect(() => loadAll(), [loadAll]);
 
   // Sync temps réel (migration-connect-v42-enable-realtime-sync.sql) : `club_bookings` change
   // quand le staff avance une réservation (confirmée, équipe affectée, terminée…) — même colonne
@@ -174,11 +179,8 @@ export function ClubServicesBoard({
 
   if (loadError) {
     return (
-      <Card className="p-8 text-center">
-        <div className="text-[14px] font-extrabold text-danger-fg">Chargement impossible</div>
-        <p className="mt-1.5 text-[13px] text-text-soft">
-          Une erreur réseau empêche d&apos;afficher les prestations. Réessayez.
-        </p>
+      <Card>
+        <ErrorState message="Une erreur réseau empêche d'afficher les prestations." onRetry={loadAll} />
       </Card>
     );
   }
@@ -235,10 +237,14 @@ export function ClubServicesBoard({
 
       {view === "catalogue" ? (
         offers === null ? (
-          <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonCard key={i} className="h-[160px]" />
+            ))}
+          </div>
         ) : offers.length === 0 ? (
-          <Card className="p-8 text-center text-[13px] text-text-soft">
-            Catalogue en cours de préparation par SportVision.
+          <Card>
+            <EmptyState title="Catalogue en cours de préparation par SportVision" />
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -248,10 +254,14 @@ export function ClubServicesBoard({
           </div>
         )
       ) : visibleBookings === null ? (
-        <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} className="h-[64px]" />
+          ))}
+        </div>
       ) : visibleBookings.length === 0 ? (
-        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-          <div className="text-[15px] font-extrabold">Aucune réservation pour le moment.</div>
+        <Card>
+          <EmptyState title="Aucune réservation pour le moment" />
         </Card>
       ) : (
         <div className="flex flex-col gap-2">

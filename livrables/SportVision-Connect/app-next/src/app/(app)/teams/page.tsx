@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Users } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Card } from "@/components/ui/Card";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { TeamCard } from "@/components/teams/TeamCard";
+import { SkeletonCard } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { fetchClubTeams } from "@/lib/data/club/teams";
 import { fetchAcademieGroups } from "@/lib/data/academie/groups";
 import { fetchCoachPlayers, type CoachPlayer } from "@/lib/data/coach/players";
@@ -27,10 +30,11 @@ export default function TeamsPage() {
   const isAcademy = ctx.organization.type === "academy";
   const isCoach = ctx.organization.type === "coach";
 
-  useEffect(() => {
+  const loadTeams = useCallback(() => {
     if (isCoach) return;
     let cancelled = false;
     const supabase = createClient();
+    setLoadError(false);
     const fetcher = isAcademy ? fetchAcademieGroups(supabase, ctx.organization.id) : fetchClubTeams(supabase, ctx.organization.id);
     fetcher
       .then((rows) => {
@@ -44,6 +48,8 @@ export default function TeamsPage() {
     };
   }, [ctx.organization.id, isAcademy, isCoach]);
 
+  useEffect(() => loadTeams(), [loadTeams]);
+
   if (!canAccess(ctx, "teams")) return <LockedModule />;
 
   if (isCoach) {
@@ -52,15 +58,20 @@ export default function TeamsPage() {
 
   if (loadError) {
     return (
-      <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-        <div className="text-[15px] font-extrabold">Impossible de charger {isAcademy ? "les groupes" : "les équipes"}.</div>
-        <p className="max-w-sm text-[13px] text-text-soft">Réessayez dans quelques instants.</p>
+      <Card>
+        <ErrorState message={`Impossible de charger ${isAcademy ? "les groupes" : "les équipes"}.`} onRetry={loadTeams} />
       </Card>
     );
   }
 
   if (teams === null) {
-    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement des équipes…</div>;
+    return (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <SkeletonCard key={i} className="h-[120px]" />
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -75,15 +86,12 @@ export default function TeamsPage() {
       </div>
 
       {teams.length === 0 ? (
-        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-          <Users className="h-6 w-6 text-text-faint" aria-hidden />
-          <div className="mt-1 text-[15px] font-extrabold">
-            {isAcademy ? "Aucun groupe pour le moment." : "Aucune équipe pour le moment."}
-          </div>
-          <p className="max-w-sm text-[13px] text-text-soft">
-            Créez votre {isAcademy ? "premier groupe" : "première équipe"} pour commencer à gérer l&apos;effectif, le calendrier et les
-            contenus.
-          </p>
+        <Card>
+          <EmptyState
+            icon={Users}
+            title={isAcademy ? "Aucun groupe pour le moment" : "Aucune équipe pour le moment"}
+            description={`Créez votre ${isAcademy ? "premier groupe" : "première équipe"} pour commencer à gérer l'effectif, le calendrier et les contenus.`}
+          />
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -100,9 +108,10 @@ function CoachPlayersView({ organizationId }: { organizationId: string }) {
   const [players, setPlayers] = useState<CoachPlayer[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
+  const loadPlayers = useCallback(() => {
     let cancelled = false;
     const supabase = createClient();
+    setLoadError(false);
     fetchCoachPlayers(supabase, organizationId)
       .then((rows) => {
         if (!cancelled) setPlayers(rows);
@@ -115,17 +124,24 @@ function CoachPlayersView({ organizationId }: { organizationId: string }) {
     };
   }, [organizationId]);
 
+  useEffect(() => loadPlayers(), [loadPlayers]);
+
   if (loadError) {
     return (
-      <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-        <div className="text-[15px] font-extrabold">Impossible de charger les joueurs suivis.</div>
-        <p className="max-w-sm text-[13px] text-text-soft">Réessayez dans quelques instants.</p>
+      <Card>
+        <ErrorState message="Impossible de charger les joueurs suivis." onRetry={loadPlayers} />
       </Card>
     );
   }
 
   if (players === null) {
-    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+    return (
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <SkeletonCard key={i} className="h-[92px]" />
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -138,9 +154,8 @@ function CoachPlayersView({ organizationId }: { organizationId: string }) {
       </div>
 
       {players.length === 0 ? (
-        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-          <Users className="h-6 w-6 text-text-faint" aria-hidden />
-          <div className="mt-1 text-[15px] font-extrabold">Aucun joueur suivi pour le moment.</div>
+        <Card>
+          <EmptyState icon={Users} title="Aucun joueur suivi pour le moment" />
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">

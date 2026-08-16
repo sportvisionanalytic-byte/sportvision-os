@@ -9,7 +9,9 @@
 */
 
 :root {
-  --sv-bg: #070a17;
+  /* --sv-bg aligné le 16/08/2026 sur le bg réel de app-connect (#09081A, production) plutôt que
+     sur la valeur "indicative" #080A18 de CLUB-PLUS-PRODUCT-BIBLE.md § 22. */
+  --sv-bg: #09081a;
   --sv-bg-alt: #0b1026;
   --sv-surface: #111735;
   --sv-surface-alt: #0b1026;
@@ -76,9 +78,9 @@
   --sv-danger-bg: #fef3f2;
   --sv-danger-fg: #b42318;
   --sv-info-bg: #eef2ff;
-  --sv-info-fg: #2454ff;
+  --sv-info-fg: #4f7dff;
   --sv-accent-bg: #f6eeff;
-  --sv-accent-fg: #832dff;
+  --sv-accent-fg: #a855f7;
   --sv-cyan-bg: #e6f9ff;
   --sv-cyan-fg: #03688a;
   --sv-neutral-bg: #f2f4f7;

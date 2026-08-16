@@ -1,6 +1,7 @@
 import { KANBAN_COLUMNS, getKanbanColumnKey } from "@/lib/types/services";
 import type { Service } from "@/lib/types/services";
 import { ServiceCard } from "./ServiceCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // Kanban des prestations — colonnes fixes, voir ACTIONS.md § 12. `terminee` et `annulee`
 // sortent du pilotage actif (voir la note dans lib/types/services.ts) : elles restent
@@ -20,9 +21,7 @@ export function KanbanBoard({ services }: { services: Service[] }) {
             </div>
             <div className="flex flex-col gap-2.5">
               {cards.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border-strong px-3 py-6 text-center text-[12px] text-text-faint">
-                  Aucune prestation
-                </div>
+                <EmptyState variant="compact" title="Aucune prestation" />
               ) : (
                 cards.map((service) => <ServiceCard key={service.id} service={service} />)
               )}

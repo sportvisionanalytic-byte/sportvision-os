@@ -6,6 +6,7 @@ import type { Integration } from "@/lib/types/settings";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // Panneau de synchronisation d'une intégration — voir ACTIONS.md § 25 « Panneau de
 // synchronisation ». Modale : Synchroniser maintenant, Déconnecter, autorisations demandées
@@ -96,7 +97,7 @@ export function IntegrationSyncPanel({ integration, onClose, onDisconnect, onSyn
           <div className="text-[12.5px] font-extrabold">Historique</div>
           <div className="mt-2 flex flex-col gap-1.5">
             {integration.syncLog.length === 0 && (
-              <div className="text-[12px] text-text-soft">Aucune synchronisation pour le moment.</div>
+              <EmptyState variant="compact" title="Aucune synchronisation pour le moment" className="border-none px-0 py-1 text-left" />
             )}
             {integration.syncLog.map((entry) => (
               <div key={entry.id} className="flex items-center justify-between text-[12px]">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -9,6 +9,7 @@ import { fetchCatalogueOffres, submitClientService } from "@/lib/data/projet/ser
 import { needsRetractationWaiver, type CatalogueOffer } from "@/lib/types/services";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { StepIndicator } from "./tunnel/StepIndicator";
 import { Step1Type } from "./tunnel/Step1Type";
 import { Step2Details } from "./tunnel/Step2Details";
@@ -37,8 +38,9 @@ export function NewServiceTunnel() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadOffers = useCallback(() => {
     let cancelled = false;
+    setOffersError(false);
     fetchCatalogueOffres(createClient())
       .then((rows) => {
         if (!cancelled) setOffers(rows);
@@ -50,6 +52,8 @@ export function NewServiceTunnel() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => loadOffers(), [loadOffers]);
 
   const selectedOffer = offers?.find((o) => o.id === state.offerId) ?? null;
 
@@ -137,9 +141,7 @@ export function NewServiceTunnel() {
 
       <Card className="p-6">
         {offersError ? (
-          <p className="py-8 text-center text-[13px] text-danger-fg">
-            Impossible de charger le catalogue pour le moment. Réessayez dans quelques instants.
-          </p>
+          <ErrorState message="Impossible de charger le catalogue pour le moment." onRetry={loadOffers} />
         ) : (
           <>
             {step === 1 && <Step1Type offers={offers ?? []} value={state.offerId} onChange={(offerId) => patch({ offerId })} />}

@@ -14,6 +14,7 @@ import type { Match } from "@/lib/types/studio";
 import type { MediaAsset } from "@/lib/types/content";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 // Dashboard Joueur — refonte 11/08/2026, voir brief Fouka (test réel de l'espace Joueur) § 2, 3,
 // 4, 9, 15, 21, et MASTER-CONNECT-V1.md § 18-20 (document de référence produit fourni par Fouka
@@ -98,12 +99,12 @@ export function PlayerDashboard() {
       </div>
 
       {/* Prochain événement — brief § 2 : "Là tu crées immédiatement de la valeur." */}
-      <Card className="overflow-hidden border-brand-blue-pale/40 bg-gradient-to-br from-[rgba(36,75,255,.12)] to-[rgba(138,46,255,.08)] p-5">
+      <Card className="overflow-hidden border-brand-blue-pale/40 bg-gradient-to-br from-[rgba(79,125,255,.12)] to-[rgba(168,85,247,.08)] p-5">
         <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-brand-blue-electric">
           Prochainement
         </div>
         {matches === null ? (
-          <div className="mt-3 text-[13px] text-text-soft">Chargement…</div>
+          <Skeleton className="mt-3 h-5 w-64 max-w-full" />
         ) : nextMatch ? (
           <div className="mt-2.5 flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -130,7 +131,7 @@ export function PlayerDashboard() {
         <Card className="flex flex-col gap-3 p-5">
           <div className="text-[13px] font-extrabold tracking-tight">Nouveaux contenus</div>
           {contents === null ? (
-            <div className="text-[13px] text-text-soft">Chargement…</div>
+            <Skeleton className="h-5 w-48 max-w-full" />
           ) : latestContentDay ? (
             <>
               <div className="text-[14px] font-bold">Match du {latestContentDay.label}</div>
@@ -191,7 +192,7 @@ export function PlayerDashboard() {
             Messages
           </div>
           {lastMessage === null ? (
-            <div className="text-[13px] text-text-soft">Chargement…</div>
+            <Skeleton className="h-5 w-48 max-w-full" />
           ) : lastMessage.length > 0 ? (
             <p className="line-clamp-2 text-[13px] leading-relaxed text-text-soft">{lastMessage[0]!.contenu}</p>
           ) : (

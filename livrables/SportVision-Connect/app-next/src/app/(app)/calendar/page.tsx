@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Plus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
@@ -9,6 +9,9 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { KIND_DOT } from "@/components/calendar/calendar-style";
 import { EventDetailPanel } from "@/components/calendar/EventDetailPanel";
 import { AddEventModal } from "@/components/calendar/AddEventModal";
@@ -78,9 +81,10 @@ export default function CalendarPage() {
   // club_id réel (toujours renseigné pour un joueur, voir session.ts:buildPlayerActiveContext).
   const calendarOrgId = isPlayer ? ctx.organization.parentOrganizationId : ctx.organization.id;
 
-  useEffect(() => {
+  const loadEvents = useCallback(() => {
     if (!calendarOrgId) return;
     let cancelled = false;
+    setLoadError(false);
     const supabase = createClient();
     const fetcher = isGenericOrg
       ? fetchOrgCalendarEvents(supabase, calendarOrgId)
@@ -96,6 +100,8 @@ export default function CalendarPage() {
       cancelled = true;
     };
   }, [calendarOrgId, isGenericOrg]);
+
+  useEffect(() => loadEvents(), [loadEvents]);
 
   // Hooks appelés inconditionnellement avant tout `return` — sortedEvents doit être calculé ici,
   // pas après le early-return de canAccess ci-dessous (règle des Hooks React).
@@ -128,11 +134,32 @@ export default function CalendarPage() {
   if (!canAccess(ctx, "calendar")) return <LockedModule title="Calendrier" />;
 
   if (loadError) {
-    return <Card className="p-9 text-center text-[13.5px] text-text-soft">Impossible de charger le calendrier.</Card>;
+    return (
+      <Card>
+        <ErrorState message="Impossible de charger le calendrier." onRetry={loadEvents} />
+      </Card>
+    );
   }
 
   if (events === null) {
-    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement du calendrier…</div>;
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-72 max-w-full" />
+          </div>
+          <Skeleton className="h-11 w-44 rounded-sv" />
+        </div>
+        <Card className="overflow-hidden p-0">
+          <div className="grid grid-cols-7 gap-px bg-divider p-px">
+            {Array.from({ length: 35 }).map((_, i) => (
+              <Skeleton key={i} className="h-[104px] rounded-none" />
+            ))}
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   function eventsOnDay(day: Date): CalendarEvent[] {
@@ -430,7 +457,7 @@ function DayView({ reference, events, onSelect }: { reference: Date; events: Cal
   return (
     <Card className="flex flex-col divide-y divide-divider">
       {events.length === 0 && (
-        <div className="p-8 text-center text-[13.5px] text-text-soft">Aucun événement le {reference.toLocaleDateString("fr-FR")}.</div>
+        <EmptyState title="Aucun événement" description={`Aucun événement le ${reference.toLocaleDateString("fr-FR")}.`} />
       )}
       {events.map((e) => (
         <button key={e.id} onClick={() => onSelect(e)} className="flex items-center gap-3.5 px-5 py-3.5 text-left hover:bg-row-hover">
@@ -465,7 +492,11 @@ function ListView({
   }
 
   if (upcoming.length === 0) {
-    return <Card className="p-9 text-center text-[13.5px] text-text-soft">Aucun événement à venir.</Card>;
+    return (
+      <Card>
+        <EmptyState title="Aucun événement à venir" description="Les prochains événements de votre calendrier apparaîtront ici." />
+      </Card>
+    );
   }
 
   return (
