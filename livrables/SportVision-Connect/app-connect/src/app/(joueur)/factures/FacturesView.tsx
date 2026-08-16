@@ -30,6 +30,14 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
   const [invoices, setInvoices] = useState<(PlayerInvoice & { forWho?: string | null })[] | null>(null);
   const [payments, setPayments] = useState<(PlayerPayment & { forWho?: string | null })[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Réessayer le paiement (audit paiements du 16/08/2026) — un paiement 'echoue' (payment_intent.
+  // payment_failed OU checkout.session.expired) n'affichait jusqu'ici qu'un badge, sans aucune
+  // action : le client restait bloqué. retryingId (id de la ligne `paiements`, jamais plusieurs à
+  // la fois) suit le même patron `busy` que les wizards de réservation (ReservationWizard.tsx
+  // launchCheckout/"Réessayer le paiement") — rappelle create-checkout-session avec le
+  // prestationId + typePaiement de CE paiement précis, pas une nouvelle Edge Function.
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [retryErrors, setRetryErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +61,31 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
 
   const due = useMemo(() => (invoices || []).filter((i) => i.statut === "emise" || i.statut === "en_retard"), [invoices]);
   const dueTotal = useMemo(() => due.reduce((sum, i) => sum + i.montantTtc, 0), [due]);
+
+  // Réessayer le paiement d'une ligne `paiements` en 'echoue' — MÊME flux que le paiement initial
+  // (payNow de CommandeDetailView.tsx, launchCheckout de ReservationWizard.tsx) : rappelle
+  // create-checkout-session avec le prestationId + typePaiement (acompte/solde/totalite) de CE
+  // paiement précis, jamais une nouvelle Edge Function ni une logique de calcul dupliquée — le
+  // montant à payer est recalculé côté serveur là-bas, jamais transmis d'ici.
+  async function retryPayment(p: PlayerPayment) {
+    if (!p.prestationId || retryingId) return;
+    setRetryingId(p.id);
+    setRetryErrors((prev) => {
+      const next = { ...prev };
+      delete next[p.id];
+      return next;
+    });
+    const supabase = createClient();
+    const { data, error: fnError } = await supabase.functions.invoke("create-checkout-session", {
+      body: { prestation_id: p.prestationId, type_paiement: p.typePaiement },
+    });
+    if (fnError || data?.error || !data?.url) {
+      setRetryingId(null);
+      setRetryErrors((prev) => ({ ...prev, [p.id]: data?.error || "Le paiement en ligne est momentanément indisponible." }));
+      return;
+    }
+    window.location.href = data.url as string;
+  }
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
@@ -158,26 +191,48 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
             <div className="flex flex-col gap-2.5">
               {payments.map((p) => {
                 const status = PAYMENT_STATUS_LABEL[p.statut] || (PAYMENT_STATUS_LABEL.en_attente as { label: string; fg: string; bg: string });
+                // Réessayer (audit paiements du 16/08/2026) : uniquement pour un paiement 'echoue'
+                // rattaché à une prestation identifiable — sans prestationId (paiement lié à un
+                // devis sans prestation créée), create-checkout-session n'aurait rien à recalculer.
+                const canRetry = p.statut === "echoue" && !!p.prestationId;
+                const isRetrying = retryingId === p.id;
+                const retryError = retryErrors[p.id];
                 return (
                   // Même correctif d'empilement mobile que la liste Factures ci-dessus.
-                  <div key={p.id} className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-4 sm:flex-row sm:items-center sm:gap-3.5">
-                    <div className="flex min-w-0 items-center gap-3.5">
-                      <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/5">
-                        <span className="material-symbols-rounded !text-[20px] text-text-tertiary" aria-hidden="true">payments</span>
-                      </span>
-                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="truncate text-[14px] font-medium text-text">{p.offreNom || "Paiement"}</span>
-                        <span className="truncate text-[12.5px] text-text-tertiary">
-                          {p.prestationRef || "—"} · {formatDateLong(p.createdAt)}
+                  <div key={p.id} className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3.5">
+                      <div className="flex min-w-0 items-center gap-3.5">
+                        <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/5">
+                          <span className="material-symbols-rounded !text-[20px] text-text-tertiary" aria-hidden="true">payments</span>
                         </span>
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <span className="truncate text-[14px] font-medium text-text">{p.offreNom || "Paiement"}</span>
+                          <span className="truncate text-[12.5px] text-text-tertiary">
+                            {p.prestationRef || "—"} · {formatDateLong(p.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3.5 sm:ml-auto sm:flex-none">
+                        <span className="flex-none rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: status.fg, background: status.bg }}>
+                          {status.label}
+                        </span>
+                        <span className="ml-auto flex-none font-sora text-[14px] font-semibold sm:ml-0">{formatEUR(p.montant)}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3.5 sm:ml-auto sm:flex-none">
-                      <span className="flex-none rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: status.fg, background: status.bg }}>
-                        {status.label}
-                      </span>
-                      <span className="ml-auto flex-none font-sora text-[14px] font-semibold sm:ml-0">{formatEUR(p.montant)}</span>
-                    </div>
+                    {canRetry && (
+                      <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+                        {retryError && <span className="text-[12.5px] text-danger">{retryError}</span>}
+                        <button
+                          type="button"
+                          onClick={() => retryPayment(p)}
+                          disabled={isRetrying}
+                          className="flex h-10 items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[13px] font-semibold text-text-secondary hover:bg-white/[.12] disabled:cursor-wait disabled:opacity-60"
+                        >
+                          {isRetrying && <span className="h-[14px] w-[14px] animate-sv-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />}
+                          {isRetrying ? "Redirection…" : "Réessayer le paiement"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
