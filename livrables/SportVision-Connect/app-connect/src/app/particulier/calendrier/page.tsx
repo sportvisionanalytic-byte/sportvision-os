@@ -1,12 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
-import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
-import { ParticularShell } from "@/components/layout/ParticularShell";
+import { requireParticulierAccount } from "@/lib/supabase/session";
+import { fetchMyAthletes } from "@/lib/supabase/particulier";
 import { CalendrierParticulierView, type ParticulierEvent } from "./CalendrierParticulierView";
 
 // Calendrier (Espace particulier) — backend : connect_list_calendar_for_athletes()
 // (migration-connect-v51 §7), vérifie le droit "calendrier" pour chaque sportif lié avant de
 // lire club_calendar_events.
+//
+// Shell (ParticularShell) rendu par le layout parent (src/app/particulier/layout.tsx) — cette
+// page garde son propre fetch d'athletes car CalendrierParticulierView en a besoin pour son
+// filtre.
 export default async function CalendrierParticulierPage({
   searchParams,
 }: {
@@ -14,18 +17,12 @@ export default async function CalendrierParticulierPage({
 }) {
   const { sportif } = await searchParams;
   const supabase = await createClient();
-  const { user } = await requireParticulierAccount(supabase);
+  await requireParticulierAccount(supabase);
 
-  // player, athletes et l'appel RPC calendrier sont indépendants (connect_list_calendar_for_
-  // athletes résout lui-même la liste de sportifs côté serveur) — voir rapport fluidité perçue
-  // 15/08.
-  const [player, athletes, calendarRes] = await Promise.all([
-    buildPlayerContext(supabase, user.id),
+  const [athletes, calendarRes] = await Promise.all([
     fetchMyAthletes(supabase).catch(() => []),
     supabase.rpc("connect_list_calendar_for_athletes"),
   ]);
-  const identity = resolveDisplayIdentity(user, player);
-  const firstName = identity.firstName || user.email?.split("@")[0] || "";
   const { data } = calendarRes;
   const events = ((data || []) as Array<{
     athlete_kind: string;
@@ -52,9 +49,5 @@ export default async function CalendrierParticulierPage({
     source: r.source,
   })) as ParticulierEvent[];
 
-  return (
-    <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <CalendrierParticulierView events={events} athletes={athletes} initialSportif={sportif || null} />
-    </ParticularShell>
-  );
+  return <CalendrierParticulierView events={events} athletes={athletes} initialSportif={sportif || null} />;
 }

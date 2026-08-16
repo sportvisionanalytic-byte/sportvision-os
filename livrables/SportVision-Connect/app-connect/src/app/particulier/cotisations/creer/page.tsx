@@ -1,14 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
-import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
-import { ParticularShell } from "@/components/layout/ParticularShell";
-import { CreateFundingWizard, type OffreOption, type GroupOption, type FundingBeneficiary } from "@/app/cotisations/creer/CreateFundingWizard";
+import { requireParticulierAccount } from "@/lib/supabase/session";
+import { fetchMyAthletes } from "@/lib/supabase/particulier";
+import { CreateFundingWizard, type OffreOption, type GroupOption, type FundingBeneficiary } from "@/app/(joueur)/cotisations/creer/CreateFundingWizard";
 
 // Cotisation pour un sportif — voir design-connect-personnel-12-08/README.md § Espace
 // particulier → Cotisation pour un sportif. Réutilise le backend group_fundings/
 // funding_contributions et le composant CreateFundingWizard TELS QUELS (Espace joueur) : seul
 // l'ajout du bénéficiaire (résolu ici à partir de ?benefKind&benefId, vérifié à nouveau côté
 // serveur par create_group_funding) constitue le nouveau point d'entrée.
+//
+// Shell (ParticularShell) rendu par le layout parent (src/app/particulier/layout.tsx) — cette
+// page garde son propre fetch d'athletes car il sert à résoudre le bénéficiaire.
 export default async function CreerCotisationParticulierPage({
   searchParams,
 }: {
@@ -16,11 +18,7 @@ export default async function CreerCotisationParticulierPage({
 }) {
   const { groupe, offreId, benefKind, benefId } = await searchParams;
   const supabase = await createClient();
-  const { user } = await requireParticulierAccount(supabase);
-
-  const player = await buildPlayerContext(supabase, user.id);
-  const identity = resolveDisplayIdentity(user, player);
-  const firstName = identity.firstName || user.email?.split("@")[0] || "";
+  await requireParticulierAccount(supabase);
 
   const [{ data: offres }, { data: groups }, athletes] = await Promise.all([
     supabase
@@ -41,15 +39,13 @@ export default async function CreerCotisationParticulierPage({
   }
 
   return (
-    <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <CreateFundingWizard
-        offres={(offres || []) as OffreOption[]}
-        groups={(groups || []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name })) as GroupOption[]}
-        initialGroupId={groupe || null}
-        initialOfferId={offreId || null}
-        beneficiary={beneficiary}
-        basePath="/particulier/cotisations"
-      />
-    </ParticularShell>
+    <CreateFundingWizard
+      offres={(offres || []) as OffreOption[]}
+      groups={(groups || []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name })) as GroupOption[]}
+      initialGroupId={groupe || null}
+      initialOfferId={offreId || null}
+      beneficiary={beneficiary}
+      basePath="/particulier/cotisations"
+    />
   );
 }

@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
-import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
+import { requireParticulierAccount } from "@/lib/supabase/session";
 import { fetchAgentSubscriptionInfo } from "@/lib/supabase/agentSubscription";
-import { ParticularShell } from "@/components/layout/ParticularShell";
 import { AbonnementView } from "./AbonnementView";
 
 // Mon abonnement (Espace particulier) — voir migration-connect-v57-abonnement-agent.sql. Palier
@@ -10,6 +8,8 @@ import { AbonnementView } from "./AbonnementView";
 // Backend : connect_agent_subscription_status() (RPC, lecture) + create-agent-subscription-
 // checkout / manage-agent-subscription / connect-agent-billing-portal (edge functions, écriture —
 // jamais un statut posé directement par cette page, seul le webhook Stripe confirme).
+//
+// Shell (ParticularShell) rendu par le layout parent (src/app/particulier/layout.tsx).
 export default async function AbonnementPage({
   searchParams,
 }: {
@@ -17,20 +17,11 @@ export default async function AbonnementPage({
 }) {
   const { abonnement } = await searchParams;
   const supabase = await createClient();
-  const { user } = await requireParticulierAccount(supabase);
+  await requireParticulierAccount(supabase);
 
-  // player, athletes et info sont indépendants — voir rapport fluidité perçue 15/08.
-  const [player, athletes, info] = await Promise.all([
-    buildPlayerContext(supabase, user.id),
-    fetchMyAthletes(supabase).catch(() => []),
-    fetchAgentSubscriptionInfo(supabase),
-  ]);
-  const identity = resolveDisplayIdentity(user, player);
-  const firstName = identity.firstName || user.email?.split("@")[0] || "";
+  const info = await fetchAgentSubscriptionInfo(supabase);
 
   return (
-    <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <AbonnementView initialInfo={info} returnStatus={abonnement === "succes" ? "succes" : abonnement === "annule" ? "annule" : null} />
-    </ParticularShell>
+    <AbonnementView initialInfo={info} returnStatus={abonnement === "succes" ? "succes" : abonnement === "annule" ? "annule" : null} />
   );
 }
