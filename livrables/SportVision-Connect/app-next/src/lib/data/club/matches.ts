@@ -17,6 +17,11 @@ import type { Match, MatchScorer, MatchStatus } from "@/lib/types/studio";
 //
 // verified_by/verified_at (migration-clubplus-v37.sql) : colonnes du futur workflow de
 // vérification Directeur sportif (§8), pas encore lues/écrites par ce module.
+//
+// 16/08/2026 : saveClubMatchResult accepte désormais un statut cible explicite ("completed" /
+// "postponed" / "cancelled") — auparavant la fonction forçait toujours status="recu", il n'existait
+// aucun moyen d'écrire "reportee"/"annulee" bien que la contrainte check et le mapping de lecture
+// les supportent déjà (migration-clubplus-v37.sql). Voir MatchResultModal.tsx pour l'UI.
 
 export const STATUS_MAP: Record<string, MatchStatus> = {
   a_venir: "upcoming",
@@ -24,6 +29,16 @@ export const STATUS_MAP: Record<string, MatchStatus> = {
   recu: "result_received",
   reportee: "postponed",
   annulee: "cancelled",
+};
+
+/** Statut cible d'une action de saisie — distinct de MatchStatus (design, 6 valeurs) : ne couvre
+ * que les 3 issues qu'une action de ce module peut réellement déclencher. */
+export type MatchOutcome = "completed" | "postponed" | "cancelled";
+
+const WRITE_STATUS_MAP: Record<MatchOutcome, string> = {
+  completed: "recu",
+  postponed: "reportee",
+  cancelled: "annulee",
 };
 
 interface ClubMatchRow {
@@ -116,6 +131,7 @@ export async function fetchClubMatchById(
 export async function saveClubMatchResult(
   supabase: SupabaseClient,
   matchId: string,
+  matchStatus: MatchOutcome,
   patch: {
     scoreFor?: number;
     scoreAgainst?: number;
@@ -130,7 +146,7 @@ export async function saveClubMatchResult(
     comment?: string;
   },
 ): Promise<void> {
-  const update: Record<string, unknown> = { status: "recu" };
+  const update: Record<string, unknown> = { status: WRITE_STATUS_MAP[matchStatus] };
   if (patch.scoreFor !== undefined && patch.scoreAgainst !== undefined) {
     update.score = `${patch.scoreFor}-${patch.scoreAgainst}`;
   }
@@ -145,6 +161,10 @@ export async function saveClubMatchResult(
   if (patch.assists !== undefined) update.assists = patch.assists || null;
   if (patch.cards !== undefined) update.cards = patch.cards || null;
   if (patch.comment !== undefined) update.comment = patch.comment || null;
-  const { error } = await supabase.from("club_matches").update(update).eq("id", matchId);
+  // .select("id") : sans ça, une RLS qui bloque silencieusement (0 ligne affectée, hors scope
+  // is_team_educateur par ex.) renvoie quand même {error: null} et l'appelant marquerait le match
+  // comme mis à jour à tort (faux succès) — même garde-fou que updateClubNewsroomItemStatus.
+  const { data, error } = await supabase.from("club_matches").update(update).eq("id", matchId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Mise à jour refusée : match introuvable ou accès refusé.");
 }
