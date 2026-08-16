@@ -9,7 +9,7 @@ import {
   particulierSportifsSectionLabel,
 } from "@/lib/supabase/particulier";
 import { gradientFor } from "@/lib/avatarGradients";
-import { formatDateLong } from "@/lib/prestations/format";
+import { formatDateLong, formatEUR } from "@/lib/prestations/format";
 import type { PlayerOrder } from "@/lib/prestations/types";
 import { fetchAgentSubscriptionInfo, AGENT_TIER_LABEL, type AgentSubscriptionInfo } from "@/lib/supabase/agentSubscription";
 
@@ -294,8 +294,8 @@ export default async function ParticulierHomePage() {
                     <div className="flex flex-col gap-2.5">
                       <div className="flex items-baseline justify-between gap-2.5">
                         <div className="flex items-baseline gap-1.5">
-                          <span className="font-sora text-[27px] font-bold tracking-tight">{cotisation.montant_collecte} €</span>
-                          <span className="text-[14px] text-text-tertiary">/ {cotisation.montant_cible} €</span>
+                          <span className="font-sora text-[27px] font-bold tracking-tight">{formatEUR(cotisation.montant_collecte)}</span>
+                          <span className="text-[14px] text-text-tertiary">/ {formatEUR(cotisation.montant_cible)}</span>
                         </div>
                       </div>
                       <div className="h-2 overflow-hidden rounded-sv-pill bg-white/[.08]">

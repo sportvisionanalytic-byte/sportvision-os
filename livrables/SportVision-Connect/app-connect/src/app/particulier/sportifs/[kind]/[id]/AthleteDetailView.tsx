@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { formatDateLong } from "@/lib/prestations/format";
+import { formatDateLong, formatEUR } from "@/lib/prestations/format";
 import { gradientFor } from "@/lib/avatarGradients";
+import { ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR } from "@/lib/supabase/particulier";
 
 export interface AthleteDetail {
   kind: "linked" | "managed";
@@ -101,8 +102,19 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
   const isManaged = detail.kind === "managed";
   const sportifKey = `${detail.kind}:${detail.ref_id}`;
   const fullName = `${detail.first_name} ${detail.last_name}`.trim();
-  const statusLabel = isManaged ? "Profil géré" : "Accès actif";
-  const statusColor = isManaged ? { fg: "#C084FC", bg: "rgba(168,85,247,.16)" } : { fg: "#22D3EE", bg: "rgba(34,211,238,.14)" };
+  // Statut dérivé des droits réels plutôt que de detail.status : même règle que la liste "Mes
+  // sportifs" (deriveStatus dans lib/supabase/particulier.ts) — un sportif lié dont les 3 droits
+  // les plus consultés (voir/commandes/calendrier) ne sont pas TOUS accordés doit afficher "Accès
+  // limité" ici aussi. Avant ce correctif, cette fiche affichait toujours "Accès actif" pour tout
+  // sportif lié, y compris ceux marqués "Accès limité" dans la liste — contradiction directe entre
+  // les deux écrans pour la même donnée.
+  const derivedStatus: "actif" | "limite" | "gere" = isManaged
+    ? "gere"
+    : rights.voir && rights.commandes && rights.calendrier
+      ? "actif"
+      : "limite";
+  const statusLabel = ATHLETE_STATUS_LABEL[derivedStatus];
+  const statusColor = ATHLETE_STATUS_COLOR[derivedStatus];
 
   async function removeAthlete() {
     setRemoving(true);
@@ -229,7 +241,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
                 kind="Cotisation en cours"
                 icon="savings" color="#F472B6" bg="rgba(244,114,182,.14)"
                 title={detail.funding.titre}
-                sub={`${detail.funding.montant_collecte} € / ${detail.funding.montant_cible} €`}
+                sub={`${formatEUR(detail.funding.montant_collecte)} / ${formatEUR(detail.funding.montant_cible)}`}
                 href={`/particulier/cotisations/${detail.funding.id}`}
               />
             )}

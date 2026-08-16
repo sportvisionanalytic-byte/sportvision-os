@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { resolveDisplayIdentity, buildPlayerContext, getProfileSettings, requireParticulierAccount } from "@/lib/supabase/session";
-import { fetchMyAthletes, ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR } from "@/lib/supabase/particulier";
+import { fetchMyAthletes, ATHLETE_STATUS_LABEL, ATHLETE_STATUS_COLOR, particulierSportifsLabel } from "@/lib/supabase/particulier";
 import { PersonalInfoSection } from "@/app/(joueur)/profil/PersonalInfoSection";
 import { NotificationsSection } from "@/app/(joueur)/profil/NotificationsSection";
 import { SecuritySection } from "@/app/(joueur)/profil/SecuritySection";
@@ -67,7 +67,7 @@ export default async function ProfilParticulierPage() {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5">
               <div className="flex items-center gap-3">
-                <h2 className="font-sora text-[17px] font-semibold">Mes sportifs</h2>
+                <h2 className="font-sora text-[17px] font-semibold">{particulierSportifsLabel(profilParticulier)}</h2>
                 <Link href="/particulier/sportifs/ajouter" className="ml-auto text-[13px] font-medium text-affiliations">
                   Ajouter
                 </Link>
