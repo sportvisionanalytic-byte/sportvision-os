@@ -82,7 +82,7 @@ export function CalendrierParticulierView({
             onClick={() => setAddingMatch((v) => !v)}
             className="flex h-[46px] flex-none items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-[18px] font-sora text-[15px] font-semibold hover:bg-white/[.12]"
           >
-            <span className="material-symbols-rounded !text-[20px]">add</span>
+            <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">add</span>
             Ajouter un match
           </button>
         )}
@@ -118,7 +118,7 @@ export function CalendrierParticulierView({
 
       {visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
-          <span className="material-symbols-rounded !text-[24px] text-text-tertiary">event_busy</span>
+          <span className="material-symbols-rounded !text-[24px] text-text-tertiary" aria-hidden="true">event_busy</span>
           <span className="text-[14px] text-text-tertiary">Aucun événement SportVision prévu sur cette période.</span>
         </div>
       ) : (

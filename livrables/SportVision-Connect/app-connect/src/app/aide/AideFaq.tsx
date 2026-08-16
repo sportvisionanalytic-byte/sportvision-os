@@ -41,7 +41,7 @@ export function AideFaq() {
             >
               <span className="flex items-center gap-3">
                 <span className="text-[14px] font-medium">{f.q}</span>
-                <span className="material-symbols-rounded ml-auto flex-none !text-[20px] text-text-faint">
+                <span className="material-symbols-rounded ml-auto flex-none !text-[20px] text-text-faint" aria-hidden="true">
                   {isOpen ? "remove" : "add"}
                 </span>
               </span>

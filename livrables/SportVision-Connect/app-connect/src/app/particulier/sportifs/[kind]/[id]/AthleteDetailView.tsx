@@ -130,7 +130,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
   return (
     <div className="flex flex-col gap-5">
       <Link href="/particulier/sportifs" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
-        <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+        <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Mes sportifs
       </Link>
 
@@ -164,7 +164,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
                 href={`/particulier/prestations?benefKind=${detail.kind}&benefId=${detail.ref_id}`}
                 className="flex h-12 items-center gap-2 rounded-sv bg-sv-gradient px-5 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
               >
-                <span className="material-symbols-rounded !text-[19px]">camera_alt</span>
+                <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">camera_alt</span>
                 Réserver pour {detail.first_name}
               </Link>
             )}
@@ -263,7 +263,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
               <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Votre accès</span>
               {RIGHT_LABELS.filter((r) => rights[r.key]).slice(0, 3).map((r) => (
                 <div key={r.key} className="flex items-center gap-2.5">
-                  <span className="material-symbols-rounded !text-[18px] text-affiliations">{r.icon}</span>
+                  <span className="material-symbols-rounded !text-[18px] text-affiliations" aria-hidden="true">{r.icon}</span>
                   <span className="text-[13px] text-text-secondary">{r.label}</span>
                 </div>
               ))}
@@ -281,7 +281,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
             className="flex h-[46px] w-[46px] items-center justify-center rounded-sv"
             style={{ background: LINK_TABS[tab].bg }}
           >
-            <span className="material-symbols-rounded !text-[23px]" style={{ color: LINK_TABS[tab].color }}>
+            <span className="material-symbols-rounded !text-[23px]" style={{ color: LINK_TABS[tab].color }} aria-hidden="true">
               {LINK_TABS[tab].icon}
             </span>
           </span>
@@ -292,7 +292,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
             className="flex h-[46px] w-fit items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-[18px] font-sora text-[14px] font-semibold hover:bg-white/[.12]"
           >
             {LINK_TABS[tab].cta}
-            <span className="material-symbols-rounded !text-[18px]">arrow_forward</span>
+            <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_forward</span>
           </Link>
         </div>
       )}
@@ -309,7 +309,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
               return (
                 <div key={r.key} className="flex items-center gap-3 rounded-sv border border-border bg-surface p-[15px]">
                   <span className="flex h-[38px] w-[38px] flex-none items-center justify-center rounded-sv bg-white/5">
-                    <span className="material-symbols-rounded !text-[19px]" style={{ color: on ? "#22D3EE" : "#7A7A9C" }}>
+                    <span className="material-symbols-rounded !text-[19px]" style={{ color: on ? "#22D3EE" : "#7A7A9C" }} aria-hidden="true">
                       {r.icon}
                     </span>
                   </span>
@@ -327,7 +327,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
             })}
           </div>
           <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
-            <span className="material-symbols-rounded !text-[19px] text-text-faint">info</span>
+            <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
             <span className="text-[13px] leading-relaxed text-text-tertiary">
               Ces autorisations sont vérifiées côté serveur à chaque action. Pour les mineurs, leur application reste
               soumise à une validation juridique du responsable légal.
@@ -357,7 +357,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/66 p-6" onClick={() => !removing && setConfirmingRemove(false)}>
           <div className="flex max-h-[90vh] w-full max-w-[420px] flex-col gap-4 overflow-y-auto rounded-sv-modal border border-border bg-bg-elevated p-6" onClick={(e) => e.stopPropagation()}>
             <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-danger-bg">
-              <span className="material-symbols-rounded !text-[24px] text-danger">warning</span>
+              <span className="material-symbols-rounded !text-[24px] text-danger" aria-hidden="true">warning</span>
             </span>
             <div className="flex flex-col gap-2">
               <span className="font-sora text-[19px] font-semibold">Retirer {fullName} ?</span>
@@ -386,7 +386,7 @@ function OverviewCard({ kind, icon, color, bg, title, sub, href }: { kind: strin
   return (
     <Link href={href} className="flex items-center gap-3.5 rounded-sv-card border border-border bg-surface p-[18px] hover:bg-white/[.09]">
       <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-sv" style={{ background: bg }}>
-        <span className="material-symbols-rounded !text-[22px]" style={{ color }}>{icon}</span>
+        <span className="material-symbols-rounded !text-[22px]" style={{ color }} aria-hidden="true">{icon}</span>
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">{kind}</span>

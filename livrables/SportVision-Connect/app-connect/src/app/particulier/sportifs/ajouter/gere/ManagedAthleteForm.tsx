@@ -68,7 +68,7 @@ export function ManagedAthleteForm() {
           className="flex h-[66px] w-[66px] items-center justify-center rounded-sv-card"
           style={{ background: "linear-gradient(140deg,rgba(168,85,247,.28),rgba(34,211,238,.22))" }}
         >
-          <span className="material-symbols-rounded !text-[32px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <span className="material-symbols-rounded !text-[32px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
             check_circle
           </span>
         </span>
@@ -101,7 +101,7 @@ export function ManagedAthleteForm() {
   return (
     <div className="flex max-w-[620px] flex-col gap-6">
       <Link href="/particulier/sportifs/ajouter" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
-        <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+        <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Retour
       </Link>
       <div className="flex flex-col gap-2">
@@ -166,7 +166,7 @@ export function ManagedAthleteForm() {
       </div>
 
       <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
-        <span className="material-symbols-rounded !text-[19px] text-text-faint">info</span>
+        <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
         <span className="text-[13px] leading-relaxed text-text-tertiary">
           Un profil géré n&apos;est pas un compte autonome. La qualité de responsable légal doit être vérifiée avant
           toute mise en production.
@@ -176,7 +176,7 @@ export function ManagedAthleteForm() {
       {error && (
         <div className="flex flex-col items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
           <div className="flex items-start gap-2.5">
-            <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
+            <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
             <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
           </div>
           {errorIsAgentLimit && (

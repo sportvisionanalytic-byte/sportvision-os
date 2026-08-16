@@ -78,7 +78,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
   if (error) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
-        <span className="material-symbols-rounded !text-[24px] text-danger">error</span>
+        <span className="material-symbols-rounded !text-[24px] text-danger" aria-hidden="true">error</span>
         <span className="text-[14px] text-text-tertiary">{error}</span>
         <Link href={backHref} className="text-[13px] font-semibold text-[#8CA9FF]">Retour à mes commandes</Link>
       </div>
@@ -110,7 +110,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
       <Link href={backHref} className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
-        <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+        <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Mes commandes
       </Link>
 
@@ -145,7 +145,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
         </div>
       ) : (
         <div className="flex items-center gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-danger">cancel</span>
+          <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">cancel</span>
           <span className="text-[13.5px] text-text-secondary">Cette commande a été annulée.</span>
         </div>
       )}
@@ -176,7 +176,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
                 href={`${cotisationsBase}/${fundingLink.existing_funding_id}`}
                 className="flex h-11 w-fit items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
               >
-                <span className="material-symbols-rounded !text-[18px]">volunteer_activism</span>
+                <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">volunteer_activism</span>
                 Voir la cotisation
               </Link>
             </>
@@ -189,7 +189,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
                 href={fundingLink.offre_id ? `${cotisationsBase}/creer?offreId=${fundingLink.offre_id}` : `${cotisationsBase}/creer`}
                 className="flex h-11 w-fit items-center gap-2 rounded-sv bg-sv-gradient px-4 font-sora text-[14px] font-semibold text-white hover:brightness-[1.12]"
               >
-                <span className="material-symbols-rounded !text-[18px]">volunteer_activism</span>
+                <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">volunteer_activism</span>
                 Créer une cotisation
               </Link>
             </>
@@ -210,7 +210,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
 
       {showEspecesNotice && (
         <div className="flex items-center gap-3 rounded-sv-card border border-border bg-surface p-5">
-          <span className="material-symbols-rounded !text-[19px] text-text-tertiary">payments</span>
+          <span className="material-symbols-rounded !text-[19px] text-text-tertiary" aria-hidden="true">payments</span>
           <div className="flex flex-col gap-0.5">
             <span className="font-sora text-[14.5px] font-semibold">Réglé en espèces sur place</span>
             <span className="text-[13px] text-text-tertiary">
@@ -225,7 +225,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
           <h2 className="font-sora text-[15px] font-semibold">Documents liés</h2>
           {documents.map((doc) => (
             <div key={`${doc.kind}-${doc.id}`} className="flex items-center gap-3.5 rounded-sv border border-border bg-surface px-4 py-3.5">
-              <span className="material-symbols-rounded !text-[19px] text-text-tertiary">{doc.kind === "facture" ? "description" : "payments"}</span>
+              <span className="material-symbols-rounded !text-[19px] text-text-tertiary" aria-hidden="true">{doc.kind === "facture" ? "description" : "payments"}</span>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate text-[13.5px] font-medium text-text">{doc.kind === "facture" ? `Facture ${doc.reference}` : `Paiement ${doc.reference}`}</span>
                 <span className="text-[12px] text-text-tertiary">{formatDateLong(doc.date)} · {doc.statut}</span>
@@ -233,7 +233,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
               <span className="flex-none font-sora text-[13px] font-semibold">{formatEUR(doc.montant)}</span>
               {doc.pdfUrl && (
                 <a href={doc.pdfUrl} target="_blank" rel="noreferrer" className="flex-none text-[#8CA9FF]">
-                  <span className="material-symbols-rounded !text-[20px]">download</span>
+                  <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">download</span>
                 </a>
               )}
             </div>
@@ -263,7 +263,7 @@ function TimelineStep({ stage, active, isLast }: { stage: OrderStage; active: bo
           className="flex h-6 w-6 flex-none items-center justify-center rounded-full border-2 text-[11px] font-bold"
           style={active ? { borderColor: color.fg, background: color.bg, color: color.fg } : { borderColor: "rgba(255,255,255,.16)", color: "#6C6C90" }}
         >
-          {active && <span className="material-symbols-rounded !text-[14px]">check</span>}
+          {active && <span className="material-symbols-rounded !text-[14px]" aria-hidden="true">check</span>}
         </span>
         {!isLast && <span className="mx-1 h-[2px] flex-1" style={{ background: active ? color.fg : "rgba(255,255,255,.12)" }} />}
       </div>

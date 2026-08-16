@@ -202,7 +202,7 @@ export function ContentGallery({
                     </span>
                     <span className="mt-1 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus">
                       Ouvrir
-                      <span className="material-symbols-rounded !text-[17px]">arrow_forward</span>
+                      <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>
                     </span>
                   </div>
                 </button>
@@ -221,7 +221,7 @@ export function ContentGallery({
             onClick={() => setOpenGroupKey(null)}
             className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary transition-colors hover:text-text"
           >
-            <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+            <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
             Mes contenus
           </button>
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -264,7 +264,7 @@ function EmptyState({ hasClub, tab }: { hasClub: boolean; tab: TabKey }) {
   return (
     <div className="flex max-w-[560px] flex-col gap-3.5 rounded-sv-card border border-dashed border-border-strong bg-surface p-6">
       <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-contenus-bg">
-        <span className="material-symbols-rounded !text-[24px] text-contenus">photo_library</span>
+        <span className="material-symbols-rounded !text-[24px] text-contenus" aria-hidden="true">photo_library</span>
       </span>
       <span className="font-sora text-[18px] font-semibold">Aucun contenu ici</span>
       <p className="text-[14px] leading-relaxed text-text-tertiary">{text}</p>
@@ -299,7 +299,7 @@ function MediaGrid({
             {item.type === "video" && (
               <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/55">
-                  <span className="material-symbols-rounded !text-[24px] text-white" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  <span className="material-symbols-rounded !text-[24px] text-white" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
                     play_arrow
                   </span>
                 </span>
@@ -360,7 +360,7 @@ function Lightbox({
           onClick={onClose}
           className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-white/[.08] hover:bg-white/[.16]"
         >
-          <span className="material-symbols-rounded !text-[21px]">close</span>
+          <span className="material-symbols-rounded !text-[21px]" aria-hidden="true">close</span>
         </button>
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate font-sora text-[14px] font-semibold">{item.title}</span>
@@ -393,11 +393,11 @@ function Lightbox({
               rel="noopener noreferrer"
               className="flex h-[42px] w-[42px] items-center justify-center rounded-sv bg-white/[.08] text-text hover:bg-white/[.16]"
             >
-              <span className="material-symbols-rounded !text-[21px]">download</span>
+              <span className="material-symbols-rounded !text-[21px]" aria-hidden="true">download</span>
             </a>
           ) : (
             <span className="flex h-[42px] w-[42px] items-center justify-center rounded-sv bg-white/[.04] text-text-faint">
-              <span className="material-symbols-rounded !text-[21px]">download</span>
+              <span className="material-symbols-rounded !text-[21px]" aria-hidden="true">download</span>
             </span>
           )}
         </div>
@@ -410,7 +410,7 @@ function Lightbox({
           disabled={index === 0}
           className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-full bg-white/[.08] hover:bg-white/[.18] disabled:opacity-30"
         >
-          <span className="material-symbols-rounded !text-[24px]">chevron_left</span>
+          <span className="material-symbols-rounded !text-[24px]" aria-hidden="true">chevron_left</span>
         </button>
         <div className="flex h-full flex-1 min-w-0 items-center justify-center">
           {item.link ? (
@@ -434,7 +434,7 @@ function Lightbox({
           disabled={index === items.length - 1}
           className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-full bg-white/[.08] hover:bg-white/[.18] disabled:opacity-30"
         >
-          <span className="material-symbols-rounded !text-[24px]">chevron_right</span>
+          <span className="material-symbols-rounded !text-[24px]" aria-hidden="true">chevron_right</span>
         </button>
       </div>
     </div>

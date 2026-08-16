@@ -104,7 +104,7 @@ export function CommandesParticulierView({ athletes, initialSportif }: { athlete
       {orders !== null && visible.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-prestations-bg">
-            <span className="material-symbols-rounded !text-[24px] text-prestations">receipt_long</span>
+            <span className="material-symbols-rounded !text-[24px] text-prestations" aria-hidden="true">receipt_long</span>
           </span>
           <span className="font-sora text-[16px] font-semibold">{orders.length === 0 ? "Aucune commande pour le moment" : "Aucune commande dans cette catégorie"}</span>
           {orders.length === 0 && (
@@ -128,7 +128,7 @@ export function CommandesParticulierView({ athletes, initialSportif }: { athlete
                 className="flex items-center gap-4 rounded-sv-card border border-border bg-surface p-4.5 transition-colors duration-150 hover:bg-surface-hover"
               >
                 <span className="flex h-12 w-12 flex-none items-center justify-center rounded-sv bg-prestations-bg">
-                  <span className="material-symbols-rounded !text-[22px] text-prestations">camera_alt</span>
+                  <span className="material-symbols-rounded !text-[22px] text-prestations" aria-hidden="true">camera_alt</span>
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2">

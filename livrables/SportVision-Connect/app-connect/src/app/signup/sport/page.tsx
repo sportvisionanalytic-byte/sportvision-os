@@ -87,10 +87,10 @@ export default function SignupSportPage() {
                   }`}
                 >
                   <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-white/5">
-                    <span className="material-symbols-rounded !text-[21px] text-[#8CA9FF]">{n.icon}</span>
+                    <span className="material-symbols-rounded !text-[21px] text-[#8CA9FF]" aria-hidden="true">{n.icon}</span>
                   </span>
                   <span className="font-sora text-[15px] font-semibold text-text">{n.label}</span>
-                  {selected && <span className="material-symbols-rounded filled ml-auto !text-[21px] text-affiliations">check_circle</span>}
+                  {selected && <span className="material-symbols-rounded filled ml-auto !text-[21px] text-affiliations" aria-hidden="true">check_circle</span>}
                 </button>
               );
             })}

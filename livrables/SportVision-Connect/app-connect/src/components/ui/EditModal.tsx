@@ -40,7 +40,7 @@ export function EditModal({
               className="flex h-8 w-8 flex-none items-center justify-center rounded-sv text-text-tertiary hover:bg-white/5 hover:text-text"
               aria-label="Fermer"
             >
-              <span className="material-symbols-rounded !text-[20px]">close</span>
+              <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">close</span>
             </button>
           </div>
           {subtitle && <p className="text-[13px] leading-relaxed text-text-tertiary">{subtitle}</p>}
@@ -50,7 +50,7 @@ export function EditModal({
 
         {error && (
           <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-            <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
+            <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
             <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
           </div>
         )}

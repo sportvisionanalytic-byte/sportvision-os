@@ -228,7 +228,7 @@ export function MessagesThread({
         )}
         <div className="flex max-w-[560px] flex-col gap-3.5 rounded-sv-card border border-dashed border-border-strong bg-surface p-6">
           <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-white/[.06]">
-            <span className="material-symbols-rounded !text-[24px] text-text-tertiary">forum</span>
+            <span className="material-symbols-rounded !text-[24px] text-text-tertiary" aria-hidden="true">forum</span>
           </span>
           <span className="font-sora text-[18px] font-semibold">Messages indisponible pour le moment</span>
           <p className="text-[14px] leading-relaxed text-text-tertiary">
@@ -265,7 +265,7 @@ export function MessagesThread({
         <div className="hidden flex-none flex-col border-r border-border p-3 lg:flex">
           <div className="flex items-center gap-3 rounded-sv bg-white/[.06] p-3">
             <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-sv-gradient">
-              <span className="material-symbols-rounded !text-[21px] text-white">support_agent</span>
+              <span className="material-symbols-rounded !text-[21px] text-white" aria-hidden="true">support_agent</span>
             </span>
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="font-sora text-[15px] font-semibold">Équipe SportVision</span>
@@ -281,7 +281,7 @@ export function MessagesThread({
             {messages.length === 0 && (
               <div className="m-auto flex max-w-[380px] flex-col items-center gap-2 text-center">
                 <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-affiliations-bg">
-                  <span className="material-symbols-rounded !text-[24px] text-affiliations">forum</span>
+                  <span className="material-symbols-rounded !text-[24px] text-affiliations" aria-hidden="true">forum</span>
                 </span>
                 <span className="font-sora text-[16px] font-semibold">Aucun message pour le moment</span>
                 <p className="text-[13px] text-text-tertiary">
@@ -317,7 +317,7 @@ export function MessagesThread({
                         className="mt-2 flex items-center gap-2 rounded-sv border border-white/20 bg-black/15 px-3 py-2 text-[12px] font-medium"
                         style={{ color: isClient ? "#fff" : "#8CA9FF" }}
                       >
-                        <span className="material-symbols-rounded !text-[16px]">attach_file</span>
+                        <span className="material-symbols-rounded !text-[16px]" aria-hidden="true">attach_file</span>
                         {attachmentLabel(m.pieceJointeUrl)}
                       </a>
                     )}
@@ -348,7 +348,7 @@ export function MessagesThread({
               className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/[.06] text-text-secondary hover:bg-white/[.12] disabled:opacity-45"
               aria-label="Ajouter une pièce jointe"
             >
-              <span className="material-symbols-rounded !text-[20px]">{attaching ? "hourglass_top" : "attach_file"}</span>
+              <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">{attaching ? "hourglass_top" : "attach_file"}</span>
             </button>
             <input
               aria-label="Écrivez votre message"
@@ -373,7 +373,7 @@ export function MessagesThread({
               {sending ? (
                 <span className="h-[18px] w-[18px] animate-sv-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
               ) : (
-                <span className="material-symbols-rounded !text-[20px]">send</span>
+                <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">send</span>
               )}
             </button>
           </div>

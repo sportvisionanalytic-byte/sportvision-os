@@ -14,7 +14,7 @@ export default async function AddAthletePage() {
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
       <Link href="/particulier/sportifs" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
-        <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+        <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Mes sportifs
       </Link>
       <div className="flex flex-col gap-2">
@@ -28,7 +28,7 @@ export default async function AddAthletePage() {
           className="flex min-h-[220px] flex-col gap-3.5 rounded-sv-card border border-border-strong bg-surface p-[22px] hover:border-[rgba(140,169,255,.5)] hover:bg-white/[.08]"
         >
           <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-prestations-bg">
-            <span className="material-symbols-rounded !text-[24px] text-prestations">link</span>
+            <span className="material-symbols-rounded !text-[24px] text-prestations" aria-hidden="true">link</span>
           </span>
           <span className="font-sora text-[18px] font-semibold tracking-tight">Il possède déjà Connect</span>
           <span className="text-[14px] leading-relaxed text-text-tertiary">
@@ -36,7 +36,7 @@ export default async function AddAthletePage() {
           </span>
           <span className="mt-auto flex items-center gap-1.5 font-sora text-[14px] font-semibold text-prestations">
             Envoyer une invitation
-            <span className="material-symbols-rounded !text-[17px]">arrow_forward</span>
+            <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>
           </span>
         </Link>
 
@@ -47,7 +47,7 @@ export default async function AddAthletePage() {
         >
           <div className="flex min-h-[220px] flex-col gap-3.5 rounded-[calc(theme(borderRadius.sv-card)-1px)] bg-bg-elevated p-[22px]">
             <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-affiliations-bg">
-              <span className="material-symbols-rounded !text-[24px] text-affiliations">child_care</span>
+              <span className="material-symbols-rounded !text-[24px] text-affiliations" aria-hidden="true">child_care</span>
             </span>
             <span className="font-sora text-[18px] font-semibold tracking-tight">Il n&apos;a pas encore de compte</span>
             <span className="text-[14px] leading-relaxed text-text-tertiary">
@@ -55,14 +55,14 @@ export default async function AddAthletePage() {
             </span>
             <span className="mt-auto flex items-center gap-1.5 font-sora text-[14px] font-semibold text-affiliations">
               Créer un profil géré
-              <span className="material-symbols-rounded !text-[17px]">arrow_forward</span>
+              <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>
             </span>
           </div>
         </Link>
       </div>
 
       <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
-        <span className="material-symbols-rounded !text-[19px] text-text-faint">info</span>
+        <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
         <span className="text-[13px] leading-relaxed text-text-tertiary">
           Le lien déclaré (parent, proche, agent…) est descriptif. Il ne donne aucun accès automatique : les
           autorisations sont accordées par le sportif ou son responsable légal.

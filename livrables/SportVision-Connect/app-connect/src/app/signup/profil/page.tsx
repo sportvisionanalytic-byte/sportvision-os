@@ -42,14 +42,14 @@ export default function SignupProfilePage() {
               }`}
             >
               <span className="flex h-12 w-12 flex-none items-center justify-center rounded-sv bg-white/5">
-                <span className="material-symbols-rounded !text-[24px] text-[#8CA9FF]">{p.icon}</span>
+                <span className="material-symbols-rounded !text-[24px] text-[#8CA9FF]" aria-hidden="true">{p.icon}</span>
               </span>
               <span className="flex flex-col gap-1">
                 <span className="font-sora text-[16px] font-semibold text-text">{p.label}</span>
                 <span className="text-[13px] leading-snug text-text-tertiary">{p.sub}</span>
               </span>
               {selected && (
-                <span className="material-symbols-rounded filled ml-auto !text-[22px] text-affiliations">
+                <span className="material-symbols-rounded filled ml-auto !text-[22px] text-affiliations" aria-hidden="true">
                   check_circle
                 </span>
               )}

@@ -154,7 +154,7 @@ export function CreateFundingWizard({
             onClick={() => navigator.clipboard?.writeText(link)}
             className="flex h-9 flex-none items-center gap-1.5 rounded-sv bg-white/[.09] px-3.5 font-sora text-[13px] font-semibold hover:bg-white/[.16]"
           >
-            <span className="material-symbols-rounded !text-[17px]">content_copy</span>
+            <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">content_copy</span>
             Copier
           </button>
         </div>
@@ -165,7 +165,7 @@ export function CreateFundingWizard({
             onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Participez à notre cotisation « ${offre?.nom} » sur SportVision Connect : ${link}`)}`, "_blank")}
             className="flex h-[54px] items-center justify-center gap-2 rounded-sv bg-sv-gradient font-sora text-[16px] font-semibold text-white hover:brightness-[1.12]"
           >
-            <span className="material-symbols-rounded !text-[21px]">chat</span>
+            <span className="material-symbols-rounded !text-[21px]" aria-hidden="true">chat</span>
             Partager sur WhatsApp
           </button>
           <div className="flex gap-2.5">
@@ -184,7 +184,7 @@ export function CreateFundingWizard({
               }}
               className="flex h-[50px] flex-1 items-center justify-center gap-2 rounded-sv border border-border-strong bg-white/[.06] font-sora text-[14px] font-semibold hover:bg-white/[.12]"
             >
-              <span className="material-symbols-rounded !text-[19px]">ios_share</span>
+              <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">ios_share</span>
               Partager
             </button>
             <button
@@ -211,7 +211,7 @@ export function CreateFundingWizard({
           onClick={() => (step === 1 ? router.back() : setStep(((step as number) - 1) as 1 | 2 | 3 | 4))}
           className="flex h-10 w-10 flex-none items-center justify-center rounded-sv border border-border bg-surface text-text-secondary hover:bg-surface-hover"
         >
-          <span className="material-symbols-rounded !text-[20px]">arrow_back</span>
+          <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">arrow_back</span>
         </button>
         <div className="h-[5px] flex-1 overflow-hidden rounded-sv-pill bg-white/10">
           <div className="h-full rounded-sv-pill bg-sv-gradient-cotisation transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
@@ -243,7 +243,7 @@ export function CreateFundingWizard({
                     }`}
                   >
                     <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-sv bg-prestations-bg">
-                      <span className="material-symbols-rounded !text-[23px] text-prestations">
+                      <span className="material-symbols-rounded !text-[23px] text-prestations" aria-hidden="true">
                         {CATEGORY_ICON[o.categorie] || "camera_alt"}
                       </span>
                     </span>
@@ -284,14 +284,14 @@ export function CreateFundingWizard({
               }`}
             >
               <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-sv bg-white/[.07]">
-                <span className="material-symbols-rounded !text-[23px] text-text-secondary">link</span>
+                <span className="material-symbols-rounded !text-[23px] text-text-secondary" aria-hidden="true">link</span>
               </span>
               <div className="flex flex-col gap-1">
                 <span className="font-sora text-[16px] font-semibold">Partage libre</span>
                 <span className="text-[13px] text-text-tertiary">Sans groupe : n&apos;importe qui avec le lien peut participer.</span>
               </div>
               {groupId === null && (
-                <span className="material-symbols-rounded ml-auto !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span className="material-symbols-rounded ml-auto !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
                   check_circle
                 </span>
               )}
@@ -308,13 +308,13 @@ export function CreateFundingWizard({
                   }`}
                 >
                   <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-sv bg-affiliations-bg">
-                    <span className="material-symbols-rounded !text-[23px] text-affiliations">groups</span>
+                    <span className="material-symbols-rounded !text-[23px] text-affiliations" aria-hidden="true">groups</span>
                   </span>
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="font-sora text-[16px] font-semibold">{g.name}</span>
                   </div>
                   {selected && (
-                    <span className="material-symbols-rounded ml-auto !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    <span className="material-symbols-rounded ml-auto !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
                       check_circle
                     </span>
                   )}
@@ -365,7 +365,7 @@ export function CreateFundingWizard({
                     onClick={() => setCount((c) => Math.max(2, c - 1))}
                     className="flex h-12 w-12 items-center justify-center rounded-sv border border-border-strong bg-white/[.06] hover:bg-white/[.14]"
                   >
-                    <span className="material-symbols-rounded !text-[22px]">remove</span>
+                    <span className="material-symbols-rounded !text-[22px]" aria-hidden="true">remove</span>
                   </button>
                   <span className="min-w-[52px] text-center font-sora text-[28px] font-bold tracking-tight">{count}</span>
                   <button
@@ -373,7 +373,7 @@ export function CreateFundingWizard({
                     onClick={() => setCount((c) => Math.min(100, c + 1))}
                     className="flex h-12 w-12 items-center justify-center rounded-sv border border-border-strong bg-white/[.06] hover:bg-white/[.14]"
                   >
-                    <span className="material-symbols-rounded !text-[22px]">add</span>
+                    <span className="material-symbols-rounded !text-[22px]" aria-hidden="true">add</span>
                   </button>
                 </div>
                 <div className="flex-1 rounded-sv p-px" style={{ minWidth: 180, background: "linear-gradient(120deg,rgba(168,85,247,.6),rgba(244,114,182,.4))" }}>
@@ -431,7 +431,7 @@ export function CreateFundingWizard({
           </div>
           {error && (
             <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-              <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
+              <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
               <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
             </div>
           )}
@@ -554,7 +554,7 @@ function ModeCard({
       }`}
     >
       <span className="flex h-11 w-11 items-center justify-center rounded-sv bg-cotisations-bg">
-        <span className="material-symbols-rounded !text-[22px] text-cotisations">{icon}</span>
+        <span className="material-symbols-rounded !text-[22px] text-cotisations" aria-hidden="true">{icon}</span>
       </span>
       <span className="font-sora text-[17px] font-semibold tracking-tight">{label}</span>
       <span className="text-[13px] leading-relaxed text-text-tertiary">{sub}</span>

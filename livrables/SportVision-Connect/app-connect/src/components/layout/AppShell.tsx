@@ -203,7 +203,7 @@ export function AppShell({
           aria-label="Rechercher"
           className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
         >
-          <span className="material-symbols-rounded !text-[20px]">search</span>
+          <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">search</span>
         </button>
         <NotificationBell />
         <Link
@@ -211,7 +211,7 @@ export function AppShell({
           aria-label="Aide"
           className="flex h-10 w-10 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
         >
-          <span className="material-symbols-rounded !text-[20px]">help</span>
+          <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">help</span>
         </Link>
         <button
           type="button"
@@ -247,7 +247,7 @@ export function AppShell({
                     onClick={() => setMenuOpen(false)}
                     className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
                   >
-                    <span className="material-symbols-rounded !text-[20px]" style={{ color: item.color }}>
+                    <span className="material-symbols-rounded !text-[20px]" style={{ color: item.color }} aria-hidden="true">
                       {item.icon}
                     </span>
                     {item.label}
@@ -260,7 +260,7 @@ export function AppShell({
               onClick={handleLogout}
               className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-left text-[14px] text-danger hover:bg-white/5"
             >
-              <span className="material-symbols-rounded !text-[20px]">logout</span>
+              <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">logout</span>
               Se déconnecter
             </button>
           </div>
@@ -306,7 +306,7 @@ export function AppShell({
         aria-label="Plus d'options"
         className="fixed bottom-[calc(66px+env(safe-area-inset-bottom))] right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-sv-gradient text-white shadow-lg lg:hidden"
       >
-        <span className="material-symbols-rounded !text-[22px]">apps</span>
+        <span className="material-symbols-rounded !text-[22px]" aria-hidden="true">apps</span>
       </button>
 
       {moreOpen && (
@@ -324,7 +324,7 @@ export function AppShell({
                 onClick={() => setMoreOpen(false)}
                 className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
               >
-                <span className="material-symbols-rounded !text-[21px]" style={{ color: item.color }}>
+                <span className="material-symbols-rounded !text-[21px]" style={{ color: item.color }} aria-hidden="true">
                   {item.icon}
                 </span>
                 {item.label}
@@ -335,7 +335,7 @@ export function AppShell({
               onClick={() => setMoreOpen(false)}
               className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
             >
-              <span className="material-symbols-rounded !text-[21px]">help</span>
+              <span className="material-symbols-rounded !text-[21px]" aria-hidden="true">help</span>
               Aide
             </Link>
           </div>

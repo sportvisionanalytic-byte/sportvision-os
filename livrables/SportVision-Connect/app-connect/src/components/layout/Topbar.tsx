@@ -73,7 +73,7 @@ export function Topbar({
           aria-label="Aide"
           className="flex h-10 w-10 items-center justify-center rounded-sv text-text-tertiary hover:bg-white/[.06] hover:text-text"
         >
-          <span className="material-symbols-rounded !text-[20px]">help</span>
+          <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">help</span>
         </Link>
 
         <div ref={rootRef} className="relative">
@@ -98,7 +98,7 @@ export function Topbar({
                 onClick={() => setMenuOpen(false)}
                 className="flex h-10 items-center gap-2.5 rounded-sv px-2.5 text-[13.5px] text-text-secondary hover:bg-white/5"
               >
-                <span className="material-symbols-rounded !text-[18px]">person</span>
+                <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">person</span>
                 Mon profil
               </Link>
               <button
@@ -106,7 +106,7 @@ export function Topbar({
                 onClick={handleLogout}
                 className="flex h-10 w-full items-center gap-2.5 rounded-sv px-2.5 text-left text-[13.5px] text-danger hover:bg-white/5"
               >
-                <span className="material-symbols-rounded !text-[18px]">logout</span>
+                <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">logout</span>
                 Se déconnecter
               </button>
             </div>

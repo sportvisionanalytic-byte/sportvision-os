@@ -68,7 +68,7 @@ export function AthletesListView({
           href="/particulier/sportifs/ajouter"
           className="flex h-[46px] flex-none items-center gap-2 rounded-sv bg-sv-gradient px-[18px] font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
         >
-          <span className="material-symbols-rounded !text-[20px]">add</span>
+          <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">add</span>
           Ajouter un sportif
         </Link>
       </div>
@@ -113,7 +113,7 @@ export function AthletesListView({
             agentInfo.canAcceptMore ? "border-border bg-white/[.04]" : "border-attente/40 bg-attente-bg"
           }`}
         >
-          <span className="material-symbols-rounded !text-[19px]" style={{ color: agentInfo.canAcceptMore ? undefined : "#FBBF24" }}>
+          <span className="material-symbols-rounded !text-[19px]" style={{ color: agentInfo.canAcceptMore ? undefined : "#FBBF24" }} aria-hidden="true">
             workspace_premium
           </span>
           <span className="text-[13px] leading-relaxed text-text-secondary">
@@ -128,7 +128,7 @@ export function AthletesListView({
 
       {athletes.length > 3 && (
         <div className="relative flex max-w-[420px]">
-          <span className="material-symbols-rounded absolute left-4 top-3.5 !text-[21px] text-text-faint">search</span>
+          <span className="material-symbols-rounded absolute left-4 top-3.5 !text-[21px] text-text-faint" aria-hidden="true">search</span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -182,7 +182,7 @@ export function AthletesListView({
       ) : (
         <div className="flex max-w-[540px] flex-col gap-2.5 rounded-sv-card border border-dashed border-border-strong bg-white/[.04] p-7">
           <span className="flex h-[46px] w-[46px] items-center justify-center rounded-sv bg-affiliations-bg">
-            <span className="material-symbols-rounded !text-[23px] text-affiliations">group_add</span>
+            <span className="material-symbols-rounded !text-[23px] text-affiliations" aria-hidden="true">group_add</span>
           </span>
           <span className="font-sora text-[18px] font-semibold">
             {query ? "Aucun résultat" : "Aucun sportif pour le moment"}

@@ -210,10 +210,10 @@ export function ParticularShell({
             {(activeAthlete.firstName[0] || "?").toUpperCase()}
           </span>
         ) : (
-          <span className="material-symbols-rounded !text-[18px] text-text-tertiary">group</span>
+          <span className="material-symbols-rounded !text-[18px] text-text-tertiary" aria-hidden="true">group</span>
         )}
         <span className="truncate">Vous consultez : {contextLabel}</span>
-        <span className="material-symbols-rounded ml-auto !text-[18px] text-text-faint">expand_more</span>
+        <span className="material-symbols-rounded ml-auto !text-[18px] text-text-faint" aria-hidden="true">expand_more</span>
       </button>
       {contextOpen && (
         <div className="fixed inset-0 z-40" onClick={() => setContextOpen(false)}>
@@ -231,10 +231,10 @@ export function ParticularShell({
                 !activeAthlete ? "bg-white/8 text-text" : "text-text-secondary hover:bg-white/5"
               }`}
             >
-              <span className="material-symbols-rounded !text-[19px]">apps</span>
+              <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">apps</span>
               Tous mes sportifs
               {!activeAthlete && (
-                <span className="material-symbols-rounded ml-auto !text-[19px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span className="material-symbols-rounded ml-auto !text-[19px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
                   check_circle
                 </span>
               )}
@@ -258,7 +258,7 @@ export function ParticularShell({
                   </span>
                   {a.firstName} {a.lastName}
                   {isActive && (
-                    <span className="material-symbols-rounded ml-auto !text-[19px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    <span className="material-symbols-rounded ml-auto !text-[19px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
                       check_circle
                     </span>
                   )}
@@ -274,7 +274,7 @@ export function ParticularShell({
               className="mt-1.5 flex h-11 items-center gap-2.5 rounded-sv border-t border-border px-3 pt-2.5 text-[14px] text-text-secondary hover:bg-white/5"
             >
               <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-white/[.07]">
-                <span className="material-symbols-rounded !text-[15px] text-affiliations">add</span>
+                <span className="material-symbols-rounded !text-[15px] text-affiliations" aria-hidden="true">add</span>
               </span>
               Ajouter un sportif
             </Link>
@@ -365,7 +365,7 @@ export function ParticularShell({
             aria-label="Rechercher"
             className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
           >
-            <span className="material-symbols-rounded !text-[20px]">search</span>
+            <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">search</span>
           </button>
           <NotificationBell />
           <Link
@@ -373,7 +373,7 @@ export function ParticularShell({
             aria-label="Aide"
             className="flex h-10 w-10 items-center justify-center rounded-sv text-text-tertiary hover:bg-surface"
           >
-            <span className="material-symbols-rounded !text-[20px]">help</span>
+            <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">help</span>
           </Link>
           <button
             type="button"
@@ -422,7 +422,7 @@ export function ParticularShell({
                     onClick={() => setMenuOpen(false)}
                     className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
                   >
-                    <span className="material-symbols-rounded !text-[20px]" style={{ color: item.color }}>
+                    <span className="material-symbols-rounded !text-[20px]" style={{ color: item.color }} aria-hidden="true">
                       {item.icon}
                     </span>
                     {item.label}
@@ -435,7 +435,7 @@ export function ParticularShell({
               onClick={handleLogout}
               className="flex h-11 items-center gap-2.5 rounded-sv px-3 text-left text-[14px] text-danger hover:bg-white/5"
             >
-              <span className="material-symbols-rounded !text-[20px]">logout</span>
+              <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">logout</span>
               Se déconnecter
             </button>
           </div>
@@ -480,7 +480,7 @@ export function ParticularShell({
         aria-label="Plus d'options"
         className="fixed bottom-[calc(66px+env(safe-area-inset-bottom))] right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-sv-gradient text-white shadow-lg lg:hidden"
       >
-        <span className="material-symbols-rounded !text-[22px]">apps</span>
+        <span className="material-symbols-rounded !text-[22px]" aria-hidden="true">apps</span>
       </button>
 
       {moreOpen && (
@@ -498,7 +498,7 @@ export function ParticularShell({
                 onClick={() => setMoreOpen(false)}
                 className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
               >
-                <span className="material-symbols-rounded !text-[21px]" style={{ color: item.color }}>
+                <span className="material-symbols-rounded !text-[21px]" style={{ color: item.color }} aria-hidden="true">
                   {item.icon}
                 </span>
                 {item.label}
@@ -509,7 +509,7 @@ export function ParticularShell({
               onClick={() => setMoreOpen(false)}
               className="flex h-12 items-center gap-3 rounded-sv px-3 text-[14px] text-text-secondary hover:bg-white/5"
             >
-              <span className="material-symbols-rounded !text-[21px]">help</span>
+              <span className="material-symbols-rounded !text-[21px]" aria-hidden="true">help</span>
               Aide
             </Link>
           </div>

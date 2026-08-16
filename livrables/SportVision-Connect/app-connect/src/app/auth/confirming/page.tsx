@@ -33,7 +33,7 @@ export default function ConfirmingPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg text-text">
-      <span className="material-symbols-rounded animate-spin !text-[28px] text-[#8CA9FF]">progress_activity</span>
+      <span className="material-symbols-rounded animate-spin !text-[28px] text-[#8CA9FF]" aria-hidden="true">progress_activity</span>
       <p className="text-[14px] text-text-tertiary">Connexion en cours…</p>
     </div>
   );

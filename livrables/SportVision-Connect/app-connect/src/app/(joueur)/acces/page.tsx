@@ -125,7 +125,7 @@ export default async function AccesPage() {
           ) : (
             <div className="flex flex-col gap-2.5 rounded-sv-card border border-dashed border-border-strong bg-white/[.02] p-6">
               <span className="flex h-[46px] w-[46px] items-center justify-center rounded-sv bg-affiliations-bg">
-                <span className="material-symbols-rounded !text-[23px] text-affiliations">lock_person</span>
+                <span className="material-symbols-rounded !text-[23px] text-affiliations" aria-hidden="true">lock_person</span>
               </span>
               <span className="font-sora text-[18px] font-semibold">Personne n&apos;a accès à votre profil</span>
               <p className="text-[14px] leading-relaxed text-text-tertiary">

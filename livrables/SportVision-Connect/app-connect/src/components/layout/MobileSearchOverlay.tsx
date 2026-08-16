@@ -53,7 +53,7 @@ export function MobileSearchOverlay({ space, onClose }: { space: SearchSpace; on
     <div className="fixed inset-0 z-50 flex flex-col bg-bg animate-sv-fade">
       <div className="flex flex-none items-center gap-2.5 border-b border-border px-4 py-3.5 pt-[max(14px,env(safe-area-inset-top))]">
         <div className="relative flex-1">
-          <span className="material-symbols-rounded pointer-events-none absolute left-3.5 top-1/2 !text-[19px] -translate-y-1/2 text-text-faint">
+          <span className="material-symbols-rounded pointer-events-none absolute left-3.5 top-1/2 !text-[19px] -translate-y-1/2 text-text-faint" aria-hidden="true">
             search
           </span>
           <input
@@ -77,7 +77,7 @@ export function MobileSearchOverlay({ space, onClose }: { space: SearchSpace; on
       <div className="flex-1 overflow-y-auto p-2">
         {query.trim().length < 2 ? (
           <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
-            <span className="material-symbols-rounded !text-[26px] text-text-faint">search</span>
+            <span className="material-symbols-rounded !text-[26px] text-text-faint" aria-hidden="true">search</span>
             <p className="text-[13px] text-text-tertiary">Contenus, prestations, cotisations, équipes, affiliations.</p>
           </div>
         ) : (

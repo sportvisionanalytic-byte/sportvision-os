@@ -37,7 +37,7 @@ export function PrestationsCatalogueView({ offers }: { offers: CatalogueOffer[] 
       {visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-prestations-bg">
-            <span className="material-symbols-rounded !text-[24px] text-prestations">camera_alt</span>
+            <span className="material-symbols-rounded !text-[24px] text-prestations" aria-hidden="true">camera_alt</span>
           </span>
           <span className="text-[14px] text-text-tertiary">Aucune prestation dans cette catégorie pour le moment.</span>
         </div>
@@ -64,7 +64,7 @@ function OfferCard({ offer, index }: { offer: CatalogueOffer; index: number }) {
     >
       <div className="flex items-start justify-between gap-3">
         <span className="flex h-12 w-12 flex-none items-center justify-center rounded-sv bg-prestations-bg">
-          <span className="material-symbols-rounded !text-[24px] text-prestations">{categorieIcon(offer.categorie)}</span>
+          <span className="material-symbols-rounded !text-[24px] text-prestations" aria-hidden="true">{categorieIcon(offer.categorie)}</span>
         </span>
         <div className="flex flex-none flex-col items-end gap-1.5">
           {recommended && (

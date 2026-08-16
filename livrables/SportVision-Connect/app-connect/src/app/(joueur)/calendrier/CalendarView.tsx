@@ -127,7 +127,7 @@ export function CalendarView({ events, hasClub }: { events: CalendarEventData[];
       {events.length === 0 ? (
         <div className="flex max-w-[560px] flex-col gap-3.5 rounded-sv-card border border-dashed border-border-strong bg-surface p-6">
           <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-prestations-bg">
-            <span className="material-symbols-rounded !text-[24px] text-prestations">event</span>
+            <span className="material-symbols-rounded !text-[24px] text-prestations" aria-hidden="true">event</span>
           </span>
           <span className="font-sora text-[18px] font-semibold">Aucun événement SportVision prévu</span>
           <p className="text-[14px] leading-relaxed text-text-tertiary">
@@ -377,7 +377,7 @@ function NavButton({ icon, onClick }: { icon: string; onClick: () => void }) {
       onClick={onClick}
       className="flex h-[38px] w-[38px] items-center justify-center rounded-sv border border-border bg-surface text-text-secondary hover:bg-surface-hover"
     >
-      <span className="material-symbols-rounded !text-[19px]">{icon}</span>
+      <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">{icon}</span>
     </button>
   );
 }
@@ -403,7 +403,7 @@ function EventDetail({ event, onClose }: { event: CalendarEventData; onClose: ()
             {badge.label}
           </span>
           <button type="button" onClick={onClose} className="ml-auto flex h-10 w-10 items-center justify-center rounded-sv bg-white/[.06] hover:bg-white/[.12]">
-            <span className="material-symbols-rounded !text-[19px]">close</span>
+            <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">close</span>
           </button>
         </div>
         <h2 className="font-sora text-[22px] font-bold tracking-tight">{event.title}</h2>
@@ -411,7 +411,7 @@ function EventDetail({ event, onClose }: { event: CalendarEventData; onClose: ()
           {facts.map((f) => (
             <div key={f.label} className="flex items-center gap-3">
               <span className="flex h-9 w-9 flex-none items-center justify-center rounded-sv bg-white/[.06]">
-                <span className="material-symbols-rounded !text-[18px] text-prestations">{f.icon}</span>
+                <span className="material-symbols-rounded !text-[18px] text-prestations" aria-hidden="true">{f.icon}</span>
               </span>
               <div className="flex flex-col gap-0.5">
                 <span className="text-[11px] text-text-faint">{f.label}</span>
@@ -434,7 +434,7 @@ function EventDetail({ event, onClose }: { event: CalendarEventData; onClose: ()
           }
           className="flex h-[50px] items-center justify-center gap-2 self-start rounded-sv border border-border-strong bg-surface px-5 font-sora text-[15px] font-semibold hover:bg-surface-hover"
         >
-          <span className="material-symbols-rounded !text-[19px]">event</span>
+          <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">event</span>
           Ajouter à mon calendrier
         </button>
       </div>

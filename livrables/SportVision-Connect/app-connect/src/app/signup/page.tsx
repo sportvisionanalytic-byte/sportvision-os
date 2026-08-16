@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { LEGAL_URLS } from "@/lib/legal-links";
 import { useSignup } from "./signup-context";
 
 // Étape 1 · Identité — voir design-connect-personnel-12-08/README.md § Inscription.
@@ -111,8 +112,15 @@ export default function SignupIdentityPage() {
       </div>
 
       <p className="text-[12px] leading-relaxed text-text-label">
-        En créant votre compte, vous acceptez les Conditions d&apos;utilisation et reconnaissez
-        avoir pris connaissance de la Politique de confidentialité.
+        En créant votre compte, vous acceptez les{" "}
+        <a href={LEGAL_URLS.cgv} target="_blank" rel="noopener noreferrer" className="font-medium text-[#8CA9FF] hover:text-[#B6C7FF] underline">
+          Conditions d&apos;utilisation
+        </a>{" "}
+        et reconnaissez avoir pris connaissance de la{" "}
+        <a href={LEGAL_URLS.confidentialite} target="_blank" rel="noopener noreferrer" className="font-medium text-[#8CA9FF] hover:text-[#B6C7FF] underline">
+          Politique de confidentialité
+        </a>
+        .
       </p>
 
       <Button onClick={handleContinue} className="w-full">

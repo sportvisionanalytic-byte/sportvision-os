@@ -81,7 +81,7 @@ export function SportProfileSection({
           onClick={openModal}
           className="ml-auto flex h-[38px] flex-none items-center gap-1.5 rounded-sv border border-border-strong bg-white/[.03] px-3.5 font-sora text-[13px] font-semibold hover:bg-white/[.08]"
         >
-          <span className="material-symbols-rounded !text-[17px]">edit</span>
+          <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">edit</span>
           Modifier
         </button>
       </div>

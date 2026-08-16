@@ -133,7 +133,7 @@ export function AbonnementView({
 
       {returnStatus === "succes" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-affiliations">hourglass_top</span>
+          <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
           <span className="text-[13px] leading-relaxed text-text-secondary">
             Paiement reçu par Stripe — confirmation de votre abonnement en cours. Cette page se met à jour automatiquement.
           </span>
@@ -141,7 +141,7 @@ export function AbonnementView({
       )}
       {returnStatus === "annule" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-text-faint">info</span>
+          <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
           <span className="text-[13px] leading-relaxed text-text-tertiary">Paiement annulé — aucun changement n&apos;a été effectué.</span>
         </div>
       )}
@@ -209,7 +209,7 @@ export function AbonnementView({
 
       {error && (
         <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
+          <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
           <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
         </div>
       )}
@@ -238,7 +238,7 @@ export function AbonnementView({
                 <div className="flex flex-col gap-2">
                   {plan.benefits.map((b) => (
                     <div key={b} className="flex items-start gap-2">
-                      <span className="material-symbols-rounded mt-0.5 !text-[16px] text-affiliations">check</span>
+                      <span className="material-symbols-rounded mt-0.5 !text-[16px] text-affiliations" aria-hidden="true">check</span>
                       <span className="text-[13px] leading-snug text-text-secondary">{b}</span>
                     </div>
                   ))}
@@ -257,7 +257,7 @@ export function AbonnementView({
           })}
         </div>
         <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
-          <span className="material-symbols-rounded !text-[19px] text-text-faint">info</span>
+          <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
           <span className="text-[13px] leading-relaxed text-text-tertiary">
             Plus de 20 sportifs suivis ? Contactez SportVision directement, aucune inscription en ligne au-delà du palier Pro.
           </span>
@@ -268,7 +268,7 @@ export function AbonnementView({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/66 p-6" onClick={() => !cancelBusy && setConfirmingCancel(false)}>
           <div className="flex max-h-[90vh] w-full max-w-[420px] flex-col gap-4 overflow-y-auto rounded-sv-modal border border-border bg-bg-elevated p-6" onClick={(e) => e.stopPropagation()}>
             <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-danger-bg">
-              <span className="material-symbols-rounded !text-[24px] text-danger">warning</span>
+              <span className="material-symbols-rounded !text-[24px] text-danger" aria-hidden="true">warning</span>
             </span>
             <div className="flex flex-col gap-2">
               <span className="font-sora text-[19px] font-semibold">Résilier votre abonnement ?</span>

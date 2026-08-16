@@ -32,7 +32,7 @@ export default function SignupVerifyPage() {
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
       <span className="flex h-[70px] w-[70px] items-center justify-center rounded-sv-card bg-[rgba(79,125,255,.16)]">
-        <span className="material-symbols-rounded !text-[34px] text-[#8CA9FF]">mail</span>
+        <span className="material-symbols-rounded !text-[34px] text-[#8CA9FF]" aria-hidden="true">mail</span>
       </span>
       <div className="flex flex-col gap-2.5">
         <h1 className="font-sora text-[30px] font-bold tracking-tight">Vérifiez votre boîte mail</h1>
@@ -48,7 +48,7 @@ export default function SignupVerifyPage() {
           onClick={resend}
           className="flex items-center gap-3 rounded-sv-card border border-border bg-surface p-4"
         >
-          <span className="material-symbols-rounded !text-[20px] text-[#C084FC]">refresh</span>
+          <span className="material-symbols-rounded !text-[20px] text-[#C084FC]" aria-hidden="true">refresh</span>
           <span className="text-[14px] font-medium text-text">
             {resendIn > 0 ? `Renvoyer l'e-mail dans ${resendIn}s` : resent ? "E-mail renvoyé" : "Renvoyer l'e-mail"}
           </span>

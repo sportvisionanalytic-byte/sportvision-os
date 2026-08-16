@@ -64,7 +64,7 @@ export function GlobalSearch({ space }: { space: SearchSpace }) {
   return (
     <div ref={rootRef} className="relative hidden w-full max-w-[420px] lg:block">
       <div className="relative">
-        <span className="material-symbols-rounded pointer-events-none absolute left-3.5 top-1/2 !text-[19px] -translate-y-1/2 text-text-faint">
+        <span className="material-symbols-rounded pointer-events-none absolute left-3.5 top-1/2 !text-[19px] -translate-y-1/2 text-text-faint" aria-hidden="true">
           search
         </span>
         <input
@@ -114,7 +114,7 @@ export function SearchResultsList({
   if (!results || !hasAnyResult(results)) {
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-        <span className="material-symbols-rounded !text-[26px] text-text-faint">search_off</span>
+        <span className="material-symbols-rounded !text-[26px] text-text-faint" aria-hidden="true">search_off</span>
         <p className="text-[13px] text-text-tertiary">
           Aucun résultat pour « {query} ».
         </p>
@@ -138,13 +138,13 @@ export function SearchResultsList({
                 className="flex items-center gap-3 rounded-sv px-2.5 py-2.5 text-left hover:bg-white/[.05]"
               >
                 <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full" style={{ background: cat.bg, color: cat.fg }}>
-                  <span className="material-symbols-rounded !text-[16px]">{cat.icon}</span>
+                  <span className="material-symbols-rounded !text-[16px]" aria-hidden="true">{cat.icon}</span>
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-[13.5px] font-medium text-text">{item.title}</span>
                   {item.subtitle && <span className="truncate text-[12px] text-text-tertiary">{item.subtitle}</span>}
                 </span>
-                <span className="material-symbols-rounded !text-[17px] text-text-faint">chevron_right</span>
+                <span className="material-symbols-rounded !text-[17px] text-text-faint" aria-hidden="true">chevron_right</span>
               </button>
             ))}
           </div>

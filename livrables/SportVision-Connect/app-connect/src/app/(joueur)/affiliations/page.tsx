@@ -81,7 +81,7 @@ export default async function AffiliationsPage() {
         ) : (
           <div className="flex flex-col gap-3.5 rounded-sv-card border border-dashed border-border-strong bg-surface p-6 max-w-[560px]">
             <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-affiliations-bg">
-              <span className="material-symbols-rounded !text-[24px] text-affiliations">shield</span>
+              <span className="material-symbols-rounded !text-[24px] text-affiliations" aria-hidden="true">shield</span>
             </span>
             <span className="font-sora text-[18px] font-semibold">Aucun club associé</span>
             <p className="text-[14px] leading-relaxed text-text-tertiary">

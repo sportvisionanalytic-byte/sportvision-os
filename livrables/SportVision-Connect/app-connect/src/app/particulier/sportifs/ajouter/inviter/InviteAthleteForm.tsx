@@ -57,7 +57,7 @@ export function InviteAthleteForm() {
           className="flex h-[66px] w-[66px] items-center justify-center rounded-sv-card"
           style={{ background: "linear-gradient(140deg,rgba(168,85,247,.28),rgba(34,211,238,.22))" }}
         >
-          <span className="material-symbols-rounded !text-[32px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <span className="material-symbols-rounded !text-[32px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
             send
           </span>
         </span>
@@ -70,7 +70,7 @@ export function InviteAthleteForm() {
         </div>
         <div className="flex items-center gap-4 rounded-sv-card border border-border bg-surface p-[18px]">
           <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-sv bg-white/[.07]">
-            <span className="material-symbols-rounded !text-[22px] text-text-tertiary">hourglass_top</span>
+            <span className="material-symbols-rounded !text-[22px] text-text-tertiary" aria-hidden="true">hourglass_top</span>
           </span>
           <div className="flex min-w-0 flex-col gap-1">
             <span className="font-sora text-[15px] font-semibold">{email}</span>
@@ -92,7 +92,7 @@ export function InviteAthleteForm() {
   return (
     <div className="flex max-w-[620px] flex-col gap-6">
       <Link href="/particulier/sportifs/ajouter" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
-        <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+        <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Retour
       </Link>
       <div className="flex flex-col gap-2">
@@ -154,7 +154,7 @@ export function InviteAthleteForm() {
       </div>
 
       <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
-        <span className="material-symbols-rounded !text-[19px] text-text-faint">lock</span>
+        <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">lock</span>
         <span className="text-[13px] leading-relaxed text-text-tertiary">
           Aucun annuaire public : le sportif est invité par e-mail et reste seul à décider des accès accordés.
         </span>
@@ -162,7 +162,7 @@ export function InviteAthleteForm() {
 
       {error && (
         <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
+          <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
           <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
         </div>
       )}
