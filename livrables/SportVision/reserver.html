@@ -727,7 +727,7 @@ function maybeCheckDispo(){
         text.textContent = '✓ Une équipe est disponible à cette date.';
       } else if (data.disponible === false){
         badge.className = 'dispo-badge tight';
-        text.textContent = 'Forte demande à cette date — nous reviendrons vers vous sous 24h pour confirmer.';
+        text.textContent = 'Forte demande à cette date — nous reviendrons vers vous rapidement pour confirmer.';
       } else {
         badge.style.display = 'none';
       }
@@ -875,7 +875,7 @@ function showConfirmation(data, email){
   if (state.dispoChecked && state.dispoResult && state.dispoResult.disponible === true){
     message += ' Une équipe est disponible à la date demandée — nous revenons vers vous rapidement pour confirmer les derniers détails.';
   } else if (state.dispoChecked && state.dispoResult && state.dispoResult.disponible === false){
-    message += ' La demande est forte à cette date : notre équipe revient vers vous sous 24h pour confirmer.';
+    message += ' La demande est forte à cette date : notre équipe revient vers vous rapidement pour confirmer.';
   } else {
     message += ' Notre équipe revient vers vous très prochainement.';
   }
