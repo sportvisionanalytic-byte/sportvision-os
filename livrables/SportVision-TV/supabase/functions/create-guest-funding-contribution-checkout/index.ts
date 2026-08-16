@@ -99,9 +99,21 @@ serve(async (req) => {
       return json({ error: "Cette cotisation n'accepte plus de nouvelles participations." }, 400);
     }
 
-    const montantRestant = Math.round((Number(funding.montant_cible) - Number(funding.montant_collecte || 0)) * 100) / 100;
+    // Durcissement du 16/08/2026 (audit paiements) — même correctif que la version authentifiée
+    // create-funding-contribution-checkout : compte aussi les contributions 'en_attente' encore
+    // valides (session Stripe pas expirée, 24h) pour réduire la fenêtre de course entre deux
+    // contributeurs qui demanderaient "payer le reste" quasi simultanément.
+    const { data: enAttente } = await admin
+      .from("funding_contributions")
+      .select("montant")
+      .eq("funding_id", funding.id)
+      .eq("statut", "en_attente")
+      .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+    const montantEnAttente = (enAttente || []).reduce((sum, c) => sum + Number(c.montant), 0);
+
+    const montantRestant = Math.round((Number(funding.montant_cible) - Number(funding.montant_collecte || 0) - montantEnAttente) * 100) / 100;
     if (montantRestant <= 0) {
-      return json({ error: "L'objectif de cette cotisation est déjà atteint." }, 400);
+      return json({ error: "L'objectif de cette cotisation est déjà atteint ou en cours de règlement par d'autres contributeurs — réessayez dans quelques minutes." }, 400);
     }
     if (Number(montant) > montantRestant) {
       return json({ error: `Le montant dépasse ce qu'il reste à collecter (${montantRestant.toFixed(2)} €).` }, 400);

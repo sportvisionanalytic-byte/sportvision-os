@@ -107,9 +107,30 @@ serve(async (req) => {
     // Plafond serveur : jamais plus que ce qu'il reste à collecter, quelle
     // que soit la valeur envoyée par le client (même garde-fou que
     // create-team-contribution-checkout).
-    const montantRestant = Math.round((Number(funding.montant_cible) - Number(funding.montant_collecte || 0)) * 100) / 100;
+    //
+    // Durcissement du 16/08/2026 (audit paiements) : `montant_collecte` ne reflète que les
+    // contributions déjà 'paye' (trigger recompute_group_funding_amount) — deux contributeurs
+    // qui demandent chacun "payer le reste" à quelques secondes d'intervalle voyaient tous les
+    // deux le MÊME solde restant, avant que le premier paiement n'ait eu le temps d'être confirmé
+    // par le webhook. Les deux sessions Stripe étaient donc valides, et si les deux paient,
+    // l'objectif est dépassé (déjà atténué côté webhook par une notification staff best-effort,
+    // voir stripe-webhook/index.ts, mais rien n'empêchait la création des deux sessions ici).
+    // Réduit la fenêtre de course (ne l'élimine pas — deux requêtes strictement simultanées à la
+    // milliseconde près resteraient possibles, un verrou DB tenu pendant tout l'appel Stripe
+    // serait plus risqué que utile) en comptant aussi les contributions 'en_attente' encore
+    // valides (session Stripe pas encore expirée, 24h par défaut en mode 'payment' — au-delà,
+    // checkout.session.expired les repasse à 'echoue' et elles ne comptent plus).
+    const { data: enAttente } = await admin
+      .from("funding_contributions")
+      .select("montant")
+      .eq("funding_id", funding_id)
+      .eq("statut", "en_attente")
+      .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+    const montantEnAttente = (enAttente || []).reduce((sum, c) => sum + Number(c.montant), 0);
+
+    const montantRestant = Math.round((Number(funding.montant_cible) - Number(funding.montant_collecte || 0) - montantEnAttente) * 100) / 100;
     if (montantRestant <= 0) {
-      return json({ error: "L'objectif de cette cotisation est déjà atteint." }, 400);
+      return json({ error: "L'objectif de cette cotisation est déjà atteint ou en cours de règlement par d'autres contributeurs — réessayez dans quelques minutes." }, 400);
     }
     if (Number(montant) > montantRestant) {
       return json({ error: `Le montant dépasse ce qu'il reste à collecter (${montantRestant.toFixed(2)} €).` }, 400);

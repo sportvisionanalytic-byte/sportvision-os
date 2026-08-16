@@ -96,9 +96,21 @@ serve(async (req) => {
     // collecter. Sans cette borne, le client contrôlait entièrement `montant`
     // (utilisé tel quel comme unit_amount Stripe) — un appel direct à l'Edge
     // Function pouvait faire créer une session Stripe pour n'importe quel prix.
-    const montantRestant = Number(project.montant_cible) - Number(project.montant_collecte || 0);
+    // Durcissement du 16/08/2026 (audit paiements) — même correctif que
+    // create-funding-contribution-checkout (cotisations personnelles Connect) : compte aussi les
+    // contributions 'en_attente' encore valides (session Stripe pas expirée, 24h) pour réduire la
+    // fenêtre de course entre deux contributeurs qui paieraient le reste quasi simultanément.
+    const { data: enAttente } = await admin
+      .from("team_project_contributions")
+      .select("montant")
+      .eq("project_id", project_id)
+      .eq("statut", "en_attente")
+      .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+    const montantEnAttente = (enAttente || []).reduce((sum, c) => sum + Number(c.montant), 0);
+
+    const montantRestant = Number(project.montant_cible) - Number(project.montant_collecte || 0) - montantEnAttente;
     if (montantRestant <= 0) {
-      return json({ error: "L'objectif de ce projet est déjà atteint." }, 400);
+      return json({ error: "L'objectif de ce projet est déjà atteint ou en cours de règlement par d'autres contributeurs — réessayez dans quelques minutes." }, 400);
     }
     if (Number(montant) > montantRestant) {
       return json({ error: `Le montant dépasse ce qu'il reste à collecter (${montantRestant.toFixed(2)} €).` }, 400);
