@@ -75,6 +75,26 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
     window.location.href = data.url;
   }
 
+  // Choix espèces fait APRÈS la réservation, depuis cette fiche (migration-connect-v75) —
+  // symétrique au choix carte/espèces du wizard (mode_paiement_choisi), mais pour une commande
+  // déjà créée (avant ce chantier, ou créée en "carte"/"à plusieurs" jamais soldée). Met à jour
+  // l'état local plutôt qu'un refetch complet : la RPC ne renvoie que { ok: true }, order.
+  // modePaiementChoisi est la seule donnée qui change réellement côté affichage (voir
+  // showEspecesNotice/canPay ci-dessous, dérivés de ce champ).
+  async function payEspeces() {
+    if (!order) return;
+    setBusy(true);
+    setCheckoutError(null);
+    const supabase = createClient();
+    const { data, error: rpcError } = await supabase.rpc("connect_choose_especes_for_prestation", { p_prestation_id: order.id });
+    setBusy(false);
+    if (rpcError || !data?.ok) {
+      setCheckoutError(rpcError?.message || "Impossible d'enregistrer ce choix pour le moment.");
+      return;
+    }
+    setOrder({ ...order, modePaiementChoisi: "especes" });
+  }
+
   if (error) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
@@ -186,7 +206,11 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
                 Vous aviez demandé à partager le coût de cette prestation. Créez la cotisation pour inviter vos proches à contribuer.
               </p>
               <Link
-                href={fundingLink.offre_id ? `${cotisationsBase}/creer?offreId=${fundingLink.offre_id}` : `${cotisationsBase}/creer`}
+                href={
+                  fundingLink.offre_id
+                    ? `${cotisationsBase}/creer?offreId=${fundingLink.offre_id}${order.equipes ? `&contexte=${encodeURIComponent(order.equipes)}` : ""}`
+                    : `${cotisationsBase}/creer`
+                }
                 className="flex h-11 w-fit items-center gap-2 rounded-sv bg-sv-gradient px-4 font-sora text-[14px] font-semibold text-white hover:brightness-[1.12]"
               >
                 <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">volunteer_activism</span>
@@ -202,9 +226,20 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
           <h2 className="font-sora text-[15px] font-semibold">Paiement</h2>
           <p className="text-[13px] text-text-tertiary">Cette commande n&apos;a pas encore été réglée.</p>
           {checkoutError && <span className="text-[12.5px] text-danger">{checkoutError}</span>}
-          <Button onClick={payNow} loading={busy} className="self-start">
-            Payer {formatEUR(amount)}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={payNow} loading={busy} className="self-start">
+              Payer {formatEUR(amount)}
+            </Button>
+            <button
+              type="button"
+              onClick={payEspeces}
+              disabled={busy}
+              className="flex h-11 items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold text-text-secondary hover:bg-white/[.12] disabled:opacity-60"
+            >
+              <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">payments</span>
+              Régler en espèces sur place
+            </button>
+          </div>
         </div>
       )}
 

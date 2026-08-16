@@ -55,6 +55,7 @@ export function CreateFundingWizard({
   groups,
   initialGroupId,
   initialOfferId = null,
+  initialContexte = null,
   beneficiary = null,
   basePath = "/cotisations",
 }: {
@@ -62,13 +63,19 @@ export function CreateFundingWizard({
   groups: GroupOption[];
   initialGroupId: string | null;
   initialOfferId?: string | null;
+  initialContexte?: string | null;
   beneficiary?: FundingBeneficiary | null;
   basePath?: string;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | "success">(1);
+  // Arrivée depuis "Créer une cotisation" sur une commande existante (CommandeDetailView.tsx,
+  // migration-connect-v74) : l'offre est déjà connue (initialOfferId), inutile de refaire choisir
+  // au step 1 — on saute directement au step 2 (répartition avec qui) pour éviter à l'utilisateur
+  // de "tout retaper" (retour du 16/08). Comportement de départ au step 1 inchangé quand on arrive
+  // depuis "Cotisations > Créer" sans contexte préexistant.
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | "success">(initialOfferId ? 2 : 1);
   const [offreId, setOffreId] = useState<string | null>(initialOfferId);
-  const [contexte, setContexte] = useState("");
+  const [contexte, setContexte] = useState(initialContexte || "");
   const [groupId, setGroupId] = useState<string | null>(initialGroupId);
   const [mode, setMode] = useState<RepartitionMode>("egale");
   const [count, setCount] = useState(10);
