@@ -3,13 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
 import {
   fetchMyAthletes,
-  toNavItems,
   ATHLETE_STATUS_LABEL,
   ATHLETE_STATUS_COLOR,
   particulierSportifsLabel,
   particulierSportifsSectionLabel,
 } from "@/lib/supabase/particulier";
-import { ParticularShell } from "@/components/layout/ParticularShell";
 import { gradientFor } from "@/lib/avatarGradients";
 import { formatDateLong } from "@/lib/prestations/format";
 import type { PlayerOrder } from "@/lib/prestations/types";
@@ -96,8 +94,7 @@ export default async function ParticulierHomePage() {
     .sort((a, b) => (a.event_date < b.event_date ? -1 : 1))[0];
 
   return (
-    <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <div className="flex flex-col gap-6 animate-sv-in">
+    <div className="flex flex-col gap-6 animate-sv-in">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div className="flex flex-col gap-2">
             <h1 className="font-sora text-[33px] font-bold tracking-tight">Bonjour {firstName} 👋</h1>
@@ -350,7 +347,6 @@ export default async function ParticulierHomePage() {
           </div>
         )}
       </div>
-    </ParticularShell>
   );
 }
 

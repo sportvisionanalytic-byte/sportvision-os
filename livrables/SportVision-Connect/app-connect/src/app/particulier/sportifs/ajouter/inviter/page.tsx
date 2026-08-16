@@ -1,7 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
-import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
-import { ParticularShell } from "@/components/layout/ParticularShell";
+import { requireParticulierAccount } from "@/lib/supabase/session";
 import { InviteAthleteForm } from "./InviteAthleteForm";
 
 // Inviter un sportif — réutilise le système "Accès à mon profil" déjà construit côté Espace
@@ -10,18 +8,11 @@ import { InviteAthleteForm } from "./InviteAthleteForm";
 // EXACTEMENT la même RPC que si l'inverse se produisait (un joueur demandant accès à un autre
 // profil) — aucune nouvelle primitive nécessaire, seulement un nouveau point d'entrée UI, comme
 // demandé par la mission.
+//
+// Shell (ParticularShell) rendu par le layout parent (src/app/particulier/layout.tsx).
 export default async function InviteAthletePage() {
   const supabase = await createClient();
-  const { user } = await requireParticulierAccount(supabase);
+  await requireParticulierAccount(supabase);
 
-  const player = await buildPlayerContext(supabase, user.id);
-  const identity = resolveDisplayIdentity(user, player);
-  const firstName = identity.firstName || user.email?.split("@")[0] || "";
-  const athletes = await fetchMyAthletes(supabase).catch(() => []);
-
-  return (
-    <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <InviteAthleteForm />
-    </ParticularShell>
-  );
+  return <InviteAthleteForm />;
 }

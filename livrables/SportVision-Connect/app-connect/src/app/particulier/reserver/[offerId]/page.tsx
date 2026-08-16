@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
-import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
+import { fetchMyAthletes } from "@/lib/supabase/particulier";
 import { fetchPlayerOfferById, MONTAGE_COMPILATION_SLUG } from "@/lib/prestations/catalogue";
 import { fetchAgentDiscount } from "@/lib/supabase/agentSubscription";
 import { fetchAthleteProfile } from "@/lib/prestations/athleteProfile";
-import { ParticularShell } from "@/components/layout/ParticularShell";
 import { ReservationWizardParticulier, type Beneficiary } from "./ReservationWizardParticulier";
 
 // Réservation pour un sportif — voir design-connect-personnel-12-08/README.md § Espace
@@ -15,6 +14,9 @@ import { ReservationWizardParticulier, type Beneficiary } from "./ReservationWiz
 // même edge function connect-player-prestations — SEUL ajout réel : le bloc bénéficiaire
 // (bénéficiaire/commanditaire/payeur) et le paramètre `beneficiary` envoyé à la fonction (voir
 // son en-tête pour le détail de l'extension du 14/08).
+//
+// Shell (ParticularShell) rendu par le layout parent (src/app/particulier/layout.tsx) — cette
+// page garde son propre fetch identity/athletes car ils servent au bloc bénéficiaire/payeur.
 export default async function ReservationParticulierPage({
   params,
   searchParams,
@@ -29,7 +31,6 @@ export default async function ReservationParticulierPage({
 
   const player = await buildPlayerContext(supabase, user.id);
   const identity = resolveDisplayIdentity(user, player);
-  const firstName = identity.firstName || user.email?.split("@")[0] || "";
 
   const [athletes, offer, agentDiscount] = await Promise.all([
     fetchMyAthletes(supabase).catch(() => []),
@@ -64,14 +65,12 @@ export default async function ReservationParticulierPage({
       : null;
 
   return (
-    <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <ReservationWizardParticulier
-        offer={offer}
-        beneficiary={beneficiary}
-        commanditaireLabel={`${identity.firstName} ${identity.lastName}`.trim() || identity.email}
-        agentDiscount={agentDiscount}
-        athleteProfile={athleteProfile}
-      />
-    </ParticularShell>
+    <ReservationWizardParticulier
+      offer={offer}
+      beneficiary={beneficiary}
+      commanditaireLabel={`${identity.firstName} ${identity.lastName}`.trim() || identity.email}
+      agentDiscount={agentDiscount}
+      athleteProfile={athleteProfile}
+    />
   );
 }

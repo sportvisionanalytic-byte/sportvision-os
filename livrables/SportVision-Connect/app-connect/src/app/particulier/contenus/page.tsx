@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { resolveDisplayIdentity, buildPlayerContext, requireParticulierAccount } from "@/lib/supabase/session";
-import { fetchMyAthletes, toNavItems } from "@/lib/supabase/particulier";
-import { ParticularShell } from "@/components/layout/ParticularShell";
+import { requireParticulierAccount } from "@/lib/supabase/session";
+import { fetchMyAthletes } from "@/lib/supabase/particulier";
 import { ContenusParticulierView, type ParticulierContentItem } from "./ContenusParticulierView";
 
 // Mes contenus (Espace particulier) — voir design-connect-personnel-12-08/README.md § Listes
@@ -9,6 +8,9 @@ import { ContenusParticulierView, type ParticulierContentItem } from "./Contenus
 // SECURITY DEFINER — vérifie le droit "voir" pour chaque sportif lié avant de lire club_media
 // (RLS ne le permettrait pas directement à un particulier, cf. commentaire de tête de la RPC).
 // Les profils gérés n'ont aucun contenu en V1 (aucun club réel associé, voir §2 de la migration).
+//
+// Shell (ParticularShell) rendu par le layout parent (src/app/particulier/layout.tsx) — cette
+// page garde son propre fetch d'athletes car ContenusParticulierView en a besoin pour son filtre.
 export default async function ContenusParticulierPage({
   searchParams,
 }: {
@@ -16,18 +18,12 @@ export default async function ContenusParticulierPage({
 }) {
   const { sportif } = await searchParams;
   const supabase = await createClient();
-  const { user } = await requireParticulierAccount(supabase);
+  await requireParticulierAccount(supabase);
 
-  // player, athletes et l'appel RPC contenus sont indépendants (connect_list_contents_for_
-  // athletes résout lui-même la liste de sportifs côté serveur) — voir rapport fluidité perçue
-  // 15/08.
-  const [player, athletes, contentsRes] = await Promise.all([
-    buildPlayerContext(supabase, user.id),
+  const [athletes, contentsRes] = await Promise.all([
     fetchMyAthletes(supabase).catch(() => []),
     supabase.rpc("connect_list_contents_for_athletes"),
   ]);
-  const identity = resolveDisplayIdentity(user, player);
-  const firstName = identity.firstName || user.email?.split("@")[0] || "";
   const { data } = contentsRes;
   const items = ((data || []) as Array<{
     athlete_kind: string;
@@ -50,9 +46,5 @@ export default async function ContenusParticulierPage({
     athleteLabel: r.athlete_label,
   })) as ParticulierContentItem[];
 
-  return (
-    <ParticularShell firstName={firstName} athletes={toNavItems(athletes)}>
-      <ContenusParticulierView items={items} athletes={athletes} initialSportif={sportif || null} />
-    </ParticularShell>
-  );
+  return <ContenusParticulierView items={items} athletes={athletes} initialSportif={sportif || null} />;
 }
