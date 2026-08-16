@@ -7,14 +7,16 @@ import { CONTRACT_TYPE_LABEL } from "@/components/contracts/format";
 // directe). Écriture EXCLUSIVEMENT via RPC client_decide_devis/client_sign_contrat (jamais de
 // PATCH direct sur statut/montant) — voir le plan Phase 3.
 
-// factures.statut (migration-portail-v1.sql, CHECK) : brouillon, emise, payee, en_retard,
-// annulee, remboursee. Ce map utilisait par erreur l'énumération de prestations.statut_financier
+// factures.statut (migration-portail-v1.sql, CHECK, étendue par migration-clubplus-v39.sql) :
+// brouillon, emise, partiellement_payee, payee, en_retard, annulee, remboursee. Ce map utilisait
+// par erreur l'énumération de prestations.statut_financier
 // (non_facturée/en_préparation/facturée/partiellement_payée/payée/annulée/remboursée), une
 // colonne différente : comme les valeurs réelles de factures.statut ne matchaient jamais ces
 // clés, toute facture retombait sur "brouillon" par défaut, quel que soit son vrai statut.
 const INVOICE_STATUS_MAP: Record<string, InvoiceStatus> = {
   brouillon: "brouillon",
   emise: "emise",
+  partiellement_payee: "partiellement_payee",
   payee: "payee",
   en_retard: "en_retard",
   annulee: "annulee",
@@ -37,6 +39,9 @@ interface FactureRow {
   montant_ht: number;
   tva_pct: number;
   montant_ttc: number;
+  /** migration-clubplus-v39.sql — 0 par défaut tant que rien ne l'alimente (OS/Stripe, hors
+   * périmètre de ce chantier). */
+  montant_paye: number;
   date_emission: string | null;
   date_echeance: string | null;
   pdf_url: string | null;
@@ -46,7 +51,9 @@ interface FactureRow {
 export async function fetchClientInvoices(supabase: SupabaseClient, organizationId: string): Promise<Invoice[]> {
   const { data, error } = await supabase
     .from("client_factures")
-    .select("id, numero, type_facture, statut, prestation_id, montant_ht, tva_pct, montant_ttc, date_emission, date_echeance, pdf_url, created_at")
+    .select(
+      "id, numero, type_facture, statut, prestation_id, montant_ht, tva_pct, montant_ttc, montant_paye, date_emission, date_echeance, pdf_url, created_at",
+    )
     .eq("client_id", organizationId)
     .order("date_emission", { ascending: false });
   if (error) throw error;
@@ -65,6 +72,7 @@ export async function fetchClientInvoices(supabase: SupabaseClient, organization
     vatAmount: Math.max(0, row.montant_ttc - row.montant_ht),
     depositApplied: 0,
     totalInclVat: row.montant_ttc,
+    paidAmount: row.montant_paye ?? 0,
     status: INVOICE_STATUS_MAP[row.statut] ?? "brouillon",
     pdfUrl: row.pdf_url ?? undefined,
     remindersSentAt: [],

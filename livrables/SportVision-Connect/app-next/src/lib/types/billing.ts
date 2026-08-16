@@ -78,6 +78,7 @@ export type InvoiceStatus =
   | "brouillon"
   | "emise"
   | "a_payer"
+  | "partiellement_payee"
   | "payee"
   | "en_retard"
   | "suspension"
@@ -109,6 +110,9 @@ export interface Invoice {
   vatAmount: number;
   depositApplied: number;
   totalInclVat: number;
+  /** Déjà réglé (factures.montant_paye, migration-clubplus-v39) — 0 si non alimenté. Sert au
+   * "reste à régler" affiché sur le statut "partiellement_payee". */
+  paidAmount: number;
   status: InvoiceStatus;
   paymentMethod?: string;
   paidAt?: string;

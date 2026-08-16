@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Settings2 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
+import { hasClubFinancialAccess, isClubCommunicationOrEducateur } from "@/lib/permissions";
+import type { ActiveContext } from "@/lib/types";
 import { NOTIFICATION_CATEGORY_LABELS, type NotificationCategory } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -39,7 +41,7 @@ function dayLabel(iso: string): string {
   return date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
 }
 
-const CATEGORY_FILTERS: (NotificationCategory | "all")[] = [
+const ALL_CATEGORY_FILTERS: (NotificationCategory | "all")[] = [
   "all",
   "content",
   "requests",
@@ -51,12 +53,31 @@ const CATEGORY_FILTERS: (NotificationCategory | "all")[] = [
   "system",
 ];
 
+/**
+ * Catégories adaptées au rôle — Bible §21 : "ne pas montrer un filtre Finance au Coach".
+ * Réutilise les deux garde-fous déjà en place pour ces mêmes notions ailleurs dans l'app (jamais
+ * un nouveau système de résolution de rôle) : hasClubFinancialAccess (billing/contracts/documents
+ * page.tsx — bureau du club uniquement) pour "payments"/"contracts", et
+ * isClubCommunicationOrEducateur (users/page.tsx — jamais Utilisateurs pour Communication/Coach)
+ * pour "users". Un filtre masqué ici ne remplace aucune vérification backend : la RLS de
+ * member_notifications reste la seule barrière réelle, ce n'est qu'un nettoyage d'UI cohérent
+ * avec ce que l'utilisateur peut de toute façon ouvrir.
+ */
+function visibleCategoryFilters(ctx: ActiveContext): (NotificationCategory | "all")[] {
+  return ALL_CATEGORY_FILTERS.filter((cat) => {
+    if ((cat === "payments" || cat === "contracts") && !hasClubFinancialAccess(ctx)) return false;
+    if (cat === "users" && isClubCommunicationOrEducateur(ctx)) return false;
+    return true;
+  });
+}
+
 export default function NotificationsPage() {
   const router = useRouter();
   const { ctx } = useSession();
   const [items, setItems] = useState<MemberNotification[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState<NotificationCategory | "all">("all");
+  const categoryFilters = useMemo(() => visibleCategoryFilters(ctx), [ctx]);
 
   async function reload() {
     setLoadError(false);
@@ -142,7 +163,7 @@ export default function NotificationsPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {CATEGORY_FILTERS.map((cat) => (
+        {categoryFilters.map((cat) => (
           <button
             key={cat}
             onClick={() => setFilter(cat)}

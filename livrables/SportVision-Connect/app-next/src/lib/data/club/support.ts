@@ -1,15 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SupportTicket, SupportTicketCategory, SupportTicketPriority, SupportTicketStatus } from "@/lib/types/settings";
 
-// club_support_tickets (migration-clubplus-v11.sql) — 3 statuts réels (ouvert/en_cours/resolu),
-// pas de priorité ni d'assigné trackés en base, catégorie en texte libre. Aucune policy UPDATE
-// pour un membre club (seul `is_club_admin` peut delete) — voir le plan Phase 1 § Gaps de
-// données : pas de bouton de résolution côté club, confirmé par l'absence de policy. RLS :
-// is_club_member(club_id) pour select/insert.
-
+// club_support_tickets (migration-clubplus-v11.sql, étendue par migration-clubplus-v39.sql) — 4
+// statuts réels (ouvert/en_cours/reponse_disponible/resolu), pas de priorité ni d'assigné
+// trackés en base, catégorie en texte libre. Aucune policy UPDATE pour un membre club (seul
+// `is_club_admin` peut delete) — voir le plan Phase 1 § Gaps de données : pas de bouton de
+// résolution côté club, confirmé par l'absence de policy — le passage à 'reponse_disponible'
+// est donc écrit par SportVision OS, jamais par ce fichier. RLS : is_club_member(club_id) pour
+// select/insert. 'closed' (SupportTicketStatus) reste hors périmètre : aucune valeur DB
+// équivalente n'existe encore, voir CLUB-PLUS-PRODUCT-BIBLE.md §21.
 const STATUS_MAP: Record<string, SupportTicketStatus> = {
   ouvert: "open",
   en_cours: "in_progress",
+  reponse_disponible: "response_available",
   resolu: "resolved",
 };
 

@@ -84,6 +84,12 @@ export default function MediaDetailPage({ params }: { params: { id: string } }) 
       asset={asset}
       isFavorite={isPlayer ? isFavorite : undefined}
       onToggleFavorite={isPlayer ? toggleFavorite : undefined}
+      // Visibilité vers Connect (Bible §17) : uniquement pour les contenus club_media/
+      // club_creations (fetchClubMediaAssets ci-dessus, même condition) — jamais pour l'espace
+      // Joueur (contenus déjà filtrés par la RLS famille) ni l'espace Projet (livrables, pas de
+      // media_access_rules). Le backend (is_club_admin/is_team_educateur) reste la vraie barrière
+      // si un membre sans droit ouvrait quand même cette action.
+      canEditVisibility={!isPlayer && !isProjet}
     />
   );
 }

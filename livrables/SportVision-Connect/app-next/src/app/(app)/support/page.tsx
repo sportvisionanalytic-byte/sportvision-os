@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LifeBuoy, PlayCircle, Search, Send } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
@@ -15,7 +15,24 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
-import { NewTicketModal } from "@/components/support/NewTicketModal";
+import { NewTicketModal, type NewTicketInitialContext } from "@/components/support/NewTicketModal";
+
+const CONTEXT_TYPES = new Set<NewTicketInitialContext["type"]>(["request", "invoice", "album", "visual"]);
+
+/**
+ * Contexte repris depuis une autre page — Bible §21 "Contexte automatiquement repris : référence
+ * demande, facture, album ou visuel". Passé par query string (ctx_type/ctx_id/ctx_label) plutôt
+ * que par état partagé entre pages, pour qu'un lien "Contacter le support" depuis
+ * billing/page.tsx ou content/[id] (voir ces fichiers) reste un simple <Link>, sans dépendre d'un
+ * contexte React global. Voir aussi useSearchParams ci-dessous.
+ */
+function readInitialContext(params: URLSearchParams): NewTicketInitialContext | undefined {
+  const type = params.get("ctx_type");
+  const id = params.get("ctx_id");
+  const label = params.get("ctx_label");
+  if (!type || !id || !label || !CONTEXT_TYPES.has(type as NewTicketInitialContext["type"])) return undefined;
+  return { type: type as NewTicketInitialContext["type"], id, label };
+}
 
 // /support — voir ACTIONS.md § 24. Recherche, cartes de sujet, Nouveau ticket, Revoir le
 // tutoriel de bienvenue, Le contacter (chargé de compte), indicateur d'état des services. Pour un
@@ -27,16 +44,53 @@ const STATUS_LABEL: Record<SupportTicketStatus, { label: string; tone: "info" | 
   open: { label: "Ouvert", tone: "info" },
   in_progress: { label: "En cours", tone: "warning" },
   waiting_client: { label: "En attente du client", tone: "warning" },
+  // Réponse de SportVision disponible, à lire — Bible §21. Distinct de waiting_client
+  // (l'inverse : SportVision attend une réponse du client), tone "info" pour signaler une
+  // action utile mais non bloquante, comme "open".
+  response_available: { label: "Réponse disponible", tone: "info" },
   resolved: { label: "Résolu", tone: "success" },
   closed: { label: "Fermé", tone: "neutral" },
 };
 
+// searchParams n'est disponible côté client qu'à l'intérieur d'un Suspense (Next.js App Router,
+// même patron que requests/new/page.tsx) — d'où l'export par défaut qui ne fait que ce wrapping.
 export default function SupportPage() {
+  return (
+    <Suspense fallback={null}>
+      <SupportPageContent />
+    </Suspense>
+  );
+}
+
+function SupportPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { ctx } = useSession();
   const [query, setQuery] = useState("");
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [ticketContext, setTicketContext] = useState<NewTicketInitialContext | undefined>(undefined);
   const [tickets, setTickets] = useState<SupportTicket[] | null>(null);
+
+  // Ouvre directement la modale, contexte pré-rempli, quand on arrive depuis "Contacter le
+  // support" d'une facture/d'un contenu (?ctx_type=...&ctx_id=...&ctx_label=...).
+  useEffect(() => {
+    const initial = readInitialContext(searchParams);
+    if (initial) {
+      setTicketContext(initial);
+      setTicketModalOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function openNewTicket() {
+    setTicketContext(undefined);
+    setTicketModalOpen(true);
+  }
+
+  function closeNewTicket() {
+    setTicketModalOpen(false);
+    setTicketContext(undefined);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -110,7 +164,7 @@ export default function SupportPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Button onClick={() => setTicketModalOpen(true)}>Nouveau ticket</Button>
+        <Button onClick={openNewTicket}>Nouveau ticket</Button>
         <Button variant="secondary" onClick={handleReplayOnboarding}>
           <PlayCircle className="h-4 w-4" aria-hidden />
           Revoir le tutoriel de bienvenue
@@ -182,7 +236,7 @@ export default function SupportPage() {
         </Card>
       )}
 
-      {ticketModalOpen && <NewTicketModal onClose={() => setTicketModalOpen(false)} onSubmit={handleNewTicket} />}
+      {ticketModalOpen && <NewTicketModal onClose={closeNewTicket} onSubmit={handleNewTicket} initialContext={ticketContext} />}
     </div>
   );
 }
