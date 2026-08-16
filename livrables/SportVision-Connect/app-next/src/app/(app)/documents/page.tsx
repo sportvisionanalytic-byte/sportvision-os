@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FileText } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { hasClubFinancialAccess } from "@/lib/permissions";
+import { canViewClubFinancialDocuments } from "@/lib/permissions";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -66,12 +66,22 @@ function ClubDocumentsView() {
   }, [ctx.organization.id]);
 
   // Communication ("Selon permission", pas automatique) et Éducateur ("Non") — §11/§13/§14 du
-  // master doc. Retiré du menu (navigation.ts § filterClubRoleNav) : ce garde couvre l'accès
-  // direct par URL. client_devis/client_factures/client_contrats renvoient déjà [] pour ces
-  // rôles côté RLS (club_member_has_financial_access, migration-connect-v41) — sans ce message,
-  // l'écran affichait "Aucun document pour le moment", trompeur (les documents existent, l'accès
-  // est refusé, ce n'est pas la même chose).
-  if (!hasClubFinancialAccess(ctx)) {
+  // master doc : toujours refusés. Secrétaire/Trésorier/Administratif (Bible §10, 17/08/2026) sont
+  // désormais autorisés en LECTURE — NAV_CLUB_SECRETAIRE et NAV_CLUB_ADMINISTRATIF pointent toutes
+  // deux vers /documents (navigation.ts), ce garde bloquait tout le contenu de LEUR PROPRE menu
+  // avant ce correctif (bug prioritaire signalé par le brief). canViewClubFinancialDocuments()
+  // élargit la lecture sans changer les droits d'écriture — cette page n'a de toute façon aucune
+  // action (voir son commentaire de tête : "aucune action ... n'est dupliquée ici").
+  // client_devis/client_factures/client_contrats restent gatées par club_member_has_financial_
+  // access() côté RLS (bureau strict, migration-connect-v41) tant que migration-clubplus-v41-
+  // secretaire-administratif-lecture-financiere.sql (écrite par ce chantier, NON ENCORE EXÉCUTÉE)
+  // n'a pas été jouée par Fouka — d'ici là, Secrétaire/Administratif passeront ce garde frontend
+  // mais retomberont sur "Aucun document pour le moment" (RLS renvoie [] pour eux), pas une vraie
+  // lecture. Sans ce message initial, l'écran affichait "Aucun document pour le moment", trompeur
+  // (les documents existent, l'accès est refusé, ce n'est pas la même chose) — c'est justement ce
+  // que la migration ci-dessus doit corriger côté base pour que ce garde frontend serve à quelque
+  // chose de réel.
+  if (!canViewClubFinancialDocuments(ctx)) {
     return <RestrictedToBureau />;
   }
 

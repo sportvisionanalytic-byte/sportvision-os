@@ -2,7 +2,7 @@
 
 import { ImagePlus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, isClubCommunicationOrEducateur } from "@/lib/permissions";
+import { canAccess, isClubNonBureauRole } from "@/lib/permissions";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { LockedModule } from "@/components/ui/LockedModule";
@@ -27,9 +27,22 @@ export default function OrganizationSettingsPage() {
     );
   }
 
-  // §31 : Communication/Éducateur n'ont "pas d'onglet organisation complet par défaut" — déjà
-  // masqué dans settings/layout.tsx, même garde-fou pour un accès direct par URL.
-  if (isClubCommunicationOrEducateur(ctx)) {
+  // §31 : Communication/Coach/Secrétaire/Trésorier/Directeur sportif n'ont "pas d'onglet
+  // organisation complet par défaut" — déjà masqué dans settings/layout.tsx (isClubNonBureauRole),
+  // même garde-fou pour un accès direct par URL. Étendu le 17/08/2026 (Bible §7-§10) : l'ancien
+  // garde (isClubCommunicationOrEducateur) ne couvrait que 2 des 6 rôles club "opérationnels" —
+  // secretary/treasurer/sports_director voyaient jusqu'ici cette page en entier, alors qu'aucun
+  // n'a "Organisation" dans son propre menu (navigation.ts § CLUB_ROLE_NAV).
+  //
+  // Administratif fait exception (Bible §10 : "Demandes, calendrier, documents, informations
+  // structure" — "informations structure" listée explicitement dans son périmètre) : cette page
+  // est intégralement en LECTURE SEULE (aucun champ éditable, voir les <input disabled> plus bas,
+  // aucune policy d'écriture club-admin sur `clubs` à ce jour), l'autoriser ici ne lui donne donc
+  // aucun droit d'écriture — seulement la même vue que le bureau. Pas de lien de navigation dédié
+  // pour l'instant (NAV_CLUB_ADMINISTRATIF, navigation.ts, hors périmètre de ce chantier) : gap
+  // documenté par le chantier précédent, accessible par URL directe uniquement tant qu'un lien
+  // n'est pas ajouté.
+  if (isClubNonBureauRole(ctx) && ctx.membership.role !== "admin_staff") {
     return (
       <Card className="p-8 text-center text-[13.5px] text-text-soft">
         Les informations de l&apos;organisation sont réservées à l&apos;administrateur du club.

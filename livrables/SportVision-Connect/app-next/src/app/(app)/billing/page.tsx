@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, FileText, Receipt } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { hasClubFinancialAccess } from "@/lib/permissions";
+import { canViewClubFinancialDocuments } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -56,9 +56,17 @@ function ClubBillingView() {
     resolveClubPortailClientId(supabase, ctx.organization.id).then(setClientId);
   }, [ctx.organization.id]);
 
-  // Communication ("Permission spéciale", pas automatique) et Éducateur ("Non") — §11/§13/§14.
-  // Voir le même garde et la même explication dans documents/page.tsx § ClubDocumentsView.
-  if (!hasClubFinancialAccess(ctx)) {
+  // Communication ("Permission spéciale", pas automatique) et Éducateur ("Non") — §11/§13/§14 :
+  // toujours refusés. Secrétaire/Trésorier/Administratif (Bible §10, 17/08/2026) voient désormais
+  // cette page en LECTURE — canViewClubFinancialDocuments élargit l'accès sans donner de droit
+  // d'action : aucune action de décision (Accepter un devis) n'est câblée pour un club aujourd'hui
+  // (allowDevisDecision={false} juste en dessous, y compris pour le bureau historique — décision
+  // produit antérieure à ce chantier, voir commit 28f74c6, ces actions restent réservées à l'Espace
+  // Projet). Comme documents/page.tsx, cette lecture reste symbolique tant que migration-clubplus-
+  // v41-secretaire-administratif-lecture-financiere.sql (écrite par ce chantier, NON ENCORE
+  // EXÉCUTÉE) n'a pas été jouée : la RLS des vues client_devis/client_factures/client_contrats
+  // reste bureau-strict jusque-là (club_member_has_financial_access, migration-connect-v41).
+  if (!canViewClubFinancialDocuments(ctx)) {
     return <RestrictedToBureau title="Factures" />;
   }
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/session-context";
-import { isClubCommunicationOrEducateur } from "@/lib/permissions";
+import { isClubNonBureauRole } from "@/lib/permissions";
 
 // Coque des 3 écrans Paramètres — voir ACTIONS.md § 25. Fichier nouveau (aucun `settings/
 // layout.tsx` n'existait), propre à mon périmètre : il ne touche à aucun layout partagé.
@@ -30,10 +30,13 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const { ctx } = useSession();
   const isPersonal = PERSONAL_ORG_TYPES.has(ctx.organization.type);
-  // §31 du master doc : "Communication/Éducateur : Personnel, Notifications, Mot de passe/
-  // sécurité. Pas d'onglet organisation complet par défaut." — même traitement que
-  // player/parent ci-dessus, casse séparée pour garder le commentaire d'origine intact.
-  const hideOrgTabs = isPersonal || isClubCommunicationOrEducateur(ctx);
+  // §31 du master doc (Communication/Éducateur) + Bible §7-§10 (Coach, Directeur sportif,
+  // Secrétaire, Trésorier, Administratif, 17/08/2026) : "Personnel, Notifications, Mot de passe/
+  // sécurité. Pas d'onglet organisation complet par défaut." pour les 6 rôles club "opérationnels"
+  // — isClubNonBureauRole() étend l'ancien filtre (isClubCommunicationOrEducateur, 2 des 6 rôles
+  // réellement concernés) sans changer son comportement pour Communication/Coach. Même traitement
+  // que player/parent ci-dessus, casse séparée pour garder le commentaire d'origine intact.
+  const hideOrgTabs = isPersonal || isClubNonBureauRole(ctx);
   const tabs = TABS.filter(
     (tab) => !hideOrgTabs || (tab.href !== "/settings/organization" && tab.href !== "/settings/integrations"),
   );

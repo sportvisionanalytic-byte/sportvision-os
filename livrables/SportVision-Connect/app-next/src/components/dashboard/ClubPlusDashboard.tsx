@@ -2,13 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Calendar, Images, ShieldCheck, Sparkles, UserPlus, type LucideIcon } from "lucide-react";
+import { CheckCircle2, Calendar, FileText, Images, Receipt, ShieldCheck, Sparkles, UserPlus, type LucideIcon } from "lucide-react";
 import { useSession } from "@/lib/session-context";
+import { cn } from "@/lib/cn";
 import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 import type { ModuleKey } from "@/lib/types";
 import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClubMatches } from "@/lib/data/club/matches";
+import { fetchClientDevis, fetchClientInvoices } from "@/lib/data/projet/billing";
+import { resolveClubPortailClientId } from "@/lib/data/club/portail-link";
+import { formatEuroTTC } from "@/components/billing/format";
+import type { Invoice } from "@/lib/types/billing";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -21,6 +26,40 @@ interface TodoItem {
   meta: string;
   action: string;
   due?: string;
+}
+
+/** Focus finance Trésorier (Bible §10) — voir `loadFinanceSummary`/`summarizeFinance` dans le
+ * composant. `recentPayments` : factures déjà réglées (`status === "payee"`), triées par date
+ * d'émission décroissante — aucune table `paiements` distincte n'existe côté données réelles
+ * (voir data/projet/billing.ts), la facture réglée est la meilleure approximation disponible. */
+interface FinanceSummary {
+  toPayCount: number;
+  toPayTotal: number;
+  overdueCount: number;
+  overdueTotal: number;
+  pendingDevisCount: number;
+  recentPayments: Invoice[];
+}
+
+function summarizeFinance(invoices: Invoice[], pendingDevisCount: number): FinanceSummary {
+  const overdue = invoices.filter((i) => i.status === "en_retard");
+  // "emise"/"partiellement_payee" : un montant reste dû dans les deux cas (voir INVOICE_STATUS_
+  // LABEL, components/billing/format.ts) — "en_retard" a déjà sa propre carte, pas repris ici pour
+  // ne pas compter deux fois le même montant sous deux étiquettes différentes (même principe que
+  // billing/page.tsx § upcoming).
+  const toPay = invoices.filter((i) => i.status === "emise" || i.status === "partiellement_payee");
+  const recentPayments = [...invoices]
+    .filter((i) => i.status === "payee")
+    .sort((a, b) => (a.issueDate < b.issueDate ? 1 : -1))
+    .slice(0, 3);
+  return {
+    toPayCount: toPay.length,
+    toPayTotal: toPay.reduce((sum, i) => sum + i.totalInclVat, 0),
+    overdueCount: overdue.length,
+    overdueTotal: overdue.reduce((sum, i) => sum + i.totalInclVat, 0),
+    pendingDevisCount,
+    recentPayments,
+  };
 }
 
 // Tableau de bord — variante Club+ (Essentiel / Club+ Start / Club+ Performance, type club).
@@ -147,6 +186,38 @@ export function ClubPlusDashboard() {
     loadPendingResults();
   }, [loadPendingResults]);
 
+  // Focus finance Trésorier (Bible §10 : "Dashboard | Factures à régler / retard / devis /
+  // paiements récents. Aucun contenu sportif parasite.") — remplace le bloc "À traiter" masqué
+  // ci-dessus (contenu Studio, jamais pertinent pour ce rôle). Réutilise exactement les données
+  // déjà chargées par billing/page.tsx (data/projet/billing.ts, resolveClubPortailClientId) : pas
+  // de nouvelle source de données, seulement une lecture supplémentaire depuis le dashboard.
+  const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null | undefined>(undefined);
+  const [financeError, setFinanceError] = useState(false);
+
+  const loadFinanceSummary = useCallback(async () => {
+    if (!isTreasurer) return;
+    setFinanceError(false);
+    try {
+      const supabase = createClient();
+      const clientId = await resolveClubPortailClientId(supabase, ctx.organization.id);
+      if (!clientId) {
+        setFinanceSummary(null);
+        return;
+      }
+      const [invoices, devis] = await Promise.all([
+        fetchClientInvoices(supabase, clientId),
+        fetchClientDevis(supabase, clientId),
+      ]);
+      setFinanceSummary(summarizeFinance(invoices, devis.filter((d) => d.decidable).length));
+    } catch {
+      setFinanceError(true);
+    }
+  }, [ctx.organization.id, isTreasurer]);
+
+  useEffect(() => {
+    loadFinanceSummary();
+  }, [loadFinanceSummary]);
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-5">
@@ -266,6 +337,108 @@ export function ClubPlusDashboard() {
           )}
         </Card>
       )}
+
+      {isTreasurer && (
+        <Card>
+          <div className="flex items-center justify-between border-b border-divider px-5 py-4">
+            <div className="flex items-center gap-2.5">
+              <span className="h-2 w-2 rounded-full bg-[#F5A623]" />
+              <span className="text-[15px] font-extrabold tracking-tight">Finance</span>
+            </div>
+            <button
+              onClick={() => router.push("/billing")}
+              className="-m-3 p-3 text-[12.5px] font-bold text-brand-blue-electric"
+            >
+              Tout voir
+            </button>
+          </div>
+          {financeError ? (
+            <ErrorState message="Impossible de charger votre synthèse financière." onRetry={loadFinanceSummary} />
+          ) : financeSummary === undefined ? (
+            <div>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
+            </div>
+          ) : financeSummary === null ? (
+            <EmptyState
+              icon={Receipt}
+              title="Facturation pas encore reliée"
+              description="SportVision n'a pas encore relié votre club à un espace Facturation."
+            />
+          ) : (
+            <FinanceRows summary={financeSummary} onOpenBilling={() => router.push("/billing")} />
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function FinanceRows({ summary, onOpenBilling }: { summary: FinanceSummary; onOpenBilling: () => void }) {
+  const rows: { key: string; icon: LucideIcon; title: string; meta: string; danger?: boolean }[] = [];
+  if (summary.overdueCount > 0) {
+    rows.push({
+      key: "overdue",
+      icon: Receipt,
+      title: `${summary.overdueCount} facture${summary.overdueCount > 1 ? "s" : ""} en retard`,
+      meta: formatEuroTTC(summary.overdueTotal),
+      danger: true,
+    });
+  }
+  if (summary.toPayCount > 0) {
+    rows.push({
+      key: "toPay",
+      icon: Receipt,
+      title: `${summary.toPayCount} facture${summary.toPayCount > 1 ? "s" : ""} à régler`,
+      meta: formatEuroTTC(summary.toPayTotal),
+    });
+  }
+  if (summary.pendingDevisCount > 0) {
+    rows.push({
+      key: "devis",
+      icon: FileText,
+      title: `${summary.pendingDevisCount} devis en attente de votre décision`,
+      meta: "Voir avant d'accepter",
+    });
+  }
+  for (const payment of summary.recentPayments) {
+    rows.push({
+      key: `payment-${payment.id}`,
+      icon: CheckCircle2,
+      title: `Facture ${payment.number} réglée`,
+      meta: formatEuroTTC(payment.totalInclVat),
+    });
+  }
+
+  if (rows.length === 0) {
+    return <EmptyState icon={CheckCircle2} title="Rien à régler pour le moment" />;
+  }
+
+  return (
+    <div>
+      {rows.map((row) => (
+        <button
+          key={row.key}
+          onClick={onOpenBilling}
+          className="flex w-full items-center gap-3.5 border-b border-divider px-5 py-3.5 text-left last:border-0 hover:bg-row-hover"
+        >
+          <span
+            className={cn(
+              "flex h-8 w-8 flex-none items-center justify-center rounded-lg",
+              row.danger ? "bg-danger-bg text-danger-fg" : "bg-info-bg text-info-fg",
+            )}
+          >
+            <row.icon className="h-3.5 w-3.5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className={cn("block truncate text-[13.5px] font-bold", row.danger ? "text-danger-fg" : "text-text")}>
+              {row.title}
+            </span>
+            <span className="mt-0.5 block text-[12px] text-text-soft">{row.meta}</span>
+          </span>
+        </button>
+      ))}
     </div>
   );
 }

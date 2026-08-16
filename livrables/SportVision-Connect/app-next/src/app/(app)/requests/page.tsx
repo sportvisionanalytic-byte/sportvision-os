@@ -197,6 +197,10 @@ export default function RequestsPage() {
 
   function rowActionLabel(r: VisualRequest): string {
     if (r.status === "Envoyée") return "Annuler";
+    // Bible §10/§16 : "Compléter les informations demandées sans rouvrir tout le workflow" pour
+    // une demande "À compléter" — le libellé du bouton l'annonce dès la liste, avant même d'ouvrir
+    // le détail (voir le panneau ci-dessous pour l'action réelle).
+    if (r.status === "À compléter") return "Compléter";
     return "Suivre";
   }
 
@@ -493,6 +497,29 @@ export default function RequestsPage() {
               <Button variant="secondary" className="mt-4 w-full" onClick={() => handleCancel(detailRequest)}>
                 Annuler la demande
               </Button>
+            )}
+            {/* Bible §10/§16 : "Compléter les informations demandées sans rouvrir tout le
+                workflow" — pas de RPC client pour modifier/répondre directement sur une demande
+                (update_club_request_status/update_request_status ne permettent qu'une transition
+                vers 'refusee' côté client, voir data/club/requests.ts et data/shared/requests.ts :
+                toute autre transition est staff-only). Réutilise le mécanisme déjà câblé ailleurs
+                (billing/page.tsx, documents/page.tsx, MediaDetail.tsx) pour "Contacter le
+                support" avec contexte repris automatiquement (Bible §21) — un ticket réel
+                (createClubSupportTicket) plutôt qu'un renvoi vers /requests/new, qui rouvrirait le
+                formulaire de création complet. */}
+            {detailRequest.status === "À compléter" && (
+              <div className="mt-4 flex flex-col gap-2.5 rounded-xl border border-warning-fg/30 bg-warning-bg px-3.5 py-3">
+                <p className="text-[12.5px] font-semibold text-warning-fg">
+                  SportVision attend une information complémentaire sur cette demande.
+                </p>
+                <Link
+                  href={`/support?ctx_type=request&ctx_id=${encodeURIComponent(detailRequest.id)}&ctx_label=${encodeURIComponent(detailRequest.reference)}`}
+                >
+                  <Button variant="primary" className="w-full">
+                    Compléter les informations
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
         </div>

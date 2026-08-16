@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "@/lib/session-context";
-import { canAccess, isClubCommunicationOrEducateur } from "@/lib/permissions";
+import { canAccess, isClubNonBureauRole } from "@/lib/permissions";
 import { mockIntegrations } from "@/lib/mock/settings";
 import type { Integration } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
@@ -30,9 +30,13 @@ export default function IntegrationsSettingsPage() {
 
   if (!canAccess(ctx, "settings")) return <LockedModule title="Paramètres" />;
 
-  // §31 : "Pas d'onglet organisation complet par défaut" pour Communication/Éducateur — déjà
-  // masqué dans settings/layout.tsx, même garde-fou pour un accès direct par URL.
-  if (isClubCommunicationOrEducateur(ctx)) {
+  // §31 : "Pas d'onglet organisation complet par défaut" — déjà masqué dans settings/layout.tsx
+  // (isClubNonBureauRole), même garde-fou pour un accès direct par URL. Étendu le 17/08/2026
+  // (Bible §7-§10) aux 6 rôles club "opérationnels" (l'ancien garde, isClubCommunicationOrEducateur,
+  // n'en couvrait que 2) : aucune intégration (Instagram, Stripe...) ne concerne un rôle
+  // opérationnel, y compris Administratif — contrairement à settings/organization/page.tsx, aucune
+  // exception ici, la Bible §10 ne liste jamais les Intégrations dans son périmètre.
+  if (isClubNonBureauRole(ctx)) {
     return (
       <Card className="p-8 text-center text-[13.5px] text-text-soft">
         Les intégrations sont réservées à l&apos;administrateur du club.

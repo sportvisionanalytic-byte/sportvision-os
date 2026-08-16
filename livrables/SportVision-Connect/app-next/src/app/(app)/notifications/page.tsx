@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Settings2 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
-import { hasClubFinancialAccess, isClubCommunicationOrEducateur } from "@/lib/permissions";
+import { hasClubFinancialAccess, isClubNonBureauRole } from "@/lib/permissions";
 import type { ActiveContext } from "@/lib/types";
 import { NOTIFICATION_CATEGORY_LABELS, type NotificationCategory } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
@@ -54,19 +54,29 @@ const ALL_CATEGORY_FILTERS: (NotificationCategory | "all")[] = [
 ];
 
 /**
- * Catégories adaptées au rôle — Bible §21 : "ne pas montrer un filtre Finance au Coach".
- * Réutilise les deux garde-fous déjà en place pour ces mêmes notions ailleurs dans l'app (jamais
- * un nouveau système de résolution de rôle) : hasClubFinancialAccess (billing/contracts/documents
- * page.tsx — bureau du club uniquement) pour "payments"/"contracts", et
- * isClubCommunicationOrEducateur (users/page.tsx — jamais Utilisateurs pour Communication/Coach)
- * pour "users". Un filtre masqué ici ne remplace aucune vérification backend : la RLS de
- * member_notifications reste la seule barrière réelle, ce n'est qu'un nettoyage d'UI cohérent
- * avec ce que l'utilisateur peut de toute façon ouvrir.
+ * Catégories adaptées au rôle — Bible §21 : "ne pas montrer un filtre Finance au Coach" ;
+ * "catégorie Finance pertinente pour Trésorier" mais "pas de catégorie Finance pour Secrétaire/
+ * Administratif s'ils n'ont pas d'accès finance réel" (Bible §10, 17/08/2026). Réutilise les
+ * garde-fous déjà en place pour ces mêmes notions ailleurs dans l'app (jamais un nouveau système
+ * de résolution de rôle) :
+ * - hasClubFinancialAccess (billing/contracts/documents page.tsx — bureau du club, Trésorier
+ *   inclus) pour "payments"/"contracts". Volontairement PAS canViewClubFinancialDocuments ici :
+ *   cette dernière élargit la LECTURE des documents à Secrétaire/Administratif (bug corrigé par
+ *   ce même chantier), mais la Bible est explicite — ces 2 rôles ne doivent toujours pas voir le
+ *   filtre Finance des notifications, seul le Trésorier (déjà dans hasClubFinancialAccess) l'a.
+ * - isClubNonBureauRole (settings/layout.tsx et. al. — jamais Utilisateurs/Organisation pour les
+ *   6 rôles club "opérationnels") pour "users" : remplace isClubCommunicationOrEducateur, qui ne
+ *   couvrait que 2 des 6 rôles réellement concernés (Secrétaire/Trésorier/Administratif/Directeur
+ *   sportif voyaient jusqu'ici ce filtre alors qu'aucun n'a "Membres & accès" dans son propre
+ *   menu, navigation.ts § CLUB_ROLE_NAV).
+ * Un filtre masqué ici ne remplace aucune vérification backend : la RLS de member_notifications
+ * reste la seule barrière réelle, ce n'est qu'un nettoyage d'UI cohérent avec ce que l'utilisateur
+ * peut de toute façon ouvrir.
  */
 function visibleCategoryFilters(ctx: ActiveContext): (NotificationCategory | "all")[] {
   return ALL_CATEGORY_FILTERS.filter((cat) => {
     if ((cat === "payments" || cat === "contracts") && !hasClubFinancialAccess(ctx)) return false;
-    if (cat === "users" && isClubCommunicationOrEducateur(ctx)) return false;
+    if (cat === "users" && isClubNonBureauRole(ctx)) return false;
     return true;
   });
 }
