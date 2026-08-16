@@ -122,9 +122,19 @@ const NAV_ACADEMY_FULLCOM: NavEntry[] = [
 ];
 
 // Tournoi (événement) Full Communication.
+//
+// "Mes événements" (17/08/2026, Bible §14) : ajouté en tête du groupe "Événement", avant Timeline
+// — Timeline (eventtimeline) est un outil de suivi de préparation D'UN événement (checklist 3
+// phases), "Mes événements" (module "events") est la LISTE des éditions/tournois pilotés par
+// l'organisation (event_editions, plusieurs possibles). Les deux coexistent, ni l'un ni l'autre
+// ne remplace l'autre (brief : "ne supprime pas eventtimeline, la checklist reste utile en
+// complément"). Pour un organisateur de stage/camp (organization.eventKind === "stage"),
+// filterEventOrgNav (plus bas) remplace ce trio (events/eventtimeline/teams) par une seule entrée
+// "Mes sessions" — voir sa doc pour le détail.
 const NAV_EVENT_FULLCOM: NavEntry[] = [
   item("dashboard", "Accueil", "dashboard"),
   section("Événement"),
+  item("events", "Mes événements", "events"),
   item("eventtimeline", "Timeline", "eventtimeline"),
   item("teams", "Équipes participantes", "teams"),
   section("Communication"),
@@ -258,8 +268,14 @@ const NAV_PLAYER: NavEntry[] = [
   item("support", "Aide", "support"),
 ];
 
+// Utilisée aujourd'hui par tout organisateur `event` réel (buildOrgSpaceActiveContext,
+// supabase/session.ts, pose toujours planCode="one_off" pour ce type — NAV_EVENT_FULLCOM
+// ci-dessus reste inatteignable tant qu'aucun vrai contrat Full Communication n'est modélisé pour
+// ce type d'organisation). "Mes événements" (17/08/2026, Bible §14) ajouté juste après l'Aperçu —
+// swap "Mes sessions" via filterEventOrgNav si organization.eventKind === "stage" (plus bas).
 const NAV_ONE_OFF: NavEntry[] = [
   item("dashboard", "Aperçu", "dashboard"),
+  item("events", "Mes événements", "events"),
   item("services", "Ma prestation", "services"),
   item("calendar", "Planning", "calendar"),
   item("documents", "Documents", "documents"),
@@ -303,6 +319,23 @@ export function resolveNavigation(orgType: OrgType, planCode: PlanCode): NavEntr
 /** Un joueur rattaché à un club abonné n'a ni Factures ni Sponsors : le club les porte. */
 export function filterAffiliatedPlayerNav(entries: NavEntry[]): NavEntry[] {
   return entries.filter((e) => e.kind !== "item" || (e.module !== "billing" && e.module !== "sponsors"));
+}
+
+/**
+ * Organisateur `event` (Bible §14/§15, 17/08/2026) : NAV_EVENT_FULLCOM/NAV_ONE_OFF sont écrites
+ * pour un organisateur de tournoi par défaut ("Mes événements", module "events"). Pour un
+ * organisateur de stage/camp (`eventKind === "stage"`), l'objet central devient la Session
+ * (Bible §15) : "Mes événements" devient "Mes sessions" (module "campsessions"), et Timeline
+ * (eventtimeline, checklist de préparation D'UN tournoi) / Équipes participantes (teams, n'a pas
+ * de sens pour un stage) disparaissent du menu — la page /eventtimeline reste techniquement
+ * accessible en URL directe (pas supprimée, voir le brief), simplement plus dans CE menu.
+ * `eventKind === "tournoi"` (ou absent) : `entries` retournée inchangée.
+ */
+export function filterEventOrgNav(entries: NavEntry[], eventKind: "tournoi" | "stage"): NavEntry[] {
+  if (eventKind !== "stage") return entries;
+  return entries
+    .filter((e) => e.kind !== "item" || (e.module !== "eventtimeline" && e.module !== "teams"))
+    .map((e) => (e.kind === "item" && e.module === "events" ? item("campsessions", "Mes sessions", "campsessions") : e));
 }
 
 // ───────────────────────────────────────────────────────────────────────────────────────────

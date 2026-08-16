@@ -86,6 +86,15 @@ import type { ModuleKey } from "@/lib/types";
 // "reports" à ce jour, donc pas d'entitlement dédié — accès ouvert à tout membre actif dès que le
 // module est READY, comme le reste du lot Tier B Phase 2.
 //
+// "events"/"campsessions" (17/08/2026, Bible §14/§15) : lisent/écrivent event_editions/
+// event_sessions (migration-clubplus-v43, NON EXÉCUTÉE), scope organization_id, RLS
+// is_org_member/is_org_admin (voir header de la migration). Le gate réel se fait par
+// organization.type === "event" ET organization.eventKind (mapEventKind, supabase/mappers.ts)
+// dans events/page.tsx ("tournoi") et campsessions/page.tsx ("stage"), pas par cette seule
+// liste — même pattern que sessions/camps/eventtimeline ci-dessus. Pas de mapping
+// MODULE_TO_CONNECT_MODULE : même raisonnement que eventtimeline/live, aucune
+// organization_entitlements pour le type event.
+//
 // "eventtimeline"/"live" (10/08/2026, Tier C Phase 4) : lisent event_checklist_items
 // (migration-connect-v22-event-checklist-items.sql, checklist 3 phases, écriture staff
 // admin/sec/com uniquement — voir SportVision-OS-Full.html § modalChecklistEvenement) et
@@ -125,6 +134,8 @@ export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "reports",
   "eventtimeline",
   "live",
+  "events",
+  "campsessions",
 ]);
 
 /**

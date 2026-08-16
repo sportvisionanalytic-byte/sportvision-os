@@ -66,6 +66,14 @@ export interface Organization {
   parentOrganizationId?: string;
   accountManagerId?: string;
   communityManagerId?: string;
+  /**
+   * Uniquement significatif pour `type === "event"` (Bible §14/§15, 17/08/2026) : distingue un
+   * organisateur de tournoi ("Mes événements", objet central Édition) d'un organisateur de
+   * stage/camp ("Mes sessions", objet central Session) — même OrgType `event`, pas de type dédié
+   * "camp". Vient de `organizations.event_kind` (migration-clubplus-v43, NULL -> "tournoi", voir
+   * mapEventKind dans supabase/mappers.ts). `undefined` pour tout autre type d'organisation.
+   */
+  eventKind?: "tournoi" | "stage";
   createdAt: string;
 }
 
@@ -143,6 +151,14 @@ export type ModuleKey =
   | "camps"
   | "eventtimeline"
   | "live"
+  /** "Mes événements" (Bible §14) — organisateur de tournoi, `organization.eventKind ===
+   * "tournoi"`. Distinct de "eventtimeline" (checklist de préparation d'UN événement) : ici,
+   * liste + fiche des Éditions (event_editions), au pluriel. */
+  | "events"
+  /** "Mes sessions" (Bible §15) — organisateur de stage/camp, `organization.eventKind ===
+   * "stage"`. Distinct de "sessions" (séances individuelles d'un coach indépendant,
+   * calendar_events type='seance') : ici, liste + fiche des Sessions (event_sessions). */
+  | "campsessions"
   | "content"
   | "teams"
   | "calendar"
@@ -168,6 +184,8 @@ export type ResourceKey =
   | "team"
   | "player"
   | "camp"
+  | "event_edition"
+  | "event_session"
   | "sponsor"
   | "collection"
   | "user_invitation"

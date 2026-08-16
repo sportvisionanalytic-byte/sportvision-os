@@ -1,6 +1,6 @@
 import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
 import type { ActiveContext, User } from "@/lib/types";
-import { mapClubPlan, mapClubRole, mapOrgRole, mapOrgType, mapProjetRole, SPACE_TYPE_LABELS } from "./mappers";
+import { mapClubPlan, mapClubRole, mapEventKind, mapOrgRole, mapOrgType, mapProjetRole, SPACE_TYPE_LABELS } from "./mappers";
 
 function buildUserFromAuth(authUser: SupabaseUser): User {
   const meta = (authUser.user_metadata ?? {}) as { prenom?: string; nom?: string; telephone?: string; locale?: "fr" | "en" };
@@ -489,10 +489,10 @@ export async function buildOrgSpaceActiveContext(
 
   const { data } = await supabase
     .from("organizations")
-    .select("id, nom, organization_type, created_at")
+    .select("id, nom, organization_type, created_at, event_kind")
     .eq("id", space.id)
     .maybeSingle();
-  const org = data as { id: string; nom: string; organization_type: string; created_at: string } | null;
+  const org = data as { id: string; nom: string; organization_type: string; created_at: string; event_kind: string | null } | null;
   if (!org || !space.role) return null;
 
   return {
@@ -501,6 +501,10 @@ export async function buildOrgSpaceActiveContext(
       id: org.id,
       type: mapOrgType(org.organization_type),
       name: org.nom,
+      // Uniquement significatif pour orgType === "event" (Bible §14/§15, voir Organization.
+      // eventKind) — inoffensif de le calculer pour coach/académie/sponsor/cm_agency, ignoré
+      // partout ailleurs (organizations.event_kind reste NULL hors type 'event').
+      eventKind: orgType === "event" ? mapEventKind(org.event_kind) : undefined,
       createdAt: org.created_at,
     },
     membership: {

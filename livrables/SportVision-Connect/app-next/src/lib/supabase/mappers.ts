@@ -20,6 +20,16 @@ export function mapOrgType(realType: string): OrgType {
   return ORG_TYPE_MAP[realType] ?? "generic";
 }
 
+/**
+ * organizations.event_kind réel (migration-clubplus-v43, NULL autorisé) → Organization.eventKind
+ * du design. NULL/valeur inconnue → "tournoi" : une organisation `event` déjà en base avant cette
+ * migration (aucune à ce jour, vérifié) garde le comportement historique (Bible §14, "Mes
+ * événements") plutôt que de basculer silencieusement en Stage/Camp (Bible §15).
+ */
+export function mapEventKind(realEventKind: string | null | undefined): "tournoi" | "stage" {
+  return realEventKind === "stage" ? "stage" : "tournoi";
+}
+
 /** club_members.role réel (check constraint) → MembershipRole du design.
  * directeur_sportif/administratif (migration-clubplus-v40, NON EXÉCUTÉE) : les 2 rôles
  * manquants de la Product Bible §8/§10 — voir permissions.ts pour leurs règles d'accès et
