@@ -1,0 +1,79 @@
+-- ============================================================
+-- SPORTVISION CLUB+ — Migration v42
+-- Suite de migration-clubplus-v1 à v41.sql. Idempotente.
+-- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
+-- Ne JAMAIS exécuter depuis un agent.
+-- ============================================================
+--
+-- Brief Fouka 17/08/2026 (CLUB-PLUS-PRODUCT-BIBLE.md §9 "Centre communication" /
+-- §18 "Résultats de matchs et communication") : construction du vrai hub
+-- Communication pour Club+ Start/Performance (communication_manager / external_cm),
+-- distinct du planning éditorial Full Communication existant (/communication,
+-- inchangé pour ce plan). Le hub liste 5 types d'objets à traiter (résultat
+-- disponible, visuel à valider, informations manquantes, nouveaux contenus,
+-- modification reçue) avec un mécanisme "Prendre en charge" / "Pris en compte"
+-- pour éviter que deux CM d'un même club traitent le même objet en double.
+--
+-- Vérifié en direct par curl (REST, lecture seule, SUPABASE_URL/
+-- SUPABASE_SECRET_KEY du .env racine) avant d'écrire cette migration :
+--   - club_matches?select=id,taken_by   -> 42703 "column does not exist".
+--   - club_requests?select=id,taken_by  -> 42703 "column does not exist".
+--   - club_creations?select=id,taken_by -> 42703 "column does not exist" (mais
+--     PAS touchée par cette migration, voir note ci-dessous).
+--   - Aucune colonne "pris_en_charge_par"/"handled_by"/"assigned_to"/"owner_id"/
+--     "claimed_by" nulle part dans club_matches/club_requests/club_creations
+--     (grep sur tous les fichiers migration-clubplus-*.sql : aucun résultat).
+--   - Numérotée v42 lors de la revue de merge (17/08/2026) : v41 avait entre-
+--     temps été pris par un autre agent (migration-clubplus-v41-secretaire-
+--     administratif-lecture-financiere.sql, mergée sur main en premier) —
+--     cette migration-ci ne dépend d'aucune de ses colonnes/rôles ni de ceux
+--     de v40 (roles-directeur-sportif-administratif, également NON EXÉCUTÉE),
+--     elle peut être exécutée indépendamment, dans n'importe quel ordre.
+--
+-- Portée volontairement limitée aux deux tables citées par le brief ("matchs,
+-- demandes de visuel") : club_matches (§18, "Résultat disponible" / "Informations
+-- manquantes") et club_requests (§9, "Modification reçue" — voir le mapping de
+-- statut documenté dans communication/page.tsx : la colonne réelle la plus
+-- proche de "Modification demandée" côté club_requests est le statut
+-- 'info_manquante', aucun statut "correction"/"modification" distinct
+-- n'existe dans ce schéma). club_creations ("Visuel à valider" dans le hub)
+-- N'EST PAS touchée ici : le hub simple demandé par Fouka ("pas une usine à
+-- gaz") ne câble le bouton "Prendre en charge" que sur les deux tables citées
+-- explicitement — un futur agent pourra étendre à club_creations séparément
+-- si le produit le demande.
+--
+-- RLS : AUCUNE nouvelle policy nécessaire. Les policies UPDATE existantes sont
+-- column-agnostic (RLS Postgres ne filtre jamais par colonne, seulement par
+-- ligne) :
+--   - club_matches  : "cma_member_update" (migration-clubplus-v37.sql) —
+--     is_club_member(club_id) and (team_id is null or is_team_educateur(team_id)).
+--     team_id vaut NULL sur 100% des lignes existantes (aucune UI de ce dépôt
+--     ne le renseigne, voir data/club/matches.ts) : la condition se réduit
+--     donc en pratique à is_club_member(club_id) — tout membre actif du club,
+--     y compris communication_manager/external_cm, peut déjà écrire taken_by.
+--   - club_requests : "creq_member_comment" (migration-clubplus-v4.sql) —
+--     is_club_member(club_id), commentaire explicite dans ce fichier même :
+--     "cette policy autorise techniquement une mise à jour de n'importe
+--     quelle colonne". Même raisonnement, taken_by est déjà écrivable.
+--
+-- Idempotente : chaque étape peut être rejouée sans erreur.
+
+-- ── 1. club_matches.taken_by — anti-doublon "Résultat disponible" (§9/§18) ──
+-- Nullable, uuid vers auth.users. NULL = personne n'a pris en charge ("Prendre
+-- en charge" affiché) ; renseigné = un CM a pris la main (badge "Pris en
+-- charge", bouton "Relâcher" pour l'auteur de la prise en charge). ON DELETE
+-- SET NULL : si le compte du CM est supprimé, le match redevient disponible
+-- plutôt que de bloquer la suppression du compte ou de pointer sur un
+-- utilisateur fantôme.
+
+alter table club_matches add column if not exists taken_by uuid references auth.users(id) on delete set null;
+
+-- ── 2. club_requests.taken_by — anti-doublon "Modification reçue" (§9) ──
+-- Même sémantique que ci-dessus.
+
+alter table club_requests add column if not exists taken_by uuid references auth.users(id) on delete set null;
+
+-- ── Vérification manuelle suggérée après exécution ──
+-- select column_name from information_schema.columns
+--  where table_name in ('club_matches','club_requests') and column_name = 'taken_by';
+-- -> doit renvoyer 2 lignes.
