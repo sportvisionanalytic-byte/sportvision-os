@@ -54,7 +54,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="flex flex-col gap-[22px] animate-sv-in">
         <Link href="/equipes" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
-          <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+          <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
           Mes équipes
         </Link>
 
@@ -82,14 +82,14 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
                 href="/prestations"
                 className="flex h-[46px] items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-[18px] font-sora text-[14px] font-semibold hover:bg-white/[.12]"
               >
-                <span className="material-symbols-rounded !text-[19px] text-[#8CA9FF]">camera_alt</span>
+                <span className="material-symbols-rounded !text-[19px] text-[#8CA9FF]" aria-hidden="true">camera_alt</span>
                 Réserver une prestation
               </Link>
               <Link
                 href={`/cotisations/creer?groupe=${group.id}`}
                 className="flex h-[46px] items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-[18px] font-sora text-[14px] font-semibold hover:bg-white/[.12]"
               >
-                <span className="material-symbols-rounded !text-[19px] text-cotisations">savings</span>
+                <span className="material-symbols-rounded !text-[19px] text-cotisations" aria-hidden="true">savings</span>
                 Créer une cotisation
               </Link>
             </div>

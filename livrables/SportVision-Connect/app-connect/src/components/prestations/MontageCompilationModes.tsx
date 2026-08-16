@@ -39,7 +39,7 @@ export function MontageCompilationModes({
       <div className="flex flex-col gap-2 rounded-sv border border-border bg-surface p-4">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 flex-none items-center justify-center rounded-sv bg-prestations-bg">
-            <span className="material-symbols-rounded !text-[17px] text-prestations">content_cut</span>
+            <span className="material-symbols-rounded !text-[17px] text-prestations" aria-hidden="true">content_cut</span>
           </span>
           <span className="font-sora text-[14px] font-semibold">Rushs déjà découpés</span>
         </div>
@@ -60,7 +60,7 @@ export function MontageCompilationModes({
       <div className="flex flex-col gap-2 rounded-sv border border-border bg-surface p-4">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 flex-none items-center justify-center rounded-sv bg-prestations-bg">
-            <span className="material-symbols-rounded !text-[17px] text-prestations">link</span>
+            <span className="material-symbols-rounded !text-[17px] text-prestations" aria-hidden="true">link</span>
           </span>
           <span className="font-sora text-[14px] font-semibold">Lien du match complet</span>
         </div>

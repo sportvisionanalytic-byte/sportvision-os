@@ -93,7 +93,7 @@ export function PublicFundingView({
     <div className="flex flex-col gap-5 animate-sv-in">
       {paiementReturn === "succes" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-affiliations">hourglass_top</span>
+          <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
           <span className="text-[13px] leading-relaxed text-text-secondary">
             Merci ! Votre paiement est en cours de confirmation. Le montant collecté ci-dessous se mettra à jour dès
             que Stripe l&apos;aura confirmé.
@@ -102,7 +102,7 @@ export function PublicFundingView({
       )}
       {paiementReturn === "annule" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-attente">info</span>
+          <span className="material-symbols-rounded !text-[19px] text-attente" aria-hidden="true">info</span>
           <span className="text-[13px] leading-relaxed text-text-secondary">Paiement annulé, vous pouvez réessayer.</span>
         </div>
       )}
@@ -186,7 +186,7 @@ export function PublicFundingView({
 
           {reached && (
             <div className="flex items-center gap-3 rounded-sv border border-affiliations/30 bg-affiliations-bg px-[17px] py-4">
-              <span className="material-symbols-rounded !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+              <span className="material-symbols-rounded !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
                 check_circle
               </span>
               <span className="text-[14px] leading-relaxed text-text-secondary">
@@ -197,7 +197,7 @@ export function PublicFundingView({
 
           {isTerminal && !reached && (
             <div className="flex items-center gap-3 rounded-sv border border-dashed border-border-strong bg-white/[.04] px-[17px] py-4">
-              <span className="material-symbols-rounded !text-[22px] text-text-tertiary">event_busy</span>
+              <span className="material-symbols-rounded !text-[22px] text-text-tertiary" aria-hidden="true">event_busy</span>
               <span className="text-[14px] leading-relaxed text-text-tertiary">
                 Cette cotisation n&apos;accepte plus de nouvelles participations.
               </span>
@@ -232,7 +232,7 @@ export function PublicFundingView({
             onClick={() => setStep("view")}
             className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text"
           >
-            <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+            <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
             Retour
           </button>
           <div className="flex flex-col gap-2">
@@ -276,7 +276,7 @@ export function PublicFundingView({
           </div>
           <div className="flex items-center gap-3.5 rounded-sv border border-dashed border-border-strong bg-white/[.04] p-[18px]">
             <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-white/[.06]">
-              <span className="material-symbols-rounded !text-[21px] text-text-secondary">lock</span>
+              <span className="material-symbols-rounded !text-[21px] text-text-secondary" aria-hidden="true">lock</span>
             </span>
             <span className="text-[13px] leading-relaxed text-text-tertiary">
               Vous serez redirigé vers Stripe pour un paiement sécurisé. Aucun compte n&apos;est nécessaire pour participer.

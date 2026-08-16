@@ -175,7 +175,7 @@ export function PersonalInfoSection({
           onClick={openModal}
           className="ml-auto flex h-[38px] flex-none items-center gap-1.5 rounded-sv border border-border-strong bg-white/[.03] px-3.5 font-sora text-[13px] font-semibold hover:bg-white/[.08]"
         >
-          <span className="material-symbols-rounded !text-[17px]">edit</span>
+          <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">edit</span>
           Modifier
         </button>
       </div>
@@ -190,7 +190,7 @@ export function PersonalInfoSection({
             aria-label="Changer la photo de profil"
             className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-sv-gradient text-white disabled:opacity-60"
           >
-            <span className="material-symbols-rounded !text-[13px]">
+            <span className="material-symbols-rounded !text-[13px]" aria-hidden="true">
               {photoBusy ? "hourglass_empty" : "photo_camera"}
             </span>
           </button>
@@ -228,7 +228,7 @@ export function PersonalInfoSection({
           {emailPending ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
-                <span className="material-symbols-rounded !text-[19px] text-affiliations">mark_email_read</span>
+                <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">mark_email_read</span>
                 <span className="text-[13px] leading-relaxed text-text-secondary">
                   Vérifiez votre boîte mail pour confirmer votre nouvelle adresse e-mail. Vos autres
                   informations ont bien été mises à jour.

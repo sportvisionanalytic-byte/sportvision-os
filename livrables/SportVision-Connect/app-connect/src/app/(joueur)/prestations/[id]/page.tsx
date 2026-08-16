@@ -30,7 +30,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
     <>
     <div className="flex flex-col gap-6 pb-24 animate-sv-in lg:pb-0">
         <Link href="/prestations" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
-          <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+          <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
           Prestations
         </Link>
 
@@ -49,7 +49,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
           </div>
           <div className="flex items-center gap-4">
             <span className="flex h-14 w-14 flex-none items-center justify-center rounded-sv bg-white/10">
-              <span className="material-symbols-rounded !text-[28px] text-white">{categorieIcon(offer.categorie)}</span>
+              <span className="material-symbols-rounded !text-[28px] text-white" aria-hidden="true">{categorieIcon(offer.categorie)}</span>
             </span>
             <h1 className="font-sora text-[28px] font-bold tracking-tight text-white">{offer.nom}</h1>
           </div>
@@ -70,7 +70,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   {included.map((item) => (
                     <div key={item} className="flex items-center gap-2.5 rounded-sv border border-border bg-surface px-3.5 py-3">
-                      <span className="material-symbols-rounded !text-[19px] text-affiliations">check_circle</span>
+                      <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">check_circle</span>
                       <span className="text-[13.5px] text-text-secondary">{item}</span>
                     </div>
                   ))}
@@ -83,7 +83,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
                 {HOW_IT_WORKS.map((step) => (
                   <div key={step.title} className="flex items-start gap-3.5 rounded-sv border border-border bg-surface p-4">
                     <span className="flex h-10 w-10 flex-none items-center justify-center rounded-sv bg-prestations-bg">
-                      <span className="material-symbols-rounded !text-[20px] text-prestations">{step.icon}</span>
+                      <span className="material-symbols-rounded !text-[20px] text-prestations" aria-hidden="true">{step.icon}</span>
                     </span>
                     <div className="flex flex-col gap-0.5">
                       <span className="font-sora text-[14.5px] font-semibold">{step.title}</span>
@@ -170,7 +170,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
     <details className="group rounded-sv border border-border bg-surface p-4">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[14px] font-medium text-text">
         {q}
-        <span className="material-symbols-rounded !text-[20px] text-text-faint transition-transform duration-150 group-open:rotate-180">expand_more</span>
+        <span className="material-symbols-rounded !text-[20px] text-text-faint transition-transform duration-150 group-open:rotate-180" aria-hidden="true">expand_more</span>
       </summary>
       <p className="mt-2.5 text-[13px] leading-relaxed text-text-tertiary">{a}</p>
     </details>

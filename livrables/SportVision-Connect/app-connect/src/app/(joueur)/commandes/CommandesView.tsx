@@ -49,7 +49,7 @@ export function CommandesView() {
 
       {paiementFlag === "succes" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/30 bg-affiliations-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-affiliations">hourglass_top</span>
+          <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
           <span className="text-[13px] leading-relaxed text-text-secondary">
             Paiement en cours de confirmation. Le statut de votre commande se mettra à jour automatiquement dès la confirmation par
             notre prestataire de paiement — cela peut prendre quelques instants.
@@ -58,7 +58,7 @@ export function CommandesView() {
       )}
       {paiementFlag === "annule" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-attente">info</span>
+          <span className="material-symbols-rounded !text-[19px] text-attente" aria-hidden="true">info</span>
           <span className="text-[13px] leading-relaxed text-text-secondary">
             Paiement annulé. Votre demande reste enregistrée — vous pouvez retenter le paiement depuis la fiche de la commande.
           </span>
@@ -93,7 +93,7 @@ export function CommandesView() {
       {orders !== null && visible.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-prestations-bg">
-            <span className="material-symbols-rounded !text-[24px] text-prestations">receipt_long</span>
+            <span className="material-symbols-rounded !text-[24px] text-prestations" aria-hidden="true">receipt_long</span>
           </span>
           <span className="font-sora text-[16px] font-semibold">{orders.length === 0 ? "Aucune commande pour le moment" : "Aucune commande dans cette catégorie"}</span>
           {orders.length === 0 && (
@@ -117,7 +117,7 @@ export function CommandesView() {
                 className="flex items-center gap-4 rounded-sv-card border border-border bg-surface p-4.5 transition-colors duration-150 hover:bg-surface-hover"
               >
                 <span className="flex h-12 w-12 flex-none items-center justify-center rounded-sv bg-prestations-bg">
-                  <span className="material-symbols-rounded !text-[22px] text-prestations">camera_alt</span>
+                  <span className="material-symbols-rounded !text-[22px] text-prestations" aria-hidden="true">camera_alt</span>
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="truncate font-sora text-[15px] font-semibold text-text">{order.offreNom || "Prestation"}</span>

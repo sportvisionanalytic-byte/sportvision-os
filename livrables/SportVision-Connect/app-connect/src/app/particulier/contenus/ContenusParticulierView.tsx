@@ -64,7 +64,7 @@ export function ContenusParticulierView({
 
       {visible.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
-          <span className="material-symbols-rounded !text-[24px] text-text-tertiary">photo_library</span>
+          <span className="material-symbols-rounded !text-[24px] text-text-tertiary" aria-hidden="true">photo_library</span>
           <span className="font-sora text-[16px] font-semibold">Aucun contenu pour le moment</span>
           <p className="max-w-[420px] text-[13.5px] leading-relaxed text-text-tertiary">
             Les prochains contenus livrés pour vos sportifs apparaîtront ici, une fois qu&apos;un droit « Voir les
@@ -81,7 +81,7 @@ export function ContenusParticulierView({
                 </div>
                 <div className="flex flex-col gap-1.5 p-4">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-rounded !text-[17px] text-contenus">{TYPE_ICON[item.type] || "photo_library"}</span>
+                    <span className="material-symbols-rounded !text-[17px] text-contenus" aria-hidden="true">{TYPE_ICON[item.type] || "photo_library"}</span>
                     <span className="truncate font-sora text-[14.5px] font-semibold">{item.title}</span>
                   </div>
                   <span className="text-[12.5px] text-text-tertiary">

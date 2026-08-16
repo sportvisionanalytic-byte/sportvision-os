@@ -15,6 +15,7 @@ import {
 } from "@/lib/prestations/catalogue";
 import { formatEUR, needsRetractationWaiver } from "@/lib/prestations/format";
 import type { AthleteProfileInfo } from "@/lib/prestations/athleteProfile";
+import { LEGAL_URLS } from "@/lib/legal-links";
 
 // Couleurs de maillot courantes (suggestions <datalist>, champ texte libre) — voir le commentaire
 // équivalent dans ReservationWizardParticulier.tsx (choix texte libre + suggestions plutôt qu'un
@@ -224,7 +225,7 @@ export function ReservationWizard({
     <div className="mx-auto flex max-w-[640px] flex-col gap-6 pb-24 animate-sv-in lg:pb-0">
       <div className="flex flex-col gap-2">
         <Link href={`/prestations/${offer.id}`} className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
-          <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+          <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
           {offer.nom}
         </Link>
         <h1 className="font-sora text-[26px] font-bold tracking-tight">Demander une prestation</h1>
@@ -502,7 +503,7 @@ export function ReservationWizard({
 
             {paiementMode === "collectif" && (
               <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
-                <span className="material-symbols-rounded !text-[19px] text-attente">info</span>
+                <span className="material-symbols-rounded !text-[19px] text-attente" aria-hidden="true">info</span>
                 <span className="text-[12.5px] leading-relaxed text-text-secondary">
                   Votre demande sera tout de même enregistrée au statut « En validation ». Créez ensuite une cotisation
                   depuis cette page pour partager le coût, ou basculez sur « Payer seul ».
@@ -533,13 +534,17 @@ export function ReservationWizard({
 
             <label className="flex items-start gap-2.5 rounded-sv border border-border bg-bg-elevated p-3.5 text-[12.5px] leading-relaxed text-text-secondary">
               <input type="checkbox" checked={cgvAcceptee} onChange={(e) => setCgvAcceptee(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#8CA9FF]" />
-              J&apos;accepte les conditions générales de prestation SportVision.
+              J&apos;accepte les{" "}
+              <a href={LEGAL_URLS.cgv} target="_blank" rel="noopener noreferrer" className="font-medium text-[#8CA9FF] hover:text-[#B6C7FF] underline" onClick={(e) => e.stopPropagation()}>
+                conditions générales de prestation SportVision
+              </a>
+              .
             </label>
             {touched && !cgvAcceptee && <span className="text-[12px] text-danger">L&apos;acceptation des CGV est requise.</span>}
 
             {error && (
               <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-                <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
+                <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
                 <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
               </div>
             )}
@@ -549,7 +554,7 @@ export function ReservationWizard({
         {step === 4 && result && (
           <div className="flex flex-col items-center gap-4 py-4 text-center animate-sv-in">
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-affiliations-bg">
-              <span className="material-symbols-rounded !text-[28px] text-affiliations">check_circle</span>
+              <span className="material-symbols-rounded !text-[28px] text-affiliations" aria-hidden="true">check_circle</span>
             </span>
             <div className="flex flex-col gap-1.5">
               <span className="font-sora text-[20px] font-semibold">Demande enregistrée</span>
@@ -574,7 +579,7 @@ export function ReservationWizard({
             )}
             {paiementMode === "seul" && modePaiementChoisi === "especes" && (
               <div className="flex w-full items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5 text-left">
-                <span className="material-symbols-rounded !text-[19px] text-affiliations">payments</span>
+                <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">payments</span>
                 <span className="text-[12.5px] leading-relaxed text-text-secondary">
                   Réservation confirmée — réglez sur place le jour de la prestation.
                 </span>
@@ -703,7 +708,7 @@ function PhysiqueField({
     return (
       <div className="flex items-center justify-between rounded-sv border border-border bg-bg-elevated px-4 py-3.5">
         <span className="flex items-center gap-1.5 text-[13.5px] text-text-secondary">
-          <span className="material-symbols-rounded !text-[16px] text-affiliations">check_circle</span>
+          <span className="material-symbols-rounded !text-[16px] text-affiliations" aria-hidden="true">check_circle</span>
           {label} : <strong className="font-sora text-text">{profileValue}{unit ? ` ${unit}` : ""}</strong>
         </span>
         <button type="button" onClick={onEdit} className="text-[12.5px] font-medium text-[#8CA9FF] hover:underline">

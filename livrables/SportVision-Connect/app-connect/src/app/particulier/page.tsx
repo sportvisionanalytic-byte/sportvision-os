@@ -106,7 +106,7 @@ export default async function ParticulierHomePage() {
             href="/particulier/prestations"
             className="hidden h-[46px] flex-none items-center gap-2 rounded-sv bg-sv-gradient px-5 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12] lg:flex"
           >
-            <span className="material-symbols-rounded !text-[20px]">add</span>
+            <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">add</span>
             Réserver une prestation
           </Link>
         </div>
@@ -116,7 +116,7 @@ export default async function ParticulierHomePage() {
         {athletes.length === 0 && (
           <div className="flex max-w-[600px] flex-col gap-3.5 rounded-sv-card border border-dashed border-border-strong bg-white/[.04] p-[30px]">
             <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-affiliations-bg">
-              <span className="material-symbols-rounded !text-[24px] text-affiliations">group_add</span>
+              <span className="material-symbols-rounded !text-[24px] text-affiliations" aria-hidden="true">group_add</span>
             </span>
             <span className="font-sora text-[20px] font-semibold">Ajoutez votre premier sportif</span>
             <p className="text-[14px] leading-relaxed text-text-tertiary">
@@ -185,7 +185,7 @@ export default async function ParticulierHomePage() {
                       <div className="flex flex-col gap-1.5">
                         {facts.map((f) => (
                           <div key={f} className="flex items-center gap-2">
-                            <span className="material-symbols-rounded !text-[16px] text-text-faint">check</span>
+                            <span className="material-symbols-rounded !text-[16px] text-text-faint" aria-hidden="true">check</span>
                             <span className="text-[13px] text-text-secondary">{f}</span>
                           </div>
                         ))}
@@ -207,7 +207,7 @@ export default async function ParticulierHomePage() {
                   className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-5 hover:bg-white/[.09]"
                 >
                   <span className="flex h-[50px] w-[50px] flex-none items-center justify-center rounded-sv bg-prestations-bg">
-                    <span className="material-symbols-rounded !text-[23px] text-prestations">camera_alt</span>
+                    <span className="material-symbols-rounded !text-[23px] text-prestations" aria-hidden="true">camera_alt</span>
                   </span>
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">
@@ -284,7 +284,7 @@ export default async function ParticulierHomePage() {
                   <div className="flex flex-col gap-4 rounded-[calc(theme(borderRadius.sv-card)-1px)] bg-bg-elevated-accent p-5">
                     <div className="flex items-center gap-2.5">
                       <span className="flex h-[30px] w-[30px] items-center justify-center rounded-sv bg-cotisations-bg">
-                        <span className="material-symbols-rounded !text-[18px] text-cotisations">savings</span>
+                        <span className="material-symbols-rounded !text-[18px] text-cotisations" aria-hidden="true">savings</span>
                       </span>
                       <span className="text-[11px] font-medium uppercase tracking-[.1em] text-cotisations">
                         Cotisation{cotisation.beneficiary_label ? ` · Pour ${cotisation.beneficiary_label}` : ""}
@@ -321,7 +321,7 @@ export default async function ParticulierHomePage() {
                   className="flex items-center gap-3.5 rounded-sv-card border border-border bg-surface p-4.5 hover:bg-white/[.06]"
                 >
                   <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-affiliations-bg">
-                    <span className="material-symbols-rounded !text-[20px] text-affiliations">chat_bubble</span>
+                    <span className="material-symbols-rounded !text-[20px] text-affiliations" aria-hidden="true">chat_bubble</span>
                   </span>
                   <div className="flex flex-col gap-0.5">
                     <span className="font-sora text-[15px] font-semibold">Messages</span>
@@ -338,10 +338,10 @@ export default async function ParticulierHomePage() {
                 className="flex items-center gap-3.5 rounded-sv-card border border-border bg-white/[.04] p-5 hover:bg-white/[.08] lg:hidden"
               >
                 <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-prestations-bg">
-                  <span className="material-symbols-rounded !text-[20px] text-prestations">add</span>
+                  <span className="material-symbols-rounded !text-[20px] text-prestations" aria-hidden="true">add</span>
                 </span>
                 <span className="font-sora text-[15px] font-semibold">Réserver une prestation</span>
-                <span className="material-symbols-rounded ml-auto !text-[20px] text-text-label">chevron_right</span>
+                <span className="material-symbols-rounded ml-auto !text-[20px] text-text-label" aria-hidden="true">chevron_right</span>
               </Link>
             </div>
           </div>
@@ -371,7 +371,7 @@ function AgentStatusPanel({ info }: { info: AgentSubscriptionInfo }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 flex-none items-center justify-center rounded-sv bg-affiliations-bg">
-            <span className="material-symbols-rounded !text-[18px] text-affiliations">badge</span>
+            <span className="material-symbols-rounded !text-[18px] text-affiliations" aria-hidden="true">badge</span>
           </span>
           <div className="flex flex-col">
             <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Espace Agent</span>
@@ -403,7 +403,7 @@ function AgentStatusPanel({ info }: { info: AgentSubscriptionInfo }) {
 
       {monthlyDiscountAvailable && (
         <div className="flex items-center gap-2.5 rounded-sv border border-[rgba(140,169,255,.35)] bg-[rgba(79,125,255,.08)] px-4 py-3">
-          <span className="material-symbols-rounded !text-[18px] text-prestations">percent</span>
+          <span className="material-symbols-rounded !text-[18px] text-prestations" aria-hidden="true">percent</span>
           <span className="text-[12.5px] leading-relaxed text-text-secondary">
             Votre remise -10% mensuelle sur une prestation au choix est disponible.
           </span>

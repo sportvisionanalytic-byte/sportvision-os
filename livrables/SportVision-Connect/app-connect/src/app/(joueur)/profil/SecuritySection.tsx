@@ -64,7 +64,7 @@ export function SecuritySection({ email }: { email: string }) {
       <h2 className="font-sora text-[17px] font-semibold">Sécurité</h2>
       <div className="flex items-center gap-3">
         <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-prestations-bg">
-          <span className="material-symbols-rounded !text-[20px] text-prestations">lock</span>
+          <span className="material-symbols-rounded !text-[20px] text-prestations" aria-hidden="true">lock</span>
         </span>
         <div className="flex flex-col gap-0.5">
           <span className="text-[14px] font-medium">Mot de passe</span>
@@ -83,7 +83,7 @@ export function SecuritySection({ email }: { email: string }) {
           {done ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
-                <span className="material-symbols-rounded !text-[19px] text-affiliations">check_circle</span>
+                <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">check_circle</span>
                 <span className="text-[13px] leading-relaxed text-text-secondary">Mot de passe modifié.</span>
               </div>
               <Button onClick={() => setOpen(false)} className="w-full">

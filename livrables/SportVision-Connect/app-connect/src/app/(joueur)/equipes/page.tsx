@@ -39,7 +39,7 @@ export default async function EquipesPage() {
           href="/equipes/creer"
           className="flex h-[46px] flex-none items-center gap-2 rounded-sv bg-sv-gradient px-[18px] font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
         >
-          <span className="material-symbols-rounded !text-[20px]">add</span>
+          <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">add</span>
           Créer une équipe
         </Link>
       </div>
@@ -89,7 +89,7 @@ export default async function EquipesPage() {
               </div>
               <span className="flex items-center gap-1.5 font-sora text-[14px] font-semibold text-[#8CA9FF]">
                 Ouvrir
-                <span className="material-symbols-rounded !text-[17px]">arrow_forward</span>
+                <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>
               </span>
             </Link>
           ))}
@@ -97,7 +97,7 @@ export default async function EquipesPage() {
       ) : (
         <div className="flex max-w-[560px] flex-col gap-3.5 rounded-sv-card border border-dashed border-border-strong bg-surface p-[30px]">
           <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-affiliations-bg">
-            <span className="material-symbols-rounded !text-[24px] text-affiliations">groups</span>
+            <span className="material-symbols-rounded !text-[24px] text-affiliations" aria-hidden="true">groups</span>
           </span>
           <span className="font-sora text-[19px] font-semibold">Aucune équipe pour le moment</span>
           <p className="text-[14px] leading-relaxed text-text-tertiary">

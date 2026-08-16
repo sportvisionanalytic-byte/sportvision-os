@@ -72,7 +72,7 @@ export function CreateGroupForm() {
 
       {error && (
         <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
+          <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
           <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
         </div>
       )}

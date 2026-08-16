@@ -146,7 +146,7 @@ export default async function ProfilPage() {
               style={{ borderColor: pending > 0 ? "rgba(251,191,36,.3)" : "rgba(255,255,255,.09)" }}
             >
               <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-affiliations-bg">
-                <span className="material-symbols-rounded !text-[20px] text-affiliations">lock_person</span>
+                <span className="material-symbols-rounded !text-[20px] text-affiliations" aria-hidden="true">lock_person</span>
               </span>
               <div className="flex flex-col gap-0.5">
                 <span className="font-sora text-[15px] font-semibold">Accès à mon profil</span>
@@ -168,7 +168,7 @@ export default async function ProfilPage() {
                       <span className="font-sora text-[14px] font-semibold">SportVision Connect</span>
                       <span className="text-[12px] text-text-tertiary">Espace personnel · actuel</span>
                     </div>
-                    <span className="material-symbols-rounded ml-auto !text-[20px] text-affiliations">check_circle</span>
+                    <span className="material-symbols-rounded ml-auto !text-[20px] text-affiliations" aria-hidden="true">check_circle</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2.5 rounded-sv border border-border bg-white/[.03] px-3.5 py-3">

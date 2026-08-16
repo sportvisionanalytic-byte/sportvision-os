@@ -38,7 +38,7 @@ export default function ForgotPage() {
         {!sent ? (
           <div className="flex flex-col gap-6 animate-sv-in">
             <Link href="/auth/login" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
-              <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+              <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
               Retour à la connexion
             </Link>
             <div className="flex flex-col gap-2">
@@ -65,7 +65,7 @@ export default function ForgotPage() {
         ) : (
           <div className="flex flex-col items-start gap-5 animate-sv-in">
             <span className="flex h-[66px] w-[66px] items-center justify-center rounded-sv-card bg-affiliations-bg">
-              <span className="material-symbols-rounded !text-[32px] text-affiliations">mark_email_read</span>
+              <span className="material-symbols-rounded !text-[32px] text-affiliations" aria-hidden="true">mark_email_read</span>
             </span>
             <div className="flex flex-col gap-2.5">
               <h1 className="font-sora text-[28px] font-bold tracking-tight">Vérifiez votre boîte mail</h1>

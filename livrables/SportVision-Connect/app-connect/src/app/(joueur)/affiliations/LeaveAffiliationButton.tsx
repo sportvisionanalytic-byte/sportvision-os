@@ -51,7 +51,7 @@ export function LeaveAffiliationButton({ clubName }: { clubName: string }) {
             onClick={(e) => e.stopPropagation()}
           >
             <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-danger-bg">
-              <span className="material-symbols-rounded !text-[24px] text-danger">warning</span>
+              <span className="material-symbols-rounded !text-[24px] text-danger" aria-hidden="true">warning</span>
             </span>
             <div className="flex flex-col gap-2">
               <span className="font-sora text-[19px] font-semibold">Quitter {clubName} ?</span>

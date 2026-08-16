@@ -50,7 +50,7 @@ export function InviteGroupButton({ groupId, groupName }: { groupId: string; gro
         onClick={() => setOpen(true)}
         className="flex h-[46px] items-center gap-2 rounded-sv bg-sv-gradient px-[18px] font-sora text-[14px] font-semibold text-white hover:brightness-[1.12]"
       >
-        <span className="material-symbols-rounded !text-[19px]">person_add</span>
+        <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">person_add</span>
         Inviter
       </button>
 
@@ -73,7 +73,7 @@ export function InviteGroupButton({ groupId, groupName }: { groupId: string; gro
                 onClick={() => setOpen(false)}
                 className="ml-auto flex h-10 w-10 flex-none items-center justify-center rounded-sv bg-white/[.06] text-text-secondary hover:bg-white/[.12]"
               >
-                <span className="material-symbols-rounded !text-[20px]">close</span>
+                <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">close</span>
               </button>
             </div>
 
@@ -86,7 +86,7 @@ export function InviteGroupButton({ groupId, groupName }: { groupId: string; gro
                 onClick={copyLink}
                 className="flex h-9 flex-none items-center gap-1.5 rounded-sv bg-white/[.09] px-3.5 font-sora text-[13px] font-semibold hover:bg-white/[.16]"
               >
-                <span className="material-symbols-rounded !text-[17px]">{copied ? "check" : "content_copy"}</span>
+                <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">{copied ? "check" : "content_copy"}</span>
                 {copied ? "Copié" : "Copier"}
               </button>
             </div>
@@ -97,7 +97,7 @@ export function InviteGroupButton({ groupId, groupName }: { groupId: string; gro
                 onClick={shareWhatsapp}
                 className="flex h-[52px] items-center justify-center gap-2 rounded-sv bg-sv-gradient font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
               >
-                <span className="material-symbols-rounded !text-[20px]">chat</span>
+                <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">chat</span>
                 Partager sur WhatsApp
               </button>
               <div className="flex gap-2.5">
@@ -106,7 +106,7 @@ export function InviteGroupButton({ groupId, groupName }: { groupId: string; gro
                   onClick={shareNative}
                   className="flex h-[50px] flex-1 items-center justify-center gap-2 rounded-sv border border-border-strong bg-white/[.06] font-sora text-[14px] font-semibold hover:bg-white/[.12]"
                 >
-                  <span className="material-symbols-rounded !text-[19px]">ios_share</span>
+                  <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">ios_share</span>
                   Partager
                 </button>
                 <button
@@ -114,7 +114,7 @@ export function InviteGroupButton({ groupId, groupName }: { groupId: string; gro
                   onClick={shareEmail}
                   className="flex h-[50px] flex-1 items-center justify-center gap-2 rounded-sv border border-border-strong bg-white/[.06] font-sora text-[14px] font-semibold hover:bg-white/[.12]"
                 >
-                  <span className="material-symbols-rounded !text-[19px]">mail</span>
+                  <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">mail</span>
                   E-mail
                 </button>
               </div>

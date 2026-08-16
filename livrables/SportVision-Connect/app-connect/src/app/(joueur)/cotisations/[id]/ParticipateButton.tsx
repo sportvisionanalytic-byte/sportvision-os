@@ -104,7 +104,7 @@ export function ParticipateButton({
             : "flex h-[50px] items-center gap-2 rounded-sv border border-affiliations/40 bg-affiliations-bg px-5 font-sora text-[15px] font-semibold text-affiliations hover:bg-[rgba(34,211,238,.22)]"
         }
       >
-        {!payRestLabel && <span className="material-symbols-rounded !text-[19px]">volunteer_activism</span>}
+        {!payRestLabel && <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">volunteer_activism</span>}
         {payRestLabel || "Participer"}
       </button>
 
@@ -126,11 +126,11 @@ export function ParticipateButton({
                     onClick={closeModal}
                     className="ml-auto flex h-10 w-10 flex-none items-center justify-center rounded-sv bg-white/[.06] text-text-secondary hover:bg-white/[.12]"
                   >
-                    <span className="material-symbols-rounded !text-[20px]">close</span>
+                    <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">close</span>
                   </button>
                 </div>
                 <div className="flex items-center gap-3 rounded-sv border border-affiliations/30 bg-affiliations-bg px-[17px] py-[15px]">
-                  <span className="material-symbols-rounded !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  <span className="material-symbols-rounded !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
                     check_circle
                   </span>
                   <span className="text-[14px] leading-relaxed text-text-secondary">
@@ -159,7 +159,7 @@ export function ParticipateButton({
                     disabled={busy}
                     className="ml-auto flex h-10 w-10 flex-none items-center justify-center rounded-sv bg-white/[.06] text-text-secondary hover:bg-white/[.12]"
                   >
-                    <span className="material-symbols-rounded !text-[20px]">close</span>
+                    <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">close</span>
                   </button>
                 </div>
 
@@ -215,7 +215,7 @@ export function ParticipateButton({
                         mode === "carte" ? "border-cotisations/60 bg-cotisations-bg text-text" : "border-border-strong bg-surface text-text-secondary"
                       }`}
                     >
-                      <span className="material-symbols-rounded !text-[18px]">credit_card</span>
+                      <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">credit_card</span>
                       Carte
                     </button>
                     <button
@@ -225,7 +225,7 @@ export function ParticipateButton({
                         mode === "especes" ? "border-cotisations/60 bg-cotisations-bg text-text" : "border-border-strong bg-surface text-text-secondary"
                       }`}
                     >
-                      <span className="material-symbols-rounded !text-[18px]">payments</span>
+                      <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">payments</span>
                       Espèces
                     </button>
                   </div>

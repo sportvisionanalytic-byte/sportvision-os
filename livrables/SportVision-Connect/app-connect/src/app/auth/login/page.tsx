@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
 import { consumePendingOnboarding } from "@/lib/signup/pending-onboarding";
+import { LEGAL_URLS } from "@/lib/legal-links";
 
 // /auth/login — port du design de référence design-connect-personnel-12-08/README.md
 // (écran "Connexion" § Authentification) et de Connect Connexion Web.dc.html.
@@ -103,7 +104,7 @@ export default function LoginPage() {
             <br />
             Vos contenus.
             <br />
-            Votre équipe.
+            Votre espace.
           </h2>
           <p className="text-[17px] leading-relaxed text-[#DCDCEC]">
             Rejoignez votre club, réservez vos prestations SportVision et cotisez avec vos
@@ -135,7 +136,7 @@ export default function LoginPage() {
 
             {(authFailed || (touched && (emailBad || pwBad))) && (
               <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-                <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
+                <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
                 <span className="text-[13px] leading-relaxed text-[#FBCFE8]">
                   {authFailed
                     ? "Adresse e-mail ou mot de passe incorrect."
@@ -189,7 +190,7 @@ export default function LoginPage() {
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-1.5 top-1.5 flex h-[42px] w-[42px] items-center justify-center rounded-xl text-text-tertiary hover:bg-surface-hover hover:text-text"
                   >
-                    <span className="material-symbols-rounded !text-[20px]">
+                    <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">
                       {showPassword ? "visibility" : "visibility_off"}
                     </span>
                   </button>
@@ -214,7 +215,7 @@ export default function LoginPage() {
                     remember ? "border-transparent bg-sv-gradient" : "border-border-strong"
                   }`}
                 >
-                  {remember && <span className="material-symbols-rounded !text-[15px] text-white">check</span>}
+                  {remember && <span className="material-symbols-rounded !text-[15px] text-white" aria-hidden="true">check</span>}
                 </span>
                 <span className="cursor-pointer text-[13px] text-text-secondary" onClick={() => setRemember((v) => !v)}>
                   Rester connecté
@@ -243,9 +244,21 @@ export default function LoginPage() {
                 href="/aide"
                 className="mt-2.5 flex items-center justify-center gap-1.5 self-center text-[13px] text-text-tertiary hover:text-text"
               >
-                <span className="material-symbols-rounded !text-[17px]">help</span>
+                <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">help</span>
                 Besoin d&apos;aide ?
               </Link>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-text-label">
+              <a href={LEGAL_URLS.mentionsLegales} target="_blank" rel="noopener noreferrer" className="hover:text-text-tertiary">
+                Mentions légales
+              </a>
+              <a href={LEGAL_URLS.confidentialite} target="_blank" rel="noopener noreferrer" className="hover:text-text-tertiary">
+                Confidentialité
+              </a>
+              <a href={LEGAL_URLS.cgv} target="_blank" rel="noopener noreferrer" className="hover:text-text-tertiary">
+                Conditions d&apos;utilisation
+              </a>
             </div>
           </div>
         </div>
@@ -260,7 +273,7 @@ function Pill({ icon, color, bg, label }: { icon: string; color: string; bg: str
       className="flex items-center gap-1.5 rounded-sv-pill px-3.5 py-1.5 text-[13px] font-medium"
       style={{ color, background: bg }}
     >
-      <span className="material-symbols-rounded !text-[17px]">{icon}</span>
+      <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">{icon}</span>
       {label}
     </span>
   );

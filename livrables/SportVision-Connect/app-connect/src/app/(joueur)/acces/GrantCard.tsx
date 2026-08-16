@@ -139,7 +139,7 @@ export function GrantCard({
               disabled={pending === r.key}
               className="flex min-h-[46px] items-center gap-2.5 text-left"
             >
-              <span className="material-symbols-rounded !text-[19px]" style={{ color: on ? "#22D3EE" : "#7A7A9C" }}>
+              <span className="material-symbols-rounded !text-[19px]" style={{ color: on ? "#22D3EE" : "#7A7A9C" }} aria-hidden="true">
                 {on ? "check_circle" : "cancel"}
               </span>
               <span className="text-[14px]" style={{ color: on ? "#F7F7FB" : "#9A9AB8" }}>
@@ -160,7 +160,7 @@ export function GrantCard({
             onClick={(e) => e.stopPropagation()}
           >
             <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-danger-bg">
-              <span className="material-symbols-rounded !text-[24px] text-danger">warning</span>
+              <span className="material-symbols-rounded !text-[24px] text-danger" aria-hidden="true">warning</span>
             </span>
             <div className="flex flex-col gap-2">
               <span className="font-sora text-[19px] font-semibold">Retirer l&apos;accès de {name} ?</span>

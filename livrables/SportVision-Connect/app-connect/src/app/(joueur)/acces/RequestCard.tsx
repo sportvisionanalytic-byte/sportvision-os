@@ -92,7 +92,7 @@ export function RequestCard({
           <span className="text-[12px] font-medium uppercase tracking-[.08em] text-text-label">Ce qu&apos;il pourra voir si vous acceptez</span>
           {PREVIEW_RIGHTS.map((r) => (
             <div key={r} className="flex items-center gap-2.5">
-              <span className="material-symbols-rounded !text-[18px] text-affiliations">check</span>
+              <span className="material-symbols-rounded !text-[18px] text-affiliations" aria-hidden="true">check</span>
               <span className="text-[13px] text-text-secondary">{r}</span>
             </div>
           ))}

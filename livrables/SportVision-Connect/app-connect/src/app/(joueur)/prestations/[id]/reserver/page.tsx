@@ -25,7 +25,7 @@ export default async function ReserverPage({ params }: { params: Promise<{ id: s
     return (
       <div className="mx-auto flex max-w-[480px] flex-col items-center gap-4 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
         <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-affiliations-bg">
-          <span className="material-symbols-rounded !text-[24px] text-affiliations">person</span>
+          <span className="material-symbols-rounded !text-[24px] text-affiliations" aria-hidden="true">person</span>
         </span>
         <span className="font-sora text-[18px] font-semibold">Complétez votre profil</span>
         <p className="text-[14px] leading-relaxed text-text-tertiary">

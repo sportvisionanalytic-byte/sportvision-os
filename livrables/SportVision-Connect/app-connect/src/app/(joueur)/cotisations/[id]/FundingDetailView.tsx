@@ -66,13 +66,13 @@ export function FundingDetailView({
   return (
     <div className="flex flex-col gap-[22px] animate-sv-in">
       <Link href={listHref} className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
-        <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+        <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Cotisations
       </Link>
 
       {paiement === "succes" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-affiliations">hourglass_top</span>
+          <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
           <span className="text-[13px] leading-relaxed text-text-secondary">
             Votre paiement est en cours de confirmation par Stripe. Le montant collecté ci-dessous se mettra à jour
             automatiquement dès la confirmation — rafraîchissez la page dans quelques instants si besoin.
@@ -81,7 +81,7 @@ export function FundingDetailView({
       )}
       {paiement === "annule" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
-          <span className="material-symbols-rounded !text-[19px] text-attente">info</span>
+          <span className="material-symbols-rounded !text-[19px] text-attente" aria-hidden="true">info</span>
           <span className="text-[13px] leading-relaxed text-text-secondary">Paiement annulé, vous pouvez réessayer.</span>
         </div>
       )}
@@ -110,7 +110,7 @@ export function FundingDetailView({
 
           {reached && (
             <div className="flex items-center gap-3 rounded-sv border border-affiliations/30 bg-affiliations-bg px-[17px] py-[15px]">
-              <span className="material-symbols-rounded !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }}>
+              <span className="material-symbols-rounded !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
                 check_circle
               </span>
               <span className="text-[14px] leading-relaxed text-text-secondary">
@@ -169,7 +169,7 @@ export function FundingDetailView({
 
           {isTerminal && (
             <div className="flex items-start gap-2.5 rounded-sv border border-dashed border-border-strong bg-white/[.04] px-4 py-3.5">
-              <span className="material-symbols-rounded !text-[19px] text-text-tertiary">construction</span>
+              <span className="material-symbols-rounded !text-[19px] text-text-tertiary" aria-hidden="true">construction</span>
               <span className="text-[13px] leading-relaxed text-text-tertiary">
                 Cette cotisation est {funding.statut === "expiree" ? "expirée" : "annulée"}. Les actions « demander
                 malgré tout » et « rembourser les participants » sont en cours de finalisation et ne sont pas encore
@@ -237,7 +237,7 @@ export function FundingDetailView({
                 target="_blank"
                 className="flex h-11 w-fit items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
               >
-                <span className="material-symbols-rounded !text-[18px]">open_in_new</span>
+                <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">open_in_new</span>
                 Aperçu du lien
               </Link>
             </div>

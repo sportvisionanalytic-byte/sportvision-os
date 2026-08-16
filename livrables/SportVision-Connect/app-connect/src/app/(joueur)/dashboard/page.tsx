@@ -56,7 +56,7 @@ export default async function DashboardPage() {
             href="/prestations"
             className="hidden h-[46px] flex-none items-center gap-2 rounded-sv bg-sv-gradient px-5 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12] lg:flex"
           >
-            <span className="material-symbols-rounded !text-[20px]">add</span>
+            <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">add</span>
             Réserver une prestation
           </Link>
         </div>
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
             {!player?.club && (
               <div className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5">
                 <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-affiliations-bg">
-                  <span className="material-symbols-rounded !text-[24px] text-affiliations">shield</span>
+                  <span className="material-symbols-rounded !text-[24px] text-affiliations" aria-hidden="true">shield</span>
                 </span>
                 <div className="flex flex-col gap-2">
                   <span className="font-sora text-[18px] font-semibold">Rejoignez votre club</span>
@@ -152,7 +152,7 @@ export default async function DashboardPage() {
                         </span>
                         <span className="mt-0.5 flex items-center gap-1.5 font-sora text-[14px] font-semibold text-contenus">
                           Découvrir
-                          <span className="material-symbols-rounded !text-[17px]">arrow_forward</span>
+                          <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">arrow_forward</span>
                         </span>
                       </div>
                     </Link>
@@ -161,7 +161,7 @@ export default async function DashboardPage() {
               ) : (
                 <div className="flex flex-col gap-3 rounded-sv-card border border-dashed border-border-strong bg-white/[.04] p-6">
                   <span className="flex h-11 w-11 items-center justify-center rounded-sv bg-contenus-bg">
-                    <span className="material-symbols-rounded !text-[22px] text-contenus">photo_library</span>
+                    <span className="material-symbols-rounded !text-[22px] text-contenus" aria-hidden="true">photo_library</span>
                   </span>
                   <span className="font-sora text-[17px] font-semibold">Vos futurs contenus apparaîtront ici</span>
                   <p className="max-w-[460px] text-[14px] leading-relaxed text-text-tertiary">
@@ -199,7 +199,7 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <div className="flex items-center gap-3 rounded-sv border border-border bg-white/[.04] px-4.5 py-4">
-                <span className="material-symbols-rounded !text-[20px] text-text-faint">event_busy</span>
+                <span className="material-symbols-rounded !text-[20px] text-text-faint" aria-hidden="true">event_busy</span>
                 <span className="text-[14px] text-text-tertiary">Aucun événement SportVision prévu pour le moment.</span>
                 <Link href="/calendrier" className="ml-auto flex-none text-[13px] font-medium text-[#8CA9FF]">
                   Calendrier
@@ -215,7 +215,7 @@ export default async function DashboardPage() {
                 <div className="flex flex-col gap-4 rounded-[calc(theme(borderRadius.sv-card)-1px)] bg-bg-elevated-accent p-5">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-[30px] w-[30px] items-center justify-center rounded-sv bg-cotisations-bg">
-                      <span className="material-symbols-rounded !text-[18px] text-cotisations">savings</span>
+                      <span className="material-symbols-rounded !text-[18px] text-cotisations" aria-hidden="true">savings</span>
                     </span>
                     <span className="text-[11px] font-medium uppercase tracking-[.1em] text-cotisations">Cotisation en cours</span>
                   </div>
@@ -256,7 +256,7 @@ export default async function DashboardPage() {
                 <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Prochaine prestation</span>
                 <div className="flex items-center gap-3">
                   <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-sv bg-prestations-bg">
-                    <span className="material-symbols-rounded !text-[22px] text-prestations">camera_alt</span>
+                    <span className="material-symbols-rounded !text-[22px] text-prestations" aria-hidden="true">camera_alt</span>
                   </span>
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="font-sora text-[16px] font-semibold">{nextPrestation.type || nextPrestation.reference || "Prestation"}</span>
@@ -285,7 +285,7 @@ export default async function DashboardPage() {
               // catalogue et aux filtres : jamais citer une offre qui n'existe pas réellement).
               <div className="flex flex-col gap-3 rounded-sv-card border border-dashed border-border-strong bg-white/[.04] p-5">
                 <span className="flex h-11 w-11 items-center justify-center rounded-sv bg-prestations-bg">
-                  <span className="material-symbols-rounded !text-[22px] text-prestations">camera_alt</span>
+                  <span className="material-symbols-rounded !text-[22px] text-prestations" aria-hidden="true">camera_alt</span>
                 </span>
                 <span className="font-sora text-[17px] font-semibold">Aucune prestation prévue</span>
                 <p className="text-[14px] leading-relaxed text-text-tertiary">Match Photo, Match Vidéo, Pack Match, Veo, Drone.</p>
@@ -304,7 +304,7 @@ export default async function DashboardPage() {
                 className="flex items-center gap-3.5 rounded-sv-card border border-border bg-surface p-4.5 hover:bg-white/[.06]"
               >
                 <span className="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-sv bg-affiliations-bg">
-                  <span className="material-symbols-rounded !text-[20px] text-affiliations">chat_bubble</span>
+                  <span className="material-symbols-rounded !text-[20px] text-affiliations" aria-hidden="true">chat_bubble</span>
                 </span>
                 <div className="flex flex-col gap-0.5">
                   <span className="font-sora text-[15px] font-semibold">Messages</span>

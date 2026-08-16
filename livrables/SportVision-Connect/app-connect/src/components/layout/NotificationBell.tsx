@@ -125,7 +125,7 @@ export function NotificationBell() {
         aria-label={unreadCount > 0 ? `Notifications (${unreadCount} non lues)` : "Notifications"}
         className="relative flex h-10 w-10 items-center justify-center rounded-sv text-text-tertiary hover:bg-white/[.06] hover:text-text"
       >
-        <span className="material-symbols-rounded !text-[21px]">notifications</span>
+        <span className="material-symbols-rounded !text-[21px]" aria-hidden="true">notifications</span>
         {unreadCount > 0 && (
           <span className="absolute right-1.5 top-1.5 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-sv-gradient px-1 font-sora text-[9px] font-bold leading-none text-white">
             {badgeLabel}
@@ -163,7 +163,7 @@ export function NotificationBell() {
 
               {items && items.length === 0 && !loading && (
                 <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-                  <span className="material-symbols-rounded !text-[26px] text-text-faint">notifications_off</span>
+                  <span className="material-symbols-rounded !text-[26px] text-text-faint" aria-hidden="true">notifications_off</span>
                   <p className="text-[13px] text-text-tertiary">Aucune notification pour le moment.</p>
                 </div>
               )}
@@ -183,7 +183,7 @@ export function NotificationBell() {
                       className="flex h-9 w-9 flex-none items-center justify-center rounded-full"
                       style={{ background: meta.bg, color: meta.fg }}
                     >
-                      <span className="material-symbols-rounded !text-[18px]">{meta.icon}</span>
+                      <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">{meta.icon}</span>
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="flex items-center gap-1.5">

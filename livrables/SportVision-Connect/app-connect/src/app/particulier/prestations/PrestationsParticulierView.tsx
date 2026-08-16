@@ -93,7 +93,7 @@ export function PrestationsParticulierView({
         )}
         {blockedReason && (
           <div className="flex items-start gap-2.5 rounded-sv border border-attente/30 bg-attente-bg px-4 py-3.5">
-            <span className="material-symbols-rounded !text-[19px] text-attente">lock</span>
+            <span className="material-symbols-rounded !text-[19px] text-attente" aria-hidden="true">lock</span>
             <span className="text-[13px] leading-relaxed text-text-secondary">{blockedReason}</span>
           </div>
         )}
@@ -123,7 +123,7 @@ export function PrestationsParticulierView({
                   style={{ background: "linear-gradient(135deg,#3B1E6E 0%,#22307A 55%,#0F4C63 100%)" }}
                 >
                   <span className="flex h-[46px] w-[46px] items-center justify-center rounded-sv bg-[rgba(9,8,26,.42)]">
-                    <span className="material-symbols-rounded !text-[23px] text-white">{categorieIcon(offer.categorie)}</span>
+                    <span className="material-symbols-rounded !text-[23px] text-white" aria-hidden="true">{categorieIcon(offer.categorie)}</span>
                   </span>
                 </div>
                 <div className="flex flex-col gap-3.5 p-[18px]">
@@ -145,7 +145,7 @@ export function PrestationsParticulierView({
                       }`}
                     >
                       Réserver
-                      <span className="material-symbols-rounded !text-[16px]">arrow_forward</span>
+                      <span className="material-symbols-rounded !text-[16px]" aria-hidden="true">arrow_forward</span>
                     </button>
                   </div>
                 </div>
@@ -168,7 +168,7 @@ export function PrestationsParticulierView({
                 style={{ background: "linear-gradient(135deg,#3B1E6E 0%,#22307A 55%,#0F4C63 100%)" }}
               >
                 <span className="flex h-[46px] w-[46px] items-center justify-center rounded-sv bg-[rgba(9,8,26,.42)]">
-                  <span className="material-symbols-rounded !text-[23px] text-white">{categorieIcon(offer.categorie)}</span>
+                  <span className="material-symbols-rounded !text-[23px] text-white" aria-hidden="true">{categorieIcon(offer.categorie)}</span>
                 </span>
               </div>
               <div className="flex flex-1 flex-col gap-2.5 p-[18px]">
@@ -178,7 +178,7 @@ export function PrestationsParticulierView({
                   <span className="font-sora text-[15px] font-semibold">{ttc !== null ? `${formatEUR(ttc)} TTC` : "Sur devis"}</span>
                   <span className="flex items-center gap-1.5 font-sora text-[13.5px] font-semibold text-prestations">
                     Réserver
-                    <span className="material-symbols-rounded !text-[16px]">arrow_forward</span>
+                    <span className="material-symbols-rounded !text-[16px]" aria-hidden="true">arrow_forward</span>
                   </span>
                 </div>
               </div>

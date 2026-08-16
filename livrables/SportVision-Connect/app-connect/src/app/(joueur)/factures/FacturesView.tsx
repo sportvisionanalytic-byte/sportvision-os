@@ -64,7 +64,7 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
       {due.length > 0 && due[0] && (
         <div className="flex flex-wrap items-center gap-4 rounded-sv-card border border-attente/40 bg-attente-bg p-5">
           <span className="flex h-12 w-12 flex-none items-center justify-center rounded-sv bg-white/10">
-            <span className="material-symbols-rounded !text-[22px] text-attente">warning</span>
+            <span className="material-symbols-rounded !text-[22px] text-attente" aria-hidden="true">warning</span>
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="font-sora text-[16px] font-semibold">{formatEUR(dueTotal)} à régler</span>
@@ -120,7 +120,7 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
                   <div key={inv.id} className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-4 sm:flex-row sm:items-center sm:gap-3.5">
                     <div className="flex min-w-0 items-center gap-3.5">
                       <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/5">
-                        <span className="material-symbols-rounded !text-[20px] text-text-tertiary">description</span>
+                        <span className="material-symbols-rounded !text-[20px] text-text-tertiary" aria-hidden="true">description</span>
                       </span>
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="truncate text-[14px] font-medium text-text">{inv.offreNom || inv.numero}</span>
@@ -136,7 +136,7 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
                       <span className="ml-auto flex-none font-sora text-[14px] font-semibold sm:ml-0">{formatEUR(inv.montantTtc)}</span>
                       {inv.pdfUrl ? (
                         <a href={inv.pdfUrl} target="_blank" rel="noreferrer" className="flex-none text-[#8CA9FF]">
-                          <span className="material-symbols-rounded !text-[20px]">download</span>
+                          <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">download</span>
                         </a>
                       ) : (
                         <span className="flex-none w-5" />
@@ -163,7 +163,7 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
                   <div key={p.id} className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-4 sm:flex-row sm:items-center sm:gap-3.5">
                     <div className="flex min-w-0 items-center gap-3.5">
                       <span className="flex h-11 w-11 flex-none items-center justify-center rounded-sv bg-white/5">
-                        <span className="material-symbols-rounded !text-[20px] text-text-tertiary">payments</span>
+                        <span className="material-symbols-rounded !text-[20px] text-text-tertiary" aria-hidden="true">payments</span>
                       </span>
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="truncate text-[14px] font-medium text-text">{p.offreNom || "Paiement"}</span>
@@ -208,7 +208,7 @@ function EmptyState({ tabLabel }: { tabLabel: string }) {
   return (
     <div className="flex max-w-[560px] flex-col gap-3.5 rounded-[24px] border border-dashed border-border-strong bg-white/[.04] p-7">
       <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-white/[.06]">
-        <span className="material-symbols-rounded !text-[24px] text-text-tertiary">description</span>
+        <span className="material-symbols-rounded !text-[24px] text-text-tertiary" aria-hidden="true">description</span>
       </span>
       <span className="font-sora text-[19px] font-semibold">Aucun document dans « {tabLabel} »</span>
       <span className="text-[14px] leading-[1.55] text-text-tertiary">

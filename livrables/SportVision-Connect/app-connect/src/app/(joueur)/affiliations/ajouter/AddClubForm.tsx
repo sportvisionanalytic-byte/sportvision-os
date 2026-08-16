@@ -151,7 +151,7 @@ export function AddClubForm({
     return (
       <div className="flex flex-col items-center gap-4 rounded-sv-card border border-border bg-surface p-6 text-center animate-sv-in">
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-affiliations-bg">
-          <span className="material-symbols-rounded !text-[26px] text-affiliations">check</span>
+          <span className="material-symbols-rounded !text-[26px] text-affiliations" aria-hidden="true">check</span>
         </span>
         <div className="flex flex-col gap-2">
           <span className="font-sora text-[18px] font-semibold">Club transmis à SportVision</span>
@@ -236,7 +236,7 @@ export function AddClubForm({
         <BackLink onClick={() => { setChoice(null); setSelected(null); setError(null); }} />
 
         <div className="relative flex">
-          <span className="material-symbols-rounded absolute left-4 top-4 !text-[22px] text-text-faint">search</span>
+          <span className="material-symbols-rounded absolute left-4 top-4 !text-[22px] text-text-faint" aria-hidden="true">search</span>
           <input
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSelected(null); }}
@@ -279,7 +279,7 @@ export function AddClubForm({
 
         {!searching && query.trim().length >= 2 && results.length === 0 && !searchError && (
           <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong p-6 text-center">
-            <span className="material-symbols-rounded !text-[24px] text-text-tertiary">search_off</span>
+            <span className="material-symbols-rounded !text-[24px] text-text-tertiary" aria-hidden="true">search_off</span>
             <span className="font-sora text-[16px] font-semibold">Votre club n&apos;apparaît pas ?</span>
             <button
               type="button"
@@ -379,7 +379,7 @@ function ChoiceCard({
       className="flex min-h-[74px] items-center gap-3.5 rounded-sv-card border border-border bg-surface p-4.5 text-left transition-colors duration-150 hover:bg-surface-hover"
     >
       <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-sv bg-white/5">
-        <span className="material-symbols-rounded !text-[23px]" style={{ color: iconColor }}>
+        <span className="material-symbols-rounded !text-[23px]" style={{ color: iconColor }} aria-hidden="true">
           {icon}
         </span>
       </span>
@@ -387,7 +387,7 @@ function ChoiceCard({
         <span className="font-sora text-[16px] font-semibold text-text">{label}</span>
         <span className="text-[13px] leading-snug text-text-tertiary">{sub}</span>
       </span>
-      <span className="material-symbols-rounded ml-auto !text-[22px] text-text-label">chevron_right</span>
+      <span className="material-symbols-rounded ml-auto !text-[22px] text-text-label" aria-hidden="true">chevron_right</span>
     </button>
   );
 }
@@ -399,7 +399,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text"
     >
-      <span className="material-symbols-rounded !text-[18px]">arrow_back</span>
+      <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
       Retour
     </button>
   );
@@ -408,7 +408,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
 function ErrorBanner({ message }: { message: string }) {
   return (
     <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-      <span className="material-symbols-rounded !text-[19px] text-danger">error</span>
+      <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
       <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{message}</span>
     </div>
   );

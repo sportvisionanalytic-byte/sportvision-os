@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { SignupProvider, STEPS } from "./signup-context";
+import { SignupProvider, STEPS, useSignup } from "./signup-context";
+import { LEGAL_URLS } from "@/lib/legal-links";
 
 // Layout du tunnel d'inscription — barre de progression + fil d'Ariane, voir
 // design-connect-personnel-12-08/README.md § Inscription. Le SignupProvider englobe toutes
@@ -19,9 +20,25 @@ export default function SignupLayout({ children }: { children: React.ReactNode }
 function SignupShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { state } = useSignup();
   const stepIndex = Math.max(0, STEPS.findIndex((s) => s.href === pathname));
   const progress = ((stepIndex + 1) / STEPS.length) * 100;
   const showProgress = stepIndex >= 0 && pathname !== "/signup/verify" && pathname !== "/signup/done";
+
+  // Labels des étapes 3/4 adaptés au profil choisi à l'étape 2 — les pages elles-mêmes
+  // (signup/sport, signup/club) branchent déjà leur contenu sur isSportLike/isParticulier/etc.
+  // (aucun sportif n'y voit de sélecteur "Club"), mais le fil d'Ariane restait figé sur
+  // "Sport"/"Club" pour tout le monde — un parent qui répond "J'accompagne un sportif" voyait
+  // quand même "Sport" puis "Club" au-dessus d'un écran qui ne parle ni de sport ni de club.
+  // Trouvé par audit externe le 16/08 (confondu à tort avec "le parcours ne branche jamais" —
+  // vérifié faux dans le code, seul le libellé du stepper ne suivait pas).
+  const isSportLike = state.profile === "joueur" || state.profile === "sportif";
+  const isParticulier = state.profile === "particulier";
+  const stepLabels = STEPS.map((s, i) => {
+    if (i === 2) return isSportLike ? "Sport" : isParticulier ? "Besoin" : "Espace";
+    if (i === 3) return isSportLike ? "Affiliation" : "Finalisation";
+    return s.label;
+  });
 
   return (
     <div className="flex min-h-screen flex-col bg-bg font-sans text-text">
@@ -51,7 +68,7 @@ function SignupShell({ children }: { children: React.ReactNode }) {
                   aria-label="Retour"
                   className="flex h-10 w-10 flex-none items-center justify-center rounded-sv border border-border bg-surface text-text-secondary hover:bg-surface-hover"
                 >
-                  <span className="material-symbols-rounded !text-[20px]">arrow_back</span>
+                  <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">arrow_back</span>
                 </button>
                 <div className="h-[5px] flex-1 overflow-hidden rounded-sv-pill bg-white/10">
                   <div
@@ -71,13 +88,28 @@ function SignupShell({ children }: { children: React.ReactNode }) {
                       i === stepIndex ? "text-text" : i < stepIndex ? "text-[#8CA9FF]" : "text-text-label"
                     }`}
                   >
-                    {s.label}
+                    {stepLabels[i]}
                   </span>
                 ))}
               </div>
             </div>
           )}
           {children}
+
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 pt-2 text-[12px] text-text-label">
+            <a href={LEGAL_URLS.mentionsLegales} target="_blank" rel="noopener noreferrer" className="hover:text-text-tertiary">
+              Mentions légales
+            </a>
+            <a href={LEGAL_URLS.confidentialite} target="_blank" rel="noopener noreferrer" className="hover:text-text-tertiary">
+              Confidentialité
+            </a>
+            <a href={LEGAL_URLS.cgv} target="_blank" rel="noopener noreferrer" className="hover:text-text-tertiary">
+              Conditions d&apos;utilisation
+            </a>
+            <Link href="/aide" className="hover:text-text-tertiary">
+              Aide
+            </Link>
+          </div>
         </div>
       </div>
     </div>
