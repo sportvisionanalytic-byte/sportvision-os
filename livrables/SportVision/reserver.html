@@ -384,7 +384,7 @@ section{position:relative}
           <h2>Vos options</h2>
           <p class="sub">Sélectionnez ce qui s'applique — vous pourrez toujours ajuster avec notre équipe.</p>
           <div class="options-grid" id="options-grid">
-            <label class="opt-check" data-besoin="match-photo pack-match couverture-tournoi couverture-stage"><input type="checkbox" value="Plans drone complémentaires (+40€)" data-opt="drone"> Plans drone complémentaires (+40 €)</label>
+            <label class="opt-check" data-besoin="match-photo pack-match couverture-tournoi couverture-stage"><input type="checkbox" value="Plans drone complémentaires (+40 €)" data-opt="drone"> Plans drone complémentaires (+40 €)</label>
             <label class="opt-check" data-besoin="couverture-tournoi couverture-stage"><input type="checkbox" value="Highlight vidéo" data-opt="highlight"> Highlight vidéo</label>
             <label class="opt-check" data-besoin="match-photo match-video pack-match couverture-tournoi couverture-stage coach-preparateur match-filme-drone combo-drone-photo"><input type="checkbox" value="Reel vertical" data-opt="reel"> Reel vertical (réseaux)</label>
             <label class="opt-check" data-besoin="match-photo match-video pack-match match-filme-drone combo-drone-photo"><input type="checkbox" value="Livraison express" data-opt="express"> Livraison express</label>
@@ -888,7 +888,7 @@ function buildRecap(){
 
   state.options.forEach(opt => {
     // Reformatage purement visuel de la valeur déjà présente dans le catalogue
-    // d'options ("Drone (+40€)" → "Drone +40 €") — aucun montant inventé.
+    // d'options ("Drone (+40 €)" → "Drone +40 €") — aucun montant inventé.
     const optFmt = opt.replace(/\s*\(\+(\d+)\s*€\)/, ' +$1 €');
     parts.push('Option : ' + esc(optFmt));
   });
