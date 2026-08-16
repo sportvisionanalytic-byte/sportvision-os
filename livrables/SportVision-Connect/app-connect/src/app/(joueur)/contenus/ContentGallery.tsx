@@ -417,6 +417,7 @@ function Lightbox({
             item.type === "video" ? (
               <video src={item.link} controls className="max-h-full max-w-full rounded-[18px] border border-white/10" />
             ) : (
+              // eslint-disable-next-line @next/next/no-img-element -- média distant (bucket Storage club_media), pas un asset local optimisable par next/image
               <img src={item.link} alt={item.title} className="max-h-full max-w-full rounded-[18px] border border-white/10 object-contain" />
             )
           ) : (

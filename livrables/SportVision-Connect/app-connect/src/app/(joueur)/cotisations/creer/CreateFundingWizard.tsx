@@ -83,6 +83,7 @@ export function CreateFundingWizard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ id: string; share_token: string; montant_cible: number } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const offre = useMemo(() => offres.find((o) => o.id === offreId) || null, [offres, offreId]);
   const goal = offre ? ttc(offre) : 0;
@@ -158,11 +159,19 @@ export function CreateFundingWizard({
           </span>
           <button
             type="button"
-            onClick={() => navigator.clipboard?.writeText(link)}
+            onClick={async () => {
+              try {
+                await navigator.clipboard?.writeText(link);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+              } catch {
+                // Presse-papiers indisponible — le lien reste affiché et sélectionnable manuellement.
+              }
+            }}
             className="flex h-9 flex-none items-center gap-1.5 rounded-sv bg-white/[.09] px-3.5 font-sora text-[13px] font-semibold hover:bg-white/[.16]"
           >
-            <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">content_copy</span>
-            Copier
+            <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">{linkCopied ? "check" : "content_copy"}</span>
+            {linkCopied ? "Copié" : "Copier"}
           </button>
         </div>
 

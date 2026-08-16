@@ -10,6 +10,7 @@ import {
   getRecentContentGroups,
   prestationStatusLabel,
 } from "@/lib/supabase/dashboard";
+import { formatEUR } from "@/lib/prestations/format";
 
 // Accueil — voir design-connect-personnel-12-08/README.md § Espace joueur → Accueil, et
 // Connect Espace Joueur.dc.html (bloc ACCUEIL) pour le texte exact de chaque carte. Cartes
@@ -223,8 +224,8 @@ export default async function DashboardPage() {
                   <div className="flex flex-col gap-2.5">
                     <div className="flex items-baseline justify-between gap-2.5">
                       <div className="flex items-baseline gap-1.5">
-                        <span className="font-sora text-[27px] font-bold tracking-tight">{cotisation.collected} €</span>
-                        <span className="text-[14px] text-text-tertiary">/ {cotisation.target} €</span>
+                        <span className="font-sora text-[27px] font-bold tracking-tight">{formatEUR(cotisation.collected)}</span>
+                        <span className="text-[14px] text-text-tertiary">/ {formatEUR(cotisation.target)}</span>
                       </div>
                       <span className="text-[13px] font-medium text-cotisations">
                         {Math.round((cotisation.collected / cotisation.target) * 100)} %
@@ -237,7 +238,7 @@ export default async function DashboardPage() {
                       />
                     </div>
                     <span className="text-[13px] text-text-tertiary">
-                      Plus que {Math.max(0, cotisation.target - cotisation.collected)} € pour atteindre l&apos;objectif
+                      Plus que {formatEUR(Math.max(0, cotisation.target - cotisation.collected))} pour atteindre l&apos;objectif
                       {cotisation.participants > 0 && ` · ${cotisation.participants} participants`}
                     </span>
                   </div>

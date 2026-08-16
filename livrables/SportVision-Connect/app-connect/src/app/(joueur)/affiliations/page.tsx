@@ -38,9 +38,18 @@ export default async function AffiliationsPage() {
           >
             <div className="flex flex-col gap-4 rounded-[calc(theme(borderRadius.sv-card)-1px)] bg-bg-elevated p-5">
               <div className="flex flex-wrap items-center gap-4">
-                <span className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-sv bg-white/5 font-mono text-[8px] text-text-faint">
-                  logo
-                </span>
+                {player.club.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- logo club distant (bucket Storage clubplus-media), pas un asset local optimisable par next/image
+                  <img
+                    src={player.club.logoUrl}
+                    alt={`Logo ${player.club.nom}`}
+                    className="h-[52px] w-[52px] flex-none rounded-sv bg-white/5 object-cover"
+                  />
+                ) : (
+                  <span className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-sv bg-white/5 font-mono text-[8px] text-text-faint">
+                    logo
+                  </span>
+                )}
                 <div className="flex min-w-0 flex-col gap-1.5">
                   <span className="font-sora text-[20px] font-semibold tracking-tight">{player.club.nom}</span>
                   <div className="flex flex-wrap items-center gap-2">

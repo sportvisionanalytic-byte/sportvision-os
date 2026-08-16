@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireJoueurAccount } from "@/lib/supabase/session";
-import { fetchPlayerOfferById, baseTtc, categorieIcon, perPersonTtc, MONTAGE_COMPILATION_SLUG } from "@/lib/prestations/catalogue";
+import { fetchPlayerOfferById, baseTtc, categorieIcon, isCollectif, perPersonTtc, MONTAGE_COMPILATION_SLUG } from "@/lib/prestations/catalogue";
 import { formatEUR } from "@/lib/prestations/format";
 import { MontageCompilationModes } from "@/components/prestations/MontageCompilationModes";
 
@@ -21,6 +21,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
   if (!offer) notFound();
 
   const ttc = baseTtc(offer);
+  const collectif = isCollectif(offer);
   const included = (offer.livrablesInclus || "")
     .split(",")
     .map((s) => s.trim())
@@ -45,7 +46,9 @@ export default async function PrestationFichePage({ params }: { params: Promise<
                 {offer.family}
               </span>
             )}
-            <span className="rounded-sv-pill bg-white/10 px-3 py-1 text-[12px] font-medium text-white">Collectif</span>
+            <span className="rounded-sv-pill bg-white/10 px-3 py-1 text-[12px] font-medium text-white">
+              {collectif ? "Paiement à plusieurs disponible" : "Individuel"}
+            </span>
           </div>
           <div className="flex items-center gap-4">
             <span className="flex h-14 w-14 flex-none items-center justify-center rounded-sv bg-white/10">
