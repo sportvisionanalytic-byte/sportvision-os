@@ -845,12 +845,48 @@ document.getElementById('btn-step3-next').addEventListener('click', () => {
 // Connect (module Devis) — voir projet-dashboard-devis-contrats-factures.js et la migration
 // migration-devis-cgv-execution-anticipee-11-08.sql.
 
+// Mini-récapitulatif avant envoi (audit externe du 16/08) — reprend le besoin,
+// la date/lieu et le prix déjà saisis/affichés dans les étapes précédentes du
+// même formulaire (aucune donnée inventée). Format visé :
+//   Match Photo
+//   23 août · Fontainebleau
+//   120 € TTC + éventuels frais de déplacement
+//   Option : Drone +25 €
+function formatDateRecap(iso){
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+}
 function buildRecap(){
   const parts = [];
-  parts.push('<b>' + esc(state.label) + '</b> — ' + esc(state.price));
-  if (state.date) parts.push('<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg> ' + esc(state.date) + (state.heure ? ' à ' + esc(state.heure) : ''));
-  if (state.ville) parts.push('<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M12 21s7-7.4 7-12a7 7 0 1 0-14 0c0 4.6 7 12 7 12z"/><circle cx="12" cy="9" r="2.3"/></svg> ' + esc(state.ville) + (state.cp ? ' (' + esc(state.cp) + ')' : ''));
-  if (state.options.length) parts.push('➕ ' + state.options.map(esc).join(', '));
+  if (state.label) parts.push('<b>' + esc(state.label) + '</b>');
+
+  const dateEtLieu = [];
+  const dateFmt = formatDateRecap(state.date);
+  if (dateFmt) dateEtLieu.push(dateFmt + (state.heure ? ' à ' + state.heure : ''));
+  if (state.ville) dateEtLieu.push(state.ville + (state.cp ? ' (' + state.cp + ')' : ''));
+  if (dateEtLieu.length) parts.push(esc(dateEtLieu.join(' · ')));
+
+  if (state.price){
+    const estPrixFixe = state.slug && OFFRES_PRIX_FIXE.has(state.slug);
+    parts.push(esc(state.price) + (estPrixFixe ? ' + éventuels frais de déplacement' : ''));
+  }
+
+  state.options.forEach(opt => {
+    // Reformatage purement visuel de la valeur déjà présente dans le catalogue
+    // d'options ("Drone (+25€)" → "Drone +25 €") — aucun montant inventé.
+    const optFmt = opt.replace(/\s*\(\+(\d+)\s*€\)/, ' +$1 €');
+    parts.push('Option : ' + esc(optFmt));
+  });
+
+  const c = state.champs || {};
+  const infosMatch = [c.equipe && 'Équipe ' + c.equipe, c.adversaire && 'contre ' + c.adversaire, c.categorie && '(' + c.categorie + ')'].filter(Boolean).join(' ');
+  if (infosMatch) parts.push(esc(infosMatch));
+  const infosEvenement = [c.nomEvenement, c.duree].filter(Boolean).join(' · ');
+  if (infosEvenement) parts.push(esc(infosEvenement));
+  if (c.typeSeance) parts.push(esc('Séance : ' + c.typeSeance));
+
   document.getElementById('recap-box').innerHTML = parts.map(p => '<div>' + p + '</div>').join('');
 }
 
