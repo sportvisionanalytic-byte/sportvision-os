@@ -59,7 +59,7 @@ export function AthletesListView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="font-sora text-[33px] font-bold tracking-tight">{sportifsLabel}</h1>
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">{sportifsLabel}</h1>
           <p className="max-w-[560px] text-[15px] text-text-tertiary">
             Les sportifs que vous accompagnez et ce que vous êtes autorisé à consulter.
           </p>
@@ -83,7 +83,7 @@ export function AthletesListView({
             particulierLimitReached ? "border-attente/40 bg-attente-bg" : "border-border bg-white/[.04]"
           }`}
         >
-          <div className="flex items-center justify-between text-[13px]">
+          <div className="flex items-center justify-between text-[14px] lg:text-[13px]">
             <span className="text-text-secondary">
               {particulierTotal} / {particulierLimit} sportifs suivis
             </span>
@@ -95,7 +95,7 @@ export function AthletesListView({
             />
           </div>
           {particulierLimitReached && (
-            <span className="text-[12.5px] leading-relaxed text-attente">
+            <span className="text-[14px] leading-relaxed text-attente lg:text-[12.5px]">
               Vous avez atteint votre limite de sportifs suivis. Contactez SportVision pour en suivre davantage.
             </span>
           )}
@@ -116,11 +116,11 @@ export function AthletesListView({
           <span className="material-symbols-rounded !text-[19px]" style={{ color: agentInfo.canAcceptMore ? undefined : "#FBBF24" }} aria-hidden="true">
             workspace_premium
           </span>
-          <span className="text-[13px] leading-relaxed text-text-secondary">
+          <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
             Palier {AGENT_TIER_LABEL[agentInfo.tier]} · {agentInfo.athletesCount} / {agentInfo.limit} sportifs suivis en tant qu&apos;agent
             {!agentInfo.canAcceptMore && " — limite atteinte, les nouvelles demandes ne pourront pas être acceptées"}
           </span>
-          <Link href="/particulier/abonnement" className="ml-auto flex-none text-[13px] font-semibold text-affiliations hover:underline">
+          <Link href="/particulier/abonnement" className="ml-auto flex-none text-[14px] font-semibold text-affiliations hover:underline lg:text-[13px]">
             Gérer mon abonnement
           </Link>
         </div>
@@ -159,10 +159,10 @@ export function AthletesListView({
                   <span className="font-sora text-[16px] font-semibold tracking-tight">
                     {a.firstName} {a.lastName}
                   </span>
-                  <span className="text-[13px] text-text-tertiary">
+                  <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                     {[a.sport, a.categorie].filter(Boolean).join(" · ") || "—"}
                   </span>
-                  {a.clubNom && <span className="text-[12px] text-text-faint">{a.clubNom}</span>}
+                  {a.clubNom && <span className="text-[13px] text-text-faint lg:text-[12px]">{a.clubNom}</span>}
                 </div>
                 <div className="ml-auto flex flex-none flex-col items-end gap-1.5">
                   <span className="rounded-sv-pill bg-white/[.07] px-2.5 py-1 text-[11px] font-medium text-text-secondary">

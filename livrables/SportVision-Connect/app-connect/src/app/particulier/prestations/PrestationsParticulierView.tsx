@@ -62,7 +62,7 @@ export function PrestationsParticulierView({
       </div>
 
       <div className="flex flex-col gap-3">
-        <span className="text-[13px] font-medium text-text-secondary">Pour qui réservez-vous ?</span>
+        <span className="text-[14px] font-medium text-text-secondary lg:text-[13px]">Pour qui réservez-vous ?</span>
         <div className="flex flex-wrap gap-2">
           {beneficiaries.map((b) => {
             const active = b.kind === benefKind && b.id === benefId;
@@ -87,14 +87,14 @@ export function PrestationsParticulierView({
           })}
         </div>
         {athletes.length === 0 && (
-          <span className="text-[12.5px] text-text-faint">
+          <span className="text-[14px] text-text-faint lg:text-[12.5px]">
             Aucun sportif ne vous a encore autorisé à réserver pour lui. Vous pouvez réserver pour vous-même.
           </span>
         )}
         {blockedReason && (
           <div className="flex items-start gap-2.5 rounded-sv border border-attente/30 bg-attente-bg px-4 py-3.5">
             <span className="material-symbols-rounded !text-[19px] text-attente" aria-hidden="true">lock</span>
-            <span className="text-[13px] leading-relaxed text-text-secondary">{blockedReason}</span>
+            <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">{blockedReason}</span>
           </div>
         )}
       </div>
@@ -129,7 +129,7 @@ export function PrestationsParticulierView({
                 <div className="flex flex-col gap-3.5 p-[18px]">
                   <div className="flex flex-col gap-2.5">
                     <span className="font-sora text-[16px] font-semibold tracking-tight">{offer.nom}</span>
-                    <span className="text-[13px] leading-relaxed text-text-tertiary">{offer.description || ""}</span>
+                    <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">{offer.description || ""}</span>
                   </div>
 
                   <MontageCompilationModes offer={offer} />
@@ -140,7 +140,7 @@ export function PrestationsParticulierView({
                       type="button"
                       onClick={() => goToOffer(offer.id)}
                       aria-disabled={!!blockedReason}
-                      className={`flex items-center gap-1.5 rounded-sv-pill bg-sv-gradient px-4 py-2 font-sora text-[13.5px] font-semibold text-white transition-opacity duration-150 ${
+                      className={`flex items-center gap-1.5 rounded-sv-pill bg-sv-gradient px-4 py-2 font-sora text-[14px] font-semibold text-white transition-opacity duration-150 lg:text-[13.5px] ${
                         blockedReason ? "cursor-not-allowed opacity-60" : "hover:brightness-[1.1]"
                       }`}
                     >
@@ -173,10 +173,10 @@ export function PrestationsParticulierView({
               </div>
               <div className="flex flex-1 flex-col gap-2.5 p-[18px]">
                 <span className="font-sora text-[16px] font-semibold tracking-tight">{offer.nom}</span>
-                <span className="text-[13px] leading-relaxed text-text-tertiary">{offer.description || ""}</span>
+                <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">{offer.description || ""}</span>
                 <div className="mt-auto flex items-center justify-between gap-2.5 pt-1.5">
                   <span className="font-sora text-[15px] font-semibold">{ttc !== null ? `${formatEUR(ttc)} TTC` : "Sur devis"}</span>
-                  <span className="flex items-center gap-1.5 font-sora text-[13.5px] font-semibold text-prestations">
+                  <span className="flex items-center gap-1.5 font-sora text-[14px] font-semibold text-prestations lg:text-[13.5px]">
                     Réserver
                     <span className="material-symbols-rounded !text-[16px]" aria-hidden="true">arrow_forward</span>
                   </span>

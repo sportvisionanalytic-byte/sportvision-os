@@ -34,7 +34,7 @@ export default async function ProfilParticulierPage() {
             <Avatar url={settings.avatarUrl} label={identity.firstName} size={60} className="text-[20px]" />
             <div className="flex flex-col gap-1.5">
               <h1 className="font-sora text-[26px] font-bold tracking-tight">{fullName}</h1>
-              <span className="text-[13px] text-text-tertiary">
+              <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                 {athletes.length > 0 ? `Vous accompagnez ${athletes.length} sportif${athletes.length > 1 ? "s" : ""}` : "Espace personnel"}
               </span>
             </div>
@@ -68,7 +68,7 @@ export default async function ProfilParticulierPage() {
             <div className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5">
               <div className="flex items-center gap-3">
                 <h2 className="font-sora text-[17px] font-semibold">{particulierSportifsLabel(profilParticulier)}</h2>
-                <Link href="/particulier/sportifs/ajouter" className="ml-auto text-[13px] font-medium text-affiliations">
+                <Link href="/particulier/sportifs/ajouter" className="ml-auto text-[14px] font-medium text-affiliations lg:text-[13px]">
                   Ajouter
                 </Link>
               </div>
@@ -97,11 +97,11 @@ export default async function ProfilParticulierPage() {
                   })}
                 </div>
               ) : (
-                <span className="text-[13px] leading-relaxed text-text-tertiary">Aucun sportif ajouté pour le moment.</span>
+                <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">Aucun sportif ajouté pour le moment.</span>
               )}
               <Link
                 href="/particulier/sportifs"
-                className="self-start rounded-sv border border-border-strong bg-white/[.03] px-3.5 py-2.5 font-sora text-[13px] font-semibold hover:bg-white/[.08]"
+                className="self-start rounded-sv border border-border-strong bg-white/[.03] px-3.5 py-2.5 font-sora text-[14px] font-semibold hover:bg-white/[.08] lg:text-[13px]"
               >
                 Gérer mes sportifs
               </Link>

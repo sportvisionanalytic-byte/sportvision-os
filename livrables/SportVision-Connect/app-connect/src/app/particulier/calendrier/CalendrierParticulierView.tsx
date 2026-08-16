@@ -106,7 +106,7 @@ export function CalendrierParticulierView({
               key={f.key ?? "all"}
               type="button"
               onClick={() => setFilter(f.key)}
-              className={`rounded-sv-pill border px-3.5 py-2 text-[13px] font-medium transition-colors duration-150 ${
+              className={`rounded-sv-pill border px-3.5 py-2 text-[14px] font-medium transition-colors duration-150 lg:text-[13px] ${
                 filter === f.key ? "border-[rgba(140,169,255,.65)] bg-[rgba(79,125,255,.2)] text-text" : "border-border text-text-tertiary hover:text-text"
               }`}
             >
@@ -147,7 +147,7 @@ export function CalendrierParticulierView({
                       </span>
                     )}
                   </div>
-                  <span className="text-[13px] text-text-tertiary">
+                  <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                     {formatDate(event.date)}
                     {event.time ? ` · ${event.time.slice(0, 5)}` : ""}
                     {event.location ? ` · ${event.location}` : ""}

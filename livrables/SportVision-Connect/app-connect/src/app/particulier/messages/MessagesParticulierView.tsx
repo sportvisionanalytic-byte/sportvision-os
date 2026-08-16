@@ -71,7 +71,7 @@ export function MessagesParticulierView({ firstName, athletes }: { firstName: st
 
       {subjects.length > 1 && (
         <div className="flex flex-col gap-2">
-          <span className="text-[13px] font-medium text-text-secondary">Ce message concerne :</span>
+          <span className="text-[14px] font-medium text-text-secondary lg:text-[13px]">Ce message concerne :</span>
           {/* Une seule ligne défilante horizontalement sur mobile (jamais de wrap multi-lignes,
               qui rendrait la hauteur de ce bloc imprévisible pour le calcul de hauteur du fil
               juste en dessous — voir MessagesThread.tsx). Retour au wrap normal dès sm: où la
@@ -82,7 +82,7 @@ export function MessagesParticulierView({ firstName, athletes }: { firstName: st
                 key={`${s.kind}:${s.id}`}
                 type="button"
                 onClick={() => setSubjectIndex(i)}
-                className={`flex-none rounded-sv-pill border px-3.5 py-2 text-[13px] font-medium transition-colors duration-150 ${
+                className={`flex-none rounded-sv-pill border px-3.5 py-2 text-[14px] font-medium transition-colors duration-150 lg:text-[13px] ${
                   subjectIndex === i ? "border-[rgba(34,211,238,.5)] bg-[rgba(34,211,238,.18)] text-text" : "border-border text-text-tertiary hover:text-text"
                 }`}
               >
@@ -105,7 +105,7 @@ export function MessagesParticulierView({ firstName, athletes }: { firstName: st
         />
       )}
       {!loading && !error && subject.kind !== "self" && (
-        <p className="text-[12.5px] text-text-faint">
+        <p className="text-[13px] text-text-faint lg:text-[12.5px]">
           {firstName}, ce fil concerne {subject.label} — l&apos;équipe SportVision voit qui écrit.
         </p>
       )}

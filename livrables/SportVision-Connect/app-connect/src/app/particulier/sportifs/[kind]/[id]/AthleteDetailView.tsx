@@ -141,7 +141,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <Link href="/particulier/sportifs" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+      <Link href="/particulier/sportifs" className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
         <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Mes sportifs
       </Link>
@@ -159,7 +159,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
               <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">{fullName}</h1>
               <span className="text-[14px] text-text-tertiary">{[detail.sport, detail.categorie].filter(Boolean).join(" · ") || "—"}</span>
               <div className="flex flex-wrap items-center gap-2">
-                {detail.club_nom && <span className="text-[13px] text-text-secondary">{detail.club_nom}</span>}
+                {detail.club_nom && <span className="text-[14px] text-text-secondary lg:text-[13px]">{detail.club_nom}</span>}
                 <span className="rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: statusColor.fg, background: statusColor.bg }}>
                   {statusLabel}
                 </span>
@@ -248,7 +248,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
             {!detail.next_prestation && !detail.next_event && !detail.funding && (
               <div className="flex flex-col gap-2 rounded-sv-card border border-dashed border-border-strong bg-white/[.04] p-5">
                 <span className="font-sora text-[17px] font-semibold">Rien à signaler pour le moment</span>
-                <span className="text-[13.5px] leading-relaxed text-text-tertiary">
+                <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13.5px]">
                   Les prestations, contenus et cotisations de {detail.first_name} apparaîtront ici.
                 </span>
               </div>
@@ -267,7 +267,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
                   </div>
                   <span className="ml-auto flex-none rounded-sv-pill bg-affiliations-bg px-2.5 py-1 text-[11px] font-medium text-affiliations">✓ Affilié</span>
                 </div>
-                <span className="text-[12px] leading-relaxed text-text-faint">Vous consultez l&apos;affiliation, sans accès à la gestion du club.</span>
+                <span className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">Vous consultez l&apos;affiliation, sans accès à la gestion du club.</span>
               </div>
             )}
 
@@ -276,10 +276,10 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
               {RIGHT_LABELS.filter((r) => rights[r.key]).slice(0, 3).map((r) => (
                 <div key={r.key} className="flex items-center gap-2.5">
                   <span className="material-symbols-rounded !text-[18px] text-affiliations" aria-hidden="true">{r.icon}</span>
-                  <span className="text-[13px] text-text-secondary">{r.label}</span>
+                  <span className="text-[14px] text-text-secondary lg:text-[13px]">{r.label}</span>
                 </div>
               ))}
-              <button type="button" onClick={() => setTab("acces")} className="mt-0.5 self-start text-[13px] font-semibold text-prestations">
+              <button type="button" onClick={() => setTab("acces")} className="mt-0.5 self-start text-[14px] font-semibold text-prestations lg:text-[13px]">
                 Voir les autorisations
               </button>
             </div>
@@ -340,7 +340,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
           </div>
           <div className="flex items-start gap-2.5 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
             <span className="material-symbols-rounded !text-[19px] text-text-faint" aria-hidden="true">info</span>
-            <span className="text-[13px] leading-relaxed text-text-tertiary">
+            <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
               Ces autorisations sont vérifiées côté serveur à chaque action. Pour les mineurs, leur application reste
               soumise à une validation juridique du responsable légal.
             </span>
@@ -349,7 +349,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
           <div className="flex flex-wrap items-center gap-4 rounded-sv-card border border-danger-border bg-danger-bg p-[18px]">
             <div className="flex min-w-0 flex-col gap-1">
               <span className="font-sora text-[15px] font-semibold">Retirer {isManaged ? "ce profil" : "ce sportif"}</span>
-              <span className="text-[13px] text-text-tertiary">
+              <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                 {isManaged ? "Le profil géré est supprimé définitivement." : "La relation est supprimée. Le compte du sportif est conservé."}
               </span>
             </div>
@@ -361,7 +361,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
               Retirer
             </button>
           </div>
-          {removeError && <span className="text-[13px] text-danger">{removeError}</span>}
+          {removeError && <span className="text-[14px] text-danger lg:text-[13px]">{removeError}</span>}
         </div>
       )}
 
