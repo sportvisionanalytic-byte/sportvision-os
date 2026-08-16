@@ -53,7 +53,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="flex flex-col gap-[22px] animate-sv-in">
-        <Link href="/equipes" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+        <Link href="/equipes" className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
           <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
           Mes équipes
         </Link>
@@ -93,7 +93,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
                 Créer une cotisation
               </Link>
             </div>
-            <span className="text-[12px] leading-relaxed text-text-faint">
+            <span className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">
               Une cotisation sert uniquement à financer une prestation SportVision : vous choisissez d&apos;abord la
               prestation, puis la répartition entre les membres.
             </span>
@@ -150,7 +150,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
                   </div>
                   <div className="flex items-baseline gap-1.5">
                     <span className="font-sora text-[20px] font-bold tracking-tight">{euros(funding.montant_collecte)}</span>
-                    <span className="text-[13px] text-text-tertiary">/ {euros(funding.montant_cible)}</span>
+                    <span className="text-[14px] text-text-tertiary lg:text-[13px]">/ {euros(funding.montant_cible)}</span>
                   </div>
                   <div className="h-[7px] overflow-hidden rounded-sv-pill bg-white/[.08]">
                     <div className="h-full rounded-sv-pill bg-sv-gradient-cotisation transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${pct}%` }} />
@@ -159,7 +159,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
               ) : (
                 <div className="flex flex-col gap-2 rounded-sv border border-dashed border-border-strong bg-white/[.04] p-[18px]">
                   <span className="text-[14px] font-medium">Aucune cotisation en cours</span>
-                  <span className="text-[13px] leading-relaxed text-text-tertiary">
+                  <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                     Financez votre prochaine prestation avec ce groupe.
                   </span>
                 </div>
@@ -169,7 +169,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
             <div className="flex flex-col gap-[13px]">
               <h2 className="font-sora text-[18px] font-semibold tracking-tight">Prestations</h2>
               <div className="flex flex-col gap-2 rounded-sv border border-dashed border-border-strong bg-white/[.04] p-[18px]">
-                <span className="text-[13px] leading-relaxed text-text-tertiary">
+                <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                   Aucune prestation liée à ce groupe pour le moment.
                 </span>
               </div>

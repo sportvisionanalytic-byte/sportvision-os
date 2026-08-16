@@ -79,13 +79,15 @@ export function SportProfileSection({
         <button
           type="button"
           onClick={openModal}
-          className="ml-auto flex h-[38px] flex-none items-center gap-1.5 rounded-sv border border-border-strong bg-white/[.03] px-3.5 font-sora text-[13px] font-semibold hover:bg-white/[.08]"
+          className="ml-auto flex h-[38px] flex-none items-center gap-1.5 rounded-sv border border-border-strong bg-white/[.03] px-3.5 font-sora text-[14px] font-semibold hover:bg-white/[.08] lg:text-[13px]"
         >
           <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">edit</span>
           Modifier
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-3.5">
+      {/* grid-cols-1 sous sm: — "Ville" peut être un nom long (Montereau-Fault-Yonne), même
+          logique que PersonalInfoSection.tsx. */}
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         <InfoField label="Sport" value={sport || "—"} />
         <InfoField label="Poste" value={poste || "—"} />
         <InfoField label="Catégorie" value={categorie || "—"} />

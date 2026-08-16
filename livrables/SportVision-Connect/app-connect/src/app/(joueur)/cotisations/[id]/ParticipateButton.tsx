@@ -151,7 +151,7 @@ export function ParticipateButton({
                 <div className="flex items-start gap-3">
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="font-sora text-[19px] font-semibold tracking-tight">Votre participation</span>
-                    <span className="text-[13px] text-text-tertiary">reste {remaining.toLocaleString("fr-FR")} €</span>
+                    <span className="text-[14px] text-text-tertiary lg:text-[13px]">reste {remaining.toLocaleString("fr-FR")} €</span>
                   </div>
                   <button
                     type="button"
@@ -164,7 +164,7 @@ export function ParticipateButton({
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label htmlFor="part-amount" className="text-[13px] font-medium text-text-secondary">
+                  <label htmlFor="part-amount" className="text-[14px] font-medium text-text-secondary lg:text-[13px]">
                     Montant
                   </label>
                   <div
@@ -183,7 +183,7 @@ export function ParticipateButton({
                     <span className="text-[16px] text-text-tertiary">€</span>
                   </div>
                   {touched && invalid && (
-                    <span className="text-[12px] text-danger">
+                    <span className="text-[13px] text-danger lg:text-[12px]">
                       {amountNum > remaining ? `Il ne reste que ${remaining.toLocaleString("fr-FR")} € à financer.` : "Indiquez un montant d'au moins 1 €."}
                     </span>
                   )}
@@ -194,7 +194,7 @@ export function ParticipateButton({
                           key={v}
                           type="button"
                           onClick={() => setAmount(String(v))}
-                          className={`rounded-sv-pill border px-3.5 py-2 text-[13px] font-medium ${
+                          className={`rounded-sv-pill border px-3.5 py-2 text-[14px] font-medium lg:text-[13px] ${
                             amountNum === v ? "border-cotisations/60 bg-cotisations-bg text-text" : "border-border text-text-secondary"
                           }`}
                         >
@@ -206,12 +206,12 @@ export function ParticipateButton({
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <span className="text-[13px] font-medium text-text-secondary">Mode de paiement</span>
+                  <span className="text-[14px] font-medium text-text-secondary lg:text-[13px]">Mode de paiement</span>
                   <div className="grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={() => setMode("carte")}
-                      className={`flex h-12 items-center justify-center gap-2 rounded-sv border font-sora text-[13.5px] font-semibold ${
+                      className={`flex h-12 items-center justify-center gap-2 rounded-sv border font-sora text-[14px] font-semibold lg:text-[13.5px] ${
                         mode === "carte" ? "border-cotisations/60 bg-cotisations-bg text-text" : "border-border-strong bg-surface text-text-secondary"
                       }`}
                     >
@@ -221,7 +221,7 @@ export function ParticipateButton({
                     <button
                       type="button"
                       onClick={() => setMode("especes")}
-                      className={`flex h-12 items-center justify-center gap-2 rounded-sv border font-sora text-[13.5px] font-semibold ${
+                      className={`flex h-12 items-center justify-center gap-2 rounded-sv border font-sora text-[14px] font-semibold lg:text-[13.5px] ${
                         mode === "especes" ? "border-cotisations/60 bg-cotisations-bg text-text" : "border-border-strong bg-surface text-text-secondary"
                       }`}
                     >
@@ -230,14 +230,14 @@ export function ParticipateButton({
                     </button>
                   </div>
                   {mode === "especes" && (
-                    <span className="text-[12px] leading-relaxed text-text-faint">
+                    <span className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">
                       Votre participation sera comptée immédiatement. Remettez ce montant en espèces à l&apos;organisateur de la
                       cotisation.
                     </span>
                   )}
                 </div>
 
-                {error && <span className="text-[13px] text-danger">{error}</span>}
+                {error && <span className="text-[14px] text-danger lg:text-[13px]">{error}</span>}
 
                 <button
                   type="button"

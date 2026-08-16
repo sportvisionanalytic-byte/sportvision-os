@@ -65,7 +65,7 @@ export function FundingDetailView({
 
   return (
     <div className="flex flex-col gap-[22px] animate-sv-in">
-      <Link href={listHref} className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+      <Link href={listHref} className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
         <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Cotisations
       </Link>
@@ -73,7 +73,7 @@ export function FundingDetailView({
       {paiement === "succes" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
-          <span className="text-[13px] leading-relaxed text-text-secondary">
+          <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
             Votre paiement est en cours de confirmation par Stripe. Le montant collecté ci-dessous se mettra à jour
             automatiquement dès la confirmation — rafraîchissez la page dans quelques instants si besoin.
           </span>
@@ -82,7 +82,7 @@ export function FundingDetailView({
       {paiement === "annule" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-attente" aria-hidden="true">info</span>
-          <span className="text-[13px] leading-relaxed text-text-secondary">Paiement annulé, vous pouvez réessayer.</span>
+          <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">Paiement annulé, vous pouvez réessayer.</span>
         </div>
       )}
 
@@ -170,7 +170,7 @@ export function FundingDetailView({
           {isTerminal && (
             <div className="flex items-start gap-2.5 rounded-sv border border-dashed border-border-strong bg-white/[.04] px-4 py-3.5">
               <span className="material-symbols-rounded !text-[19px] text-text-tertiary" aria-hidden="true">construction</span>
-              <span className="text-[13px] leading-relaxed text-text-tertiary">
+              <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                 Cette cotisation est {funding.statut === "expiree" ? "expirée" : "annulée"}. Les actions « demander
                 malgré tout » et « rembourser les participants » sont en cours de finalisation et ne sont pas encore
                 disponibles ici — contactez SportVision depuis Messages pour un traitement manuel.
@@ -202,13 +202,13 @@ export function FundingDetailView({
                     <span className="text-[14px] font-medium">{c.name}</span>
                     <span className="text-[12px] text-text-tertiary">{formatDate(c.created_at)}</span>
                   </div>
-                  <span className="ml-auto flex-none text-[13px] font-semibold text-affiliations">{euros(c.montant)}</span>
+                  <span className="ml-auto flex-none text-[14px] font-semibold text-affiliations lg:text-[13px]">{euros(c.montant)}</span>
                 </div>
               ))}
             </div>
           ) : (
             <div className="flex flex-col gap-2 rounded-sv border border-dashed border-border-strong bg-white/[.04] p-[18px]">
-              <span className="text-[13px] leading-relaxed text-text-tertiary">Aucune participation pour le moment.</span>
+              <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">Aucune participation pour le moment.</span>
             </div>
           )}
         </div>
@@ -229,7 +229,7 @@ export function FundingDetailView({
           {!isTerminal && (
             <div className="flex flex-col gap-2.5 rounded-sv border border-border bg-white/[.04] p-5">
               <span className="font-sora text-[15px] font-semibold">Page publique</span>
-              <span className="text-[13px] leading-relaxed text-text-tertiary">
+              <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                 Voici ce que voient vos coéquipiers en ouvrant le lien.
               </span>
               <Link

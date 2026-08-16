@@ -144,7 +144,7 @@ export function NotificationBell() {
             <div className="flex flex-none items-center justify-between border-b border-border px-4 py-3.5">
               <span className="font-sora text-[15px] font-semibold">Notifications</span>
               {items && items.some((n) => !n.readAt) && (
-                <button type="button" onClick={handleMarkAllRead} className="text-[12px] font-medium text-[#8CA9FF] hover:text-[#B6C7FF]">
+                <button type="button" onClick={handleMarkAllRead} className="text-[13px] font-medium text-[#8CA9FF] hover:text-[#B6C7FF] lg:text-[12px]">
                   Tout marquer comme lu
                 </button>
               )}
@@ -159,12 +159,12 @@ export function NotificationBell() {
                 </div>
               )}
 
-              {error && <div className="p-4 text-[13px] text-text-tertiary">{error}</div>}
+              {error && <div className="p-4 text-[14px] text-text-tertiary lg:text-[13px]">{error}</div>}
 
               {items && items.length === 0 && !loading && (
                 <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
                   <span className="material-symbols-rounded !text-[26px] text-text-faint" aria-hidden="true">notifications_off</span>
-                  <p className="text-[13px] text-text-tertiary">Aucune notification pour le moment.</p>
+                  <p className="text-[14px] text-text-tertiary lg:text-[13px]">Aucune notification pour le moment.</p>
                 </div>
               )}
 
@@ -187,10 +187,10 @@ export function NotificationBell() {
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="flex items-center gap-1.5">
-                        <span className="truncate text-[13.5px] font-medium text-text">{notif.title}</span>
+                        <span className="truncate text-[14px] font-medium text-text lg:text-[13.5px]">{notif.title}</span>
                         {!notif.readAt && <span className="h-[7px] w-[7px] flex-none rounded-full bg-[#8CA9FF]" />}
                       </span>
-                      {notif.body && <span className="line-clamp-2 text-[12.5px] leading-snug text-text-tertiary">{notif.body}</span>}
+                      {notif.body && <span className="line-clamp-2 text-[13.5px] leading-snug text-text-tertiary lg:text-[12.5px]">{notif.body}</span>}
                       <span className="text-[11px] text-text-faint">{formatRelativeTime(notif.createdAt)}</span>
                     </span>
                   </button>

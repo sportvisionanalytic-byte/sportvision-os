@@ -155,7 +155,7 @@ export function AddClubForm({
         </span>
         <div className="flex flex-col gap-2">
           <span className="font-sora text-[18px] font-semibold">Club transmis à SportVision</span>
-          <p className="max-w-[320px] text-[13px] leading-relaxed text-text-tertiary">
+          <p className="max-w-[320px] text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
             « {declareName} » a été signalé à notre équipe comme club non partenaire. Il n&apos;apparaît pas
             comme une affiliation active dans votre profil pour l&apos;instant — nous vous recontacterons si
             SportVision peut travailler avec cette structure.
@@ -200,7 +200,7 @@ export function AddClubForm({
     return (
       <div className="flex flex-col gap-5 animate-sv-in">
         <BackLink onClick={() => { setChoice(null); setError(null); }} />
-        <p className="text-[13px] leading-relaxed text-text-tertiary">
+        <p className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
           Confirmez vos informations pour activer votre profil joueur. Vous pourrez ajouter un
           club à tout moment depuis cette page.
         </p>
@@ -246,7 +246,7 @@ export function AddClubForm({
         </div>
 
         {searching && <span className="text-[13px] text-text-tertiary">Recherche…</span>}
-        {searchError && <span className="text-[13px] text-danger">{searchError}</span>}
+        {searchError && <span className="text-[14px] text-danger lg:text-[13px]">{searchError}</span>}
 
         {!searching && query.trim().length >= 2 && results.length > 0 && (
           <div className="flex flex-col gap-2.5">
@@ -268,7 +268,7 @@ export function AddClubForm({
                     <span className="font-sora text-[15px] font-semibold text-text">{c.nom}</span>
                     <span className="text-[13px] text-text-tertiary">{c.ville || "Ville non précisée"}</span>
                   </span>
-                  <span className="ml-auto flex-none font-sora text-[13px] font-semibold text-[#8CA9FF]">
+                  <span className="ml-auto flex-none font-sora text-[14px] font-semibold text-[#8CA9FF] lg:text-[13px]">
                     {isSelected ? "Sélectionné" : "Sélectionner"}
                   </span>
                 </button>
@@ -284,7 +284,7 @@ export function AddClubForm({
             <button
               type="button"
               onClick={() => { setDeclareName(query); setChoice("declare"); }}
-              className="mt-1 rounded-sv border border-border-strong bg-surface px-4 py-2.5 text-[13px] font-semibold text-text hover:bg-surface-hover"
+              className="mt-1 rounded-sv border border-border-strong bg-surface px-4 py-2.5 text-[14px] font-semibold text-text hover:bg-surface-hover lg:text-[13px]"
             >
               Ajouter mon club manuellement
             </button>
@@ -324,7 +324,7 @@ export function AddClubForm({
   return (
     <div className="flex flex-col gap-5 animate-sv-in">
       <BackLink onClick={() => { setChoice(null); setError(null); }} />
-      <p className="text-[13px] leading-relaxed text-text-tertiary">
+      <p className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
         Ce club sera signalé à SportVision comme club non partenaire. Il ne devient pas partenaire
         SportVision pour autant.
       </p>
@@ -385,7 +385,7 @@ function ChoiceCard({
       </span>
       <span className="flex flex-col gap-1">
         <span className="font-sora text-[16px] font-semibold text-text">{label}</span>
-        <span className="text-[13px] leading-snug text-text-tertiary">{sub}</span>
+        <span className="text-[14px] leading-snug text-text-tertiary lg:text-[13px]">{sub}</span>
       </span>
       <span className="material-symbols-rounded ml-auto !text-[22px] text-text-label" aria-hidden="true">chevron_right</span>
     </button>
@@ -397,7 +397,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text"
+      className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]"
     >
       <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
       Retour
@@ -409,7 +409,7 @@ function ErrorBanner({ message }: { message: string }) {
   return (
     <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
       <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-      <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{message}</span>
+      <span className="text-[14px] leading-relaxed text-[#FBCFE8] lg:text-[13px]">{message}</span>
     </div>
   );
 }

@@ -60,7 +60,7 @@ export function LeaveAffiliationButton({ clubName }: { clubName: string }) {
                 compte Connect est conservé.
               </span>
             </div>
-            {error && <span className="text-[13px] text-danger">{error}</span>}
+            {error && <span className="text-[14px] text-danger lg:text-[13px]">{error}</span>}
             <div className="mt-1 flex gap-2.5">
               <button
                 type="button"

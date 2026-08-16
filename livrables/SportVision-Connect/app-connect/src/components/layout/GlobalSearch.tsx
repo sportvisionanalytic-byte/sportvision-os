@@ -115,7 +115,7 @@ export function SearchResultsList({
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
         <span className="material-symbols-rounded !text-[26px] text-text-faint" aria-hidden="true">search_off</span>
-        <p className="text-[13px] text-text-tertiary">
+        <p className="text-[14px] text-text-tertiary lg:text-[13px]">
           Aucun résultat pour « {query} ».
         </p>
       </div>
@@ -141,7 +141,7 @@ export function SearchResultsList({
                   <span className="material-symbols-rounded !text-[16px]" aria-hidden="true">{cat.icon}</span>
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-[13.5px] font-medium text-text">{item.title}</span>
+                  <span className="truncate text-[14px] font-medium text-text lg:text-[13.5px]">{item.title}</span>
                   {item.subtitle && <span className="truncate text-[12px] text-text-tertiary">{item.subtitle}</span>}
                 </span>
                 <span className="material-symbols-rounded !text-[17px] text-text-faint" aria-hidden="true">chevron_right</span>

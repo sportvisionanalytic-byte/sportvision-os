@@ -66,7 +66,7 @@ export function InviteGroupButton({ groupId, groupName }: { groupId: string; gro
             <div className="flex items-start gap-3">
               <div className="flex min-w-0 flex-col gap-1">
                 <span className="font-sora text-[19px] font-semibold tracking-tight">Inviter dans {groupName}</span>
-                <span className="text-[13px] text-text-tertiary">Toute personne avec ce lien peut rejoindre le groupe.</span>
+                <span className="text-[14px] text-text-tertiary lg:text-[13px]">Toute personne avec ce lien peut rejoindre le groupe.</span>
               </div>
               <button
                 type="button"
@@ -84,7 +84,7 @@ export function InviteGroupButton({ groupId, groupName }: { groupId: string; gro
               <button
                 type="button"
                 onClick={copyLink}
-                className="flex h-9 flex-none items-center gap-1.5 rounded-sv bg-white/[.09] px-3.5 font-sora text-[13px] font-semibold hover:bg-white/[.16]"
+                className="flex h-9 flex-none items-center gap-1.5 rounded-sv bg-white/[.09] px-3.5 font-sora text-[14px] font-semibold hover:bg-white/[.16] lg:text-[13px]"
               >
                 <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">{copied ? "check" : "content_copy"}</span>
                 {copied ? "Copié" : "Copier"}

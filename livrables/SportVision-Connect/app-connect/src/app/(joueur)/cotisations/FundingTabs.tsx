@@ -143,7 +143,7 @@ export function FundingTabs({ fundings, basePath = "/cotisations" }: { fundings:
                   <div className="flex items-baseline justify-between gap-2.5">
                     <div className="flex items-baseline gap-1.5">
                       <span className="font-sora text-[23px] font-bold tracking-tight">{euros(f.montant_collecte)}</span>
-                      <span className="text-[13px] text-text-tertiary">/ {euros(f.montant_cible)}</span>
+                      <span className="text-[14px] text-text-tertiary lg:text-[13px]">/ {euros(f.montant_cible)}</span>
                     </div>
                     <span className="text-[13px] font-semibold" style={{ color: reached ? "#22D3EE" : "#F472B6" }}>
                       {pct}%

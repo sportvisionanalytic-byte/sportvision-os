@@ -72,7 +72,7 @@ export function SecuritySection({ email }: { email: string }) {
         <button
           type="button"
           onClick={openModal}
-          className="ml-auto flex h-[40px] flex-none items-center rounded-sv border border-border-strong bg-white/[.03] px-3.5 font-sora text-[13px] font-semibold hover:bg-white/[.08]"
+          className="ml-auto flex h-[40px] flex-none items-center rounded-sv border border-border-strong bg-white/[.03] px-3.5 font-sora text-[14px] font-semibold hover:bg-white/[.08] lg:text-[13px]"
         >
           Modifier
         </button>
@@ -84,7 +84,7 @@ export function SecuritySection({ email }: { email: string }) {
             <div className="flex flex-col gap-4">
               <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
                 <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">check_circle</span>
-                <span className="text-[13px] leading-relaxed text-text-secondary">Mot de passe modifié.</span>
+                <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">Mot de passe modifié.</span>
               </div>
               <Button onClick={() => setOpen(false)} className="w-full">
                 Fermer

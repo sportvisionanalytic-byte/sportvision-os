@@ -130,11 +130,11 @@ export default async function ProfilPage() {
                   </div>
                 </div>
               ) : (
-                <span className="text-[13px] leading-relaxed text-text-tertiary">Aucune structure associée pour le moment.</span>
+                <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">Aucune structure associée pour le moment.</span>
               )}
               <Link
                 href="/affiliations"
-                className="self-start rounded-sv border border-border-strong bg-white/[.03] px-3.5 py-2.5 font-sora text-[13px] font-semibold hover:bg-white/[.08]"
+                className="self-start rounded-sv border border-border-strong bg-white/[.03] px-3.5 py-2.5 font-sora text-[14px] font-semibold hover:bg-white/[.08] lg:text-[13px]"
               >
                 Gérer mes affiliations
               </Link>
@@ -150,7 +150,7 @@ export default async function ProfilPage() {
               </span>
               <div className="flex flex-col gap-0.5">
                 <span className="font-sora text-[15px] font-semibold">Accès à mon profil</span>
-                <span className="text-[13px] text-text-tertiary">{accesSummary}</span>
+                <span className="text-[14px] text-text-tertiary lg:text-[13px]">{accesSummary}</span>
               </div>
               {pending > 0 && (
                 <span className="ml-auto flex-none rounded-sv-pill bg-attente px-2.5 py-1 text-[11px] font-semibold text-[#0B0B18]">{pending}</span>

@@ -168,7 +168,7 @@ export function CreateFundingWizard({
                 // Presse-papiers indisponible — le lien reste affiché et sélectionnable manuellement.
               }
             }}
-            className="flex h-9 flex-none items-center gap-1.5 rounded-sv bg-white/[.09] px-3.5 font-sora text-[13px] font-semibold hover:bg-white/[.16]"
+            className="flex h-9 flex-none items-center gap-1.5 rounded-sv bg-white/[.09] px-3.5 font-sora text-[14px] font-semibold hover:bg-white/[.16] lg:text-[13px]"
           >
             <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">{linkCopied ? "check" : "content_copy"}</span>
             {linkCopied ? "Copié" : "Copier"}
@@ -265,7 +265,7 @@ export function CreateFundingWizard({
                     </span>
                     <div className="flex min-w-0 flex-col gap-1">
                       <span className="font-sora text-[16px] font-semibold">{o.nom}</span>
-                      {o.description && <span className="text-[13px] text-text-tertiary">{o.description}</span>}
+                      {o.description && <span className="text-[14px] text-text-tertiary lg:text-[13px]">{o.description}</span>}
                     </div>
                     <span className="ml-auto flex-none font-sora text-[15px] font-semibold">{euros(ttc(o))}</span>
                   </button>
@@ -304,7 +304,7 @@ export function CreateFundingWizard({
               </span>
               <div className="flex flex-col gap-1">
                 <span className="font-sora text-[16px] font-semibold">Partage libre</span>
-                <span className="text-[13px] text-text-tertiary">Sans groupe : n&apos;importe qui avec le lien peut participer.</span>
+                <span className="text-[14px] text-text-tertiary lg:text-[13px]">Sans groupe : n&apos;importe qui avec le lien peut participer.</span>
               </div>
               {groupId === null && (
                 <span className="material-symbols-rounded ml-auto !text-[22px] text-affiliations" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">
@@ -338,7 +338,7 @@ export function CreateFundingWizard({
               );
             })}
             {groups.length === 0 && (
-              <p className="text-[13px] text-text-faint">
+              <p className="text-[14px] text-text-faint lg:text-[13px]">
                 Vous n&apos;avez pas encore d&apos;équipe — créez-en une depuis « Mes équipes », ou continuez en partage libre.
               </p>
             )}
@@ -373,7 +373,7 @@ export function CreateFundingWizard({
 
           {mode === "egale" ? (
             <div className="flex flex-col gap-[18px] rounded-sv-card border border-border-strong bg-surface p-[22px]">
-              <span className="text-[13px] font-medium text-text-secondary">Combien de personnes ?</span>
+              <span className="text-[14px] font-medium text-text-secondary lg:text-[13px]">Combien de personnes ?</span>
               <div className="flex flex-wrap items-center gap-[18px]">
                 <div className="flex items-center gap-3.5">
                   <button
@@ -395,7 +395,7 @@ export function CreateFundingWizard({
                 <div className="flex-1 rounded-sv p-px" style={{ minWidth: 180, background: "linear-gradient(120deg,rgba(168,85,247,.6),rgba(244,114,182,.4))" }}>
                   <div className="flex flex-col gap-1 rounded-[15px] bg-bg-elevated-accent px-[18px] py-4">
                     <span className="font-sora text-[26px] font-bold tracking-tight">{perPerson != null ? euros(perPerson) : "—"}</span>
-                    <span className="text-[13px] text-text-tertiary">par personne · objectif {euros(goal)}</span>
+                    <span className="text-[14px] text-text-tertiary lg:text-[13px]">par personne · objectif {euros(goal)}</span>
                   </div>
                 </div>
               </div>
@@ -410,7 +410,7 @@ export function CreateFundingWizard({
           )}
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="cot-deadline" className="text-[13px] font-medium text-text-secondary">
+            <label htmlFor="cot-deadline" className="text-[14px] font-medium text-text-secondary lg:text-[13px]">
               Fin de la cotisation
             </label>
             <input
@@ -422,7 +422,7 @@ export function CreateFundingWizard({
               className="h-[52px] max-w-[280px] rounded-sv border border-border-strong bg-surface px-4 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)]"
               style={{ colorScheme: "dark" }}
             />
-            <span className="text-[12px] text-text-faint">Proposez une date avant la prestation.</span>
+            <span className="text-[13px] text-text-faint lg:text-[12px]">Proposez une date avant la prestation.</span>
           </div>
 
           <NextButton disabled={!deadline} onClick={() => setStep(4)} />
@@ -448,7 +448,7 @@ export function CreateFundingWizard({
           {error && (
             <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
               <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-              <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
+              <span className="text-[14px] leading-relaxed text-[#FBCFE8] lg:text-[13px]">{error}</span>
             </div>
           )}
           <button
@@ -524,7 +524,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-[13px] font-medium text-text-secondary">{label}</label>
+      <label className="text-[14px] font-medium text-text-secondary lg:text-[13px]">{label}</label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -573,7 +573,7 @@ function ModeCard({
         <span className="material-symbols-rounded !text-[22px] text-cotisations" aria-hidden="true">{icon}</span>
       </span>
       <span className="font-sora text-[17px] font-semibold tracking-tight">{label}</span>
-      <span className="text-[13px] leading-relaxed text-text-tertiary">{sub}</span>
+      <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">{sub}</span>
     </button>
   );
 }

@@ -200,7 +200,7 @@ export function ParticularShell({
       <button
         type="button"
         onClick={() => setContextOpen((v) => !v)}
-        className="flex h-10 w-full items-center gap-2 rounded-sv border border-border-strong bg-surface px-3 text-left text-[13px] font-medium text-text-secondary hover:bg-surface-hover"
+        className="flex h-10 w-full items-center gap-2 rounded-sv border border-border-strong bg-surface px-3 text-left text-[14px] font-medium text-text-secondary hover:bg-surface-hover lg:text-[13px]"
       >
         {activeAthlete ? (
           <span
@@ -266,7 +266,7 @@ export function ParticularShell({
               );
             })}
             {athletes.length === 0 && (
-              <span className="px-3 py-2.5 text-[13px] text-text-faint">Aucun sportif ajouté pour le moment.</span>
+              <span className="px-3 py-2.5 text-[14px] text-text-faint lg:text-[13px]">Aucun sportif ajouté pour le moment.</span>
             )}
             <Link
               href="/particulier/sportifs/ajouter"

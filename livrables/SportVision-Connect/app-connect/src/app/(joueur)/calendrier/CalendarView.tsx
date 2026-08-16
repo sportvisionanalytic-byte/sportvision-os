@@ -203,7 +203,7 @@ function EventGroups({
                   </div>
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="font-sora text-[16px] font-semibold tracking-tight">{ev.title}</span>
-                    <span className="text-[13px] text-text-tertiary">
+                    <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                       {[formatTime(ev.time), ev.location, ev.teamName].filter(Boolean).join(" · ") || ev.clubName || ""}
                     </span>
                   </div>

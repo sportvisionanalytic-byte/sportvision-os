@@ -43,7 +43,7 @@ export function EditModal({
               <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">close</span>
             </button>
           </div>
-          {subtitle && <p className="text-[13px] leading-relaxed text-text-tertiary">{subtitle}</p>}
+          {subtitle && <p className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">{subtitle}</p>}
         </div>
 
         {children}
@@ -51,7 +51,7 @@ export function EditModal({
         {error && (
           <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
             <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-            <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
+            <span className="text-[14px] leading-relaxed text-[#FBCFE8] lg:text-[13px]">{error}</span>
           </div>
         )}
       </div>

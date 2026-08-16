@@ -80,7 +80,7 @@ export default async function DashboardPage() {
                 <span className="mt-1 self-start rounded-sv-pill bg-attente-bg px-2.5 py-1 text-[12px] font-medium text-attente">
                   En attente
                 </span>
-                <p className="mt-2 text-[13px] leading-relaxed text-text-tertiary">
+                <p className="mt-2 text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                   Votre demande d&apos;affiliation doit encore être confirmée par le club. Vous pouvez
                   utiliser Connect normalement pendant ce temps.
                 </p>
@@ -124,7 +124,7 @@ export default async function DashboardPage() {
               <div className="flex items-baseline justify-between gap-3.5">
                 <h2 className="font-sora text-[20px] font-semibold tracking-tight">Nouveaux contenus</h2>
                 {contentGroups.length > 0 && (
-                  <Link href="/contenus" className="text-[13px] font-medium text-contenus hover:brightness-110">
+                  <Link href="/contenus" className="text-[14px] font-medium text-contenus hover:brightness-110 lg:text-[13px]">
                     Tout voir
                   </Link>
                 )}
@@ -185,7 +185,7 @@ export default async function DashboardPage() {
                 <div className="flex min-w-0 flex-col gap-1.5">
                   <span className="text-[11px] font-medium uppercase tracking-[.1em] text-text-label">Prochainement</span>
                   <span className="font-sora text-[18px] font-semibold tracking-tight">{nextEvent.title}</span>
-                  <span className="text-[13px] text-text-tertiary">
+                  <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                     {nextEvent.date}
                     {nextEvent.time && ` · ${nextEvent.time}`}
                     {nextEvent.location && ` · ${nextEvent.location}`}
@@ -193,7 +193,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="ml-auto flex flex-none flex-col items-end gap-2.5">
                   <span className="rounded-sv-pill bg-prestations-bg px-2.5 py-1 text-[12px] font-medium text-prestations">📸 SportVision présent</span>
-                  <Link href="/calendrier" className="text-[13px] font-medium text-text-secondary hover:text-text">
+                  <Link href="/calendrier" className="text-[14px] font-medium text-text-secondary hover:text-text lg:text-[13px]">
                     Voir l&apos;événement
                   </Link>
                 </div>
@@ -202,7 +202,7 @@ export default async function DashboardPage() {
               <div className="flex items-center gap-3 rounded-sv border border-border bg-white/[.04] px-4.5 py-4">
                 <span className="material-symbols-rounded !text-[20px] text-text-faint" aria-hidden="true">event_busy</span>
                 <span className="text-[14px] text-text-tertiary">Aucun événement SportVision prévu pour le moment.</span>
-                <Link href="/calendrier" className="ml-auto flex-none text-[13px] font-medium text-[#8CA9FF]">
+                <Link href="/calendrier" className="ml-auto flex-none text-[14px] font-medium text-[#8CA9FF] lg:text-[13px]">
                   Calendrier
                 </Link>
               </div>
@@ -237,7 +237,7 @@ export default async function DashboardPage() {
                         style={{ width: `${Math.min(100, Math.round((cotisation.collected / cotisation.target) * 100))}%` }}
                       />
                     </div>
-                    <span className="text-[13px] text-text-tertiary">
+                    <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                       Plus que {formatEUR(Math.max(0, cotisation.target - cotisation.collected))} pour atteindre l&apos;objectif
                       {cotisation.participants > 0 && ` · ${cotisation.participants} participants`}
                     </span>
@@ -262,7 +262,7 @@ export default async function DashboardPage() {
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="font-sora text-[16px] font-semibold">{nextPrestation.type || nextPrestation.reference || "Prestation"}</span>
                     {nextPrestation.date && (
-                      <span className="text-[13px] text-text-tertiary">
+                      <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                         {nextPrestation.date}
                         {nextPrestation.time && ` · ${nextPrestation.time}`}
                       </span>
@@ -273,7 +273,7 @@ export default async function DashboardPage() {
                   <span className="rounded-sv-pill bg-attente-bg px-2.5 py-1 text-[12px] font-medium text-attente">
                     {prestationStatusLabel(nextPrestation.statut)}
                   </span>
-                  <Link href="/commandes" className="text-[13px] font-medium text-text-secondary hover:text-text">
+                  <Link href="/commandes" className="text-[14px] font-medium text-text-secondary hover:text-text lg:text-[13px]">
                     Voir ma commande
                   </Link>
                 </div>
@@ -309,11 +309,11 @@ export default async function DashboardPage() {
                 </span>
                 <div className="flex flex-col gap-0.5">
                   <span className="font-sora text-[15px] font-semibold">Messages</span>
-                  <span className="text-[13px] text-text-tertiary">
+                  <span className="text-[14px] text-text-tertiary lg:text-[13px]">
                     {unreadMessages} nouveau{unreadMessages > 1 ? "x" : ""} message{unreadMessages > 1 ? "s" : ""} SportVision
                   </span>
                 </div>
-                <span className="ml-auto flex-none text-[13px] font-medium text-affiliations">Ouvrir</span>
+                <span className="ml-auto flex-none text-[14px] font-medium text-affiliations lg:text-[13px]">Ouvrir</span>
               </Link>
             )}
           </div>

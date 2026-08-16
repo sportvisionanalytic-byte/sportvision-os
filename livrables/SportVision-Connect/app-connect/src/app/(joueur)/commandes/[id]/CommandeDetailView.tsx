@@ -100,7 +100,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
       <div className="flex flex-col items-center gap-3 rounded-sv-card border border-dashed border-border-strong bg-surface p-8 text-center">
         <span className="material-symbols-rounded !text-[24px] text-danger" aria-hidden="true">error</span>
         <span className="text-[14px] text-text-tertiary">{error}</span>
-        <Link href={backHref} className="text-[13px] font-semibold text-[#8CA9FF]">Retour à mes commandes</Link>
+        <Link href={backHref} className="text-[14px] font-semibold text-[#8CA9FF] lg:text-[13px]">Retour à mes commandes</Link>
       </div>
     );
   }
@@ -129,7 +129,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
-      <Link href={backHref} className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+      <Link href={backHref} className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
         <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
         Mes commandes
       </Link>
@@ -159,14 +159,14 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
               ~50px de colonne chacun — repliés sur 2-3 lignes, quasi illisibles (voir
               TimelineStep : labels masqués sous sm: ci-dessous). Un résumé texte unique "Étape
               X/6 · Libellé" reste toujours lisible, quelle que soit la longueur du libellé. */}
-          <span className="text-center text-[12.5px] font-medium text-text-secondary sm:hidden">
+          <span className="text-center text-[13.5px] font-medium text-text-secondary sm:hidden">
             Étape {TIMELINE_STAGES.indexOf(stage) + 1}/{TIMELINE_STAGES.length} · {STAGE_LABEL[stage]}
           </span>
         </div>
       ) : (
         <div className="flex items-center gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">cancel</span>
-          <span className="text-[13.5px] text-text-secondary">Cette commande a été annulée.</span>
+          <span className="text-[14px] text-text-secondary lg:text-[13.5px]">Cette commande a été annulée.</span>
         </div>
       )}
 
@@ -191,7 +191,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
           <h2 className="font-sora text-[15px] font-semibold">Payer à plusieurs</h2>
           {fundingLink.existing_funding_id ? (
             <>
-              <p className="text-[13px] text-text-tertiary">Une cotisation est déjà ouverte pour cette prestation.</p>
+              <p className="text-[14px] text-text-tertiary lg:text-[13px]">Une cotisation est déjà ouverte pour cette prestation.</p>
               <Link
                 href={`${cotisationsBase}/${fundingLink.existing_funding_id}`}
                 className="flex h-11 w-fit items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
@@ -202,7 +202,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
             </>
           ) : (
             <>
-              <p className="text-[13px] text-text-tertiary">
+              <p className="text-[14px] text-text-tertiary lg:text-[13px]">
                 Vous aviez demandé à partager le coût de cette prestation. Créez la cotisation pour inviter vos proches à contribuer.
               </p>
               <Link
@@ -224,8 +224,8 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
       {canPay && (
         <div className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-5">
           <h2 className="font-sora text-[15px] font-semibold">Paiement</h2>
-          <p className="text-[13px] text-text-tertiary">Cette commande n&apos;a pas encore été réglée.</p>
-          {checkoutError && <span className="text-[12.5px] text-danger">{checkoutError}</span>}
+          <p className="text-[14px] text-text-tertiary lg:text-[13px]">Cette commande n&apos;a pas encore été réglée.</p>
+          {checkoutError && <span className="text-[13.5px] text-danger lg:text-[12.5px]">{checkoutError}</span>}
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={payNow} loading={busy} className="self-start">
               Payer {formatEUR(amount)}
@@ -248,7 +248,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
           <span className="material-symbols-rounded !text-[19px] text-text-tertiary" aria-hidden="true">payments</span>
           <div className="flex flex-col gap-0.5">
             <span className="font-sora text-[14.5px] font-semibold">Réglé en espèces sur place</span>
-            <span className="text-[13px] text-text-tertiary">
+            <span className="text-[14px] text-text-tertiary lg:text-[13px]">
               Vous avez choisi de régler {formatEUR(amount)} le jour de la prestation.
             </span>
           </div>
@@ -262,7 +262,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
             <div key={`${doc.kind}-${doc.id}`} className="flex items-center gap-3.5 rounded-sv border border-border bg-surface px-4 py-3.5">
               <span className="material-symbols-rounded !text-[19px] text-text-tertiary" aria-hidden="true">{doc.kind === "facture" ? "description" : "payments"}</span>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-[13.5px] font-medium text-text">{doc.kind === "facture" ? `Facture ${doc.reference}` : `Paiement ${doc.reference}`}</span>
+                <span className="truncate text-[14px] font-medium text-text lg:text-[13.5px]">{doc.kind === "facture" ? `Facture ${doc.reference}` : `Paiement ${doc.reference}`}</span>
                 <span className="text-[12px] text-text-tertiary">{formatDateLong(doc.date)} · {doc.statut}</span>
               </div>
               <span className="flex-none font-sora text-[13px] font-semibold">{formatEUR(doc.montant)}</span>
@@ -276,12 +276,15 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3 rounded-sv-card border border-border bg-surface p-5">
+      {/* Empilé sur mobile : le titre + bouton "Contacter SportVision" côte à côte se
+          chevauchaient en dessous de ~400px de large (justify-between sans wrap). Revient à une
+          seule ligne dès sm:, même pattern que les listes Factures/Paiements (fix du 15/08). */}
+      <div className="flex flex-col items-start gap-3 rounded-sv-card border border-border bg-surface p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-0.5">
           <span className="font-sora text-[14.5px] font-semibold">Une question sur cette commande ?</span>
-          <span className="text-[13px] text-text-tertiary">L&apos;équipe SportVision vous répond rapidement.</span>
+          <span className="text-[14px] text-text-tertiary lg:text-[13px]">L&apos;équipe SportVision vous répond rapidement.</span>
         </div>
-        <a href={`mailto:${SUPPORT_EMAIL}`} className="flex-none rounded-sv border border-border-strong bg-bg-elevated px-4 py-2.5 font-sora text-[13px] font-semibold hover:bg-surface-hover">
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="flex-none rounded-sv border border-border-strong bg-bg-elevated px-4 py-2.5 font-sora text-[14px] font-semibold hover:bg-surface-hover lg:text-[13px]">
           Contacter SportVision
         </a>
       </div>

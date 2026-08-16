@@ -72,7 +72,7 @@ export default async function AffiliationsPage() {
               </div>
 
               {player.club.status === "attente" && (
-                <p className="text-[13px] leading-relaxed text-text-tertiary">
+                <p className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                   Votre demande d&apos;affiliation doit encore être confirmée par le club. Vous
                   pouvez utiliser Connect normalement pendant ce temps.
                 </p>
@@ -81,7 +81,7 @@ export default async function AffiliationsPage() {
               <div className="mt-1 flex flex-wrap items-center gap-4 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
                 <div className="flex flex-col gap-1">
                   <span className="font-sora text-[14px] font-semibold">Quitter cette affiliation</span>
-                  <span className="text-[13px] text-text-tertiary">Votre compte Connect est conservé.</span>
+                  <span className="text-[14px] text-text-tertiary lg:text-[13px]">Votre compte Connect est conservé.</span>
                 </div>
                 <LeaveAffiliationButton clubName={player.club.nom} />
               </div>

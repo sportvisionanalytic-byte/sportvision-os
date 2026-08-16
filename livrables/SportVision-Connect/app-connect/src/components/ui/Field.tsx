@@ -13,7 +13,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(
   ({ label, error, id, className, ...props }, ref) => {
     return (
       <div className="flex flex-col gap-2">
-        <label htmlFor={id} className="text-[13px] font-medium text-text-secondary">
+        <label htmlFor={id} className="text-[14px] font-medium text-text-secondary lg:text-[13px]">
           {label}
         </label>
         <input
@@ -28,7 +28,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(
           )}
           {...props}
         />
-        {error && <span className="text-[12px] text-danger">{error}</span>}
+        {error && <span className="text-[13px] text-danger lg:text-[12px]">{error}</span>}
       </div>
     );
   },
