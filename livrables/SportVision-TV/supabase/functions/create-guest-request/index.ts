@@ -72,6 +72,7 @@ const TYPE_CLIENT_MAP: Record<string, string> = {
 // sur son défaut 'match', quel que soit le besoin réel du visiteur.
 // Correspondance choisie (jugement métier, à ajuster si le catalogue change) :
 //  - match-photo / match-video / pack-match → 'match'
+//  - match-filme-drone / combo-drone-photo  → 'match' (captation drone dédiée d'un match, 16/08)
 //  - shooting (joueur ou équipe)            → 'portrait'
 //  - couverture-tournoi                     → 'tournoi'
 //  - couverture-stage                       → 'entraînement' (stage le plus proche du domaine existant)
@@ -83,6 +84,8 @@ const OFFRE_SLUG_TO_TYPE_PRESTATION: Record<string, string> = {
   "match-photo": "match",
   "match-video": "match",
   "pack-match": "match",
+  "match-filme-drone": "match",
+  "combo-drone-photo": "match",
   "shooting": "portrait",
   "couverture-tournoi": "tournoi",
   "couverture-stage": "entraînement",
