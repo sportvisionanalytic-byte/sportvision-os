@@ -20,6 +20,11 @@ export interface PlayerOrder {
   montantEstime: number | null; // sinon, estimation catalogue (offre + options), jamais un prix inventé
   statutFinancier: string;
   acompteRecu: boolean;
+  // Choix exprimé par le client au moment de la réservation solo (paiementMode "seul" — jamais
+  // renseigné pour une cotisation), pas un paiement réellement encaissé — voir le commentaire de
+  // connect-player-prestations/index.ts. null pour toute demande antérieure à ce champ, ou pour
+  // un paiement collectif.
+  modePaiementChoisi: "carte" | "especes" | null;
   createdAt: string;
 }
 

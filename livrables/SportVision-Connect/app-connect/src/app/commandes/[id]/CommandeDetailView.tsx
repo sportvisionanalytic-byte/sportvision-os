@@ -77,7 +77,14 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
   const color = STAGE_COLOR[stage];
   const amount = order.montantTtc ?? order.montantEstime;
   const isPaid = order.statutFinancier === "payée" || order.statutFinancier === "partiellement_payée" || order.acompteRecu;
-  const canPay = stage !== "annulee" && amount !== null && !isPaid;
+  // Espèces choisies (mode_paiement_choisi, migration-prestations-choix-paiement-guest.sql) : le
+  // client a déjà exprimé son choix de régler sur place — lui montrer un bouton "Payer maintenant"
+  // (Stripe) serait confus. Si un paiement carte a malgré tout eu lieu depuis (isPaid), le bloc
+  // paiement disparaît normalement (comportement inchangé) : le bloc "espèces" ci-dessous ne
+  // s'affiche donc, lui aussi, que tant que la commande n'est pas déjà payée.
+  const especesChoisies = order.modePaiementChoisi === "especes";
+  const canPay = stage !== "annulee" && amount !== null && !isPaid && !especesChoisies;
+  const showEspecesNotice = especesChoisies && stage !== "annulee" && amount !== null && !isPaid;
 
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
@@ -146,6 +153,18 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
           <Button onClick={payNow} loading={busy} className="self-start">
             Payer {formatEUR(amount)}
           </Button>
+        </div>
+      )}
+
+      {showEspecesNotice && (
+        <div className="flex items-center gap-3 rounded-sv-card border border-border bg-surface p-5">
+          <span className="material-symbols-rounded !text-[19px] text-text-tertiary">payments</span>
+          <div className="flex flex-col gap-0.5">
+            <span className="font-sora text-[14.5px] font-semibold">Réglé en espèces sur place</span>
+            <span className="text-[13px] text-text-tertiary">
+              Vous avez choisi de régler {formatEUR(amount)} le jour de la prestation.
+            </span>
+          </div>
         </div>
       )}
 

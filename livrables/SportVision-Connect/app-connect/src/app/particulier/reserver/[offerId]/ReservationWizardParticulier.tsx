@@ -47,6 +47,7 @@ export interface Beneficiary {
 const STEPS = ["Informations", "Options", "Paiement", "Confirmation"] as const;
 
 type PaiementMode = "seul" | "collectif";
+type ModePaiementChoisi = "carte" | "especes";
 
 // Adapté de prestations/[id]/reserver/ReservationWizard.tsx (Espace joueur) — voir le
 // commentaire de page.tsx pour ce qui a été repris à l'identique vs. ajouté. Différence
@@ -118,6 +119,11 @@ export function ReservationWizardParticulier({
   const [applyMonthlyDiscount, setApplyMonthlyDiscount] = useState(false);
 
   const [paiementMode, setPaiementMode] = useState<PaiementMode>("seul");
+  // Sous-choix carte/espèces, uniquement affiché et transmis quand paiementMode==="seul" — voir
+  // le commentaire de connect-player-prestations/index.ts (create_request) et l'équivalent dans
+  // ReservationWizard.tsx (Espace joueur). "carte" par défaut : reproduit exactement le
+  // comportement historique (redirection Stripe) tant que le client ne change rien.
+  const [modePaiementChoisi, setModePaiementChoisi] = useState<ModePaiementChoisi>("carte");
   const [retractationRenoncee, setRetractationRenoncee] = useState(false);
   const [cgvAcceptee, setCgvAcceptee] = useState(false);
 
@@ -206,6 +212,7 @@ export function ReservationWizardParticulier({
         optionNames,
         retractationRenoncee,
         paiementMode,
+        modePaiementChoisi: paiementMode === "seul" ? modePaiementChoisi : undefined,
         beneficiary: { kind: beneficiary.kind, refId: beneficiary.id },
         // Montage Compilation uniquement — connect-player-prestations exige et persiste ces
         // champs selon le mode choisi ; create-checkout-session relira CES valeurs en base au
@@ -236,7 +243,9 @@ export function ReservationWizardParticulier({
     setResult({ id: data.id, reference: data.reference });
     setStep(4);
 
-    if (paiementMode === "seul") {
+    // "espèces" : la demande est créée et confirmée tout de suite (comme le tunnel guest), aucune
+    // redirection Stripe — voir le bloc de confirmation step 4 plus bas.
+    if (paiementMode === "seul" && modePaiementChoisi === "carte") {
       await launchCheckout(data.id);
     } else {
       setBusy(false);
@@ -523,6 +532,26 @@ export function ReservationWizardParticulier({
               />
             </div>
 
+            {paiementMode === "seul" && (
+              <div className="flex flex-col gap-2 pl-1">
+                <span className="text-[12.5px] font-medium text-text-tertiary">Comment réglez-vous ?</span>
+                <div className="flex flex-col gap-2">
+                  <PaymentChoice
+                    label="Carte bancaire"
+                    sub="Paiement en ligne sécurisé, immédiat."
+                    selected={modePaiementChoisi === "carte"}
+                    onClick={() => setModePaiementChoisi("carte")}
+                  />
+                  <PaymentChoice
+                    label="Espèces sur place"
+                    sub="Réglez le jour de la prestation. Votre demande est confirmée tout de suite."
+                    selected={modePaiementChoisi === "especes"}
+                    onClick={() => setModePaiementChoisi("especes")}
+                  />
+                </div>
+              </div>
+            )}
+
             {paiementMode === "collectif" && (
               <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
                 <span className="material-symbols-rounded !text-[19px] text-attente">info</span>
@@ -618,13 +647,23 @@ export function ReservationWizardParticulier({
               </span>
             </div>
 
-            {paiementMode === "seul" && busy && <span className="text-[13px] text-text-tertiary">Redirection vers le paiement sécurisé…</span>}
-            {paiementMode === "seul" && checkoutError && (
+            {paiementMode === "seul" && modePaiementChoisi === "carte" && busy && (
+              <span className="text-[13px] text-text-tertiary">Redirection vers le paiement sécurisé…</span>
+            )}
+            {paiementMode === "seul" && modePaiementChoisi === "carte" && checkoutError && (
               <div className="flex w-full flex-col gap-3 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5 text-left">
                 <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{checkoutError}</span>
                 <Button variant="secondary" onClick={() => launchCheckout(result.id)} loading={busy}>
                   Réessayer le paiement
                 </Button>
+              </div>
+            )}
+            {paiementMode === "seul" && modePaiementChoisi === "especes" && (
+              <div className="flex w-full items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5 text-left">
+                <span className="material-symbols-rounded !text-[19px] text-affiliations">payments</span>
+                <span className="text-[12.5px] leading-relaxed text-text-secondary">
+                  Réservation confirmée — réglez sur place le jour de la prestation.
+                </span>
               </div>
             )}
             {paiementMode === "collectif" && (

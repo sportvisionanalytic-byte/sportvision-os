@@ -63,8 +63,16 @@
 // Actions (`action` dans le body, toutes authentifiées) :
 //  - "create_request" { offerId, dateMatch, heureDebut?, heureFin?, lieu?, adversaire?,
 //                        categorie?, equipe?, notes?, optionNames?: string[],
-//                        retractationRenoncee?, beneficiary?,
+//                        retractationRenoncee?, beneficiary?, paiementMode?: "seul"|"collectif",
+//                        modePaiementChoisi?: "carte"|"especes",
 //                        tailleCm?, poidsKg?, poste?, numeroMaillot?, couleurMaillot? }
+//        modePaiementChoisi (migration-prestations-choix-paiement-guest.sql, colonne déjà utilisée
+//        par le tunnel guest historique create-guest-request/index.ts) : UNIQUEMENT pertinent si
+//        paiementMode==="seul" — ignoré silencieusement (jamais écrit) pour "collectif", pour ne
+//        créer aucune ambiguïté avec le paiement collectif (cotisation, chantier séparé). Dans les
+//        deux cas la demande est créée et confirmée immédiatement, sans aucune condition
+//        bloquante — c'est un CHOIX exprimé par le client, jamais un paiement réellement encaissé
+//        (ça reste le rôle de prestations.mode_paiement, colonne distincte, jamais touchée ici).
 //      → crée la ligne `prestations` (statut initial 'demande_reçue', jamais un statut inventé).
 //        Ne persiste JAMAIS de montant (montant_ht/montant_ttc restent NULL, exactement comme
 //        submitClientService côté Espace Projet) : c'est create-checkout-session qui calcule le
@@ -221,7 +229,7 @@ serve(async (req) => {
         const { data: row, error } = await admin
           .from("prestations")
           .select(
-            "id, reference, statut, type_prestation, offre_id, client_id, date_prestation, heure_debut, heure_fin, lieu, adresse_complete, equipes, description_besoin, options_selectionnees, montant_ttc, statut_financier, acompte_recu, created_at",
+            "id, reference, statut, type_prestation, offre_id, client_id, date_prestation, heure_debut, heure_fin, lieu, adresse_complete, equipes, description_besoin, options_selectionnees, montant_ttc, statut_financier, acompte_recu, mode_paiement_choisi, created_at",
           )
           .eq("id", orderId)
           .in("client_id", clientIds)
@@ -257,6 +265,7 @@ serve(async (req) => {
           montantEstime: row.montant_ttc == null && offer ? estimateTtc(offer, optionsSelectionnees) : null,
           statutFinancier: row.statut_financier,
           acompteRecu: !!row.acompte_recu,
+          modePaiementChoisi: row.mode_paiement_choisi ?? null,
           createdAt: row.created_at,
           forWho: labelByClientId.get(row.client_id as string) ?? null,
         };
@@ -282,7 +291,7 @@ serve(async (req) => {
         const { data: prowsRaw, error } = await admin
           .from("prestations")
           .select(
-            "id, reference, statut, type_prestation, offre_id, client_id, date_prestation, heure_debut, heure_fin, lieu, adresse_complete, equipes, description_besoin, options_selectionnees, montant_ttc, statut_financier, acompte_recu, created_at",
+            "id, reference, statut, type_prestation, offre_id, client_id, date_prestation, heure_debut, heure_fin, lieu, adresse_complete, equipes, description_besoin, options_selectionnees, montant_ttc, statut_financier, acompte_recu, mode_paiement_choisi, created_at",
           )
           .in("client_id", clientIds)
           .order("date_prestation", { ascending: false, nullsFirst: false });
@@ -319,6 +328,7 @@ serve(async (req) => {
             montantEstime: r.montant_ttc == null && offer ? estimateTtc(offer, optionsSelectionnees) : null,
             statutFinancier: r.statut_financier,
             acompteRecu: !!r.acompte_recu,
+            modePaiementChoisi: r.mode_paiement_choisi ?? null,
             createdAt: r.created_at,
             forWho: labelByClientId.get(r.client_id as string) ?? null,
           };
@@ -516,6 +526,20 @@ serve(async (req) => {
 
       const nowIso = new Date().toISOString();
       const paiementMode = body?.paiementMode === "collectif" ? "collectif" : "seul";
+      // Choix carte/espèces (paiement solo uniquement, migration-prestations-choix-paiement-guest.sql
+      // — colonne déjà utilisée par le tunnel guest historique, create-guest-request/index.ts,
+      // reproduite ici à l'identique). N'a de sens QUE pour paiementMode==="seul" : jamais écrit
+      // pour "collectif" (cotisation), pour ne créer aucune ambiguïté avec le paiement collectif.
+      // Dans les deux cas ("carte" ou "especes") la demande est créée et confirmée immédiatement —
+      // aucune condition bloquante, exactement comme le tunnel guest. "especes" signifie
+      // uniquement que le client a choisi de régler sur place ; l'encaissement réel restera
+      // enregistré par le staff dans prestations.mode_paiement (colonne distincte, jamais touchée
+      // ici).
+      const modePaiementChoisiRaw = typeof body?.modePaiementChoisi === "string" ? body.modePaiementChoisi : null;
+      const modePaiementChoisi =
+        paiementMode === "seul" && (modePaiementChoisiRaw === "carte" || modePaiementChoisiRaw === "especes")
+          ? modePaiementChoisiRaw
+          : null;
       const descriptionParts = [
         `Prestation demandée (Connect — ${beneficiary && beneficiary.kind !== "self" ? "Espace particulier" : "Espace joueur"}) : ${offer.nom}`,
         body?.adversaire ? `Adversaire : ${String(body.adversaire).trim()}` : null,
@@ -531,7 +555,9 @@ serve(async (req) => {
         body?.notes ? `Notes : ${String(body.notes).trim()}` : null,
         paiementMode === "collectif"
           ? "Paiement souhaité : à plusieurs (cotisation) — fonctionnalité de paiement collectif pas encore branchée au moment de la demande, à confirmer avec le client."
-          : "Paiement souhaité : seul.",
+          : modePaiementChoisi === "especes"
+            ? "Paiement souhaité : seul, en espèces sur place."
+            : "Paiement souhaité : seul, carte bancaire.",
       ].filter((p): p is string => !!p);
 
       const { data: inserted, error: insErr } = await admin
@@ -562,6 +588,7 @@ serve(async (req) => {
           retractation_renoncee_at: body?.retractationRenoncee === true ? nowIso : null,
           cgv_acceptee: true,
           cgv_acceptee_le: nowIso,
+          mode_paiement_choisi: modePaiementChoisi,
         })
         .select("id, reference")
         .single();
@@ -598,7 +625,7 @@ serve(async (req) => {
       let query = admin
         .from("prestations")
         .select(
-          "id, reference, statut, type_prestation, offre_id, date_prestation, heure_debut, heure_fin, lieu, adresse_complete, equipes, description_besoin, options_selectionnees, montant_ttc, statut_financier, acompte_recu, created_at",
+          "id, reference, statut, type_prestation, offre_id, date_prestation, heure_debut, heure_fin, lieu, adresse_complete, equipes, description_besoin, options_selectionnees, montant_ttc, statut_financier, acompte_recu, mode_paiement_choisi, created_at",
         )
         .eq("client_id", clientId)
         .order("date_prestation", { ascending: false, nullsFirst: false });
@@ -644,6 +671,7 @@ serve(async (req) => {
           montantEstime: r.montant_ttc == null && offer ? estimateTtc(offer, optionsSelectionnees) : null,
           statutFinancier: r.statut_financier,
           acompteRecu: !!r.acompte_recu,
+          modePaiementChoisi: r.mode_paiement_choisi ?? null,
           createdAt: r.created_at,
         };
       });
