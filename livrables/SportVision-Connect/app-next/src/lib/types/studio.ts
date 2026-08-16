@@ -260,13 +260,20 @@ export interface NewsroomItem {
 // Match — Match Center
 // ---------------------------------------------------------------------------------------------
 
-export type MatchStatus = "upcoming" | "result_pending" | "result_received" | "content_created";
+// "postponed"/"cancelled" (migration-clubplus-v37, colonnes club_matches.status 'reportee'/
+// 'annulee') : le statut existe désormais en base et s'affiche proprement (label + couleur),
+// mais aucune action UI ne permet encore de les déclencher depuis Club+ dans ce chantier — voir
+// data/club/matches.ts § STATUS_MAP. Le workflow complet (qui peut reporter/annuler un match,
+// depuis quel écran) reste à construire séparément.
+export type MatchStatus = "upcoming" | "result_pending" | "result_received" | "content_created" | "postponed" | "cancelled";
 
 export const MATCH_STATUS_LABELS: Record<MatchStatus, string> = {
   upcoming: "À venir",
   result_pending: "À transmettre",
   result_received: "Reçu",
   content_created: "Contenu créé",
+  postponed: "Reporté",
+  cancelled: "Annulé",
 };
 
 export const MATCH_STATUS_TONE: Record<MatchStatus, BadgeTone> = {
@@ -274,6 +281,8 @@ export const MATCH_STATUS_TONE: Record<MatchStatus, BadgeTone> = {
   result_pending: "warning",
   result_received: "success",
   content_created: "accent",
+  postponed: "warning",
+  cancelled: "danger",
 };
 
 export interface MatchScorer {

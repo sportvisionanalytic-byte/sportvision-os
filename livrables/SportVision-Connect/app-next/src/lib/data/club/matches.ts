@@ -1,21 +1,28 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Match, MatchScorer, MatchStatus } from "@/lib/types/studio";
 
-// club_matches (migration-clubplus-v3.sql) — 3 statuts réels (a_venir/a_transmettre/recu),
-// contrainte check en base : "content_created" (4e statut du design, purement un marqueur
-// Connect "visuel généré") n'a PAS d'équivalent réel et ne doit JAMAIS être écrit dans `status`
-// (violerait la contrainte). Voir fetchClubMatches/saveClubMatchResult. RLS :
-// is_club_member(club_id) pour select/insert/update.
+// club_matches (migration-clubplus-v3.sql) — 5 statuts réels depuis migration-clubplus-v37.sql
+// (a_venir/a_transmettre/recu/reportee/annulee), contrainte check en base : "content_created" (6e
+// statut du design, purement un marqueur Connect "visuel généré") n'a PAS d'équivalent réel et ne
+// doit JAMAIS être écrit dans `status` (violerait la contrainte). Voir fetchClubMatches/
+// saveClubMatchResult. RLS : is_club_member(club_id) + is_club_team_scoped_member(club_id,
+// team_id) pour select/insert/update (migration-clubplus-v37.sql) — team_id reste NULL pour
+// toute donnée existante ou écrite par ce fichier, aucune UI de ce repo ne le renseigne encore.
 //
 // competition/is_home/attendance/assists/cards/comment : colonnes ajoutées par
 // migration-clubplus-v34-match-champs-complementaires.sql (exécutée par Fouka le 09/08/2026) —
 // réintègre les champs du formulaire complet retirés lors de l'audit du même jour, désormais
 // réellement persistés.
+//
+// verified_by/verified_at (migration-clubplus-v37.sql) : colonnes du futur workflow de
+// vérification Directeur sportif (§8), pas encore lues/écrites par ce module.
 
 export const STATUS_MAP: Record<string, MatchStatus> = {
   a_venir: "upcoming",
   a_transmettre: "result_pending",
   recu: "result_received",
+  reportee: "postponed",
+  annulee: "cancelled",
 };
 
 interface ClubMatchRow {

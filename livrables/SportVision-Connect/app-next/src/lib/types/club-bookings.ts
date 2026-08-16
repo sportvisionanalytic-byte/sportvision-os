@@ -15,11 +15,15 @@ export type ClubBookingStatus =
   | "confirmee"
   | "operateur_affecte"
   | "mission_realisee"
-  | "livree";
+  | "livree"
+  | "annulee";
 
 /** Pipeline terrain fixe (6 statuts réels, migration-clubplus-v6.sql `check` constraint) —
  * piloté par le staff SportVision (RLS cbk_admin_update / cbk_staff_update), jamais par le club
- * lui-même une fois la demande envoyée. */
+ * lui-même une fois la demande envoyée. "annulee" (migration-clubplus-v37) est volontairement
+ * EXCLU de ce pipeline linéaire : c'est un état terminal parallèle, pas une étape — voir
+ * ClubBookingDetail.tsx où `BOOKING_STEPS.indexOf("annulee")` renvoie -1 (aucune étape allumée),
+ * comportement voulu. */
 export const BOOKING_STEPS: ClubBookingStatus[] = [
   "recue",
   "qualifiee",
@@ -36,6 +40,7 @@ export const BOOKING_STATUS_LABEL: Record<ClubBookingStatus, string> = {
   operateur_affecte: "Opérateur affecté",
   mission_realisee: "Mission réalisée",
   livree: "Livrée",
+  annulee: "Annulée",
 };
 
 export const BOOKING_STATUS_TONE: Record<ClubBookingStatus, BadgeTone> = {
@@ -45,6 +50,7 @@ export const BOOKING_STATUS_TONE: Record<ClubBookingStatus, BadgeTone> = {
   operateur_affecte: "warning",
   mission_realisee: "cyan",
   livree: "success",
+  annulee: "danger",
 };
 
 export type OfferTarifType = "fixe" | "sur_devis";

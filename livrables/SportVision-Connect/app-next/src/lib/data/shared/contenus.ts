@@ -6,6 +6,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // côté client, filtrés par la policy elle-même) puis a_valider_client/corrections/valide/
 // programme/publie/archive. Aucune colonne de portée/engagement n'existe (voir l'audit du
 // 09/08) — jamais affiché de chiffre inventé à la place.
+//
+// request_id (migration-clubplus-v37.sql) : lien facultatif vers club_requests (brief envoyé par
+// le club) — nullable, un contenu peut exister sans venir d'une demande explicite (ex. contenu
+// spontané SportVision). Colonne de liaison uniquement dans ce chantier, aucune UI ne l'exploite
+// encore (pas de jointure vers club_requests ici) — voir CLUB-PLUS-PRODUCT-BIBLE.md §3/§17.
 
 export type ContenuStatut = "a_valider_client" | "corrections" | "valide" | "programme" | "publie" | "archive";
 
@@ -20,6 +25,7 @@ export interface Contenu {
   datePrevue: string | null;
   datePublication: string | null;
   createdAt: string;
+  requestId: string | null;
 }
 
 interface ContenuRow {
@@ -33,9 +39,11 @@ interface ContenuRow {
   date_prevue: string | null;
   date_publication: string | null;
   created_at: string;
+  request_id: string | null;
 }
 
-const SELECT = "id, titre, description, plateforme, type_contenu, statut, sponsor, date_prevue, date_publication, created_at";
+const SELECT =
+  "id, titre, description, plateforme, type_contenu, statut, sponsor, date_prevue, date_publication, created_at, request_id";
 
 function toContenu(row: ContenuRow): Contenu {
   return {
@@ -49,6 +57,7 @@ function toContenu(row: ContenuRow): Contenu {
     datePrevue: row.date_prevue,
     datePublication: row.date_publication,
     createdAt: row.created_at,
+    requestId: row.request_id,
   };
 }
 
