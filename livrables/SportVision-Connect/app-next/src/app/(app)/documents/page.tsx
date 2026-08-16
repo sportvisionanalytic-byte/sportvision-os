@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { hasClubFinancialAccess } from "@/lib/permissions";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { RestrictedToBureau } from "@/components/ui/RestrictedToBureau";
+import { Skeleton, SkeletonRow } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { cn } from "@/lib/cn";
 import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC } from "@/components/billing/format";
 import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE } from "@/components/contracts/format";
@@ -74,7 +76,24 @@ function ClubDocumentsView() {
   }
 
   if (clientId === undefined) {
-    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-8 w-64 max-w-full" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-20 rounded-full" />
+          ))}
+        </div>
+        <Card>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonRow key={i} />
+          ))}
+        </Card>
+      </div>
+    );
   }
 
   if (clientId === null) {
@@ -171,20 +190,16 @@ function ClientDocumentsView({ clientId }: { clientId: string }) {
       </div>
 
       {loadError && (
-        <Card className="flex flex-wrap items-center gap-3 border-danger-fg/30 bg-danger-bg px-5 py-4">
-          <AlertTriangle className="h-[18px] w-[18px] flex-none text-danger-fg" aria-hidden />
-          <span className="min-w-0 flex-1 text-[13px] font-semibold text-danger-fg">
-            Impossible de charger vos documents pour le moment.
-          </span>
-          <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={reload}>
-            Réessayer
-          </Button>
+        <Card>
+          <ErrorState message="Impossible de charger vos documents pour le moment." onRetry={reload} />
         </Card>
       )}
 
       {loading ? (
-        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-          <div className="text-[13.5px] font-bold text-text-soft">Chargement…</div>
+        <Card>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonRow key={i} />
+          ))}
         </Card>
       ) : (
         <>
@@ -211,9 +226,8 @@ function ClientDocumentsView({ clientId }: { clientId: string }) {
           </div>
 
           {docs.length === 0 ? (
-            <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-              <FileText className="h-6 w-6 text-text-faint" aria-hidden />
-              <div className="mt-1 text-[15px] font-extrabold">Aucun document pour le moment.</div>
+            <Card>
+              <EmptyState icon={FileText} title="Aucun document pour le moment" description="Vos devis, factures et contrats apparaîtront ici dès qu'ils seront disponibles." />
             </Card>
           ) : (
             <Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Columns3, Download, SlidersHorizontal, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
@@ -9,6 +9,9 @@ import { LockedModule } from "@/components/ui/LockedModule";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Toast, useToast } from "@/components/feedback/Toast";
 import { cn } from "@/lib/cn";
 import { cancelClubRequest, fetchClubRequests } from "@/lib/data/club/requests";
@@ -90,7 +93,7 @@ export default function RequestsPage() {
   // `requests`, elle doit être relue depuis `requests`, pas `club_requests` (vide pour cet id).
   const isGenericOrg = ["coach", "academy", "sponsor", "generic"].includes(ctx.organization.type);
 
-  useEffect(() => {
+  const loadRequests = useCallback(() => {
     let cancelled = false;
     const supabase = createClient();
     setLoadError(false);
@@ -106,6 +109,8 @@ export default function RequestsPage() {
       cancelled = true;
     };
   }, [ctx.organization.id, isGenericOrg]);
+
+  useEffect(() => loadRequests(), [loadRequests]);
 
   if (!allowed) return <LockedModule title="Demandes de visuels" />;
 
@@ -329,21 +334,34 @@ export default function RequestsPage() {
       )}
 
       {loadError ? (
-        <Card className="p-8 text-center">
-          <div className="text-[14px] font-extrabold text-danger-fg">Chargement impossible</div>
-          <p className="mt-1.5 text-[13px] text-text-soft">Une erreur réseau empêche d&apos;afficher vos demandes. Réessayez.</p>
+        <Card>
+          <ErrorState message="Une erreur réseau empêche d'afficher vos demandes." onRetry={loadRequests} />
         </Card>
       ) : orgRequests === null ? (
-        <div className="py-16 text-center text-[13px] text-text-soft">Chargement des demandes…</div>
+        <Card className="overflow-hidden p-0">
+          <div className="border-b border-divider bg-bg-alt px-4 py-3">
+            <Skeleton className="h-3 w-32" />
+          </div>
+          <div className="divide-y divide-divider">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3.5">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="ml-auto h-5 w-16 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </Card>
       ) : filtered.length === 0 ? (
-        <Card className="p-8 text-center">
-          <div className="text-[14px] font-extrabold">Vous n&apos;avez encore créé aucune demande.</div>
-          <p className="mt-1.5 text-[13px] text-text-soft">Commencez par demander votre premier visuel.</p>
-          <Link href="/requests/new" className="mt-4 inline-block">
-            <Button variant="primary" disabled={!canWrite}>
-              Demander un visuel
-            </Button>
-          </Link>
+        <Card>
+          <EmptyState title="Vous n'avez encore créé aucune demande" description="Commencez par demander votre premier visuel.">
+            <Link href="/requests/new">
+              <Button variant="primary" disabled={!canWrite}>
+                Demander un visuel
+              </Button>
+            </Link>
+          </EmptyState>
         </Card>
       ) : (
         <Card className="overflow-hidden p-0">

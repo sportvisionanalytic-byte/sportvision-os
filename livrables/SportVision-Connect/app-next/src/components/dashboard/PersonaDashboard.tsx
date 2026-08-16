@@ -24,6 +24,8 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { SkeletonRow } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 function daysLate(dueDate: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(dueDate).getTime()) / (1000 * 60 * 60 * 24)));
@@ -476,11 +478,16 @@ export function PersonaDashboard() {
             <Badge tone="warning">{config.priorityItems.length} élément{config.priorityItems.length > 1 ? "s" : ""}</Badge>
           </div>
         </div>
-        {config.priorityItems.length === 0 && (
-          <div className="px-5 py-6 text-center text-[13px] text-text-soft">
-            {extraLoading ? "Chargement…" : "Rien à traiter pour le moment. Tout est à jour."}
-          </div>
-        )}
+        {config.priorityItems.length === 0 &&
+          (extraLoading ? (
+            <div>
+              {Array.from({ length: 2 }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="Rien à traiter pour le moment" description="Tout est à jour." />
+          ))}
         {config.priorityItems.map((item) => (
           <div
             key={item.title}
@@ -510,11 +517,16 @@ export function PersonaDashboard() {
         <div className="flex items-center justify-between border-b border-divider px-5 py-4">
           <span className="text-[15px] font-extrabold tracking-tight">{config.secondaryTitle}</span>
         </div>
-        {config.secondaryItems.length === 0 && (
-          <div className="px-5 py-6 text-center text-[13px] text-text-soft">
-            {extraLoading ? "Chargement…" : "Rien de prévu pour le moment."}
-          </div>
-        )}
+        {config.secondaryItems.length === 0 &&
+          (extraLoading ? (
+            <div>
+              {Array.from({ length: 2 }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="Rien de prévu pour le moment" />
+          ))}
         {config.secondaryItems.map((item) => (
           <div
             key={item.title}
@@ -531,9 +543,7 @@ export function PersonaDashboard() {
 
       <div>
         <div className="mb-3 text-[15px] font-extrabold tracking-tight">{config.contentsTitle}</div>
-        {config.contents.length === 0 && (
-          <div className="text-[13px] text-text-soft">Rien à afficher pour le moment.</div>
-        )}
+        {config.contents.length === 0 && <EmptyState title="Rien à afficher pour le moment" className="p-0 py-4" />}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {config.contents.map((c) => (
             <div
@@ -544,7 +554,7 @@ export function PersonaDashboard() {
                 className="absolute inset-0"
                 style={{
                   background:
-                    "repeating-linear-gradient(125deg, rgba(36,84,255,.35) 0px, rgba(36,84,255,.35) 14px, rgba(131,45,255,.35) 14px, rgba(131,45,255,.35) 28px)",
+                    "repeating-linear-gradient(125deg, rgba(79,125,255,.35) 0px, rgba(79,125,255,.35) 14px, rgba(168,85,247,.35) 14px, rgba(168,85,247,.35) 28px)",
                 }}
               />
               <div className="absolute inset-0 flex items-end p-2.5">

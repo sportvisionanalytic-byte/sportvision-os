@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Calendar, Camera, FileBarChart, ListChecks, MessageCircle, Send } from "lucide-react";
+import { Calendar, Camera, FileBarChart, ListChecks, MessageCircle, MessageSquareText, Send } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { MetricCard } from "@/components/communication/MetricCard";
 import { TransmitInfoModal } from "@/components/communication/TransmitInfoModal";
 import { ToastViewport } from "@/components/communication/ToastViewport";
@@ -62,26 +65,32 @@ export function FullCommunicationDashboard() {
       </div>
 
       {resolution.status === "loading" && (
-        <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonCard key={i} className="h-[84px]" />
+            ))}
+          </div>
+          <Skeleton className="h-64 w-full rounded-sv-card" />
+        </div>
       )}
 
       {/* Non atteignable aujourd'hui en pratique (seul un club obtient le plan "full_communication",
           voir dashboard/page.tsx et session.ts:buildClubActiveContext) — gardé par défense en
           profondeur, honnête plutôt qu'un écran cassé si ça change un jour. */}
       {resolution.status === "locked" && (
-        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-          <div className="max-w-md text-[13.5px] text-text-soft">
-            Aucune donnée réelle n&apos;est disponible pour ce type d&apos;espace pour le moment.
-          </div>
+        <Card>
+          <EmptyState title="Aucune donnée réelle n'est disponible pour ce type d'espace pour le moment" />
         </Card>
       )}
 
       {resolution.status === "not_linked" && (
-        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
-          <div className="max-w-md text-[13.5px] text-text-soft">
-            SportVision n&apos;a pas encore relié {ctx.organization.name} à un espace de communication. Contactez
-            votre interlocuteur SportVision pour l&apos;activer.
-          </div>
+        <Card>
+          <EmptyState
+            icon={MessageSquareText}
+            title="Communication pas encore reliée"
+            description={`SportVision n'a pas encore relié ${ctx.organization.name} à un espace de communication. Contactez votre interlocuteur SportVision pour l'activer.`}
+          />
         </Card>
       )}
 
@@ -156,20 +165,23 @@ function DashboardBody({ clientId }: { clientId: string }) {
 
   if (loadError) {
     return (
-      <Card className="flex flex-wrap items-center gap-3 border-danger-fg/30 bg-danger-bg px-5 py-4">
-        <AlertTriangle className="h-[18px] w-[18px] flex-none text-danger-fg" aria-hidden />
-        <span className="min-w-0 flex-1 text-[13px] font-semibold text-danger-fg">
-          Impossible de charger votre communication.
-        </span>
-        <Button variant="secondary" className="h-8 flex-none px-3 text-[12px]" onClick={reload}>
-          Réessayer
-        </Button>
+      <Card>
+        <ErrorState message="Impossible de charger votre communication." onRetry={reload} />
       </Card>
     );
   }
 
   if (contenus === null) {
-    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} className="h-[84px]" />
+          ))}
+        </div>
+        <Skeleton className="h-64 w-full rounded-sv-card" />
+      </div>
+    );
   }
 
   const now = Date.now();
@@ -263,7 +275,7 @@ function DashboardBody({ clientId }: { clientId: string }) {
             </button>
           </div>
           {upcoming.length === 0 ? (
-            <div className="px-5 py-8 text-center text-[13px] text-text-soft">Rien de programmé pour le moment.</div>
+            <EmptyState title="Rien de programmé pour le moment" />
           ) : (
             upcoming.map((c) => {
               const date = c.datePrevue ?? c.datePublication;

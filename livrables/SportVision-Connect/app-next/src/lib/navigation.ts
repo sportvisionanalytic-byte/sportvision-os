@@ -42,7 +42,7 @@ const NAV_CLUB_PLUS: NavEntry[] = [
   section("Gestion"),
   item("contracts", "Contrats", "contracts"),
   item("billing", "Factures", "billing"),
-  item("users", "Utilisateurs", "users"),
+  item("users", "Membres & accès", "users"),
   item("documents", "Documents", "documents"),
   item("messages", "Messages", "messages"),
   item("support", "Aide", "support"),
@@ -117,7 +117,7 @@ const NAV_ACADEMY_FULLCOM: NavEntry[] = [
   item("mycm", "Mon CM", "mycm"),
   item("messages", "Messages", "messages"),
   item("documents", "Documents", "documents"),
-  item("users", "Utilisateurs", "users"),
+  item("users", "Membres & accès", "users"),
   item("settings", "Paramètres", "settings"),
 ];
 
@@ -169,7 +169,7 @@ const NAV_GENERIC: NavEntry[] = [
   section("Gestion"),
   item("documents", "Documents", "documents"),
   item("billing", "Factures", "billing"),
-  item("users", "Utilisateurs", "users"),
+  item("users", "Membres & accès", "users"),
   item("messages", "Messages", "messages"),
   item("settings", "Paramètres", "settings"),
 ];

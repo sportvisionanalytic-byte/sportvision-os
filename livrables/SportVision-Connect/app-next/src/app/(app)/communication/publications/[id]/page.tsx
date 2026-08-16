@@ -132,7 +132,7 @@ function PublicationDetail({ id }: { id: string }) {
               </Button>
               <Button
                 variant="primary"
-                className="bg-[linear-gradient(135deg,#28C995,#00C8FF)]"
+                className="bg-[linear-gradient(135deg,#28C995,#22D3EE)]"
                 onClick={handleValidate}
               >
                 Valider la publication

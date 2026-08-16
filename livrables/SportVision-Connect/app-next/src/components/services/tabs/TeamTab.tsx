@@ -1,5 +1,6 @@
 import { Mail, Phone } from "lucide-react";
 import type { Service } from "@/lib/types/services";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export function TeamTab({ service }: { service: Service }) {
   const sportvision = service.team.filter((m) => m.side === "sportvision");
@@ -19,9 +20,7 @@ function TeamGroup({ title, members }: { title: string; members: Service["team"]
       <div className="text-[13px] font-extrabold tracking-tight">{title}</div>
       <div className="mt-3 flex flex-col gap-2.5">
         {members.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-strong px-3 py-4 text-center text-[12px] text-text-faint">
-            Aucun intervenant renseigné
-          </div>
+          <EmptyState variant="compact" title="Aucun intervenant renseigné" className="py-4" />
         ) : (
           members.map((member) => (
             <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border bg-surface-alt p-3">

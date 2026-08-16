@@ -27,7 +27,7 @@ export function ValidationCard({
         className="relative h-[112px] w-full flex-none"
         style={{
           backgroundImage:
-            "repeating-linear-gradient(125deg, #2454FF 0px, #2454FF 14px, #832DFF 14px, #832DFF 28px)",
+            "repeating-linear-gradient(125deg, #4F7DFF 0px, #4F7DFF 14px, #A855F7 14px, #A855F7 28px)",
         }}
       >
         <span className="absolute inset-0 flex items-center justify-center px-3 text-center font-mono text-[10.5px] font-bold uppercase tracking-wide text-white/95">
@@ -52,7 +52,7 @@ export function ValidationCard({
             </Button>
             <Button
               variant="primary"
-              className="h-9 bg-[linear-gradient(135deg,#28C995,#00C8FF)] px-3 text-[12px]"
+              className="h-9 bg-[linear-gradient(135deg,#28C995,#22D3EE)] px-3 text-[12px]"
               onClick={onValidate}
             >
               Valider

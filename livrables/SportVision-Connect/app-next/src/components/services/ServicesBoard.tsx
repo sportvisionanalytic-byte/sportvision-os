@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, LayoutGrid, List, Sparkles } from "lucide-react";
+import { LayoutGrid, List, Sparkles } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { getServicesForOrganization } from "@/lib/mock/services";
 import { fetchClientServices } from "@/lib/data/projet/services";
@@ -11,6 +11,9 @@ import { subscribeTable } from "@/lib/supabase/realtime";
 import type { Service } from "@/lib/types/services";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { SkeletonCard } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { cn } from "@/lib/cn";
 import { KanbanBoard } from "./KanbanBoard";
 import { ServicesListTable } from "./ServicesListTable";
@@ -31,7 +34,7 @@ export function ServicesBoard() {
   const [realServices, setRealServices] = useState<Service[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
+  const loadServices = useCallback(() => {
     if (!isProjet) return;
     setLoadError(false);
     const supabase = createClient();
@@ -39,6 +42,8 @@ export function ServicesBoard() {
       .then(setRealServices)
       .catch(() => setLoadError(true));
   }, [isProjet, ctx.organization.id]);
+
+  useEffect(() => loadServices(), [loadServices]);
 
   // Sync temps réel (migration-connect-v42-enable-realtime-sync.sql) : `prestations` change
   // dès que le staff avance une demande (devis envoyé, contrat à signer, planifiée…) — même
@@ -109,32 +114,26 @@ export function ServicesBoard() {
       </div>
 
       {isProjet && loadError ? (
-        <Card className="flex flex-col items-center gap-3 border-danger-fg/30 bg-danger-bg p-10 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-danger-bg text-danger-fg">
-            <AlertTriangle className="h-5 w-5" aria-hidden />
-          </span>
-          <div className="text-[15px] font-extrabold tracking-tight text-danger-fg">
-            Impossible de charger vos prestations.
-          </div>
-          <p className="max-w-[380px] text-[13.5px] leading-relaxed text-text-soft">
-            Une erreur est survenue lors du chargement. Réessayez dans quelques instants.
-          </p>
+        <Card>
+          <ErrorState message="Impossible de charger vos prestations." onRetry={loadServices} />
         </Card>
       ) : isProjet && realServices === null ? (
-        <div className="py-16 text-center text-[13px] text-text-soft">Chargement de vos prestations…</div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} className="h-[120px]" />
+          ))}
+        </div>
       ) : services.length === 0 ? (
-        <Card className="flex flex-col items-center gap-3 p-10 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-info-bg text-info-fg">
-            <Sparkles className="h-5 w-5" aria-hidden />
-          </span>
-          <div className="text-[15px] font-extrabold tracking-tight">Vous n&apos;avez encore créé aucune prestation.</div>
-          <p className="max-w-[380px] text-[13.5px] leading-relaxed text-text-soft">
-            Commencez par demander votre première prestation : match, entraînement, événement de club ou tout autre
-            besoin de captation.
-          </p>
-          <Link href="/services/new">
-            <Button variant="primary">Demander une prestation</Button>
-          </Link>
+        <Card>
+          <EmptyState
+            icon={Sparkles}
+            title="Vous n'avez encore créé aucune prestation"
+            description="Commencez par demander votre première prestation : match, entraînement, événement de club ou tout autre besoin de captation."
+          >
+            <Link href="/services/new">
+              <Button variant="primary">Demander une prestation</Button>
+            </Link>
+          </EmptyState>
         </Card>
       ) : view === "kanban" ? (
         <KanbanBoard services={services} />

@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { IntegrationSyncPanel } from "@/components/settings/IntegrationSyncPanel";
 
 // /settings/integrations — voir ACTIONS.md § 25 « Intégrations ». 6 services avec état, compte
@@ -63,8 +64,8 @@ export default function IntegrationsSettingsPage() {
     // qui semble cassé (trouvé en testant avec un vrai club) — voir le rapport pour le vrai trou
     // fonctionnel derrière (aucune intégration n'est réellement branchée à ce jour).
     return (
-      <Card className="p-9 text-center text-[13.5px] text-text-soft">
-        Aucune intégration disponible pour le moment.
+      <Card>
+        <EmptyState title="Aucune intégration disponible pour le moment" />
       </Card>
     );
   }

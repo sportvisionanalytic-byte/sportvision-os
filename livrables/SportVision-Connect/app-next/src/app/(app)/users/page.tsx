@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, isClubCommunicationOrEducateur } from "@/lib/permissions";
@@ -13,6 +13,9 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { SkeletonRow } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { InviteUserModal } from "@/components/users/InviteUserModal";
 import { Toast, useToast } from "@/components/feedback/Toast";
 
@@ -60,22 +63,27 @@ export default function UsersPage() {
   // renvoyer la liste : c'est ce garde côté frontend qui l'arrête avant même de la lancer.
   const isRestrictedClubRole = isClubCommunicationOrEducateur(ctx);
 
-  useEffect(() => {
+  const loadUsers = useCallback(() => {
     if (!isClub || isRestrictedClubRole) return;
+    setLoadError(false);
     const supabase = createClient();
     fetchClubMembers(supabase, ctx.organization.id)
       .then(setUsers)
       .catch(() => setLoadError(true));
   }, [isClub, isRestrictedClubRole, ctx.organization.id]);
 
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
   if (isRestrictedClubRole) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Card className="mx-auto flex max-w-lg flex-col items-center gap-3 p-9 text-center">
-          <h1 className="text-[20px] font-extrabold tracking-tight">Utilisateurs</h1>
+          <h1 className="text-[20px] font-extrabold tracking-tight">Membres & accès</h1>
           <p className="max-w-md text-[13.5px] leading-relaxed text-text-soft">
-            La gestion des utilisateurs est réservée à l&apos;administrateur du club. Contactez-le si vous avez besoin
-            d&apos;un accès supplémentaire.
+            La gestion des membres et des accès est réservée à l&apos;administrateur du club. Contactez-le si vous
+            avez besoin d&apos;un accès supplémentaire.
           </p>
         </Card>
       </div>
@@ -85,7 +93,7 @@ export default function UsersPage() {
   // club_members réel (Phase suivante) : seul le club a de vraies données ici — les autres
   // types d'organisation restent verrouillés ("users" hors READY_MODULES) plutôt que de montrer
   // mockOrgUsers sur un compte réel, même logique que /billing et /services.
-  if (!isClub && !canAccess(ctx, "users")) return <LockedModule title="Utilisateurs" />;
+  if (!isClub && !canAccess(ctx, "users")) return <LockedModule title="Membres & accès" />;
 
   // Seul un admin de club a le droit d'inviter/désactiver côté RLS (is_club_admin) — la policy
   // laisse un coach/lecture_seule voir la liste mais refuse toute écriture. On reflète ça côté UI
@@ -142,7 +150,7 @@ export default function UsersPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-[29px] font-extrabold tracking-tight">Utilisateurs</h1>
+          <h1 className="text-[29px] font-extrabold tracking-tight">Membres & accès</h1>
           <p className="mt-1 text-[13.5px] text-text-soft">
             Membres de {ctx.organization.name} et leur rôle.
             {!isAdmin && " Seul un administrateur peut gérer les membres."}
@@ -158,13 +166,15 @@ export default function UsersPage() {
 
       <Card>
         {loadError ? (
-          <div className="p-9 text-center text-[13.5px] font-semibold text-danger-fg">
-            Impossible de charger les membres. Réessayez plus tard.
-          </div>
+          <ErrorState message="Impossible de charger les membres." onRetry={loadUsers} />
         ) : users === null ? (
-          <div className="p-9 text-center text-[13.5px] text-text-soft">Chargement…</div>
+          <div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonRow key={i} />
+            ))}
+          </div>
         ) : users.length === 0 ? (
-          <div className="p-9 text-center text-[13.5px] text-text-soft">Aucun utilisateur pour le moment.</div>
+          <EmptyState title="Aucun membre pour le moment" />
         ) : (
           users.map((user) => {
             const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase() || "?";

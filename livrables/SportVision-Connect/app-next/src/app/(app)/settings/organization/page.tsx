@@ -42,7 +42,7 @@ export default function OrganizationSettingsPage() {
   const address = organization.address ?? "";
   const instagram = organization.instagramHandle ?? "";
   const siret = organization.siret ?? "";
-  const colors = organization.brandColors ?? ["#2454FF", "#832DFF"];
+  const colors = organization.brandColors ?? ["#4F7DFF", "#A855F7"];
 
   // Pas de colonne réelle (adresse/instagram/siret/couleurs) ni de policy d'écriture club-admin
   // sur `clubs` à ce jour — seule la lecture est autorisée (clubs_member_select), écrire

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ImageRightStatusBadge } from "@/components/teams/ImageRightBanner";
 import {
   imageRightForPlayer,
@@ -199,9 +200,8 @@ function Info({ label, value }: { label: string; value: string }) {
 function RosterTab({ players }: { players: ReturnType<typeof playersForTeam> }) {
   if (players.length === 0) {
     return (
-      <Card className="flex flex-col items-center gap-2 px-8 py-14 text-center">
-        <Users className="h-5 w-5 text-text-faint" aria-hidden />
-        <div className="text-[14px] font-extrabold">Aucun joueur enregistré.</div>
+      <Card>
+        <EmptyState icon={Users} title="Aucun joueur enregistré" />
       </Card>
     );
   }
@@ -255,7 +255,13 @@ function RosterTab({ players }: { players: ReturnType<typeof playersForTeam> }) 
 
 function CalendarTab({ teamId }: { teamId: string }) {
   const entries = mockTeamCalendar.filter((e) => e.teamId === teamId);
-  if (entries.length === 0) return <EmptyTab icon={CalendarDays} label="Aucun événement à venir." />;
+  if (entries.length === 0) {
+    return (
+      <Card>
+        <EmptyState icon={CalendarDays} title="Aucun événement à venir" />
+      </Card>
+    );
+  }
   return (
     <Card>
       {entries.map((e) => (
@@ -284,7 +290,13 @@ function CalendarTab({ teamId }: { teamId: string }) {
 
 function ContentTab({ teamId }: { teamId: string }) {
   const items = mockTeamContent.filter((c) => c.teamId === teamId);
-  if (items.length === 0) return <EmptyTab icon={Images} label="Aucun contenu pour cette équipe." />;
+  if (items.length === 0) {
+    return (
+      <Card>
+        <EmptyState icon={Images} title="Aucun contenu pour cette équipe" />
+      </Card>
+    );
+  }
   return (
     <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((c) => (
@@ -323,7 +335,13 @@ const REQUEST_TONE: Record<(typeof mockTeamRequests)[number]["status"], "info" |
 
 function RequestsTab({ teamId }: { teamId: string }) {
   const items = mockTeamRequests.filter((r) => r.teamId === teamId);
-  if (items.length === 0) return <EmptyTab icon={Inbox} label="Aucune demande en cours pour cette équipe." />;
+  if (items.length === 0) {
+    return (
+      <Card>
+        <EmptyState icon={Inbox} title="Aucune demande en cours pour cette équipe" />
+      </Card>
+    );
+  }
   return (
     <Card>
       {items.map((r) => (
@@ -352,7 +370,13 @@ const DOC_STATUS_TONE: Record<(typeof mockTeamDocuments)[number]["status"], "suc
 
 function DocumentsTab({ teamId }: { teamId: string }) {
   const items = mockTeamDocuments.filter((d) => d.teamId === teamId);
-  if (items.length === 0) return <EmptyTab icon={FileText} label="Aucun document pour cette équipe." />;
+  if (items.length === 0) {
+    return (
+      <Card>
+        <EmptyState icon={FileText} title="Aucun document pour cette équipe" />
+      </Card>
+    );
+  }
   return (
     <Card>
       {items.map((d) => (
@@ -367,15 +391,6 @@ function DocumentsTab({ teamId }: { teamId: string }) {
           <Badge tone={DOC_STATUS_TONE[d.status]}>{DOC_STATUS_LABEL[d.status]}</Badge>
         </div>
       ))}
-    </Card>
-  );
-}
-
-function EmptyTab({ icon: Icon, label }: { icon: typeof Inbox; label: string }) {
-  return (
-    <Card className="flex flex-col items-center gap-2 px-8 py-14 text-center">
-      <Icon className="h-5 w-5 text-text-faint" aria-hidden />
-      <div className="text-[14px] font-extrabold">{label}</div>
     </Card>
   );
 }

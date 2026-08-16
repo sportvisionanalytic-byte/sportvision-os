@@ -1,5 +1,6 @@
 import { Package } from "lucide-react";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { Deliverable, DeliverableStatus } from "@/lib/types/services";
 import { DELIVERABLE_STATUS_LABELS } from "@/lib/types/services";
 
@@ -12,11 +13,7 @@ const DELIVERABLE_TONE: Record<DeliverableStatus, BadgeTone> = {
 
 export function DeliverablesTab({ deliverables }: { deliverables: Deliverable[] }) {
   if (deliverables.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-border-strong px-3 py-8 text-center text-[12.5px] text-text-faint">
-        Aucun livrable prévu pour le moment.
-      </div>
-    );
+    return <EmptyState variant="compact" title="Aucun livrable prévu pour le moment" className="py-8 text-[12.5px]" />;
   }
 
   return (

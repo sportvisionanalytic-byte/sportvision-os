@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ImageRightBanner } from "@/components/teams/ImageRightBanner";
 import { imageRightForPlayer, mockPlayers, mockTeams } from "@/lib/mock/teams";
 import type { ImageRightScopes, LicenseStatus } from "@/lib/types/teams";
@@ -119,10 +120,7 @@ export default function PlayerDetailPage({ params }: { params: { id: string } })
         <Card className="p-4.5 lg:col-span-2">
           <div className="text-[14px] font-extrabold tracking-tight">Contenus</div>
           {previewCount === 0 ? (
-            <div className="mt-3 flex flex-col items-center gap-2 py-8 text-center">
-              <Images className="h-5 w-5 text-text-faint" aria-hidden />
-              <p className="text-[12.5px] text-text-soft">Aucun contenu pour ce joueur pour le moment.</p>
-            </div>
+            <EmptyState icon={Images} title="Aucun contenu pour ce joueur pour le moment" className="mt-3 p-8" />
           ) : (
             <div className="mt-3.5 grid grid-cols-3 gap-2.5 sm:grid-cols-4">
               {Array.from({ length: previewCount }).map((_, i) => (
