@@ -30,6 +30,9 @@ export function CommandesParticulierView({ athletes, initialSportif }: { athlete
           return;
         }
         setOrders(data.orders as MultiOrder[]);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Impossible de charger vos commandes pour le moment.");
       });
     return () => {
       cancelled = true;

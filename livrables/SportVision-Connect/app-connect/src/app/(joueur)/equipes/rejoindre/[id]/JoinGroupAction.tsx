@@ -13,18 +13,17 @@ export function JoinGroupAction({ groupId }: { groupId: string }) {
   const [groupName, setGroupName] = useState("");
   const [alreadyMember, setAlreadyMember] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   // On appelle directement join_user_group() : elle est idempotente (déjà membre = pas
   // d'erreur, juste already_member=true), donc pas besoin d'un aperçu séparé avant confirmation
   // — un seul aller-retour serveur, cohérent avec la copie du design ("Toute personne avec ce
-  // lien peut rejoindre le groupe.").
+  // lien peut rejoindre le groupe."). Pas d'état "busy" ici : le seul bouton de cet écran
+  // ("Ouvrir le groupe") n'apparaît qu'une fois join() déjà terminé (state="joined"), donc rien
+  // ne peut plus être en cours à ce moment — un busy y aurait toujours été figé à false.
   async function join() {
-    setBusy(true);
     setError(null);
     const supabase = createClient();
     const { data, error: rpcError } = await supabase.rpc("join_user_group", { p_group_id: groupId });
-    setBusy(false);
     if (rpcError || !data?.ok) {
       setState("error");
       setError("Ce lien de groupe n'est plus valide.");
@@ -66,7 +65,6 @@ export function JoinGroupAction({ groupId }: { groupId: string }) {
           router.push(`/equipes/${groupId}`);
           router.refresh();
         }}
-        loading={busy}
       >
         Ouvrir le groupe
       </Button>

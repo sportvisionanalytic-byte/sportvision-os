@@ -139,7 +139,7 @@ export function PrestationsParticulierView({
                     <button
                       type="button"
                       onClick={() => goToOffer(offer.id)}
-                      disabled={!!blockedReason}
+                      aria-disabled={!!blockedReason}
                       className={`flex items-center gap-1.5 rounded-sv-pill bg-sv-gradient px-4 py-2 font-sora text-[13.5px] font-semibold text-white transition-opacity duration-150 ${
                         blockedReason ? "cursor-not-allowed opacity-60" : "hover:brightness-[1.1]"
                       }`}
