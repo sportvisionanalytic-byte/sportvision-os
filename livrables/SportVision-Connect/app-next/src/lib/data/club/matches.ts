@@ -15,8 +15,11 @@ import type { Match, MatchScorer, MatchStatus } from "@/lib/types/studio";
 // réintègre les champs du formulaire complet retirés lors de l'audit du même jour, désormais
 // réellement persistés.
 //
-// verified_by/verified_at (migration-clubplus-v37.sql) : colonnes du futur workflow de
-// vérification Directeur sportif (§8), pas encore lues/écrites par ce module.
+// verified_by/verified_at (migration-clubplus-v37.sql) : colonnes du workflow de vérification
+// Directeur sportif (§8) — voir verifyClubMatchResult ci-dessous (fondations "Autres rôles Club+"
+// du 17/08/2026). Aucune UI de ce repo ne les consomme encore (bouton/écran réservés à un futur
+// agent) ; fetchClubMatches/fetchClubMatchById ne les sélectionnent pas non plus (SELECT ci-dessous
+// inchangé), seule verifyClubMatchResult y écrit pour l'instant.
 //
 // 16/08/2026 : saveClubMatchResult accepte désormais un statut cible explicite ("completed" /
 // "postponed" / "cancelled") — auparavant la fonction forçait toujours status="recu", il n'existait
@@ -167,4 +170,38 @@ export async function saveClubMatchResult(
   const { data, error } = await supabase.from("club_matches").update(update).eq("id", matchId).select("id");
   if (error) throw error;
   if (!data || data.length === 0) throw new Error("Mise à jour refusée : match introuvable ou accès refusé.");
+}
+
+/**
+ * Workflow de vérification Directeur sportif (Bible §8) — pose verified_by/verified_at
+ * (colonnes migration-clubplus-v37.sql, déjà exécutée, jamais consommées avant ce chantier).
+ * "Le coach saisit une seule fois ; le Directeur confirme/corrige si nécessaire" : cette fonction
+ * ne touche à aucun champ de résultat (score/statut/buteurs...), seulement à la trace de
+ * vérification — un Directeur sportif qui corrige le score le fait via saveClubMatchResult
+ * (ci-dessus), puis marque la vérification via cette fonction, deux actions distinctes.
+ *
+ * RLS : cma_member_update (migration-clubplus-v37.sql) autorise déjà l'update pour
+ * is_club_member(club_id) + (team_id is null or is_team_educateur(team_id)) — is_team_educateur
+ * inclut désormais 'directeur_sportif' dans son scope équipe (migration-clubplus-v40.sql, NON
+ * EXÉCUTÉE) : aucune nouvelle policy n'est nécessaire pour que ce rôle puisse écrire ici.
+ *
+ * `verified_by`/`verified_at` sont posés côté client (auth.uid() n'est pas directement lisible
+ * depuis un update JS) — la session Supabase déjà utilisée par ce fichier porte l'identité de
+ * l'utilisateur courant ; à défaut d'un id explicite, appelez avec l'id de l'utilisateur en
+ * session (ctx.user.id côté appelant).
+ *
+ * Pas d'UI construite ici (bouton/écran) — fournie pour l'agent qui construira l'interface
+ * Directeur sportif. Ne construit pas non plus la lecture/écriture de clubs.requires_result_
+ * verification (migration-clubplus-v40.sql) : c'est ce booléen qui doit décider, côté appelant,
+ * si l'étape de vérification est proposée du tout — pas cette fonction, qui se contente d'écrire
+ * la trace une fois l'action déclenchée.
+ */
+export async function verifyClubMatchResult(supabase: SupabaseClient, matchId: string, verifiedByUserId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("club_matches")
+    .update({ verified_by: verifiedByUserId, verified_at: new Date().toISOString() })
+    .eq("id", matchId)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Vérification refusée : match introuvable ou accès refusé.");
 }

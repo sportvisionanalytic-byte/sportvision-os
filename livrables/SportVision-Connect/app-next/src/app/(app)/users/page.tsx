@@ -26,7 +26,7 @@ import { Toast, useToast } from "@/components/feedback/Toast";
 // pas de valeur 'owner', donc pas de mapping possible côté CLUB_ROLE_MAP (mappers.ts). Un club
 // n'a réellement que des admins (potentiellement plusieurs), pas un owner unique protégé.
 const ROLES_BY_ORG_TYPE: Record<OrgType, MembershipRole[]> = {
-  club: ["admin", "president", "communication_manager", "secretary", "coach", "team_manager", "sponsor_manager", "treasurer", "board_member", "viewer", "external_cm"],
+  club: ["admin", "president", "communication_manager", "secretary", "coach", "team_manager", "sports_director", "admin_staff", "sponsor_manager", "treasurer", "board_member", "viewer", "external_cm"],
   academy: ["admin", "manager", "coach", "internal_cm", "staff", "viewer"],
   event: ["event_admin", "communication_manager", "partner_manager", "staff", "volunteer", "partner"],
   coach: ["admin", "viewer"],

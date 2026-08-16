@@ -20,7 +20,10 @@ export function mapOrgType(realType: string): OrgType {
   return ORG_TYPE_MAP[realType] ?? "generic";
 }
 
-/** club_members.role réel (check constraint) → MembershipRole du design. */
+/** club_members.role réel (check constraint) → MembershipRole du design.
+ * directeur_sportif/administratif (migration-clubplus-v40, NON EXÉCUTÉE) : les 2 rôles
+ * manquants de la Product Bible §8/§10 — voir permissions.ts pour leurs règles d'accès et
+ * navigation.ts pour leur navigation dédiée. */
 const CLUB_ROLE_MAP: Record<string, MembershipRole> = {
   admin: "admin",
   president: "president",
@@ -29,6 +32,8 @@ const CLUB_ROLE_MAP: Record<string, MembershipRole> = {
   cm_externe: "external_cm",
   coach: "coach",
   resp_equipe: "team_manager",
+  directeur_sportif: "sports_director",
+  administratif: "admin_staff",
   sponsor_mgr: "sponsor_manager",
   tresorier: "treasurer",
   membre_bureau: "board_member",

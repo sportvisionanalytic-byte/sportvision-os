@@ -30,6 +30,8 @@ export type MembershipRole =
   | "secretary"
   | "coach"
   | "team_manager"
+  | "sports_director"
+  | "admin_staff"
   | "sponsor_manager"
   | "treasurer"
   | "board_member"

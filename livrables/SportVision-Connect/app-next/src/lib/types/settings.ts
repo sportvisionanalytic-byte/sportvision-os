@@ -67,6 +67,8 @@ export const ROLE_LABELS: Record<string, string> = {
   secretary: "Secrétaire",
   coach: "Coach",
   team_manager: "Responsable d'équipe",
+  sports_director: "Directeur sportif",
+  admin_staff: "Administratif",
   sponsor_manager: "Responsable sponsors",
   treasurer: "Trésorier",
   board_member: "Membre du bureau",

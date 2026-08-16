@@ -305,70 +305,173 @@ export function filterAffiliatedPlayerNav(entries: NavEntry[]): NavEntry[] {
   return entries.filter((e) => e.kind !== "item" || (e.module !== "billing" && e.module !== "sponsors"));
 }
 
-// Audit Communication/Éducateur (12/08/2026, brief Fouka §13/§14 du master doc) — même principe
-// que filterAffiliatedPlayerNav ci-dessus et que le rebuild NAV_PLAYER : resolveNavigation()
-// n'a jamais eu de dimension "rôle", seulement (type d'organisation, offre). Un communication_
-// manager ou un coach de club voyait donc EXACTEMENT le même menu qu'un admin/président —
-// Contrats, Factures, Utilisateurs et Documents compris — alors que ces 4 modules sont réservés
-// au bureau du club (§11 : "Documents du club"/"Factures du club" = Non ou "permission
-// spéciale" ; "Utilisateurs" = Non pour les deux). Les 3 vues financières sont déjà bien
-// restreintes côté RLS (club_member_has_financial_access, migration-connect-v41) : cette
-// fonction aligne le MENU sur cette même frontière plutôt que de laisser une entrée qui mène à
-// un "Aucun document pour le moment" trompeur — retirée, pas verrouillée avec un cadenas, même
-// principe que le brief joueur du 11/08 ("sinon retire complètement ce bouton").
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// Navigation par rôle club — fondations "Autres rôles Club+" (brief Fouka 17/08/2026,
+// CLUB-PLUS-PRODUCT-BIBLE.md §5-§10). AUCUN persona Joueur/Parent ici : ceux-ci sont servis par
+// app-connect (Connect), jamais par Club+ (voir NAV_PLAYER/NAV_PARENT plus haut, hors périmètre).
 //
-// Un coach, en plus, ne fait pas de communication (§14 : pas de "Demandes de visuels", pas de
-// planning éditorial/validations/publications, pas de Studio/Newsroom/Match Center — outils de
-// création/diffusion de contenu, pas de suivi "périmètre équipe") — ces modules restent réservés
-// au rôle Communication.
+// Remplace l'ancienne rustine soustractive (filterClubRoleNav retirait des entrées de
+// NAV_CLUB_PLUS pour communication_manager/coach uniquement, historique : audit Communication/
+// Éducateur du 12/08/2026, §13/§14 du master doc de l'époque) par une construction POSITIVE :
+// chaque rôle a sa propre navigation pensée pour lui (Bible §7-§10), pas une version amputée du
+// menu Admin. admin/president/board_member (Bible §6 : "vision large") et sponsor_manager/
+// viewer (rôles réels hors périmètre Bible §5) continuent de recevoir `entries` telle quelle
+// (NAV_CLUB_PLUS ou la variante Full Communication résolue par resolveNavigation) : cette
+// fonction ne les touche pas.
 //
-// "Sponsors" (CRM partenariats/business du club) n'apparaît dans AUCUNE des deux navs Annexe A —
-// retiré pour les deux rôles, contrairement au reste de cette liste qui distingue Communication
-// de Coach.
-const CLUB_FINANCIAL_ADMIN_MODULES: ReadonlySet<ModuleKey> = new Set(["contracts", "billing", "users", "documents"]);
-const CLUB_NOT_RELEVANT_EITHER_ROLE: ReadonlySet<ModuleKey> = new Set(["sponsors"]);
-const CLUB_COMMUNICATION_ONLY_MODULES: ReadonlySet<ModuleKey> = new Set([
-  "communication",
-  "visual_requests",
-  "validations",
-  "publications",
-  "studio",
-  "newsroom",
-  "matchcenter",
-]);
+// Simplification assumée : ces 6 navs sont IDENTIQUES que le club soit Club+ Start/Performance
+// ou Full Communication — la Bible ne différencie la navigation par rôle que par (type
+// d'organisation, rôle), jamais par palier d'offre (seul le menu Admin change de variante selon
+// l'offre). `canAccess()` (permissions.ts) continue de verrouiller une page dont le module n'est
+// pas dans l'offre active, indépendamment de sa présence ici — même principe que NAV_CLUB_PLUS.
+//
+// Gaps connus vs la Bible, laissés pour l'agent qui construira l'interface détaillée de chaque
+// rôle (pas de nouvelle page créée dans ce chantier, périmètre = navigation.ts/types.ts/
+// permissions.ts/mappers.ts/settings.ts/matches.ts/ClubPlusDashboard.tsx/users/page.tsx) :
+//   - "Crédits" (Bible §9, Communication) n'a aucune page dédiée dans ce dépôt aujourd'hui (le
+//     solde existe déjà : Subscription.creditsRemaining/creditsReserved, affiché en gauge sur
+//     ClubPlusDashboard) — omis plutôt qu'un lien mort.
+//   - "Résultats & informations" (Bible §9) est mappé sur le module "matchcenter" existant (même
+//     écran de saisie/consultation des résultats que Coach/Directeur sportif) — la Bible envisage
+//     peut-être un écran de consultation distinct pour la Communication, pas construit ici.
+//   - "Mes demandes" (SportVision, générique à presque toutes les interfaces Bible) et "Demandes
+//     de visuels" (Communication) pointent tous deux vers /requests (module "visual_requests") :
+//     ce dépôt n'a qu'UNE liste de demandes aujourd'hui (VisualRequest), pas de liste ServiceRequest
+//     séparée — pour la Communication (seul rôle où la Bible liste les deux dans des groupes
+//     différents), l'entrée n'apparaît qu'une fois, dans "Communication", pour éviter un lien
+//     dupliqué vers la même page.
+//   - "informations structure" (Administratif, Bible §10) n'a pas d'écran de consultation
+//     dédié (lecture seule du profil organisation) distinct de Paramètres > Organisation (réservé
+//     au bureau) — mappé sur "Mon profil" comme les autres rôles non-bureau, par défaut fermé.
+//   - "Mon équipe [Nom]" (Coach, Bible §7) : le nom réel de l'équipe (ou "Mes équipes" au pluriel
+//     si plusieurs) vient de `ctx.membership.teamScope`, non disponible dans cette fonction pure
+//     (entries, role) — Sidebar.tsx/Header.tsx (hors périmètre de ce chantier) devront passer
+//     teamScope pour personnaliser ; en attendant, libellé générique "Mon équipe" (fallback
+//     explicitement toléré par le brief).
+//
+// Correctif au passage : l'ancienne rustine rangeait "matchcenter" (Match Center = saisie/suivi
+// des résultats de match, voir data/club/matches.ts et matchcenter/page.tsx) dans les modules
+// "communication uniquement" et le retirait donc du menu Coach — alors que la Bible §7 liste
+// explicitement "Matchs & résultats" dans LE PROPRE menu du Coach (c'est lui qui saisit le
+// score). Corrigé ici : matchcenter fait partie du bloc "équipe" de Coach et Directeur sportif,
+// pas du bloc Communication.
 
-/** Applique le menu Communication/Éducateur (§11/§13/§14/Annexe A) par-dessus la navigation club
- * de base (Club+ ou Full Communication). Retourne `entries` telle quelle pour tout autre rôle
- * (admin/président/trésorier/membre du bureau/...) — cette fonction ne fait QUE retirer des
- * entrées non pertinentes pour ces deux rôles précis, jamais en ajouter ni en réordonner.
- *
- * Reste volontairement conservateur au-delà des 6 lignes de la matrice explicitement en jeu
- * (Prestations/Demandes de visuels/Documents/Factures/Utilisateurs/Paramètres) : "Équipes",
- * "Adhésions" et "Accompagnement" restent visibles pour les deux rôles (pertinents en pratique —
- * un éducateur suit le roster de son équipe — et non nommément exclus par le master doc), à
- * réévaluer si Fouka veut coller à l'Annexe A à la lettre. */
+/** Coach (Bible §7) : scope strict sur son (ses) équipe(s), saisie résultat, zéro Finance/
+ * Membres/Communication. */
+const NAV_CLUB_COACH: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("SportVision"),
+  item("services", "Prestations", "services"),
+  item("visual_requests" as ModuleKey, "Mes demandes", "requests"),
+  item("content", "Mes contenus", "content"),
+  item("calendar", "Calendrier", "calendar"),
+  item("messages", "Messages", "messages"),
+  section("Mon équipe"),
+  item("teams", "Mon équipe", "teams"),
+  item("teams", "Joueurs & affiliations", "team-requests"),
+  item("matchcenter", "Matchs & résultats", "matchcenter"),
+  section("Compte"),
+  item("settings", "Mon profil", "settings/profile"),
+];
+
+/** Directeur / Responsable sportif (Bible §8, rôle `sports_director`) : couche intermédiaire
+ * Admin <-> coachs, supervise plusieurs équipes/groupes (club_members.teams, tableau JSONB, déjà
+ * multi-valeurs) sans finance ni membres par défaut. */
+const NAV_CLUB_DIRECTEUR_SPORTIF: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("Sportif"),
+  item("teams", "Mes équipes", "teams"),
+  item("teams", "Joueurs & affiliations", "team-requests"),
+  item("matchcenter", "Matchs & résultats", "matchcenter"),
+  section("SportVision"),
+  item("services", "Prestations", "services"),
+  item("visual_requests" as ModuleKey, "Mes demandes", "requests"),
+  item("content", "Mes contenus", "content"),
+  item("calendar", "Calendrier", "calendar"),
+  item("messages", "Messages", "messages"),
+  section("Compte"),
+  item("settings", "Mon profil", "settings/profile"),
+];
+
+/** Communication / CM interne (Bible §9, `communication_manager`) : exploite résultats, contenus,
+ * visuels ; lecture seule sur les équipes (scope), aucune Finance, aucun Membres. */
+const NAV_CLUB_COMMUNICATION: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("Communication"),
+  item("communication", "Centre communication", "communication"),
+  item("matchcenter", "Résultats & informations", "matchcenter"),
+  item("visual_requests" as ModuleKey, "Demandes de visuels", "requests"),
+  item("content", "Mes contenus", "content"),
+  section("SportVision"),
+  item("services", "Prestations", "services"),
+  item("calendar", "Calendrier", "calendar"),
+  item("messages", "Messages", "messages"),
+  section("Structure"),
+  item("teams", "Équipes", "teams"),
+  section("Compte"),
+  item("settings", "Mon profil", "settings/profile"),
+];
+
+/** Secrétaire (Bible §10) : démarches opérationnelles, documents, affiliations en lecture,
+ * calendrier — jamais Finance, jamais Membres. */
+const NAV_CLUB_SECRETAIRE: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("SportVision"),
+  item("visual_requests" as ModuleKey, "Demandes", "requests"),
+  item("calendar", "Calendrier", "calendar"),
+  section("Structure"),
+  item("documents", "Documents", "documents"),
+  item("teams", "Affiliations", "team-requests"),
+  section("Compte"),
+  item("settings", "Mon profil", "settings/profile"),
+];
+
+/** Trésorier / Finance (Bible §10) : factures, devis, contrats — "aucun contenu sportif
+ * parasite" (Bible), donc ni Communication, ni Équipes, ni Studio/Newsroom/Match Center. Devis
+ * et factures partagent aujourd'hui le même écran (/billing, voir "Devis, contrats et factures
+ * de {club}") ; Messages volontairement omis, la Bible §10 ne le liste pas pour ce rôle
+ * (contrairement à tous les autres) et le décrit comme délibérément minimal. */
+const NAV_CLUB_TRESORIER: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("Finance"),
+  item("billing", "Factures & devis", "billing"),
+  item("contracts", "Contrats", "contracts"),
+  section("Compte"),
+  item("settings", "Mon profil", "settings/profile"),
+];
+
+/** Administratif (Bible §10, rôle `admin_staff`) : "jamais un mini-Admin par défaut" — Demandes,
+ * Calendrier, Documents, Compte. Pas d'Affiliations/Équipes (pas de permission fine-grained
+ * aujourd'hui : fermé par défaut, comportement sûr) ; jamais Membres & accès. */
+const NAV_CLUB_ADMINISTRATIF: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("SportVision"),
+  item("visual_requests" as ModuleKey, "Demandes", "requests"),
+  item("calendar", "Calendrier", "calendar"),
+  section("Structure"),
+  item("documents", "Documents", "documents"),
+  section("Compte"),
+  item("settings", "Mon profil", "settings/profile"),
+];
+
+/** Un rôle absent de cette table (admin/president/board_member/sponsor_manager/viewer, ou tout
+ * rôle non-club) garde `entries` telle quelle — c'est le comportement historique et voulu :
+ * admin/president/board_member voient NAV_CLUB_PLUS (ou la variante Full Communication) au
+ * complet (Bible §6 : "vision large"), inchangée par ce chantier. */
+const CLUB_ROLE_NAV: Partial<Record<MembershipRole, NavEntry[]>> = {
+  coach: NAV_CLUB_COACH,
+  sports_director: NAV_CLUB_DIRECTEUR_SPORTIF,
+  communication_manager: NAV_CLUB_COMMUNICATION,
+  secretary: NAV_CLUB_SECRETAIRE,
+  treasurer: NAV_CLUB_TRESORIER,
+  admin_staff: NAV_CLUB_ADMINISTRATIF,
+};
+
+/** Remplace `entries` (résolue par resolveNavigation) par la navigation dédiée du rôle si ce
+ * rôle en a une (voir CLUB_ROLE_NAV ci-dessus) ; sinon la retourne inchangée. Le nom et la
+ * signature de cette fonction sont conservés à l'identique (Sidebar.tsx/Header.tsx l'appellent
+ * déjà avec `(entries, ctx.membership.role)` pour tout org type club — pas de nouveau site
+ * d'appel à câbler). */
 export function filterClubRoleNav(entries: NavEntry[], role: MembershipRole): NavEntry[] {
-  if (role !== "communication_manager" && role !== "coach") return entries;
-
-  const filtered = entries
-    .filter((e) => e.kind !== "item" || !CLUB_FINANCIAL_ADMIN_MODULES.has(e.module))
-    .filter((e) => e.kind !== "item" || !CLUB_NOT_RELEVANT_EITHER_ROLE.has(e.module))
-    .filter((e) => e.kind !== "item" || role !== "coach" || !CLUB_COMMUNICATION_ONLY_MODULES.has(e.module))
-    // "Paramètres" (onglet Organisation/Intégrations inclus, voir settings/layout.tsx) devient
-    // "Mon profil" pointant directement sur l'onglet personnel — §31 : ces deux rôles n'ont "pas
-    // d'onglet organisation complet par défaut".
-    .map((e): NavEntry =>
-      e.kind === "item" && e.module === "settings" && e.href === "/settings"
-        ? { ...e, label: "Mon profil", href: "/settings/profile" }
-        : e,
-    );
-
-  // Retire les titres de section devenus vides (ex. "Communication" pour un coach une fois
-  // communication/visual_requests/validations/publications retirés) — une navigation "pensée
-  // pour" le rôle, pas une version bridée qui laisse des en-têtes sans rien dessous.
-  return filtered.filter((e, i) => {
-    if (e.kind !== "section") return true;
-    const next = filtered[i + 1];
-    return !!next && next.kind === "item";
-  });
+  return CLUB_ROLE_NAV[role] ?? entries;
 }
