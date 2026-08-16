@@ -180,7 +180,7 @@ export default function LoginPage() {
                       setPassword(e.target.value);
                       setAuthFailed(false);
                     }}
-                    className={`h-[54px] w-full rounded-sv border bg-surface px-4 pr-[50px] text-[15px] text-text outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-text-label focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)] ${
+                    className={`h-[54px] w-full rounded-sv border bg-surface px-4 pr-[50px] text-[16px] text-text outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-text-label focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)] ${
                       pwBad || authFailed ? "border-danger" : "border-border-strong"
                     }`}
                   />

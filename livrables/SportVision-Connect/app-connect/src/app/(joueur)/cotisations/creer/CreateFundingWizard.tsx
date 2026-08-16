@@ -419,7 +419,7 @@ export function CreateFundingWizard({
               min={minDeadline()}
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
-              className="h-[52px] max-w-[280px] rounded-sv border border-border-strong bg-surface px-4 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)]"
+              className="h-[52px] max-w-[280px] rounded-sv border border-border-strong bg-surface px-4 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)]"
               style={{ colorScheme: "dark" }}
             />
             <span className="text-[12px] text-text-faint">Proposez une date avant la prestation.</span>
@@ -529,7 +529,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-[52px] w-full rounded-sv border border-border-strong bg-surface px-4 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)]"
+        className="h-[52px] w-full rounded-sv border border-border-strong bg-surface px-4 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)]"
       />
     </div>
   );

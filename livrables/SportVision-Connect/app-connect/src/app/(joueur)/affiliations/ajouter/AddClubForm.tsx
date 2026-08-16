@@ -241,7 +241,7 @@ export function AddClubForm({
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSelected(null); }}
             placeholder="Rechercher un club, une académie ou une structure…"
-            className="h-[54px] w-full rounded-sv border border-border-strong bg-surface pl-[48px] pr-4 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
+            className="h-[54px] w-full rounded-sv border border-border-strong bg-surface pl-[48px] pr-4 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
           />
         </div>
 

@@ -112,7 +112,7 @@ export function InviteAthleteForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="lucas@email.com"
-          className={`h-[52px] w-full rounded-sv border bg-surface px-4 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)] ${
+          className={`h-[52px] w-full rounded-sv border bg-surface px-4 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)] ${
             touched && !validEmail ? "border-danger" : "border-border-strong"
           }`}
         />
@@ -149,7 +149,7 @@ export function InviteAthleteForm() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Bonjour Lucas, je souhaite suivre tes prestations SportVision."
-          className="h-[52px] w-full rounded-sv border border-border-strong bg-surface px-4 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
+          className="h-[52px] w-full rounded-sv border border-border-strong bg-surface px-4 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
         />
       </div>
 

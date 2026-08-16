@@ -62,7 +62,7 @@ export function MobileSearchOverlay({ space, onClose }: { space: SearchSpace; on
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Rechercher…"
-            className="h-11 w-full rounded-sv border border-border-strong bg-surface pl-10 pr-4 font-sans text-[15px] text-text outline-none placeholder:text-text-label focus:border-[#8CA9FF]"
+            className="h-11 w-full rounded-sv border border-border-strong bg-surface pl-10 pr-4 font-sans text-[16px] text-text outline-none placeholder:text-text-label focus:border-[#8CA9FF]"
           />
         </div>
         <button

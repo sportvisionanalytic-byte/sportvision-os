@@ -382,7 +382,7 @@ export function ReservationWizardParticulier({
                         value={lienMatchUrl}
                         onChange={(e) => setLienMatchUrl(e.target.value)}
                         rows={2}
-                        className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
+                        className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
                         placeholder="Un lien par ligne (Veo, YouTube, Drive…)"
                       />
                       {touched && !dureeValid && nombreMatchsLienNum && !lienMatchUrl.trim() && (
@@ -461,7 +461,7 @@ export function ReservationWizardParticulier({
                       value={couleurMaillot}
                       onChange={(e) => setCouleurMaillot(e.target.value)}
                       placeholder="Bleu, Domicile…"
-                      className="h-[54px] w-full rounded-sv border border-border-strong bg-surface px-4 font-sans text-[15px] text-text outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-text-label focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
+                      className="h-[54px] w-full rounded-sv border border-border-strong bg-surface px-4 font-sans text-[16px] text-text outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-text-label focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
                     />
                     <datalist id="rw-couleurs-maillot-particulier">
                       {COULEURS_MAILLOT_COURANTES.map((c) => (
@@ -480,7 +480,7 @@ export function ReservationWizardParticulier({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
+                className="w-full rounded-sv border border-border-strong bg-surface px-4 py-3 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
                 placeholder="Précisions utiles pour l'équipe SportVision"
               />
             </div>
