@@ -387,6 +387,21 @@ section{position:relative}
             <label class="opt-check" data-besoin="match-video coach-preparateur"><input type="checkbox" value="Interview / face caméra" data-opt="interview"> Interview / face caméra</label>
             <label class="opt-check" data-besoin=""><input type="checkbox" value="Création graphique associée" data-opt="creation"> Création graphique associée</label>
           </div>
+          <!-- ── Champs contextuels selon le besoin (facultatifs, aucune validation bloquante) ──
+               Affichés/masqués en JS via applyChampsContextuelsFilter() selon le groupe associé
+               au besoin choisi à l'étape 1 (voir CHAMPS_GROUP_BY_BESOIN). Les besoins "sur devis"
+               qui ne rentrent dans aucun groupe (shooting, création de contenu, media day, autre...)
+               n'affichent aucun de ces champs, comme avant cette évolution. -->
+          <div class="sv-field-2col" data-besoin-group="match" style="display:none">
+            <div class="sv-field"><label for="bk-equipe">Équipe (facultatif)</label><input id="bk-equipe" type="text" placeholder="Ex. U15 Fontainebleau"></div>
+            <div class="sv-field"><label for="bk-adversaire">Adversaire (facultatif)</label><input id="bk-adversaire" type="text" placeholder="Ex. FC Melun"></div>
+          </div>
+          <div class="sv-field" data-besoin-group="match" style="display:none"><label for="bk-categorie">Catégorie (facultatif)</label><input id="bk-categorie" type="text" placeholder="Ex. U15, Seniors, Vétérans..."></div>
+          <div class="sv-field-2col" data-besoin-group="evenement" style="display:none">
+            <div class="sv-field"><label for="bk-nom-evenement">Nom de l'événement (facultatif)</label><input id="bk-nom-evenement" type="text" placeholder="Ex. Tournoi de la Pentecôte"></div>
+            <div class="sv-field"><label for="bk-duree">Durée (facultatif)</label><input id="bk-duree" type="text" placeholder="Ex. 2 jours, demi-journée..."></div>
+          </div>
+          <div class="sv-field" data-besoin-group="coach" style="display:none"><label for="bk-type-seance">Type de séance (facultatif)</label><input id="bk-type-seance" type="text" placeholder="Ex. entraînement collectif, analyse vidéo, prépa physique..."></div>
           <div class="sv-field"><label for="bk-commentaire">Précisions (facultatif)</label><textarea id="bk-commentaire" rows="3" placeholder="Contexte, sport, équipes concernées, besoin particulier..."></textarea></div>
           <div class="booking-nav">
             <button type="button" class="btn btn-ghost-light" data-back="2">Précédent</button>
@@ -588,6 +603,24 @@ function applyOptionsFilter(){
   });
 }
 
+// ── Champs contextuels dynamiques selon le besoin (audit externe du 16/08) ──
+// Facultatifs, aucune validation bloquante. Pour un besoin qui ne rentre dans
+// aucun groupe (sur devis notamment), aucun champ contextuel n'est affiché.
+const CHAMPS_GROUP_BY_BESOIN = {
+  'match-photo': 'match',
+  'match-video': 'match',
+  'pack-match': 'match',
+  'couverture-tournoi': 'evenement',
+  'couverture-stage': 'evenement',
+  'coach-preparateur': 'coach',
+};
+function applyChampsContextuelsFilter(){
+  const group = CHAMPS_GROUP_BY_BESOIN[state.slug] || null;
+  document.querySelectorAll('[data-besoin-group]').forEach(el => {
+    el.style.display = (group && el.getAttribute('data-besoin-group') === group) ? '' : 'none';
+  });
+}
+
 // ── Header solide au scroll ──
 const header = document.getElementById('site-header');
 function onScroll(){ header.classList.toggle('solid', window.scrollY > 40); }
@@ -680,6 +713,7 @@ const state = {
   slug: null, label: null, price: null,
   date: null, heure: null, ville: null, cp: null, adresse: null,
   options: [], commentaire: null,
+  champs: { equipe: null, adversaire: null, categorie: null, nomEvenement: null, duree: null, typeSeance: null },
   dispoChecked: false, dispoResult: null,
 };
 let currentStep = 1;
@@ -705,6 +739,7 @@ document.getElementById('need-grid').addEventListener('click', (e) => {
   state.label = card.getAttribute('data-label');
   state.price = card.getAttribute('data-price');
   applyOptionsFilter();
+  applyChampsContextuelsFilter();
   document.getElementById('btn-step1-next').disabled = false;
 });
 document.getElementById('btn-step1-next').addEventListener('click', () => goToStep(2));
@@ -784,6 +819,17 @@ document.getElementById('btn-step3-next').addEventListener('click', () => {
   // options envoyées au backend, y compris pour des clients n'ayant coché aucune option réelle.
   state.options = Array.from(document.querySelectorAll('.booking-step[data-step="3"] .opt-check input:checked')).map(i => i.value);
   state.commentaire = document.getElementById('bk-commentaire').value.trim() || null;
+  // Champs contextuels (facultatifs) : lus quel que soit le besoin, mais ils ne sont
+  // renseignables que si leur bloc est visible (cf. applyChampsContextuelsFilter) —
+  // pour un besoin hors groupe, ces champs restent vides et n'apparaissent nulle part.
+  state.champs = {
+    equipe: document.getElementById('bk-equipe').value.trim() || null,
+    adversaire: document.getElementById('bk-adversaire').value.trim() || null,
+    categorie: document.getElementById('bk-categorie').value.trim() || null,
+    nomEvenement: document.getElementById('bk-nom-evenement').value.trim() || null,
+    duree: document.getElementById('bk-duree').value.trim() || null,
+    typeSeance: document.getElementById('bk-type-seance').value.trim() || null,
+  };
   buildRecap();
   const estPrixFixe = state.slug && OFFRES_PRIX_FIXE.has(state.slug);
   document.getElementById('paiement-field').style.display = estPrixFixe ? '' : 'none';
@@ -841,9 +887,27 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     return;
   }
 
+  // Champs contextuels (étape 3, facultatifs) : create-guest-request accepte déjà un champ
+  // `equipes` (text) — réutilisé tel quel pour équipe/adversaire/catégorie plutôt que
+  // d'ajouter une colonne. Nom d'événement/durée/type de séance n'ont pas d'équivalent
+  // dans le schéma de la fonction : glissés dans `commentaire` (déjà un champ libre
+  // accepté), en restant additif, sans rien changer au schéma existant.
+  const c = state.champs || {};
+  const equipesInfo = [
+    c.equipe,
+    c.adversaire ? 'contre ' + c.adversaire : null,
+    c.categorie ? '(' + c.categorie + ')' : null,
+  ].filter(Boolean).join(' ') || null;
+  const infosContextuelles = [
+    c.nomEvenement ? 'Événement : ' + c.nomEvenement : null,
+    c.duree ? 'Durée : ' + c.duree : null,
+    c.typeSeance ? 'Type de séance : ' + c.typeSeance : null,
+  ].filter(Boolean).join(' — ') || null;
+
   const commentaireComplet = [
     state.label ? 'Besoin : ' + state.label : null,
     state.options.length ? 'Options : ' + state.options.join(', ') : null,
+    infosContextuelles,
     state.commentaire,
   ].filter(Boolean).join(' — ');
 
@@ -858,6 +922,7 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     ville: state.ville || undefined,
     cp: state.cp || undefined,
     adresse: state.adresse || undefined,
+    equipes: equipesInfo,
     commentaire: commentaireComplet || null,
     site_web: siteWeb,
     // "Prise de connaissance" des CGV à ce stade uniquement — pas une acceptation formant le
