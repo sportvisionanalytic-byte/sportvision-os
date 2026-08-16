@@ -361,7 +361,7 @@ export function MessagesThread({
                   void handleSend();
                 }
               }}
-              className="h-11 min-w-0 flex-1 rounded-sv border border-border-strong bg-surface px-3.5 font-sans text-[14px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)]"
+              className="h-11 min-w-0 flex-1 rounded-sv border border-border-strong bg-surface px-3.5 font-sans text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)]"
             />
             <button
               type="button"

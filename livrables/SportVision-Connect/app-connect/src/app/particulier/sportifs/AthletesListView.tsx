@@ -134,7 +134,7 @@ export function AthletesListView({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Rechercher un sportif…"
             aria-label="Rechercher un sportif"
-            className="h-[52px] w-full rounded-sv border border-border-strong bg-surface pl-[46px] pr-4 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
+            className="h-[52px] w-full rounded-sv border border-border-strong bg-surface pl-[46px] pr-4 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
           />
         </div>
       )}

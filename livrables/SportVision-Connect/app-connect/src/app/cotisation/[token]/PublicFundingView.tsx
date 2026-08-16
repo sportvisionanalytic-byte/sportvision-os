@@ -250,7 +250,7 @@ export function PublicFundingView({
                 placeholder="Noah"
                 value={prenom}
                 onChange={(e) => setPrenom(e.target.value)}
-                className={`h-[54px] w-full rounded-sv border bg-surface px-4 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)] ${
+                className={`h-[54px] w-full rounded-sv border bg-surface px-4 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)] ${
                   formTouched && !prenom.trim() ? "border-danger" : "border-border-strong"
                 }`}
               />
@@ -267,7 +267,7 @@ export function PublicFundingView({
                 placeholder="votre@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={`h-[54px] w-full rounded-sv border bg-surface px-4 text-[15px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)] ${
+                className={`h-[54px] w-full rounded-sv border bg-surface px-4 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.22)] ${
                   formTouched && !validEmail(email) ? "border-danger" : "border-border-strong"
                 }`}
               />

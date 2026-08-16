@@ -73,7 +73,7 @@ export function GlobalSearch({ space }: { space: SearchSpace }) {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setOpen(true)}
           placeholder="Rechercher un contenu, une prestation…"
-          className="h-11 w-full rounded-sv border border-border-strong bg-surface pl-10 pr-4 font-sans text-[14px] text-text outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-text-label focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
+          className="h-11 w-full rounded-sv border border-border-strong bg-surface pl-10 pr-4 font-sans text-[16px] text-text outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-text-label focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
         />
       </div>
 
