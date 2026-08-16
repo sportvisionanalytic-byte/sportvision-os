@@ -121,7 +121,7 @@ export function CreateFundingWizard({
     });
     setBusy(false);
     if (rpcError || !data) {
-      setError(rpcError?.message || "Impossible de créer la cotisation pour le moment.");
+      setError("Impossible de créer la cotisation pour le moment. Réessayez dans un instant.");
       return;
     }
     setResult(data as { id: string; share_token: string; montant_cible: number });

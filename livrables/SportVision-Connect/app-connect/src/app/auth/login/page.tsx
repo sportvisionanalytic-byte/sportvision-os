@@ -30,9 +30,16 @@ export default function LoginPage() {
   // sur cette page. Restreint aux chemins internes ("/xxx", jamais "//" = protocole-relatif)
   // pour ne jamais devenir une redirection ouverte.
   const [nextPath, setNextPath] = useState("/dashboard");
+  // ?confirmation=failed — posé par auth/callback/route.ts quand exchangeCodeForSession()
+  // échoue (lien de confirmation expiré ou déjà utilisé). Sans ce message, l'utilisateur
+  // atterrissait silencieusement sur /auth/login sans comprendre pourquoi son clic sur le
+  // mail ne l'avait pas connecté.
+  const [confirmationFailed, setConfirmationFailed] = useState(false);
   useEffect(() => {
-    const next = new URLSearchParams(window.location.search).get("next");
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("next");
     if (next && next.startsWith("/") && !next.startsWith("//")) setNextPath(next);
+    if (params.get("confirmation") === "failed") setConfirmationFailed(true);
   }, []);
 
   const validEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
@@ -133,6 +140,15 @@ export default function LoginPage() {
                 Connectez-vous à votre espace personnel SportVision.
               </p>
             </div>
+
+            {confirmationFailed && !authFailed && !(touched && (emailBad || pwBad)) && (
+              <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
+                <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
+                <span className="text-[13px] leading-relaxed text-[#FBCFE8]">
+                  Ce lien de confirmation n&apos;est plus valide. Reconnectez-vous ou recommencez votre inscription.
+                </span>
+              </div>
+            )}
 
             {(authFailed || (touched && (emailBad || pwBad))) && (
               <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">

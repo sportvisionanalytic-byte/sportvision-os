@@ -54,7 +54,7 @@ export function ManagedAthleteForm() {
       } else if (msg.includes("PAYWALL_PARTICULIER_LIMIT")) {
         setError("Vous avez atteint votre limite de sportifs suivis. Contactez SportVision pour en suivre davantage.");
       } else {
-        setError(msg || "Impossible de créer le profil pour le moment.");
+        setError("Impossible de créer le profil pour le moment. Réessayez dans un instant.");
       }
       return;
     }
