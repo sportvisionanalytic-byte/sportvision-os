@@ -14,12 +14,29 @@ const SUPPORT_EMAIL = "contact@sportvision-an.fr";
 // commande parmi TOUS les client_id accessibles à l'appelant (pas seulement les siens) — voir
 // l'en-tête de l'edge function pour le détail. Défauts inchangés : reproduit exactement le
 // comportement existant côté Espace joueur.
+// Lien "Créer une cotisation" (migration-connect-v74-commande-lien-cotisation.sql) — résolu à
+// part de get_order (pas de champ dessus, voir la migration) via une RPC dédiée, additive,
+// jamais un ajout sur connect-player-prestations (fichier hors périmètre, un autre agent y
+// travaille en parallèle sur le paiement espèces des réservations solo).
+interface OrderFundingLink {
+  offre_id: string | null;
+  is_collectif: boolean;
+  existing_funding_id: string | null;
+  existing_funding_share_token: string | null;
+}
+
 export function CommandeDetailView({ id, multi = false, backHref = "/commandes" }: { id: string; multi?: boolean; backHref?: string }) {
   const [order, setOrder] = useState<(PlayerOrder & { forWho?: string | null }) | null>(null);
   const [documents, setDocuments] = useState<PlayerOrderDocument[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [fundingLink, setFundingLink] = useState<OrderFundingLink | null>(null);
+
+  // Racine des routes Cotisations : /particulier/cotisations côté Espace particulier (multi=true
+  // sur ce composant, voir son en-tête), /cotisations côté Espace joueur — même convention que
+  // backHref/listHref déjà utilisée par ce composant et FundingDetailView.tsx.
+  const cotisationsBase = multi ? "/particulier/cotisations" : "/cotisations";
 
   useEffect(() => {
     let cancelled = false;
@@ -33,10 +50,14 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
       setOrder(data.order as PlayerOrder);
       setDocuments((data.documents || []) as PlayerOrderDocument[]);
     });
+    supabase.rpc("connect_get_order_funding_link", { p_prestation_id: id }).then(({ data }) => {
+      if (cancelled || !data) return;
+      setFundingLink(data as OrderFundingLink);
+    });
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, multi]);
 
   async function payNow() {
     if (!order) return;
@@ -142,6 +163,37 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
         <div className="flex flex-col gap-2 rounded-sv-card border border-border bg-surface p-5">
           <h2 className="font-sora text-[15px] font-semibold">Détails de la demande</h2>
           <p className="whitespace-pre-line text-[13.5px] leading-relaxed text-text-tertiary">{order.descriptionBesoin}</p>
+        </div>
+      )}
+
+      {fundingLink?.is_collectif && stage !== "annulee" && (
+        <div className="flex flex-col gap-3 rounded-sv-card border border-cotisations/40 bg-cotisations-bg p-5">
+          <h2 className="font-sora text-[15px] font-semibold">Payer à plusieurs</h2>
+          {fundingLink.existing_funding_id ? (
+            <>
+              <p className="text-[13px] text-text-tertiary">Une cotisation est déjà ouverte pour cette prestation.</p>
+              <Link
+                href={`${cotisationsBase}/${fundingLink.existing_funding_id}`}
+                className="flex h-11 w-fit items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
+              >
+                <span className="material-symbols-rounded !text-[18px]">volunteer_activism</span>
+                Voir la cotisation
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-[13px] text-text-tertiary">
+                Vous aviez demandé à partager le coût de cette prestation. Créez la cotisation pour inviter vos proches à contribuer.
+              </p>
+              <Link
+                href={fundingLink.offre_id ? `${cotisationsBase}/creer?offreId=${fundingLink.offre_id}` : `${cotisationsBase}/creer`}
+                className="flex h-11 w-fit items-center gap-2 rounded-sv bg-sv-gradient px-4 font-sora text-[14px] font-semibold text-white hover:brightness-[1.12]"
+              >
+                <span className="material-symbols-rounded !text-[18px]">volunteer_activism</span>
+                Créer une cotisation
+              </Link>
+            </>
+          )}
         </div>
       )}
 
