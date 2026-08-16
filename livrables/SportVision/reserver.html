@@ -173,6 +173,8 @@ section{position:relative}
 .sv-ok{text-align:center;padding:10px 0}
 .sv-ok .check{width:56px;height:56px;border-radius:50%;background:rgba(18,183,106,.12);border:1px solid rgba(18,183,106,.35);color:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:24px}
 .sv-ok .sub{color:#5b6478;font-size:14.5px;margin-top:10px;line-height:1.6}
+.sv-ok .sub div + div{margin-top:8px}
+.sv-ok .sub b{color:var(--navy-900)}
 
 /* ── Bandeau cookies (RGPD) ── */
 .cookie-banner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2500;background:var(--navy-900);border-top:1px solid rgba(255,255,255,.12);padding:18px 24px;box-shadow:0 -8px 24px rgba(0,0,0,.35);max-height:82vh;overflow-y:auto}
@@ -472,12 +474,12 @@ section{position:relative}
         <div class="booking-step" data-step="5">
           <div class="sv-ok">
             <div class="check">✓</div>
-            <h2 id="ok-title">Demande envoyée</h2>
-            <p class="sub" id="ok-message"></p>
+            <h2 id="ok-title">Demande reçue</h2>
+            <div class="sub" id="ok-message"></div>
             <div id="ok-connect-wrap" style="display:none;margin-top:20px">
               <a href="#" id="ok-connect-link" class="btn btn-grad" style="width:100%">Créer mon espace Connect</a>
             </div>
-            <a href="index.html" class="btn btn-ghost-light" style="width:100%;margin-top:12px">Retour à l'accueil</a>
+            <a href="index.html" class="btn btn-ghost-light" style="width:100%;margin-top:12px">Plus tard</a>
           </div>
         </div>
 
@@ -1045,25 +1047,33 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
   }
 });
 
+// Écran de confirmation (audit externe du 16/08, repasse du même jour) — la référence
+// affichée vient toujours de data.reference, telle que renvoyée par create-guest-request
+// (jamais une valeur inventée localement). Contenu visé :
+//   Demande reçue ✓ (icône déjà affichée juste au-dessus du titre, pas de doublon)
+//   Votre demande a bien été enregistrée.
+//   Référence : SV-XXXX
+//   SportVision va maintenant vérifier la disponibilité, le lieu et les éventuels frais
+//   complémentaires. [+ nuance dispo déjà vérifiée à l'étape 2, conservée]
+//   Une fois votre demande validée, vous retrouverez le récapitulatif et le paiement dans Connect.
 function showConfirmation(data, email){
   const ref = data.reference || '—';
-  let message = 'Référence : ' + ref + '.';
+  const lines = [];
+  lines.push('Votre demande a bien été enregistrée.');
+  lines.push('<b>Référence : ' + esc(ref) + '</b>');
+  lines.push('SportVision va maintenant vérifier la disponibilité, le lieu et les éventuels frais complémentaires.');
   if (state.dispoChecked && state.dispoResult && state.dispoResult.disponible === true){
-    message += ' Une équipe est disponible à la date demandée — nous revenons vers vous rapidement pour confirmer les derniers détails.';
+    lines.push('Une équipe est déjà identifiée comme disponible à cette date — c\'est un bon signe en attendant la confirmation.');
   } else if (state.dispoChecked && state.dispoResult && state.dispoResult.disponible === false){
-    message += ' La demande est forte à cette date : notre équipe revient vers vous rapidement pour confirmer.';
-  } else {
-    message += ' Notre équipe revient vers vous très prochainement.';
+    lines.push('La demande est forte à cette date : notre équipe revient vers vous rapidement pour confirmer.');
   }
-  if (state.slug && OFFRES_PRIX_FIXE.has(state.slug)){
-    message += ' Vous pourrez régler votre prestation depuis SportVision Connect une fois la disponibilité confirmée.';
-  }
-  document.getElementById('ok-message').textContent = message;
+  lines.push('Une fois votre demande validée, vous retrouverez le récapitulatif et le paiement dans Connect.');
+  document.getElementById('ok-message').innerHTML = lines.map(l => '<div>' + l + '</div>').join('');
 
-  if (state.slug && OFFRES_PRIX_FIXE.has(state.slug)){
-    document.getElementById('ok-connect-wrap').style.display = '';
-    document.getElementById('ok-connect-link').href = 'https://connect.sportvision-an.fr/?signup=1&email=' + encodeURIComponent(email);
-  }
+  // Proposé pour toute demande (tarif fixe ou sur devis) : Connect héberge aussi bien le
+  // paiement que le module Devis, donc la création de compte est pertinente dans les deux cas.
+  document.getElementById('ok-connect-wrap').style.display = '';
+  document.getElementById('ok-connect-link').href = 'https://connect.sportvision-an.fr/?signup=1&email=' + encodeURIComponent(email);
 
   document.querySelectorAll('.step-dot').forEach(d => d.classList.add('done'));
   document.querySelectorAll('.booking-step').forEach(s => s.classList.remove('on'));
