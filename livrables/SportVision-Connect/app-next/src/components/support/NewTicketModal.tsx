@@ -23,16 +23,45 @@ const PRIORITY_LABELS: Record<SupportTicketPriority, string> = {
   urgent: "Urgente",
 };
 
+/**
+ * Contexte repris automatiquement quand le ticket est ouvert depuis une fiche existante — Bible
+ * §21 : "Contexte automatiquement repris : référence demande, facture, album ou visuel." `label`
+ * est un texte déjà lisible (ex. "Facture FAC-2026-0142", "Demande REQ-2026-0031") : cette modale
+ * ne va pas chercher elle-même le libellé, l'appelant le connaît déjà.
+ */
+export interface NewTicketInitialContext {
+  type: "request" | "invoice" | "album" | "visual";
+  id: string;
+  label: string;
+}
+
+const CONTEXT_TYPE_LABEL: Record<NewTicketInitialContext["type"], string> = {
+  request: "demande",
+  invoice: "facture",
+  album: "album",
+  visual: "visuel",
+};
+
+const CONTEXT_TYPE_CATEGORY: Record<NewTicketInitialContext["type"], SupportTicketCategory> = {
+  request: "other",
+  invoice: "billing",
+  album: "content",
+  visual: "content",
+};
+
 interface NewTicketModalProps {
   onClose: () => void;
   onSubmit: (ticket: { subject: string; category: SupportTicketCategory; priority: SupportTicketPriority; description: string }) => Promise<unknown>;
+  initialContext?: NewTicketInitialContext;
 }
 
-export function NewTicketModal({ onClose, onSubmit }: NewTicketModalProps) {
-  const [subject, setSubject] = useState("");
-  const [category, setCategory] = useState<SupportTicketCategory>("content");
+export function NewTicketModal({ onClose, onSubmit, initialContext }: NewTicketModalProps) {
+  const [subject, setSubject] = useState(initialContext ? `À propos de : ${initialContext.label}` : "");
+  const [category, setCategory] = useState<SupportTicketCategory>(initialContext ? CONTEXT_TYPE_CATEGORY[initialContext.type] : "content");
   const [priority, setPriority] = useState<SupportTicketPriority>("normal");
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(
+    initialContext ? `Référence ${CONTEXT_TYPE_LABEL[initialContext.type]} : ${initialContext.label}\n\n` : "",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,6 +90,12 @@ export function NewTicketModal({ onClose, onSubmit }: NewTicketModalProps) {
         </button>
 
         <h2 className="text-[19px] font-extrabold tracking-tight">Nouveau ticket</h2>
+
+        {initialContext && (
+          <div className="rounded-xl border border-brand-blue-pale/40 bg-info-bg px-3.5 py-2.5 text-[12px] font-semibold text-info-fg">
+            Contexte repris : {CONTEXT_TYPE_LABEL[initialContext.type]} {initialContext.label}
+          </div>
+        )}
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[12.5px] font-bold text-text-soft">Sujet</span>

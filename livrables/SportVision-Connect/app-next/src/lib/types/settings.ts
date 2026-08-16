@@ -95,10 +95,17 @@ export type SupportTicketCategory =
 
 export type SupportTicketPriority = "low" | "normal" | "high" | "urgent";
 
+// "waiting_client" = SportVision attend une réponse du client (jamais produit par
+// club_support_tickets.status aujourd'hui, aucune écriture réelle ne le pose). "response_available"
+// (ajouté 16/08, migration-clubplus-v39.sql § club_support_tickets_status_check) est l'INVERSE :
+// SportVision a répondu, une réponse est disponible et attend une lecture côté client — Bible
+// §21 "Ticket support : Envoyée / En cours / Réponse disponible / Résolue / Fermée". Les deux
+// notions sont distinctes et ne doivent jamais être confondues sous un même statut.
 export type SupportTicketStatus =
   | "open"
   | "in_progress"
   | "waiting_client"
+  | "response_available"
   | "resolved"
   | "closed";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, FileText, Receipt } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { hasClubFinancialAccess } from "@/lib/permissions";
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { RestrictedToBureau } from "@/components/ui/RestrictedToBureau";
 import { Toast, useToast } from "@/components/feedback/Toast";
-import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC } from "@/components/billing/format";
+import { INVOICE_STATUS_LABEL, INVOICE_STATUS_TONE, formatEuroTTC, remainingAmount } from "@/components/billing/format";
 import { CGV_URL, CGV_VERSION, CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE, needsExecutionAnticipee } from "@/components/contracts/format";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -365,7 +366,17 @@ function BillingDocumentsView({ clientId, allowDevisDecision }: { clientId: stri
                 <span className="block truncate font-mono text-[12.5px] font-bold text-text">{inv.number}</span>
                 <span className="mt-0.5 block truncate text-[12px] text-text-soft">{inv.subject}</span>
               </span>
-              <span className="w-24 flex-none text-right text-[13px] font-bold text-text">{formatEuroTTC(inv.totalInclVat)}</span>
+              <span className="w-24 flex-none text-right">
+                <span className="block text-[13px] font-bold text-text">{formatEuroTTC(inv.totalInclVat)}</span>
+                {/* "reste à régler" — §19 : n'a de sens que si un montant a réellement été
+                    partiellement versé (donnée alimentée depuis SportVision OS/Stripe, hors
+                    périmètre de ce chantier ; voir data/projet/billing.ts). */}
+                {inv.status === "partiellement_payee" && (
+                  <span className="mt-0.5 block text-[11px] font-semibold text-warning-fg">
+                    Reste {formatEuroTTC(remainingAmount(inv.totalInclVat, inv.paidAmount))}
+                  </span>
+                )}
+              </span>
               <span className="w-28 flex-none text-right text-[12px] text-text-soft">Échéance {inv.dueDate}</span>
               <Badge tone={INVOICE_STATUS_TONE[inv.status]}>{INVOICE_STATUS_LABEL[inv.status]}</Badge>
               {inv.pdfUrl && (
@@ -378,6 +389,15 @@ function BillingDocumentsView({ clientId, allowDevisDecision }: { clientId: stri
                   Voir le PDF
                 </a>
               )}
+              {/* Contexte repris automatiquement sur le ticket — Bible §21, voir
+                  NewTicketModal.tsx (initialContext) et support/page.tsx (lecture des query
+                  params ctx_type/ctx_id/ctx_label). */}
+              <Link
+                href={`/support?ctx_type=invoice&ctx_id=${encodeURIComponent(inv.id)}&ctx_label=${encodeURIComponent(inv.number)}`}
+                className="flex-none text-[12px] font-bold text-text-soft hover:text-info-fg hover:underline"
+              >
+                Contacter le support
+              </Link>
             </div>
           ))}
         </Card>
