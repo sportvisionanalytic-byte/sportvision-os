@@ -219,7 +219,7 @@ export function ContentGallery({
           <button
             type="button"
             onClick={() => setOpenGroupKey(null)}
-            className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary transition-colors hover:text-text"
+            className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary transition-colors hover:text-text lg:text-[13px]"
           >
             <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
             Mes contenus

@@ -78,7 +78,7 @@ export function RequestCard({
           </span>
           <div className="flex flex-col gap-1">
             <span className="font-sora text-[16px] font-semibold tracking-tight">{name} souhaite être lié à votre profil</span>
-            <span className="text-[13px] text-text-tertiary">
+            <span className="text-[14px] text-text-tertiary lg:text-[13px]">
               Relation déclarée : {RELATION_LABEL[relationType] || relationType} · {email}
             </span>
           </div>
@@ -93,13 +93,13 @@ export function RequestCard({
           {PREVIEW_RIGHTS.map((r) => (
             <div key={r} className="flex items-center gap-2.5">
               <span className="material-symbols-rounded !text-[18px] text-affiliations" aria-hidden="true">check</span>
-              <span className="text-[13px] text-text-secondary">{r}</span>
+              <span className="text-[14px] text-text-secondary lg:text-[13px]">{r}</span>
             </div>
           ))}
-          <span className="text-[12px] text-text-faint">Vous ajusterez ces autorisations après acceptation.</span>
+          <span className="text-[13px] text-text-faint lg:text-[12px]">Vous ajusterez ces autorisations après acceptation.</span>
         </div>
 
-        {error && <span className="text-[13px] text-danger">{error}</span>}
+        {error && <span className="text-[14px] text-danger lg:text-[13px]">{error}</span>}
 
         <div className="flex flex-wrap gap-2.5">
           <button

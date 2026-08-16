@@ -78,7 +78,7 @@ export function MobileSearchOverlay({ space, onClose }: { space: SearchSpace; on
         {query.trim().length < 2 ? (
           <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
             <span className="material-symbols-rounded !text-[26px] text-text-faint" aria-hidden="true">search</span>
-            <p className="text-[13px] text-text-tertiary">Contenus, prestations, cotisations, équipes, affiliations.</p>
+            <p className="text-[14px] text-text-tertiary">Contenus, prestations, cotisations, équipes, affiliations.</p>
           </div>
         ) : (
           <SearchResultsList loading={loading} results={results} space={space} onSelect={goTo} query={query.trim()} />

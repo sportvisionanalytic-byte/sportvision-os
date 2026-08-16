@@ -22,7 +22,7 @@ export default async function RejoindreEquipePage({ params }: { params: Promise<
         <span className="material-symbols-rounded !text-[28px] text-affiliations" aria-hidden="true">groups</span>
       </span>
       <JoinGroupAction groupId={id} />
-      <Link href="/equipes" className="text-[13px] font-medium text-text-tertiary hover:text-text">
+      <Link href="/equipes" className="text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
         Retour à mes équipes
       </Link>
     </div>

@@ -30,7 +30,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
   return (
     <>
     <div className="flex flex-col gap-6 pb-24 animate-sv-in lg:pb-0">
-        <Link href="/prestations" className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+        <Link href="/prestations" className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
           <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
           Prestations
         </Link>
@@ -64,7 +64,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
             {offer.slug === MONTAGE_COMPILATION_SLUG && (
               <Section title="2 façons de nous envoyer vos images">
                 <MontageCompilationModes offer={offer} />
-                <p className="text-[12px] leading-relaxed text-text-faint">Le mode d&apos;envoi se choisit à l&apos;étape suivante de la réservation.</p>
+                <p className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">Le mode d&apos;envoi se choisit à l&apos;étape suivante de la réservation.</p>
               </Section>
             )}
 
@@ -74,7 +74,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
                   {included.map((item) => (
                     <div key={item} className="flex items-center gap-2.5 rounded-sv border border-border bg-surface px-3.5 py-3">
                       <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">check_circle</span>
-                      <span className="text-[13.5px] text-text-secondary">{item}</span>
+                      <span className="text-[14px] text-text-secondary lg:text-[13.5px]">{item}</span>
                     </div>
                   ))}
                 </div>
@@ -90,7 +90,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
                     </span>
                     <div className="flex flex-col gap-0.5">
                       <span className="font-sora text-[14.5px] font-semibold">{step.title}</span>
-                      <span className="text-[13px] leading-relaxed text-text-tertiary">{step.text}</span>
+                      <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">{step.text}</span>
                     </div>
                   </div>
                 ))}
@@ -104,18 +104,18 @@ export default async function PrestationFichePage({ params }: { params: Promise<
                     const optTtc = Math.round(opt.prixHt * (1 + offer.tvaPct / 100) * 100) / 100;
                     return (
                       <div key={opt.nom} className="flex items-center justify-between gap-3 rounded-sv border border-border bg-surface px-3.5 py-3">
-                        <span className="text-[13.5px] text-text-secondary">{opt.nom}</span>
-                        <span className="font-sora text-[13.5px] font-semibold">+{formatEUR(optTtc)}</span>
+                        <span className="text-[14px] text-text-secondary lg:text-[13.5px]">{opt.nom}</span>
+                        <span className="font-sora text-[14px] font-semibold lg:text-[13.5px]">+{formatEUR(optTtc)}</span>
                       </div>
                     );
                   })}
                 </div>
-                <p className="text-[12px] leading-relaxed text-text-faint">Options proposées à l&apos;étape suivante de la réservation.</p>
+                <p className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">Options proposées à l&apos;étape suivante de la réservation.</p>
               </Section>
             )}
 
             <Section title="À savoir">
-              <ul className="flex flex-col gap-2 text-[13px] leading-relaxed text-text-tertiary">
+              <ul className="flex flex-col gap-2 text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                 <li>Des frais de déplacement peuvent s&apos;appliquer selon la localisation du match.</li>
                 <li>Disponibilité soumise au planning des équipes SportVision — votre demande est confirmée après vérification.</li>
                 {offer.dureeEstimee && <li>Délai de livraison estimé : {offer.dureeEstimee}.</li>}
@@ -175,7 +175,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         {q}
         <span className="material-symbols-rounded !text-[20px] text-text-faint transition-transform duration-150 group-open:rotate-180" aria-hidden="true">expand_more</span>
       </summary>
-      <p className="mt-2.5 text-[13px] leading-relaxed text-text-tertiary">{a}</p>
+      <p className="mt-2.5 text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">{a}</p>
     </details>
   );
 }

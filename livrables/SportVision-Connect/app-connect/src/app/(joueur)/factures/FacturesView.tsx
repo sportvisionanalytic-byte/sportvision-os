@@ -68,13 +68,13 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="font-sora text-[16px] font-semibold">{formatEUR(dueTotal)} à régler</span>
-            <span className="text-[13px] text-text-secondary">
+            <span className="text-[14px] text-text-secondary lg:text-[13px]">
               {due.length === 1 ? due[0].offreNom || due[0].numero : `${due.length} factures en attente`}
               {due[0].dateEcheance ? ` · échéance ${formatDateLong(due[0].dateEcheance)}` : ""}
             </span>
           </div>
           {due[0].prestationId && (
-            <Link href={`${commandeHref}/${due[0].prestationId}`} className="flex-none rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[13px] font-semibold text-white">
+            <Link href={`${commandeHref}/${due[0].prestationId}`} className="flex-none rounded-sv bg-sv-gradient px-4 py-2.5 font-sora text-[14px] font-semibold text-white lg:text-[13px]">
               Régler
             </Link>
           )}
@@ -85,7 +85,7 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
         <button
           type="button"
           onClick={() => setTab("factures")}
-          className={`h-10 rounded-sv-pill px-4 text-[13px] font-semibold transition-colors duration-150 ${
+          className={`h-10 rounded-sv-pill px-4 text-[14px] font-semibold transition-colors duration-150 lg:text-[13px] ${
             tab === "factures" ? "bg-sv-gradient text-white" : "border border-border-strong bg-surface text-text-secondary hover:bg-surface-hover"
           }`}
         >
@@ -94,7 +94,7 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
         <button
           type="button"
           onClick={() => setTab("paiements")}
-          className={`h-10 rounded-sv-pill px-4 text-[13px] font-semibold transition-colors duration-150 ${
+          className={`h-10 rounded-sv-pill px-4 text-[14px] font-semibold transition-colors duration-150 lg:text-[13px] ${
             tab === "paiements" ? "bg-sv-gradient text-white" : "border border-border-strong bg-surface text-text-secondary hover:bg-surface-hover"
           }`}
         >
@@ -102,7 +102,7 @@ export function FacturesView({ multi = false, commandeHref = "/commandes" }: { m
         </button>
       </div>
 
-      {error && <span className="text-[13px] text-danger">{error}</span>}
+      {error && <span className="text-[14px] text-danger lg:text-[13px]">{error}</span>}
 
       {tab === "factures" && (
         <>

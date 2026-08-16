@@ -50,7 +50,7 @@ export function CommandesView() {
       {paiementFlag === "succes" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/30 bg-affiliations-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">hourglass_top</span>
-          <span className="text-[13px] leading-relaxed text-text-secondary">
+          <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
             Paiement en cours de confirmation. Le statut de votre commande se mettra à jour automatiquement dès la confirmation par
             notre prestataire de paiement — cela peut prendre quelques instants.
           </span>
@@ -59,7 +59,7 @@ export function CommandesView() {
       {paiementFlag === "annule" && (
         <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-attente" aria-hidden="true">info</span>
-          <span className="text-[13px] leading-relaxed text-text-secondary">
+          <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
             Paiement annulé. Votre demande reste enregistrée — vous pouvez retenter le paiement depuis la fiche de la commande.
           </span>
         </div>
@@ -71,7 +71,7 @@ export function CommandesView() {
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`h-10 rounded-sv-pill px-4 text-[13px] font-semibold transition-colors duration-150 ${
+            className={`h-10 rounded-sv-pill px-4 text-[14px] font-semibold transition-colors duration-150 lg:text-[13px] ${
               tab === t ? "bg-sv-gradient text-white" : "border border-border-strong bg-surface text-text-secondary hover:bg-surface-hover"
             }`}
           >
@@ -80,7 +80,7 @@ export function CommandesView() {
         ))}
       </div>
 
-      {error && <span className="text-[13px] text-danger">{error}</span>}
+      {error && <span className="text-[14px] text-danger lg:text-[13px]">{error}</span>}
 
       {orders === null && !error && (
         <div className="flex flex-col gap-3">
@@ -121,7 +121,7 @@ export function CommandesView() {
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="truncate font-sora text-[15px] font-semibold text-text">{order.offreNom || "Prestation"}</span>
-                  <span className="truncate text-[13px] text-text-tertiary">
+                  <span className="truncate text-[14px] text-text-tertiary lg:text-[13px]">
                     {formatDateLong(order.datePrestation)} {order.lieu ? `· ${order.lieu}` : ""}
                   </span>
                 </div>
@@ -129,7 +129,7 @@ export function CommandesView() {
                   <span className="rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: color.fg, background: color.bg }}>
                     {STAGE_LABEL[stage]}
                   </span>
-                  {amount !== null && <span className="font-sora text-[13px] font-semibold text-text">{formatEUR(amount)}</span>}
+                  {amount !== null && <span className="font-sora text-[14px] font-semibold text-text lg:text-[13px]">{formatEUR(amount)}</span>}
                 </div>
               </Link>
             );

@@ -284,7 +284,7 @@ export function MessagesThread({
                   <span className="material-symbols-rounded !text-[24px] text-affiliations" aria-hidden="true">forum</span>
                 </span>
                 <span className="font-sora text-[16px] font-semibold">Aucun message pour le moment</span>
-                <p className="text-[13px] text-text-tertiary">
+                <p className="text-[14px] text-text-tertiary lg:text-[13px]">
                   Vous pourrez échanger avec SportVision depuis cet espace.
                 </p>
               </div>
@@ -314,7 +314,7 @@ export function MessagesThread({
                         href={m.pieceJointeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-2 flex items-center gap-2 rounded-sv border border-white/20 bg-black/15 px-3 py-2 text-[12px] font-medium"
+                        className="mt-2 flex items-center gap-2 rounded-sv border border-white/20 bg-black/15 px-3 py-2 text-[13px] font-medium lg:text-[12px]"
                         style={{ color: isClient ? "#fff" : "#8CA9FF" }}
                       >
                         <span className="material-symbols-rounded !text-[16px]" aria-hidden="true">attach_file</span>
@@ -328,7 +328,7 @@ export function MessagesThread({
             })}
           </div>
 
-          {error && <div className="mx-4 mb-1 rounded-sv border border-danger-border bg-danger-bg px-3 py-2 text-[12px] text-danger lg:mx-5">{error}</div>}
+          {error && <div className="mx-4 mb-1 rounded-sv border border-danger-border bg-danger-bg px-3 py-2 text-[13px] text-danger lg:mx-5 lg:text-[12px]">{error}</div>}
 
           <div className="flex flex-none items-center gap-2.5 border-t border-border bg-white/[.03] p-3.5">
             <input

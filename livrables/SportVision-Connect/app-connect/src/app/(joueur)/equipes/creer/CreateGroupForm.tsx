@@ -48,7 +48,7 @@ export function CreateGroupForm() {
         </span>
         <div className="flex flex-col gap-1">
           <span className="font-sora text-[15px] font-semibold">Photo du groupe</span>
-          <span className="text-[13px] text-text-tertiary">Facultative — les initiales sont utilisées par défaut.</span>
+          <span className="text-[14px] text-text-tertiary lg:text-[13px]">Facultative — les initiales sont utilisées par défaut.</span>
         </div>
       </div>
 
@@ -73,7 +73,7 @@ export function CreateGroupForm() {
       {error && (
         <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
           <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-          <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
+          <span className="text-[14px] leading-relaxed text-[#FBCFE8] lg:text-[13px]">{error}</span>
         </div>
       )}
 

@@ -68,7 +68,7 @@ export function NotificationsSection({
           </button>
         ))}
       </div>
-      {error && <span className="text-[12px] text-danger">{error}</span>}
+      {error && <span className="text-[13px] text-danger lg:text-[12px]">{error}</span>}
     </div>
   );
 }

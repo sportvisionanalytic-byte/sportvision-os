@@ -25,7 +25,7 @@ export function PrestationsCatalogueView({ offers }: { offers: CatalogueOffer[] 
             key={f}
             type="button"
             onClick={() => setTab(f)}
-            className={`h-10 rounded-sv-pill px-4 text-[13px] font-semibold transition-colors duration-150 ${
+            className={`h-10 rounded-sv-pill px-4 text-[14px] font-semibold transition-colors duration-150 lg:text-[13px] ${
               tab === f ? "bg-sv-gradient text-white" : "border border-border-strong bg-surface text-text-secondary hover:bg-surface-hover"
             }`}
           >
@@ -82,7 +82,7 @@ function OfferCard({ offer, index }: { offer: CatalogueOffer; index: number }) {
 
       <div className="flex flex-col gap-1.5">
         <span className="font-sora text-[17px] font-semibold tracking-tight">{offer.nom}</span>
-        {offer.description && <p className="text-[13.5px] leading-relaxed text-text-tertiary line-clamp-2">{offer.description}</p>}
+        {offer.description && <p className="text-[14px] leading-relaxed text-text-tertiary line-clamp-2 lg:text-[13.5px]">{offer.description}</p>}
         <span
           className="self-start rounded-sv-pill px-2.5 py-1 text-[11px] font-medium"
           style={

@@ -173,7 +173,7 @@ export function PersonalInfoSection({
         <button
           type="button"
           onClick={openModal}
-          className="ml-auto flex h-[38px] flex-none items-center gap-1.5 rounded-sv border border-border-strong bg-white/[.03] px-3.5 font-sora text-[13px] font-semibold hover:bg-white/[.08]"
+          className="ml-auto flex h-[38px] flex-none items-center gap-1.5 rounded-sv border border-border-strong bg-white/[.03] px-3.5 font-sora text-[14px] font-semibold hover:bg-white/[.08] lg:text-[13px]"
         >
           <span className="material-symbols-rounded !text-[17px]" aria-hidden="true">edit</span>
           Modifier
@@ -203,13 +203,16 @@ export function PersonalInfoSection({
           />
         </div>
         <div className="flex flex-col gap-0.5">
-          <span className="text-[13px] font-medium text-text">Photo de profil</span>
+          <span className="text-[14px] font-medium text-text lg:text-[13px]">Photo de profil</span>
           <span className="text-[12px] text-text-tertiary">JPG, PNG ou WebP · 4 Mo maximum</span>
-          {photoError && <span className="text-[12px] text-danger">{photoError}</span>}
+          {photoError && <span className="text-[13px] text-danger lg:text-[12px]">{photoError}</span>}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3.5">
+      {/* grid-cols-1 sous sm: — "E-mail" peut être une adresse longue (jean.dupont@exemple.com),
+          illisible/repliée dans une colonne de ~150px sur mobile en grid-cols-2 fixe. Même
+          pattern d'empilement que les Fact de CommandeDetailView.tsx. */}
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         <InfoField label="Prénom" value={firstName || "—"} />
         <InfoField label="Nom" value={lastName || "—"} />
         <InfoField label="E-mail" value={email || "—"} />
@@ -229,7 +232,7 @@ export function PersonalInfoSection({
             <div className="flex flex-col gap-4">
               <div className="flex items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5">
                 <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">mark_email_read</span>
-                <span className="text-[13px] leading-relaxed text-text-secondary">
+                <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[13px]">
                   Vérifiez votre boîte mail pour confirmer votre nouvelle adresse e-mail. Vos autres
                   informations ont bien été mises à jour.
                 </span>

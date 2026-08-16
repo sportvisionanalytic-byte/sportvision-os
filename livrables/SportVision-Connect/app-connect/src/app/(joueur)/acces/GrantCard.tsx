@@ -120,13 +120,13 @@ export function GrantCard({
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="ml-auto flex h-[42px] flex-none items-center rounded-sv border border-danger-border bg-danger-bg px-3.5 font-sora text-[13px] font-semibold text-danger hover:bg-[rgba(244,114,182,.16)]"
+          className="ml-auto flex h-[42px] flex-none items-center rounded-sv border border-danger-border bg-danger-bg px-3.5 font-sora text-[14px] font-semibold text-danger hover:bg-[rgba(244,114,182,.16)] lg:text-[13px]"
         >
           Retirer l&apos;accès
         </button>
       </div>
 
-      {error && <span className="text-[13px] text-danger">{error}</span>}
+      {error && <span className="text-[14px] text-danger lg:text-[13px]">{error}</span>}
 
       <div className="flex flex-col gap-0.5">
         {RIGHTS.map((r) => {

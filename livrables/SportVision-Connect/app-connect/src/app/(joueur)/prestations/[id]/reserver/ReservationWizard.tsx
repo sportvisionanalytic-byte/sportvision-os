@@ -224,7 +224,7 @@ export function ReservationWizard({
   return (
     <div className="mx-auto flex max-w-[640px] flex-col gap-6 pb-24 animate-sv-in lg:pb-0">
       <div className="flex flex-col gap-2">
-        <Link href={`/prestations/${offer.id}`} className="flex items-center gap-2 self-start text-[13px] font-medium text-text-tertiary hover:text-text">
+        <Link href={`/prestations/${offer.id}`} className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
           <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
           {offer.nom}
         </Link>
@@ -270,7 +270,7 @@ export function ReservationWizard({
             {isMontageCompilation && (
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2">
-                  <span className="text-[13px] font-medium text-text-secondary">Comment nous envoyez-vous vos images ?</span>
+                  <span className="text-[14px] font-medium text-text-secondary lg:text-[13px]">Comment nous envoyez-vous vos images ?</span>
                   <div className="flex flex-col gap-2">
                     <PaymentChoice
                       label="Je fournis mes rushs déjà découpés"
@@ -299,7 +299,7 @@ export function ReservationWizard({
                       onChange={(e) => setDureeRushMinutes(e.target.value)}
                       error={touched && !dureeValid ? "Requise (en minutes, supérieure à 0)." : null}
                     />
-                    <span className="text-[12px] leading-relaxed text-text-tertiary">
+                    <span className="text-[13px] leading-relaxed text-text-tertiary lg:text-[12px]">
                       Durée totale de vos rushs, en minutes — au-delà de {offer.tarifPalier?.seuilMinutes ?? 6} min,
                       {(() => {
                         const prixAuDela = offer.tarifPalier?.prixHtAuDela;
@@ -322,7 +322,7 @@ export function ReservationWizard({
                       error={touched && !dureeValid && !nombreMatchsLienNum ? "Requis, supérieur à 0." : null}
                     />
                     <div className="flex flex-col gap-2">
-                      <label htmlFor="rw-lien-match" className="text-[13px] font-medium text-text-secondary">
+                      <label htmlFor="rw-lien-match" className="text-[14px] font-medium text-text-secondary lg:text-[13px]">
                         Lien(s) vers votre/vos match(s)
                       </label>
                       <textarea
@@ -334,11 +334,11 @@ export function ReservationWizard({
                         placeholder="Un lien par ligne (Veo, YouTube, Drive…)"
                       />
                       {touched && !dureeValid && nombreMatchsLienNum && !lienMatchUrl.trim() && (
-                        <span className="text-[12px] text-danger">Lien(s) requis.</span>
+                        <span className="text-[13px] text-danger lg:text-[12px]">Lien(s) requis.</span>
                       )}
                     </div>
                     {lienMatchMax != null && nombreMatchsLienNum != null && nombreMatchsLienNum > lienMatchMax && (
-                      <span className="text-[12px] leading-relaxed text-attente">
+                      <span className="text-[13px] leading-relaxed text-attente lg:text-[12px]">
                         Au-delà de {lienMatchMax} matchs, cette demande passe par un devis personnalisé (livraison
                         expresse) — contactez SportVision après l&apos;envoi de votre demande.
                       </span>
@@ -349,10 +349,10 @@ export function ReservationWizard({
             )}
             {isMontageCompilation && (
               <div className="flex flex-col gap-3 border-t border-border pt-4">
-                <span className="text-[13px] font-medium text-text-secondary">
+                <span className="text-[14px] font-medium text-text-secondary lg:text-[13px]">
                   Informations pour le montage
                 </span>
-                <span className="-mt-2 text-[12px] leading-relaxed text-text-tertiary">
+                <span className="-mt-2 text-[13px] leading-relaxed text-text-tertiary lg:text-[12px]">
                   Pour vous identifier dans les rushs. Les infos déjà connues de votre profil ne
                   sont demandées qu&apos;une fois.
                 </span>
@@ -400,7 +400,7 @@ export function ReservationWizard({
                     onChange={(e) => setNumeroMaillot(e.target.value)}
                   />
                   <div className="flex flex-col gap-2">
-                    <label htmlFor="rw-couleur-maillot" className="text-[13px] font-medium text-text-secondary">
+                    <label htmlFor="rw-couleur-maillot" className="text-[14px] font-medium text-text-secondary lg:text-[13px]">
                       Couleur de maillot
                     </label>
                     <input
@@ -422,7 +422,7 @@ export function ReservationWizard({
             )}
             <Field id="rw-categorie" label="Catégorie · facultatif" placeholder="U18 R2" value={categorie} onChange={(e) => setCategorie(e.target.value)} />
             <div className="flex flex-col gap-2">
-              <label htmlFor="rw-notes" className="text-[13px] font-medium text-text-secondary">Notes · facultatif</label>
+              <label htmlFor="rw-notes" className="text-[14px] font-medium text-text-secondary lg:text-[13px]">Notes · facultatif</label>
               <textarea
                 id="rw-notes"
                 value={notes}
@@ -439,7 +439,7 @@ export function ReservationWizard({
           <div className="flex flex-col gap-4 animate-sv-in">
             <h2 className="font-sora text-[17px] font-semibold">Options</h2>
             {offer.options.length === 0 ? (
-              <p className="text-[13.5px] text-text-tertiary">Aucune option disponible pour cette prestation.</p>
+              <p className="text-[14px] text-text-tertiary lg:text-[13.5px]">Aucune option disponible pour cette prestation.</p>
             ) : (
               <div className="flex flex-col gap-2.5">
                 {offer.options.map((opt) => {
@@ -461,7 +461,7 @@ export function ReservationWizard({
               </div>
             )}
             <div className="mt-1 flex items-center justify-between rounded-sv border border-border bg-bg-elevated px-4 py-3.5">
-              <span className="text-[13px] text-text-tertiary">Total estimé</span>
+              <span className="text-[14px] text-text-tertiary lg:text-[13px]">Total estimé</span>
               <span className="font-sora text-[18px] font-bold">{ttc !== null ? `${formatEUR(ttc)} TTC` : "Sur devis"}</span>
             </div>
           </div>
@@ -483,7 +483,7 @@ export function ReservationWizard({
 
             {paiementMode === "seul" && (
               <div className="flex flex-col gap-2 pl-1">
-                <span className="text-[12.5px] font-medium text-text-tertiary">Comment réglez-vous ?</span>
+                <span className="text-[14px] font-medium text-text-tertiary lg:text-[12.5px]">Comment réglez-vous ?</span>
                 <div className="flex flex-col gap-2">
                   <PaymentChoice
                     label="Carte bancaire"
@@ -504,7 +504,7 @@ export function ReservationWizard({
             {paiementMode === "collectif" && (
               <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
                 <span className="material-symbols-rounded !text-[19px] text-attente" aria-hidden="true">info</span>
-                <span className="text-[12.5px] leading-relaxed text-text-secondary">
+                <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[12.5px]">
                   Votre demande sera tout de même enregistrée au statut « En validation ». Créez ensuite une cotisation
                   depuis cette page pour partager le coût, ou basculez sur « Payer seul ».
                 </span>
@@ -524,15 +524,15 @@ export function ReservationWizard({
             </div>
 
             {waiverNeeded && (
-              <label className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg p-3.5 text-[12.5px] leading-relaxed text-text-secondary">
+              <label className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg p-3.5 text-[14px] leading-relaxed text-text-secondary lg:text-[12.5px]">
                 <input type="checkbox" checked={retractationRenoncee} onChange={(e) => setRetractationRenoncee(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#8CA9FF]" />
                 Votre prestation est prévue dans moins de 14 jours. Je demande l&apos;exécution immédiate de la prestation et je
                 renonce expressément à mon droit de rétractation de 14 jours (article L221-18 du Code de la consommation).
               </label>
             )}
-            {touched && waiverNeeded && !retractationRenoncee && <span className="text-[12px] text-danger">Cette case est requise pour continuer.</span>}
+            {touched && waiverNeeded && !retractationRenoncee && <span className="text-[13px] text-danger lg:text-[12px]">Cette case est requise pour continuer.</span>}
 
-            <label className="flex items-start gap-2.5 rounded-sv border border-border bg-bg-elevated p-3.5 text-[12.5px] leading-relaxed text-text-secondary">
+            <label className="flex items-start gap-2.5 rounded-sv border border-border bg-bg-elevated p-3.5 text-[14px] leading-relaxed text-text-secondary lg:text-[12.5px]">
               <input type="checkbox" checked={cgvAcceptee} onChange={(e) => setCgvAcceptee(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#8CA9FF]" />
               J&apos;accepte les{" "}
               <a href={LEGAL_URLS.cgv} target="_blank" rel="noopener noreferrer" className="font-medium text-[#8CA9FF] hover:text-[#B6C7FF] underline" onClick={(e) => e.stopPropagation()}>
@@ -540,12 +540,12 @@ export function ReservationWizard({
               </a>
               .
             </label>
-            {touched && !cgvAcceptee && <span className="text-[12px] text-danger">L&apos;acceptation des CGV est requise.</span>}
+            {touched && !cgvAcceptee && <span className="text-[13px] text-danger lg:text-[12px]">L&apos;acceptation des CGV est requise.</span>}
 
             {error && (
               <div className="flex items-start gap-2.5 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
                 <span className="material-symbols-rounded !text-[19px] text-danger" aria-hidden="true">error</span>
-                <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{error}</span>
+                <span className="text-[14px] leading-relaxed text-[#FBCFE8] lg:text-[13px]">{error}</span>
               </div>
             )}
           </div>
@@ -558,10 +558,10 @@ export function ReservationWizard({
             </span>
             <div className="flex flex-col gap-1.5">
               <span className="font-sora text-[20px] font-semibold">Demande enregistrée</span>
-              <span className="text-[13.5px] text-text-tertiary">
+              <span className="text-[14px] text-text-tertiary lg:text-[13.5px]">
                 Réf. {result.reference} · Statut <strong className="text-text">En validation</strong>
               </span>
-              <span className="mx-auto mt-1 max-w-[420px] text-[13px] leading-relaxed text-text-tertiary">
+              <span className="mx-auto mt-1 max-w-[420px] text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                 Des frais de déplacement peuvent s&apos;ajouter selon la localisation du match. Vous serez notifié à chaque étape.
               </span>
             </div>
@@ -571,7 +571,7 @@ export function ReservationWizard({
             )}
             {paiementMode === "seul" && modePaiementChoisi === "carte" && checkoutError && (
               <div className="flex w-full flex-col gap-3 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5 text-left">
-                <span className="text-[13px] leading-relaxed text-[#FBCFE8]">{checkoutError}</span>
+                <span className="text-[14px] leading-relaxed text-[#FBCFE8] lg:text-[13px]">{checkoutError}</span>
                 <Button variant="secondary" onClick={() => launchCheckout(result.id)} loading={busy}>
                   Réessayer le paiement
                 </Button>
@@ -580,7 +580,7 @@ export function ReservationWizard({
             {paiementMode === "seul" && modePaiementChoisi === "especes" && (
               <div className="flex w-full items-start gap-2.5 rounded-sv border border-affiliations/40 bg-affiliations-bg px-4 py-3.5 text-left">
                 <span className="material-symbols-rounded !text-[19px] text-affiliations" aria-hidden="true">payments</span>
-                <span className="text-[12.5px] leading-relaxed text-text-secondary">
+                <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[12.5px]">
                   Réservation confirmée — réglez sur place le jour de la prestation.
                 </span>
               </div>
@@ -663,7 +663,7 @@ function PaymentChoice({ label, sub, selected, onClick }: { label: string; sub: 
       </span>
       <span className="flex flex-col gap-0.5">
         <span className="font-sora text-[14.5px] font-semibold text-text">{label}</span>
-        <span className="text-[12.5px] text-text-tertiary">{sub}</span>
+        <span className="text-[14px] text-text-tertiary lg:text-[12.5px]">{sub}</span>
       </span>
     </button>
   );
@@ -672,8 +672,8 @@ function PaymentChoice({ label, sub, selected, onClick }: { label: string; sub: 
 function SummaryRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <span className="flex-none text-[12.5px] font-medium text-text-tertiary">{label}</span>
-      <span className={strong ? "text-right font-sora text-[15px] font-bold text-text" : "text-right text-[13px] text-text"}>{value}</span>
+      <span className="flex-none text-[14px] font-medium text-text-tertiary lg:text-[12.5px]">{label}</span>
+      <span className={strong ? "text-right font-sora text-[15px] font-bold text-text" : "text-right text-[14px] text-text lg:text-[13px]"}>{value}</span>
     </div>
   );
 }
@@ -707,11 +707,11 @@ function PhysiqueField({
   if (known) {
     return (
       <div className="flex items-center justify-between rounded-sv border border-border bg-bg-elevated px-4 py-3.5">
-        <span className="flex items-center gap-1.5 text-[13.5px] text-text-secondary">
+        <span className="flex items-center gap-1.5 text-[14px] text-text-secondary lg:text-[13.5px]">
           <span className="material-symbols-rounded !text-[16px] text-affiliations" aria-hidden="true">check_circle</span>
           {label} : <strong className="font-sora text-text">{profileValue}{unit ? ` ${unit}` : ""}</strong>
         </span>
-        <button type="button" onClick={onEdit} className="text-[12.5px] font-medium text-[#8CA9FF] hover:underline">
+        <button type="button" onClick={onEdit} className="text-[14px] font-medium text-[#8CA9FF] hover:underline lg:text-[12.5px]">
           Modifier
         </button>
       </div>
