@@ -379,13 +379,13 @@ section{position:relative}
         <div class="booking-step" data-step="3">
           <h2>Vos options</h2>
           <p class="sub">Sélectionnez ce qui s'applique — vous pourrez toujours ajuster avec notre équipe.</p>
-          <div class="options-grid">
-            <label class="opt-check"><input type="checkbox" value="Drone (+25€)" data-opt="drone"> Drone (+25 €)</label>
-            <label class="opt-check"><input type="checkbox" value="Highlight vidéo" data-opt="highlight"> Highlight vidéo</label>
-            <label class="opt-check"><input type="checkbox" value="Reel vertical" data-opt="reel"> Reel vertical (réseaux)</label>
-            <label class="opt-check"><input type="checkbox" value="Livraison express" data-opt="express"> Livraison express</label>
-            <label class="opt-check"><input type="checkbox" value="Interview / face caméra" data-opt="interview"> Interview / face caméra</label>
-            <label class="opt-check"><input type="checkbox" value="Création graphique associée" data-opt="creation"> Création graphique associée</label>
+          <div class="options-grid" id="options-grid">
+            <label class="opt-check" data-besoin="match-photo couverture-tournoi couverture-stage"><input type="checkbox" value="Drone (+25€)" data-opt="drone"> Drone (+25 €)</label>
+            <label class="opt-check" data-besoin="couverture-tournoi couverture-stage"><input type="checkbox" value="Highlight vidéo" data-opt="highlight"> Highlight vidéo</label>
+            <label class="opt-check" data-besoin="match-photo match-video couverture-tournoi couverture-stage coach-preparateur"><input type="checkbox" value="Reel vertical" data-opt="reel"> Reel vertical (réseaux)</label>
+            <label class="opt-check" data-besoin="match-photo match-video"><input type="checkbox" value="Livraison express" data-opt="express"> Livraison express</label>
+            <label class="opt-check" data-besoin="match-video coach-preparateur"><input type="checkbox" value="Interview / face caméra" data-opt="interview"> Interview / face caméra</label>
+            <label class="opt-check" data-besoin=""><input type="checkbox" value="Création graphique associée" data-opt="creation"> Création graphique associée</label>
           </div>
           <div class="sv-field"><label for="bk-commentaire">Précisions (facultatif)</label><textarea id="bk-commentaire" rows="3" placeholder="Contexte, sport, équipes concernées, besoin particulier..."></textarea></div>
           <div class="booking-nav">
@@ -562,6 +562,32 @@ const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
 // compte et payer" en fin de tunnel.
 const OFFRES_PRIX_FIXE = new Set(['match-photo', 'match-video', 'pack-match']);
 
+// ── Options dynamiques selon le besoin (audit externe du 16/08) ──
+// Uniquement pour les besoins listés ici : les options du catalogue existant
+// (drone/highlight/reel/express/interview/creation, cf. options-grid) sont
+// filtrées selon leur pertinence. Pour tout autre besoin (shooting, création
+// de contenu, media day, "Autre besoin"...), toutes les options restent
+// affichées, comme avant cette évolution.
+const OPTIONS_BY_BESOIN = {
+  'match-photo': ['drone', 'reel', 'express'],
+  'match-video': ['reel', 'interview', 'express'],
+  'couverture-tournoi': ['drone', 'highlight', 'reel'],
+  'couverture-stage': ['drone', 'highlight', 'reel'],
+  'coach-preparateur': ['reel', 'interview'],
+};
+function applyOptionsFilter(){
+  const allowed = OPTIONS_BY_BESOIN[state.slug] || null;
+  document.querySelectorAll('#options-grid .opt-check').forEach(label => {
+    const besoins = (label.getAttribute('data-besoin') || '').split(/\s+/).filter(Boolean);
+    const show = !allowed || besoins.includes(state.slug);
+    label.style.display = show ? '' : 'none';
+    if (!show){
+      const input = label.querySelector('input');
+      if (input) input.checked = false;
+    }
+  });
+}
+
 // ── Header solide au scroll ──
 const header = document.getElementById('site-header');
 function onScroll(){ header.classList.toggle('solid', window.scrollY > 40); }
@@ -678,6 +704,7 @@ document.getElementById('need-grid').addEventListener('click', (e) => {
   state.slug = card.getAttribute('data-slug') || null;
   state.label = card.getAttribute('data-label');
   state.price = card.getAttribute('data-price');
+  applyOptionsFilter();
   document.getElementById('btn-step1-next').disabled = false;
 });
 document.getElementById('btn-step1-next').addEventListener('click', () => goToStep(2));
