@@ -164,6 +164,9 @@ section{position:relative}
 
 .recap-box{background:var(--bg-light);border-radius:12px;padding:16px;margin-top:22px;font-size:13px;color:#5b6478;line-height:1.7}
 .recap-box b{color:var(--navy-900)}
+.recap-box .recap-sep{height:10px}
+.recap-box .recap-total{color:var(--navy-900);font-weight:800;margin-top:2px}
+.recap-box .recap-note{color:#5b6478;font-size:12px;margin-top:2px}
 
 .booking-nav{display:flex;justify-content:space-between;align-items:center;margin-top:28px;gap:12px}
 
@@ -417,7 +420,6 @@ section{position:relative}
         <div class="booking-step" data-step="4">
           <h2>Vos coordonnées</h2>
           <p class="sub">Dernière étape avant l'envoi de votre demande.</p>
-          <div class="recap-box" id="recap-box"></div>
           <form id="booking-form">
             <div class="sv-honeypot" aria-hidden="true"><label>Site web<input type="text" id="bk-site-web" tabindex="-1" autocomplete="off"></label></div>
             <div class="sv-field-2col">
@@ -452,6 +454,11 @@ section{position:relative}
             <div class="sv-field" id="cgv-field" style="margin-top:10px">
               <label class="opt-check" style="align-items:flex-start"><input type="checkbox" id="bk-cgv" required style="margin-top:3px"> <span>J'ai pris connaissance des <a href="cgv.html" target="_blank" style="color:var(--blue);font-weight:700">Conditions Générales de Vente</a>. (L'acceptation définitive des CGV et, le cas échéant, la demande d'exécution anticipée avant la fin du délai de rétractation vous seront demandées lors de la validation du récapitulatif dans votre espace Connect.)</span></label>
             </div>
+            <!-- Mini-récapitulatif juste avant l'envoi (audit externe du 16/08, repasse du même
+                 jour) : positionné volontairement APRÈS les champs de coordonnées et la case CGV,
+                 juste avant le bouton d'envoi — en plus des champs, jamais à la place. Rempli par
+                 buildRecap() à l'arrivée sur l'étape 4 (cf. script). -->
+            <div class="recap-box" id="recap-box"></div>
             <div class="sv-err" id="booking-err"></div>
             <p class="sub" style="margin:2px 0 10px;font-size:12px;color:var(--text-secondary)">Les informations renseignées sont utilisées par SportVision pour traiter votre demande et vous recontacter. <a href="confidentialite.html" target="_blank">En savoir plus</a>.</p>
             <div class="booking-nav">
@@ -858,49 +865,77 @@ document.getElementById('btn-step3-next').addEventListener('click', () => {
 // Connect (module Devis) — voir projet-dashboard-devis-contrats-factures.js et la migration
 // migration-devis-cgv-execution-anticipee-11-08.sql.
 
-// Mini-récapitulatif avant envoi (audit externe du 16/08) — reprend le besoin,
-// la date/lieu et le prix déjà saisis/affichés dans les étapes précédentes du
-// même formulaire (aucune donnée inventée). Format visé :
-//   Match Photo
-//   23 août · Fontainebleau
-//   120 € TTC + éventuels frais de déplacement
-//   Option : Drone +40 €
+// Mini-récapitulatif juste avant l'envoi (audit externe du 16/08, repasse du même
+// jour) — reprend le besoin, les infos contextuelles, la date/lieu et le prix déjà
+// saisis/affichés dans les étapes précédentes du même formulaire (aucune donnée
+// inventée), et calcule un total estimé (prestation + options chiffrées). Format visé :
+//   Pack Match Complet
+//   FC Montereau — Sens FC
+//   Dimanche 23 août · 15h00
+//   Montereau-Fault-Yonne
+//
+//   Prestation : 160 € TTC
+//   Drone complémentaire : +40 € TTC
+//   Total estimé : 200 € TTC
+//
+//   D'éventuels frais de déplacement pourront être ajoutés après vérification de votre demande.
+// Pour une prestation sur devis : "Tarif : sur devis — Aucun paiement maintenant."
 function formatDateRecap(iso){
   if (!iso) return null;
   const d = new Date(iso + 'T00:00:00');
   if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+  const txt = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
 }
 function buildRecap(){
   const parts = [];
+  const estPrixFixe = !!(state.slug && OFFRES_PRIX_FIXE.has(state.slug));
+
+  // ── Groupe 1 : besoin, contexte (équipe/événement/séance), date & lieu ──
   if (state.label) parts.push('<b>' + esc(state.label) + '</b>');
 
-  const dateEtLieu = [];
-  const dateFmt = formatDateRecap(state.date);
-  if (dateFmt) dateEtLieu.push(dateFmt + (state.heure ? ' à ' + state.heure : ''));
-  if (state.ville) dateEtLieu.push(state.ville + (state.cp ? ' (' + state.cp + ')' : ''));
-  if (dateEtLieu.length) parts.push(esc(dateEtLieu.join(' · ')));
-
-  if (state.price){
-    const estPrixFixe = state.slug && OFFRES_PRIX_FIXE.has(state.slug);
-    parts.push(esc(state.price) + (estPrixFixe ? ' + éventuels frais de déplacement' : ''));
-  }
-
-  state.options.forEach(opt => {
-    // Reformatage purement visuel de la valeur déjà présente dans le catalogue
-    // d'options ("Drone (+40€)" → "Drone +40 €") — aucun montant inventé.
-    const optFmt = opt.replace(/\s*\(\+(\d+)\s*€\)/, ' +$1 €');
-    parts.push('Option : ' + esc(optFmt));
-  });
-
   const c = state.champs || {};
-  const infosMatch = [c.equipe && 'Équipe ' + c.equipe, c.adversaire && 'contre ' + c.adversaire, c.categorie && '(' + c.categorie + ')'].filter(Boolean).join(' ');
+  let infosMatch = [c.equipe, c.adversaire].filter(Boolean).join(' — ');
+  if (c.categorie) infosMatch += (infosMatch ? ' ' : '') + '(' + c.categorie + ')';
   if (infosMatch) parts.push(esc(infosMatch));
   const infosEvenement = [c.nomEvenement, c.duree].filter(Boolean).join(' · ');
   if (infosEvenement) parts.push(esc(infosEvenement));
   if (c.typeSeance) parts.push(esc('Séance : ' + c.typeSeance));
 
-  document.getElementById('recap-box').innerHTML = parts.map(p => '<div>' + p + '</div>').join('');
+  const dateFmt = formatDateRecap(state.date);
+  if (dateFmt) parts.push(esc(dateFmt + (state.heure ? ' · ' + state.heure : '')));
+  if (state.ville) parts.push(esc(state.ville + (state.cp ? ' (' + state.cp + ')' : '')));
+
+  // ── Groupe 2 : tarif, options chiffrées, total estimé ──
+  parts.push('<div class="recap-sep"></div>');
+  if (estPrixFixe && state.price){
+    const basePrice = parseInt(state.price, 10) || 0; // "160 € TTC" → 160, jamais inventé
+    parts.push('Prestation : ' + esc(state.price));
+    let total = basePrice;
+    state.options.forEach(opt => {
+      const m = opt.match(/\(\+(\d+)\s*€\)/);
+      if (m){
+        const amount = parseInt(m[1], 10);
+        total += amount;
+        const label = opt.replace(/\s*\(\+\d+\s*€\)/, '');
+        parts.push(esc(label) + ' : +' + amount + ' € TTC');
+      } else {
+        parts.push('Option : ' + esc(opt));
+      }
+    });
+    parts.push('<div class="recap-total">Total estimé : ' + total + ' € TTC</div>');
+  } else {
+    parts.push('Tarif : sur devis — Aucun paiement maintenant.');
+    state.options.forEach(opt => parts.push('Option : ' + esc(opt)));
+  }
+
+  // ── Groupe 3 : mention frais de déplacement (uniquement pour les prestations à tarif fixe) ──
+  if (estPrixFixe){
+    parts.push('<div class="recap-sep"></div>');
+    parts.push('<div class="recap-note">D\'éventuels frais de déplacement pourront être ajoutés après vérification de votre demande.</div>');
+  }
+
+  document.getElementById('recap-box').innerHTML = parts.map(p => p.indexOf('<div') === 0 ? p : '<div>' + p + '</div>').join('');
 }
 
 function esc(str){
