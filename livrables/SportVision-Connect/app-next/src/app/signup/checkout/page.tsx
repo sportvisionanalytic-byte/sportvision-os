@@ -77,6 +77,13 @@ export default function SignupCheckoutPage() {
           // mauvaises clés, le nom et les initiales restaient vides partout (sidebar, header)
           // jusqu'à ce que l'utilisateur repasse par /settings/profile pour les ressaisir.
           data: { prenom: state.account.firstName, nom: state.account.lastName },
+          // 17/08/2026 — sans ce champ explicite, Supabase utilise le SITE_URL global du projet
+          // (partagé avec app-connect) comme base du lien de confirmation : un compte Club+ créé
+          // ici recevait un e-mail dont le lien pointait vers Connect, jamais vers Club+ (bug
+          // jamais détecté faute de compte réel testé jusqu'ici). Même pattern que app-connect
+          // (signup/club/page.tsx), voir aussi src/app/auth/callback/route.ts (nouveau, absent
+          // avant ce correctif).
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       if (signUpError) throw signUpError;
