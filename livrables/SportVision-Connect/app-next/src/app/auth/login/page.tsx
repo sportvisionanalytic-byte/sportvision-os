@@ -172,7 +172,7 @@ export default function LoginPage() {
 
           <div className="mt-6 border-t border-border pt-5 text-center text-[13.5px] text-text-soft">
             Votre structure n&apos;est pas encore sur Club+ ?{" "}
-            <Link href="/signup/type" className="font-extrabold text-brand-blue-electric">
+            <Link href="/signup/request" className="font-extrabold text-brand-blue-electric">
               Inscrire ma structure
             </Link>
             <p className="mt-1.5 text-[11.5px] text-text-faint">

@@ -1,120 +1,102 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import type { OrgType, PlanCode } from "@/lib/types";
 
-// État du tunnel d'inscription — voir ACTIONS.md § 2. Pas un fichier de route (pas de
-// `page.tsx`/`layout.tsx`), donc ignoré par le routeur App Router : colocalisé avec les 7 écrans
-// qu'il alimente plutôt que dans src/lib pour rester un module autonome, propre à l'inscription.
+// État du tunnel unifié "Demande d'ouverture d'un espace Club+" — voir
+// SIGNUP-UNIFIE-MASTER-PROMPT.md (transmis par Fouka le 17/08/2026). Pas un fichier de route
+// (pas de `page.tsx`/`layout.tsx`), donc ignoré par le routeur App Router : colocalisé avec les
+// écrans qu'il alimente (src/app/signup/request/*) plutôt que dans src/lib, pour rester un
+// module autonome propre à l'inscription.
 //
 // Persisté en mémoire le temps de la session de navigation : le layout `signup/layout.tsx` reste
 // monté d'une étape à l'autre (navigation interne au même groupe de routes), donc le contexte
-// survit aux changements de page. Pas de backend branché (voir README.md du projet) : les
-// données saisies ne sont conservées que pour faire fonctionner le tunnel de bout en bout.
+// survit aux changements de page (§60-62 du master prompt). Un refresh de page perd cet état en
+// mémoire — chaque écran du tunnel s'en protège via un garde qui renvoie à l'écran 1 plutôt que
+// d'afficher un formulaire à moitié vide (voir chaque page.tsx de src/app/signup/request/*).
+//
+// 17/08/2026 — remplace entièrement :
+//  - l'ancien tunnel /signup/club-request/* (4 étapes, club uniquement) ;
+//  - l'ancien tunnel générique /signup/type → .../done (7 étapes, création de compte + org
+//    ACTIVE immédiate pour coach/académie/générique/tournoi, via connect-org-signup/
+//    portal-onboarding, retiré par cette décision — voir la note d'architecture en bas de
+//    SIGNUP-UNIFIE-MASTER-PROMPT.md).
+// Ce tunnel ne crée JAMAIS de compte ni d'organisation active : il envoie une simple demande à
+// l'Edge Function publique connect-club-signup-request (déjà déployée, généralisée à 7 types de
+// structure — voir livrables/SportVision-TV/supabase/functions/connect-club-signup-request/index.ts,
+// source de vérité pour tous les noms de champs et listes fermées ci-dessous).
 
-export interface SignupAccount {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  jobTitle: string;
-  password: string;
-}
+/** Type de structure — écran 1 (master prompt §5). Valeurs exactes attendues par le champ
+ * `organization_type` de connect-club-signup-request (ORG_TYPES côté Edge Function). */
+export type RequestOrgType = "club" | "academie" | "coach" | "structure_coaching" | "tournoi" | "stage" | "projet";
 
-export interface SignupOrg {
-  logoUrl: string;
-  name: string;
-  address: string;
-  instagram: string;
-  siret: string;
-  teamCount: string;
-  memberCount: string;
-}
+export interface RequestState {
+  organizationType: RequestOrgType | null;
 
-export interface SignupPayment {
-  cardNumber: string;
-  expiry: string;
-  cvc: string;
-}
-
-/**
- * Tunnel dédié "Demande d'ouverture Connect" — voir /signup/club-request/*. Remplace, pour
- * orgType==='club' uniquement, l'ancien chemin qui appelait clubplus-onboarding immédiatement
- * après l'inscription (compte créé par le visiteur, club actif + admin posés en dur à la même
- * seconde, AUCUNE validation humaine). Brief Fouka du 12/08/2026 : une inscription publique de
- * club ne crée plus jamais directement un club actif — elle crée une demande, transmise au
- * staff SportVision pour validation manuelle (voir migration-connect-v44-club-signup-requests.sql
- * et connect-club-signup-request). Aucun mot de passe ni compte à ce stade : uniquement ces
- * champs, envoyés tels quels par l'Edge Function publique.
- */
-export interface ClubSignupRequestState {
-  clubNom: string;
+  // Écran 2 · Votre structure
+  nom: string;
+  /** "Statut juridique" à l'écran — correspond au champ serveur `structure_type` (sous-
+   * classification administrative). Obligatoire uniquement pour club (comportement hérité de
+   * l'ancien tunnel /signup/club-request, préservé à l'identique — voir la contrainte non
+   * négociable en bas du master prompt). Facultatif pour académie/association, non pertinent
+   * pour les 4 autres types (voir STRUCTURE_TYPE_RELEVANT_FOR còté Edge Function). */
   structureType: string;
   ville: string;
   codePostal: string;
   siteWeb: string;
+  /** Coach uniquement (§12). */
+  activiteType: string;
+  activiteTypeAutre: string;
+  exerceSousPropreNom: boolean;
+  /** Tournoi uniquement (§13), facultatif. */
+  nomEvenementPrincipal: string;
+
+  // Écran 3 · Vous
   contactPrenom: string;
   contactNom: string;
   contactEmail: string;
   contactTelephone: string;
   fonction: string;
   fonctionAutre: string;
+
+  // Écran 4 · Votre besoin
   besoins: string[];
   besoinAutrePrecision: string;
+
+  // Écran 5 · Validation
   certificationAcceptee: boolean;
 }
 
-export interface SignupState {
-  orgType: OrgType | null;
-  account: SignupAccount;
-  org: SignupOrg;
-  needs: { selected: string[]; freeText: string };
-  planCode: PlanCode | null;
-  /** Uniquement pour club_plus_start/club_plus_performance — voir src/lib/plans.ts. */
-  engagement: "12mois" | "sans";
-  payment: SignupPayment;
-  /** Message de mise en relation — remplace le paiement pour Full Communication. */
-  quoteMessage: string;
-  /** Uniquement pour orgType === "club" — voir /signup/club-request/*. */
-  clubRequest: ClubSignupRequestState;
-}
-
-const EMPTY_STATE: SignupState = {
-  orgType: null,
-  account: { firstName: "", lastName: "", email: "", phone: "", jobTitle: "", password: "" },
-  org: { logoUrl: "", name: "", address: "", instagram: "", siret: "", teamCount: "", memberCount: "" },
-  needs: { selected: [], freeText: "" },
-  planCode: null,
-  engagement: "12mois",
-  payment: { cardNumber: "", expiry: "", cvc: "" },
-  quoteMessage: "",
-  clubRequest: {
-    clubNom: "",
-    structureType: "",
-    ville: "",
-    codePostal: "",
-    siteWeb: "",
-    contactPrenom: "",
-    contactNom: "",
-    contactEmail: "",
-    contactTelephone: "",
-    fonction: "",
-    fonctionAutre: "",
-    besoins: [],
-    besoinAutrePrecision: "",
-    certificationAcceptee: false,
-  },
+const EMPTY_STATE: RequestState = {
+  organizationType: null,
+  nom: "",
+  structureType: "",
+  ville: "",
+  codePostal: "",
+  siteWeb: "",
+  activiteType: "",
+  activiteTypeAutre: "",
+  exerceSousPropreNom: false,
+  nomEvenementPrincipal: "",
+  contactPrenom: "",
+  contactNom: "",
+  contactEmail: "",
+  contactTelephone: "",
+  fonction: "",
+  fonctionAutre: "",
+  besoins: [],
+  besoinAutrePrecision: "",
+  certificationAcceptee: false,
 };
 
 interface SignupContextValue {
-  state: SignupState;
-  patch: (partial: Partial<SignupState>) => void;
+  state: RequestState;
+  patch: (partial: Partial<RequestState>) => void;
 }
 
 const SignupContext = createContext<SignupContextValue | null>(null);
 
 export function SignupProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SignupState>(EMPTY_STATE);
+  const [state, setState] = useState<RequestState>(EMPTY_STATE);
   const value = useMemo<SignupContextValue>(
     () => ({
       state,
@@ -131,74 +113,55 @@ export function useSignup(): SignupContextValue {
   return value;
 }
 
-// Filtrage des offres par type — voir ACTIONS.md § 2, étape 5. "Essentiel" retiré le 11/08/2026
-// (décision Fouka, voir plans.ts) : n'a jamais eu de vrai tarif ni de vraie existence côté
-// backend pour un club réel. Remplacé par "one_off" (aucun engagement, facturé à la commande)
-// pour club/académie/coach — un club peut avoir son espace Connect et réserver des prestations à
-// la carte sans souscrire à Club+ ni à Full Communication.
-//
-// `player`/`parent` : jamais proposés à l'inscription Club+ — ces deux personas vivent
-// exclusivement sur SportVision Connect (app-connect), jamais sur Club+ (brief Fouka 17/08/2026,
-// confirmé par HANDOFF-CLUBPLUS.md § 1 : "SportVision Connect = la personne... SportVision Club+
-// = la structure"). Le chemin "Joueur affilié à un club" qui existait ici avant le split
-// Connect/Club+ (11/08/2026, recherche de club + rattachement) a été entièrement retiré : un
-// joueur qui veut rejoindre un club le fait depuis Connect, pas depuis ce tunnel.
-// tournament_organizer/camp : bascule 2 org types séparés (migration-clubplus-v44, 17/08/2026),
-// remplace l'ancien OrgType unique `event`. Comportement du tunnel INCHANGÉ — voir la note en
-// tête de fichier § "Événement" : ce tunnel ne crée jamais une vraie organisation
-// tournoi/stage, seulement un Espace Projet générique (portal-onboarding, profil "organisateur").
-// `camp` n'a pas d'entrée dans ORG_TYPE_OPTIONS ci-dessous (jamais proposé à l'inscription, comme
-// cm_agency/sponsor) mais doit rester présent ici pour que ce Record<OrgType, ...> reste exhaustif.
-//
-// `coaching_structure` (17/08/2026, migration-connect-v78-signup-unifie-clubplus.sql) : ajout
-// STRICTEMENT MÉCANIQUE, une seule ligne, imposé par l'exhaustivité de Record<OrgType, ...> dès
-// qu'un 11e OrgType existe (src/lib/types.ts) — sans lui, `npm run build` échoue pour tout le
-// projet, bien au-delà de ce tunnel. AUCUNE autre modification de ce fichier : le chantier
-// backend qui introduit ce type n'a pas touché à la logique/UI de ce dossier (périmètre du
-// prochain agent, qui reconstruit ce tunnel en 5 étapes unifiées pour les 7 types de structure —
-// voir SIGNUP-UNIFIE-MASTER-PROMPT.md). Même motif que `camp`/`cm_agency`/`sponsor` ci-dessus :
-// non proposé à l'inscription pour l'instant, tableau vide.
-export const PLAN_OPTIONS_BY_TYPE: Record<OrgType, PlanCode[]> = {
-  club: ["one_off", "club_plus_start", "club_plus_performance", "full_communication"],
-  academy: ["one_off", "club_plus_start", "club_plus_performance", "full_communication"],
-  coach: ["one_off", "club_plus_start", "full_communication"],
-  coaching_structure: [],
-  tournament_organizer: ["one_off", "full_communication"],
-  camp: [],
-  generic: ["one_off"],
-  player: [],
-  parent: [],
-  cm_agency: [],
-  sponsor: [],
+// ── Écran 1 · Type de structure (master prompt §5) ─────────────────────────────────────────
+export const REQUEST_ORG_TYPE_OPTIONS: { type: RequestOrgType; label: string; description: string }[] = [
+  { type: "club", label: "Club", description: "Équipes, joueurs, compétitions." },
+  { type: "academie", label: "Académie", description: "Sportifs, groupes, stages." },
+  { type: "coach", label: "Coach / Préparateur", description: "Activité individuelle ou indépendante." },
+  { type: "structure_coaching", label: "Structure de coaching", description: "Plusieurs coachs, intervenants ou groupes." },
+  { type: "tournoi", label: "Tournoi / Événement", description: "Tournoi, compétition ou événement ponctuel." },
+  { type: "stage", label: "Stage / Camp", description: "Stage sportif, camp ou session organisée." },
+  { type: "projet", label: "Association / Autre structure", description: "Association, ligue, comité ou autre organisation." },
+];
+
+// ── Écran 2 · Titre dynamique (§8) et libellé du champ nom (§10) ───────────────────────────
+export const STRUCTURE_TITLE: Record<RequestOrgType, string> = {
+  club: "Votre club",
+  academie: "Votre académie",
+  coach: "Votre activité",
+  structure_coaching: "Votre structure",
+  tournoi: "Votre organisation",
+  stage: "Votre stage ou organisation",
+  projet: "Votre structure",
 };
 
-export const ORG_TYPE_OPTIONS: { type: OrgType; label: string; description: string }[] = [
-  { type: "club", label: "Club", description: "Équipes, licenciés, compétitions" },
-  { type: "academy", label: "Académie", description: "Groupes, stages, formation" },
-  { type: "coach", label: "Coach", description: "Activité individuelle ou indépendante" },
-  { type: "generic", label: "Autre structure sportive", description: "Ligue, comité, association, entreprise" },
-  { type: "tournament_organizer", label: "Événement", description: "Tournoi, compétition ponctuelle" },
-];
+export const STRUCTURE_NAME_LABEL: Record<RequestOrgType, string> = {
+  club: "Nom du club",
+  academie: "Nom de l'académie",
+  coach: "Nom de votre activité",
+  structure_coaching: "Nom de la structure",
+  tournoi: "Nom de l'organisation",
+  stage: "Nom du stage / camp",
+  projet: "Nom de la structure",
+};
 
-export const NEEDS_OPTIONS = [
-  "Photos et vidéos de matchs",
-  "Communication sur les réseaux sociaux",
-  "Affiches et visuels pour les événements",
-  "Gestion de la billetterie ou des inscriptions",
-  "Recherche et suivi de sponsors",
-  "Rapports de performance et statistiques",
-  "Formation de mon équipe communication",
-  "Accompagnement stratégique global",
-];
+/** Le champ `structure_type` (§ci-dessus, RequestState.structureType) est requis pour club,
+ * facultatif pour académie/association, ignoré par le serveur pour les 4 autres types
+ * (STRUCTURE_TYPE_RELEVANT côté Edge Function) — donc pas affiché du tout pour ceux-là. */
+export const STRUCTURE_TYPE_FIELD: Record<RequestOrgType, "required" | "optional" | "hidden"> = {
+  club: "required",
+  academie: "optional",
+  projet: "optional",
+  coach: "hidden",
+  structure_coaching: "hidden",
+  tournoi: "hidden",
+  stage: "hidden",
+};
 
-// ── Tunnel /signup/club-request — voir ClubSignupRequestState ci-dessus ────────────────────
-//
-// Type de structure : liste non fournie verbatim par Fouka (contrairement à Fonction et
-// Besoin ci-dessous, transcrites telles quelles depuis son brief) — jugement produit, classification
-// légale/administrative usuelle d'un club sportif français. Pas de champ "Autre" conditionnel ici
-// (contrairement à Fonction) : Fouka ne l'a demandé que pour Fonction, et le staff peut toujours
-// demander une précision via l'action "Demander des informations" du nouvel écran de traitement.
-export const CLUB_STRUCTURE_TYPE_OPTIONS = [
+/** Options du champ "Statut juridique" — reprises telles quelles de l'ancien tunnel
+ * /signup/club-request (CLUB_STRUCTURE_TYPE_OPTIONS), le serveur ne valide pas ces valeurs
+ * contre une liste fermée (simple présence non vide pour club). */
+export const STRUCTURE_TYPE_OPTIONS = [
   "Association loi 1901",
   "Club professionnel / société sportive",
   "Section d'un club omnisports",
@@ -206,65 +169,82 @@ export const CLUB_STRUCTURE_TYPE_OPTIONS = [
   "Autre",
 ];
 
-// Liste transcrite verbatim depuis le brief de Fouka (12/08/2026). Distinction stricte avec le
-// rôle Connect : ce champ est purement informatif, il ne détermine JAMAIS le rôle
-// technique/permissions dans Connect (choisi séparément par le staff SportVision au moment de la
-// validation, jamais automatiquement à partir de ce choix) — c'est le cœur de ce chantier de
-// sécurité, voir migration-connect-v44-club-signup-requests.sql.
-export const CLUB_FONCTION_OPTIONS = [
+// ── Écran 2 · Champ conditionnel coach (§12) — verbatim ACTIVITE_TYPES côté Edge Function ──
+export const ACTIVITE_TYPE_OPTIONS = ["Coach indépendant", "Préparateur physique", "Personal trainer", "Coach personnel", "Autre"];
+
+// ── Écran 3 · Fonction (§19) — verbatim FONCTIONS côté Edge Function ───────────────────────
+export const FONCTION_OPTIONS = [
   "Président(e)",
   "Vice-président(e)",
-  "Directeur / Directrice",
+  "Directeur/Directrice",
   "Secrétaire",
-  "Trésorier / Trésorière",
+  "Trésorier/Trésorière",
   "Responsable communication",
   "Community Manager",
-  "Responsable sportif / Directeur sportif",
+  "Directeur sportif",
+  "Responsable sportif",
   "Responsable administratif",
-  "Responsable partenariat / sponsoring",
-  "Éducateur / Éducatrice",
-  "Entraîneur / Entraîneuse",
+  "Coach",
+  "Éducateur",
+  "Préparateur physique",
   "Responsable d'équipe",
-  "Photographe / Vidéaste du club",
-  "Joueur / Joueuse",
+  "Responsable partenariat/sponsoring",
+  "Propriétaire/Gérant",
   "Bénévole",
   "Membre du bureau",
   "Autre",
 ];
 
-// Liste transcrite verbatim depuis le brief de Fouka (12/08/2026).
-export const CLUB_BESOIN_OPTIONS = [
-  "Prestations photo / vidéo",
-  "Communication du club",
-  "Création de visuels",
-  "Full Communication",
-  "Club+",
-  "Couverture de matchs",
-  "Tournoi / stage",
-  "Veo / captation",
-  "Je souhaite simplement découvrir SportVision",
-  "Autre",
+// ── Écran 4 · Votre besoin (§23-28) ─────────────────────────────────────────────────────────
+// Les 3 blocs visuels décrits en §23-26 et la liste fermée "recommandée" de §27-28 (= BESOINS
+// côté Edge Function) ne s'énumèrent pas item pour item dans le master prompt (§23-26 cite par
+// exemple "Découvrir Club+"/"Création de contenus", absents de la liste fermée §27-28). Les 9
+// valeurs ci-dessous sont la liste fermée réellement acceptée par le serveur ; leur répartition
+// dans les 3 blocs reprend l'intention de §23-26 (Espace & accompagnement / Prestations / Autre).
+export const BESOIN_BLOCKS: { title: string; options: string[] }[] = [
+  {
+    title: "Espace & accompagnement",
+    options: ["Découvrir les services SportVision", "Full Communication", "Communication de ma structure", "Création de visuels"],
+  },
+  {
+    title: "Prestations",
+    options: ["Photo / vidéo", "Couverture de matchs", "Captation Veo / Drone", "Tournoi / stage / événement"],
+  },
+  {
+    title: "Autre besoin",
+    options: ["Autre"],
+  },
 ];
 
 /**
- * Frise de progression propre au tunnel /signup/club-request (4 étapes, voir layout.tsx §
- * ProgressBar) — distincte de STEPS/getSteps ci-dessus, qui restent inchangés pour les autres
- * types d'organisation (coach/académie/joueur/générique/événement).
+ * Revalidation complète (hors certification) — utilisée par l'écran 5 · Validation pour
+ * défensivement garder le CTA "Envoyer ma demande" désactivé (§40) même si l'état a été modifié
+ * entre deux écrans (retour navigateur, édition via un lien "Modifier") sans repasser par la
+ * validation inline de chaque écran (structure/page.tsx, contact/page.tsx).
  */
-export const CLUB_REQUEST_STEPS: { href: string; label: string }[] = [
-  { href: "/signup/club-request", label: "Votre club" },
-  { href: "/signup/club-request/contact", label: "Vous" },
-  { href: "/signup/club-request/needs", label: "Votre besoin" },
-  { href: "/signup/club-request/review", label: "Validation" },
-];
+export function isRequestComplete(state: RequestState): boolean {
+  if (!state.organizationType) return false;
+  const structureTypeMode = STRUCTURE_TYPE_FIELD[state.organizationType];
+  if (!state.nom.trim() || !state.ville.trim()) return false;
+  if (structureTypeMode === "required" && !state.structureType.trim()) return false;
+  if (state.organizationType === "coach") {
+    if (!state.activiteType.trim()) return false;
+    if (state.activiteType === "Autre" && !state.activiteTypeAutre.trim()) return false;
+  }
+  if (!state.contactPrenom.trim() || !state.contactNom.trim()) return false;
+  if (!/\S+@\S+\.\S+/.test(state.contactEmail)) return false;
+  if (!state.contactTelephone.trim()) return false;
+  if (!state.fonction.trim()) return false;
+  if (state.fonction === "Autre" && !state.fonctionAutre.trim()) return false;
+  if (state.besoins.length === 0) return false;
+  return true;
+}
 
-export const STEPS: { href: string; label: string }[] = [
-  { href: "/signup/type", label: "Structure" },
-  { href: "/signup/account", label: "Vous" },
-  { href: "/signup/org", label: "Organisation" },
-  { href: "/signup/needs", label: "Besoins" },
-  { href: "/signup/plan", label: "Offre" },
-  { href: "/signup/checkout", label: "Paiement" },
-  { href: "/signup/done", label: "Confirmation" },
+// ── Frise de progression (§2-3) — 5 étapes exactement, jamais Offre/Paiement/Confirmation ──
+export const REQUEST_STEPS: { href: string; label: string }[] = [
+  { href: "/signup/request", label: "Type de structure" },
+  { href: "/signup/request/structure", label: "Votre structure" },
+  { href: "/signup/request/contact", label: "Vous" },
+  { href: "/signup/request/needs", label: "Votre besoin" },
+  { href: "/signup/request/review", label: "Validation" },
 ];
-

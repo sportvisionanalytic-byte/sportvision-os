@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 
-// /signup (racine, sans sous-étape) 404ait : seules les 7 routes de STEPS (signup-context.tsx)
-// existaient. Renvoie vers la première étape réelle du tunnel.
+// /signup (racine, sans sous-étape) 404ait : seules les routes de REQUEST_STEPS
+// (signup-context.tsx) existent. Renvoie vers la première étape réelle du tunnel unifié — voir
+// SIGNUP-UNIFIE-MASTER-PROMPT.md.
 export default function SignupRootPage() {
-  redirect("/signup/type");
+  redirect("/signup/request");
 }

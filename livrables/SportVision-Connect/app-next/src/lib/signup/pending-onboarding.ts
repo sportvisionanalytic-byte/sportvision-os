@@ -14,9 +14,17 @@ const STORAGE_KEY = "sv_pending_signup";
 // 12/08/2026 — la variante "clubplus" (appel direct de clubplus-onboarding juste après
 // auth.signUp(), club actif + admin posés en dur sans aucune validation humaine) a été
 // retirée d'ici : c'était la faille de sécurité corrigée par ce chantier (voir
-// migration-connect-v44-club-signup-requests.sql et /signup/club-request/*, le nouveau
-// tunnel qui crée une simple demande, jamais un compte ni un club). Aucun code de ce
-// module ne doit plus jamais construire un objet { kind: "clubplus" } pour orgType==='club'.
+// migration-connect-v44-club-signup-requests.sql et l'ancien /signup/club-request/*, qui créait
+// une simple demande, jamais un compte ni un club). Aucun code de ce module ne doit plus jamais
+// construire un objet { kind: "clubplus" } pour un club.
+//
+// 17/08/2026 — le tunnel unifié /signup/request/* (SIGNUP-UNIFIE-MASTER-PROMPT.md) remplace
+// /signup/club-request/* ET l'ancien /signup/type→.../checkout (seul appelant de
+// savePendingOnboarding() pour les kinds "connect-org-signup"/"portal-onboarding"/
+// "connect-signup-lead" ci-dessous, retiré). Plus AUCUN code de ce repo n'appelle
+// savePendingOnboarding() désormais : ce module ne sert plus qu'à rejouer, au prochain login,
+// une entrée localStorage laissée par une inscription commencée avant ce déploiement (filet de
+// compatibilité best-effort côté login.tsx/confirming/page.tsx, pas une voie active).
 export type PendingOnboarding =
   | {
       kind: "connect-org-signup";

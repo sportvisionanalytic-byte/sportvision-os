@@ -38,7 +38,9 @@ export function setOnboardingProgress(progress: OnboardingProgress) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
 }
 
-/** Appelé à la fin de l'inscription (voir /signup/done) pour déclencher l'onboarding au premier accès. */
+/** Déclenche l'onboarding au premier accès à l'espace (ex. support/page.tsx). L'ancien
+ * /signup/done, qui l'appelait à la fin d'une inscription self-service, a été retiré le
+ * 17/08/2026 — ce tunnel ne crée plus jamais de compte/organisation active à la volée. */
 export function resetOnboardingProgress() {
   setOnboardingProgress({ step: 0, completed: false });
 }

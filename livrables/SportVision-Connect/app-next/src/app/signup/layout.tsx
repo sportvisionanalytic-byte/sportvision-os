@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { CLUB_REQUEST_STEPS, STEPS, SignupProvider, useSignup } from "./signup-context";
+import { REQUEST_STEPS, SignupProvider } from "./signup-context";
 
-// Coque commune aux 7 étapes d'inscription — voir ACTIONS.md § 2. Même famille visuelle que
+// Coque commune au tunnel unifié "Demande d'ouverture Club+" (5 étapes, voir
+// SIGNUP-UNIFIE-MASTER-PROMPT.md §2-3) — src/app/signup/request/*. Même famille visuelle que
 // /auth (pas de sidebar), avec une frise de progression numérotée propre au tunnel. Fichier
-// nouveau, dédié à ce périmètre : ne touche à aucun layout partagé.
+// dédié à ce périmètre : ne touche à aucun layout partagé.
 export default function SignupLayout({ children }: { children: React.ReactNode }) {
   return (
     <SignupProvider>
@@ -44,15 +45,19 @@ export default function SignupLayout({ children }: { children: React.ReactNode }
 
 function ProgressBar() {
   const pathname = usePathname();
-  // /signup/club-request/* est un tunnel entièrement séparé (4 étapes propres, aucun compte
-  // créé) : sa propre frise, jamais celle des 7 étapes standard.
-  const isClubRequest = pathname.startsWith("/signup/club-request");
-  const steps = isClubRequest ? CLUB_REQUEST_STEPS : STEPS;
+  const steps = REQUEST_STEPS;
+  // /signup/request/sent (écran de succès) n'est volontairement pas dans REQUEST_STEPS (master
+  // prompt §2 : "NE PAS afficher Offre / Paiement / Confirmation dans la barre de progression").
+  // findIndex renvoie -1 sur cette route ; Math.max(0, …) le ramène à l'étape 1 plutôt que
+  // planter, mais le layout de sent/page.tsx masque de toute façon cette frise (voir plus bas).
   const currentIndex = Math.max(
     0,
     steps.findIndex((s) => pathname === s.href),
   );
   const pct = (currentIndex / (steps.length - 1)) * 100;
+  const isSent = pathname === "/signup/request/sent";
+
+  if (isSent) return null;
 
   return (
     <div className="mx-auto max-w-[880px] px-6 pb-5">
@@ -62,7 +67,14 @@ function ProgressBar() {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <ol className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2 text-[11.5px] font-bold">
+
+      {/* Mobile (§52-54) : frise condensée "Étape 2 sur 5 — Votre structure" plutôt que la liste
+          complète des 5 étapes, qui déborde sur 375/390px. */}
+      <p className="mt-3 text-[12px] font-bold text-text-soft sm:hidden">
+        Étape {currentIndex + 1} sur {steps.length} — {steps[currentIndex]?.label}
+      </p>
+
+      <ol className="mt-4 hidden flex-wrap items-center gap-x-2 gap-y-2 text-[11.5px] font-bold sm:flex">
         {steps.map((step, i) => {
           const done = i < currentIndex;
           const active = i === currentIndex;

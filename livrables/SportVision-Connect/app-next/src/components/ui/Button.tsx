@@ -37,7 +37,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           // ci-dessous tant que l'image de fond n'est pas explicitement retirée — sans ça, un
           // bouton primary désactivé (ou en loading, qui pose aussi l'attribut disabled) restait
           // visuellement identique à un bouton actif, dégradé plein, malgré le curseur "not-allowed"
-          // et le clic bloqué. Repéré sur /signup/account, "Continuer" avant remplissage du formulaire.
+          // et le clic bloqué. Repéré sur l'ancien /signup/account (retiré le 17/08/2026), "Continuer"
+          // avant remplissage du formulaire.
           "disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#E4E7EC] disabled:text-[#98A2B3] disabled:shadow-none disabled:hover:brightness-100",
           "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]",
           VARIANT_CLASSES[variant],
