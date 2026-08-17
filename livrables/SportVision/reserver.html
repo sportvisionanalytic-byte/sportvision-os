@@ -93,6 +93,11 @@ section{position:relative}
 .header-actions{display:flex;align-items:center;gap:10px}
 .header-actions .btn-ghost-dark{padding:11px 18px;font-size:13.5px}
 .header-actions .btn-grad{padding:11px 20px;font-size:13.5px}
+.space-switch{position:relative}
+.space-switch:hover .nav-dropdown,.space-switch:focus-within .nav-dropdown{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(-50%) translateY(2px)}
+.space-switch>button{cursor:pointer}
+.space-switch:hover .nav-caret,.space-switch:focus-within .nav-caret{transform:rotate(180deg)}
+.nav-dropdown-sub{display:block;font-size:11px;font-weight:500;opacity:.6;margin-top:1px}
 .burger{display:none;background:none;border:none;color:#fff;width:38px;height:38px;align-items:center;justify-content:center}
 .burger span,.burger span::before,.burger span::after{content:'';display:block;width:20px;height:2px;background:#fff;position:relative;transition:.2s}
 .burger span::before{position:absolute;top:-6px}
@@ -274,7 +279,13 @@ section{position:relative}
       <a href="a-propos.html">À propos</a>
     </nav>
     <div class="header-actions">
-      <a href="https://connect.sportvision-an.fr/" class="btn btn-ghost-dark">Se connecter</a>
+      <div class="space-switch">
+        <button type="button" class="btn btn-ghost-dark">Mon espace <span class="nav-caret">▾</span></button>
+        <div class="nav-dropdown">
+          <a href="https://connect.sportvision-an.fr/">SportVision Connect<span class="nav-dropdown-sub">Espace personnel</span></a>
+          <a href="https://clubplus.sportvision-an.fr/">SportVision Club+<span class="nav-dropdown-sub">Espace professionnel</span></a>
+        </div>
+      </div>
       <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
     </div>
     <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
@@ -313,8 +324,14 @@ section{position:relative}
   </details>
   <a href="realisations.html">Réalisations</a>
   <a href="a-propos.html">À propos</a>
+  <details class="mobile-nav-group">
+    <summary>Mon espace</summary>
+    <div class="sub-links">
+      <a href="https://connect.sportvision-an.fr/">SportVision Connect — espace personnel</a>
+      <a href="https://clubplus.sportvision-an.fr/">SportVision Club+ — espace professionnel</a>
+    </div>
+  </details>
   <div class="mobile-ctas">
-    <a href="https://connect.sportvision-an.fr/" class="btn btn-ghost-dark">Se connecter</a>
     <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
   </div>
 </div>
