@@ -26,8 +26,16 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  // /auth/* (login) et /signup/* (parcours d'inscription, accessible sans compte) sont publics.
-  const isPublicRoute = pathname.startsWith("/auth") || pathname.startsWith("/signup");
+  // /auth/* (login), /signup/* (parcours d'inscription) et /activation, /org-activation (lien
+  // d'activation privé envoyé par e-mail, voir app/activation/page.tsx) sont publics — accessibles
+  // sans compte, la page d'activation elle-même crée le compte via auth.signUp(). Bug trouvé lors
+  // de l'audit complet Club+ du 17/08/2026 : /activation et /org-activation redirigeaient vers
+  // /auth/login avant même que la page ait pu lire le token dans l'URL.
+  const isPublicRoute =
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/activation") ||
+    pathname.startsWith("/org-activation");
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
