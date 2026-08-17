@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// event_editions (migration-clubplus-v43-events-sessions.sql, NON EXÉCUTÉE) — objet central
-// "Édition" d'un organisateur de tournoi/événement (Bible §14). Scope organization_id, plusieurs
-// éditions possibles par organisation ("Mes événements" au pluriel). RLS : is_org_member (lecture)
-// / is_org_admin (écriture) ou is_staff — voir header de la migration.
+// event_editions (migration-clubplus-v43-events-sessions.sql) — objet central "Édition" d'un
+// organisateur de tournoi/événement (Bible §14, organization.type === "tournament_organizer" —
+// bascule 2 org types séparés, migration-clubplus-v44, 17/08/2026). Scope organization_id,
+// plusieurs éditions possibles par organisation ("Mes événements" au pluriel). RLS :
+// is_org_member (lecture) / is_org_admin (écriture) ou is_staff — voir header de la migration.
 //
 // Distinct de event_checklist_items (data/shared/event-checklist.ts) : la checklist suit la
 // préparation d'UN événement (avant/jour J/après, écriture staff uniquement), l'édition est la

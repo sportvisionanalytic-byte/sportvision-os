@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// event_sessions (migration-clubplus-v43-events-sessions.sql, NON EXÉCUTÉE) — objet central
-// "Session" d'un organisateur de stage/camp (Bible §15, organization.eventKind === "stage").
-// Scope organization_id. RLS : is_org_member (lecture) / is_org_admin (écriture) ou is_staff.
+// event_sessions (migration-clubplus-v43-events-sessions.sql) — objet central "Session" d'un
+// organisateur de stage/camp (Bible §15, organization.type === "camp" — bascule 2 org types
+// séparés, migration-clubplus-v44, 17/08/2026). Scope organization_id. RLS : is_org_member
+// (lecture) / is_org_admin (écriture) ou is_staff.
 //
 // Groupes et participants sont des listes de NOMS LIBRES (jsonb), jamais une table de personnes
 // ou d'inscriptions — Bible §15 : "Participants... uniquement pour organiser contenus, albums et

@@ -45,7 +45,7 @@ export default function EventEditionPage() {
   const [saving, setSaving] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
 
-  const isTournoiOrg = ctx.organization.type === "event" && (ctx.organization.eventKind ?? "tournoi") === "tournoi";
+  const isTournoiOrg = ctx.organization.type === "tournament_organizer";
   const allowed = isTournoiOrg && canAccess(ctx, "events");
   const canWrite = canCreate(ctx, "event_edition");
 

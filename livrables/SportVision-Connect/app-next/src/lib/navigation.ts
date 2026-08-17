@@ -121,22 +121,55 @@ const NAV_ACADEMY_FULLCOM: NavEntry[] = [
   item("settings", "Paramètres", "settings"),
 ];
 
-// Tournoi (événement) Full Communication.
+// Tournoi/Événement Full Communication (organization.type === "tournament_organizer").
 //
 // "Mes événements" (17/08/2026, Bible §14) : ajouté en tête du groupe "Événement", avant Timeline
 // — Timeline (eventtimeline) est un outil de suivi de préparation D'UN événement (checklist 3
 // phases), "Mes événements" (module "events") est la LISTE des éditions/tournois pilotés par
 // l'organisation (event_editions, plusieurs possibles). Les deux coexistent, ni l'un ni l'autre
 // ne remplace l'autre (brief : "ne supprime pas eventtimeline, la checklist reste utile en
-// complément"). Pour un organisateur de stage/camp (organization.eventKind === "stage"),
-// filterEventOrgNav (plus bas) remplace ce trio (events/eventtimeline/teams) par une seule entrée
-// "Mes sessions" — voir sa doc pour le détail.
-const NAV_EVENT_FULLCOM: NavEntry[] = [
+// complément").
+//
+// Bascule 2 org types séparés (migration-clubplus-v44, 17/08/2026) : auparavant un seul OrgType
+// `event` + un champ `organization.eventKind` distinguait tournoi/stage, et filterEventOrgNav
+// dérivait la nav Stage/Camp à partir de celle-ci en filtrant Timeline/Équipes participantes.
+// Désormais `tournament_organizer` et `camp` sont deux org types réels et ont chacun leur propre
+// nav écrite directement — voir NAV_CAMP_FULLCOM plus bas.
+const NAV_TOURNAMENT_FULLCOM: NavEntry[] = [
   item("dashboard", "Accueil", "dashboard"),
   section("Événement"),
   item("events", "Mes événements", "events"),
   item("eventtimeline", "Timeline", "eventtimeline"),
   item("teams", "Équipes participantes", "teams"),
+  section("Communication"),
+  item("communication", "Planning éditorial", "communication"),
+  item("content", "Contenus", "content"),
+  item("validations", "À valider", "validations"),
+  item("live", "Live", "live"),
+  section("Production"),
+  item("services", "Prestations", "services"),
+  section("Partenaires"),
+  item("sponsors", "Sponsors", "sponsors"),
+  section("Performance"),
+  item("analytics", "Statistiques", "analytics"),
+  item("reports", "Rapport événement", "reports"),
+  section("SportVision"),
+  item("mycm", "Mon CM", "mycm"),
+  item("messages", "Messages", "messages"),
+  item("documents", "Documents", "documents"),
+  item("settings", "Paramètres", "settings"),
+];
+
+// Stage/Camp Full Communication (organization.type === "camp") — même trame que Tournoi, sans
+// Timeline (checklist de préparation propre à UN tournoi) ni Équipes participantes (n'a pas de
+// sens pour un stage) ; "Mes événements" devient "Mes sessions" (module campsessions, Bible §15).
+// Reprend exactement ce que filterEventOrgNav appliquait avant la bascule 2 org types séparés
+// (migration-clubplus-v44) — voir NAV_TOURNAMENT_FULLCOM ci-dessus pour le détail de la trame
+// commune.
+const NAV_CAMP_FULLCOM: NavEntry[] = [
+  item("dashboard", "Accueil", "dashboard"),
+  section("Événement"),
+  item("campsessions", "Mes sessions", "campsessions"),
   section("Communication"),
   item("communication", "Planning éditorial", "communication"),
   item("content", "Contenus", "content"),
@@ -268,14 +301,28 @@ const NAV_PLAYER: NavEntry[] = [
   item("support", "Aide", "support"),
 ];
 
-// Utilisée aujourd'hui par tout organisateur `event` réel (buildOrgSpaceActiveContext,
-// supabase/session.ts, pose toujours planCode="one_off" pour ce type — NAV_EVENT_FULLCOM
+// Utilisée aujourd'hui par tout organisateur `tournament_organizer` réel (buildOrgSpaceActiveContext,
+// supabase/session.ts, pose toujours planCode="one_off" pour ce type — NAV_TOURNAMENT_FULLCOM
 // ci-dessus reste inatteignable tant qu'aucun vrai contrat Full Communication n'est modélisé pour
-// ce type d'organisation). "Mes événements" (17/08/2026, Bible §14) ajouté juste après l'Aperçu —
-// swap "Mes sessions" via filterEventOrgNav si organization.eventKind === "stage" (plus bas).
-const NAV_ONE_OFF: NavEntry[] = [
+// ce type d'organisation). "Mes événements" (17/08/2026, Bible §14) ajouté juste après l'Aperçu.
+const NAV_TOURNAMENT_ONE_OFF: NavEntry[] = [
   item("dashboard", "Aperçu", "dashboard"),
   item("events", "Mes événements", "events"),
+  item("services", "Ma prestation", "services"),
+  item("calendar", "Planning", "calendar"),
+  item("documents", "Documents", "documents"),
+  item("billing", "Paiement", "billing"),
+  item("content", "Livrables", "content"),
+  item("messages", "Messages", "messages"),
+  item("support", "Aide", "support"),
+];
+
+// Même trame que NAV_TOURNAMENT_ONE_OFF pour un organisateur `camp` réel — "Mes sessions" (Bible
+// §15) au lieu de "Mes événements". Reprend le comportement qu'appliquait filterEventOrgNav avant
+// la bascule 2 org types séparés (migration-clubplus-v44).
+const NAV_CAMP_ONE_OFF: NavEntry[] = [
+  item("dashboard", "Aperçu", "dashboard"),
+  item("campsessions", "Mes sessions", "campsessions"),
   item("services", "Ma prestation", "services"),
   item("calendar", "Planning", "calendar"),
   item("documents", "Documents", "documents"),
@@ -288,9 +335,10 @@ const NAV_ONE_OFF: NavEntry[] = [
 /**
  * Reproduit exactement la logique du README : l'offre décide avant le type.
  *   if (plan === 'Full Communication') {
- *     if (type === 'coach')    return coachFc
- *     if (type === 'academy')  return academieFc
- *     if (type === 'event')    return tournoiFc
+ *     if (type === 'coach')                return coachFc
+ *     if (type === 'academy')               return academieFc
+ *     if (type === 'tournament_organizer')  return tournoiFc
+ *     if (type === 'camp')                  return campFc
  *     return fullcom
  *   }
  *   return NAVS[type]
@@ -302,7 +350,8 @@ export function resolveNavigation(orgType: OrgType, planCode: PlanCode): NavEntr
   if (planCode === "full_communication") {
     if (orgType === "coach") return NAV_COACH_FULLCOM;
     if (orgType === "academy") return NAV_ACADEMY_FULLCOM;
-    if (orgType === "event") return NAV_EVENT_FULLCOM;
+    if (orgType === "tournament_organizer") return NAV_TOURNAMENT_FULLCOM;
+    if (orgType === "camp") return NAV_CAMP_FULLCOM;
     return NAV_CLUB_FULLCOM;
   }
   if (orgType === "club") return NAV_CLUB_PLUS;
@@ -312,30 +361,14 @@ export function resolveNavigation(orgType: OrgType, planCode: PlanCode): NavEntr
   if (orgType === "parent") return NAV_PARENT;
   if (orgType === "cm_agency") return NAV_CM_AGENCY;
   if (orgType === "sponsor") return NAV_SPONSOR;
-  if (orgType === "event") return NAV_ONE_OFF;
+  if (orgType === "tournament_organizer") return NAV_TOURNAMENT_ONE_OFF;
+  if (orgType === "camp") return NAV_CAMP_ONE_OFF;
   return NAV_GENERIC;
 }
 
 /** Un joueur rattaché à un club abonné n'a ni Factures ni Sponsors : le club les porte. */
 export function filterAffiliatedPlayerNav(entries: NavEntry[]): NavEntry[] {
   return entries.filter((e) => e.kind !== "item" || (e.module !== "billing" && e.module !== "sponsors"));
-}
-
-/**
- * Organisateur `event` (Bible §14/§15, 17/08/2026) : NAV_EVENT_FULLCOM/NAV_ONE_OFF sont écrites
- * pour un organisateur de tournoi par défaut ("Mes événements", module "events"). Pour un
- * organisateur de stage/camp (`eventKind === "stage"`), l'objet central devient la Session
- * (Bible §15) : "Mes événements" devient "Mes sessions" (module "campsessions"), et Timeline
- * (eventtimeline, checklist de préparation D'UN tournoi) / Équipes participantes (teams, n'a pas
- * de sens pour un stage) disparaissent du menu — la page /eventtimeline reste techniquement
- * accessible en URL directe (pas supprimée, voir le brief), simplement plus dans CE menu.
- * `eventKind === "tournoi"` (ou absent) : `entries` retournée inchangée.
- */
-export function filterEventOrgNav(entries: NavEntry[], eventKind: "tournoi" | "stage"): NavEntry[] {
-  if (eventKind !== "stage") return entries;
-  return entries
-    .filter((e) => e.kind !== "item" || (e.module !== "eventtimeline" && e.module !== "teams"))
-    .map((e) => (e.kind === "item" && e.module === "events" ? item("campsessions", "Mes sessions", "campsessions") : e));
 }
 
 // ───────────────────────────────────────────────────────────────────────────────────────────

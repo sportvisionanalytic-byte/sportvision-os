@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Lock, HelpCircle, LogOut, Shield, X } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
-import { filterAffiliatedPlayerNav, filterClubRoleNav, filterEventOrgNav, resolveNavigation } from "@/lib/navigation";
+import { filterAffiliatedPlayerNav, filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
 import { formatPlanCredits, PLANS } from "@/lib/plans";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
@@ -37,7 +37,6 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   let entries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
   if (isAffiliatedPlayer) entries = filterAffiliatedPlayerNav(entries);
   if (ctx.organization.type === "club") entries = filterClubRoleNav(entries, ctx.membership.role, ctx.membership.teamScope);
-  if (ctx.organization.type === "event") entries = filterEventOrgNav(entries, ctx.organization.eventKind ?? "tournoi");
 
   // Un éducateur (coach) de club n'a pas de crédits/offre à gérer (§11 du master doc, ligne
   // "Offre / crédits" = Non) : le lien "Gérer mon offre" mènerait de toute façon à /billing,

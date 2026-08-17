@@ -230,7 +230,12 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra, extraLoading: bool
       };
     }
 
-    case "event": {
+    // Bascule 2 org types séparés (migration-clubplus-v44, 17/08/2026) : tournoi et stage/camp
+    // partageaient le même contenu générique "événement" sous l'ancien OrgType unique `event` —
+    // conservé identique pour les deux nouveaux types, aucun signal produit ne justifie de le
+    // différencier ici.
+    case "tournament_organizer":
+    case "camp": {
       const isOneOff = subscription.planCode === "one_off";
       return {
         eyebrow: "Mon événement",

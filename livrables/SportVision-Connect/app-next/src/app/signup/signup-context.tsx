@@ -143,11 +143,18 @@ export function useSignup(): SignupContextValue {
 // = la structure"). Le chemin "Joueur affilié à un club" qui existait ici avant le split
 // Connect/Club+ (11/08/2026, recherche de club + rattachement) a été entièrement retiré : un
 // joueur qui veut rejoindre un club le fait depuis Connect, pas depuis ce tunnel.
+// tournament_organizer/camp : bascule 2 org types séparés (migration-clubplus-v44, 17/08/2026),
+// remplace l'ancien OrgType unique `event`. Comportement du tunnel INCHANGÉ — voir la note en
+// tête de fichier § "Événement" : ce tunnel ne crée jamais une vraie organisation
+// tournoi/stage, seulement un Espace Projet générique (portal-onboarding, profil "organisateur").
+// `camp` n'a pas d'entrée dans ORG_TYPE_OPTIONS ci-dessous (jamais proposé à l'inscription, comme
+// cm_agency/sponsor) mais doit rester présent ici pour que ce Record<OrgType, ...> reste exhaustif.
 export const PLAN_OPTIONS_BY_TYPE: Record<OrgType, PlanCode[]> = {
   club: ["one_off", "club_plus_start", "club_plus_performance", "full_communication"],
   academy: ["one_off", "club_plus_start", "club_plus_performance", "full_communication"],
   coach: ["one_off", "club_plus_start", "full_communication"],
-  event: ["one_off", "full_communication"],
+  tournament_organizer: ["one_off", "full_communication"],
+  camp: [],
   generic: ["one_off"],
   player: [],
   parent: [],
@@ -160,7 +167,7 @@ export const ORG_TYPE_OPTIONS: { type: OrgType; label: string; description: stri
   { type: "academy", label: "Académie", description: "Groupes, stages, formation" },
   { type: "coach", label: "Coach", description: "Activité individuelle ou indépendante" },
   { type: "generic", label: "Autre structure sportive", description: "Ligue, comité, association, entreprise" },
-  { type: "event", label: "Événement", description: "Tournoi, compétition ponctuelle" },
+  { type: "tournament_organizer", label: "Événement", description: "Tournoi, compétition ponctuelle" },
 ];
 
 export const NEEDS_OPTIONS = [

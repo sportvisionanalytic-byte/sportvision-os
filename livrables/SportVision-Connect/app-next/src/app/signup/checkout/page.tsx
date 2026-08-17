@@ -203,13 +203,15 @@ function buildPendingOnboarding(state: SignupState, quoteMessage: string): Pendi
     };
   }
 
-  // generic, event : client Portail (Espace Projet).
+  // generic, tournament_organizer (comportement inchangé — le tunnel public ne crée jamais de
+  // vraie organisation tournoi, seulement un Espace Projet générique ; voir signup-context.tsx) :
+  // client Portail (Espace Projet).
   return {
     kind: "portal-onboarding",
     prenom,
     nom: nomContact,
     telephone,
-    profil: state.orgType === "event" ? "organisateur" : state.orgType === "generic" ? "entreprise" : "particulier",
+    profil: state.orgType === "tournament_organizer" ? "organisateur" : state.orgType === "generic" ? "entreprise" : "particulier",
   };
 }
 

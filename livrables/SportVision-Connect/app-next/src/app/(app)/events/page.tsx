@@ -16,10 +16,11 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { SkeletonRow } from "@/components/ui/Skeleton";
 import { Toast, useToast } from "@/components/feedback/Toast";
 
-// /events — "Mes événements" (Bible §14, organisation.eventKind === "tournoi"). Liste des
-// éditions pilotées par l'organisateur (event_editions, migration-clubplus-v43, NON EXÉCUTÉE) —
-// plusieurs éditions possibles, contrairement à /eventtimeline (checklist de préparation d'UN
-// événement, laissée telle quelle en complément, voir navigation.ts § filterEventOrgNav).
+// /events — "Mes événements" (Bible §14, organisation.type === "tournament_organizer" — bascule
+// 2 org types séparés, migration-clubplus-v44, 17/08/2026). Liste des éditions pilotées par
+// l'organisateur (event_editions, migration-clubplus-v43) — plusieurs éditions possibles,
+// contrairement à /eventtimeline (checklist de préparation d'UN événement, laissée telle quelle
+// en complément).
 
 const STATUT_LABELS: Record<EventEditionStatut, string> = {
   a_venir: "À venir",
@@ -59,7 +60,7 @@ export default function EventsPage() {
   const [lieu, setLieu] = useState("");
   const [sport, setSport] = useState("");
 
-  const isTournoiOrg = ctx.organization.type === "event" && (ctx.organization.eventKind ?? "tournoi") === "tournoi";
+  const isTournoiOrg = ctx.organization.type === "tournament_organizer";
   const allowed = isTournoiOrg && canAccess(ctx, "events");
   const canWrite = canCreate(ctx, "event_edition");
 

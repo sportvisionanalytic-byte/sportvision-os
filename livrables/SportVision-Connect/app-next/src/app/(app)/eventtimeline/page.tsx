@@ -12,12 +12,14 @@ import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
 // /eventtimeline — checklist en 3 phases (avant / jour J / après) pour un tournoi en Full
-// Communication. Lit event_checklist_items (migration-connect-v22-event-checklist-items.sql) par
-// organization_id direct — pas de résolution client_id nécessaire ici (contrairement à
-// sessions/camps) : une organisation event n'a pas de facturation/documents Portail au même sens
-// qu'un club, et la checklist n'a besoin de rien d'autre que l'organisation elle-même. Lecture
-// seule côté Connect (le staff coche/décoche depuis SportVision-OS-Full.html, policy
-// eci_staff_write) : aucune case n'est cliquable ici, mêmes icônes indicatrices qu'avant.
+// Communication (organization.type === "tournament_organizer" — bascule 2 org types séparés,
+// migration-clubplus-v44, 17/08/2026 ; volontairement pas étendu à "camp", voir navigation.ts).
+// Lit event_checklist_items (migration-connect-v22-event-checklist-items.sql) par organization_id
+// direct — pas de résolution client_id nécessaire ici (contrairement à sessions/camps) : une
+// organisation tournoi n'a pas de facturation/documents Portail au même sens qu'un club, et la
+// checklist n'a besoin de rien d'autre que l'organisation elle-même. Lecture seule côté Connect
+// (le staff coche/décoche depuis SportVision-OS-Full.html, policy eci_staff_write) : aucune case
+// n'est cliquable ici, mêmes icônes indicatrices qu'avant.
 //
 // Plus de "dateLabel"/"status" par phase (mock d'origine, entièrement inventés — aucune colonne
 // réelle n'existe pour dater un événement) : remplacés par un badge réel "N/4 faites", calculé
@@ -48,14 +50,14 @@ export default function EventTimelinePage() {
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (ctx.organization.type !== "event") return;
+    if (ctx.organization.type !== "tournament_organizer") return;
     const supabase = createClient();
     fetchEventChecklist(supabase, ctx.organization.id)
       .then(setItems)
       .catch(() => setLoadError(true));
   }, [ctx.organization.id, ctx.organization.type]);
 
-  if (ctx.organization.type !== "event" || !canAccess(ctx, "eventtimeline")) return <LockedModule />;
+  if (ctx.organization.type !== "tournament_organizer" || !canAccess(ctx, "eventtimeline")) return <LockedModule />;
 
   const header = (
     <div>

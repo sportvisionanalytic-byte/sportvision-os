@@ -1,6 +1,6 @@
 import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
 import type { ActiveContext, User } from "@/lib/types";
-import { mapClubPlan, mapClubRole, mapEventKind, mapOrgRole, mapOrgType, mapProjetRole, SPACE_TYPE_LABELS } from "./mappers";
+import { mapClubPlan, mapClubRole, mapOrgRole, mapOrgType, mapProjetRole, SPACE_TYPE_LABELS } from "./mappers";
 
 function buildUserFromAuth(authUser: SupabaseUser): User {
   const meta = (authUser.user_metadata ?? {}) as { prenom?: string; nom?: string; telephone?: string; locale?: "fr" | "en" };
@@ -74,18 +74,19 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
       id: row.organizations.id,
       name: row.organizations.nom,
       subtitle: SPACE_TYPE_LABELS[orgType] ?? orgType,
-      // event/cm_agency (migration-connect-v20, 10/08) : buildOrgSpaceActiveContext (plus bas
-      // dans ce fichier) les gère déjà pleinement, mais restaient absents de cette liste — un
-      // espace event/cm_agency réel n'était donc jamais cliquable, malgré un backend complet.
-      // Trouvé le 12/08/2026 en creusant pourquoi un compte se retrouvait sur l'écran "aucun
-      // espace" et redirigé vers l'ancienne app.
+      // tournoi/stage/cm_agency (migration-connect-v20 puis migration-clubplus-v44) :
+      // buildOrgSpaceActiveContext (plus bas dans ce fichier) les gère déjà pleinement, mais
+      // restaient absents de cette liste — un espace tournoi/stage/cm_agency réel n'était donc
+      // jamais cliquable, malgré un backend complet. Trouvé le 12/08/2026 en creusant pourquoi
+      // un compte se retrouvait sur l'écran "aucun espace" et redirigé vers l'ancienne app.
       clickable:
         orgType === "club" ||
         orgType === "projet" ||
         orgType === "coach" ||
         orgType === "academie" ||
         orgType === "sponsor" ||
-        orgType === "event" ||
+        orgType === "tournoi" ||
+        orgType === "stage" ||
         orgType === "cm_agency",
       organizationType: orgType,
       membershipId: row.id,
@@ -462,21 +463,23 @@ export async function buildProjetActiveContext(
   };
 }
 
-// event/cm_agency (migration-connect-v20) ajoutés le 10/08 : même socle réel exact que
-// coach/académie/sponsor (memberships + organization_role_catalog, pas d'entitlements) —
-// seule différence, leur création passe par connect-staff-create-org/connect-org-activate
-// (staff) plutôt que connect-org-signup (self-service), ce qui ne change rien ici : cette
-// fonction lit uniquement l'état déjà en base, peu importe comment il y est arrivé.
-const GENERIC_ORG_TYPES = ["coach", "academie", "sponsor", "event", "cm_agency"] as const;
+// tournoi/stage/cm_agency (migration-connect-v20 puis migration-clubplus-v44, bascule 2 org
+// types séparés) ajoutés le 10/08 puis 17/08 : même socle réel exact que coach/académie/sponsor
+// (memberships + organization_role_catalog, pas d'entitlements) — seule différence, leur
+// création passe par connect-staff-create-org/connect-org-activate (staff) plutôt que
+// connect-org-signup (self-service), ce qui ne change rien ici : cette fonction lit uniquement
+// l'état déjà en base, peu importe comment il y est arrivé.
+const GENERIC_ORG_TYPES = ["coach", "academie", "sponsor", "tournoi", "stage", "cm_agency"] as const;
 type GenericOrgType = (typeof GENERIC_ORG_TYPES)[number];
 
 /**
- * Construit l'ActiveContext pour un espace Coach, Académie, Sponsor, Événement ou Agence CM.
- * Les 5 partagent le même socle réel (migration-connect-v3/v4/v6/v20) : une vraie ligne
- * `memberships`, un rôle réel via `organization_role_catalog` (pas de check constraint en dur
- * comme pour club_members), et aucune `organization_entitlements` (pas de plan/quota vendu —
- * planCode "one_off", comme pour un espace projet). Une seule fonction paramétrée plutôt que 5
- * quasi-identiques : les 5 backends sont structurellement identiques, seul le rôle diffère.
+ * Construit l'ActiveContext pour un espace Coach, Académie, Sponsor, Tournoi/Événement, Stage/
+ * Camp ou Agence CM. Les 6 partagent le même socle réel (migration-connect-v3/v4/v6/v20,
+ * migration-clubplus-v44) : une vraie ligne `memberships`, un rôle réel via
+ * `organization_role_catalog` (pas de check constraint en dur comme pour club_members), et
+ * aucune `organization_entitlements` (pas de plan/quota vendu — planCode "one_off", comme pour
+ * un espace projet). Une seule fonction paramétrée plutôt que 6 quasi-identiques : les 6
+ * backends sont structurellement identiques, seul le rôle diffère.
  */
 export async function buildOrgSpaceActiveContext(
   supabase: SupabaseClient,
@@ -489,10 +492,10 @@ export async function buildOrgSpaceActiveContext(
 
   const { data } = await supabase
     .from("organizations")
-    .select("id, nom, organization_type, created_at, event_kind")
+    .select("id, nom, organization_type, created_at")
     .eq("id", space.id)
     .maybeSingle();
-  const org = data as { id: string; nom: string; organization_type: string; created_at: string; event_kind: string | null } | null;
+  const org = data as { id: string; nom: string; organization_type: string; created_at: string } | null;
   if (!org || !space.role) return null;
 
   return {
@@ -501,10 +504,6 @@ export async function buildOrgSpaceActiveContext(
       id: org.id,
       type: mapOrgType(org.organization_type),
       name: org.nom,
-      // Uniquement significatif pour orgType === "event" (Bible §14/§15, voir Organization.
-      // eventKind) — inoffensif de le calculer pour coach/académie/sponsor/cm_agency, ignoré
-      // partout ailleurs (organizations.event_kind reste NULL hors type 'event').
-      eventKind: orgType === "event" ? mapEventKind(org.event_kind) : undefined,
       createdAt: org.created_at,
     },
     membership: {

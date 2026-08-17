@@ -15,12 +15,23 @@ const READ_ONLY_ROLES = new Set(["viewer"]);
 /**
  * Types d'organisation pour qui le module "sponsors" a un sens métier — voir navigation.ts :
  * seules ces navigations proposent une entrée "Sponsors"/"Partenaires"/"Mes sponsors"/"Ma
- * visibilité" (club, académie et événement en Full Communication, l'espace propre d'un
+ * visibilité" (club, académie et tournoi/stage en Full Communication, l'espace propre d'un
  * partenaire, un joueur indépendant). Ni coach, ni parent, ni agence CM, ni espace Projet
  * (generic/one_off) n'ont cette entrée nulle part — leur ouvrir le module par défaut affichait
  * une jauge "Full Communication" qui n'a aucun sens pour eux (audit nuit 09-10/08).
+ * `tournament_organizer` ET `camp` (bascule 2 org types séparés, migration-clubplus-v44,
+ * 17/08/2026) : les deux entrées "Sponsors"/"Partenaires" de NAV_TOURNAMENT_FULLCOM/
+ * NAV_CAMP_FULLCOM sont identiques (voir navigation.ts) — aucun signal produit ne distingue les
+ * deux sur ce module, donc les deux restent inclus plutôt que d'exclure "camp" sans preuve.
  */
-const SPONSORS_ORG_TYPES: ReadonlySet<OrgType> = new Set(["club", "academy", "event", "sponsor", "player"]);
+const SPONSORS_ORG_TYPES: ReadonlySet<OrgType> = new Set([
+  "club",
+  "academy",
+  "tournament_organizer",
+  "camp",
+  "sponsor",
+  "player",
+]);
 
 /**
  * Un module absent de READY_MODULES est verrouillé, jamais ouvert par défaut — sinon un compte

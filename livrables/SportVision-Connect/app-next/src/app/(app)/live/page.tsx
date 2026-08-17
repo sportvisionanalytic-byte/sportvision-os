@@ -15,9 +15,11 @@ import { Button } from "@/components/ui/Button";
 
 // /live — fil du jour pour un tournoi en Full Communication. Plan Tier C § Phase 4.
 //
-// Gate à deux niveaux, même pattern que /sessions (Phase 1) : organization.type === "event"
-// d'abord, puis l'état honnête "pas encore relié" si organizations.legacy_client_id est encore
-// null (le rattachement se fait au moment de l'activation, connect-org-activate).
+// Gate à deux niveaux, même pattern que /sessions (Phase 1) : organization.type ===
+// "tournament_organizer" d'abord (bascule 2 org types séparés, migration-clubplus-v44,
+// 17/08/2026 ; volontairement pas étendu à "camp" — ce module reste spécifique au tournoi, voir
+// entitlements.ts), puis l'état honnête "pas encore relié" si organizations.legacy_client_id est
+// encore null (le rattachement se fait au moment de l'activation, connect-org-activate).
 //
 // Une fois relié : le fil et les 2 tuiles "Portée du jour"/"Interactions" viennent de
 // data/event/live.ts, qui réutilise data/shared/contenu-stats.ts (Phase 5, saisie manuelle de
@@ -41,7 +43,7 @@ export default function LivePage() {
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (ctx.organization.type !== "event") return;
+    if (ctx.organization.type !== "tournament_organizer") return;
     const supabase = createClient();
     resolveOrgLegacyClientId(supabase, ctx.organization.id).then(setLinkedClientId);
   }, [ctx.organization.id, ctx.organization.type]);
@@ -54,7 +56,7 @@ export default function LivePage() {
       .catch(() => setLoadError(true));
   }, [linkedClientId]);
 
-  if (ctx.organization.type !== "event" || !canAccess(ctx, "live")) return <LockedModule />;
+  if (ctx.organization.type !== "tournament_organizer" || !canAccess(ctx, "live")) return <LockedModule />;
 
   const header = (
     <div className="flex flex-wrap items-end justify-between gap-5">

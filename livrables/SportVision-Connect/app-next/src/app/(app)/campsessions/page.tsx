@@ -16,10 +16,11 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { SkeletonRow } from "@/components/ui/Skeleton";
 import { Toast, useToast } from "@/components/feedback/Toast";
 
-// /campsessions — "Mes sessions" (Bible §15, organisation.eventKind === "stage"). Objet central
-// "Session" d'un organisateur de stage/camp (event_sessions, migration-clubplus-v43, NON
-// EXÉCUTÉE) — distinct de /sessions (séances individuelles d'un coach indépendant) et de /camps
-// (stages lus en lecture seule pour une académie, calendar_events), les deux hors périmètre ici.
+// /campsessions — "Mes sessions" (Bible §15, organisation.type === "camp" — bascule 2 org types
+// séparés, migration-clubplus-v44, 17/08/2026). Objet central "Session" d'un organisateur de
+// stage/camp (event_sessions, migration-clubplus-v43) — distinct de /sessions (séances
+// individuelles d'un coach indépendant) et de /camps (stages lus en lecture seule pour une
+// académie, calendar_events), les deux hors périmètre ici.
 
 const STATUT_LABELS: Record<EventSessionStatut, string> = {
   a_venir: "À venir",
@@ -58,7 +59,7 @@ export default function CampSessionsPage() {
   const [dateDebut, setDateDebut] = useState("");
   const [lieu, setLieu] = useState("");
 
-  const isStageOrg = ctx.organization.type === "event" && ctx.organization.eventKind === "stage";
+  const isStageOrg = ctx.organization.type === "camp";
   const allowed = isStageOrg && canAccess(ctx, "campsessions");
   const canWrite = canCreate(ctx, "event_session");
 

@@ -362,14 +362,15 @@ function heroContent(organization: { type: string; name: string }): { title: str
       subtitle: "Le calendrier éditorial et la production en cours, en un coup d'œil.",
     };
   }
-  if (organization.type === "event") {
+  if (organization.type === "tournament_organizer" || organization.type === "camp") {
     // Le mock affichait un compte à rebours "J-N" calé sur une date d'événement fictive
     // (ELITE_CUP_EVENT_DATE, une constante du mock). Aucune table réelle ne porte de date
-    // d'événement pour organizations.organization_type='event' à ce jour — retiré plutôt
-    // qu'affiché sur une donnée inventée. Chemin non atteignable en pratique aujourd'hui de toute
-    // façon : seul un club obtient le plan "full_communication" (session.ts:buildClubActiveContext),
-    // un espace event reste toujours en plan "one_off" (buildOrgSpaceActiveContext) et n'affiche
-    // donc jamais ce dashboard pour l'instant.
+    // d'événement pour organizations.organization_type='tournoi'/'stage' à ce jour (bascule 2 org
+    // types séparés, migration-clubplus-v44, 17/08/2026) — retiré plutôt qu'affiché sur une donnée
+    // inventée. Chemin non atteignable en pratique aujourd'hui de toute façon : seul un club
+    // obtient le plan "full_communication" (session.ts:buildClubActiveContext), un espace
+    // tournoi/camp reste toujours en plan "one_off" (buildOrgSpaceActiveContext) et n'affiche donc
+    // jamais ce dashboard pour l'instant.
     return {
       title: `${organization.name} — communication de l'événement`,
       subtitle: "Toute la communication de l'événement, du teasing au bilan.",

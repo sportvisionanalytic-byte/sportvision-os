@@ -28,7 +28,11 @@ import { Toast, useToast } from "@/components/feedback/Toast";
 const ROLES_BY_ORG_TYPE: Record<OrgType, MembershipRole[]> = {
   club: ["admin", "president", "communication_manager", "secretary", "coach", "team_manager", "sports_director", "admin_staff", "sponsor_manager", "treasurer", "board_member", "viewer", "external_cm"],
   academy: ["admin", "manager", "coach", "internal_cm", "staff", "viewer"],
-  event: ["event_admin", "communication_manager", "partner_manager", "staff", "volunteer", "partner"],
+  // Bascule 2 org types séparés (migration-clubplus-v44, 17/08/2026) : mêmes rôles pour tournoi
+  // et stage/camp qu'auparavant pour l'unique OrgType `event` (organization_role_catalog partage
+  // aussi le même catalogue responsable/partenaire pour les deux, voir mappers.ts).
+  tournament_organizer: ["event_admin", "communication_manager", "partner_manager", "staff", "volunteer", "partner"],
+  camp: ["event_admin", "communication_manager", "partner_manager", "staff", "volunteer", "partner"],
   coach: ["admin", "viewer"],
   player: ["viewer"],
   parent: ["viewer"],

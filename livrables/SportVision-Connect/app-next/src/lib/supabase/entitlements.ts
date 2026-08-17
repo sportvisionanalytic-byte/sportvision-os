@@ -86,25 +86,26 @@ import type { ModuleKey } from "@/lib/types";
 // "reports" à ce jour, donc pas d'entitlement dédié — accès ouvert à tout membre actif dès que le
 // module est READY, comme le reste du lot Tier B Phase 2.
 //
-// "events"/"campsessions" (17/08/2026, Bible §14/§15) : lisent/écrivent event_editions/
-// event_sessions (migration-clubplus-v43, NON EXÉCUTÉE), scope organization_id, RLS
-// is_org_member/is_org_admin (voir header de la migration). Le gate réel se fait par
-// organization.type === "event" ET organization.eventKind (mapEventKind, supabase/mappers.ts)
-// dans events/page.tsx ("tournoi") et campsessions/page.tsx ("stage"), pas par cette seule
-// liste — même pattern que sessions/camps/eventtimeline ci-dessus. Pas de mapping
-// MODULE_TO_CONNECT_MODULE : même raisonnement que eventtimeline/live, aucune
-// organization_entitlements pour le type event.
+// "events"/"campsessions" (17/08/2026, Bible §14/§15 ; bascule 2 org types séparés le
+// 17/08/2026, migration-clubplus-v44) : lisent/écrivent event_editions/event_sessions
+// (migration-clubplus-v43), scope organization_id, RLS is_org_member/is_org_admin (voir header
+// de la migration). Le gate réel se fait directement par organization.type ===
+// "tournament_organizer" dans events/page.tsx et organization.type === "camp" dans
+// campsessions/page.tsx, pas par cette seule liste — même pattern que sessions/camps/
+// eventtimeline ci-dessus. Pas de mapping MODULE_TO_CONNECT_MODULE : même raisonnement que
+// eventtimeline/live, aucune organization_entitlements pour ces deux types.
 //
 // "eventtimeline"/"live" (10/08/2026, Tier C Phase 4) : lisent event_checklist_items
 // (migration-connect-v22-event-checklist-items.sql, checklist 3 phases, écriture staff
 // admin/sec/com uniquement — voir SportVision-OS-Full.html § modalChecklistEvenement) et
 // contenus/contenu_stats filtrés sur organizations.legacy_client_id (accès étendu par
 // migration-connect-v23-event-live-contenus-access.sql). Le gate réel se fait par
-// organization.type === "event" dans eventtimeline/page.tsx et live/page.tsx, pas par cette seule
-// liste — même pattern que sessions/camps (coach/académie). Pas de mapping
-// MODULE_TO_CONNECT_MODULE : aucune organization_entitlements n'existe pour le type event (Full
-// Communication vendu commercialement, pas mesuré par crédits — même logique que coach/académie/
-// sponsor documentée plus haut).
+// organization.type === "tournament_organizer" dans eventtimeline/page.tsx et live/page.tsx
+// (bascule 2 org types séparés, 17/08/2026 — les deux écrans restent spécifiques au tournoi, pas
+// étendus à "camp"), pas par cette seule liste — même pattern que sessions/camps (coach/académie).
+// Pas de mapping MODULE_TO_CONNECT_MODULE : aucune organization_entitlements n'existe pour ces
+// types (Full Communication vendu commercialement, pas mesuré par crédits — même logique que
+// coach/académie/sponsor documentée plus haut).
 export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "dashboard",
   "teams",

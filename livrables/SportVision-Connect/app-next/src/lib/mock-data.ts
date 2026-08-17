@@ -130,7 +130,7 @@ export const mockOrganizations: Organization[] = [
   },
   {
     id: "org-tournoirentree",
-    type: "event",
+    type: "tournament_organizer",
     name: "Tournoi de la Rentrée",
     address: "Complexe sportif, 77300 Fontainebleau",
     accountManagerId: "sv-theo-marchand",
@@ -138,7 +138,7 @@ export const mockOrganizations: Organization[] = [
   },
   {
     id: "org-elitecup",
-    type: "event",
+    type: "tournament_organizer",
     name: "Elite Cup 2026",
     address: "Stade départemental, 77000 Melun",
     instagramHandle: "@elitecup2026",

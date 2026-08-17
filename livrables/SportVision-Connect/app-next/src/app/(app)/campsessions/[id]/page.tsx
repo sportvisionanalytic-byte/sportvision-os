@@ -45,7 +45,7 @@ export default function EventSessionPage() {
   const [newGroupName, setNewGroupName] = useState("");
   const [newParticipantName, setNewParticipantName] = useState("");
 
-  const isStageOrg = ctx.organization.type === "event" && ctx.organization.eventKind === "stage";
+  const isStageOrg = ctx.organization.type === "camp";
   const allowed = isStageOrg && canAccess(ctx, "campsessions");
   const canWrite = canCreate(ctx, "event_session");
 

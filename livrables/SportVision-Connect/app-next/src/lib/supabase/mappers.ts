@@ -12,22 +12,13 @@ const ORG_TYPE_MAP: Record<string, OrgType> = {
   coach: "coach",
   projet: "generic",
   sponsor: "sponsor",
-  event: "event",
+  tournoi: "tournament_organizer",
+  stage: "camp",
   cm_agency: "cm_agency",
 };
 
 export function mapOrgType(realType: string): OrgType {
   return ORG_TYPE_MAP[realType] ?? "generic";
-}
-
-/**
- * organizations.event_kind réel (migration-clubplus-v43, NULL autorisé) → Organization.eventKind
- * du design. NULL/valeur inconnue → "tournoi" : une organisation `event` déjà en base avant cette
- * migration (aucune à ce jour, vérifié) garde le comportement historique (Bible §14, "Mes
- * événements") plutôt que de basculer silencieusement en Stage/Camp (Bible §15).
- */
-export function mapEventKind(realEventKind: string | null | undefined): "tournoi" | "stage" {
-  return realEventKind === "stage" ? "stage" : "tournoi";
 }
 
 /** club_members.role réel (check constraint) → MembershipRole du design.
@@ -98,10 +89,12 @@ const SPONSOR_ROLE_MAP: Record<string, MembershipRole> = {
   contact: "viewer",
 };
 
-// event/cm_agency (migration-connect-v20) : catalogue minimaliste 2 rôles chacun,
-// comme sponsor à sa création — voir mapping ADMIN_ROLE_BY_TYPE côté
-// connect-org-activate pour la contrepartie serveur.
-const EVENT_ROLE_MAP: Record<string, MembershipRole> = {
+// tournoi/stage/cm_agency (migration-connect-v20 puis migration-clubplus-v44, bascule 2 org
+// types séparés) : catalogue minimaliste 2 rôles chacun, comme sponsor à sa création — voir
+// mapping ADMIN_ROLE_BY_TYPE côté connect-org-activate pour la contrepartie serveur. Même
+// catalogue de rôles réels (responsable/partenaire) pour tournoi et stage — voir migration-
+// clubplus-v44, section 3.
+const TOURNAMENT_CAMP_ROLE_MAP: Record<string, MembershipRole> = {
   responsable: "event_admin",
   partenaire: "partner",
 };
@@ -112,12 +105,12 @@ const CM_AGENCY_ROLE_MAP: Record<string, MembershipRole> = {
 };
 
 export function mapOrgRole(
-  orgType: "coach" | "academie" | "sponsor" | "event" | "cm_agency",
+  orgType: "coach" | "academie" | "sponsor" | "tournoi" | "stage" | "cm_agency",
   realRole: string,
 ): MembershipRole {
   if (orgType === "coach") return COACH_ROLE_MAP[realRole] ?? "viewer";
   if (orgType === "academie") return ACADEMIE_ROLE_MAP[realRole] ?? "viewer";
-  if (orgType === "event") return EVENT_ROLE_MAP[realRole] ?? "viewer";
+  if (orgType === "tournoi" || orgType === "stage") return TOURNAMENT_CAMP_ROLE_MAP[realRole] ?? "viewer";
   if (orgType === "cm_agency") return CM_AGENCY_ROLE_MAP[realRole] ?? "viewer";
   return SPONSOR_ROLE_MAP[realRole] ?? "viewer";
 }
@@ -145,6 +138,7 @@ export const SPACE_TYPE_LABELS: Record<string, string> = {
   sponsor: "Sponsor / Partenaire",
   player: "Joueur",
   parent: "Parent / Famille",
-  event: "Événement",
+  tournoi: "Tournoi / Événement",
+  stage: "Stage / Camp",
   cm_agency: "Agence CM",
 };

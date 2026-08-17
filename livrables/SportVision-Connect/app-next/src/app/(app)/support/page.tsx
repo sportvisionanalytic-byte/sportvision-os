@@ -109,7 +109,11 @@ function SupportPageContent() {
     (t) => !query.trim() || t.title.toLowerCase().includes(query.trim().toLowerCase()),
   );
 
-  const isOneOffClient = ctx.organization.type === "event";
+  // Bascule 2 org types séparés (migration-clubplus-v44, 17/08/2026) : le bloc "Votre échange
+  // avec SportVision" ci-dessous n'est pas spécifique au tournoi, il concerne tout client
+  // "one-off" — tournoi ET stage/camp partageaient déjà NAV_ONE_OFF (aujourd'hui
+  // NAV_TOURNAMENT_ONE_OFF/NAV_CAMP_ONE_OFF) avant la bascule.
+  const isOneOffClient = ctx.organization.type === "tournament_organizer" || ctx.organization.type === "camp";
   const supportThread = (mockThreads[ctx.organization.id] ?? []).find((t) => t.contextType === "support");
   const supportMessages = supportThread ? mockMessages[supportThread.id] ?? [] : [];
 
