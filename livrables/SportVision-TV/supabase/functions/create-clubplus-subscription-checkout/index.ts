@@ -75,7 +75,11 @@ const CLUBPLUS_TARIFS: Record<string, Record<string, { euros: number; label: str
   },
   performance: {
     "12mois": { euros: 129, label: "SportVision Club+ Performance — engagement 12 mois" },
-    "sans": { euros: 149, label: "SportVision Club+ Performance — sans engagement" },
+    // 17/08/2026 — 139€ (pas 149€) : aligné sur la vitrine publique (club-plus.html), qui
+    // faisait foi — audit complet Club+ du 17/08/2026, confirmé par Fouka. ensurePrice()
+    // en dessous crée automatiquement un nouveau Price Stripe et bascule le lookup_key
+    // dessus au prochain checkout, sans action manuelle sur le dashboard Stripe.
+    "sans": { euros: 139, label: "SportVision Club+ Performance — sans engagement" },
   },
 };
 

@@ -72,7 +72,11 @@ function json(body: unknown, status = 200) {
   });
 }
 
-const CREDITS_BY_PLAN: Record<string, number> = { club: 5, performance: 20 };
+// 17/08/2026 — 10 (Start) / 40 (Performance) : alignés sur l'affichage réel
+// (plans.ts monthlyCredits), qui faisait foi jusqu'ici sans être ce qui était
+// réellement posé en base — trouvé lors de l'audit complet Club+ du 17/08/2026,
+// confirmé par Fouka.
+const CREDITS_BY_PLAN: Record<string, number> = { club: 10, performance: 40 };
 
 const STATUS_MESSAGES: Record<string, string> = {
   invalid: "Ce lien d'activation n'est pas valide.",

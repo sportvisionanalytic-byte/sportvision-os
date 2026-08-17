@@ -56,7 +56,9 @@ function json(body: unknown, status = 200) {
   });
 }
 
-const CREDITS_BY_PLAN: Record<string, number> = { club: 5, performance: 20 };
+// 17/08/2026 — 10 (Start) / 40 (Performance), alignés sur plans.ts monthlyCredits (audit
+// complet Club+ du 17/08/2026, confirmé par Fouka) — voir clubplus-activate.
+const CREDITS_BY_PLAN: Record<string, number> = { club: 10, performance: 40 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

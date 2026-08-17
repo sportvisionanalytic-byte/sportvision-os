@@ -83,7 +83,9 @@ const CLUBPLUS_CONNECT_URL = Deno.env.get("CONNECT_URL") || "https://connect.spo
 // Crédits mensuels inclus par formule. Doit rester aligné avec CLUBPLUS_TARIFS
 // dans create-clubplus-subscription-checkout et avec les libellés publics du
 // wizard d'inscription (SportVision-Club-Plus.html).
-const CLUBPLUS_PLAN_CREDITS: Record<string, number> = { club: 5, performance: 20 };
+// 17/08/2026 — 10 (Start) / 40 (Performance), alignés sur plans.ts monthlyCredits (audit
+// complet Club+ du 17/08/2026, confirmé par Fouka) — voir clubplus-activate/clubplus-onboarding.
+const CLUBPLUS_PLAN_CREDITS: Record<string, number> = { club: 10, performance: 40 };
 
 // Statut Stripe → clubs.subscription_status ('actif' | 'impaye' | 'annule').
 // `incomplete` (3-D Secure jamais confirmé) est traité comme un impayé : le

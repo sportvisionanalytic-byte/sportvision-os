@@ -12,6 +12,12 @@ import type { PlanCode } from "./types";
 // branché côté backend (aucune table/Price Stripe ne la représente) — gardé "sur
 // devis" plutôt que d'afficher un chiffre inventé.
 //
+// 17/08/2026 — Performance sans engagement corrigé 149€ → 139€ (la vitrine publique
+// affichait 139€ depuis le début, Stripe/cette maquette avaient 149€ ; Fouka a tranché
+// pour 139€ — audit complet Club+). monthlyCredits (10/40) confirmé correct par Fouka :
+// c'est CREDITS_BY_PLAN côté backend (clubplus-activate/onboarding, stripe-webhook) qui
+// avait tort (5/20) et a été corrigé pour matcher cette maquette, pas l'inverse.
+//
 // 11/08/2026 — offre "Essentiel" retirée (décision Fouka) : elle n'a jamais eu de vrai
 // tarif ("sur devis" en permanence), n'a jamais été proposée sur la vitrine publique
 // (club-plus.html ne montre que Club+ Start/Performance), et côté backend un club réel
@@ -54,7 +60,7 @@ export const PLANS: Record<PlanCode, PlanDefinition> = {
     name: "Club+ Performance",
     tier: 2,
     monthlyPrice: 129,
-    monthlyPriceNoCommitment: 149,
+    monthlyPriceNoCommitment: 139,
     monthlyPriceConfirmed: true,
     monthlyCredits: 40,
     seasonPresences: 5,
