@@ -88,7 +88,7 @@ section{position:relative}
 .site-header .container{display:flex;align-items:center;justify-content:space-between;gap:24px}
 .site-header.solid{background:rgba(7,10,23,.86);backdrop-filter:blur(14px);box-shadow:0 1px 0 rgba(255,255,255,.06);padding:12px 0}
 .brand{display:flex;align-items:center;gap:9px;font-family:var(--font-head);font-weight:800;font-size:19px;color:#fff}
-.brand .mark{width:32px;height:32px;border-radius:9px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;flex-shrink:0}
+.brand .mark{width:32px;height:32px;object-fit:contain;flex-shrink:0}
 .brand .by{font-family:var(--font-body);font-weight:500;font-size:11px;color:var(--text-secondary);margin-left:2px}
 .main-nav{display:flex;gap:22px}
 .main-nav a{font-size:14px;font-weight:600;color:rgba(255,255,255,.82);transition:color .15s}
@@ -372,7 +372,7 @@ section{position:relative}
 
 <header class="site-header" id="site-header">
   <div class="container">
-    <a href="index.html" class="brand"><span class="mark" aria-hidden="true">S</span>SportVision</a>
+    <a href="index.html" class="brand"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true">SportVision</a>
     <nav class="main-nav">
       <div class="nav-item">
         <a href="prestations.html" class="active">Prestations <span class="nav-caret">▾</span></a>
@@ -380,6 +380,8 @@ section{position:relative}
           <a href="prestation-match-photo.html">Match photo</a>
           <a href="prestation-match-video.html">Match vidéo</a>
           <a href="prestation-pack-match.html">Pack Match Complet</a>
+          <a href="prestation-camera-isolee.html">Caméra isolée joueur</a>
+          <a href="prestation-montage-compilation.html">Montage &amp; compilation</a>
           <a href="prestation-shooting-joueur.html">Shooting joueur</a>
           <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
           <a href="prestation-media-day.html">Media Day</a>
@@ -419,6 +421,8 @@ section{position:relative}
       <a href="prestation-match-photo.html">Match photo</a>
       <a href="prestation-match-video.html">Match vidéo</a>
       <a href="prestation-pack-match.html">Pack Match Complet</a>
+      <a href="prestation-camera-isolee.html">Caméra isolée joueur</a>
+      <a href="prestation-montage-compilation.html">Montage &amp; compilation</a>
       <a href="prestation-shooting-joueur.html">Shooting joueur</a>
       <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
       <a href="prestation-media-day.html">Media Day</a>
@@ -493,6 +497,33 @@ section{position:relative}
         <p class="desc">Photos + vidéo + highlight simple, dans une seule prestation. Délai moyen : 3 à 5 jours ouvrés.</p>
         <div class="price-row"><span class="price">160 € <small>TTC</small></span></div>
         <a href="prestation-pack-match.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche pack complet</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ SUIVI INDIVIDUEL & MONTAGE ══════════════ -->
+<section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Très demandé</span>
+      <h2>Suivi individuel &amp; montage.</h2>
+      <p>Deux prestations très sollicitées en ce moment — pour un joueur ou pour valoriser vos rushs existants.</p>
+    </div>
+    <div class="prestation-grid reveal">
+      <div class="prestation-card" id="camera-isolee">
+        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 10 5-3v10l-5-3z"/></svg></div><span class="sans-abo">Très demandé</span></div>
+        <h4>Caméra isolée joueur</h4>
+        <p class="desc">Un opérateur dédié suit exclusivement un seul joueur pendant tout le match, pour un montage individuel — idéal pour un dossier de recrutement.</p>
+        <div class="price-row"><span class="price">150 € <small>TTC</small></span></div>
+        <a href="prestation-camera-isolee.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche caméra isolée</a>
+      </div>
+      <div class="prestation-card" id="montage-compilation">
+        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 10 18 0M9 4v16"/></svg></div><span class="sans-abo">Très demandé</span></div>
+        <h4>Montage &amp; compilation</h4>
+        <p class="desc">Vos meilleures actions (caméra Veo, caméra isolée, plusieurs matchs) réunies en une seule compilation prête à partager.</p>
+        <div class="price-row"><span class="price">Dès 39,90 € <small>HT</small></span></div>
+        <a href="prestation-montage-compilation.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Voir la fiche montage &amp; compilation</a>
       </div>
     </div>
   </div>
@@ -642,7 +673,7 @@ section{position:relative}
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a href="index.html" class="brand" style="font-size:18px"><span class="mark" aria-hidden="true" style="width:28px;height:28px;font-size:14px">S</span>SportVision</a>
+        <a href="index.html" class="brand" style="font-size:18px"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" style="width:28px;height:28px;padding:4px">SportVision</a>
         <p>Photo, vidéo et communication sportive — par ELKANA GROUP.</p>
       </div>
       <div class="footer-col"><h5>Prestations</h5><ul>

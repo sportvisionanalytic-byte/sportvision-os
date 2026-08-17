@@ -83,7 +83,7 @@ section{position:relative}
 .site-header .container{display:flex;align-items:center;justify-content:space-between;gap:24px}
 .site-header.solid{background:rgba(7,10,23,.86);backdrop-filter:blur(14px);box-shadow:0 1px 0 rgba(255,255,255,.06);padding:12px 0}
 .brand{display:flex;align-items:center;gap:9px;font-family:var(--font-head);font-weight:800;font-size:19px;color:#fff}
-.brand .mark{width:32px;height:32px;border-radius:9px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;flex-shrink:0}
+.brand .mark{width:32px;height:32px;object-fit:contain;flex-shrink:0}
 .brand .by{font-family:var(--font-body);font-weight:500;font-size:11px;color:var(--text-secondary);margin-left:2px}
 .main-nav{display:flex;gap:30px}
 .main-nav a{font-size:14.5px;font-weight:600;color:rgba(255,255,255,.82);transition:color .15s}
@@ -440,7 +440,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 <!-- ══════════════ HEADER ══════════════ -->
 <header class="site-header" id="site-header">
   <div class="container">
-    <a href="index.html" class="brand"><span class="mark" aria-hidden="true">S</span>SportVision</a>
+    <a href="index.html" class="brand"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true">SportVision</a>
     <nav class="main-nav">
       <div class="nav-item">
         <a href="prestations.html">Prestations <span class="nav-caret">▾</span></a>
@@ -448,6 +448,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
           <a href="prestation-match-photo.html">Match photo</a>
           <a href="prestation-match-video.html">Match vidéo</a>
           <a href="prestation-pack-match.html">Pack Match Complet</a>
+          <a href="prestation-camera-isolee.html">Caméra isolée joueur</a>
+          <a href="prestation-montage-compilation.html">Montage &amp; compilation</a>
           <a href="prestation-shooting-joueur.html">Shooting joueur</a>
           <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
           <a href="prestation-media-day.html">Media Day</a>
@@ -487,6 +489,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
       <a href="prestation-match-photo.html">Match photo</a>
       <a href="prestation-match-video.html">Match vidéo</a>
       <a href="prestation-pack-match.html">Pack Match Complet</a>
+      <a href="prestation-camera-isolee.html">Caméra isolée joueur</a>
+      <a href="prestation-montage-compilation.html">Montage &amp; compilation</a>
       <a href="prestation-shooting-joueur.html">Shooting joueur</a>
       <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
       <a href="prestation-media-day.html">Media Day</a>
@@ -652,7 +656,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a href="index.html" class="brand" style="font-size:18px"><span class="mark" aria-hidden="true" style="width:28px;height:28px;font-size:14px">S</span>SportVision</a>
+        <a href="index.html" class="brand" style="font-size:18px"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" style="width:28px;height:28px;padding:4px">SportVision</a>
         <p>Photo, vidéo et communication sportive — par ELKANA GROUP.</p>
       </div>
       <div class="footer-col"><h5>Prestations</h5><ul>

@@ -4,6 +4,41 @@ Complète `index.html`. Couvre les points du brief qui ne sont pas du code : ana
 
 ---
 
+## 0. Ajout du 17/08/2026 — 2 nouvelles prestations mises en avant
+
+Sur demande directe de Fouka ("en ce moment on me contacte beaucoup pour les montages compilation, prestation caméra isolée") : deux prestations jusque-là jamais isolées du catalogue (seulement mentionnées en creux dans "Match vidéo") ont chacune reçu leur propre fiche, avec un vrai extrait vidéo (ffmpeg, rushs fournis par Fouka).
+
+- `prestation-camera-isolee.html` — Caméra isolée joueur, tarif "Sur devis".
+- `prestation-montage-compilation.html` — Montage & compilation vidéo, tarif "Sur devis".
+- Mises en avant en premier dans la grille "Prestations les plus demandées" de la home (badge "Très demandé"), dans une section dédiée de `prestations.html`, et comme need-cards dans `reserver.html` (slugs `camera-isolee`/`montage-compilation`).
+- Liens ajoutés dans le menu déroulant "Prestations" (desktop + mobile) sur les 30 autres pages HTML du site (script Python, insertion après "Pack Match Complet" — vérifié fichier par fichier).
+- Extraits vidéo réels : `assets/realisations/videos/reel-camera-isolee-01.mp4` et `reel-compilation-veo-01.mp4` (15s, 720×1280, encodés depuis les rushs de `context/import/banque contenue Sportvision/nos prestation/`), + posters correspondants.
+- **Tarifs confirmés par Fouka (17/08, plus tard dans la soirée)** et appliqués partout (2 fiches, homepage, catalogue, `reserver.html`) :
+  - Caméra isolée joueur : **150 € TTC** par joueur suivi (plusieurs joueurs = sur devis).
+  - Montage & compilation : tarif déjà défini côté Connect (migration-connect-v63/v64/v65, confirmé par Fouka le 15/08) — **39,90 € HT** si rushs pré-découpés (≤6 min, au-delà sur devis), ou **40/55/70/80 € HT** pour 1 à 4 matchs via lien (au-delà sur devis). Détaillé dans un vrai tableau tarifaire sur `prestation-montage-compilation.html`.
+  - Combo Drone + Photo (`reserver.html`) : ajusté de 180 € → **160 € TTC** (même tarif que Photo + Veo).
+  - Nouveau pack "Photo + Vidéo + Highlight 4K" ajouté dans `reserver.html` (slug `pack-photo-video-highlight`) : **180 € TTC**.
+  - "Match vidéo" relabellisé "Match filmé Veo" dans `reserver.html` (même prix 120 €, juste plus précis).
+  - 3 clips vidéo caméra isolée supplémentaires ajoutés (rushs fournis par Fouka) dans la galerie homepage + galerie complète.
+
+## 0 bis. Ajout du 17/08/2026 — contenu réel (logos, galerie, témoignages)
+
+- **Logos partenaires** (barre de confiance) : 7 vrais logos remplacent le texte seul (`assets/partners/` — RC Pays de Fontainebleau, FC Varenne Féminine, ASA Montereau, ES Colombienne, Elite Sports Camps Horizon, Roi du Béton, Alchimist Performance).
+- **Section témoignages** reconstruite avec 6 vrais avis clients (captures WhatsApp/Instagram fournies par Fouka) — attribution par rôle/club, jamais le pseudo brut, par respect de la vie privée.
+- **Galerie Réalisations** enrichie de 7 nouveaux visuels réels (ASA Montereau, ES Colombienne montée R2, FC Varennes montée, tournoi international Sens, académie Petrus vs Leeds/Sunderland) + 2 études de cas illustrées (FC Varennes, ES Colombienne).
+- Contenu source : `context/import/banque contenue Sportvision/` (178 fichiers fournis, sélection curatée — pas un import brut, chaque photo/vidéo a été regardée avant d'être retenue).
+- **Nouveau logo + charte graphique (DA)** fournis par Fouka mais **pas appliqués** : rangés dans `assets/brand/` (`sportvision-logo-2026.png`, `DA-visuel-2026.png`). Toucherait le header de toutes les pages + une palette légèrement différente (accent rose en plus) — décision à prendre avec Fouka avant d'y toucher.
+- Vidéos brutes ("nos prestation") trop volumineuses pour le site telles quelles (jusqu'à 760 Mo) — seuls 2 extraits de 15s ont été recadrés/compressés (voir § 0 ci-dessus), le reste du dossier reste en source.
+
+## 0 ter. Ajout du 17-18/08/2026 — logo réel + audit de couverture image/vidéo
+
+- **Logo réel appliqué** partout (header + footer, 34 pages) : `assets/brand/logo-mark.png` remplace le "S" généré en CSS. Décision distincte de la charte graphique complète (DA, palette, typographies) : celle-ci reste en réserve (`assets/brand/DA-visuel-2026.png`), pas appliquée — seul le logo a été demandé explicitement ("logo si il faut").
+- Favicon **volontairement laissé tel quel** (SVG simple, déjà propre à 16/32px) : le nouveau logo, très détaillé, perdrait en lisibilité à cette taille.
+- **Audit de couverture** : sur les 19 pages `feature-visual` (club-plus, full-communication×5, accompagnements×5, prestation-*×9), une seule illustration manquante trouvée (`prestation-shooting-joueur.html`, section Options) — le reste du site était déjà entièrement illustré avec de vrais visuels depuis une session antérieure. Corrigée avec une vraie photo (`foot-portrait-05.jpg`).
+- Les 4 études de cas encore en dégradé (Brunoy FC, ASA Montereau shooting collectif, Elite Sport Camp Horizon, FC Milly-Gâtinais) restent volontairement non illustrées : aucune photo disponible ne correspond exactement au texte déjà écrit (ex. les photos ASA Montereau disponibles sont des actions de match, pas le "shooting collectif" décrit) — mieux vaut l'absence qu'une photo qui contredit la légende.
+
+---
+
 ## 1. Ce qui a été livré
 
 `livrables/SportVision/index.html` — page d'accueil publique complète, un seul fichier autonome (HTML/CSS/JS, aucune dépendance sauf les polices Google Fonts Manrope/Inter), sans authentification requise. Sections construites, dans l'ordre du brief : header, hero, barre de confiance, problème, démonstration, 5 sections fonctionnelles alternées, avant/après, solutions par profil (onglets), offres, services, réalisations (galerie filtrable), études de cas, témoignages, comment ça marche, aperçu de l'app privée, FAQ (accordéon), CTA final, footer complet. Le bouton "Se connecter" et tous les CTA de connexion pointent vers `../SportVision-Connect/app/index.html`.
@@ -29,12 +64,12 @@ Rien n'est en Lorem Ipsum, mais plusieurs éléments sont des **placeholders exp
 
 | Élément | État actuel | À faire avant publication |
 |---|---|---|
-| Témoignages (section "Ce qu'en disent nos clients") | Textes plausibles, non attribués à une personne réelle, mention "en cours de collecte" ajoutée sous la section | Remplacer par de vrais témoignages avec accord de la personne, ou retirer la section |
-| Logos partenaires (barre de confiance) | Texte seul (FC Fontainebleau, Varenne, Elite Sport Camp, Games Factory), pas de vrais logos | Fournir les logos réels + accord de chaque structure pour figurer sur le site |
+| Témoignages (section "Ce qu'en disent nos clients") | **17/08/2026 : section reconstruite avec 6 vrais avis** (captures WhatsApp/Instagram fournies par Fouka, `context/import/banque contenue Sportvision/avis clients/`) — attribution par rôle/club, jamais le pseudo brut du client (vie privée), citations reformatées mais fidèles au sens original | Idéalement, remplacer l'attribution générique ("Parent d'un joueur") par un vrai nom + accord explicite si Fouka veut aller plus loin |
+| Logos partenaires (barre de confiance) | **17/08/2026 : vrais logos intégrés** (RC Pays de Fontainebleau, FC Varenne Féminine, ASA Montereau, ES Colombienne, Elite Sports Camps Horizon, Roi du Béton, Alchimist Performance — `assets/partners/`) ; Games Factory/Brunoy FC/FC Milly-Gâtinais restent en texte seul (aucun logo fourni) | Fournir les logos manquants si disponibles ; confirmer l'accord de chaque structure pour figurer sur le site |
 | Chiffres/statistiques | Volontairement absents (aucun "500 clubs accompagnés" inventé) — remplacés par une mention factuelle des zones d'intervention (Yonne, Seine-et-Marne, Île-de-France) | Ajouter de vrais chiffres dès qu'ils sont mesurés et validés |
-| Galerie "Réalisations" | Cadres colorés en dégradé (aucune vraie photo/vidéo disponible) | Remplacer par de vrais visuels SportVision, format WebP/AVIF compressé |
+| Galerie "Réalisations" | Déjà enrichie d'un vrai fond de 46+ photos/23 vidéos captées par SportVision (session antérieure) ; **17/08/2026 : +4 photos** (ASA Montereau, ES Colombienne montée R2, FC Varennes montée, tournoi international) + les 2 études de cas FC Varennes/ES Colombienne illustrées avec de vraies photos | Compléter si Fouka fournit d'autres visuels marquants (le dossier `gros projet realisé/` contient 114 fichiers au total, seule une sélection a été utilisée) |
 | Mockups produit (hero, sections fonctionnalités) | Cartes stylisées reconstituant l'interface Connect, pas de vraies captures d'écran | Remplacer par de vraies captures une fois Connect testé et stabilisé |
-| Icônes PWA / favicons du site | Aucune | À créer, cohérentes avec celles déjà prévues pour Connect |
+| Icônes PWA / favicons du site | Favicon actuel = "S" généré en CSS/SVG simple | **17/08/2026 : un nouveau logo SportVision (icône stylisée + DA complète) a été fourni** par Fouka (`assets/brand/sportvision-logo-2026.png`, `assets/brand/DA-visuel-2026.png`) — **pas encore appliqué** : remplacerait le favicon ET le `.mark` du header sur TOUTES les pages du site (dizaines de fichiers), et la DA propose une palette légèrement différente (accent rose `#FF2CA3` absent de la charte actuelle) — décision de refonte visuelle à valider explicitement avec Fouka avant de toucher à tout le site |
 
 ## 4. Recommandations SEO
 

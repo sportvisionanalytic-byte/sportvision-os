@@ -88,7 +88,7 @@ section{position:relative}
 .site-header .container{display:flex;align-items:center;justify-content:space-between;gap:24px}
 .site-header.solid{background:rgba(7,10,23,.86);backdrop-filter:blur(14px);box-shadow:0 1px 0 rgba(255,255,255,.06);padding:12px 0}
 .brand{display:flex;align-items:center;gap:9px;font-family:var(--font-head);font-weight:800;font-size:19px;color:#fff}
-.brand .mark{width:32px;height:32px;border-radius:9px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;flex-shrink:0}
+.brand .mark{width:32px;height:32px;object-fit:contain;flex-shrink:0}
 .brand .by{font-family:var(--font-body);font-weight:500;font-size:11px;color:var(--text-secondary);margin-left:2px}
 .main-nav{display:flex;gap:22px}
 .main-nav a{font-size:14px;font-weight:600;color:rgba(255,255,255,.82);transition:color .15s}
@@ -385,7 +385,7 @@ section{position:relative}
 
 <header class="site-header" id="site-header">
   <div class="container">
-    <a href="index.html" class="brand"><span class="mark" aria-hidden="true">S</span>SportVision</a>
+    <a href="index.html" class="brand"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true">SportVision</a>
     <nav class="main-nav">
       <div class="nav-item">
         <a href="prestations.html">Prestations <span class="nav-caret">▾</span></a>
@@ -393,6 +393,8 @@ section{position:relative}
           <a href="prestation-match-photo.html">Match photo</a>
           <a href="prestation-match-video.html">Match vidéo</a>
           <a href="prestation-pack-match.html">Pack Match Complet</a>
+          <a href="prestation-camera-isolee.html">Caméra isolée joueur</a>
+          <a href="prestation-montage-compilation.html">Montage &amp; compilation</a>
           <a href="prestation-shooting-joueur.html">Shooting joueur</a>
           <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
           <a href="prestation-media-day.html">Media Day</a>
@@ -432,6 +434,8 @@ section{position:relative}
       <a href="prestation-match-photo.html">Match photo</a>
       <a href="prestation-match-video.html">Match vidéo</a>
       <a href="prestation-pack-match.html">Pack Match Complet</a>
+      <a href="prestation-camera-isolee.html">Caméra isolée joueur</a>
+      <a href="prestation-montage-compilation.html">Montage &amp; compilation</a>
       <a href="prestation-shooting-joueur.html">Shooting joueur</a>
       <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
       <a href="prestation-media-day.html">Media Day</a>
@@ -553,6 +557,19 @@ section{position:relative}
       <div class="gallery-item gallery-extra" data-type="photo" data-sport="tennis"><img src="assets/realisations/tennis-action-14.jpg" alt="Smash — Tennis — captation match" loading="lazy" style="object-position:center 20%"><div class="overlay"><div class="cap"><b>Smash</b><span>Tennis — captation match</span></div></div></div>
       <div class="gallery-item gallery-extra" data-type="photo" data-sport="tennis"><img src="assets/realisations/tennis-action-15.jpg" alt="Vérification du cordage — Tennis — lumière dorée" loading="lazy" style="object-position:center 30%"><div class="overlay"><div class="cap"><b>Avant le service</b><span>Tennis — lumière dorée</span></div></div></div>
       <div class="gallery-item gallery-extra" data-type="photo" data-sport="tennis"><img src="assets/realisations/tennis-action-16.jpg" alt="Attente de balle — Tennis — captation match" loading="lazy" style="object-position:center 20%"><div class="overlay"><div class="cap"><b>Attente de balle</b><span>Tennis — captation match</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="photo" data-sport="football"><img src="assets/realisations/asam-montereau-action-01.jpg" alt="Action de jeu — ASA Montereau" loading="lazy" style="object-position:center 20%"><div class="overlay"><div class="cap"><b>Action de match</b><span>ASA Montereau</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="photo" data-sport="football"><img src="assets/realisations/asam-montereau-action-02.jpg" alt="Action de jeu — ASA Montereau" loading="lazy" style="object-position:center 20%"><div class="overlay"><div class="cap"><b>Action de match</b><span>ASA Montereau</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="photo" data-sport="football"><img src="assets/realisations/es-colombienne-montee-02.jpg" alt="Action de jeu — ES Colombienne, montée en Régional 2" loading="lazy" style="object-position:center 25%"><div class="overlay"><div class="cap"><b>Match de montée</b><span>ES Colombienne — Régional 2</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="photo" data-sport="football"><img src="assets/realisations/case-es-colombienne.jpg" alt="Joueur de l'ES Colombienne sous la pluie" loading="lazy" style="object-position:center 25%"><div class="overlay"><div class="cap"><b>Sous la pluie</b><span>ES Colombienne</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="photo" data-sport="football"><img src="assets/realisations/fc-varenne-action-02.jpg" alt="Action de jeu — FC Varennes" loading="lazy" style="object-position:center 15%"><div class="overlay"><div class="cap"><b>Action de match</b><span>FC Varennes</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="photo" data-sport="football"><img src="assets/realisations/case-fc-varenne.jpg" alt="Joueurs du FC Varennes célébrant leur montée" loading="lazy" style="object-position:center 20%"><div class="overlay"><div class="cap"><b>Montée fêtée</b><span>FC Varennes</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="photo" data-sport="football"><img src="assets/realisations/tsf-tournoi-sens-01.jpg" alt="Jeune joueur en tournoi international, Sens" loading="lazy" style="object-position:center 15%"><div class="overlay"><div class="cap"><b>Tournoi international</b><span>Tournoi Sans Frontière — Sens</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="photo" data-sport="football"><img src="assets/realisations/academie-petrus-leeds-01.jpg" alt="Jeune joueur en tournoi international" loading="lazy" style="object-position:center 15%"><div class="overlay"><div class="cap"><b>Tournoi international</b><span>Académie Petrus</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="photo" data-sport="football"><img src="assets/realisations/academie-petrus-sunderland-01.jpg" alt="Joueurs de l'académie Petrus" loading="lazy" style="object-position:center 20%"><div class="overlay"><div class="cap"><b>Tournoi international</b><span>Académie Petrus</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="video" data-sport="football" data-video="assets/realisations/videos/reel-camera-isolee-01.mp4"><img src="assets/realisations/reel-camera-isolee-01-poster.jpg" alt="Caméra isolée joueur — Extrait réel — suivi individuel" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Caméra isolée joueur</b><span>Suivi individuel — extrait réel</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="video" data-sport="football" data-video="assets/realisations/videos/reel-compilation-veo-01.mp4"><img src="assets/realisations/reel-compilation-veo-01-poster.jpg" alt="Compilation Veo — Extrait réel — montage highlight" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Compilation Veo</b><span>Montage highlight — extrait réel</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="video" data-sport="football" data-video="assets/realisations/videos/reel-camera-isolee-02.mp4"><img src="assets/realisations/reel-camera-isolee-02-poster.jpg" alt="Caméra isolée joueur — Extrait réel — contrôle de balle" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Caméra isolée joueur</b><span>Suivi individuel — extrait réel</span></div></div></div>
+      <div class="gallery-item gallery-extra" data-type="video" data-sport="football" data-video="assets/realisations/videos/reel-camera-isolee-03.mp4"><img src="assets/realisations/reel-camera-isolee-03-poster.jpg" alt="Caméra isolée joueur — Extrait réel — échauffement" loading="lazy" style="object-position:center"><span class="play">▶</span><div class="overlay"><div class="cap"><b>Caméra isolée joueur</b><span>Suivi individuel — extrait réel</span></div></div></div>
     </div>
     <div class="gallery-more" id="gallery-more">
       <button type="button" class="btn btn-ghost-light" id="gallery-more-btn">Voir plus de réalisations</button>
@@ -576,7 +593,7 @@ section{position:relative}
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a href="index.html" class="brand" style="font-size:18px"><span class="mark" aria-hidden="true" style="width:28px;height:28px;font-size:14px">S</span>SportVision</a>
+        <a href="index.html" class="brand" style="font-size:18px"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" style="width:28px;height:28px;padding:4px">SportVision</a>
         <p>Photo, vidéo et communication sportive — par ELKANA GROUP.</p>
       </div>
       <div class="footer-col"><h5>Prestations</h5><ul>

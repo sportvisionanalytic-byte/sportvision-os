@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caméra Isolée Joueur — Suivi vidéo individuel | SportVision</title>
+<meta name="description" content="Caméra isolée joueur SportVision : un opérateur dédié suit un seul joueur pendant tout le match pour un montage individuel prêt à partager. 150 € TTC par joueur.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://sportvision-an.fr/prestations/camera-isolee">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SportVision">
+<meta property="og:url" content="https://sportvision-an.fr/prestations/camera-isolee">
+<meta property="og:title" content="Caméra Isolée Joueur — Suivi vidéo individuel | SportVision">
+<meta property="og:description" content="Caméra isolée joueur SportVision : un opérateur dédié suit un seul joueur pendant tout le match pour un montage individuel prêt à partager. 150 € TTC par joueur.">
+<meta property="og:image" content="https://sportvision-an.fr/assets/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Caméra Isolée Joueur — Suivi vidéo individuel | SportVision">
+<meta name="twitter:description" content="Caméra isolée joueur SportVision : un opérateur dédié suit un seul joueur pendant tout le match pour un montage individuel prêt à partager. 150 € TTC par joueur.">
+<meta name="twitter:image" content="https://sportvision-an.fr/assets/og-image.jpg">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url('assets/fonts/inter-variable-latin.woff2') format('woff2')}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:500 800;font-display:swap;src:url('assets/fonts/manrope-variable-latin.woff2') format('woff2')}
+/* ============================================================
+   SportVision — vitrine publique, sans compte requis.
+   Design system propre à SportVision (palette fournie par le
+   fondateur). Vanilla HTML/CSS/JS, aucun framework, aucune
+   étape de build — même convention que le reste de l'écosystème.
+
+   Page fiche produit ajoutée le 17/08/2026 : demande client en
+   hausse pour cette prestation (retour direct de Fouka) — jusqu'ici
+   jamais isolée du catalogue, seulement mentionnée en creux dans
+   "Match vidéo". Chrome (header, footer, modal devis, cookies,
+   script) copié à l'identique depuis les autres fiches prestation.
+   ============================================================ */
+:root{
+  --navy-900:#070A17; --navy-800:#10162F;
+  --blue:#2454FF; --blue-electric:#1686FF; --cyan:#00C7FF;
+  --violet:#832DFF; --violet-bright:#C337FF;
+  --white:#FFFFFF; --bg-light:#F5F7FC; --text-secondary:#98A2B3;
+  --success:#12B76A;
+  --grad-brand: linear-gradient(135deg, var(--blue) 0%, var(--cyan) 50%, var(--violet-bright) 100%);
+  --grad-hero-glow: radial-gradient(circle at 20% 20%, rgba(36,84,255,.35), transparent 55%),
+                    radial-gradient(circle at 80% 0%, rgba(131,45,255,.30), transparent 50%),
+                    radial-gradient(circle at 50% 90%, rgba(0,199,255,.18), transparent 55%);
+  --radius:16px; --radius-lg:24px;
+  --shadow-lg: 0 24px 60px rgba(7,10,23,.35);
+  --font-head:'Manrope',-apple-system,sans-serif;
+  --font-body:'Inter',-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important} }
+body{margin:0;font-family:var(--font-body);color:var(--navy-900);background:var(--white);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,h4{font-family:var(--font-head);font-weight:800;line-height:1.12;margin:0;letter-spacing:-.01em}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+button{font-family:inherit;cursor:pointer}
+.container{max-width:1240px;margin:0 auto;padding:0 24px}
+section{position:relative}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--blue-electric);background:rgba(36,84,255,.1);border:1px solid rgba(36,84,255,.25);border-radius:999px;padding:7px 14px}
+.section-head{max-width:680px;margin:0 auto 48px;text-align:center}
+.section-head h2{font-size:clamp(28px,4vw,42px)}
+.section-head p{color:#5b6478;font-size:16.5px;margin-top:14px}
+.grad-text{background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ── Boutons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:14px 26px;font-weight:700;font-size:15px;border:none;white-space:nowrap;transition:transform .18s ease, box-shadow .18s ease, background .18s ease}
+.btn-grad{background:var(--grad-brand);color:#fff;box-shadow:0 10px 30px rgba(101,60,255,.35)}
+.btn-grad:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(101,60,255,.45)}
+.btn-ghost-dark{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.22)}
+.btn-ghost-dark:hover{background:rgba(255,255,255,.16)}
+.btn-ghost-light{background:transparent;color:var(--navy-900);border:1px solid #e4e7ef}
+.btn-ghost-light:hover{border-color:var(--blue)}
+.btn-sm{padding:10px 18px;font-size:13.5px;border-radius:10px}
+.btn-link{background:none;border:none;color:rgba(255,255,255,.65);font-weight:600;font-size:13.5px;padding:8px 4px;text-decoration:underline;text-underline-offset:3px}
+.btn-link:hover{color:#fff}
+
+/* ── Header + navigation à menus déroulants ── */
+.site-header{position:fixed;top:0;left:0;right:0;z-index:1000;padding:16px 0;transition:background .25s ease, box-shadow .25s ease, padding .25s ease}
+.site-header .container{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.site-header.solid{background:rgba(7,10,23,.86);backdrop-filter:blur(14px);box-shadow:0 1px 0 rgba(255,255,255,.06);padding:12px 0}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-head);font-weight:800;font-size:19px;color:#fff}
+.brand .mark{width:32px;height:32px;object-fit:contain;flex-shrink:0}
+.brand .by{font-family:var(--font-body);font-weight:500;font-size:11px;color:var(--text-secondary);margin-left:2px}
+.main-nav{display:flex;gap:22px}
+.main-nav a{font-size:14px;font-weight:600;color:rgba(255,255,255,.82);transition:color .15s}
+.main-nav a:hover{color:#fff}
+.main-nav>a.active,.main-nav .nav-item>a.active{color:#fff}
+.nav-item{position:relative}
+.nav-item>a{display:flex;align-items:center;gap:5px}
+.nav-item>button{all:unset;display:flex;align-items:center;gap:5px;font-size:14px;font-weight:600;color:rgba(255,255,255,.82);cursor:pointer;transition:color .15s}
+.nav-item>button:hover,.nav-item>button.active{color:#fff}
+.nav-caret{font-size:9px;opacity:.55;transition:transform .15s}
+.nav-item:hover .nav-caret,.nav-item:focus-within .nav-caret{transform:rotate(180deg)}
+.nav-dropdown{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(6px);min-width:240px;background:rgba(7,10,23,.98);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px;box-shadow:0 24px 48px rgba(0,0,0,.45);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease, transform .15s ease;display:flex;flex-direction:column;gap:1px;z-index:1100}
+.nav-item:hover .nav-dropdown,.nav-item:focus-within .nav-dropdown{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(-50%) translateY(2px)}
+.nav-dropdown a{padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;color:rgba(255,255,255,.75);white-space:nowrap}
+.nav-dropdown a:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-dropdown-all{border-top:1px solid rgba(255,255,255,.1);margin-top:5px;padding-top:11px !important;color:var(--cyan) !important;font-weight:700 !important}
+.header-actions{display:flex;align-items:center;gap:10px}
+.header-actions .btn-ghost-dark{padding:11px 18px;font-size:13.5px}
+.header-actions .btn-grad{padding:11px 20px;font-size:13.5px}
+.burger{display:none;background:none;border:none;color:#fff;width:38px;height:38px;align-items:center;justify-content:center}
+.burger span,.burger span::before,.burger span::after{content:'';display:block;width:20px;height:2px;background:#fff;position:relative;transition:.2s}
+.burger span::before{position:absolute;top:-6px}
+.burger span::after{position:absolute;top:6px}
+.mobile-nav{display:none;position:fixed;inset:0;z-index:999;background:var(--navy-900);padding:90px 24px 24px;flex-direction:column;gap:6px;overflow-y:auto}
+.mobile-nav.on{display:flex}
+.mobile-nav>a{color:#fff;font-size:18px;font-weight:700;padding:13px 4px;border-bottom:1px solid rgba(255,255,255,.08);display:block}
+.mobile-nav-group{border-bottom:1px solid rgba(255,255,255,.08)}
+.mobile-nav-group summary{color:#fff;font-size:18px;font-weight:700;padding:13px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none}
+.mobile-nav-group summary::-webkit-details-marker{display:none}
+.mobile-nav-group summary::after{content:'+';font-weight:400;color:rgba(255,255,255,.5);font-size:20px}
+.mobile-nav-group[open] summary::after{content:'–'}
+.mobile-nav-group .sub-links{display:flex;flex-direction:column;padding:0 4px 14px 12px}
+.mobile-nav-group .sub-links a{font-size:15px;font-weight:600;padding:9px 0;color:rgba(255,255,255,.68)}
+.mobile-nav .mobile-ctas{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+
+/* ── Hero ── */
+.hero{background:var(--navy-900);color:#fff;padding:158px 0 100px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:var(--grad-hero-glow);pointer-events:none}
+.hero::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.012) 3px);pointer-events:none}
+.hero .container{position:relative;display:grid;grid-template-columns:1fr;gap:52px;text-align:center}
+.hero-copy{max-width:760px;margin:0 auto}
+.hero-copy .eyebrow{margin-bottom:22px}
+.hero h1{font-size:clamp(34px,5.4vw,58px);color:#fff}
+.hero h1 span{background:var(--grad-brand);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .subtitle{color:rgba(255,255,255,.72);font-size:clamp(16px,1.6vw,19px);max-width:640px;margin:22px auto 0}
+.hero-ctas{display:flex;gap:14px;justify-content:center;margin-top:34px;flex-wrap:wrap}
+.hero-micro{color:rgba(255,255,255,.45);font-size:13px;margin-top:20px}
+.hero-tertiary{margin-top:14px}
+
+/* ── Mockup produit (hero) ── */
+.gcard{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px;backdrop-filter:blur(6px)}
+.gcard .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cyan);margin-bottom:8px}
+.gcard .v{font-size:15px;font-weight:700;color:#fff}
+.gcard .sub{font-size:12.5px;color:rgba(255,255,255,.55);margin-top:4px}
+.badge-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--success);margin-right:6px}
+
+/* ── Sections claires ── */
+.section-light{background:var(--white);padding:100px 0}
+.section-tint{background:var(--bg-light);padding:100px 0}
+
+/* ── Prestations (cartes avec prix publics) ── */
+.prestation-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:8px}
+.prestation-card{background:#fff;border:1px solid #e9ecf5;border-radius:var(--radius-lg);padding:22px;display:flex;flex-direction:column;transition:border-color .18s, transform .18s}
+.prestation-card:hover{border-color:var(--blue);transform:translateY(-3px)}
+.prestation-card .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.prestation-card .icon{width:40px;height:40px;border-radius:11px;background:var(--grad-brand);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0}
+.prestation-card .sans-abo{font-size:10px;font-weight:800;color:var(--success);background:rgba(18,183,106,.1);border-radius:999px;padding:4px 9px;white-space:nowrap;letter-spacing:.02em}
+.prestation-card h4{font-size:15.5px;margin-top:14px}
+.prestation-card p.desc{font-size:13px;color:#5b6478;margin-top:6px;flex:1}
+.prestation-card .price-row{margin-top:16px;padding-top:14px;border-top:1px solid #e9ecf5}
+.prestation-card .price{font-size:15.5px;font-weight:800;color:var(--navy-900)}
+.prestation-card .price small{font-size:11px;font-weight:600;color:var(--text-secondary)}
+
+/* ── Fonctionnalités / teasers alternés ── */
+.feature-row{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;padding:64px 0}
+.feature-row.rev .feature-copy{order:2}
+.feature-row.rev .feature-visual{order:1}
+.feature-copy .eyebrow{margin-bottom:16px}
+.feature-copy h3{font-size:clamp(24px,3vw,32px)}
+.feature-copy p.desc{color:#5b6478;font-size:15.5px;margin-top:14px}
+.feature-list{list-style:none;padding:0;margin:22px 0 0;display:flex;flex-direction:column;gap:10px}
+.feature-list li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;font-weight:600;color:#232a3b}
+.feature-list li::before{content:'';flex-shrink:0;width:18px;height:18px;margin-top:2px;border-radius:6px;background:var(--grad-brand);position:relative}
+.feature-list li::after{content:'✓';position:absolute;color:#fff;font-size:11px;font-weight:900;margin-left:3.5px;margin-top:2.5px}
+.feature-visual{border-radius:var(--radius-lg);overflow:hidden;background:linear-gradient(160deg,#0d1330,#171f45);padding:22px;box-shadow:var(--shadow-lg);min-height:240px;position:relative}
+
+/* ── Extrait vidéo ── */
+.video-showcase{border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-lg);max-width:320px;margin:0 auto;position:relative;aspect-ratio:9/16;background:#0d1330;cursor:pointer}
+.video-showcase img{width:100%;height:100%;object-fit:cover}
+.video-showcase .play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(4px);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px}
+.video-showcase .cap{position:absolute;left:0;right:0;bottom:0;padding:16px;background:linear-gradient(0deg,rgba(0,0,0,.8),transparent 65%);color:#fff}
+.video-showcase .cap b{font-size:13.5px;display:block}
+.video-showcase .cap span{font-size:11.5px;color:rgba(255,255,255,.7)}
+.video-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:2400;display:none;align-items:center;justify-content:center;padding:20px}
+.video-modal-overlay.on{display:flex}
+.video-modal-overlay video{max-width:420px;width:100%;max-height:88vh;border-radius:16px}
+.video-modal-close{position:absolute;top:22px;right:22px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:18px}
+
+/* ── FAQ ── */
+.faq-list{max-width:760px;margin:0 auto}
+.faq-item{border-bottom:1px solid #e4e7ef}
+.faq-q{width:100%;text-align:left;background:none;border:none;padding:20px 4px;display:flex;justify-content:space-between;align-items:center;font-size:15.5px;font-weight:700;color:var(--navy-900)}
+.faq-q .chev{transition:transform .2s;color:var(--blue);font-size:18px}
+.faq-item.on .faq-q .chev{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .25s ease}
+.faq-item.on .faq-a{max-height:240px}
+.faq-a p{padding:0 4px 20px;color:#5b6478;font-size:14.5px;line-height:1.6}
+
+/* ── CTA final ── */
+.cta-final{background:var(--navy-900);color:#fff;padding:120px 0;text-align:center;position:relative;overflow:hidden}
+.cta-final::before{content:'';position:absolute;inset:0;background:var(--grad-hero-glow);opacity:.7}
+.cta-final .container{position:relative}
+.cta-final h2{font-size:clamp(28px,4.4vw,44px);color:#fff;max-width:680px;margin:0 auto}
+.cta-final p{color:rgba(255,255,255,.65);max-width:560px;margin:18px auto 0;font-size:16px}
+.cta-final .hero-ctas{margin-top:34px}
+
+/* ── Footer ── */
+.site-footer{background:var(--navy-900);color:rgba(255,255,255,.6);padding:70px 0 30px;border-top:1px solid rgba(255,255,255,.06)}
+.footer-grid{display:grid;grid-template-columns:1.6fr repeat(5,1fr);gap:30px}
+.footer-brand p{font-size:13.5px;line-height:1.6;margin-top:14px;max-width:220px}
+.footer-col h5{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.85);margin-bottom:16px}
+.footer-col ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.footer-col a{font-size:13.5px;color:rgba(255,255,255,.6)}
+.footer-col a:hover{color:#fff}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-top:1px solid rgba(255,255,255,.08);margin-top:54px;padding-top:24px;font-size:12.5px;color:rgba(255,255,255,.4)}
+.footer-legal{display:flex;gap:18px;flex-wrap:wrap}
+.footer-social{display:flex;gap:10px}
+.footer-social a{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:13px}
+
+/* ── Reveal au scroll ── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .6s ease, transform .6s ease}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* ── Modal devis ── */
+.sv-overlay{position:fixed;inset:0;background:rgba(7,10,23,.6);backdrop-filter:blur(3px);z-index:2000;display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow-y:auto}
+.sv-overlay.on{display:flex}
+.sv-modal{background:#fff;border-radius:var(--radius-lg);max-width:480px;width:100%;padding:30px;position:relative}
+.sv-modal h3{font-size:21px}
+.sv-modal p.sub{color:#5b6478;font-size:14px;margin-top:8px}
+.sv-close{position:absolute;top:18px;right:18px;background:#f4f6fa;border:none;width:34px;height:34px;border-radius:10px;font-size:16px;color:#5b6478}
+.sv-field{margin-top:16px}
+.sv-field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:#374151}
+.sv-field input,.sv-field select,.sv-field textarea{width:100%;padding:11px 12px;border:1px solid #e4e7ef;border-radius:10px;font-size:14.5px;font-family:inherit;box-sizing:border-box}
+.sv-field input:focus,.sv-field select:focus,.sv-field textarea:focus{outline:2px solid var(--blue);outline-offset:1px}
+.sv-honeypot{position:absolute;left:-9999px;opacity:0}
+.sv-err{color:#e14b4b;font-size:13px;margin-top:10px;min-height:16px}
+.sv-ok{text-align:center;padding:10px 0}
+.sv-ok .check{width:56px;height:56px;border-radius:50%;background:rgba(18,183,106,.12);border:1px solid rgba(18,183,106,.35);color:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy-900);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:opacity .2s;z-index:3000}
+.toast.on{opacity:1}
+
+/* ── Bandeau cookies (RGPD) ── */
+.cookie-banner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2500;background:var(--navy-900);border-top:1px solid rgba(255,255,255,.12);padding:18px 24px;box-shadow:0 -8px 24px rgba(0,0,0,.35);max-height:82vh;overflow-y:auto}
+.cookie-banner.on{display:flex;flex-direction:column}
+.cookie-banner-inner{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.cookie-banner-inner p{flex:1;min-width:240px;font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.6;margin:0}
+.cookie-banner-inner a{color:var(--cyan);text-decoration:underline}
+.cookie-banner-actions{display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.cookie-panel{display:none;max-width:1100px;margin:16px auto 0;width:100%;border-top:1px solid rgba(255,255,255,.12);padding-top:16px}
+.cookie-panel.on{display:block}
+.cookie-cat{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.cookie-cat:last-of-type{border-bottom:none}
+.cookie-cat-info b{display:block;font-size:13.5px;color:#fff;margin-bottom:3px}
+.cookie-cat-info span{display:block;font-size:12.5px;color:rgba(255,255,255,.6);line-height:1.5;max-width:60ch}
+.cookie-switch{position:relative;flex:none;width:40px;height:23px}
+.cookie-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.cookie-switch .track{position:absolute;inset:0;border-radius:999px;background:rgba(255,255,255,.18);transition:background .15s;pointer-events:none}
+.cookie-switch .dot{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .15s;pointer-events:none}
+.cookie-switch input:checked + .track{background:var(--cyan)}
+.cookie-switch input:checked ~ .dot{transform:translateX(17px)}
+.cookie-switch input:disabled + .track{opacity:.5}
+.cookie-switch input:focus-visible + .track{box-shadow:0 0 0 3px var(--cyan)}
+.cookie-panel-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+@media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}.cookie-cat{flex-wrap:wrap}}
+
+/* ── Responsive ── */
+@media (max-width:980px){
+  .main-nav,.header-actions{display:none}
+  .burger{display:flex}
+  .feature-row{grid-template-columns:1fr;gap:30px}
+  .feature-row.rev .feature-copy,.feature-row.rev .feature-visual{order:0}
+  .footer-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .hero{padding:130px 0 70px}
+  .footer-grid{grid-template-columns:1fr}
+}
+
+/* ── Fiche prestation (page individuelle) ── */
+.back-link{display:inline-flex;align-items:center;gap:6px;color:rgba(255,255,255,.55);font-size:13.5px;font-weight:600;margin-bottom:18px}
+.back-link:hover{color:#fff}
+.price-hero{display:inline-flex;align-items:baseline;gap:9px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:16px 26px;margin-top:28px}
+.price-hero .amount{font-family:var(--font-head);font-weight:800;font-size:32px;color:#fff}
+.price-hero .ttc{font-size:12.5px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.05em}
+</style>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Peut-on suivre plusieurs joueurs en même temps ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, une caméra dédiée par joueur suivi, 150 € TTC par joueur — pour plusieurs joueurs, contactez-nous pour un devis adapté."}}, {"@type": "Question", "name": "Le montage met-il en avant un seul joueur ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, exclusivement. L'opérateur suit ce joueur pendant tout le match et le montage final ne contient que ses actions."}}, {"@type": "Question", "name": "C'est adapté pour un dossier de recrutement ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, c'est l'un des usages les plus fréquents de cette prestation : plusieurs agences et recruteurs nous ont déjà sollicités après avoir vu ce type de montage."}}]}</script>
+</head>
+<body>
+
+<header class="site-header" id="site-header">
+  <div class="container">
+    <a href="index.html" class="brand"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true">SportVision</a>
+    <nav class="main-nav">
+      <div class="nav-item">
+        <a href="prestations.html" class="active">Prestations <span class="nav-caret">▾</span></a>
+        <div class="nav-dropdown">
+          <a href="prestation-match-photo.html">Match photo</a>
+          <a href="prestation-match-video.html">Match vidéo</a>
+          <a href="prestation-pack-match.html">Pack Match Complet</a>
+          <a href="prestation-camera-isolee.html">Caméra isolée joueur</a>
+          <a href="prestation-montage-compilation.html">Montage &amp; compilation</a>
+          <a href="prestation-shooting-joueur.html">Shooting joueur</a>
+          <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
+          <a href="prestation-media-day.html">Media Day</a>
+          <a href="prestation-tournois.html">Tournois et stages</a>
+          <a href="prestation-creations.html">Créations graphiques</a>
+          <a href="prestation-coachs.html">Coachs et préparateurs</a>
+          <a href="prestations.html" class="nav-dropdown-all">Toutes les prestations →</a>
+        </div>
+      </div>
+      <div class="nav-item">
+        <button type="button">Solutions <span class="nav-caret">▾</span></button>
+        <div class="nav-dropdown">
+          <a href="club-plus.html">Club+</a>
+          <a href="full-communication.html">Full Communication</a>
+          <a href="accompagnements-academies.html">Académies</a>
+          <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
+          <a href="accompagnements-joueurs.html">Joueurs</a>
+          <a href="accompagnements-evenements.html">Tournois et événements</a>
+          <a href="accompagnements.html" class="nav-dropdown-all">Tous les accompagnements →</a>
+        </div>
+      </div>
+      <a href="realisations.html">Réalisations</a>
+      <a href="a-propos.html">À propos</a>
+    </nav>
+    <div class="header-actions">
+      <a href="https://connect.sportvision-an.fr/" class="btn btn-ghost-dark">Se connecter</a>
+      <a href="reserver.html?besoin=camera-isolee" class="btn btn-grad">Réserver une prestation</a>
+    </div>
+    <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
+  </div>
+</header>
+
+<div class="mobile-nav" id="mobile-nav">
+  <details class="mobile-nav-group">
+    <summary>Prestations</summary>
+    <div class="sub-links">
+      <a href="prestation-match-photo.html">Match photo</a>
+      <a href="prestation-match-video.html">Match vidéo</a>
+      <a href="prestation-pack-match.html">Pack Match Complet</a>
+      <a href="prestation-camera-isolee.html">Caméra isolée joueur</a>
+      <a href="prestation-montage-compilation.html">Montage &amp; compilation</a>
+      <a href="prestation-shooting-joueur.html">Shooting joueur</a>
+      <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
+      <a href="prestation-media-day.html">Media Day</a>
+      <a href="prestation-tournois.html">Tournois et stages</a>
+      <a href="prestation-creations.html">Créations graphiques</a>
+      <a href="prestation-coachs.html">Coachs et préparateurs</a>
+      <a href="prestations.html">Toutes les prestations →</a>
+    </div>
+  </details>
+  <details class="mobile-nav-group">
+    <summary>Solutions</summary>
+    <div class="sub-links">
+      <a href="club-plus.html">Club+</a>
+      <a href="full-communication.html">Full Communication</a>
+      <a href="accompagnements-academies.html">Académies</a>
+      <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
+      <a href="accompagnements-joueurs.html">Joueurs</a>
+      <a href="accompagnements-evenements.html">Tournois et événements</a>
+      <a href="accompagnements.html">Tous les accompagnements →</a>
+    </div>
+  </details>
+  <a href="realisations.html">Réalisations</a>
+  <a href="a-propos.html">À propos</a>
+  <div class="mobile-ctas">
+    <a href="https://connect.sportvision-an.fr/" class="btn btn-ghost-dark">Se connecter</a>
+    <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
+  </div>
+</div>
+
+<!-- ══════════════ HERO ══════════════ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-copy">
+      <a href="prestations.html" class="back-link">← Toutes les prestations</a>
+      <span class="eyebrow">Prestation très demandée</span>
+      <h1>Une caméra dédiée à <span>votre joueur</span>, du coup d'envoi au coup de sifflet.</h1>
+      <p class="subtitle">Un opérateur SportVision suit exclusivement un seul joueur pendant tout le match, pour un montage individuel prêt à partager — dossiers de recrutement, réseaux, suivi de progression.</p>
+      <div class="price-hero"><span class="amount">150 €</span><span class="ttc">TTC</span></div>
+      <div class="hero-ctas">
+        <a href="reserver.html?besoin=camera-isolee" class="btn btn-grad">Réserver une caméra isolée</a>
+      </div>
+        <div class="hero-tertiary"><button type="button" class="btn-link" data-action="open-rdv">Vous préférez qu'on en discute ? Demander un rendez-vous →</button></div>
+      <p class="hero-micro">Sans engagement. 150 € TTC par joueur suivi.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ EXTRAIT RÉEL ══════════════ -->
+<section class="section-light">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Extrait réel</span>
+      <h2>Un vrai montage caméra isolée.</h2>
+      <p>Suivi individuel captation match, extrait d'une prestation SportVision.</p>
+    </div>
+    <div class="video-showcase reveal" data-video="assets/realisations/videos/reel-camera-isolee-01.mp4">
+      <img src="assets/realisations/reel-camera-isolee-01-poster.jpg" alt="Extrait caméra isolée joueur" loading="lazy">
+      <span class="play">▶</span>
+      <div class="cap"><b>Caméra isolée joueur</b><span>Extrait réel — suivi individuel</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CE QUI EST INCLUS ══════════════ -->
+<section class="section-tint">
+  <div class="container">
+    <div class="feature-row reveal">
+      <div class="feature-copy">
+        <span class="eyebrow">Ce qui est inclus</span>
+        <h3>Un opérateur, un seul objectif : votre joueur.</h3>
+        <p class="desc">Contrairement à une captation de match classique, l'opérateur ne quitte pas des yeux le joueur choisi.</p>
+        <ul class="feature-list">
+          <li>Opérateur dédié qui suit exclusivement le joueur choisi pendant tout le match</li>
+          <li>Captation de toutes ses actions : touches de balle, courses, duels, replacements</li>
+          <li>Montage highlight individuel, rythmé, prêt à partager</li>
+          <li>Livraison numérique en haute définition</li>
+          <li>Accès depuis votre espace SportVision Connect</li>
+        </ul>
+        <div class="hero-ctas" style="justify-content:flex-start;margin-top:22px">
+          <a href="reserver.html?besoin=camera-isolee" class="btn btn-grad">Réserver une caméra isolée</a>
+        </div>
+      </div>
+      <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/reel-camera-isolee-01-poster.jpg) center/cover no-repeat">
+        <div class="gcard" style="margin-bottom:12px"><div class="k">Tarif</div><div class="v">150 € TTC</div><div class="sub">Par joueur suivi</div></div>
+        <div class="gcard"><div class="k">Montage</div><div class="v">Individuel, 100% dédié</div><div class="sub">Aucune action d'un autre joueur dans le montage final</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ POURQUOI SPORTVISION ══════════════ -->
+<section class="section-light">
+  <div class="container">
+    <div class="feature-row rev reveal">
+      <div class="feature-copy">
+        <span class="eyebrow">Pourquoi SportVision</span>
+        <h3>Un contenu pensé aussi pour les recruteurs et les agences.</h3>
+        <p class="desc">Plusieurs agences de représentation de joueurs nous ont déjà contactés directement après avoir vu ce type de montage — c'est aujourd'hui l'une des prestations les plus demandées.</p>
+        <ul class="feature-list">
+          <li>Demande en quelques minutes, sans créer de compte</li>
+          <li>Aucun paiement à cette étape. Après validation du devis et de la disponibilité, votre règlement et votre suivi sont centralisés dans SportVision Connect</li>
+          <li>Votre vidéo centralisée dans votre espace SportVision Connect</li>
+          <li>Besoin de plus par la suite ? Compilation multi-matchs, montage complémentaire : tout reste au même endroit</li>
+        </ul>
+      </div>
+      <div class="feature-visual" style="background:linear-gradient(160deg,rgba(13,19,48,.6),rgba(23,31,69,.7)),url(assets/realisations/academie-petrus-leeds-01.jpg) center/cover no-repeat">
+        <div class="gcard"><div class="k">Réservation</div><div class="v">Référence immédiate</div><div class="sub">Demande enregistrée · Devis personnalisé · Suivi dans Connect</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ OPTIONS ══════════════ -->
+<section class="section-tint">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow" style="margin-bottom:18px">Options</span>
+      <h2>Personnalisez votre prestation.</h2>
+      <p>Ajoutez ce dont vous avez besoin.</p>
+    </div>
+    <div class="prestation-grid reveal">
+      <div class="prestation-card">
+        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 10 18 0M9 4v16"/></svg></div><span class="sans-abo">Dès 39,90 € HT</span></div>
+        <h4>Compilation multi-matchs</h4>
+        <p class="desc">Réunissez plusieurs matchs suivis en une seule compilation — voir la prestation Montage &amp; compilation.</p>
+        <div class="price-row"><span class="price">Dès 39,90 € <small>HT</small></span></div>
+        <a href="prestation-montage-compilation.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Découvrir la compilation</a>
+      </div>
+      <div class="prestation-card">
+        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 10 5-3v10l-5-3z"/></svg></div><span class="sans-abo">Sur devis</span></div>
+        <h4>Plusieurs joueurs suivis</h4>
+        <p class="desc">Une caméra dédiée par joueur, pour un montage individuel de chacun.</p>
+        <div class="price-row"><span class="price">Sur devis</span></div>
+        <a href="#devis" class="btn btn-grad btn-sm" data-action="open-devis" style="margin-top:14px;width:100%">Demander un devis</a>
+      </div>
+      <div class="prestation-card">
+        <div class="top-row"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="vertical-align:-0.15em" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div></div>
+        <h4>Match vidéo classique</h4>
+        <p class="desc">Une captation vidéo globale du match, avec highlight simple.</p>
+        <div class="price-row"><span class="price">120 € <small>TTC</small></span></div>
+        <a href="prestation-match-video.html" class="btn btn-grad btn-sm" style="margin-top:14px;width:100%">Découvrir Match vidéo</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ FAQ ══════════════ -->
+<section class="section-light" id="faq">
+  <div class="container">
+    <div class="section-head reveal"><h2>Questions fréquentes</h2></div>
+    <div class="faq-list reveal" id="faq-list">
+      <div class="faq-item"><button class="faq-q"><span>Peut-on suivre plusieurs joueurs en même temps ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui, une caméra dédiée par joueur suivi — le tarif est adapté au nombre de joueurs, sur devis.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>Le montage met-il en avant un seul joueur ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui, exclusivement. L'opérateur suit ce joueur pendant tout le match et le montage final ne contient que ses actions.</p></div></div>
+      <div class="faq-item"><button class="faq-q"><span>C'est adapté pour un dossier de recrutement ?</span><span class="chev">+</span></button><div class="faq-a"><p>Oui, c'est l'un des usages les plus fréquents de cette prestation : plusieurs agences et recruteurs nous ont déjà sollicités après avoir vu ce type de montage.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CTA FINAL ══════════════ -->
+<section class="cta-final" id="devis">
+  <div class="container">
+    <h2 class="reveal">Prêt à réserver une caméra isolée ?</h2>
+    <p class="reveal">150 € TTC par joueur suivi. Sans engagement.</p>
+    <div class="hero-ctas reveal">
+      <a href="reserver.html?besoin=camera-isolee" class="btn btn-grad">Réserver une caméra isolée</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="brand" style="font-size:18px"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" style="width:28px;height:28px;padding:4px">SportVision</a>
+        <p>Photo, vidéo et communication sportive — par ELKANA GROUP.</p>
+      </div>
+      <div class="footer-col"><h5>Prestations</h5><ul>
+        <li><a href="prestation-match-photo.html">Match photo</a></li>
+        <li><a href="prestation-match-video.html">Match vidéo</a></li>
+        <li><a href="prestation-camera-isolee.html">Caméra isolée joueur</a></li>
+        <li><a href="prestation-montage-compilation.html">Montage &amp; compilation</a></li>
+        <li><a href="prestations.html">Toutes les prestations</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Offres</h5><ul>
+        <li><a href="club-plus.html">Club+</a></li>
+        <li><a href="full-communication.html">Full Communication</a></li>
+        <li><a href="accompagnements-academies.html">Académies</a></li>
+        <li><a href="accompagnements-coachs.html">Coachs</a></li>
+        <li><a href="accompagnements-joueurs.html">Joueurs</a></li>
+        <li><a href="accompagnements-evenements.html">Tournois &amp; événements</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Connect</h5><ul>
+        <li><a href="connect.html">Fonctionnement</a></li>
+        <li><a href="https://connect.sportvision-an.fr/">Connexion</a></li>
+        <li><a href="demande-de-devis.html">Démonstration</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Ressources</h5><ul>
+        <li><a href="realisations.html">Réalisations</a></li>
+        <li><a href="index.html#faq">Centre d'aide</a></li>
+        <li><a href="index.html#faq">FAQ</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Entreprise</h5><ul>
+        <li><a href="a-propos.html">À propos</a></li>
+        <li><a href="demande-de-devis.html">Contact</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="sv-year"></span> ELKANA GROUP — SportVision. Tous droits réservés.</span>
+            <div class="footer-legal">
+        <a href="mentions-legales.html">Mentions légales</a>
+        <a href="cgv.html">CGV</a>
+        <a href="confidentialite.html">Politique de confidentialité</a>
+        <a href="cookies.html">Politique cookies</a>
+        <a href="retractation.html">Rétractation / Renoncer à un contrat</a>
+        <a href="#" id="cookie-manage">Gérer mes cookies</a>
+      </div>
+      <div class="footer-social">
+        <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div class="cookie-banner" id="cookie-banner" role="dialog" aria-label="Gestion des cookies" aria-live="polite">
+  <div class="cookie-banner-inner">
+    <p>SportVision utilise des traceurs nécessaires au fonctionnement du site. Avec votre accord, nous pouvons également utiliser des traceurs de mesure d'audience, de fonctionnalités externes ou de marketing afin d'améliorer nos services. <a href="cookies.html">En savoir plus</a></p>
+    <div class="cookie-banner-actions">
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-refuse">Tout refuser</button>
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-customize">Personnaliser</button>
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-accept">Tout accepter</button>
+    </div>
+  </div>
+  <div class="cookie-panel" id="cookie-panel">
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Nécessaires</b><span>Fonctionnement du site, mémorisation de vos choix, sécurité et session SportVision Connect. Toujours actifs.</span></div>
+      <label class="cookie-switch"><input type="checkbox" checked disabled aria-label="Cookies nécessaires, toujours actifs"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Mesure d'audience</b><span>Statistiques de fréquentation agrégées pour comprendre l'utilisation du site.</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-audience" aria-label="Cookies de mesure d'audience"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Fonctionnalités externes</b><span>Contenus intégrés provenant de plateformes tierces (réseaux sociaux, vidéo).</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-external" aria-label="Cookies de fonctionnalités externes"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Marketing</b><span>Mesure de campagnes publicitaires et personnalisation, si activé.</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-marketing" aria-label="Cookies marketing"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-panel-actions">
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-save">Enregistrer mes choix</button>
+    </div>
+  </div>
+</div>
+
+<div class="sv-overlay" id="devis-overlay">
+  <div class="sv-modal">
+    <button class="sv-close" id="devis-close" aria-label="Fermer">✕</button>
+    <div id="devis-form-wrap">
+      <h3>Demander un devis ou une démonstration</h3>
+      <p class="sub">Présentez-nous votre besoin, nous revenons vers vous rapidement.</p>
+      <form id="devis-form">
+        <div class="sv-honeypot" aria-hidden="true"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
+        <div class="sv-field"><label for="dv-prenom">Prénom</label><input id="dv-prenom" name="prenom" type="text" required></div>
+        <div class="sv-field"><label for="dv-nom">Nom</label><input id="dv-nom" name="nom" type="text" required></div>
+        <div class="sv-field"><label for="dv-email">E-mail</label><input id="dv-email" name="email" type="email" required></div>
+        <div class="sv-field"><label for="dv-tel">Téléphone (facultatif)</label><input id="dv-tel" name="telephone" type="tel"></div>
+        <div class="sv-field"><label for="dv-profil">Vous êtes</label>
+          <select id="dv-profil" name="profil">
+            <option value="club">Un club</option>
+            <option value="organisateur">Un organisateur / une académie</option>
+            <option value="entreprise">Une entreprise / un partenaire</option>
+            <option value="particulier">Un particulier</option>
+          </select>
+        </div>
+        <div class="sv-field"><label for="dv-commentaire">Votre besoin (facultatif)</label><textarea id="dv-commentaire" name="commentaire" rows="3" placeholder="Ex : suivi caméra isolée pour un joueur, match du 14/09"></textarea></div>
+        <div class="sv-err" id="devis-err"></div>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--text-secondary)">Les informations renseignées sont utilisées par SportVision pour traiter votre demande et vous recontacter. <a href="confidentialite.html" target="_blank">En savoir plus</a>.</p>
+        <button type="submit" class="btn btn-grad" style="width:100%;margin-top:6px" id="devis-submit">Envoyer ma demande</button>
+      </form>
+    </div>
+    <div id="devis-ok-wrap" style="display:none">
+      <div class="sv-ok">
+        <div class="check">✓</div>
+        <h3>Demande envoyée</h3>
+        <p class="sub">Merci ! Notre équipe revient vers vous très prochainement.<br>Référence : <b id="devis-ref"></b></p>
+        <button type="button" class="btn btn-grad" style="width:100%;margin-top:18px" id="devis-ok-close">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="video-modal-overlay" id="video-modal-overlay">
+  <button class="video-modal-close" id="video-modal-close" aria-label="Fermer">✕</button>
+  <video id="video-modal-player" controls playsinline></video>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   SportVision — vitrine publique. Vanilla JS, aucune dépendance
+   externe, aucun compte requis pour naviguer sur cette page.
+   Le seul appel réseau est l'envoi du formulaire de devis, vers
+   l'edge function déjà déployée et utilisée par Connect
+   (create-guest-request) — même backend, pas de nouveau chemin.
+   ============================================================ */
+const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
+const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'), 2600);
+}
+
+// ── Header solide au scroll ──
+const header = document.getElementById('site-header');
+function onScroll(){ header.classList.toggle('solid', window.scrollY > 40); }
+window.addEventListener('scroll', onScroll, { passive:true }); onScroll();
+
+// ── Menu mobile ──
+const burger = document.getElementById('burger-btn');
+const mobileNav = document.getElementById('mobile-nav');
+burger.addEventListener('click', () => mobileNav.classList.toggle('on'));
+mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mobileNav.classList.remove('on')));
+
+// ── Reveal au scroll ──
+const revealEls = document.querySelectorAll('.reveal');
+if ('IntersectionObserver' in window){
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: .12 });
+  revealEls.forEach(el => io.observe(el));
+} else {
+  revealEls.forEach(el => el.classList.add('in'));
+}
+
+// ── Extrait vidéo (lecture en overlay, mêmes principes que la galerie Réalisations) ──
+const videoModalOverlay = document.getElementById('video-modal-overlay');
+const videoModalPlayer = document.getElementById('video-modal-player');
+document.querySelectorAll('.video-showcase').forEach(el => {
+  el.addEventListener('click', () => {
+    videoModalPlayer.src = el.getAttribute('data-video');
+    videoModalOverlay.classList.add('on');
+    videoModalPlayer.play().catch(() => {});
+  });
+});
+function closeVideoModal(){ videoModalOverlay.classList.remove('on'); videoModalPlayer.pause(); videoModalPlayer.src = ''; }
+document.getElementById('video-modal-close').addEventListener('click', closeVideoModal);
+videoModalOverlay.addEventListener('click', (e) => { if (e.target === videoModalOverlay) closeVideoModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && videoModalOverlay.classList.contains('on')) closeVideoModal(); });
+
+// ── FAQ accordéon ──
+document.querySelectorAll('#faq-list .faq-q').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+document.getElementById('faq-list').addEventListener('click', (e) => {
+  const q = e.target.closest('.faq-q');
+  if (!q) return;
+  const item = q.closest('.faq-item');
+  item.classList.toggle('on');
+  q.setAttribute('aria-expanded', item.classList.contains('on') ? 'true' : 'false');
+});
+
+// ── Année du footer ──
+document.getElementById('sv-year').textContent = new Date().getFullYear();
+
+// ── Bandeau cookies (RGPD) ──
+const COOKIE_CONSENT_KEY = 'sv_cookie_consent_v2';
+const COOKIE_CONSENT_MAX_AGE_MS = 183 * 24 * 60 * 60 * 1000; // ~6 mois, cf. Politique cookies § 8
+const cookieBanner = document.getElementById('cookie-banner');
+const cookiePanel = document.getElementById('cookie-panel');
+
+function readConsent(){
+  try{
+    const raw = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed.date || Date.now() - parsed.date > COOKIE_CONSENT_MAX_AGE_MS) return null;
+    return parsed;
+  }catch(e){ return null; }
+}
+function writeConsent(categories){
+  localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify({ date: Date.now(), categories }));
+}
+window.svCookieConsent = function(category){
+  const c = readConsent();
+  return !!(c && c.categories && c.categories[category]);
+};
+
+function showCookieBanner(openPanel){
+  cookieBanner.classList.add('on');
+  if (openPanel) cookiePanel.classList.add('on');
+  document.body.style.paddingBottom = cookieBanner.offsetHeight + 'px';
+}
+function hideCookieBanner(){
+  cookieBanner.classList.remove('on');
+  cookiePanel.classList.remove('on');
+  document.body.style.paddingBottom = '';
+}
+function applyStoredChoiceToPanel(){
+  const c = readConsent();
+  const cats = (c && c.categories) || {};
+  document.getElementById('cat-audience').checked = !!cats.audience;
+  document.getElementById('cat-external').checked = !!cats.external;
+  document.getElementById('cat-marketing').checked = !!cats.marketing;
+}
+
+if (!readConsent()) showCookieBanner();
+applyStoredChoiceToPanel();
+
+document.getElementById('cookie-accept').addEventListener('click', () => {
+  writeConsent({ necessary: true, audience: true, external: true, marketing: true });
+  hideCookieBanner();
+});
+document.getElementById('cookie-refuse').addEventListener('click', () => {
+  writeConsent({ necessary: true, audience: false, external: false, marketing: false });
+  hideCookieBanner();
+});
+document.getElementById('cookie-customize').addEventListener('click', () => {
+  applyStoredChoiceToPanel();
+  cookiePanel.classList.add('on');
+});
+document.getElementById('cookie-save').addEventListener('click', () => {
+  writeConsent({
+    necessary: true,
+    audience: document.getElementById('cat-audience').checked,
+    external: document.getElementById('cat-external').checked,
+    marketing: document.getElementById('cat-marketing').checked,
+  });
+  hideCookieBanner();
+});
+document.getElementById('cookie-manage').addEventListener('click', (e) => {
+  e.preventDefault();
+  applyStoredChoiceToPanel();
+  showCookieBanner(true);
+});
+
+// ── Modal demande de devis / démonstration ──
+const devisOverlay = document.getElementById('devis-overlay');
+function openDevis(context){
+  document.getElementById('devis-form-wrap').style.display = '';
+  document.getElementById('devis-ok-wrap').style.display = 'none';
+  document.getElementById('devis-err').textContent = '';
+  const commentaireEl = document.getElementById('dv-commentaire');
+  if (context && commentaireEl && !commentaireEl.value) commentaireEl.value = 'Intéressé par : ' + context;
+  devisOverlay.classList.add('on');
+}
+function closeDevis(){ devisOverlay.classList.remove('on'); }
+document.addEventListener('click', (e) => {
+  const opener = e.target.closest('[data-action="open-devis"]');
+  if (opener){ e.preventDefault(); openDevis(opener.getAttribute('data-devis-context')); }
+});
+document.getElementById('devis-close').addEventListener('click', closeDevis);
+document.getElementById('devis-ok-close').addEventListener('click', closeDevis);
+devisOverlay.addEventListener('click', (e) => { if (e.target === devisOverlay) closeDevis(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && devisOverlay.classList.contains('on')) closeDevis(); });
+
+document.getElementById('devis-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const errEl = document.getElementById('devis-err');
+  const btn = document.getElementById('devis-submit');
+  errEl.textContent = '';
+  const fd = new FormData(form);
+  const body = {
+    prenom: (fd.get('prenom') || '').toString().trim(),
+    nom: (fd.get('nom') || '').toString().trim(),
+    email: (fd.get('email') || '').toString().trim(),
+    telephone: (fd.get('telephone') || '').toString().trim() || null,
+    profil: fd.get('profil'),
+    commentaire: (fd.get('commentaire') || '').toString().trim() || null,
+    site_web: fd.get('site_web'), // honeypot — doit rester vide
+    offre_slug: 'camera-isolee',
+    origine: 'vitrine',
+  };
+  if (!body.prenom || !body.nom || !body.email){
+    errEl.textContent = 'Prénom, nom et e-mail sont obligatoires.';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    const res = await fetch(SB_URL + '/functions/v1/create-guest-request', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error){
+      errEl.textContent = data.error || "Une erreur est survenue, réessayez dans un instant.";
+      return;
+    }
+    document.getElementById('devis-form-wrap').style.display = 'none';
+    document.getElementById('devis-ok-wrap').style.display = '';
+    document.getElementById('devis-ref').textContent = data.reference || '—';
+  }catch(err){
+    errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";
+  }finally{
+    btn.disabled = false; btn.textContent = 'Envoyer ma demande';
+  }
+});
+</script>
+<!-- ══════════════ MODAL PRENDRE RENDEZ-VOUS ══════════════ -->
+<div class="sv-overlay" id="rdv-overlay">
+  <div class="sv-modal">
+    <button class="sv-close" id="rdv-close" aria-label="Fermer">✕</button>
+    <div id="rdv-form-wrap">
+      <h3>Demander un rendez-vous</h3>
+      <p class="sub">Choisissez librement une date et un horaire, nous vérifions ensuite la disponibilité et revenons vers vous rapidement.</p>
+      <form id="rdv-form">
+        <div class="sv-honeypot" aria-hidden="true"><label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
+        <div class="sv-field">
+          <label for="rdv-type">Type de rendez-vous</label>
+          <select id="rdv-type" name="type_rdv" required>
+            <option value="appel">Appel téléphonique</option>
+            <option value="physique">Rendez-vous physique</option>
+          </select>
+        </div>
+        <div class="sv-field-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="sv-field"><label for="rdv-date">Date souhaitée</label><input id="rdv-date" name="date_demandee" type="date" required></div>
+          <div class="sv-field"><label for="rdv-heure">Horaire (7h-22h)</label><input id="rdv-heure" name="heure_demandee" type="time" min="07:00" max="22:00"></div>
+        </div>
+        <div class="sv-field"><label for="rdv-objet">Objet (facultatif)</label><input id="rdv-objet" name="objet" type="text" placeholder="Ex : réservation caméra isolée"></div>
+        <div class="sv-field"><label for="rdv-prenom">Prénom</label><input id="rdv-prenom" name="prenom" type="text" required></div>
+        <div class="sv-field"><label for="rdv-nom">Nom</label><input id="rdv-nom" name="nom" type="text" required></div>
+        <div class="sv-field"><label for="rdv-email">E-mail</label><input id="rdv-email" name="email" type="email" required></div>
+        <div class="sv-field"><label for="rdv-tel">Téléphone (facultatif)</label><input id="rdv-tel" name="telephone" type="tel"></div>
+        <div class="sv-err" id="rdv-err"></div>
+        <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--text-secondary)">Les informations renseignées sont utilisées par SportVision pour traiter votre demande et vous recontacter. <a href="confidentialite.html" target="_blank">En savoir plus</a>.</p>
+        <button type="submit" class="btn btn-grad" style="width:100%;margin-top:6px" id="rdv-submit">Confirmer ma demande de rendez-vous</button>
+      </form>
+    </div>
+    <div id="rdv-ok-wrap" style="display:none">
+      <div class="sv-ok">
+        <div class="check">✓</div>
+        <h3>Demande de rendez-vous envoyée</h3>
+        <p class="sub">SportVision vous recontactera rapidement pour confirmer votre rendez-vous.</p>
+        <button type="button" class="btn btn-grad" style="width:100%;margin-top:18px" id="rdv-ok-close">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Modal "Demander un rendez-vous" (formulaire léger, sans compte) ──
+const rdvOverlay = document.getElementById('rdv-overlay');
+function openRdv(){
+  document.getElementById('rdv-form-wrap').style.display = '';
+  document.getElementById('rdv-ok-wrap').style.display = 'none';
+  document.getElementById('rdv-err').textContent = '';
+  const dateInput = document.getElementById('rdv-date');
+  if (!dateInput.min) dateInput.min = new Date().toISOString().slice(0, 10);
+  rdvOverlay.classList.add('on');
+}
+function closeRdv(){ rdvOverlay.classList.remove('on'); }
+document.addEventListener('click', (e) => {
+  const opener = e.target.closest('[data-action="open-rdv"]');
+  if (opener){ e.preventDefault(); openRdv(); }
+});
+document.getElementById('rdv-close').addEventListener('click', closeRdv);
+document.getElementById('rdv-ok-close').addEventListener('click', closeRdv);
+rdvOverlay.addEventListener('click', (e) => { if (e.target === rdvOverlay) closeRdv(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && rdvOverlay.classList.contains('on')) closeRdv(); });
+
+document.getElementById('rdv-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const errEl = document.getElementById('rdv-err');
+  const btn = document.getElementById('rdv-submit');
+  errEl.textContent = '';
+  const fd = new FormData(form);
+  const heure = (fd.get('heure_demandee') || '').toString();
+  if (heure && (heure < '07:00' || heure > '22:00')){
+    errEl.textContent = 'Merci de choisir un horaire entre 7h et 22h.';
+    return;
+  }
+  const body = {
+    prenom: (fd.get('prenom') || '').toString().trim(),
+    nom: (fd.get('nom') || '').toString().trim(),
+    email: (fd.get('email') || '').toString().trim(),
+    telephone: (fd.get('telephone') || '').toString().trim() || null,
+    type_rdv: fd.get('type_rdv'),
+    objet: (fd.get('objet') || '').toString().trim() || null,
+    date_demandee: fd.get('date_demandee'),
+    heure_demandee: heure || null,
+    site_web: fd.get('site_web'),
+  };
+  if (!body.prenom || !body.nom || !body.email || !body.date_demandee){
+    errEl.textContent = 'Prénom, nom, e-mail et date sont obligatoires.';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    const res = await fetch(SB_URL + '/functions/v1/create-guest-rdv', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error){
+      errEl.textContent = data.error || "Une erreur est survenue, réessayez dans un instant.";
+      return;
+    }
+    document.getElementById('rdv-form-wrap').style.display = 'none';
+    document.getElementById('rdv-ok-wrap').style.display = '';
+  }catch(err){
+    errEl.textContent = "Impossible d'envoyer la demande pour le moment. Réessayez dans un instant.";
+  }finally{
+    btn.disabled = false; btn.textContent = 'Confirmer ma demande de rendez-vous';
+  }
+});
+</script>
+</body>
+</html>
