@@ -126,17 +126,27 @@ export function OrganizationSwitcher() {
   );
 }
 
+// 17/08/2026 — getSpaces() ne filtre plus par statut (voir session.ts), un espace où
+// l'utilisateur est seulement invité ou suspendu peut donc apparaître ici. Y basculer directement
+// depuis ce switcher n'a pas de sens (RLS refuserait quand même toute donnée réelle, is_club_member
+// vérifie status='actif' côté serveur) — l'acceptation doit passer par l'écran dédié
+// (NoActiveSpace), jamais par un simple clic ici.
+function isSwitchable(space: Space): boolean {
+  return space.clickable && (space.status === undefined || space.status === "actif");
+}
+
 function SpaceRow({ space, isActive, onSelect }: { space: Space; isActive: boolean; onSelect: () => void }) {
+  const switchable = isSwitchable(space);
   return (
     <button
-      disabled={!space.clickable}
+      disabled={!switchable}
       onClick={() => {
-        if (!space.clickable) return;
+        if (!switchable) return;
         onSelect();
       }}
       className={cn(
         "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors",
-        space.clickable ? "hover:bg-white/[.08]" : "cursor-not-allowed opacity-50",
+        switchable ? "hover:bg-white/[.08]" : "cursor-not-allowed opacity-50",
         isActive && "bg-white/[.06]",
       )}
     >
@@ -147,8 +157,10 @@ function SpaceRow({ space, isActive, onSelect }: { space: Space; isActive: boole
         <span className="block truncate text-[12.5px] font-bold text-white">{space.name}</span>
         <span className="block truncate text-[11px] text-[#7E8FA5]">{space.subtitle}</span>
       </span>
-      {!space.clickable && (
-        <span className="flex-none rounded-full bg-white/10 px-2 py-0.5 text-[9.5px] font-bold text-[#7E8FA5]">Bientôt</span>
+      {!switchable && (
+        <span className="flex-none rounded-full bg-white/10 px-2 py-0.5 text-[9.5px] font-bold text-[#7E8FA5]">
+          {space.status === "invitation" ? "Invitation en attente" : space.status === "suspendu" ? "Suspendu" : "Bientôt"}
+        </span>
       )}
     </button>
   );

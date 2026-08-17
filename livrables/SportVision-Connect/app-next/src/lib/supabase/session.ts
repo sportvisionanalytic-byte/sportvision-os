@@ -55,11 +55,16 @@ interface MembershipRow {
 
 export async function getSpaces(supabase: SupabaseClient, userId: string): Promise<Space[]> {
   const [orgRes, playerRes, parentRes] = await Promise.all([
+    // 17/08/2026 — le filtre `.eq("status", "actif")` excluait totalement un membre invité ou
+    // suspendu de cette liste : il n'apparaissait dans AUCUN écran, pas même une invitation à
+    // accepter. Retiré : les 3 statuts réels (actif/invitation/suspendu) sont maintenant tous
+    // remontés, `status` (déjà mappé sur chaque Space, voir plus bas) permet à l'appelant de
+    // décider quoi en faire — pickActiveSpace (ci-dessous) ne sélectionne toujours automatiquement
+    // qu'un espace `status === "active"`, jamais un espace invité/suspendu.
     supabase
       .from("memberships")
       .select("id, organization_id, role, status, organizations(id, nom, organization_type, statut)")
-      .eq("user_id", userId)
-      .eq("status", "actif"),
+      .eq("user_id", userId),
     supabase.from("player_profiles").select("id, prenom, nom, account_status").eq("user_id", userId),
     supabase.from("parent_profiles").select("id, prenom, nom").eq("user_id", userId),
   ]);
@@ -119,14 +124,22 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
 }
 
 /** Précédence identique à openSpace()/bootAfterLogin() : dernier espace cliquable mémorisé,
- * sinon auto-sélection si un seul espace cliquable, sinon aucun (écran sélecteur). */
+ * sinon auto-sélection si un seul espace cliquable, sinon aucun (écran sélecteur).
+ *
+ * 17/08/2026 — `s.status` (valeur brute française, voir getSpaces ci-dessus : "actif"/
+ * "invitation"/"suspendu" pour un espace organisation, `undefined` pour joueur/parent, aucun
+ * concept de statut côté Connect) doit valoir "actif" ou être absent pour être auto-sélectionnable
+ * — sans cette garde, un membre invité mais pas encore accepté, ou suspendu, se serait retrouvé
+ * placé DANS l'espace comme s'il en était déjà membre actif (getSpaces ne filtre plus par statut
+ * depuis ce même correctif, précisément pour qu'un statut non-actif reste visible côté écran
+ * "aucun espace actif" plutôt que d'être invisible — mais jamais auto-entré). */
 export function pickActiveSpace(spaces: Space[], rememberedKey: string | undefined): Space | null {
-  const clickable = spaces.filter((s) => s.clickable);
+  const eligible = spaces.filter((s) => s.clickable && (s.status === undefined || s.status === "actif"));
   if (rememberedKey) {
-    const remembered = clickable.find((s) => spaceKey(s) === rememberedKey);
+    const remembered = eligible.find((s) => spaceKey(s) === rememberedKey);
     if (remembered) return remembered;
   }
-  if (clickable.length === 1) return clickable[0]!;
+  if (eligible.length === 1) return eligible[0]!;
   return null;
 }
 
