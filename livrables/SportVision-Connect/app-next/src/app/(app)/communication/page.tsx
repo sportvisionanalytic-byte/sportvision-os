@@ -170,8 +170,7 @@ function PlanningView({ clientId }: { clientId: string }) {
 // réimplémenter ces écrans ici — "réutiliser avant de créer" (Bible §26). "Prendre en charge" /
 // "Pris en compte" (anti-doublon entre CM) est câblé sur les deux tables citées par le brief :
 // club_matches et club_requests (colonne `taken_by`, migration-clubplus-v41-centre-
-// communication-prise-en-charge.sql, NON EXÉCUTÉE tant que Fouka ne l'a pas passée en base — les
-// deux cartes concernées afficheront alors une erreur de chargement honnête, pas un faux succès).
+// communication-prise-en-charge.sql, exécutée — vérifié en direct le 17/08/2026).
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
 /** club_requests.status = 'info_manquante' — statut réel le plus proche de "Modification
