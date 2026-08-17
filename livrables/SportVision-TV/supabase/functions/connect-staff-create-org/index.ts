@@ -7,12 +7,16 @@
 
 // Supabase Edge Function — connect-staff-create-org
 // Appelée par le STAFF SportVision depuis SportVision OS pour générer un lien
-// d'activation privé permettant de créer une organisation Connect de type
-// `event` (client Full Communication ponctuel, type tournoi) ou `cm_agency`
-// (agence externe de Community Management, accès délégué multi-clubs) — les
-// deux seuls types explicitement exclus de l'inscription self-service
-// (voir migration-connect-v20-event-cm-agency-org-types.sql, section 1, et
-// app-next/src/app/signup/signup-context.tsx pour cm_agency).
+// d'activation privé permettant de créer directement une organisation Connect
+// (sans passer par une demande publique connect_clubplus_signup_requests),
+// pour tout type qui route par ce mécanisme : academie, coach,
+// structure_coaching, tournoi, stage, cm_agency, projet (17/08/2026,
+// généralisation — voir migration-connect-v78-signup-unifie-clubplus.sql).
+// À l'origine limité à `event`/`cm_agency` (migration-connect-v20) ; `event`
+// n'existe plus comme organization_type depuis la bascule tournoi/stage
+// (migration-clubplus-v44) — VALID_TYPES corrigé en conséquence et étendu
+// aux 4 nouveaux types qui partagent désormais exactement le même mécanisme
+// (connect_org_activation_tokens / connect-org-activate).
 //
 // Même patron exact que clubplus-generate-activation : renvoie un lien privé
 // à transmettre par le staff (jamais envoyé automatiquement — SECRET, quiconque
@@ -52,7 +56,7 @@ function json(body: unknown, status = 200) {
 }
 
 const STAFF_ROLES = ["admin", "sec", "com"];
-const VALID_TYPES = new Set(["event", "cm_agency"]);
+const VALID_TYPES = new Set(["academie", "coach", "structure_coaching", "tournoi", "stage", "cm_agency", "projet"]);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -92,7 +96,7 @@ serve(async (req) => {
     const clientId: string = body.client_id || "";
 
     if (!VALID_TYPES.has(organizationType)) {
-      return json({ error: "Type d'organisation non pris en charge (event ou cm_agency uniquement)." }, 400);
+      return json({ error: "Type d'organisation non pris en charge (club exclu — voir clubplus-generate-activation)." }, 400);
     }
 
     let linkedClientId: string | null = null;

@@ -9,24 +9,29 @@
 
 // Supabase Edge Function — connect-club-signup-request
 //
-// Remplace, pour orgType==='club', l'ancien chemin app-next qui appelait
-// clubplus-onboarding immédiatement après l'inscription (compte Supabase Auth
-// créé par le visiteur lui-même, club actif + admin posés en dur à la même
-// seconde, AUCUNE validation humaine — faille corrigée par ce chantier, voir
-// migration-connect-v44-club-signup-requests.sql).
+// 17/08/2026 — généralisée à 7 types de structure (SIGNUP-UNIFIE-MASTER-
+// PROMPT.md + décision d'architecture en bas du fichier) : ce n'est plus
+// seulement le tunnel club, mais LE tunnel "demande d'ouverture d'un espace
+// Club+" pour club/académie/coach/structure de coaching/tournoi/stage/
+// association-autre structure. Le nom de la fonction n'a volontairement pas
+// changé (contrat d'API stable pour le frontend) ; seul son comportement
+// interne est généralisé. Écrit désormais dans connect_clubplus_signup_requests
+// (migration-connect-v78-signup-unifie-clubplus.sql — connect_club_signup_
+// requests, visée par l'ancienne version de ce fichier, n'a jamais existé en
+// prod, vérifié par curl avant ce chantier).
 //
-// PUBLIQUE, comme create-guest-request : appelée SANS session (le nouveau
-// tunnel /signup/club-request ne crée ni compte ni mot de passe — Fouka,
-// brief du 12/08/2026 : "Je ne créerais pas immédiatement un club actif...
-// une inscription publique devrait créer une 'Demande d'ouverture Connect'").
-// Anti-abus par IP via guest_rate_limits, même mécanisme que
-// create-guest-request / create-guest-rdv / clubplus-check-activation-token.
+// PUBLIQUE, comme create-guest-request : appelée SANS session (le tunnel ne
+// crée ni compte ni mot de passe — Fouka : "une inscription publique
+// devrait créer une 'Demande d'ouverture Club+'"). Anti-abus par IP via
+// guest_rate_limits, même mécanisme que create-guest-request / create-guest-
+// rdv / clubplus-check-activation-token.
 //
-// N'ÉCRIT QUE dans connect_club_signup_requests. Ne crée RIEN d'autre —
-// aucune ligne clubs / club_members / clients / auth.users. Le club réel
-// n'est créé qu'à l'activation (clubplus-activate), après que le staff a
-// validé la demande et choisi explicitement le rôle Connect initial du
-// contact (connect-club-signup-review).
+// N'ÉCRIT QUE dans connect_clubplus_signup_requests. Ne crée RIEN d'autre —
+// aucune ligne organizations / memberships / clubs / club_members / clients /
+// auth.users, quel que soit le type de structure. La structure réelle n'est
+// créée qu'à l'activation (clubplus-activate pour club, connect-org-activate
+// pour les 6 autres types), après validation staff explicite
+// (connect-club-signup-review).
 //
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: connect-club-signup-request)
 // Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
@@ -62,24 +67,42 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// Listes fermées — doivent rester strictement identiques à FONCTION_OPTIONS
-// / NEEDS_OPTIONS (app-next/src/app/signup/signup-context.tsx). Validées
-// aussi côté serveur : jamais confiance dans une valeur arbitraire envoyée
-// par le visiteur pour des champs réaffichés ensuite tels quels au staff.
+// Type de structure — écran 1 du tunnel (master prompt §5). 'projet'
+// correspond à "Association / Autre structure" (mapping déjà utilisé
+// ailleurs dans ce repo pour "Autre structure sportive"/Espace Projet).
+const ORG_TYPES = new Set([
+  "club", "academie", "coach", "structure_coaching", "tournoi", "stage", "projet",
+]);
+
+// structure_type (sous-classification administrative française) n'a de sens
+// que pour ces 3 types — voir migration-connect-v78, section 1.
+const STRUCTURE_TYPE_RELEVANT = new Set(["club", "academie", "projet"]);
+
+// Liste fermée — doit rester strictement identique à FONCTION ci-dessous côté
+// frontend (le prochain agent doit aligner CLUB_FONCTION_OPTIONS/signup-
+// context.tsx sur cette liste exacte). Transcrite verbatim depuis SIGNUP-
+// UNIFIE-MASTER-PROMPT.md §19 (liste unique, valable pour les 7 types).
 const FONCTIONS = new Set([
-  "Président(e)", "Vice-président(e)", "Directeur / Directrice", "Secrétaire",
-  "Trésorier / Trésorière", "Responsable communication", "Community Manager",
-  "Responsable sportif / Directeur sportif", "Responsable administratif",
-  "Responsable partenariat / sponsoring", "Éducateur / Éducatrice",
-  "Entraîneur / Entraîneuse", "Responsable d'équipe",
-  "Photographe / Vidéaste du club", "Joueur / Joueuse", "Bénévole",
+  "Président(e)", "Vice-président(e)", "Directeur/Directrice", "Secrétaire",
+  "Trésorier/Trésorière", "Responsable communication", "Community Manager",
+  "Directeur sportif", "Responsable sportif", "Responsable administratif",
+  "Coach", "Éducateur", "Préparateur physique", "Responsable d'équipe",
+  "Responsable partenariat/sponsoring", "Propriétaire/Gérant", "Bénévole",
   "Membre du bureau", "Autre",
 ]);
 
+// Liste fermée — transcrite depuis SIGNUP-UNIFIE-MASTER-PROMPT.md §27-28
+// ("version recommandée des choix"), Club+ volontairement absent (déjà le
+// produit demandé par ce tunnel, doublon évité).
 const BESOINS = new Set([
-  "Prestations photo / vidéo", "Communication du club", "Création de visuels",
-  "Full Communication", "Club+", "Couverture de matchs", "Tournoi / stage",
-  "Veo / captation", "Je souhaite simplement découvrir SportVision", "Autre",
+  "Photo / vidéo", "Communication de ma structure", "Création de visuels",
+  "Full Communication", "Couverture de matchs", "Captation Veo / Drone",
+  "Tournoi / stage / événement", "Découvrir les services SportVision", "Autre",
+]);
+
+// Champ conditionnel écran 2 — coach/préparateur (master prompt §12).
+const ACTIVITE_TYPES = new Set([
+  "Coach indépendant", "Préparateur physique", "Personal trainer", "Coach personnel", "Autre",
 ]);
 
 function json400(msg: string) {
@@ -98,16 +121,20 @@ serve(async (req) => {
 
     const body = await req.json();
     const {
-      // Étape 1 · Votre club
+      // Écran 1
+      organization_type,
+      // Écran 2 · Votre structure
       club_nom, structure_type, ville, code_postal, site_web,
-      // Étape 2 · Vous
+      activite_type, activite_type_autre, exerce_sous_propre_nom,
+      nom_evenement_principal,
+      // Écran 3 · Vous
       contact_prenom, contact_nom, contact_email, contact_telephone, fonction, fonction_autre,
-      // Étape 3 · Votre besoin
+      // Écran 4 · Votre besoin
       besoins, besoin_autre_precision,
-      // Étape 4 · Validation
+      // Écran 5 · Validation
       certification_acceptee,
       // Honeypot — nom distinct de "site_web" (déjà un champ légitime ici, le
-      // nom du site du club), doit rester vide, un bot le remplit en général.
+      // nom du site de la structure), doit rester vide, un bot le remplit en général.
       hp_champ,
     } = body;
 
@@ -117,8 +144,20 @@ serve(async (req) => {
       return json({ request_id: null });
     }
 
-    if (!club_nom || !String(club_nom).trim()) return json400("Le nom du club est obligatoire.");
-    if (!structure_type || !String(structure_type).trim()) return json400("Le type de structure est obligatoire.");
+    // organization_type absent -> 'club' par défaut, pour ne rien casser d'un
+    // appelant qui n'enverrait pas encore ce champ (compatibilité ascendante
+    // avec l'ancien tunnel 4 étapes club-only).
+    const orgType: string = organization_type ? String(organization_type).trim() : "club";
+    if (!ORG_TYPES.has(orgType)) return json400("Type de structure non reconnu.");
+
+    if (!club_nom || !String(club_nom).trim()) return json400("Le nom de la structure est obligatoire.");
+    // structure_type : obligatoire UNIQUEMENT pour club (comportement EXACTEMENT identique à
+    // avant ce chantier). Pour académie/projet, facultatif mais accepté et conservé. Pour les 4
+    // autres types, non pertinent — un envoi accidentel est ignoré silencieusement plutôt que
+    // rejeté (le frontend ne devrait pas l'envoyer pour ces types, voir STRUCTURE_TYPE_RELEVANT).
+    if (orgType === "club" && (!structure_type || !String(structure_type).trim())) {
+      return json400("Le type de structure est obligatoire.");
+    }
     if (!ville || !String(ville).trim()) return json400("La ville est obligatoire.");
     if (!contact_prenom || !String(contact_prenom).trim()) return json400("Le prénom est obligatoire.");
     if (!contact_nom || !String(contact_nom).trim()) return json400("Le nom est obligatoire.");
@@ -127,6 +166,12 @@ serve(async (req) => {
     if (!fonction || !FONCTIONS.has(fonction)) return json400("Fonction non reconnue.");
     if (fonction === "Autre" && (!fonction_autre || !String(fonction_autre).trim())) {
       return json400("Merci de préciser votre fonction.");
+    }
+    if (orgType === "coach" && activite_type) {
+      if (!ACTIVITE_TYPES.has(activite_type)) return json400("Type d'activité non reconnu.");
+      if (activite_type === "Autre" && (!activite_type_autre || !String(activite_type_autre).trim())) {
+        return json400("Merci de préciser votre type d'activité.");
+      }
     }
     if (!Array.isArray(besoins) || besoins.length === 0) return json400("Sélectionnez au moins un besoin.");
     if (!besoins.every((b: unknown) => typeof b === "string" && BESOINS.has(b))) {
@@ -142,6 +187,7 @@ serve(async (req) => {
       [club_nom, 200], [ville, 120], [code_postal, 12], [site_web, 300],
       [contact_prenom, 100], [contact_nom, 100], [contact_telephone, 30],
       [fonction_autre, 200], [besoin_autre_precision, 500],
+      [activite_type_autre, 200], [nom_evenement_principal, 200],
     ].some(([val, max]) => val && String(val).length > (max as number));
     if (tooLong) return json400("Un des champs dépasse la longueur autorisée.");
 
@@ -152,13 +198,18 @@ serve(async (req) => {
     }
 
     const { data: created, error: insErr } = await admin
-      .from("connect_club_signup_requests")
+      .from("connect_clubplus_signup_requests")
       .insert({
+        organization_type: orgType,
         club_nom: String(club_nom).trim(),
-        structure_type: String(structure_type).trim(),
+        structure_type: STRUCTURE_TYPE_RELEVANT.has(orgType) && structure_type ? String(structure_type).trim() : null,
         ville: String(ville).trim(),
         code_postal: code_postal || null,
         site_web: site_web || null,
+        activite_type: orgType === "coach" && activite_type ? String(activite_type).trim() : null,
+        activite_type_autre: orgType === "coach" && activite_type === "Autre" ? String(activite_type_autre).trim() : null,
+        exerce_sous_propre_nom: orgType === "coach" ? !!exerce_sous_propre_nom : false,
+        nom_evenement_principal: orgType === "tournoi" && nom_evenement_principal ? String(nom_evenement_principal).trim() : null,
         contact_prenom: String(contact_prenom).trim(),
         contact_nom: String(contact_nom).trim(),
         contact_email: String(contact_email).trim(),
@@ -174,19 +225,18 @@ serve(async (req) => {
       .single();
     if (insErr) return json({ error: insErr.message }, 500);
 
-    // Notifie le staff avec un vrai lien d'action (p_club_signup_request_id) —
-    // avant, aucun écran de traitement n'existait pour ce type de demande.
+    // Notifie le staff avec un vrai lien d'action (p_clubplus_signup_request_id).
     // Best-effort : un échec de notification ne doit jamais faire échouer
     // une demande par ailleurs valide, mais on log pour diagnostiquer.
     try {
       await admin.rpc("notify_staff_by_role", {
         p_roles: ["admin", "sec", "com"],
-        p_titre: `Nouvelle demande d'ouverture Connect — ${String(club_nom).trim()}`,
-        p_message: `${String(contact_prenom).trim()} ${String(contact_nom).trim()} (${fonction === "Autre" ? fonction_autre : fonction}) demande l'ouverture de l'espace Connect de « ${String(club_nom).trim()} » (${String(ville).trim()}). Contact : ${contact_email} · ${contact_telephone}.`,
+        p_titre: `Nouvelle demande d'ouverture Club+ — ${String(club_nom).trim()}`,
+        p_message: `${String(contact_prenom).trim()} ${String(contact_nom).trim()} (${fonction === "Autre" ? fonction_autre : fonction}) demande l'ouverture d'un espace Club+ (${orgType}) pour « ${String(club_nom).trim()} » (${String(ville).trim()}). Contact : ${contact_email} · ${contact_telephone}.`,
         p_priorite: "normale",
         p_prestation_id: null,
         p_client_id: null,
-        p_club_signup_request_id: created.id,
+        p_clubplus_signup_request_id: created.id,
       });
     } catch (_e) {
       console.error("[connect-club-signup-request] notify_staff_by_role a échoué :", _e);

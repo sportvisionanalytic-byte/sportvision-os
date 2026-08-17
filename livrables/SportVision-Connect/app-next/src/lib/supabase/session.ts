@@ -89,6 +89,12 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
         orgType === "projet" ||
         orgType === "coach" ||
         orgType === "academie" ||
+        // structure_coaching (17/08/2026, migration-connect-v78-signup-unifie-clubplus.sql) :
+        // même socle réel que coach/académie/sponsor (memberships + organization_role_catalog,
+        // pas d'entitlements) — voir GENERIC_ORG_TYPES/buildOrgSpaceActiveContext plus bas dans
+        // ce fichier. Ajouté ici pour ne pas reproduire le bug trouvé le 12/08 (espace réel non
+        // cliquable faute d'entrée dans cette liste, malgré un backend complet).
+        orgType === "structure_coaching" ||
         orgType === "sponsor" ||
         orgType === "tournoi" ||
         orgType === "stage" ||
@@ -482,7 +488,7 @@ export async function buildProjetActiveContext(
 // création passe par connect-staff-create-org/connect-org-activate (staff) plutôt que
 // connect-org-signup (self-service), ce qui ne change rien ici : cette fonction lit uniquement
 // l'état déjà en base, peu importe comment il y est arrivé.
-const GENERIC_ORG_TYPES = ["coach", "academie", "sponsor", "tournoi", "stage", "cm_agency"] as const;
+const GENERIC_ORG_TYPES = ["coach", "academie", "structure_coaching", "sponsor", "tournoi", "stage", "cm_agency"] as const;
 type GenericOrgType = (typeof GENERIC_ORG_TYPES)[number];
 
 /**

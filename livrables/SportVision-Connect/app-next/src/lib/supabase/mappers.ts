@@ -10,6 +10,8 @@ const ORG_TYPE_MAP: Record<string, OrgType> = {
   club: "club",
   academie: "academy",
   coach: "coach",
+  // 17/08/2026 — migration-connect-v78-signup-unifie-clubplus.sql.
+  structure_coaching: "coaching_structure",
   projet: "generic",
   sponsor: "sponsor",
   tournoi: "tournament_organizer",
@@ -104,12 +106,24 @@ const CM_AGENCY_ROLE_MAP: Record<string, MembershipRole> = {
   collaborateur: "staff",
 };
 
+// structure_coaching (17/08/2026, migration-connect-v78-signup-unifie-clubplus.sql) : catalogue
+// minimaliste réutilisant des MembershipRole déjà existants ("admin"/"coach"/"staff") plutôt que
+// d'en ajouter de nouveaux — 'responsable' (is_admin=true) mappé sur "admin", 'coach'
+// (is_default=true) sur "coach", 'intervenant' sur "staff" (même sens que collaborateur_limite
+// côté coach : accès limité).
+const STRUCTURE_COACHING_ROLE_MAP: Record<string, MembershipRole> = {
+  responsable: "admin",
+  coach: "coach",
+  intervenant: "staff",
+};
+
 export function mapOrgRole(
-  orgType: "coach" | "academie" | "sponsor" | "tournoi" | "stage" | "cm_agency",
+  orgType: "coach" | "academie" | "structure_coaching" | "sponsor" | "tournoi" | "stage" | "cm_agency",
   realRole: string,
 ): MembershipRole {
   if (orgType === "coach") return COACH_ROLE_MAP[realRole] ?? "viewer";
   if (orgType === "academie") return ACADEMIE_ROLE_MAP[realRole] ?? "viewer";
+  if (orgType === "structure_coaching") return STRUCTURE_COACHING_ROLE_MAP[realRole] ?? "viewer";
   if (orgType === "tournoi" || orgType === "stage") return TOURNAMENT_CAMP_ROLE_MAP[realRole] ?? "viewer";
   if (orgType === "cm_agency") return CM_AGENCY_ROLE_MAP[realRole] ?? "viewer";
   return SPONSOR_ROLE_MAP[realRole] ?? "viewer";
@@ -134,6 +148,7 @@ export const SPACE_TYPE_LABELS: Record<string, string> = {
   club: "Club",
   academie: "Académie",
   coach: "Coach",
+  structure_coaching: "Structure de coaching",
   projet: "Projet / Prestation",
   sponsor: "Sponsor / Partenaire",
   player: "Joueur",

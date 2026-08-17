@@ -149,10 +149,20 @@ export function useSignup(): SignupContextValue {
 // tournoi/stage, seulement un Espace Projet générique (portal-onboarding, profil "organisateur").
 // `camp` n'a pas d'entrée dans ORG_TYPE_OPTIONS ci-dessous (jamais proposé à l'inscription, comme
 // cm_agency/sponsor) mais doit rester présent ici pour que ce Record<OrgType, ...> reste exhaustif.
+//
+// `coaching_structure` (17/08/2026, migration-connect-v78-signup-unifie-clubplus.sql) : ajout
+// STRICTEMENT MÉCANIQUE, une seule ligne, imposé par l'exhaustivité de Record<OrgType, ...> dès
+// qu'un 11e OrgType existe (src/lib/types.ts) — sans lui, `npm run build` échoue pour tout le
+// projet, bien au-delà de ce tunnel. AUCUNE autre modification de ce fichier : le chantier
+// backend qui introduit ce type n'a pas touché à la logique/UI de ce dossier (périmètre du
+// prochain agent, qui reconstruit ce tunnel en 5 étapes unifiées pour les 7 types de structure —
+// voir SIGNUP-UNIFIE-MASTER-PROMPT.md). Même motif que `camp`/`cm_agency`/`sponsor` ci-dessus :
+// non proposé à l'inscription pour l'instant, tableau vide.
 export const PLAN_OPTIONS_BY_TYPE: Record<OrgType, PlanCode[]> = {
   club: ["one_off", "club_plus_start", "club_plus_performance", "full_communication"],
   academy: ["one_off", "club_plus_start", "club_plus_performance", "full_communication"],
   coach: ["one_off", "club_plus_start", "full_communication"],
+  coaching_structure: [],
   tournament_organizer: ["one_off", "full_communication"],
   camp: [],
   generic: ["one_off"],

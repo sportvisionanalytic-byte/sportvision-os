@@ -7,6 +7,13 @@ export type OrgType =
   | "club"
   | "academy"
   | "coach"
+  // Structure de coaching (17/08/2026, migration-connect-v78-signup-unifie-
+  // clubplus.sql) : "Plusieurs coachs, intervenants ou groupes" — nouveau
+  // type réel côté organizations.organization_type='structure_coaching'
+  // (mapOrgType, src/lib/supabase/mappers.ts). Aucun dashboard/nav dédié
+  // construit pour l'instant (hors périmètre) : resolveNavigation retombe
+  // sur NAV_GENERIC comme tout OrgType non explicitement branché.
+  | "coaching_structure"
   | "player"
   | "parent"
   | "cm_agency"

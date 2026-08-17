@@ -716,7 +716,7 @@ const NAV={
     {id:'cmagency',lb:'Agences CM',ic:'cli'},
     {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
     {id:'cotisations',lb:'Cotisations',ic:'target'},
-    {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
+    {id:'demandesclub',lb:'Demandes Club+',ic:'cli',modal:'modalDemandesClubConnect'},
     {id:'connectcomptes',lb:'Comptes Connect',ic:'cli'},
     {type:'sep',lb:'Équipe & RH'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
@@ -772,7 +772,7 @@ const NAV={
     {id:'abonnements',lb:'Abonnements',ic:'pre'},
     {id:'cotisations',lb:'Cotisations',ic:'target'},
     {id:'cmagency',lb:'Agences CM',ic:'cli'},
-    {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
+    {id:'demandesclub',lb:'Demandes Club+',ic:'cli',modal:'modalDemandesClubConnect'},
     {id:'connectcomptes',lb:'Comptes Connect',ic:'cli'},
     {type:'sep',lb:'Prestations'},
     {id:'pre',lb:'Prestations',ic:'pre'},
@@ -905,7 +905,7 @@ const NAV={
     {id:'objectifs',lb:'Objectifs',ic:'target'},
     {id:'commissions',lb:'Mes commissions',ic:'fin'},
     {id:'reservationsclubs',lb:'Réservations clubs',ic:'pre'},
-    {id:'demandesclub',lb:'Demandes clubs Connect',ic:'cli',modal:'modalDemandesClubConnect'},
+    {id:'demandesclub',lb:'Demandes Club+',ic:'cli',modal:'modalDemandesClubConnect'},
     {id:'connectcomptes',lb:'Comptes Connect',ic:'cli'},
     {type:'sep',lb:'Communication'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
@@ -4385,23 +4385,33 @@ async function genererLienCreationOrg(clientId){
   }
 }
 
-// ── Demandes d'ouverture Connect (club) ──────────────────────────────────────
-// migration-connect-v44-club-signup-requests.sql — écran de triage pour la faille de sécurité
-// corrigée le 12/08/2026 : une inscription publique de club (app-next /signup/club-request)
-// ne crée plus jamais un club actif + admin immédiatement, elle crée une DEMANDE, listée ici.
-// Le staff (admin/sec/com) doit choisir/confirmer EXPLICITEMENT le rôle Connect initial du
-// contact avant toute création réelle — jamais déduit de sa fonction déclarée dans le club
-// (fonction ci-dessous, purement informative). Même patron que modalInviterClubPlus/
-// modalCreerOrgEventCmAgency ci-dessus : le lien d'activation généré à la validation n'est
-// JAMAIS envoyé automatiquement, c'est le staff qui le copie et le transmet lui-même. Le club
-// réel n'est créé qu'à la consommation du lien (clubplus-activate), jamais ici.
+// ── Demandes d'ouverture Club+ (7 types de structure) ────────────────────────
+// migration-connect-v78-signup-unifie-clubplus.sql (17/08/2026) — généralise l'écran de triage
+// (jusque-là club uniquement, migration-connect-v44 jamais exécutée en prod) à 7 types de
+// structure : club, académie, coach, structure de coaching, tournoi, stage, association/autre
+// structure (SIGNUP-UNIFIE-MASTER-PROMPT.md). Le staff (admin/sec/com) doit choisir/confirmer
+// EXPLICITEMENT le rôle Connect/Club+ initial du contact avant toute création réelle — jamais
+// déduit de sa fonction déclarée (fonction ci-dessous, purement informative). Même patron que
+// modalInviterClubPlus/modalCreerOrgEventCmAgency ci-dessus : le lien d'activation généré à la
+// validation n'est JAMAIS envoyé automatiquement, c'est le staff qui le copie et le transmet
+// lui-même. La structure réelle n'est créée qu'à la consommation du lien (clubplus-activate
+// pour club, connect-org-activate pour les 6 autres types), jamais ici.
+//
+// Deux chemins de validation distincts, gérés côté serveur par connect-club-signup-review :
+//  - type club : rôle Connect + formule Club+ à choisir (comportement inchangé).
+//  - 6 autres types : pas de choix de rôle (un seul rôle admin par type, posé à l'activation),
+//    pas de formule Club+ — juste le nom de la structure et une note interne facultative.
 const CCSR_ROLE_LABELS={
   admin:'Administrateur',president:'Président(e)',secretaire:'Secrétaire',comm:'Communication',
   cm_externe:'CM externe',coach:'Coach',resp_equipe:"Responsable d'équipe",sponsor_mgr:'Responsable sponsoring',
   tresorier:'Trésorier(ère)',membre_bureau:'Membre du bureau',lecture_seule:'Lecture seule',
 };
+const CCSR_ORG_TYPE_LABELS={
+  club:'Club',academie:'Académie',coach:'Coach / Préparateur',structure_coaching:'Structure de coaching',
+  tournoi:'Tournoi / Événement',stage:'Stage / Camp',projet:'Association / Autre structure',
+};
 async function modalDemandesClubConnect(){
-  openModal(`<div class="mh"><div class="mt">Demandes d'ouverture Connect</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">Demandes d'ouverture Club+</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" id="ccsr-body" style="display:flex;flex-direction:column;gap:10px;min-height:120px">
       <div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>
     </div>
@@ -4413,7 +4423,7 @@ async function ccsrReloadList(){
   if(!body)return;
   body.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>';
   try{
-    const data=await sbFetch('connect_club_signup_requests?select=id,club_nom,structure_type,ville,code_postal,site_web,contact_prenom,contact_nom,contact_email,contact_telephone,fonction,fonction_autre,besoins,besoin_autre_precision,statut,notes_staff,created_at&statut=in.(a_traiter,infos_demandees)&order=created_at.asc');
+    const data=await sbFetch('connect_clubplus_signup_requests?select=id,organization_type,club_nom,structure_type,ville,code_postal,site_web,contact_prenom,contact_nom,contact_email,contact_telephone,fonction,fonction_autre,besoins,besoin_autre_precision,statut,notes_staff,created_at&statut=in.(a_traiter,infos_demandees)&order=created_at.asc');
     if(!data||!data.length){
       body.innerHTML='<div style="text-align:center;padding:36px;color:var(--t3);font-size:13px"><div style="font-size:28px;margin-bottom:8px;opacity:.3">📥</div>Aucune demande à traiter.</div>';
       return;
@@ -4422,11 +4432,15 @@ async function ccsrReloadList(){
       const fonction=r.fonction==='Autre'?(r.fonction_autre||'Autre'):r.fonction;
       const besoins=(r.besoins||[]).map(b=>`<span style="font-size:10.5px;padding:2px 8px;border-radius:99px;background:var(--s2);border:1px solid var(--b1);color:var(--t2)">${esc(b)}</span>`).join(' ');
       const infosBadge=r.statut==='infos_demandees'?`<span class="bd bw" style="font-size:10px;flex-shrink:0"><span class="bd-d"></span>Infos demandées</span>`:'';
+      const orgTypeBadge=`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--s2);border:1px solid var(--b1);color:var(--acc)">${esc(CCSR_ORG_TYPE_LABELS[r.organization_type]||r.organization_type)}</span>`;
       return `<div style="border:1px solid var(--b1);border-radius:var(--rb);padding:12px 14px;display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div>
-            <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(r.club_nom)}</div>
-            <div style="font-size:11.5px;color:var(--t3)">${esc(r.structure_type||'—')} · ${esc(r.ville||'—')}${r.code_postal?' ('+esc(r.code_postal)+')':''}${r.site_web?' · '+esc(r.site_web):''}</div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(r.club_nom)}</div>
+              ${orgTypeBadge}
+            </div>
+            <div style="font-size:11.5px;color:var(--t3)">${r.structure_type?esc(r.structure_type)+' · ':''}${esc(r.ville||'—')}${r.code_postal?' ('+esc(r.code_postal)+')':''}${r.site_web?' · '+esc(r.site_web):''}</div>
           </div>
           ${infosBadge}
         </div>
@@ -4439,9 +4453,9 @@ async function ccsrReloadList(){
         ${r.notes_staff?`<div style="font-size:11.5px;color:var(--t3);background:var(--s2);border-radius:8px;padding:6px 10px">Note staff : ${esc(r.notes_staff)}</div>`:''}
         <div style="font-size:10.5px;color:var(--t3)">Reçue le ${new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:2px">
-          <button class="btn bp bs" onclick="modalTraiterDemandeClub('${escJs(r.id)}','valider','${escJs(r.club_nom)}')">Valider</button>
-          <button class="btn bg2 bs" onclick="modalTraiterDemandeClub('${escJs(r.id)}','demander_infos','${escJs(r.club_nom)}')">Demander des infos</button>
-          <button class="btn bg2 bs" style="color:var(--er)" onclick="modalTraiterDemandeClub('${escJs(r.id)}','refuser','${escJs(r.club_nom)}')">Refuser</button>
+          <button class="btn bp bs" onclick="modalTraiterDemandeClub('${escJs(r.id)}','valider','${escJs(r.club_nom)}','${escJs(r.organization_type)}')">Valider</button>
+          <button class="btn bg2 bs" onclick="modalTraiterDemandeClub('${escJs(r.id)}','demander_infos','${escJs(r.club_nom)}','${escJs(r.organization_type)}')">Demander des infos</button>
+          <button class="btn bg2 bs" style="color:var(--er)" onclick="modalTraiterDemandeClub('${escJs(r.id)}','refuser','${escJs(r.club_nom)}','${escJs(r.organization_type)}')">Refuser</button>
         </div>
       </div>`;
     }).join('');
@@ -4451,14 +4465,19 @@ async function ccsrReloadList(){
 }
 
 let _lienValidationDemandeClub='';
-function modalTraiterDemandeClub(id,action,clubNom){
+function modalTraiterDemandeClub(id,action,clubNom,orgType){
   _lienValidationDemandeClub='';
+  orgType=orgType||'club';
+  const isClub=orgType==='club';
   const titles={valider:'Valider la demande',demander_infos:"Demander des informations",refuser:'Refuser la demande'};
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   let fields='';
   if(action==='valider'){
+    // Sélecteur de rôle + formule Club+ : UNIQUEMENT pour le type club (comportement inchangé).
+    // Les 6 autres types n'ont qu'un seul rôle admin, posé automatiquement à l'activation
+    // (connect-org-activate, lu depuis organization_role_catalog) — rien à choisir ici.
     fields=`
-      <div><label style="${lbl}">Rôle Connect initial du contact *</label>
+      ${isClub?`<div><label style="${lbl}">Rôle Connect initial du contact *</label>
         <select id="tdc-role" class="l-inp" style="height:38px">
           ${Object.entries(CCSR_ROLE_LABELS).map(([k,v])=>`<option value="${k}"${k==='admin'?' selected':''}>${esc(v)}</option>`).join('')}
         </select>
@@ -4469,8 +4488,8 @@ function modalTraiterDemandeClub(id,action,clubNom){
           <option value="club">Club+ — 5 crédits / mois</option>
           <option value="performance">Club+ Performance — 20 crédits / mois</option>
         </select>
-      </div>
-      <div><label style="${lbl}">Nom du club (pré-rempli)</label>
+      </div>`:`<div style="font-size:11.5px;color:var(--t3);background:var(--s2);border-radius:8px;padding:8px 10px">Un lien d'activation sera généré pour « ${esc(CCSR_ORG_TYPE_LABELS[orgType]||orgType)} ». Le rôle administrateur est posé automatiquement à l'activation, rien à choisir ici.</div>`}
+      <div><label style="${lbl}">Nom de la structure (pré-rempli)</label>
         <input id="tdc-nom" type="text" class="l-inp" style="height:38px" value="${esc(clubNom)}">
       </div>
       <div><label style="${lbl}">Note interne (facultatif)</label>
@@ -4493,11 +4512,11 @@ function modalTraiterDemandeClub(id,action,clubNom){
     </div>
     <div class="mf">
       <button class="btn bg2" onclick="modalDemandesClubConnect()">Annuler</button>
-      <button class="btn bp" id="tdc-btn" onclick="envoyerTraitementDemandeClub('${escJs(id)}','${escJs(action)}')">${action==='valider'?'Valider et générer le lien':action==='demander_infos'?'Envoyer':'Refuser la demande'}</button>
+      <button class="btn bp" id="tdc-btn" onclick="envoyerTraitementDemandeClub('${escJs(id)}','${escJs(action)}','${escJs(orgType)}')">${action==='valider'?'Valider et générer le lien':action==='demander_infos'?'Envoyer':'Refuser la demande'}</button>
     </div>`);
 }
 
-async function envoyerTraitementDemandeClub(id,action){
+async function envoyerTraitementDemandeClub(id,action,orgType){
   const err=document.getElementById('tdc-err');
   const btn=document.getElementById('tdc-btn');
   const notes=document.getElementById('tdc-notes')?.value?.trim()||'';
@@ -4505,8 +4524,10 @@ async function envoyerTraitementDemandeClub(id,action){
   if(action==='demander_infos' && !notes){ if(err)err.textContent="Précisez ce qui manque."; return; }
   const body={request_id:id,action,notes};
   if(action==='valider'){
-    body.initial_role=document.getElementById('tdc-role')?.value||'admin';
-    body.plan=document.getElementById('tdc-plan')?.value||'club';
+    if((orgType||'club')==='club'){
+      body.initial_role=document.getElementById('tdc-role')?.value||'admin';
+      body.plan=document.getElementById('tdc-plan')?.value||'club';
+    }
     body.club_nom_override=document.getElementById('tdc-nom')?.value?.trim()||'';
   }
   if(btn){btn.disabled=true;btn.textContent='Envoi…';}
@@ -20280,10 +20301,10 @@ async function updateNavBadges(role){
       setBadge('pipeline',(prospects||[]).length,'nb-o');
     }
     if(['admin','sec','com'].includes(role)){
-      // Demandes d'ouverture Connect (club) à traiter — migration-connect-v44-club-signup-
-      // requests.sql. RLS déjà limitée au staff admin/sec/com (même garde que la policy),
-      // ce fetch échoue silencieusement (catch) pour tout autre rôle.
-      const demClub=await sbFetch('connect_club_signup_requests?select=id&statut=eq.a_traiter').catch(()=>[]);
+      // Demandes d'ouverture Club+ à traiter (7 types de structure) — migration-connect-v78-
+      // signup-unifie-clubplus.sql. RLS déjà limitée au staff admin/sec/com (même garde que la
+      // policy), ce fetch échoue silencieusement (catch) pour tout autre rôle.
+      const demClub=await sbFetch('connect_clubplus_signup_requests?select=id&statut=eq.a_traiter').catch(()=>[]);
       setBadge('demandesclub',(demClub||[]).length,'nb-r');
     }
     if(['com','admin','sec'].includes(role)){
@@ -20455,7 +20476,7 @@ async function openNotifPanel(){
   openModal(`<div class="mh"><div class="mt">Notifications</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="padding-top:4px" id="notif-panel-body"><div style="text-align:center;padding:30px;color:var(--t3);font-size:13px">Chargement…</div></div>`);
   try{
-    const data=await sbFetch('notifications?select=id,type,titre,message,lue,created_at,priorite,lien_prestation_id,lien_client_id,lien_club_signup_request_id&destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)&order=lue.asc,created_at.desc&limit=30');
+    const data=await sbFetch('notifications?select=id,type,titre,message,lue,created_at,priorite,lien_prestation_id,lien_client_id,lien_clubplus_signup_request_id&destinataire_id=eq.'+uid+'&type=not.in.(tache,contenu,message)&order=lue.asc,created_at.desc&limit=30');
     const el=document.getElementById('notif-panel-body');
     if(!el)return;
     if(!data||!data.length){
@@ -20482,7 +20503,7 @@ async function openNotifPanel(){
           ?`closeModal();modalDetailById('${n.lien_prestation_id}')`
           :n.lien_client_id
             ?`closeModal();modalModifierClientById('${n.lien_client_id}')`
-            :n.lien_club_signup_request_id
+            :n.lien_clubplus_signup_request_id
               ?`closeModal();modalDemandesClubConnect()`
               :`marquerNotifLu('${n.id}')`;
         return`<div onclick="${action}" style="display:flex;gap:12px;padding:11px 12px;border-radius:8px;margin-bottom:3px;background:${!n.lue?p.bg:'transparent'};border:1px solid ${!n.lue?p.border:'transparent'};cursor:pointer;transition:background .1s" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='${!n.lue?p.bg:'transparent'}'">
@@ -20495,7 +20516,7 @@ async function openNotifPanel(){
               <div style="font-size:10px;color:var(--t3);white-space:nowrap;flex-shrink:0">${relTime(n.created_at)}</div>
             </div>
             ${n.message?`<div style="font-size:12px;color:var(--t2);line-height:1.45">${esc(n.message)}</div>`:''}
-            ${(n.lien_prestation_id||n.lien_client_id||n.lien_club_signup_request_id)?`<div style="font-size:10.5px;color:var(--acc);margin-top:5px;font-weight:600">${n.lien_prestation_id?'→ Voir la prestation':n.lien_client_id?'→ Voir le client':'→ Traiter la demande'}</div>`:''}
+            ${(n.lien_prestation_id||n.lien_client_id||n.lien_clubplus_signup_request_id)?`<div style="font-size:10.5px;color:var(--acc);margin-top:5px;font-weight:600">${n.lien_prestation_id?'→ Voir la prestation':n.lien_client_id?'→ Voir le client':'→ Traiter la demande'}</div>`:''}
           </div>
         </div>`;
       }).join('');

@@ -6,20 +6,33 @@
 // Supabase Edge Function — connect-org-activate
 // Variante générique de clubplus-activate (lire ce fichier d'abord : mêmes
 // conventions, même idempotence, même garanties atomiques) pour le flux
-// d'activation PRIVÉ d'une organisation de type `event` ou `cm_agency`,
-// générée par connect-staff-create-org. Appelée juste après que la personne
-// invitée a créé son compte Supabase Auth depuis l'écran
+// d'activation PRIVÉ d'une organisation générée par connect-staff-create-org
+// OU par connect-club-signup-review (17/08/2026, généralisation du tunnel de
+// demande d'ouverture Club+ à 7 types de structure — voir migration-connect-
+// v78-signup-unifie-clubplus.sql). Couvre aujourd'hui : academie, coach,
+// structure_coaching, tournoi, stage, cm_agency, projet. Appelée juste après
+// que la personne invitée a créé son compte Supabase Auth depuis l'écran
 // #/org-activation?token=… de SportVision Connect.
 //
-// Différence avec connect-org-signup (self-service coach/académie) : le type
-// d'organisation et le rattachement éventuel à une fiche `clients` Portail
-// (legacy_client_id) ne sont pas choisis par l'invité ni devinés par
-// correspondance d'e-mail — ils sont PORTÉS PAR LE TOKEN, donc explicitement
-// décidés par le staff au moment de la génération du lien. C'est pourquoi la
-// vérification email_confirmed_at (indispensable à connect-org-signup /
-// clubplus-onboarding) n'a pas d'équivalent ici : l'e-mail saisi par l'invité
-// n'entre à aucun moment dans la décision de rattachement — même raisonnement
-// de sécurité que clubplus-activate vs clubplus-onboarding.
+// 17/08/2026 — le rôle admin par type N'EST PLUS codé en dur (ADMIN_ROLE_BY_TYPE
+// ne couvrait que 'event'/'cm_agency', devenu incorrect dès la bascule 'event'
+// -> 'tournoi'/'stage' de migration-clubplus-v44 : plus aucune organisation ne
+// pouvait s'activer avec ces deux types tant que ce fichier n'était pas
+// corrigé). Lu dynamiquement depuis organization_role_catalog (is_admin=true),
+// même pattern que connect-org-signup — source unique de vérité, ne se
+// désynchronise plus jamais du catalogue.
+//
+// Différence avec connect-org-signup (self-service coach/académie, désormais
+// désactivé — voir son propre fichier) : le type d'organisation et le
+// rattachement éventuel à une fiche `clients` Portail (legacy_client_id) ne
+// sont pas choisis par l'invité ni devinés par correspondance d'e-mail — ils
+// sont PORTÉS PAR LE TOKEN, donc explicitement décidés par le staff (ou par
+// connect-club-signup-review après validation d'une demande) au moment de la
+// génération du lien. C'est pourquoi la vérification email_confirmed_at
+// (indispensable à connect-org-signup / clubplus-onboarding) n'a pas
+// d'équivalent ici : l'e-mail saisi par l'invité n'entre à aucun moment dans
+// la décision de rattachement — même raisonnement de sécurité que
+// clubplus-activate vs clubplus-onboarding.
 //
 // Deploy via Supabase dashboard > Edge Functions > New Function
 // (name: connect-org-activate)
@@ -65,15 +78,16 @@ const STATUS_MESSAGES: Record<string, string> = {
   revoked: "Ce lien d'activation a été retiré par SportVision.",
 };
 
-// role_key admin par type d'organisation, cohérent avec le peuplement de
-// organization_role_catalog (migration-connect-v20). Lu en base plutôt que
-// codé en dur en dur uniquement pour rester source-unique-de-vérité — ici
-// codé en dur volontairement car ces deux types n'ont que 2 rôles fixes
-// chacun (contrairement à coach/académie qui ont un vrai catalogue étoffé) ;
-// si le catalogue change, ce mapping devra suivre.
-const ADMIN_ROLE_BY_TYPE: Record<string, string> = {
-  event: "responsable",
-  cm_agency: "proprietaire",
+// Libellés pour la notification staff — purement cosmétique, fallback sur le
+// organization_type brut si un nouveau type est ajouté sans mise à jour ici.
+const ORG_TYPE_LABELS: Record<string, string> = {
+  academie: "académie",
+  coach: "coach / préparateur",
+  structure_coaching: "structure de coaching",
+  tournoi: "tournoi / événement",
+  stage: "stage / camp",
+  cm_agency: "agence CM",
+  projet: "structure",
 };
 
 serve(async (req) => {
@@ -157,7 +171,17 @@ serve(async (req) => {
       return json({ error: "Le nom de l'organisation est obligatoire." }, 400);
     }
 
-    const adminRole = ADMIN_ROLE_BY_TYPE[tokenRow.organization_type];
+    // Rôle admin réel pour ce type, lu depuis le catalogue plutôt que codé en
+    // dur (voir en-tête de fichier, 17/08/2026) — source unique de vérité,
+    // partagée avec connect-org-signup.
+    const { data: roleRow } = await admin
+      .from("organization_role_catalog")
+      .select("role_key")
+      .eq("organization_type", tokenRow.organization_type)
+      .eq("is_admin", true)
+      .limit(1)
+      .maybeSingle();
+    const adminRole = roleRow?.role_key;
     if (!adminRole) {
       await releaseToken();
       return json({ error: "Type d'organisation invalide sur ce lien." }, 500);
@@ -210,7 +234,7 @@ serve(async (req) => {
     try {
       await admin.rpc("notify_staff_by_role", {
         p_roles: ["admin", "sec"],
-        p_titre: `Organisation ${tokenRow.organization_type === "event" ? "événement" : "agence CM"} activée`,
+        p_titre: `Organisation ${ORG_TYPE_LABELS[tokenRow.organization_type] || tokenRow.organization_type} activée`,
         p_message:
           `${nom} vient d'activer son espace Connect (${tokenRow.organization_type}).` +
           (tokenRow.client_id ? (portailLie ? " Son historique Portail est rattaché." : " Le rattachement Portail a échoué, à vérifier.") : ""),
