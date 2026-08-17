@@ -66,7 +66,17 @@ export default function RequestReviewPage() {
         },
       });
       if (fnError) throw fnError;
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        // Doublon (17/08/2026) : message déjà rédigé côté serveur pour être montré tel quel — pas
+        // de détail technique dedans, contrairement aux autres erreurs (§59) qui restent avalées
+        // dans le message générique ci-dessous.
+        if (data.duplicate) {
+          setError(data.error);
+          setSubmitting(false);
+          return;
+        }
+        throw new Error(data.error);
+      }
       patch({ certificationAcceptee: true });
       const requestId = data?.request_id as string | null | undefined;
       router.push(requestId ? `/signup/request/sent?ref=${encodeURIComponent(requestId)}` : "/signup/request/sent");

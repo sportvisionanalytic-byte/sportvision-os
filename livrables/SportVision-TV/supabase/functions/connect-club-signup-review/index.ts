@@ -29,13 +29,12 @@
 //      le travail de clubplus-activate, à la consommation du token.
 //
 //    · organization_type dans ('academie','coach','structure_coaching',
-//      'tournoi','stage','projet') : plus de pipeline clients/clubplus_
-//      activation_tokens (intrinsèquement club — clubplus-activate écrit
-//      TOUJOURS dans la table `clubs`). Route à la place vers le mécanisme
-//      DÉJÀ EN PROD pour tournoi/stage/cm_agency (migration-connect-v20) :
-//      un connect_org_activation_tokens est créé (organization_type,
-//      nom_prefill, client_id=null — aucune fiche CRM résolue à ce stade,
-//      contrairement au club), consommé par connect-org-activate qui crée
+//      'tournoi','stage','projet') : pas de `clubs`/`clubplus_activation_
+//      tokens` (intrinsèquement club — clubplus-activate écrit TOUJOURS dans
+//      la table `clubs`). Route à la place vers le mécanisme DÉJÀ EN PROD
+//      pour tournoi/stage/cm_agency (migration-connect-v20) : un
+//      connect_org_activation_tokens est créé (organization_type,
+//      nom_prefill, client_id), consommé par connect-org-activate qui crée
 //      RÉELLEMENT organizations+memberships à l'activation, jamais avant.
 //      Le rôle initial (admin) est posé à l'activation par connect-org-
 //      activate (lu depuis organization_role_catalog, is_admin=true pour ce
@@ -43,6 +42,12 @@
 //      (même principe que event/cm_agency avant cette généralisation) :
 //      cohérent avec "aucun rôle admin automatique déduit de la fonction
 //      déclarée" (master prompt §51).
+//      17/08/2026 (audit complet Club+) — client_id N'EST PLUS null en dur :
+//      même résolution/création de fiche `clients` que le chemin club
+//      juste au-dessus (ilike sur l'e-mail), type_client='entreprise' par
+//      défaut pour ces 6 types (décision Fouka — l'enum clients.type_client
+//      ne mappe pas proprement sur académie/coach/etc., corrigible à la main
+//      dans la fiche client si besoin).
 //
 // Sécurité : l'appelant doit avoir un `profiles.role` dans ('admin','sec','com')
 // — vérifié en service role, jamais depuis un rôle envoyé dans le body. Même
@@ -244,6 +249,42 @@ serve(async (req) => {
       return json({ error: "Type de structure non pris en charge par cette fonction." }, 500);
     }
 
+    // 17/08/2026 (audit complet Club+) — client_id était null en dur pour ces 6 types : aucune
+    // fiche CRM n'était jamais créée, contrairement au club (résolution/création juste au-dessus).
+    // Même logique de recherche (ilike sur l'e-mail), même fiche `clients`. Décision Fouka :
+    // type_client='entreprise' pour ces 6 types (académie/coach/structure de coaching/tournoi/
+    // stage/association-autre) — classification par défaut, corrigible à la main dans la fiche
+    // client si besoin, l'enum clients.type_client (club/association/entreprise/particulier/
+    // fédération) ne mappe pas proprement 1:1 sur ces 6 types.
+    let clientId: string;
+    const { data: matchedClient } = await admin
+      .from("clients")
+      .select("id")
+      .ilike("email", reqRow.contact_email)
+      .limit(1)
+      .maybeSingle();
+    if (matchedClient) {
+      clientId = matchedClient.id;
+    } else {
+      const { data: createdClient, error: clientErr } = await admin
+        .from("clients")
+        .insert({
+          statut: "prospect",
+          type_client: "entreprise",
+          nom: nomFinal,
+          nom_contact: reqRow.contact_nom,
+          prenom_contact: reqRow.contact_prenom,
+          email: reqRow.contact_email,
+          telephone: reqRow.contact_telephone,
+          ville: reqRow.ville,
+          origine_prospect: "connect",
+        })
+        .select("id")
+        .single();
+      if (clientErr) return json({ error: clientErr.message }, 500);
+      clientId = createdClient.id;
+    }
+
     const token = crypto.randomUUID().replace(/-/g, "");
 
     const { data: createdToken, error: tokErr } = await admin
@@ -251,7 +292,7 @@ serve(async (req) => {
       .insert({
         organization_type: reqRow.organization_type,
         nom_prefill: nomFinal,
-        client_id: null,
+        client_id: clientId,
         token,
         created_by: caller.id,
       })
@@ -275,6 +316,7 @@ serve(async (req) => {
       expires_at: createdToken.expires_at,
       organization_type: reqRow.organization_type,
       nom_prefill: nomFinal,
+      client_id: clientId,
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);

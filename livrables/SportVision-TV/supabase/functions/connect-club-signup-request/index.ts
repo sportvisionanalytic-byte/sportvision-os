@@ -197,6 +197,46 @@ serve(async (req) => {
       return json({ error: "Trop de demandes envoyées récemment. Merci de réessayer plus tard." }, 429);
     }
 
+    // Détection de doublon (17/08/2026, audit complet Club+ — gap documenté depuis la
+    // construction du tunnel unifié, master prompt §46-49 : "nécessite une vraie extension
+    // serveur"). Volontairement PAS de recherche floue nom+ville (aucune définition produit
+    // tranchée de "même structure") : correspondance EXACTE (insensible à la casse) sur le nom de
+    // structure pour ce type d'organisation, OU sur l'e-mail de contact tous types confondus — les
+    // deux cas où une nouvelle demande est presque sûrement un doublon accidentel (double clic,
+    // renvoi après un premier essai) plutôt qu'une coïncidence. Bloque uniquement les demandes
+    // encore "vivantes" (a_traiter/infos_demandees) ou déjà validées (valide, ce qui veut dire
+    // qu'un lien d'activation existe déjà) — une demande refusée (refuse) n'empêche pas un nouvel
+    // essai, une structure peut légitimement retenter après correction.
+    const normalizedNom = String(club_nom).trim();
+    const normalizedEmail = String(contact_email).trim();
+    const LIVE_STATUTS = ["a_traiter", "infos_demandees", "valide"];
+    const [byNom, byEmail] = await Promise.all([
+      admin
+        .from("connect_clubplus_signup_requests")
+        .select("id")
+        .eq("organization_type", orgType)
+        .in("statut", LIVE_STATUTS)
+        .ilike("club_nom", normalizedNom)
+        .limit(1)
+        .maybeSingle(),
+      admin
+        .from("connect_clubplus_signup_requests")
+        .select("id")
+        .in("statut", LIVE_STATUTS)
+        .ilike("contact_email", normalizedEmail)
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    if (byNom.data || byEmail.data) {
+      return json(
+        {
+          error: "Une demande est déjà en cours pour cette structure ou cette adresse e-mail. SportVision reviendra vers vous prochainement.",
+          duplicate: true,
+        },
+        409,
+      );
+    }
+
     const { data: created, error: insErr } = await admin
       .from("connect_clubplus_signup_requests")
       .insert({
