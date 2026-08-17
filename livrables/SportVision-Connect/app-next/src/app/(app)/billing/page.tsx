@@ -23,6 +23,7 @@ import {
   type ClientDevis,
 } from "@/lib/data/projet/billing";
 import { resolveClubPortailClientId } from "@/lib/data/club/portail-link";
+import { resolveOrgLegacyClientId } from "@/lib/data/shared/org-legacy-link";
 import { ClubSubscriptionCard } from "@/components/billing/ClubSubscriptionCard";
 import type { Invoice } from "@/lib/types/billing";
 
@@ -44,8 +45,45 @@ export default function BillingPage() {
 
   if (ctx.organization.type === "generic") return <BillingDocumentsView clientId={ctx.organization.id} allowDevisDecision />;
   if (ctx.organization.type === "club") return <ClubBillingView />;
+  // 17/08/2026 — tournoi/stage n'avaient aucune vue Facturation (LockedModule quoi qu'il arrive) :
+  // le lien "Payer" ajouté ce soir au dashboard (PersonaDashboard.tsx, remplace les données
+  // fictives "Contrat de prestation... 12 août") aurait pointé dans le vide sans ceci. Même
+  // rattachement best-effort que le dashboard (organizations.legacy_client_id,
+  // resolveOrgLegacyClientId), pas de porte bureau (pas de notion de rôles bureau pour ces types).
+  if (ctx.organization.type === "tournament_organizer" || ctx.organization.type === "camp") return <EventBillingView />;
 
   return <LockedModule />;
+}
+
+function EventBillingView() {
+  const { ctx } = useSession();
+  const [clientId, setClientId] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    const supabase = createClient();
+    resolveOrgLegacyClientId(supabase, ctx.organization.id).then(setClientId);
+  }, [ctx.organization.id]);
+
+  if (clientId === undefined) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  }
+
+  if (clientId === null) {
+    return (
+      <Card className="flex flex-col items-center gap-3 px-8 py-16 text-center">
+        <Receipt className="h-6 w-6 text-text-faint" aria-hidden />
+        <div className="max-w-md">
+          <h2 className="text-[18px] font-extrabold tracking-tight">Facturation pas encore reliée</h2>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-text-soft">
+            SportVision n&apos;a pas encore relié {ctx.organization.name} à un espace Facturation. Contactez votre
+            interlocuteur SportVision pour l&apos;activer.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  return <BillingDocumentsView clientId={clientId} allowDevisDecision={false} />;
 }
 
 function ClubBillingView() {

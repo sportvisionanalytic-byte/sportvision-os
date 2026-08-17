@@ -15,6 +15,7 @@ import { fetchAcademieGroups } from "@/lib/data/academie/groups";
 import { fetchClientInvoices } from "@/lib/data/projet/billing";
 import { fetchClientServices } from "@/lib/data/projet/services";
 import { fetchClientLivrables } from "@/lib/data/projet/livrables";
+import { resolveOrgLegacyClientId } from "@/lib/data/shared/org-legacy-link";
 import type { Sponsor } from "@/lib/types/sponsors";
 import type { Invoice } from "@/lib/types/billing";
 import type { Service } from "@/lib/types/services";
@@ -249,9 +250,21 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra, extraLoading: bool
     // partageaient le même contenu générique "événement" sous l'ancien OrgType unique `event` —
     // conservé identique pour les deux nouveaux types, aucun signal produit ne justifie de le
     // différencier ici.
+    // 17/08/2026 — "Contrat de prestation... 12 août"/"Prestation planifiée... Fontainebleau"
+    // étaient 100% fabriqués (trouvé au fil de l'audit complet Club+, même famille que cm_agency).
+    // Remplacés par les mêmes vues client_* que le cas "generic" (devis/factures/prestations/
+    // contenus), résolues via organizations.legacy_client_id (resolveOrgLegacyClientId, déjà
+    // utilisée par sessions/page.tsx et camps/page.tsx) — ce pont reste best-effort : la plupart
+    // des organisations tournoi/stage créées depuis le tunnel unifié (connect-club-signup-review)
+    // n'ont aujourd'hui AUCUN client_id posé (client_id: null en dur côté serveur, gap documenté,
+    // non bloquant) — extra.genericOverdueInvoice/genericUpcomingService/genericContents restent
+    // alors simplement vides, un état honnête plutôt qu'une autre fiction.
     case "tournament_organizer":
     case "camp": {
       const isOneOff = subscription.planCode === "one_off";
+      const overdueInvoice = extra.genericOverdueInvoice;
+      const upcomingService = extra.genericUpcomingService;
+      const eventContents = extra.genericContents ?? [];
       return {
         eyebrow: "Mon événement",
         title: `Bonjour ${user.firstName}, voici le suivi de ${organization.name}.`,
@@ -263,21 +276,29 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra, extraLoading: bool
         // Crédits/présences/stockage n'ont pas de sens ici (toujours 0 côté session.ts).
         gauges: [],
         priorityTitle: "À traiter",
-        priorityItems: [
-          {
-            title: "Contrat de prestation",
-            meta: "À signer · Youtrust",
-            action: "Signer",
-            due: "12 août",
-          },
-        ],
+        priorityItems: overdueInvoice
+          ? [
+              {
+                title: `Facture ${overdueInvoice.number}`,
+                meta: `${overdueInvoice.totalInclVat.toLocaleString("fr-FR")} € TTC`,
+                action: "Payer",
+                actionHref: "/billing",
+                due: `Échue depuis ${daysLate(overdueInvoice.dueDate)} j`,
+              },
+            ]
+          : [],
         secondaryTitle: "Prochainement",
-        secondaryItems: [{ title: "Prestation planifiée", meta: "Complexe sportif, Fontainebleau", due: "7 septembre 2026" }],
+        secondaryItems: upcomingService
+          ? [
+              {
+                title: SERVICE_TYPE_LABELS[upcomingService.serviceType],
+                meta: upcomingService.address || "",
+                due: formatFrDate(upcomingService.date),
+              },
+            ]
+          : [],
         contentsTitle: "Derniers contenus",
-        contents: [
-          { label: "Affiche de l'événement", kind: "Photo" },
-          { label: "Teaser", kind: "Vidéo" },
-        ],
+        contents: eventContents.slice(0, 4).map((c) => ({ label: c.name, kind: MEDIA_KIND_LABELS[c.kind] })),
       };
     }
 
@@ -422,6 +443,30 @@ export function PersonaDashboard() {
         fetchClientLivrables(supabase, ctx.organization.id),
       ])
         .then(([invoices, services, livrables]) => {
+          const now = Date.now();
+          const upcomingService = services
+            .filter((s) => s.date && new Date(s.date).getTime() >= now)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+          setExtra({
+            genericOverdueInvoice: invoices.find((i) => i.status === "en_retard"),
+            genericUpcomingService: upcomingService,
+            genericContents: livrables,
+          });
+        })
+        .catch(() => setExtra({}))
+        .finally(() => setExtraLoading(false));
+    } else if (ctx.organization.type === "tournament_organizer" || ctx.organization.type === "camp") {
+      resolveOrgLegacyClientId(supabase, ctx.organization.id)
+        .then(async (clientId) => {
+          if (!clientId) {
+            setExtra({});
+            return;
+          }
+          const [invoices, services, livrables] = await Promise.all([
+            fetchClientInvoices(supabase, clientId),
+            fetchClientServices(supabase, clientId),
+            fetchClientLivrables(supabase, clientId),
+          ]);
           const now = Date.now();
           const upcomingService = services
             .filter((s) => s.date && new Date(s.date).getTime() >= now)
