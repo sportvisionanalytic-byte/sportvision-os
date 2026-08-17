@@ -74,9 +74,9 @@ export default function LoginPage() {
             <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-gradient-to-br from-brand-cyan to-brand-violet">
               <span className="h-1.5 w-1.5 animate-svpulse rounded-full bg-white" />
             </span>
-            Le portail professionnel SportVision.
+            L&apos;espace professionnel SportVision
           </div>
-          <h1 className="mt-6 text-[44px] font-extrabold leading-[1.06] tracking-tight text-white">
+          <h1 className="mt-6 text-[40px] font-extrabold leading-[1.08] tracking-tight text-white">
             Votre structure.
             <br />
             Vos prestations.
@@ -86,17 +86,16 @@ export default function LoginPage() {
             </span>
           </h1>
           <p className="mt-5 max-w-[420px] text-[16px] leading-relaxed text-text-secondary">
-            Club+, Full Communication ou prestation ponctuelle : vos demandes, vos contenus et vos
-            échéances vivent au même endroit.
+            Retrouvez vos demandes, contenus, prestations et échéances dans un seul espace
+            professionnel.
           </p>
         </div>
 
-        <div className="relative flex items-center gap-4 border-t border-white/10 pt-5 text-[12px] text-[#8B9BBE]">
-          <span className="flex items-center gap-1.5 font-semibold">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#28C995]" />
-            Tous les services fonctionnent
-          </span>
-          <span className="text-[#5B6B96]">Clubs · Académies · Coachs · Structures · Tournois · Camps</span>
+        {/* "Tous les services fonctionnent" (16/08/2026) retiré : texte statique non relié à un
+            vrai système de statut — un jour un service tombe et la page continuerait d'afficher
+            un badge vert. Ne réintroduire que si un vrai statut est branché derrière. */}
+        <div className="relative border-t border-white/10 pt-5 text-[12px] text-[#8B9BBE]">
+          Clubs · Académies · Coachs · Structures · Événements
         </div>
       </div>
 
@@ -104,7 +103,7 @@ export default function LoginPage() {
         <div className="w-full max-w-[396px]">
           <h2 className="text-[28px] font-extrabold tracking-tight">Connexion</h2>
           <p className="mt-2 text-[14px] leading-relaxed text-text-soft">
-            Accédez à l&apos;espace de votre club, de votre académie ou de votre structure.
+            Accédez à votre espace professionnel SportVision.
           </p>
 
           {error && (
@@ -124,8 +123,8 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="sophie.martin@fcfontainebleau.fr"
-                className="h-[46px] rounded-xl border border-border-strong bg-surface px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.12)]"
+                placeholder="nom@structure.fr"
+                className="h-[46px] rounded-xl border border-border-strong bg-surface px-3.5 text-[14px] outline-none transition-colors focus-visible:border-brand-blue-electric focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.18)]"
               />
             </label>
 
@@ -138,7 +137,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••"
-                  className="h-[46px] w-full rounded-xl border border-border-strong bg-surface px-3.5 pr-11 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.12)]"
+                  className="h-[46px] w-full rounded-xl border border-border-strong bg-surface px-3.5 pr-11 text-[14px] outline-none transition-colors focus-visible:border-brand-blue-electric focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.18)]"
                 />
                 <button
                   type="button"
@@ -152,12 +151,12 @@ export default function LoginPage() {
             </label>
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-[13px] font-semibold text-text-soft">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-text-faint">
                 <input
                   type="checkbox"
                   checked={remember}
                   onChange={(e) => setRemember(e.target.checked)}
-                  className="h-4 w-4 accent-brand-blue-electric"
+                  className="h-3.5 w-3.5 accent-brand-blue-electric"
                 />
                 Se souvenir de moi
               </label>
@@ -169,26 +168,29 @@ export default function LoginPage() {
             <Button type="submit" disabled={submitting} className="h-12 w-full text-[15px]">
               {submitting ? "Connexion…" : "Se connecter"}
             </Button>
-
-            <div className="flex items-center gap-3 text-[12px] font-semibold text-text-faint">
-              <span className="h-px flex-1 bg-border" />
-              ou
-              <span className="h-px flex-1 bg-border" />
-            </div>
-
-            <button
-              type="button"
-              className="flex h-[46px] items-center justify-center gap-2.5 rounded-xl border border-border-strong text-[14px] font-bold text-text-soft"
-            >
-              Continuer avec Google
-            </button>
           </form>
 
           <div className="mt-6 border-t border-border pt-5 text-center text-[13.5px] text-text-soft">
-            Pas encore de compte ?{" "}
+            Votre structure n&apos;est pas encore sur Club+ ?{" "}
             <Link href="/signup/type" className="font-extrabold text-brand-blue-electric">
-              Créer mon espace
+              Inscrire ma structure
             </Link>
+            <p className="mt-1.5 text-[11.5px] text-text-faint">
+              Chaque demande d&apos;ouverture est vérifiée par SportVision.
+            </p>
+          </div>
+
+          <div className="mt-4 text-center text-[12.5px] text-text-faint">
+            Vous cherchez votre espace personnel ?{" "}
+            <a href="https://connect.sportvision-an.fr" className="font-bold text-text-soft hover:text-brand-blue-electric">
+              Accéder à Connect
+            </a>
+          </div>
+
+          <div className="mt-8 text-center">
+            <a href="https://sportvision-an.fr" className="text-[11.5px] font-semibold text-text-faint hover:text-text-soft">
+              ← Retour à sportvision-an.fr
+            </a>
           </div>
         </div>
       </div>
