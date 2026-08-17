@@ -79,10 +79,9 @@ SportVision Club+ est le portail professionnel de SportVision. Il centralise la 
 | Sans engagement | 59 € / mois |
 
 - Page / espace structure Club+.
-- 10 visuels par mois selon l'offre commerciale de référence.
-- 20 crédits de référence.
-- -10 % sur les prestations éligibles SportVision.
-- Les modules Visuels et Crédits ne s'affichent que si l'offre active les contient.
+- 10 crédits de référence par mois.
+- -5 % sur les prestations éligibles SportVision.
+- Le module Crédits ne s'affiche que si l'offre active le contient.
 
 ### Club+ Performance
 
@@ -92,8 +91,9 @@ SportVision Club+ est le portail professionnel de SportVision. Il centralise la 
 | Sans engagement | 139 € / mois |
 
 - Priorisation de la structure dans le traitement / accompagnement selon les règles commerciales.
+- 40 crédits de référence par mois.
 - -10 % sur les prestations éligibles SportVision.
-- Les volumes exacts de crédits, visuels ou avantages supplémentaires doivent être lus depuis l'offre active et non inventés dans le design.
+- Tout volume ou avantage supplémentaire au-delà de ces valeurs de référence doit être lu depuis l'offre active et non inventé dans le design.
 
 ### Full Communication
 
