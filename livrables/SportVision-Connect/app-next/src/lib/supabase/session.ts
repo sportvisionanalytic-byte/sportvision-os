@@ -26,8 +26,14 @@ function buildUserFromAuth(authUser: SupabaseUser): User {
 export const ACTIVE_SPACE_COOKIE = "sv_active_space";
 
 export interface Space {
-  kind: "organization" | "player" | "parent";
-  /** organization_id pour kind="organization" ; player_profiles.id / parent_profiles.id sinon. */
+  // "delegated_club" (17/08/2026, chantier "vraie bascule d'espace" cm_agency, brief Fouka) : un
+  // club auquel une agence CM a un accès délégué (cm_agency_club_access), PAS une organisation
+  // dont l'utilisateur est membre — id = clubs.id, comme "organization"/club, mais volontairement
+  // un kind distinct pour que layout.tsx route vers buildDelegatedClubActiveContext (qui
+  // revérifie la délégation en direct) plutôt que buildClubActiveContext (qui exige une vraie
+  // ligne club_members, inexistante ici par construction).
+  kind: "organization" | "player" | "parent" | "delegated_club";
+  /** organization_id pour kind="organization"/"delegated_club" ; player_profiles.id / parent_profiles.id sinon. */
   id: string;
   name: string;
   subtitle: string;
@@ -124,6 +130,40 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
       subtitle: SPACE_TYPE_LABELS.parent ?? "Parent / Famille",
       clickable: true,
     });
+  }
+
+  // Clubs délégués à une agence CM dont l'utilisateur est membre actif (17/08/2026, "vraie
+  // bascule d'espace" cm_agency, brief Fouka) — voir buildDelegatedClubActiveContext ci-dessous,
+  // qui revérifie tout en direct au moment d'entrer (jamais confiance dans cette liste seule).
+  // RLS de cm_agency_club_access (is_org_member(cm_agency_org_id) or is_org_member(club_id) or
+  // is_staff()) fait déjà tout le travail de filtrage ici : cette requête ne peut renvoyer que les
+  // délégations des agences dont l'utilisateur est réellement membre actif.
+  const cmAgencyOrgIds = ((orgRes.data ?? []) as unknown as MembershipRow[])
+    .filter((row) => row.organizations?.organization_type === "cm_agency" && row.status === "actif")
+    .map((row) => row.organization_id);
+
+  if (cmAgencyOrgIds.length > 0) {
+    const { data: delegatedRows } = await supabase
+      .from("cm_agency_club_access")
+      .select("id, club_id, expires_at, clubs(nom)")
+      .in("cm_agency_org_id", cmAgencyOrgIds);
+
+    const today = new Date().toISOString().slice(0, 10);
+    for (const row of (delegatedRows ?? []) as unknown as { id: string; club_id: string; expires_at: string | null; clubs: { nom: string } | null }[]) {
+      // Une délégation expirée n'apparaît même pas comme espace cliquable — pas de distinction
+      // "visible mais grisé" ici, contrairement à un statut invitation/suspendu (getSpaces ne
+      // filtre normalement rien, mais une délégation expirée n'a stricto sensu jamais existé du
+      // point de vue de l'utilisateur, ce n'est pas un état intermédiaire à afficher).
+      if (row.expires_at && row.expires_at < today) continue;
+      spaces.push({
+        kind: "delegated_club",
+        id: row.club_id,
+        name: row.clubs?.nom ?? "Club",
+        subtitle: "Accès délégué (agence CM)",
+        clickable: true,
+        organizationType: "club",
+      });
+    }
   }
 
   return spaces;
@@ -268,6 +308,115 @@ export async function buildClubActiveContext(
       storageQuotaBytes: 1,
     },
     entitlements,
+  };
+}
+
+/**
+ * Construit l'ActiveContext pour un club auquel l'utilisateur accède via une délégation d'agence
+ * CM (`cm_agency_club_access`), PAS via une ligne `club_members` — voir Space.kind="delegated_club"
+ * ci-dessus. 17/08/2026, "vraie bascule d'espace" cm_agency (brief Fouka) : jusqu'ici, "Ouvrir" sur
+ * un accès délégué (/accompagnement) n'ouvrait rien de réel — le club était seulement listé en
+ * lecture, aucune interaction technique possible.
+ *
+ * Sécurité : la délégation est REVÉRIFIÉE en direct ici (jamais confiance dans le Space déjà
+ * résolu par getSpaces(), même principe que buildClubActiveContext/clubplus-activate) — vivante
+ * (ligne encore présente en base, cm_agency_club_access n'a pas de statut "révoqué", révoquer =
+ * supprimer la ligne) ET non expirée. Retourne null si l'une des deux conditions n'est plus vraie,
+ * ce qui fait immédiatement disparaître l'espace côté utilisateur, sans purge différée à gérer :
+ * aucun état technique persistant (pas de ligne club_members créée) ne survit à une révocation.
+ *
+ * Rôle : "external_cm" (MembershipRole), IDENTIQUE au rôle qu'un club donnerait lui-même à un CM
+ * externe invité directement (club_members.role='cm_externe', voir mappers.ts) — même navigation
+ * (NAV_CLUB_COMMUNICATION), mêmes pages, "il ne devient jamais administrateur" (Bible §9). C'est
+ * aussi le rôle qui porte techniquement l'accès en base : is_club_member() (migration-clubplus-v1,
+ * étendue par migration-connect-v80-cm-agency-delegated-club-access.sql) reconnaît désormais CE
+ * chemin d'accès en plus d'une vraie ligne club_members active, donc TOUTES les policies RLS déjà
+ * bâties sur is_club_member() (contenus, club_requests, club_sponsors, calendrier...) fonctionnent
+ * ici sans modification supplémentaire — pas de nouvelle surface RLS par table, un seul point
+ * d'extension déjà réutilisé partout. Les documents financiers restent hors de portée (fonction
+ * séparée, club_member_has_financial_access/view_access, non touchée par cette extension) : une
+ * agence CM déléguée ne voit jamais les factures du club, cohérent avec le périmètre "négocié"
+ * (allowed/denied) qui n'a jamais inclus "Facturation" dans aucune délégation existante.
+ */
+export async function buildDelegatedClubActiveContext(
+  supabase: SupabaseClient,
+  authUser: SupabaseUser,
+  space: Space,
+): Promise<ActiveContext | null> {
+  if (space.kind !== "delegated_club") return null;
+
+  const [clubRes, myMembershipsRes] = await Promise.all([
+    supabase
+      .from("clubs")
+      .select("id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id")
+      .eq("id", space.id)
+      .maybeSingle(),
+    supabase.from("memberships").select("organization_id").eq("user_id", authUser.id).eq("status", "actif"),
+  ]);
+
+  const club = clubRes.data as ClubRow | null;
+  if (!club) return null;
+
+  const myOrgIds = ((myMembershipsRes.data ?? []) as { organization_id: string }[]).map((m) => m.organization_id);
+  if (myOrgIds.length === 0) return null;
+
+  const { data: delegation } = await supabase
+    .from("cm_agency_club_access")
+    .select("id, expires_at")
+    .eq("club_id", space.id)
+    .in("cm_agency_org_id", myOrgIds)
+    .maybeSingle();
+  if (!delegation) return null;
+  if (delegation.expires_at && delegation.expires_at < new Date().toISOString().slice(0, 10)) return null;
+
+  const { data: org } = await supabase.from("organizations").select("id, nom, created_at").eq("id", space.id).maybeSingle();
+  if (!org) return null;
+
+  let isFullCommunication = false;
+  if (club.portail_client_id) {
+    const { data: contract } = await supabase
+      .from("client_contrats")
+      .select("id")
+      .eq("client_id", club.portail_client_id)
+      .eq("type_contrat", "full_communication")
+      .eq("statut", "actif")
+      .limit(1)
+      .maybeSingle();
+    isFullCommunication = Boolean(contract);
+  }
+
+  return {
+    user: buildUserFromAuth(authUser),
+    organization: {
+      id: org.id,
+      type: "club",
+      name: org.nom,
+      createdAt: org.created_at,
+    },
+    membership: {
+      id: `delegated-${delegation.id}`,
+      userId: authUser.id,
+      organizationId: org.id,
+      role: "external_cm",
+      teamScope: [],
+      capabilities: [],
+      status: "active",
+    },
+    subscription: {
+      id: `sub-${club.id}`,
+      organizationId: org.id,
+      planCode: isFullCommunication ? "full_communication" : mapClubPlan(club.plan),
+      status: "active",
+      startsAt: org.created_at,
+      renewsAt: org.created_at,
+      commitmentMonths: club.engagement === "12mois" ? 12 : 0,
+      noticeMonths: 0,
+      creditsRemaining: Math.max(0, club.credits_balance - club.credits_reserved),
+      creditsReserved: club.credits_reserved,
+      presencesUsed: 0,
+      storageUsedBytes: 0,
+      storageQuotaBytes: 1,
+    },
   };
 }
 

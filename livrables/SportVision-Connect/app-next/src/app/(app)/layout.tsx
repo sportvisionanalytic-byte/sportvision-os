@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   ACTIVE_SPACE_COOKIE,
   buildClubActiveContext,
+  buildDelegatedClubActiveContext,
   buildOrgSpaceActiveContext,
   buildParentActiveContext,
   buildPlayerActiveContext,
@@ -34,6 +35,7 @@ function buildActiveContext(supabase: SupabaseClient, user: SupabaseUser, space:
     return buildOrgSpaceActiveContext(supabase, user, space);
   }
   if (space.kind === "organization") return buildClubActiveContext(supabase, user, space);
+  if (space.kind === "delegated_club") return buildDelegatedClubActiveContext(supabase, user, space);
   if (space.kind === "player") return buildPlayerActiveContext(supabase, user, space);
   return buildParentActiveContext(supabase, user, space);
 }

@@ -18,6 +18,7 @@ import { fetchCommunityManager, type CommunityManager } from "@/lib/data/shared/
 import { fetchContenusPublishedThisMonth } from "@/lib/data/shared/contenus";
 import { fetchClubPresencesThisMonth } from "@/lib/data/club/presences";
 import { fetchDelegatedClubAccess, type DelegatedClubAccess } from "@/lib/data/shared/cm-agency-access";
+import { switchActiveSpace } from "@/lib/supabase/actions";
 
 // /accompagnement — ACTIONS.md § 21. Deux variantes selon le type d'organisation : « Client »
 // (4 cartes d'inclusions, interlocuteurs, suivi mensuel, mois en cours) pour tout le monde sauf le
@@ -81,6 +82,28 @@ type DelegatedAccessState =
 function CmAgencyDelegatedAccess({ organizationId }: { organizationId: string }) {
   const router = useRouter();
   const [state, setState] = useState<DelegatedAccessState>({ status: "loading" });
+  const [entering, setEntering] = useState<string | null>(null);
+
+  // 17/08/2026 — "Ouvrir" naviguait déjà vers /communication mais SANS jamais basculer l'espace
+  // actif sur le club délégué : l'agence restait dans son propre espace cm_agency (qui n'a ni
+  // contenus ni demandes à lui), donc une page vide ou les données de la mauvaise structure.
+  // switchActiveSpace({kind:"delegated_club", id}) fait entrer réellement dans l'espace du club
+  // (buildDelegatedClubActiveContext, session.ts) — même Server Action que le sélecteur d'espaces
+  // normal, la seule différence est le kind. La délégation est revérifiée en direct à ce moment-là
+  // (jamais confiance dans la carte déjà affichée) : si elle a expiré entre-temps, l'entrée échoue
+  // silencieusement et l'utilisateur reste sur cette page — pas de fausse promesse d'accès.
+  async function handleOpen(clubId: string) {
+    if (entering) return;
+    setEntering(clubId);
+    try {
+      await switchActiveSpace({ kind: "delegated_club", id: clubId });
+      router.push("/dashboard");
+      router.refresh();
+    } catch (e) {
+      console.error("[accompagnement] ouverture d'un accès délégué échouée :", e);
+      setEntering(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -147,8 +170,13 @@ function CmAgencyDelegatedAccess({ organizationId }: { organizationId: string })
                   </ul>
                 </div>
               </div>
-              <Button variant="dark" className="mt-4 w-full" onClick={() => router.push("/communication")}>
-                Ouvrir
+              <Button
+                variant="dark"
+                className="mt-4 w-full"
+                disabled={entering !== null}
+                onClick={() => handleOpen(access.clubId)}
+              >
+                {entering === access.clubId ? "Ouverture…" : "Ouvrir"}
               </Button>
             </Card>
           ))}

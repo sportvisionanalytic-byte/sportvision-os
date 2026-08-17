@@ -19,7 +19,10 @@ import { ROLE_LABELS } from "@/lib/types/settings";
 const EXTERNAL_MANDATE_ROLE = "cm_externe";
 
 function isExternalMandate(space: Space): boolean {
-  return space.kind === "organization" && space.role === EXTERNAL_MANDATE_ROLE;
+  // "delegated_club" (17/08/2026, chantier cm_agency) : par construction, un accès délégué à une
+  // agence CM EST un mandat externe — même groupe "Structures clientes" qu'un cm_externe invité
+  // directement par le club, pas un 3e regroupement pour un concept identique côté utilisateur.
+  return (space.kind === "organization" && space.role === EXTERNAL_MANDATE_ROLE) || space.kind === "delegated_club";
 }
 
 function initials(name: string) {
@@ -92,7 +95,7 @@ export function OrganizationSwitcher() {
                 <SpaceRow
                   key={`${space.kind}:${space.id}`}
                   space={space}
-                  isActive={space.kind === "organization" && space.id === ctx.organization.id}
+                  isActive={(space.kind === "organization" || space.kind === "delegated_club") && space.id === ctx.organization.id}
                   onSelect={() => {
                     setActiveSpace(space);
                     setOpen(false);
@@ -111,7 +114,7 @@ export function OrganizationSwitcher() {
                 <SpaceRow
                   key={`${space.kind}:${space.id}`}
                   space={space}
-                  isActive={space.kind === "organization" && space.id === ctx.organization.id}
+                  isActive={(space.kind === "organization" || space.kind === "delegated_club") && space.id === ctx.organization.id}
                   onSelect={() => {
                     setActiveSpace(space);
                     setOpen(false);
