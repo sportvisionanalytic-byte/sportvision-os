@@ -23,6 +23,7 @@ import {
   type ClientDevis,
 } from "@/lib/data/projet/billing";
 import { resolveClubPortailClientId } from "@/lib/data/club/portail-link";
+import { ClubSubscriptionCard } from "@/components/billing/ClubSubscriptionCard";
 import type { Invoice } from "@/lib/types/billing";
 
 function daysLate(dueDate: string): number {
@@ -66,30 +67,49 @@ function ClubBillingView() {
   // v41-secretaire-administratif-lecture-financiere.sql (écrite par ce chantier, NON ENCORE
   // EXÉCUTÉE) n'a pas été jouée : la RLS des vues client_devis/client_factures/client_contrats
   // reste bureau-strict jusque-là (club_member_has_financial_access, migration-connect-v41).
+  // "Mon offre" (§19) : abonnement Club+ du club lui-même, distinct des devis/factures/contrats
+  // SportVision ci-dessous — visible pour l'admin seul (seul rôle que create-clubplus-
+  // subscription-checkout / clubplus-billing-portal acceptent côté serveur), avant la porte
+  // bureau-strict des documents financiers, qui ne le concerne pas.
+  const subscriptionCard = ctx.membership.role === "admin" ? <ClubSubscriptionCard clubId={ctx.organization.id} /> : null;
+
   if (!canViewClubFinancialDocuments(ctx)) {
-    return <RestrictedToBureau title="Factures" />;
+    return subscriptionCard ?? <RestrictedToBureau title="Factures" />;
   }
 
   if (clientId === undefined) {
-    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+    return (
+      <div className="flex flex-col gap-5">
+        {subscriptionCard}
+        <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>
+      </div>
+    );
   }
 
   if (clientId === null) {
     return (
-      <Card className="flex flex-col items-center gap-3 px-8 py-16 text-center">
-        <Receipt className="h-6 w-6 text-text-faint" aria-hidden />
-        <div className="max-w-md">
-          <h2 className="text-[18px] font-extrabold tracking-tight">Facturation pas encore reliée</h2>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-text-soft">
-            SportVision n&apos;a pas encore relié {ctx.organization.name} à un espace Facturation. Contactez votre
-            interlocuteur SportVision pour l&apos;activer.
-          </p>
-        </div>
-      </Card>
+      <div className="flex flex-col gap-5">
+        {subscriptionCard}
+        <Card className="flex flex-col items-center gap-3 px-8 py-16 text-center">
+          <Receipt className="h-6 w-6 text-text-faint" aria-hidden />
+          <div className="max-w-md">
+            <h2 className="text-[18px] font-extrabold tracking-tight">Facturation pas encore reliée</h2>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-text-soft">
+              SportVision n&apos;a pas encore relié {ctx.organization.name} à un espace Facturation. Contactez votre
+              interlocuteur SportVision pour l&apos;activer.
+            </p>
+          </div>
+        </Card>
+      </div>
     );
   }
 
-  return <BillingDocumentsView clientId={clientId} allowDevisDecision={false} />;
+  return (
+    <div className="flex flex-col gap-5">
+      {subscriptionCard}
+      <BillingDocumentsView clientId={clientId} allowDevisDecision={false} />
+    </div>
+  );
 }
 
 function BillingDocumentsView({ clientId, allowDevisDecision }: { clientId: string; allowDevisDecision: boolean }) {
