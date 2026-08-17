@@ -21,7 +21,11 @@ export default function ForgotPasswordPage() {
     setError(false);
     setSubmitting(true);
     const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/reset`;
+    // basePath "/clubplus" (next.config.mjs, 17/08/2026) : window.location.origin est une API
+    // navigateur brute, jamais réécrite par Next contrairement à next/link — le préfixe doit être
+    // ajouté à la main ici, sinon le lien de reset pointerait vers /auth/reset (sans /clubplus),
+    // une route qui n'existe plus une fois le basePath actif.
+    const redirectTo = `${window.location.origin}/clubplus/auth/reset`;
     const { error: fnError } = await supabase.functions.invoke("request-password-reset", {
       body: { email, redirect_url: redirectTo },
     });

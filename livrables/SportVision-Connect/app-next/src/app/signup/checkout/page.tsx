@@ -82,8 +82,10 @@ export default function SignupCheckoutPage() {
           // ici recevait un e-mail dont le lien pointait vers Connect, jamais vers Club+ (bug
           // jamais détecté faute de compte réel testé jusqu'ici). Même pattern que app-connect
           // (signup/club/page.tsx), voir aussi src/app/auth/callback/route.ts (nouveau, absent
-          // avant ce correctif).
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          // avant ce correctif). "/clubplus" : basePath (next.config.mjs) — window.location.origin
+          // n'est jamais réécrit par Next contrairement à next/link, le préfixe doit être ajouté
+          // à la main ici (même raison que auth/forgot/page.tsx).
+          emailRedirectTo: `${window.location.origin}/clubplus/auth/callback`,
         },
       });
       if (signUpError) throw signUpError;
