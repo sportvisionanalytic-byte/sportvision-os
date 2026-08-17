@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, HelpCircle, Menu, Moon, Plus, Search, Sun, X } from "lucide-react";
+import { Bell, HelpCircle, Menu, Moon, Plus, Sun } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 import { filterClubRoleNav, resolveNavigation } from "@/lib/navigation";
@@ -36,29 +36,9 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
   const router = useRouter();
   const { ctx } = useSession();
   const [theme, setTheme] = useState<Theme>("dark");
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   useEffect(() => {
     setTheme(getStoredTheme());
-  }, []);
-
-  // La recherche plein écran mobile ne doit pas survivre à un changement de page.
-  useEffect(() => {
-    setMobileSearchOpen(false);
-  }, [pathname]);
-
-  // Filet de sécurité si la fenêtre grandit pendant que la recherche plein écran mobile est
-  // ouverte (redimensionnement, rotation) : sans ça le contenu "mode recherche" (pas de
-  // hamburger/cloche/etc.) resterait affiché à une largeur desktop.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(min-width: 640px)");
-    function handleChange(e: MediaQueryListEvent | MediaQueryList) {
-      if (e.matches) setMobileSearchOpen(false);
-    }
-    handleChange(mql);
-    mql.addEventListener("change", handleChange);
-    return () => mql.removeEventListener("change", handleChange);
   }, []);
 
   function toggleTheme() {
@@ -81,97 +61,71 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 flex h-[60px] items-center gap-2 border-b border-divider bg-bg/85 px-4 backdrop-blur-xl sm:h-[66px] sm:gap-3 sm:px-5 lg:gap-4 lg:px-7">
-      {mobileSearchOpen ? (
-        <>
-          <button
-            aria-label="Fermer la recherche"
-            onClick={() => setMobileSearchOpen(false)}
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-text-faint" aria-hidden />
-            <input
-              autoFocus
-              placeholder="Rechercher un contenu, une demande…"
-              className="h-9 w-full rounded-[11px] border border-border-strong bg-input-bg pl-8 pr-3 text-[13px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.1)]"
-            />
-          </div>
-        </>
-      ) : (
-        <>
-          <button
-            aria-label="Ouvrir le menu"
-            onClick={onOpenMobileNav}
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft lg:hidden"
-          >
-            <Menu className="h-4 w-4" aria-hidden />
-          </button>
+      {/* 17/08/2026 — la recherche (icône + champ desktop) a été retirée : ni value/onChange
+          ni soumission, aucune saisie n'y déclenchait jamais rien (trouvé lors de l'audit
+          complet). Mieux vaut son absence qu'une fausse promesse de fonctionnalité — même
+          principe que le bouton "Continuer avec Google" retiré plus tôt cette nuit. */}
+      <button
+        aria-label="Ouvrir le menu"
+        onClick={onOpenMobileNav}
+        className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft lg:hidden"
+      >
+        <Menu className="h-4 w-4" aria-hidden />
+      </button>
 
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[11px] font-bold text-text-faint">{ctx.organization.name}</div>
-            <div className="truncate text-[16px] font-extrabold tracking-tight sm:text-[18px]">{title}</div>
-          </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[11px] font-bold text-text-faint">{ctx.organization.name}</div>
+        <div className="truncate text-[16px] font-extrabold tracking-tight sm:text-[18px]">{title}</div>
+      </div>
 
-          <button
-            aria-label="Rechercher"
-            onClick={() => setMobileSearchOpen(true)}
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft sm:hidden"
-          >
-            <Search className="h-4 w-4" aria-hidden />
-          </button>
-
-          <div className="relative hidden flex-none sm:block sm:w-[170px] lg:w-[270px]">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-text-faint" aria-hidden />
-            <input
-              placeholder="Rechercher un contenu, une demande…"
-              className="h-9 w-full rounded-[11px] border border-border-strong bg-input-bg pl-8 pr-3 text-[13px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,75,255,.1)]"
-            />
-          </div>
-
-          <button
-            aria-label="Nouvelle demande"
-            onClick={() => router.push("/requests/new")}
-            className="flex h-9 flex-none items-center justify-center gap-1.5 rounded-[11px] bg-gradient-to-br from-brand-blue-electric to-brand-violet px-2.5 text-[13px] font-bold text-white shadow-sv-button sm:px-3.5"
-          >
-            <Plus className="h-3.5 w-3.5 flex-none" aria-hidden />
-            <span className="hidden sm:inline">Nouvelle demande</span>
-          </button>
-
-          <button
-            aria-label="Notifications"
-            onClick={() => router.push("/notifications")}
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
-          >
-            <Bell className="h-4 w-4" aria-hidden />
-          </button>
-
-          <button
-            aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-            onClick={toggleTheme}
-            className="hidden h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft sm:flex"
-          >
-            {theme === "dark" ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
-          </button>
-
-          <button
-            aria-label="Aide"
-            onClick={() => router.push("/support")}
-            className="hidden h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft lg:flex"
-          >
-            <HelpCircle className="h-4 w-4" aria-hidden />
-          </button>
-
-          <button
-            aria-label="Mon profil"
-            onClick={() => router.push("/settings/profile")}
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-violet to-brand-blue-electric text-[12px] font-extrabold text-white"
-          >
-            {initials}
-          </button>
-        </>
+      {/* "Nouvelle demande" (17/08/2026) : n'apparaît désormais que si "Mes demandes"/
+          "Demandes de visuels" (module visual_requests) fait bien partie du menu du rôle actif
+          — trouvé lors de l'audit complet : ce raccourci s'affichait pour tout le monde, y
+          compris Trésorier/Secrétaire/Administratif dont le menu exclut délibérément ce module
+          ("aucun contenu sportif parasite", Bible §10) — un Trésorier pouvait donc créer une
+          demande de visuel via ce bouton alors que rien dans son menu n'y mène. */}
+      {navEntries.some((e) => e.kind === "item" && e.module === "visual_requests") && (
+        <button
+          aria-label="Nouvelle demande"
+          onClick={() => router.push("/requests/new")}
+          className="flex h-9 flex-none items-center justify-center gap-1.5 rounded-[11px] bg-gradient-to-br from-brand-blue-electric to-brand-violet px-2.5 text-[13px] font-bold text-white shadow-sv-button sm:px-3.5"
+        >
+          <Plus className="h-3.5 w-3.5 flex-none" aria-hidden />
+          <span className="hidden sm:inline">Nouvelle demande</span>
+        </button>
       )}
+
+      <button
+        aria-label="Notifications"
+        onClick={() => router.push("/notifications")}
+        className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft"
+      >
+        <Bell className="h-4 w-4" aria-hidden />
+      </button>
+
+      <button
+        aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+        onClick={toggleTheme}
+        className="hidden h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft sm:flex"
+      >
+        {theme === "dark" ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
+      </button>
+
+      <button
+        aria-label="Aide"
+        onClick={() => router.push("/support")}
+        className="hidden h-9 w-9 flex-none items-center justify-center rounded-[11px] border border-border-strong bg-input-bg text-text-soft lg:flex"
+      >
+        <HelpCircle className="h-4 w-4" aria-hidden />
+      </button>
+
+      <button
+        aria-label="Mon profil"
+        onClick={() => router.push("/settings/profile")}
+        className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-violet to-brand-blue-electric text-[12px] font-extrabold text-white"
+      >
+        {initials}
+      </button>
     </header>
   );
 }

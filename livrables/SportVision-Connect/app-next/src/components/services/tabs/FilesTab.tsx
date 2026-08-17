@@ -52,14 +52,19 @@ export function FilesTab({
                   {formatFileSize(file.sizeBytes)} · ajouté par {file.uploadedByName}
                 </span>
               </span>
-              <a
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                aria-label={`Télécharger ${file.name}`}
-                className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-text-soft hover:bg-surface-sunken"
+              {/* 17/08/2026 — remplace un `<a href="#">` qui ne faisait rien (aucune URL de
+                  téléchargement réelle : ServiceFile n'a pas de champ `url`, voir lib/types/
+                  services.ts) : mieux vaut un bouton honnêtement désactivé qu'un faux lien qui
+                  laisse croire qu'un clic va télécharger le fichier. */}
+              <button
+                type="button"
+                disabled
+                title="Téléchargement indisponible pour le moment"
+                aria-label={`Téléchargement indisponible pour ${file.name}`}
+                className="flex h-8 w-8 flex-none cursor-not-allowed items-center justify-center rounded-lg text-text-faint opacity-50"
               >
                 <Download className="h-4 w-4" aria-hidden />
-              </a>
+              </button>
             </div>
           ))
         )}
