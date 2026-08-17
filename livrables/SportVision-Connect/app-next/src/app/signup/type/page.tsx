@@ -3,21 +3,19 @@
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { ORG_TYPE_OPTIONS, useSignup } from "../signup-context";
 
-// Étape 1 · Structure (+ Affiliation pour un joueur) — voir ACTIONS.md § 2.
+// Étape 1 · Structure — voir ACTIONS.md § 2.
 //
-// 11/08/2026 — un joueur n'a plus qu'un seul chemin possible : rejoindre son club (voir
-// signup-context.tsx pour pourquoi "gérer mon espace moi-même" a été retiré). `playerAffiliation`
-// est donc posé automatiquement à "join_club" dès que "Joueur" est choisi, sans choix à afficher —
-// un sélecteur à une seule option réelle n'est pas un choix, juste un clic supplémentaire inutile.
+// 17/08/2026 — plus d'option "Joueur" ici : ce persona vit exclusivement sur SportVision Connect
+// (voir HANDOFF-CLUBPLUS.md § 1), jamais sur Club+. L'ancien chemin "Joueur affilié à un club"
+// (recherche de club + rattachement) a été entièrement retiré de ce tunnel.
 export default function SignupTypePage() {
   const router = useRouter();
   const { state, patch } = useSignup();
 
-  const canContinue = state.orgType !== null && (state.orgType !== "player" || state.playerAffiliation !== null);
+  const canContinue = state.orgType !== null;
 
   return (
     <div className="flex flex-col gap-7">
@@ -33,7 +31,7 @@ export default function SignupTypePage() {
             <button
               key={option.type}
               type="button"
-              onClick={() => patch({ orgType: option.type, playerAffiliation: option.type === "player" ? "join_club" : null })}
+              onClick={() => patch({ orgType: option.type })}
               className={cn(
                 "flex flex-col items-start gap-1 rounded-sv-card border p-4 text-left transition-[transform,border-color,box-shadow] duration-sv hover:-translate-y-0.5",
                 selected
@@ -54,17 +52,6 @@ export default function SignupTypePage() {
           );
         })}
       </div>
-
-      {state.orgType === "player" && (
-        <Card className="animate-svfade p-5">
-          <div className="text-[13.5px] font-extrabold">Votre espace Joueur</div>
-          <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-soft">
-            Un espace Joueur est toujours rattaché à un club — c&apos;est votre club qui finance votre accès et
-            valide vos contenus. À l&apos;étape suivante, vous indiquerez le nom de votre club ; un administrateur
-            devra confirmer votre demande.
-          </p>
-        </Card>
-      )}
 
       <div className="flex justify-end">
         {/* Un club ne traverse plus le tunnel standard (compte + club actif immédiat) : voir

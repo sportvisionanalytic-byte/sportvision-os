@@ -15,10 +15,10 @@ import { useSignup } from "../signup-context";
 //  - confirm_email : compte créé, mais la confirmation d'e-mail Supabase est active sur ce
 //    projet — aucune organisation n'a encore pu être créée, ça se fera au premier login.
 //  - org_created : organisation + accès réels créés (coach/académie, structure générique,
-//    événement, joueur en accès personnel).
+//    événement).
 //  - lead : compte créé, mais cette demande nécessite un suivi manuel par un conseiller
-//    (offre Club/Académie sans facturation automatique, rattachement joueur à valider,
-//    devis Full Communication) — pas d'espace à afficher tout de suite.
+//    (offre Club/Académie sans facturation automatique, devis Full Communication) — pas
+//    d'espace à afficher tout de suite.
 export default function SignupDonePage() {
   return (
     <Suspense fallback={null}>
@@ -33,7 +33,6 @@ function SignupDoneContent() {
   const { state } = useSignup();
   const outcome = searchParams.get("outcome");
 
-  const isAffiliatedPlayer = state.orgType === "player" && state.playerAffiliation === "join_club";
   const isFullCom = state.planCode === "full_communication";
 
   function goToDashboard() {
@@ -55,7 +54,7 @@ function SignupDoneContent() {
           <h1 className="text-[26px] font-extrabold tracking-tight">Confirmez votre adresse e-mail</h1>
           <p className="mt-3 text-[14px] leading-relaxed text-text-soft">
             Votre compte a été créé. Cliquez sur le lien reçu par e-mail à <strong className="text-text">{state.account.email}</strong>,
-            puis connectez-vous : {isAffiliatedPlayer || isFullCom || (state.orgType === "club" && state.planCode !== "club_plus_start" && state.planCode !== "club_plus_performance")
+            puis connectez-vous : {isFullCom || (state.orgType === "club" && state.planCode !== "club_plus_start" && state.planCode !== "club_plus_performance")
               ? "un conseiller SportVision finalisera votre demande."
               : "votre espace se termine de configurer automatiquement à ce moment-là."}
           </p>
@@ -75,14 +74,12 @@ function SignupDoneContent() {
         </span>
         <div className="max-w-md">
           <h1 className="text-[26px] font-extrabold tracking-tight">
-            {isAffiliatedPlayer ? "Votre demande a bien été envoyée" : isFullCom ? "Votre demande de devis est en route" : "Votre demande a bien été reçue"}
+            {isFullCom ? "Votre demande de devis est en route" : "Votre demande a bien été reçue"}
           </h1>
           <p className="mt-3 text-[14px] leading-relaxed text-text-soft">
-            {isAffiliatedPlayer
-              ? `Nous avons transmis votre demande de rattachement à ${state.clubSearch || "votre club"} à un conseiller SportVision, qui la valide manuellement. Vous serez notifié dès qu'elle sera acceptée.`
-              : isFullCom
-                ? "Un conseiller SportVision vous recontacte sous 24h ouvrées pour construire votre accompagnement sur mesure."
-                : "Votre compte est créé. Un conseiller SportVision vous contacte pour finaliser votre offre — elle n'est pas encore active."}
+            {isFullCom
+              ? "Un conseiller SportVision vous recontacte sous 24h ouvrées pour construire votre accompagnement sur mesure."
+              : "Votre compte est créé. Un conseiller SportVision vous contacte pour finaliser votre offre — elle n'est pas encore active."}
           </p>
         </div>
         <Button onClick={goToLogin} className="mt-2">

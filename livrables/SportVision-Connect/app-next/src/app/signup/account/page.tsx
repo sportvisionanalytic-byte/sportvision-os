@@ -13,7 +13,6 @@ export default function SignupAccountPage() {
   const router = useRouter();
   const { state, patch } = useSignup();
   const { account } = state;
-  const isPlayer = state.orgType === "player";
 
   // Un club ne crée plus de compte à cette étape — voir /signup/club-request/*. Ce garde
   // couvre l'accès direct par URL ou un retour navigateur, en plus du routage déjà corrigé
@@ -76,19 +75,14 @@ export default function SignupAccountPage() {
             placeholder="06 12 34 56 78"
           />
         </Field>
-        {/* "Fonction" (poste au sein d'une organisation) n'a pas de sens pour un joueur
-            individuel — masqué plutôt que laissé vide sans raison apparente (brief Fouka,
-            cartographie du signup). */}
-        {!isPlayer && (
-          <Field label="Fonction">
-            <input
-              value={account.jobTitle}
-              onChange={(e) => set("jobTitle", e.target.value)}
-              className={inputClass}
-              placeholder="Responsable communication"
-            />
-          </Field>
-        )}
+        <Field label="Fonction">
+          <input
+            value={account.jobTitle}
+            onChange={(e) => set("jobTitle", e.target.value)}
+            className={inputClass}
+            placeholder="Responsable communication"
+          />
+        </Field>
         <Field label="Mot de passe">
           <input
             type="password"
@@ -121,10 +115,7 @@ export default function SignupAccountPage() {
         <Button variant="secondary" onClick={() => router.push("/signup/type")}>
           Retour
         </Button>
-        {/* Un joueur saute Organisation et Besoins (aucun champ pertinent pour lui, voir
-            getSteps § signup-context.tsx) — direction directe vers Offre, pas juste une étape
-            laissée vide. */}
-        <Button disabled={!canContinue} onClick={() => router.push(isPlayer ? "/signup/plan" : "/signup/org")}>
+        <Button disabled={!canContinue} onClick={() => router.push("/signup/org")}>
           Continuer
         </Button>
       </div>

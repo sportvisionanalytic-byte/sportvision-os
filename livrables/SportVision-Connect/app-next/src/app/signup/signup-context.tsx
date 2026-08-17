@@ -66,30 +66,12 @@ export interface ClubSignupRequestState {
 
 export interface SignupState {
   orgType: OrgType | null;
-  /**
-   * Uniquement pour orgType === "player" — voir ACTIONS.md § 2, étape 1 · Affiliation.
-   *
-   * "self" (gérer son espace joueur soi-même, sans club) a été retiré le 11/08/2026 : ce chemin
-   * n'a jamais eu de branche dédiée dans buildPendingOnboarding() (checkout/page.tsx) — il
-   * retombait dans le cas générique `portal-onboarding` (Espace Projet), créant un compte
-   * organization_type='projet' avec memberships.role toujours 'admin' (mapProjetRole,
-   * mappers.ts), pas un vrai espace Joueur. C'est ce chemin que Fouka a testé en pensant tester
-   * l'espace Joueur, d'où l'interface "club/admin" qu'il a signalée. `player_profiles.club_id`
-   * est NOT NULL dans tout le reste du code (session.ts : "un joueur appartient toujours à un
-   * seul club") — un joueur sans club n'a de toute façon aucun espace réel à construire. Seul
-   * "join_club" reste : voir signup/type/page.tsx.
-   */
-  playerAffiliation: "join_club" | null;
   account: SignupAccount;
   org: SignupOrg;
   needs: { selected: string[]; freeText: string };
   planCode: PlanCode | null;
   /** Uniquement pour club_plus_start/club_plus_performance — voir src/lib/plans.ts. */
   engagement: "12mois" | "sans";
-  /** Recherche de club — remplace le choix d'offre pour un joueur affilié. Texte libre : aucune
-   * recherche en direct n'est branchée (aucune policy de lecture publique sur `organizations` à
-   * ce jour) — un conseiller SportVision retrouve et valide le club manuellement. */
-  clubSearch: string;
   payment: SignupPayment;
   /** Message de mise en relation — remplace le paiement pour Full Communication. */
   quoteMessage: string;
@@ -99,13 +81,11 @@ export interface SignupState {
 
 const EMPTY_STATE: SignupState = {
   orgType: null,
-  playerAffiliation: null,
   account: { firstName: "", lastName: "", email: "", phone: "", jobTitle: "", password: "" },
   org: { logoUrl: "", name: "", address: "", instagram: "", siret: "", teamCount: "", memberCount: "" },
   needs: { selected: [], freeText: "" },
   planCode: null,
   engagement: "12mois",
-  clubSearch: "",
   payment: { cardNumber: "", expiry: "", cvc: "" },
   quoteMessage: "",
   clubRequest: {
@@ -157,18 +137,19 @@ export function useSignup(): SignupContextValue {
 // pour club/académie/coach — un club peut avoir son espace Connect et réserver des prestations à
 // la carte sans souscrire à Club+ ni à Full Communication.
 //
-// `player` : entrée conservée pour la complétude du Record (typé sur les 9 OrgType), mais plus
-// jamais rendue depuis le 11/08/2026 — un joueur est désormais toujours `playerAffiliation ===
-// "join_club"` (voir ci-dessus), qui affiche la recherche de club (signup/plan/page.tsx §
-// isAffiliatedPlayer) et ne passe jamais par cette liste de plans.
+// `player`/`parent` : jamais proposés à l'inscription Club+ — ces deux personas vivent
+// exclusivement sur SportVision Connect (app-connect), jamais sur Club+ (brief Fouka 17/08/2026,
+// confirmé par HANDOFF-CLUBPLUS.md § 1 : "SportVision Connect = la personne... SportVision Club+
+// = la structure"). Le chemin "Joueur affilié à un club" qui existait ici avant le split
+// Connect/Club+ (11/08/2026, recherche de club + rattachement) a été entièrement retiré : un
+// joueur qui veut rejoindre un club le fait depuis Connect, pas depuis ce tunnel.
 export const PLAN_OPTIONS_BY_TYPE: Record<OrgType, PlanCode[]> = {
   club: ["one_off", "club_plus_start", "club_plus_performance", "full_communication"],
   academy: ["one_off", "club_plus_start", "club_plus_performance", "full_communication"],
   coach: ["one_off", "club_plus_start", "full_communication"],
   event: ["one_off", "full_communication"],
-  player: ["one_off"],
   generic: ["one_off"],
-  // Non proposés à l'inscription (rattachement uniquement) : parent, cm_agency, sponsor.
+  player: [],
   parent: [],
   cm_agency: [],
   sponsor: [],
@@ -178,7 +159,6 @@ export const ORG_TYPE_OPTIONS: { type: OrgType; label: string; description: stri
   { type: "club", label: "Club", description: "Équipes, licenciés, compétitions" },
   { type: "academy", label: "Académie", description: "Groupes, stages, formation" },
   { type: "coach", label: "Coach", description: "Activité individuelle ou indépendante" },
-  { type: "player", label: "Joueur", description: "Votre book et vos contenus personnels" },
   { type: "generic", label: "Autre structure sportive", description: "Ligue, comité, association, entreprise" },
   { type: "event", label: "Événement", description: "Tournoi, compétition ponctuelle" },
 ];
@@ -271,20 +251,3 @@ export const STEPS: { href: string; label: string }[] = [
   { href: "/signup/done", label: "Confirmation" },
 ];
 
-/**
- * Étapes réellement traversées pour ce type d'organisation — voir layout.tsx § ProgressBar.
- *
- * `player` saute "Organisation" et "Besoins" (11/08/2026) : aucun des champs de ces deux écrans
- * (nom de projet/adresse/Instagram/SIRET pour Organisation, les 8 cases à cocher de Besoins) n'a
- * de sens pour un joueur individuel — son "organisation" est son club, déjà recherché à l'étape
- * Offre (signup/plan/page.tsx § isAffiliatedPlayer/clubSearch). org/page.tsx et needs/page.tsx se
- * sautent eux-mêmes par redirection (useEffect) pour un joueur — cette liste ne fait que garder la
- * frise de progression synchronisée avec le parcours réellement emprunté, pas juste masquer visuellement
- * les deux étapes en laissant leur contenu vide.
- */
-export function getSteps(orgType: OrgType | null): { href: string; label: string }[] {
-  if (orgType === "player") {
-    return STEPS.filter((s) => s.href !== "/signup/org" && s.href !== "/signup/needs");
-  }
-  return STEPS;
-}

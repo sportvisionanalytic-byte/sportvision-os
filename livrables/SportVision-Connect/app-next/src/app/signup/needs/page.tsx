@@ -15,14 +15,12 @@ export default function SignupNeedsPage() {
   const { state, patch } = useSignup();
   const { needs } = state;
 
-  // Aucune des 8 options n'est pertinente pour un joueur individuel — même saut automatique
-  // qu'org/page.tsx, aller comme retour. Un club a sa propre étape "Besoin" dédiée dans
-  // /signup/club-request/needs — ne traverse plus jamais cette page-ci.
+  // Un club a sa propre étape "Besoin" dédiée dans /signup/club-request/needs — ne traverse plus
+  // jamais cette page-ci.
   useEffect(() => {
-    if (state.orgType === "player") router.replace("/signup/plan");
     if (state.orgType === "club") router.replace("/signup/club-request");
   }, [state.orgType, router]);
-  if (state.orgType === "player" || state.orgType === "club") return null;
+  if (state.orgType === "club") return null;
 
   function toggle(option: string) {
     const selected = needs.selected.includes(option)

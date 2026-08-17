@@ -7,14 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { formatPlanCredits, formatPlanPriceRange, PLANS } from "@/lib/plans";
 import { cn } from "@/lib/cn";
 import { PLAN_OPTIONS_BY_TYPE, useSignup } from "../signup-context";
-import { inputClass } from "../signup-styles";
 
 const ENGAGEMENT_PLANS = new Set(["club_plus_start", "club_plus_performance"]);
 
-// Étape 5 · Offre — voir ACTIONS.md § 2. Cartes radio filtrées par type. Un joueur affilié saisit
-// le nom de son club en texte libre : aucune recherche en direct n'est branchée (aucune policy de
-// lecture publique sur `organizations` à ce jour), un conseiller SportVision retrouve et valide le
-// club manuellement — voir le commentaire clubSearch dans signup-context.tsx.
+// Étape 5 · Offre — voir ACTIONS.md § 2. Cartes radio filtrées par type.
 export default function SignupPlanPage() {
   const router = useRouter();
   const { state, patch } = useSignup();
@@ -29,7 +25,6 @@ export default function SignupPlanPage() {
     if (state.orgType === "club") router.replace("/signup/club-request");
   }, [state.orgType, router]);
 
-  const isAffiliatedPlayer = state.orgType === "player" && state.playerAffiliation === "join_club";
   const availablePlans = useMemo(
     () => (state.orgType ? PLAN_OPTIONS_BY_TYPE[state.orgType].map((code) => PLANS[code]) : []),
     [state.orgType],
@@ -37,37 +32,18 @@ export default function SignupPlanPage() {
   const selectedPlan = state.planCode ? PLANS[state.planCode] : null;
   const needsEngagementChoice = selectedPlan !== null && ENGAGEMENT_PLANS.has(selectedPlan.code);
 
-  const canContinue = isAffiliatedPlayer ? state.clubSearch.trim().length > 0 : state.planCode !== null;
+  const canContinue = state.planCode !== null;
 
   if (state.orgType === "club") return null;
 
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <h1 className="text-[28px] font-extrabold tracking-tight">
-          {isAffiliatedPlayer ? "Recherchez votre club" : "Choisissez votre offre"}
-        </h1>
-        <p className="mt-2 text-[14px] text-text-soft">
-          {isAffiliatedPlayer
-            ? "Votre accès sera financé par le club une fois votre demande validée par un administrateur."
-            : "Vous pourrez toujours en changer plus tard depuis vos paramètres."}
-        </p>
+        <h1 className="text-[28px] font-extrabold tracking-tight">Choisissez votre offre</h1>
+        <p className="mt-2 text-[14px] text-text-soft">Vous pourrez toujours en changer plus tard depuis vos paramètres.</p>
       </div>
 
-      {isAffiliatedPlayer ? (
-        <div className="flex flex-col gap-2 max-w-md">
-          <input
-            value={state.clubSearch}
-            onChange={(e) => patch({ clubSearch: e.target.value })}
-            className={inputClass}
-            placeholder="Nom du club"
-          />
-          <p className="text-[12px] text-text-soft">
-            Un conseiller SportVision vérifie et rattache votre compte à ce club sous 24 à 48h ouvrées.
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {availablePlans.map((plan) => {
               const selected = state.planCode === plan.code;
@@ -133,12 +109,9 @@ export default function SignupPlanPage() {
             </div>
           )}
         </div>
-      )}
 
       <div className="flex justify-between">
-        {/* Un joueur revient à Vous (Organisation/Besoins sont sautées à l'aller, voir
-            account/page.tsx et getSteps § signup-context.tsx) — même logique au retour. */}
-        <Button variant="secondary" onClick={() => router.push(isAffiliatedPlayer ? "/signup/account" : "/signup/needs")}>
+        <Button variant="secondary" onClick={() => router.push("/signup/needs")}>
           Retour
         </Button>
         <Button disabled={!canContinue} onClick={() => router.push("/signup/checkout")}>

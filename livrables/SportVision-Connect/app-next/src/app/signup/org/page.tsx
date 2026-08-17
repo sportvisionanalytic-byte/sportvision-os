@@ -13,7 +13,6 @@ const NAME_LABEL: Record<string, string> = {
   club: "Nom du club",
   academy: "Nom de l'académie",
   coach: "Nom de votre activité",
-  player: "Nom de votre projet",
   generic: "Nom de la structure",
   event: "Nom de l'événement",
 };
@@ -25,16 +24,11 @@ export default function SignupOrgPage() {
   const showTeamFields = state.orgType === "club" || state.orgType === "academy";
   const canContinue = org.name.trim().length > 0;
 
-  // Un joueur n'a aucun champ pertinent sur cet écran (nom de projet/adresse/Instagram/SIRET —
-  // son "organisation" est son club, recherché à l'étape Offre) : saut automatique, aller comme
-  // retour, plutôt qu'un écran vide à traverser manuellement. Couvre l'accès direct par URL ou un
-  // retour navigateur, en plus du CTA "Continuer" déjà corrigé côté account/page.tsx.
   // Un club ne traverse plus cette page du tout — voir /signup/club-request/*.
   useEffect(() => {
-    if (state.orgType === "player") router.replace("/signup/plan");
     if (state.orgType === "club") router.replace("/signup/club-request");
   }, [state.orgType, router]);
-  if (state.orgType === "player" || state.orgType === "club") return null;
+  if (state.orgType === "club") return null;
 
   function set(field: keyof typeof org, value: string) {
     patch({ org: { ...org, [field]: value } });
