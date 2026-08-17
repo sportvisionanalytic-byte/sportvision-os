@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session-context";
 import { formatPlanCredits, PLANS } from "@/lib/plans";
 import type { ActiveContext } from "@/lib/types";
-import { delegatedAccessByCmOrg } from "@/lib/mock/persona";
+import { fetchDelegatedClubAccess, type DelegatedClubAccess } from "@/lib/data/shared/cm-agency-access";
 import { fetchConfirmedChildren, type ConfirmedChild } from "@/lib/data/family/children";
 import { fetchChildAuthorizations, type ChildAuthorization } from "@/lib/data/family/authorizations";
 import { fetchOrgRequests } from "@/lib/data/shared/requests";
@@ -88,6 +88,7 @@ interface PersonaExtra {
   authByChild?: Record<string, ChildAuthorization[]>;
   openRequestsCount?: number;
   partnerships?: Sponsor[];
+  delegatedAccess?: DelegatedClubAccess[];
   rosterCount?: number;
   genericOverdueInvoice?: Invoice;
   genericUpcomingService?: Service;
@@ -195,8 +196,17 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra, extraLoading: bool
     }
 
     case "cm_agency": {
-      const delegated = delegatedAccessByCmOrg[organization.id] ?? [];
-      const soonExpiring = [...delegated].sort((a, b) => a.expiresAt.localeCompare(b.expiresAt))[0];
+      // 17/08/2026 — remplace le mock delegatedAccessByCmOrg par cm_agency_club_access réel
+      // (audit complet Club+, données 100% fictives trouvées ici : "FC Fontainebleau" apparaissait
+      // pour toute agence CM, qu'elle y ait ou non un accès réel). "3 publications à valider" et
+      // "Dernières productions" retirés plutôt que remplacés par une autre fiction : aucune policy
+      // RLS n'autorise aujourd'hui une agence CM à lire `contenus` à travers plusieurs clubs
+      // délégués (seule cm_agency_club_access elle-même l'est) — même principe que le cas parent
+      // plus haut ("pas de source réelle branchable, pas remplacé par une autre fiction").
+      const delegated = extra.delegatedAccess ?? [];
+      const soonExpiring = [...delegated]
+        .filter((d) => d.expiresAt)
+        .sort((a, b) => (a.expiresAt ?? "").localeCompare(b.expiresAt ?? ""))[0];
       return {
         eyebrow: "Studio",
         title: `Bonjour ${user.firstName}, voici vos clubs à accompagner.`,
@@ -204,29 +214,34 @@ function buildConfig(ctx: ActiveContext, extra: PersonaExtra, extraLoading: bool
         heroActionLabel: "Produire pour mes clubs",
         heroActionHref: "/communication",
         gauges: [
-          { label: "Accès délégués actifs", value: `${delegated.length}`, pct: delegated.length ? 100 : 0 },
+          {
+            label: "Accès délégués actifs",
+            value: extraLoading ? "Chargement…" : `${delegated.length}`,
+            pct: extraLoading ? null : delegated.length ? 100 : 0,
+          },
           { label: "Crédits Studio", value: formatPlanCredits(plan), pct: creditsPct },
           { label: "Stockage", value: `${storagePct} %`, pct: storagePct },
         ],
         priorityTitle: "À traiter",
-        priorityItems: [
-          {
-            title: "3 publications à valider — FC Fontainebleau",
-            meta: "Planning éditorial",
-            action: "Ouvrir",
-            due: "Avant demain",
-          },
-        ],
-        secondaryTitle: "Accès délégués",
-        secondaryItems: soonExpiring
-          ? [{ title: `Accès délégué — ${soonExpiring.clubName}`, meta: "Pensez au renouvellement", due: `Expire le ${soonExpiring.expiresAt}` }]
+        priorityItems: soonExpiring
+          ? [
+              {
+                title: `Accès délégué à renouveler — ${soonExpiring.clubName}`,
+                meta: "Pensez au renouvellement",
+                action: "Ouvrir",
+                actionHref: "/accompagnement",
+                due: `Expire le ${soonExpiring.expiresAt}`,
+              },
+            ]
           : [],
+        secondaryTitle: "Mes accès délégués",
+        secondaryItems: delegated.map((d) => ({
+          title: d.clubName,
+          meta: d.allowed.length ? d.allowed.join(", ") : "Aucun périmètre autorisé",
+          due: d.expiresAt ? `Expire le ${d.expiresAt}` : undefined,
+        })),
         contentsTitle: "Dernières productions",
-        contents: [
-          { label: "Affiche Matchday", kind: "Photo" },
-          { label: "Recap hebdomadaire", kind: "Vidéo" },
-          { label: "Story sponsor", kind: "Story" },
-        ],
+        contents: [],
       };
     }
 
@@ -373,6 +388,11 @@ export function PersonaDashboard() {
         .then(([partnerships, requests]) => {
           setExtra({ partnerships, openRequestsCount: requests.filter((r) => r.status === "Envoyée").length });
         })
+        .catch(() => setExtra({}))
+        .finally(() => setExtraLoading(false));
+    } else if (ctx.organization.type === "cm_agency") {
+      fetchDelegatedClubAccess(supabase, ctx.organization.id)
+        .then((delegatedAccess) => setExtra({ delegatedAccess }))
         .catch(() => setExtra({}))
         .finally(() => setExtraLoading(false));
     } else if (ctx.organization.type === "coach") {

@@ -13,22 +13,28 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { fetchClubTeams } from "@/lib/data/club/teams";
 import { fetchAcademieGroups } from "@/lib/data/academie/groups";
 import { fetchCoachPlayers, type CoachPlayer } from "@/lib/data/coach/players";
+import { fetchDelegatedClubAccess, type DelegatedClubAccess } from "@/lib/data/shared/cm-agency-access";
 import { createClient } from "@/lib/supabase/client";
 import type { Team } from "@/lib/types/teams";
 
 // Écran Équipes — ACTIONS.md § 16. Pour une académie, « Groupes » (academie_groups, réutilise
 // Team/TeamCard). Pour un coach, « Joueurs suivis » (coach_players, vue dédiée — pas de notion
-// d'équipe côté coach, voir le plan Phase 4). Le composant reste unique, seul le contenu change
-// selon le type d'organisation (voir README.md § Pas de duplication de pages).
-// Note : la vue « Clubs suivis » pour un CM externe (`cm_agency`, ACTIONS.md § 16) a été retirée
-// (code mort) — ORG_TYPE_MAP (src/lib/supabase/mappers.ts) ne produit jamais ce type pour une
-// organisation réelle, cette branche n'était donc jamais atteignable.
+// d'équipe côté coach, voir le plan Phase 4). Pour une agence CM (`cm_agency`), « Clubs suivis »
+// (cm_agency_club_access, voir CmAgencyClubsView plus bas). Le composant reste unique, seul le
+// contenu change selon le type d'organisation (voir README.md § Pas de duplication de pages).
+// 17/08/2026 — la branche cm_agency avait été retirée par un agent antérieur avec le commentaire
+// "ORG_TYPE_MAP ne produit jamais ce type pour une organisation réelle" : FAUX, vérifié en
+// relisant mappers.ts (ORG_TYPE_MAP.cm_agency = "cm_agency", ligne 19) — cm_agency est un type
+// réel et atteignable (NAV_CM_AGENCY pointe justement ici). Trouvé lors de l'audit complet Club+ :
+// "Clubs suivis" était donc bien cassé pour un vrai compte agence CM, pas du code mort. Reconstruit
+// avec la même source que le dashboard Studio (fetchDelegatedClubAccess).
 export default function TeamsPage() {
   const { ctx } = useSession();
   const [teams, setTeams] = useState<Team[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const isAcademy = ctx.organization.type === "academy";
   const isCoach = ctx.organization.type === "coach";
+  const isCmAgency = ctx.organization.type === "cm_agency";
 
   // Coach/Directeur sportif de club (Bible §7/§8, 17/08/2026) : à ne pas confondre avec `isCoach`
   // ci-dessus, qui teste le TYPE d'organisation "Coach indépendant" (KD Performance), pas le RÔLE
@@ -39,7 +45,7 @@ export default function TeamsPage() {
   const otherTeams = myTeams.length > 0 ? (teams ?? []).filter((t) => !ctx.membership.teamScope.includes(t.name)) : [];
 
   const loadTeams = useCallback(() => {
-    if (isCoach) return;
+    if (isCoach || isCmAgency) return;
     let cancelled = false;
     const supabase = createClient();
     setLoadError(false);
@@ -54,7 +60,7 @@ export default function TeamsPage() {
     return () => {
       cancelled = true;
     };
-  }, [ctx.organization.id, isAcademy, isCoach]);
+  }, [ctx.organization.id, isAcademy, isCoach, isCmAgency]);
 
   useEffect(() => loadTeams(), [loadTeams]);
 
@@ -62,6 +68,10 @@ export default function TeamsPage() {
 
   if (isCoach) {
     return <CoachPlayersView organizationId={ctx.organization.id} />;
+  }
+
+  if (isCmAgency) {
+    return <CmAgencyClubsView organizationId={ctx.organization.id} />;
   }
 
   if (loadError) {
@@ -134,6 +144,89 @@ export default function TeamsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((team) => (
             <TeamCard key={team.id} team={team} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CmAgencyClubsView({ organizationId }: { organizationId: string }) {
+  const [clubs, setClubs] = useState<DelegatedClubAccess[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+
+  const loadClubs = useCallback(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    setLoadError(false);
+    fetchDelegatedClubAccess(supabase, organizationId)
+      .then((rows) => {
+        if (!cancelled) setClubs(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId]);
+
+  useEffect(() => loadClubs(), [loadClubs]);
+
+  if (loadError) {
+    return (
+      <Card>
+        <ErrorState message="Impossible de charger les clubs suivis." onRetry={loadClubs} />
+      </Card>
+    );
+  }
+
+  if (clubs === null) {
+    return (
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <SkeletonCard key={i} className="h-[120px]" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <div className="text-[12px] font-bold text-text-soft">Clubs suivis</div>
+        <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">
+          {clubs.length} club{clubs.length > 1 ? "s" : ""} délégué{clubs.length > 1 ? "s" : ""}
+        </h1>
+      </div>
+
+      {clubs.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Users}
+            title="Aucun club délégué pour le moment"
+            description="SportVision vous donne accès à un club dès qu'une délégation est activée."
+          />
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          {clubs.map((c) => (
+            <Card key={c.id} className="p-4">
+              <div className="text-[14.5px] font-extrabold tracking-tight">{c.clubName}</div>
+              {c.allowed.length > 0 && (
+                <div className="mt-2 text-[12.5px] leading-relaxed text-text-soft">
+                  <span className="font-bold text-text">Autorisé : </span>
+                  {c.allowed.join(", ")}
+                </div>
+              )}
+              {c.denied.length > 0 && (
+                <div className="mt-1.5 text-[12.5px] leading-relaxed text-text-faint">
+                  <span className="font-bold">Non autorisé : </span>
+                  {c.denied.join(", ")}
+                </div>
+              )}
+              {c.expiresAt && <div className="mt-2 text-[11.5px] font-semibold text-text-faint">Expire le {c.expiresAt}</div>}
+            </Card>
           ))}
         </div>
       )}
