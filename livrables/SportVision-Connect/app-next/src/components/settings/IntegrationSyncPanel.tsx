@@ -73,7 +73,7 @@ export function IntegrationSyncPanel({ integration, onClose, onDisconnect, onSyn
           </ul>
           {integration.provider === "google_calendar" && (
             <p className="mt-2.5 rounded-lg bg-surface-alt px-3 py-2 text-[11.5px] leading-relaxed text-text-soft">
-              La suppression d&apos;événements n&apos;est jamais demandée : SportVision Connect ne peut ni
+              La suppression d&apos;événements n&apos;est jamais demandée : SportVision Club+ ne peut ni
               modifier ni effacer le contenu existant de votre agenda personnel au-delà de ce qu&apos;il y a ajouté.
             </p>
           )}

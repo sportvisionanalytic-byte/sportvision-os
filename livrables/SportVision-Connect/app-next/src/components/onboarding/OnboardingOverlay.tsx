@@ -46,7 +46,7 @@ interface StepContent {
 }
 
 const GENERIC_STEPS: StepContent[] = [
-  { icon: Sparkles, title: "Bienvenue sur SportVision Connect", body: "Votre espace centralise vos demandes, vos contenus et vos échéances. Ce guide prend 3 minutes." },
+  { icon: Sparkles, title: "Bienvenue sur SportVision Club+", body: "Votre espace centralise vos demandes, vos contenus et vos échéances. Ce guide prend 3 minutes." },
   { icon: ClipboardCheck, title: "Vos informations", body: "Vérifiez votre profil : nom, fonction et coordonnées serviront pour toutes vos demandes." },
   { icon: Building2, title: "Votre organisation", body: "Nom, adresse et réseaux sociaux — ces informations personnalisent vos contenus." },
   { icon: CreditCard, title: "Votre abonnement", body: "Retrouvez à tout moment votre offre, vos quotas et votre facturation depuis « Gérer mon offre »." },

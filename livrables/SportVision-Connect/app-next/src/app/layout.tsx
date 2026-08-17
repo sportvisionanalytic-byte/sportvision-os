@@ -20,8 +20,20 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SportVision Connect",
-  description: "Votre sport. Vos contenus. Votre espace.",
+  title: "SportVision Club+",
+  description: "Le portail professionnel SportVision : votre structure, votre relation SportVision.",
+  // Espace professionnel authentifié : ne doit jamais être indexé par les moteurs de recherche
+  // (même raisonnement que app-connect/src/app/layout.tsx, audit SEO externe du 16/08/2026, jamais
+  // appliqué ici car app-next n'était pas encore identifié comme Club+ à ce moment-là).
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -188,7 +188,7 @@ export default function CalendarPage() {
   }
 
   function exportIcal() {
-    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SportVision Connect//FR"];
+    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SportVision Club+//FR"];
     for (const e of sortedEvents) {
       const dt = `${new Date(e.startsAt).toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
       lines.push("BEGIN:VEVENT", `UID:${e.id}`, `DTSTART:${dt}`, `SUMMARY:${e.title}`, "END:VEVENT");

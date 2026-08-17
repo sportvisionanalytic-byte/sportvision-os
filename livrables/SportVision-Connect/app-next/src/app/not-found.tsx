@@ -16,7 +16,7 @@ export default function NotFound() {
         <h1 className="text-[22px] font-extrabold tracking-tight">Cette page n&apos;existe pas</h1>
         <p className="max-w-[420px] text-[14px] leading-relaxed text-text-soft">
           La page que vous cherchez n&apos;est pas disponible, ou vous n&apos;avez pas accès à cette
-          ressource. Vérifiez le lien ou retournez à votre espace SportVision Connect.
+          ressource. Vérifiez le lien ou retournez à votre espace SportVision Club+.
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">

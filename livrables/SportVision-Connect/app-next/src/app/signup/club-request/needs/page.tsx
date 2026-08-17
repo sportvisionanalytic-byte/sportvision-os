@@ -33,7 +33,7 @@ export default function ClubRequestStep3Page() {
   return (
     <div className="flex flex-col gap-7">
       <div>
-        <h1 className="text-[28px] font-extrabold tracking-tight">Pourquoi souhaitez-vous rejoindre SportVision Connect ?</h1>
+        <h1 className="text-[28px] font-extrabold tracking-tight">Pourquoi souhaitez-vous rejoindre SportVision Club+ ?</h1>
         <p className="mt-2 text-[14px] text-text-soft">Plusieurs choix possibles.</p>
       </div>
 

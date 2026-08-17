@@ -65,7 +65,7 @@ export default function LoginPage() {
             SV
           </span>
           <span className="text-[17px] font-extrabold tracking-tight text-white">
-            SportVision<span className="font-medium text-brand-blue-pale"> Connect</span>
+            SportVision<span className="font-medium text-brand-blue-pale"> Club+</span>
           </span>
         </div>
 
@@ -74,15 +74,15 @@ export default function LoginPage() {
             <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-gradient-to-br from-brand-cyan to-brand-violet">
               <span className="h-1.5 w-1.5 animate-svpulse rounded-full bg-white" />
             </span>
-            Une plateforme. Toutes vos offres SportVision.
+            Le portail professionnel SportVision.
           </div>
           <h1 className="mt-6 text-[44px] font-extrabold leading-[1.06] tracking-tight text-white">
-            Votre sport.
+            Votre structure.
             <br />
-            Vos contenus.
+            Vos prestations.
             <br />
             <span className="bg-gradient-to-r from-brand-blue-electric via-brand-cyan to-brand-violet-light bg-clip-text text-transparent">
-              Votre espace.
+              Votre relation SportVision.
             </span>
           </h1>
           <p className="mt-5 max-w-[420px] text-[16px] leading-relaxed text-text-secondary">
@@ -96,7 +96,7 @@ export default function LoginPage() {
             <span className="h-1.5 w-1.5 rounded-full bg-[#28C995]" />
             Tous les services fonctionnent
           </span>
-          <span className="text-[#5B6B96]">Clubs · Académies · Coachs · Joueurs · Parents · Événements</span>
+          <span className="text-[#5B6B96]">Clubs · Académies · Coachs · Structures · Tournois · Camps</span>
         </div>
       </div>
 
@@ -104,7 +104,7 @@ export default function LoginPage() {
         <div className="w-full max-w-[396px]">
           <h2 className="text-[28px] font-extrabold tracking-tight">Connexion</h2>
           <p className="mt-2 text-[14px] leading-relaxed text-text-soft">
-            Accédez à l&apos;espace de votre club, de votre académie ou de votre projet.
+            Accédez à l&apos;espace de votre club, de votre académie ou de votre structure.
           </p>
 
           {error && (

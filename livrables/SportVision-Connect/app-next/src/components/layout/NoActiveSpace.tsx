@@ -78,7 +78,7 @@ export function NoActiveSpace({ spaces }: { spaces: Space[] }) {
             ? "Votre compte n'est rattaché à aucun espace pour le moment. Contactez votre interlocuteur SportVision."
             : hasChoice
               ? "Plusieurs espaces sont disponibles sur votre compte. Sélectionnez celui que vous voulez ouvrir."
-              : "Cet espace n'est pas encore disponible sur SportVision Connect. Contactez votre interlocuteur SportVision."}
+              : "Cet espace n'est pas encore disponible sur SportVision Club+. Contactez votre interlocuteur SportVision."}
         </p>
 
         {spaces.length > 0 && (
