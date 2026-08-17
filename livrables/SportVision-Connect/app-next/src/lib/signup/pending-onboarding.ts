@@ -53,6 +53,23 @@ export type PendingOnboarding =
       prenom: string;
       nomContact: string;
       telephone: string;
+    }
+  | {
+      // 17/08/2026 — voir app/activation/page.tsx : lien d'activation Club+ privé (type "club"),
+      // rejoué contre clubplus-activate une fois la session réelle disponible.
+      kind: "clubplus-activation";
+      token: string;
+      clubNom: string;
+      prenom: string;
+      nom: string;
+      telephone: string;
+    }
+  | {
+      // 17/08/2026 — voir app/org-activation/page.tsx : lien d'activation Club+ privé pour les 6
+      // types d'organisation autres que "club", rejoué contre connect-org-activate.
+      kind: "connect-org-activation";
+      token: string;
+      nom: string;
     };
 
 export function savePendingOnboarding(pending: PendingOnboarding) {
@@ -119,6 +136,32 @@ export async function consumePendingOnboarding(supabase: SupabaseClient): Promis
     return null;
   }
 
+  if (pending.kind === "clubplus-activation") {
+    const { data, error } = await supabase.functions.invoke("clubplus-activate", {
+      body: {
+        token: pending.token,
+        club_nom: pending.clubNom,
+        prenom: pending.prenom || undefined,
+        nom: pending.nom || undefined,
+        telephone: pending.telephone || undefined,
+      },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+
+  if (pending.kind === "connect-org-activation") {
+    const { data, error } = await supabase.functions.invoke("connect-org-activate", {
+      body: { token: pending.token, nom: pending.nom },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+
   if (pending.kind === "portal-onboarding") {
     const { data, error } = await supabase.functions.invoke("portal-onboarding", {
       body: { prenom: pending.prenom, nom: pending.nom, telephone: pending.telephone, profil: pending.profil },
@@ -129,7 +172,8 @@ export async function consumePendingOnboarding(supabase: SupabaseClient): Promis
     return null;
   }
 
-  // connect-signup-lead
+  if (pending.kind !== "connect-signup-lead") return null;
+
   const { data, error } = await supabase.functions.invoke("connect-signup-lead", {
     body: {
       reason: pending.reason,

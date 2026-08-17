@@ -50,7 +50,7 @@
 //
 // Deploy via Supabase dashboard > Edge Functions > New Function (name: connect-club-signup-review)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-// Secret optionnel : CONNECT_URL (même variable que clubplus-generate-activation / connect-staff-create-org)
+// Secret optionnel : CLUBPLUS_URL (même variable que clubplus-generate-activation / connect-staff-create-org — 17/08/2026, ex-CONNECT_URL avant la correction de la route d'activation)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -92,7 +92,11 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision-an.fr";
+    // 17/08/2026 — CLUBPLUS_URL (pas CONNECT_URL) : les deux écrans d'activation (club et les 6
+    // autres types) sont servis par app-next (Club+, basePath /clubplus), pas par app-connect —
+    // voir clubplus-generate-activation. L'ancien lien en hash (#/activation, #/org-activation)
+    // n'était lu par aucune app actuelle, trouvé lors de l'audit complet Club+ du 17/08/2026.
+    const clubplusUrl = Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision-an.fr";
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -219,7 +223,7 @@ serve(async (req) => {
         .eq("id", requestId);
       if (updErr) return json({ error: updErr.message }, 500);
 
-      const activationUrl = `${connectUrl}/#/activation?token=${token}`;
+      const activationUrl = `${clubplusUrl}/clubplus/activation?token=${token}`;
 
       return json({
         statut: "valide",
@@ -261,7 +265,7 @@ serve(async (req) => {
       .eq("id", requestId);
     if (updErr) return json({ error: updErr.message }, 500);
 
-    const activationUrl = `${connectUrl}/#/org-activation?token=${token}`;
+    const activationUrl = `${clubplusUrl}/clubplus/org-activation?token=${token}`;
 
     return json({
       statut: "valide",

@@ -38,7 +38,7 @@
 // Deploy via Supabase dashboard > Edge Functions > New Function
 // (name: connect-staff-create-org)
 // Secrets requis : SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-// Secret optionnel : CONNECT_URL (même variable que les autres fonctions de liens Connect)
+// Secret optionnel : CLUBPLUS_URL (17/08/2026, ex-CONNECT_URL — voir clubplus-generate-activation)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -70,7 +70,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision-an.fr";
+    const clubplusUrl = Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision-an.fr";
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -121,7 +121,7 @@ serve(async (req) => {
       .single();
     if (insErr) return json({ error: insErr.message }, 500);
 
-    const activationUrl = `${connectUrl}/#/org-activation?token=${token}`;
+    const activationUrl = `${clubplusUrl}/clubplus/org-activation?token=${token}`;
 
     return json({
       id: created.id,

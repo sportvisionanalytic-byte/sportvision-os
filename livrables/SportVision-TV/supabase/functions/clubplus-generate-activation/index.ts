@@ -68,7 +68,12 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const connectUrl = Deno.env.get("CONNECT_URL") || "https://connect.sportvision-an.fr";
+    // 17/08/2026 — CLUBPLUS_URL (pas CONNECT_URL) : Club+ est une app séparée depuis le split du
+    // 12/08/2026, avec son propre écran d'activation en route réelle (app-next/src/app/
+    // activation/page.tsx, basePath /clubplus) — voir migration-clubplus-v44 et l'audit complet
+    // Club+ du 17/08/2026, qui a trouvé que ce lien pointait jusqu'ici vers une route en hash
+    // (#/activation?token=…) qu'aucune app actuelle ne sert plus.
+    const clubplusUrl = Deno.env.get("CLUBPLUS_URL") || "https://clubplus.sportvision-an.fr";
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -120,7 +125,7 @@ serve(async (req) => {
       .single();
     if (insErr) return json({ error: insErr.message }, 500);
 
-    const activationUrl = `${connectUrl}/#/activation?token=${token}`;
+    const activationUrl = `${clubplusUrl}/clubplus/activation?token=${token}`;
 
     return json({
       id: created.id,
