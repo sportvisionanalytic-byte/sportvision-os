@@ -12,13 +12,19 @@ import {
   buildPlayerActiveContext,
   buildProjetActiveContext,
   getSpaces,
+  GENERIC_ORG_TYPES,
   pickActiveSpace,
   type Space,
 } from "@/lib/supabase/session";
 import type { SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
 import type { ActiveContext } from "@/lib/types";
 
-const GENERIC_SPACE_TYPES = new Set(["coach", "academie", "sponsor"]);
+// 17/08/2026 — reprend GENERIC_ORG_TYPES de session.ts (source unique) au lieu d'une copie locale
+// restée figée à ["coach","academie","sponsor"] : structure_coaching/tournoi/stage/cm_agency
+// tombaient tous dans buildClubActiveContext ci-dessous, qui renvoie toujours null pour eux (pas
+// de ligne `clubs`) — écran "Aucun espace disponible" pour tout compte réel de ces 4 types, malgré
+// un backend et une UI par ailleurs fonctionnels. Trouvé en creusant le chantier cm_agency.
+const GENERIC_SPACE_TYPES = new Set<string>(GENERIC_ORG_TYPES);
 
 function buildActiveContext(supabase: SupabaseClient, user: SupabaseUser, space: Space): Promise<ActiveContext | null> {
   if (space.kind === "organization" && space.organizationType === "projet") {

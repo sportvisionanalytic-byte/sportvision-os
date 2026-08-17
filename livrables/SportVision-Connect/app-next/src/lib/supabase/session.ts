@@ -488,7 +488,15 @@ export async function buildProjetActiveContext(
 // création passe par connect-staff-create-org/connect-org-activate (staff) plutôt que
 // connect-org-signup (self-service), ce qui ne change rien ici : cette fonction lit uniquement
 // l'état déjà en base, peu importe comment il y est arrivé.
-const GENERIC_ORG_TYPES = ["coach", "academie", "structure_coaching", "sponsor", "tournoi", "stage", "cm_agency"] as const;
+// Exporté (17/08/2026) : app/(app)/layout.tsx maintenait sa propre copie locale
+// (GENERIC_SPACE_TYPES) pour aiguiller Space -> builder d'ActiveContext, jamais mise à jour au fil
+// des ajouts successifs de types à cette liste (structure_coaching le 17/08, tournoi/stage/
+// cm_agency avant) — trouvé en creusant le chantier "vraie bascule d'espace" cm_agency : ces 4
+// types tombaient tous dans buildClubActiveContext (aucune ligne `clubs` pour eux, `club` toujours
+// null), donc systématiquement sur l'écran "Aucun espace disponible", malgré un backend complet et
+// un dashboard/nav entièrement fonctionnels une fois dans l'app. Une seule source de vérité
+// désormais : layout.tsx importe cette liste plutôt que d'en garder une copie.
+export const GENERIC_ORG_TYPES = ["coach", "academie", "structure_coaching", "sponsor", "tournoi", "stage", "cm_agency"] as const;
 type GenericOrgType = (typeof GENERIC_ORG_TYPES)[number];
 
 /**
