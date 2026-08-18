@@ -291,6 +291,8 @@ section{position:relative}
 .tarif-row:last-child{border-bottom:none}
 .tarif-row b{font-weight:700;color:var(--navy-900)}
 .tarif-row span{font-weight:800;color:var(--blue);white-space:nowrap;margin-left:16px}
+.tarif-cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media (max-width:640px){.tarif-cols{grid-template-columns:1fr;gap:32px}}
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Dois-je avoir été filmé par SportVision ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. Nous pouvons monter votre compilation à partir de vos propres rushs (caméra Veo, GoPro, téléphone) comme à partir de captations réalisées par SportVision."}}, {"@type": "Question", "name": "Combien ça coûte exactement ?", "acceptedAnswer": {"@type": "Answer", "text": "40 € TTC si vous envoyez vos rushs déjà découpés (jusqu'à 6 min — plusieurs matchs déjà sélectionnés possibles), ou de 40 à 100 € TTC selon le nombre de matchs si vous nous donnez le lien du/des match(s) complet(s) (+20 € par match supplémentaire). Au-delà de ces seuils, sur devis."}}, {"@type": "Question", "name": "Combien de temps pour recevoir ma compilation ?", "acceptedAnswer": {"@type": "Answer", "text": "Le délai dépend du volume de rushs à traiter (un match, plusieurs matchs ou une compilation de saison) — il est communiqué avec le devis."}}, {"@type": "Question", "name": "Quel format de livraison ?", "acceptedAnswer": {"@type": "Answer", "text": "Un format est inclus dans le tarif de base, au choix : vertical (réseaux sociaux) ou horizontal, à préciser dans votre demande. L'autre format peut être ajouté en option."}}, {"@type": "Question", "name": "Puis-je demander des ajustements sur le montage livré ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui, une série de retouches est incluse dans le tarif de base. Au-delà, des ajustements supplémentaires peuvent être proposés sur devis."}}]}</script>
 </head>
@@ -432,7 +434,7 @@ section{position:relative}
       <h2>Deux façons de nous confier vos rushs.</h2>
       <p>Le tarif dépend de la manière dont vous nous transmettez la matière à monter.</p>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px" class="reveal">
+    <div class="tarif-cols reveal">
       <div>
         <h4 style="font-size:16px;margin-bottom:12px">Vous envoyez vos rushs pré-découpés</h4>
         <div class="tarif-table">
