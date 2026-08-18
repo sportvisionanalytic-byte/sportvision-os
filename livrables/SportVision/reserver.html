@@ -365,8 +365,8 @@ section{position:relative}
           <p class="sub">Choisissez la prestation qui correspond le mieux — vous pourrez préciser ensuite.</p>
           <div class="need-grid" id="need-grid">
             <button type="button" class="need-card" data-slug="match-photo" data-label="Match photo" data-price="120 € TTC"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h1.5l1-1.5h9l1 1.5H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></div><b>Match photo</b><span>120 € TTC</span></button>
-            <button type="button" class="need-card" data-slug="match-video" data-label="Match filmé Veo" data-price="120 € TTC"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M3.5 9.5h17V19a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1z"/><path d="m7 4 1.5 5.5M12 4l1.5 5.5M17 4l1.5 5.5"/></svg></div><b>Match filmé Veo</b><span>120 € TTC</span></button>
-            <button type="button" class="need-card" data-slug="pack-match" data-label="Pack Match Complet" data-price="160 € TTC"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="vertical-align:-0.15em" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div><b>Pack complet</b><span>160 € TTC</span></button>
+            <button type="button" class="need-card" data-slug="match-video" data-label="Match vidéo" data-price="120 € TTC"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M3.5 9.5h17V19a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1z"/><path d="m7 4 1.5 5.5M12 4l1.5 5.5M17 4l1.5 5.5"/></svg></div><b>Match vidéo</b><span>120 € TTC</span></button>
+            <button type="button" class="need-card" data-slug="pack-match" data-label="Pack Match Complet" data-price="160 € TTC"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="vertical-align:-0.15em" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div><b>Pack Match Complet</b><span>160 € TTC</span></button>
             <button type="button" class="need-card" data-slug="camera-isolee" data-label="Caméra isolée joueur" data-price="150 € TTC"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 10 5-3v10l-5-3z"/></svg></div><b>Caméra isolée joueur</b><span>150 € TTC</span></button>
             <button type="button" class="need-card" data-slug="montage-compilation" data-label="Montage &amp; compilation" data-price="À partir de 40 € TTC"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 10 18 0M9 4v16"/></svg></div><b>Montage &amp; compilation</b><span>Dès 40 € TTC</span></button>
             <button type="button" class="need-card" data-slug="pack-photo-video-highlight" data-label="Pack Photo + Vidéo + Highlight 4K" data-price="180 € TTC"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="vertical-align:-0.15em" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div><b>Pack Photo + Vidéo + Highlight 4K</b><span>180 € TTC</span></button>
@@ -394,11 +394,11 @@ section{position:relative}
             <div class="sv-field"><label for="bk-date">Date souhaitée</label><input id="bk-date" type="date"></div>
             <div class="sv-field"><label for="bk-heure">Heure (facultatif)</label><input id="bk-heure" type="time"></div>
           </div>
-          <div class="sv-field-2col">
+          <div class="sv-field-2col" data-besoin-no-lieu>
             <div class="sv-field"><label for="bk-ville">Ville</label><input id="bk-ville" type="text" placeholder="Ex. Fontainebleau"></div>
             <div class="sv-field"><label for="bk-cp">Code postal</label><input id="bk-cp" type="text" inputmode="numeric" maxlength="5" placeholder="77300"></div>
           </div>
-          <div class="sv-field"><label for="bk-adresse">Adresse (facultatif)</label><input id="bk-adresse" type="text" placeholder="Stade, gymnase, adresse précise..."></div>
+          <div class="sv-field" data-besoin-no-lieu><label for="bk-adresse">Adresse (facultatif)</label><input id="bk-adresse" type="text" placeholder="Stade, gymnase, adresse précise..."></div>
           <div class="dispo-badge checking" id="dispo-badge" style="display:none">
             <span class="dot"></span><span id="dispo-text">Vérification de la disponibilité…</span>
           </div>
@@ -668,6 +668,12 @@ function applyChampsContextuelsFilter(){
   const group = CHAMPS_GROUP_BY_BESOIN[state.slug] || null;
   document.querySelectorAll('[data-besoin-group]').forEach(el => {
     el.style.display = (group && el.getAttribute('data-besoin-group') === group) ? '' : 'none';
+  });
+  // Montage & compilation est une prestation 100% à distance (lien vidéo envoyé par le client) :
+  // aucun lieu d'intervention n'a de sens, contrairement à toutes les autres prestations du tunnel.
+  const noLieu = state.slug === 'montage-compilation';
+  document.querySelectorAll('[data-besoin-no-lieu]').forEach(el => {
+    el.style.display = noLieu ? 'none' : '';
   });
 }
 
