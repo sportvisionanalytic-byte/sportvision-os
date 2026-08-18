@@ -191,19 +191,19 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
           <h2 className="font-sora text-[15px] font-semibold">Payer à plusieurs</h2>
           {fundingLink.existing_funding_id ? (
             <>
-              <p className="text-[14px] text-text-tertiary lg:text-[13px]">Une cotisation est déjà ouverte pour cette prestation.</p>
+              <p className="text-[14px] text-text-tertiary lg:text-[13px]">Un paiement collectif est déjà ouvert pour cette prestation.</p>
               <Link
                 href={`${cotisationsBase}/${fundingLink.existing_funding_id}`}
                 className="flex h-11 w-fit items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-4 font-sora text-[14px] font-semibold hover:bg-white/[.12]"
               >
                 <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">volunteer_activism</span>
-                Voir la cotisation
+                Voir le paiement collectif
               </Link>
             </>
           ) : (
             <>
               <p className="text-[14px] text-text-tertiary lg:text-[13px]">
-                Vous aviez demandé à partager le coût de cette prestation. Créez la cotisation pour inviter vos proches à contribuer.
+                Vous aviez demandé à partager le coût de cette prestation. Créez le paiement collectif pour inviter vos proches à contribuer.
               </p>
               <Link
                 href={
@@ -214,7 +214,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
                 className="flex h-11 w-fit items-center gap-2 rounded-sv bg-sv-gradient px-4 font-sora text-[14px] font-semibold text-white hover:brightness-[1.12]"
               >
                 <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">volunteer_activism</span>
-                Créer une cotisation
+                Créer un paiement collectif
               </Link>
             </>
           )}

@@ -9,7 +9,7 @@ function euros(n: number) {
 }
 function formatDeadline(iso: string | null) {
   if (!iso) return null;
-  return `Cotisation ouverte jusqu'au ${new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`;
+  return `Paiement collectif ouvert jusqu'au ${new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`;
 }
 function validEmail(v: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
@@ -111,7 +111,7 @@ export function PublicFundingView({
         <>
           <div className="flex flex-col items-center gap-2.5 text-center">
             <span className="bg-sv-gradient bg-clip-text text-[11px] font-medium uppercase tracking-[.12em] text-transparent">
-              Cotisation collective
+              Paiement collectif
             </span>
             <h1 className="font-sora text-[28px] font-bold tracking-tight leading-[1.12]">{funding.titre}</h1>
             {funding.contexte && <span className="text-[14px] text-text-tertiary">{funding.contexte}</span>}
@@ -199,13 +199,13 @@ export function PublicFundingView({
             <div className="flex items-center gap-3 rounded-sv border border-dashed border-border-strong bg-white/[.04] px-[17px] py-4">
               <span className="material-symbols-rounded !text-[22px] text-text-tertiary" aria-hidden="true">event_busy</span>
               <span className="text-[14px] leading-relaxed text-text-tertiary">
-                Cette cotisation n&apos;accepte plus de nouvelles participations.
+                Ce paiement collectif n&apos;accepte plus de nouvelles participations.
               </span>
             </div>
           )}
 
           <div className="flex flex-col gap-2 rounded-sv border border-border bg-white/[.04] px-[18px] py-4">
-            <span className="font-sora text-[14px] font-semibold">Ce que finance cette cotisation</span>
+            <span className="font-sora text-[14px] font-semibold">Ce que finance ce paiement collectif</span>
             <span className="text-[13px] leading-relaxed text-text-tertiary">
               {funding.catalogue_offre_nom
                 ? `${funding.catalogue_offre_nom}, livré aux joueurs via SportVision Connect.`

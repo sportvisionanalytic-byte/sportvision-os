@@ -104,7 +104,7 @@ export default function SignupSportPage() {
             <h1 className="font-sora text-[31px] font-bold tracking-tight">Votre espace personnel</h1>
             <p className="text-[15px] leading-relaxed text-text-tertiary">
               Connect crée d&apos;abord votre espace personnel. Vous pourrez y suivre vos
-              prestations, vos contenus et vos cotisations.
+              prestations, vos contenus et vos paiements collectifs.
             </p>
           </div>
           <Field id="su-city-p" label="Ville · facultatif" placeholder="Montereau-Fault-Yonne" value={state.city} onChange={(e) => patch({ city: e.target.value })} />

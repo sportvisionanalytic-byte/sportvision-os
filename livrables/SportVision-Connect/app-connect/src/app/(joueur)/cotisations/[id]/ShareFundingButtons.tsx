@@ -36,7 +36,7 @@ export function ShareFundingButtons({ shareToken, titre }: { shareToken: string;
         className="flex h-[50px] items-center gap-2 rounded-sv bg-sv-gradient px-5 font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
       >
         <span className="material-symbols-rounded !text-[19px]" aria-hidden="true">ios_share</span>
-        Partager la cotisation
+        Partager le paiement collectif
       </button>
       <button
         type="button"

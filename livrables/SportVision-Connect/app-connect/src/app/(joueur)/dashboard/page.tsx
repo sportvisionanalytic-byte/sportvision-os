@@ -256,7 +256,7 @@ export default async function DashboardPage() {
                     href={`/cotisations/${cotisation.id}`}
                     className="flex h-12 items-center justify-center rounded-sv border border-border-strong bg-white/5 font-sora text-[14px] font-semibold hover:bg-white/10"
                   >
-                    Voir la cotisation
+                    Voir le paiement collectif
                   </Link>
                 </div>
               </div>

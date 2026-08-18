@@ -67,7 +67,7 @@ export function FundingDetailView({
     <div className="flex flex-col gap-[22px] animate-sv-in">
       <Link href={listHref} className="flex items-center gap-2 self-start text-[14px] font-medium text-text-tertiary hover:text-text lg:text-[13px]">
         <span className="material-symbols-rounded !text-[18px]" aria-hidden="true">arrow_back</span>
-        Cotisations
+        Paiements collectifs
       </Link>
 
       {paiement === "succes" && (
@@ -171,7 +171,7 @@ export function FundingDetailView({
             <div className="flex items-start gap-2.5 rounded-sv border border-dashed border-border-strong bg-white/[.04] px-4 py-3.5">
               <span className="material-symbols-rounded !text-[19px] text-text-tertiary" aria-hidden="true">construction</span>
               <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
-                Cette cotisation est {funding.statut === "expiree" ? "expirée" : "annulée"}. Les actions « demander
+                Ce paiement collectif est {funding.statut === "expiree" ? "expiré" : "annulé"}. Les actions « demander
                 malgré tout » et « rembourser les participants » sont en cours de finalisation et ne sont pas encore
                 disponibles ici — contactez SportVision depuis Messages pour un traitement manuel.
               </span>

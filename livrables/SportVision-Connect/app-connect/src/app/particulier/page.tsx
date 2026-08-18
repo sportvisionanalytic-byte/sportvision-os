@@ -287,7 +287,7 @@ export default async function ParticulierHomePage() {
                         <span className="material-symbols-rounded !text-[18px] text-cotisations" aria-hidden="true">savings</span>
                       </span>
                       <span className="text-[11px] font-medium uppercase tracking-[.1em] text-cotisations">
-                        Cotisation{cotisation.beneficiary_label ? ` · Pour ${cotisation.beneficiary_label}` : ""}
+                        Paiement collectif{cotisation.beneficiary_label ? ` · Pour ${cotisation.beneficiary_label}` : ""}
                       </span>
                     </div>
                     <span className="font-sora text-[19px] font-semibold tracking-tight">{cotisation.titre}</span>
@@ -309,7 +309,7 @@ export default async function ParticulierHomePage() {
                       href={`/particulier/cotisations/${cotisation.id}`}
                       className="flex h-12 items-center justify-center rounded-sv border border-border-strong bg-white/5 font-sora text-[14px] font-semibold hover:bg-white/10"
                     >
-                      Voir la cotisation
+                      Voir le paiement collectif
                     </Link>
                   </div>
                 </div>

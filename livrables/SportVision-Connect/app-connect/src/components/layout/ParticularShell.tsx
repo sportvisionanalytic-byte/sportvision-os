@@ -74,7 +74,7 @@ function buildNavSections(sportifsLabel: string, profilParticulier: string | nul
       title: "SportVision",
       items: [
         { href: "/particulier/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
-        { href: "/particulier/cotisations", label: "Cotisations", icon: "savings", color: "#F472B6" },
+        { href: "/particulier/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
         { href: "/particulier/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
         { href: "/particulier/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
         { href: "/particulier/calendrier", label: "Calendrier", icon: "calendar_month", color: "#8CA9FF" },

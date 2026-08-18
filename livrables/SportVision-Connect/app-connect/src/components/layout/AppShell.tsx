@@ -50,7 +50,7 @@ const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
     title: "SportVision",
     items: [
       { href: "/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
-      { href: "/cotisations", label: "Cotisations", icon: "savings", color: "#F472B6" },
+      { href: "/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
       { href: "/contenus", label: "Mes contenus", icon: "photo_library", color: "#C084FC" },
       { href: "/commandes", label: "Mes commandes", icon: "receipt_long", color: "#8CA9FF" },
       { href: "/calendrier", label: "Calendrier", icon: "calendar_month", color: "#8CA9FF" },
@@ -73,7 +73,7 @@ const MOBILE_TABS: NavItem[] = [
   { href: "/dashboard", label: "Accueil", icon: "home", color: "#8CA9FF" },
   { href: "/contenus", label: "Contenus", icon: "photo_library", color: "#C084FC" },
   { href: "/prestations", label: "Prestations", icon: "camera_alt", color: "#8CA9FF" },
-  { href: "/cotisations", label: "Cotisations", icon: "savings", color: "#F472B6" },
+  { href: "/cotisations", label: "Paiement collectif", icon: "savings", color: "#F472B6" },
   { href: "/profil", label: "Profil", icon: "person", color: "#22D3EE" },
 ];
 const MOBILE_MORE_ITEMS: NavItem[] = ALL_ITEMS.filter(

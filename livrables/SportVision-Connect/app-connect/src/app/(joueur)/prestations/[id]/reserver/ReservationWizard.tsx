@@ -475,7 +475,7 @@ export function ReservationWizard({
               <PaymentChoice label="Payer seul" sub="Réglez le montant total dès maintenant." selected={paiementMode === "seul"} onClick={() => setPaiementMode("seul")} />
               <PaymentChoice
                 label="Payer à plusieurs"
-                sub="Partagez le coût avec votre équipe via une cotisation."
+                sub="Partagez le coût avec votre équipe via un paiement collectif."
                 selected={paiementMode === "collectif"}
                 onClick={() => setPaiementMode("collectif")}
               />
@@ -505,7 +505,7 @@ export function ReservationWizard({
               <div className="flex items-start gap-2.5 rounded-sv border border-attente/40 bg-attente-bg px-4 py-3.5">
                 <span className="material-symbols-rounded !text-[19px] text-attente" aria-hidden="true">info</span>
                 <span className="text-[14px] leading-relaxed text-text-secondary lg:text-[12.5px]">
-                  Votre demande sera tout de même enregistrée au statut « En validation ». Créez ensuite une cotisation
+                  Votre demande sera tout de même enregistrée au statut « En validation ». Créez ensuite un paiement collectif
                   depuis cette page pour partager le coût, ou basculez sur « Payer seul ».
                 </span>
               </div>
@@ -587,7 +587,7 @@ export function ReservationWizard({
             )}
             {paiementMode === "collectif" && (
               <Button onClick={() => router.push(`/cotisations/creer?offreId=${offer.id}`)} className="w-full max-w-[320px]">
-                Créer une cotisation
+                Créer un paiement collectif
               </Button>
             )}
 

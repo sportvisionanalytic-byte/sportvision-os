@@ -104,7 +104,7 @@ function SignupShell({ children }: { children: React.ReactNode }) {
               Confidentialité
             </a>
             <a href={LEGAL_URLS.cgv} target="_blank" rel="noopener noreferrer" className="hover:text-text-tertiary">
-              Conditions d&apos;utilisation
+              Conditions Générales de Vente
             </a>
             <Link href="/aide" className="hover:text-text-tertiary">
               Aide

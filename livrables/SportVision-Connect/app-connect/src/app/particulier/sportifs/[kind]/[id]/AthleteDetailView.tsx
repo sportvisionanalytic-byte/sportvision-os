@@ -42,7 +42,7 @@ const RIGHT_LABELS: { key: keyof AthleteDetail["rights"]; label: string; icon: s
   { key: "download", label: "Télécharger les contenus", icon: "download" },
   { key: "reserver", label: "Réserver une prestation", icon: "camera_alt" },
   { key: "payer", label: "Effectuer des paiements", icon: "credit_card" },
-  { key: "cotisation", label: "Créer ou participer à une cotisation", icon: "savings" },
+  { key: "cotisation", label: "Créer ou participer à un paiement collectif", icon: "savings" },
   { key: "calendrier", label: "Voir le calendrier SportVision", icon: "calendar_month" },
   { key: "commandes", label: "Suivre les commandes", icon: "receipt_long" },
   { key: "modifier", label: "Modifier le profil", icon: "edit" },
@@ -56,7 +56,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "contenus", label: "Contenus" },
   { id: "prestations", label: "Prestations" },
   { id: "calendrier", label: "Calendrier" },
-  { id: "cotisations", label: "Cotisations" },
+  { id: "cotisations", label: "Paiements collectifs" },
   { id: "acces", label: "Accès & autorisations" },
 ];
 
@@ -83,8 +83,8 @@ const LINK_TABS: Record<"contenus" | "prestations" | "calendrier" | "cotisations
   },
   cotisations: {
     icon: "savings", color: "#F472B6", bg: "rgba(244,114,182,.14)",
-    title: "Ses cotisations", text: "Les cotisations créées pour financer une prestation de ce sportif.",
-    href: "cotisations", cta: "Voir les cotisations",
+    title: "Ses paiements collectifs", text: "Les paiements collectifs créés pour financer une prestation de ce sportif.",
+    href: "cotisations", cta: "Voir les paiements collectifs",
   },
 };
 
@@ -238,7 +238,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
             )}
             {detail.funding && (
               <OverviewCard
-                kind="Cotisation en cours"
+                kind="Paiement collectif en cours"
                 icon="savings" color="#F472B6" bg="rgba(244,114,182,.14)"
                 title={detail.funding.titre}
                 sub={`${formatEUR(detail.funding.montant_collecte)} / ${formatEUR(detail.funding.montant_cible)}`}
@@ -249,7 +249,7 @@ export function AthleteDetailView({ detail }: { detail: AthleteDetail }) {
               <div className="flex flex-col gap-2 rounded-sv-card border border-dashed border-border-strong bg-white/[.04] p-5">
                 <span className="font-sora text-[17px] font-semibold">Rien à signaler pour le moment</span>
                 <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13.5px]">
-                  Les prestations, contenus et cotisations de {detail.first_name} apparaîtront ici.
+                  Les prestations, contenus et paiements collectifs de {detail.first_name} apparaîtront ici.
                 </span>
               </div>
             )}

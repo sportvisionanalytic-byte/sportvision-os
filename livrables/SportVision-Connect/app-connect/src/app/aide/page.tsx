@@ -159,7 +159,7 @@ function PublicHelpContent() {
               Confidentialité
             </a>
             <a href={LEGAL_URLS.cgv} target="_blank" rel="noopener noreferrer" className="hover:text-text-tertiary">
-              Conditions d&apos;utilisation
+              Conditions Générales de Vente
             </a>
           </div>
         </div>
@@ -248,7 +248,7 @@ function HelpContent({ messagesHref }: { messagesHref: string }) {
           color="#8CA9FF"
           bg="rgba(79,125,255,.16)"
           title="Questions fréquentes"
-          sub="Contenus, prestations, cotisations et affiliations."
+          sub="Contenus, prestations, paiements collectifs et affiliations."
           href="#faq"
         />
       </div>

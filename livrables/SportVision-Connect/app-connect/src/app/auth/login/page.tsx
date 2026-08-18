@@ -19,7 +19,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(true);
+  // Décoché par défaut — un compte Connect sert aussi à gérer le profil de proches
+  // (enfants, sportifs suivis) depuis un appareil potentiellement partagé (audit du 18/08).
+  const [remember, setRemember] = useState(false);
   const [touched, setTouched] = useState(false);
   const [authFailed, setAuthFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -114,18 +116,19 @@ export default function LoginPage() {
             Votre espace.
           </h2>
           <p className="text-[17px] leading-relaxed text-[#DCDCEC]">
-            Rejoignez votre club, réservez vos prestations SportVision et cotisez avec vos
-            coéquipiers depuis un seul espace.
+            Réservez vos prestations SportVision, retrouvez vos contenus et suivez tout ce qui
+            vous concerne depuis un seul espace personnel.
           </p>
           <p className="text-[15px] leading-relaxed text-[#AEAECB]">
-            Sans club aussi : réservez une prestation ou retrouvez les photos et vidéos de vos
-            proches.
+            Votre club utilise SportVision ? Rattachez simplement votre profil à votre équipe.
+            Pas de club partenaire ? Connect fonctionne aussi pour vos prestations personnelles
+            et celles de vos proches.
           </p>
           <div className="mt-1 flex flex-wrap gap-2">
-            <Pill icon="shield" color="#22D3EE" bg="rgba(34,211,238,.16)" label="Clubs & équipes" />
+            <Pill icon="shield" color="#22D3EE" bg="rgba(34,211,238,.16)" label="Équipes & affiliations" />
             <Pill icon="photo_library" color="#C084FC" bg="rgba(168,85,247,.18)" label="Contenus" />
             <Pill icon="camera_alt" color="#8CA9FF" bg="rgba(79,125,255,.18)" label="Prestations" />
-            <Pill icon="savings" color="#F472B6" bg="rgba(244,114,182,.16)" label="Cotisations" />
+            <Pill icon="savings" color="#F472B6" bg="rgba(244,114,182,.16)" label="Paiement collectif" />
           </div>
         </div>
       </div>
@@ -273,7 +276,7 @@ export default function LoginPage() {
                 Confidentialité
               </a>
               <a href={LEGAL_URLS.cgv} target="_blank" rel="noopener noreferrer" className="hover:text-text-tertiary">
-                Conditions d&apos;utilisation
+                Conditions Générales de Vente
               </a>
             </div>
           </div>

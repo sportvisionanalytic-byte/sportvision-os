@@ -121,7 +121,7 @@ export function CreateFundingWizard({
     });
     setBusy(false);
     if (rpcError || !data) {
-      setError("Impossible de créer la cotisation pour le moment. Réessayez dans un instant.");
+      setError("Impossible de créer le paiement collectif pour le moment. Réessayez dans un instant.");
       return;
     }
     setResult(data as { id: string; share_token: string; montant_cible: number });
@@ -133,7 +133,7 @@ export function CreateFundingWizard({
     return (
       <div className="flex max-w-[620px] flex-col gap-[22px]">
         <div className="flex flex-col gap-2.5">
-          <h1 className="font-sora text-[28px] font-bold tracking-tight">Votre cotisation est prête 🎉</h1>
+          <h1 className="font-sora text-[28px] font-bold tracking-tight">Votre paiement collectif est prêt 🎉</h1>
           <p className="text-[15px] text-text-tertiary">Envoyez le lien à vos coéquipiers pour commencer.</p>
         </div>
 
@@ -178,7 +178,7 @@ export function CreateFundingWizard({
         <div className="flex flex-col gap-2.5">
           <button
             type="button"
-            onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Participez à notre cotisation « ${offre?.nom} » sur SportVision Connect : ${link}`)}`, "_blank")}
+            onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Participez à notre paiement collectif « ${offre?.nom} » sur SportVision Connect : ${link}`)}`, "_blank")}
             className="flex h-[54px] items-center justify-center gap-2 rounded-sv bg-sv-gradient font-sora text-[16px] font-semibold text-white hover:brightness-[1.12]"
           >
             <span className="material-symbols-rounded !text-[21px]" aria-hidden="true">chat</span>
@@ -211,7 +211,7 @@ export function CreateFundingWizard({
               }}
               className="flex h-[50px] flex-1 items-center justify-center rounded-sv border border-border-strong bg-white/[.06] font-sora text-[14px] font-semibold hover:bg-white/[.12]"
             >
-              Voir ma cotisation
+              Voir mon paiement collectif
             </button>
           </div>
         </div>
@@ -411,7 +411,7 @@ export function CreateFundingWizard({
 
           <div className="flex flex-col gap-2">
             <label htmlFor="cot-deadline" className="text-[14px] font-medium text-text-secondary lg:text-[13px]">
-              Fin de la cotisation
+              Fin du paiement collectif
             </label>
             <input
               id="cot-deadline"
@@ -432,7 +432,7 @@ export function CreateFundingWizard({
       {step === 4 && offre && (
         <div className="flex flex-col gap-[18px]">
           <div className="flex flex-col gap-2">
-            <h1 className="font-sora text-[27px] font-bold tracking-tight">Votre cotisation</h1>
+            <h1 className="font-sora text-[27px] font-bold tracking-tight">Votre paiement collectif</h1>
             <p className="text-[15px] text-text-tertiary">Vérifiez avant de créer le lien de partage.</p>
           </div>
           <div className="flex flex-col gap-3.5 rounded-sv-card border border-border-strong bg-surface p-[22px]">
@@ -458,7 +458,7 @@ export function CreateFundingWizard({
             className="hidden h-[54px] items-center justify-center gap-2 self-start rounded-sv bg-sv-gradient px-6 font-sora text-[16px] font-semibold text-white hover:brightness-[1.12] disabled:cursor-wait disabled:opacity-75 lg:flex"
           >
             {busy && <span className="h-[18px] w-[18px] animate-sv-spin rounded-full border-2 border-white/35 border-t-white" />}
-            Créer la cotisation
+            Créer le paiement collectif
           </button>
         </div>
       )}
@@ -503,7 +503,7 @@ export function CreateFundingWizard({
             className="flex h-14 w-full items-center justify-center gap-2 rounded-sv bg-sv-gradient font-sora text-[15px] font-semibold text-white hover:brightness-[1.12] disabled:cursor-wait disabled:opacity-75"
           >
             {busy && <span className="h-[18px] w-[18px] animate-sv-spin rounded-full border-2 border-white/35 border-t-white" />}
-            Créer la cotisation
+            Créer le paiement collectif
           </button>
         )}
       </div>

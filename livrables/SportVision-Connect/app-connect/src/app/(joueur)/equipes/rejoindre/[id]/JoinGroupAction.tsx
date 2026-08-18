@@ -58,7 +58,7 @@ export function JoinGroupAction({ groupId }: { groupId: string }) {
         {alreadyMember ? `Vous faites déjà partie de ${groupName}` : `Vous avez rejoint ${groupName} 🎉`}
       </span>
       <span className="text-[14px] leading-relaxed text-text-tertiary">
-        Retrouvez les membres, les cotisations et les prestations de ce groupe.
+        Retrouvez les membres, les paiements collectifs et les prestations de ce groupe.
       </span>
       <Button
         onClick={() => {

@@ -83,7 +83,7 @@ export default async function EquipesPage() {
                 )}
                 {g.has_active_funding && (
                   <span className="rounded-sv-pill bg-cotisations-bg px-2.5 py-1 text-[12px] font-medium text-cotisations">
-                    Cotisation en cours
+                    Paiement collectif en cours
                   </span>
                 )}
               </div>

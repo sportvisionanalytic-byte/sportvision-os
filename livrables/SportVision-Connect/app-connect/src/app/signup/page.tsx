@@ -114,7 +114,7 @@ export default function SignupIdentityPage() {
       <p className="text-[12px] leading-relaxed text-text-label">
         En créant votre compte, vous acceptez les{" "}
         <a href={LEGAL_URLS.cgv} target="_blank" rel="noopener noreferrer" className="font-medium text-[#8CA9FF] hover:text-[#B6C7FF] underline">
-          Conditions d&apos;utilisation
+          Conditions Générales de Vente
         </a>{" "}
         et reconnaissez avoir pris connaissance de la{" "}
         <a href={LEGAL_URLS.confidentialite} target="_blank" rel="noopener noreferrer" className="font-medium text-[#8CA9FF] hover:text-[#B6C7FF] underline">

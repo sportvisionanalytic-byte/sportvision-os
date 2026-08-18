@@ -10,8 +10,8 @@ const FAQ: { q: string; a: string }[] = [
     a: "Dès que SportVision les met à disposition, ils apparaissent dans Mes contenus et vous recevez une notification.",
   },
   {
-    q: "Comment fonctionne une cotisation ?",
-    a: "Vous créez une cotisation depuis une prestation, vous partagez le lien, et chaque coéquipier participe. La prestation est financée dès que l'objectif est atteint.",
+    q: "Comment fonctionne un paiement collectif ?",
+    a: "Vous créez un paiement collectif depuis une prestation, vous partagez le lien, et chaque coéquipier participe. La prestation est financée dès que l'objectif est atteint.",
   },
   {
     q: "Mon club n'est pas sur SportVision, puis-je utiliser Connect ?",

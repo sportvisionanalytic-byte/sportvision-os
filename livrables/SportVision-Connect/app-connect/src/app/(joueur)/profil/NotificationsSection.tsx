@@ -8,7 +8,7 @@ type PrefKey = "notif_contenus" | "notif_cotisations" | "notif_prestations" | "n
 
 const PREFS: { key: PrefKey; label: string }[] = [
   { key: "notif_contenus", label: "Contenus disponibles" },
-  { key: "notif_cotisations", label: "Cotisations" },
+  { key: "notif_cotisations", label: "Paiements collectifs" },
   { key: "notif_prestations", label: "Prestations" },
   { key: "notif_messages", label: "Messages" },
   { key: "notif_affiliations", label: "Affiliations" },

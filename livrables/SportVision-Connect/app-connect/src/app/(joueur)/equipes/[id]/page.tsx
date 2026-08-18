@@ -90,11 +90,11 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
                 className="flex h-[46px] items-center gap-2 rounded-sv border border-border-strong bg-white/[.06] px-[18px] font-sora text-[14px] font-semibold hover:bg-white/[.12]"
               >
                 <span className="material-symbols-rounded !text-[19px] text-cotisations" aria-hidden="true">savings</span>
-                Créer une cotisation
+                Créer un paiement collectif
               </Link>
             </div>
             <span className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">
-              Une cotisation sert uniquement à financer une prestation SportVision : vous choisissez d&apos;abord la
+              Un paiement collectif sert uniquement à financer une prestation SportVision : vous choisissez d&apos;abord la
               prestation, puis la répartition entre les membres.
             </span>
           </div>
@@ -136,7 +136,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
 
           <div className="flex min-w-0 flex-col gap-[18px]">
             <div className="flex flex-col gap-[13px]">
-              <h2 className="font-sora text-[18px] font-semibold tracking-tight">Cotisations</h2>
+              <h2 className="font-sora text-[18px] font-semibold tracking-tight">Paiements collectifs</h2>
               {funding ? (
                 <Link
                   href={`/cotisations/${funding.id}`}
@@ -158,7 +158,7 @@ export default async function EquipeDetailPage({ params }: { params: Promise<{ i
                 </Link>
               ) : (
                 <div className="flex flex-col gap-2 rounded-sv border border-dashed border-border-strong bg-white/[.04] p-[18px]">
-                  <span className="text-[14px] font-medium">Aucune cotisation en cours</span>
+                  <span className="text-[14px] font-medium">Aucun paiement collectif en cours</span>
                   <span className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
                     Financez votre prochaine prestation avec ce groupe.
                   </span>

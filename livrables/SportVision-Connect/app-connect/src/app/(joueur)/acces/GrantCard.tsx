@@ -24,7 +24,7 @@ const RIGHTS: { key: string; label: string }[] = [
   { key: "download", label: "Télécharger mes contenus" },
   { key: "reserver", label: "Réserver une prestation pour moi" },
   { key: "payer", label: "Effectuer des paiements pour moi" },
-  { key: "cotisation", label: "Créer ou participer à une cotisation pour moi" },
+  { key: "cotisation", label: "Créer ou participer à un paiement collectif pour moi" },
   { key: "calendrier", label: "Voir mon calendrier SportVision" },
   { key: "commandes", label: "Suivre mes commandes" },
   { key: "modifier", label: "Modifier mon profil" },

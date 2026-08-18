@@ -76,7 +76,7 @@ export function FundingTabs({ fundings, basePath = "/cotisations" }: { fundings:
     <div className="flex flex-col gap-6 animate-sv-in">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Cotisations</h1>
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Paiements collectifs</h1>
           <p className="text-[15px] text-text-tertiary">Financez vos prestations SportVision à plusieurs.</p>
         </div>
         <Link
@@ -84,7 +84,7 @@ export function FundingTabs({ fundings, basePath = "/cotisations" }: { fundings:
           className="flex h-[46px] flex-none items-center gap-2 rounded-sv bg-sv-gradient px-[18px] font-sora text-[15px] font-semibold text-white hover:brightness-[1.12]"
         >
           <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">add</span>
-          Créer une cotisation
+          Créer un paiement collectif
         </Link>
       </div>
 
@@ -177,7 +177,7 @@ export function FundingTabs({ fundings, basePath = "/cotisations" }: { fundings:
           <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-cotisations-bg">
             <span className="material-symbols-rounded !text-[24px] text-cotisations" aria-hidden="true">savings</span>
           </span>
-          <span className="font-sora text-[19px] font-semibold">Aucune cotisation ici</span>
+          <span className="font-sora text-[19px] font-semibold">Aucun paiement collectif ici</span>
           <p className="text-[14px] leading-relaxed text-text-tertiary">
             Financez votre prochaine prestation avec votre équipe : chacun participe depuis un simple lien.
           </p>

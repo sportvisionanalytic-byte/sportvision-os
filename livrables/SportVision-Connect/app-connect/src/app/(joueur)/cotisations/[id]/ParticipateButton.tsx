@@ -135,7 +135,7 @@ export function ParticipateButton({
                   </span>
                   <span className="text-[14px] leading-relaxed text-text-secondary">
                     Votre participation de {amountNum.toLocaleString("fr-FR")} € en espèces a été enregistrée. Remettez ce montant à
-                    l&apos;organisateur de la cotisation.
+                    l&apos;organisateur du paiement collectif.
                   </span>
                 </div>
                 <button
@@ -232,7 +232,7 @@ export function ParticipateButton({
                   {mode === "especes" && (
                     <span className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">
                       Votre participation sera comptée immédiatement. Remettez ce montant en espèces à l&apos;organisateur de la
-                      cotisation.
+                      paiement collectif.
                     </span>
                   )}
                 </div>
