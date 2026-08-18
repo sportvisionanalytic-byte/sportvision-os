@@ -11,6 +11,9 @@ import { NextResponse, type NextRequest } from "next/server";
 // redirige vers /auth/login avant même que la route ait pu poser le cookie — bug corrigé le
 // 14/08, voir auth/callback/route.ts). "/auth/confirming" aussi, le temps que la session tout
 // juste posée soit lisible par le middleware sur la requête suivante.
+// "/demo" : démo interne à données fictives (demandée par Fouka le 19/08, voir src/app/demo/) —
+// aucune page sous /demo ne lit/écrit de données réelles (sauf catalogue_offres, public en
+// lecture). Temporaire, à retirer avec src/app/demo/ avant le lancement public si plus utile.
 const PUBLIC_PATHS = [
   "/auth/login",
   "/auth/forgot",
@@ -20,6 +23,7 @@ const PUBLIC_PATHS = [
   "/signup",
   "/cotisation",
   "/aide",
+  "/demo",
 ];
 
 export async function updateSession(request: NextRequest) {
