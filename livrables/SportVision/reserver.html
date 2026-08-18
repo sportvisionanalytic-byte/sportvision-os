@@ -414,10 +414,10 @@ section{position:relative}
           <div class="options-grid" id="options-grid">
             <label class="opt-check" data-besoin="match-photo pack-match couverture-tournoi couverture-stage"><input type="checkbox" value="Plans drone complémentaires (+40 €)" data-opt="drone"> Plans drone complémentaires (+40 €)</label>
             <label class="opt-check" data-besoin="couverture-tournoi couverture-stage"><input type="checkbox" value="Highlight vidéo" data-opt="highlight"> Highlight vidéo</label>
-            <label class="opt-check" data-besoin="match-photo match-video pack-match couverture-tournoi couverture-stage coach-preparateur match-filme-drone combo-drone-photo"><input type="checkbox" value="Reel vertical" data-opt="reel"> Reel vertical (réseaux)</label>
-            <label class="opt-check" data-besoin="match-photo match-video pack-match match-filme-drone combo-drone-photo"><input type="checkbox" value="Livraison express" data-opt="express"> Livraison express</label>
-            <label class="opt-check" data-besoin="match-video pack-match coach-preparateur"><input type="checkbox" value="Interview / face caméra" data-opt="interview"> Interview / face caméra</label>
-            <label class="opt-check" data-besoin=""><input type="checkbox" value="Création graphique associée" data-opt="creation"> Création graphique associée</label>
+            <label class="opt-check" data-besoin="match-photo match-video pack-match couverture-tournoi couverture-stage coach-preparateur match-filme-drone combo-drone-photo camera-isolee shooting media-day"><input type="checkbox" value="Reel vertical" data-opt="reel"> Reel vertical (réseaux)</label>
+            <label class="opt-check" data-besoin="match-photo match-video pack-match match-filme-drone combo-drone-photo camera-isolee shooting"><input type="checkbox" value="Livraison express" data-opt="express"> Livraison express</label>
+            <label class="opt-check" data-besoin="match-video pack-match coach-preparateur media-day"><input type="checkbox" value="Interview / face caméra" data-opt="interview"> Interview / face caméra</label>
+            <label class="opt-check" data-besoin="shooting media-day"><input type="checkbox" value="Création graphique associée" data-opt="creation"> Création graphique associée</label>
           </div>
           <!-- ── Champs contextuels selon le besoin (facultatifs, aucune validation bloquante) ──
                Affichés/masqués en JS via applyChampsContextuelsFilter() selon le groupe associé
@@ -434,6 +434,47 @@ section{position:relative}
             <div class="sv-field"><label for="bk-duree">Durée (facultatif)</label><input id="bk-duree" type="text" placeholder="Ex. 2 jours, demi-journée..."></div>
           </div>
           <div class="sv-field" data-besoin-group="coach" style="display:none"><label for="bk-type-seance">Type de séance (facultatif)</label><input id="bk-type-seance" type="text" placeholder="Ex. entraînement collectif, analyse vidéo, prépa physique..."></div>
+          <div class="sv-field-2col" data-besoin-group="joueur" style="display:none">
+            <div class="sv-field"><label for="bk-joueur-nom">Nom du joueur (facultatif)</label><input id="bk-joueur-nom" type="text" placeholder="Ex. Nathan Diallo"></div>
+            <div class="sv-field"><label for="bk-joueur-numero">Numéro de maillot (facultatif)</label><input id="bk-joueur-numero" type="text" inputmode="numeric" placeholder="Ex. 10"></div>
+          </div>
+          <div class="sv-field" data-besoin-group="joueur" style="display:none"><label for="bk-joueur-poste">Poste (facultatif)</label><input id="bk-joueur-poste" type="text" placeholder="Ex. attaquant, milieu, gardien..."></div>
+          <div class="sv-field-2col" data-besoin-group="evenement" style="display:none">
+            <div class="sv-field"><label for="bk-date-fin">Date de fin (facultatif)</label><input id="bk-date-fin" type="date"></div>
+            <div class="sv-field"><label for="bk-nb-equipes">Nombre d'équipes / groupes (facultatif)</label><input id="bk-nb-equipes" type="text" inputmode="numeric" placeholder="Ex. 12"></div>
+          </div>
+          <div class="sv-field-2col" data-besoin-group="evenement" style="display:none">
+            <div class="sv-field"><label for="bk-nb-terrains">Nombre de terrains (facultatif)</label><input id="bk-nb-terrains" type="text" inputmode="numeric" placeholder="Ex. 3"></div>
+            <div class="sv-field"><label for="bk-horaires">Horaires principaux (facultatif)</label><input id="bk-horaires" type="text" placeholder="Ex. 9h-18h"></div>
+          </div>
+          <div class="sv-field-2col" data-besoin-group="shooting" style="display:none">
+            <div class="sv-field"><label for="bk-shooting-type">Type de shooting</label>
+              <select id="bk-shooting-type">
+                <option value="">— Choisir —</option>
+                <option value="Individuel">Individuel</option>
+                <option value="Équipe / groupe">Équipe / groupe</option>
+              </select>
+            </div>
+            <div class="sv-field"><label for="bk-shooting-nb">Nombre de personnes (facultatif)</label><input id="bk-shooting-nb" type="text" inputmode="numeric" placeholder="Ex. 1, 18..."></div>
+          </div>
+          <div class="sv-field-2col" data-besoin-group="shooting" style="display:none">
+            <div class="sv-field"><label for="bk-shooting-lieu">Lieu souhaité (facultatif)</label>
+              <select id="bk-shooting-lieu">
+                <option value="">— Choisir —</option>
+                <option value="Intérieur / studio">Intérieur / studio</option>
+                <option value="Extérieur / terrain">Extérieur / terrain</option>
+              </select>
+            </div>
+            <div class="sv-field"><label for="bk-shooting-objectif">Objectif (facultatif)</label><input id="bk-shooting-objectif" type="text" placeholder="Ex. portraits, réseaux, annonce..."></div>
+          </div>
+          <div class="sv-field-2col" data-besoin-group="media-day" style="display:none">
+            <div class="sv-field"><label for="bk-md-structure">Nom de la structure (facultatif)</label><input id="bk-md-structure" type="text" placeholder="Ex. FC Fontainebleau"></div>
+            <div class="sv-field"><label for="bk-md-joueurs">Nombre approximatif de joueurs (facultatif)</label><input id="bk-md-joueurs" type="text" inputmode="numeric" placeholder="Ex. 60"></div>
+          </div>
+          <div class="sv-field-2col" data-besoin-group="media-day" style="display:none">
+            <div class="sv-field"><label for="bk-md-equipes">Nombre d'équipes (facultatif)</label><input id="bk-md-equipes" type="text" inputmode="numeric" placeholder="Ex. 4"></div>
+            <div class="sv-field"><label for="bk-md-sponsors">Sponsors à intégrer (facultatif)</label><input id="bk-md-sponsors" type="text" placeholder="Ex. oui, 2 partenaires"></div>
+          </div>
           <div class="sv-field"><label for="bk-commentaire">Précisions (facultatif)</label><textarea id="bk-commentaire" rows="3" placeholder="Contexte, sport, équipes concernées, besoin particulier..."></textarea></div>
           <div class="booking-nav">
             <button type="button" class="btn btn-ghost-light" data-back="2">Précédent</button>
@@ -633,6 +674,8 @@ const OPTIONS_BY_BESOIN = {
   'match-filme-drone': ['reel', 'express'],
   'combo-drone-photo': ['reel', 'express'],
   'camera-isolee': ['reel', 'express'],
+  'shooting': ['reel', 'express'],
+  'media-day': ['reel', 'interview'],
 };
 function applyOptionsFilter(){
   const allowed = OPTIONS_BY_BESOIN[state.slug] || null;
@@ -650,21 +693,26 @@ function applyOptionsFilter(){
 // ── Champs contextuels dynamiques selon le besoin (audit externe du 16/08) ──
 // Facultatifs, aucune validation bloquante. Pour un besoin qui ne rentre dans
 // aucun groupe (sur devis notamment), aucun champ contextuel n'est affiché.
-const CHAMPS_GROUP_BY_BESOIN = {
-  'match-photo': 'match',
-  'match-video': 'match',
-  'pack-match': 'match',
-  'match-filme-drone': 'match',
-  'combo-drone-photo': 'match',
-  'camera-isolee': 'match',
-  'couverture-tournoi': 'evenement',
-  'couverture-stage': 'evenement',
-  'coach-preparateur': 'coach',
+const CHAMPS_GROUPS_BY_BESOIN = {
+  'match-photo': ['match'],
+  'match-video': ['match'],
+  'pack-match': ['match'],
+  'match-filme-drone': ['match'],
+  'combo-drone-photo': ['match'],
+  // Caméra isolée a besoin des champs match (équipe/adversaire/catégorie) ET des champs
+  // joueur (nom/numéro/poste) — d'où deux groupes actifs simultanément, contrairement à
+  // toutes les autres prestations qui n'en ont qu'un seul.
+  'camera-isolee': ['match', 'joueur'],
+  'couverture-tournoi': ['evenement'],
+  'couverture-stage': ['evenement'],
+  'coach-preparateur': ['coach'],
+  'shooting': ['shooting'],
+  'media-day': ['media-day'],
 };
 function applyChampsContextuelsFilter(){
-  const group = CHAMPS_GROUP_BY_BESOIN[state.slug] || null;
+  const groups = CHAMPS_GROUPS_BY_BESOIN[state.slug] || [];
   document.querySelectorAll('[data-besoin-group]').forEach(el => {
-    el.style.display = (group && el.getAttribute('data-besoin-group') === group) ? '' : 'none';
+    el.style.display = groups.includes(el.getAttribute('data-besoin-group')) ? '' : 'none';
   });
   // Montage & compilation est une prestation 100% à distance (lien vidéo envoyé par le client) :
   // aucun lieu d'intervention n'a de sens, contrairement à toutes les autres prestations du tunnel.
@@ -766,7 +814,13 @@ const state = {
   slug: null, label: null, price: null,
   date: null, heure: null, ville: null, cp: null, adresse: null,
   options: [], commentaire: null,
-  champs: { equipe: null, adversaire: null, categorie: null, nomEvenement: null, duree: null, typeSeance: null },
+  champs: {
+    equipe: null, adversaire: null, categorie: null, nomEvenement: null, duree: null, typeSeance: null,
+    joueurNom: null, joueurNumero: null, joueurPoste: null,
+    dateFin: null, nbEquipes: null, nbTerrains: null, horaires: null,
+    shootingType: null, shootingNb: null, shootingLieu: null, shootingObjectif: null,
+    mdStructure: null, mdJoueurs: null, mdEquipes: null, mdSponsors: null,
+  },
   dispoChecked: false, dispoResult: null,
 };
 let currentStep = 1;
@@ -882,6 +936,21 @@ document.getElementById('btn-step3-next').addEventListener('click', () => {
     nomEvenement: document.getElementById('bk-nom-evenement').value.trim() || null,
     duree: document.getElementById('bk-duree').value.trim() || null,
     typeSeance: document.getElementById('bk-type-seance').value.trim() || null,
+    joueurNom: document.getElementById('bk-joueur-nom').value.trim() || null,
+    joueurNumero: document.getElementById('bk-joueur-numero').value.trim() || null,
+    joueurPoste: document.getElementById('bk-joueur-poste').value.trim() || null,
+    dateFin: document.getElementById('bk-date-fin').value || null,
+    nbEquipes: document.getElementById('bk-nb-equipes').value.trim() || null,
+    nbTerrains: document.getElementById('bk-nb-terrains').value.trim() || null,
+    horaires: document.getElementById('bk-horaires').value.trim() || null,
+    shootingType: document.getElementById('bk-shooting-type').value || null,
+    shootingNb: document.getElementById('bk-shooting-nb').value.trim() || null,
+    shootingLieu: document.getElementById('bk-shooting-lieu').value || null,
+    shootingObjectif: document.getElementById('bk-shooting-objectif').value.trim() || null,
+    mdStructure: document.getElementById('bk-md-structure').value.trim() || null,
+    mdJoueurs: document.getElementById('bk-md-joueurs').value.trim() || null,
+    mdEquipes: document.getElementById('bk-md-equipes').value.trim() || null,
+    mdSponsors: document.getElementById('bk-md-sponsors').value.trim() || null,
   };
   buildRecap();
   const estPrixFixe = state.slug && OFFRES_PRIX_FIXE.has(state.slug);
@@ -931,9 +1000,27 @@ function buildRecap(){
   let infosMatch = [c.equipe, c.adversaire].filter(Boolean).join(' — ');
   if (c.categorie) infosMatch += (infosMatch ? ' ' : '') + '(' + c.categorie + ')';
   if (infosMatch) parts.push(esc(infosMatch));
+  let infosJoueur = [c.joueurNom, c.joueurNumero ? '#' + c.joueurNumero : null, c.joueurPoste].filter(Boolean).join(' — ');
+  if (infosJoueur) parts.push(esc('Joueur : ' + infosJoueur));
   const infosEvenement = [c.nomEvenement, c.duree].filter(Boolean).join(' · ');
   if (infosEvenement) parts.push(esc(infosEvenement));
+  const infosEvenementDetail = [
+    c.dateFin ? 'jusqu\'au ' + formatDateRecap(c.dateFin) : null,
+    c.nbEquipes ? c.nbEquipes + ' équipes/groupes' : null,
+    c.nbTerrains ? c.nbTerrains + ' terrains' : null,
+    c.horaires,
+  ].filter(Boolean).join(' · ');
+  if (infosEvenementDetail) parts.push(esc(infosEvenementDetail));
   if (c.typeSeance) parts.push(esc('Séance : ' + c.typeSeance));
+  const infosShooting = [c.shootingType, c.shootingNb ? c.shootingNb + ' personne(s)' : null, c.shootingLieu, c.shootingObjectif].filter(Boolean).join(' · ');
+  if (infosShooting) parts.push(esc(infosShooting));
+  const infosMediaDay = [
+    c.mdStructure,
+    c.mdJoueurs ? c.mdJoueurs + ' joueurs' : null,
+    c.mdEquipes ? c.mdEquipes + ' équipes' : null,
+    c.mdSponsors ? 'sponsors : ' + c.mdSponsors : null,
+  ].filter(Boolean).join(' · ');
+  if (infosMediaDay) parts.push(esc(infosMediaDay));
 
   const dateFmt = formatDateRecap(state.date);
   if (dateFmt) parts.push(esc(dateFmt + (state.heure ? ' · ' + state.heure : '')));
@@ -1019,6 +1106,21 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     c.nomEvenement ? 'Événement : ' + c.nomEvenement : null,
     c.duree ? 'Durée : ' + c.duree : null,
     c.typeSeance ? 'Type de séance : ' + c.typeSeance : null,
+    c.joueurNom ? 'Joueur : ' + c.joueurNom : null,
+    c.joueurNumero ? 'Numéro : ' + c.joueurNumero : null,
+    c.joueurPoste ? 'Poste : ' + c.joueurPoste : null,
+    c.dateFin ? 'Date de fin : ' + c.dateFin : null,
+    c.nbEquipes ? 'Équipes/groupes : ' + c.nbEquipes : null,
+    c.nbTerrains ? 'Terrains : ' + c.nbTerrains : null,
+    c.horaires ? 'Horaires : ' + c.horaires : null,
+    c.shootingType ? 'Shooting : ' + c.shootingType : null,
+    c.shootingNb ? 'Nombre de personnes : ' + c.shootingNb : null,
+    c.shootingLieu ? 'Lieu : ' + c.shootingLieu : null,
+    c.shootingObjectif ? 'Objectif : ' + c.shootingObjectif : null,
+    c.mdStructure ? 'Structure : ' + c.mdStructure : null,
+    c.mdJoueurs ? 'Nombre de joueurs : ' + c.mdJoueurs : null,
+    c.mdEquipes ? 'Nombre d\'équipes : ' + c.mdEquipes : null,
+    c.mdSponsors ? 'Sponsors : ' + c.mdSponsors : null,
   ].filter(Boolean).join(' — ') || null;
 
   const commentaireComplet = [
