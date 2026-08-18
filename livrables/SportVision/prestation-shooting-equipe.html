@@ -689,7 +689,19 @@ section{position:relative}
             <option value="particulier">Un particulier</option>
           </select>
         </div>
-        <div class="sv-field"><label for="dv-commentaire">Votre besoin (facultatif)</label><textarea id="dv-commentaire" name="commentaire" rows="3" placeholder="Ex : shooting photo de mon équipe"></textarea></div>
+        <div class="sv-field"><label for="dv-objet">Objet de la demande</label>
+          <select id="dv-objet" name="objet" required>
+            <option value="">— Choisir —</option>
+            <option value="Prestation">Une prestation</option>
+            <option value="Club+">Club+</option>
+            <option value="Full Communication">Full Communication</option>
+            <option value="Accompagnement">Un accompagnement</option>
+            <option value="Démonstration">Une démonstration</option>
+            <option value="Question">Une question</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div class="sv-field"><label for="dv-commentaire">Précisions (facultatif)</label><textarea id="dv-commentaire" name="commentaire" rows="3" placeholder="Ex : shooting photo de mon équipe"></textarea></div>
         <div class="sv-err" id="devis-err"></div>
         <p class="sub" style="margin:8px 0 0;font-size:12px;color:var(--text-secondary)">Les informations renseignées sont utilisées par SportVision pour traiter votre demande et vous recontacter. <a href="confidentialite.html" target="_blank">En savoir plus</a>.</p>
         <button type="submit" class="btn btn-grad" style="width:100%;margin-top:6px" id="devis-submit">Envoyer ma demande</button>
@@ -841,6 +853,8 @@ function openDevis(context){
   document.getElementById('devis-err').textContent = '';
   const commentaireEl = document.getElementById('dv-commentaire');
   if (context && commentaireEl && !commentaireEl.value) commentaireEl.value = 'Intéressé par : ' + context;
+  const objetEl = document.getElementById('dv-objet');
+  if (context && objetEl && !objetEl.value) objetEl.value = 'Prestation';
   devisOverlay.classList.add('on');
 }
 function closeDevis(){ devisOverlay.classList.remove('on'); }
@@ -860,17 +874,24 @@ document.getElementById('devis-form').addEventListener('submit', async (e) => {
   const btn = document.getElementById('devis-submit');
   errEl.textContent = '';
   const fd = new FormData(form);
+  const objet = (fd.get('objet') || '').toString().trim();
+  const commentaireBrut = (fd.get('commentaire') || '').toString().trim();
+  const commentaire = [objet ? 'Objet : ' + objet : null, commentaireBrut || null].filter(Boolean).join(' — ') || null;
   const body = {
     prenom: (fd.get('prenom') || '').toString().trim(),
     nom: (fd.get('nom') || '').toString().trim(),
     email: (fd.get('email') || '').toString().trim(),
     telephone: (fd.get('telephone') || '').toString().trim() || null,
     profil: fd.get('profil'),
-    commentaire: (fd.get('commentaire') || '').toString().trim() || null,
+    commentaire,
     site_web: fd.get('site_web'), // honeypot — doit rester vide
   };
   if (!body.prenom || !body.nom || !body.email){
     errEl.textContent = 'Prénom, nom et e-mail sont obligatoires.';
+    return;
+  }
+  if (!objet){
+    errEl.textContent = "Merci de préciser l'objet de votre demande.";
     return;
   }
   btn.disabled = true; btn.textContent = 'Envoi…';
