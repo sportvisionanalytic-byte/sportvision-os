@@ -146,6 +146,16 @@
   status = 200
 
 [[redirects]]
+  from = "/prestations/camera-isolee"
+  to = "/prestation-camera-isolee.html"
+  status = 200
+
+[[redirects]]
+  from = "/prestations/montage-compilation"
+  to = "/prestation-montage-compilation.html"
+  status = 200
+
+[[redirects]]
   from = "/prestations/shooting-joueur"
   to = "/prestation-shooting-joueur.html"
   status = 200

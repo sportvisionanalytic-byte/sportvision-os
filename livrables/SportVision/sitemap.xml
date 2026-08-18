@@ -13,6 +13,8 @@
   <url><loc>https://sportvision-an.fr/prestations/match-photo</loc><priority>0.8</priority></url>
   <url><loc>https://sportvision-an.fr/prestations/match-video</loc><priority>0.8</priority></url>
   <url><loc>https://sportvision-an.fr/prestations/pack-match</loc><priority>0.8</priority></url>
+  <url><loc>https://sportvision-an.fr/prestations/camera-isolee</loc><priority>0.8</priority></url>
+  <url><loc>https://sportvision-an.fr/prestations/montage-compilation</loc><priority>0.8</priority></url>
   <url><loc>https://sportvision-an.fr/prestations/shooting-joueur</loc><priority>0.8</priority></url>
   <url><loc>https://sportvision-an.fr/prestations/shooting-equipe</loc><priority>0.8</priority></url>
   <url><loc>https://sportvision-an.fr/prestations/media-day</loc><priority>0.8</priority></url>
