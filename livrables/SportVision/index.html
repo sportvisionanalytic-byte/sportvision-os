@@ -231,6 +231,17 @@ section{position:relative}
 .case-body{padding:22px}
 .case-body .tag{font-size:11px;font-weight:800;text-transform:uppercase;color:var(--blue);letter-spacing:.04em}
 .case-body h4{font-size:17px;margin-top:8px}
+.case-media .more-badge{position:absolute;left:12px;bottom:12px;padding:5px 10px;border-radius:100px;background:rgba(7,10,23,.55);backdrop-filter:blur(3px);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
+.case-gallery-modal{background:#0a0c18;border-radius:var(--radius-lg);max-width:760px;width:100%;padding:28px;position:relative}
+.case-gallery-modal .sv-close{background:rgba(255,255,255,.16);color:#fff;top:14px;right:14px;z-index:2}
+.case-gallery-head{margin-bottom:18px;padding-right:36px}
+.case-gallery-head .cg-tag{color:#7fa8ff;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.case-gallery-head h3{color:#fff;font-size:19px;margin:5px 0 0}
+.case-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.cg-item{position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;cursor:pointer;background:#141a33}
+.cg-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
+.cg-item:hover img{transform:scale(1.05)}
+.cg-item .play{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px}
 .case-body p{font-size:13.5px;color:#5b6478;margin-top:8px}
 
 /* ── Témoignages ── */
@@ -743,51 +754,78 @@ section{position:relative}
     </div>
     <div class="case-grid reveal" id="case-grid">
       <div class="case-card">
-        <div class="case-media"><img src="assets/realisations/case-fc-varenne.jpg" alt="Joueurs du FC Varennes célébrant leur montée" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 20%"></div>
+        <div class="case-media"><img src="assets/realisations/case-fc-varenne.jpg" alt="Joueurs du FC Varennes célébrant leur montée" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 20%"><span class="more-badge">🖼 +3</span></div>
         <div class="case-body">
           <span class="tag">FC Varennes · U15</span>
           <h4>Un match de montée filmé en immersion</h4>
           <p>Le coach de l'équipe U15 nous a contactés pour une couverture vidéo immersive de leur match décisif de montée.</p>
         </div>
+        <div class="case-extra" hidden>
+          <div data-type="photo" data-src="assets/realisations/fc-varenne-action-02.jpg" data-alt="Action de jeu — FC Varennes"></div>
+          <div data-type="photo" data-src="assets/realisations/fc-varenne-action-03.jpg" data-alt="Supporters du FC Varennes derrière la banderole"></div>
+          <div data-type="photo" data-src="assets/realisations/fc-varenne-action-04.jpg" data-alt="Supportrice du FC Varennes, fumigène vert"></div>
+        </div>
       </div>
       <div class="case-card">
-        <div class="case-media"><img src="assets/realisations/tsf-tournoi-sens-01.jpg" alt="Jeune joueur en tournoi international, Sens" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%"></div>
+        <div class="case-media"><img src="assets/realisations/tsf-tournoi-sens-01.jpg" alt="Jeune joueur en tournoi international, Sens" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%"><span class="more-badge">🖼 +3</span></div>
         <div class="case-body">
           <span class="tag">Tournoi Sans Frontière · Sens</span>
           <h4>Un tournoi international couvert de bout en bout</h4>
           <p>Photo et vidéo sur l'ensemble de la compétition, pour un tournoi international réunissant de jeunes joueurs à Sens.</p>
         </div>
+        <div class="case-extra" hidden>
+          <div data-type="photo" data-src="assets/realisations/tsf-tournoi-sens-02.jpg" data-alt="Joueur du Tournoi Sans Frontière, Sens"></div>
+          <div data-type="photo" data-src="assets/realisations/tsf-tournoi-sens-03.jpg" data-alt="Joueurs en maillot PSG, Tournoi Sans Frontière"></div>
+          <div data-type="photo" data-src="assets/realisations/tsf-tournoi-sens-04.jpg" data-alt="Joueuse en maillot rose, Tournoi Sans Frontière"></div>
+        </div>
       </div>
       <div class="case-card">
-        <div class="case-media"><img src="assets/realisations/case-asa-montereau-03.jpg" alt="Joueurs de l'ASA Montereau célébrant un but" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 65%"></div>
+        <div class="case-media"><img src="assets/realisations/case-asa-montereau-03.jpg" alt="Joueurs de l'ASA Montereau célébrant un but" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 65%"><span class="more-badge">🖼 +2</span></div>
         <div class="case-body">
           <span class="tag">ASA Montereau · Seniors</span>
           <h4>Un match capté au plus près de l'action</h4>
           <p>Couverture photo de match pour l'effectif senior de l'ASA Montereau, jusque dans les célébrations.</p>
         </div>
+        <div class="case-extra" hidden>
+          <div data-type="photo" data-src="assets/realisations/asam-montereau-action-01.jpg" data-alt="Action de jeu — ASA Montereau"></div>
+          <div data-type="photo" data-src="assets/realisations/asam-montereau-action-02.jpg" data-alt="Action de jeu — ASA Montereau"></div>
+        </div>
       </div>
       <div class="case-card">
-        <div class="case-media"><img src="assets/realisations/case-elite-camp-horizon.jpg" alt="Jeunes joueurs du stage Elite Sport Camp Horizon" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 40%"></div>
+        <div class="case-media"><img src="assets/realisations/case-elite-camp-horizon.jpg" alt="Jeunes joueurs du stage Elite Sport Camp Horizon" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 40%"><span class="more-badge">🖼 +3</span></div>
         <div class="case-body">
           <span class="tag">Elite Sport Camp Horizon · Stage</span>
           <h4>La communication complète d'un stage sportif</h4>
           <p>SportVision a pris en charge la communication de leur stage : photo, vidéo et contenus pour valoriser l'événement.</p>
         </div>
+        <div class="case-extra" hidden>
+          <div data-type="photo" data-src="assets/realisations/case-elite-camp-horizon-02.jpg" data-alt="Jeune joueur au contrôle de balle, stage Elite Sport Camp Horizon"></div>
+          <div data-type="photo" data-src="assets/realisations/case-elite-camp-horizon-03.jpg" data-alt="Coach avec un jeune joueur, stage Elite Sport Camp Horizon"></div>
+          <div data-type="photo" data-src="assets/realisations/case-elite-camp-horizon-04.jpg" data-alt="Groupe de jeunes joueurs, stage Elite Sport Camp Horizon"></div>
+        </div>
       </div>
       <div class="case-card">
-        <div class="case-media"><img src="assets/realisations/case-es-colombienne.jpg" alt="Joueur de l'ES Colombienne sous la pluie" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 25%"></div>
+        <div class="case-media"><img src="assets/realisations/case-es-colombienne.jpg" alt="Joueur de l'ES Colombienne sous la pluie" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 25%"><span class="more-badge">🖼 +3</span></div>
         <div class="case-body">
           <span class="tag">ES Colombienne · Plusieurs prestations</span>
           <h4>Un club suivi sur plusieurs prestations</h4>
           <p>Vidéo focus joueur, shooting d'équipe et couverture immersive de leur match de montée en Régional 2 : plusieurs prestations réalisées au fil de la saison.</p>
         </div>
+        <div class="case-extra" hidden>
+          <div data-type="photo" data-src="assets/realisations/es-colombienne-montee-02.jpg" data-alt="Action de jeu — ES Colombienne, montée en Régional 2"></div>
+          <div data-type="photo" data-src="assets/realisations/es-colombienne-montee-03.jpg" data-alt="Joueur de l'ES Colombienne sous la pluie"></div>
+          <div data-type="photo" data-src="assets/realisations/es-colombienne-montee-04.jpg" data-alt="Célébration de l'ES Colombienne après la montée"></div>
+        </div>
       </div>
       <div class="case-card">
-        <div class="case-media" data-video="assets/realisations/videos/reel-tournoi-milly-01.mp4"><img src="assets/realisations/case-tournoi-milly-poster.jpg" alt="Animation lors du tournoi FC Milly-Gâtinais" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center"><span class="play" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">▶</span></div>
+        <div class="case-media" data-video="assets/realisations/videos/reel-tournoi-milly-01.mp4"><img src="assets/realisations/case-tournoi-milly-poster.jpg" alt="Animation lors du tournoi FC Milly-Gâtinais" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center"><span class="play" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">▶</span><span class="more-badge">🎬 +1</span></div>
         <div class="case-body">
           <span class="tag">FC Milly-Gâtinais · Tournoi</span>
           <h4>Communication complète d'un tournoi</h4>
           <p>Photo, vidéo et prises de vues aériennes par drone pour couvrir l'ensemble du tournoi.</p>
+        </div>
+        <div class="case-extra" hidden>
+          <div data-type="video" data-src="assets/realisations/videos/reel-tournoi-milly-02.mp4" data-poster="assets/realisations/case-tournoi-milly-poster-02.jpg" data-alt="Ambiance et podium du tournoi FC Milly-Gâtinais"></div>
         </div>
       </div>
     </div>
@@ -998,6 +1036,18 @@ section{position:relative}
   </div>
 </div>
 
+<!-- ══════════════ MODAL GALERIE ÉTUDE DE CAS (PLUSIEURS MÉDIAS) ══════════════ -->
+<div class="sv-overlay" id="case-gallery-overlay">
+  <div class="case-gallery-modal">
+    <button class="sv-close" id="case-gallery-close" aria-label="Fermer">✕</button>
+    <div class="case-gallery-head">
+      <span class="cg-tag" id="case-gallery-tag"></span>
+      <h3 id="case-gallery-title"></h3>
+    </div>
+    <div class="case-gallery-grid" id="case-gallery-grid"></div>
+  </div>
+</div>
+
 <!-- ══════════════ MODAL PRENDRE RENDEZ-VOUS ══════════════ -->
 <div class="sv-overlay" id="rdv-overlay">
   <div class="sv-modal">
@@ -1150,18 +1200,69 @@ document.getElementById('gallery-grid').addEventListener('click', (e) => {
   toast('Envie d\'un rendu similaire ? Décrivez votre besoin ci-dessous.');
 });
 
-// ── Études de cas : clic sur une photo l'affiche en grand, clic sur une vidéo la lit ──
+// ── Études de cas : chaque projet a plusieurs photos/vidéos. Un clic ouvre la
+//    galerie du projet (miniatures) ; un clic sur une miniature l'affiche en grand ──
+const caseGalleryOverlay = document.getElementById('case-gallery-overlay');
+const caseGalleryGrid = document.getElementById('case-gallery-grid');
+const caseGalleryTag = document.getElementById('case-gallery-tag');
+const caseGalleryTitle = document.getElementById('case-gallery-title');
+let caseGalleryItems = [];
+
+function caseCardItems(card){
+  const items = [];
+  const media = card.querySelector('.case-media');
+  const coverVideo = media.getAttribute('data-video');
+  const coverImg = media.querySelector('img');
+  if (coverVideo){
+    items.push({ type:'video', src: coverVideo, poster: coverImg?.src, alt: coverImg?.alt });
+  } else if (coverImg){
+    items.push({ type:'photo', src: coverImg.src, alt: coverImg.alt });
+  }
+  card.querySelectorAll('.case-extra [data-src]').forEach(el => {
+    items.push({
+      type: el.getAttribute('data-type') || 'photo',
+      src: el.getAttribute('data-src'),
+      poster: el.getAttribute('data-poster'),
+      alt: el.getAttribute('data-alt') || ''
+    });
+  });
+  return items;
+}
+
+function openCaseGallery(card){
+  const tag = card.querySelector('.tag')?.textContent || '';
+  const title = card.querySelector('h4')?.textContent || '';
+  caseGalleryItems = caseCardItems(card);
+  caseGalleryTag.textContent = tag;
+  caseGalleryTitle.textContent = title;
+  caseGalleryGrid.innerHTML = caseGalleryItems.map((it, i) => {
+    const thumb = it.type === 'video' ? it.poster : it.src;
+    const playBtn = it.type === 'video' ? '<span class="play">▶</span>' : '';
+    return '<div class="cg-item" data-i="' + i + '"><img src="' + thumb + '" alt="' + (it.alt || '').replace(/"/g,'&quot;') + '" loading="lazy">' + playBtn + '</div>';
+  }).join('');
+  closePhoto(); closeVideo();
+  caseGalleryOverlay.classList.add('on');
+}
+function closeCaseGallery(){ caseGalleryOverlay.classList.remove('on'); }
+document.getElementById('case-gallery-close').addEventListener('click', closeCaseGallery);
+caseGalleryOverlay.addEventListener('click', (e) => { if (e.target === caseGalleryOverlay) closeCaseGallery(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && caseGalleryOverlay.classList.contains('on')) closeCaseGallery(); });
+caseGalleryGrid.addEventListener('click', (e) => {
+  const cell = e.target.closest('.cg-item');
+  if (!cell) return;
+  const it = caseGalleryItems[+cell.getAttribute('data-i')];
+  if (!it) return;
+  const tag = caseGalleryTag.textContent;
+  const title = caseGalleryTitle.textContent;
+  closeCaseGallery();
+  if (it.type === 'video'){ openVideo(it.src); return; }
+  openPhoto(it.src, it.alt, title, tag);
+});
+
 document.getElementById('case-grid').addEventListener('click', (e) => {
-  const media = e.target.closest('.case-media');
-  if (!media) return;
-  const videoSrc = media.getAttribute('data-video');
-  if (videoSrc){ openVideo(videoSrc); return; }
-  const img = media.querySelector('img');
-  if (!img) return;
-  const card = media.closest('.case-card');
-  const tag = card ? card.querySelector('.tag')?.textContent : '';
-  const title = card ? card.querySelector('h4')?.textContent : '';
-  openPhoto(img.src, img.alt, title, tag);
+  const card = e.target.closest('.case-card');
+  if (!card) return;
+  openCaseGallery(card);
 });
 
 // ── FAQ accordéon ──
