@@ -45,7 +45,7 @@ Document de référence produit, transmis par Fouka le 16/08/2026 (PDF `SportVis
 
 ## 1. Vision produit et écosystème
 
-SportVision Club+ est le portail professionnel de SportVision. Il centralise la relation entre SportVision et une structure : prestations, demandes, contenus, communication, affiliations utiles, documents, facturation, calendrier et échanges.
+SportVision Club+ est le portail professionnel de SportVision. Il aide les clubs et structures sportives à organiser et centraliser leur communication (contenus, résultats, demandes de visuels, équipes, calendrier), tout en donnant accès aux prestations et services SportVision. La structure garde la main sur sa communication avec Club+ — c'est Full Communication qui, séparément, la délègue directement à SportVision.
 
 ### Les trois espaces SportVision
 
