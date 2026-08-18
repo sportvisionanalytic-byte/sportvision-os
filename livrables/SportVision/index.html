@@ -225,7 +225,7 @@ section{position:relative}
 /* ── Études de cas ── */
 .case-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:8px}
 .case-card{border-radius:var(--radius-lg);overflow:hidden;border:1px solid #e9ecf5;background:#fff}
-.case-media{height:170px;background:linear-gradient(155deg,#131a3d,#3a1868)}
+.case-media{height:170px;background:linear-gradient(155deg,#131a3d,#3a1868);position:relative;cursor:pointer}
 .case-card:nth-child(3n+2) .case-media{background:linear-gradient(155deg,#0d1330,#0f2a4a)}
 .case-card:nth-child(3n) .case-media{background:linear-gradient(155deg,#1a1040,#2454FF)}
 .case-body{padding:22px}
@@ -741,7 +741,7 @@ section{position:relative}
       <h2>Quelques prestations récentes.</h2>
       <p>Des exemples concrets de ce que nous produisons pour nos clients.</p>
     </div>
-    <div class="case-grid reveal">
+    <div class="case-grid reveal" id="case-grid">
       <div class="case-card">
         <div class="case-media"><img src="assets/realisations/case-fc-varenne.jpg" alt="Joueurs du FC Varennes célébrant leur montée" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 20%"></div>
         <div class="case-body">
@@ -751,23 +751,23 @@ section{position:relative}
         </div>
       </div>
       <div class="case-card">
-        <div class="case-media"></div>
+        <div class="case-media"><img src="assets/realisations/tsf-tournoi-sens-01.jpg" alt="Jeune joueur en tournoi international, Sens" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%"></div>
         <div class="case-body">
-          <span class="tag">Brunoy FC · U18</span>
-          <h4>Photo et vidéo en une seule prestation</h4>
-          <p>Le coach de l'équipe U18 a fait appel à SportVision pour une couverture combinée photo et vidéo de leur rencontre.</p>
+          <span class="tag">Tournoi Sans Frontière · Sens</span>
+          <h4>Un tournoi international couvert de bout en bout</h4>
+          <p>Photo et vidéo sur l'ensemble de la compétition, pour un tournoi international réunissant de jeunes joueurs à Sens.</p>
         </div>
       </div>
       <div class="case-card">
-        <div class="case-media"></div>
+        <div class="case-media"><img src="assets/realisations/case-asa-montereau-03.jpg" alt="Joueurs de l'ASA Montereau célébrant un but" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 65%"></div>
         <div class="case-body">
           <span class="tag">ASA Montereau · Seniors</span>
-          <h4>Un shooting collectif pour tout le groupe</h4>
-          <p>Séance photo réalisée pour l'ensemble de l'effectif senior de l'ASA Montereau.</p>
+          <h4>Un match capté au plus près de l'action</h4>
+          <p>Couverture photo de match pour l'effectif senior de l'ASA Montereau, jusque dans les célébrations.</p>
         </div>
       </div>
       <div class="case-card">
-        <div class="case-media"></div>
+        <div class="case-media"><img src="assets/realisations/case-elite-camp-horizon.jpg" alt="Jeunes joueurs du stage Elite Sport Camp Horizon" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 40%"></div>
         <div class="case-body">
           <span class="tag">Elite Sport Camp Horizon · Stage</span>
           <h4>La communication complète d'un stage sportif</h4>
@@ -783,7 +783,7 @@ section{position:relative}
         </div>
       </div>
       <div class="case-card">
-        <div class="case-media"></div>
+        <div class="case-media" data-video="assets/realisations/videos/reel-tournoi-milly-01.mp4"><img src="assets/realisations/case-tournoi-milly-poster.jpg" alt="Animation lors du tournoi FC Milly-Gâtinais" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center"><span class="play" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">▶</span></div>
         <div class="case-body">
           <span class="tag">FC Milly-Gâtinais · Tournoi</span>
           <h4>Communication complète d'un tournoi</h4>
@@ -1148,6 +1148,20 @@ document.getElementById('gallery-grid').addEventListener('click', (e) => {
   if (img){ openPhoto(img.src, img.alt, title, sub); return; }
   openDevis();
   toast('Envie d\'un rendu similaire ? Décrivez votre besoin ci-dessous.');
+});
+
+// ── Études de cas : clic sur une photo l'affiche en grand, clic sur une vidéo la lit ──
+document.getElementById('case-grid').addEventListener('click', (e) => {
+  const media = e.target.closest('.case-media');
+  if (!media) return;
+  const videoSrc = media.getAttribute('data-video');
+  if (videoSrc){ openVideo(videoSrc); return; }
+  const img = media.querySelector('img');
+  if (!img) return;
+  const card = media.closest('.case-card');
+  const tag = card ? card.querySelector('.tag')?.textContent : '';
+  const title = card ? card.querySelector('h4')?.textContent : '';
+  openPhoto(img.src, img.alt, title, tag);
 });
 
 // ── FAQ accordéon ──
