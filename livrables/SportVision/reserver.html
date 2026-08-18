@@ -352,7 +352,7 @@ section{position:relative}
 
       <div class="booking-progress" id="booking-progress">
         <div class="step-dot active" data-step="1"><div class="circle">1</div><span class="lbl">Besoin</span></div>
-        <div class="step-dot" data-step="2"><div class="circle">2</div><span class="lbl">Où &amp; quand</span></div>
+        <div class="step-dot" data-step="2"><div class="circle">2</div><span class="lbl" id="step2-dot-label">Où &amp; quand</span></div>
         <div class="step-dot" data-step="3"><div class="circle">3</div><span class="lbl">Options</span></div>
         <div class="step-dot" data-step="4"><div class="circle">4</div><span class="lbl">Coordonnées</span></div>
       </div>
@@ -387,8 +387,8 @@ section{position:relative}
 
         <!-- ── ÉTAPE 2 : OÙ & QUAND ── -->
         <div class="booking-step" data-step="2">
-          <h2>Où et quand ?</h2>
-          <p class="sub">La date nous permet de vérifier la disponibilité d'une équipe.</p>
+          <h2 id="step2-title">Où et quand ?</h2>
+          <p class="sub" id="step2-sub">La date nous permet de vérifier la disponibilité d'une équipe.</p>
           <div class="sv-field-2col">
             <div class="sv-field"><label for="bk-date">Date souhaitée</label><input id="bk-date" type="date"></div>
             <div class="sv-field"><label for="bk-heure">Heure (facultatif)</label><input id="bk-heure" type="time"></div>
@@ -435,8 +435,8 @@ section{position:relative}
           </div>
           <div class="sv-field" data-besoin-group="coach" style="display:none"><label for="bk-type-seance">Type de séance (facultatif)</label><input id="bk-type-seance" type="text" placeholder="Ex. entraînement collectif, analyse vidéo, prépa physique..."></div>
           <div class="sv-field-2col" data-besoin-group="joueur" style="display:none">
-            <div class="sv-field"><label for="bk-joueur-nom">Nom du joueur (facultatif)</label><input id="bk-joueur-nom" type="text" placeholder="Ex. Nathan Diallo"></div>
-            <div class="sv-field"><label for="bk-joueur-numero">Numéro de maillot (facultatif)</label><input id="bk-joueur-numero" type="text" inputmode="numeric" placeholder="Ex. 10"></div>
+            <div class="sv-field"><label for="bk-joueur-nom">Nom du joueur</label><input id="bk-joueur-nom" type="text" placeholder="Ex. Nathan Diallo"></div>
+            <div class="sv-field"><label for="bk-joueur-numero">Numéro de maillot</label><input id="bk-joueur-numero" type="text" inputmode="numeric" placeholder="Ex. 10"></div>
           </div>
           <div class="sv-field" data-besoin-group="joueur" style="display:none"><label for="bk-joueur-poste">Poste (facultatif)</label><input id="bk-joueur-poste" type="text" placeholder="Ex. attaquant, milieu, gardien..."></div>
           <div class="sv-field-2col" data-besoin-group="evenement" style="display:none">
@@ -475,7 +475,42 @@ section{position:relative}
             <div class="sv-field"><label for="bk-md-equipes">Nombre d'équipes (facultatif)</label><input id="bk-md-equipes" type="text" inputmode="numeric" placeholder="Ex. 4"></div>
             <div class="sv-field"><label for="bk-md-sponsors">Sponsors à intégrer (facultatif)</label><input id="bk-md-sponsors" type="text" placeholder="Ex. oui, 2 partenaires"></div>
           </div>
+          <div class="sv-field-2col" data-besoin-group="montage" style="display:none">
+            <div class="sv-field"><label for="bk-montage-source">Comment nous transmettre vos vidéos ?</label>
+              <select id="bk-montage-source">
+                <option value="">— Choisir —</option>
+                <option value="Lien Veo">Lien Veo</option>
+                <option value="YouTube">YouTube</option>
+                <option value="Google Drive">Google Drive</option>
+                <option value="Autre lien">Autre lien</option>
+                <option value="Rushs déjà chez SportVision">Rushs déjà chez SportVision</option>
+              </select>
+            </div>
+            <div class="sv-field"><label for="bk-montage-url">Lien(s) vers vos vidéos (facultatif à ce stade)</label><input id="bk-montage-url" type="text" placeholder="Collez votre/vos lien(s)"></div>
+          </div>
+          <div class="sv-field" data-besoin-group="montage" style="display:none"><label for="bk-montage-volume">Matière à monter</label>
+            <select id="bk-montage-volume">
+              <option value="">— Choisir —</option>
+              <option value="Rushs prédécoupés (≤6 min)" data-price="40">Rushs prédécoupés (≤6 min) — 40 € TTC</option>
+              <option value="1 match complet" data-price="40">1 match complet — 40 € TTC</option>
+              <option value="2 matchs complets" data-price="60">2 matchs complets — 60 € TTC</option>
+              <option value="3 matchs complets" data-price="80">3 matchs complets — 80 € TTC</option>
+              <option value="4 matchs complets" data-price="100">4 matchs complets — 100 € TTC</option>
+              <option value="5 matchs et plus" data-price="">5 matchs et plus — sur devis</option>
+            </select>
+          </div>
+          <div class="sv-field-2col" data-besoin-group="montage" style="display:none">
+            <div class="sv-field"><label for="bk-montage-objectif">Objectif du montage (facultatif)</label><input id="bk-montage-objectif" type="text" placeholder="Ex. recrutement, réseaux, souvenir..."></div>
+            <div class="sv-field"><label for="bk-montage-format">Format souhaité</label>
+              <select id="bk-montage-format">
+                <option value="">— Choisir —</option>
+                <option value="Vertical">Vertical (réseaux sociaux)</option>
+                <option value="Horizontal">Horizontal</option>
+              </select>
+            </div>
+          </div>
           <div class="sv-field"><label for="bk-commentaire">Précisions (facultatif)</label><textarea id="bk-commentaire" rows="3" placeholder="Contexte, sport, équipes concernées, besoin particulier..."></textarea></div>
+          <div class="sv-err" id="step3-err"></div>
           <div class="booking-nav">
             <button type="button" class="btn btn-ghost-light" data-back="2">Précédent</button>
             <button type="button" class="btn btn-grad" id="btn-step3-next">Continuer</button>
@@ -652,7 +687,7 @@ const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
 // Prix publics connus (les 3 seules prestations à tarif fixe) — utilisé
 // uniquement pour l'affichage du récap et pour proposer "créer mon
 // compte et payer" en fin de tunnel.
-const OFFRES_PRIX_FIXE = new Set(['match-photo', 'match-video', 'pack-match', 'match-filme-drone', 'combo-drone-photo']);
+const OFFRES_PRIX_FIXE = new Set(['match-photo', 'match-video', 'pack-match', 'match-filme-drone', 'combo-drone-photo', 'camera-isolee']);
 
 // ── Options dynamiques selon le besoin (audit externe du 16/08) ──
 // Uniquement pour les besoins listés ici : les options du catalogue existant
@@ -708,6 +743,7 @@ const CHAMPS_GROUPS_BY_BESOIN = {
   'coach-preparateur': ['coach'],
   'shooting': ['shooting'],
   'media-day': ['media-day'],
+  'montage-compilation': ['montage'],
 };
 function applyChampsContextuelsFilter(){
   const groups = CHAMPS_GROUPS_BY_BESOIN[state.slug] || [];
@@ -820,6 +856,7 @@ const state = {
     dateFin: null, nbEquipes: null, nbTerrains: null, horaires: null,
     shootingType: null, shootingNb: null, shootingLieu: null, shootingObjectif: null,
     mdStructure: null, mdJoueurs: null, mdEquipes: null, mdSponsors: null,
+    montageSource: null, montageUrl: null, montageVolume: null, montageVolumePrice: null, montageObjectif: null, montageFormat: null,
   },
   dispoChecked: false, dispoResult: null,
 };
@@ -836,6 +873,23 @@ function goToStep(n){
   document.querySelector('.booking-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// ── Intitulés de l'étape 2, adaptés au besoin choisi (par défaut : "Où & quand") ──
+const STEP2_LABELS_BY_BESOIN = {
+  'montage-compilation': { dot: 'Vos vidéos', title: 'Vos vidéos', sub: 'Ces informations nous permettent de préparer votre montage.' },
+  'camera-isolee': { dot: 'Votre match', title: 'Votre match', sub: 'La date nous permet de vérifier la disponibilité d\'une équipe.' },
+  'couverture-tournoi': { dot: 'Votre événement', title: 'Votre événement', sub: 'Ces informations nous permettent de dimensionner notre présence.' },
+  'couverture-stage': { dot: 'Votre stage', title: 'Votre stage', sub: 'Ces informations nous permettent de dimensionner notre présence.' },
+  'shooting': { dot: 'Votre séance', title: 'Votre séance', sub: 'La date nous permet de vérifier la disponibilité d\'une équipe.' },
+  'media-day': { dot: 'Votre structure', title: 'Votre structure', sub: 'Ces informations nous permettent de préparer votre Media Day.' },
+  'creation-contenu': { dot: 'Votre brief', title: 'Votre brief', sub: 'Décrivez le contexte de votre demande.' },
+};
+function applyStep2Labels(){
+  const cfg = STEP2_LABELS_BY_BESOIN[state.slug] || { dot: 'Où & quand', title: 'Où et quand ?', sub: 'La date nous permet de vérifier la disponibilité d\'une équipe.' };
+  document.getElementById('step2-dot-label').textContent = cfg.dot;
+  document.getElementById('step2-title').textContent = cfg.title;
+  document.getElementById('step2-sub').textContent = cfg.sub;
+}
+
 // ── Étape 1 : besoin ──
 document.getElementById('need-grid').addEventListener('click', (e) => {
   const card = e.target.closest('.need-card');
@@ -847,6 +901,7 @@ document.getElementById('need-grid').addEventListener('click', (e) => {
   state.price = card.getAttribute('data-price');
   applyOptionsFilter();
   applyChampsContextuelsFilter();
+  applyStep2Labels();
   document.getElementById('btn-step1-next').disabled = false;
 });
 document.getElementById('btn-step1-next').addEventListener('click', () => goToStep(2));
@@ -951,7 +1006,22 @@ document.getElementById('btn-step3-next').addEventListener('click', () => {
     mdJoueurs: document.getElementById('bk-md-joueurs').value.trim() || null,
     mdEquipes: document.getElementById('bk-md-equipes').value.trim() || null,
     mdSponsors: document.getElementById('bk-md-sponsors').value.trim() || null,
+    montageSource: document.getElementById('bk-montage-source').value || null,
+    montageUrl: document.getElementById('bk-montage-url').value.trim() || null,
+    montageVolume: document.getElementById('bk-montage-volume').value || null,
+    montageVolumePrice: (document.getElementById('bk-montage-volume').selectedOptions[0] || {}).dataset ? (document.getElementById('bk-montage-volume').selectedOptions[0].dataset.price || null) : null,
+    montageObjectif: document.getElementById('bk-montage-objectif').value.trim() || null,
+    montageFormat: document.getElementById('bk-montage-format').value || null,
   };
+  // Caméra isolée : l'opérateur doit pouvoir identifier le joueur sur le terrain — nom et
+  // numéro de maillot sont donc obligatoires pour ce besoin uniquement (les autres champs
+  // contextuels restent facultatifs partout ailleurs).
+  const step3Err = document.getElementById('step3-err');
+  step3Err.textContent = '';
+  if (state.slug === 'camera-isolee' && (!state.champs.joueurNom || !state.champs.joueurNumero)){
+    step3Err.textContent = 'Merci de renseigner le nom et le numéro de maillot du joueur à suivre.';
+    return;
+  }
   buildRecap();
   const estPrixFixe = state.slug && OFFRES_PRIX_FIXE.has(state.slug);
   document.getElementById('paiement-field').style.display = estPrixFixe ? '' : 'none';
@@ -1021,6 +1091,9 @@ function buildRecap(){
     c.mdSponsors ? 'sponsors : ' + c.mdSponsors : null,
   ].filter(Boolean).join(' · ');
   if (infosMediaDay) parts.push(esc(infosMediaDay));
+  const infosMontage = [c.montageSource, c.montageVolume, c.montageFormat].filter(Boolean).join(' · ');
+  if (infosMontage) parts.push(esc(infosMontage));
+  if (c.montageObjectif) parts.push(esc('Objectif : ' + c.montageObjectif));
 
   const dateFmt = formatDateRecap(state.date);
   if (dateFmt) parts.push(esc(dateFmt + (state.heure ? ' · ' + state.heure : '')));
@@ -1044,6 +1117,10 @@ function buildRecap(){
       }
     });
     parts.push('<div class="recap-total">Total estimé : ' + total + ' € TTC</div>');
+  } else if (state.slug === 'montage-compilation' && c.montageVolumePrice){
+    parts.push('Montage & compilation : ' + c.montageVolumePrice + ' € TTC');
+    parts.push('<div class="recap-total">Total estimé : ' + c.montageVolumePrice + ' € TTC</div>');
+    parts.push('<div class="recap-note">Aucun paiement maintenant. Réglé depuis Connect après validation de votre demande.</div>');
   } else {
     parts.push('Tarif : sur devis — Aucun paiement maintenant.');
     state.options.forEach(opt => parts.push('Option : ' + esc(opt)));
@@ -1121,6 +1198,11 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     c.mdJoueurs ? 'Nombre de joueurs : ' + c.mdJoueurs : null,
     c.mdEquipes ? 'Nombre d\'équipes : ' + c.mdEquipes : null,
     c.mdSponsors ? 'Sponsors : ' + c.mdSponsors : null,
+    c.montageSource ? 'Source vidéo : ' + c.montageSource : null,
+    c.montageUrl ? 'Lien(s) : ' + c.montageUrl : null,
+    c.montageVolume ? 'Matière : ' + c.montageVolume + (c.montageVolumePrice ? ' (' + c.montageVolumePrice + ' € TTC)' : '') : null,
+    c.montageObjectif ? 'Objectif : ' + c.montageObjectif : null,
+    c.montageFormat ? 'Format : ' + c.montageFormat : null,
   ].filter(Boolean).join(' — ') || null;
 
   const commentaireComplet = [
