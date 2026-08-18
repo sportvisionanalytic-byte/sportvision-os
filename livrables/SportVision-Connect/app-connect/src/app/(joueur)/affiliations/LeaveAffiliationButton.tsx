@@ -9,7 +9,12 @@ import { createClient } from "@/lib/supabase/client";
 // migration-clubplus-v13.sql) — seul un admin de club peut le modifier directement, jamais le
 // joueur lui-même (empêche l'auto-activation). Passe donc par l'edge function
 // connect-player-onboarding (action "leave"), pas un update client direct.
-export function LeaveAffiliationButton({ clubName }: { clubName: string }) {
+// `refused` : une demande refusée n'a jamais été acceptée — "Quitter" est donc un contresens
+// (rien à quitter). Le bouton devient "Essayer un autre club", mais appelle le même endpoint
+// "leave" en coulisses : c'est ce qui repasse account_status à 'retire' et fait retomber
+// buildPlayerContext() sur player.club = null, débloquant /affiliations/ajouter (voir
+// session.ts:61 — condition club_id && account_status !== 'retire').
+export function LeaveAffiliationButton({ clubName, refused = false }: { clubName: string; refused?: boolean }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -24,21 +29,27 @@ export function LeaveAffiliationButton({ clubName }: { clubName: string }) {
     });
     setBusy(false);
     if (fnError || data?.error) {
-      setError("Impossible de quitter l'affiliation pour le moment.");
+      setError(refused ? "Impossible de réessayer pour le moment." : "Impossible de quitter l'affiliation pour le moment.");
       return;
     }
     setConfirming(false);
     router.refresh();
   }
 
+  const actionLabel = refused ? "Essayer un autre club" : "Quitter";
+
   return (
     <>
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="ml-auto flex h-11 flex-none items-center rounded-sv border border-danger-border bg-danger-bg px-4 font-sora text-[14px] font-semibold text-danger hover:bg-[rgba(244,114,182,.16)]"
+        className={
+          refused
+            ? "ml-auto flex h-11 flex-none items-center rounded-sv bg-sv-gradient px-4 font-sora text-[14px] font-semibold text-white hover:brightness-[1.12]"
+            : "ml-auto flex h-11 flex-none items-center rounded-sv border border-danger-border bg-danger-bg px-4 font-sora text-[14px] font-semibold text-danger hover:bg-[rgba(244,114,182,.16)]"
+        }
       >
-        Quitter
+        {actionLabel}
       </button>
 
       {confirming && (
@@ -50,14 +61,19 @@ export function LeaveAffiliationButton({ clubName }: { clubName: string }) {
             className="flex max-h-[90vh] w-full max-w-[420px] flex-col gap-4 overflow-y-auto rounded-sv-modal border border-border bg-bg-elevated p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-sv bg-danger-bg">
-              <span className="material-symbols-rounded !text-[24px] text-danger" aria-hidden="true">warning</span>
+            <span className={`flex h-12 w-12 items-center justify-center rounded-sv ${refused ? "bg-affiliations-bg" : "bg-danger-bg"}`}>
+              <span className={`material-symbols-rounded !text-[24px] ${refused ? "text-affiliations" : "text-danger"}`} aria-hidden="true">
+                {refused ? "swap_horiz" : "warning"}
+              </span>
             </span>
             <div className="flex flex-col gap-2">
-              <span className="font-sora text-[19px] font-semibold">Quitter {clubName} ?</span>
+              <span className="font-sora text-[19px] font-semibold">
+                {refused ? `Essayer un autre club que ${clubName} ?` : `Quitter ${clubName} ?`}
+              </span>
               <span className="text-[14px] leading-relaxed text-text-tertiary">
-                Vous perdrez l&apos;accès aux contenus et événements liés à cette structure. Votre
-                compte Connect est conservé.
+                {refused
+                  ? "Cette demande refusée sera retirée de votre profil. Vous pourrez ensuite ajouter le bon club depuis «Mes affiliations»."
+                  : "Vous perdrez l'accès aux contenus et événements liés à cette structure. Votre compte Connect est conservé."}
               </span>
             </div>
             {error && <span className="text-[14px] text-danger lg:text-[13px]">{error}</span>}
@@ -74,9 +90,13 @@ export function LeaveAffiliationButton({ clubName }: { clubName: string }) {
                 type="button"
                 onClick={handleConfirm}
                 disabled={busy}
-                className="flex-1 rounded-sv border border-danger-border bg-danger-bg py-2.5 font-sora text-[14px] font-semibold text-danger hover:bg-[rgba(244,114,182,.16)]"
+                className={
+                  refused
+                    ? "flex-1 rounded-sv bg-sv-gradient py-2.5 font-sora text-[14px] font-semibold text-white hover:brightness-[1.12]"
+                    : "flex-1 rounded-sv border border-danger-border bg-danger-bg py-2.5 font-sora text-[14px] font-semibold text-danger hover:bg-[rgba(244,114,182,.16)]"
+                }
               >
-                {busy ? "…" : "Quitter"}
+                {busy ? "…" : actionLabel}
               </button>
             </div>
           </div>

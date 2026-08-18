@@ -78,13 +78,30 @@ export default async function AffiliationsPage() {
                 </p>
               )}
 
-              <div className="mt-1 flex flex-wrap items-center gap-4 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
-                <div className="flex flex-col gap-1">
-                  <span className="font-sora text-[14px] font-semibold">Quitter cette affiliation</span>
-                  <span className="text-[14px] text-text-tertiary lg:text-[13px]">Votre compte Connect est conservé.</span>
+              {player.club.status === "refuse" && (
+                <p className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
+                  Ce club n&apos;a pas confirmé votre demande d&apos;affiliation. Si c&apos;est une
+                  erreur (mauvais club sélectionné), vous pouvez réessayer avec la bonne structure.
+                </p>
+              )}
+
+              {player.club.status === "refuse" ? (
+                <div className="mt-1 flex flex-wrap items-center gap-4 rounded-sv border border-border bg-surface px-4 py-3.5">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-sora text-[14px] font-semibold">Demande refusée</span>
+                    <span className="text-[14px] text-text-tertiary lg:text-[13px]">Vous pouvez essayer un autre club.</span>
+                  </div>
+                  <LeaveAffiliationButton clubName={player.club.nom} refused />
                 </div>
-                <LeaveAffiliationButton clubName={player.club.nom} />
-              </div>
+              ) : (
+                <div className="mt-1 flex flex-wrap items-center gap-4 rounded-sv border border-danger-border bg-danger-bg px-4 py-3.5">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-sora text-[14px] font-semibold">Quitter cette affiliation</span>
+                    <span className="text-[14px] text-text-tertiary lg:text-[13px]">Votre compte Connect est conservé.</span>
+                  </div>
+                  <LeaveAffiliationButton clubName={player.club.nom} />
+                </div>
+              )}
             </div>
           </div>
         ) : (
