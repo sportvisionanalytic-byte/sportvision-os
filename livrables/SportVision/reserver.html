@@ -711,6 +711,11 @@ const OPTIONS_BY_BESOIN = {
   'camera-isolee': ['reel', 'express'],
   'shooting': ['reel', 'express'],
   'media-day': ['reel', 'interview'],
+  // Montage & Création graphique : aucune option terrain n'est pertinente (pas de présence
+  // sur site) — trou de granularité identique à celui du Pack, trouvé lors du test navigateur
+  // réel du 18/08 (les deep-links affichaient les 6 options faute d'entrée dans cette map).
+  'montage-compilation': [],
+  'creation-contenu': [],
 };
 function applyOptionsFilter(){
   const allowed = OPTIONS_BY_BESOIN[state.slug] || null;
