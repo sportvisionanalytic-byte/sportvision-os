@@ -509,7 +509,7 @@ section{position:relative}
               </select>
             </div>
           </div>
-          <div class="sv-field"><label for="bk-commentaire">Précisions (facultatif)</label><textarea id="bk-commentaire" rows="3" placeholder="Contexte, sport, équipes concernées, besoin particulier..."></textarea></div>
+          <div class="sv-field"><label for="bk-commentaire" id="bk-commentaire-label">Précisions (facultatif)</label><textarea id="bk-commentaire" rows="3" placeholder="Contexte, sport, équipes concernées, besoin particulier..."></textarea></div>
           <div class="sv-err" id="step3-err"></div>
           <div class="booking-nav">
             <button type="button" class="btn btn-ghost-light" data-back="2">Précédent</button>
@@ -889,7 +889,8 @@ const STEP2_LABELS_BY_BESOIN = {
   'creation-contenu': { dot: 'Votre brief', title: 'Votre brief', sub: 'Décrivez le contexte de votre demande.' },
 };
 function applyStep2Labels(){
-  const cfg = STEP2_LABELS_BY_BESOIN[state.slug] || { dot: 'Où & quand', title: 'Où et quand ?', sub: 'La date nous permet de vérifier la disponibilité d\'une équipe.' };
+  const cfgAutre = { dot: 'Votre besoin', title: 'Date et lieu (facultatif)', sub: 'Si vous connaissez déjà une date ou un lieu, indiquez-les — sinon décrivez votre besoin à l\'étape suivante.' };
+  const cfg = state.label === 'Autre besoin' ? cfgAutre : (STEP2_LABELS_BY_BESOIN[state.slug] || { dot: 'Où & quand', title: 'Où et quand ?', sub: 'La date nous permet de vérifier la disponibilité d\'une équipe.' });
   document.getElementById('step2-dot-label').textContent = cfg.dot;
   document.getElementById('step2-title').textContent = cfg.title;
   document.getElementById('step2-sub').textContent = cfg.sub;
@@ -910,10 +911,12 @@ const STEP3_LABELS_BY_BESOIN = {
   'creation-contenu': { label: 'Votre création', sub: 'Décrivez le besoin graphique associé.' },
 };
 function applyStep3Labels(){
-  const cfg = STEP3_LABELS_BY_BESOIN[state.slug] || { label: 'Options', sub: 'Sélectionnez ce qui s\'applique — vous pourrez toujours ajuster avec notre équipe.' };
+  const cfgAutre = { label: 'Précisions', sub: 'Décrivez votre besoin, nous revenons vers vous rapidement.' };
+  const cfg = state.label === 'Autre besoin' ? cfgAutre : (STEP3_LABELS_BY_BESOIN[state.slug] || { label: 'Options', sub: 'Sélectionnez ce qui s\'applique — vous pourrez toujours ajuster avec notre équipe.' });
   document.getElementById('step3-dot-label').textContent = cfg.label;
   document.getElementById('step3-title').textContent = cfg.label === 'Options' ? 'Vos options' : cfg.label;
   document.getElementById('step3-sub').textContent = cfg.sub;
+  document.getElementById('bk-commentaire-label').textContent = state.label === 'Autre besoin' ? 'Décrivez votre besoin' : 'Précisions (facultatif)';
 }
 
 // ── Étape 1 : besoin ──
@@ -1047,6 +1050,10 @@ document.getElementById('btn-step3-next').addEventListener('click', () => {
   step3Err.textContent = '';
   if (state.slug === 'camera-isolee' && (!state.champs.joueurNom || !state.champs.joueurNumero)){
     step3Err.textContent = 'Merci de renseigner le nom et le numéro de maillot du joueur à suivre.';
+    return;
+  }
+  if (state.label === 'Autre besoin' && !state.commentaire){
+    step3Err.textContent = 'Merci de décrire votre besoin.';
     return;
   }
   buildRecap();
