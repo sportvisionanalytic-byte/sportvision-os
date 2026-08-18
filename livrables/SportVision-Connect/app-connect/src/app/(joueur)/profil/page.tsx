@@ -171,13 +171,17 @@ export default async function ProfilPage() {
                     <span className="material-symbols-rounded ml-auto !text-[20px] text-affiliations" aria-hidden="true">check_circle</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2.5 rounded-sv border border-border bg-white/[.03] px-3.5 py-3">
+                <a
+                  href="https://clubplus.sportvision-an.fr/"
+                  className="flex items-center gap-2.5 rounded-sv border border-border bg-white/[.03] px-3.5 py-3 hover:bg-white/[.06]"
+                >
                   <span className="h-[28px] w-[28px] flex-none rounded-sv bg-white/5" />
                   <div className="flex flex-col gap-0.5">
                     <span className="font-sora text-[14px] font-semibold">{clubPlus.clubNom}</span>
                     <span className="text-[12px] text-text-tertiary">Club+ · {clubPlus.role}</span>
                   </div>
-                </div>
+                  <span className="material-symbols-rounded ml-auto !text-[18px] text-text-tertiary" aria-hidden="true">arrow_forward</span>
+                </a>
               </div>
             )}
           </div>
