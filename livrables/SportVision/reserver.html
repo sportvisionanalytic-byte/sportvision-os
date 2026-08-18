@@ -353,7 +353,7 @@ section{position:relative}
       <div class="booking-progress" id="booking-progress">
         <div class="step-dot active" data-step="1"><div class="circle">1</div><span class="lbl">Besoin</span></div>
         <div class="step-dot" data-step="2"><div class="circle">2</div><span class="lbl" id="step2-dot-label">Où &amp; quand</span></div>
-        <div class="step-dot" data-step="3"><div class="circle">3</div><span class="lbl">Options</span></div>
+        <div class="step-dot" data-step="3"><div class="circle">3</div><span class="lbl" id="step3-dot-label">Options</span></div>
         <div class="step-dot" data-step="4"><div class="circle">4</div><span class="lbl">Coordonnées</span></div>
       </div>
 
@@ -374,7 +374,7 @@ section{position:relative}
             <button type="button" class="need-card" data-slug="shooting" data-label="Shooting (joueur ou équipe)" data-price="Sur devis"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="currentColor" stroke="none"/><path d="m21 15-5-5-9 9"/></svg></div><b>Shooting</b><span>Joueur ou équipe · Sur devis</span></button>
             <button type="button" class="need-card" data-slug="couverture-tournoi" data-label="Couverture tournoi" data-price="Sur devis"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 5H5a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4M16 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/><path d="M12 13v3M9 20h6M10 20v-2.5h4V20"/></svg></div><b>Tournoi</b><span>Sur devis</span></button>
             <button type="button" class="need-card" data-slug="couverture-stage" data-label="Couverture stage" data-price="Sur devis"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M4 20 12 4l8 16"/><path d="M12 4v16M8 20l4-8 4 8"/></svg></div><b>Stage</b><span>Sur devis</span></button>
-            <button type="button" class="need-card" data-slug="creation-contenu" data-label="Création de contenu" data-price="Sur devis"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.5-.6 1.5-1.4 0-.4-.15-.75-.4-1a1.3 1.3 0 0 1-.4-.95c0-.8.65-1.4 1.4-1.4H16a4.5 4.5 0 0 0 4.5-4.5C20.5 6.6 16.7 3 12 3z"/><circle cx="7.5" cy="11" r="1.1" fill="currentColor" stroke="none"/><circle cx="9.5" cy="7.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="7.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.7" cy="11" r="1.1" fill="currentColor" stroke="none"/></svg></div><b>Création de contenu</b><span>Sur devis</span></button>
+            <button type="button" class="need-card" data-slug="creation-contenu" data-label="Création graphique" data-price="Sur devis"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.5-.6 1.5-1.4 0-.4-.15-.75-.4-1a1.3 1.3 0 0 1-.4-.95c0-.8.65-1.4 1.4-1.4H16a4.5 4.5 0 0 0 4.5-4.5C20.5 6.6 16.7 3 12 3z"/><circle cx="7.5" cy="11" r="1.1" fill="currentColor" stroke="none"/><circle cx="9.5" cy="7.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="7.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.7" cy="11" r="1.1" fill="currentColor" stroke="none"/></svg></div><b>Création graphique</b><span>Sur devis</span></button>
             <button type="button" class="need-card" data-slug="coach-preparateur" data-label="Tournage coach / préparateur" data-price="Sur devis"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></div><b>Coach / préparateur</b><span>Tournage · Sur devis</span></button>
             <button type="button" class="need-card" data-slug="media-day" data-label="Media Day" data-price="Sur devis"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m16 10 5-3v10l-5-3z"/></svg></div><b>Media Day</b><span>Sur devis</span></button>
             <button type="button" class="need-card" data-slug="" data-label="Autre besoin" data-price="Sur devis"><div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.3 9.3a2.7 2.7 0 1 1 3.9 2.4c-.9.5-1.2.9-1.2 1.8"/><path d="M12 17v.1"/></svg></div><b>Autre besoin</b><span>Décrivez-le à l'étape suivante</span></button>
@@ -409,15 +409,15 @@ section{position:relative}
 
         <!-- ── ÉTAPE 3 : OPTIONS ── -->
         <div class="booking-step" data-step="3">
-          <h2>Vos options</h2>
-          <p class="sub">Sélectionnez ce qui s'applique — vous pourrez toujours ajuster avec notre équipe.</p>
+          <h2 id="step3-title">Vos options</h2>
+          <p class="sub" id="step3-sub">Sélectionnez ce qui s'applique — vous pourrez toujours ajuster avec notre équipe.</p>
           <div class="options-grid" id="options-grid">
             <label class="opt-check" data-besoin="match-photo pack-match couverture-tournoi couverture-stage"><input type="checkbox" value="Plans drone complémentaires (+40 €)" data-opt="drone"> Plans drone complémentaires (+40 €)</label>
-            <label class="opt-check" data-besoin="couverture-tournoi couverture-stage"><input type="checkbox" value="Highlight vidéo" data-opt="highlight"> Highlight vidéo</label>
-            <label class="opt-check" data-besoin="match-photo match-video pack-match couverture-tournoi couverture-stage coach-preparateur match-filme-drone combo-drone-photo camera-isolee shooting media-day"><input type="checkbox" value="Reel vertical" data-opt="reel"> Reel vertical (réseaux)</label>
-            <label class="opt-check" data-besoin="match-photo match-video pack-match match-filme-drone combo-drone-photo camera-isolee shooting"><input type="checkbox" value="Livraison express" data-opt="express"> Livraison express</label>
-            <label class="opt-check" data-besoin="match-video pack-match coach-preparateur media-day"><input type="checkbox" value="Interview / face caméra" data-opt="interview"> Interview / face caméra</label>
-            <label class="opt-check" data-besoin="shooting media-day"><input type="checkbox" value="Création graphique associée" data-opt="creation"> Création graphique associée</label>
+            <label class="opt-check" data-besoin="couverture-tournoi couverture-stage"><input type="checkbox" value="Highlight vidéo (sur devis)" data-opt="highlight"> Highlight vidéo (sur devis)</label>
+            <label class="opt-check" data-besoin="match-photo match-video pack-match couverture-tournoi couverture-stage coach-preparateur match-filme-drone combo-drone-photo camera-isolee shooting media-day"><input type="checkbox" value="Reel vertical (sur devis)" data-opt="reel"> Reel vertical (réseaux) — sur devis</label>
+            <label class="opt-check" data-besoin="match-photo match-video pack-match match-filme-drone combo-drone-photo camera-isolee shooting"><input type="checkbox" value="Livraison express (sur devis)" data-opt="express"> Livraison express (sur devis)</label>
+            <label class="opt-check" data-besoin="match-video pack-match coach-preparateur media-day"><input type="checkbox" value="Interview / face caméra (sur devis)" data-opt="interview"> Interview / face caméra — sur devis</label>
+            <label class="opt-check" data-besoin="shooting media-day"><input type="checkbox" value="Création graphique associée (sur devis)" data-opt="creation"> Création graphique associée (sur devis)</label>
           </div>
           <!-- ── Champs contextuels selon le besoin (facultatifs, aucune validation bloquante) ──
                Affichés/masqués en JS via applyChampsContextuelsFilter() selon le groupe associé
@@ -890,6 +890,27 @@ function applyStep2Labels(){
   document.getElementById('step2-sub').textContent = cfg.sub;
 }
 
+const STEP3_LABELS_BY_BESOIN = {
+  'match-photo': { label: 'Votre match', sub: 'Ces options s\'appliquent à votre match.' },
+  'match-video': { label: 'Votre match', sub: 'Ces options s\'appliquent à votre match.' },
+  'pack-match': { label: 'Votre match', sub: 'Ces options s\'appliquent à votre match.' },
+  'match-filme-drone': { label: 'Votre match', sub: 'Ces options s\'appliquent à votre match.' },
+  'combo-drone-photo': { label: 'Votre match', sub: 'Ces options s\'appliquent à votre match.' },
+  'camera-isolee': { label: 'Le joueur à suivre', sub: 'Le nom et le numéro du joueur nous permettent de centrer le montage sur lui.' },
+  'montage-compilation': { label: 'Votre montage', sub: 'Précisez la matière à monter et le résultat souhaité.' },
+  'shooting': { label: 'Votre shooting', sub: 'Précisez le type de séance et les options souhaitées.' },
+  'couverture-tournoi': { label: 'Votre couverture', sub: 'Sélectionnez les options de couverture adaptées à votre événement.' },
+  'couverture-stage': { label: 'Votre couverture', sub: 'Sélectionnez les options de couverture adaptées à votre stage.' },
+  'media-day': { label: 'Vos contenus', sub: 'Sélectionnez les contenus et options de votre Media Day.' },
+  'creation-contenu': { label: 'Votre création', sub: 'Décrivez le besoin graphique associé.' },
+};
+function applyStep3Labels(){
+  const cfg = STEP3_LABELS_BY_BESOIN[state.slug] || { label: 'Options', sub: 'Sélectionnez ce qui s\'applique — vous pourrez toujours ajuster avec notre équipe.' };
+  document.getElementById('step3-dot-label').textContent = cfg.label;
+  document.getElementById('step3-title').textContent = cfg.label === 'Options' ? 'Vos options' : cfg.label;
+  document.getElementById('step3-sub').textContent = cfg.sub;
+}
+
 // ── Étape 1 : besoin ──
 document.getElementById('need-grid').addEventListener('click', (e) => {
   const card = e.target.closest('.need-card');
@@ -902,6 +923,7 @@ document.getElementById('need-grid').addEventListener('click', (e) => {
   applyOptionsFilter();
   applyChampsContextuelsFilter();
   applyStep2Labels();
+  applyStep3Labels();
   document.getElementById('btn-step1-next').disabled = false;
 });
 document.getElementById('btn-step1-next').addEventListener('click', () => goToStep(2));
