@@ -25,12 +25,16 @@
 -- personne précise (même convention que migration-connect-validation-
 -- contenus.sql pour acteur_id/auteur_client_id).
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
+-- EXÉCUTÉE (confirmé le 18/08/2026 par relecture de la fonction en base —
+-- le commentaire "NON EXÉCUTÉE" ci-dessus était resté périmé après coup).
 -- Idempotente pour les clients déjà résolus (aucun effet, la branche insert
 -- n'est atteinte que pour un client_id encore nul) ; pour les clients déjà
 -- résolus SANS message de bienvenue historique, cette migration ne rattrape
 -- rien rétroactivement — hors périmètre (pas de nouvelle donnée à inventer
 -- pour des conversations déjà réelles).
+-- Voir aussi migration-connect-v76-2-beneficiary-welcome-message.sql : le
+-- même message était absent de connect_resolve_beneficiary_client_id
+-- (particuliers, sportifs sans club, profils gérés) — corrigé le 18/08.
 -- ============================================================
 
 create or replace function resolve_player_client_id(p_player_id uuid)
