@@ -48,15 +48,38 @@
 -- trigger à créer — le trigger existant (trg_protect_sensitive_club_member_
 -- fields) réutilise cette fonction en place.
 --
--- NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka dans Supabase → SQL Editor
--- après relecture.
+-- EXÉCUTÉE (adaptée) le 19/08/2026 — audit pré-lancement. Le CREATE OR REPLACE
+-- ci-dessous n'a PAS été relancé tel quel : entre l'écriture de ce fichier et
+-- ce soir, protect_sensitive_club_member_fields() a été réécrite ailleurs
+-- (introduction de la variable is_self_accepting_own_invitation, structure de
+-- contrôle unifiée) — exécuter ce fichier tel quel aurait fait régresser cette
+-- version plus récente. Le correctif décrit ici (garde-fou anti-auto-
+-- rétrogradation) a été réappliqué à la main sur la base de la version
+-- actuellement en base, en conservant is_self_accepting_own_invitation intacte.
+--
+-- Vérifié en conditions réelles (compte de test, JWT réel, PAS service_role) :
+-- auto-suspension et auto-rétrogradation de rôle rejetées avec le message
+-- clair ci-dessous, une modification légitime sur son propre champ
+-- (téléphone) reste possible. Faille pratiquement neutralisée avant ce
+-- correctif par un effet de bord non garanti (trg_sync_club_member_to_
+-- membership propageait le changement vers `memberships`, dont son propre
+-- trigger le rejetait avec un message trompeur parlant d'invitation) — ce
+-- correctif la bloque directement à la source, avec le bon message.
 -- ============================================================
 
-create or replace function protect_sensitive_club_member_fields()
-returns trigger language plpgsql security definer as $$
+-- Version RÉELLEMENT appliquée le 19/08/2026, adaptée à la structure de
+-- protect_sensitive_club_member_fields() déjà en place (avec
+-- is_self_accepting_own_invitation) au lieu de la version originale ci-dessus
+-- prévue pour l'ancienne structure — voir la note en tête de fichier.
+create or replace function public.protect_sensitive_club_member_fields()
+returns trigger
+language plpgsql
+security definer
+as $function$
 declare
   is_os_staff boolean;
   is_this_club_admin boolean;
+  is_self_accepting_own_invitation boolean;
 begin
   select exists(
     select 1 from profiles where id = auth.uid() and role in ('admin', 'com', 'sec')
@@ -68,38 +91,37 @@ begin
     raise exception 'Modification non autorisée : club_id est immuable, une adhésion ne se déplace pas par UPDATE.';
   end if;
 
-  if is_os_staff then
-    return new;
+  -- Un admin ne peut pas modifier SA PROPRE ligne pour perdre son statut
+  -- d'admin actif (se suspendre ou se rétrograder). Seul le staff OS peut
+  -- le faire (branche is_os_staff plus bas), pour un transfert de propriété
+  -- légitime.
+  if is_this_club_admin and not is_os_staff and old.user_id = auth.uid()
+     and (new.status is distinct from 'actif' or new.role is distinct from 'admin')
+  then
+    raise exception 'Un administrateur ne peut pas se retirer ses propres droits d''administration.';
   end if;
 
-  if is_this_club_admin then
-    -- Un admin ne peut pas modifier SA PROPRE ligne pour perdre son statut
-    -- d'admin actif (se suspendre ou se rétrograder). Seul le staff OS
-    -- (branche ci-dessus) peut le faire, pour un transfert de propriété
-    -- légitime.
-    if old.user_id = auth.uid()
-       and (new.status is distinct from 'actif' or new.role is distinct from 'admin')
+  -- Auto-acceptation de sa propre invitation : la seule transition qu'un
+  -- non-admin/non-staff peut déclencher sur role/status. Rôle strictement
+  -- inchangé, statut strictement invitation -> actif, et uniquement sur sa
+  -- propre ligne (auth.uid() = old.user_id, jamais un tiers).
+  is_self_accepting_own_invitation :=
+    auth.uid() = old.user_id
+    and old.status = 'invitation'
+    and new.status = 'actif'
+    and new.role = old.role;
+
+  if not is_os_staff and not is_this_club_admin and not is_self_accepting_own_invitation then
+    if new.role is distinct from old.role
+       or new.status is distinct from old.status
     then
-      raise exception 'Un administrateur ne peut pas se retirer ses propres droits d''administration.';
-    end if;
-    return new;
-  end if;
-
-  if new.role is distinct from old.role then
-    raise exception 'Modification non autorisée : rôle et statut sont réservés à l''administrateur du club ou au staff SportVision.';
-  end if;
-
-  if new.status is distinct from old.status then
-    -- Self-activation : un membre invité peut activer SA PROPRE invitation
-    -- (invitation -> actif), et seulement ce changement précis — rien d'autre.
-    if not (old.status = 'invitation' and new.status = 'actif' and old.user_id = auth.uid()) then
       raise exception 'Modification non autorisée : rôle et statut sont réservés à l''administrateur du club ou au staff SportVision.';
     end if;
   end if;
 
   return new;
 end;
-$$;
+$function$;
 
 -- Le trigger existant (trg_protect_sensitive_club_member_fields, before update
 -- on club_members) réutilise déjà cette fonction : `create or replace` la met
