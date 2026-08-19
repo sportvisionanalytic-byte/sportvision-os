@@ -36,6 +36,20 @@ import { fetchChildJoinRequests, fetchJoinableTeamsForClub, requestTeamMembershi
 // (même module que /teams — pas de nouvelle clé connect_modules, pas d'entitlement dédié : accès
 // core dès que "teams" est prêt, cf. entitlements.ts).
 
+// 19/08/2026 (soir) : `err instanceof Error` était toujours faux pour une erreur renvoyée par
+// supabase.rpc() (PostgrestError, un objet simple qui n'étend pas Error côté supabase-js v2) —
+// tous les messages RPC réels (ex. validate_team_membership : "Autorisation parentale manquante
+// ou invalide", "Cette demande a déjà été traitée", "Non autorisé"…) retombaient donc toujours
+// sur un message générique, masquant systématiquement la vraie raison d'un refus. Duck-typing sur
+// `.message` plutôt qu'un `instanceof` qui ne matche jamais cette forme d'erreur.
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object" && "message" in err && typeof (err as { message: unknown }).message === "string") {
+    return (err as { message: string }).message;
+  }
+  return fallback;
+}
+
 const STATUT_LABEL: Record<string, string> = {
   a_verifier: "En cours de traitement",
   autorisation_manquante: "Autorisation parentale requise",
@@ -133,7 +147,7 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
       setInfoNote("");
       if (opts?.keepBadge) setInfoSentId(requestId);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Action impossible.");
+      setActionError(extractErrorMessage(err, "Action impossible."));
     } finally {
       setBusyId(null);
     }
@@ -374,7 +388,7 @@ function PlayerRequestView({ playerId, clubId }: { playerId: string; clubId: str
       setInviteCode("");
       await load();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Impossible d'envoyer la demande.");
+      setSubmitError(extractErrorMessage(err, "Impossible d'envoyer la demande."));
     } finally {
       setSubmitting(false);
     }
@@ -550,7 +564,7 @@ function ChildRequestCard({ child, open, onToggle }: { child: ConfirmedChild; op
       setInviteCode("");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible d'envoyer la demande.");
+      setError(extractErrorMessage(err, "Impossible d'envoyer la demande."));
     } finally {
       setSubmitting(false);
     }
