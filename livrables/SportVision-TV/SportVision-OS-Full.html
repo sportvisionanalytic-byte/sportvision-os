@@ -2637,6 +2637,7 @@ async function doLogin(){
 }
 
 async function doLogout(){
+  if(DEMO_MODE){location.reload();return;}
   await fetch(SB_URL+'/auth/v1/logout',{
     method:'POST',
     headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')}
@@ -2710,8 +2711,185 @@ async function checkSession(){
   }catch(e){/* réseau HS, on reste sur login */}
 }
 
+// ── MODE DÉMO ────────────────────────────
+// Demandé par Fouka (20/08/2026) pour faire auditer l'interface réelle sans exposer de vraies
+// données ni de vrai compte — même principe que /demo côté Connect/Club+ (données factices,
+// aucun appel réseau réel), adapté ici puisque ce fichier n'a pas de séparation données/affichage
+// (chaque écran appelle sbFetch directement). ?demo=1 dans l'URL active DEMO_MODE : sbFetch()
+// est interceptée à sa toute première ligne (voir plus bas) et ne touche jamais Supabase — lue et
+// écrite dans DEMO_DATA (en mémoire, réinitialisée à chaque rechargement). Champs couverts en
+// priorité (20/08) : Tableau de bord, Prestations (liste + fiche + équipe/consignes/
+// rémunération), Planning, Clients, Collaborateurs — le cœur du parcours prestation évoqué ce
+// soir. Les écrans comptables détaillés (FEC, TVA, rapprochement…) ne sont pas encore couverts :
+// un écran non couvert affichera son état "Aucune donnée" habituel plutôt qu'une erreur, jamais
+// une fausse absence de fonctionnalité.
+const DEMO_MODE=(function(){try{return new URLSearchParams(location.search).get('demo')==='1';}catch(e){return false;}})();
+
+// Relations table→table utilisées par les select= imbriqués réellement observés dans ce fichier
+// (ex. "clients(nom)", "collaborateur:profiles(...)") — clé = table courante, valeur = { table
+// cible : colonne de clé étrangère sur la table courante }.
+const DEMO_FK={
+  prestations:{clients:'client_id',catalogue_offres:'offre_id'},
+  prestations_equipe:{profiles:'collaborateur_id',prestations:'prestation_id'},
+};
+
+const DEMO_DATA=(function(){
+  const iso=(d)=>d+'T00:00:00Z';
+  const today=ymdLocal();
+  const inDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return ymdLocal(d);};
+  const profiles=[
+    {id:'demo-admin',role:'admin',prenom:'Camille',nom:'Bernard',telephone:'0601020304',adresse:'12 rue des Tilleuls',ville:'Villeneuve-la-Guyard',code_postal:'89500',type_contrat:'salarie',actif:true,niveau_cm:null,email:'camille.bernard@sportvision-an.fr',grade:3,xp:1200},
+    {id:'demo-sec',role:'sec',prenom:'Inès',nom:'Faure',telephone:'0602030405',adresse:'',ville:'Sens',code_postal:'89100',type_contrat:'salarie',actif:true,niveau_cm:null,email:'ines.faure@sportvision-an.fr',grade:2,xp:600},
+    {id:'demo-prod',role:'prod',prenom:'Yanis',nom:'Costa',telephone:'0603040506',adresse:'',ville:'Fontainebleau',code_postal:'77300',type_contrat:'freelance',actif:true,niveau_cm:null,email:'yanis.costa@sportvision-an.fr',grade:3,xp:1500},
+    {id:'demo-photo1',role:'photo',prenom:'Lisa',nom:'Girard',telephone:'0604050607',adresse:'',ville:'Nemours',code_postal:'77140',type_contrat:'freelance',actif:true,niveau_cm:null,email:'lisa.girard@sportvision-an.fr',grade:2,xp:800},
+    {id:'demo-photo2',role:'photo',prenom:'Karim',nom:'Belhadj',telephone:'0605060708',adresse:'',ville:'Montereau',code_postal:'77130',type_contrat:'freelance',actif:true,niveau_cm:null,email:'karim.belhadj@sportvision-an.fr',grade:1,xp:250},
+    {id:'demo-cm',role:'cm',prenom:'Alice',nom:'Roche',telephone:'0606070809',adresse:'',ville:'Sens',code_postal:'89100',type_contrat:'freelance',actif:true,niveau_cm:'cm_lead',email:'alice.roche@sportvision-an.fr',grade:3,xp:2000},
+    {id:'demo-compta',role:'compta',prenom:'Marc',nom:'Lefebvre',telephone:'0607080910',adresse:'',ville:'Sens',code_postal:'89100',type_contrat:'salarie',actif:true,niveau_cm:null,email:'marc.lefebvre@sportvision-an.fr',grade:2,xp:400},
+  ];
+  const clients=[
+    {id:'demo-cl-1',nom:'FC Fontainebleau',statut:'partenaire',type_client:'club',sport:'Football',ville:'Fontainebleau',email:'contact@fcfontainebleau.fr',telephone:'0164000000',prenom_contact:'Julien',nom_contact:'Marchand',notes:'Contrat Club+ Performance, saison 2026-2027.',origine_prospect:'recommandation',cm_id:'demo-cm',score_priorite:90,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-70))},
+    {id:'demo-cl-2',nom:'US Varennes',statut:'client',type_client:'club',sport:'Football',ville:'Varennes-sur-Seine',email:'usvarennes@gmail.com',telephone:'0164111111',prenom_contact:'Sophie',nom_contact:'Dubreuil',notes:'',origine_prospect:'salon',cm_id:null,score_priorite:60,prochaine_action:'Relancer pour renouvellement',date_prochaine_action:inDays(12),created_at:iso(inDays(-40))},
+    {id:'demo-cl-3',nom:'Rugby Club Sénonais',statut:'négociation',type_client:'club',sport:'Rugby',ville:'Sens',email:'contact@rcsenonais.fr',telephone:'0386000000',prenom_contact:'Thomas',nom_contact:'Petit',notes:'Devis envoyé, en attente de retour du bureau.',origine_prospect:'prospection',cm_id:null,score_priorite:70,prochaine_action:'Appeler le président',date_prochaine_action:inDays(2),created_at:iso(inDays(-19))},
+    {id:'demo-cl-4',nom:'Basket Nemours',statut:'devis_envoyé',type_client:'club',sport:'Basketball',ville:'Nemours',email:'basketnemours@gmail.com',telephone:'0164222222',prenom_contact:'Laura',nom_contact:'Simon',notes:'',origine_prospect:'site web',cm_id:null,score_priorite:40,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-15))},
+    {id:'demo-cl-5',nom:'Martin Dupuis (particulier)',statut:'client',type_client:'particulier',sport:'Football',ville:'Sens',email:'martin.dupuis@gmail.com',telephone:'0601111111',prenom_contact:'',nom_contact:'',notes:'Shooting joueur U17, dossier recrutement.',origine_prospect:'connect',cm_id:null,score_priorite:20,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-8))},
+    {id:'demo-cl-6',nom:'Volley Passion 89',statut:'prospect',type_client:'club',sport:'Volleyball',ville:'Sens',email:'',telephone:'',prenom_contact:'',nom_contact:'',notes:'Contact pris au forum des associations.',origine_prospect:'prospection',cm_id:null,score_priorite:10,prochaine_action:'Premier appel',date_prochaine_action:inDays(5),created_at:iso(inDays(-5))},
+  ];
+  const catalogue_offres=[
+    {id:'demo-off-1',nom:'Match Photo',categorie:'photo',description:"Reportage photo complet d'un match.",tarif_type:'fixe',prix_ht:100,tva_pct:20,duree_estimee:'24h',livrables_inclus:'30 photos retouchées'},
+    {id:'demo-off-2',nom:'Highlights Vidéo',categorie:'video',description:'Montage vidéo des temps forts.',tarif_type:'fixe',prix_ht:150,tva_pct:20,duree_estimee:'48h',livrables_inclus:'1 vidéo 2-3 min'},
+  ];
+  const prestations=[
+    {id:'demo-pre-1',reference:'SV-DEMO-0001',statut:'confirmée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:today,heure_debut:'14:00',heure_fin:'16:00',heure_rdv:'13:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Julien Marchand',telephone_sur_place:'0601020304',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Club partenaire — prioritaire.',description_besoin:'Reportage photo du match U17 contre Melun.',livrables_demandes:'30 photos, livraison sous 48h',options_selectionnees:null,mode_paiement_choisi:'carte',distance_km:12,frais_deplacement_ht:0,offre_id:'demo-off-1',client_id:'demo-cl-1',created_at:iso(inDays(-6))},
+    {id:'demo-pre-2',reference:'SV-DEMO-0002',statut:'équipe_affectée',statut_financier:'non_facturée',type_prestation:'Highlights Vidéo',date_prestation:inDays(2),heure_debut:'10:00',heure_fin:'12:30',heure_rdv:'09:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights match retour.',livrables_demandes:'Vidéo 2 min, sous-titrée',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-5))},
+    {id:'demo-pre-3',reference:'SV-DEMO-0003',statut:'demande_reçue',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(5),heure_debut:'15:00',heure_fin:'17:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:null,montant_ttc:null,tva_pct:20,notes_internes:'',description_besoin:'Prestation demandée (Connect — Espace joueur) : reportage match.',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-2))},
+    {id:'demo-pre-4',reference:'SV-DEMO-0004',statut:'production_terminée',statut_financier:'facturée',type_prestation:'Match Photo',date_prestation:inDays(-3),heure_debut:'11:00',heure_fin:'13:00',heure_rdv:'10:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Julien Marchand',telephone_sur_place:'0601020304',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'',description_besoin:'Reportage photo match aller.',livrables_demandes:'30 photos',options_selectionnees:null,mode_paiement_choisi:'carte',distance_km:12,frais_deplacement_ht:0,offre_id:'demo-off-1',client_id:'demo-cl-1',created_at:iso(inDays(-10))},
+    {id:'demo-pre-5',reference:'SV-DEMO-0005',statut:'payée',statut_financier:'payée',type_prestation:'Highlights Vidéo',date_prestation:inDays(-10),heure_debut:'09:00',heure_fin:'11:30',heure_rdv:'08:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights.',livrables_demandes:'Vidéo 2 min',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-16))},
+    {id:'demo-pre-6',reference:'SV-DEMO-0006',statut:'annulée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(-1),heure_debut:'16:00',heure_fin:'18:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Annulée par le client (météo).',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-4))},
+  ];
+  const prestations_equipe=[
+    {id:'demo-pe-1',prestation_id:'demo-pre-1',collaborateur_id:'demo-photo1',fonction:'Photo',notes:'Prioriser les buteurs et le coach en fin de match.',remuneration:50,statut:'acceptée',heure_rdv:'13:30',est_responsable:true,created_at:iso(inDays(-5))},
+    {id:'demo-pe-2',prestation_id:'demo-pre-2',collaborateur_id:'demo-photo2',fonction:'Vidéo',notes:null,remuneration:null,statut:'invitation_envoyée',heure_rdv:'09:30',est_responsable:true,created_at:iso(inDays(-3))},
+  ];
+  const kits=[
+    {id:'demo-kit-1',nom:'Kit Photo A (Canon R6)',statut:'disponible'},
+    {id:'demo-kit-2',nom:'Kit Vidéo Drone',statut:'en_mission'},
+    {id:'demo-kit-3',nom:'Kit Photo B',statut:'maintenance'},
+  ];
+  const incidents=[
+    {id:'demo-inc-1',cloture:false,titre:'Objectif rayé',description:"Rayure légère sur l'objectif 24-70mm du Kit A.",created_at:iso(inDays(-4))},
+  ];
+  const expenses=[
+    {id:'demo-exp-1',montant_ttc:45,date_depense:inDays(-2),categorie:'carburant'},
+    {id:'demo-exp-2',montant_ttc:120,date_depense:inDays(-6),categorie:'materiel'},
+  ];
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses};
+})();
+
+function _demoParseSelect(sel){
+  const cols=[],embeds=[];
+  let i=0;
+  while(i<sel.length){
+    let depth=0,j=i;
+    while(j<sel.length&&!(sel[j]===','&&depth===0)){
+      if(sel[j]==='(')depth++;
+      if(sel[j]===')')depth--;
+      j++;
+    }
+    const token=sel.slice(i,j).trim();
+    const m=token.match(/^(?:([a-zA-Z0-9_]+):)?([a-zA-Z0-9_]+)\(([^)]*)\)$/);
+    if(m)embeds.push({alias:m[1]||m[2],table:m[2],cols:m[3].split(',').map(s=>s.trim()).filter(Boolean)});
+    else if(token)cols.push(token);
+    i=j+1;
+  }
+  return {cols,embeds};
+}
+function _demoApplyFilter(rows,key,val){
+  if(val.startsWith('not.in.')){const list=val.slice(7).replace(/^\(|\)$/g,'').split(',');return rows.filter(r=>!list.includes(String(r[key])));}
+  if(val.startsWith('in.')){const list=val.slice(3).replace(/^\(|\)$/g,'').split(',');return rows.filter(r=>list.includes(String(r[key])));}
+  if(val.startsWith('eq.')){const v=val.slice(3);return rows.filter(r=>String(r[key])===v);}
+  if(val.startsWith('neq.')){const v=val.slice(4);return rows.filter(r=>String(r[key])!==v);}
+  if(val.startsWith('gte.')){const v=val.slice(4);return rows.filter(r=>r[key]!=null&&String(r[key])>=v);}
+  if(val.startsWith('lte.')){const v=val.slice(4);return rows.filter(r=>r[key]!=null&&String(r[key])<=v);}
+  return rows;
+}
+function demoQuery(path){
+  const qIdx=path.indexOf('?');
+  const table=qIdx===-1?path:path.slice(0,qIdx);
+  const params=new URLSearchParams(qIdx===-1?'':path.slice(qIdx+1));
+  let rows=(DEMO_DATA[table]||[]).slice();
+  for(const [key,val] of params.entries()){
+    if(['select','order','limit','offset'].includes(key))continue;
+    rows=_demoApplyFilter(rows,key,val);
+  }
+  const selectParam=params.get('select');
+  const fk=DEMO_FK[table]||{};
+  function project(row){
+    if(!selectParam)return {...row};
+    const {cols,embeds}=_demoParseSelect(selectParam);
+    const out={};
+    if(cols.length&&cols[0]==='*')Object.assign(out,row);
+    else cols.forEach(c=>{out[c]=row[c];});
+    embeds.forEach(e=>{
+      const fkCol=fk[e.table];
+      const target=fkCol?(DEMO_DATA[e.table]||[]).find(r=>r.id===row[fkCol])||null:null;
+      if(target){const sub={};e.cols.forEach(c=>{sub[c]=target[c];});out[e.alias]=sub;}
+      else out[e.alias]=null;
+    });
+    return out;
+  }
+  let result=rows.map(project);
+  const order=params.get('order');
+  if(order){
+    const parts=order.split(',');
+    result.sort((a,b)=>{
+      for(const p of parts){
+        const [col,dir]=p.split('.');
+        const av=a[col],bv=b[col];
+        if(av==null&&bv==null)continue;
+        if(av==null)return dir==='desc'?1:-1;
+        if(bv==null)return dir==='desc'?-1:1;
+        if(av<bv)return dir==='desc'?1:-1;
+        if(av>bv)return dir==='desc'?-1:1;
+      }
+      return 0;
+    });
+  }
+  const limit=params.get('limit');
+  if(limit)result=result.slice(0,Number(limit));
+  return result;
+}
+function demoWrite(path,opts){
+  const qIdx=path.indexOf('?');
+  const table=qIdx===-1?path:path.slice(0,qIdx);
+  const params=new URLSearchParams(qIdx===-1?'':path.slice(qIdx+1));
+  const arr=DEMO_DATA[table]||(DEMO_DATA[table]=[]);
+  const method=opts.method;
+  if(method==='POST'){
+    const row={id:'demo-'+table+'-'+Math.random().toString(36).slice(2,9),created_at:new Date().toISOString(),...(opts.body||{})};
+    arr.push(row);
+    return [row];
+  }
+  if(method==='PATCH'){
+    let rows=arr;
+    for(const [key,val] of params.entries()){if(key!=='select')rows=_demoApplyFilter(rows,key,val);}
+    rows.forEach(r=>Object.assign(r,opts.body||{}));
+    return rows;
+  }
+  if(method==='DELETE'){
+    let rows=arr;
+    for(const [key,val] of params.entries())rows=_demoApplyFilter(rows,key,val);
+    rows.forEach(r=>{const i=arr.indexOf(r);if(i>=0)arr.splice(i,1);});
+    return null;
+  }
+  return [];
+}
+
 // ── API HELPER ───────────────────────────
 async function sbFetch(path,opts={}){
+  if(DEMO_MODE){
+    await new Promise(r=>setTimeout(r,120));
+    return (opts.method&&opts.method!=='GET')?demoWrite(path,opts):demoQuery(path);
+  }
   const _do=async(tok)=>fetch(SB_URL+'/rest/v1/'+path,{
     method:opts.method||'GET',
     headers:{
@@ -20139,7 +20317,17 @@ async function _ensureMyNiveauCm(){
   }catch(e){_myNiveauCm=null;}
   return _myNiveauCm;
 }
-consumeRecoveryHashOS().then(handled=>{if(!handled)checkSession();});
+if(DEMO_MODE){
+  svSave('demo-token','demo-refresh','demo-admin','admin');
+  localStorage.setItem('sv_prenom','Démo');
+  goApp('admin');
+  const _demoBanner=document.createElement('div');
+  _demoBanner.textContent='MODE DÉMO — données factices, aucune écriture réelle';
+  _demoBanner.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#F5A524;color:#1a1200;font:700 11px/1 -apple-system,sans-serif;text-align:center;padding:6px;letter-spacing:.04em';
+  document.body.appendChild(_demoBanner);
+}else{
+  consumeRecoveryHashOS().then(handled=>{if(!handled)checkSession();});
+}
 
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();if(S.screen==='app')openSearch();}
