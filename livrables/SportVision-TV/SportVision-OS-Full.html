@@ -2783,7 +2783,16 @@ const DEMO_DATA=(function(){
     {id:'demo-kit-3',nom:'Kit Photo B',statut:'maintenance'},
   ];
   const incidents=[
-    {id:'demo-inc-1',cloture:false,titre:'Objectif rayé',description:"Rayure légère sur l'objectif 24-70mm du Kit A.",created_at:iso(inDays(-4))},
+    {id:'demo-inc-1',type_incident:'materiel',niveau:'mineur',cloture:false,description:"Rayure légère sur l'objectif 24-70mm du Kit A.",date_incident:iso(inDays(-4)),prestation_id:'demo-pre-4',declare_par:'demo-photo1'},
+  ];
+  const messages=[
+    {id:'demo-msg-1',expediteur_id:'demo-admin',destinataire_id:null,contenu:'Bienvenue sur SportVision OS 👋 Ce fil est visible par toute l\'équipe.',lue:true,created_at:iso(inDays(-5))},
+    {id:'demo-msg-2',expediteur_id:'demo-prod',destinataire_id:null,contenu:'Rappel : brief équipe avant chaque mission, merci !',lue:true,created_at:iso(inDays(-1))},
+    {id:'demo-msg-3',expediteur_id:'demo-admin',destinataire_id:'demo-photo1',contenu:'Le client FC Fontainebleau est ravi du dernier reportage, merci pour le travail !',lue:false,created_at:iso(inDays(0))},
+  ];
+  const notifications=[
+    {id:'demo-notif-1',type:'tache',titre:'Relancer Rugby Club Sénonais',message:'Le devis DEV-2026-0012 arrive à expiration dans 11 jours.',lue:false,destinataire_id:'demo-sec',created_at:iso(inDays(-1))},
+    {id:'demo-notif-2',type:'tache',titre:'Vérifier le règlement US Varennes',message:'Facture liée à SV-DEMO-0005, à contrôler avant clôture du mois.',lue:false,destinataire_id:'demo-sec',created_at:iso(inDays(-2))},
   ];
   const expenses=[
     {id:'demo-exp-1',montant_ttc:45,date_depense:inDays(-2),categorie:'carburant'},
@@ -2824,7 +2833,7 @@ const DEMO_DATA=(function(){
     {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Enzo',nom:'Dupuis',email:'enzo.dupuis@gmail.com',ville:'Sens',club_nom:'Rugby Club Sénonais',created_at:iso(inDays(-8)),sport:'Rugby',poste:'Ailier',categorie:'U18'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts};
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
 })();
 
 function _demoParseSelect(sel){
@@ -2846,6 +2855,8 @@ function _demoParseSelect(sel){
   return {cols,embeds};
 }
 function _demoApplyFilter(rows,key,val){
+  if(val==='is.null')return rows.filter(r=>r[key]==null);
+  if(val==='is.not.null')return rows.filter(r=>r[key]!=null);
   if(val.startsWith('not.in.')){const list=val.slice(7).replace(/^\(|\)$/g,'').split(',');return rows.filter(r=>!list.includes(String(r[key])));}
   if(val.startsWith('in.')){const list=val.slice(3).replace(/^\(|\)$/g,'').split(',');return rows.filter(r=>list.includes(String(r[key])));}
   if(val.startsWith('eq.')){const v=val.slice(3);return rows.filter(r=>String(r[key])===v);}
