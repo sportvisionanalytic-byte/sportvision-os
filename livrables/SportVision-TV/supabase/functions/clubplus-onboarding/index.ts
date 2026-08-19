@@ -64,6 +64,17 @@ function json(body: unknown, status = 200) {
 // (abonnement Stripe payant), jamais directement ici.
 const CREDITS_BY_PLAN: Record<string, number> = { free: 0, club: 10, performance: 40 };
 
+// 19/08/2026 — audit sécurité pré-lancement : cette route est LA SEULE de tout le repo à
+// créer un club sans jamais passer par Stripe (self-service, juste après auth.signUp()).
+// Avant ce correctif, `body.plan` était accepté tel quel dès lors que la clé existait dans
+// CREDITS_BY_PLAN — donc "club" (10 crédits) ou "performance" (40 crédits) obtenus par un
+// simple appel direct à cette fonction (n'importe quel utilisateur authentifié, contournant
+// le frontend qui n'envoie jamais que "free"), sans aucun paiement Stripe. Seul
+// create-clubplus-subscription-checkout + stripe-webhook a le droit de poser plan="club"/
+// "performance" (après paiement réel confirmé par la signature Stripe). Ce parcours-ci ne
+// doit donc JAMAIS accepter autre chose que "free", quoi que le body envoie.
+const SELF_SERVICE_PLAN = "free";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -90,13 +101,24 @@ serve(async (req) => {
     const nom: string = body.nom || "";
     const telephone: string = body.telephone || "";
     const club = body.club || {};
-    // Parcours self-service : le plan par défaut est désormais "free" (Club+ Gratuit),
-    // pas "club" (Start) — Start/Performance ne s'obtiennent que via un abonnement Stripe
-    // payant (create-clubplus-subscription-checkout), jamais à l'inscription. Vérifie la
-    // présence de la clé (pas sa valeur) car CREDITS_BY_PLAN.free vaut 0, qui est falsy.
-    const plan: string = Object.prototype.hasOwnProperty.call(CREDITS_BY_PLAN, body.plan) ? body.plan : "free";
+    // Parcours self-service : plan TOUJOURS "free" (Club+ Gratuit), quoi que le body
+    // envoie — voir le commentaire de SELF_SERVICE_PLAN plus haut. Start/Performance ne
+    // s'obtiennent que via un abonnement Stripe payant
+    // (create-clubplus-subscription-checkout + stripe-webhook), jamais à l'inscription.
+    const plan: string = SELF_SERVICE_PLAN;
 
     const admin = createClient(supabaseUrl, serviceKey);
+
+    // Anti-abus : un compte Supabase Auth gratuit et auto-créé (signUp) suffit à déclencher
+    // cette route une fois — la limite par utilisateur ci-dessous (10/h) ne freine donc pas
+    // un script qui créerait un nouveau compte à chaque appel. On ajoute donc aussi une
+    // limite par IP (10/h, même fenêtre), même mécanisme que create-guest-request, pour
+    // borner le nombre de clubs gratuits/comptes créés depuis une même origine.
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("cf-connecting-ip") || "inconnu";
+    const ipRateOk = await checkRateLimit(admin, `clubplus-onboarding-ip:${ip}`);
+    if (!ipRateOk) {
+      return json({ error: "Trop de tentatives depuis cette connexion. Réessayez plus tard." }, 429);
+    }
 
     const rateOk = await checkRateLimit(admin, `clubplus-onboarding:${user.id}`);
     if (!rateOk) {
