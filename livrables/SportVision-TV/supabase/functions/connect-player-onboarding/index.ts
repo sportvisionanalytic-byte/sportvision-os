@@ -49,7 +49,12 @@
 // Actions (`action` dans le body) :
 //  - "search"  { query } → clubs partenaires actifs correspondant (recherche sur le nom)
 //  - "join"    { orgId, teamName? } → crée player_profiles (si absent) + membership_requests
-//               (statut "a_verifier"), le joueur peut utiliser Connect pendant l'attente
+//               (statut "a_verifier"), le joueur peut utiliser Connect pendant l'attente.
+//               teamName (19/08, texte libre saisi par le joueur) est résolu/créé dans
+//               club_teams pour ce club (match insensible à la casse) puis posé sur
+//               membership_requests.team_id — club_teams est vide pour tous les clubs en prod,
+//               aucune UI de gestion d'équipes n'existe encore, donc "créer si absent" plutôt
+//               qu'un menu déroulant qui n'afficherait jamais rien.
 //  - "declare" { name, city, team?, prenom, nom } → notifie le staff (aucune écriture DB),
 //               même mécanisme que connect-signup-lead
 //  - "skip"    { prenom?, nom?, dateNaissance? } → migration-connect-v72 (15/08) :
@@ -260,6 +265,7 @@ serve(async (req) => {
       const prenom = String(body?.prenom || "").trim();
       const nom = String(body?.nom || "").trim();
       const dateNaissance = String(body?.dateNaissance || "").trim();
+      const teamName = String(body?.teamName || "").trim();
       if (!prenom || !nom || !dateNaissance) {
         return json({ error: "Prénom, nom et date de naissance requis" }, 400);
       }
@@ -273,6 +279,36 @@ serve(async (req) => {
         .maybeSingle();
       if (orgLookupErr) return json({ error: orgLookupErr.message }, 500);
       if (!org) return json({ error: "Club introuvable" }, 404);
+
+      // BUGFIX 19/08 (soir) : le tunnel ne demandait jamais l'équipe/catégorie, alors que
+      // membership_requests.team_id existe depuis migration-clubplus-v14.sql et que l'écran de
+      // validation dirigeant (app-next team-requests/page.tsx) sait déjà l'afficher.
+      // club_teams est vide pour tous les clubs en prod (vérifié en base le 19/08 — aucune UI de
+      // gestion d'équipes n'existe encore) : un simple menu déroulant serait vide partout. On
+      // laisse donc le joueur taper le nom, et on résout/crée la ligne club_teams correspondante
+      // (match insensible à la casse sur ce club) plutôt que d'ajouter une colonne texte
+      // parallèle qui ne nourrirait jamais la vraie table utilisée par le calendrier/les stats.
+      let teamId: string | null = null;
+      if (teamName) {
+        const { data: existingTeam, error: teamLookupErr } = await admin
+          .from("club_teams")
+          .select("id")
+          .eq("club_id", org.id)
+          .ilike("name", teamName)
+          .maybeSingle();
+        if (teamLookupErr) return json({ error: teamLookupErr.message }, 500);
+        if (existingTeam) {
+          teamId = existingTeam.id;
+        } else {
+          const { data: createdTeam, error: teamInsErr } = await admin
+            .from("club_teams")
+            .insert({ club_id: org.id, name: teamName })
+            .select("id")
+            .single();
+          if (teamInsErr) return json({ error: teamInsErr.message }, 500);
+          teamId = createdTeam.id;
+        }
+      }
 
       const { data: existingProfile } = await admin
         .from("player_profiles")
@@ -324,6 +360,7 @@ serve(async (req) => {
 
       const { error: mrErr } = await admin.from("membership_requests").insert({
         club_id: org.id,
+        team_id: teamId,
         requested_by_user_id: user.id,
         player_id: playerId,
         source: "spontanee",
