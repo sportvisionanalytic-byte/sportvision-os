@@ -82,6 +82,34 @@ export async function fetchClubSponsors(supabase: SupabaseClient, organizationId
   }));
 }
 
+/** Création de sponsor (19/08/2026, retour utilisateur : aucune UI ne le permettait). RLS
+ * csp_member_insert réserve l'écriture à admin/president/sponsor_mgr/tresorier — un membre sans
+ * ce rôle reçoit une erreur Postgres explicite, pas un formulaire qui semble fonctionner puis
+ * échoue silencieusement. `niveau` limité à Or/Argent/Bronze (club_sponsors_niveau_check) : pas
+ * de "Platine" bien que SponsorLevel (types/sponsors.ts) le prévoie, ce palier n'existe pas côté
+ * base aujourd'hui. */
+export async function createClubSponsor(
+  supabase: SupabaseClient,
+  clubId: string,
+  input: { name: string; niveau: "Or" | "Argent" | "Bronze"; secteur?: string; montant?: number; dateDebut?: string; dateFin?: string },
+): Promise<{ id: string }> {
+  const { data, error } = await supabase
+    .from("club_sponsors")
+    .insert({
+      club_id: clubId,
+      name: input.name,
+      niveau: input.niveau,
+      secteur: input.secteur || null,
+      montant: input.montant ?? 0,
+      date_debut: input.dateDebut || null,
+      date_fin: input.dateFin || null,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data as { id: string };
+}
+
 /** Écrit la liste complète des contreparties (jsonb, remplacement total — pas de RPC dédiée,
  * cohérent avec la taille attendue « une liste courte », voir migration-clubplus-v5.sql
  * commentaire d'en-tête). RLS : csp_member_update (is_club_member). */

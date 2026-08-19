@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Award, Download, Gauge, RefreshCw, Wallet } from "lucide-react";
+import { Award, Download, Gauge, Plus, RefreshCw, Wallet } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
@@ -10,9 +10,11 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { SponsorCard } from "@/components/sponsors/SponsorCard";
+import { CreateSponsorModal } from "@/components/sponsors/CreateSponsorModal";
 import { SPONSOR_STATUS_LABEL, SPONSOR_STATUS_TONE, formatEuro } from "@/components/sponsors/format";
 import { visibilityGauge } from "@/lib/mock/sponsors";
 import {
+  createClubSponsor,
   fetchClubSponsors,
   fetchSponsorOperationsForPartner,
   fetchSponsorPublicationsForPartner,
@@ -34,9 +36,10 @@ import { SPONSOR_LEVEL_LABEL, SPONSOR_LEVEL_TONE } from "@/components/sponsors/f
 export default function SponsorsPage() {
   const { ctx } = useSession();
   const [sponsors, setSponsors] = useState<Sponsor[] | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
-  useEffect(() => {
-    if (ctx.organization.type !== "club") return;
+  const loadSponsors = useCallback(() => {
+    if (ctx.organization.type !== "club") return () => {};
     let cancelled = false;
     const supabase = createClient();
     fetchClubSponsors(supabase, ctx.organization.id).then((rows) => {
@@ -46,6 +49,8 @@ export default function SponsorsPage() {
       cancelled = true;
     };
   }, [ctx.organization.id, ctx.organization.type]);
+
+  useEffect(() => loadSponsors(), [loadSponsors]);
 
   if (ctx.organization.type === "sponsor") {
     return <PartnerView organizationId={ctx.organization.id} partnerName={ctx.organization.name} />;
@@ -82,11 +87,24 @@ export default function SponsorsPage() {
             Partenaires de {ctx.organization.name}
           </h1>
         </div>
-        <Button variant="secondary">
-          <Download className="h-3.5 w-3.5" aria-hidden />
-          Exporter le bilan
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button variant="secondary">
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Exporter le bilan
+          </Button>
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Ajouter un sponsor
+          </Button>
+        </div>
       </div>
+
+      {showCreate && (
+        <CreateSponsorModal
+          onClose={() => setShowCreate(false)}
+          onCreate={(input) => createClubSponsor(createClient(), ctx.organization.id, input).then(() => loadSponsors())}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         {stats.map(({ label, value, icon: Icon }) => (
@@ -103,9 +121,12 @@ export default function SponsorsPage() {
       {sponsors === null ? (
         <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>
       ) : sponsorsList.length === 0 ? (
-        <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
+        <Card className="flex flex-col items-center gap-3 px-8 py-16 text-center">
           <Award className="h-6 w-6 text-text-faint" aria-hidden />
           <div className="mt-1 text-[15px] font-extrabold">Aucun sponsor pour le moment.</div>
+          <Button variant="secondary" className="mt-1 h-9 px-4 text-[12.5px]" onClick={() => setShowCreate(true)}>
+            Ajouter un sponsor
+          </Button>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
