@@ -34,6 +34,7 @@ export function AddClubForm({
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
   const [dateNaissance, setDateNaissance] = useState("");
+  const [team, setTeam] = useState("");
   const [declareName, setDeclareName] = useState("");
   const [declareCity, setDeclareCity] = useState("");
   const [declareTeam, setDeclareTeam] = useState("");
@@ -78,6 +79,7 @@ export function AddClubForm({
         prenom: firstName.trim(),
         nom: lastName.trim(),
         dateNaissance,
+        teamName: team.trim(),
       },
     });
     setBusy(false);
@@ -308,6 +310,13 @@ export function AddClubForm({
               value={dateNaissance}
               onChange={(e) => setDateNaissance(e.target.value)}
               error={touched && !dateNaissance ? "Requise pour rejoindre un club." : null}
+            />
+            <Field
+              id="ac-team"
+              label="Équipe ou catégorie · facultatif"
+              placeholder="U17, Seniors…"
+              value={team}
+              onChange={(e) => setTeam(e.target.value)}
             />
           </div>
         )}
