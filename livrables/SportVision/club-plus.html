@@ -381,7 +381,8 @@ section{position:relative}
 /* ============================================================
    Ajouts spécifiques — page Club+
    ============================================================ */
-.offers-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;max-width:820px;margin:12px auto 0}
+.offers-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1140px;margin:12px auto 0}
+@media (max-width:860px){.offers-grid{grid-template-columns:1fr;max-width:420px}}
 .offer-card{background:#fff;border:1px solid #e9ecf5;border-radius:var(--radius-lg);padding:32px 26px;display:flex;flex-direction:column}
 .offer-card.featured{background:linear-gradient(165deg,#0d1330,#171f45);color:#fff;border-color:transparent;transform:translateY(-10px);box-shadow:var(--shadow-lg)}
 .offer-card .tag{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--blue);margin-bottom:10px}
@@ -616,10 +617,25 @@ section{position:relative}
   <div class="container">
     <div class="section-head reveal">
       <span class="eyebrow" style="margin-bottom:18px">Tarifs</span>
-      <h2>Deux formules Club+, une seule plateforme.</h2>
-      <p>Club+ Performance inclut toutes les fonctionnalités de Club+ Start, avec plus de capacité et de priorité pour votre structure.</p>
+      <h2>Trois formules Club+, une seule plateforme.</h2>
+      <p>Club+ Gratuit vous permet de démarrer sans engagement. Start et Performance ajoutent davantage d'utilisateurs, d'équipes et de crédits pour votre structure.</p>
     </div>
     <div class="offers-grid reveal">
+      <div class="offer-card">
+        <span class="tag">Club+ Gratuit</span>
+        <h3>Pour démarrer</h3>
+        <p class="desc">Un espace Club+ à vous, sans coût ni engagement, pour réserver vos prestations SportVision au tarif standard.</p>
+        <p class="offer-price-main">0 € <span>TTC/mois</span></p>
+        <p class="offer-price-note">Sans engagement, résiliable à tout moment.</p>
+        <p class="offer-price-note" style="margin-top:-10px;font-size:11px">&nbsp;</p>
+        <ul class="offer-list">
+          <li>Accès à Club+</li>
+          <li>1 utilisateur</li>
+          <li>1 équipe</li>
+          <li>Réservation de prestations SportVision au tarif standard</li>
+        </ul>
+        <a href="https://clubplus.sportvision-an.fr/signup-free" class="btn btn-ghost-light">Créer mon compte Gratuit</a>
+      </div>
       <div class="offer-card">
         <span class="tag">Club+ Start</span>
         <h3>Pour bien démarrer</h3>
@@ -631,6 +647,7 @@ section{position:relative}
           <li>Accès à Club+</li>
           <li>Espace structure dédié</li>
           <li>Jusqu'à 5 utilisateurs inclus, selon les rôles autorisés</li>
+          <li>Jusqu'à 2 équipes</li>
           <li>Demandes de visuels</li>
           <li>10 crédits inclus par mois</li>
           <li>Contenus et demandes de prestations</li>
@@ -649,7 +666,7 @@ section{position:relative}
           <li>Toutes les fonctionnalités Start</li>
           <li>40 crédits inclus par mois</li>
           <li>Priorisation des demandes Club+ selon les capacités de production SportVision</li>
-          <li>Jusqu'à 15 utilisateurs inclus</li>
+          <li>Utilisateurs et équipes illimités</li>
           <li>10 % de remise sur les prestations ponctuelles éligibles SportVision</li>
         </ul>
         <a href="#devis" class="btn btn-grad" data-action="open-devis" data-devis-context="Club+ Performance (129 € TTC/mois)" data-devis-title="Souscrire à Club+ Performance pour ma structure">Demander Club+ Performance</a>
@@ -660,19 +677,22 @@ section{position:relative}
         <thead>
           <tr>
             <th scope="col">Fonction</th>
+            <th scope="col">Gratuit</th>
             <th scope="col">Start</th>
             <th scope="col" class="col-performance">Performance</th>
           </tr>
         </thead>
         <tbody>
-          <tr><th scope="row">Prix (engagement 12 mois)</th><td>49 € TTC/mois</td><td>129 € TTC/mois</td></tr>
-          <tr><th scope="row">Prix (sans engagement)</th><td>59 € TTC/mois</td><td>139 € TTC/mois</td></tr>
-          <tr><th scope="row">Crédits inclus / mois</th><td>10</td><td>40</td></tr>
-          <tr><th scope="row">Utilisateurs inclus</th><td>5</td><td>15</td></tr>
-          <tr><th scope="row">Demandes de visuels</th><td class="check">✓</td><td class="check">✓</td></tr>
-          <tr><th scope="row">Structure / équipes / groupes / événements</th><td class="check">✓</td><td class="check">✓</td></tr>
-          <tr><th scope="row">Priorisation des demandes</th><td class="dash">—</td><td class="check">✓</td></tr>
-          <tr><th scope="row">Remise sur les prestations ponctuelles éligibles</th><td>5 %</td><td>10 %</td></tr>
+          <tr><th scope="row">Prix (engagement 12 mois)</th><td>0 € TTC/mois</td><td>49 € TTC/mois</td><td>129 € TTC/mois</td></tr>
+          <tr><th scope="row">Prix (sans engagement)</th><td>0 € TTC/mois</td><td>59 € TTC/mois</td><td>139 € TTC/mois</td></tr>
+          <tr><th scope="row">Crédits inclus / mois</th><td>0</td><td>10</td><td>40</td></tr>
+          <tr><th scope="row">Utilisateurs inclus</th><td>1</td><td>5</td><td>Illimité</td></tr>
+          <tr><th scope="row">Équipes incluses</th><td>1</td><td>2</td><td>Illimité</td></tr>
+          <tr><th scope="row">Réservation de prestations SportVision</th><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><th scope="row">Demandes de visuels</th><td class="dash">—</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><th scope="row">Structure / équipes / groupes / événements</th><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><th scope="row">Priorisation des demandes</th><td class="dash">—</td><td class="dash">—</td><td class="check">✓</td></tr>
+          <tr><th scope="row">Remise sur les prestations ponctuelles éligibles</th><td class="dash">—</td><td>5 %</td><td>10 %</td></tr>
         </tbody>
       </table>
     </div>

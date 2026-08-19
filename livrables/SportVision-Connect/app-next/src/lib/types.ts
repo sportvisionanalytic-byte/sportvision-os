@@ -23,6 +23,7 @@ export type OrgType =
   | "generic";
 
 export type PlanCode =
+  | "club_plus_free"
   | "club_plus_start"
   | "club_plus_performance"
   | "full_communication"

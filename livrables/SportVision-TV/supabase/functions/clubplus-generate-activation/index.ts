@@ -54,7 +54,7 @@ function json(body: unknown, status = 200) {
 }
 
 const STAFF_ROLES = ["admin", "sec", "com"];
-const VALID_PLANS = ["club", "performance"];
+const VALID_PLANS = ["free", "club", "performance"];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

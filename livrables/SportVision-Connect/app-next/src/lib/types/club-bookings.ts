@@ -81,4 +81,4 @@ export interface ClubBooking {
   createdAt: string;
 }
 
-export type ClubPlan = "club" | "performance";
+export type ClubPlan = "free" | "club" | "performance";

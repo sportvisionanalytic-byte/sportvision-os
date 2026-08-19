@@ -73,7 +73,7 @@ function json(body: unknown, status = 200) {
 }
 
 const STAFF_ROLES = ["admin", "sec", "com"];
-const VALID_PLANS = ["club", "performance"];
+const VALID_PLANS = ["free", "club", "performance"];
 // Mêmes valeurs que club_members.role (migration-clubplus-v1.sql) et
 // clubplus_activation_tokens.initial_role — UNIQUEMENT pour organization_type === 'club'.
 const VALID_ROLES = [

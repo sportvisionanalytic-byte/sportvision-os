@@ -1,43 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 import { consumePendingOnboarding, savePendingOnboarding } from "@/lib/signup/pending-onboarding";
 
-// /clubplus/activation?token=… — écran d'atterrissage réel d'un lien d'activation Club+ (type
-// "club") généré par clubplus-generate-activation ou connect-club-signup-review. Remplace, à
-// partir du 17/08/2026, l'ancienne route en fragment de hash (#/activation?token=…) héritée de
-// l'app vanilla (SportVision-Connect/app/index.html) : ni app-connect ni app-next (routeur App
-// Router, aucune route en hash) ne l'ont jamais lue — trouvé lors de l'audit complet Club+, tout
-// lien d'activation généré depuis fin de fusion Connect/Club+ (12/08/2026) atterrissait sur une
-// page blanche.
-//
-// Le token est revérifié intégralement côté serveur par clubplus-activate (voir ce fichier) :
-// clubplus-check-activation-token, appelée ici, ne sert qu'à décider quel écran afficher.
-const PLAN_LABELS: Record<string, string> = { free: "Club+ Gratuit", club: "Club+ Start", performance: "Club+ Performance" };
-
-type CheckStatus = "loading" | "valid" | "invalid" | "expired" | "used" | "revoked" | "error";
-
-export default function ActivationPage() {
-  return (
-    <Suspense fallback={null}>
-      <ActivationContent />
-    </Suspense>
-  );
-}
-
-function ActivationContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = (searchParams.get("token") || "").trim();
-
-  const [status, setStatus] = useState<CheckStatus>("loading");
-  const [clubNomPrefill, setClubNomPrefill] = useState("");
-  const [plan, setPlan] = useState("club");
-
+// /signup-free — inscription Club+ Gratuit instantanée, sans validation staff (décision Fouka,
+// 19/08/2026 — voir lib/signup/pending-onboarding.ts § "clubplus-free-signup"). Volontairement
+// une route à plat, hors du tunnel /signup/request/* (5 étapes, demande + revue staff) : ce
+// dernier reste le seul chemin pour Start/Performance et les autres types de structure. Même
+// gabarit que /activation (page autonome, pas de layout partagé), sans étape de vérification de
+// token puisqu'il n'y a ici aucun lien privé à valider.
+export default function SignupFreePage() {
   const [clubNom, setClubNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
@@ -47,29 +22,6 @@ function ActivationContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
-
-  useEffect(() => {
-    if (!token) {
-      setStatus("invalid");
-      return;
-    }
-    (async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase.functions.invoke("clubplus-check-activation-token", {
-        body: { token },
-      });
-      if (error || !data) {
-        setStatus("error");
-        return;
-      }
-      setStatus(data.status as CheckStatus);
-      if (data.status === "valid") {
-        setClubNomPrefill(data.club_nom_prefill || "");
-        setClubNom(data.club_nom_prefill || "");
-        setPlan(data.plan || "club");
-      }
-    })();
-  }, [token]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -86,18 +38,18 @@ function ActivationContent() {
       setSubmitting(false);
       setSubmitError(
         signUpError.message.toLowerCase().includes("already registered")
-          ? "Un compte existe déjà avec cette adresse e-mail. Connectez-vous, le lien d'activation sera repris automatiquement."
+          ? "Un compte existe déjà avec cette adresse e-mail. Connectez-vous, votre club sera créé automatiquement."
           : signUpError.message,
       );
       return;
     }
 
-    const pending = { kind: "clubplus-activation" as const, token, clubNom: clubNom.trim(), prenom, nom, telephone };
+    const pending = { kind: "clubplus-free-signup" as const, clubNom: clubNom.trim(), prenom, nom, telephone };
 
     if (!signUpData.session) {
-      // Confirmation d'e-mail active sur ce projet (cas normal) : pas de session tant que le lien
-      // reçu par e-mail n'a pas été cliqué — voir lib/signup/pending-onboarding.ts. L'activation
-      // réelle du club se joue depuis /auth/confirming, juste après.
+      // Confirmation d'e-mail active sur ce projet : pas de session tant que le lien reçu par
+      // e-mail n'a pas été cliqué — la création du club se joue depuis /auth/confirming, juste
+      // après, quand une session réelle existe (voir consumePendingOnboarding).
       savePendingOnboarding(pending);
       setSubmitting(false);
       setAwaitingConfirmation(true);
@@ -106,29 +58,11 @@ function ActivationContent() {
 
     try {
       await consumePendingOnboarding(supabase);
-      router.push("/dashboard");
-      router.refresh();
+      window.location.href = "/dashboard";
     } catch (e) {
       setSubmitting(false);
-      setSubmitError(e instanceof Error ? e.message : "L'activation a échoué. Réessayez.");
+      setSubmitError(e instanceof Error ? e.message : "La création de votre espace a échoué. Réessayez.");
     }
-  }
-
-  if (status === "loading") {
-    return (
-      <CenteredShell>
-        <Loader2 className="h-6 w-6 animate-spin text-brand-blue-electric" aria-hidden />
-        <p className="mt-3 text-[13.5px] text-text-soft">Vérification du lien…</p>
-      </CenteredShell>
-    );
-  }
-
-  if (status !== "valid") {
-    return (
-      <CenteredShell>
-        <StatusMessage status={status} />
-      </CenteredShell>
-    );
   }
 
   if (awaitingConfirmation) {
@@ -137,7 +71,7 @@ function ActivationContent() {
         <h2 className="text-[22px] font-extrabold tracking-tight">Vérifiez vos e-mails</h2>
         <p className="mt-3 max-w-sm text-[13.5px] leading-relaxed text-text-soft">
           Un e-mail de confirmation a été envoyé à <strong className="text-text">{email}</strong>. Cliquez sur le lien
-          qu&apos;il contient pour finaliser l&apos;activation de {clubNom.trim() || "votre club"}.
+          qu&apos;il contient pour créer votre espace Club+ Gratuit.
         </p>
       </CenteredShell>
     );
@@ -155,16 +89,10 @@ function ActivationContent() {
           </span>
         </div>
 
-        <h2 className="mt-7 text-[26px] font-extrabold tracking-tight">Activer votre espace Club+</h2>
+        <h2 className="mt-7 text-[26px] font-extrabold tracking-tight">Créez votre espace Club+ Gratuit</h2>
         <p className="mt-2 text-[14px] leading-relaxed text-text-soft">
-          {clubNomPrefill ? (
-            <>
-              SportVision vous invite à activer l&apos;espace Club+ de <strong className="text-text">{clubNomPrefill}</strong>
-              , formule {PLAN_LABELS[plan] || plan}.
-            </>
-          ) : (
-            <>Créez votre compte pour activer votre espace Club+.</>
-          )}
+          1 utilisateur, 1 équipe, réservation de prestations SportVision au tarif standard. Sans engagement, sans
+          carte bancaire.
         </p>
 
         {submitError && (
@@ -185,27 +113,11 @@ function ActivationContent() {
           <Field label="Mot de passe" value={password} onChange={setPassword} type="password" required minLength={6} />
 
           <Button type="submit" disabled={submitting} className="mt-2 h-12 w-full text-[15px]">
-            {submitting ? "Activation…" : "Activer mon espace Club+"}
+            {submitting ? "Création…" : "Créer mon espace Club+ Gratuit"}
           </Button>
         </form>
       </div>
     </div>
-  );
-}
-
-function StatusMessage({ status }: { status: CheckStatus }) {
-  const MESSAGES: Record<string, string> = {
-    invalid: "Ce lien d'activation n'est pas valide.",
-    expired: "Ce lien d'activation a expiré. Contactez SportVision pour en obtenir un nouveau.",
-    used: "Ce lien d'activation a déjà été utilisé.",
-    revoked: "Ce lien d'activation a été retiré par SportVision.",
-    error: "Impossible de vérifier ce lien pour le moment. Réessayez dans quelques instants.",
-  };
-  return (
-    <>
-      <AlertCircle className="h-8 w-8 text-danger-fg" aria-hidden />
-      <p className="mt-3 max-w-sm text-[14px] font-semibold text-text">{MESSAGES[status] || MESSAGES.invalid}</p>
-    </>
   );
 }
 

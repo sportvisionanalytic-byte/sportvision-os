@@ -74,6 +74,12 @@ const VALID_ROLES = [
   "resp_equipe", "sponsor_mgr", "tresorier", "membre_bureau", "lecture_seule",
 ];
 
+// 19/08/2026 — plafonds d'utilisateurs par plan (décision Fouka, ajout de Club+ Gratuit) :
+// null = illimité. Reste ici plutôt qu'importé de plans.ts côté app-next (aucun partage de code
+// entre l'app Next.js et les Edge Functions Deno sur ce projet — même limite déjà acceptée pour
+// CREDITS_BY_PLAN dans clubplus-onboarding/clubplus-activate/stripe-webhook).
+const MAX_USERS_BY_PLAN: Record<string, number | null> = { free: 1, club: 5, performance: null };
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -124,6 +130,25 @@ serve(async (req) => {
       .eq("status", "actif")
       .maybeSingle();
     if (!callerMember) return json({ error: "Seul un administrateur du club peut inviter un utilisateur." }, 403);
+
+    // 19/08/2026 — plafond d'utilisateurs par plan (Club+ Gratuit : 1, Start : 5, Performance :
+    // illimité). Vérifié ici, service-role, avant d'envoyer une invitation — jamais côté client.
+    const { data: clubRow } = await admin.from("clubs").select("plan").eq("id", clubId).maybeSingle();
+    const clubPlan: string = (clubRow as { plan?: string } | null)?.plan || "club";
+    const maxUsers = MAX_USERS_BY_PLAN[clubPlan] ?? MAX_USERS_BY_PLAN.club;
+    if (maxUsers !== null) {
+      const { count: memberCount } = await admin
+        .from("club_members")
+        .select("id", { count: "exact", head: true })
+        .eq("club_id", clubId)
+        .in("status", ["actif", "invitation"]);
+      if ((memberCount || 0) >= maxUsers) {
+        return json(
+          { error: `Ce plan est limité à ${maxUsers} utilisateur${maxUsers > 1 ? "s" : ""}. Passez à une formule supérieure pour inviter davantage de monde.` },
+          403,
+        );
+      }
+    }
 
     // Idempotence : déjà membre de CE club → renvoie la ligne existante.
     const { data: existingUserRes } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
