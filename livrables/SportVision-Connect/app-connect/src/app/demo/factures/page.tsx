@@ -5,6 +5,10 @@ const STATUS_LABEL: Record<string, { label: string; fg: string; bg: string }> = 
   payee: { label: "Payée", fg: "#22D3EE", bg: "rgba(34,211,238,.14)" },
 };
 
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
+
 export default function DemoFacturesPage() {
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
@@ -16,15 +20,20 @@ export default function DemoFacturesPage() {
         {DEMO_INVOICES.map((inv) => {
           const s = STATUS_LABEL[inv.status]!;
           return (
-            <div key={inv.id} className="flex flex-wrap items-center gap-4 rounded-sv-card border border-border bg-surface p-5">
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className="font-sora text-[16px] font-semibold">{inv.label}</span>
-                <span className="text-[13px] text-text-tertiary">{new Date(inv.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
+            <div key={inv.id} className="flex flex-col gap-3 rounded-sv-card border border-border bg-surface p-5">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="font-sora text-[16px] font-semibold">{inv.label}</span>
+                  <span className="text-[13px] text-text-tertiary">
+                    Prestation : {formatDate(inv.prestationDate)} · Facture émise : {formatDate(inv.factureDate)}
+                  </span>
+                </div>
+                <div className="ml-auto flex flex-none items-center gap-3">
+                  <span className="font-sora text-[16px] font-semibold">{inv.amount} €</span>
+                  <span className="rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: s.fg, background: s.bg }}>{s.label}</span>
+                </div>
               </div>
-              <div className="ml-auto flex flex-none items-center gap-3">
-                <span className="font-sora text-[16px] font-semibold">{inv.amount} €</span>
-                <span className="rounded-sv-pill px-2.5 py-1 text-[12px] font-medium" style={{ color: s.fg, background: s.bg }}>{s.label}</span>
-              </div>
+              {inv.sub && <p className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">{inv.sub}</p>}
             </div>
           );
         })}

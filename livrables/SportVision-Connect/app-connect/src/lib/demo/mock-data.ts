@@ -12,6 +12,7 @@
 import type { ContentItem } from "@/app/(joueur)/contenus/ContentGallery";
 import type { CalendarEventData } from "@/app/(joueur)/calendrier/CalendarView";
 import type { FundingRow } from "@/app/(joueur)/cotisations/FundingTabs";
+import type { FundingDetail } from "@/app/(joueur)/cotisations/[id]/FundingDetailView";
 import type { MessageData } from "@/app/(joueur)/messages/MessagesThread";
 
 export const DEMO_FIRST_NAME = "Lucas";
@@ -44,8 +45,8 @@ export const DEMO_CALENDAR_EVENTS: CalendarEventData[] = [
 
 export const DEMO_MESSAGES: MessageData[] = [
   { id: "demo-m1", auteur: "staff", contenu: "Bienvenue sur SportVision Connect. Écrivez-nous ici pour toute question sur vos prestations.", pieceJointeUrl: null, lu: true, createdAt: "2026-08-01T09:00:00.000Z" },
-  { id: "demo-m2", auteur: "client", contenu: "Bonjour, à quelle heure arrive l'opérateur samedi ?", pieceJointeUrl: null, lu: true, createdAt: "2026-08-20T11:15:00.000Z" },
-  { id: "demo-m3", auteur: "staff", contenu: "Bonjour Lucas, l'opérateur sera sur place dès 14h45 pour le coup d'envoi à 15h.", pieceJointeUrl: null, lu: true, createdAt: "2026-08-20T11:42:00.000Z" },
+  { id: "demo-m2", auteur: "client", contenu: "Bonjour, à quelle heure arrive l'opérateur samedi ?", pieceJointeUrl: null, lu: true, createdAt: "2026-08-17T11:15:00.000Z" },
+  { id: "demo-m3", auteur: "staff", contenu: "Bonjour Lucas, l'opérateur sera sur place dès 14h45 pour le coup d'envoi à 15h.", pieceJointeUrl: null, lu: false, createdAt: "2026-08-17T11:42:00.000Z" },
 ];
 
 export const DEMO_FUNDING: FundingRow[] = [
@@ -69,6 +70,33 @@ export const DEMO_FUNDING: FundingRow[] = [
   },
 ];
 
+export const DEMO_FUNDING_DETAIL: FundingDetail = {
+  id: "demo-f1",
+  group_id: "demo-team",
+  group_name: "U17 FC Fontainebleau",
+  created_by: "demo-user",
+  is_creator: true,
+  titre: "Pack Match Complet vs AS Melun",
+  contexte: "Match du 24 août",
+  catalogue_offre_nom: "Pack Match Complet",
+  montant_cible: 160,
+  montant_collecte: 100,
+  repartition_mode: "egale",
+  nb_participants_prevu: 8,
+  date_limite: "2026-08-23T00:00:00.000Z",
+  statut: "ouverte",
+  share_token: "demo-token",
+  created_at: "2026-08-18T09:00:00.000Z",
+  my_contribution_amount: 20,
+  contributions: [
+    { id: "demo-contrib-1", name: "Lucas Martin", is_guest: false, montant: 20, created_at: "2026-08-18T09:05:00.000Z" },
+    { id: "demo-contrib-2", name: "Tom D.", is_guest: false, montant: 20, created_at: "2026-08-18T10:30:00.000Z" },
+    { id: "demo-contrib-3", name: "Nathan R.", is_guest: false, montant: 20, created_at: "2026-08-18T14:12:00.000Z" },
+    { id: "demo-contrib-4", name: "Un proche", is_guest: true, montant: 20, created_at: "2026-08-18T16:45:00.000Z" },
+    { id: "demo-contrib-5", name: "Un proche", is_guest: true, montant: 20, created_at: "2026-08-18T18:20:00.000Z" },
+  ],
+};
+
 export const DEMO_GROUPS = [
   {
     id: "demo-team",
@@ -86,9 +114,28 @@ export const DEMO_GROUPS = [
   },
 ];
 
+// Montant du solde volontairement cohérent avec DEMO_FUNDING (160€ - 100€ déjà collectés via
+// le paiement collectif = 60€ restants) — pas les 160€ bruts de la prestation, qui donnerait
+// l'impression que rien n'a encore été payé (trouvé lors de l'audit du 19/08).
 export const DEMO_INVOICES = [
-  { id: "demo-i1", label: "Pack Match Complet — 24 août 2026", amount: 160, status: "a_regler" as const, date: "2026-08-20T00:00:00.000Z" },
-  { id: "demo-i2", label: "Match Photo — 10 août 2026", amount: 120, status: "payee" as const, date: "2026-08-10T00:00:00.000Z" },
+  {
+    id: "demo-i1",
+    label: "Pack Match Complet",
+    sub: "Solde restant après paiement collectif (100 € déjà collectés sur 160 €)",
+    amount: 60,
+    status: "a_regler" as const,
+    prestationDate: "2026-08-24T00:00:00.000Z",
+    factureDate: "2026-08-18T00:00:00.000Z",
+  },
+  {
+    id: "demo-i2",
+    label: "Match Photo",
+    sub: null,
+    amount: 120,
+    status: "payee" as const,
+    prestationDate: "2026-08-10T00:00:00.000Z",
+    factureDate: "2026-08-10T00:00:00.000Z",
+  },
 ];
 
 export const DEMO_ORDERS = [

@@ -132,7 +132,7 @@ export default async function PrestationFichePage({ params }: { params: Promise<
           <div className="hidden flex-col gap-4 self-start rounded-sv-card border border-border bg-surface p-5 lg:flex">
             <div className="flex flex-col gap-1">
               <span className="font-sora text-[26px] font-bold tracking-tight">{ttc !== null ? `${formatEUR(ttc)} TTC` : "Sur devis"}</span>
-              {ttc !== null && <span className="text-[13px] text-text-tertiary">À 10 joueurs : {formatEUR(perPersonTtc(ttc))} / personne</span>}
+              {ttc !== null && <span className="text-[13px] text-text-tertiary">Exemple à 10 participants : {formatEUR(perPersonTtc(ttc))} / personne</span>}
             </div>
             <Link
               href={`/prestations/${offer.id}/reserver`}

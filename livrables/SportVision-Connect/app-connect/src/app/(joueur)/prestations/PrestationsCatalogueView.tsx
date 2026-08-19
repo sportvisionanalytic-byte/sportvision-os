@@ -8,7 +8,7 @@ import { formatEUR } from "@/lib/prestations/format";
 // Filtres dynamiques : "Tous" + uniquement les familles réellement présentes dans le catalogue
 // (voir lib/prestations/catalogue.ts — l'onglet "Montage" apparaîtra tout seul le jour où une
 // offre de cette famille existera réellement, jamais construit en dur ici).
-export function PrestationsCatalogueView({ offers }: { offers: CatalogueOffer[] }) {
+export function PrestationsCatalogueView({ offers, basePath = "/prestations" }: { offers: CatalogueOffer[]; basePath?: string }) {
   const families = useMemo(() => {
     const set = new Set(offers.map((o) => o.family).filter((f): f is NonNullable<typeof f> => !!f));
     return Array.from(set);
@@ -44,7 +44,7 @@ export function PrestationsCatalogueView({ offers }: { offers: CatalogueOffer[] 
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((offer, i) => (
-            <OfferCard key={offer.id} offer={offer} index={i} />
+            <OfferCard key={offer.id} offer={offer} index={i} basePath={basePath} />
           ))}
         </div>
       )}
@@ -52,13 +52,13 @@ export function PrestationsCatalogueView({ offers }: { offers: CatalogueOffer[] 
   );
 }
 
-function OfferCard({ offer, index }: { offer: CatalogueOffer; index: number }) {
+function OfferCard({ offer, index, basePath }: { offer: CatalogueOffer; index: number; basePath: string }) {
   const ttc = baseTtc(offer);
   const recommended = isRecommended(offer);
   const collectif = isCollectif(offer);
   return (
     <Link
-      href={`/prestations/${offer.id}`}
+      href={`${basePath}/${offer.id}`}
       className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5 transition-colors duration-150 hover:bg-surface-hover animate-sv-in motion-reduce:animate-none"
       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
     >
@@ -100,7 +100,7 @@ function OfferCard({ offer, index }: { offer: CatalogueOffer; index: number }) {
           {ttc !== null ? `${formatEUR(ttc)} TTC` : "Sur devis"}
         </span>
         {ttc !== null && (
-          <span className="text-[12px] text-text-tertiary">À 10 joueurs : {formatEUR(perPersonTtc(ttc))} / personne</span>
+          <span className="text-[12px] text-text-tertiary">Exemple à 10 participants : {formatEUR(perPersonTtc(ttc))} / personne</span>
         )}
       </div>
     </Link>

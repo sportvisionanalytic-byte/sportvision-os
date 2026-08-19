@@ -17,7 +17,7 @@ export default async function DemoPrestationsPage() {
           Réservez une couverture photo, vidéo ou une captation pour votre prochain match.
         </p>
       </div>
-      <PrestationsCatalogueView offers={offers} />
+      <PrestationsCatalogueView offers={offers} basePath="/demo/prestations" />
     </div>
   );
 }
