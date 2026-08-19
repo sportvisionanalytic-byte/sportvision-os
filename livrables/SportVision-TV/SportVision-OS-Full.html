@@ -23397,11 +23397,12 @@ async function loadCommunicationHub(){
         <div class="cd-h"><div class="cd-t">Derniers envois</div></div>
         <div class="tw"><table><thead><tr><th>Événement</th><th>Destinataire</th><th>Statut</th><th>Tentatives</th><th>Date</th></tr></thead><tbody>
         ${recent.length?recent.map(r=>{
-          const stCl={SENT:'ba',DELIVERED:'ba',PENDING:'bw',QUEUED:'bw',FAILED:'br',CANCELLED:'bn',SUPPRESSED:'bn'}[r.status]||'bn';
+          const stCl={SENT:'ba',DELIVERED:'ba',PENDING:'bw',QUEUED:'bw',DEFERRED:'bw',FAILED:'br',SOFT_BOUNCE:'br',HARD_BOUNCE:'br',COMPLAINT:'br',CANCELLED:'bn',SUPPRESSED:'bn',SKIPPED_PREFERENCE:'bn'}[r.status]||'bn';
+          const stLbl={SENT:'Envoyé',DELIVERED:'Délivré',PENDING:'En attente',QUEUED:'En file',DEFERRED:'Différé',FAILED:'Échoué',SOFT_BOUNCE:'Rejet temporaire',HARD_BOUNCE:'Rejet définitif',COMPLAINT:'Plainte',CANCELLED:'Annulé',SUPPRESSED:'Supprimé',SKIPPED_PREFERENCE:'Ignoré (préférence)'}[r.status]||r.status;
           return`<tr>
             <td class="tp">${esc(r.event_type)}</td>
             <td class="tm">${esc(r.recipient_email||'—')}</td>
-            <td><span class="bd ${stCl}"><span class="bd-d"></span>${esc(r.status)}</span>${r.last_error?`<div style="font-size:10px;color:var(--t3);margin-top:2px;max-width:220px;white-space:normal">${esc(r.last_error)}</div>`:''}</td>
+            <td><span class="bd ${stCl}"><span class="bd-d"></span>${esc(stLbl)}</span>${r.last_error?`<div style="font-size:10px;color:var(--t3);margin-top:2px;max-width:220px;white-space:normal">${esc(r.last_error)}</div>`:''}</td>
             <td class="tm">${r.attempt_count||0}</td>
             <td class="tm">${new Date(r.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
           </tr>`;
