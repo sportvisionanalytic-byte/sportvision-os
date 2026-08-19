@@ -6,11 +6,15 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
 
-type Choice = "search" | "declare" | "none" | null;
+type Choice = "search" | "declare" | "none" | "code" | null;
 interface ClubResult {
   id: string;
   nom: string;
   ville: string | null;
+}
+interface TeamResult {
+  id: string;
+  name: string;
 }
 
 // Recherche/déclaration de club pour un utilisateur déjà authentifié — mêmes actions serveur
@@ -35,9 +39,12 @@ export function AddClubForm({
   const [lastName, setLastName] = useState(initialLastName);
   const [dateNaissance, setDateNaissance] = useState("");
   const [team, setTeam] = useState("");
+  const [teams, setTeams] = useState<TeamResult[] | null>(null);
+  const [teamId, setTeamId] = useState("");
   const [declareName, setDeclareName] = useState("");
   const [declareCity, setDeclareCity] = useState("");
   const [declareTeam, setDeclareTeam] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
 
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -66,6 +73,31 @@ export function AddClubForm({
     return () => clearTimeout(t);
   }, [choice, query]);
 
+  // Équipes réelles du club sélectionné (19/08/2026, soir) — menu déroulant si le club en a déjà
+  // (action "teams", même raisonnement que la recherche : team_invite_codes/club_teams ne sont
+  // pas lisibles par un prospect en direct, RLS réservée aux membres). Repli sur le champ texte
+  // ci-dessous si le club n'en a encore aucune.
+  useEffect(() => {
+    if (!selected) {
+      setTeams(null);
+      setTeamId("");
+      return;
+    }
+    setTeams(null);
+    setTeamId("");
+    const supabase = createClient();
+    supabase.functions
+      .invoke("connect-player-onboarding", { body: { action: "teams", orgId: selected.id } })
+      .then(({ data, error: fnError }) => {
+        if (fnError || data?.error) {
+          setTeams([]);
+          return;
+        }
+        setTeams(data?.results || []);
+      })
+      .catch(() => setTeams([]));
+  }, [selected]);
+
   async function handleJoin() {
     setTouched(true);
     if (!selected || !firstName.trim() || !lastName.trim() || !dateNaissance || busy) return;
@@ -79,12 +111,37 @@ export function AddClubForm({
         prenom: firstName.trim(),
         nom: lastName.trim(),
         dateNaissance,
-        teamName: team.trim(),
+        teamId: teamId || undefined,
+        teamName: teamId ? undefined : team.trim(),
       },
     });
     setBusy(false);
     if (fnError || data?.error) {
       setError("Impossible de rejoindre ce club pour le moment. Réessayez dans un instant.");
+      return;
+    }
+    router.push("/affiliations");
+    router.refresh();
+  }
+
+  async function handleJoinCode() {
+    setTouched(true);
+    if (!inviteCode.trim() || !firstName.trim() || !lastName.trim() || !dateNaissance || busy) return;
+    setBusy(true);
+    setError(null);
+    const supabase = createClient();
+    const { data, error: fnError } = await supabase.functions.invoke("connect-player-onboarding", {
+      body: {
+        action: "join_code",
+        code: inviteCode.trim(),
+        prenom: firstName.trim(),
+        nom: lastName.trim(),
+        dateNaissance,
+      },
+    });
+    setBusy(false);
+    if (fnError || data?.error) {
+      setError("Code invalide ou expiré. Vérifiez-le auprès de votre club.");
       return;
     }
     router.push("/affiliations");
@@ -181,6 +238,13 @@ export function AddClubForm({
           onClick={() => setChoice("search")}
         />
         <ChoiceCard
+          icon="qr_code_2"
+          iconColor="#34D399"
+          label="J'ai un code d'invitation"
+          sub="Rejoignez directement l'équipe qui vous l'a communiqué."
+          onClick={() => setChoice("code")}
+        />
+        <ChoiceCard
           icon="add_home_work"
           iconColor="#C084FC"
           label="Mon club n'est pas sur SportVision"
@@ -194,6 +258,48 @@ export function AddClubForm({
           sub="Je réserve une prestation sans être affilié à un club."
           onClick={() => setChoice("none")}
         />
+      </div>
+    );
+  }
+
+  if (choice === "code") {
+    return (
+      <div className="flex flex-col gap-5 animate-sv-in">
+        <BackLink onClick={() => { setChoice(null); setError(null); }} />
+        <p className="text-[14px] leading-relaxed text-text-tertiary lg:text-[13px]">
+          Le code vous a été communiqué par votre club ou votre coach — il vous rattache
+          directement à la bonne équipe.
+        </p>
+        <div className="flex flex-col gap-4 rounded-sv-card border border-border bg-surface p-4">
+          <Field
+            id="ac-code-code"
+            label="Code d'invitation"
+            placeholder="SV-U17-1234"
+            value={inviteCode}
+            onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+            error={touched && !inviteCode.trim() ? "Requis." : null}
+          />
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <Field id="ac-code-fn" label="Prénom" value={firstName} onChange={(e) => setFirstName(e.target.value)} error={touched && !firstName.trim() ? "Requis." : null} />
+            </div>
+            <div className="flex-1">
+              <Field id="ac-code-ln" label="Nom" value={lastName} onChange={(e) => setLastName(e.target.value)} error={touched && !lastName.trim() ? "Requis." : null} />
+            </div>
+          </div>
+          <Field
+            id="ac-code-birth"
+            label="Date de naissance"
+            type="date"
+            value={dateNaissance}
+            onChange={(e) => setDateNaissance(e.target.value)}
+            error={touched && !dateNaissance ? "Requise." : null}
+          />
+        </div>
+        {error && <ErrorBanner message={error} />}
+        <Button onClick={handleJoinCode} loading={busy} className="w-full">
+          Rejoindre avec ce code
+        </Button>
       </div>
     );
   }
@@ -311,13 +417,33 @@ export function AddClubForm({
               onChange={(e) => setDateNaissance(e.target.value)}
               error={touched && !dateNaissance ? "Requise pour rejoindre un club." : null}
             />
-            <Field
-              id="ac-team"
-              label="Équipe ou catégorie · facultatif"
-              placeholder="U17, Seniors…"
-              value={team}
-              onChange={(e) => setTeam(e.target.value)}
-            />
+            {teams === null ? (
+              <span className="text-[13px] text-text-tertiary">Chargement des équipes…</span>
+            ) : teams.length > 0 ? (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[14px] font-medium text-text lg:text-[13px]">Équipe ou catégorie · facultatif</span>
+                <select
+                  value={teamId}
+                  onChange={(e) => setTeamId(e.target.value)}
+                  className="h-[54px] w-full rounded-sv border border-border-strong bg-surface px-4 text-[16px] text-text outline-none focus:border-[#8CA9FF] focus:shadow-[0_0_0_3px_rgba(79,125,255,.28)]"
+                >
+                  <option value="">Aucune / je ne sais pas</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <Field
+                id="ac-team"
+                label="Équipe ou catégorie · facultatif"
+                placeholder="U17, Seniors…"
+                value={team}
+                onChange={(e) => setTeam(e.target.value)}
+              />
+            )}
           </div>
         )}
 
