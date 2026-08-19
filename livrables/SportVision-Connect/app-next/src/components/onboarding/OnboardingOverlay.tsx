@@ -33,7 +33,7 @@ import { getOnboardingProgress, setOnboardingProgress } from "./onboarding-stora
 // le README.md de app-next § Conventions et la consigne de la tâche.
 //
 // Trois parcours selon l'offre active (README.md § Logique d'abonnement) : Full Communication a
-// son propre parcours, Club+ (Start ou Performance) un autre, tout le reste (Essentiel, Accès via
+// son propre parcours, Club+ (Gratuit, Start ou Performance) un autre, tout le reste (Accès via
 // le club, Prestation unique) le parcours générique. La détection se fait sur l'offre de la
 // session active plutôt que sur un paramètre transmis depuis /signup : après un `router.push`
 // vers /dashboard, on quitte le groupe de routes /signup (et son contexte en mémoire) — la
@@ -86,7 +86,11 @@ function useOnboardingVariant() {
   if (ctx.subscription.planCode === "full_communication") {
     return { steps: FULL_COM_STEPS, heading: "Onboarding Full Communication" };
   }
-  if (ctx.subscription.planCode === "club_plus_start" || ctx.subscription.planCode === "club_plus_performance") {
+  if (
+    ctx.subscription.planCode === "club_plus_free" ||
+    ctx.subscription.planCode === "club_plus_start" ||
+    ctx.subscription.planCode === "club_plus_performance"
+  ) {
     return { steps: CLUB_PLUS_STEPS, heading: "Onboarding Club+" };
   }
   return { steps: GENERIC_STEPS, heading: "Bienvenue sur Connect" };
