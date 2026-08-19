@@ -146,7 +146,13 @@ export const DEMO_PROFILES: DemoProfile[] = [
     "club-communication",
     "Club — Communication (CM interne)",
     "Club — rôle",
-    makeCtx({ ...CLUB, orgType: "club", planCode: "full_communication", role: "communication_manager", jobTitle: "Responsable communication", fullEntitlements: true }),
+    // club_plus_performance (pas full_communication) : un CM INTERNE pilote lui-même la
+    // communication du club — c'est justement l'inverse de Full Communication, où c'est
+    // SportVision qui pilote. Choix corrigé le 19/08/2026 : l'ancien plan full_communication
+    // faisait passer ce profil par le dashboard Full Communication (routage réel du produit :
+    // planCode prime toujours sur le rôle, voir dashboard/page.tsx) et masquait complètement le
+    // dashboard dédié au rôle communication_manager construit le même jour.
+    makeCtx({ ...CLUB, orgType: "club", planCode: "club_plus_performance", role: "communication_manager", jobTitle: "Responsable communication", fullEntitlements: false }),
   ),
   profile(
     "club-secretaire",

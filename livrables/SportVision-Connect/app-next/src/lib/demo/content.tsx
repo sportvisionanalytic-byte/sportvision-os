@@ -6,6 +6,7 @@ import { orgData } from "./orgs";
 import { Card, DataTable, EmptyState, LockedModule, MessageBubble, PageHeader, RowList, StatGrid } from "@/components/demo/DemoBlocks";
 import { CreditRequestPreview } from "@/components/demo/CreditRequestPreview";
 import { ValidationAction } from "@/components/demo/ValidationAction";
+import { AffiliationAction } from "@/components/demo/AffiliationAction";
 
 // Contenu statique des écrans de démo Club+, un par chemin de navigation (voir profiles.ts pour
 // la liste des chemins possibles par profil). Aucune donnée réelle, aucun appel Supabase.
@@ -361,12 +362,19 @@ function Teams(p: DemoProfile): ReactNode {
 function TeamRequests(): ReactNode {
   // "Affiliations" partout (audit démo du 19/08/2026 : navigation.ts utilisait 3 libellés
   // différents — "Adhésions"/"Joueurs & affiliations"/"Affiliations" — pour cette même page,
-  // corrigé aussi côté vrai produit, voir navigation.ts).
-  return ListPage("Affiliations", "Demandes d'affiliation en attente de validation.", [
-    { primary: "Lucas Martin — U17", badge: { label: "En attente", tone: "warning" } },
-    { primary: "Emma Dubois — U15", badge: { label: "Acceptée", tone: "success" } },
-    { primary: "Tom Richard — Seniors A", badge: { label: "En attente", tone: "warning" } },
-  ]);
+  // corrigé aussi côté vrai produit, voir navigation.ts). Actions Valider/Refuser/Demander une
+  // info : miroir du vrai flow (team-requests/page.tsx + migration-clubplus-v46).
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader title="Affiliations" subtitle="Demandes d'affiliation en attente de validation." />
+      <Card>
+        <div className="flex flex-col">
+          <AffiliationAction name="Lucas Martin" team="U17" />
+          <AffiliationAction name="Tom Richard" team="Seniors A" />
+        </div>
+      </Card>
+    </div>
+  );
 }
 
 function Sponsors(p: DemoProfile): ReactNode {

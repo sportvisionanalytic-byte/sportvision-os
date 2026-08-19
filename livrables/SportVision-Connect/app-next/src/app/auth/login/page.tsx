@@ -79,15 +79,15 @@ export default function LoginPage() {
           <h1 className="mt-6 text-[40px] font-extrabold leading-[1.08] tracking-tight text-white">
             Votre structure.
             <br />
-            Vos prestations.
+            Votre communication.
             <br />
             <span className="bg-gradient-to-r from-brand-blue-electric via-brand-cyan to-brand-violet-light bg-clip-text text-transparent">
-              Votre relation SportVision.
+              Votre espace.
             </span>
           </h1>
           <p className="mt-5 max-w-[420px] text-[16px] leading-relaxed text-text-secondary">
-            Retrouvez vos demandes, contenus, prestations et échéances dans un seul espace
-            professionnel.
+            Centralisez vos équipes, vos contenus, vos demandes et vos services SportVision dans un
+            seul espace professionnel.
           </p>
         </div>
 
