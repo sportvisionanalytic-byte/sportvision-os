@@ -9,6 +9,11 @@
 export interface OrgContentItem {
   title: string;
   kind: string;
+  /** Miroir de media_access_rules (visibility_mode team/players, sinon "organization" = privé
+   * Club+) — audit du 19/08/2026 : la démo ne montrait aucune notion de visibilité, alors que ce
+   * mécanisme existe déjà et fonctionne réellement (RLS + éditeur UI, voir VisibilityEditor.tsx).
+   * Optionnel : par défaut "Structure entière". */
+  visibility?: string;
 }
 export interface OrgCalendarItem {
   primary: string;
@@ -38,11 +43,11 @@ export const ORG_DATA: Record<string, OrgData> = {
   "demo-club": {
     contactName: "Léa Fontaine",
     content: [
-      { title: "Match vs AS Melun — Highlights", kind: "video" },
-      { title: "Portraits d'équipe — Rentrée", kind: "photo" },
-      { title: "Entraînement collectif", kind: "video" },
-      { title: "Affiche tournoi de rentrée", kind: "creation" },
-      { title: "Interview capitaine", kind: "video" },
+      { title: "Match vs AS Melun — Highlights", kind: "video", visibility: "Affiliés U17" },
+      { title: "Portraits d'équipe — Rentrée", kind: "photo", visibility: "Affiliés U17" },
+      { title: "Entraînement collectif", kind: "video", visibility: "Affiliés U17" },
+      { title: "Affiche tournoi de rentrée", kind: "creation", visibility: "Structure entière" },
+      { title: "Interview capitaine", kind: "video", visibility: "Affiliés U17" },
       { title: "Célébration but", kind: "photo" },
       { title: "Séance vidéo analyse", kind: "video" },
       { title: "Logo club HD", kind: "creation" },

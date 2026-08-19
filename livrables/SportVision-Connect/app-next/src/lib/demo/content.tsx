@@ -4,6 +4,8 @@ import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
 import type { DemoProfile } from "./profiles";
 import { orgData } from "./orgs";
 import { Card, DataTable, EmptyState, LockedModule, MessageBubble, PageHeader, RowList, StatGrid } from "@/components/demo/DemoBlocks";
+import { CreditRequestPreview } from "@/components/demo/CreditRequestPreview";
+import { ValidationAction } from "@/components/demo/ValidationAction";
 
 // Contenu statique des écrans de démo Club+, un par chemin de navigation (voir profiles.ts pour
 // la liste des chemins possibles par profil). Aucune donnée réelle, aucun appel Supabase.
@@ -299,15 +301,30 @@ function CommunicationCredits(): ReactNode {
   );
 }
 
-function Requests(): ReactNode {
-  return ListPage("Demandes", "Vos demandes de visuels et de prestations.", [
-    { primary: "Affiche tournoi de rentrée", secondary: "Visuel · Urgent", badge: { label: "En cours", tone: "info" } },
-    { primary: "Bannière réseaux sociaux", secondary: "Visuel", badge: { label: "Livré", tone: "success" } },
-    { primary: "Montage highlights saison", secondary: "Vidéo", badge: { label: "En attente", tone: "neutral" } },
-  ]);
+function Requests(p: DemoProfile): ReactNode {
+  // Miroir du vrai formulaire (requests/new/page.tsx + URGENCY_META) : coût en crédits affiché
+  // et vérifié AVANT l'envoi, jamais juste un compteur théorique (audit du 19/08/2026 — vérifié
+  // que ce mécanisme existe déjà et fonctionne réellement en production avant de le reproduire).
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader title="Demandes" subtitle="Vos demandes de visuels et de prestations." />
+      <CreditRequestPreview available={p.ctx.subscription.creditsRemaining} />
+      <Card title="Historique">
+        <RowList
+          rows={[
+            { primary: "Affiche tournoi de rentrée", secondary: "Visuel · Prioritaire", badge: { label: "En cours", tone: "info" } },
+            { primary: "Bannière réseaux sociaux", secondary: "Visuel · Standard", badge: { label: "Livré", tone: "success" } },
+            { primary: "Montage highlights saison", secondary: "Vidéo · Standard", badge: { label: "En attente", tone: "neutral" } },
+          ]}
+        />
+      </Card>
+    </div>
+  );
 }
 
 function Content(p: DemoProfile): ReactNode {
+  // Visibilité affichée par média (miroir de media_access_rules, réel et déjà exploité côté
+  // produit — audit du 19/08/2026 : la démo n'en montrait aucune trace).
   const org = orgData(p.ctx.organization.id);
   return (
     <div className="flex flex-col gap-5">
@@ -318,6 +335,7 @@ function Content(p: DemoProfile): ReactNode {
             <div key={c.title} className="flex flex-col gap-2 rounded-sv-card border border-border bg-surface p-3">
               <div className="aspect-video rounded-sv bg-surface-alt" />
               <span className="truncate text-[12.5px] font-semibold text-text">{c.title}</span>
+              <span className="text-[11px] font-semibold text-text-faint">Visible : {c.visibility ?? "Structure entière"}</span>
             </div>
           ))}
         </div>
@@ -525,9 +543,27 @@ function SettingsProfile(p: DemoProfile): ReactNode {
 }
 
 function Validations(p: DemoProfile): ReactNode {
+  // Miroir du vrai flow (validations/page.tsx + RPC client_valider_contenu) : Valider ou
+  // Demander une correction, pas une simple liste passive (audit du 19/08/2026 — ce flow existe
+  // déjà et fonctionne réellement en production).
   const org = orgData(p.ctx.organization.id);
-  const rows = org.content.slice(0, 2).map((c, i) => ({ primary: c.title, secondary: i === 0 ? "Instagram" : "TikTok", badge: { label: "À valider" as const, tone: "warning" as const } }));
-  return ListPage("À valider", "Publications en attente de votre validation.", rows.length > 0 ? rows : [{ primary: "Rien à valider pour le moment", badge: { label: "À jour", tone: "success" as const } }]);
+  const items = org.content.slice(0, 2);
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader title="À valider" subtitle="Publications en attente de votre validation." />
+      <Card>
+        {items.length > 0 ? (
+          <div className="flex flex-col">
+            {items.map((c, i) => (
+              <ValidationAction key={c.title} title={c.title} platform={i === 0 ? "Instagram" : "TikTok"} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState label="Rien à valider pour le moment." />
+        )}
+      </Card>
+    </div>
+  );
 }
 
 function Publications(p: DemoProfile): ReactNode {
