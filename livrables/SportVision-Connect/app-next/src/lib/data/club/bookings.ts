@@ -149,6 +149,21 @@ export function offerAdvantageLabel(offer: Pick<ClubCatalogueOffre, "tarifType">
   return `-${pct}% ${planLabel(plan)}`;
 }
 
+/** Prix TTC déjà remisé — retour utilisateur 19/08/2026 : le badge "-10% ..." seul à côté du
+ * prix plein demandait un calcul mental, le prix réellement payé doit être affiché directement.
+ * `null` quand aucune remise ne s'applique (sur devis, ou plan sans remise) — le catalogue
+ * retombe alors sur offerPriceLabel seul, jamais un prix barré à côté de lui-même. */
+export function offerDiscountedPriceLabel(
+  offer: Pick<ClubCatalogueOffre, "tarifType" | "prixHt" | "tvaPct">,
+  plan: ClubPlan,
+): string | null {
+  if (offer.tarifType === "sur_devis" || offer.prixHt == null) return null;
+  const pct = reductionPct(plan);
+  if (pct <= 0) return null;
+  const ttc = offer.prixHt * (1 + offer.tvaPct / 100);
+  return `${money(ttc * (1 - pct / 100))} € TTC`;
+}
+
 /** Snapshot figé au moment de la réservation dans `price_label` — indicatif uniquement, la
  * facturation réelle reste un devis/facture séparé géré par le staff. */
 export function fullPriceLabel(offer: Pick<ClubCatalogueOffre, "tarifType" | "prixHt" | "tvaPct"> | null, plan: ClubPlan): string {
