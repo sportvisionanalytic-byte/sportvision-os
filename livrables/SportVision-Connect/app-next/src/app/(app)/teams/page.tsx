@@ -1,16 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { TeamCard } from "@/components/teams/TeamCard";
+import { CreateTeamModal } from "@/components/teams/CreateTeamModal";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { fetchClubTeams } from "@/lib/data/club/teams";
+import { createClubTeam, fetchClubTeams } from "@/lib/data/club/teams";
 import { fetchAcademieGroups } from "@/lib/data/academie/groups";
 import { fetchCoachPlayers, type CoachPlayer } from "@/lib/data/coach/players";
 import { fetchDelegatedClubAccess, type DelegatedClubAccess } from "@/lib/data/shared/cm-agency-access";
@@ -32,6 +34,7 @@ export default function TeamsPage() {
   const { ctx } = useSession();
   const [teams, setTeams] = useState<Team[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const isAcademy = ctx.organization.type === "academy";
   const isCoach = ctx.organization.type === "coach";
   const isCmAgency = ctx.organization.type === "cm_agency";
@@ -101,7 +104,22 @@ export default function TeamsPage() {
             {teams.length} {isAcademy ? "groupe" : "équipe"}{teams.length > 1 ? "s" : ""} pour {ctx.organization.name}
           </h1>
         </div>
+        {/* academie_groups n'a pas encore d'équivalent createClubTeam — bouton réservé au club
+            (club_teams), pas de promesse pour l'académie. */}
+        {!isAcademy && (
+          <Button className="h-10 gap-1.5 px-4 text-[13px]" onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4" aria-hidden />
+            Créer une équipe
+          </Button>
+        )}
       </div>
+
+      {showCreate && (
+        <CreateTeamModal
+          onClose={() => setShowCreate(false)}
+          onCreate={(input) => createClubTeam(createClient(), ctx.organization.id, input).then(() => loadTeams())}
+        />
+      )}
 
       {teams.length === 0 ? (
         <Card>
@@ -109,6 +127,7 @@ export default function TeamsPage() {
             icon={Users}
             title={isAcademy ? "Aucun groupe pour le moment" : "Aucune équipe pour le moment"}
             description={`Créez votre ${isAcademy ? "premier groupe" : "première équipe"} pour commencer à gérer l'effectif, le calendrier et les contenus.`}
+            action={!isAcademy ? { label: "Créer une équipe", onClick: () => setShowCreate(true) } : undefined}
           />
         </Card>
       ) : myTeams.length > 0 ? (

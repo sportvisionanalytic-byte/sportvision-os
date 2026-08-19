@@ -1,8 +1,13 @@
+"use client";
+
 import Link from "next/link";
-import { MapPin, Users } from "lucide-react";
+import { useState } from "react";
+import { Check, Copy, MapPin, Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { isRealId } from "@/lib/mock/teams";
+import { createTeamInviteCode } from "@/lib/data/club/teams";
+import { createClient } from "@/lib/supabase/client";
 import type { Team } from "@/lib/types/teams";
 
 // Carte d'équipe — ACTIONS.md § 16, écran /teams. Un id réel (uuid Supabase) n'a pas de fiche
@@ -46,10 +51,16 @@ export function TeamCard({ team }: { team: Team }) {
       {/* Pour un id réel, aucune fiche équipe consultable n'existe (voir le commentaire en tête
           de fichier) : pas de ligne "bientôt disponible" qui promettrait une page à venir, la
           carte s'arrête simplement à ce qui est réellement affichable aujourd'hui (11/08/2026,
-          règle V1 : masquer plutôt que promettre). */}
-      {!isRealId(team.id) && (
+          règle V1 : masquer plutôt que promettre). 19/08/2026 : remplacé par un vrai bouton
+          d'invitation (create_team_invite_code) pour un id réel — retour utilisateur, aucun moyen
+          de faire rejoindre un joueur autrement qu'en le créant à la main. */}
+      {!isRealId(team.id) ? (
         <div className="mt-4 border-t border-divider pt-3 text-[12.5px] font-bold text-brand-blue-electric group-hover:text-brand-violet">
           Ouvrir la fiche équipe →
+        </div>
+      ) : (
+        <div className="mt-4 border-t border-divider pt-3" onClick={(e) => e.preventDefault()}>
+          <InviteAction teamId={team.id} />
         </div>
       )}
     </Card>
@@ -57,4 +68,58 @@ export function TeamCard({ team }: { team: Team }) {
 
   if (isRealId(team.id)) return body;
   return <Link href={`/teams/${team.id}`}>{body}</Link>;
+}
+
+function InviteAction({ teamId }: { teamId: string }) {
+  const [code, setCode] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function handleInvite() {
+    setBusy(true);
+    setError(null);
+    createTeamInviteCode(createClient(), teamId)
+      .then((c) => setCode(c))
+      .catch(() => setError("Impossible de générer le code. Réessayez."))
+      .finally(() => setBusy(false));
+  }
+
+  function handleCopy() {
+    if (!code) return;
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  if (error) {
+    return <span className="text-[12px] font-bold text-danger-fg">{error}</span>;
+  }
+
+  if (code) {
+    return (
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="flex w-full items-center justify-between gap-2 rounded-lg bg-surface-sunken px-3 py-2 text-[12.5px] font-bold text-text"
+      >
+        <span>
+          Code : <span className="font-mono tracking-[.08em]">{code}</span>
+        </span>
+        {copied ? <Check className="h-3.5 w-3.5 flex-none text-success-fg" aria-hidden /> : <Copy className="h-3.5 w-3.5 flex-none text-text-faint" aria-hidden />}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={handleInvite}
+      className="text-[12.5px] font-bold text-brand-blue-electric hover:text-brand-violet disabled:opacity-60"
+    >
+      {busy ? "Génération…" : "Générer un code pour inviter des joueurs →"}
+    </button>
+  );
 }

@@ -36,3 +36,31 @@ export async function fetchClubTeams(supabase: SupabaseClient, organizationId: s
     playerCount: row.members ?? 0,
   }));
 }
+
+/** Création d'équipe (19/08/2026, retour utilisateur : aucune UI ne le permettait alors que
+ * club_teams.coach existe déjà comme simple champ texte — pas de FK vers club_members, même
+ * choix que club_calendar_events.team). ctm_member_insert (RLS) autorise tout membre actif du
+ * club, pas seulement l'admin — comportement volontairement inchangé ici. */
+export async function createClubTeam(
+  supabase: SupabaseClient,
+  clubId: string,
+  input: { name: string; categorie?: string; coach?: string },
+): Promise<{ id: string }> {
+  const { data, error } = await supabase
+    .from("club_teams")
+    .insert({ club_id: clubId, name: input.name, categorie: input.categorie || null, coach: input.coach || null })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data as { id: string };
+}
+
+/** Génère (ou régénère) un code d'invitation pour qu'un joueur rejoigne cette équipe précise —
+ * create_team_invite_code (migration-connect-v26.sql), déjà utilisé côté joueur
+ * (requestTeamMembershipAsPlayer, lib/data/player/team-requests.ts) mais jamais exposé côté club
+ * pour le générer. SECURITY DEFINER, vérifie lui-même is_team_educateur/is_club_admin. */
+export async function createTeamInviteCode(supabase: SupabaseClient, teamId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("create_team_invite_code", { p_team_id: teamId });
+  if (error) throw error;
+  return (data as { code: string }).code;
+}
