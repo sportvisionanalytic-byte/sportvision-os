@@ -3,7 +3,7 @@
 import { Aperture, Bot, Camera, Clock, Layers, Lock, Plane, Sparkles, Tent, Trophy, Video, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { isOfferLocked, offerAdvantageLabel, offerPriceLabel } from "@/lib/data/club/bookings";
+import { isOfferLocked, offerAdvantageLabel, offerDiscountedPriceLabel, offerPriceLabel } from "@/lib/data/club/bookings";
 import { OFFER_CATEGORIE_LABEL, type ClubCatalogueOffre, type ClubPlan, type OfferCategorie } from "@/lib/types/club-bookings";
 import { cn } from "@/lib/cn";
 
@@ -49,6 +49,7 @@ export function ClubOfferCard({
 }) {
   const locked = isOfferLocked(offer, plan);
   const advantage = offerAdvantageLabel(offer, plan);
+  const discountedPrice = offerDiscountedPriceLabel(offer, plan);
   const surDevis = offer.tarifType === "sur_devis";
   const Icon = CATEGORIE_ICON[offer.categorie];
   const style = CATEGORIE_STYLE[offer.categorie];
@@ -87,9 +88,16 @@ export function ClubOfferCard({
 
       <div className="mt-auto flex items-center justify-between gap-2.5 border-t border-border pt-4">
         <div>
-          <div className={cn("text-[17px] font-extrabold tracking-tight", surDevis ? "text-text-soft" : "text-text")}>
-            {offerPriceLabel(offer)}
-          </div>
+          {discountedPrice ? (
+            <div className="flex items-baseline gap-2">
+              <span className="text-[17px] font-extrabold tracking-tight text-text">{discountedPrice}</span>
+              <span className="text-[12.5px] font-semibold text-text-faint line-through">{offerPriceLabel(offer)}</span>
+            </div>
+          ) : (
+            <div className={cn("text-[17px] font-extrabold tracking-tight", surDevis ? "text-text-soft" : "text-text")}>
+              {offerPriceLabel(offer)}
+            </div>
+          )}
           {advantage && <div className="text-[10.5px] font-bold text-brand-blue-electric">{advantage}</div>}
         </div>
         <Button variant={surDevis ? "secondary" : "primary"} className="h-9 px-3.5 text-[12.5px]" onClick={onReserve}>
