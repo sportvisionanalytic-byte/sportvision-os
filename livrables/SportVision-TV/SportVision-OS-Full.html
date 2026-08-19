@@ -2731,6 +2731,10 @@ const DEMO_MODE=(function(){try{return new URLSearchParams(location.search).get(
 const DEMO_FK={
   prestations:{clients:'client_id',catalogue_offres:'offre_id'},
   prestations_equipe:{profiles:'collaborateur_id',prestations:'prestation_id'},
+  devis:{clients:'client_id',prestations:'prestation_id'},
+  contrats:{clients:'client_id'},
+  club_bookings:{clubs:'club_id'},
+  group_fundings:{catalogue_offres:'catalogue_offre_id',user_groups:'group_id'},
 };
 
 const DEMO_DATA=(function(){
@@ -2785,7 +2789,42 @@ const DEMO_DATA=(function(){
     {id:'demo-exp-1',montant_ttc:45,date_depense:inDays(-2),categorie:'carburant'},
     {id:'demo-exp-2',montant_ttc:120,date_depense:inDays(-6),categorie:'materiel'},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses};
+  const devis=[
+    {id:'demo-dev-1',numero:'DEV-2026-0012',statut:'en_attente',client_id:'demo-cl-3',total_ttc:540,notes:'Couverture saison complète — 12 matchs.',date_envoi:inDays(-3),date_expiration:inDays(11),prestation_id:null,created_at:iso(inDays(-3))},
+    {id:'demo-dev-2',numero:'DEV-2026-0011',statut:'accepté',client_id:'demo-cl-2',total_ttc:180,notes:'',date_envoi:inDays(-16),date_expiration:inDays(-2),prestation_id:'demo-pre-2',created_at:iso(inDays(-16))},
+    {id:'demo-dev-3',numero:'DEV-2026-0010',statut:'expiré',client_id:'demo-cl-4',total_ttc:220,notes:'Relancé une fois, sans retour.',date_envoi:inDays(-40),date_expiration:inDays(-26),prestation_id:null,created_at:iso(inDays(-40))},
+  ];
+  const contrats=[
+    {id:'demo-ctr-1',client_id:'demo-cl-1',statut:'actif',type:'club_plus',montant_mensuel:129,date_debut:inDays(-70),date_fin:inDays(295),created_at:iso(inDays(-70))},
+    {id:'demo-ctr-2',client_id:'demo-cl-2',statut:'actif',type:'prestation_ponctuelle',montant_mensuel:0,date_debut:inDays(-40),date_fin:null,created_at:iso(inDays(-40))},
+  ];
+  const clubs=[
+    {id:'demo-cl-1',nom:'FC Fontainebleau'},
+    {id:'demo-cl-2',nom:'US Varennes'},
+  ];
+  const club_bookings=[
+    {id:'demo-cbk-1',club_id:'demo-cl-1',service_label:'Reportage photo — journée portes ouvertes',team:'Toutes équipes',event_date:inDays(9),heure:'10:00',adresse:'Stade Pierre-Bardin, Fontainebleau',contact:'Julien Marchand',objectif:'Communication réseaux sociaux',status:'recue',price_label:'Sur devis',mode_paiement:null,created_at:iso(inDays(-1))},
+    {id:'demo-cbk-2',club_id:'demo-cl-2',service_label:'Vidéo highlights — finale coupe',team:'Seniors',event_date:inDays(15),heure:'15:00',adresse:'Montereau',contact:'Sophie Dubreuil',objectif:'Archive club',status:'confirmee',price_label:'180 € TTC',mode_paiement:'virement',created_at:iso(inDays(-4))},
+  ];
+  const user_groups=[
+    {id:'demo-grp-1',name:'Équipe U17 — groupe cotisation'},
+  ];
+  const group_fundings=[
+    {id:'demo-fund-1',titre:'Photos de fin de saison — groupe U17',contexte:'Cagnotte entre joueurs',montant_cible:120,montant_collecte:80,repartition_mode:'egale',nb_participants_prevu:8,date_limite:inDays(7),statut:'ouverte',created_by:'demo-photo1',group_id:'demo-grp-1',beneficiary_kind:'team',beneficiary_label:'U17',catalogue_offre_id:'demo-off-1',created_at:iso(inDays(-5))},
+  ];
+  const funding_contributions=[
+    {id:'demo-contrib-1',funding_id:'demo-fund-1',statut:'paye',montant:10},
+    {id:'demo-contrib-2',funding_id:'demo-fund-1',statut:'paye',montant:10},
+  ];
+  const connect_clubplus_signup_requests=[
+    {id:'demo-signup-1',organization_type:'club',club_nom:'AS Château-Landon',structure_type:'Association loi 1901',ville:'Château-Landon',code_postal:'77570',site_web:'',contact_prenom:'Bruno',contact_nom:'Faucher',contact_email:'bruno.faucher@aschateaulandon.fr',contact_telephone:'0164333333',fonction:'Président',fonction_autre:null,besoins:['Photos de matchs','Vidéos highlights'],besoin_autre_precision:null,statut:'a_traiter',notes_staff:null,created_at:iso(inDays(-1))},
+  ];
+  const connect_accounts=[
+    {user_id:'demo-acc-club-1',type:'club',prenom:'Julien',nom:'Marchand',email:'julien.marchand@fcfontainebleau.fr',club_nom:'FC Fontainebleau',ville:'Fontainebleau',date_naissance:null,numero_licence:null,numero_maillot:null,account_status:'actif',created_at:iso(inDays(-70))},
+    {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Enzo',nom:'Dupuis',email:'enzo.dupuis@gmail.com',ville:'Sens',club_nom:'Rugby Club Sénonais',created_at:iso(inDays(-8)),sport:'Rugby',poste:'Ailier',categorie:'U18'},
+    {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
+  ];
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts};
 })();
 
 function _demoParseSelect(sel){
@@ -2861,6 +2900,31 @@ function demoQuery(path){
   if(limit)result=result.slice(0,Number(limit));
   return result;
 }
+// sbFetch('rpc/...') — 8 appels RPC réels dans ce fichier (voir grep du 20/08) ne passent jamais
+// par la logique table de demoQuery/demoWrite (une RPC n'est ni une lecture ni une écriture de
+// table au sens PostgREST). Dispatch dédié, un cas par nom de fonction réellement appelé.
+function demoRpc(name,body){
+  switch(name){
+    case 'connect_os_accounts_list':
+      return DEMO_DATA.connect_accounts||[];
+    case 'connect_os_account_detail':
+      return (DEMO_DATA.connect_accounts||[]).find(a=>a.user_id===(body&&body.p_user_id))||null;
+    case 'staff_update_club_request_status':{
+      const row=(DEMO_DATA.connect_clubplus_signup_requests||[]).find(r=>r.id===(body&&body.p_request_id));
+      if(row&&body&&body.p_status)row.statut=body.p_status;
+      return {ok:true};
+    }
+    case 'credit_organization':
+    case 'seed_event_checklist':
+    case 'rpc_submit_quiz':
+    case 'rpc_complete_formation':
+      return {ok:true};
+    case 'rpc_get_custom_quiz':
+      return [];
+    default:
+      return [];
+  }
+}
 function demoWrite(path,opts){
   const qIdx=path.indexOf('?');
   const table=qIdx===-1?path:path.slice(0,qIdx);
@@ -2891,6 +2955,11 @@ function demoWrite(path,opts){
 async function sbFetch(path,opts={}){
   if(DEMO_MODE){
     await new Promise(r=>setTimeout(r,120));
+    if(path.startsWith('rpc/')){
+      const qIdx=path.indexOf('?');
+      const name=(qIdx===-1?path:path.slice(0,qIdx)).slice(4);
+      return demoRpc(name,opts.body||{});
+    }
     return (opts.method&&opts.method!=='GET')?demoWrite(path,opts):demoQuery(path);
   }
   const _do=async(tok)=>fetch(SB_URL+'/rest/v1/'+path,{
