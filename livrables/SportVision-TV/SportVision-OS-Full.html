@@ -18260,8 +18260,8 @@ function renderSecDemandes(){
 // de suivi du pipeline commercial/administratif d'une demande de club, au même
 // titre que "Demandes entrantes" (role sec) juste au-dessus.
 const CBK_STEPS=['recue','qualifiee','confirmee','operateur_affecte','mission_realisee','livree'];
-const CBK_STATUS_LABEL={recue:'Reçue',qualifiee:'Besoin qualifié',confirmee:'Confirmée',operateur_affecte:'Opérateur affecté',mission_realisee:'Mission réalisée',livree:'Livrée'};
-const CBK_STATUS_COLOR={recue:'bn',qualifiee:'bb',confirmee:'bb',operateur_affecte:'bw',mission_realisee:'bw',livree:'ba'};
+const CBK_STATUS_LABEL={recue:'Reçue',qualifiee:'Besoin qualifié',confirmee:'Confirmée',operateur_affecte:'Opérateur affecté',mission_realisee:'Mission réalisée',livree:'Livrée',annulee:'Annulée'};
+const CBK_STATUS_COLOR={recue:'bn',qualifiee:'bb',confirmee:'bb',operateur_affecte:'bw',mission_realisee:'bw',livree:'ba',annulee:'br'};
 let _cbkData=[],_cbkFilter='all';
 
 function _clubBookingsView(){
