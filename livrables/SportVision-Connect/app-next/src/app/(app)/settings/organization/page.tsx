@@ -249,7 +249,7 @@ function OrganizationForm() {
               {canEdit && (
                 <div className="flex flex-wrap gap-1.5" role="group" aria-label={i === 0 ? "Palette — couleur principale" : "Palette — couleur secondaire"}>
                   {BASIC_COLORS.map((preset) => {
-                    const active = colors[i].toLowerCase() === preset.toLowerCase();
+                    const active = colors[i]?.toLowerCase() === preset.toLowerCase();
                     return (
                       <button
                         key={preset}
