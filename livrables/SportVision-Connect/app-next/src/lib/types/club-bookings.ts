@@ -55,13 +55,47 @@ export const BOOKING_STATUS_TONE: Record<ClubBookingStatus, BadgeTone> = {
 
 export type OfferTarifType = "fixe" | "sur_devis";
 
+/** catalogue_offres.categorie (CHECK, migration-portail-v1.sql) — 9 valeurs réelles. */
+export type OfferCategorie = "photo" | "video" | "pack" | "tournoi" | "stage" | "shooting" | "drone" | "veo" | "contenu";
+
+export const OFFER_CATEGORIE_LABEL: Record<OfferCategorie, string> = {
+  photo: "Photo",
+  video: "Vidéo",
+  pack: "Pack complet",
+  tournoi: "Tournoi",
+  stage: "Stage",
+  shooting: "Shooting",
+  drone: "Drone",
+  veo: "Véo",
+  contenu: "Contenu",
+};
+
+/** Ordre d'affichage du catalogue — l'essentiel match d'abord, la captation dédiée ensuite, les
+ * couvertures et le contenu à la fin. Miroir de la logique de regroupement de prestations.html
+ * (vitrine publique), portée ici pour la même lisibilité côté Club+. */
+export const OFFER_CATEGORIE_ORDER: OfferCategorie[] = [
+  "photo",
+  "video",
+  "pack",
+  "drone",
+  "veo",
+  "shooting",
+  "tournoi",
+  "stage",
+  "contenu",
+];
+
 export interface ClubCatalogueOffre {
   id: string;
   nom: string;
   description: string | null;
+  categorie: OfferCategorie;
   tarifType: OfferTarifType;
   /** Toujours `null` quand `tarifType === "sur_devis"` — jamais un 0 € affiché comme un fait. */
   prixHt: number | null;
+  /** % de TVA réel de l'offre (catalogue_offres.tva_pct, défaut 20) — sert à afficher un prix TTC
+   * cohérent avec la vitrine publique, plutôt qu'un HT trompeur pour un client final. */
+  tvaPct: number;
   dureeEstimee: string | null;
 }
 

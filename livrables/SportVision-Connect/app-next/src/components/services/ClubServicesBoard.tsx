@@ -23,6 +23,8 @@ import {
 import {
   BOOKING_STATUS_LABEL,
   BOOKING_STATUS_TONE,
+  OFFER_CATEGORIE_LABEL,
+  OFFER_CATEGORIE_ORDER,
   type ClubBooking,
   type ClubCatalogueOffre,
   type ClubPlan,
@@ -247,9 +249,20 @@ export function ClubServicesBoard({
             <EmptyState title="Catalogue en cours de préparation par SportVision" />
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {offers.map((offer) => (
-              <ClubOfferCard key={offer.id} offer={offer} plan={plan} onReserve={() => openWizard(offer.id)} />
+          <div className="flex flex-col gap-7">
+            {OFFER_CATEGORIE_ORDER.filter((categorie) => offers.some((o) => o.categorie === categorie)).map((categorie) => (
+              <div key={categorie} className="flex flex-col gap-3.5">
+                <h2 className="text-[13px] font-extrabold uppercase tracking-[.04em] text-text-faint">
+                  {OFFER_CATEGORIE_LABEL[categorie]}
+                </h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {offers
+                    .filter((offer) => offer.categorie === categorie)
+                    .map((offer) => (
+                      <ClubOfferCard key={offer.id} offer={offer} plan={plan} onReserve={() => openWizard(offer.id)} />
+                    ))}
+                </div>
+              </div>
             ))}
           </div>
         )

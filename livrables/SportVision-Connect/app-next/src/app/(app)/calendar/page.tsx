@@ -176,7 +176,7 @@ export default function CalendarPage() {
     }
   }
 
-  function handleCreateEvent(input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string }) {
+  function handleCreateEvent(input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string }) {
     const supabase = createClient();
     return createClubCalendarEvent(supabase, ctx.organization.id, {
       title: input.title,
@@ -184,6 +184,7 @@ export default function CalendarPage() {
       date: input.date,
       time: input.time,
       location: input.location,
+      team: input.team,
     }).then((created) => setEvents((prev) => (prev ? [...prev, created] : prev)));
   }
 
@@ -337,7 +338,7 @@ export default function CalendarPage() {
       {view === "list" && <ListView events={filteredEvents} onSelect={setSelectedEvent} today={today} />}
 
       {selectedEvent && <EventDetailPanel event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
-      {addOpen && <AddEventModal onClose={() => setAddOpen(false)} onCreate={handleCreateEvent} />}
+      {addOpen && <AddEventModal onClose={() => setAddOpen(false)} onCreate={handleCreateEvent} teamNames={availableTeams} />}
     </div>
   );
 }

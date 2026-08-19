@@ -109,7 +109,7 @@ export async function fetchClubCalendarEvents(
 export async function createClubCalendarEvent(
   supabase: SupabaseClient,
   organizationId: string,
-  input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string },
+  input: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string },
 ): Promise<CalendarEvent> {
   const type = CREATABLE_EVENT_TYPE_MAP[input.kind] ?? "contenu";
 
@@ -122,6 +122,7 @@ export async function createClubCalendarEvent(
       type,
       title: input.title,
       location: input.location || null,
+      team: input.team || null,
     })
     .select("id, event_date, event_time, type, title, team, location")
     .single();
