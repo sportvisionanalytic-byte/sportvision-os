@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess, isClubNonBureauRole } from "@/lib/permissions";
@@ -8,8 +9,12 @@ import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LockedModule } from "@/components/ui/LockedModule";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonRow } from "@/components/ui/Skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { updateClubOrganization, uploadClubLogo } from "@/lib/data/club/organization";
+import { fetchClubMembers } from "@/lib/data/club/users";
+import { ROLE_LABELS, type OrgUser } from "@/lib/types/settings";
 
 // /settings/organization — voir ACTIONS.md § 25 « Organisation ». Logo, nom, adresse, Instagram,
 // SIRET, couleurs du club.
@@ -65,6 +70,16 @@ function OrganizationForm() {
   const [siret, setSiret] = useState(organization.siret ?? "");
   const [colors, setColors] = useState(organization.brandColors ?? ["#4F7DFF", "#A855F7"]);
   const [logoUrl, setLogoUrl] = useState(organization.logoUrl ?? null);
+  const [members, setMembers] = useState<OrgUser[] | null>(null);
+
+  useEffect(() => {
+    if (ctx.organization.type !== "club") return;
+    const supabase = createClient();
+    fetchClubMembers(supabase, organization.id)
+      .then(setMembers)
+      .catch(() => setMembers([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization.id]);
 
   const [savingInfo, setSavingInfo] = useState(false);
   const [savingColors, setSavingColors] = useState(false);
@@ -270,6 +285,43 @@ function OrganizationForm() {
           </div>
         )}
       </Card>
+
+      {ctx.organization.type === "club" && (
+        <Card className="flex flex-col gap-3.5 p-5">
+          <div>
+            <div className="text-[13.5px] font-extrabold">Organigramme</div>
+            <p className="mt-0.5 text-[12px] text-text-soft">
+              Rôle, nom et téléphone des membres actifs de {organization.name}.
+            </p>
+          </div>
+          {members === null ? (
+            <div className="flex flex-col gap-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
+            </div>
+          ) : members.filter((m) => m.status !== "disabled").length === 0 ? (
+            <EmptyState title="Aucun membre pour le moment" />
+          ) : (
+            <div className="flex flex-col divide-y divide-divider">
+              {members
+                .filter((m) => m.status !== "disabled")
+                .map((m) => (
+                  <div key={m.membershipId} className="flex flex-wrap items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                    <span className="w-40 flex-none text-[12.5px] font-bold text-text">{ROLE_LABELS[m.role] ?? m.role}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text">
+                      {m.firstName || m.lastName ? `${m.firstName} ${m.lastName}`.trim() : "—"}
+                    </span>
+                    <span className="flex-none text-[12.5px] text-text-soft">{m.phone || "—"}</span>
+                  </div>
+                ))}
+            </div>
+          )}
+          <Link href="/users" className="text-[12.5px] font-bold text-brand-blue-electric hover:underline">
+            Gérer les membres et les accès →
+          </Link>
+        </Card>
+      )}
 
       {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
 

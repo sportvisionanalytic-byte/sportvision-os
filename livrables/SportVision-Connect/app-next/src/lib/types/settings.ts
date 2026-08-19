@@ -57,6 +57,8 @@ export interface OrgUser {
   status: "active" | "invited" | "disabled";
   lastSeenAt?: string;
   invitedAt?: string;
+  /** club_members.telephone (19/08/2026, "Organigramme" — settings/organization/page.tsx). */
+  phone?: string;
 }
 
 export const ROLE_LABELS: Record<string, string> = {
