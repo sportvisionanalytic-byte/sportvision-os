@@ -16,17 +16,23 @@ import { Button } from "@/components/ui/Button";
 // d'équivalent réel et retombaient silencieusement sur "Tournage" en base.
 interface AddEventModalProps {
   onClose: () => void;
-  onCreate: (event: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string }) => Promise<unknown>;
+  onCreate: (event: { title: string; kind: CalendarEventKind; date: string; time?: string; location?: string; team?: string }) => Promise<unknown>;
+  /** Équipes réelles du club (fetchClubTeams), affichées uniquement si non vide — voir
+   * calendar/page.tsx. club_calendar_events.team (migration-clubplus-v4.sql) existait déjà et
+   * était déjà lu partout (calendrier, filtrage coach par équipe), mais jamais proposé à la
+   * création : 19/08/2026, audit pré-lancement. */
+  teamNames?: string[];
 }
 
 const CREATABLE_KINDS = Object.keys(CREATABLE_EVENT_TYPE_MAP) as CalendarEventKind[];
 
-export function AddEventModal({ onClose, onCreate }: AddEventModalProps) {
+export function AddEventModal({ onClose, onCreate, teamNames = [] }: AddEventModalProps) {
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<CalendarEventKind>("meeting");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
+  const [team, setTeam] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +41,7 @@ export function AddEventModal({ onClose, onCreate }: AddEventModalProps) {
   function handleSubmit() {
     setSubmitting(true);
     setError(null);
-    onCreate({ title, kind, date, time: time || undefined, location: location || undefined })
+    onCreate({ title, kind, date, time: time || undefined, location: location || undefined, team: team || undefined })
       .then(() => onClose())
       .catch(() => {
         setSubmitting(false);
@@ -87,6 +93,20 @@ export function AddEventModal({ onClose, onCreate }: AddEventModalProps) {
           <span className="text-[12.5px] font-bold text-text-soft">Lieu (optionnel)</span>
           <input value={location} onChange={(e) => setLocation(e.target.value)} className={fieldClass} placeholder="Stade municipal" />
         </label>
+
+        {teamNames.length > 0 && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Équipe (optionnel)</span>
+            <select value={team} onChange={(e) => setTeam(e.target.value)} className={fieldClass}>
+              <option value="">Toutes les équipes</option>
+              {teamNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
 

@@ -34,6 +34,11 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const isPlayer = ctx.organization.type === "player";
   const isAffiliatedPlayer = isPlayer && !!ctx.organization.parentOrganizationId;
+  // 19/08/2026 (audit pré-lancement) : le bandeau affichait "Connect" en dur pour tout le monde,
+  // y compris un club/académie/coach/etc. connecté sur clubplus.sportvision-an.fr — seuls les
+  // espaces personnels (joueur/parent) sont vraiment "Connect", tout le reste est Club+ (Full
+  // Communication inclus : "pas une application séparée", voir MASTER-ECOSYSTEME-V2.md).
+  const isPersonalSpace = ctx.organization.type === "player" || ctx.organization.type === "parent";
   let entries = resolveNavigation(ctx.organization.type, ctx.subscription.planCode);
   if (isAffiliatedPlayer) entries = filterAffiliatedPlayerNav(entries);
   if (ctx.organization.type === "club") entries = filterClubRoleNav(entries, ctx.membership.role, ctx.membership.teamScope);
@@ -92,7 +97,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           <span className="leading-tight text-white">
             <span className="block text-[14.5px] font-extrabold tracking-tight">SportVision</span>
             <span className="block text-[11px] font-medium uppercase tracking-[.06em] text-brand-blue-pale">
-              Connect
+              {isPersonalSpace ? "Connect" : "Club+"}
             </span>
           </span>
           <button

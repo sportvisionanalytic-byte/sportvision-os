@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ClubBooking, ClubBookingStatus, ClubCatalogueOffre, ClubPlan, OfferTarifType } from "@/lib/types/club-bookings";
+import type { ClubBooking, ClubBookingStatus, ClubCatalogueOffre, ClubPlan, OfferCategorie, OfferTarifType } from "@/lib/types/club-bookings";
 
 // Port de window.ClubModules.services (livrables/SportVision-Connect/app/modules/
 // club-services-documents-rapports.js, lignes 189-436, référence vanille fonctionnelle) —
@@ -16,8 +16,10 @@ interface CatalogueRow {
   id: string;
   nom: string;
   description: string | null;
+  categorie: OfferCategorie;
   tarif_type: OfferTarifType;
   prix_ht: number | null;
+  tva_pct: number | null;
   duree_estimee: string | null;
 }
 
@@ -40,8 +42,10 @@ function toOffer(row: CatalogueRow): ClubCatalogueOffre {
     id: row.id,
     nom: row.nom,
     description: row.description,
+    categorie: row.categorie,
     tarifType: row.tarif_type,
     prixHt: row.tarif_type === "sur_devis" ? null : row.prix_ht,
+    tvaPct: row.tva_pct ?? 20,
     dureeEstimee: row.duree_estimee,
   };
 }
@@ -65,7 +69,7 @@ function toBooking(row: BookingRow): ClubBooking {
 export async function fetchCatalogueOffres(supabase: SupabaseClient): Promise<ClubCatalogueOffre[]> {
   const { data, error } = await supabase
     .from("catalogue_offres")
-    .select("id, nom, description, tarif_type, prix_ht, duree_estimee")
+    .select("id, nom, description, categorie, tarif_type, prix_ht, tva_pct, duree_estimee")
     .eq("actif", true)
     .order("ordre", { ascending: true });
   if (error) throw error;
@@ -117,9 +121,13 @@ function money(n: number): string {
   return n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function offerPriceLabel(offer: Pick<ClubCatalogueOffre, "tarifType" | "prixHt">): string {
+/** Affiche un prix TTC (cohérent avec la vitrine publique, qui n'affiche jamais de HT à un
+ * client) — 19/08/2026, audit pré-lancement : cet écran affichait du HT nu, seul endroit de
+ * l'app dans ce cas. `tvaPct` vient de catalogue_offres.tva_pct (défaut 20 si absent). */
+export function offerPriceLabel(offer: Pick<ClubCatalogueOffre, "tarifType" | "prixHt" | "tvaPct">): string {
   if (offer.tarifType === "sur_devis" || offer.prixHt == null) return "Sur devis";
-  return `${money(offer.prixHt)} € HT`;
+  const ttc = offer.prixHt * (1 + offer.tvaPct / 100);
+  return `${money(ttc)} € TTC`;
 }
 
 /** Vide (jamais "-0% Club+ Gratuit") quand le plan n'ouvre droit à aucune remise — voir
@@ -133,7 +141,7 @@ export function offerAdvantageLabel(offer: Pick<ClubCatalogueOffre, "tarifType">
 
 /** Snapshot figé au moment de la réservation dans `price_label` — indicatif uniquement, la
  * facturation réelle reste un devis/facture séparé géré par le staff. */
-export function fullPriceLabel(offer: Pick<ClubCatalogueOffre, "tarifType" | "prixHt"> | null, plan: ClubPlan): string {
+export function fullPriceLabel(offer: Pick<ClubCatalogueOffre, "tarifType" | "prixHt" | "tvaPct"> | null, plan: ClubPlan): string {
   if (!offer) return "Sur devis";
   const advantage = offerAdvantageLabel(offer, plan);
   return offerPriceLabel(offer) + (advantage ? ` (${advantage})` : "");
