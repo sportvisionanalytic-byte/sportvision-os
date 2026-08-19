@@ -48,13 +48,16 @@
 //
 // Actions (`action` dans le body) :
 //  - "search"  { query } → clubs partenaires actifs correspondant (recherche sur le nom)
-//  - "join"    { orgId, teamName? } → crée player_profiles (si absent) + membership_requests
-//               (statut "a_verifier"), le joueur peut utiliser Connect pendant l'attente.
-//               teamName (19/08, texte libre saisi par le joueur) est résolu/créé dans
-//               club_teams pour ce club (match insensible à la casse) puis posé sur
-//               membership_requests.team_id — club_teams est vide pour tous les clubs en prod,
-//               aucune UI de gestion d'équipes n'existe encore, donc "créer si absent" plutôt
-//               qu'un menu déroulant qui n'afficherait jamais rien.
+//  - "teams"   { orgId } → équipes réelles (club_teams) de ce club, pour un menu déroulant côté
+//               "join" quand il y en a déjà (19/08, soir).
+//  - "join"    { orgId, teamId?, teamName? } → crée player_profiles (si absent) + membership_
+//               requests (statut "a_verifier"), le joueur peut utiliser Connect pendant
+//               l'attente. teamId (menu déroulant, équipe réelle via "teams") est prioritaire ;
+//               teamName (texte libre, résolu/créé dans club_teams par nom insensible à la
+//               casse) reste un repli pour les clubs qui n'ont encore aucune équipe créée.
+//  - "join_code" { code, prenom, nom, dateNaissance } → résout un code d'invitation d'équipe
+//               (team_invite_codes, généré côté Club+ via create_team_invite_code) et rejoint
+//               directement le club+l'équipe qu'il désigne, source="code_equipe" (19/08, soir).
 //  - "declare" { name, city, team?, prenom, nom } → notifie le staff (aucune écriture DB),
 //               même mécanisme que connect-signup-lead
 //  - "skip"    { prenom?, nom?, dateNaissance? } → migration-connect-v72 (15/08) :
@@ -102,6 +105,44 @@ async function checkRateLimit(admin: any, identifiant: string) {
 }
 
 const ACTIVE_ORG_STATUSES = ["actif_premium", "actif_standard"];
+
+// Partagé entre "join" et "join_code" (19/08/2026, soir) — même logique de rattachement de
+// player_profiles (créer si absent, sinon réactiver/rattacher via userClient pour que
+// guard_player_profile_update() résolve auth.uid(), voir BUGFIX 19/08 documenté dans "join"
+// ci-dessous), pour ne jamais la dupliquer entre les deux points d'entrée.
+// deno-lint-ignore no-explicit-any
+async function upsertJoiningPlayerProfile(
+  admin: any,
+  userClient: any,
+  userId: string,
+  clubId: string,
+  prenom: string,
+  nom: string,
+  dateNaissance: string,
+): Promise<{ playerId: string } | { error: string }> {
+  const { data: existingProfile } = await admin
+    .from("player_profiles")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingProfile) {
+    const { error: updErr } = await userClient
+      .from("player_profiles")
+      .update({ club_id: clubId, prenom, nom, date_naissance: dateNaissance, account_status: "actif" })
+      .eq("id", existingProfile.id);
+    if (updErr) return { error: updErr.message };
+    return { playerId: existingProfile.id };
+  }
+
+  const { data: created, error: insErr } = await admin
+    .from("player_profiles")
+    .insert({ user_id: userId, club_id: clubId, prenom, nom, date_naissance: dateNaissance, account_status: "actif" })
+    .select("id")
+    .single();
+  if (insErr) return { error: insErr.message };
+  return { playerId: created.id };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -259,6 +300,19 @@ serve(async (req) => {
       return json({ ok: true, hasClub: false, declared: true, name, city });
     }
 
+    // "teams" (19/08/2026, soir) : liste des vraies équipes d'un club, pour proposer un menu
+    // déroulant plutôt qu'un texte libre quand le club en a déjà (voir "join" ci-dessous pour le
+    // cas où il n'y en a aucune). club_teams n'a de policy SELECT que pour un membre du club
+    // (ctm_member_select) — un prospect qui n'a pas encore rejoint ne peut pas lire cette table
+    // en direct, d'où le passage par le service role ici, même raisonnement que "search".
+    if (action === "teams") {
+      const orgId = String(body?.orgId || "").trim();
+      if (!orgId) return json({ error: "Club requis" }, 400);
+      const { data, error } = await admin.from("club_teams").select("id, name").eq("club_id", orgId).order("name");
+      if (error) return json({ error: error.message }, 500);
+      return json({ results: (data || []).map((t: { id: string; name: string }) => ({ id: t.id, name: t.name })) });
+    }
+
     if (action === "join") {
       const orgId = String(body?.orgId || "").trim();
       if (!orgId) return json({ error: "Club requis" }, 400);
@@ -266,6 +320,10 @@ serve(async (req) => {
       const nom = String(body?.nom || "").trim();
       const dateNaissance = String(body?.dateNaissance || "").trim();
       const teamName = String(body?.teamName || "").trim();
+      // teamId (19/08/2026, soir) : posé quand le joueur a choisi une vraie équipe dans le menu
+      // déroulant (action "teams") — dans ce cas teamName est ignoré, pas de nouvelle recherche/
+      // création à faire, l'id est déjà connu et validé côté club.
+      const providedTeamId = String(body?.teamId || "").trim();
       if (!prenom || !nom || !dateNaissance) {
         return json({ error: "Prénom, nom et date de naissance requis" }, 400);
       }
@@ -283,13 +341,14 @@ serve(async (req) => {
       // BUGFIX 19/08 (soir) : le tunnel ne demandait jamais l'équipe/catégorie, alors que
       // membership_requests.team_id existe depuis migration-clubplus-v14.sql et que l'écran de
       // validation dirigeant (app-next team-requests/page.tsx) sait déjà l'afficher.
-      // club_teams est vide pour tous les clubs en prod (vérifié en base le 19/08 — aucune UI de
-      // gestion d'équipes n'existe encore) : un simple menu déroulant serait vide partout. On
-      // laisse donc le joueur taper le nom, et on résout/crée la ligne club_teams correspondante
-      // (match insensible à la casse sur ce club) plutôt que d'ajouter une colonne texte
-      // parallèle qui ne nourrirait jamais la vraie table utilisée par le calendrier/les stats.
-      let teamId: string | null = null;
-      if (teamName) {
+      // club_teams était vide pour tous les clubs en prod au moment du premier correctif de ce
+      // soir (aucune UI de gestion d'équipes n'existait encore) : menu déroulant vide partout,
+      // d'où le champ texte avec résolution/création à la volée conservé ci-dessous en repli.
+      // Depuis, Équipes (Club+) permet d'en créer — le frontend privilégie donc teamId (menu
+      // déroulant réel) quand des équipes existent déjà, ce champ texte n'est plus qu'un filet
+      // pour les clubs qui n'en ont encore aucune.
+      let teamId: string | null = providedTeamId || null;
+      if (!teamId && teamName) {
         const { data: existingTeam, error: teamLookupErr } = await admin
           .from("club_teams")
           .select("id")
@@ -310,60 +369,78 @@ serve(async (req) => {
         }
       }
 
-      const { data: existingProfile } = await admin
-        .from("player_profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      let playerId: string;
-      if (existingProfile) {
-        playerId = existingProfile.id;
-        // BUGFIX 13/08 : un joueur qui a quitté un club (account_status="retire", voir action
-        // "leave") et rejoint ensuite un club (même le même club, ou un autre) doit redevenir
-        // "actif" — sans ce reset, club_id pointait bien vers le nouveau club et une nouvelle
-        // membership_requests était bien créée, mais buildPlayerContext (app-connect,
-        // lib/supabase/session.ts) ignore tout profil dont account_status="retire" : le joueur
-        // restait invisible sur son propre Dashboard/Mes affiliations malgré une demande créée
-        // avec succès — parcours "rejoindre après avoir quitté" silencieusement cassé.
-        //
-        // BUGFIX 19/08 : cet UPDATE échouait TOUJOURS pour un profil déjà existant (ex. joueur
-        // qui avait choisi "Continuer sans club"), quel que soit le club visé — via `admin`
-        // (service role), auth.uid() est NULL, donc guard_player_profile_update()
-        // (migration-clubplus-v13/v36) refusait tout changement de club_id/date_naissance
-        // ("Modification non autorisée sur ces champs"), masqué côté UI par le message
-        // générique "Impossible de rejoindre ce club pour le moment." migration-connect-v81
-        // ajoute une exception self-service à ce trigger (club_id/date_naissance modifiables sur
-        // SA PROPRE ligne) — mais elle ne s'applique que si auth.uid() est réellement résolu, ce
-        // qui exige le JWT de l'appelant (userClient), pas le service role.
-        const { error: updErr } = await userClient
-          .from("player_profiles")
-          .update({ club_id: org.id, prenom, nom, date_naissance: dateNaissance, account_status: "actif" })
-          .eq("id", playerId);
-        if (updErr) return json({ error: updErr.message }, 500);
-      } else {
-        const { data: created, error: insErr } = await admin
-          .from("player_profiles")
-          .insert({
-            user_id: user.id,
-            club_id: org.id,
-            prenom,
-            nom,
-            date_naissance: dateNaissance,
-            account_status: "actif",
-          })
-          .select("id")
-          .single();
-        if (insErr) return json({ error: insErr.message }, 500);
-        playerId = created.id;
-      }
+      // BUGFIX 13/08 : un joueur qui a quitté un club (account_status="retire", voir action
+      // "leave") et rejoint ensuite un club (même le même club, ou un autre) doit redevenir
+      // "actif". BUGFIX 19/08 : via `admin` (service role) seul, auth.uid() est NULL et
+      // guard_player_profile_update() (migration-clubplus-v13/v36) refuse tout changement de
+      // club_id/date_naissance — d'où upsertJoiningPlayerProfile qui repasse par userClient (JWT
+      // de l'appelant forwardé) pour l'UPDATE. Voir migration-connect-v81 (exception self-service
+      // du trigger) et sa fonction jumelle utilisée par "join_code" ci-dessous.
+      const profileResult = await upsertJoiningPlayerProfile(admin, userClient, user.id, org.id, prenom, nom, dateNaissance);
+      if ("error" in profileResult) return json({ error: profileResult.error }, 500);
 
       const { error: mrErr } = await admin.from("membership_requests").insert({
         club_id: org.id,
         team_id: teamId,
         requested_by_user_id: user.id,
-        player_id: playerId,
+        player_id: profileResult.playerId,
         source: "spontanee",
+        statut: "a_verifier",
+        validation_mode: "standard",
+      });
+      if (mrErr) return json({ error: mrErr.message }, 500);
+
+      return json({ ok: true, hasClub: true, orgNom: org.nom, statut: "a_verifier" });
+    }
+
+    // "join_code" (19/08/2026, soir) : rejoindre directement une équipe précise via le code
+    // généré côté Club+ (create_team_invite_code, migration-connect-v26 — voir Équipes/
+    // TeamCard.tsx pour la génération). team_invite_codes n'a de policy SELECT que pour
+    // l'éducateur/l'admin du club (tic_manager_select) : un prospect ne peut pas résoudre le
+    // code en direct, d'où le passage par le service role ici. Même mécanique de profil que
+    // "join" (upsertJoiningPlayerProfile), source="code_equipe" (valeur déjà prévue par le
+    // schéma, cohérente avec request_team_membership_as_player côté app-next) et invite_code_id
+    // renseigné pour la traçabilité.
+    if (action === "join_code") {
+      const code = String(body?.code || "").trim().toUpperCase();
+      const prenom = String(body?.prenom || "").trim();
+      const nom = String(body?.nom || "").trim();
+      const dateNaissance = String(body?.dateNaissance || "").trim();
+      if (!code) return json({ error: "Code requis" }, 400);
+      if (!prenom || !nom || !dateNaissance) {
+        return json({ error: "Prénom, nom et date de naissance requis" }, 400);
+      }
+
+      const { data: invite, error: inviteErr } = await admin
+        .from("team_invite_codes")
+        .select("id, club_id, team_id, actif, expire_at")
+        .eq("code", code)
+        .maybeSingle();
+      if (inviteErr) return json({ error: inviteErr.message }, 500);
+      if (!invite || !invite.actif || (invite.expire_at && new Date(invite.expire_at).getTime() < Date.now())) {
+        return json({ error: "Code invalide ou expiré" }, 404);
+      }
+
+      const { data: org, error: orgLookupErr } = await admin
+        .from("organizations")
+        .select("id, nom")
+        .eq("id", invite.club_id)
+        .eq("organization_type", "club")
+        .in("statut", ACTIVE_ORG_STATUSES)
+        .maybeSingle();
+      if (orgLookupErr) return json({ error: orgLookupErr.message }, 500);
+      if (!org) return json({ error: "Club introuvable" }, 404);
+
+      const profileResult = await upsertJoiningPlayerProfile(admin, userClient, user.id, org.id, prenom, nom, dateNaissance);
+      if ("error" in profileResult) return json({ error: profileResult.error }, 500);
+
+      const { error: mrErr } = await admin.from("membership_requests").insert({
+        club_id: org.id,
+        team_id: invite.team_id,
+        requested_by_user_id: user.id,
+        player_id: profileResult.playerId,
+        source: "code_equipe",
+        invite_code_id: invite.id,
         statut: "a_verifier",
         validation_mode: "standard",
       });
