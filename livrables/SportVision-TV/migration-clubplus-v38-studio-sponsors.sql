@@ -12,8 +12,10 @@
 --   3. club_creations.sponsor_id : FK nullable vers club_sponsors, pour
 --      un lien fiable contenu <-> sponsor (voir note § 3 ci-dessous).
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL
--- Editor. Ne JAMAIS exécuter depuis un agent.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- studio_templates existe avec 47 lignes actives, sponsor_operations existe.
+-- Cet en-tête disait à tort "NON EXÉCUTÉE" ; ne pas relancer cette migration
+-- sur la base de cette mention obsolète.
 -- ============================================================
 
 -- ────────────────────────────────────────────────────────────────────────

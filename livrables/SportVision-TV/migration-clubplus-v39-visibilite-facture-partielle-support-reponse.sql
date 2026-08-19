@@ -65,8 +65,13 @@
 --     colonnes vérifiées via migration-clubplus-v5/v13.sql).
 -- Aucune donnée existante à backfiller pour les 3 chantiers.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL
--- Editor. Ne JAMAIS exécuter depuis un agent.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- factures.statut accepte déjà 'partiellement_payee', factures.montant_paye
+-- existe. Cet en-tête disait à tort "NON EXÉCUTÉE" — conséquence directe :
+-- l'OS (SportVision-OS-Full.html § comptaConfirmerAcompte) ne synchronisait
+-- jamais un acompte vers `factures` en pensant qu'aucune colonne/statut
+-- équivalent n'existait ; corrigé le même jour (_syncFactureApresAcompte).
+-- Ne pas relancer cette migration sur la base de cette mention obsolète.
 -- ============================================================
 
 -- ────────────────────────────────────────────────────────────────────────

@@ -106,8 +106,23 @@ import type { ModuleKey } from "@/lib/types";
 // Pas de mapping MODULE_TO_CONNECT_MODULE : aucune organization_entitlements n'existe pour ces
 // types (Full Communication vendu commercialement, pas mesuré par crédits — même logique que
 // coach/académie/sponsor documentée plus haut).
+//
+// "studio" (19/08/2026, audit pré-lancement) : la page était déjà 100% fonctionnelle (catalogue
+// 47 modèles lu depuis studio_templates réel — migration-clubplus-v38-studio-sponsors.sql,
+// exécutée en prod —, formulaire préempli, soumission vers submitClubRequest/submitOrgRequest
+// qui réservent de vrais crédits) mais restait verrouillée pour 100% des comptes réels : "studio"
+// n'a jamais été ajouté à cette liste. Contradiction trouvée par l'audit : l'onboarding Club+ réel
+// (OnboardingOverlay.tsx) promet explicitement le Studio, sans jamais pouvoir l'atteindre.
+// Décision Fouka (19/08) : débloquer, pas retirer la promesse. Pas de mapping
+// MODULE_TO_CONNECT_MODULE volontaire (comme messages/communication/analytics ci-dessus) : le
+// Studio n'est vendu par aucune formule à part (la vitrine club-plus.html ne le mentionne même
+// pas par ce nom), donc ouvert à tout membre actif dès que READY, comme "Demandes de visuels".
+// `min_tier` existe en base (colonne studio_templates.min_tier) mais n'est lu nulle part côté
+// frontend (StudioTemplate.minTier est typé en dur au littéral 2, voir data/club/studio.ts) —
+// aucune gate par plan à ajouter ici tant que ce champ reste non branché.
 export const READY_MODULES: ReadonlySet<ModuleKey> = new Set([
   "dashboard",
+  "studio",
   "teams",
   "matchcenter",
   "newsroom",
