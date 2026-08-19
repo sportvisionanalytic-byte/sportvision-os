@@ -56,6 +56,7 @@ export function CreateFundingWizard({
   initialGroupId,
   initialOfferId = null,
   initialContexte = null,
+  initialPrestationId = null,
   beneficiary = null,
   basePath = "/cotisations",
 }: {
@@ -64,6 +65,7 @@ export function CreateFundingWizard({
   initialGroupId: string | null;
   initialOfferId?: string | null;
   initialContexte?: string | null;
+  initialPrestationId?: string | null;
   beneficiary?: FundingBeneficiary | null;
   basePath?: string;
 }) {
@@ -118,6 +120,7 @@ export function CreateFundingWizard({
       p_beneficiary_kind: beneficiary?.kind ?? null,
       p_beneficiary_owner_user_id: beneficiary?.kind === "linked" ? beneficiary.id : null,
       p_beneficiary_managed_id: beneficiary?.kind === "managed" ? beneficiary.id : null,
+      p_prestation_id: initialPrestationId,
     });
     setBusy(false);
     if (rpcError || !data) {

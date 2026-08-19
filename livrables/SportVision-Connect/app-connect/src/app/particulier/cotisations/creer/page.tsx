@@ -14,9 +14,9 @@ import { CreateFundingWizard, type OffreOption, type GroupOption, type FundingBe
 export default async function CreerCotisationParticulierPage({
   searchParams,
 }: {
-  searchParams: Promise<{ groupe?: string; offreId?: string; benefKind?: string; benefId?: string; contexte?: string }>;
+  searchParams: Promise<{ groupe?: string; offreId?: string; benefKind?: string; benefId?: string; contexte?: string; prestationId?: string }>;
 }) {
-  const { groupe, offreId, benefKind, benefId, contexte } = await searchParams;
+  const { groupe, offreId, benefKind, benefId, contexte, prestationId } = await searchParams;
   const supabase = await createClient();
   await requireParticulierAccount(supabase);
 
@@ -45,6 +45,7 @@ export default async function CreerCotisationParticulierPage({
       initialGroupId={groupe || null}
       initialOfferId={offreId || null}
       initialContexte={contexte || null}
+      initialPrestationId={prestationId || null}
       beneficiary={beneficiary}
       basePath="/particulier/cotisations"
     />

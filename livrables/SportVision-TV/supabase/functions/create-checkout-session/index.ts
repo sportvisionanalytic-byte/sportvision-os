@@ -296,7 +296,29 @@ serve(async (req) => {
         .eq("prestation_id", prestation.id)
         .eq("statut", "reussi");
       const dejaRegle = (paidRows || []).reduce((sum, r) => sum + Number(r.montant), 0);
-      montant = Math.max(0, Math.round((totalTtc - dejaRegle) * 100) / 100);
+
+      // Paiement collectif (migration-connect-v78) : une partie du solde peut déjà avoir été
+      // réglée par les coéquipiers via un group_fundings lié à CETTE prestation — jamais compté
+      // dans `paiements` (les contributions y transitent par funding_contributions). Seules les
+      // contributions carte confirmées comptent ('paye' + mode_paiement 'carte') : les espèces
+      // sont remises en main propre à l'organisateur, ce n'est pas une recette SportVision
+      // encaissée (voir migration-connect-v73-cotisation-paiement-especes.sql).
+      const { data: fundingRows } = await admin
+        .from("group_fundings")
+        .select("id")
+        .eq("prestation_id", prestation.id);
+      let dejaCollecte = 0;
+      if (fundingRows && fundingRows.length > 0) {
+        const { data: contribRows } = await admin
+          .from("funding_contributions")
+          .select("montant")
+          .in("funding_id", fundingRows.map((f) => f.id))
+          .eq("statut", "paye")
+          .eq("mode_paiement", "carte");
+        dejaCollecte = (contribRows || []).reduce((sum, r) => sum + Number(r.montant), 0);
+      }
+
+      montant = Math.max(0, Math.round((totalTtc - dejaRegle - dejaCollecte) * 100) / 100);
     }
 
     if (!montant || montant <= 0) return json({ error: "Montant à payer nul" }, 400);

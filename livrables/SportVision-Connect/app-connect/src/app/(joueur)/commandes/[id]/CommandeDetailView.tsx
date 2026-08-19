@@ -208,7 +208,7 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
               <Link
                 href={
                   fundingLink.offre_id
-                    ? `${cotisationsBase}/creer?offreId=${fundingLink.offre_id}${order.equipes ? `&contexte=${encodeURIComponent(order.equipes)}` : ""}`
+                    ? `${cotisationsBase}/creer?offreId=${fundingLink.offre_id}&prestationId=${id}${order.equipes ? `&contexte=${encodeURIComponent(order.equipes)}` : ""}`
                     : `${cotisationsBase}/creer`
                 }
                 className="flex h-11 w-fit items-center gap-2 rounded-sv bg-sv-gradient px-4 font-sora text-[14px] font-semibold text-white hover:brightness-[1.12]"
