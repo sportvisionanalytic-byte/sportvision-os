@@ -4,6 +4,15 @@
 
 export type LicenseStatus = "valid" | "pending" | "expired" | "missing";
 
+/** Catégories d'âge standard des clubs sportifs amateurs français (19/08/2026, retour
+ * utilisateur : CreateTeamModal proposait un champ texte libre — remplacé par une liste
+ * déroulante). Pas de valeur "Féminines" ici : club_teams.section (Masculin/Féminin, colonne
+ * séparée) porte déjà cette distinction, la mélanger à la catégorie créerait un doublon. */
+export const TEAM_CATEGORY_OPTIONS = [
+  "U6", "U7", "U8", "U9", "U10", "U11", "U12", "U13", "U14", "U15", "U16", "U17", "U18", "U19", "U20",
+  "Seniors", "Vétérans", "Loisirs",
+] as const;
+
 export interface Team {
   id: string;
   organizationId: string;

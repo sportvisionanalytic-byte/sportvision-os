@@ -116,6 +116,7 @@ export default function TeamsPage() {
 
       {showCreate && (
         <CreateTeamModal
+          clubId={ctx.organization.id}
           onClose={() => setShowCreate(false)}
           onCreate={(input) => createClubTeam(createClient(), ctx.organization.id, input).then(() => loadTeams())}
         />
