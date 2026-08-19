@@ -1,0 +1,136 @@
+{
+  "meta": {
+    "generated": "2026-08-20",
+    "scope": "SportVision OS (backoffice interne) + écosystème Supabase partagé",
+    "note": "Métadonnées structurelles uniquement — aucune donnée métier réelle, aucun secret, aucune clé."
+  },
+  "apps": [
+    { "name": "Vitrine", "path": "livrables/SportVision", "stack": "HTML/CSS/JS statique", "deploy": "Netlify (publish=.)", "domain": "sportvision-an.fr" },
+    { "name": "Connect", "path": "livrables/SportVision-Connect/app-connect", "stack": "Next.js", "deploy": "Netlify (base=app-connect, publish=.next)", "domain": "non documenté dans le repo" },
+    { "name": "Club+", "path": "livrables/SportVision-Connect/app-next", "stack": "Next.js", "deploy": "Netlify (base=app-next, publish=.next)", "domain": "non documenté dans le repo" },
+    { "name": "SportVision OS", "path": "livrables/SportVision-TV/SportVision-OS-Full.html", "stack": "HTML/JS vanilla, fichier unique, ~25000 lignes", "deploy": "Netlify racine du repo (publish=livrables/SportVision-TV)", "domain": "sportvision-os.netlify.app (observé)" },
+    { "name": "Club+ (legacy)", "path": "livrables/SportVision-Club-Plus", "stack": "HTML unique", "deploy": "Netlify (statut réel à vérifier)", "status": "probablement absorbée par Club+ actuel" },
+    { "name": "Connect (legacy vanilla)", "path": "livrables/SportVision-Connect/app", "stack": "HTML + modules JS", "deploy": "Netlify (statut réel à vérifier)", "status": "ancêtre historique de Connect/Club+ actuels" }
+  ],
+  "backend": {
+    "provider": "Supabase",
+    "project_ref": "lulgezzpvrlbftbykzrc",
+    "shared_by": "toutes les apps listées ci-dessus",
+    "tables_count": 168,
+    "columns_count": 1976,
+    "rls_policies_count": 393,
+    "rls_tables_count": 158,
+    "foreign_keys_count": 270,
+    "functions_count": 173,
+    "storage_buckets": [
+      { "name": "club-logos", "public": true },
+      { "name": "clubplus-media", "public": true },
+      { "name": "portail-media", "public": true }
+    ],
+    "payments": "Stripe (checkout sessions par edge function)",
+    "esignature": "Youtrust (PAS Yousign, malgré cahier des charges d'origine)",
+    "accounting": "Pennylane (export facture)",
+    "cron": "pg_cron -> edge function dispatch-notifications (secret partagé vérifié)"
+  },
+  "roles": [
+    { "id": "admin", "label": "Administrateur", "screens_count": 47, "read_only": false },
+    { "id": "sec", "label": "Secrétaire", "screens_count": 26, "read_only": false },
+    { "id": "prod", "label": "Resp. Production", "screens_count": 24, "read_only": false },
+    { "id": "compta", "label": "Comptable", "screens_count": 24, "read_only": false },
+    { "id": "expert_comptable", "label": "Expert-comptable", "screens_count": 18, "read_only": true },
+    { "id": "auditeur", "label": "Auditeur", "screens_count": 15, "read_only": true },
+    { "id": "cm", "label": "Community Manager", "screens_count": 17, "read_only": false },
+    { "id": "com", "label": "Commercial", "screens_count": 13, "read_only": false },
+    { "id": "photo", "label": "Photographe / Vidéaste", "screens_count": 11, "read_only": false }
+  ],
+  "demo_mode": {
+    "activation": "?demo=1",
+    "deep_link": "?demo=1&role=<id>&view=<id>",
+    "no_login_required": true,
+    "no_real_network_calls": true,
+    "coverage": {
+      "fully_populated": ["dash (tous rôles)", "pre", "planning", "crm", "devis", "contrats", "kanban", "equipes", "incidents", "reservationsclubs", "cotisations", "connectcomptes", "col", "users", "set", "paiements", "taches", "msg (fil équipe)", "documents (partiel)", "objectifs", "commissions (com)"],
+      "partially_populated": ["equipe", "cmagency", "pipeline", "budget/rapports (prod)", "grades", "form"],
+      "empty": ["fin", "resultat", "rentabilite", "commissions (compta)", "immobilisations", "budgets", "tva", "rapprochement", "acomptes", "impayes", "encaissements", "clotures", "fec", "audit", "contenus (cm)", "analytics (cm)", "charge (cm)", "publications (cm)", "demandes (cm)", "media/postproduction/livrables détaillés (prod/photo)", "dash (expert_comptable)"]
+    }
+  },
+  "prestation_statuses_sequence": [
+    "demande_reçue", "à_qualifier", "offre_en_préparation", "devis_envoyé", "en_attente_réponse",
+    "devis_accepté", "en_attente_signature", "en_attente_acompte", "documents_complets",
+    "à_valider_production", "confirmée", "à_planifier", "planifiée", "équipe_affectée", "prête",
+    "équipe_en_route", "arrivée_sur_place", "production_démarrée", "production_terminée",
+    "médias_à_transférer", "médias_complets", "à_monter", "montage_en_cours", "prêt_validation",
+    "à_valider_client", "prête_à_livrer", "livrée", "facturée", "partiellement_payée", "payée", "clôturée"
+  ],
+  "prestation_statuses_terminal_out_of_sequence": ["annulée", "refusée"],
+  "financial_statuses": ["non_facturée", "en_préparation", "facturée", "partiellement_payée", "en_retard", "payée"],
+  "plans_club_plus": [
+    { "code": "club_plus_free", "name": "Club+ Gratuit", "monthly_price_eur": 0, "monthly_price_no_commitment_eur": null, "monthly_credits": 0, "max_users": 1, "max_teams": 1 },
+    { "code": "club_plus_start", "name": "Club+ Start", "monthly_price_eur": 49, "monthly_price_no_commitment_eur": 59, "monthly_credits": 10, "max_users": 5, "max_teams": 2 },
+    { "code": "club_plus_performance", "name": "Club+ Performance", "monthly_price_eur": 129, "monthly_price_no_commitment_eur": 139, "monthly_credits": 40, "max_users": null, "max_teams": null },
+    { "code": "full_communication", "name": "Full Communication", "monthly_price_eur": null, "note": "sur devis, aucun Price Stripe branché, résolu dynamiquement via contrat client_contrats", "monthly_credits": null, "max_users": null, "max_teams": null },
+    { "code": "one_off", "name": "Prestation unique", "monthly_price_eur": null, "note": "facturé à la commande", "monthly_credits": 1, "max_users": 2, "max_teams": null }
+  ],
+  "edge_functions": [
+    "admin-delete-portal-account", "check-disponibilite", "clubplus-activate", "clubplus-billing-portal",
+    "clubplus-check-activation-token", "clubplus-family-invite", "clubplus-generate-activation",
+    "clubplus-invite", "clubplus-onboarding", "connect-agent-billing-portal", "connect-club-signup-request",
+    "connect-club-signup-review", "connect-org-activate", "connect-org-check-activation-token",
+    "connect-org-signup (DÉPRÉCIÉE, retourne 410)", "connect-player-onboarding", "connect-player-prestations",
+    "connect-signup-lead", "connect-staff-create-org", "create-agent-subscription-checkout",
+    "create-checkout-session", "create-clubplus-subscription-checkout", "create-funding-contribution-checkout",
+    "create-guest-funding-contribution-checkout", "create-guest-payment-checkout", "create-guest-rdv",
+    "create-guest-request", "create-team-contribution-checkout", "delete-account", "dispatch-notifications",
+    "invite-collaborateur", "manage-agent-subscription", "notify-account-change", "org-invite",
+    "portal-onboarding", "request-password-reset", "send-devis-email", "send-facture-email",
+    "send-facture-pennylane", "send-signature-request", "stripe-webhook", "submit-retractation-demande",
+    "youtrust-webhook"
+  ],
+  "os_rpc_functions": [
+    "connect_os_accounts_list", "connect_os_account_detail", "credit_organization",
+    "rpc_complete_formation", "rpc_get_custom_quiz", "rpc_submit_quiz",
+    "seed_event_checklist", "staff_update_club_request_status"
+  ],
+  "os_edge_functions_called_directly": [
+    "invite-collaborateur", "clubplus-generate-activation", "connect-staff-create-org",
+    "connect-club-signup-review", "notify-account-change", "send-facture-pennylane",
+    "send-devis-email", "send-facture-email", "request-password-reset", "admin-delete-portal-account"
+  ],
+  "database_tables_by_domain": {
+    "crm_commercial": ["clients", "organizations", "catalogue_offres", "client_affiliations", "client_contacts"],
+    "devis_contrats_factures": ["devis", "contrats", "factures", "avoirs", "paiements", "client_devis", "client_contrats", "client_factures"],
+    "prestations": ["prestations", "prestations_equipe"],
+    "club_plus": ["clubs", "club_members", "club_teams", "club_bookings", "club_matches", "club_media", "club_creations", "club_requests", "club_sponsors", "team_invite_codes", "team_memberships", "membership_requests", "memberships", "team_projects"],
+    "connect": ["player_profiles", "parent_profiles", "connect_access_relationships", "connect_clubplus_signup_requests", "connect_declared_clubs", "connect_declared_club_players", "connect_modules"],
+    "finance_rh_interne": ["employee_costs", "expenses", "xp_events", "formation_inscriptions", "organization_entitlements"],
+    "financement_participatif": ["group_fundings", "funding_contributions", "team_project_contributions"],
+    "evenements": ["event_editions", "event_sessions", "event_checklist_items"],
+    "materiel_production": ["kits", "materiels", "kit_reservations", "kit_controles", "materiel_incidents", "materiel_maintenances"],
+    "medias_livrables": ["media_liens", "media_livrables", "media_versions", "media_postproductions", "media_corrections", "media_access_rules"],
+    "staff_interne": ["profiles", "messages", "notifications"]
+  },
+  "known_data_model_duplication": {
+    "description": "Migration inachevée entre modèle historique et modèle unifié, synchronisés par triggers",
+    "legacy_pivot_tables": ["clients", "clubs"],
+    "target_pivot_table": "organizations",
+    "sync_triggers": ["sync_club_to_organization", "sync_client_to_organization", "sync_club_member_to_membership"],
+    "bridge_columns": ["clubs.portail_client_id", "organizations.legacy_client_id", "organizations.legacy_club_id"]
+  },
+  "row_counts_at_audit_time": {
+    "notifications": 176, "clients": 18, "catalogue_offres": 13, "profiles": 11,
+    "membership_requests": 3, "club_members": 4, "club_teams": 1, "clubs": 2,
+    "organizations": 2, "devis": 1, "group_fundings": 1, "player_profiles": 1,
+    "prestations": 2, "prestations_equipe": 1, "team_memberships": 1,
+    "client_organisation": 0, "club_bookings": 0, "connect_clubplus_signup_requests": 0,
+    "contrats": 0, "factures": 0,
+    "note": "Base en phase de rodage au moment de l'audit, pas en pleine exploitation commerciale"
+  },
+  "documents_in_this_pack": [
+    "SPORTVISION_OS_AUDIT_PACK.md",
+    "SPORTVISION_OS_AUDIT_DATA.json",
+    "SPORTVISION_OS_ROLE_MATRIX.md",
+    "SPORTVISION_ECOSYSTEM_DATA_MATRIX.md",
+    "SPORTVISION_KNOWN_INCONSISTENCIES.md",
+    "SPORTVISION_OS_DEMO_URLS.md"
+  ]
+}

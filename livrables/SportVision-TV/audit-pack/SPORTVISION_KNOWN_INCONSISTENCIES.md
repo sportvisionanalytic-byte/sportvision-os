@@ -140,6 +140,67 @@ Complété au fur et à mesure de l'avancement du pack — voir aussi § 60/61 d
 - **Fichiers concernés** : `livrables/SportVision-Club-Plus/netlify.toml`, `livrables/SportVision-Connect/app/netlify.toml`.
 - **Statut** : **À VÉRIFIER MANUELLEMENT** (hors capacité de ce pack, qui n'a accès qu'au code, pas au dashboard Netlify).
 
+### INC-015 — Signature électronique désactivée dans l'OS (côté staff)
+
+- **Sévérité** : Moyenne.
+- **Systèmes impactés** : SportVision OS.
+- **Comportement actuel** : `demanderSignatureDoc` (l.10485-10491) est temporairement désactivée — le bouton affiche un toast invitant à faire signer en papier/PDF au lieu d'appeler `send-signature-request`. Le commentaire du code précise explicitement : implémentation réelle conservée dans l'historique git, "à restaurer une fois la production Yousign active et le secret `YOUTRUST_API_URL` configuré dans Supabase."
+- **Point notable** : le commentaire mentionne encore "Yousign" alors que l'intégration réelle est Youtrust (voir INC-010) — trace supplémentaire de la confusion de nommage, cette fois dans un commentaire actif plutôt que dans une doc.
+- **Recommandation** : vérifier si `YOUTRUST_API_URL` est configuré côté Supabase et réactiver cette fonction si oui.
+- **Fichiers concernés** : `SportVision-OS-Full.html:10485-10491`.
+- **Statut** : **DÉSACTIVÉ, à vérifier si la dépendance est maintenant levée**.
+
+### INC-016 — Réservations clubs potentiellement bloquées par une policy RLS non exécutée
+
+- **Sévérité** : Haute si toujours vrai (écran staff visible mais non fonctionnel).
+- **Systèmes impactés** : SportVision OS, Club+.
+- **Comportement actuel (au moment de l'écriture du commentaire dans le code)** : la RLS staff nécessaire (`migration-connect-v34-club-bookings-staff-access.sql`) était **NON EXÉCUTÉE** — l'écran "Réservations clubs" affiche alors une liste vide et tout changement de statut échoue en HTTP 42501 (permission refusée), sans message d'erreur clair pour l'utilisateur staff.
+- **Précédent connu** : la même nuit, plusieurs migrations marquées "NON EXÉCUTÉE" se sont révélées en fait déjà appliquées en prod (leçon déjà établie : ne jamais faire confiance à cet en-tête seul).
+- **Recommandation** : vérifier en base réelle l'état de cette migration précise avant de conclure quoi que ce soit.
+- **Fichiers concernés** : `SportVision-OS-Full.html:18575-18581`.
+- **Statut** : **À VÉRIFIER EN BASE**.
+
+### INC-017 — Cotisations (paiement collectif) : policy RLS staff potentiellement absente
+
+- **Sévérité** : Haute si toujours vrai.
+- **Systèmes impactés** : SportVision OS.
+- **Comportement actuel (au moment de l'écriture du commentaire)** : le code documente lui-même l'absence d'une policy `is_staff()` sur `group_fundings`/`funding_contributions`/`user_groups` — sans elle, l'écran Cotisations affiche "Aucune cotisation" pour tout le monde, y compris admin, même si des données existent réellement (comportement PostgREST normal sous RLS trop stricte, pas une erreur visible).
+- **Recommandation** : vérifier en base réelle si cette policy a été ajoutée depuis l'écriture de ce commentaire.
+- **Fichiers concernés** : `SportVision-OS-Full.html:18869-18879, 18934`.
+- **Statut** : **À VÉRIFIER EN BASE**.
+
+### INC-018 — Plusieurs tables/migrations backend non garanties présentes en production
+
+- **Sévérité** : Moyenne à Haute selon la table.
+- **Systèmes impactés** : SportVision OS.
+- **Comportement** : le code contient des blocs `catch` défensifs avec message explicite "Table X manquante, migration Y.sql à exécuter" pour au moins ces cas : `frais` (déclaration de frais), `formations_custom`/`formations_quiz_custom` (`migration-formations-admin.sql`), `paiements` (`migration-portail-v1.sql`), `expenses` (`migration-finance-lot0.sql`), `commissions` (`migration-finance-lot0.sql`), `contrats` (`migration-contrats.sql`, + `migration-contrats-v3-description.sql` pour le champ description du périmètre spécifiquement), `centre_ressources`.
+- **Point positif à noter** : c'est une pratique de développement disciplinée — écran vide avec message explicite plutôt qu'écran blanc ou erreur brute — mais cela confirme qu'un nombre notable de fonctionnalités ne sont pas garanties opérationnelles sans vérification directe en base.
+- **Recommandation** : vérifier chacune de ces migrations en base réelle (méthode déjà établie ce soir : requête directe sur le schéma, jamais confiance dans un en-tête de fichier).
+- **Fichiers concernés** : voir tableau détaillé dans l'inventaire OS complet (nombreuses lignes dans `SportVision-OS-Full.html`, zone 7000-23000).
+- **Statut** : **À VÉRIFIER EN BASE, liste probablement partiellement obsolète** (cohérent avec le pattern déjà observé ce soir sur d'autres migrations).
+
+### INC-019 — Écran "Demandes" du CM lit une table différente de celle peuplée en démo
+
+- **Sévérité** : Basse (limitation du mode démo, pas un bug de production).
+- **Systèmes impactés** : SportVision OS (mode démo uniquement).
+- **Comportement** : l'écran "Demandes" du rôle Community Manager lit la table `club_requests`, distincte de `connect_clubplus_signup_requests` — les deux noms se ressemblent et concernent tous deux des "demandes", ce qui peut prêter à confusion lors d'une revue rapide du schéma.
+- **Recommandation** : si le mode démo doit un jour couvrir cet écran, peupler `club_requests` spécifiquement (ne pas réutiliser `connect_clubplus_signup_requests` en pensant que c'est la même chose).
+- **Statut** : **NOTÉ**, sans impact sur la production réelle.
+
+### INC-020 — Duplication du dispatch financier admin / compta
+
+- **Sévérité** : Basse (risque de maintenance, pas un bug actif).
+- **Systèmes impactés** : SportVision OS.
+- **Comportement** : les ~15 écrans financiers détaillés sont dispatchés deux fois dans `loadViewData` — une fois pour le groupe `_isComptaLike` (compta/expert_comptable/auditeur), une fois explicitement pour `admin`, avec un commentaire assumant ce choix pour éviter de dupliquer d'autres dispatches (`dash`/`docs`) déjà gérés séparément pour admin.
+- **Risque** : une future modification d'un écran financier peut être faite sur une branche du dispatch et oubliée sur l'autre, désynchronisant le comportement admin vs compta sans qu'aucune erreur ne le signale.
+- **Recommandation** : envisager de fusionner les deux branches (`_isComptaLike.push('admin')` plutôt que deux blocs de code séparés), à évaluer sans urgence.
+- **Fichiers concernés** : `SportVision-OS-Full.html:3610-3733` (bloc `loadViewData`).
+- **Statut** : **NOTÉ**, refactor optionnel.
+
 ---
 
-*(Liste à compléter — sections § 60/61/62/63 du plan d'audit d'origine (recherche TODO/FIXME/mock/hardcodé, doublons de prix, vocabulaire) en attente des recherches en cours sur l'inventaire complet de SportVision OS.)*
+## Résumé § 60/61 du plan d'audit d'origine (recherche TODO/FIXME/HACK/mock)
+
+Recherche effectuée sur l'ensemble de `SportVision-OS-Full.html` (~25 000 lignes) : **aucun marqueur `TODO`/`FIXME`/`HACK` de dette technique réel trouvé**. Les seules occurrences du mot "hack" dans le fichier appartiennent au contenu pédagogique d'un quiz de formation interne (texte fictif destiné aux collaborateurs), sans rapport avec le code lui-même.
+
+En revanche, la recherche a mis au jour un pattern répété et cohérent : des blocs `catch` défensifs annonçant explicitement qu'une table est absente et quelle migration l'ajouterait (voir INC-018 ci-dessus) — c'est la vraie forme que prend la dette technique dans ce codebase : jamais un commentaire "TODO" oublié, toujours un garde-fou utilisateur explicite en attendant qu'une migration soit exécutée.
