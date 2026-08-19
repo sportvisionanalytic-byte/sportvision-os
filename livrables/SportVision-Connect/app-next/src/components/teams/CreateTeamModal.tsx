@@ -1,31 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { fetchClubMembers } from "@/lib/data/club/users";
+import { createClient } from "@/lib/supabase/client";
+import { TEAM_CATEGORY_OPTIONS } from "@/lib/types/teams";
+import type { OrgUser } from "@/lib/types/settings";
 
 // Modale "Créer une équipe" (19/08/2026, retour utilisateur : aucune UI ne permettait de créer
-// une équipe alors que club_teams.coach existe déjà comme champ texte libre — même famille de
-// champ que club_calendar_events.team). Même pattern que AddEventModal.tsx.
+// une équipe. Puis affinée le même soir : catégorie en liste déroulante (TEAM_CATEGORY_OPTIONS)
+// + numéro d'équipe optionnel (club avec plusieurs équipes dans la même catégorie, ex. "U17 2"
+// — mirroir du pattern "Seniors A" déjà vu dans les données de référence), name dérivé des deux
+// plutôt que retapé à la main. Responsable : liste des membres déjà actifs du club (club_members
+// est ce que coach lit réellement, voir data/club/teams.ts) plutôt qu'un texte libre qui peut
+// diverger d'un vrai compte. Pas de "lien d'invitation à usage unique" séparé : /users a déjà un
+// vrai mécanisme d'invitation par e-mail avec équipe assignée (InviteUserModal, rôle coach) —
+// dupliquer cette logique ici aurait introduit un deuxième système d'invitation parallèle,
+// simplement pointé vers lui si le responsable n'est pas encore dans l'effectif.
 interface CreateTeamModalProps {
+  clubId: string;
   onClose: () => void;
   onCreate: (input: { name: string; categorie?: string; coach?: string }) => Promise<unknown>;
 }
 
-export function CreateTeamModal({ onClose, onCreate }: CreateTeamModalProps) {
-  const [name, setName] = useState("");
+export function CreateTeamModal({ clubId, onClose, onCreate }: CreateTeamModalProps) {
   const [categorie, setCategorie] = useState("");
-  const [coach, setCoach] = useState("");
+  const [teamNumber, setTeamNumber] = useState("");
+  const [coachMemberId, setCoachMemberId] = useState("");
+  const [members, setMembers] = useState<OrgUser[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = name.trim().length > 0;
+  useEffect(() => {
+    fetchClubMembers(createClient(), clubId)
+      .then((rows) => setMembers(rows.filter((m) => m.status === "active")))
+      .catch(() => setMembers([]));
+  }, [clubId]);
+
+  const canSubmit = categorie.trim().length > 0;
+  const coachName = members?.find((m) => m.id === coachMemberId);
 
   function handleSubmit() {
     setSubmitting(true);
     setError(null);
-    onCreate({ name: name.trim(), categorie: categorie.trim() || undefined, coach: coach.trim() || undefined })
+    const name = teamNumber ? `${categorie} ${teamNumber}` : categorie;
+    const coach = coachName ? `${coachName.firstName} ${coachName.lastName}`.trim() : undefined;
+    onCreate({ name, categorie, coach })
       .then(() => onClose())
       .catch(() => {
         setSubmitting(false);
@@ -50,24 +73,53 @@ export function CreateTeamModal({ onClose, onCreate }: CreateTeamModalProps) {
           directement.
         </p>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-bold text-text-soft">Nom de l&apos;équipe</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} className={fieldClass} placeholder="U17" />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-bold text-text-soft">Catégorie (optionnel)</span>
-          <input
-            value={categorie}
-            onChange={(e) => setCategorie(e.target.value)}
-            className={fieldClass}
-            placeholder="Jeunes, Seniors, Féminines…"
-          />
-        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Catégorie</span>
+            <select value={categorie} onChange={(e) => setCategorie(e.target.value)} className={fieldClass}>
+              <option value="">Sélectionner…</option>
+              {TEAM_CATEGORY_OPTIONS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12.5px] font-bold text-text-soft">Équipe (optionnel)</span>
+            <select value={teamNumber} onChange={(e) => setTeamNumber(e.target.value)} className={fieldClass}>
+              <option value="">—</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+            </select>
+          </label>
+        </div>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[12.5px] font-bold text-text-soft">Responsable (coach) · optionnel</span>
-          <input value={coach} onChange={(e) => setCoach(e.target.value)} className={fieldClass} placeholder="Nom du coach" />
+          <select
+            value={coachMemberId}
+            onChange={(e) => setCoachMemberId(e.target.value)}
+            disabled={members === null}
+            className={fieldClass}
+          >
+            <option value="">
+              {members === null ? "Chargement…" : "Aucun responsable pour l'instant"}
+            </option>
+            {members?.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.firstName} {m.lastName}
+              </option>
+            ))}
+          </select>
+          <span className="text-[11.5px] text-text-faint">
+            Le futur coach n&apos;est pas encore dans l&apos;effectif ?{" "}
+            <Link href="/users" className="font-bold text-brand-blue-electric">
+              Invitez-le d&apos;abord
+            </Link>
+            , vous pourrez ensuite le choisir ici.
+          </span>
         </label>
 
         {error && <p className="text-[12.5px] font-bold text-danger-fg">{error}</p>}
