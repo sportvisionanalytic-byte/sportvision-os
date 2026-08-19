@@ -161,5 +161,8 @@ export function formatPlanPriceRange(plan: PlanDefinition): string {
 export function formatPlanCredits(plan: PlanDefinition): string {
   if (plan.monthlyCredits === null) return "Sur mesure";
   if (plan.monthlyCredits === 0) return "À la carte";
+  // Accord singulier/pluriel (trouvé lors de l'audit démo Club+ du 19/08/2026 : "one_off" a
+  // monthlyCredits=1, "1 crédits / mois" était donc affiché partout où ce plan est actif).
+  if (plan.monthlyCredits === 1) return "1 crédit / mois";
   return `${plan.monthlyCredits} crédits / mois`;
 }

@@ -17,9 +17,17 @@ import { Card } from "@/components/ui/Card";
 // précisent le nom du module verrouillé.
 interface LockedModuleProps {
   title?: string;
+  /**
+   * Remplace le message générique de `lockedModuleMessage` (qui suggère qu'un changement de
+   * formule ou un entitlement peut débloquer le module « à tout moment »). À utiliser
+   * uniquement pour un module qu'AUCUNE formule ne débloque aujourd'hui (ex. Studio, absent de
+   * READY_MODULES sans exception — voir entitlements.ts) : le message générique y serait
+   * trompeur (trouvé lors de l'audit démo Club+ du 19/08/2026).
+   */
+  message?: string;
 }
 
-export function LockedModule({ title }: LockedModuleProps) {
+export function LockedModule({ title, message }: LockedModuleProps) {
   const { ctx } = useSession();
 
   return (
@@ -30,7 +38,7 @@ export function LockedModule({ title }: LockedModuleProps) {
         </span>
         <div>
           {title && <h1 className="text-[20px] font-extrabold tracking-tight">{title}</h1>}
-          <p className="mt-2 max-w-md text-[13.5px] leading-relaxed text-text-soft">{lockedModuleMessage(ctx)}</p>
+          <p className="mt-2 max-w-md text-[13.5px] leading-relaxed text-text-soft">{message ?? lockedModuleMessage(ctx)}</p>
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5">
           <Link href="/support">

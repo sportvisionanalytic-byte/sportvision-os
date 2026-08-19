@@ -34,6 +34,8 @@ function makeCtx(opts: {
   teamScope?: string[];
   jobTitle?: string;
   fullEntitlements?: boolean;
+  firstName?: string;
+  lastName?: string;
 }): ActiveContext {
   const entitlements: ActiveContext["entitlements"] =
     opts.orgType === "club"
@@ -51,9 +53,9 @@ function makeCtx(opts: {
   return {
     user: {
       id: "demo-user",
-      firstName: "Camille",
-      lastName: "Bernard",
-      email: "camille.bernard@exemple.fr",
+      firstName: opts.firstName ?? "Camille",
+      lastName: opts.lastName ?? "Bernard",
+      email: `${(opts.firstName ?? "camille").toLowerCase()}.${(opts.lastName ?? "bernard").toLowerCase()}@exemple.fr`,
       jobTitle: opts.jobTitle,
       locale: "fr",
       theme: "dark",
@@ -162,7 +164,7 @@ export const DEMO_PROFILES: DemoProfile[] = [
     "coach-fullcom",
     "Coach indépendant — Full Communication",
     "Autres structures",
-    makeCtx({ orgId: "demo-coach", orgName: "Marc Dubois — Coach indépendant", orgType: "coach", planCode: "full_communication", role: "owner", jobTitle: "Coach indépendant" }),
+    makeCtx({ orgId: "demo-coach", orgName: "Marc Dubois — Coach indépendant", orgType: "coach", planCode: "full_communication", role: "owner", jobTitle: "Coach indépendant", firstName: "Marc", lastName: "Dubois" }),
   ),
   profile(
     "coach-clubplus",
@@ -174,61 +176,61 @@ export const DEMO_PROFILES: DemoProfile[] = [
     "academy-fullcom",
     "Académie — Full Communication",
     "Autres structures",
-    makeCtx({ orgId: "demo-academy", orgName: "Académie Horizon Sport", orgType: "academy", planCode: "full_communication", role: "manager", jobTitle: "Directeur académie" }),
+    makeCtx({ orgId: "demo-academy", orgName: "Académie Horizon Sport", orgType: "academy", planCode: "full_communication", role: "manager", jobTitle: "Directeur académie", firstName: "Julie", lastName: "Moreau" }),
   ),
   profile(
     "academy-clubplus",
     "Académie — Club+ Start",
     "Autres structures",
-    makeCtx({ orgId: "demo-academy", orgName: "Académie Horizon Sport", orgType: "academy", planCode: "club_plus_start", role: "manager", jobTitle: "Directeur académie" }),
+    makeCtx({ orgId: "demo-academy", orgName: "Académie Horizon Sport", orgType: "academy", planCode: "club_plus_start", role: "manager", jobTitle: "Directeur académie", firstName: "Julie", lastName: "Moreau" }),
   ),
   profile(
     "tournament-fullcom",
     "Tournoi — Full Communication",
     "Autres structures",
-    makeCtx({ orgId: "demo-tournament", orgName: "Tournoi International U15 — Melun", orgType: "tournament_organizer", planCode: "full_communication", role: "event_admin" }),
+    makeCtx({ orgId: "demo-tournament", orgName: "Tournoi International U15 — Melun", orgType: "tournament_organizer", planCode: "full_communication", role: "event_admin", firstName: "Nadia", lastName: "Petit" }),
   ),
   profile(
     "tournament-one-off",
     "Tournoi — Prestation unique",
     "Autres structures",
-    makeCtx({ orgId: "demo-tournament", orgName: "Tournoi International U15 — Melun", orgType: "tournament_organizer", planCode: "one_off", role: "event_admin" }),
+    makeCtx({ orgId: "demo-tournament", orgName: "Tournoi International U15 — Melun", orgType: "tournament_organizer", planCode: "one_off", role: "event_admin", firstName: "Nadia", lastName: "Petit" }),
   ),
   profile(
     "camp-fullcom",
     "Stage/Camp — Full Communication",
     "Autres structures",
-    makeCtx({ orgId: "demo-camp", orgName: "Stage Vacances Sport — Été 2026", orgType: "camp", planCode: "full_communication", role: "event_admin" }),
+    makeCtx({ orgId: "demo-camp", orgName: "Stage Vacances Sport — Été 2026", orgType: "camp", planCode: "full_communication", role: "event_admin", firstName: "Yasmine", lastName: "Fabre" }),
   ),
   profile(
     "camp-one-off",
     "Stage/Camp — Prestation unique",
     "Autres structures",
-    makeCtx({ orgId: "demo-camp", orgName: "Stage Vacances Sport — Été 2026", orgType: "camp", planCode: "one_off", role: "event_admin" }),
+    makeCtx({ orgId: "demo-camp", orgName: "Stage Vacances Sport — Été 2026", orgType: "camp", planCode: "one_off", role: "event_admin", firstName: "Yasmine", lastName: "Fabre" }),
   ),
   profile(
     "sponsor",
     "Espace partenaire/sponsor",
     "Autres structures",
-    makeCtx({ orgId: "demo-sponsor", orgName: "Decathlon Fontainebleau", orgType: "sponsor", planCode: "club_access", role: "partner" }),
+    makeCtx({ orgId: "demo-sponsor", orgName: "Decathlon Fontainebleau", orgType: "sponsor", planCode: "club_access", role: "partner", firstName: "Karim", lastName: "Saidi", jobTitle: "Responsable magasin" }),
   ),
   profile(
     "generic",
     "Structure générique (Espace Projet)",
     "Autres structures",
-    makeCtx({ orgId: "demo-generic", orgName: "Studio Photo Indépendant", orgType: "generic", planCode: "one_off", role: "owner" }),
+    makeCtx({ orgId: "demo-generic", orgName: "Studio Photo Indépendant", orgType: "generic", planCode: "one_off", role: "owner", firstName: "Julien", lastName: "Roche" }),
   ),
   profile(
     "parent",
     "Espace Famille (parent)",
     "Autres structures",
-    makeCtx({ orgId: "demo-parent", orgName: "Famille Martin", orgType: "parent", planCode: "club_access", role: "parent" }),
+    makeCtx({ orgId: "demo-parent", orgName: "Famille Martin", orgType: "parent", planCode: "club_access", role: "parent", firstName: "Sarah", lastName: "Martin" }),
   ),
   profile(
     "cm-agency",
     "Agence Community Manager",
     "Autres structures",
-    makeCtx({ orgId: "demo-cm-agency", orgName: "Agence Kaptur Digital", orgType: "cm_agency", planCode: "one_off", role: "internal_cm" }),
+    makeCtx({ orgId: "demo-cm-agency", orgName: "Agence Kaptur Digital", orgType: "cm_agency", planCode: "one_off", role: "internal_cm", firstName: "Chloé", lastName: "Fontaine" }),
   ),
 ];
 

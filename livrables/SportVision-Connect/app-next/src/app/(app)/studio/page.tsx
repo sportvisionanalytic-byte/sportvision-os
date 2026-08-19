@@ -61,7 +61,10 @@ export default function StudioPage() {
     });
   }, [templates, search, category]);
 
-  if (!allowed) return <LockedModule title="Studio Club+" />;
+  // Message dédié (pas le générique de LockedModule, qui suggère qu'un changement de formule
+  // débloque le module "à tout moment") : "studio" est absent de READY_MODULES sans exception,
+  // aucune formule ne le débloque aujourd'hui — trouvé lors de l'audit démo Club+ du 19/08/2026.
+  if (!allowed) return <LockedModule title="Studio Club+" message="Studio arrive bientôt. Ce module n'est pas encore disponible, quelle que soit votre formule actuelle." />;
 
   return (
     <div className="flex flex-col gap-5">

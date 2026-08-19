@@ -2,10 +2,17 @@ import type { ReactNode } from "react";
 import { canAccess } from "@/lib/permissions";
 import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
 import type { DemoProfile } from "./profiles";
+import { orgData } from "./orgs";
 import { Card, DataTable, EmptyState, LockedModule, MessageBubble, PageHeader, RowList, StatGrid } from "@/components/demo/DemoBlocks";
 
 // Contenu statique des écrans de démo Club+, un par chemin de navigation (voir profiles.ts pour
 // la liste des chemins possibles par profil). Aucune donnée réelle, aucun appel Supabase.
+//
+// Audit du 19/08/2026 : la première version affichait un unique jeu de données (FC
+// Fontainebleau) et un dashboard générique pour les 20 profils — corrigé ici en dérivant le
+// contenu de chaque écran de l'organisation active (voir orgs.ts) et en reproduisant la
+// segmentation réelle du dashboard (dashboard/page.tsx : Full Communication / Persona /
+// ClubPlusDashboard, ce dernier lui-même différent par rôle).
 
 function ok(ctx: DemoProfile["ctx"], module: Parameters<typeof canAccess>[1]) {
   return canAccess(ctx, module);
@@ -15,38 +22,129 @@ function Locked(title: string) {
   return <LockedModule title={title} reason="Ce module n'est pas inclus dans l'offre ou le rôle actuellement sélectionné — cadenas identique à celui affiché dans le vrai produit." />;
 }
 
+// ─────────────────────────────────────────── Dashboard (3 variantes réelles) ───────────────────
+
 function Dashboard(p: DemoProfile): ReactNode {
-  const plan = PLANS[p.ctx.subscription.planCode];
-  const isClub = p.ctx.organization.type === "club";
+  if (p.ctx.subscription.planCode === "full_communication") return DashboardFullCommunication(p);
+  if (p.ctx.organization.type === "club") return DashboardClubPlus(p);
+  return DashboardPersona(p);
+}
+
+function fullCommHero(orgType: string, orgName: string): { title: string; subtitle: string } {
+  if (orgType === "coach") return { title: "Développez votre image professionnelle", subtitle: "Un aperçu de votre communication et de ce qui attend votre validation." };
+  if (orgType === "academy") return { title: "Pilotez le calendrier de votre académie", subtitle: "Le calendrier éditorial et la production en cours, en un coup d'œil." };
+  if (orgType === "tournament_organizer" || orgType === "camp") return { title: `${orgName} — communication de l'événement`, subtitle: "Toute la communication de l'événement, du teasing au bilan." };
+  return { title: "Ce que SportVision fait pour votre structure", subtitle: "Ce qui attend votre accord, et ce qui a été fait cette semaine." };
+}
+
+function DashboardFullCommunication(p: DemoProfile): ReactNode {
+  const org = orgData(p.ctx.organization.id);
+  const hero = fullCommHero(p.ctx.organization.type, p.ctx.organization.name);
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title={`Bonjour ${p.ctx.user.firstName} 👋`} subtitle={`${p.ctx.organization.name} · ${p.ctx.membership.role}`} />
+      <PageHeader title={hero.title} subtitle={`${p.ctx.organization.name} · ${hero.subtitle}`} />
       <StatGrid
         stats={[
-          { label: "Offre", value: plan.name, hint: formatPlanPrice(plan) },
-          { label: "Crédits", value: formatPlanCredits(plan) },
-          { label: "Contenus ce mois", value: "18" },
-          { label: "Demandes en attente", value: isClub ? "2" : "1" },
+          { label: "À valider", value: "2" },
+          { label: "Publications cette semaine", value: "4" },
+          { label: "Présences ce mois", value: "2 / 5" },
+          { label: "Prochain rapport", value: "01/09" },
+        ]}
+      />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title="Votre Community Manager">
+          <RowList rows={[{ primary: "Sophie Laurent", secondary: "Community Manager SportVision", meta: org.contactName }]} />
+        </Card>
+        <Card title="Derniers contenus">
+          {org.content.length > 0 ? <RowList rows={org.content.slice(0, 3).map((c) => ({ primary: c.title, secondary: c.kind }))} /> : <EmptyState label="Aucun contenu pour le moment." />}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function DashboardClubPlus(p: DemoProfile): ReactNode {
+  const plan = PLANS[p.ctx.subscription.planCode];
+  const role = p.ctx.membership.role;
+  const isTreasurer = role === "treasurer";
+  const isCoach = role === "coach";
+  const isSportsDirector = role === "sports_director";
+  const org = orgData(p.ctx.organization.id);
+
+  const todoRows = isTreasurer
+    ? [{ primary: "Facture Août à régler", badge: { label: "En attente" as const, tone: "neutral" as const } }]
+    : isCoach || isSportsDirector
+      ? [
+          { primary: "Résultat à saisir — FC Fontainebleau vs US Nemours", badge: { label: "À faire" as const, tone: "warning" as const } },
+          ...(isSportsDirector ? [{ primary: "Résultat U15 à vérifier", badge: { label: "À vérifier" as const, tone: "info" as const } }] : []),
+        ]
+      : [
+          { primary: "Valider la publication Instagram", badge: { label: "À valider" as const, tone: "warning" as const } },
+          { primary: "Demande de visuel — Affiche tournoi", badge: { label: "Nouveau" as const, tone: "info" as const } },
+          { primary: "Facture Août à régler", badge: { label: "En attente" as const, tone: "neutral" as const } },
+        ];
+
+  const stats = isTreasurer
+    ? [
+        { label: "Offre", value: plan.name, hint: formatPlanPrice(plan) },
+        { label: "Factures en attente", value: "1" },
+        { label: "Contrat", value: "Actif" },
+      ]
+    : [
+        { label: "Offre", value: plan.name, hint: formatPlanPrice(plan) },
+        { label: "Crédits", value: formatPlanCredits(plan) },
+        { label: "Contenus ce mois", value: String(org.content.length) },
+        { label: "Demandes en attente", value: "2" },
+      ];
+
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader title={`Bonjour ${p.ctx.user.firstName} 👋`} subtitle={`${p.ctx.organization.name} · ${p.ctx.user.jobTitle ?? role}`} />
+      <StatGrid stats={stats} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        {!isTreasurer && (
+          <Card title="Derniers contenus">
+            {org.content.length > 0 ? <RowList rows={org.content.slice(0, 3).map((c) => ({ primary: c.title, secondary: c.kind }))} /> : <EmptyState label="Aucun contenu pour le moment." />}
+          </Card>
+        )}
+        <Card title="À faire">
+          <RowList rows={todoRows} />
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function personaHero(orgType: string, orgName: string, firstName: string): { title: string; subtitle: string } {
+  if (orgType === "coach") return { title: `Bonjour ${firstName} 👋`, subtitle: "Vos joueurs suivis, vos contenus et vos prestations SportVision." };
+  if (orgType === "academy") return { title: orgName, subtitle: "Groupes, stages et contenus de l'académie." };
+  if (orgType === "tournament_organizer") return { title: orgName, subtitle: "Votre événement, sa communication et sa prestation SportVision." };
+  if (orgType === "camp") return { title: orgName, subtitle: "Votre stage, ses sessions et sa prestation SportVision." };
+  if (orgType === "sponsor") return { title: `${orgName} — espace partenaire`, subtitle: "Votre visibilité et vos contenus sponsorisés." };
+  if (orgType === "cm_agency") return { title: orgName, subtitle: "Les clubs que vous accompagnez." };
+  if (orgType === "parent") return { title: orgName, subtitle: "Les profils de vos enfants et leurs autorisations." };
+  return { title: orgName, subtitle: "Votre prestation SportVision en cours." };
+}
+
+function DashboardPersona(p: DemoProfile): ReactNode {
+  const org = orgData(p.ctx.organization.id);
+  const hero = personaHero(p.ctx.organization.type, p.ctx.organization.name, p.ctx.user.firstName);
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader title={hero.title} subtitle={hero.subtitle} />
+      <StatGrid
+        stats={[
+          { label: "Contenus", value: String(org.content.length) },
+          { label: "Prochain événement", value: org.calendar[0]?.secondary?.split(" ")?.[0] ?? "—" },
+          { label: "Factures en attente", value: String(org.invoices.filter((i) => i.status === "En attente").length) },
         ]}
       />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Derniers contenus">
-          <RowList
-            rows={[
-              { primary: "Match vs AS Melun — Highlights", secondary: "Vidéo · U17", meta: "Hier" },
-              { primary: "Portraits d'équipe — Rentrée", secondary: "Photos · Club", meta: "3 j." },
-              { primary: "Interview capitaine", secondary: "Vidéo · Newsroom", meta: "5 j." },
-            ]}
-          />
+          {org.content.length > 0 ? <RowList rows={org.content.slice(0, 3).map((c) => ({ primary: c.title, secondary: c.kind }))} /> : <EmptyState label="Aucun contenu pour le moment." />}
         </Card>
-        <Card title="À faire">
-          <RowList
-            rows={[
-              { primary: "Valider la publication Instagram", badge: { label: "À valider", tone: "warning" } },
-              { primary: "Demande de visuel — Affiche tournoi", badge: { label: "Nouveau", tone: "info" } },
-              { primary: "Facture Août à régler", badge: { label: "En attente", tone: "neutral" } },
-            ]}
-          />
+        <Card title="À venir">
+          {org.calendar.length > 0 ? <RowList rows={org.calendar.map((c) => ({ primary: c.primary, secondary: c.secondary, meta: c.meta }))} /> : <EmptyState label="Rien de prévu pour le moment." />}
         </Card>
       </div>
     </div>
@@ -74,6 +172,8 @@ function ListPage(title: string, subtitle: string, rows: { primary: string; seco
 }
 
 function Newsroom(): ReactNode {
+  // Réservé au type "club" dans la vraie navigation (jamais montré à un coach/académie/
+  // tournoi/stage) — FC Fontainebleau en dur est donc légitime ici, pas un bug de partage.
   return ListPage("Newsroom", "Les temps forts du club, prêts à publier.", [
     { primary: "FC Fontainebleau s'impose 3-1 face à AS Melun", secondary: "Article · U17", badge: { label: "Publié", tone: "success" } },
     { primary: "Portrait : Nathan R., capitaine des U17", secondary: "Article", badge: { label: "Brouillon", tone: "neutral" } },
@@ -82,6 +182,7 @@ function Newsroom(): ReactNode {
 }
 
 function MatchCenter(): ReactNode {
+  // Idem Newsroom : réservé au type "club" dans la vraie navigation.
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Match Center" subtitle="Résultats et informations de match, saisis par le club." />
@@ -100,11 +201,13 @@ function MatchCenter(): ReactNode {
 }
 
 function Communication(p: DemoProfile): ReactNode {
-  return ListPage("Communication", "Planning éditorial des publications à venir.", [
-    { primary: "Annonce du prochain match", secondary: "Instagram · Prévu jeudi", badge: { label: "Planifié", tone: "info" } },
-    { primary: "Récap victoire vs AS Melun", secondary: "Facebook + Instagram", badge: { label: "Publié", tone: "success" } },
-    { primary: "Interview coach avant-match", secondary: "TikTok", badge: { label: "À valider", tone: "warning" } },
-  ]);
+  const org = orgData(p.ctx.organization.id);
+  const rows = org.content.slice(0, 3).map((c, i) => ({
+    primary: c.title,
+    secondary: i === 0 ? "Instagram · Prévu jeudi" : i === 1 ? "Facebook + Instagram" : "TikTok",
+    badge: i === 0 ? { label: "Planifié" as const, tone: "info" as const } : i === 1 ? { label: "Publié" as const, tone: "success" as const } : { label: "À valider" as const, tone: "warning" as const },
+  }));
+  return ListPage("Communication", `Planning éditorial de ${p.ctx.organization.name}.`, rows);
 }
 
 function CommunicationCredits(): ReactNode {
@@ -124,48 +227,60 @@ function Requests(): ReactNode {
   ]);
 }
 
-function Content(): ReactNode {
+function Content(p: DemoProfile): ReactNode {
+  const org = orgData(p.ctx.organization.id);
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Contenus" subtitle="Médiathèque : photos, vidéos et créations du club." />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {["Match vs AS Melun", "Portraits équipe", "Entraînement", "Affiche tournoi", "Interview capitaine", "Célébration but", "Séance vidéo", "Logo club HD"].map((t) => (
-          <div key={t} className="flex flex-col gap-2 rounded-sv-card border border-border bg-surface p-3">
-            <div className="aspect-video rounded-sv bg-surface-alt" />
-            <span className="truncate text-[12.5px] font-semibold text-text">{t}</span>
-          </div>
-        ))}
-      </div>
+      <PageHeader title="Contenus" subtitle={`Médiathèque de ${p.ctx.organization.name}.`} />
+      {org.content.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {org.content.map((c) => (
+            <div key={c.title} className="flex flex-col gap-2 rounded-sv-card border border-border bg-surface p-3">
+              <div className="aspect-video rounded-sv bg-surface-alt" />
+              <span className="truncate text-[12.5px] font-semibold text-text">{c.title}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState label="Aucun contenu pour le moment." />
+      )}
     </div>
   );
 }
 
-function Calendar(): ReactNode {
-  return ListPage("Calendrier", "Matchs, entraînements et tournages à venir.", [
-    { primary: "FC Fontainebleau — US Nemours", secondary: "Match · 24/08 15h00", meta: "Stade Municipal" },
-    { primary: "Entraînement collectif", secondary: "21/08 18h30", meta: "Terrain B" },
-    { primary: "Tournage Match Center", secondary: "SportVision · 24/08 14h45", meta: "Stade Municipal" },
-  ]);
+function Calendar(p: DemoProfile): ReactNode {
+  const org = orgData(p.ctx.organization.id);
+  return ListPage("Calendrier", `Événements à venir pour ${p.ctx.organization.name}.`, org.calendar);
 }
 
 function Teams(p: DemoProfile): ReactNode {
-  const label = p.ctx.organization.type === "academy" ? "Groupes" : p.ctx.organization.type === "coach" ? "Joueurs suivis" : "Équipes";
-  return ListPage(label, "Les équipes et effectifs du club.", [
-    { primary: "U17", secondary: "18 joueurs", meta: "Coach : Marc D." },
-    { primary: "U15", secondary: "16 joueurs", meta: "Coach : Sophie L." },
-    { primary: "Seniors A", secondary: "22 joueurs", meta: "Coach : Karim B." },
-  ]);
+  const org = orgData(p.ctx.organization.id);
+  const label = p.ctx.organization.type === "academy" ? "Groupes" : p.ctx.organization.type === "coach" ? "Joueurs suivis" : p.ctx.organization.type === "cm_agency" ? "Clubs suivis" : "Équipes";
+  if (org.teams.length === 0) return <div className="flex flex-col gap-5"><PageHeader title={label} /><EmptyState label="Aucune équipe pour le moment." /></div>;
+  return ListPage(label, `${label} de ${p.ctx.organization.name}.`, org.teams);
 }
 
 function TeamRequests(): ReactNode {
-  return ListPage("Adhésions", "Demandes d'affiliation en attente de validation.", [
+  // "Affiliations" partout (audit démo du 19/08/2026 : navigation.ts utilisait 3 libellés
+  // différents — "Adhésions"/"Joueurs & affiliations"/"Affiliations" — pour cette même page,
+  // corrigé aussi côté vrai produit, voir navigation.ts).
+  return ListPage("Affiliations", "Demandes d'affiliation en attente de validation.", [
     { primary: "Lucas Martin — U17", badge: { label: "En attente", tone: "warning" } },
     { primary: "Emma Dubois — U15", badge: { label: "Acceptée", tone: "success" } },
     { primary: "Tom Richard — Seniors A", badge: { label: "En attente", tone: "warning" } },
   ]);
 }
 
-function Sponsors(): ReactNode {
+function Sponsors(p: DemoProfile): ReactNode {
+  // Un sponsor ne voit QUE son propre partenariat (vérifié dans le vrai code : PartnerView /
+  // fetchSponsorPartnerships filtre par sponsor_organization_id, doublé par une policy RLS
+  // csp_sponsor_org_select — la première version de cette démo montrait à tort les 3 sponsors
+  // du club à Decathlon, un artefact de démo, pas un vrai bug de fuite de données).
+  if (p.ctx.organization.type === "sponsor") {
+    return ListPage("Ma visibilité", "Votre partenariat avec FC Fontainebleau.", [
+      { primary: p.ctx.organization.name, secondary: "Partenaire principal", badge: { label: "Actif", tone: "success" } },
+    ]);
+  }
   return ListPage("Sponsors", "Partenaires du club et visibilité associée.", [
     { primary: "Decathlon Fontainebleau", secondary: "Partenaire principal", badge: { label: "Actif", tone: "success" } },
     { primary: "Boulangerie Léon", secondary: "Panneau terrain", badge: { label: "Actif", tone: "success" } },
@@ -174,45 +289,57 @@ function Sponsors(): ReactNode {
 }
 
 function Services(p: DemoProfile): ReactNode {
-  const allowed = p.ctx.organization.type === "club" || p.ctx.organization.type === "generic";
+  // Miroir du vrai gate (services/page.tsx) après correction du 19/08/2026 : club/generic/
+  // tournament_organizer/camp voient le module, les autres restent verrouillés (voir le rapport
+  // d'audit — "Ma prestation" menait auparavant à un cadenas pour sa propre persona, un vrai bug
+  // produit, pas un artefact de démo).
+  const allowed = ["club", "generic", "tournament_organizer", "camp"].includes(p.ctx.organization.type);
   if (!allowed) return <div className="flex flex-col gap-5"><PageHeader title="Prestations" />{Locked("Prestations")}</div>;
-  return ListPage("Prestations", "Réservations SportVision du club.", [
-    { primary: "Match Complet — vs US Nemours", secondary: "24/08/2026", badge: { label: "Confirmée", tone: "success" } },
-    { primary: "Séance photo trombinoscope", secondary: "02/09/2026", badge: { label: "À planifier", tone: "warning" } },
-    { primary: "Montage saison U17", secondary: "Livré le 10/08", badge: { label: "Livrée", tone: "info" } },
-  ]);
+  const org = orgData(p.ctx.organization.id);
+  const title = p.ctx.organization.type === "club" ? "Prestations" : "Ma prestation";
+  return ListPage(
+    title,
+    `Réservations SportVision de ${p.ctx.organization.name}.`,
+    org.invoices.map((i) => ({ primary: i.label, secondary: i.due, badge: { label: i.status, tone: (i.status === "Payée" ? "success" : "warning") as "success" | "warning" } })),
+  );
 }
 
-function Accompagnement(): ReactNode {
+function Accompagnement(p: DemoProfile): ReactNode {
+  const org = orgData(p.ctx.organization.id);
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Accompagnement" subtitle="Ce qui est inclus dans votre offre, et votre interlocuteur SportVision." />
       <Card title="Votre chargée de compte">
-        <RowList rows={[{ primary: "Léa Fontaine", secondary: "chargée de compte SportVision", meta: "contact@sportvision-an.fr" }]} />
+        <RowList rows={[{ primary: org.contactName, secondary: "chargée de compte SportVision", meta: "contact@sportvision-an.fr" }]} />
       </Card>
     </div>
   );
 }
 
-function Contracts(): ReactNode {
+function Contracts(p: DemoProfile): ReactNode {
+  const plan = PLANS[p.ctx.subscription.planCode];
   return ListPage("Contrats", "Contrats en cours avec SportVision.", [
-    { primary: "Contrat Club+ Performance — 12 mois", secondary: "Signé le 01/09/2025", badge: { label: "Actif", tone: "success" } },
+    { primary: `Contrat ${plan.name} — 12 mois`, secondary: "Signé le 01/09/2025", badge: { label: "Actif", tone: "success" } },
   ]);
 }
 
-function Billing(): ReactNode {
+function Billing(p: DemoProfile): ReactNode {
+  const org = orgData(p.ctx.organization.id);
+  const isFullComm = p.ctx.subscription.planCode === "full_communication";
+  // Correction du 19/08/2026 : la démo affichait auparavant une fausse ligne "Abonnement Club+
+  // Performance 129 €" même pour un profil Full Communication — incohérent avec la page vitrine
+  // ("Club+ est inclus dans Full Communication sans coût supplémentaire"). Miroir d'un vrai bug
+  // produit trouvé le même jour (ClubSubscriptionCard lit clubs.plan, jamais mis à jour au
+  // passage en Full Communication — voir le correctif réel dans billing/page.tsx).
+  const rows = isFullComm ? org.invoices.filter((i) => !i.label.toLowerCase().includes("abonnement")) : org.invoices;
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Factures" subtitle="Devis, contrats et factures du club." />
+      <PageHeader
+        title="Factures"
+        subtitle={isFullComm ? "Full Communication est inclus dans votre contrat, sans abonnement Club+ séparé — voir Contrats." : `Devis, contrats et factures de ${p.ctx.organization.name}.`}
+      />
       <Card>
-        <DataTable
-          columns={["Facture", "Montant", "Échéance", "Statut"]}
-          rows={[
-            ["Abonnement Août 2026", "129,00 €", "05/08/2026", "Payée"],
-            ["Pack Match Complet — 24/08", "160,00 €", "24/08/2026", "En attente"],
-            ["Montage saison U17", "220,00 €", "10/08/2026", "Payée"],
-          ]}
-        />
+        {rows.length > 0 ? <DataTable columns={["Facture", "Montant", "Échéance", "Statut"]} rows={rows.map((r) => [r.label, r.amount, r.due, r.status])} /> : <EmptyState label="Aucune facture pour le moment." />}
       </Card>
     </div>
   );
@@ -235,10 +362,11 @@ function Documents(): ReactNode {
   ]);
 }
 
-function Messages(): ReactNode {
+function Messages(p: DemoProfile): ReactNode {
+  const org = orgData(p.ctx.organization.id);
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Messages" subtitle="Échangez avec votre interlocuteur SportVision." />
+      <PageHeader title="Messages" subtitle={`Échangez avec ${org.contactName}, votre interlocuteur SportVision.`} />
       <Card>
         <div className="flex flex-col gap-3">
           <MessageBubble from="sportvision" text="Bonjour, l'opérateur sera sur place dès 14h45 samedi pour le coup d'envoi à 15h." time="Hier, 11:42" />
@@ -271,18 +399,16 @@ function SettingsProfile(p: DemoProfile): ReactNode {
   );
 }
 
-function Validations(): ReactNode {
-  return ListPage("À valider", "Publications en attente de votre validation.", [
-    { primary: "Récap victoire vs AS Melun", secondary: "Instagram", badge: { label: "À valider", tone: "warning" } },
-    { primary: "Interview capitaine", secondary: "TikTok", badge: { label: "À valider", tone: "warning" } },
-  ]);
+function Validations(p: DemoProfile): ReactNode {
+  const org = orgData(p.ctx.organization.id);
+  const rows = org.content.slice(0, 2).map((c, i) => ({ primary: c.title, secondary: i === 0 ? "Instagram" : "TikTok", badge: { label: "À valider" as const, tone: "warning" as const } }));
+  return ListPage("À valider", "Publications en attente de votre validation.", rows.length > 0 ? rows : [{ primary: "Rien à valider pour le moment", badge: { label: "À jour", tone: "success" as const } }]);
 }
 
-function Publications(): ReactNode {
-  return ListPage("Publications", "Historique des publications réalisées.", [
-    { primary: "Annonce rentrée U17", secondary: "Instagram · 12/08", badge: { label: "Publié", tone: "success" } },
-    { primary: "Bilan mi-saison", secondary: "Facebook · 05/08", badge: { label: "Publié", tone: "success" } },
-  ]);
+function Publications(p: DemoProfile): ReactNode {
+  const org = orgData(p.ctx.organization.id);
+  const rows = org.content.slice(0, 2).map((c, i) => ({ primary: c.title, secondary: i === 0 ? "Instagram · 12/08" : "Facebook · 05/08", badge: { label: "Publié" as const, tone: "success" as const } }));
+  return ListPage("Publications", "Historique des publications réalisées.", rows);
 }
 
 function Presences(): ReactNode {
@@ -311,11 +437,14 @@ function Reports(): ReactNode {
 }
 
 function MyCM(): ReactNode {
+  // Wording aligné sur le vrai mycm/page.tsx (audit du 19/08/2026 : ma démo avait inventé
+  // "interlocuteur dédié" et "Disponible 9h-18h", absents du vrai produit — qui affiche
+  // seulement cm.levelLabel ou, à défaut, "Community Manager SportVision").
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Mon Community Manager" subtitle="Votre interlocuteur dédié Full Communication." />
-      <Card title="Community manager">
-        <RowList rows={[{ primary: "Sophie Laurent", secondary: "Community manager SportVision", meta: "Disponible 9h-18h" }]} />
+      <PageHeader title="Mon Community Manager" subtitle="Comment travailler ensemble." />
+      <Card title="Votre Community Manager">
+        <RowList rows={[{ primary: "Sophie Laurent", secondary: "Community Manager SportVision" }]} />
       </Card>
     </div>
   );
@@ -390,9 +519,7 @@ function Authorizations(): ReactNode {
 
 function Appointments(p: DemoProfile): ReactNode {
   if (p.ctx.organization.type !== "generic") return <div className="flex flex-col gap-5"><PageHeader title="Rendez-vous" />{Locked("Rendez-vous")}</div>;
-  return ListPage("Rendez-vous", "Rendez-vous planifiés avec SportVision.", [
-    { primary: "Cadrage besoin — visio", secondary: "20/08 10h00" },
-  ]);
+  return ListPage("Rendez-vous", "Rendez-vous planifiés avec SportVision.", [{ primary: "Cadrage besoin — visio", secondary: "20/08 10h00" }]);
 }
 
 const PAGES: Record<string, (p: DemoProfile) => ReactNode> = {

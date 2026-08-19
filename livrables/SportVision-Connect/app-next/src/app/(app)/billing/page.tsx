@@ -109,7 +109,28 @@ function ClubBillingView() {
   // SportVision ci-dessous — visible pour l'admin seul (seul rôle que create-clubplus-
   // subscription-checkout / clubplus-billing-portal acceptent côté serveur), avant la porte
   // bureau-strict des documents financiers, qui ne le concerne pas.
-  const subscriptionCard = ctx.membership.role === "admin" ? <ClubSubscriptionCard clubId={ctx.organization.id} /> : null;
+  // Full Communication (19/08/2026, audit démo Club+) : bug produit trouvé — ClubSubscriptionCard
+  // lit clubs.plan (jamais mis à jour au passage en Full Communication, ce plan est vendu par
+  // contrat séparé, voir session.ts:buildClubActiveContext) et proposait donc "Club+ Performance
+  // — 129 €/mois — S'abonner" à un club qui a en réalité un contrat Full Communication actif, sans
+  // rapport avec un abonnement Club+. ctx.subscription.planCode, lui, reflète déjà correctement ce
+  // contrat (dérivé côté serveur de client_contrats) : condition la plus simple et la plus fiable,
+  // pas de nouvelle requête.
+  const isFullCommunication = ctx.subscription.planCode === "full_communication";
+  const subscriptionCard =
+    ctx.membership.role === "admin" ? (
+      isFullCommunication ? (
+        <Card className="p-5">
+          <div className="text-[12px] font-bold text-text-soft">Mon offre</div>
+          <h2 className="mt-1 text-[19px] font-extrabold tracking-tight">Full Communication</h2>
+          <p className="mt-2 text-[13px] leading-relaxed text-text-soft">
+            Club+ est inclus dans votre contrat Full Communication, sans abonnement séparé. Voir votre contrat dans l&apos;onglet Contrats.
+          </p>
+        </Card>
+      ) : (
+        <ClubSubscriptionCard clubId={ctx.organization.id} />
+      )
+    ) : null;
 
   if (!canViewClubFinancialDocuments(ctx)) {
     return subscriptionCard ?? <RestrictedToBureau title="Factures" />;
