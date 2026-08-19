@@ -20433,7 +20433,20 @@ if(DEMO_MODE){
   // page dans un DOM headless (jsdom) — jamais détecté par les tests précédents, qui
   // n'exerçaient que la couche données (demoQuery/demoWrite/demoRpc), jamais goApp() lui-même.
   setTimeout(()=>{
-    demoSwitchRole('admin');
+    // Liens profonds démo (20/08, audit pack) : ?demo=1&role=<rôle>&view=<id-écran> ouvre
+    // directement le bon rôle + écran plutôt que d'atterrir systématiquement sur le tableau de
+    // bord admin — utile pour donner une URL précise par module à un auditeur/crawler, malgré
+    // le fait que ceci reste une SPA à état interne (S.role/S.view), pas de vrai routeur.
+    const _dp=new URLSearchParams(location.search);
+    const _dpRole=_dp.get('role');
+    const role=(_dpRole&&NAV[_dpRole])?_dpRole:'admin';
+    demoSwitchRole(role);
+    const _dpView=_dp.get('view');
+    if(_dpView){
+      const item=(NAV[role]||[]).find(i=>i.id===_dpView);
+      if(item&&item.modal&&typeof window[item.modal]==='function')window[item.modal]();
+      else if(item&&!item.modal)switchView(_dpView);
+    }
     const _demoBar=document.createElement('div');
     _demoBar.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#F5A524;color:#1a1200;font:700 11px/1 -apple-system,sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;padding:7px;letter-spacing:.02em';
     _demoBar.innerHTML='<span>MODE DÉMO — données factices, aucune écriture réelle</span>'
