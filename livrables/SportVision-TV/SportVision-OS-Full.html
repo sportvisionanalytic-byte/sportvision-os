@@ -8423,6 +8423,12 @@ function handleAvatarUpload(input){
 
 // ── ÉQUIPE PRESTATION ─────────────────────
 async function modalEquipePrestation(prestationId,ref){
+  // Rémunération réservée à admin/sec (demande Fouka 20/08 : le responsable production affecte
+  // et ajoute des consignes, mais ne doit pas fixer la rémunération — c'est secrétaire/admin qui
+  // la met). 'prod' garde l'accès complet à cette modale (affecter + consignes), simplement sans
+  // le champ rémunération à la création ; canSetRem contrôle aussi l'action "Modifier" sur une
+  // ligne déjà affectée (chargerEquipe ci-dessous).
+  const canSetRem=(S.role==='admin'||S.role==='sec');
   openModal(`<div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Équipe — ${ref}</div>
     <div id="eq-liste" style="min-height:60px;margin-bottom:16px"><div style="color:var(--t3);font-size:13px">Chargement…</div></div>
     <div style="background:var(--s2);border-radius:var(--rb);padding:14px;display:flex;flex-direction:column;gap:10px">
@@ -8431,12 +8437,15 @@ async function modalEquipePrestation(prestationId,ref){
         <div><select id="eq-col" class="l-inp" style="height:36px"><option value="">— Choisir —</option></select></div>
         <div><input id="eq-fonc" type="text" class="l-inp" placeholder="Fonction (ex: photo)" style="height:36px"></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Rémunération (€)</label>
-          <input id="eq-rem" type="number" class="l-inp" placeholder="0" style="height:36px"></div>
+      <div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Consignes</label>
+        <textarea id="eq-notes" class="l-inp" style="height:52px;padding-top:8px;resize:none" placeholder="Instructions pour ce collaborateur…"></textarea></div>
+      <div style="display:grid;grid-template-columns:${canSetRem?'1fr 1fr':'1fr'};gap:10px">
+        ${canSetRem?`<div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Rémunération (€)</label>
+          <input id="eq-rem" type="number" class="l-inp" placeholder="0" style="height:36px"></div>`:''}
         <div><label style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:4px">Heure RDV</label>
           <input id="eq-rdv" type="time" class="l-inp" style="height:36px"></div>
       </div>
+      ${canSetRem?'':'<div style="font-size:11px;color:var(--t3)">La rémunération est fixée par le secrétariat ou l\'administrateur, après affectation.</div>'}
       <div style="display:flex;justify-content:flex-end"><button class="btn bp bs" onclick="ajouterMembreEquipe('${prestationId}','${ref}')">+ Ajouter</button></div>
     </div>
     <div id="eq-err" style="font-size:12px;color:var(--er);margin-top:8px;min-height:14px"></div>
@@ -8451,8 +8460,9 @@ async function chargerEquipe(prestationId,ref){
   const el=document.getElementById('eq-liste');
   if(!el)return;
   const rc={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
+  const canSetRem=(S.role==='admin'||S.role==='sec');
   try{
-    const data=await sbFetch('prestations_equipe?select=id,statut,fonction,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId);
+    const data=await sbFetch('prestations_equipe?select=id,statut,fonction,notes,remuneration,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId);
     if(!data||!data.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px 0">Aucun collaborateur affecté.</div>';return;}
     const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
     const iLb={'invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
@@ -8460,14 +8470,34 @@ async function chargerEquipe(prestationId,ref){
       const t=m.collaborateur||{};
       const ini=((t.prenom?.[0]||'')+(t.nom?.[0]||'')).toUpperCase()||'?';
       const name=esc([t.prenom,t.nom].filter(Boolean).join(' ')||'—');
-      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-        <div class="av" style="background:${rc[t.role]||'#366BFF'};width:30px;height:30px;font-size:11px;flex-shrink:0">${ini}</div>
-        <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${name}</div><div style="font-size:11px;color:var(--t3)">${esc(m.fonction||t.role||'—')}</div></div>
-        <span class="bd ${iSt[m.statut]||'bw'}" style="font-size:9.5px"><span class="bd-d"></span>${iLb[m.statut]||m.statut}</span>
-        <button onclick="retirerMembreEquipe('${m.id}','${prestationId}','${ref}','${t.id||''}')" style="padding:4px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Retirer</button>
+      const remLbl=m.remuneration?m.remuneration.toLocaleString('fr-FR')+' €':'—';
+      const remLine=canSetRem?`<button onclick="modifierRemunerationMembre('${m.id}','${prestationId}','${ref}',${m.remuneration||0})" style="font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Rémunération : ${remLbl}</button>`
+        :`<span style="font-size:11px;color:var(--t3)">Rémunération : ${remLbl}</span>`;
+      return`<div style="display:flex;flex-direction:column;gap:4px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="av" style="background:${rc[t.role]||'#366BFF'};width:30px;height:30px;font-size:11px;flex-shrink:0">${ini}</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--t1)">${name}</div><div style="font-size:11px;color:var(--t3)">${esc(m.fonction||t.role||'—')}</div></div>
+          <span class="bd ${iSt[m.statut]||'bw'}" style="font-size:9.5px"><span class="bd-d"></span>${iLb[m.statut]||m.statut}</span>
+          <button onclick="retirerMembreEquipe('${m.id}','${prestationId}','${ref}','${t.id||''}')" style="padding:4px 10px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Retirer</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;padding-left:40px">
+          ${remLine}
+          ${m.notes?`<span style="font-size:11px;color:var(--t3)">Consignes : ${esc(m.notes)}</span>`:''}
+        </div>
       </div>`;
     }).join('');
   }catch(e){el.innerHTML='<div style="color:var(--er);font-size:13px">Erreur de chargement.</div>';}
+}
+function modifierRemunerationMembre(equipeId,prestationId,ref,current){
+  const v=prompt('Rémunération (€) pour ce collaborateur :',current||'');
+  if(v===null)return;
+  const n=v.trim()===''?null:Number(v);
+  if(v.trim()!==''&&(isNaN(n)||n<0)){toast('Montant invalide.','er');return;}
+  sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body:{remuneration:n}}).then(r=>{
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Modification impossible.'),'er');return;}
+    toast('Rémunération mise à jour.','ok');
+    chargerEquipe(prestationId,ref);
+  }).catch(()=>toast('Erreur lors de la modification.','er'));
 }
 async function ajouterMembreEquipe(prestationId,ref){
   const err=document.getElementById('eq-err');
@@ -8483,7 +8513,11 @@ async function ajouterMembreEquipe(prestationId,ref){
     // rémunération dans les rapports qui somment sans dédupliquer).
     const already=await sbFetch('prestations_equipe?select=id&prestation_id=eq.'+prestationId+'&collaborateur_id=eq.'+colId+'&limit=1').catch(()=>[]);
     if(Array.isArray(already)&&already.length){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
-    const rem=document.getElementById('eq-rem').value;
+    // eq-rem n'existe dans le DOM que pour admin/sec (voir modalEquipePrestation) — 'prod' peut
+    // affecter et ajouter des consignes, jamais fixer la rémunération.
+    const remEl=document.getElementById('eq-rem');
+    const rem=remEl?remEl.value:'';
+    const notes=document.getElementById('eq-notes').value.trim();
     const rdv=document.getElementById('eq-rdv').value;
     // Détection de conflit de planning avant confirmation. L'edge function
     // check-disponibilite (supabase/functions/check-disponibilite) existe déjà
@@ -8511,12 +8545,13 @@ async function ajouterMembreEquipe(prestationId,ref){
         }
       }
     }catch(e){}
-    const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
+    const rAdd=await sbFetch('prestations_equipe',{method:'POST',body:{prestation_id:prestationId,collaborateur_id:colId,fonction:fonc||null,notes:notes||null,statut:'invitation_envoyée',remuneration:rem?Number(rem):null,heure_rdv:rdv||null}});
     if(sbErr(rAdd)){err.textContent='Erreur : '+(rAdd.message||'Ajout impossible.');if(btn)btn.disabled=false;return;}
     creerNotifSiActive(colId,'invitations',{type:'invitation',titre:'Nouvelle mission — '+(ref||'prestation'),message:'Tu as été invité(e) à intervenir sur cette prestation. Accepte ou refuse depuis ton tableau de bord.',lue:false,prestation_id:prestationId});
     document.getElementById('eq-col').value='';
     document.getElementById('eq-fonc').value='';
-    document.getElementById('eq-rem').value='';
+    document.getElementById('eq-notes').value='';
+    if(remEl)remEl.value='';
     document.getElementById('eq-rdv').value='';
     err.textContent='';
     await chargerEquipe(prestationId,ref);
