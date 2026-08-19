@@ -42,6 +42,11 @@ export interface PlayerContext {
     // synchronisée depuis clubs.logo_url à chaque upload côté Club+. null tant qu'aucun logo
     // n'a jamais été uploadé — jamais une erreur, juste un club sans logo pour l'instant.
     logoUrl: string | null;
+    // Équipe réelle du club (20/08/2026, retour utilisateur — voir /equipes) — team_memberships
+    // (peuplée par validate_team_membership côté Club+, RLS tm_player_select : is_own_player),
+    // pas membership_requests.team_id qui peut encore être en attente de validation. null tant
+    // qu'aucune équipe n'a été validée pour ce joueur, jamais une équipe inventée.
+    team: { id: string; name: string } | null;
   } | null;
 }
 
@@ -79,6 +84,20 @@ export async function buildPlayerContext(
       const status: "affilie" | "attente" | "refuse" =
         statut === "validee" ? "affilie" : statut === "refusee" ? "refuse" : "attente";
 
+      let team: { id: string; name: string } | null = null;
+      const { data: membership } = await supabase
+        .from("team_memberships")
+        .select("team_id, club_teams(name)")
+        .eq("player_id", profile.id)
+        .eq("statut", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (membership?.team_id) {
+        const teamRow = membership.club_teams as unknown as { name: string } | null;
+        team = { id: membership.team_id, name: teamRow?.name ?? "" };
+      }
+
       club = {
         id: org.id,
         nom: org.nom,
@@ -86,6 +105,7 @@ export async function buildPlayerContext(
         status,
         since: request?.created_at || profile.created_at,
         logoUrl: org.logo_url || null,
+        team,
       };
     }
   }
