@@ -60,7 +60,17 @@ interface MembershipRow {
 }
 
 export async function getSpaces(supabase: SupabaseClient, userId: string): Promise<Space[]> {
-  const [orgRes, playerRes, parentRes] = await Promise.all([
+  // Espaces Joueur/Famille retirés de Club+ (19/08/2026, décision Fouka après audit démo) :
+  // ces personas appartiennent exclusivement à SportVision Connect (app-connect), jamais à
+  // Club+, qui est l'espace professionnel de la structure. buildPlayerActiveContext/
+  // buildParentActiveContext (plus bas dans ce fichier) et le kind "player"/"parent" de `Space`
+  // restent en place (code atteignable en théorie si un cookie sv_active_space pointe encore
+  // dessus) mais ne sont plus jamais PROPOSÉS : getSpaces() ne requête plus player_profiles/
+  // parent_profiles, donc aucun nouvel espace de ce type n'apparaît dans le sélecteur.
+  // Vérifié avant ce changement : 0 ligne player_profiles avec club_id, 0 ligne parent_profiles,
+  // 0 relation parent_player_relationships confirmée en base — aucun compte réel n'utilise ce
+  // chemin aujourd'hui, rien ne casse.
+  const [orgRes] = await Promise.all([
     // 17/08/2026 — le filtre `.eq("status", "actif")` excluait totalement un membre invité ou
     // suspendu de cette liste : il n'apparaissait dans AUCUN écran, pas même une invitation à
     // accepter. Retiré : les 3 statuts réels (actif/invitation/suspendu) sont maintenant tous
@@ -71,8 +81,6 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
       .from("memberships")
       .select("id, organization_id, role, status, organizations(id, nom, organization_type, statut)")
       .eq("user_id", userId),
-    supabase.from("player_profiles").select("id, prenom, nom, account_status").eq("user_id", userId),
-    supabase.from("parent_profiles").select("id, prenom, nom").eq("user_id", userId),
   ]);
 
   const spaces: Space[] = [];
@@ -109,26 +117,6 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
       membershipId: row.id,
       role: row.role,
       status: row.status,
-    });
-  }
-
-  for (const row of (playerRes.data ?? []) as { id: string; prenom: string; nom: string }[]) {
-    spaces.push({
-      kind: "player",
-      id: row.id,
-      name: `${row.prenom} ${row.nom}`,
-      subtitle: SPACE_TYPE_LABELS.player ?? "Joueur",
-      clickable: true,
-    });
-  }
-
-  for (const row of (parentRes.data ?? []) as { id: string; prenom: string; nom: string }[]) {
-    spaces.push({
-      kind: "parent",
-      id: row.id,
-      name: `${row.prenom} ${row.nom}`,
-      subtitle: SPACE_TYPE_LABELS.parent ?? "Parent / Famille",
-      clickable: true,
     });
   }
 

@@ -21,7 +21,13 @@ export interface DemoProfile {
   group: string;
   ctx: ActiveContext;
   nav: NavEntry[];
+  /** Sous-ensemble recommandé pour une démo commerciale (audit du 19/08/2026 : 20 profils, c'est
+   * bien pour du QA interne mais dilue le produit face à un prospect). Les 12 autres restent
+   * accessibles (route interne /demo), juste pas mis en avant sur la page d'accueil. */
+  featured: boolean;
 }
+
+const FEATURED_KEYS = new Set(["club-plus", "club-coach", "club-communication", "club-tresorier", "club-fullcom", "coach-fullcom", "academy-fullcom", "tournament-fullcom"]);
 
 const NOW = "2026-08-19T09:00:00.000Z";
 
@@ -106,7 +112,7 @@ function navFor(ctx: ActiveContext): NavEntry[] {
 }
 
 function profile(key: string, label: string, group: string, ctx: ActiveContext): DemoProfile {
-  return { key, label, group, ctx, nav: navFor(ctx) };
+  return { key, label, group, ctx, nav: navFor(ctx), featured: FEATURED_KEYS.has(key) };
 }
 
 const CLUB = { orgId: "demo-club", orgName: "FC Fontainebleau" } as const;
@@ -220,12 +226,10 @@ export const DEMO_PROFILES: DemoProfile[] = [
     "Autres structures",
     makeCtx({ orgId: "demo-generic", orgName: "Studio Photo Indépendant", orgType: "generic", planCode: "one_off", role: "owner", firstName: "Julien", lastName: "Roche" }),
   ),
-  profile(
-    "parent",
-    "Espace Famille (parent)",
-    "Autres structures",
-    makeCtx({ orgId: "demo-parent", orgName: "Famille Martin", orgType: "parent", planCode: "club_access", role: "parent", firstName: "Sarah", lastName: "Martin" }),
-  ),
+  // Espace Famille (parent) retiré du sélecteur de démo le 19/08/2026 (décision Fouka) : Club+
+  // est l'espace professionnel de la structure, la famille/le joueur utilisent Connect — voir
+  // aussi le retrait réel côté getSpaces() dans session.ts (0 compte réel concerné, vérifié
+  // avant suppression).
   profile(
     "cm-agency",
     "Agence Community Manager",

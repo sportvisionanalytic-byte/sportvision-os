@@ -53,7 +53,10 @@ function DashboardFullCommunication(p: DemoProfile): ReactNode {
       />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Votre Community Manager">
-          <RowList rows={[{ primary: "Sophie Laurent", secondary: "Community Manager SportVision", meta: org.contactName }]} />
+          {/* Un seul interlocuteur ici (audit du 19/08 : afficher aussi org.contactName, la
+              chargée de compte, faisait croire à deux CM sans rôle distinct) — la chargée de
+              compte reste visible séparément dans Accompagnement. */}
+          <RowList rows={[{ primary: "Sophie Laurent", secondary: "Community Manager SportVision" }]} />
         </Card>
         <Card title="Derniers contenus">
           {org.content.length > 0 ? <RowList rows={org.content.slice(0, 3).map((c) => ({ primary: c.title, secondary: c.kind }))} /> : <EmptyState label="Aucun contenu pour le moment." />}
@@ -63,52 +66,129 @@ function DashboardFullCommunication(p: DemoProfile): ReactNode {
   );
 }
 
+// Correction du 2e audit (19/08/2026) : Communication/Directeur sportif/Secrétaire/Administratif
+// recevaient encore le même dashboard générique que l'Admin (crédits/contenus/facture Instagram),
+// alors que leur navigation, elle, est déjà spécifique à leur rôle (filterClubRoleNav). Chaque
+// rôle a maintenant ses propres statistiques et sa propre liste "à faire", cohérentes avec CE
+// QU'IL VOIT dans sa navigation — jamais une carte pointant vers un module absent de son menu.
 function DashboardClubPlus(p: DemoProfile): ReactNode {
   const plan = PLANS[p.ctx.subscription.planCode];
   const role = p.ctx.membership.role;
-  const isTreasurer = role === "treasurer";
-  const isCoach = role === "coach";
-  const isSportsDirector = role === "sports_director";
   const org = orgData(p.ctx.organization.id);
+  const header = <PageHeader title={`Bonjour ${p.ctx.user.firstName} 👋`} subtitle={`${p.ctx.organization.name} · ${p.ctx.user.jobTitle ?? role}`} />;
 
-  const todoRows = isTreasurer
-    ? [{ primary: "Facture Août à régler", badge: { label: "En attente" as const, tone: "neutral" as const } }]
-    : isCoach || isSportsDirector
-      ? [
-          { primary: "Résultat à saisir — FC Fontainebleau vs US Nemours", badge: { label: "À faire" as const, tone: "warning" as const } },
-          ...(isSportsDirector ? [{ primary: "Résultat U15 à vérifier", badge: { label: "À vérifier" as const, tone: "info" as const } }] : []),
-        ]
-      : [
-          { primary: "Valider la publication Instagram", badge: { label: "À valider" as const, tone: "warning" as const } },
-          { primary: "Demande de visuel — Affiche tournoi", badge: { label: "Nouveau" as const, tone: "info" as const } },
-          { primary: "Facture Août à régler", badge: { label: "En attente" as const, tone: "neutral" as const } },
-        ];
+  if (role === "treasurer") {
+    return (
+      <div className="flex flex-col gap-5">
+        {header}
+        <StatGrid stats={[{ label: "Offre", value: plan.name, hint: formatPlanPrice(plan) }, { label: "Factures en attente", value: "1" }, { label: "Contrat", value: "Actif" }]} />
+        <Card title="À faire">
+          <RowList rows={[{ primary: "Facture Août à régler", badge: { label: "En attente", tone: "neutral" } }, { primary: "Prochaine échéance", secondary: "05/09/2026" }]} />
+        </Card>
+      </div>
+    );
+  }
 
-  const stats = isTreasurer
-    ? [
-        { label: "Offre", value: plan.name, hint: formatPlanPrice(plan) },
-        { label: "Factures en attente", value: "1" },
-        { label: "Contrat", value: "Actif" },
-      ]
-    : [
-        { label: "Offre", value: plan.name, hint: formatPlanPrice(plan) },
-        { label: "Crédits", value: formatPlanCredits(plan) },
-        { label: "Contenus ce mois", value: String(org.content.length) },
-        { label: "Demandes en attente", value: "2" },
-      ];
+  if (role === "coach" || role === "sports_director") {
+    const isDirector = role === "sports_director";
+    return (
+      <div className="flex flex-col gap-5">
+        {header}
+        <StatGrid
+          stats={[
+            { label: isDirector ? "Équipes suivies" : "Mon équipe", value: isDirector ? String(org.teams.length) : "U17" },
+            { label: "Affiliations en attente", value: "2" },
+            { label: "Prochain match", value: "24/08" },
+            { label: "Résultats manquants", value: "1" },
+          ]}
+        />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card title="À faire">
+            <RowList
+              rows={[
+                { primary: "Résultat à saisir — FC Fontainebleau vs US Nemours", badge: { label: "À faire", tone: "warning" } },
+                ...(isDirector ? [{ primary: "Résultat U15 à vérifier", badge: { label: "À vérifier" as const, tone: "info" as const } }] : []),
+              ]}
+            />
+          </Card>
+          <Card title="Prestations prévues">
+            <RowList rows={[{ primary: "Match Complet — vs US Nemours", secondary: "24/08/2026" }]} />
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
-  return (
-    <div className="flex flex-col gap-5">
-      <PageHeader title={`Bonjour ${p.ctx.user.firstName} 👋`} subtitle={`${p.ctx.organization.name} · ${p.ctx.user.jobTitle ?? role}`} />
-      <StatGrid stats={stats} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        {!isTreasurer && (
-          <Card title="Derniers contenus">
+  if (role === "communication_manager" || role === "external_cm") {
+    return (
+      <div className="flex flex-col gap-5">
+        {header}
+        <StatGrid stats={[{ label: "Crédits disponibles", value: "27 / 40" }, { label: "Demandes en cours", value: "2" }, { label: "Publications à préparer", value: "3" }, { label: "Résultats reçus", value: "2" }]} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card title="Calendrier éditorial">
             {org.content.length > 0 ? <RowList rows={org.content.slice(0, 3).map((c) => ({ primary: c.title, secondary: c.kind }))} /> : <EmptyState label="Aucun contenu pour le moment." />}
           </Card>
-        )}
+          <Card title="Informations reçues des coachs">
+            <RowList rows={[{ primary: "Résultat FC Fontainebleau vs AS Melun", secondary: "3 - 1, transmis par Marc D." }]} />
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (role === "secretary") {
+    return (
+      <div className="flex flex-col gap-5">
+        {header}
+        <StatGrid stats={[{ label: "Affiliations en attente", value: "2" }, { label: "Documents récents", value: "3" }, { label: "Demandes en cours", value: "1" }]} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card title="Affiliations en attente">
+            <RowList rows={[{ primary: "Lucas Martin — U17", badge: { label: "En attente", tone: "warning" } }, { primary: "Tom Richard — Seniors A", badge: { label: "En attente", tone: "warning" } }]} />
+          </Card>
+          <Card title="À venir">
+            {org.calendar.length > 0 ? <RowList rows={org.calendar.slice(0, 2)} /> : <EmptyState label="Rien de prévu pour le moment." />}
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (role === "admin_staff") {
+    return (
+      <div className="flex flex-col gap-5">
+        {header}
+        <StatGrid stats={[{ label: "Demandes en cours", value: "1" }, { label: "Documents récents", value: "3" }]} />
         <Card title="À faire">
-          <RowList rows={todoRows} />
+          <RowList rows={[{ primary: "Demande administrative — SportVision", badge: { label: "En cours", tone: "info" } }]} />
+        </Card>
+      </div>
+    );
+  }
+
+  // admin/president/board_member/sponsor_manager/viewer : vision large (Bible §6), inchangée.
+  return (
+    <div className="flex flex-col gap-5">
+      {header}
+      <StatGrid
+        stats={[
+          { label: "Offre", value: plan.name, hint: formatPlanPrice(plan) },
+          { label: "Crédits", value: formatPlanCredits(plan) },
+          { label: "Contenus ce mois", value: String(org.content.length) },
+          { label: "Demandes en attente", value: "2" },
+        ]}
+      />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title="Derniers contenus">
+          {org.content.length > 0 ? <RowList rows={org.content.slice(0, 3).map((c) => ({ primary: c.title, secondary: c.kind }))} /> : <EmptyState label="Aucun contenu pour le moment." />}
+        </Card>
+        <Card title="À faire">
+          <RowList
+            rows={[
+              { primary: "Valider la publication Instagram", badge: { label: "À valider", tone: "warning" } },
+              { primary: "Demande de visuel — Affiche tournoi", badge: { label: "Nouveau", tone: "info" } },
+              { primary: "Facture Août à régler", badge: { label: "En attente", tone: "neutral" } },
+            ]}
+          />
         </Card>
       </div>
     </div>
@@ -297,10 +377,18 @@ function Services(p: DemoProfile): ReactNode {
   if (!allowed) return <div className="flex flex-col gap-5"><PageHeader title="Prestations" />{Locked("Prestations")}</div>;
   const org = orgData(p.ctx.organization.id);
   const title = p.ctx.organization.type === "club" ? "Prestations" : "Ma prestation";
+  // Statut OPÉRATIONNEL (confirmée/à planifier), jamais le statut de paiement de la facture
+  // correspondante (audit du 19/08 : "Pack Match Complet — En attente" laissait croire à tort
+  // que la prestation elle-même était en attente, alors que c'était son paiement — voir Billing()
+  // pour le statut financier, distinct).
   return ListPage(
     title,
     `Réservations SportVision de ${p.ctx.organization.name}.`,
-    org.invoices.map((i) => ({ primary: i.label, secondary: i.due, badge: { label: i.status, tone: (i.status === "Payée" ? "success" : "warning") as "success" | "warning" } })),
+    org.invoices.map((i) => ({
+      primary: i.label,
+      secondary: i.due,
+      badge: i.status === "Payée" ? { label: "Confirmée", tone: "success" as const } : { label: "À planifier", tone: "info" as const },
+    })),
   );
 }
 
@@ -339,7 +427,14 @@ function Billing(p: DemoProfile): ReactNode {
         subtitle={isFullComm ? "Full Communication est inclus dans votre contrat, sans abonnement Club+ séparé — voir Contrats." : `Devis, contrats et factures de ${p.ctx.organization.name}.`}
       />
       <Card>
-        {rows.length > 0 ? <DataTable columns={["Facture", "Montant", "Échéance", "Statut"]} rows={rows.map((r) => [r.label, r.amount, r.due, r.status])} /> : <EmptyState label="Aucune facture pour le moment." />}
+        {rows.length > 0 ? (
+          <DataTable
+            columns={["N°", "Facture", "Montant", "Échéance", "Statut"]}
+            rows={rows.map((r, i) => [`FAC-2026-${String(i + 1).padStart(4, "0")}`, r.label, r.amount, r.due, r.status])}
+          />
+        ) : (
+          <EmptyState label="Aucune facture pour le moment." />
+        )}
       </Card>
     </div>
   );
@@ -347,19 +442,49 @@ function Billing(p: DemoProfile): ReactNode {
 
 function Users(p: DemoProfile): ReactNode {
   if (p.ctx.organization.type !== "club") return <div className="flex flex-col gap-5"><PageHeader title="Membres & accès" />{Locked("Membres & accès")}</div>;
-  return ListPage("Membres & accès", "Membres ayant accès à cet espace Club+.", [
-    { primary: "Camille Bernard", secondary: "Président", badge: { label: "Admin", tone: "accent" } },
-    { primary: "Marc Dubois", secondary: "Éducateur U17", badge: { label: "Coach", tone: "neutral" } },
-    { primary: "Sophie Laurent", secondary: "Responsable communication", badge: { label: "Communication", tone: "info" } },
-  ]);
+  const plan = PLANS[p.ctx.subscription.planCode];
+  const quota = plan.maxUsers ? `3 / ${plan.maxUsers} utilisateurs` : "3 utilisateurs · illimité";
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader title="Membres & accès" subtitle={`Membres ayant accès à cet espace Club+ — ${quota}.`} />
+      <Card>
+        <RowList
+          rows={[
+            { primary: "Camille Bernard", secondary: "Président · Toute la structure", badge: { label: "Admin", tone: "accent" } },
+            { primary: "Marc Dubois", secondary: "Éducateur · Équipe U17", badge: { label: "Coach", tone: "neutral" } },
+            { primary: "Sophie Laurent", secondary: "Communication · Toute la structure", badge: { label: "Communication", tone: "info" } },
+          ]}
+        />
+      </Card>
+    </div>
+  );
 }
 
-function Documents(): ReactNode {
-  return ListPage("Documents", "Documents partagés par SportVision et le club.", [
+const DOCUMENTS_BY_TYPE: Record<string, { primary: string; secondary?: string }[]> = {
+  club: [
     { primary: "Statuts du club 2026", secondary: "PDF · 1,2 Mo" },
     { primary: "Charte graphique club", secondary: "PDF · 3,4 Mo" },
     { primary: "Livrables saison U17", secondary: "ZIP · 840 Mo" },
-  ]);
+  ],
+  tournament_organizer: [
+    { primary: "Devis signé — édition 2026", secondary: "PDF · 0,3 Mo" },
+    { primary: "Brief couverture événement", secondary: "PDF · 0,8 Mo" },
+    { primary: "Planning tournoi", secondary: "PDF · 0,2 Mo" },
+  ],
+  camp: [
+    { primary: "Devis signé — Semaine 1", secondary: "PDF · 0,3 Mo" },
+    { primary: "Brief couverture stage", secondary: "PDF · 0,6 Mo" },
+    { primary: "Planning des sessions", secondary: "PDF · 0,2 Mo" },
+  ],
+  generic: [
+    { primary: "Devis signé — séance photo", secondary: "PDF · 0,3 Mo" },
+    { primary: "Facture #1842", secondary: "PDF · 0,2 Mo" },
+  ],
+};
+
+function Documents(p: DemoProfile): ReactNode {
+  const rows = DOCUMENTS_BY_TYPE[p.ctx.organization.type] ?? DOCUMENTS_BY_TYPE.club!;
+  return ListPage("Documents", `Documents partagés par SportVision et ${p.ctx.organization.name}.`, rows);
 }
 
 function Messages(p: DemoProfile): ReactNode {
