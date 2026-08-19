@@ -20423,16 +20423,27 @@ function demoSwitchRole(role){
   if(sel)sel.value=role;
 }
 if(DEMO_MODE){
-  demoSwitchRole('admin');
-  const _demoBar=document.createElement('div');
-  _demoBar.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#F5A524;color:#1a1200;font:700 11px/1 -apple-system,sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;padding:7px;letter-spacing:.02em';
-  _demoBar.innerHTML='<span>MODE DÉMO — données factices, aucune écriture réelle</span>'
-    +'<span style="opacity:.6">·</span>'
-    +'<label style="display:flex;align-items:center;gap:6px">Voir en tant que : '
-    +'<select id="_demo-role-sel" onchange="demoSwitchRole(this.value)" style="font:700 11px/1 -apple-system,sans-serif;padding:3px 6px;border-radius:4px;border:1px solid rgba(0,0,0,.25);background:#fff;color:#1a1200">'
-    +Object.keys(ROLES).map(r=>`<option value="${r}">${ROLES[r].r}</option>`).join('')
-    +'</select></label>';
-  document.body.appendChild(_demoBar);
+  // setTimeout(...,0) — pas un simple style, une vraie nécessité : appeler goApp() (via
+  // demoSwitchRole) de façon synchrone ici plantait avec "Cannot access 'BNAV_ITEMS' before
+  // initialization" (TDZ). BNAV_ITEMS (et d'autres const) sont déclarées PLUS BAS dans ce même
+  // script — le flux réel (checkSession()) ne le remarque jamais car il passe par un await
+  // réseau, donc goApp() n'est appelée qu'une fois tout le script déjà exécuté une première
+  // fois. Le mode démo doit reproduire ce même délai sans réseau réel : un setTimeout(0) suffit
+  // à repousser l'appel après la fin de l'exécution synchrone du script. Trouvé en rejouant la
+  // page dans un DOM headless (jsdom) — jamais détecté par les tests précédents, qui
+  // n'exerçaient que la couche données (demoQuery/demoWrite/demoRpc), jamais goApp() lui-même.
+  setTimeout(()=>{
+    demoSwitchRole('admin');
+    const _demoBar=document.createElement('div');
+    _demoBar.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#F5A524;color:#1a1200;font:700 11px/1 -apple-system,sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;padding:7px;letter-spacing:.02em';
+    _demoBar.innerHTML='<span>MODE DÉMO — données factices, aucune écriture réelle</span>'
+      +'<span style="opacity:.6">·</span>'
+      +'<label style="display:flex;align-items:center;gap:6px">Voir en tant que : '
+      +'<select id="_demo-role-sel" onchange="demoSwitchRole(this.value)" style="font:700 11px/1 -apple-system,sans-serif;padding:3px 6px;border-radius:4px;border:1px solid rgba(0,0,0,.25);background:#fff;color:#1a1200">'
+      +Object.keys(ROLES).map(r=>`<option value="${r}">${ROLES[r].r}</option>`).join('')
+      +'</select></label>';
+    document.body.appendChild(_demoBar);
+  },0);
 }else{
   consumeRecoveryHashOS().then(handled=>{if(!handled)checkSession();});
 }
