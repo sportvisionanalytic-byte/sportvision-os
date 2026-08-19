@@ -1,5 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ClubBooking, ClubBookingStatus, ClubCatalogueOffre, ClubPlan, OfferCategorie, OfferTarifType } from "@/lib/types/club-bookings";
+import type {
+  BookingModePaiement,
+  ClubBooking,
+  ClubBookingStatus,
+  ClubCatalogueOffre,
+  ClubPlan,
+  OfferCategorie,
+  OfferTarifType,
+} from "@/lib/types/club-bookings";
 
 // Port de window.ClubModules.services (livrables/SportVision-Connect/app/modules/
 // club-services-documents-rapports.js, lignes 189-436, référence vanille fonctionnelle) —
@@ -34,6 +42,7 @@ interface BookingRow {
   adresse: string | null;
   status: ClubBookingStatus;
   price_label: string | null;
+  mode_paiement: BookingModePaiement | null;
   created_at: string;
 }
 
@@ -62,6 +71,7 @@ function toBooking(row: BookingRow): ClubBooking {
     adresse: row.adresse,
     status: row.status,
     priceLabel: row.price_label,
+    modePaiement: row.mode_paiement,
     createdAt: row.created_at,
   };
 }
@@ -79,7 +89,7 @@ export async function fetchCatalogueOffres(supabase: SupabaseClient): Promise<Cl
 export async function fetchClubBookings(supabase: SupabaseClient, clubId: string): Promise<ClubBooking[]> {
   const { data, error } = await supabase
     .from("club_bookings")
-    .select("id, club_id, service_id, service_label, team, event_date, heure, adresse, status, price_label, created_at")
+    .select("id, club_id, service_id, service_label, team, event_date, heure, adresse, status, price_label, mode_paiement, created_at")
     .eq("club_id", clubId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -155,6 +165,7 @@ export interface SubmitBookingInput {
   heure: string;
   adresse: string;
   plan: ClubPlan;
+  modePaiement: BookingModePaiement | null;
 }
 
 export async function submitClubBooking(supabase: SupabaseClient, input: SubmitBookingInput): Promise<ClubBooking> {
@@ -171,9 +182,10 @@ export async function submitClubBooking(supabase: SupabaseClient, input: SubmitB
       adresse: input.adresse || null,
       status: "recue",
       price_label: fullPriceLabel(input.offer, input.plan),
+      mode_paiement: input.modePaiement,
       created_by: userData.user?.id ?? null,
     })
-    .select("id, club_id, service_id, service_label, team, event_date, heure, adresse, status, price_label, created_at")
+    .select("id, club_id, service_id, service_label, team, event_date, heure, adresse, status, price_label, mode_paiement, created_at")
     .single();
   if (error || !data) throw error ?? new Error("Envoi de la demande impossible.");
   return toBooking(data as BookingRow);

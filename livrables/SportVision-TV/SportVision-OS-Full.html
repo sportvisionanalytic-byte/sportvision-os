@@ -18304,7 +18304,7 @@ async function loadClubBookings(){
   const el=document.getElementById('cbk-real');
   if(!el)return;
   try{
-    const data=await sbFetch('club_bookings?select=id,club_id,service_label,team,event_date,heure,adresse,contact,objectif,status,price_label,created_at,clubs(nom)&order=created_at.desc&limit=200');
+    const data=await sbFetch('club_bookings?select=id,club_id,service_label,team,event_date,heure,adresse,contact,objectif,status,price_label,mode_paiement,created_at,clubs(nom)&order=created_at.desc&limit=200');
     if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
     _cbkData=data;
     const katt=_cbkData.filter(b=>['recue','qualifiee'].includes(b.status)).length;
@@ -18371,6 +18371,7 @@ function modalReservationClub(id){
       ${b.contact?`<div class="fg"><label class="fl">Contact</label><div style="font-size:13.5px;color:var(--t1)">${esc(b.contact)}</div></div>`:''}
       ${b.objectif?`<div class="fg"><label class="fl">Objectif</label><div style="font-size:13.5px;color:var(--t1)">${esc(b.objectif)}</div></div>`:''}
       <div class="fg"><label class="fl">Tarif indicatif</label><div style="font-size:13.5px;color:var(--t1);font-weight:600">${esc(b.price_label||'Sur devis')}</div></div>
+      ${b.mode_paiement?`<div class="fg"><label class="fl">Paiement souhaité</label><div style="font-size:13.5px;color:var(--t1)">${b.mode_paiement==='carte'?'Carte bancaire':'Espèces'}</div></div>`:''}
       <div class="fg"><label class="fl">Statut</label>
         <select id="cbk-status-select" class="fi">${opts}</select>
       </div>

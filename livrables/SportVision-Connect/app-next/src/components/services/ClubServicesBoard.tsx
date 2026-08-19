@@ -167,6 +167,7 @@ export function ClubServicesBoard({
         heure: draft.heure,
         adresse: draft.adresse,
         plan,
+        modePaiement: draft.modePaiement,
       });
       setBookings((prev) => [created, ...(prev ?? [])]);
       setWizardOpen(false);

@@ -99,6 +99,15 @@ export interface ClubCatalogueOffre {
   dureeEstimee: string | null;
 }
 
+/** Préférence déclarative du club, sans intégration de paiement réelle — voir
+ * migration-clubplus-v48-booking-mode-paiement.sql. */
+export type BookingModePaiement = "carte" | "especes";
+
+export const BOOKING_MODE_PAIEMENT_LABEL: Record<BookingModePaiement, string> = {
+  carte: "Carte bancaire",
+  especes: "Espèces",
+};
+
 export interface ClubBooking {
   id: string;
   clubId: string;
@@ -112,6 +121,7 @@ export interface ClubBooking {
   /** Snapshot texte libre du tarif au moment de la réservation (ex. "150,00 € HT (-5% Club+)"
    * ou "Sur devis") — jamais recalculé après coup, voir data/club/bookings.ts § fullPriceLabel. */
   priceLabel: string | null;
+  modePaiement: BookingModePaiement | null;
   createdAt: string;
 }
 
