@@ -2745,6 +2745,9 @@ const DEMO_DATA=(function(){
     {id:'demo-photo2',role:'photo',prenom:'Karim',nom:'Belhadj',telephone:'0605060708',adresse:'',ville:'Montereau',code_postal:'77130',type_contrat:'freelance',actif:true,niveau_cm:null,email:'karim.belhadj@sportvision-an.fr',grade:1,xp:250},
     {id:'demo-cm',role:'cm',prenom:'Alice',nom:'Roche',telephone:'0606070809',adresse:'',ville:'Sens',code_postal:'89100',type_contrat:'freelance',actif:true,niveau_cm:'cm_lead',email:'alice.roche@sportvision-an.fr',grade:3,xp:2000},
     {id:'demo-compta',role:'compta',prenom:'Marc',nom:'Lefebvre',telephone:'0607080910',adresse:'',ville:'Sens',code_postal:'89100',type_contrat:'salarie',actif:true,niveau_cm:null,email:'marc.lefebvre@sportvision-an.fr',grade:2,xp:400},
+    {id:'demo-com',role:'com',prenom:'Nora',nom:'Aziz',telephone:'0608091011',adresse:'',ville:'Sens',code_postal:'89100',type_contrat:'freelance',actif:true,niveau_cm:null,email:'nora.aziz@sportvision-an.fr',grade:2,xp:500},
+    {id:'demo-expert_comptable',role:'expert_comptable',prenom:'Hélène',nom:'Rossi',telephone:'0609101112',adresse:'',ville:'Paris',code_postal:'75011',type_contrat:'freelance',actif:true,niveau_cm:null,email:'helene.rossi@cabinet-expert.fr',grade:0,xp:0},
+    {id:'demo-auditeur',role:'auditeur',prenom:'Paul',nom:'Weber',telephone:'',adresse:'',ville:'',code_postal:'',type_contrat:'freelance',actif:true,niveau_cm:null,email:'paul.weber@audit-externe.fr',grade:0,xp:0},
   ];
   const clients=[
     {id:'demo-cl-1',nom:'FC Fontainebleau',statut:'partenaire',type_client:'club',sport:'Football',ville:'Fontainebleau',email:'contact@fcfontainebleau.fr',telephone:'0164000000',prenom_contact:'Julien',nom_contact:'Marchand',notes:'Contrat Club+ Performance, saison 2026-2027.',origine_prospect:'recommandation',cm_id:'demo-cm',score_priorite:90,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-70))},
@@ -20317,14 +20320,29 @@ async function _ensureMyNiveauCm(){
   }catch(e){_myNiveauCm=null;}
   return _myNiveauCm;
 }
+// Rôle démo → profil DEMO_DATA.profiles correspondant (id différent du nom de rôle pour photo,
+// qui a deux profils factices — demo-photo1 sert de "moi" par défaut).
+const DEMO_ROLE_PROFILE={admin:'demo-admin',sec:'demo-sec',prod:'demo-prod',photo:'demo-photo1',cm:'demo-cm',compta:'demo-compta',com:'demo-com',expert_comptable:'demo-expert_comptable',auditeur:'demo-auditeur'};
+function demoSwitchRole(role){
+  const pid=DEMO_ROLE_PROFILE[role];
+  const prof=DEMO_DATA.profiles.find(p=>p.id===pid);
+  svSave('demo-token','demo-refresh',pid,role);
+  localStorage.setItem('sv_prenom',prof?prof.prenom:'Démo');
+  goApp(role);
+  const sel=document.getElementById('_demo-role-sel');
+  if(sel)sel.value=role;
+}
 if(DEMO_MODE){
-  svSave('demo-token','demo-refresh','demo-admin','admin');
-  localStorage.setItem('sv_prenom','Démo');
-  goApp('admin');
-  const _demoBanner=document.createElement('div');
-  _demoBanner.textContent='MODE DÉMO — données factices, aucune écriture réelle';
-  _demoBanner.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#F5A524;color:#1a1200;font:700 11px/1 -apple-system,sans-serif;text-align:center;padding:6px;letter-spacing:.04em';
-  document.body.appendChild(_demoBanner);
+  demoSwitchRole('admin');
+  const _demoBar=document.createElement('div');
+  _demoBar.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#F5A524;color:#1a1200;font:700 11px/1 -apple-system,sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;padding:7px;letter-spacing:.02em';
+  _demoBar.innerHTML='<span>MODE DÉMO — données factices, aucune écriture réelle</span>'
+    +'<span style="opacity:.6">·</span>'
+    +'<label style="display:flex;align-items:center;gap:6px">Voir en tant que : '
+    +'<select id="_demo-role-sel" onchange="demoSwitchRole(this.value)" style="font:700 11px/1 -apple-system,sans-serif;padding:3px 6px;border-radius:4px;border:1px solid rgba(0,0,0,.25);background:#fff;color:#1a1200">'
+    +Object.keys(ROLES).map(r=>`<option value="${r}">${ROLES[r].r}</option>`).join('')
+    +'</select></label>';
+  document.body.appendChild(_demoBar);
 }else{
   consumeRecoveryHashOS().then(handled=>{if(!handled)checkSession();});
 }
