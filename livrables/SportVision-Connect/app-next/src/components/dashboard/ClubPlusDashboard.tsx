@@ -10,10 +10,12 @@ import type { ModuleKey } from "@/lib/types";
 import { formatPlanCredits, formatPlanPrice, PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/client";
 import { fetchClubMatches, fetchClubRequiresResultVerification } from "@/lib/data/club/matches";
+import { fetchClubCalendarEvents } from "@/lib/data/club/calendar";
 import { fetchClientDevis, fetchClientInvoices } from "@/lib/data/projet/billing";
 import { resolveClubPortailClientId } from "@/lib/data/club/portail-link";
 import { formatEuroTTC } from "@/components/billing/format";
 import type { Invoice } from "@/lib/types/billing";
+import { CALENDAR_EVENT_KIND_LABELS, type CalendarEvent } from "@/lib/types/calendar";
 import { Button } from "@/components/ui/Button";
 import { Card, CardPremium } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -235,6 +237,35 @@ export function ClubPlusDashboard() {
     loadFinanceSummary();
   }, [loadFinanceSummary]);
 
+  // Prochains événements (19/08/2026, retour utilisateur : le dashboard ne montrait rien du
+  // calendrier). Réutilise fetchClubCalendarEvents telle quelle (déjà agrégée club_calendar_
+  // events + club_matches, voir data/club/calendar.ts) — filtrée aux dates futures et triée ici,
+  // pas une nouvelle requête. Masqué pour le trésorier (Bible §10 : "aucun contenu sportif
+  // parasite"), même règle que le bloc "À traiter" ci-dessus.
+  const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[] | null>(null);
+  const [eventsError, setEventsError] = useState(false);
+
+  const loadUpcomingEvents = useCallback(async () => {
+    if (isTreasurer) return;
+    setEventsError(false);
+    try {
+      const supabase = createClient();
+      const events = await fetchClubCalendarEvents(supabase, ctx.organization.id);
+      const now = Date.now();
+      const upcoming = events
+        .filter((e) => new Date(e.startsAt).getTime() >= now)
+        .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+        .slice(0, 5);
+      setUpcomingEvents(upcoming);
+    } catch {
+      setEventsError(true);
+    }
+  }, [ctx.organization.id, isTreasurer]);
+
+  useEffect(() => {
+    loadUpcomingEvents();
+  }, [loadUpcomingEvents]);
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-5">
@@ -307,6 +338,54 @@ export function ClubPlusDashboard() {
           </Card>
         )}
       </div>
+
+      {!isTreasurer && (
+        <Card>
+          <div className="flex items-center justify-between border-b border-divider px-5 py-4">
+            <span className="text-[15px] font-extrabold tracking-tight">Prochains événements</span>
+            <button
+              onClick={() => router.push("/calendar")}
+              className="-m-3 p-3 text-[12.5px] font-bold text-brand-blue-electric"
+            >
+              Voir le calendrier
+            </button>
+          </div>
+          {eventsError ? (
+            <ErrorState message="Impossible de charger les prochains événements." onRetry={loadUpcomingEvents} />
+          ) : upcomingEvents === null ? (
+            <div>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
+            </div>
+          ) : upcomingEvents.length === 0 ? (
+            <EmptyState icon={Calendar} title="Aucun événement à venir pour le moment" />
+          ) : (
+            upcomingEvents.map((event) => (
+              <button
+                key={event.id}
+                onClick={() => router.push(event.sourceHref ?? "/calendar")}
+                className="flex w-full items-center gap-3.5 border-b border-divider px-5 py-3.5 text-left last:border-0 hover:bg-row-hover"
+              >
+                <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-info-bg text-info-fg">
+                  <Calendar className="h-3.5 w-3.5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px] font-bold text-text">{event.title}</span>
+                  <span className="mt-0.5 block text-[12px] text-text-soft">
+                    {CALENDAR_EVENT_KIND_LABELS[event.kind]}
+                    {event.teamName ? ` · ${event.teamName}` : ""}
+                    {event.location ? ` · ${event.location}` : ""}
+                  </span>
+                </span>
+                <span className="w-24 flex-none text-right text-[12px] font-bold text-text-soft">
+                  {new Date(event.startsAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                </span>
+              </button>
+            ))
+          )}
+        </Card>
+      )}
 
       {!isTreasurer && (
         <Card>
