@@ -12,6 +12,7 @@ interface ClubMemberRow {
   user_id: string;
   prenom: string | null;
   nom: string | null;
+  telephone: string | null;
   role: string;
   status: string;
   created_at: string;
@@ -27,7 +28,7 @@ const STATUS_MAP: Record<string, OrgUser["status"]> = {
 export async function fetchClubMembers(supabase: SupabaseClient, clubId: string): Promise<OrgUser[]> {
   const { data, error } = await supabase
     .from("club_members")
-    .select("id, user_id, prenom, nom, role, status, created_at, teams")
+    .select("id, user_id, prenom, nom, telephone, role, status, created_at, teams")
     .eq("club_id", clubId)
     .order("created_at", { ascending: true });
 
@@ -39,6 +40,7 @@ export async function fetchClubMembers(supabase: SupabaseClient, clubId: string)
     firstName: row.prenom ?? "",
     lastName: row.nom ?? "",
     email: "",
+    phone: row.telephone ?? undefined,
     role: mapClubRole(row.role),
     teamScope: Array.isArray(row.teams) ? row.teams : [],
     status: STATUS_MAP[row.status] ?? "active",
