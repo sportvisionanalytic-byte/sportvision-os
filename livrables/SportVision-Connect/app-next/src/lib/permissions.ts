@@ -34,6 +34,24 @@ const SPONSORS_ORG_TYPES: ReadonlySet<OrgType> = new Set([
 ]);
 
 /**
+ * Types d'organisation pour qui /services (app/(app)/services/page.tsx) bypass le cadenas
+ * générique. "services" reste volontairement hors READY_MODULES (entitlements.ts) — ce
+ * gate ne protège que le mismatch ServicesBoard générique/`prestations`, jamais branché sur de
+ * vraies données. Le club (ClubServicesBoard, catalogue_offres réel), l'espace Projet/tournoi/
+ * stage (client_prestations réel) lisent des tables distinctes déjà ouvertes par RLS, donc la
+ * page bypass canAccess pour eux sans jamais avoir été mise à jour ici (19/08/2026, bug remonté :
+ * la Sidebar affichait un cadenas sur "Prestations" pour un club alors que la page fonctionnait
+ * réellement — même correctif que sponsors/presences ci-dessus, le cadenas doit refléter l'accès
+ * réel plutôt que le seul statut READY_MODULES).
+ */
+export const SERVICES_BYPASS_TYPES: ReadonlySet<OrgType> = new Set([
+  "club",
+  "generic",
+  "tournament_organizer",
+  "camp",
+]);
+
+/**
  * Un module absent de READY_MODULES est verrouillé, jamais ouvert par défaut — sinon un compte
  * réel (club, joueur, parent ou projet) verrait du contenu mock sur un module pas encore branché.
  * Pour un module prêt, l'accès réel est piloté par organization_entitlements (via
@@ -53,6 +71,10 @@ const SPONSORS_ORG_TYPES: ReadonlySet<OrgType> = new Set([
  * commerciale que seuls certains types d'organisation ont pu signer.
  */
 export function canAccess(ctx: ActiveContext, module: ModuleKey): boolean {
+  // "services" : géré avant le garde READY_MODULES (il en est délibérément absent) — voir
+  // SERVICES_BYPASS_TYPES ci-dessus.
+  if (module === "services") return SERVICES_BYPASS_TYPES.has(ctx.organization.type);
+
   if (!READY_MODULES.has(module)) return false;
 
   // "presences" (Présences terrain, Full Communication) : vendu uniquement au club — jamais
