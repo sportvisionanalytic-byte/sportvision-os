@@ -406,48 +406,55 @@ function BillingDocumentsView({ clientId, allowDevisDecision }: { clientId: stri
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Card className={overdue ? "border-danger-fg/30 bg-danger-bg p-4.5" : "p-4.5"}>
-          <div className={overdue ? "flex items-center gap-2 text-danger-fg" : "flex items-center gap-2 text-text-soft"}>
-            <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
-            <span className="text-[11.5px] font-bold uppercase tracking-[.04em]">Facture en retard</span>
-          </div>
-          {overdue ? (
-            <>
-              <div className="mt-2 text-[20px] font-extrabold tracking-tight text-danger-fg">{formatEuroTTC(overdue.totalInclVat)}</div>
-              <div className="mt-0.5 text-[12px] font-semibold text-danger-fg">
-                {overdue.number} · en retard depuis {daysLate(overdue.dueDate)} j
-              </div>
-            </>
-          ) : (
-            <div className="mt-2 text-[13.5px] font-bold text-success-fg">Aucune facture en retard.</div>
-          )}
-        </Card>
-
-        <Card className="p-4.5">
-          <div className="flex items-center gap-2 text-text-soft">
-            <Receipt className="h-3.5 w-3.5" aria-hidden />
-            <span className="text-[11.5px] font-bold uppercase tracking-[.04em]">Prochaine échéance</span>
-          </div>
-          {upcoming ? (
-            <>
-              <div className="mt-2 text-[20px] font-extrabold tracking-tight">{formatEuroTTC(upcoming.totalInclVat)}</div>
-              <div className="mt-0.5 text-[12px] font-semibold text-text-soft">Échéance le {upcoming.dueDate}</div>
-            </>
-          ) : (
-            <div className="mt-2 text-[13.5px] font-bold text-text-soft">Aucune échéance à venir.</div>
-          )}
-        </Card>
-      </div>
-
-      {invoices.length === 0 ? (
+      {invoices.length === 0 && contracts.length === 0 && pendingDevisList.length === 0 ? (
         <Card className="flex flex-col items-center gap-2 px-8 py-16 text-center">
           <FileText className="h-6 w-6 text-text-faint" aria-hidden />
-          <div className="mt-1 text-[15px] font-extrabold">Aucune facture pour le moment.</div>
+          <div className="mt-1 text-[15px] font-extrabold">Rien à afficher pour le moment.</div>
+          <p className="max-w-sm text-[13px] text-text-soft">
+            Vos devis, contrats et factures apparaîtront ici dès qu&apos;un premier document sera émis.
+          </p>
         </Card>
       ) : (
-        <Card>
-          {invoices.map((inv) => (
+        <>
+          {invoices.length > 0 && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Card className={overdue ? "border-danger-fg/30 bg-danger-bg p-4.5" : "p-4.5"}>
+                <div className={overdue ? "flex items-center gap-2 text-danger-fg" : "flex items-center gap-2 text-text-soft"}>
+                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                  <span className="text-[11.5px] font-bold uppercase tracking-[.04em]">Facture en retard</span>
+                </div>
+                {overdue ? (
+                  <>
+                    <div className="mt-2 text-[20px] font-extrabold tracking-tight text-danger-fg">{formatEuroTTC(overdue.totalInclVat)}</div>
+                    <div className="mt-0.5 text-[12px] font-semibold text-danger-fg">
+                      {overdue.number} · en retard depuis {daysLate(overdue.dueDate)} j
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-2 text-[13.5px] font-bold text-success-fg">Aucune facture en retard.</div>
+                )}
+              </Card>
+
+              <Card className="p-4.5">
+                <div className="flex items-center gap-2 text-text-soft">
+                  <Receipt className="h-3.5 w-3.5" aria-hidden />
+                  <span className="text-[11.5px] font-bold uppercase tracking-[.04em]">Prochaine échéance</span>
+                </div>
+                {upcoming ? (
+                  <>
+                    <div className="mt-2 text-[20px] font-extrabold tracking-tight">{formatEuroTTC(upcoming.totalInclVat)}</div>
+                    <div className="mt-0.5 text-[12px] font-semibold text-text-soft">Échéance le {upcoming.dueDate}</div>
+                  </>
+                ) : (
+                  <div className="mt-2 text-[13.5px] font-bold text-text-soft">Aucune échéance à venir.</div>
+                )}
+              </Card>
+            </div>
+          )}
+
+          {invoices.length > 0 && (
+            <Card>
+              {invoices.map((inv) => (
             <div key={inv.id} className="flex items-center gap-3.5 border-b border-divider px-5 py-3.5 last:border-0">
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-mono text-[12.5px] font-bold text-text">{inv.number}</span>
@@ -486,8 +493,10 @@ function BillingDocumentsView({ clientId, allowDevisDecision }: { clientId: stri
                 Contacter le support
               </Link>
             </div>
-          ))}
-        </Card>
+              ))}
+            </Card>
+          )}
+        </>
       )}
 
       <Toast message={toastMessage} tone={toastTone} />
