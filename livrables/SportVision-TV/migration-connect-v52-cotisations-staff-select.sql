@@ -16,8 +16,11 @@
 -- aucune policy existante. Même fonction is_staff() déjà utilisée sur
 -- prestations/clients/factures.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
 -- Idempotente (drop policy if exists avant chaque create policy).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- policies gf_staff_select, fc_staff_select et ug_staff_select existent
+-- déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 drop policy if exists "gf_staff_select" on group_fundings;

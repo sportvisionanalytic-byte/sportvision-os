@@ -95,8 +95,9 @@
 -- exists). Ne touche à rien d'autre (RLS, CHECK constraint, autres colonnes
 -- inchangés). À exécuter après migration-contenus.sql.
 --
--- NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka dans Supabase → SQL Editor
--- après relecture.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonction contenus_valider_transition_statut existe déjà en base. Cet
+-- en-tête disait à tort "NON EXÉCUTÉE".
 
 create or replace function contenus_valider_transition_statut()
 returns trigger language plpgsql security definer as $$

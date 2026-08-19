@@ -14,9 +14,11 @@
 -- déjà être exécutée — c'est le cas, confirmée en base le 14/08 (RPC /rpc/player_has_client_access
 -- déjà exposée).
 --
--- NON EXÉCUTÉE PAR L'AGENT qui l'a écrite (aucun accès direct à la base depuis ce worktree). À
--- relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente (drop policy if exists
--- avant chaque create policy).
+-- Idempotente (drop policy if exists avant chaque create policy).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- policies rdv_client_own et rdv_client_insert existent déjà sur
+-- rendez_vous. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 drop policy if exists "rdv_client_own" on rendez_vous;

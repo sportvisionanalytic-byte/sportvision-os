@@ -17,9 +17,14 @@
 --     nombre_matchs_lien) + lien(s) fourni(s) (prestations.lien_match_url), tarif_lien_match
 --     (catalogue_offres.tarif_lien_match).
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (add column if not exists, UPDATE inconditionnel sur tarif_lien_match — sans effet si déjà à
 -- cette valeur, à rejouer sans risque). Ne modifie ni ne redéfinit connect_agent_discount()/
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- colonnes catalogue_offres.tarif_lien_match, prestations.mode_livraison_
+-- montage/nombre_matchs_lien/lien_match_url existent déjà en base. Cet
+-- en-tête disait à tort "NON EXÉCUTÉE".
 -- catalogue_offres.tarif_palier/prix_ht existants (v57, v63).
 -- ============================================================
 

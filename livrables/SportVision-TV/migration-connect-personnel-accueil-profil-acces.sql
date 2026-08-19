@@ -2,10 +2,15 @@
 -- SPORTVISION CONNECT (personnel) — Accueil / Mon profil / Accès à mon profil
 --
 -- Écrite par l'agent en charge de l'enrichissement de ces trois écrans dans
--- app-connect (14/08/2026). NON EXÉCUTÉE — à relire puis exécuter par Fouka
--- dans Supabase → SQL Editor. Idempotente (create table/policy if not
+-- app-connect (14/08/2026). Idempotente (create table/policy if not
 -- exists, drop policy if exists avant chaque create policy, create or
 -- replace function) : peut être rejouée sans effet de bord.
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- tables connect_profile_settings/connect_access_relationships, policies
+-- cps_self_all/car_owner_select/car_grantee_select/ccal_player_select/
+-- prestations_player_select et l'ensemble des fonctions connect_* de ce
+-- fichier existent déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 --
 -- Portée : 3 sujets indépendants, détaillés dans chaque section ci-dessous.
 -- ============================================================

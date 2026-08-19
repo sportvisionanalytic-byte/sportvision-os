@@ -23,9 +23,13 @@
 -- vers le client_users direct s'il existe — mêmes deux chemins d'accès que
 -- messages_client/contenus (v33/v34). Étendu au cas par cas plus tard.
 --
--- NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka dans Supabase → SQL Editor
--- après relecture. Additive, idempotente (create table if not exists,
--- create or replace function, drop trigger if exists).
+-- Additive, idempotente (create table if not exists, create or replace
+-- function, drop trigger if exists).
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- table member_notifications, policies mn_owner_select/mn_owner_update/
+-- mn_staff_all et fonctions notify_client_members/trg_notify_facture_statut/
+-- trg_notify_contenu_a_valider existent déjà en base. Cet en-tête disait à
+-- tort "NON EXÉCUTÉE".
 -- ============================================================
 
 create table if not exists member_notifications (

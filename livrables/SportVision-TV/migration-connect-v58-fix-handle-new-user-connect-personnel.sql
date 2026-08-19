@@ -59,8 +59,11 @@
 -- une ligne staff réelle supprimée par erreur casserait immédiatement
 -- l'accès de cette personne.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL
--- Editor. Parties A et B idempotentes (CREATE OR REPLACE), sans risque.
+-- Parties A et B idempotentes (CREATE OR REPLACE), sans risque.
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonctions handle_new_user et is_staff existent déjà en base. Cet
+-- en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 

@@ -56,8 +56,11 @@
 -- documenté explicitement ici pour que l'intention soit claire en relecture.
 --
 -- Additive, idempotente (create table if not exists, drop policy if exists
--- avant chaque create policy). NON EXÉCUTÉE PAR L'AGENT — à exécuter par
--- Fouka dans Supabase → SQL Editor après relecture.
+-- avant chaque create policy).
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- table cm_agency_club_access et policies cmaa_member_select/
+-- cmaa_staff_write existent déjà en base. Cet en-tête disait à tort
+-- "NON EXÉCUTÉE".
 -- ============================================================
 
 create table if not exists cm_agency_club_access (

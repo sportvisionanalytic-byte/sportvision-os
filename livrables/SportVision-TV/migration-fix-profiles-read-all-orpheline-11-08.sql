@@ -31,8 +31,11 @@
 -- l'annuaire des autres membres du staff), donc rien à recréer à la
 -- place.
 --
--- Idempotente. NON EXÉCUTÉE PAR L'AGENT NI PAR MOI — à exécuter par
--- Fouka dans Supabase → SQL Editor.
+-- Idempotente.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- la policy "profiles_read_all" n'existe plus sur `profiles` (confirmé
+-- via pg_policies) — le DROP POLICY a bien eu lieu. Cet en-tête disait à
+-- tort "NON EXÉCUTÉE".
 -- ============================================================
 
 drop policy if exists "profiles_read_all" on profiles;

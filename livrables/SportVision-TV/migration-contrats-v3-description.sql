@@ -1,6 +1,9 @@
 -- Migration : contrats v3 — colonne « description » (périmètre / prestations incluses)
 -- À exécuter dans Supabase → SQL Editor.
--- PRÉPARÉE MAIS NON EXÉCUTÉE — additive uniquement, aucune perte de données.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- colonne contrats.description existe déjà en base. Cet en-tête disait à
+-- tort "PRÉPARÉE MAIS NON EXÉCUTÉE". Additive uniquement, aucune perte de
+-- données.
 --
 -- Contexte (audit Contrats/Signature, 2026-08) :
 --   genererContratPDF() dans SportVision-OS-Full.html affiche déjà, depuis sa création,

@@ -1,8 +1,13 @@
 -- ============================================================
 -- SPORTVISION CLUB+ — Migration v43
 -- Suite de migration-clubplus-v1 à v42.sql. Idempotente.
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
--- Ne JAMAIS exécuter depuis un agent.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- tables event_editions/event_sessions et policies ee_select/ee_admin_write/
+-- es_select/es_admin_write existent déjà en base (confirmé aussi par le
+-- propre audit de migration-clubplus-v44, qui documente que organizations.
+-- event_kind existait le 17/08/2026 avant d'être supprimée par v44). Cet
+-- en-tête disait à tort "NON EXÉCUTÉE" ; ne pas relancer cette migration
+-- sur la base de cette mention obsolète.
 -- ============================================================
 --
 -- Brief Fouka 17/08/2026 (CLUB-PLUS-PRODUCT-BIBLE.md §14 "Interface Tournoi /

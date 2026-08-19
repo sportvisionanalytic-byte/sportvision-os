@@ -86,8 +86,16 @@
 -- personnel, passé ou futur, qui obtiendrait une ligne `profiles` par
 -- erreur.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL
--- Editor. Idempotente (DROP POLICY IF EXISTS avant chaque CREATE), sans
+-- Idempotente (DROP POLICY IF EXISTS avant chaque CREATE), sans
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- les ~25 policies recréées par cette migration (audit_staff_insert,
+-- dispo_select, doc_events_write, email_tpl_read, formation_rewards_read,
+-- fsess_read, fc_select, kit_comp_select, kit_ctrl_items_select,
+-- kit_ctrl_select, materiels_select, mc_read/write, mhist_read/insert,
+-- ml_read/write, mlivr_read, mliv_read, mp_read, mval_read, mv_read/write,
+-- msg_select, msg_update) existent toutes déjà en base. Cet en-tête
+-- disait à tort "NON EXÉCUTÉE".
 -- risque : ne fait que substituer un appel de fonction équivalent (mais
 -- correctement filtré) à une sous-requête. Aucune table modifiée, aucune
 -- donnée touchée.

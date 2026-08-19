@@ -13,9 +13,17 @@
 -- choix. Cette migration comble ce trou (§1) puis construit tout ce qui
 -- manque pour que l'Espace particulier existe réellement (§2-6).
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
 -- Idempotente (create table/column if not exists, drop policy if exists avant
 -- chaque create policy, create or replace function) : peut être rejouée sans
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- table managed_athlete_profiles, colonnes connect_access_relationships.
+-- right_payer/right_cotisation/right_calendrier/right_modifier,
+-- prestations.booked_by_user_id, group_fundings.beneficiary_*, policies
+-- map_owner_select/insert/update/delete et l'ensemble des fonctions
+-- propres à ce fichier (connect_owner_client_id, connect_list_my_athletes,
+-- create_group_funding, etc.) existent déjà en base. Cet en-tête disait à
+-- tort "NON EXÉCUTÉE".
 -- effet de bord. Écrite en suivant le même niveau de rigueur que
 -- migration-connect-v50-groupes-cotisations-personnelles.sql (référence de
 -- style et de sécurité explicitement demandée par le brief).

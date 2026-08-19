@@ -14,9 +14,15 @@
 --      renvoyait "locked" pour organization.type === "player", donc /messages affichait un module
 --      verrouillé — l'exact anti-pattern que Fouka dénonce dans son brief).
 --
--- NON EXÉCUTÉE PAR L'AGENT qui l'a écrite. À relire puis exécuter par Fouka dans Supabase →
--- SQL Editor. Idempotente (create table/policy if not exists, drop policy if exists avant
+-- Idempotente (create table/policy if not exists, drop policy if exists avant
 -- chaque create policy, create or replace function) : peut être rejouée sans effet de bord si
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- table contenu_favoris, policies cf_own_select/insert/delete, colonne
+-- player_profiles.client_id et fonction player_has_client_access existent
+-- déjà en base. resolve_player_client_id a été redéfinie depuis (v56) mais
+-- conserve intégralement la logique posée ici. Cet en-tête disait à tort
+-- "NON EXÉCUTÉE".
 -- une partie a déjà été appliquée.
 -- ============================================================
 

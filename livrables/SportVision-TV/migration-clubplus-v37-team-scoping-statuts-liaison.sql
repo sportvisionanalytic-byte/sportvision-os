@@ -67,8 +67,12 @@
 -- erreur : voir bloc 2, team_id NULL = visible par tout membre du club,
 -- exactement le comportement actuel.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL
--- Editor. Ne JAMAIS exécuter depuis un agent.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- club_bookings.team_id, club_matches.team_id/verified_by/verified_at,
+-- contenus.request_id, policies cbk_member_select/insert et
+-- cma_member_select/insert/update existent tous déjà en base. Cet en-tête
+-- disait à tort "NON EXÉCUTÉE" ; ne pas relancer cette migration sur la
+-- base de cette mention obsolète.
 -- ============================================================
 
 -- ────────────────────────────────────────────────────────────────────────

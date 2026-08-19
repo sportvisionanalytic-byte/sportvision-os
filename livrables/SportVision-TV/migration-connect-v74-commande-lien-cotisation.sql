@@ -48,8 +48,12 @@
 -- "self", sportif lié/géré) en une seule requête — pas besoin de dupliquer la distinction
 -- multi/non-multi de l'Edge Function ici.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (create or replace function). Aucun redéploiement d'Edge Function nécessaire.
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonction connect_get_order_funding_link existe déjà en base. Cet
+-- en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 create or replace function connect_get_order_funding_link(p_prestation_id uuid)

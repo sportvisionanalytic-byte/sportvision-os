@@ -11,9 +11,13 @@
 -- INSERT/UPDATE additive scopée au dossier avatars/<user_id>/..., jamais un
 -- nouveau bucket pour une seule fonctionnalité.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
 -- Idempotente (add column if not exists, drop policy if exists avant chaque
 -- create policy).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- colonne connect_profile_settings.avatar_url et policies
+-- portail_media_avatar_insert/update (storage.objects) existent déjà en
+-- base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 alter table connect_profile_settings add column if not exists avatar_url text;

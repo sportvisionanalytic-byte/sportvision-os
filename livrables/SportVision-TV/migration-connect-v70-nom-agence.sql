@@ -23,8 +23,13 @@
 -- connect_agent_discount (déjà dans ce schéma), qui exposent un sous-ensemble contrôlé plutôt
 -- qu'une policy RLS large.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (add column if not exists, create or replace function).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- colonne connect_profile_settings.nom_agence et fonction
+-- connect_get_agent_agency_names existent déjà en base. Cet en-tête
+-- disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 -- ─── 1. Colonne ──────────────────────────────────────────────────────────

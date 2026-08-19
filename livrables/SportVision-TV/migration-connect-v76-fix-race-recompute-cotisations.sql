@@ -35,8 +35,12 @@
 -- opérations à l'intérieur de la transaction. `perform` (pas `select ... into`) : on ne veut que
 -- l'effet de verrouillage, pas la valeur.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (create or replace function, redéfinit les 2 triggers déjà en place sans les recréer). Aucun
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonctions recompute_group_funding_amount et recompute_team_project_amount
+-- existent déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- redéploiement d'Edge Function nécessaire (stripe-webhook déclenche ces triggers via une simple
 -- UPDATE, son code n'a pas besoin de changer pour ce point précis).
 -- ============================================================

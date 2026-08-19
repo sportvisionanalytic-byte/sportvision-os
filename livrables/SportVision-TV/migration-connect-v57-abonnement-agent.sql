@@ -23,9 +23,18 @@
 --   Au-delà de 20 : pas de palier self-service — message "contactez-nous" côté frontend, rien à
 --   coder ici (aucune ligne, aucun palier serveur au-delà de 'pro').
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente (create
+-- Idempotente (create
 -- table/policy if not exists, drop policy/function if exists avant chaque recreate) : peut être
 -- rejouée sans effet de bord. Schéma réel vérifié en direct (service_role, .env racine) avant
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- tables connect_agent_subscriptions/connect_manual_calendar_events,
+-- policies cas_self_select/cmce_creator_select et fonctions
+-- connect_agent_tier_limit/connect_agent_effective_tier/
+-- connect_agent_relationship_count/connect_agent_subscription_status/
+-- connect_agent_discount/connect_add_manual_calendar_event/
+-- connect_delete_manual_calendar_event existent déjà en base. Cet en-tête
+-- disait à tort "NON EXÉCUTÉE".
 -- d'écrire une seule ligne : connect_access_relationships porte déjà right_modifier (colonne
 -- posée par migration-connect-v51-espace-particulier.sql, jamais branchée à une fonctionnalité —
 -- c'est le point d'accroche de la partie 3 ci-dessous), connect_profile_settings.account_type

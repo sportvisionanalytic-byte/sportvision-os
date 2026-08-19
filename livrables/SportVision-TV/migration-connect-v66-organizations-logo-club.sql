@@ -25,9 +25,12 @@
 -- Ne touche PAS à connect_declared_clubs (clubs "déclarés" par un
 -- joueur sans club officiel, hors scope — volontairement sans logo).
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL
--- Editor. Idempotente (ADD COLUMN IF NOT EXISTS + UPDATE conditionné
+-- Idempotente (ADD COLUMN IF NOT EXISTS + UPDATE conditionné
 -- sur logo_url IS NULL, sans risque à rejouer).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- colonne organizations.logo_url existe déjà en base. Cet en-tête disait
+-- à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 alter table organizations add column if not exists logo_url text;

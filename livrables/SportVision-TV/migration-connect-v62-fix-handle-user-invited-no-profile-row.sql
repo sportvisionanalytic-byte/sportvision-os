@@ -1,5 +1,6 @@
 -- ============================================================
--- SPORTVISION — Migration v60 — NON EXÉCUTÉE
+-- SPORTVISION — Migration v60 (fichier nommé v62 — EXÉCUTÉE, voir bas de
+-- fichier)
 -- Corrige une RÉGRESSION introduite PAR v58 lui-même (migration-connect-
 -- v58-fix-handle-new-user-connect-personnel.sql, exécutée le 15/08) :
 -- la PROCHAINE invitation d'un vrai collaborateur (via invite-collaborateur,
@@ -80,8 +81,11 @@
 -- que via is_staff() — hors périmètre de ce correctif, comportement existant
 -- et voulu).
 --
--- Idempotente (CREATE OR REPLACE). NON EXÉCUTÉE — à relire puis exécuter
--- par Fouka dans Supabase → SQL Editor.
+-- Idempotente (CREATE OR REPLACE).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonction handle_user_invited existe déjà en base. Cet en-tête disait à
+-- tort "NON EXÉCUTÉE" (voir aussi le titre en haut de ce fichier).
 -- ============================================================
 
 create or replace function handle_user_invited()
