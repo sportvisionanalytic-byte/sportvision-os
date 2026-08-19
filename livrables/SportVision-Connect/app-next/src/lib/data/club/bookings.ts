@@ -122,9 +122,13 @@ export function offerPriceLabel(offer: Pick<ClubCatalogueOffre, "tarifType" | "p
   return `${money(offer.prixHt)} € HT`;
 }
 
+/** Vide (jamais "-0% Club+ Gratuit") quand le plan n'ouvre droit à aucune remise — voir
+ * reductionPct : "free" vaut 0, un "-0%" affiché comme avantage induirait en erreur. */
 export function offerAdvantageLabel(offer: Pick<ClubCatalogueOffre, "tarifType">, plan: ClubPlan): string {
   if (offer.tarifType === "sur_devis") return "";
-  return `-${reductionPct(plan)}% ${planLabel(plan)}`;
+  const pct = reductionPct(plan);
+  if (pct <= 0) return "";
+  return `-${pct}% ${planLabel(plan)}`;
 }
 
 /** Snapshot figé au moment de la réservation dans `price_label` — indicatif uniquement, la
