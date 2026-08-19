@@ -100,11 +100,11 @@ serve(async (req) => {
       s ? new Date(s).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—";
 
     const stLbl: Record<string, string> = {
-      brouillon: "Brouillon", emise: "Émise", payee: "Payée",
+      brouillon: "Brouillon", emise: "Émise", partiellement_payee: "Partiellement payée", payee: "Payée",
       en_retard: "En retard", annulee: "Annulée", remboursee: "Remboursée",
     };
     const stClr: Record<string, string> = {
-      brouillon: "#8891A8", emise: "#366BFF", payee: "#2ECC8A",
+      brouillon: "#8891A8", emise: "#366BFF", partiellement_payee: "#F5A524", payee: "#2ECC8A",
       en_retard: "#F0445E", annulee: "#8891A8", remboursee: "#F5A524",
     };
 
