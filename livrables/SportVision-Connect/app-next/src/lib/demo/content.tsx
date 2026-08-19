@@ -302,22 +302,35 @@ function CommunicationCredits(): ReactNode {
   );
 }
 
+// Miroir exact de requests/new/page.tsx : coach/académie/sponsor n'ont aucun solde de crédits
+// réellement suivi ("Suivi avec votre CM") — leur montrer un aperçu de déduction serait faux.
+const NO_CREDIT_SYSTEM_ORG = new Set(["coach", "academy", "sponsor"]);
+
 function Requests(p: DemoProfile): ReactNode {
-  // Miroir du vrai formulaire (requests/new/page.tsx + URGENCY_META) : coût en crédits affiché
-  // et vérifié AVANT l'envoi, jamais juste un compteur théorique (audit du 19/08/2026 — vérifié
-  // que ce mécanisme existe déjà et fonctionne réellement en production avant de le reproduire).
+  const org = orgData(p.ctx.organization.id);
+  const hasCreditSystem = !NO_CREDIT_SYSTEM_ORG.has(p.ctx.organization.type);
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Demandes" subtitle="Vos demandes de visuels et de prestations." />
-      <CreditRequestPreview available={p.ctx.subscription.creditsRemaining} />
+      <PageHeader title="Demandes" subtitle={`Demandes de visuels et de prestations pour ${p.ctx.organization.name}.`} />
+      {hasCreditSystem ? (
+        <CreditRequestPreview available={p.ctx.subscription.creditsRemaining} />
+      ) : (
+        <Card title="Nouvelle demande">
+          <p className="text-[13px] text-text-secondary">Le coût et le suivi de vos demandes sont gérés directement avec votre Community Manager.</p>
+        </Card>
+      )}
       <Card title="Historique">
-        <RowList
-          rows={[
-            { primary: "Affiche tournoi de rentrée", secondary: "Visuel · Prioritaire", badge: { label: "En cours", tone: "info" } },
-            { primary: "Bannière réseaux sociaux", secondary: "Visuel · Standard", badge: { label: "Livré", tone: "success" } },
-            { primary: "Montage highlights saison", secondary: "Vidéo · Standard", badge: { label: "En attente", tone: "neutral" } },
-          ]}
-        />
+        {org.content.length > 0 ? (
+          <RowList
+            rows={org.content.slice(0, 3).map((c, i) => ({
+              primary: c.title,
+              secondary: `${c.kind === "video" ? "Vidéo" : c.kind === "photo" ? "Photo" : "Visuel"} · Standard`,
+              badge: i === 0 ? { label: "En cours" as const, tone: "info" as const } : i === 1 ? { label: "Livré" as const, tone: "success" as const } : { label: "En attente" as const, tone: "neutral" as const },
+            }))}
+          />
+        ) : (
+          <EmptyState label="Aucune demande pour le moment." />
+        )}
       </Card>
     </div>
   );

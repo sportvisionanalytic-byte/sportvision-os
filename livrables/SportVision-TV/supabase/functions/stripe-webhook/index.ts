@@ -983,15 +983,13 @@ serve(async (req) => {
     }
 
     // Renouvellement mensuel encaissé : le quota de crédits repart à neuf.
-    // HYPOTHÈSE PRODUIT (à confirmer) : les crédits ne sont PAS cumulatifs d'un
-    // mois sur l'autre — un club qui n'a rien consommé ne démarre pas le mois
-    // suivant avec le double. C'est ce que laisse entendre l'affichage de l'app
-    // ("X / Y crédits ce mois") et le libellé "crédits mensuels" du site public,
-    // mais ce n'est écrit dans aucun document contractuel. Si la règle voulue
-    // est le report, remplacer par credits_balance = credits_balance +
-    // credits_monthly (et prévoir un plafond, sinon un club inactif accumule
-    // indéfiniment). credits_reserved n'est jamais touché ici : ce sont des
-    // crédits engagés sur des demandes en attente d'acceptation.
+    // Confirmé par Fouka le 19/08/2026 : les crédits ne sont PAS reportés d'un mois sur
+    // l'autre — un club qui n'a rien consommé ne démarre pas le mois suivant avec le double,
+    // le solde est simplement remis au quota du plan à chaque facture payée. Le comportement
+    // ci-dessous était déjà celui codé (l'ancienne "hypothèse à confirmer" est maintenant
+    // tranchée) — voir aussi club-plus.html FAQ, mise à jour en conséquence le même jour.
+    // credits_reserved n'est jamais touché ici : ce sont des crédits engagés sur des demandes
+    // en attente d'acceptation.
     if (event.type === "invoice.paid") {
       const invoice = event.data.object as Stripe.Invoice;
       const subId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id ?? null;
