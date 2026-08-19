@@ -104,6 +104,13 @@ export async function rejectTeamMembership(supabase: SupabaseClient, requestId: 
   if (error) throw error;
 }
 
+/** "Demander une information" (migration-clubplus-v46) — ne change pas le statut de la demande,
+ * journalise juste ce qui manque (membership_request_events, event_type='info_demandee'). */
+export async function requestMembershipInfo(supabase: SupabaseClient, requestId: string, note: string): Promise<void> {
+  const { error } = await supabase.rpc("request_membership_info", { p_request_id: requestId, p_note: note });
+  if (error) throw error;
+}
+
 export type RequestStage = "attente_educateur" | "attente_dirigeant" | "validee" | "refusee";
 
 /**

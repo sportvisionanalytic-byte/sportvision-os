@@ -14,6 +14,7 @@ import {
   deriveStage,
   fetchClubJoinRequests,
   rejectTeamMembership,
+  requestMembershipInfo,
   STAGE_LABEL,
   STAGE_TONE,
   validateTeamMembership,
@@ -83,6 +84,9 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [motif, setMotif] = useState("");
+  const [infoRequestId, setInfoRequestId] = useState<string | null>(null);
+  const [infoNote, setInfoNote] = useState("");
+  const [infoSentId, setInfoSentId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const isAdmin = role === "admin";
@@ -117,7 +121,7 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
     };
   }, [clubId]);
 
-  async function runAction(action: () => Promise<void>, requestId: string) {
+  async function runAction(action: () => Promise<void>, requestId: string, opts?: { keepBadge?: boolean }) {
     setBusyId(requestId);
     setActionError(null);
     try {
@@ -125,6 +129,9 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
       await reload();
       setRejectingId(null);
       setMotif("");
+      setInfoRequestId(null);
+      setInfoNote("");
+      if (opts?.keepBadge) setInfoSentId(requestId);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Action impossible.");
     } finally {
@@ -225,8 +232,38 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
                       </Button>
                     </div>
                   </div>
+                ) : infoRequestId === req.id ? (
+                  <div className="mt-3.5 flex flex-col gap-2 border-t border-divider pt-3.5">
+                    <input
+                      value={infoNote}
+                      onChange={(e) => setInfoNote(e.target.value)}
+                      placeholder="Ce qui manque (ex. document d'identité, autorisation signée...)"
+                      className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13px] outline-none focus-visible:border-brand-blue"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="primary"
+                        className="h-9 px-3.5 text-[12.5px]"
+                        disabled={busy || !infoNote.trim()}
+                        loading={busy}
+                        onClick={() => runAction(() => requestMembershipInfo(createClient(), req.id, infoNote), req.id, { keepBadge: true })}
+                      >
+                        Envoyer la demande d&apos;info
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="h-9 px-3.5 text-[12.5px]"
+                        onClick={() => {
+                          setInfoRequestId(null);
+                          setInfoNote("");
+                        }}
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="mt-3.5 flex flex-wrap gap-2 border-t border-divider pt-3.5">
+                  <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-divider pt-3.5">
                     {canConfirm && (
                       <Button
                         variant="primary"
@@ -257,10 +294,16 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
                       </p>
                     )}
                     {canReject && (
+                      <Button variant="secondary" className="h-9 px-3.5 text-[12.5px]" onClick={() => setInfoRequestId(req.id)}>
+                        Demander une info
+                      </Button>
+                    )}
+                    {canReject && (
                       <Button variant="secondary" className="h-9 px-3.5 text-[12.5px]" onClick={() => setRejectingId(req.id)}>
                         Refuser
                       </Button>
                     )}
+                    {infoSentId === req.id && <span className="text-[12px] font-semibold text-success-fg">Demande d&apos;info envoyée</span>}
                   </div>
                 )}
               </Card>
