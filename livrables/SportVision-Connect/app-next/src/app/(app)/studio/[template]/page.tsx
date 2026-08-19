@@ -84,16 +84,12 @@ function StudioTemplateContent() {
 
   // Vérifié le 17/08/2026 (brief Fouka, chantier Centre communication §9/§18) : pour un club
   // classique (ctx.organization.type === "club"), usesGenericRequestsTable vaut false, donc la
-  // branche `matchId` ci-dessous s'exécute bel et bien — le prefill fonctionne comme prévu. Mais
-  // `allowed` ci-dessus (canAccess(ctx, "studio")) est TOUJOURS faux pour un compte réel
-  // aujourd'hui : "studio" est absent de READY_MODULES (src/lib/supabase/entitlements.ts), donc
-  // cette page entière reste derrière <LockedModule/> pour 100% des comptes réels, indépendamment
-  // du prefill. Le CTA "Demander un visuel" ajouté sur matchcenter/page.tsx et sur le Centre
-  // communication (communication/page.tsx) pointe donc vers /requests/new (accessible, module
-  // "visual_requests" bien dans READY_MODULES) plutôt que vers cette page — voir
-  // requestVisualHref (data/club/matches.ts). Cette logique de prefill reste correcte et prête
-  // pour le jour où "studio" sera déverrouillé, mais n'est atteignable par aucun CTA réel du
-  // produit pour l'instant.
+  // branche `matchId` ci-dessous s'exécute bel et bien — le prefill fonctionne comme prévu.
+  // "studio" ajouté à READY_MODULES le 19/08/2026 (audit pré-lancement) : `allowed` est
+  // désormais vrai pour tout compte réel. Le CTA "Demander un visuel" de matchcenter/page.tsx et
+  // du Centre communication (communication/page.tsx) continue de pointer vers /requests/new
+  // (voir requestVisualHref, data/club/matches.ts) — pas modifié ici, hors périmètre de ce
+  // déverrouillage.
   useEffect(() => {
     if (!template) return;
     const matchId = searchParams.get("matchId");

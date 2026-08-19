@@ -61,9 +61,9 @@ export default function StudioPage() {
     });
   }, [templates, search, category]);
 
-  // Message dédié (pas le générique de LockedModule, qui suggère qu'un changement de formule
-  // débloque le module "à tout moment") : "studio" est absent de READY_MODULES sans exception,
-  // aucune formule ne le débloque aujourd'hui — trouvé lors de l'audit démo Club+ du 19/08/2026.
+  // "studio" ajouté à READY_MODULES le 19/08/2026 (audit pré-lancement) : ce message ne devrait
+  // plus jamais s'afficher pour un compte réel, gardé en filet de sécurité au cas où un contexte
+  // non-club/non-org valide arriverait ici sans membership actif.
   if (!allowed) return <LockedModule title="Studio Club+" message="Studio arrive bientôt. Ce module n'est pas encore disponible, quelle que soit votre formule actuelle." />;
 
   return (

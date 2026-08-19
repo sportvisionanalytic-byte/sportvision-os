@@ -2867,20 +2867,42 @@ async function logFinancialAudit(action,tableCible,ligneId,montantAvant,montantA
 // N'écrase pas un statut terminal (payee/annulee/remboursee) déjà posé
 // manuellement ou via Pennylane/avoir, pour ne jamais revenir en arrière sur
 // une décision comptable déjà prise ailleurs.
-// Ne couvre que le règlement intégral : un acompte (statut_financier
-// 'partiellement_payée') n'a pas d'équivalent dans l'enum factures.statut
-// ('brouillon','emise','payee','en_retard','annulee','remboursee') — aucun
-// mapping fiable n'existe pour un paiement partiel, donc pas de synchronisation
-// tentée pour ce cas (voir comptaConfirmerAcompte).
+// Depuis migration-clubplus-v39 (exécutée en prod, vérifié le 19/08/2026 —
+// l'en-tête de cette migration disait à tort "NON EXÉCUTÉE") : l'enum
+// factures.statut contient bien 'partiellement_payee' et la colonne
+// factures.montant_paye existe. Le règlement partiel (acompte) est donc
+// désormais synchronisé lui aussi, voir _syncFactureApresAcompte ci-dessous
+// (appelée par comptaConfirmerAcompte) — ce commentaire décrivait une
+// limitation qui n'est plus vraie.
 async function _syncFactureApresPaiementIntegral(prestationId,montantTtc,modePaiement){
   try{
     const existing=await sbFetch('factures?select=id,statut&prestation_id=eq.'+prestationId+'&order=created_at.desc&limit=1');
     const fact=Array.isArray(existing)&&existing[0];
     if(!fact||['payee','annulee','remboursee'].includes(fact.statut))return;
-    const r=await sbFetch('factures?id=eq.'+fact.id,{method:'PATCH',body:{statut:'payee'}});
+    const r=await sbFetch('factures?id=eq.'+fact.id,{method:'PATCH',body:{statut:'payee',montant_paye:montantTtc||0}});
     if(sbErr(r)){console.error('_syncFactureApresPaiementIntegral failed',r);return;}
     logFinancialAudit('encaissement','factures',fact.id,null,montantTtc,{prestation_id:prestationId,mode_paiement:modePaiement||null});
   }catch(e){console.error('_syncFactureApresPaiementIntegral failed',e);}
+}
+
+// Même principe que _syncFactureApresPaiementIntegral, pour un acompte (paiement
+// partiel). Ajoutée le 19/08/2026 : jusqu'ici JAMAIS synchronisée vers `factures`
+// (voir commentaire ci-dessus, devenu obsolète) — une facture réglée par acompte
+// restait donc affichée 'emise'/'en_retard' côté factures, jamais
+// 'partiellement_payee', et montant_paye n'était jamais renseigné. Ne synchronise
+// que si un montant d'acompte connu existe (prestations.acompte_montant) : sans
+// montant fiable, mieux vaut ne rien écrire côté facture que d'écrire 0 (qui
+// laisserait croire à tort qu'aucun paiement n'a été reçu).
+async function _syncFactureApresAcompte(prestationId,acompteMontant,modePaiement){
+  if(!acompteMontant||acompteMontant<=0){console.warn('_syncFactureApresAcompte: pas de montant d\'acompte connu pour la prestation',prestationId,'— synchronisation facture ignorée.');return;}
+  try{
+    const existing=await sbFetch('factures?select=id,statut&prestation_id=eq.'+prestationId+'&order=created_at.desc&limit=1');
+    const fact=Array.isArray(existing)&&existing[0];
+    if(!fact||['payee','partiellement_payee','annulee','remboursee'].includes(fact.statut))return;
+    const r=await sbFetch('factures?id=eq.'+fact.id,{method:'PATCH',body:{statut:'partiellement_payee',montant_paye:acompteMontant}});
+    if(sbErr(r)){console.error('_syncFactureApresAcompte failed',r);return;}
+    logFinancialAudit('encaissement','factures',fact.id,null,acompteMontant,{type:'acompte',prestation_id:prestationId,mode_paiement:modePaiement||null});
+  }catch(e){console.error('_syncFactureApresAcompte failed',e);}
 }
 
 // ── Préférences de notification ──────────────────────────────────────────────
@@ -16984,10 +17006,7 @@ async function comptaConfirmerAcompte(id){
     }});
     if(sbErr(r)){toast('Erreur : '+(r.message||'Enregistrement impossible.'),'er');return;}
     logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.acompte_montant||r?.[0]?.montant_ttc,{type:'acompte',mode_paiement:r?.[0]?.mode_paiement});
-    // Pas de sync vers `factures` ici : un acompte n'a pas de statut équivalent
-    // dans l'enum factures.statut (voir _syncFactureApresPaiementIntegral) —
-    // seul un règlement intégral (comptaConfirmerImpaye/secConfirmerPaye/
-    // majStatutFinancier('payée')) déclenche la synchronisation.
+    _syncFactureApresAcompte(id,r?.[0]?.acompte_montant,r?.[0]?.mode_paiement);
     closeModal();toast('Acompte enregistré.','ok');loadComptaAcomptes();
   }catch(e){toast('Erreur.','er');}
 }
