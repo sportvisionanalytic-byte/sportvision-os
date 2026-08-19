@@ -290,7 +290,17 @@ serve(async (req) => {
         // lib/supabase/session.ts) ignore tout profil dont account_status="retire" : le joueur
         // restait invisible sur son propre Dashboard/Mes affiliations malgré une demande créée
         // avec succès — parcours "rejoindre après avoir quitté" silencieusement cassé.
-        const { error: updErr } = await admin
+        //
+        // BUGFIX 19/08 : cet UPDATE échouait TOUJOURS pour un profil déjà existant (ex. joueur
+        // qui avait choisi "Continuer sans club"), quel que soit le club visé — via `admin`
+        // (service role), auth.uid() est NULL, donc guard_player_profile_update()
+        // (migration-clubplus-v13/v36) refusait tout changement de club_id/date_naissance
+        // ("Modification non autorisée sur ces champs"), masqué côté UI par le message
+        // générique "Impossible de rejoindre ce club pour le moment." migration-connect-v81
+        // ajoute une exception self-service à ce trigger (club_id/date_naissance modifiables sur
+        // SA PROPRE ligne) — mais elle ne s'applique que si auth.uid() est réellement résolu, ce
+        // qui exige le JWT de l'appelant (userClient), pas le service role.
+        const { error: updErr } = await userClient
           .from("player_profiles")
           .update({ club_id: org.id, prenom, nom, date_naissance: dateNaissance, account_status: "actif" })
           .eq("id", playerId);
