@@ -223,7 +223,7 @@ const NAV_PARENT: NavEntry[] = [
   item("children", "Profils associés", "children"),
   item("content", "Leurs contenus", "content"),
   item("authorizations", "Autorisations", "authorizations"),
-  item("teams", "Adhésions à une équipe", "team-requests"),
+  item("teams", "Affiliation à une équipe", "team-requests"),
   section("SportVision"),
   item("services", "Prestations", "services"),
   item("calendar", "Calendrier", "calendar"),
