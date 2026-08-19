@@ -204,30 +204,55 @@ function OrganizationForm() {
         )}
       </Card>
 
-      <Card className="flex flex-col gap-4 p-5">
+      <Card className="flex flex-col gap-5 p-5">
         <div className="text-[13.5px] font-extrabold">Couleurs du club</div>
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {[0, 1].map((i) => (
-            <label
-              key={i}
-              className={cn(
-                "flex items-center gap-2 rounded-xl border border-border-strong px-2.5 py-2",
-                canEdit && "cursor-pointer hover:border-brand-blue-electric",
+            <div key={i} className="flex flex-col gap-2.5">
+              <div className="flex items-center gap-2">
+                <label
+                  className={cn(
+                    "relative flex h-8 w-8 flex-none items-center justify-center overflow-hidden rounded-full border border-white/20",
+                    canEdit && "cursor-pointer",
+                  )}
+                  style={{ backgroundColor: colors[i] }}
+                  title="Choisir une couleur personnalisée"
+                >
+                  {canEdit && (
+                    <input
+                      type="color"
+                      value={colors[i]}
+                      onChange={(e) => setColors((prev) => (prev[0] && prev[1] ? [i === 0 ? e.target.value : prev[0], i === 1 ? e.target.value : prev[1]] : prev))}
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      aria-label={i === 0 ? "Couleur principale, personnalisée" : "Couleur secondaire, personnalisée"}
+                    />
+                  )}
+                </label>
+                <span className="text-[12.5px] font-bold text-text">{i === 0 ? "Couleur principale" : "Couleur secondaire"}</span>
+                <span className="font-mono text-[12px] text-text-faint">{colors[i]}</span>
+              </div>
+              {canEdit && (
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label={i === 0 ? "Palette — couleur principale" : "Palette — couleur secondaire"}>
+                  {BASIC_COLORS.map((preset) => {
+                    const active = colors[i].toLowerCase() === preset.toLowerCase();
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setColors((prev) => (prev[0] && prev[1] ? [i === 0 ? preset : prev[0], i === 1 ? preset : prev[1]] : prev))}
+                        className={cn(
+                          "h-6 w-6 flex-none rounded-full border-2 transition-transform hover:scale-110",
+                          active ? "border-text" : "border-white/20",
+                        )}
+                        style={{ backgroundColor: preset }}
+                        aria-label={preset}
+                        aria-pressed={active}
+                      />
+                    );
+                  })}
+                </div>
               )}
-            >
-              <span className="relative h-6 w-6 flex-none overflow-hidden rounded-full border border-white/20" style={{ backgroundColor: colors[i] }}>
-                {canEdit && (
-                  <input
-                    type="color"
-                    value={colors[i]}
-                    onChange={(e) => setColors((prev) => (prev[0] && prev[1] ? [i === 0 ? e.target.value : prev[0], i === 1 ? e.target.value : prev[1]] : prev))}
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    aria-label={i === 0 ? "Couleur principale" : "Couleur secondaire"}
-                  />
-                )}
-              </span>
-              <span className="w-24 font-mono text-[12.5px] text-text-faint">{colors[i]}</span>
-            </label>
+            </div>
           ))}
         </div>
         {canEdit && (
@@ -259,6 +284,26 @@ function OrganizationForm() {
     </div>
   );
 }
+
+// Palette de base (19/08/2026, sur demande Fouka) — en plus du sélecteur natif (<input
+// type="color">, pas d'aperçu tant qu'on ne l'ouvre pas), pour choisir une couleur courante en un
+// clic sans quitter la page. Set volontairement resserré (12) plutôt qu'une roue chromatique
+// complète : l'objectif est un raccourci pour les cas courants, le sélecteur natif reste
+// disponible pour une couleur de marque précise.
+const BASIC_COLORS = [
+  "#F5222D",
+  "#FA8C16",
+  "#FADB14",
+  "#52C41A",
+  "#13C2C2",
+  "#4F7DFF",
+  "#2F54EB",
+  "#722ED1",
+  "#A855F7",
+  "#EB2F96",
+  "#8C8C8C",
+  "#1A1A2E",
+];
 
 const fieldClass =
   "h-11 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[14px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]";
