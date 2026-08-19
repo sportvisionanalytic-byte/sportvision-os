@@ -76,7 +76,11 @@ function json(body: unknown, status = 200) {
 // (plans.ts monthlyCredits), qui faisait foi jusqu'ici sans être ce qui était
 // réellement posé en base — trouvé lors de l'audit complet Club+ du 17/08/2026,
 // confirmé par Fouka.
-const CREDITS_BY_PLAN: Record<string, number> = { club: 10, performance: 40 };
+// 19/08/2026 — ajout de "free" (0 crédit) : ce plan est en pratique attribué en self-service
+// via clubplus-onboarding (voir ce fichier), jamais via un lien d'activation, mais la clé est
+// ajoutée ici par cohérence pour éviter qu'un plan non reconnu retombe silencieusement sur les
+// crédits Start.
+const CREDITS_BY_PLAN: Record<string, number> = { free: 0, club: 10, performance: 40 };
 
 const STATUS_MESSAGES: Record<string, string> = {
   invalid: "Ce lien d'activation n'est pas valide.",

@@ -26,6 +26,16 @@ import type { PlanCode } from "./types";
 // jamais connecté à rien de réel. L'offre réelle : Club+ Start, Club+ Performance, Full
 // Communication, plus "one_off" (aucun engagement, facturé à la commande) pour un club/
 // académie/coach qui veut juste réserver des prestations à la carte sans s'abonner.
+//
+// 19/08/2026 — ajout de Club+ Gratuit (décision Fouka) : 1 utilisateur, 1 équipe,
+// 0 crédit inclus, pas de remise sur les prestations ponctuelles. Un club peut réserver
+// des prestations SportVision au tarif standard, sans abonnement payant. Contrairement à
+// Start/Performance, ce plan n'a AUCUN Price/Product Stripe : il est attribué directement
+// par clubplus-onboarding (signup self-service, plan par défaut) sans passer par
+// create-clubplus-subscription-checkout, qui rejette explicitement plan="free". Les
+// plafonds utilisateurs/équipes de Start ont aussi été corrigés ici (8→5 users, +
+// maxTeams=2 ajouté) pour matcher les chiffres confirmés par Fouka et la vitrine
+// publique (club-plus.html) plutôt que l'ancien chiffre interne non confirmé.
 
 export interface PlanDefinition {
   code: PlanCode;
@@ -41,9 +51,23 @@ export interface PlanDefinition {
   seasonPresences: number;
   /** null = illimité. */
   maxUsers: number | null;
+  /** null = illimité. */
+  maxTeams: number | null;
 }
 
 export const PLANS: Record<PlanCode, PlanDefinition> = {
+  club_plus_free: {
+    code: "club_plus_free",
+    name: "Club+ Gratuit",
+    tier: 1,
+    monthlyPrice: 0,
+    monthlyPriceNoCommitment: null,
+    monthlyPriceConfirmed: true,
+    monthlyCredits: 0,
+    seasonPresences: 0,
+    maxUsers: 1,
+    maxTeams: 1,
+  },
   club_plus_start: {
     code: "club_plus_start",
     name: "Club+ Start",
@@ -53,7 +77,8 @@ export const PLANS: Record<PlanCode, PlanDefinition> = {
     monthlyPriceConfirmed: true,
     monthlyCredits: 10,
     seasonPresences: 2,
-    maxUsers: 8,
+    maxUsers: 5,
+    maxTeams: 2,
   },
   club_plus_performance: {
     code: "club_plus_performance",
@@ -65,6 +90,7 @@ export const PLANS: Record<PlanCode, PlanDefinition> = {
     monthlyCredits: 40,
     seasonPresences: 5,
     maxUsers: null,
+    maxTeams: null,
   },
   full_communication: {
     code: "full_communication",
@@ -76,6 +102,7 @@ export const PLANS: Record<PlanCode, PlanDefinition> = {
     monthlyCredits: null,
     seasonPresences: 12,
     maxUsers: null,
+    maxTeams: null,
   },
   club_access: {
     code: "club_access",
@@ -87,6 +114,7 @@ export const PLANS: Record<PlanCode, PlanDefinition> = {
     monthlyCredits: 3,
     seasonPresences: 0,
     maxUsers: 1,
+    maxTeams: null,
   },
   one_off: {
     code: "one_off",
@@ -98,6 +126,7 @@ export const PLANS: Record<PlanCode, PlanDefinition> = {
     monthlyCredits: 1,
     seasonPresences: 1,
     maxUsers: 2,
+    maxTeams: null,
   },
 };
 
@@ -111,6 +140,7 @@ export function formatPlanPrice(plan: PlanDefinition): string {
   if (plan.code === "full_communication") return "Sur devis";
   if (plan.code === "one_off") return "Facturé à la commande";
   if (plan.code === "club_access") return "Inclus dans l'offre du club";
+  if (plan.code === "club_plus_free") return "Gratuit";
   if (plan.monthlyPrice === null) return "Sur devis";
   return `${plan.monthlyPrice} € / mois`;
 }

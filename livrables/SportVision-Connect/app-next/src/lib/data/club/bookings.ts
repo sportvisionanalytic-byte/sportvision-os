@@ -85,17 +85,25 @@ export async function fetchClubBookings(supabase: SupabaseClient, clubId: string
 /** `clubs.plan` — défaut 'club' si non renseigné, même règle que la référence vanille. */
 export async function fetchClubPlan(supabase: SupabaseClient, clubId: string): Promise<ClubPlan> {
   const { data } = await supabase.from("clubs").select("plan").eq("id", clubId).maybeSingle();
-  return (data as { plan: string } | null)?.plan === "performance" ? "performance" : "club";
+  const plan = (data as { plan: string } | null)?.plan;
+  if (plan === "performance") return "performance";
+  if (plan === "free") return "free";
+  return "club";
 }
 
 // ── Tarification indicative (portée à l'identique de la référence vanille) ──
 
+/** Club+ Gratuit n'ouvre droit à aucune remise (confirmé par Fouka, 19/08/2026). */
 export function reductionPct(plan: ClubPlan): number {
-  return plan === "performance" ? 10 : 5;
+  if (plan === "performance") return 10;
+  if (plan === "free") return 0;
+  return 5;
 }
 
 export function planLabel(plan: ClubPlan): string {
-  return plan === "performance" ? "Club+ Performance" : "Club+";
+  if (plan === "performance") return "Club+ Performance";
+  if (plan === "free") return "Club+ Gratuit";
+  return "Club+";
 }
 
 /** "Couverture tournoi" = traitement prioritaire réservé à Club+ Performance, identifié par son

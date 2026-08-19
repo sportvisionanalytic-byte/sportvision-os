@@ -15,16 +15,24 @@ const STORAGE_KEY = "sv_pending_signup";
 // auth.signUp(), club actif + admin posés en dur sans aucune validation humaine) a été
 // retirée d'ici : c'était la faille de sécurité corrigée par ce chantier (voir
 // migration-connect-v44-club-signup-requests.sql et l'ancien /signup/club-request/*, qui créait
-// une simple demande, jamais un compte ni un club). Aucun code de ce module ne doit plus jamais
-// construire un objet { kind: "clubplus" } pour un club.
+// une simple demande, jamais un compte ni un club).
 //
 // 17/08/2026 — le tunnel unifié /signup/request/* (SIGNUP-UNIFIE-MASTER-PROMPT.md) remplace
 // /signup/club-request/* ET l'ancien /signup/type→.../checkout (seul appelant de
 // savePendingOnboarding() pour les kinds "connect-org-signup"/"portal-onboarding"/
 // "connect-signup-lead" ci-dessous, retiré). Plus AUCUN code de ce repo n'appelle
-// savePendingOnboarding() désormais : ce module ne sert plus qu'à rejouer, au prochain login,
-// une entrée localStorage laissée par une inscription commencée avant ce déploiement (filet de
-// compatibilité best-effort côté login.tsx/confirming/page.tsx, pas une voie active).
+// savePendingOnboarding() désormais pour ces kinds : ce module ne sert plus qu'à rejouer, au
+// prochain login, une entrée localStorage laissée par une inscription commencée avant ce
+// déploiement (filet de compatibilité best-effort côté login.tsx/confirming/page.tsx, pas une
+// voie active).
+//
+// 19/08/2026 — le kind "clubplus-free-signup" ci-dessous RÉINTRODUIT délibérément un appel
+// direct à clubplus-onboarding juste après signUp(), club actif + admin posés sans validation
+// humaine — exactement le type de flux retiré le 12/08. Décision explicite de Fouka : le plan
+// Gratuit (1 utilisateur, 1 équipe, 0 crédit, aucun paiement) doit être une inscription
+// instantanée en self-service, contrairement à Start/Performance qui restent uniquement
+// accessibles via le tunnel de demande + validation staff, ou un abonnement Stripe. Scope
+// STRICTEMENT limité au plan free : voir app/signup/free/page.tsx, seul appelant.
 export type PendingOnboarding =
   | {
       kind: "connect-org-signup";
@@ -70,6 +78,15 @@ export type PendingOnboarding =
       kind: "connect-org-activation";
       token: string;
       nom: string;
+    }
+  | {
+      // 19/08/2026 — voir app/signup/free/page.tsx : inscription Club+ Gratuit instantanée,
+      // rejouée contre clubplus-onboarding (plan="free" forcé côté edge function).
+      kind: "clubplus-free-signup";
+      clubNom: string;
+      prenom: string;
+      nom: string;
+      telephone: string;
     };
 
 export function savePendingOnboarding(pending: PendingOnboarding) {
@@ -141,6 +158,22 @@ export async function consumePendingOnboarding(supabase: SupabaseClient): Promis
       body: {
         token: pending.token,
         club_nom: pending.clubNom,
+        prenom: pending.prenom || undefined,
+        nom: pending.nom || undefined,
+        telephone: pending.telephone || undefined,
+      },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+
+  if (pending.kind === "clubplus-free-signup") {
+    const { data, error } = await supabase.functions.invoke("clubplus-onboarding", {
+      body: {
+        plan: "free",
+        club: { nom: pending.clubNom },
         prenom: pending.prenom || undefined,
         nom: pending.nom || undefined,
         telephone: pending.telephone || undefined,

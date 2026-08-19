@@ -112,6 +112,7 @@ export const SERVICE_OPTION_BY_CODE: Record<ServiceOptionCode, ServiceOptionDefi
  * l'offre). Club Access/one_off : pas d'abonnement, pas de remise.
  */
 export const PLAN_SERVICE_DISCOUNT_PCT: Record<PlanCode, number> = {
+  club_plus_free: 0,
   club_plus_start: 5,
   club_plus_performance: 10,
   full_communication: 20,

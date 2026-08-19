@@ -58,7 +58,11 @@ function json(body: unknown, status = 200) {
 
 // 17/08/2026 — 10 (Start) / 40 (Performance), alignés sur plans.ts monthlyCredits (audit
 // complet Club+ du 17/08/2026, confirmé par Fouka) — voir clubplus-activate.
-const CREDITS_BY_PLAN: Record<string, number> = { club: 10, performance: 40 };
+// 19/08/2026 — ajout de "free" (Club+ Gratuit, 0 crédit inclus, décision Fouka) : c'est
+// désormais le plan par défaut de ce parcours self-service (voir plus bas). Start/
+// Performance restent accessibles uniquement via create-clubplus-subscription-checkout
+// (abonnement Stripe payant), jamais directement ici.
+const CREDITS_BY_PLAN: Record<string, number> = { free: 0, club: 10, performance: 40 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -86,7 +90,11 @@ serve(async (req) => {
     const nom: string = body.nom || "";
     const telephone: string = body.telephone || "";
     const club = body.club || {};
-    const plan: string = CREDITS_BY_PLAN[body.plan] ? body.plan : "club";
+    // Parcours self-service : le plan par défaut est désormais "free" (Club+ Gratuit),
+    // pas "club" (Start) — Start/Performance ne s'obtiennent que via un abonnement Stripe
+    // payant (create-clubplus-subscription-checkout), jamais à l'inscription. Vérifie la
+    // présence de la clé (pas sa valeur) car CREDITS_BY_PLAN.free vaut 0, qui est falsy.
+    const plan: string = Object.prototype.hasOwnProperty.call(CREDITS_BY_PLAN, body.plan) ? body.plan : "free";
 
     const admin = createClient(supabaseUrl, serviceKey);
 

@@ -17,7 +17,7 @@ import { fetchClubSubscriptionInfo, type ClubSubscriptionInfo } from "@/lib/data
 // portal rejettent tout autre rôle côté serveur (club_members.role = 'admin' strictement) — ce
 // n'est donc pas une simple préférence d'affichage, la vérification serveur fait de toute façon
 // foi si ce composant était monté par erreur pour un autre rôle.
-const PLAN_LABELS: Record<string, string> = { club: "Club+ Start", performance: "Club+ Performance" };
+const PLAN_LABELS: Record<string, string> = { free: "Club+ Gratuit", club: "Club+ Start", performance: "Club+ Performance" };
 const ENGAGEMENT_LABELS: Record<string, string> = { "12mois": "Engagement 12 mois", sans: "Sans engagement" };
 
 const OFFERS: { plan: string; engagement: string; label: string; price: number }[] = [
@@ -87,6 +87,8 @@ export function ClubSubscriptionCard({ clubId }: { clubId: string }) {
         </div>
         {info.hasActiveStripeSubscription ? (
           <Badge tone="success">Abonnement actif</Badge>
+        ) : info.plan === "free" ? (
+          <Badge tone="neutral">Plan Gratuit</Badge>
         ) : (
           <Badge tone="warning">{info.pilotMode ? "Accès pilote (offert)" : "Aucun abonnement Stripe"}</Badge>
         )}

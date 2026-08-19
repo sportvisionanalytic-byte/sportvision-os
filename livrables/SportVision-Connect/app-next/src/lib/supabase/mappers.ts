@@ -135,6 +135,7 @@ export function mapOrgRole(
  * pour savoir si un module est activé (ça, c'est organization_entitlements, voir entitlements.ts).
  */
 const CLUB_PLAN_MAP: Record<string, PlanCode> = {
+  free: "club_plus_free",
   club: "club_plus_start",
   performance: "club_plus_performance",
 };
