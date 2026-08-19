@@ -18,10 +18,15 @@
 -- message explicite, exactement comme pour le mode lien_match au-delà de 4 matchs — le staff doit
 -- chiffrer manuellement (montant_ttc) avant que le client puisse payer.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente (simple
+-- Idempotente (simple
 -- UPDATE, sans risque à rejouer). Ne touche PAS au prix de base (prix_ht = 39,90€, toujours
 -- provisoire au sens où il n'a jamais été formellement validé, mais Fouka a confirmé le garder
 -- tel quel le 15/08).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- catalogue_offres.tarif_palier pour slug='montage-compilation' vaut
+-- {"seuil_minutes": 6} (clé prix_ht_au_dela absente), exactement l'état
+-- cible de cette migration. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 update catalogue_offres

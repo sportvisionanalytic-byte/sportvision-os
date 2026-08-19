@@ -42,11 +42,12 @@
 -- distincte de la séquence migration-clubplus-v* qui a son propre v34/v35
 -- déjà réservés, non exécutés, sans rapport avec ce fichier).
 --
--- **NON EXÉCUTÉE — À EXÉCUTER PAR FOUKA** (règle du projet : jamais de SQL
--- contre la production depuis un agent). Tant qu'elle n'est pas passée,
--- l'écran OS "Réservations clubs" affichera une liste vide (SELECT bloqué
--- par RLS) et toute tentative de changer un statut échouera en 42501 — ce
--- n'est pas un bug du nouvel écran, c'est exactement le trou documenté
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- policies cbk_staff_select et cbk_staff_update existent déjà en base.
+-- Cet en-tête disait à tort "NON EXÉCUTÉE". L'écran OS "Réservations
+-- clubs" documenté ci-dessous comme cassé sans cette migration devrait
+-- donc déjà fonctionner ; à re-tester si un doute subsiste. Contexte
+-- historique conservé : c'est exactement le trou documenté
 -- ci-dessus. Vérifié en conditions réelles ce soir (compte staff jetable +
 -- JWT réel, PAS service_role) : voir le rapport de l'agent pour le détail
 -- du test.

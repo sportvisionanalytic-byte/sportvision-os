@@ -1,8 +1,13 @@
 -- ============================================================
 -- SPORTVISION CLUB+ — Migration v45
 -- Suite de migration-clubplus-v1 à v44.sql. Idempotente.
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
--- Ne JAMAIS exécuter depuis un agent.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonctions accept_club_invitation et decline_club_invitation existent
+-- déjà en base, et la définition live de protect_sensitive_club_member_
+-- fields correspond exactement à la version de cette migration (bloc
+-- is_self_accepting_own_invitation). Cet en-tête disait à tort
+-- "NON EXÉCUTÉE" ; ne pas relancer cette migration sur la base de cette
+-- mention obsolète.
 -- ============================================================
 --
 -- Brief Fouka 17/08/2026 (retour sur la page de connexion Club+, point 16

@@ -1,6 +1,8 @@
 -- ============================================================
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
--- Ne JAMAIS exécuter depuis un agent.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonction club_member_has_financial_view_access existe déjà en base. Cet
+-- en-tête disait à tort "NON EXÉCUTÉE" ; ne pas relancer cette migration
+-- sur la base de cette mention obsolète.
 -- ============================================================
 --
 -- SPORTVISION CLUB+ — Migration v41 : Secrétaire et Administratif passent en

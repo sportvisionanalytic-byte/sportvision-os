@@ -56,8 +56,10 @@
 -- is_staff) et migration-connect-v20-event-cm-agency-org-types.sql (type
 -- 'event').
 --
--- NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka dans Supabase → SQL Editor
--- après relecture.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- table event_checklist_items, fonctions set_event_checklist_fait/
+-- seed_event_checklist et policies eci_select/eci_staff_write existent
+-- déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 -- ─── 1. Table ────────────────────────────────────────────────────────────

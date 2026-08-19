@@ -21,8 +21,10 @@
 -- n'existe pas pour eux. À concevoir séparément (voir le rapport de ce
 -- chantier).
 --
--- Additive, idempotente. NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka
--- dans Supabase → SQL Editor après relecture.
+-- Additive, idempotente.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- table club_presences et policies cpr_member_select/cpr_staff_write
+-- existent déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 create table if not exists club_presences (

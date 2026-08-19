@@ -2,8 +2,12 @@
 -- SPORTVISION CLUB+ — Migration v78 : généralisation du tunnel de demande
 -- d'ouverture Club+ à 7 types de structure (club, académie, coach,
 -- structure de coaching, tournoi, stage, association/autre structure).
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
--- Ne JAMAIS exécuter depuis un agent.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- table connect_clubplus_signup_requests, policy clubplus_sr_staff_all,
+-- fonction notify_staff_by_role et colonne clubplus_activation_tokens.
+-- source_request_id existent déjà en base. Cet en-tête disait à tort
+-- "NON EXÉCUTÉE" ; ne pas relancer cette migration sur la base de cette
+-- mention obsolète.
 -- ============================================================
 --
 -- ── Contexte ────────────────────────────────────────────────────────────

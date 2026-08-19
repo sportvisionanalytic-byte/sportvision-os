@@ -46,7 +46,11 @@
 -- `role='authenticated'`) ; seule une Edge Function avec la clé secrète
 -- passe désormais.
 --
--- Idempotente (`create or replace`). NON EXÉCUTÉE PAR L'AGENT.
+-- Idempotente (`create or replace`).
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- la définition live de protect_sensitive_club_fields() contient bien la
+-- branche `auth.role() = 'service_role'` ajoutée par cette migration
+-- (correspondance exacte). Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 create or replace function protect_sensitive_club_fields()

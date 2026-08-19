@@ -47,9 +47,13 @@
 --     Stripe (jamais avant, jamais côté client) : stripe-webhook/index.ts.
 -- Voir l'en-tête de chacun de ces 3 fichiers pour le détail.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (add column if not exists, insert ... on conflict do nothing) : peut être rejouée sans effet de
 -- bord. Ne modifie ni ne redéfinit connect_agent_discount()/connect_agent_subscriptions (migration-
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- colonnes catalogue_offres.tarif_palier et prestations.duree_rush_minutes
+-- existent déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- connect-v57, déjà en prod).
 -- ============================================================
 

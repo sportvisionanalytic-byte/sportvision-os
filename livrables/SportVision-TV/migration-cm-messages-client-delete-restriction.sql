@@ -63,8 +63,9 @@
 -- Additive, idempotente (drop policy if exists avant chaque create). Ne
 -- touche à rien d'autre. À exécuter après migration-cm-messages.sql.
 --
--- NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka dans Supabase → SQL Editor
--- après relecture.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- policies mc_cm_select et mc_cm_insert existent déjà en base sur
+-- messages_client. Cet en-tête disait à tort "NON EXÉCUTÉE".
 
 drop policy if exists "mc_cm_acces" on messages_client;
 

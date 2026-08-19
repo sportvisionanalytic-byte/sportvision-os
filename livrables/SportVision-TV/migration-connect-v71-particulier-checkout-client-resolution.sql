@@ -27,8 +27,12 @@
 -- droits de connect_access_relationships (migration-connect-v51 §access), un sportif peut
 -- autoriser un proche à réserver sans forcément l'autoriser à payer.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (create or replace function).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonction connect_particulier_can_pay_client existe déjà en base. Cet
+-- en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 create or replace function connect_particulier_can_pay_client(p_client_id uuid)

@@ -13,8 +13,11 @@
 --   - connect_os_accounts_list()          → liste plate pour le tableau
 --   - connect_os_account_detail(user_id)  → fiche détaillée (jsonb)
 --
--- Aucune écriture. NON EXÉCUTÉE — à relire puis exécuter par Fouka dans
--- Supabase → SQL Editor. Idempotente (create or replace function).
+-- Aucune écriture. Idempotente (create or replace function).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonctions connect_os_accounts_list et connect_os_account_detail
+-- existent déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 

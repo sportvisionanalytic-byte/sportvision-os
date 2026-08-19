@@ -1,8 +1,10 @@
 -- ============================================================
 -- SPORTVISION CLUB+ — Migration v42
 -- Suite de migration-clubplus-v1 à v41.sql. Idempotente.
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
--- Ne JAMAIS exécuter depuis un agent.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- colonnes club_matches.taken_by et club_requests.taken_by existent déjà
+-- en base. Cet en-tête disait à tort "NON EXÉCUTÉE" ; ne pas relancer
+-- cette migration sur la base de cette mention obsolète.
 -- ============================================================
 --
 -- Brief Fouka 17/08/2026 (CLUB-PLUS-PRODUCT-BIBLE.md §9 "Centre communication" /

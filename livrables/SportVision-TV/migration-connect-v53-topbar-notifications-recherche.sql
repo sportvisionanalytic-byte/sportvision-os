@@ -4,10 +4,15 @@
 -- Espace particulier). Voir design-connect-personnel-12-08/README.md §
 -- "Shell et navigation" / "Notifications" / MASTER-CONNECT-V1.md §29-30.
 --
--- NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka dans Supabase → SQL Editor
--- après relecture. Idempotente (create or replace function, drop trigger if
+-- Idempotente (create or replace function, drop trigger if
 -- exists avant chaque create trigger, ALTER ... DROP CONSTRAINT IF EXISTS
 -- avant chaque ADD CONSTRAINT) : peut être rejouée sans effet de bord.
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonctions connect_notify_by_client_id, trg_notify_message_staff,
+-- connect_prestation_stage, trg_notify_prestation_stage, join_user_group
+-- et connect_global_search existent déjà en base. Cet en-tête disait à
+-- tort "NON EXÉCUTÉE".
 --
 -- ────────────────────────────────────────────────────────────────────────
 -- 0. DÉCISION DE SCHÉMA — table réutilisée, pas de nouvelle table

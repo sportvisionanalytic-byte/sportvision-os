@@ -53,8 +53,9 @@
 -- exists avant chaque create). Ne touche à rien d'autre (select/insert/
 -- delete de contenus inchangées). À exécuter après migration-contenus.sql.
 --
--- NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka dans Supabase → SQL Editor
--- après relecture.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- policy contenus_update et fonction contenus_protect_cm_id_reassignment
+-- existent déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 -- ─── 1. WITH CHECK élargi : lecture légitime du portefeuille suffit ───────

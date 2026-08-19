@@ -1,6 +1,8 @@
 -- ============================================================
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
--- Ne JAMAIS exécuter depuis un agent.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonction is_team_educateur et colonne clubs.requires_result_verification
+-- existent déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE" ; ne pas
+-- relancer cette migration sur la base de cette mention obsolète.
 -- ============================================================
 --
 -- Fondations Club+ pour les rôles internes restants de la Product Bible

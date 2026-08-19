@@ -3,8 +3,14 @@
 -- Bascule org type `event` (+ event_kind) vers deux org types réellement
 -- séparés : `tournoi` (tournament_organizer côté app) et `stage` (camp
 -- côté app).
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor.
--- Ne JAMAIS exécuter depuis un agent.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- organizations_organization_type_check et connect_org_activation_tokens_
+-- organization_type_check contiennent 'tournoi'/'stage' sans trace de
+-- 'event', organizations.event_kind n'existe plus, et
+-- organization_role_catalog contient exactement les 4 lignes
+-- tournoi/stage attendues (0 ligne 'event'). Cet en-tête disait à tort
+-- "NON EXÉCUTÉE" ; ne pas relancer cette migration sur la base de cette
+-- mention obsolète.
 -- ============================================================
 --
 -- ── Contexte ────────────────────────────────────────────────────────────

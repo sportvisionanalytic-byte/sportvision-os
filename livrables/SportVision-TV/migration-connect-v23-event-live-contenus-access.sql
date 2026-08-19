@@ -47,8 +47,9 @@
 -- définition connue de contenus_client_select) et
 -- migration-cm-contenu-stats.sql (contenu_stats_select).
 --
--- NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka dans Supabase → SQL Editor
--- après relecture.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- policies contenus_client_select et contenu_stats_select existent déjà
+-- en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 -- ─── 1. contenus ─────────────────────────────────────────────────────────

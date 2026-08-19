@@ -34,9 +34,15 @@
 -- migration unifie le comptage sur LES DEUX mécanismes à la fois (connect_access_relationships
 -- acceptées + managed_athlete_profiles), donc ferme ce trou pour agent ET parent en même temps.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (add column if not exists, create or replace function). connect_agent_tier_limit()/
 -- connect_agent_effective_tier() (migration-connect-v57) NE SONT PAS MODIFIÉES ici, seulement
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- colonne connect_profile_settings.profil_particulier existe déjà en
+-- base, et les définitions live de connect_create_managed_athlete et
+-- connect_respond_profile_access_request correspondent exactement à la
+-- version de cette migration. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- réutilisées.
 -- ============================================================
 

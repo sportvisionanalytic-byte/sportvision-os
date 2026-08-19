@@ -33,8 +33,14 @@
 -- existants. Le câblage frontend (formulaire, pré-remplissage, écriture retour sur le profil à la
 -- première saisie) est un chantier séparé, pas dans ce fichier.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (add column if not exists).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- colonnes player_profiles.taille_cm/poids_kg/poste,
+-- managed_athlete_profiles.taille_cm/poids_kg/poste/numero_maillot et
+-- prestations.numero_maillot/couleur_maillot existent déjà en base. Cet
+-- en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 -- ─── 1. player_profiles ─────────────────────────────────────────────────

@@ -44,8 +44,10 @@
 -- aucun changement de structure de table. mc_staff_all et le reste du
 -- corps de client_valider_contenu restent inchangés.
 --
--- NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka dans Supabase → SQL Editor
--- après relecture.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- policies mc_client_select/mc_client_insert (messages_client),
+-- contenus_client_select (contenus) et fonction client_valider_contenu
+-- existent tous déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 -- ─── 1. messages_client ──────────────────────────────────────────────────

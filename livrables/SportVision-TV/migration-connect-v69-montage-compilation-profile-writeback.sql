@@ -30,8 +30,12 @@
 -- service_role uniquement (jamais authenticated/anon) pour qu'un client ne puisse jamais appeler
 -- cette fonction directement et écrire sur le profil de n'importe qui en contournant ce contrôle.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (create or replace function).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonction connect_athlete_profile_coalesce_update existe déjà en base.
+-- Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 create or replace function connect_athlete_profile_coalesce_update(

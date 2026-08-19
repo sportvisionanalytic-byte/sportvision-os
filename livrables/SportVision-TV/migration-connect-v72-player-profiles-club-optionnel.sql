@@ -97,8 +97,12 @@
 -- comparaisons club-scope) rend l'ALTER ci-dessous sûr pour tout le périmètre app-connect. Un
 -- seul angle mort documenté ci-dessus (point 6), propre à l'app Club+ séparée, à traiter à part.
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (drop not null ne fait rien si la colonne est déjà nullable).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- player_profiles.club_id est nullable (is_nullable='YES') en base. Cet
+-- en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 alter table player_profiles alter column club_id drop not null;

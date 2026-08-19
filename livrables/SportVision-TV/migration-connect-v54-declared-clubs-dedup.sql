@@ -12,9 +12,13 @@
 -- dans organizations/clubs — toujours le principe déjà posé : rien n'est
 -- activé automatiquement, un humain du staff vérifie et décide).
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL
--- Editor. Idempotente (create table/policy if not exists, drop policy if
+-- Idempotente (create table/policy if not exists, drop policy if
 -- exists avant chaque create policy, create or replace function).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- tables connect_declared_clubs/connect_declared_club_players, policies
+-- cdc_staff_select/cdcp_staff_select et fonction connect_declare_club
+-- existent déjà en base. Cet en-tête disait à tort "NON EXÉCUTÉE".
 -- ============================================================
 
 create table if not exists connect_declared_clubs (

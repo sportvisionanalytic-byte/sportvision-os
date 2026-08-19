@@ -1,5 +1,9 @@
 -- ============================================================
--- SPORTVISION CLUB+ — Migration v32 (BROUILLON — NON EXÉCUTÉE)
+-- SPORTVISION CLUB+ — Migration v32
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- table player_access_events, fonction suspend_player_access et policy
+-- pae_admin_select existent déjà en base. Le titre disait à tort
+-- "BROUILLON — NON EXÉCUTÉE".
 -- Suite de migration-clubplus-v1 à v31.sql. Idempotente.
 --
 -- Contexte : en portant les modules Connect "Joueurs & Familles" /

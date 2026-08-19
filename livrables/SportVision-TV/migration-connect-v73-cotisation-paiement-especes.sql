@@ -63,8 +63,12 @@
 -- joueur + Espace particulier). Page publique laissée strictement inchangée (carte uniquement,
 -- ShareFundingButtons.tsx non touché).
 --
--- NON EXÉCUTÉE — à relire puis exécuter par Fouka dans Supabase → SQL Editor. Idempotente
+-- Idempotente
 -- (peut être rejouée sans effet de bord : add column if not exists, create or replace function).
+--
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- fonction contribute_funding_especes existe déjà en base. Cet en-tête
+-- disait à tort "NON EXÉCUTÉE".
 -- Aucun redéploiement d'Edge Function nécessaire pour cette migration (RPC Postgres pure, active
 -- dès l'exécution du script).
 -- ============================================================

@@ -58,8 +58,11 @@
 -- migration-clubplus-v34-club-messages-contenus-access.sql (dont elle
 -- réutilise contenus_visible_par_cm() et club_member_has_client_access()).
 --
--- NON EXÉCUTÉE PAR L'AGENT. À exécuter par Fouka dans Supabase → SQL
--- Editor après relecture.
+-- EXÉCUTÉE — vérifié en base réelle le 19/08/2026 (audit pré-lancement) :
+-- table contenu_stats, fonctions set_contenu_stats_saisi/
+-- update_updated_at_generic et policies contenu_stats_admin_all/select/
+-- insert/update/delete existent déjà en base. Cet en-tête disait à tort
+-- "NON EXÉCUTÉE".
 -- ============================================================
 
 -- ─── 1. Table ────────────────────────────────────────────────────────────
