@@ -170,7 +170,7 @@ export const DEMO_PROFILES: DemoProfile[] = [
     "coach-clubplus",
     "Coach indépendant — Club+ Start",
     "Autres structures",
-    makeCtx({ orgId: "demo-coach", orgName: "Marc Dubois — Coach indépendant", orgType: "coach", planCode: "club_plus_start", role: "owner", jobTitle: "Coach indépendant" }),
+    makeCtx({ orgId: "demo-coach", orgName: "Marc Dubois — Coach indépendant", orgType: "coach", planCode: "club_plus_start", role: "owner", jobTitle: "Coach indépendant", firstName: "Marc", lastName: "Dubois" }),
   ),
   profile(
     "academy-fullcom",

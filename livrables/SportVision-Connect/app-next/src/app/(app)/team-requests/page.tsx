@@ -24,7 +24,7 @@ import type { JoinableTeam, MyJoinRequest } from "@/lib/data/player/team-request
 import { fetchConfirmedChildren, type ConfirmedChild } from "@/lib/data/family/children";
 import { fetchChildJoinRequests, fetchJoinableTeamsForClub, requestTeamMembershipForChild } from "@/lib/data/family/team-requests";
 
-// /team-requests — demandes d'adhésion à une équipe, avec validation à deux niveaux (éducateur
+// /team-requests — demandes d'affiliation à une équipe, avec validation à deux niveaux (éducateur
 // puis dirigeant) quand clubs.membership_validation_mode = 'double'. Trois audiences dans le même
 // fichier, comme /teams (isAcademy/isCoach) : dirigeant/éducateur (organisation club, file
 // d'attente à traiter), joueur affilié (demander/suivre sa propre demande), parent (demander/
@@ -135,7 +135,7 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
   if (loadError) {
     return (
       <Card className="p-8 text-center text-[13.5px] font-semibold text-danger-fg">
-        Impossible de charger les demandes d&apos;adhésion. Réessayez plus tard.
+        Impossible de charger les demandes d&apos;affiliation. Réessayez plus tard.
       </Card>
     );
   }
@@ -152,7 +152,7 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
       <div>
         <div className="text-[12px] font-bold text-text-soft">Équipes</div>
         <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">
-          {pending.length} demande{pending.length > 1 ? "s" : ""} d&apos;adhésion en attente
+          {pending.length} demande{pending.length > 1 ? "s" : ""} d&apos;affiliation en attente
         </h1>
         <p className="mt-1.5 max-w-xl text-[13.5px] text-text-soft">
           {isAdmin
@@ -246,7 +246,7 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
                         loading={busy}
                         onClick={() => runAction(() => validateTeamMembership(createClient(), req.id), req.id)}
                       >
-                        Valider l&apos;adhésion
+                        Valider l&apos;affiliation
                       </Button>
                     )}
                     {!canConfirm && !canValidate && (
@@ -446,7 +446,7 @@ function ParentRequestView({ parentId }: { parentId: string }) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[29px] font-extrabold leading-tight tracking-tight">Adhésion à une équipe</h1>
+        <h1 className="text-[29px] font-extrabold leading-tight tracking-tight">Affiliation à une équipe</h1>
         <p className="mt-1.5 max-w-xl text-[13.5px] text-text-soft">
           Demandez une équipe pour un enfant déjà associé à votre espace. La demande est confirmée par l&apos;éducateur puis, si
           nécessaire, validée par un dirigeant du club.
