@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { fetchStudioTemplates } from "@/lib/data/club/studio";
 import { createClient } from "@/lib/supabase/client";
+import { CATEGORY_GRADIENT, CATEGORY_ICON } from "@/components/studio/categoryVisual";
 import {
   STUDIO_CATEGORY_LABELS,
   STUDIO_CATEGORY_ORDER,
@@ -107,40 +108,43 @@ export default function StudioPage() {
           Aucun modèle ne correspond à votre recherche.
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((t) => (
-            <Card
-              key={t.code}
-              role="button"
-              tabIndex={0}
-              onClick={() => router.push(`/studio/${t.code}`)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") router.push(`/studio/${t.code}`);
-              }}
-              className="group cursor-pointer p-0 hover:-translate-y-0.5 hover:border-brand-blue-electric hover:shadow-sv-card-hover"
-            >
-              <div
-                className="flex h-28 items-center justify-center rounded-t-sv-card text-[11px] font-mono font-medium uppercase tracking-wide text-white/80"
-                style={{
-                  background:
-                    "repeating-linear-gradient(125deg, #1B2A6B 0px, #1B2A6B 14px, #24327A 14px, #24327A 28px)",
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map((t) => {
+            const Icon = CATEGORY_ICON[t.category];
+            return (
+              <Card
+                key={t.code}
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push(`/studio/${t.code}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") router.push(`/studio/${t.code}`);
                 }}
+                className="group cursor-pointer overflow-hidden p-0 transition-[transform,box-shadow] duration-sv hover:-translate-y-0.5 hover:border-brand-blue-electric hover:shadow-sv-card-hover"
               >
-                aperçu · {t.name.toLowerCase()}
-              </div>
-              <div className="flex flex-col gap-2 p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <Badge tone="accent">{STUDIO_CATEGORY_LABELS[t.category]}</Badge>
-                  <span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-text-soft">
-                    <Sparkles className="h-3 w-3 text-brand-cyan" aria-hidden />
-                    {t.creditCost} crédit{t.creditCost > 1 ? "s" : ""}
-                  </span>
+                <div
+                  className={cn(
+                    "relative flex h-28 items-center justify-center overflow-hidden rounded-t-sv-card bg-gradient-to-br",
+                    CATEGORY_GRADIENT[t.category],
+                  )}
+                >
+                  <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,.18),transparent_55%)]" />
+                  <Icon className="relative h-8 w-8 text-white/90 transition-transform duration-sv group-hover:scale-110" aria-hidden />
                 </div>
-                <div className="text-[14.5px] font-extrabold tracking-tight">{t.name}</div>
-                <div className="text-[12px] text-text-faint">Livraison sous {t.deliveryDelay}</div>
-              </div>
-            </Card>
-          ))}
+                <div className="flex flex-col gap-2 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge tone="accent">{STUDIO_CATEGORY_LABELS[t.category]}</Badge>
+                    <span className="inline-flex items-center gap-1 text-[11.5px] font-bold text-text-soft">
+                      <Sparkles className="h-3 w-3 text-brand-cyan" aria-hidden />
+                      {t.creditCost} crédit{t.creditCost > 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="text-[14.5px] font-extrabold tracking-tight">{t.name}</div>
+                  <div className="text-[12px] text-text-faint">Livraison sous {t.deliveryDelay}</div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
