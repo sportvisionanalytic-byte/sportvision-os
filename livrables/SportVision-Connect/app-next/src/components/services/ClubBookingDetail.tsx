@@ -5,7 +5,13 @@ import { X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { BOOKING_STATUS_LABEL, BOOKING_STATUS_TONE, BOOKING_STEPS, type ClubBooking } from "@/lib/types/club-bookings";
+import {
+  BOOKING_MODE_PAIEMENT_LABEL,
+  BOOKING_STATUS_LABEL,
+  BOOKING_STATUS_TONE,
+  BOOKING_STEPS,
+  type ClubBooking,
+} from "@/lib/types/club-bookings";
 
 function formatDate(v: string | null): string {
   if (!v) return "—";
@@ -48,6 +54,11 @@ export function ClubBookingDetail({ booking, onClose }: { booking: ClubBooking; 
         <div className="mt-3 text-[16px] font-extrabold text-text">{booking.priceLabel ?? "Sur devis"}</div>
 
         {booking.adresse && <div className="mt-2 text-[12.5px] text-text-soft">Lieu : {booking.adresse}</div>}
+        {booking.modePaiement && (
+          <div className="mt-1 text-[12.5px] text-text-soft">
+            Paiement souhaité : {BOOKING_MODE_PAIEMENT_LABEL[booking.modePaiement]}
+          </div>
+        )}
 
         <div className="mt-5 text-[11px] font-extrabold uppercase tracking-wide text-text-faint">
           Pipeline terrain

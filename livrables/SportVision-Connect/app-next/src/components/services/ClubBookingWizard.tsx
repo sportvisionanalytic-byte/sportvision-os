@@ -1,23 +1,29 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { Lock, X } from "lucide-react";
+import { CreditCard, Banknote, Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { fullPriceLabel, isOfferLocked, offerPriceLabel } from "@/lib/data/club/bookings";
-import type { ClubCatalogueOffre, ClubPlan } from "@/lib/types/club-bookings";
+import { BOOKING_MODE_PAIEMENT_LABEL, type BookingModePaiement, type ClubCatalogueOffre, type ClubPlan } from "@/lib/types/club-bookings";
 
 // Assistant de réservation en 3 étapes (type → détails → récapitulatif) — port de wizardHtml()
 // (référence vanille club-services-documents-rapports.js), aligné sur le pattern déjà établi par
 // l'assistant "Nouvelle demande" de Connect (étape 1 = grille de cartes). L'état du formulaire vit
 // ici, local au composant (comme TransmitInfoModal.tsx) : le parent ne reçoit le résultat qu'à la
 // soumission finale, via onSubmit.
+//
+// `modePaiement` (19/08/2026) : réintroduit sur demande explicite de Fouka — une préférence
+// déclarative facultative, PAS un paiement réel (aucune intégration Stripe ici). Ce choix avait
+// été retiré du tunnel public le 09/08/2026 (voir tunnel/types.ts § TunnelState) ; décision
+// consciente de revenir dessus côté Club+ uniquement, pas le tunnel générique Espace Projet.
 export interface BookingDraft {
   offerId: string | null;
   team: string;
   eventDate: string;
   heure: string;
   adresse: string;
+  modePaiement: BookingModePaiement | null;
 }
 
 const inputClass =
@@ -47,6 +53,7 @@ export function ClubBookingWizard({
   const [eventDate, setEventDate] = useState("");
   const [heure, setHeure] = useState("");
   const [adresse, setAdresse] = useState("");
+  const [modePaiement, setModePaiement] = useState<BookingModePaiement | null>(null);
 
   const offer = offerId ? (offers.find((o) => o.id === offerId) ?? null) : null;
 
@@ -140,6 +147,33 @@ export function ClubBookingWizard({
                   className={inputClass}
                 />
               </Field>
+              <Field label="Mode de paiement souhaité (optionnel)">
+                <div className="grid grid-cols-2 gap-2.5">
+                  {(Object.keys(BOOKING_MODE_PAIEMENT_LABEL) as BookingModePaiement[]).map((mode) => {
+                    const active = modePaiement === mode;
+                    const Icon = mode === "carte" ? CreditCard : Banknote;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setModePaiement(active ? null : mode)}
+                        className={cn(
+                          "flex items-center justify-center gap-2 rounded-sv border px-3 py-2.5 text-[12.5px] font-bold transition-colors",
+                          active
+                            ? "border-transparent bg-gradient-to-br from-brand-blue to-brand-violet text-white"
+                            : "border-border-strong bg-input-bg text-text-soft hover:border-brand-blue-electric",
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" aria-hidden />
+                        {BOOKING_MODE_PAIEMENT_LABEL[mode]}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-[11px] text-text-faint">
+                  Indicatif — le règlement effectif reste géré avec SportVision (devis ou facture).
+                </p>
+              </Field>
             </div>
           )}
 
@@ -153,6 +187,12 @@ export function ClubBookingWizard({
                   Date : {eventDate || "—"} à {heure || "—"}
                   <br />
                   Lieu : {adresse || "—"}
+                  {modePaiement && (
+                    <>
+                      <br />
+                      Paiement souhaité : {BOOKING_MODE_PAIEMENT_LABEL[modePaiement]}
+                    </>
+                  )}
                 </div>
                 <div className="mt-2 text-[14px] font-extrabold text-text">{fullPriceLabel(offer, plan)}</div>
               </div>
@@ -178,7 +218,11 @@ export function ClubBookingWizard({
             </Button>
           )}
           {step === 3 && (
-            <Button variant="primary" loading={submitting} onClick={() => onSubmit({ offerId, team, eventDate, heure, adresse })}>
+            <Button
+              variant="primary"
+              loading={submitting}
+              onClick={() => onSubmit({ offerId, team, eventDate, heure, adresse, modePaiement })}
+            >
               Envoyer la demande
             </Button>
           )}
