@@ -3500,6 +3500,7 @@ function modalInviterCollaborateur(){
     </div>`);
 }
 async function creerCollaborateur(){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const err=document.getElementById('fi-err');
   const prenom=document.getElementById('fi-prenom').value.trim();
   const nom=document.getElementById('fi-nom').value.trim();
@@ -4477,6 +4478,7 @@ function modalInviterClubPlus(clientId,clientNom){
 }
 
 async function genererLienActivationClubPlus(clientId){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const err=document.getElementById('iac-err');
   const btn=document.getElementById('iac-btn');
   const nom=document.getElementById('iac-nom')?.value?.trim()||'';
@@ -4551,6 +4553,7 @@ function modalCreerOrgEventCmAgency(clientId,clientNom){
 }
 
 async function genererLienCreationOrg(clientId){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const err=document.getElementById('cog-err');
   const btn=document.getElementById('cog-btn');
   const nom=document.getElementById('cog-nom')?.value?.trim()||'';
@@ -4722,6 +4725,7 @@ function modalTraiterDemandeClub(id,action,clubNom,orgType){
 }
 
 async function envoyerTraitementDemandeClub(id,action,orgType){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const err=document.getElementById('tdc-err');
   const btn=document.getElementById('tdc-btn');
   const notes=document.getElementById('tdc-notes')?.value?.trim()||'';
@@ -8523,6 +8527,7 @@ async function sauvegarderProfil(uid){
 }
 
 async function sauvegarderMdp(){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const err=document.getElementById('set-mdp-err');
   const p1=(document.getElementById('set-mdp1')?.value)||'';
   const p2=(document.getElementById('set-mdp2')?.value)||'';
@@ -8550,6 +8555,7 @@ async function sauvegarderMdp(){
 }
 
 async function changerEmail(){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const err=document.getElementById('set-email-err');
   const newEmail=(document.getElementById('set-email-new')?.value||'').trim();
   if(!newEmail){if(err){err.style.color='var(--er)';err.textContent='Entrez un nouvel email.';}return;}
@@ -10257,6 +10263,7 @@ function docsRenderFactures(){
   </tbody></table></div></div>`;
 }
 async function envoyerFacturePennylane(prestationId){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   if(!confirm('Envoyer cette facture en facturation électronique via Pennylane ? Cette action crée un vrai document, non annulable (seul un avoir permet de le corriger).'))return;
   try{
     const fact=await getOrCreateFacture(prestationId);
@@ -11427,6 +11434,7 @@ async function envoyerDevisParEmail(id){
 }
 
 async function _sendDevisEmailConfirm(id,statutActuel){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const to=(document.getElementById('em-to')?.value||'').trim();
   const subj=(document.getElementById('em-subj')?.value||'').trim();
   const msg=(document.getElementById('em-msg')?.value||'').trim();
@@ -11669,6 +11677,7 @@ async function envoyerFactureParEmail(prestationId){
 }
 
 async function _sendFactureEmailConfirm(factureId){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const to=(document.getElementById('em-to')?.value||'').trim();
   const subj=(document.getElementById('em-subj')?.value||'').trim();
   const msg=(document.getElementById('em-msg')?.value||'').trim();
@@ -20292,6 +20301,7 @@ async function consumeRecoveryHashOS(){
   return true;
 }
 async function validerNouveauMdpOS(){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const err=document.getElementById('rec-err');
   const p1=document.getElementById('rec-pass1').value;
   const p2=document.getElementById('rec-pass2').value;
@@ -21315,6 +21325,7 @@ async function saveComptePortail(id){
   await loadComptesPortail();
 }
 async function deleteComptePortail(id){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
   const cu=_comptesPortailCache.find(x=>x.id===id);
   if(!confirm('Supprimer l\'accès Connect de '+(cu?.clients?.nom||'ce client')+' ? Si la fiche n\'a aucune prestation ni devis, elle sera aussi supprimée entièrement. Sinon, seule la connexion à Connect saute, la fiche et son historique restent.'))return;
   try{
