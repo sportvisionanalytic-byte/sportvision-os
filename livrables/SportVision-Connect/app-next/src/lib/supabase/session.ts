@@ -187,6 +187,12 @@ interface ClubRow {
   credits_monthly: number;
   credits_reserved: number;
   portail_client_id: string | null;
+  logo_url: string | null;
+  adresse: string | null;
+  instagram_handle: string | null;
+  siret: string | null;
+  couleur_primaire: string | null;
+  couleur_secondaire: string | null;
 }
 
 interface EntitlementRow {
@@ -208,7 +214,9 @@ export async function buildClubActiveContext(
     supabase.from("organizations").select("id, nom, organization_type, created_at").eq("id", space.id).maybeSingle(),
     supabase
       .from("clubs")
-      .select("id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id")
+      .select(
+        "id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id, logo_url, adresse, instagram_handle, siret, couleur_primaire, couleur_secondaire",
+      )
       .eq("id", space.id)
       .maybeSingle(),
     supabase
@@ -269,6 +277,14 @@ export async function buildClubActiveContext(
       type: mapOrgType(org.organization_type),
       name: org.nom,
       createdAt: org.created_at,
+      logoUrl: club.logo_url ?? undefined,
+      address: club.adresse ?? undefined,
+      instagramHandle: club.instagram_handle ?? undefined,
+      siret: club.siret ?? undefined,
+      brandColors:
+        club.couleur_primaire || club.couleur_secondaire
+          ? [club.couleur_primaire ?? "#4F7DFF", club.couleur_secondaire ?? "#A855F7"]
+          : undefined,
     },
     membership: {
       id: space.membershipId!,
