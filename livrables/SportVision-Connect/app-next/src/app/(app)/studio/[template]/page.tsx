@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Check, Sparkles, UploadCloud } from "lucide-react";
+import { cn } from "@/lib/cn";
+import { CATEGORY_GRADIENT, CATEGORY_ICON } from "@/components/studio/categoryVisual";
 import { useSession } from "@/lib/session-context";
 import { canAccess, canCreate } from "@/lib/permissions";
 import { PLANS } from "@/lib/plans";
@@ -215,18 +217,24 @@ function StudioTemplateContent() {
           <Card className="p-4">
             <div className="text-[13.5px] font-extrabold tracking-tight">Aperçu et exemples</div>
             <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-              {[template.previewUrl, template.sampleUrls[0], template.sampleUrls[1]].map((url, i) => (
-                <div
-                  key={url}
-                  className="flex h-32 items-center justify-center rounded-xl px-2 text-center text-[10.5px] font-mono uppercase tracking-wide text-white/80"
-                  style={{
-                    background:
-                      "repeating-linear-gradient(125deg, #1B2A6B 0px, #1B2A6B 14px, #24327A 14px, #24327A 28px)",
-                  }}
-                >
-                  {i === 0 ? "aperçu du modèle" : `exemple client ${i}`}
-                </div>
-              ))}
+              {[template.previewUrl, template.sampleUrls[0], template.sampleUrls[1]].map((url, i) => {
+                const Icon = CATEGORY_ICON[template.category];
+                return (
+                  <div
+                    key={url}
+                    className={cn(
+                      "relative flex h-32 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl bg-gradient-to-br px-2 text-center",
+                      CATEGORY_GRADIENT[template.category],
+                    )}
+                  >
+                    <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,.18),transparent_55%)]" />
+                    <Icon className="relative h-6 w-6 text-white/90" aria-hidden />
+                    <span className="relative text-[10.5px] font-bold uppercase tracking-wide text-white/80">
+                      {i === 0 ? "Aperçu du modèle" : `Exemple client ${i}`}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </Card>
 
