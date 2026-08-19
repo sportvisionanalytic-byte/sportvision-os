@@ -31,11 +31,14 @@ export async function updateSession(request: NextRequest) {
   // sans compte, la page d'activation elle-même crée le compte via auth.signUp(). Bug trouvé lors
   // de l'audit complet Club+ du 17/08/2026 : /activation et /org-activation redirigeaient vers
   // /auth/login avant même que la page ait pu lire le token dans l'URL.
+  // /demo (19/08/2026) : démo publique interne, sans login, données 100 % fictives — voir
+  // src/lib/demo/*. Aucune page sous /demo ne lit/écrit de données réelles.
   const isPublicRoute =
     pathname.startsWith("/auth") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/activation") ||
-    pathname.startsWith("/org-activation");
+    pathname.startsWith("/org-activation") ||
+    pathname.startsWith("/demo");
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
