@@ -2803,9 +2803,15 @@ const DEMO_DATA=(function(){
     {id:'demo-pre-6',reference:'SV-DEMO-0006',source:'interne',statut:'annulée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(-1),heure_debut:'16:00',heure_fin:'18:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Annulée par le client (météo).',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-4))},
     {id:'demo-pre-7',reference:'SV-DEMO-0007',source:'vitrine',statut:'clôturée',statut_financier:'en_retard',type_prestation:'Match Photo',date_prestation:inDays(-45),heure_debut:'14:00',heure_fin:'16:00',heure_rdv:'13:30',lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'Thomas Petit',telephone_sur_place:'0601040506',montant_ht:183,montant_ttc:220,tva_pct:20,notes_internes:'Facture en retard, relance envoyée.',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:30,frais_deplacement_ht:15,offre_id:'demo-off-1',client_id:'demo-cl-3',created_at:iso(inDays(-46))},
   ];
+  // statut = statut d'AFFECTATION (acceptée/invitation_envoyée/refusée...) — distinct de
+  // statut_paiement (en_attente/validé/transmis_compta/payé), lui-même distinct du statut
+  // financier CLIENT (prestations.statut_financier). Trois axes indépendants, trois colonnes
+  // réelles (voir loadComptaRem) — ajouté le 20/08 : la démo n'avait que statut, ce qui laissait
+  // croire que "acceptée" était aussi la réponse à "a-t-on payé l'opérateur ?" (audit §31-33).
   const prestations_equipe=[
-    {id:'demo-pe-1',prestation_id:'demo-pre-1',collaborateur_id:'demo-photo1',fonction:'Photo',notes:'Prioriser les buteurs et le coach en fin de match.',remuneration:50,statut:'acceptée',heure_rdv:'13:30',est_responsable:true,created_at:iso(inDays(-5))},
-    {id:'demo-pe-2',prestation_id:'demo-pre-2',collaborateur_id:'demo-photo2',fonction:'Vidéo',notes:null,remuneration:null,statut:'invitation_envoyée',heure_rdv:'09:30',est_responsable:true,created_at:iso(inDays(-3))},
+    {id:'demo-pe-1',prestation_id:'demo-pre-1',collaborateur_id:'demo-photo1',fonction:'Photo',notes:'Prioriser les buteurs et le coach en fin de match.',remuneration:50,statut:'acceptée',statut_paiement:'en_attente',date_paiement:null,heure_rdv:'13:30',est_responsable:true,created_at:iso(inDays(-5))},
+    {id:'demo-pe-2',prestation_id:'demo-pre-2',collaborateur_id:'demo-photo2',fonction:'Vidéo',notes:null,remuneration:null,statut:'invitation_envoyée',statut_paiement:'en_attente',date_paiement:null,heure_rdv:'09:30',est_responsable:true,created_at:iso(inDays(-3))},
+    {id:'demo-pe-3',prestation_id:'demo-pre-4',collaborateur_id:'demo-photo1',fonction:'Photo',notes:'Reportage terminé, en attente de règlement.',remuneration:55,statut:'acceptée',statut_paiement:'payé',date_paiement:iso(inDays(-8)),heure_rdv:'10:30',est_responsable:true,created_at:iso(inDays(-10))},
   ];
   const kits=[
     {id:'demo-kit-1',nom:'Kit Photo A (Canon R6)',statut:'disponible'},
