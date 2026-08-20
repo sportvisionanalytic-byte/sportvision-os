@@ -238,6 +238,16 @@ Complété au fur et à mesure de l'avancement du pack — voir aussi § 60/61 d
 - **Comportement attendu** : un client Connect individuel devrait voir/télécharger ses livrables directement dans l'app, comme un club le fait déjà.
 - **Statut** : point 3 (faille crédits) **CORRIGÉ**. Points 4 et 5 **NON FAITS** — le point 4 nécessite d'ajouter la lecture de `media_livrables`/`media_liens` côté `app-connect` (edge function `connect-player-prestations` + UI `CommandeDetailView.tsx`), une vraie fonctionnalité à construire dans une app pas encore touchée cette nuit, pas un simple correctif.
 
+### INC-035 — `trg_sync_*_to_organization` ne gère jamais la suppression (organizations orphelines)
+
+- **Sévérité** : Basse aujourd'hui (aucun cas réel rencontré), mais latente.
+- **Découvert en nettoyant les données de test de la nuit (21/08)** : après avoir supprimé toutes les lignes `clients`/`clubs` de tests E2E de la session (résidu confirmé à zéro sur ces deux tables à chaque fois), 10 lignes `organizations` restaient orphelines en base — mirroir jamais nettoyé.
+- **Cause** : `trg_sync_client_to_organization` et `trg_sync_club_to_organization` (voir INC-026) sont déclenchés `AFTER INSERT OR UPDATE` uniquement, jamais `DELETE`. Une suppression de `clients`/`clubs` ne propage donc jamais vers `organizations`, qui garde une ligne fantôme indéfiniment.
+- **Risque réel** : si un vrai client/club est un jour supprimé de l'OS (pas juste désactivé), sa ligne `organizations` correspondante resterait visible côté Club+ (via `memberships`/écrans qui la lisent) alors que la source n'existe plus — donnée fantôme, pas une fuite de sécurité (RLS sur `organizations` reste scoping-correcte, c'est juste une ligne qui ne devrait plus exister).
+- **Fait cette nuit** : les 10 lignes orphelines de test supprimées manuellement, résidu vérifié à zéro.
+- **Non fait** : ajouter un handler `ON DELETE` aux deux triggers (ou une policy de suppression en cascade) — pas engagé cette nuit, la table `clients`/`clubs` de l'OS n'a jamais de suppression réelle dans le produit actuel (toujours un `statut`/désactivation, jamais un DELETE), donc le risque n'est pas actif en usage normal. À corriger si un flux de suppression réelle est un jour ajouté à l'OS.
+- **Statut** : **NOTÉ**, résidu de test nettoyé, correctif du trigger non engagé (pas d'usage produit qui l'exercerait aujourd'hui).
+
 ### INC-034 — Pipeline éditorial Full Communication (brief→publication→rapport) : E2E complet, tout certifié (21/08)
 
 - **Sévérité** : Vérification (pas un bug) — le pipeline lui-même était déjà écrit et documenté "EXÉCUTÉ" migration par migration, mais jamais parcouru de bout en bout par un seul test continu.
