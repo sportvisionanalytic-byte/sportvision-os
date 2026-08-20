@@ -2747,6 +2747,11 @@ const DEMO_FK={
   expenses:{vendors:'vendor_id'},
   financial_audit_log:{profiles:'acteur_id'},
 };
+// prestations_equipe_display (vue Postgres qui masque remuneration pour le rôle prod,
+// migration-prestations-equipe-v88, 20/08) n'a pas de jeu de données démo séparé — c'est la
+// même donnée que prestations_equipe, juste une autre porte d'entrée en production. Le mode
+// démo n'a pas de rôles à protéger de la même façon (données déjà factices), donc alias simple.
+const DEMO_TABLE_ALIAS={prestations_equipe_display:'prestations_equipe'};
 
 const DEMO_DATA=(function(){
   const iso=(d)=>d+'T00:00:00Z';
@@ -2914,7 +2919,7 @@ function _demoApplyFilter(rows,key,val){
 }
 function demoQuery(path){
   const qIdx=path.indexOf('?');
-  const table=qIdx===-1?path:path.slice(0,qIdx);
+  const table=DEMO_TABLE_ALIAS[qIdx===-1?path:path.slice(0,qIdx)]||(qIdx===-1?path:path.slice(0,qIdx));
   const params=new URLSearchParams(qIdx===-1?'':path.slice(qIdx+1));
   let rows=(DEMO_DATA[table]||[]).slice();
   for(const [key,val] of params.entries()){
@@ -5174,7 +5179,7 @@ async function chargerEquipeModal(prestationId){
   const el=document.getElementById('pd-equipe-list');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations_equipe?select=collaborateur_id,fonction,est_responsable,statut,profiles(prenom,nom,telephone)&prestation_id=eq.'+prestationId);
+    const data=await sbFetch('prestations_equipe_display?select=collaborateur_id,fonction,est_responsable,statut,profiles(prenom,nom,telephone)&prestation_id=eq.'+prestationId);
     if(!data||!data.length){
       const pid=escJs(prestationId);
       el.innerHTML=`<span style="color:var(--t3)">Aucun membre assigné.</span><button onclick="closeModal();setTimeout(()=>modalEquipePrestation('${pid}',''),150)" style="margin-left:8px;font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;text-decoration:underline">Assigner →</button>`;
@@ -5612,7 +5617,7 @@ async function loadAdminDash(){
       const sansEquipe=await sbFetch('prestations?select=id,reference,clients(nom)&statut=in.(confirmée,planifiée)&order=date_prestation.asc&limit=20');
       if(sansEquipe&&sansEquipe.length){
         // On vérifie lesquelles n'ont vraiment pas d'équipe
-        const equipeIds=await sbFetch('prestations_equipe?select=prestation_id');
+        const equipeIds=await sbFetch('prestations_equipe_display?select=prestation_id');
         const withTeam=new Set((equipeIds||[]).map(e=>e.prestation_id));
         sansEquipe.filter(p=>!withTeam.has(p.id)).slice(0,3).forEach(p=>{
           items.push({ic:'👥',txt:`Sans équipe — ${esc(p.clients?.nom||p.reference||'?')}`,act:`modalDetailById('${p.id}')`});
@@ -5733,7 +5738,7 @@ async function loadProdDash(){
       sbFetch('kits?select=id,statut,nom,type_kit'),
       sbFetch('incidents?select=id,type_incident,description,niveau,cloture,prestation_id,created_at,prestations(reference,clients(nom))&cloture=eq.false&order=created_at.desc&limit=8'),
       sbFetch('profiles?select=id,prenom,nom,role,avatar_url&order=nom.asc'),
-      sbFetch('prestations_equipe?select=remuneration,statut_paiement,prestations!inner(statut)&statut=eq.acceptée&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=remuneration,statut_paiement,prestations!inner(statut)&statut=eq.acceptée&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
     ]);
     const pre=Array.isArray(preRaw)?preRaw:[];
     const kits=Array.isArray(kitsRaw)?kitsRaw:[];
@@ -6728,7 +6733,7 @@ async function loadPhotoMedias(){
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
     const [pres,liens]=await Promise.all([
-      sbFetch('prestations_equipe?select=prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+S.uid+'&order=created_at.desc&limit=30').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=prestations(id,reference,date_prestation,statut,clients(nom))&collaborateur_id=eq.'+S.uid+'&order=created_at.desc&limit=30').catch(()=>[]),
       sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,transfert_confirme,prestation_id&ajouteur_id=eq.'+S.uid+'&order=created_at.desc&limit=100').catch(()=>[])
     ]);
     const mesPres=(Array.isArray(pres)?pres:[]).map(e=>e.prestations).filter(Boolean);
@@ -7369,7 +7374,7 @@ async function loadProdBudget(){
     const pre=Array.isArray(rawPre)?rawPre:[];
     const preIds=pre.map(p=>p.id);
     const rawRem=preIds.length
-      ? await sbFetch('prestations_equipe?select=remuneration,statut&prestation_id=in.('+preIds.join(',')+')')
+      ? await sbFetch('prestations_equipe_display?select=remuneration,statut&prestation_id=in.('+preIds.join(',')+')')
       : [];
     const active=pre.filter(p=>!['livrée','clôturée'].includes(p.statut));
     // active.length||pre.length affichait le TOTAL du mois dès que active.length
@@ -7470,7 +7475,7 @@ async function loadProdRemunerations(){
   const el=document.getElementById('prod-rem-real');
   if(!el)return;
   try{
-    const raw=await sbFetch('prestations_equipe?select=id,statut,remuneration,statut_paiement,date_paiement,fonction,prestations(id,reference,date_prestation,statut,clients(nom)),collaborateur:profiles(id,prenom,nom,role)&order=created_at.desc&limit=100');
+    const raw=await sbFetch('prestations_equipe_display?select=id,statut,remuneration,statut_paiement,date_paiement,fonction,prestations(id,reference,date_prestation,statut,clients(nom)),collaborateur:profiles(id,prenom,nom,role)&order=created_at.desc&limit=100');
     // Une mission refusée/remplacée/annulée ne doit jamais faire apparaître une NOUVELLE
     // rémunération à valider. Mais si le paiement était déjà validé/transmis/payé avant que
     // la prestation ne passe à annulée/refusée (travail déjà effectué, argent déjà engagé ou
@@ -7632,7 +7637,7 @@ async function exportProdRapportCSV(){
       (Array.isArray(d)?d:[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.lieu||'',p.montant_ttc||'',p.statut||'']));
       dlCSV(`rapport-prestations-${ymdLocal()}.csv`,rows);
     } else if(type==='equipe'){
-      const d=await sbFetch('prestations_equipe?select=remuneration,statut_paiement,fonction,prestations(reference,date_prestation),collaborateur:profiles(prenom,nom,role)&order=created_at.desc&limit=500');
+      const d=await sbFetch('prestations_equipe_display?select=remuneration,statut_paiement,fonction,prestations(reference,date_prestation),collaborateur:profiles(prenom,nom,role)&order=created_at.desc&limit=500');
       const rows=[['Collaborateur','Rôle','Fonction','Prestation','Date','Rémunération','Paiement']];
       (Array.isArray(d)?d:[]).forEach(r=>rows.push([[r.collaborateur?.prenom,r.collaborateur?.nom].filter(Boolean).join(' ')||'',r.collaborateur?.role||'',r.fonction||'',r.prestations?.reference||'',r.prestations?.date_prestation||'',r.remuneration||'',r.statut_paiement||'']));
       dlCSV(`rapport-equipe-${ymdLocal()}.csv`,rows);
@@ -7678,7 +7683,7 @@ async function loadProdRapport(type){
         </tbody></table></div>
       </div>`;
     } else if(type==='equipe'){
-      const data=await sbFetch('prestations_equipe?select=remuneration,statut_paiement,fonction,prestations(reference,date_prestation,clients(nom)),collaborateur:profiles(prenom,nom,role)&order=created_at.desc&limit=100');
+      const data=await sbFetch('prestations_equipe_display?select=remuneration,statut_paiement,fonction,prestations(reference,date_prestation,clients(nom)),collaborateur:profiles(prenom,nom,role)&order=created_at.desc&limit=100');
       const list=Array.isArray(data)?data:[];
       // Group by collaborateur
       const byCol={};
@@ -7851,7 +7856,7 @@ async function syncMissionXp(uid,preloadedRows){
     if(!prof||prof.role!=='photo')return;
     let rows=preloadedRows;
     if(!rows){
-      rows=await sbFetch('prestations_equipe?select=id,statut,est_responsable,prestations(statut)&collaborateur_id=eq.'+uid+'&statut=eq.acceptée').catch(()=>[]);
+      rows=await sbFetch('prestations_equipe_display?select=id,statut,est_responsable,prestations(statut)&collaborateur_id=eq.'+uid+'&statut=eq.acceptée').catch(()=>[]);
     }
     const eligible=(Array.isArray(rows)?rows:[]).filter(r=>r.statut==='acceptée'&&MISSION_XP_DONE_STATUTS.includes(r.prestations?.statut));
     if(!eligible.length)return;
@@ -7913,7 +7918,7 @@ async function loadPhotoDash(){
   const dbtn=document.getElementById('photo-dispo-btn');
   if(dbtn){dbtn.style.color=dc.clr;dbtn.style.background=dc.bg;dbtn.style.borderColor=dc.br;dbtn.textContent='● '+dc.lb;}
   try{
-    const rawEquipe=await sbFetch('prestations_equipe?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
+    const rawEquipe=await sbFetch('prestations_equipe_display?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
     if(!Array.isArray(rawEquipe))throw new Error(rawEquipe?.message||'Erreur API');
     _photoDashCache=rawEquipe;
     await syncMissionXp(uid,rawEquipe);
@@ -8097,7 +8102,7 @@ async function loadPhotoDash(){
       try{
         const futurIds=futures.slice(0,5).map(d=>d.prestations?.id).filter(Boolean);
         if(futurIds.length){
-          const teammates=await sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations(id,reference,date_prestation,type_prestation),profiles(id,prenom,nom,role)&prestation_id=in.('+futurIds.join(',')+')'+'&collaborateur_id=neq.'+uid+'&statut=in.(invitation_envoyée,acceptée)');
+          const teammates=await sbFetch('prestations_equipe_display?select=collaborateur_id,statut,prestations(id,reference,date_prestation,type_prestation),profiles(id,prenom,nom,role)&prestation_id=in.('+futurIds.join(',')+')'+'&collaborateur_id=neq.'+uid+'&statut=in.(invitation_envoyée,acceptée)');
           const tm=Array.isArray(teammates)?teammates:[];
           // Dédupliquer par collaborateur + regrouper ses missions
           const byCollab={};
@@ -8145,7 +8150,7 @@ async function loadPhotoMesPrestations(){
   const el=document.getElementById('photo-pre-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations_equipe?select=id,statut,remuneration,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc');
+    const data=await sbFetch('prestations_equipe_display?select=id,statut,remuneration,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc');
     if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
     // d.statut = statut de l'invitation, pas celui de la mission — voir loadPhotoDash.
     _photoPreData=data.filter(d=>d.prestations&&d.prestations.statut!=='annulée');
@@ -8785,7 +8790,7 @@ async function chargerEquipe(prestationId,ref){
   const rc={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
   const canSetRem=(S.role==='admin'||S.role==='sec');
   try{
-    const data=await sbFetch('prestations_equipe?select=id,statut,fonction,notes,remuneration,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId);
+    const data=await sbFetch('prestations_equipe_display?select=id,statut,fonction,notes,remuneration,collaborateur:profiles(id,prenom,nom,role)&prestation_id=eq.'+prestationId);
     if(!data||!data.length){el.innerHTML='<div style="color:var(--t3);font-size:13px;padding:8px 0">Aucun collaborateur affecté.</div>';return;}
     const iSt={'invitation_envoyée':'bw','en_attente':'bw','acceptée':'ba','refusée':'br','remplacée':'bn','annulée':'bn'};
     const iLb={'invitation_envoyée':'Invité','en_attente':'En attente','acceptée':'Confirmé','refusée':'Refusé','remplacée':'Remplacé','annulée':'Annulé'};
@@ -8834,7 +8839,7 @@ async function ajouterMembreEquipe(prestationId,ref){
     // un double-clic ou une resélection par erreur créait deux lignes pour le
     // même collaborateur (double notification, double comptage de sa
     // rémunération dans les rapports qui somment sans dédupliquer).
-    const already=await sbFetch('prestations_equipe?select=id&prestation_id=eq.'+prestationId+'&collaborateur_id=eq.'+colId+'&limit=1').catch(()=>[]);
+    const already=await sbFetch('prestations_equipe_display?select=id&prestation_id=eq.'+prestationId+'&collaborateur_id=eq.'+colId+'&limit=1').catch(()=>[]);
     if(Array.isArray(already)&&already.length){err.textContent='Ce collaborateur est déjà affecté à cette prestation.';if(btn)btn.disabled=false;return;}
     // eq-rem n'existe dans le DOM que pour admin/sec (voir modalEquipePrestation) — 'prod' peut
     // affecter et ajouter des consignes, jamais fixer la rémunération.
@@ -8858,7 +8863,7 @@ async function ajouterMembreEquipe(prestationId,ref){
       const preArr=await sbFetch('prestations?id=eq.'+prestationId+'&select=date_prestation');
       const datePres=preArr&&preArr[0]&&preArr[0].date_prestation;
       if(datePres){
-        const conflits=await sbFetch('prestations_equipe?select=id,prestations!inner(reference,date_prestation,statut)&collaborateur_id=eq.'+colId+'&prestation_id=neq.'+prestationId+'&statut=in.(invitation_envoyée,en_attente,acceptée)&prestations.date_prestation=eq.'+datePres+'&prestations.statut=not.in.(annulée,refusée,clôturée)').catch(()=>[]);
+        const conflits=await sbFetch('prestations_equipe_display?select=id,prestations!inner(reference,date_prestation,statut)&collaborateur_id=eq.'+colId+'&prestation_id=neq.'+prestationId+'&statut=in.(invitation_envoyée,en_attente,acceptée)&prestations.date_prestation=eq.'+datePres+'&prestations.statut=not.in.(annulée,refusée,clôturée)').catch(()=>[]);
         if(Array.isArray(conflits)&&conflits.length){
           const refs=conflits.map(c=>c.prestations?.reference).filter(Boolean).join(', ')||'une autre prestation';
           if(!confirm('⚠️ Ce collaborateur est déjà affecté le '+new Date(datePres).toLocaleDateString('fr-FR')+' à : '+refs+'.\n\nConfirmer quand même cette affectation ?')){
@@ -11993,7 +11998,7 @@ async function loadPhotoRevenus(){
   const uid=localStorage.getItem('sv_uid');
   if(!uid)return;
   try{
-    const data=await sbFetch('prestations_equipe?select=id,remuneration,est_responsable,statut,prestations(id,reference,statut,type_prestation,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=200');
+    const data=await sbFetch('prestations_equipe_display?select=id,remuneration,est_responsable,statut,prestations(id,reference,statut,type_prestation,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=200');
     if(!Array.isArray(data))throw new Error(data?.message||'Erreur API');
     // r.statut = statut de l'invitation, pas celui de la mission — voir loadPhotoDash.
     _revAllData=data.filter(r=>r.statut!=='refusée'&&r.prestations&&r.prestations.statut!=='annulée');
@@ -12164,7 +12169,7 @@ async function loadPaiements(){
   try{
     const [profiles,equipesRaw]=await Promise.all([
       sbFetch('profiles?select=id,prenom,nom,role&order=role.asc,nom.asc'),
-      sbFetch('prestations_equipe?select=collaborateur_id,statut,remuneration,prestations(statut)'),
+      sbFetch('prestations_equipe_display?select=collaborateur_id,statut,remuneration,prestations(statut)'),
     ]);
     const colls=(profiles||[]).filter(p=>p.role!=='admin');
     if(!colls.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3)">Aucun collaborateur.</div>';return;}
@@ -12215,7 +12220,7 @@ async function exportCSV(type){
       downloadCSV(rows,'SportVision-CA-Mensuel-'+ymdLocal()+'.csv');
     }
     else if(type==='remunerations'){
-      const data=await sbFetch('prestations_equipe?select=remuneration,heure_rdv,statut,fonction,prestations(reference,date_prestation),profiles!collaborateur_id(prenom,nom,role)&order=created_at.desc&limit=500');
+      const data=await sbFetch('prestations_equipe_display?select=remuneration,heure_rdv,statut,fonction,prestations(reference,date_prestation),profiles!collaborateur_id(prenom,nom,role)&order=created_at.desc&limit=500');
       const rows=[['Collaborateur','Rôle','Prestation','Date','Fonction','Rémunération (€)','Statut']];
       (data||[]).forEach(e=>rows.push([(e.profiles?.prenom||'')+' '+(e.profiles?.nom||''),e.profiles?.role||'',e.prestations?.reference||'',e.prestations?.date_prestation||'',e.fonction||'',e.remuneration||'0',e.statut||'']));
       downloadCSV(rows,'SportVision-Remunerations-'+ymdLocal()+'.csv');
@@ -12337,7 +12342,7 @@ async function modalSignalerIncident(){
     const uid=localStorage.getItem('sv_uid');
     let pres;
     if(['photo','cm'].includes(S.role)){
-      const data=await sbFetch('prestations_equipe?select=prestations(id,reference,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=20');
+      const data=await sbFetch('prestations_equipe_display?select=prestations(id,reference,date_prestation,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.desc&limit=20');
       pres=(data||[]).filter(r=>r.prestations).map(r=>r.prestations);
     } else {
       pres=await sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&statut=not.in.(annulée,refusée,clôturée,payée)&order=date_prestation.desc&limit=30');
@@ -13457,7 +13462,7 @@ async function loadForm(){
   const uid=localStorage.getItem('sv_uid')||'x';
   let nbMissions=0;
   try{
-    const missions=await sbFetch('prestations_equipe?select=id&collaborateur_id=eq.'+uid+'&statut=eq.acceptée');
+    const missions=await sbFetch('prestations_equipe_display?select=id&collaborateur_id=eq.'+uid+'&statut=eq.acceptée');
     if(Array.isArray(missions))nbMissions=missions.length;
   }catch(e){}
   await syncMissionXp(uid);
@@ -16801,9 +16806,9 @@ async function loadComptaDash(){
     const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
     const [data,remData,fraisData,remAttData,depData]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,acompte_montant,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=500'),
-      sbFetch('prestations_equipe?select=remuneration,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=remuneration,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
       sbFetch('frais?select=montant&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext+'&statut=in.(validé,remboursé)').catch(()=>[]),
-      sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
       sbFetch('expenses?select=montant_ttc&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext).catch(()=>[]),
     ]);
     const list=data||[];
@@ -17240,7 +17245,7 @@ function renderComptaFrais(){
 async function loadComptaRem(){
   const el=document.getElementById('compta-rem-real');if(!el)return;
   try{
-    const data=await sbFetch('prestations_equipe?select=id,remuneration,statut_paiement,date_paiement,prestations(reference,date_prestation,statut),collaborateur:profiles(id,prenom,nom,role)&statut=eq.acceptée&order=created_at.desc&limit=200');
+    const data=await sbFetch('prestations_equipe_display?select=id,remuneration,statut_paiement,date_paiement,prestations(reference,date_prestation,statut),collaborateur:profiles(id,prenom,nom,role)&statut=eq.acceptée&order=created_at.desc&limit=200');
     // Une mission dont la prestation parente est annulée/refusée ne doit jamais
     // faire apparaître une NOUVELLE rémunération à payer (même filtre que
     // loadProdRemunerations) — le filtre statut=eq.acceptée ci-dessus ne porte
@@ -18022,7 +18027,7 @@ async function genererExportFEC(){
     const [factures,expenses,remunerations,employeeCosts,commissionsData]=await Promise.all([
       sbFetch('factures?select=numero,montant_ht,montant_ttc,date_emission,clients(nom)&statut=eq.payee&date_emission=gte.'+mStart+'&date_emission=lt.'+mNext),
       sbFetch('expenses?select=libelle,montant_ht,montant_ttc,date_depense,categorie,vendors(nom)&statut=in.(payee,comptabilisee)&date_depense=gte.'+mStart+'&date_depense=lt.'+mNext),
-      sbFetch('prestations_equipe?select=remuneration,prestations!inner(reference,date_prestation),profiles!collaborateur_id(prenom,nom)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=remuneration,prestations!inner(reference,date_prestation),profiles!collaborateur_id(prenom,nom)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext).catch(()=>[]),
       sbFetch('employee_costs?select=salaire_brut_mensuel,charges_patronales_pct,profiles(prenom,nom)').catch(()=>[]),
       sbFetch('commissions?select=montant_commission,date_paiement,profiles!commercial_id(prenom,nom)&statut=eq.payee&date_paiement=gte.'+mStart+'&date_paiement=lt.'+mNext).catch(()=>[]),
     ]);
@@ -18463,7 +18468,7 @@ async function exportComptaMois(moisKey){
     const mNext=ymdLocal(new Date(y,m,1));
     const [pres,rems,frais]=await Promise.all([
       sbFetch('prestations?select=reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom)&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext+'&order=date_prestation.asc&limit=500'),
-      sbFetch('prestations_equipe?select=remuneration,statut_paiement,prestations!inner(reference,date_prestation),profiles!collaborateur_id(prenom,nom)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext+'&limit=500').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=remuneration,statut_paiement,prestations!inner(reference,date_prestation),profiles!collaborateur_id(prenom,nom)&statut=eq.acceptée&prestations.date_prestation=gte.'+mStart+'&prestations.date_prestation=lt.'+mNext+'&limit=500').catch(()=>[]),
       sbFetch('frais?select=montant,type,description,date_frais&date_frais=gte.'+mStart+'&date_frais=lt.'+mNext+'&limit=200').catch(()=>[]),
     ]);
     const ts=ymdLocal();
@@ -19272,7 +19277,7 @@ async function loadJourJ(){
   const in7s=ymdLocal(in7);
   if(dateEl){const ds=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});dateEl.textContent=ds.charAt(0).toUpperCase()+ds.slice(1);}
   try{
-    const raw=await sbFetch('prestations_equipe?select=id,statut,fonction,heure_rdv,remuneration,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
+    const raw=await sbFetch('prestations_equipe_display?select=id,statut,fonction,heure_rdv,remuneration,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
     if(!Array.isArray(raw))throw new Error(raw?.message||'Erreur API');
     const valid=raw.filter(r=>r.prestations&&!['annulée','refusée','clôturée','payée'].includes(r.prestations.statut));
     const todayMissions=valid.filter(r=>r.prestations.date_prestation===today);
@@ -19605,7 +19610,7 @@ async function modalDetailById(id){
     if(S.role==='prod'){modalProdFiche(data[0]);return;}
     if(S.role==='photo'){
       const uid=localStorage.getItem('sv_uid');
-      const eq=await sbFetch('prestations_equipe?select=id,remuneration,heures_declarees&collaborateur_id=eq.'+uid+'&prestation_id=eq.'+id+'&limit=1');
+      const eq=await sbFetch('prestations_equipe_display?select=id,remuneration,heures_declarees&collaborateur_id=eq.'+uid+'&prestation_id=eq.'+id+'&limit=1');
       const p=data[0];
       if(eq&&eq[0]){p._equipeId=eq[0].id;p._remuneration=eq[0].remuneration||0;p._heuresDec=eq[0].heures_declarees||null;}
       if(!p.briefing_vu_at){
@@ -19834,7 +19839,7 @@ async function _chargerRemProdFiche(prestationId){
   const el=document.getElementById('pf-rem-list');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations_equipe?select=remuneration,statut_paiement,fonction,collaborateur:profiles(prenom,nom)&prestation_id=eq.'+prestationId);
+    const data=await sbFetch('prestations_equipe_display?select=remuneration,statut_paiement,fonction,collaborateur:profiles(prenom,nom)&prestation_id=eq.'+prestationId);
     if(!data||!data.length){el.innerHTML='<span style="color:var(--t3)">Aucune rémunération enregistrée.</span>';return;}
     const total=data.reduce((s,r)=>s+(Number(r.remuneration)||0),0);
     el.innerHTML='<div style="display:flex;flex-direction:column;gap:5px">'+data.map(r=>{
@@ -20226,7 +20231,7 @@ async function modalFicheCollaborateur(id){
     const today=ymdLocal();
     const [profRaw,presRaw,certRaw,xpRaw0,dispoRaw,inscrRaw]=await Promise.all([
       sbFetch('profiles?select=*&id=eq.'+id).catch(()=>[]),
-      sbFetch('prestations_equipe?select=id,statut,remuneration,prestations(id,reference,date_prestation,statut,lieu,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=200').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=id,statut,remuneration,prestations(id,reference,date_prestation,statut,lieu,clients(nom))&collaborateur_id=eq.'+id+'&order=prestations(date_prestation).desc&limit=200').catch(()=>[]),
       sbFetch('collaborateur_certifications?select=*&collaborateur_id=eq.'+id).catch(()=>[]),
       sbFetch('xp_events?select=montant&collaborateur_id=eq.'+id).catch(()=>[]),
       sbFetch('disponibilites?select=*&collaborateur_id=eq.'+id+'&date=eq.'+today).catch(()=>[]),
@@ -20933,7 +20938,7 @@ async function updateNavBadges(role){
       setBadge('livraisons',(livrPret||[]).length,'nb-o');
     }
     if(role==='photo'){
-      const inv=await sbFetch('prestations_equipe?select=id&collaborateur_id=eq.'+uid+'&statut=eq.invitation_envoyée');
+      const inv=await sbFetch('prestations_equipe_display?select=id&collaborateur_id=eq.'+uid+'&statut=eq.invitation_envoyée');
       setBadge('dash',(inv||[]).length,'nb-r');
     }
   }catch(e){}
@@ -20975,7 +20980,7 @@ async function runSearch(q){
       fetches.push(sbFetch('prestations?select=id,reference,statut,date_prestation,clients(nom)&or=(reference.ilike.*'+qEnc+'*,lieu.ilike.*'+qEnc+'*,type_prestation.ilike.*'+qEnc+'*)&limit=6'));
     }else if(hasPhoto){
       fetches.push(
-        sbFetch('prestations_equipe?select=prestations(id,reference,statut,date_prestation,clients(nom))&collaborateur_id=eq.'+uid)
+        sbFetch('prestations_equipe_display?select=prestations(id,reference,statut,date_prestation,clients(nom))&collaborateur_id=eq.'+uid)
         .then(data=>(data||[]).filter(r=>r.prestations&&((r.prestations.reference||'').toLowerCase().includes(q2)||(r.prestations.clients?.nom||'').toLowerCase().includes(q2))).slice(0,6).map(r=>r.prestations))
       );
     }else{fetches.push(Promise.resolve([]));}
@@ -21856,7 +21861,7 @@ async function loadPhotoPlan(){
   if(titleEl)titleEl.textContent=titleStr.charAt(0).toUpperCase()+titleStr.slice(1);
   el.innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">Chargement…</div>';
   try{
-    const raw=await sbFetch('prestations_equipe?select=id,statut,fonction,heure_rdv,remuneration,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
+    const raw=await sbFetch('prestations_equipe_display?select=id,statut,fonction,heure_rdv,remuneration,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc');
     if(!Array.isArray(raw))throw new Error(raw?.message||'Erreur API');
     // r.statut = statut de l'invitation, pas celui de la mission — voir loadPhotoDash.
     const missions=raw.filter(r=>r.prestations&&r.prestations.date_prestation>=start&&r.prestations.date_prestation<=end&&r.prestations.statut!=='annulée');
@@ -21941,7 +21946,7 @@ async function loadRapport(){
     const list=Array.isArray(preMois)?preMois:[];
     const preIds=list.map(p=>p.id);
     const equipe=preIds.length
-      ? await sbFetch('prestations_equipe?select=collaborateur_id,statut,remuneration,prestation_id&prestation_id=in.('+preIds.join(',')+')')
+      ? await sbFetch('prestations_equipe_display?select=collaborateur_id,statut,remuneration,prestation_id&prestation_id=in.('+preIds.join(',')+')')
       : [];
     const newCli=Array.isArray(cliMois)?cliMois:[];
     const eq=Array.isArray(equipe)?equipe:[];
@@ -24032,7 +24037,7 @@ async function loadAnnuaire(role){
     const today=ymdLocal();
     const [profiles,busyEquipe]=await Promise.all([
       sbFetch('profiles?select=id,prenom,nom,role,email,telephone,avatar_url,ville,vehicule,permis,bio&order=nom.asc&limit=200'),
-      sbFetch('prestations_equipe?select=collaborateur_id,prestations!inner(date_prestation)&prestations.date_prestation=eq.'+today+'&statut=in.(acceptée,invitation_envoyée)&limit=200').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation)&prestations.date_prestation=eq.'+today+'&statut=in.(acceptée,invitation_envoyée)&limit=200').catch(()=>[]),
     ]);
     _annuaireTodayBusy=new Set((busyEquipe||[]).map(e=>e.collaborateur_id));
     _annuaireAll=Array.isArray(profiles)?profiles:[];
@@ -24141,8 +24146,8 @@ async function loadEquipeEnDirect(){
   const _eqRoleFilter=_eqRole==='prod'?'&role=in.(photo,cm)':'';
   const [profiles,todayMissions,monthMissions,disponibilites]=await Promise.all([
     sbFetch('profiles?select=id,prenom,nom,role,avatar_url,email,telephone'+_eqRoleFilter+'&order=prenom.asc').catch(()=>[]),
-    sbFetch('prestations_equipe?select=collaborateur_id,statut,prestations!inner(id,reference,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
-    sbFetch('prestations_equipe?select=collaborateur_id,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
+    sbFetch('prestations_equipe_display?select=collaborateur_id,statut,prestations!inner(id,reference,lieu,date_prestation)&prestations.date_prestation=eq.'+today+'&statut=eq.acceptée').catch(()=>[]),
+    sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation)&statut=eq.acceptée&prestations.date_prestation=gte.'+monthStart).catch(()=>[]),
     sbFetch('disponibilites?select=collaborateur_id,statut&date=eq.'+today).catch(()=>[]),
   ]);
 
@@ -24980,7 +24985,7 @@ async function loadMobilePhotoDash(ct){
   try{
     const today=ymdLocal();
     const [equipe,notifs]=await Promise.all([
-      sbFetch('prestations_equipe?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc&limit=100').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=id,statut,remuneration,est_responsable,heure_rdv,prestations(id,reference,statut,type_prestation,date_prestation,heure_debut,lieu,adresse_complete,clients(nom))&collaborateur_id=eq.'+uid+'&order=created_at.asc&limit=100').catch(()=>[]),
       sbFetch('notifications?select=id&destinataire_id=eq.'+uid+'&lue=eq.false&order=created_at.desc&limit=5').catch(()=>[]),
     ]);
     // d.statut = statut de l'invitation, d.prestations.statut = statut réel de
@@ -25227,7 +25232,7 @@ async function loadMobileComptaDash(ct){
     const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
     const [pres,remAtt]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,statut_financier,montant_ttc,date_prestation,clients(nom)&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=300').catch(()=>[]),
-      sbFetch('prestations_equipe?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
+      sbFetch('prestations_equipe_display?select=remuneration&statut_paiement=not.in.(payé,transmis_compta)').catch(()=>[]),
     ]);
     const list=Array.isArray(pres)?pres:[];
     const mois=list.filter(p=>p.date_prestation>=mStart&&p.date_prestation<mNext);
