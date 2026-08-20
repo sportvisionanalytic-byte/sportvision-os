@@ -238,6 +238,18 @@ Complété au fur et à mesure de l'avancement du pack — voir aussi § 60/61 d
 - **Comportement attendu** : un client Connect individuel devrait voir/télécharger ses livrables directement dans l'app, comme un club le fait déjà.
 - **Statut** : point 3 (faille crédits) **CORRIGÉ**. Points 4 et 5 **NON FAITS** — le point 4 nécessite d'ajouter la lecture de `media_livrables`/`media_liens` côté `app-connect` (edge function `connect-player-prestations` + UI `CommandeDetailView.tsx`), une vraie fonctionnalité à construire dans une app pas encore touchée cette nuit, pas un simple correctif.
 
+### INC-030 — Vérifications P0 restants de l'audit du 20/08 (batch, tous confirmés/clos)
+
+- **Sévérité** : variable par point, tous **résolus ou confirmés déjà sains**.
+- **INC-001/INC-002 (migrations club "peut-être non exécutées")** : vérifié en base — `club_members_role_check` inclut déjà `directeur_sportif`/`administratif`. Migrations bien exécutées, commentaires du code obsolètes. **CONFIRMÉ SAIN.**
+- **INC-016 (RLS réservations clubs)** : `cbk_staff_select`/`cbk_staff_update` existent sur `club_bookings`. **CONFIRMÉ SAIN.**
+- **INC-017 (RLS cotisations staff)** : `gf_staff_select`, `fc_staff_select`, `ug_staff_select` existent sur `group_fundings`/`funding_contributions`/`user_groups`. **CONFIRMÉ SAIN.**
+- **Données orphelines (1 prestation + 2 paiements, voir INC-028)** : investiguées — `SV-2026-0060` (prestation test manuelle, `client_id` jamais renseigné) et 2 paiements à 120€ sans `stripe_payment_intent_id` ni aucune liaison (artefacts de test manifestes, aucune activité Stripe réelle). **SUPPRIMÉS** le 20/08 après vérification qu'aucune donnée réelle n'y était attachée. `prestations`/`paiements` à 0 ligne, cohérent avec le reste de la base (voir INC-028).
+- **2 déploiements Netlify legacy (Club+ ancien, Connect vanilla)** : vérifié directement via l'API Netlify (liste des sites du compte) — **seuls 4 sites existent réellement** : `sportvision-clubplus`, `sportvision-connect`, `sportvisionfr` (Vitrine), `sportvision-os`. Le code legacy a toujours un `netlify.toml` dans le repo mais **aucun site Netlify n'a jamais été créé pour lui** — rien à désactiver, le risque était théorique (code présent ≠ site déployé). **CONFIRMÉ SAIN.**
+- **Isolation Demo/Staging vs production (Stripe/email/Storage)** : audité le code des routes `/demo/*` de `app-connect` et `app-next` — aucune référence Stripe, les 3 pages qui touchent Supabase le font en lecture seule sur `catalogue_offres` (déjà public, même donnée que la Vitrine non authentifiée) avec CTA d'action explicitement désactivés (`disabled`, tooltip explicite) ou des écritures qui échoueraient proprement faute de session réelle. Le mode démo de l'OS lui-même ne fait **aucun appel réseau réel** (déjà établi et vérifié plus tôt cette nuit). **CONFIRMÉ SAIN.**
+- **Build/lint/typecheck Connect + Club+ (jamais exécutés avant ce soir)** : `npm run typecheck` et `npm run build` exécutés en entier sur les deux apps (`app-connect`, `app-next`) — **0 erreur, build de production complet dans les deux cas** (59 routes app-connect, ~70 routes app-next). `npm run lint` : ESLint n'est pas encore configuré sur ces projets (prompt de configuration interactif, non exécuté — décision de configuration à prendre consciemment, pas à la volée pendant un correctif).
+- **Statut** : **TOUS CONFIRMÉS/CLOS**, sauf lint (non configuré, décision à prendre séparément — pas un bug).
+
 ### INC-029 — Storage : lecture publique sur des chemins conçus comme privés (P0 audit §17, PARTIEL)
 
 - **Sévérité** : Haute (structurelle) mais exposition réelle actuelle nulle — voir détail.
