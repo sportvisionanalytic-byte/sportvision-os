@@ -255,10 +255,30 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
         </div>
       )}
 
-      {documents.length > 0 && (
+      {documents.some((d) => d.kind === "livrable") && (
+        <div className="flex flex-col gap-2.5">
+          <h2 className="font-sora text-[15px] font-semibold">Vos livrables</h2>
+          {documents.filter((d) => d.kind === "livrable").map((doc) => (
+            <div key={`${doc.kind}-${doc.id}`} className="flex items-center gap-3.5 rounded-sv border border-border bg-surface px-4 py-3.5">
+              <span className="material-symbols-rounded !text-[19px] text-text-tertiary" aria-hidden="true">photo_library</span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate text-[14px] font-medium text-text lg:text-[13.5px]">{doc.reference}</span>
+                <span className="text-[12px] text-text-tertiary">{formatDateLong(doc.date)} · {doc.statut === "consulte" ? "Consulté" : "Livré"}</span>
+              </div>
+              {doc.pdfUrl && (
+                <a href={doc.pdfUrl} target="_blank" rel="noreferrer" className="flex-none text-[#8CA9FF]">
+                  <span className="material-symbols-rounded !text-[20px]" aria-hidden="true">download</span>
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {documents.some((d) => d.kind === "facture" || d.kind === "paiement") && (
         <div className="flex flex-col gap-2.5">
           <h2 className="font-sora text-[15px] font-semibold">Documents liés</h2>
-          {documents.map((doc) => (
+          {documents.filter((d) => d.kind === "facture" || d.kind === "paiement").map((doc) => (
             <div key={`${doc.kind}-${doc.id}`} className="flex items-center gap-3.5 rounded-sv border border-border bg-surface px-4 py-3.5">
               <span className="material-symbols-rounded !text-[19px] text-text-tertiary" aria-hidden="true">{doc.kind === "facture" ? "description" : "payments"}</span>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">

@@ -29,11 +29,14 @@ export interface PlayerOrder {
 }
 
 export interface PlayerOrderDocument {
-  kind: "facture" | "paiement";
+  // "livrable" ajouté le 20/08 (audit E2E) : photos/vidéos livrées par le staff, jamais
+  // affichées avant ce jour côté Espace joueur/particulier — voir CommandeDetailView.tsx.
+  // Pas de montant (toujours null pour ce kind, pdfUrl y sert de lien de téléchargement).
+  kind: "facture" | "paiement" | "livrable";
   id: string;
   reference: string;
   statut: string;
-  montant: number;
+  montant: number | null;
   date: string | null;
   pdfUrl?: string | null;
 }

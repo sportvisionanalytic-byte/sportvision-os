@@ -270,10 +270,24 @@ serve(async (req) => {
           forWho: labelByClientId.get(row.client_id as string) ?? null,
         };
 
-        const [{ data: factures }, { data: paiements }] = await Promise.all([
+        const [{ data: factures }, { data: paiements }, { data: livrablesRaw }] = await Promise.all([
           admin.from("factures").select("id, numero, statut, montant_ttc, date_emission, pdf_url").eq("prestation_id", orderId).eq("client_id", row.client_id),
           admin.from("paiements").select("id, statut, montant, type_paiement, created_at").eq("prestation_id", orderId).eq("client_id", row.client_id),
+          // Livrables (media_livrables) : jamais lus par app-connect avant ce jour (audit E2E du
+          // 20/08 — un client Connect individuel ne voyait jamais ses livrables, contrairement à
+          // Club+ qui lit déjà l'équivalent via la vue client_media_livrables). Même filtre statut
+          // que cette vue (livre/consulte uniquement — jamais un livrable pas encore validé côté
+          // staff). orderId est déjà scopé au client_id de l'appelant via la requête prestations
+          // ci-dessus, donc pas de vérif d'accès supplémentaire nécessaire ici.
+          admin.from("media_livrables").select("id, nom, statut, date_validation, created_at, lien_id").eq("prestation_id", orderId).in("statut", ["livre", "consulte"]),
         ]);
+        const livrables = livrablesRaw || [];
+        const lienIds = Array.from(new Set(livrables.map((l: { lien_id: string | null }) => l.lien_id).filter(Boolean))) as string[];
+        const lienUrlById = new Map<string, string>();
+        if (lienIds.length) {
+          const { data: liens } = await admin.from("media_liens").select("id, url").in("id", lienIds);
+          for (const l of liens || []) lienUrlById.set(l.id, l.url);
+        }
         return json({
           order,
           documents: [
@@ -282,6 +296,10 @@ serve(async (req) => {
             })),
             ...(paiements || []).map((p: { id: string; statut: string; montant: number; type_paiement: string; created_at: string }) => ({
               kind: "paiement", id: p.id, reference: p.type_paiement, statut: p.statut, montant: p.montant, date: p.created_at,
+            })),
+            ...livrables.map((l: { id: string; nom: string; statut: string; date_validation: string | null; created_at: string; lien_id: string | null }) => ({
+              kind: "livrable", id: l.id, reference: l.nom, statut: l.statut, montant: null, date: l.date_validation || l.created_at,
+              pdfUrl: l.lien_id ? lienUrlById.get(l.lien_id) ?? null : null,
             })),
           ],
         });
@@ -679,7 +697,7 @@ serve(async (req) => {
 
       if (action === "get_order") {
         const orderId = orders[0].id;
-        const [{ data: factures }, { data: paiements }] = await Promise.all([
+        const [{ data: factures }, { data: paiements }, { data: livrablesRaw }] = await Promise.all([
           admin
             .from("factures")
             .select("id, numero, statut, montant_ttc, date_emission, pdf_url")
@@ -690,7 +708,21 @@ serve(async (req) => {
             .select("id, statut, montant, type_paiement, created_at")
             .eq("prestation_id", orderId)
             .eq("client_id", clientId),
+          // Voir le commentaire équivalent dans la branche "multi" ci-dessus (même ajout, même
+          // raison — audit E2E du 20/08).
+          admin
+            .from("media_livrables")
+            .select("id, nom, statut, date_validation, created_at, lien_id")
+            .eq("prestation_id", orderId)
+            .in("statut", ["livre", "consulte"]),
         ]);
+        const livrables = livrablesRaw || [];
+        const lienIds = Array.from(new Set(livrables.map((l: { lien_id: string | null }) => l.lien_id).filter(Boolean))) as string[];
+        const lienUrlById = new Map<string, string>();
+        if (lienIds.length) {
+          const { data: liens } = await admin.from("media_liens").select("id, url").in("id", lienIds);
+          for (const l of liens || []) lienUrlById.set(l.id, l.url);
+        }
         return json({
           order: orders[0],
           documents: [
@@ -710,6 +742,15 @@ serve(async (req) => {
               statut: p.statut,
               montant: p.montant,
               date: p.created_at,
+            })),
+            ...livrables.map((l: { id: string; nom: string; statut: string; date_validation: string | null; created_at: string; lien_id: string | null }) => ({
+              kind: "livrable",
+              id: l.id,
+              reference: l.nom,
+              statut: l.statut,
+              montant: null,
+              date: l.date_validation || l.created_at,
+              pdfUrl: l.lien_id ? lienUrlById.get(l.lien_id) ?? null : null,
             })),
           ],
         });
