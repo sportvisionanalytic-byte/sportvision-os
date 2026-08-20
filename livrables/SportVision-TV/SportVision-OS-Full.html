@@ -2291,7 +2291,7 @@ const VIEWS={
       <div class="kpi" style="--kl:#2ECC8A"><div class="kpi-ey">CA ce mois (HT)</div><div class="kpi-v" id="rent-kpi-ca" style="font-size:18px">—</div><span class="kpi-d dnt">missions du mois</span></div>
       <div class="kpi" style="--kl:#F0445E"><div class="kpi-ey">Coûts directs</div><div class="kpi-v" id="rent-kpi-ch" style="font-size:18px">—</div><span class="kpi-d dnt">rém. + frais + dépenses</span></div>
       <div class="kpi" style="--kl:#E8A33D"><div class="kpi-ey">Coûts indirects alloués</div><div class="kpi-v" id="rent-kpi-ind" style="font-size:18px">—</div><span class="kpi-d dnt">cf. réglage admin</span></div>
-      <div class="kpi" style="--kl:#366BFF"><div class="kpi-ey">Marge nette</div><div class="kpi-v" id="rent-kpi-marge" style="font-size:18px">—</div><span class="kpi-d dnt">CA - tous coûts</span></div>
+      <div class="kpi" style="--kl:#366BFF" title="Revenu HT moins rémunérations, frais et dépenses directement liés à la mission, moins la part de coûts indirects (loyer, logiciels…) allouée selon le réglage admin. N'inclut pas les charges de structure non allouées à une mission (ex. salaires fixes hors allocation, TVA, amortissements) — donc pas un résultat net complet au sens comptable."><div class="kpi-ey">Marge après coûts alloués</div><div class="kpi-v" id="rent-kpi-marge" style="font-size:18px">—</div><span class="kpi-d dnt">CA - coûts directs - indirects alloués</span></div>
       <div class="kpi" style="--kl:#7C4DFF"><div class="kpi-ey">Taux de marge</div><div class="kpi-v" id="rent-kpi-tx">—</div><span class="kpi-d dnt">%</span></div>
     </div>
     <div class="cd">
@@ -21480,7 +21480,7 @@ function tplExpertComptableDash(){
   return `<div class="sh"><div><div class="sh-t">Espace expert-comptable</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Vue de synthèse en lecture seule — statut des clôtures, chiffres clés du dernier mois clôturé et accès rapides</div></div></div>
     <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
       <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('rentabilite')"><div class="kpi-ey">CA dernier mois clôturé</div><div class="kpi-v" id="ecd-kpi-ca" style="font-size:18px">—</div><span class="kpi-d dnt" id="ecd-kpi-ca-lbl">—</span></div>
-      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('rentabilite')"><div class="kpi-ey">Marge nette dernier mois clôturé</div><div class="kpi-v" id="ecd-kpi-marge" style="font-size:18px">—</div><span class="kpi-d dnt">v_rentabilite_missions</span></div>
+      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('rentabilite')" title="Coûts directs + indirects alloués par mission uniquement — n'inclut pas les charges de structure non allouées, pas un résultat net comptable complet."><div class="kpi-ey">Marge après coûts alloués — dernier mois clôturé</div><div class="kpi-v" id="ecd-kpi-marge" style="font-size:18px">—</div><span class="kpi-d dnt">v_rentabilite_missions</span></div>
       <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('tva')"><div class="kpi-ey">TVA nette (dernier provisionnement)</div><div class="kpi-v" id="ecd-kpi-tva" style="font-size:18px">—</div><span class="kpi-d dnt" id="ecd-kpi-tva-lbl">—</span></div>
       <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('fec')"><div class="kpi-ey">Exports FEC générés</div><div class="kpi-v" id="ecd-kpi-fec">—</div><span class="kpi-d dnt">au total</span></div>
     </div>
