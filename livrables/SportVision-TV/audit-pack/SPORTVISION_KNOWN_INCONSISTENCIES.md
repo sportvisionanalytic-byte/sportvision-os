@@ -187,6 +187,24 @@ Complété au fur et à mesure de l'avancement du pack — voir aussi § 60/61 d
 - **Recommandation** : si le mode démo doit un jour couvrir cet écran, peupler `club_requests` spécifiquement (ne pas réutiliser `connect_clubplus_signup_requests` en pensant que c'est la même chose).
 - **Statut** : **NOTÉ**, sans impact sur la production réelle.
 
+### INC-021 — L'enum `statut_prestation` mélange statuts opérationnels et financiers (CONFIRMÉ par audit externe 20/08)
+
+- **Sévérité** : Haute — signalé comme P0 par un audit externe qui a pu, pour la première fois, observer de vraies données via les pages `/demo/<module>` statiques.
+- **Systèmes impactés** : SportVision OS (colonne `prestations.statut`, écran Production, Kanban, Dashboard).
+- **Comportement** : la séquence de valeurs de `statut` (voir `prestation_statuses_sequence` dans `SPORTVISION_OS_AUDIT_DATA.json`) inclut `facturée`, `partiellement_payée`, `payée` ET `clôturée` — des notions financières — directement dans la même colonne/enum que les statuts opérationnels (`demande_reçue`, `équipe_affectée`, `production_terminée`...). Concrètement, une prestation peut afficher `statut: 'payée'` comme si "payée" était une étape de production, alors que c'est un état financier — observable sur `SV-DEMO-0005` dans `/demo/production`.
+- **Pourquoi c'est un problème réel (pas juste esthétique)** : ça empêche de représenter des combinaisons pourtant normales (ex. "Livrée + Impayée", "Planifiée + Payée d'avance", "Clôturée + Facture non payée") puisque le statut opérationnel et le statut financier sont censés être indépendants mais partagent la même colonne pour certaines valeurs terminales.
+- **Recommandation** (non exécutée — décision produit à prendre explicitement, gros blast radius) : séparer clairement `operational_status` (demande_reçue → ... → livrée → clôturée/annulée) et `financial_status` (non_facturée → facturée → partiellement_payée → payée / en_retard / remboursée), avec une vraie state machine de transitions pour l'opérationnel. Touche `prestations.statut`, tous les triggers qui en dépendent (`trg_notify_prestation_stage`, `validate_prestation_statut_transition`), le Kanban, le Dashboard, les migrations de synchronisation — à traiter comme un chantier dédié avec tests E2E, pas une retouche.
+- **Statut** : **CONFIRMÉ**, non corrigé — nécessite une décision explicite (migration de schéma sur données de production réelles).
+
+### INC-022 — "Facture" n'est pas encore une entité métier à part entière (CONFIRMÉ par audit externe 20/08)
+
+- **Sévérité** : Haute — P0 selon l'audit externe.
+- **Systèmes impactés** : SportVision OS (écran Factures vs Finance vs Dashboard), table `factures`, Pennylane.
+- **Comportement** : l'écran "Factures" du rôle admin/compta (`loadComptaFactures`) est backé directement par `prestations.statut_financier` — il affiche donc des références de PRESTATION (`SV-DEMO-0004`) comme si c'étaient des références de facture. Une table `factures` séparée existe bien par ailleurs (avec de vraies références `FAC-2026-00XX`, utilisée par le Dashboard, Finance/Impayés et le lien Pennylane), mais l'écran "Factures" lui-même ne la lit jamais. Résultat observable : le Dashboard et Finance affichent `FAC-2026-0041`, l'écran Factures affiche `SV-DEMO-0004` pour la même prestation — deux références différentes pour la "même" chose, selon l'écran où on regarde.
+- **Pourquoi c'est un problème réel** : une prestation et une facture sont deux choses différentes (une prestation peut avoir un acompte, un solde, un avoir, ou plusieurs factures ; une facture émise doit rester un snapshot immuable même si le catalogue change après coup) — tant que l'écran "Factures" ne matérialise pas vraiment des lignes `factures`, l'OS ne peut pas servir de source de vérité financière fiable.
+- **Recommandation** (non exécutée) : faire évoluer `loadComptaFactures` pour lire réellement la table `factures` (avec ses vraies colonnes : numéro, échéance, statut, lignes, snapshot prix/TVA) plutôt que de dériver l'affichage depuis `prestations.statut_financier`. Chantier dédié, données de production réelles déjà en jeu.
+- **Statut** : **CONFIRMÉ**, non corrigé — décision produit à prendre explicitement.
+
 ### INC-020 — Duplication du dispatch financier admin / compta
 
 - **Sévérité** : Basse (risque de maintenance, pas un bug actif).
