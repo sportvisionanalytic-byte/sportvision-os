@@ -224,6 +224,15 @@ Complété au fur et à mesure de l'avancement du pack — voir aussi § 60/61 d
 - **Vérifié en réel après correctif, cycle complet** : membre soumet une demande à 2 crédits (`credits_reserved` club 0→2) → staff CM (rôle spécifiquement absent de la protection, testé exprès) la termine → crédits déduits correctement (2→0, transaction loggée `club_credit_transactions`) → membre voit le statut "terminee" en retour. Toutes les données de test supprimées après coup.
 - **Statut** : **CORRIGÉ** (20/08/2026).
 
+### INC-025 — Ledger crédits Club+ : donnée réelle déjà en base, aucun écran ne l'affiche (P0 #14, PARTIEL)
+
+- **Sévérité** : Haute — recommandation explicite de l'audit (§31, §53) : "je déconseille fortement un simple champ credits_balance... je veux un historique."
+- **Systèmes impactés** : `clubs.credits_balance`/`credits_reserved`, table `club_credit_transactions`.
+- **Comportement** : contrairement à l'hypothèse initiale de l'audit ("le ledger n'existe pas"), la donnée EST déjà réelle et à jour — `club_credit_transactions` est déjà écrite par `update_club_request_status`/`staff_update_club_request_status` (voir INC-024) à chaque consommation de crédit, avec libellé et montant. Mais **zéro écran de l'OS ne la lit** (vérifié : aucune occurrence de `club_credit_transactions` en lecture dans tout `SportVision-OS-Full.html`) — le staff n'a aujourd'hui aucun moyen de voir l'historique des mouvements de crédits d'un club, seulement le solde final s'il va chercher la ligne `clubs` en base directement.
+- **Fait le 20/08** : exposé honnêtement dans `/demo/clubplus` (solde par club + mouvements), étiqueté clairement comme donnée réelle sans écran dédié — pas présenté comme une fonctionnalité OS existante.
+- **Non fait, à traiter séparément** : construire le vrai écran. Nécessite d'abord de clarifier où les comptes ORGANISATION Club+ sont gérés côté OS — `connect_os_account_detail` (RPC utilisée par la fiche compte de `/demo/clubplus`) s'est révélée, en creusant son code, ne couvrir que les JOUEURS Connect affiliés à un club (`player_profiles` join `clubs`), pas le compte organisation Club+ lui-même. Cette confusion de modèle (deux notions différentes de "compte club") doit être résolue avant de brancher un ledger crédits au bon endroit dans l'UI.
+- **Statut** : **PARTIEL** — donnée honnêtement documentée, écran réel non construit (nécessite une clarification de modèle au préalable).
+
 ### INC-020 — Duplication du dispatch financier admin / compta
 
 - **Sévérité** : Basse (risque de maintenance, pas un bug actif).
