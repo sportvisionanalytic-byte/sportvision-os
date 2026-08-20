@@ -224,6 +224,20 @@ Complété au fur et à mesure de l'avancement du pack — voir aussi § 60/61 d
 - **Vérifié en réel après correctif, cycle complet** : membre soumet une demande à 2 crédits (`credits_reserved` club 0→2) → staff CM (rôle spécifiquement absent de la protection, testé exprès) la termine → crédits déduits correctement (2→0, transaction loggée `club_credit_transactions`) → membre voit le statut "terminee" en retour. Toutes les données de test supprimées après coup.
 - **Statut** : **CORRIGÉ** (20/08/2026).
 
+### INC-027 — E2E cross-app (Vitrine/Connect/Club+ → OS) : 3 pipelines certifiés, 1 faille critique corrigée, 2 gaps restants
+
+- **Sévérité** : la faille crédits était Critique (corrigée). Les 2 gaps restants sont Moyenne (discoverability) et Moyenne-Haute (produit).
+- **Systèmes impactés** : Vitrine, Connect (app-connect), Club+ (app-next), OS.
+- **Contexte** : l'audit du 20/08 demandait explicitement de CERTIFIER (pas juste supposer depuis la lecture du code) que Vitrine→OS, Connect→OS et Club+→OS fonctionnent réellement de bout en bout avant de considérer l'OS comme source de vérité. Un agent dédié a tracé le vrai code de chaque app et testé en direct avec des données jetables (créées puis supprimées, résidu vérifié à zéro).
+- **Résultat** :
+  1. **Vitrine → OS** : CERTIFIÉ. `create-guest-request` (edge function) crée bien une `prestations` avec `source='vitrine'`, visible dans l'Inbox unique (`loadSecDemandes`).
+  2. **Connect → OS** (réservation perso + paiement collectif) : CERTIFIÉ. RPC `create_group_funding` + `contribute_funding_especes` fonctionnent, trigger `trg_fc_recompute` recalcule bien `montant_collecte`.
+  3. **Club+ → OS** (demande de visuel + crédits) : CERTIFIÉ fonctionnel, MAIS a révélé une **faille critique** : `submit_club_request()` n'avait aucun garde-fou serveur contre une réservation de crédits dépassant le solde disponible (seul un contrôle côté client existait, contournable par un appel RPC direct). Reproduit en live (100 crédits réservés contre un solde de 10) puis **corrigé** le 20/08 (`migration-clubplus-v92-credits-guard.sql` : verrou de ligne + rejet serveur, E2E vérifié dans les deux sens).
+  4. **Visibilité de la livraison côté client** : **CASSÉE pour Connect (particuliers)**, **fonctionnelle pour Club+**. `app-next` lit déjà `client_media_livrables` (vue filtrée sur statut livré/consulté) — un club voit ses livrables. `app-connect` ne lit **jamais** `media_livrables` ni `media_liens` nulle part dans son code — quand le staff marque une livraison `statut='livre'` pour un client Connect individuel (joueur/famille), rien ne change dans Connect ; le seul signal que reçoit le client est un e-mail/message manuel envoyé à part par le staff. Écran "Mes contenus" lit `club_media` (RPC différente, une galerie de contenu éditorial, pas les livrables).
+  5. **Note secondaire** : la "demande de visuel" Club+ (table `club_requests`) n'apparaît PAS dans l'Inbox unique (`sec.demandes`, qui agrège prestations + réservations club) — elle vit uniquement sur un écran CM dédié. Fonctionnellement correct mais incohérent avec le principe "un seul endroit pour tout voir" que l'Inbox unique visait à résoudre.
+- **Comportement attendu** : un client Connect individuel devrait voir/télécharger ses livrables directement dans l'app, comme un club le fait déjà.
+- **Statut** : point 3 (faille crédits) **CORRIGÉ**. Points 4 et 5 **NON FAITS** — le point 4 nécessite d'ajouter la lecture de `media_livrables`/`media_liens` côté `app-connect` (edge function `connect-player-prestations` + UI `CommandeDetailView.tsx`), une vraie fonctionnalité à construire dans une app pas encore touchée cette nuit, pas un simple correctif.
+
 ### INC-026 — Personne/Organisation/Membership : un système existe déjà (organizations/memberships), ne pas le réinventer
 
 - **Sévérité** : Info/architecture — pas un bug, un piège pour une future session.
