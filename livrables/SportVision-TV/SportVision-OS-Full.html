@@ -2759,6 +2759,7 @@ const DEMO_FK={
   expenses:{vendors:'vendor_id'},
   financial_audit_log:{profiles:'acteur_id'},
   media_livrables:{prestations:'prestation_id'},
+  contenus:{clients:'client_id'},
 };
 // prestations_equipe_display (vue Postgres qui masque remuneration pour le rôle prod,
 // migration-prestations-equipe-v88, 20/08) n'a pas de jeu de données démo séparé — c'est la
@@ -2805,6 +2806,10 @@ const DEMO_DATA=(function(){
     {id:'demo-pre-5',reference:'SV-DEMO-0005',source:'connect',statut:'clôturée',statut_financier:'payée',type_prestation:'Highlights Vidéo',date_prestation:inDays(-10),heure_debut:'09:00',heure_fin:'11:30',heure_rdv:'08:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights.',livrables_demandes:'Vidéo 2 min',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-16))},
     {id:'demo-pre-6',reference:'SV-DEMO-0006',source:'interne',statut:'annulée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(-1),heure_debut:'16:00',heure_fin:'18:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Annulée par le client (météo).',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-4))},
     {id:'demo-pre-7',reference:'SV-DEMO-0007',source:'vitrine',statut:'clôturée',statut_financier:'en_retard',type_prestation:'Match Photo',date_prestation:inDays(-45),heure_debut:'14:00',heure_fin:'16:00',heure_rdv:'13:30',lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'Thomas Petit',telephone_sur_place:'0601040506',montant_ht:183,montant_ttc:220,tva_pct:20,notes_internes:'Facture en retard, relance envoyée.',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:30,frais_deplacement_ht:15,offre_id:'demo-off-1',client_id:'demo-cl-3',created_at:iso(inDays(-46))},
+    // "Briefs production" côté CM (cm.briefs) réutilise prestations filtrées sur
+    // type_prestation='réseaux_sociaux' — pas une table séparée. Ajouté pour peupler ce module
+    // FullComm réel, jusqu'ici sans données démo.
+    {id:'demo-pre-8',reference:'SV-DEMO-0008',source:'interne',statut:'confirmée',statut_financier:'non_facturée',type_prestation:'réseaux_sociaux',date_prestation:inDays(3),heure_debut:'10:00',heure_fin:'12:00',heure_rdv:'09:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Karim Benali',telephone_sur_place:'0164333333',montant_ht:null,montant_ttc:null,tva_pct:20,notes_internes:'Contrat Full Communication — présence CM programmée.',description_besoin:'Captation entraînement pour contenus réseaux sociaux de la semaine.',livrables_demandes:'3-4 posts + stories',briefing_vu_at:null,options_selectionnees:null,mode_paiement_choisi:null,distance_km:12,frais_deplacement_ht:0,offre_id:null,client_id:'demo-cl-7',created_at:iso(inDays(-1))},
   ];
   // statut = statut d'AFFECTATION (acceptée/invitation_envoyée/refusée...) — distinct de
   // statut_paiement (en_attente/validé/transmis_compta/payé), lui-même distinct du statut
@@ -2831,6 +2836,18 @@ const DEMO_DATA=(function(){
   const media_livrables=[
     {id:'demo-livr-1',prestation_id:'demo-pre-4',nom:'Reportage FC Fontainebleau — photos',type_livrable:'photos',lien_id:null,format:'JPEG haute résolution',duree:null,nb_fichiers:30,date_validation:iso(inDays(-9)),validateur_id:'demo-admin',date_expiration:inDays(60),instructions:null,statut:'livre',created_at:iso(inDays(-9))},
     {id:'demo-livr-2',prestation_id:'demo-pre-2',nom:'Highlights US Varennes — montage',type_livrable:'video',lien_id:null,format:'MP4 1080p',duree:'2 min 30',nb_fichiers:1,date_validation:null,validateur_id:null,date_expiration:null,instructions:'Montage terminé, en attente de validation avant envoi au client.',statut:'a_valider',created_at:iso(inDays(-1))},
+  ];
+  // Ajouté le 20/08 (audit §17, §61-65) : écrans FullComm (cm.contenus/publications/analytics/
+  // rapports) sans jeu de données démo jusqu'ici, alors que Full Communication est justement le
+  // module que l'audit voulait pouvoir vérifier de bout en bout. Scénario FC Exemple (client
+  // Full Communication déjà présent), CM référent Alice Roche : un contenu à chaque étape du
+  // pipeline éditorial (brouillon → corrections → programmé → publié ×2).
+  const contenus=[
+    {id:'demo-cnt-1',client_id:'demo-cl-7',cm_id:'demo-cm',titre:'Annonce recrutement U15',description:'Post recrutement pour la nouvelle saison.',plateforme:'instagram',type_contenu:'post',statut:'brouillon',hook:null,legende:null,cta:null,hashtags:null,sponsor:null,date_prevue:inDays(4),date_publication:null,request_id:null,created_at:iso(inDays(-1))},
+    {id:'demo-cnt-2',client_id:'demo-cl-7',cm_id:'demo-cm',titre:'Récap victoire vs AS Melun',description:'Carrousel photos + résultat du match.',plateforme:'instagram',type_contenu:'carrousel',statut:'corrections',hook:'On y était 🔥',legende:'Belle victoire 3-1 face à AS Melun !',cta:null,hashtags:'#FCFontainebleau #U17',sponsor:null,date_prevue:inDays(-1),date_publication:null,request_id:null,created_at:iso(inDays(-3))},
+    {id:'demo-cnt-3',client_id:'demo-cl-7',cm_id:'demo-cm',titre:'Interview capitaine',description:'Vidéo courte avant le prochain match.',plateforme:'tiktok',type_contenu:'video',statut:'programme',hook:'3 questions au capitaine',legende:null,cta:'Suivez-nous',hashtags:'#FCFontainebleau',sponsor:null,date_prevue:inDays(2),date_publication:null,request_id:null,created_at:iso(inDays(-2))},
+    {id:'demo-cnt-4',client_id:'demo-cl-7',cm_id:'demo-cm',titre:'Photo du jour — entraînement',description:null,plateforme:'facebook',type_contenu:'post',statut:'publie',hook:null,legende:'Dernière ligne droite avant le week-end.',cta:null,hashtags:null,sponsor:null,date_prevue:inDays(-4),date_publication:inDays(-4),request_id:null,created_at:iso(inDays(-6))},
+    {id:'demo-cnt-5',client_id:'demo-cl-7',cm_id:'demo-cm',titre:'Merci à notre sponsor',description:'Post partenariat.',plateforme:'instagram',type_contenu:'post',statut:'publie',hook:null,legende:'Merci à notre partenaire pour son soutien cette saison !',cta:null,hashtags:'#Sponsor',sponsor:'Boulangerie Martin',date_prevue:inDays(-10),date_publication:inDays(-10),request_id:null,created_at:iso(inDays(-12))},
   ];
   const messages=[
     {id:'demo-msg-1',expediteur_id:'demo-admin',destinataire_id:null,contenu:'Bienvenue sur SportVision OS 👋 Ce fil est visible par toute l\'équipe.',lue:true,created_at:iso(inDays(-5))},
@@ -2929,7 +2946,7 @@ const DEMO_DATA=(function(){
     {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Lucas',nom:'Martin',email:'lucas.martin@gmail.com',ville:'Fontainebleau',club_nom:'FC Fontainebleau',created_at:iso(inDays(-8)),sport:'Football',poste:'Milieu',categorie:'U17'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
 })();
 
 function _demoParseSelect(sel){
