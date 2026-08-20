@@ -2723,7 +2723,15 @@ async function checkSession(){
 // soir. Les écrans comptables détaillés (FEC, TVA, rapprochement…) ne sont pas encore couverts :
 // un écran non couvert affichera son état "Aucune donnée" habituel plutôt qu'une erreur, jamais
 // une fausse absence de fonctionnalité.
-const DEMO_MODE=(function(){try{return new URLSearchParams(location.search).get('demo')==='1';}catch(e){return false;}})();
+// Deux façons d'entrer en mode démo : l'ancienne (?demo=1, gardée pour compat des liens déjà
+// partagés) et la nouvelle (chemin /demo ou /demo/<module>, ajoutée le 20/08 pour donner à
+// chaque module une URL directe et crawlable — voir DEMO_ROUTE_MAP plus bas).
+const DEMO_MODE=(function(){
+  try{
+    if(new URLSearchParams(location.search).get('demo')==='1')return true;
+    return location.pathname==='/demo'||location.pathname.startsWith('/demo/');
+  }catch(e){return false;}
+})();
 
 // Relations table→table utilisées par les select= imbriqués réellement observés dans ce fichier
 // (ex. "clients(nom)", "collaborateur:profiles(...)") — clé = table courante, valeur = { table
@@ -2735,6 +2743,7 @@ const DEMO_FK={
   contrats:{clients:'client_id'},
   club_bookings:{clubs:'club_id'},
   group_fundings:{catalogue_offres:'catalogue_offre_id',user_groups:'group_id'},
+  expenses:{vendors:'vendor_id'},
 };
 
 const DEMO_DATA=(function(){
@@ -2772,6 +2781,7 @@ const DEMO_DATA=(function(){
     {id:'demo-pre-4',reference:'SV-DEMO-0004',statut:'production_terminée',statut_financier:'facturée',type_prestation:'Match Photo',date_prestation:inDays(-3),heure_debut:'11:00',heure_fin:'13:00',heure_rdv:'10:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Julien Marchand',telephone_sur_place:'0601020304',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'',description_besoin:'Reportage photo match aller.',livrables_demandes:'30 photos',options_selectionnees:null,mode_paiement_choisi:'carte',distance_km:12,frais_deplacement_ht:0,offre_id:'demo-off-1',client_id:'demo-cl-1',created_at:iso(inDays(-10))},
     {id:'demo-pre-5',reference:'SV-DEMO-0005',statut:'payée',statut_financier:'payée',type_prestation:'Highlights Vidéo',date_prestation:inDays(-10),heure_debut:'09:00',heure_fin:'11:30',heure_rdv:'08:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights.',livrables_demandes:'Vidéo 2 min',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-16))},
     {id:'demo-pre-6',reference:'SV-DEMO-0006',statut:'annulée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(-1),heure_debut:'16:00',heure_fin:'18:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Annulée par le client (météo).',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-4))},
+    {id:'demo-pre-7',reference:'SV-DEMO-0007',statut:'clôturée',statut_financier:'facturée',type_prestation:'Match Photo',date_prestation:inDays(-45),heure_debut:'14:00',heure_fin:'16:00',heure_rdv:'13:30',lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'Thomas Petit',telephone_sur_place:'0601040506',montant_ht:183,montant_ttc:220,tva_pct:20,notes_internes:'Facture en retard, relance envoyée.',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:30,frais_deplacement_ht:15,offre_id:'demo-off-1',client_id:'demo-cl-3',created_at:iso(inDays(-46))},
   ];
   const prestations_equipe=[
     {id:'demo-pe-1',prestation_id:'demo-pre-1',collaborateur_id:'demo-photo1',fonction:'Photo',notes:'Prioriser les buteurs et le coach en fin de match.',remuneration:50,statut:'acceptée',heure_rdv:'13:30',est_responsable:true,created_at:iso(inDays(-5))},
@@ -2794,9 +2804,32 @@ const DEMO_DATA=(function(){
     {id:'demo-notif-1',type:'tache',titre:'Relancer Rugby Club Sénonais',message:'Le devis DEV-2026-0012 arrive à expiration dans 11 jours.',lue:false,destinataire_id:'demo-sec',created_at:iso(inDays(-1))},
     {id:'demo-notif-2',type:'tache',titre:'Vérifier le règlement US Varennes',message:'Facture liée à SV-DEMO-0005, à contrôler avant clôture du mois.',lue:false,destinataire_id:'demo-sec',created_at:iso(inDays(-2))},
   ];
+  const vendors=[
+    {id:'demo-vnd-1',nom:'Total Energie',actif:true},
+    {id:'demo-vnd-2',nom:'Decathlon Pro',actif:true},
+    {id:'demo-vnd-3',nom:'Metricool',actif:true},
+  ];
   const expenses=[
-    {id:'demo-exp-1',montant_ttc:45,date_depense:inDays(-2),categorie:'carburant'},
-    {id:'demo-exp-2',montant_ttc:120,date_depense:inDays(-6),categorie:'materiel'},
+    {id:'demo-exp-1',montant_ht:37.5,montant_ttc:45,date_depense:inDays(-2),categorie:'carburant',libelle:'Plein carburant véhicule mission',recurrence:'ponctuelle',statut:'payee',vendor_id:'demo-vnd-1',prestation_id:'demo-pre-1'},
+    {id:'demo-exp-2',montant_ht:100,montant_ttc:120,date_depense:inDays(-6),categorie:'materiel',libelle:'Réparation objectif 24-70mm',recurrence:'ponctuelle',statut:'payee',vendor_id:'demo-vnd-2',prestation_id:null},
+    {id:'demo-exp-3',montant_ht:49,montant_ttc:58.8,date_depense:inDays(-1),categorie:'abonnement',libelle:'Abonnement Metricool',recurrence:'mensuelle',statut:'payee',vendor_id:'demo-vnd-3',prestation_id:null},
+    {id:'demo-exp-4',montant_ht:15,montant_ttc:18,date_depense:inDays(2),categorie:'deplacement',libelle:'Péage + carburant mission Montereau',recurrence:'ponctuelle',statut:'engagee',vendor_id:'demo-vnd-1',prestation_id:'demo-pre-2'},
+  ];
+  const factures=[
+    {id:'demo-fac-1',numero:'FAC-2026-0041',prestation_id:'demo-pre-4',client_id:'demo-cl-1',date_emission:inDays(-3),date_echeance:inDays(27),statut:'emise',montant_ttc:120},
+    {id:'demo-fac-2',numero:'FAC-2026-0038',prestation_id:'demo-pre-5',client_id:'demo-cl-2',date_emission:inDays(-16),date_echeance:inDays(-6),statut:'payee',montant_ttc:180},
+    {id:'demo-fac-3',numero:'FAC-2026-0030',prestation_id:'demo-pre-7',client_id:'demo-cl-3',date_emission:inDays(-45),date_echeance:inDays(-15),statut:'en_retard',montant_ttc:220},
+  ];
+  const employee_costs=[
+    {id:'demo-ec-1',salaire_brut_mensuel:2200,charges_patronales_pct:42},
+    {id:'demo-ec-2',salaire_brut_mensuel:1900,charges_patronales_pct:42},
+  ];
+  const commissions=[
+    {id:'demo-com-1',montant_commission:35,statut:'validee',date_calcul:today,collaborateur_id:'demo-com'},
+  ];
+  const v_rentabilite_missions=[
+    {id:'demo-pre-4',reference:'SV-DEMO-0004',client_nom:'FC Fontainebleau',date_prestation:inDays(-3),revenu_ht:100,cout_remunerations:55,cout_frais:0,cout_depenses_directes:0,cout_indirect_alloue:12,marge_nette:33,statut_financier:'facturée'},
+    {id:'demo-pre-5',reference:'SV-DEMO-0005',client_nom:'US Varennes',date_prestation:inDays(-10),revenu_ht:150,cout_remunerations:120,cout_frais:18,cout_depenses_directes:10,cout_indirect_alloue:15,marge_nette:-13,statut_financier:'payée'},
   ];
   const devis=[
     {id:'demo-dev-1',numero:'DEV-2026-0012',statut:'en_attente',client_id:'demo-cl-3',total_ttc:540,notes:'Couverture saison complète — 12 matchs.',date_envoi:inDays(-3),date_expiration:inDays(11),prestation_id:null,created_at:iso(inDays(-3))},
@@ -2833,7 +2866,7 @@ const DEMO_DATA=(function(){
     {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Enzo',nom:'Dupuis',email:'enzo.dupuis@gmail.com',ville:'Sens',club_nom:'Rugby Club Sénonais',created_at:iso(inDays(-8)),sport:'Rugby',poste:'Ailier',categorie:'U18'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
 })();
 
 function _demoParseSelect(sel){
@@ -20413,6 +20446,86 @@ async function _ensureMyNiveauCm(){
 // Rôle démo → profil DEMO_DATA.profiles correspondant (id différent du nom de rôle pour photo,
 // qui a deux profils factices — demo-photo1 sert de "moi" par défaut).
 const DEMO_ROLE_PROFILE={admin:'demo-admin',sec:'demo-sec',prod:'demo-prod',photo:'demo-photo1',cm:'demo-cm',compta:'demo-compta',com:'demo-com',expert_comptable:'demo-expert_comptable',auditeur:'demo-auditeur'};
+// Routes /demo/<slug> → {role,view} réels du NAV (voir grep de NAV plus haut dans ce fichier).
+// Un slug n'est ajouté ici QUE s'il correspond à un écran qui existe réellement dans l'OS —
+// voir DEMO_ROUTE_UNAVAILABLE juste après pour les modules demandés par l'audit qui n'ont pas
+// d'équivalent réel (on ne les invente pas, on le documente).
+const DEMO_ROUTE_MAP={
+  'dashboard':{role:'admin',view:'dash',label:'Tableau de bord'},
+  'demandes':{role:'sec',view:'demandes',label:'Demandes entrantes'},
+  'prestations':{role:'admin',view:'pre',label:'Prestations'},
+  'production':{role:'prod',view:'pre',label:'Production (vue Resp. Production)'},
+  'missions':{role:'prod',view:'equipes',label:'Affectations / missions'},
+  'planning':{role:'admin',view:'planning',label:'Planning'},
+  'clients':{role:'admin',view:'crm',label:'Clients'},
+  'structures':{role:'admin',view:'crm',label:'Structures (= Clients, même écran)'},
+  'equipe':{role:'admin',view:'col',label:'Collaborateurs'},
+  'operateurs':{role:'admin',view:'col',label:'Opérateurs (= Collaborateurs, même écran)'},
+  'remunerations':{role:'admin',view:'rem',label:'Rémunérations'},
+  'materiel':{role:'admin',view:'kits',label:'Kits & matériel'},
+  'contenus':{role:'cm',view:'contenus',label:'Contenus (CM)'},
+  'livrables':{role:'prod',view:'livr',label:'Livrables'},
+  'finance':{role:'admin',view:'fin',label:'Finances (vue globale)'},
+  'factures':{role:'admin',view:'factures',label:'Factures'},
+  'devis':{role:'admin',view:'devis',label:'Devis'},
+  'paiements':{role:'admin',view:'paiements',label:'Paiements équipe'},
+  'charges':{role:'admin',view:'depenses',label:'Dépenses'},
+  'previsionnel':{role:'admin',view:'budgets',label:'Budgets & prévisions'},
+  'rapprochement':{role:'admin',view:'rapprochement',label:'Rapprochement (voir statut réel dans le pack audit)'},
+  'contrats':{role:'admin',view:'contrats',label:'Contrats'},
+  'abonnements':{role:'sec',view:'abonnements',label:'Abonnements'},
+  'clubplus':{role:'admin',view:'connectcomptes',label:'Comptes Club+ / Connect'},
+  'clubplus/demandes':{role:'admin',view:'demandesclub',label:'Demandes Club+'},
+  'connect':{role:'admin',view:'connectcomptes',label:'Comptes Club+ / Connect'},
+  'connect/prestations':{role:'admin',view:'pre',label:'Prestations (dont demandes Connect)'},
+  'connect/paiements-collectifs':{role:'admin',view:'cotisations',label:'Paiement collectif (cotisations)'},
+  'full-communication':{role:'cm',view:'dash',label:"Vue d'ensemble CM (pas d'écran Full Communication séparé — voir pack audit)"},
+  'full-communication/production':{role:'cm',view:'briefs',label:'Briefs production (CM)'},
+  'full-communication/validations':{role:'cm',view:'contenus',label:'Contenus (validation intégrée à cet écran)'},
+  'full-communication/publications':{role:'cm',view:'publications',label:'Publications'},
+  'full-communication/rapports':{role:'cm',view:'rapports',label:'Rapports clients'},
+  'messages':{role:'admin',view:'msg',label:'Messagerie'},
+  'roles':{role:'admin',view:'users',label:'Utilisateurs & accès'},
+  'permissions':{role:'admin',view:'users',label:'Utilisateurs & accès (permissions = code, voir matrice du pack audit)'},
+  'integrations':{role:'admin',view:'integrations',label:'Intégrations'},
+  'logs':{role:'admin',view:'audit',label:"Journal d'audit"},
+  'parametres':{role:'admin',view:'set',label:'Paramètres'},
+  // Écrans supplémentaires réels, non listés dans la demande d'origine mais utiles à l'audit.
+  'kanban':{role:'admin',view:'kanban',label:'Kanban production'},
+  'incidents':{role:'admin',view:'incidents',label:'Incidents'},
+  'reservations-clubs':{role:'admin',view:'reservationsclubs',label:'Réservations clubs'},
+  'documents':{role:'admin',view:'documents',label:'Centre documentaire'},
+  'grades':{role:'admin',view:'grades',label:'Grades & XP'},
+  'formation':{role:'admin',view:'form',label:'Centre de formation'},
+  'annuaire':{role:'admin',view:'annuaire',label:'Annuaire équipe'},
+  'agences-cm':{role:'admin',view:'cmagency',label:'Agences CM'},
+  'objectifs':{role:'com',view:'objectifs',label:'Objectifs (commercial)'},
+  'pipeline':{role:'com',view:'pipeline',label:'Pipeline commercial'},
+  'commissions':{role:'com',view:'commissions',label:'Mes commissions (commercial)'},
+  'mes-revenus':{role:'photo',view:'revenus',label:'Mes revenus (opérateur)'},
+  'resultat':{role:'admin',view:'resultat',label:'Compte de résultat'},
+  'rentabilite':{role:'admin',view:'rentabilite',label:'Rentabilité'},
+  'immobilisations':{role:'admin',view:'immobilisations',label:'Immobilisations'},
+  'tva':{role:'admin',view:'tva',label:'TVA & provisions'},
+  'acomptes':{role:'admin',view:'acomptes',label:'Acomptes'},
+  'impayes':{role:'admin',view:'impayes',label:'Impayés'},
+  'avoirs':{role:'admin',view:'avoirs',label:'Avoirs & remises'},
+  'encaissements':{role:'admin',view:'encaissements',label:'Encaissements Stripe'},
+  'clotures':{role:'admin',view:'clotures',label:'Clôtures mensuelles'},
+  'fec':{role:'admin',view:'fec',label:'Export FEC'},
+  'analytics':{role:'cm',view:'analytics',label:'Analytics (CM)'},
+};
+// Slugs demandés explicitement dans le master prompt d'audit qui N'ONT PAS d'écran réel
+// correspondant dans l'OS — on ne les fabrique pas (consigne explicite), on le dit.
+const DEMO_ROUTE_UNAVAILABLE={
+  'recrutement':"Aucun module de recrutement dans l'OS — le staffing se fait via Affectations (/demo/missions), pas de vivier candidats.",
+  'clubplus/ouvertures':"Pas d'écran dédié — l'ouverture d'un compte Club+ est une action (générer un lien d'activation) dans /demo/clubplus, pas une page séparée.",
+  'clubplus/credits':"Pas de ledger séparé dans le NAV — le solde de crédits Club+ apparaît dans la fiche compte de /demo/clubplus.",
+  'clubplus/affiliations':"Aucun écran OS ne liste les affiliations club↔joueur en direct (elles vivent côté Connect/Club+ via memberships).",
+  'full-communication/presences':"Aucun suivi de présence CM identifié dans l'OS (compteurs seulement, pas de vrai tracking de présence).",
+  'notifications':"Les notifications sont une cloche transverse sur chaque écran, pas une page dédiée dans le NAV.",
+  'previsionnel-detaille':"Le prévisionnel réel se limite à /demo/previsionnel (Budgets & prévisions) — pas de moteur de scénarios séparé.",
+};
 function demoSwitchRole(role){
   const pid=DEMO_ROLE_PROFILE[role];
   const prof=DEMO_DATA.profiles.find(p=>p.id===pid);
@@ -20422,7 +20535,52 @@ function demoSwitchRole(role){
   const sel=document.getElementById('_demo-role-sel');
   if(sel)sel.value=role;
 }
+function demoAppendBar(){
+  const _demoBar=document.createElement('div');
+  _demoBar.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#F5A524;color:#1a1200;font:700 11px/1 -apple-system,sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;padding:7px;letter-spacing:.02em;flex-wrap:wrap';
+  _demoBar.innerHTML='<span>MODE DÉMO — données factices, aucune écriture réelle</span>'
+    +'<span style="opacity:.6">·</span>'
+    +'<a href="/demo" style="color:#1a1200;text-decoration:underline">Accueil démo</a>'
+    +'<span style="opacity:.6">·</span>'
+    +'<label style="display:flex;align-items:center;gap:6px">Voir en tant que : '
+    +'<select id="_demo-role-sel" onchange="demoSwitchRole(this.value)" style="font:700 11px/1 -apple-system,sans-serif;padding:3px 6px;border-radius:4px;border:1px solid rgba(0,0,0,.25);background:#fff;color:#1a1200">'
+    +Object.keys(ROLES).map(r=>`<option value="${r}">${ROLES[r].r}</option>`).join('')
+    +'</select></label>';
+  document.body.appendChild(_demoBar);
+}
+// Page d'accueil /demo : ce n'est pas un écran de l'OS, donc on ne passe pas par goApp/VIEWS —
+// on rend une page de navigation autonome listant les modules réellement crawlables.
+function demoRenderHome(){
+  document.title='SportVision OS — Mode démonstration';
+  const cards=Object.entries(DEMO_ROUTE_MAP).map(([slug,r])=>
+    `<a href="/demo/${slug}" style="display:block;padding:16px 18px;border:1px solid #e5e0d8;border-radius:10px;text-decoration:none;color:#1a1200;background:#fff">`
+    +`<div style="font-weight:700;font-size:13.5px">${r.label}</div>`
+    +`<div style="font-size:11.5px;color:#8a8073;margin-top:4px;font-family:monospace">/demo/${slug}</div>`
+    +`</a>`).join('');
+  document.body.innerHTML=`<div style="max-width:1000px;margin:0 auto;padding:40px 20px 90px;font-family:-apple-system,sans-serif">
+    <div style="font-size:22px;font-weight:800;letter-spacing:-.01em">SPORTVISION OS</div>
+    <div style="font-size:13px;font-weight:700;color:#F5A524;letter-spacing:.06em;text-transform:uppercase;margin-top:2px">Mode démonstration</div>
+    <div style="font-size:13px;color:#8a8073;margin-top:10px;max-width:620px">Données fictives, aucune action réelle. Chaque module ci-dessous a une URL directe, ouvrable telle quelle sans passer par cette page.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:28px">${cards}</div>
+  </div>`;
+  demoAppendBar();
+}
+function demoRenderUnavailable(slug,reason){
+  document.title='SportVision OS — module non disponible';
+  document.body.innerHTML=`<div style="max-width:640px;margin:60px auto;padding:0 20px;font-family:-apple-system,sans-serif">
+    <div style="font-size:13px;font-weight:700;color:#c0392b;letter-spacing:.04em;text-transform:uppercase">Module non disponible sous cette route</div>
+    <div style="font-size:20px;font-weight:800;margin-top:8px">/demo/${slug}</div>
+    <div style="font-size:14px;color:#4a4438;margin-top:14px;line-height:1.5">${reason||"Ce slug ne correspond à aucun écran réel de SportVision OS — voir /demo pour la liste des modules réellement crawlables."}</div>
+    <a href="/demo" style="display:inline-block;margin-top:20px;font-size:13px;font-weight:700;color:#1a1200;text-decoration:underline">← Retour à l'accueil démo</a>
+  </div>`;
+  demoAppendBar();
+}
 if(DEMO_MODE){
+  try{
+    const _rMeta=document.createElement('meta');
+    _rMeta.name='robots';_rMeta.content='noindex,nofollow';
+    document.head.appendChild(_rMeta);
+  }catch(e){}
   // setTimeout(...,0) — pas un simple style, une vraie nécessité : appeler goApp() (via
   // demoSwitchRole) de façon synchrone ici plantait avec "Cannot access 'BNAV_ITEMS' before
   // initialization" (TDZ). BNAV_ITEMS (et d'autres const) sont déclarées PLUS BAS dans ce même
@@ -20433,10 +20591,23 @@ if(DEMO_MODE){
   // page dans un DOM headless (jsdom) — jamais détecté par les tests précédents, qui
   // n'exerçaient que la couche données (demoQuery/demoWrite/demoRpc), jamais goApp() lui-même.
   setTimeout(()=>{
-    // Liens profonds démo (20/08, audit pack) : ?demo=1&role=<rôle>&view=<id-écran> ouvre
-    // directement le bon rôle + écran plutôt que d'atterrir systématiquement sur le tableau de
-    // bord admin — utile pour donner une URL précise par module à un auditeur/crawler, malgré
-    // le fait que ceci reste une SPA à état interne (S.role/S.view), pas de vrai routeur.
+    // Deux mécanismes de lien profond démo coexistent :
+    // 1) ancien : ?demo=1&role=<rôle>&view=<id-écran> (liens déjà partagés, gardé pour compat) ;
+    // 2) nouveau (20/08, suite audit externe) : chemin /demo/<slug> → DEMO_ROUTE_MAP, une URL
+    //    directe et stable par module, crawlable sans passer par le tableau de bord d'abord.
+    const _isPathDemo=location.pathname==='/demo'||location.pathname.startsWith('/demo/');
+    if(_isPathDemo){
+      const slug=location.pathname.replace(/^\/demo\/?/,'').replace(/\/$/,'');
+      if(slug===''){demoRenderHome();return;}
+      const route=DEMO_ROUTE_MAP[slug];
+      if(!route){demoRenderUnavailable(slug,DEMO_ROUTE_UNAVAILABLE[slug]);return;}
+      demoSwitchRole(route.role);
+      const item=(NAV[route.role]||[]).find(i=>i.id===route.view);
+      if(item&&item.modal&&typeof window[item.modal]==='function')window[item.modal]();
+      else if(item&&!item.modal)switchView(route.view);
+      demoAppendBar();
+      return;
+    }
     const _dp=new URLSearchParams(location.search);
     const _dpRole=_dp.get('role');
     const role=(_dpRole&&NAV[_dpRole])?_dpRole:'admin';
@@ -20447,15 +20618,7 @@ if(DEMO_MODE){
       if(item&&item.modal&&typeof window[item.modal]==='function')window[item.modal]();
       else if(item&&!item.modal)switchView(_dpView);
     }
-    const _demoBar=document.createElement('div');
-    _demoBar.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#F5A524;color:#1a1200;font:700 11px/1 -apple-system,sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;padding:7px;letter-spacing:.02em';
-    _demoBar.innerHTML='<span>MODE DÉMO — données factices, aucune écriture réelle</span>'
-      +'<span style="opacity:.6">·</span>'
-      +'<label style="display:flex;align-items:center;gap:6px">Voir en tant que : '
-      +'<select id="_demo-role-sel" onchange="demoSwitchRole(this.value)" style="font:700 11px/1 -apple-system,sans-serif;padding:3px 6px;border-radius:4px;border:1px solid rgba(0,0,0,.25);background:#fff;color:#1a1200">'
-      +Object.keys(ROLES).map(r=>`<option value="${r}">${ROLES[r].r}</option>`).join('')
-      +'</select></label>';
-    document.body.appendChild(_demoBar);
+    demoAppendBar();
   },0);
 }else{
   consumeRecoveryHashOS().then(handled=>{if(!handled)checkSession();});

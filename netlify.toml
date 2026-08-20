@@ -2,6 +2,16 @@
   publish = "livrables/SportVision-TV"
 
 [[redirects]]
+  from = "/demo"
+  to = "/SportVision-OS-Full.html"
+  status = 200
+
+[[redirects]]
+  from = "/demo/*"
+  to = "/SportVision-OS-Full.html"
+  status = 200
+
+[[redirects]]
   from = "/"
   to = "/SportVision-OS-Full.html"
   status = 200
