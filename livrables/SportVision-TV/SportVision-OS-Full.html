@@ -3909,6 +3909,14 @@ let _preStatutsFiltre=null;
 // part — impossible pour le staff de voir d'où vient une demande sans ouvrir chaque fiche.
 let _preSourceFiltre='';
 const SOURCE_PRE_LBL={interne:'Interne',vitrine:'Vitrine',connect:'Connect',clubplus:'Club+'};
+// Ajouté suite à l'audit du 20/08 (§24) : la route /demo/production (nav "Production (vue Resp.
+// Production)") pointe vers le même écran réel que /prestations (aucun écran Production séparé
+// dans le produit) — un Responsable Production y voyait donc aussi les demandes pas encore
+// qualifiées (demande_reçue → documents_complets), avant même une décision commerciale. Filtre
+// appliqué uniquement à cette route démo, pas au comportement par défaut de l'écran réel pour le
+// staff (qui garde volontairement la visibilité complète du pipeline sauf action explicite).
+const PRE_STATUTS_NON_QUALIFIES=['demande_reçue','à_qualifier','offre_en_préparation','devis_envoyé','en_attente_réponse','devis_accepté','en_attente_signature','en_attente_acompte','documents_complets'];
+let _preHideNonQualifiees=false;
 async function loadPrestations(){
   const el=document.getElementById('pre-real');
   if(!el)return;
@@ -3949,10 +3957,12 @@ function renderPreTable(){
   if(_preDateFiltre==='today')list=list.filter(p=>p.date_prestation===today);
   else if(_preDateFiltre==='week')list=list.filter(p=>p.date_prestation&&p.date_prestation>=today&&p.date_prestation<=in7s);
   if(_preSourceFiltre)list=list.filter(p=>p.source===_preSourceFiltre);
+  if(_preHideNonQualifiees)list=list.filter(p=>!PRE_STATUTS_NON_QUALIFIES.includes(p.statut));
   const SF_CLS={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl','non_facturée':'bn'};
   const SF_LBL={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard','non_facturée':'—','en_préparation':'En prép.'};
   const dfBtn=(v,lb)=>`<button onclick="_preDateFiltre='${v}';renderPreTable()" style="padding:4px 10px;font-size:11px;border-radius:var(--rp);background:${_preDateFiltre===v?'var(--acc)':'rgba(255,255,255,.06)'};border:1px solid ${_preDateFiltre===v?'var(--acc)':'rgba(255,255,255,.1)'};color:${_preDateFiltre===v?'#fff':'var(--t2)'};cursor:pointer;white-space:nowrap">${lb}</button>`;
   el.innerHTML=`
+    ${_preHideNonQualifiees?`<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:var(--rp);color:var(--acc);margin-bottom:10px">Vue Production : demandes pas encore qualifiées masquées. <span role="button" tabindex="0" onclick="_preHideNonQualifiees=false;renderPreTable()" onkeydown="if(event.key==='Enter'){_preHideNonQualifiees=false;renderPreTable()}" style="cursor:pointer;font-weight:700;text-decoration:underline">Tout afficher</span></div>`:''}
     <div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px;flex-wrap:wrap">
       <input id="pre-search" type="text" class="l-inp" placeholder="Rechercher ref, client, statut…" value="${_preStatutsFiltre?'':_preFiltre}" oninput="_preStatutsFiltre=null;_preFiltre=this.value;renderPreTable()" style="height:34px;flex:1;max-width:280px">
       <select class="l-inp" style="height:34px;max-width:160px" onchange="_preStatutsFiltre=null;_preFiltre=this.value;document.getElementById('pre-search').value=this.value;renderPreTable()">
@@ -20877,6 +20887,7 @@ if(DEMO_MODE){
       // source=connect (ajouté suite à l'audit du 20/08) plutôt que de laisser croire que la
       // route filtre alors qu'elle affichait tout auparavant.
       if(slug==='connect/prestations')_preSourceFiltre='connect';
+      if(slug==='production')_preHideNonQualifiees=true;
       demoSwitchRole(route.role);
       const item=(NAV[route.role]||[]).find(i=>i.id===route.view);
       if(item&&item.modal&&typeof window[item.modal]==='function')window[item.modal]();
