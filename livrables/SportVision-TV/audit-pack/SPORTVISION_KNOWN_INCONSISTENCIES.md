@@ -214,6 +214,16 @@ Complété au fur et à mesure de l'avancement du pack — voir aussi § 60/61 d
 - **Dette résiduelle** : ce contrôle n'est pas automatisé (comparaison manuelle git vs API Management) — un futur commit sur une edge function peut recréer la même dérive si le redéploiement manuel est oublié. À envisager : un check CI ou un script de vérification à relancer périodiquement.
 - **Statut** : **CORRIGÉ** (20/08/2026).
 
+### INC-024 — Le workflow crédits de club_requests était cassé pour le cas normal (CONFIRMÉ et CORRIGÉ, 20/08)
+
+- **Sévérité** : Critique — bloquait le cœur du modèle économique Club+/Full Communication (demande de visuel à crédits).
+- **Systèmes impactés** : `submit_club_request`, `update_club_request_status`, `staff_update_club_request_status`, trigger `trg_protect_sensitive_club_fields` sur `clubs`.
+- **Découvert en testant en réel le test croisé Club+/Full Communication ↔ OS explicitement demandé par l'audit** (§67 : demande de visuel → crédits réservés → OS reçoit → production → OS livre) — pas trouvé par lecture de code, seulement par exécution réelle avec un compte membre jetable.
+- **Comportement** : `trg_protect_sensitive_club_fields` bloque toute écriture sur `clubs.credits_reserved`/`credits_balance` sauf pour `service_role` ou un membre `profiles.role IN (admin,com,sec,compta)`. Les 3 RPC qui gèrent légitimement ces crédits sont `SECURITY DEFINER` — ça change les droits objets, pas `auth.uid()`/`auth.role()` (lus depuis les claims JWT), donc la protection continue de voir l'appelant réel : un simple membre club (jamais staff) ne peut jamais soumettre une demande avec des crédits > 0 (`submit_club_request` avec `p_credits=0` fonctionne, `p_credits=2` échouait systématiquement) ; le rôle `cm` — responsable réel de ces demandes selon la policy `creq_staff_select` — est absent de la liste staff de la protection, donc `update_club_request_status`/`staff_update_club_request_status` échouaient aussi quand un CM termine ou refuse une demande à crédits.
+- **Correctif appliqué le 20/08** (`migration-clubplus-v40-fix-credits-trigger-block.sql`) : bypass ciblé via un GUC de transaction (`app.trusted_credit_op`), positionné par ces 3 RPC juste avant leur propre écriture contrôlée — pas un contournement général de la protection.
+- **Vérifié en réel après correctif, cycle complet** : membre soumet une demande à 2 crédits (`credits_reserved` club 0→2) → staff CM (rôle spécifiquement absent de la protection, testé exprès) la termine → crédits déduits correctement (2→0, transaction loggée `club_credit_transactions`) → membre voit le statut "terminee" en retour. Toutes les données de test supprimées après coup.
+- **Statut** : **CORRIGÉ** (20/08/2026).
+
 ### INC-020 — Duplication du dispatch financier admin / compta
 
 - **Sévérité** : Basse (risque de maintenance, pas un bug actif).
