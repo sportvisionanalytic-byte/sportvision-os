@@ -2,11 +2,15 @@
 
 **Base** : `https://sportvision-os.netlify.app/`
 
-## Mise à jour du 20/08 — routes `/demo/<module>` directes et crawlables
+## Mise à jour du 20/08 (v2) — pages statiques réelles, aucun JS requis
 
-Suite à l'audit externe (ChatGPT) reçu sur la V1 (`?demo=1&role=&view=`) : le retour explicite était que ce format n'est pas assez granulaire/crawlable — une seule page shell derrière une query string, pas d'URL stable par module comme sur Connect/Club+.
+Deux passes ont été nécessaires le 20/08 :
 
-**Ce qui a changé** : chaque module réel a maintenant sa propre URL, ouvrable directement dans un nouvel onglet, sans dépendre du tableau de bord ni d'un état JS préalable. Le SPA reste un SPA à état interne (`S.role`/`S.view`, pas de vrai routeur) — la nouveauté est une couche qui lit `location.pathname` au chargement et bascule directement sur le bon rôle+écran, avec redirect Netlify (`status=200`, rewrite) pour que le refresh d'une URL `/demo/...` ne renvoie jamais un 404. Toutes les routes `/demo*` portent une balise `<meta name="robots" content="noindex,nofollow">` (pas d'indexation Google).
+**V1** : ajout d'une couche qui lit `location.pathname` côté client et bascule la SPA sur le bon rôle+écran (`/demo/<module>` → rewrite Netlify vers le fichier SPA). Ça fonctionnait pour un navigateur ou un test qui exécute le JS — mais un audit externe suivant a signalé qu'un simple `GET` (crawler sans moteur JS) ne voyait toujours que le shell login/dashboard, puisque tout le rendu dépendait de JS exécuté après coup. Diagnostic confirmé : SportVision OS est une SPA vanilla JS sans SSR (contrairement à Connect/Club+, en Next.js).
+
+**V2 (actuelle)** : chaque route `/demo/<module>` est désormais un **fichier HTML statique séparé et pré-généré**, contenant les vraies données démo directement dans le HTML brut — un `curl` ou un crawler sans JS voit le contenu réel immédiatement, sans redirection (fichiers "plats" `demo/<slug>.html`, pas de résolution dossier+index qui aurait ajouté un 301). Chaque page statique garde un lien "Ouvrir l'interface interactive complète" vers la SPA (`?demo=1&role=X&view=Y`) pour qui veut explorer en vrai. Toutes les routes `/demo*` portent `<meta name="robots" content="noindex,nofollow">`.
+
+Généré par un script (`gen-demo-static.js`, hors repo) qui lit `DEMO_DATA`/`DEMO_ROUTE_MAP`/`DEMO_ROUTE_UNAVAILABLE` directement depuis `SportVision-OS-Full.html` via jsdom — source unique de vérité, jamais dupliquée à la main. À relancer manuellement si `DEMO_DATA` ou `DEMO_ROUTE_MAP` changent (pas encore automatisé dans le pipeline de build).
 
 **Page d'accueil** : [`https://sportvision-os.netlify.app/demo`](https://sportvision-os.netlify.app/demo) — liste cliquable de tous les modules ci-dessous.
 
