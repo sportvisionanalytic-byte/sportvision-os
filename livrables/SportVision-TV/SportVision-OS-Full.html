@@ -20526,6 +20526,12 @@ const DEMO_ROUTE_UNAVAILABLE={
   'notifications':"Les notifications sont une cloche transverse sur chaque écran, pas une page dédiée dans le NAV.",
   'previsionnel-detaille':"Le prévisionnel réel se limite à /demo/previsionnel (Budgets & prévisions) — pas de moteur de scénarios séparé.",
 };
+// Exposition globale volontaire (const de bloc n'est pas attaché à window par défaut) : sert au
+// script de génération des pages statiques /demo/<slug> (livrables/SportVision-TV/demo/), qui lit
+// ces trois objets via jsdom pour rester la source unique de vérité, jamais dupliquée à la main.
+// Sans conséquence en dehors de ce cas : ce sont déjà des données factices lisibles en clair dans
+// ce même fichier, DEMO_MODE ou non.
+window.DEMO_DATA=DEMO_DATA;window.DEMO_ROUTE_MAP=DEMO_ROUTE_MAP;window.DEMO_ROUTE_UNAVAILABLE=DEMO_ROUTE_UNAVAILABLE;
 function demoSwitchRole(role){
   const pid=DEMO_ROLE_PROFILE[role];
   const prof=DEMO_DATA.profiles.find(p=>p.id===pid);

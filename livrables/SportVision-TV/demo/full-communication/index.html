@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>SportVision OS — Vue d&#39;ensemble CM (pas d&#39;écran Full Communication séparé — voir pack audit) (démo)</title>
+<style>
+body{font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1200;background:#faf8f4;margin:0}
+.bar{background:#F5A524;color:#1a1200;font-weight:700;font-size:11px;padding:7px;text-align:center;letter-spacing:.02em}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px}
+.crumb{font-size:12px;color:#8a8073}
+.crumb a{color:#8a8073}
+h1{font-size:22px;margin:6px 0 2px;letter-spacing:-.01em}
+.sub{font-size:12.5px;color:#8a8073;margin-bottom:22px}
+.blk{margin-top:22px}
+h2{font-size:14px;margin:0 0 10px;font-weight:700}
+.tw{overflow-x:auto;border:1px solid #e5e0d8;border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #eee6da;white-space:nowrap}
+th{background:#f2ede3;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#6b6152}
+tr:last-child td{border-bottom:none}
+.empty{font-size:12.5px;color:#8a8073;padding:14px;background:#f2ede3;border-radius:8px}
+.cta{display:inline-block;margin-top:26px;font-size:12.5px;font-weight:700;color:#1a1200;text-decoration:underline}
+</style></head>
+<body>
+<div class="bar">MODE DÉMO — données factices, aucune écriture réelle · rendu statique, aucun JS requis pour voir ce contenu</div>
+<div class="wrap">
+<div class="crumb"><a href="/demo">← Accueil démo</a></div>
+<h1>Vue d&#39;ensemble CM (pas d&#39;écran Full Communication séparé — voir pack audit)</h1>
+<div class="sub">SportVision OS · /demo/full-communication · rôle : cm</div>
+<div class="blk"><h2>Full Communication — mécanisme réel</h2><p class="empty">Pas d&#39;écran séparé : un client passe en Full Communication dynamiquement si un contrat actif type_contrat=&#39;full_communication&#39; existe (via client_contrats), résolu à chaque session — voir §Full Communication du pack. Pas de jeu de données démo dédié.</p></div><div class="blk"><h2>Contrats actifs (dont potentiellement Full Communication)</h2><div class="tw"><table><thead><tr><th>Client</th><th>Type</th><th>Statut</th></tr></thead><tbody><tr><td>FC Fontainebleau</td><td>club_plus</td><td>actif</td></tr><tr><td>US Varennes</td><td>prestation_ponctuelle</td><td>actif</td></tr></tbody></table></div></div>
+<a class="cta" href="https://sportvision-os.netlify.app/?demo=1&role=cm&view=dash">Ouvrir l'interface interactive complète →</a>
+</div>
+</body></html>
