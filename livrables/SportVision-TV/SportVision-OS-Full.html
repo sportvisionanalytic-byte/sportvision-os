@@ -2758,6 +2758,7 @@ const DEMO_FK={
   group_fundings:{catalogue_offres:'catalogue_offre_id',user_groups:'group_id'},
   expenses:{vendors:'vendor_id'},
   financial_audit_log:{profiles:'acteur_id'},
+  media_livrables:{prestations:'prestation_id'},
 };
 // prestations_equipe_display (vue Postgres qui masque remuneration pour le rôle prod,
 // migration-prestations-equipe-v88, 20/08) n'a pas de jeu de données démo séparé — c'est la
@@ -2822,6 +2823,14 @@ const DEMO_DATA=(function(){
   ];
   const incidents=[
     {id:'demo-inc-1',type_incident:'materiel',niveau:'mineur',cloture:false,description:"Rayure légère sur l'objectif 24-70mm du Kit A.",date_incident:iso(inDays(-4)),prestation_id:'demo-pre-4',declare_par:'demo-photo1'},
+  ];
+  // Ajouté le 20/08 (audit §16) : écran réel "Livrables & livraisons" (prod.livr,
+  // loadProdLivrables) sans jeu de données démo jusqu'ici. Deux scénarios demandés
+  // explicitement par l'audit : rushes reçus → contrôle → livré (mission A, déjà terminée) ;
+  // montage en production → validation → à livrer (mission B, en cours).
+  const media_livrables=[
+    {id:'demo-livr-1',prestation_id:'demo-pre-4',nom:'Reportage FC Fontainebleau — photos',type_livrable:'photos',lien_id:null,format:'JPEG haute résolution',duree:null,nb_fichiers:30,date_validation:iso(inDays(-9)),validateur_id:'demo-admin',date_expiration:inDays(60),instructions:null,statut:'livre',created_at:iso(inDays(-9))},
+    {id:'demo-livr-2',prestation_id:'demo-pre-2',nom:'Highlights US Varennes — montage',type_livrable:'video',lien_id:null,format:'MP4 1080p',duree:'2 min 30',nb_fichiers:1,date_validation:null,validateur_id:null,date_expiration:null,instructions:'Montage terminé, en attente de validation avant envoi au client.',statut:'a_valider',created_at:iso(inDays(-1))},
   ];
   const messages=[
     {id:'demo-msg-1',expediteur_id:'demo-admin',destinataire_id:null,contenu:'Bienvenue sur SportVision OS 👋 Ce fil est visible par toute l\'équipe.',lue:true,created_at:iso(inDays(-5))},
@@ -2920,7 +2929,7 @@ const DEMO_DATA=(function(){
     {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Lucas',nom:'Martin',email:'lucas.martin@gmail.com',ville:'Fontainebleau',club_nom:'FC Fontainebleau',created_at:iso(inDays(-8)),sport:'Football',poste:'Milieu',categorie:'U17'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
 })();
 
 function _demoParseSelect(sel){
