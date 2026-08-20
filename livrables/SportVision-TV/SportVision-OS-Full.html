@@ -2755,6 +2755,7 @@ const DEMO_FK={
   devis:{clients:'client_id',prestations:'prestation_id'},
   contrats:{clients:'client_id'},
   club_bookings:{clubs:'club_id'},
+  club_credit_transactions:{clubs:'club_id'},
   group_fundings:{catalogue_offres:'catalogue_offre_id',user_groups:'group_id'},
   expenses:{vendors:'vendor_id'},
   financial_audit_log:{profiles:'acteur_id'},
@@ -2909,8 +2910,19 @@ const DEMO_DATA=(function(){
     {id:'demo-ctr-3',client_id:'demo-cl-7',statut:'actif',type_contrat:'full_communication',montant_mensuel:900,frequence:'mensuelle',renouvellement_auto:true,date_debut:inDays(-120),date_fin:inDays(245),created_at:iso(inDays(-120))},
   ];
   const clubs=[
-    {id:'demo-cl-1',nom:'FC Fontainebleau'},
-    {id:'demo-cl-2',nom:'US Varennes'},
+    {id:'demo-cl-1',nom:'FC Fontainebleau',credits_balance:8,credits_reserved:2,credits_monthly:40,plan:'performance'},
+    {id:'demo-cl-2',nom:'US Varennes',credits_balance:3,credits_reserved:0,credits_monthly:10,plan:'club_plus'},
+  ];
+  // Ajouté le 20/08 (audit §31, §53) : aucun écran OS ne lit club_credit_transactions
+  // aujourd'hui (vérifié : zéro occurrence dans SportVision-OS-Full.html hors migrations) — le
+  // ledger existe côté base (RPC staff_update_club_request_status/update_club_request_status
+  // y écrivent déjà, migration-clubplus-v40) mais rien ne l'affiche encore. Modélisé ici pour
+  // documenter honnêtement ce que le ledger contiendrait une fois un écran construit — voir
+  // SPORTVISION_KNOWN_INCONSISTENCIES.md pour le suivi de cette fonctionnalité manquante.
+  const club_credit_transactions=[
+    {id:'demo-ctx-1',club_id:'demo-cl-1',label:'Allocation mensuelle — août',amount:40,created_at:iso(inDays(-19))},
+    {id:'demo-ctx-2',club_id:'demo-cl-1',label:'Affiche Matchday — Seniors',amount:-2,created_at:iso(inDays(-6))},
+    {id:'demo-ctx-3',club_id:'demo-cl-1',label:'Visuel recrutement — U15',amount:-2,created_at:iso(inDays(-2))},
   ];
   const club_bookings=[
     {id:'demo-cbk-1',club_id:'demo-cl-1',service_label:'Reportage photo — journée portes ouvertes',team:'Toutes équipes',event_date:inDays(9),heure:'10:00',adresse:'Stade Pierre-Bardin, Fontainebleau',contact:'Julien Marchand',objectif:'Communication réseaux sociaux',status:'recue',price_label:'Sur devis',mode_paiement:null,created_at:iso(inDays(-1))},
@@ -2946,7 +2958,7 @@ const DEMO_DATA=(function(){
     {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Lucas',nom:'Martin',email:'lucas.martin@gmail.com',ville:'Fontainebleau',club_nom:'FC Fontainebleau',created_at:iso(inDays(-8)),sport:'Football',poste:'Milieu',categorie:'U17'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,devis,contrats,clubs,club_bookings,club_credit_transactions,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
 })();
 
 function _demoParseSelect(sel){
@@ -20734,7 +20746,7 @@ const DEMO_ROUTE_MAP={
 const DEMO_ROUTE_UNAVAILABLE={
   'recrutement':"Aucun module de recrutement dans l'OS — le staffing se fait via Affectations (/demo/missions), pas de vivier candidats.",
   'clubplus/ouvertures':"Pas d'écran dédié — l'ouverture d'un compte Club+ est une action (générer un lien d'activation) dans /demo/clubplus, pas une page séparée.",
-  'clubplus/credits':"Pas de ledger séparé dans le NAV — le solde de crédits Club+ apparaît dans la fiche compte de /demo/clubplus.",
+  'clubplus/credits':"Pas d'écran séparé dans le NAV OS — la donnée existe déjà (clubs.credits_balance/credits_reserved, table club_credit_transactions déjà écrite par le traitement des demandes) mais aucun écran ne l'affiche aujourd'hui. Aperçu de cette donnée réelle disponible sur /demo/clubplus.",
   'clubplus/affiliations':"Aucun écran OS ne liste les affiliations club↔joueur en direct (elles vivent côté Connect/Club+ via memberships).",
   'full-communication/presences':"Aucun suivi de présence CM identifié dans l'OS (compteurs seulement, pas de vrai tracking de présence).",
   'notifications':"Les notifications sont une cloche transverse sur chaque écran, pas une page dédiée dans le NAV.",
