@@ -303,6 +303,7 @@ serve(async (req) => {
       .from("prestations")
       .insert({
         statut: "demande_reçue",
+        source: "vitrine",
         type_prestation: resolveTypePrestation(offre_slug),
         client_id: clientId,
         offre_id: offreId,

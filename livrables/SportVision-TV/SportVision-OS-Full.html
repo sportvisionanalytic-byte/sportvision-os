@@ -2026,6 +2026,9 @@ const VIEWS={
     </div>
     <div id="devis-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
+  // Inbox unique (P0 audit externe 20/08, §13 : "je ne veux pas cinq systèmes séparés") : agrège
+  // prestations (Vitrine/Connect/interne) + réservations clubs (Club+) + demandes d'ouverture
+  // Club+ dans UNE liste, avec une colonne Source et un filtre dédié — voir loadSecDemandes.
   'sec.demandes':()=>`
     <div class="sh"><div class="sh-t">Demandes entrantes</div><button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle prestation</button></div>
     <div class="g3" style="margin-bottom:13px">
@@ -2033,11 +2036,20 @@ const VIEWS={
       <div class="fs" style="border-color:rgba(245,165,36,.25)"><div class="fs-l">Devis en cours</div><div class="fs-v" id="dem-kpi-dev" style="color:var(--wa)">—</div></div>
       <div class="fs" style="border-color:rgba(46,204,138,.25)"><div class="fs-l">Confirmées</div><div class="fs-v" id="dem-kpi-conf" style="color:var(--ok)">—</div></div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Statut</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="btn bg2 bs" onclick="filterSecDemandes('all')" id="dem-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
       <button class="btn bg2 bs" onclick="filterSecDemandes('nouveau')" id="dem-f-nouveau">Nouvelles</button>
       <button class="btn bg2 bs" onclick="filterSecDemandes('devis')" id="dem-f-devis">Devis envoyé</button>
       <button class="btn bg2 bs" onclick="filterSecDemandes('confirmee')" id="dem-f-confirmee">Confirmées</button>
+    </div>
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:6px">Source</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn bg2 bs" onclick="filterSecDemandesSource('all')" id="dems-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
+      <button class="btn bg2 bs" onclick="filterSecDemandesSource('vitrine')" id="dems-f-vitrine">Vitrine</button>
+      <button class="btn bg2 bs" onclick="filterSecDemandesSource('connect')" id="dems-f-connect">Connect</button>
+      <button class="btn bg2 bs" onclick="filterSecDemandesSource('clubplus')" id="dems-f-clubplus">Club+</button>
+      <button class="btn bg2 bs" onclick="filterSecDemandesSource('interne')" id="dems-f-interne">Interne</button>
     </div>
     <div id="sec-demandes-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -2783,13 +2795,13 @@ const DEMO_DATA=(function(){
     {id:'demo-off-2',nom:'Highlights Vidéo',categorie:'video',description:'Montage vidéo des temps forts.',tarif_type:'fixe',prix_ht:150,tva_pct:20,duree_estimee:'48h',livrables_inclus:'1 vidéo 2-3 min'},
   ];
   const prestations=[
-    {id:'demo-pre-1',reference:'SV-DEMO-0001',statut:'confirmée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:today,heure_debut:'14:00',heure_fin:'16:00',heure_rdv:'13:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Julien Marchand',telephone_sur_place:'0601020304',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Club partenaire — prioritaire.',description_besoin:'Reportage photo du match U17 contre Melun.',livrables_demandes:'30 photos, livraison sous 48h',options_selectionnees:null,mode_paiement_choisi:'carte',distance_km:12,frais_deplacement_ht:0,offre_id:'demo-off-1',client_id:'demo-cl-1',created_at:iso(inDays(-6))},
-    {id:'demo-pre-2',reference:'SV-DEMO-0002',statut:'équipe_affectée',statut_financier:'non_facturée',type_prestation:'Highlights Vidéo',date_prestation:inDays(2),heure_debut:'10:00',heure_fin:'12:30',heure_rdv:'09:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights match retour.',livrables_demandes:'Vidéo 2 min, sous-titrée',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-5))},
-    {id:'demo-pre-3',reference:'SV-DEMO-0003',statut:'demande_reçue',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(5),heure_debut:'15:00',heure_fin:'17:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:null,montant_ttc:null,tva_pct:20,notes_internes:'',description_besoin:'Prestation demandée (Connect — Espace joueur) : reportage match.',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-2))},
-    {id:'demo-pre-4',reference:'SV-DEMO-0004',statut:'production_terminée',statut_financier:'facturée',type_prestation:'Match Photo',date_prestation:inDays(-3),heure_debut:'11:00',heure_fin:'13:00',heure_rdv:'10:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Julien Marchand',telephone_sur_place:'0601020304',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'',description_besoin:'Reportage photo match aller.',livrables_demandes:'30 photos',options_selectionnees:null,mode_paiement_choisi:'carte',distance_km:12,frais_deplacement_ht:0,offre_id:'demo-off-1',client_id:'demo-cl-1',created_at:iso(inDays(-10))},
-    {id:'demo-pre-5',reference:'SV-DEMO-0005',statut:'clôturée',statut_financier:'payée',type_prestation:'Highlights Vidéo',date_prestation:inDays(-10),heure_debut:'09:00',heure_fin:'11:30',heure_rdv:'08:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights.',livrables_demandes:'Vidéo 2 min',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-16))},
-    {id:'demo-pre-6',reference:'SV-DEMO-0006',statut:'annulée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(-1),heure_debut:'16:00',heure_fin:'18:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Annulée par le client (météo).',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-4))},
-    {id:'demo-pre-7',reference:'SV-DEMO-0007',statut:'clôturée',statut_financier:'en_retard',type_prestation:'Match Photo',date_prestation:inDays(-45),heure_debut:'14:00',heure_fin:'16:00',heure_rdv:'13:30',lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'Thomas Petit',telephone_sur_place:'0601040506',montant_ht:183,montant_ttc:220,tva_pct:20,notes_internes:'Facture en retard, relance envoyée.',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:30,frais_deplacement_ht:15,offre_id:'demo-off-1',client_id:'demo-cl-3',created_at:iso(inDays(-46))},
+    {id:'demo-pre-1',reference:'SV-DEMO-0001',source:'interne',statut:'confirmée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:today,heure_debut:'14:00',heure_fin:'16:00',heure_rdv:'13:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Julien Marchand',telephone_sur_place:'0601020304',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Club partenaire — prioritaire.',description_besoin:'Reportage photo du match U17 contre Melun.',livrables_demandes:'30 photos, livraison sous 48h',options_selectionnees:null,mode_paiement_choisi:'carte',distance_km:12,frais_deplacement_ht:0,offre_id:'demo-off-1',client_id:'demo-cl-1',created_at:iso(inDays(-6))},
+    {id:'demo-pre-2',reference:'SV-DEMO-0002',source:'vitrine',statut:'équipe_affectée',statut_financier:'non_facturée',type_prestation:'Highlights Vidéo',date_prestation:inDays(2),heure_debut:'10:00',heure_fin:'12:30',heure_rdv:'09:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights match retour.',livrables_demandes:'Vidéo 2 min, sous-titrée',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-5))},
+    {id:'demo-pre-3',reference:'SV-DEMO-0003',source:'connect',statut:'demande_reçue',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(5),heure_debut:'15:00',heure_fin:'17:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:null,montant_ttc:null,tva_pct:20,notes_internes:'',description_besoin:'Prestation demandée (Connect — Espace joueur) : reportage match.',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-2))},
+    {id:'demo-pre-4',reference:'SV-DEMO-0004',source:'vitrine',statut:'production_terminée',statut_financier:'facturée',type_prestation:'Match Photo',date_prestation:inDays(-3),heure_debut:'11:00',heure_fin:'13:00',heure_rdv:'10:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Julien Marchand',telephone_sur_place:'0601020304',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'',description_besoin:'Reportage photo match aller.',livrables_demandes:'30 photos',options_selectionnees:null,mode_paiement_choisi:'carte',distance_km:12,frais_deplacement_ht:0,offre_id:'demo-off-1',client_id:'demo-cl-1',created_at:iso(inDays(-10))},
+    {id:'demo-pre-5',reference:'SV-DEMO-0005',source:'connect',statut:'clôturée',statut_financier:'payée',type_prestation:'Highlights Vidéo',date_prestation:inDays(-10),heure_debut:'09:00',heure_fin:'11:30',heure_rdv:'08:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights.',livrables_demandes:'Vidéo 2 min',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-16))},
+    {id:'demo-pre-6',reference:'SV-DEMO-0006',source:'interne',statut:'annulée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(-1),heure_debut:'16:00',heure_fin:'18:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Annulée par le client (météo).',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-4))},
+    {id:'demo-pre-7',reference:'SV-DEMO-0007',source:'vitrine',statut:'clôturée',statut_financier:'en_retard',type_prestation:'Match Photo',date_prestation:inDays(-45),heure_debut:'14:00',heure_fin:'16:00',heure_rdv:'13:30',lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'Thomas Petit',telephone_sur_place:'0601040506',montant_ht:183,montant_ttc:220,tva_pct:20,notes_internes:'Facture en retard, relance envoyée.',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:30,frais_deplacement_ht:15,offre_id:'demo-off-1',client_id:'demo-cl-3',created_at:iso(inDays(-46))},
   ];
   const prestations_equipe=[
     {id:'demo-pe-1',prestation_id:'demo-pre-1',collaborateur_id:'demo-photo1',fonction:'Photo',notes:'Prioriser les buteurs et le coach en fin de match.',remuneration:50,statut:'acceptée',heure_rdv:'13:30',est_responsable:true,created_at:iso(inDays(-5))},
@@ -18489,7 +18501,9 @@ async function exportComptaMois(moisKey){
 }
 
 // ── Dashboard secrétaire ─────────────────────────────────────────────────────
-let _secDemData=[],_secDemFilter='all';
+let _secDemData=[],_secDemFilter='all',_secDemSourceFilter='all';
+const DEM_SOURCE_LBL={vitrine:'Vitrine',connect:'Connect',clubplus:'Club+',interne:'Interne'};
+const DEM_SOURCE_CLS={vitrine:'bw',connect:'bb',clubplus:'ba',interne:'bn'};
 let _secRelData=[],_secRelFilter='all';
 let _secLivrData=[],_secLivrFilter='all';
 
@@ -18594,39 +18608,86 @@ async function loadSecDemandes(){
   const el=document.getElementById('sec-demandes-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,clients(nom)&statut=in.(demande_reçue,à_qualifier,offre_en_préparation,devis_envoyé,en_attente_réponse,devis_accepté,confirmée)&order=date_prestation.asc&limit=100');
-    _secDemData=Array.isArray(data)?data:[];
-    const katt=_secDemData.filter(p=>['demande_reçue','à_qualifier'].includes(p.statut)).length;
-    const kdev=_secDemData.filter(p=>['offre_en_préparation','devis_envoyé','en_attente_réponse'].includes(p.statut)).length;
-    const kconf=_secDemData.filter(p=>['devis_accepté','confirmée'].includes(p.statut)).length;
+    const [pres,cbk,ccsr]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,source,type_prestation,date_prestation,created_at,clients(nom)&statut=in.(demande_reçue,à_qualifier,offre_en_préparation,devis_envoyé,en_attente_réponse,devis_accepté,confirmée)&order=date_prestation.asc&limit=100'),
+      // Mêmes colonnes que loadClubBookings (pas juste celles affichées ici) : modalReservationClub
+      // lit _cbkData par id, il faut donc que les lignes fusionnées ici aient exactement la même
+      // forme, sinon "Ouvrir" depuis l'inbox unique casse silencieusement (champs manquants).
+      sbFetch('club_bookings?select=id,club_id,service_label,team,event_date,heure,adresse,contact,objectif,status,price_label,mode_paiement,created_at,clubs(nom)&status=in.(recue,qualifiee)&order=created_at.asc&limit=100').catch(()=>[]),
+      sbFetch('connect_clubplus_signup_requests?select=id,club_nom,organization_type,created_at&statut=eq.a_traiter&order=created_at.asc&limit=100').catch(()=>[]),
+    ]);
+    // Fusionne dans _cbkData (partagé avec l'écran "Réservations clubs") par id, sans écraser des
+    // lignes déjà chargées ailleurs — modalReservationClub() doit pouvoir ouvrir une ligne cliquée
+    // depuis CETTE liste-ci même si l'utilisateur n'est jamais allé sur l'écran dédié.
+    const cbkRaw=Array.isArray(cbk)?cbk:[];
+    const existingIds=new Set(_cbkData.map(x=>x.id));
+    _cbkData=[..._cbkData,...cbkRaw.filter(x=>!existingIds.has(x.id))];
+    const presRows=(Array.isArray(pres)?pres:[]).map(p=>({
+      kind:'prestation',id:p.id,reference:p.reference||'—',source:p.source||'interne',
+      demande:p.type_prestation||'—',clientNom:p.clients?.nom||'—',
+      date:p.date_prestation,createdAt:p.created_at,statutRaw:p.statut,
+      statutLabel:SL[p.statut]||p.statut,statutCls:SC[p.statut]||'bw',bucket:_secDemBucket(p.statut),
+    }));
+    const cbkRows=(Array.isArray(cbk)?cbk:[]).map(b=>({
+      kind:'club_booking',id:b.id,reference:'—',source:'clubplus',
+      demande:b.service_label||'Réservation club',clientNom:b.clubs?.nom||'—',
+      date:b.event_date,createdAt:b.created_at,statutRaw:'recue',
+      statutLabel:'Nouvelle réservation',statutCls:'bn',bucket:'nouveau',
+    }));
+    const ccsrRows=(Array.isArray(ccsr)?ccsr:[]).map(r=>({
+      kind:'clubplus_signup',id:r.id,reference:'—',source:'clubplus',
+      demande:"Ouverture Club+ ("+(r.organization_type||'club')+")",clientNom:r.club_nom||'—',
+      date:null,createdAt:r.created_at,statutRaw:'a_traiter',
+      statutLabel:'Nouvelle demande',statutCls:'bn',bucket:'nouveau',
+    }));
+    _secDemData=[...presRows,...cbkRows,...ccsrRows].sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+    const katt=_secDemData.filter(r=>r.bucket==='nouveau').length;
+    const kdev=_secDemData.filter(r=>r.bucket==='devis').length;
+    const kconf=_secDemData.filter(r=>r.bucket==='confirmee').length;
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     set('dem-kpi-att',katt);set('dem-kpi-dev',kdev);set('dem-kpi-conf',kconf);
     renderSecDemandes();
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';console.error(e);}
 }
+function _secDemBucket(statut){
+  if(['demande_reçue','à_qualifier'].includes(statut))return 'nouveau';
+  if(['offre_en_préparation','devis_envoyé','en_attente_réponse'].includes(statut))return 'devis';
+  if(['devis_accepté','confirmée'].includes(statut))return 'confirmee';
+  return 'nouveau';
+}
 function filterSecDemandes(f){
   _secDemFilter=f;
-  ['all','nouveau','devis','confirmee'].forEach(id=>{const b=document.getElementById('dem-f-'+id);if(b)b.style.background=f===id?'rgba(54,107,255,.15)':'';b&&(b.style.color=f===id?'var(--acc)':'');});
+  ['all','nouveau','devis','confirmee'].forEach(id=>{const b=document.getElementById('dem-f-'+id);if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}});
+  renderSecDemandes();
+}
+function filterSecDemandesSource(s){
+  _secDemSourceFilter=s;
+  ['all','vitrine','connect','clubplus','interne'].forEach(id=>{const b=document.getElementById('dems-f-'+id);if(b){b.style.background=s===id?'rgba(54,107,255,.15)':'';b.style.color=s===id?'var(--acc)':'';}});
   renderSecDemandes();
 }
 function renderSecDemandes(){
   const el=document.getElementById('sec-demandes-real');if(!el)return;
   let list=_secDemData;
-  if(_secDemFilter==='nouveau')list=list.filter(p=>['demande_reçue','à_qualifier'].includes(p.statut));
-  else if(_secDemFilter==='devis')list=list.filter(p=>['offre_en_préparation','devis_envoyé','en_attente_réponse'].includes(p.statut));
-  else if(_secDemFilter==='confirmee')list=list.filter(p=>['devis_accepté','confirmée'].includes(p.statut));
+  if(_secDemFilter!=='all')list=list.filter(r=>r.bucket===_secDemFilter);
+  if(_secDemSourceFilter!=='all')list=list.filter(r=>r.source===_secDemSourceFilter);
   if(!list.length){el.innerHTML='<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucune demande dans cette catégorie.</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Client</th><th>Type</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
-    list.map(p=>`<tr>
-      <td class="tm">${p.reference||'—'}</td>
-      <td class="tp">${esc(p.clients?.nom||'—')}</td>
-      <td>${p.type_prestation||'—'}</td>
-      <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
-      <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
+  const openAction=r=>{
+    if(r.kind==='prestation')return `onclick="modalDetailById('${r.id}')"`;
+    if(r.kind==='club_booking')return `onclick="modalReservationClub('${r.id}')"`;
+    return `onclick="modalDemandesClubConnect()"`;
+  };
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Source</th><th>Demande</th><th>Client</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    list.map(r=>`<tr>
+      <td class="tm">${esc(r.reference)}</td>
+      <td><span class="bd ${DEM_SOURCE_CLS[r.source]||'bn'}"><span class="bd-d"></span>${DEM_SOURCE_LBL[r.source]||r.source}</span></td>
+      <td>${esc(r.demande)}</td>
+      <td class="tp">${esc(r.clientNom)}</td>
+      <td>${r.date?new Date(r.date).toLocaleDateString('fr-FR'):'—'}</td>
+      <td><span class="bd ${r.statutCls}"><span class="bd-d"></span>${esc(r.statutLabel)}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">
-        ${['demande_reçue','à_qualifier'].includes(p.statut)?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secQualifierDemande('${p.id}')">✓ Qualifier</button>`:''}
-        ${['demande_reçue','à_qualifier','offre_en_préparation'].includes(p.statut)?`<button style="padding:4px 9px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:6px;color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secCreerDevisDepuisDemande('${p.id}')">+ Devis</button>`:''}
-        <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
+        ${r.kind==='prestation'&&['demande_reçue','à_qualifier'].includes(r.statutRaw)?`<button style="padding:4px 9px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:6px;color:var(--ok);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secQualifierDemande('${r.id}')">✓ Qualifier</button>`:''}
+        ${r.kind==='prestation'&&['demande_reçue','à_qualifier','offre_en_préparation'].includes(r.statutRaw)?`<button style="padding:4px 9px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.25);border-radius:6px;color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" onclick="secCreerDevisDepuisDemande('${r.id}')">+ Devis</button>`:''}
+        <button class="btn bg2 bs" ${openAction(r)}>Ouvrir</button>
       </div></td>
     </tr>`).join('')+'</tbody></table></div>';
 }

@@ -564,6 +564,7 @@ serve(async (req) => {
         .from("prestations")
         .insert({
           statut: "demande_reçue",
+          source: "connect",
           client_id: clientId,
           booked_by_user_id: bookedByUserId,
           offre_id: offer.id,
