@@ -2862,7 +2862,10 @@ const DEMO_DATA=(function(){
   const financial_audit_log=[
     {id:'demo-aud-1',acteur_id:'demo-compta',action:'paiement',table_cible:'factures',ligne_id:'demo-fac-2',montant_avant:null,montant_apres:180,details:{},created_at:iso(inDays(-6))},
     {id:'demo-aud-2',acteur_id:'demo-admin',action:'creation',table_cible:'expenses',ligne_id:'demo-exp-3',montant_avant:null,montant_apres:58.8,details:{libelle:'Abonnement Metricool'},created_at:iso(inDays(-1))},
-    {id:'demo-aud-3',acteur_id:'demo-sec',action:'modification',table_cible:'prestations',ligne_id:'demo-pre-1',montant_avant:null,montant_apres:null,details:{champ:'statut',de:'confirmée',vers:'à_planifier'},created_at:iso(inDays(-4))},
+    // Clés {champ,avant,apres} — mêmes noms que le vrai trigger log_prestation_statut_change()
+    // (migration-audit-v90), pour que la démo reflète fidèlement le format réel.
+    {id:'demo-aud-3',acteur_id:'demo-sec',action:'modification',table_cible:'prestations',ligne_id:'demo-pre-1',montant_avant:null,montant_apres:null,details:{champ:'statut',avant:'à_valider_production',apres:'confirmée',reference:'SV-DEMO-0001'},created_at:iso(inDays(-4))},
+    {id:'demo-aud-5',acteur_id:'demo-prod',action:'creation',table_cible:'prestations_equipe',ligne_id:'demo-pe-1',montant_avant:null,montant_apres:50,details:{prestation_id:'demo-pre-1',collaborateur_id:'demo-photo1',fonction:'Photo'},created_at:iso(inDays(-5))},
     {id:'demo-aud-4',acteur_id:'demo-compta',action:'cloture',table_cible:'accounting_periods',ligne_id:null,montant_avant:null,montant_apres:null,details:{periode:'2026-07'},created_at:iso(inDays(-20))},
   ];
   const v_rentabilite_missions=[
@@ -19847,7 +19850,7 @@ function modalProdFiche(p){
         <button onclick="validerPrestation('${pref}','confirmée')" style="padding:8px 14px;font-size:12px;font-weight:700;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);cursor:pointer">✓ Valider</button>
       </div></div>`:''}
     <div style="display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--b1)">
-      ${[['infos','Infos'],['equipe','Équipe'],['brief','Brief'],['budget','Budget']].map(([t,lb],i)=>
+      ${[['infos','Infos'],['equipe','Équipe'],['brief','Brief'],['budget','Budget'],['historique','Historique']].map(([t,lb],i)=>
         `<button id="pf-tab-${t}" onclick="setProdFicheTab('${t}')" style="padding:7px 14px;font-size:12px;font-weight:600;background:none;border:none;border-bottom:2px solid ${i===0?'var(--acc)':'transparent'};color:${i===0?'var(--acc)':'var(--t3)'};cursor:pointer;margin-bottom:-1px;transition:color .15s,border-color .15s">${lb}</button>`
       ).join('')}
     </div>
@@ -19898,6 +19901,9 @@ function modalProdFiche(p){
         <div id="pf-rem-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
       </div>
     </div>
+    <div id="pf-panel-historique" style="display:none;flex-direction:column;gap:8px">
+      <div id="pf-hist-list" style="font-size:12px;color:var(--t3)">Chargement…</div>
+    </div>
     <div id="pd-err" style="font-size:12px;color:var(--er);min-height:14px;margin-top:10px"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
       <button class="btn bg2" onclick="closeModal()">Annuler</button>
@@ -19905,10 +19911,11 @@ function modalProdFiche(p){
     </div>`);
   chargerEquipeModal(p.id);
   _chargerRemProdFiche(p.id);
+  _chargerHistoriqueProdFiche(p.id);
 }
 
 function setProdFicheTab(tab){
-  ['infos','equipe','brief','budget'].forEach(t=>{
+  ['infos','equipe','brief','budget','historique'].forEach(t=>{
     const panel=document.getElementById('pf-panel-'+t);
     const btn=document.getElementById('pf-tab-'+t);
     if(panel)panel.style.display=t===tab?'flex':'none';
@@ -19934,6 +19941,40 @@ async function _chargerRemProdFiche(prestationId){
       </div>`;
     }).join('')+'</div>'+`<div style="border-top:1px solid var(--b1);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--t1)"><span>Total équipe</span><span>${total}€</span></div>`;
   }catch(e){if(el)el.innerHTML='<span style="color:var(--t3)">—</span>';}
+}
+
+// Historique de la fiche mission (migration-audit-v90, 20/08) : lit financial_audit_log,
+// désormais alimenté par des triggers réels sur prestations.statut et prestations_equipe (statut/
+// rémunération/création) — pas seulement les actions financières. policy financial_audit_read_
+// prod_ops scope volontairement ce que le rôle prod peut y lire (prestations/prestations_equipe
+// uniquement, jamais les catégories financières) : si rien ne s'affiche pour un rôle non listé
+// dans financial_audit_read (ex. sec), c'est attendu, pas une erreur.
+const HIST_ACTION_ICON={creation:'➕',modification:'✎'};
+async function _chargerHistoriqueProdFiche(prestationId){
+  const el=document.getElementById('pf-hist-list');
+  if(!el)return;
+  try{
+    const equipeIds=await sbFetch('prestations_equipe_display?select=id&prestation_id=eq.'+prestationId).catch(()=>[]);
+    const ids=new Set([prestationId,...(Array.isArray(equipeIds)?equipeIds:[]).map(e=>e.id)]);
+    const data=await sbFetch('financial_audit_log?select=*,profiles(prenom,nom)&table_cible=in.(prestations,prestations_equipe)&order=created_at.desc&limit=300');
+    const rows=(Array.isArray(data)?data:[]).filter(r=>ids.has(r.ligne_id));
+    if(!rows.length){el.innerHTML='<span style="color:var(--t3)">Aucun historique enregistré pour l\'instant.</span>';return;}
+    el.innerHTML=rows.map(r=>{
+      const who=esc([r.profiles?.prenom,r.profiles?.nom].filter(Boolean).join(' ')||'Système');
+      const when=r.created_at?new Date(r.created_at).toLocaleString('fr-FR'):'—';
+      const what=r.table_cible==='prestations'
+        ?`Statut : ${esc(r.details?.avant||'—')} → ${esc(r.details?.apres||'—')}`
+        :(r.action==='creation'?`Équipe : ${esc(r.details?.fonction||'affectation')} ajouté${r.montant_apres?' ('+r.montant_apres+'€)':''}`
+          :`Affectation : ${esc(r.details?.statut_avant||'—')} → ${esc(r.details?.statut_apres||'—')}${r.montant_apres!=null&&r.montant_apres!==r.montant_avant?' · rémun. '+(r.montant_avant??'—')+'€ → '+r.montant_apres+'€':''}`);
+      return`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd)">
+        <span style="flex-shrink:0">${HIST_ACTION_ICON[r.action]||'•'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;color:var(--t1)">${what}</div>
+          <div style="font-size:11px;color:var(--t3)">${who} · ${when}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<span style="color:var(--t3)">—</span>';}
 }
 
 // ── Planning secrétaire ──────────────────────────────────────────────────────
