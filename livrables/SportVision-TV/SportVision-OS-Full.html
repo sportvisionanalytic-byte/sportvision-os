@@ -12475,7 +12475,7 @@ function renderPipeline(){
     return`<div class="pip-card" onclick="modalModifierClient(${idx})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
         <div class="pip-cn">${esc(c.nom)}</div>
-        ${score>0?`<span style="font-size:9px;font-weight:700;color:#F5A524;background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.3);border-radius:4px;padding:1px 5px;flex-shrink:0">${score}</span>`:''}
+        ${score>0?`<span title="Score de priorité (0-100, calculé automatiquement)" style="font-size:9px;font-weight:700;color:#F5A524;background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.3);border-radius:4px;padding:1px 5px;flex-shrink:0">${score}/100</span>`:''}
       </div>
       <div class="pip-det">${esc([c.sport,c.ville].filter(Boolean).join(' · ')||'—')}</div>
       ${lcHtml}
