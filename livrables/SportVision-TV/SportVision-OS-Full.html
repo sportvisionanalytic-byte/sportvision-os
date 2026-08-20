@@ -2762,6 +2762,7 @@ const DEMO_FK={
   media_livrables:{prestations:'prestation_id'},
   contenus:{clients:'client_id'},
   paiements:{prestations:'prestation_id',clients:'client_id'},
+  club_requests:{clubs:'club_id'},
 };
 // prestations_equipe_display (vue Postgres qui masque remuneration pour le rôle prod,
 // migration-prestations-equipe-v88, 20/08) n'a pas de jeu de données démo séparé — c'est la
@@ -2932,6 +2933,12 @@ const DEMO_DATA=(function(){
     {id:'demo-cl-1',nom:'FC Fontainebleau',credits_balance:8,credits_reserved:2,credits_monthly:40,plan:'performance'},
     {id:'demo-cl-2',nom:'US Varennes',credits_balance:3,credits_reserved:0,credits_monthly:10,plan:'club_plus'},
   ];
+  // Ajouté le 20/08 (INC-027 pt.5) : demande de visuel Club+ en attente, fusionnée dans l'Inbox
+  // unique (sec.demandes, migration-clubplus-v93) — status='recues' correspond aux 2 crédits déjà
+  // reflétés dans credits_reserved du club demo-cl-1 ci-dessus (cohérence avec le ledger simulé).
+  const club_requests=[
+    {id:'demo-creq-1',club_id:'demo-cl-1',type:'visuel',team:'Seniors',status:'recues',urgency:'normale',detail:'Affiche pour le prochain match à domicile.',credits_reserved:2,created_at:iso(inDays(0))},
+  ];
   // Ajouté le 20/08 (audit §31, §53) : aucun écran OS ne lit club_credit_transactions
   // aujourd'hui (vérifié : zéro occurrence dans SportVision-OS-Full.html hors migrations) — le
   // ledger existe côté base (RPC staff_update_club_request_status/update_club_request_status
@@ -2977,7 +2984,7 @@ const DEMO_DATA=(function(){
     {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Lucas',nom:'Martin',email:'lucas.martin@gmail.com',ville:'Fontainebleau',club_nom:'FC Fontainebleau',created_at:iso(inDays(-8)),sport:'Football',poste:'Milieu',categorie:'U17'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,paiements,devis,contrats,clubs,club_bookings,club_credit_transactions,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,paiements,devis,contrats,clubs,club_bookings,club_credit_transactions,club_requests,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
 })();
 
 function _demoParseSelect(sel){
@@ -3065,8 +3072,11 @@ function demoRpc(name,body){
     case 'connect_os_account_detail':
       return (DEMO_DATA.connect_accounts||[]).find(a=>a.user_id===(body&&body.p_user_id))||null;
     case 'staff_update_club_request_status':{
-      const row=(DEMO_DATA.connect_clubplus_signup_requests||[]).find(r=>r.id===(body&&body.p_request_id));
-      if(row&&body&&body.p_status)row.statut=body.p_status;
+      // Corrigé le 20/08 : pointait vers connect_clubplus_signup_requests.statut (mauvaise table
+      // ET mauvais nom de colonne — accent en trop). La vraie RPC (voir sa définition SQL) met à
+      // jour club_requests.status (sans accent), pas les demandes d'ouverture Club+.
+      const row=(DEMO_DATA.club_requests||[]).find(r=>r.id===(body&&body.p_request_id));
+      if(row&&body&&body.p_status)row.status=body.p_status;
       return {ok:true};
     }
     case 'credit_organization':
@@ -18718,13 +18728,22 @@ async function loadSecDemandes(){
   const el=document.getElementById('sec-demandes-real');
   if(!el)return;
   try{
-    const [pres,cbk,ccsr]=await Promise.all([
+    const [pres,cbk,ccsr,cbreq]=await Promise.all([
       sbFetch('prestations?select=id,reference,statut,source,type_prestation,date_prestation,created_at,clients(nom)&statut=in.(demande_reçue,à_qualifier,offre_en_préparation,devis_envoyé,en_attente_réponse,devis_accepté,confirmée)&order=date_prestation.asc&limit=100'),
       // Mêmes colonnes que loadClubBookings (pas juste celles affichées ici) : modalReservationClub
       // lit _cbkData par id, il faut donc que les lignes fusionnées ici aient exactement la même
       // forme, sinon "Ouvrir" depuis l'inbox unique casse silencieusement (champs manquants).
       sbFetch('club_bookings?select=id,club_id,service_label,team,event_date,heure,adresse,contact,objectif,status,price_label,mode_paiement,created_at,clubs(nom)&status=in.(recue,qualifiee)&order=created_at.asc&limit=100').catch(()=>[]),
       sbFetch('connect_clubplus_signup_requests?select=id,club_nom,organization_type,created_at&statut=eq.a_traiter&order=created_at.asc&limit=100').catch(()=>[]),
+      // Ajouté suite à l'audit E2E du 20/08 (INC-027 pt.5) : les demandes de visuel Club+
+      // (club_requests, réservation de crédits) n'apparaissaient QUE sur l'écran CM dédié
+      // (cm.demandes), jamais dans cette Inbox unique censée regrouper "tout ce qui arrive" —
+      // incohérent avec le principe même de cet écran (§13 de l'audit du 20/08). Ne fusionne QUE
+      // status='recues' (nouvelle, pas encore prise en charge) : les demandes déjà en traitement
+      // restent visibles uniquement sur l'écran CM dédié, qui garde le vrai workflow complet
+      // (info_manquante/en_traitement/prete_a_creer) — cette Inbox reste un point d'entrée, pas un
+      // doublon de cet écran.
+      sbFetch('club_requests?select=id,club_id,type,team,status,urgency,credits_reserved,created_at,clubs(nom)&status=eq.recues&order=created_at.asc&limit=100').catch(()=>[]),
     ]);
     // Fusionne dans _cbkData (partagé avec l'écran "Réservations clubs") par id, sans écraser des
     // lignes déjà chargées ailleurs — modalReservationClub() doit pouvoir ouvrir une ligne cliquée
@@ -18750,7 +18769,14 @@ async function loadSecDemandes(){
       date:null,createdAt:r.created_at,statutRaw:'a_traiter',
       statutLabel:'Nouvelle demande',statutCls:'bn',bucket:'nouveau',
     }));
-    _secDemData=[...presRows,...cbkRows,...ccsrRows].sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+    const cbreqRows=(Array.isArray(cbreq)?cbreq:[]).map(r=>({
+      kind:'club_request',id:r.id,reference:'—',source:'clubplus',
+      demande:'Demande visuel'+(r.team?' — '+r.team:'')+(r.credits_reserved?' ('+r.credits_reserved+' crédits)':''),
+      clientNom:r.clubs?.nom||'—',
+      date:null,createdAt:r.created_at,statutRaw:'recues',
+      statutLabel:'Nouvelle demande',statutCls:'bn',bucket:'nouveau',
+    }));
+    _secDemData=[...presRows,...cbkRows,...ccsrRows,...cbreqRows].sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
     const katt=_secDemData.filter(r=>r.bucket==='nouveau').length;
     const kdev=_secDemData.filter(r=>r.bucket==='devis').length;
     const kconf=_secDemData.filter(r=>r.bucket==='confirmee').length;
@@ -18784,6 +18810,7 @@ function renderSecDemandes(){
   const openAction=r=>{
     if(r.kind==='prestation')return `onclick="modalDetailById('${r.id}')"`;
     if(r.kind==='club_booking')return `onclick="modalReservationClub('${r.id}')"`;
+    if(r.kind==='club_request')return `onclick="modalClubRequestApercu('${r.id}')"`;
     return `onclick="modalDemandesClubConnect()"`;
   };
   el.innerHTML='<div class="tw"><table><thead><tr><th>Réf.</th><th>Source</th><th>Demande</th><th>Client</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>'+
@@ -18800,6 +18827,25 @@ function renderSecDemandes(){
         <button class="btn bg2 bs" ${openAction(r)}>Ouvrir</button>
       </div></td>
     </tr>`).join('')+'</tbody></table></div>';
+}
+
+// Aperçu lecture seule d'une demande de visuel Club+ (club_requests) depuis l'Inbox unique
+// (migration-clubplus-v93, INC-027 pt.5) — pas de bouton Accepter/Refuser ici volontairement :
+// la RLS n'autorise l'écriture (staff_update_club_request_status) qu'à admin/cm, le secrétariat
+// n'a que la lecture. Traitement réel toujours sur l'écran CM dédié (cm.demandes).
+async function modalClubRequestApercu(id){
+  const data=await sbFetch('club_requests?select=id,type,team,status,urgency,detail,credits_reserved,created_at,clubs(nom)&id=eq.'+id);
+  const d=Array.isArray(data)&&data[0];
+  if(!d){toast('Demande introuvable ou accès refusé.','er');return;}
+  openModal(`<div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:16px">Demande visuel Club+</div>
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+      <div><span style="color:var(--t3)">Club</span><br>${esc(d.clubs?.nom||'—')}</div>
+      <div><span style="color:var(--t3)">Type</span><br>${esc(d.type||'—')}${d.team?' — '+esc(d.team):''}</div>
+      <div><span style="color:var(--t3)">Urgence</span><br>${d.urgency==='haute'?'<span style="color:var(--er);font-weight:600">Haute</span>':'Normale'}</div>
+      <div><span style="color:var(--t3)">Crédits réservés</span><br>${d.credits_reserved||0}</div>
+      ${d.detail?`<div><span style="color:var(--t3)">Détail</span><br>${esc(d.detail)}</div>`:''}
+    </div>
+    <div style="margin-top:16px;font-size:12px;color:var(--t3)">Traitement (accepter/refuser) réservé au Community Manager — écran « Demandes reçues ».</div>`);
 }
 
 // ── Réservations clubs (club_bookings, migration-clubplus-v6.sql) ──────────
