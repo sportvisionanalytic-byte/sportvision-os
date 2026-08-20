@@ -21613,6 +21613,24 @@ async function loadMsgClients(){
   _msgClCache=Array.isArray(data)?data:[];
   renderMsgClients();
 }
+// Pièce jointe (migration-storage-v95, 20/08) : bucket privé, jamais d'URL permanente stockée
+// (piece_jointe_path uniquement) — le staff n'avait avant ce soir aucun moyen de voir une pièce
+// jointe reçue d'un client (l'écran n'affichait que le texte). Signature à la demande (au clic),
+// pas eagerly pour toute la liste : is_staff() autorise la lecture (migration-storage-v95), mais
+// pas la peine de générer 1000 URLs signées si l'utilisateur n'en ouvre aucune.
+async function ouvrirPieceJointeMsg(path){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
+  try{
+    const tok=localStorage.getItem('sv_tok')||'';
+    const res=await fetch(SB_URL+'/storage/v1/object/sign/sportvision-media-prive/'+path,{
+      method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+      body:JSON.stringify({expiresIn:3600})
+    });
+    const d=await res.json();
+    if(!res.ok||!d.signedURL){toast('Pièce jointe introuvable ou accès refusé.','er');return;}
+    window.open(SB_URL+'/storage/v1'+d.signedURL,'_blank');
+  }catch(e){toast('Erreur lors de l\'ouverture de la pièce jointe.','er');}
+}
 function renderMsgClients(){
   const el=document.getElementById('msgcl-list');
   if(!el)return;
@@ -21629,7 +21647,7 @@ function renderMsgClients(){
     return `<div class="cd" style="margin-bottom:12px">
       <div class="cd-h"><div class="cd-t">${esc(g.clientNom)} — ${esc(g.ref)}</div></div>
       <div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px">
-        ${last5.map(m=>`<div style="align-self:${m.auteur_type==='staff'?'flex-end':'flex-start'};max-width:75%;background:${m.auteur_type==='staff'?'var(--acc)':'var(--s1)'};color:${m.auteur_type==='staff'?'#fff':'var(--t1)'};padding:8px 12px;border-radius:10px;font-size:13px">${esc(m.contenu)}</div>`).join('')}
+        ${last5.map(m=>`<div style="align-self:${m.auteur_type==='staff'?'flex-end':'flex-start'};max-width:75%;background:${m.auteur_type==='staff'?'var(--acc)':'var(--s1)'};color:${m.auteur_type==='staff'?'#fff':'var(--t1)'};padding:8px 12px;border-radius:10px;font-size:13px">${esc(m.contenu)}${m.piece_jointe_path?`<div style="margin-top:6px"><span role="button" tabindex="0" onclick="ouvrirPieceJointeMsg('${escJs(m.piece_jointe_path)}')" onkeydown="if(event.key==='Enter'){ouvrirPieceJointeMsg('${escJs(m.piece_jointe_path)}')}" style="cursor:pointer;text-decoration:underline;font-size:12px;opacity:.9">📎 Pièce jointe</span></div>`:''}</div>`).join('')}
       </div>
       <div style="display:flex;gap:8px;padding:0 18px 16px">
         <input type="text" id="msgcl-input-${i}" placeholder="Répondre..." style="flex:1;background:var(--s1);border:1px solid var(--b1);border-radius:8px;padding:10px;color:var(--t1);font-size:13px">
