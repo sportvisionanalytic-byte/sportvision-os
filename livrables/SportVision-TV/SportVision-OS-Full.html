@@ -2761,6 +2761,7 @@ const DEMO_FK={
   financial_audit_log:{profiles:'acteur_id'},
   media_livrables:{prestations:'prestation_id'},
   contenus:{clients:'client_id'},
+  paiements:{prestations:'prestation_id',clients:'client_id'},
 };
 // prestations_equipe_display (vue Postgres qui masque remuneration pour le rôle prod,
 // migration-prestations-equipe-v88, 20/08) n'a pas de jeu de données démo séparé — c'est la
@@ -2849,6 +2850,18 @@ const DEMO_DATA=(function(){
     {id:'demo-cnt-3',client_id:'demo-cl-7',cm_id:'demo-cm',titre:'Interview capitaine',description:'Vidéo courte avant le prochain match.',plateforme:'tiktok',type_contenu:'video',statut:'programme',hook:'3 questions au capitaine',legende:null,cta:'Suivez-nous',hashtags:'#FCFontainebleau',sponsor:null,date_prevue:inDays(2),date_publication:null,request_id:null,created_at:iso(inDays(-2))},
     {id:'demo-cnt-4',client_id:'demo-cl-7',cm_id:'demo-cm',titre:'Photo du jour — entraînement',description:null,plateforme:'facebook',type_contenu:'post',statut:'publie',hook:null,legende:'Dernière ligne droite avant le week-end.',cta:null,hashtags:null,sponsor:null,date_prevue:inDays(-4),date_publication:inDays(-4),request_id:null,created_at:iso(inDays(-6))},
     {id:'demo-cnt-5',client_id:'demo-cl-7',cm_id:'demo-cm',titre:'Merci à notre sponsor',description:'Post partenariat.',plateforme:'instagram',type_contenu:'post',statut:'publie',hook:null,legende:'Merci à notre partenaire pour son soutien cette saison !',cta:null,hashtags:'#Sponsor',sponsor:'Boulangerie Martin',date_prevue:inDays(-10),date_publication:inDays(-10),request_id:null,created_at:iso(inDays(-12))},
+  ];
+  // Ledger `paiements` (webhooks Stripe, migration-portail-v1.sql) : jamais lu par aucun
+  // écran de l'OS jusqu'au 20/08 (voir compta.encaissements) — donc jamais eu de jeu de
+  // données démo non plus. 5 lignes couvrant les 5 statuts réels (en_attente/reussi/
+  // echoue/rembourse/annule) pour que l'écran de rapprochement soit démontrable.
+  const paiements=[
+    {id:'demo-pay-1',prestation_id:'demo-pre-4',devis_id:null,facture_id:null,client_id:'demo-cl-1',type_paiement:'totalite',montant:120,devise:'eur',statut:'reussi',stripe_checkout_session_id:'cs_demo_a1b2c3',stripe_payment_intent_id:'pi_demo_a1b2c3d4',recu_url:null,created_at:iso(inDays(-9))},
+    {id:'demo-pay-2',prestation_id:'demo-pre-5',devis_id:null,facture_id:null,client_id:'demo-cl-2',type_paiement:'totalite',montant:180,devise:'eur',statut:'reussi',stripe_checkout_session_id:'cs_demo_e5f6g7',stripe_payment_intent_id:'pi_demo_e5f6g7h8',recu_url:null,created_at:iso(inDays(-15))},
+    {id:'demo-pay-3',prestation_id:'demo-pre-1',devis_id:null,facture_id:null,client_id:'demo-cl-1',type_paiement:'acompte',montant:50,devise:'eur',statut:'en_attente',stripe_checkout_session_id:'cs_demo_i9j0k1',stripe_payment_intent_id:'pi_demo_i9j0k1l2',recu_url:null,created_at:iso(inDays(0))},
+    {id:'demo-pay-4',prestation_id:'demo-pre-7',devis_id:null,facture_id:null,client_id:'demo-cl-3',type_paiement:'totalite',montant:220,devise:'eur',statut:'echoue',stripe_checkout_session_id:'cs_demo_m3n4o5',stripe_payment_intent_id:'pi_demo_m3n4o5p6',recu_url:null,created_at:iso(inDays(-44))},
+    {id:'demo-pay-5',prestation_id:'demo-pre-6',devis_id:null,facture_id:null,client_id:'demo-cl-3',type_paiement:'acompte',montant:60,devise:'eur',statut:'rembourse',stripe_checkout_session_id:'cs_demo_q7r8s9',stripe_payment_intent_id:'pi_demo_q7r8s9t0',recu_url:null,created_at:iso(inDays(-4))},
+    {id:'demo-pay-6',prestation_id:'demo-pre-2',devis_id:null,facture_id:null,client_id:'demo-cl-2',type_paiement:'acompte',montant:90,devise:'eur',statut:'annule',stripe_checkout_session_id:'cs_demo_u1v2w3',stripe_payment_intent_id:'pi_demo_u1v2w3x4',recu_url:null,created_at:iso(inDays(-5))},
   ];
   const messages=[
     {id:'demo-msg-1',expediteur_id:'demo-admin',destinataire_id:null,contenu:'Bienvenue sur SportVision OS 👋 Ce fil est visible par toute l\'équipe.',lue:true,created_at:iso(inDays(-5))},
@@ -2958,7 +2971,7 @@ const DEMO_DATA=(function(){
     {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Lucas',nom:'Martin',email:'lucas.martin@gmail.com',ville:'Fontainebleau',club_nom:'FC Fontainebleau',created_at:iso(inDays(-8)),sport:'Football',poste:'Milieu',categorie:'U17'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,devis,contrats,clubs,club_bookings,club_credit_transactions,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,media_livrables,contenus,paiements,devis,contrats,clubs,club_bookings,club_credit_transactions,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
 })();
 
 function _demoParseSelect(sel){
