@@ -242,23 +242,19 @@ export async function buildClubActiveContext(
   // portail_client_id (jamais relié) ou sans contrat actif de ce type retombe sur club/performance
   // via mapClubPlan, comportement inchangé.
   //
-  // Lit `client_contrats` (vue, migration-clubplus-v33), PAS `contrats` directement : `contrats`
-  // n'a de policy RLS que pour le staff (admin/sec/com/compta), fail-closed pour un membre de
-  // club — un accès direct renvoyait donc toujours 0 ligne, peu importe l'existence réelle du
-  // contrat. Confirmé indépendamment par 5 agents lors de l'audit UI/UX du 11/08/2026 : aucun
-  // vrai club Full Communication n'a jamais pu obtenir isFullCommunication=true (mauvais
-  // dashboard, mauvaise nav, jamais mis en avant Validations/Publications/Statistiques/Rapports).
+  // RPC client_has_active_fullcomm_contract (migration-clubplus-v96, 20/08) — PAS client_contrats
+  // (vue) : `client_contrats` a une RLS restreinte à club_member_has_financial_view_access
+  // (admin/president/tresorier/membre_bureau/secretaire/administratif uniquement), donc un membre
+  // coach/resp_equipe/cm_externe d'un VRAI club Full Communication obtenait quand même 0 ligne —
+  // même panne qu'INC-004 (11/08), reproduite en E2E le 20/08 sur ce chemin précis. Le RPC ne
+  // renvoie qu'un booléen (aucune fuite de donnée financière) et reconnaît tout membre actif via
+  // is_club_member() (club_members OU délégation cm_agency_club_access).
   let isFullCommunication = false;
   if (club.portail_client_id) {
-    const { data: contract } = await supabase
-      .from("client_contrats")
-      .select("id")
-      .eq("client_id", club.portail_client_id)
-      .eq("type_contrat", "full_communication")
-      .eq("statut", "actif")
-      .limit(1)
-      .maybeSingle();
-    isFullCommunication = Boolean(contract);
+    const { data: hasContract } = await supabase.rpc("client_has_active_fullcomm_contract", {
+      p_client_id: club.portail_client_id,
+    });
+    isFullCommunication = hasContract === true;
   }
 
   const entitlements: NonNullable<ActiveContext["entitlements"]> = {};
@@ -376,17 +372,17 @@ export async function buildDelegatedClubActiveContext(
   const { data: org } = await supabase.from("organizations").select("id, nom, created_at").eq("id", space.id).maybeSingle();
   if (!org) return null;
 
+  // Voir le commentaire équivalent dans buildClubActiveContext ci-dessus (même correctif,
+  // migration-clubplus-v96, 20/08) — ce chemin délégué (agence CM externe, cm_agency_club_access)
+  // n'a JAMAIS de ligne club_members pour ce club : avec l'ancienne lecture de client_contrats,
+  // isFullCommunication était donc TOUJOURS false ici, quel que soit le contrat réel. is_club_member()
+  // (utilisée par le RPC) couvre déjà ce chemin de délégation, pas seulement l'appartenance directe.
   let isFullCommunication = false;
   if (club.portail_client_id) {
-    const { data: contract } = await supabase
-      .from("client_contrats")
-      .select("id")
-      .eq("client_id", club.portail_client_id)
-      .eq("type_contrat", "full_communication")
-      .eq("statut", "actif")
-      .limit(1)
-      .maybeSingle();
-    isFullCommunication = Boolean(contract);
+    const { data: hasContract } = await supabase.rpc("client_has_active_fullcomm_contract", {
+      p_client_id: club.portail_client_id,
+    });
+    isFullCommunication = hasContract === true;
   }
 
   return {
