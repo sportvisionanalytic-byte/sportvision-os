@@ -2793,6 +2793,8 @@ const DEMO_DATA=(function(){
   const catalogue_offres=[
     {id:'demo-off-1',nom:'Match Photo',categorie:'photo',description:"Reportage photo complet d'un match.",tarif_type:'fixe',prix_ht:100,tva_pct:20,duree_estimee:'24h',livrables_inclus:'30 photos retouchées'},
     {id:'demo-off-2',nom:'Highlights Vidéo',categorie:'video',description:'Montage vidéo des temps forts.',tarif_type:'fixe',prix_ht:150,tva_pct:20,duree_estimee:'48h',livrables_inclus:'1 vidéo 2-3 min'},
+    // Ajouté le 20/08 pour matcher le scénario canonique Connect (DEMO_FUNDING, 160 € TTC).
+    {id:'demo-off-3',nom:'Pack Match Complet',categorie:'pack',description:'Photo + vidéo highlights du match.',tarif_type:'fixe',prix_ht:133.33,tva_pct:20,duree_estimee:'72h',livrables_inclus:'30 photos + 1 vidéo highlights'},
   ];
   const prestations=[
     {id:'demo-pre-1',reference:'SV-DEMO-0001',source:'interne',statut:'confirmée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:today,heure_debut:'14:00',heure_fin:'16:00',heure_rdv:'13:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Julien Marchand',telephone_sur_place:'0601020304',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Club partenaire — prioritaire.',description_besoin:'Reportage photo du match U17 contre Melun.',livrables_demandes:'30 photos, livraison sous 48h',options_selectionnees:null,mode_paiement_choisi:'carte',distance_km:12,frais_deplacement_ht:0,offre_id:'demo-off-1',client_id:'demo-cl-1',created_at:iso(inDays(-6))},
@@ -2888,19 +2890,31 @@ const DEMO_DATA=(function(){
   const user_groups=[
     {id:'demo-grp-1',name:'Équipe U17 — groupe cotisation'},
   ];
+  // Aligné le 20/08 (audit §55-56) sur le SEUL scénario démo canonique de Connect (app-connect/
+  // src/lib/demo/mock-data.ts : DEMO_FUNDING, montant_cible 160€, montant_collecte 100€,
+  // nb_participants_prevu 8, "Pack Match Complet vs AS Melun", U17 FC Fontainebleau) — jusqu'ici
+  // OS et Connect racontaient chacun leur propre histoire de démo (clubs et montants différents),
+  // rendant impossible un audit cross-app "c'est la même donnée partout".
   const group_fundings=[
-    {id:'demo-fund-1',titre:'Photos de fin de saison — groupe U17',contexte:'Cagnotte entre joueurs',montant_cible:120,montant_collecte:80,repartition_mode:'egale',nb_participants_prevu:8,date_limite:inDays(7),statut:'ouverte',created_by:'demo-photo1',group_id:'demo-grp-1',beneficiary_kind:'team',beneficiary_label:'U17',catalogue_offre_id:'demo-off-1',created_at:iso(inDays(-5))},
+    {id:'demo-fund-1',titre:'Pack Match Complet vs AS Melun',contexte:'Match du 24 août',montant_cible:160,montant_collecte:100,repartition_mode:'egale',nb_participants_prevu:8,date_limite:inDays(3),statut:'ouverte',created_by:'demo-acc-joueur-1',group_id:'demo-grp-1',beneficiary_kind:'team',beneficiary_label:'U17 FC Fontainebleau',catalogue_offre_id:'demo-off-3',created_at:iso(inDays(-2))},
   ];
   const funding_contributions=[
-    {id:'demo-contrib-1',funding_id:'demo-fund-1',statut:'paye',montant:10},
-    {id:'demo-contrib-2',funding_id:'demo-fund-1',statut:'paye',montant:10},
+    {id:'demo-contrib-1',funding_id:'demo-fund-1',statut:'paye',montant:20},
+    {id:'demo-contrib-2',funding_id:'demo-fund-1',statut:'paye',montant:20},
+    {id:'demo-contrib-3',funding_id:'demo-fund-1',statut:'paye',montant:20},
+    {id:'demo-contrib-4',funding_id:'demo-fund-1',statut:'paye',montant:20},
+    {id:'demo-contrib-5',funding_id:'demo-fund-1',statut:'paye',montant:20},
   ];
   const connect_clubplus_signup_requests=[
     {id:'demo-signup-1',organization_type:'club',club_nom:'AS Château-Landon',structure_type:'Association loi 1901',ville:'Château-Landon',code_postal:'77570',site_web:'',contact_prenom:'Bruno',contact_nom:'Faucher',contact_email:'bruno.faucher@aschateaulandon.fr',contact_telephone:'0164333333',fonction:'Président',fonction_autre:null,besoins:['Photos de matchs','Vidéos highlights'],besoin_autre_precision:null,statut:'a_traiter',notes_staff:null,created_at:iso(inDays(-1))},
   ];
+  // demo-acc-joueur-1 aligné le 20/08 (audit §55-56) sur le scénario canonique Connect
+  // (DEMO_FIRST_NAME="Lucas", DEMO_CLUB="FC Fontainebleau", app-connect/src/lib/demo/mock-data.ts)
+  // — auparavant "Enzo Dupuis / Rugby Club Sénonais" côté OS, une histoire différente de celle
+  // que raconte la démo Connect pour ce qui est censé être le même utilisateur de test.
   const connect_accounts=[
     {user_id:'demo-acc-club-1',type:'club',prenom:'Julien',nom:'Marchand',email:'julien.marchand@fcfontainebleau.fr',club_nom:'FC Fontainebleau',ville:'Fontainebleau',date_naissance:null,numero_licence:null,numero_maillot:null,account_status:'actif',created_at:iso(inDays(-70))},
-    {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Enzo',nom:'Dupuis',email:'enzo.dupuis@gmail.com',ville:'Sens',club_nom:'Rugby Club Sénonais',created_at:iso(inDays(-8)),sport:'Rugby',poste:'Ailier',categorie:'U18'},
+    {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Lucas',nom:'Martin',email:'lucas.martin@gmail.com',ville:'Fontainebleau',club_nom:'FC Fontainebleau',created_at:iso(inDays(-8)),sport:'Football',poste:'Milieu',categorie:'U17'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
   return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
