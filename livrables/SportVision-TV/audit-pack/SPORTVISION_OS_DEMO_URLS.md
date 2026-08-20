@@ -2,7 +2,71 @@
 
 **Base** : `https://sportvision-os.netlify.app/`
 
-SportVision OS est une application monopage (SPA) à état interne — il n'existe pas de vrai routeur avec des URLs distinctes par écran dans le code source. La navigation se fait via deux variables JavaScript internes (`S.role`, `S.view`). Pour permettre malgré tout de donner une URL précise par écran à un auditeur externe, le mode démo (`?demo=1`) accepte désormais deux paramètres optionnels :
+## Mise à jour du 20/08 — routes `/demo/<module>` directes et crawlables
+
+Suite à l'audit externe (ChatGPT) reçu sur la V1 (`?demo=1&role=&view=`) : le retour explicite était que ce format n'est pas assez granulaire/crawlable — une seule page shell derrière une query string, pas d'URL stable par module comme sur Connect/Club+.
+
+**Ce qui a changé** : chaque module réel a maintenant sa propre URL, ouvrable directement dans un nouvel onglet, sans dépendre du tableau de bord ni d'un état JS préalable. Le SPA reste un SPA à état interne (`S.role`/`S.view`, pas de vrai routeur) — la nouveauté est une couche qui lit `location.pathname` au chargement et bascule directement sur le bon rôle+écran, avec redirect Netlify (`status=200`, rewrite) pour que le refresh d'une URL `/demo/...` ne renvoie jamais un 404. Toutes les routes `/demo*` portent une balise `<meta name="robots" content="noindex,nofollow">` (pas d'indexation Google).
+
+**Page d'accueil** : [`https://sportvision-os.netlify.app/demo`](https://sportvision-os.netlify.app/demo) — liste cliquable de tous les modules ci-dessous.
+
+### Table exhaustive — statut par route (livrable demandé : ROUTE / MODULE / STATUT)
+
+| Route demo | Module réel (rôle.écran) | Statut |
+|---|---|---|
+| `/demo/dashboard` | admin.dash | REAL UI + DEMO DATA |
+| `/demo/demandes` | sec.demandes | REAL UI + DEMO DATA |
+| `/demo/prestations` | admin.pre | REAL UI + DEMO DATA |
+| `/demo/production` | prod.pre | REAL UI + DEMO DATA |
+| `/demo/missions` | prod.equipes | REAL UI + DEMO DATA |
+| `/demo/planning` | admin.planning | REAL UI + DEMO DATA |
+| `/demo/clients` | admin.crm | REAL UI + DEMO DATA |
+| `/demo/structures` | admin.crm (alias — même écran, pas de notion "structure" séparée) | REAL UI + DEMO DATA |
+| `/demo/equipe` | admin.col | REAL UI + DEMO DATA |
+| `/demo/operateurs` | admin.col (alias) | REAL UI + DEMO DATA |
+| `/demo/recrutement` | — | **NOT IMPLEMENTED** (aucun vivier candidats dans l'OS) |
+| `/demo/remunerations` | admin.rem | REAL UI + DEMO DATA |
+| `/demo/materiel` | admin.kits | REAL UI + DEMO DATA |
+| `/demo/contenus` | cm.contenus | REAL UI + DEMO DATA (partiel, voir pack) |
+| `/demo/livrables` | prod.livr | PARTIAL (données médias/livrables peu peuplées) |
+| `/demo/finance` | admin.fin | REAL UI + DEMO DATA (complétée le 20/08) |
+| `/demo/factures` | admin.factures | REAL UI + DEMO DATA — **écran alimenté par `prestations.statut_financier`, pas par une table `factures` dédiée** (voir incohérence notée dans le pack) |
+| `/demo/devis` | admin.devis | REAL UI + DEMO DATA |
+| `/demo/paiements` | admin.paiements | REAL UI + DEMO DATA (paiements **équipe**, pas paiement client) |
+| `/demo/charges` | admin.depenses | REAL UI + DEMO DATA (dépenses fixes/variables ajoutées le 20/08) |
+| `/demo/previsionnel` | admin.budgets | REAL UI + DEMO DATA (alias — pas de moteur de scénarios séparé) |
+| `/demo/rapprochement` | admin.rapprochement | PARTIAL — **aucune intégration bancaire (Qonto/Revolut) trouvée dans le code**, l'écran compare des données internes (`prestations`), pas de vrai rapprochement banque↔compta confirmé |
+| `/demo/contrats` | admin.contrats | REAL UI + DEMO DATA |
+| `/demo/abonnements` | sec.abonnements | REAL UI (peu de données démo) |
+| `/demo/clubplus` | admin.connectcomptes | REAL UI + DEMO DATA |
+| `/demo/clubplus/demandes` | admin.demandesclub (modale) | REAL UI + DEMO DATA |
+| `/demo/clubplus/ouvertures` | — | **NOT IMPLEMENTED** (action dans `/demo/clubplus`, pas de page séparée) |
+| `/demo/clubplus/credits` | — | **NOT IMPLEMENTED** (solde visible dans la fiche compte de `/demo/clubplus`, pas de ledger séparé) |
+| `/demo/clubplus/affiliations` | — | **NOT IMPLEMENTED** (aucun écran OS ne liste les affiliations club↔joueur) |
+| `/demo/connect` | admin.connectcomptes | REAL UI + DEMO DATA |
+| `/demo/connect/prestations` | admin.pre | REAL UI + DEMO DATA (mêmes prestations que `/demo/prestations`) |
+| `/demo/connect/paiements-collectifs` | admin.cotisations | REAL UI + DEMO DATA |
+| `/demo/full-communication` | cm.dash | PARTIAL — **pas d'écran "Full Communication" séparé, c'est un plan résolu dynamiquement** (voir pack § Full Communication) |
+| `/demo/full-communication/production` | cm.briefs | REAL UI (peu de données démo) |
+| `/demo/full-communication/validations` | cm.contenus | PARTIAL (validation intégrée à l'écran Contenus, pas de file dédiée) |
+| `/demo/full-communication/presences` | — | **NOT IMPLEMENTED** (pas de suivi de présence, compteurs seulement) |
+| `/demo/full-communication/publications` | cm.publications | REAL UI (peu de données démo) |
+| `/demo/full-communication/rapports` | cm.rapports | REAL UI (peu de données démo) |
+| `/demo/messages` | admin.msg | REAL UI + DEMO DATA |
+| `/demo/notifications` | — | **NOT IMPLEMENTED** (cloche transverse, pas de page dédiée) |
+| `/demo/roles` | admin.users | REAL UI + DEMO DATA |
+| `/demo/permissions` | admin.users (alias) | PARTIAL — permissions réelles = gardes dans le code JS + RLS Postgres, pas de matrice UI (voir `SPORTVISION_OS_ROLE_MATRIX.md`) |
+| `/demo/integrations` | admin.integrations | REAL UI (statuts, pas de vrais secrets) |
+| `/demo/logs` | admin.audit | REAL UI (peu de données démo) |
+| `/demo/parametres` | admin.set | REAL UI + DEMO DATA |
+
+D'autres routes existent au-delà de la liste demandée dans le master prompt (héritées des 47 écrans admin) : `/demo/kanban`, `/demo/incidents`, `/demo/reservations-clubs`, `/demo/documents`, `/demo/grades`, `/demo/formation`, `/demo/annuaire`, `/demo/agences-cm`, `/demo/objectifs`, `/demo/pipeline`, `/demo/commissions`, `/demo/mes-revenus`, `/demo/resultat`, `/demo/rentabilite`, `/demo/immobilisations`, `/demo/tva`, `/demo/acomptes`, `/demo/impayes`, `/demo/avoirs`, `/demo/encaissements`, `/demo/clotures`, `/demo/fec`, `/demo/analytics` — toutes REAL UI + DEMO DATA. Toute route `/demo/<slug>` non listée ci-dessus affiche une page « module non disponible » explicite (200, pas de 404) plutôt qu'un écran vide ou trompeur.
+
+**Ce qui n'a pas été touché** (hors périmètre de cette passe, pas de "grand refactor") : le contenu détaillé des écrans Médias/Postproduction, les scénarios narratifs multi-clients demandés en détail (§9-15 du master prompt — Lucas Martin, Horizon Sport, Tournoi International U15, etc. ne sont pas tous nommément recréés, seuls les jeux de données Finance ont été enrichis), la présence/validation Full Communication (n'existe pas dans le produit).
+
+---
+
+SportVision OS est une application monopage (SPA) à état interne — il n'existe pas de vrai routeur avec des URLs distinctes par écran dans le code source. La navigation se fait via deux variables JavaScript internes (`S.role`, `S.view`). Le mode démo (`?demo=1`) — gardé pour compatibilité des liens déjà partagés — accepte deux paramètres optionnels :
 
 - `role=<id>` — bascule directement sur ce rôle (9 rôles disponibles, liste ci-dessous). Si omis : `admin`.
 - `view=<id>` — ouvre directement cet écran pour le rôle choisi. Si omis : le premier écran du menu de ce rôle (« Tableau de bord » dans presque tous les cas).
