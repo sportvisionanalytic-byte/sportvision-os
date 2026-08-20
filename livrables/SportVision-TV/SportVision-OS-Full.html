@@ -2786,13 +2786,13 @@ const DEMO_DATA=(function(){
     {id:'demo-auditeur',role:'auditeur',prenom:'Paul',nom:'Weber',telephone:'',adresse:'',ville:'',code_postal:'',type_contrat:'freelance',actif:true,niveau_cm:null,email:'paul.weber@demo-audit-externe.fr',grade:0,xp:0},
   ];
   const clients=[
-    {id:'demo-cl-1',nom:'FC Fontainebleau',statut:'partenaire',type_client:'club',sport:'Football',ville:'Fontainebleau',email:'contact@fcfontainebleau.fr',telephone:'0164000000',prenom_contact:'Julien',nom_contact:'Marchand',notes:'Contrat Club+ Performance, saison 2026-2027.',origine_prospect:'recommandation',cm_id:'demo-cm',score_priorite:90,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-70))},
-    {id:'demo-cl-2',nom:'US Varennes',statut:'client',type_client:'club',sport:'Football',ville:'Varennes-sur-Seine',email:'usvarennes@gmail.com',telephone:'0164111111',prenom_contact:'Sophie',nom_contact:'Dubreuil',notes:'',origine_prospect:'salon',cm_id:null,score_priorite:60,prochaine_action:'Relancer pour renouvellement',date_prochaine_action:inDays(12),created_at:iso(inDays(-40))},
-    {id:'demo-cl-3',nom:'Rugby Club Sénonais',statut:'négociation',type_client:'club',sport:'Rugby',ville:'Sens',email:'contact@rcsenonais.fr',telephone:'0386000000',prenom_contact:'Thomas',nom_contact:'Petit',notes:'Devis envoyé, en attente de retour du bureau.',origine_prospect:'prospection',cm_id:null,score_priorite:70,prochaine_action:'Appeler le président',date_prochaine_action:inDays(2),created_at:iso(inDays(-19))},
-    {id:'demo-cl-4',nom:'Basket Nemours',statut:'devis_envoyé',type_client:'club',sport:'Basketball',ville:'Nemours',email:'basketnemours@gmail.com',telephone:'0164222222',prenom_contact:'Laura',nom_contact:'Simon',notes:'',origine_prospect:'site web',cm_id:null,score_priorite:40,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-15))},
-    {id:'demo-cl-5',nom:'Martin Dupuis (particulier)',statut:'client',type_client:'particulier',sport:'Football',ville:'Sens',email:'martin.dupuis@gmail.com',telephone:'0601111111',prenom_contact:'',nom_contact:'',notes:'Shooting joueur U17, dossier recrutement.',origine_prospect:'connect',cm_id:null,score_priorite:20,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-8))},
-    {id:'demo-cl-6',nom:'Volley Passion 89',statut:'prospect',type_client:'club',sport:'Volleyball',ville:'Sens',email:'',telephone:'',prenom_contact:'',nom_contact:'',notes:'Contact pris au forum des associations.',origine_prospect:'prospection',cm_id:null,score_priorite:10,prochaine_action:'Premier appel',date_prochaine_action:inDays(5),created_at:iso(inDays(-5))},
-    {id:'demo-cl-7',nom:'FC Exemple',statut:'partenaire',type_client:'club',sport:'Football',ville:'Melun',email:'contact@fcexemple.fr',telephone:'0164333333',prenom_contact:'Karim',nom_contact:'Benali',notes:'Contrat Full Communication — CM référent Alice Roche.',origine_prospect:'recommandation',cm_id:'demo-cm',score_priorite:95,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-120))},
+    {id:'demo-cl-1',nom:'FC Fontainebleau',statut:'partenaire',statut_relation:'partenaire',etape_pipeline:'gagne',type_client:'club',sport:'Football',ville:'Fontainebleau',email:'contact@fcfontainebleau.fr',telephone:'0164000000',prenom_contact:'Julien',nom_contact:'Marchand',notes:'Contrat Club+ Performance, saison 2026-2027.',origine_prospect:'recommandation',cm_id:'demo-cm',score_priorite:90,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-70))},
+    {id:'demo-cl-2',nom:'US Varennes',statut:'client',statut_relation:'client',etape_pipeline:'gagne',type_client:'club',sport:'Football',ville:'Varennes-sur-Seine',email:'usvarennes@gmail.com',telephone:'0164111111',prenom_contact:'Sophie',nom_contact:'Dubreuil',notes:'',origine_prospect:'salon',cm_id:null,score_priorite:60,prochaine_action:'Relancer pour renouvellement',date_prochaine_action:inDays(12),created_at:iso(inDays(-40))},
+    {id:'demo-cl-3',nom:'Rugby Club Sénonais',statut:'négociation',statut_relation:'prospect',etape_pipeline:'negociation',type_client:'club',sport:'Rugby',ville:'Sens',email:'contact@rcsenonais.fr',telephone:'0386000000',prenom_contact:'Thomas',nom_contact:'Petit',notes:'Devis envoyé, en attente de retour du bureau.',origine_prospect:'prospection',cm_id:null,score_priorite:70,prochaine_action:'Appeler le président',date_prochaine_action:inDays(2),created_at:iso(inDays(-19))},
+    {id:'demo-cl-4',nom:'Basket Nemours',statut:'devis_envoyé',statut_relation:'prospect',etape_pipeline:'devis_envoye',type_client:'club',sport:'Basketball',ville:'Nemours',email:'basketnemours@gmail.com',telephone:'0164222222',prenom_contact:'Laura',nom_contact:'Simon',notes:'',origine_prospect:'site web',cm_id:null,score_priorite:40,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-15))},
+    {id:'demo-cl-5',nom:'Martin Dupuis (particulier)',statut:'client',statut_relation:'client',etape_pipeline:'gagne',type_client:'particulier',sport:'Football',ville:'Sens',email:'martin.dupuis@gmail.com',telephone:'0601111111',prenom_contact:'',nom_contact:'',notes:'Shooting joueur U17, dossier recrutement.',origine_prospect:'connect',cm_id:null,score_priorite:20,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-8))},
+    {id:'demo-cl-6',nom:'Volley Passion 89',statut:'prospect',statut_relation:'prospect',etape_pipeline:null,type_client:'club',sport:'Volleyball',ville:'Sens',email:'',telephone:'',prenom_contact:'',nom_contact:'',notes:'Contact pris au forum des associations.',origine_prospect:'prospection',cm_id:null,score_priorite:10,prochaine_action:'Premier appel',date_prochaine_action:inDays(5),created_at:iso(inDays(-5))},
+    {id:'demo-cl-7',nom:'FC Exemple',statut:'partenaire',statut_relation:'partenaire',etape_pipeline:'gagne',type_client:'club',sport:'Football',ville:'Melun',email:'contact@fcexemple.fr',telephone:'0164333333',prenom_contact:'Karim',nom_contact:'Benali',notes:'Contrat Full Communication — CM référent Alice Roche.',origine_prospect:'recommandation',cm_id:'demo-cm',score_priorite:95,prochaine_action:'',date_prochaine_action:null,created_at:iso(inDays(-120))},
   ];
   const catalogue_offres=[
     {id:'demo-off-1',nom:'Match Photo',categorie:'photo',description:"Reportage photo complet d'un match.",tarif_type:'fixe',prix_ht:100,tva_pct:20,duree_estimee:'24h',livrables_inclus:'30 photos retouchées'},
@@ -2811,7 +2811,7 @@ const DEMO_DATA=(function(){
     // "Briefs production" côté CM (cm.briefs) réutilise prestations filtrées sur
     // type_prestation='réseaux_sociaux' — pas une table séparée. Ajouté pour peupler ce module
     // FullComm réel, jusqu'ici sans données démo.
-    {id:'demo-pre-8',reference:'SV-DEMO-0008',source:'interne',statut:'confirmée',statut_financier:'non_facturée',type_prestation:'réseaux_sociaux',date_prestation:inDays(3),heure_debut:'10:00',heure_fin:'12:00',heure_rdv:'09:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Karim Benali',telephone_sur_place:'0164333333',montant_ht:null,montant_ttc:null,tva_pct:20,notes_internes:'Contrat Full Communication — présence CM programmée.',description_besoin:'Captation entraînement pour contenus réseaux sociaux de la semaine.',livrables_demandes:'3-4 posts + stories',briefing_vu_at:null,options_selectionnees:null,mode_paiement_choisi:null,distance_km:12,frais_deplacement_ht:0,offre_id:null,client_id:'demo-cl-7',created_at:iso(inDays(-1))},
+    {id:'demo-pre-8',reference:'SV-DEMO-0008',source:'interne',statut:'confirmée',statut_financier:'non_facturée',type_prestation:'Réseaux sociaux',date_prestation:inDays(3),heure_debut:'10:00',heure_fin:'12:00',heure_rdv:'09:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Karim Benali',telephone_sur_place:'0164333333',montant_ht:null,montant_ttc:null,tva_pct:20,notes_internes:'Contrat Full Communication — présence CM programmée.',description_besoin:'Captation entraînement pour contenus réseaux sociaux de la semaine.',livrables_demandes:'3-4 posts + stories',briefing_vu_at:null,options_selectionnees:null,mode_paiement_choisi:null,distance_km:12,frais_deplacement_ht:0,offre_id:null,client_id:'demo-cl-7',created_at:iso(inDays(-1))},
   ];
   // statut = statut d'AFFECTATION (acceptée/invitation_envoyée/refusée...) — distinct de
   // statut_paiement (en_attente/validé/transmis_compta/payé), lui-même distinct du statut
@@ -2919,7 +2919,7 @@ const DEMO_DATA=(function(){
   ];
   const contrats=[
     {id:'demo-ctr-1',client_id:'demo-cl-1',statut:'actif',type_contrat:'club_plus',montant_mensuel:129,frequence:'mensuelle',renouvellement_auto:true,date_debut:inDays(-70),date_fin:inDays(295),created_at:iso(inDays(-70))},
-    {id:'demo-ctr-2',client_id:'demo-cl-2',statut:'actif',type_contrat:'prestation_ponctuelle',montant_mensuel:0,frequence:null,renouvellement_auto:false,date_debut:inDays(-40),date_fin:null,created_at:iso(inDays(-40))},
+    {id:'demo-ctr-2',client_id:'demo-cl-2',statut:'actif',type_contrat:'ponctuel',montant_mensuel:0,frequence:null,renouvellement_auto:false,date_debut:inDays(-40),date_fin:null,created_at:iso(inDays(-40))},
     {id:'demo-ctr-3',client_id:'demo-cl-7',statut:'actif',type_contrat:'full_communication',montant_mensuel:900,frequence:'mensuelle',renouvellement_auto:true,date_debut:inDays(-120),date_fin:inDays(245),created_at:iso(inDays(-120))},
   ];
   const clubs=[
@@ -3898,6 +3898,11 @@ let _preDateFiltre='';
 // donc un clic sur un KPI groupant 7 statuts ne peut pas être représenté
 // par du texte libre sans perdre 6 des 7 statuts du groupe.
 let _preStatutsFiltre=null;
+// Ajouté suite à l'audit externe du 20/08 : la colonne `source` (interne/vitrine/connect/
+// clubplus) existait déjà en base sur `prestations` mais n'était affichée/filtrable nulle
+// part — impossible pour le staff de voir d'où vient une demande sans ouvrir chaque fiche.
+let _preSourceFiltre='';
+const SOURCE_PRE_LBL={interne:'Interne',vitrine:'Vitrine',connect:'Connect',clubplus:'Club+'};
 async function loadPrestations(){
   const el=document.getElementById('pre-real');
   if(!el)return;
@@ -3908,7 +3913,7 @@ async function loadPrestations(){
     // qui lit _prestationsCache) affichait donc une fiche sans le bloc "Transmis par le
     // client"/"Offre du catalogue Connect" même quand ces données existaient réellement en
     // base, simplement parce que cette requête-ci ne les demandait pas.
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,options_selectionnees,mode_paiement_choisi,distance_km,frais_deplacement_ht,offre_id,catalogue_offres(nom,categorie,description,tarif_type,prix_ht,duree_estimee,livrables_inclus),clients(nom)&order=date_prestation.desc&limit=200');
+    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,source,date_prestation,heure_debut,heure_fin,heure_rdv,lieu,adresse_complete,contact_sur_place,telephone_sur_place,montant_ht,montant_ttc,notes_internes,description_besoin,livrables_demandes,options_selectionnees,mode_paiement_choisi,distance_km,frais_deplacement_ht,offre_id,catalogue_offres(nom,categorie,description,tarif_type,prix_ht,duree_estimee,livrables_inclus),clients(nom)&order=date_prestation.desc&limit=200');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📋</div><div>Aucune prestation. Créez la première.</div></div>';return;}
     _prestationsCache=data;
     renderPreTable();
@@ -3937,6 +3942,7 @@ function renderPreTable(){
       ):_prestationsCache);
   if(_preDateFiltre==='today')list=list.filter(p=>p.date_prestation===today);
   else if(_preDateFiltre==='week')list=list.filter(p=>p.date_prestation&&p.date_prestation>=today&&p.date_prestation<=in7s);
+  if(_preSourceFiltre)list=list.filter(p=>p.source===_preSourceFiltre);
   const SF_CLS={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl','non_facturée':'bn'};
   const SF_LBL={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard','non_facturée':'—','en_préparation':'En prép.'};
   const dfBtn=(v,lb)=>`<button onclick="_preDateFiltre='${v}';renderPreTable()" style="padding:4px 10px;font-size:11px;border-radius:var(--rp);background:${_preDateFiltre===v?'var(--acc)':'rgba(255,255,255,.06)'};border:1px solid ${_preDateFiltre===v?'var(--acc)':'rgba(255,255,255,.1)'};color:${_preDateFiltre===v?'#fff':'var(--t2)'};cursor:pointer;white-space:nowrap">${lb}</button>`;
@@ -3950,15 +3956,20 @@ function renderPreTable(){
         <optgroup label="Livraison">${['prête_à_livrer','livrée','facturée','payée'].map(s=>`<option value="${s}">${SL[s]}</option>`).join('')}</optgroup>
         <optgroup label="Annulé">${['annulée','refusée','clôturée'].map(s=>`<option value="${s}">${SL[s]}</option>`).join('')}</optgroup>
       </select>
+      <select class="l-inp" style="height:34px;max-width:140px" onchange="_preSourceFiltre=this.value;renderPreTable()">
+        <option value="">Toutes sources</option>
+        ${Object.entries(SOURCE_PRE_LBL).map(([v,lb])=>`<option value="${v}" ${_preSourceFiltre===v?'selected':''}>${lb}</option>`).join('')}
+      </select>
       ${Array.isArray(_preStatutsFiltre)&&_preStatutsFiltre.length?`<span style="display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;background:rgba(54,107,255,.12);border:1px solid rgba(54,107,255,.3);border-radius:var(--rp);color:var(--acc);white-space:nowrap">${_preStatutsFiltre.length} statut(s) filtrés <span role="button" tabindex="0" aria-label="Retirer le filtre statut" onclick="_preStatutsFiltre=null;renderPreTable()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();_preStatutsFiltre=null;renderPreTable();}" style="cursor:pointer;font-weight:700">✕</span></span>`:''}
       <div style="display:flex;gap:4px">${dfBtn('','Tout')}${dfBtn('today','Auj.')}${dfBtn('week','7j')}</div>
       <span style="font-size:11px;color:var(--t3);white-space:nowrap">${list.length} / ${_prestationsCache.length}</span>
     </div>
-    ${list.length?'<div class="tw" style="overflow-x:auto"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant</th><th>Statut</th><th>Facturation</th><th></th></tr></thead><tbody>'+
+    ${list.length?'<div class="tw" style="overflow-x:auto"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Source</th><th>Date</th><th>Montant</th><th>Statut</th><th>Facturation</th><th></th></tr></thead><tbody>'+
       list.map((p,i)=>{const ri=_prestationsCache.indexOf(p);return`<tr>
         <td class="tm">${p.reference||'—'}</td>
         <td class="tp">${esc(p.clients?.nom||'—')}</td>
         <td>${p.type_prestation||'—'}</td>
+        <td style="font-size:11px;color:var(--t3)">${SOURCE_PRE_LBL[p.source]||p.source||'—'}</td>
         <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
         <td class="tm">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
         <td><span class="bd ${SC[p.statut]||'bw'}"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span></td>
@@ -4259,7 +4270,7 @@ async function loadClients(){
   const el=document.getElementById('crm-real');
   if(!el)return;
   try{
-    const data=await sbFetch('clients?select=id,nom,statut,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect,cm_id&order=created_at.desc&limit=100');
+    const data=await sbFetch('clients?select=id,nom,statut,statut_relation,etape_pipeline,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect,cm_id&order=created_at.desc&limit=100');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun client. Créez le premier prospect.</div></div>';return;}
     _clientsCache=data;
     renderClientsTable();
@@ -4277,6 +4288,14 @@ function renderClientsTable(){
   });
   const sc={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw','partenaire':'ba','client':'ba','inactif':'bn','bloqué':'br','perdu':'br'};
   const scLb={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis envoyé','négociation':'Négociation','partenaire':'Partenaire','client':'Client','inactif':'Inactif','bloqué':'Bloqué','perdu':'Perdu'};
+  // statut_relation/etape_pipeline (migration-crm-v91, 20/08) séparent la relation commerciale
+  // (est-ce un client aujourd'hui ?) de l'étape de vente (où en est une négociation en cours ?),
+  // deux notions qu'un seul `statut` ne pouvait pas représenter en même temps — ex. un client
+  // actif en cours de renégociation d'un nouveau contrat. `statut` reste synchronisé en
+  // écriture (trigger) pour tout le code existant qui le lit encore.
+  const relLb={prospect:'Prospect',client:'Client',partenaire:'Partenaire',inactif:'Inactif',bloque:'Bloqué'};
+  const relClr={prospect:'bw',client:'ba',partenaire:'ba',inactif:'bn',bloque:'br'};
+  const etpLb={qualification:'Qualification',devis_envoye:'Devis envoyé',negociation:'Négociation',gagne:'Gagné',perdu:'Perdu'};
   el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px">
     <input id="crm-search" type="text" class="l-inp" placeholder="Rechercher nom, ville, sport, email…" value="${_crmFiltre}" oninput="_crmFiltre=this.value;renderClientsTable()" style="height:34px;flex:1;max-width:320px">
     <select id="crm-st-filter" class="l-inp" style="height:34px;max-width:180px" onchange="_crmStFiltre=this.value;renderClientsTable()">
@@ -4285,7 +4304,7 @@ function renderClientsTable(){
     </select>
     <span style="font-size:11px;color:var(--t3);white-space:nowrap">${list.length} / ${_clientsCache.length}</span>
   </div>
-  ${list.length?'<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Email / Tél.</th><th>Statut</th><th></th></tr></thead><tbody>'+
+  ${list.length?'<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Email / Tél.</th><th>Relation</th><th>Étape pipeline</th><th></th></tr></thead><tbody>'+
     list.map(c=>{const i=_clientsCache.indexOf(c);
       const ct=esc([c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'—');
       const emailBtn=c.email?`<span onclick="copier('${escJs(c.email)}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${esc(c.email)}</span>`:'—';
@@ -4298,7 +4317,8 @@ function renderClientsTable(){
         <td>${esc(c.ville||'—')}</td>
         <td>${ct}</td>
         <td style="font-size:12px">${emailBtn}${telBtn}</td>
-        <td><span class="bd ${sc[c.statut]||'bw'}"><span class="bd-d"></span>${scLb[c.statut]||c.statut}</span></td>
+        <td><span class="bd ${relClr[c.statut_relation]||'bw'}"><span class="bd-d"></span>${relLb[c.statut_relation]||c.statut_relation||'—'}</span></td>
+        <td style="font-size:11px;color:var(--t3)">${c.etape_pipeline?(etpLb[c.etape_pipeline]||c.etape_pipeline):'—'}</td>
         <td><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
           ${crmNext?`<button onclick="crmAvancerStatut('${c.id}','${crmNext.st}')" style="padding:4px 8px;font-size:11px;background:transparent;border:1px solid ${crmNext.clr}55;border-radius:var(--rp);color:${crmNext.clr};cursor:pointer;white-space:nowrap;font-weight:600">${crmNext.lb}</button>`:''}
           ${c.email?`<a href="mailto:${encodeURIComponent(c.email)}" style="padding:4px 8px;font-size:11px;background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;text-decoration:none;white-space:nowrap" title="${esc(c.email)}">✉</a>`:''}
@@ -20846,6 +20866,11 @@ if(DEMO_MODE){
       if(slug===''){demoRenderHome();return;}
       const route=DEMO_ROUTE_MAP[slug];
       if(!route){demoRenderUnavailable(slug,DEMO_ROUTE_UNAVAILABLE[slug]);return;}
+      // /demo/connect/prestations pointe vers le même écran réel que /demo/prestations (il n'y
+      // a pas d'écran Connect séparé dans le vrai NAV) — mais on applique ici le vrai filtre
+      // source=connect (ajouté suite à l'audit du 20/08) plutôt que de laisser croire que la
+      // route filtre alors qu'elle affichait tout auparavant.
+      if(slug==='connect/prestations')_preSourceFiltre='connect';
       demoSwitchRole(route.role);
       const item=(NAV[route.role]||[]).find(i=>i.id===route.view);
       if(item&&item.modal&&typeof window[item.modal]==='function')window[item.modal]();
@@ -22233,6 +22258,12 @@ async function loadContrats(){
   }
   const list=Array.isArray(r)?r:[];
   const fmt=n=>(n||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
+  // fd manquait ici (bug pré-existant trouvé en testant les correctifs CRM du 20/08 via jsdom) :
+  // toute autre fonction du fichier qui appelle fd() la déclare localement, celle-ci ne le
+  // faisait pas — l'écran Contrats plantait (ReferenceError) dès qu'un contrat avait une
+  // date_debut, c'est-à-dire quasiment toujours. L'audit externe ne l'avait pas vu car il ne
+  // lit que la page statique, jamais l'exécution JS réelle de cet écran.
+  const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
   const now=new Date(),in30=new Date(now);in30.setDate(in30.getDate()+30);
   const actifs=list.filter(c=>c.statut==='actif');
   const expBientot=actifs.filter(c=>c.date_fin&&new Date(c.date_fin)<=in30&&new Date(c.date_fin)>=now);
