@@ -2745,6 +2745,7 @@ const DEMO_FK={
   club_bookings:{clubs:'club_id'},
   group_fundings:{catalogue_offres:'catalogue_offre_id',user_groups:'group_id'},
   expenses:{vendors:'vendor_id'},
+  financial_audit_log:{profiles:'acteur_id'},
 };
 
 const DEMO_DATA=(function(){
@@ -2829,6 +2830,16 @@ const DEMO_DATA=(function(){
   const commissions=[
     {id:'demo-com-1',montant_commission:35,statut:'validee',date_calcul:today,collaborateur_id:'demo-com'},
   ];
+  // Écran réel "Journal d'audit financier" (loadComptaAuditLog, compta.audit) — retiré à tort
+  // de la liste des modules "non implémentés" le 20/08 : la table financial_audit_log existe et
+  // est déjà écrite (logFinancialAudit, appelée par majStatutFinancier/majStatutFacture/etc.),
+  // seule cette page démo n'avait pas de jeu de données pour le démontrer.
+  const financial_audit_log=[
+    {id:'demo-aud-1',acteur_id:'demo-compta',action:'paiement',table_cible:'factures',ligne_id:'demo-fac-2',montant_avant:null,montant_apres:180,details:{},created_at:iso(inDays(-6))},
+    {id:'demo-aud-2',acteur_id:'demo-admin',action:'creation',table_cible:'expenses',ligne_id:'demo-exp-3',montant_avant:null,montant_apres:58.8,details:{libelle:'Abonnement Metricool'},created_at:iso(inDays(-1))},
+    {id:'demo-aud-3',acteur_id:'demo-sec',action:'modification',table_cible:'prestations',ligne_id:'demo-pre-1',montant_avant:null,montant_apres:null,details:{champ:'statut',de:'confirmée',vers:'à_planifier'},created_at:iso(inDays(-4))},
+    {id:'demo-aud-4',acteur_id:'demo-compta',action:'cloture',table_cible:'accounting_periods',ligne_id:null,montant_avant:null,montant_apres:null,details:{periode:'2026-07'},created_at:iso(inDays(-20))},
+  ];
   const v_rentabilite_missions=[
     {id:'demo-pre-4',reference:'SV-DEMO-0004',client_nom:'FC Fontainebleau',date_prestation:inDays(-3),revenu_ht:100,cout_remunerations:55,cout_frais:0,cout_depenses_directes:0,cout_indirect_alloue:12,marge_nette:33,statut_financier:'facturée'},
     {id:'demo-pre-5',reference:'SV-DEMO-0005',client_nom:'US Varennes',date_prestation:inDays(-10),revenu_ht:150,cout_remunerations:120,cout_frais:18,cout_depenses_directes:10,cout_indirect_alloue:15,marge_nette:-13,statut_financier:'payée'},
@@ -2869,7 +2880,7 @@ const DEMO_DATA=(function(){
     {user_id:'demo-acc-joueur-1',type:'joueur',prenom:'Enzo',nom:'Dupuis',email:'enzo.dupuis@gmail.com',ville:'Sens',club_nom:'Rugby Club Sénonais',created_at:iso(inDays(-8)),sport:'Rugby',poste:'Ailier',categorie:'U18'},
     {user_id:'demo-acc-part-1',type:'particulier',prenom:'Martin',nom:'Dupuis',email:'martin.dupuis@gmail.com',ville:'Sens',agent_tier:null,agent_status:null,nb_athletes:1,created_at:iso(inDays(-8)),managed_athletes:[{prenom:'Enzo',nom:'Dupuis',sport:'Rugby',categorie:'U18',relation_label:'Parent'}]},
   ];
-  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
+  return {profiles,clients,catalogue_offres,prestations,prestations_equipe,kits,incidents,expenses,vendors,factures,employee_costs,commissions,v_rentabilite_missions,financial_audit_log,devis,contrats,clubs,club_bookings,user_groups,group_fundings,funding_contributions,connect_clubplus_signup_requests,connect_accounts,messages,notifications};
 })();
 
 function _demoParseSelect(sel){
@@ -18108,7 +18119,7 @@ async function sauvegarderMappingPCG(){
 
 // ── Journal d'audit financier (financial_audit_log) ─────────────────────
 let _auditLogCache=[],_auditLogFilter='all';
-const AUDIT_ACTION_LABELS={creation:'Création',modification:'Modification',cloture:'Clôture',reouverture:'Réouverture',validation:'Validation',paiement:'Paiement',provisionnement:'Provisionnement'};
+const AUDIT_ACTION_LABELS={creation:'Création',modification:'Modification',cloture:'Clôture',reouverture:'Réouverture',validation:'Validation',paiement:'Paiement',provisionnement:'Provisionnement',encaissement:'Encaissement',remboursement:'Remboursement'};
 async function loadComptaAuditLog(){
   const el=document.getElementById('audit-log-real');if(!el)return;
   try{
