@@ -4614,10 +4614,20 @@ async function chargerCreditsProjetClient(clientId){
   const el=document.getElementById('fce-credits');
   if(!el)return;
   try{
-    const clubLink=await sbFetch('clubs?select=id&portail_client_id=eq.'+clientId+'&limit=1');
+    const clubLink=await sbFetch('clubs?select=id,credits_balance,credits_reserved,credits_monthly&portail_client_id=eq.'+clientId+'&limit=1');
     if(sbErr(clubLink)){el.innerHTML='<span style="color:var(--er)">Crédits indisponibles.</span>';return;}
     if(Array.isArray(clubLink)&&clubLink.length>0){
-      el.textContent='Ce client est rattaché à un club — les crédits Connect se gèrent au niveau du club.';
+      // Ledger crédits Club+ (INC-025, 20/08) : la donnée (clubs.credits_balance/credits_reserved,
+      // club_credit_transactions déjà écrite par staff_update_club_request_status/
+      // update_club_request_status) était déjà réelle et à jour, mais aucun écran OS ne la lisait
+      // jamais — remplace le message passif précédent par le vrai solde + les derniers mouvements,
+      // exactement là où le comment ci-dessus indiquait déjà "les crédits se gèrent au niveau du
+      // club", sans jamais construire l'écran correspondant. Lecture seule volontaire : la seule
+      // écriture légitime passe par les RPC dédiées (demande de visuel côté Club+/OS), pas un
+      // formulaire de crédit manuel ici.
+      const club=clubLink[0];
+      const solde=Math.max(0,(club.credits_balance||0)-(club.credits_reserved||0));
+      chargerLedgerCreditsClub(club.id,club.credits_balance||0,club.credits_reserved||0,club.credits_monthly||0,solde);
       return;
     }
     const org=await sbFetch('organizations?select=organization_type,credits_balance,credits_reserved&id=eq.'+clientId+'&limit=1');
@@ -4636,6 +4646,29 @@ async function chargerCreditsProjetClient(clientId){
       </div>
       <div id="fce-credit-err" style="font-size:11px;color:var(--er);min-height:14px;margin-top:4px"></div>`:'');
   }catch(e){el.innerHTML='<span style="color:var(--er)">Erreur de chargement des crédits.</span>';}
+}
+
+// Ledger crédits Club+ (INC-025) : solde + derniers mouvements réels (club_credit_transactions,
+// déjà écrite par staff_update_club_request_status/update_club_request_status à chaque
+// consommation). Lecture seule — voir le commentaire d'appel ci-dessus pour le contexte complet.
+async function chargerLedgerCreditsClub(clubId,balance,reserved,monthly,solde){
+  const el=document.getElementById('fce-credits');
+  if(!el)return;
+  el.innerHTML=`<div style="margin-bottom:6px">Alloués/mois <b style="color:var(--t1)">${monthly}</b> · Solde ${balance} · Réservé ${reserved} · Disponible <b style="color:var(--t1)">${solde}</b></div>`+
+    `<div id="fce-club-credit-mvts" style="font-size:11px;color:var(--t3)">Chargement des mouvements…</div>`;
+  try{
+    const mvts=await sbFetch('club_credit_transactions?select=label,amount,created_at&club_id=eq.'+clubId+'&order=created_at.desc&limit=10');
+    const mvtsEl=document.getElementById('fce-club-credit-mvts');
+    if(!mvtsEl)return;
+    if(sbErr(mvts)||!Array.isArray(mvts)){mvtsEl.textContent='Mouvements indisponibles.';return;}
+    if(!mvts.length){mvtsEl.textContent='Aucun mouvement enregistré.';return;}
+    const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+    mvtsEl.innerHTML='<div style="border-top:1px solid var(--b1);padding-top:6px;margin-top:2px">'+
+      mvts.map(m=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0">
+        <span style="color:var(--t3)">${fd(m.created_at)} · ${esc(m.label||'—')}</span>
+        <span style="font-weight:600;color:${m.amount<0?'var(--er)':'var(--ok)'};white-space:nowrap">${m.amount>0?'+':''}${m.amount}</span>
+      </div>`).join('')+'</div>';
+  }catch(e){const mvtsEl=document.getElementById('fce-club-credit-mvts');if(mvtsEl)mvtsEl.textContent='Erreur de chargement des mouvements.';}
 }
 
 // Geste staff : ajuste le solde via credit_organization() (SECURITY DEFINER, staff-only, trace
