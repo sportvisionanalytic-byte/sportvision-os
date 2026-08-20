@@ -1170,9 +1170,10 @@ const VIEWS={
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn bg2 bs" onclick="filterComptaFactures('all')" id="cptf-f-all" style="background:rgba(54,107,255,.15);color:var(--acc)">Toutes</button>
-      <button class="btn bg2 bs" onclick="filterComptaFactures('payée')" id="cptf-f-payee">Payées</button>
-      <button class="btn bg2 bs" onclick="filterComptaFactures('facturée')" id="cptf-f-facturee">Facturées</button>
-      <button class="btn bg2 bs" onclick="filterComptaFactures('partiellement_payée')" id="cptf-f-partiel">Part. payées</button>
+      <button class="btn bg2 bs" onclick="filterComptaFactures('payee')" id="cptf-f-payee">Payées</button>
+      <button class="btn bg2 bs" onclick="filterComptaFactures('emise')" id="cptf-f-emise">Émises</button>
+      <button class="btn bg2 bs" onclick="filterComptaFactures('partiellement_payee')" id="cptf-f-partiel">Part. payées</button>
+      <button class="btn bg2 bs" onclick="filterComptaFactures('en_retard')" id="cptf-f-retard">En retard</button>
     </div>
     <div id="compta-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -2780,7 +2781,7 @@ const DEMO_DATA=(function(){
     {id:'demo-pre-2',reference:'SV-DEMO-0002',statut:'équipe_affectée',statut_financier:'non_facturée',type_prestation:'Highlights Vidéo',date_prestation:inDays(2),heure_debut:'10:00',heure_fin:'12:30',heure_rdv:'09:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights match retour.',livrables_demandes:'Vidéo 2 min, sous-titrée',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-5))},
     {id:'demo-pre-3',reference:'SV-DEMO-0003',statut:'demande_reçue',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(5),heure_debut:'15:00',heure_fin:'17:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:null,montant_ttc:null,tva_pct:20,notes_internes:'',description_besoin:'Prestation demandée (Connect — Espace joueur) : reportage match.',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-2))},
     {id:'demo-pre-4',reference:'SV-DEMO-0004',statut:'production_terminée',statut_financier:'facturée',type_prestation:'Match Photo',date_prestation:inDays(-3),heure_debut:'11:00',heure_fin:'13:00',heure_rdv:'10:30',lieu:'Stade Pierre-Bardin',adresse_complete:'12 avenue du Stade, 77300 Fontainebleau',contact_sur_place:'Julien Marchand',telephone_sur_place:'0601020304',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'',description_besoin:'Reportage photo match aller.',livrables_demandes:'30 photos',options_selectionnees:null,mode_paiement_choisi:'carte',distance_km:12,frais_deplacement_ht:0,offre_id:'demo-off-1',client_id:'demo-cl-1',created_at:iso(inDays(-10))},
-    {id:'demo-pre-5',reference:'SV-DEMO-0005',statut:'payée',statut_financier:'payée',type_prestation:'Highlights Vidéo',date_prestation:inDays(-10),heure_debut:'09:00',heure_fin:'11:30',heure_rdv:'08:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights.',livrables_demandes:'Vidéo 2 min',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-16))},
+    {id:'demo-pre-5',reference:'SV-DEMO-0005',statut:'clôturée',statut_financier:'payée',type_prestation:'Highlights Vidéo',date_prestation:inDays(-10),heure_debut:'09:00',heure_fin:'11:30',heure_rdv:'08:30',lieu:'Complexe sportif',adresse_complete:'Rue des Sports, 77130 Montereau',contact_sur_place:'Sophie Dubreuil',telephone_sur_place:'0601030405',montant_ht:150,montant_ttc:180,tva_pct:20,notes_internes:'',description_besoin:'Vidéo highlights.',livrables_demandes:'Vidéo 2 min',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:25,frais_deplacement_ht:10,offre_id:'demo-off-2',client_id:'demo-cl-2',created_at:iso(inDays(-16))},
     {id:'demo-pre-6',reference:'SV-DEMO-0006',statut:'annulée',statut_financier:'non_facturée',type_prestation:'Match Photo',date_prestation:inDays(-1),heure_debut:'16:00',heure_fin:'18:00',heure_rdv:null,lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'',telephone_sur_place:'',montant_ht:100,montant_ttc:120,tva_pct:20,notes_internes:'Annulée par le client (météo).',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:null,distance_km:null,frais_deplacement_ht:null,offre_id:null,client_id:'demo-cl-3',created_at:iso(inDays(-4))},
     {id:'demo-pre-7',reference:'SV-DEMO-0007',statut:'clôturée',statut_financier:'en_retard',type_prestation:'Match Photo',date_prestation:inDays(-45),heure_debut:'14:00',heure_fin:'16:00',heure_rdv:'13:30',lieu:'Gymnase municipal',adresse_complete:'89100 Sens',contact_sur_place:'Thomas Petit',telephone_sur_place:'0601040506',montant_ht:183,montant_ttc:220,tva_pct:20,notes_internes:'Facture en retard, relance envoyée.',description_besoin:'',livrables_demandes:'',options_selectionnees:null,mode_paiement_choisi:'virement',distance_km:30,frais_deplacement_ht:15,offre_id:'demo-off-1',client_id:'demo-cl-3',created_at:iso(inDays(-46))},
   ];
@@ -3891,8 +3892,15 @@ const _NEXT_ST={
   'médias_complets':'à_monter','à_monter':'montage_en_cours',
   'montage_en_cours':'prêt_validation','prêt_validation':'à_valider_client',
   'à_valider_client':'prête_à_livrer','prête_à_livrer':'livrée',
-  'livrée':'facturée','facturée':'partiellement_payée',
-  'partiellement_payée':'payée','payée':'clôturée'
+  // Correctif INC-021 (audit externe 20/08) : 'livrée' avançait auparavant vers 'facturée' →
+  // 'partiellement_payée' → 'payée' → 'clôturée', empruntant à `statut` (opérationnel) des
+  // valeurs qui sont déjà et correctement suivies par `statut_financier` (colonne séparée,
+  // gérée par majStatutFacture/majStatutFinancier). Conséquence concrète : une prestation
+  // pouvait afficher statut='payée', comme si "payée" était une étape de production — observé
+  // et confirmé par l'audit (0 ligne réelle n'était encore dans ce cas en production, migration
+  // sûre). 'livrée' passe désormais directement à 'clôturée' ; le financier progresse
+  // uniquement via `statut_financier`/`factures.statut`, indépendamment.
+  'livrée':'clôturée'
 };
 function pdAvancer(){const sel=document.getElementById('pd-statut');if(!sel)return;const next=_NEXT_ST[sel.value];if(next){sel.value=next;}}
 async function avancerStatutPrestation(id,statut){
@@ -3904,8 +3912,10 @@ async function avancerStatutPrestation(id,statut){
     toast('→ '+(SL[next]||next),'ok');
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
-    // Moteur d'événements
-    const evMap={'confirmée':'prestation.confirmed','production_terminée':'prestation.completed','payée':'payment.confirmed'};
+    // Moteur d'événements — 'payée' retiré (INC-021, 20/08) : statut n'atteint plus jamais
+    // cette valeur, l'événement payment.confirmed part maintenant de majStatutFinancier/
+    // majStatutFacture, là où le paiement se confirme réellement (statut_financier/factures).
+    const evMap={'confirmée':'prestation.confirmed','production_terminée':'prestation.completed'};
     if(evMap[next]){
       dispatchSVEvent(evMap[next],{prestation_id:id});
       creerTachesAuto(evMap[next],{source_type:'prestation',source_id:id}).catch(()=>{});
@@ -12180,9 +12190,9 @@ function downloadCSV(rows,filename){
 async function exportCSV(type){
   try{
     if(type==='factures'){
-      const data=await sbFetch('prestations?select=reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,tva_pct,clients(nom)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=500');
-      const rows=[['Référence','Client','Type','Date','Montant HT','TVA %','Montant TTC','Statut facture']];
-      (data||[]).forEach(p=>rows.push([p.reference||'',p.clients?.nom||'',p.type_prestation||'',p.date_prestation||'',p.montant_ht||'',p.tva_pct||'20',p.montant_ttc||'',p.statut_financier||'']));
+      const data=await sbFetch('factures?select=numero,statut,montant_ht,tva_pct,montant_ttc,date_emission,date_echeance,clients(nom),prestations(reference,type_prestation)&order=date_emission.desc&limit=500');
+      const rows=[['N° facture','Client','Prestation','Type','Émise le','Échéance','Montant HT','TVA %','Montant TTC','Statut']];
+      (data||[]).forEach(f=>rows.push([f.numero||'',f.clients?.nom||'',f.prestations?.reference||'',f.prestations?.type_prestation||'',f.date_emission||'',f.date_echeance||'',f.montant_ht||'',f.tva_pct||'20',f.montant_ttc||'',f.statut||'']));
       downloadCSV(rows,'SportVision-Factures-'+ymdLocal()+'.csv');
     }
     else if(type==='ca-mensuel'){
@@ -19448,19 +19458,28 @@ async function avanJourJ(id,newStatut){
 }
 
 // ── Comptabilité — factures ───────────────────────────────────────────────────
+// Corrigé le 20/08 (INC-022, audit externe) : cet écran lisait `prestations` et affichait
+// des références de PRESTATION (SV-...) comme si c'étaient des références de facture, alors
+// qu'une vraie table `factures` (numéro séquentiel FAC-..., échéance, statut propre) existe
+// et est déjà alimentée par getOrCreateFacture()/emettreFacture() — seul cet écran ne la
+// lisait jamais. Lit maintenant `factures` directement. Sans effet sur le Dashboard/
+// Rentabilité/Impayés, qui continuent d'utiliser prestations.statut_financier (tenu à jour
+// en parallèle par majStatutFacture ci-dessous), et sans backfill nécessaire : 0 ligne réelle
+// dans `factures` au moment de ce correctif (aucune prestation n'a encore atteint
+// production_terminée en production).
 async function loadComptaFactures(){
   const el=document.getElementById('compta-real');
   if(!el)return;
   try{
-    const data=await sbFetch('prestations?select=id,reference,statut,statut_financier,type_prestation,date_prestation,montant_ht,montant_ttc,clients(nom,email)&statut_financier=not.in.(non_facturée)&order=date_prestation.desc&limit=200');
+    const data=await sbFetch('factures?select=id,numero,statut,montant_ttc,montant_paye,date_emission,date_echeance,prestation_id,clients(nom,email),prestations(reference,type_prestation)&order=date_emission.desc&limit=200');
     _comptaFactData=Array.isArray(data)?data:[];
     const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:0})+' €';
     let enc=0,att=0,total=0;
-    _comptaFactData.forEach(p=>{
-      const m=p.montant_ttc||0;
-      if(p.statut_financier==='payée')enc+=m;
-      if(['facturée','partiellement_payée'].includes(p.statut_financier))att+=m;
-      if(['facturée','partiellement_payée','payée'].includes(p.statut_financier))total+=m;
+    _comptaFactData.forEach(f=>{
+      const m=f.montant_ttc||0;
+      if(f.statut==='payee')enc+=m;
+      if(['emise','partiellement_payee','en_retard'].includes(f.statut))att+=m;
+      if(!['brouillon','annulee'].includes(f.statut))total+=m;
     });
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
     set('cpt-enc',fmt(enc));set('cpt-att',fmt(att));set('cpt-total',fmt(total));
@@ -19471,8 +19490,8 @@ async function loadComptaFactures(){
 
 function filterComptaFactures(f){
   _comptaFactFilter=f;
-  ['all','payée','facturée','partiellement_payée'].forEach(id=>{
-    const btnId='cptf-f-'+id.replace('partiellement_payée','partiel');
+  ['all','payee','emise','partiellement_payee','en_retard'].forEach(id=>{
+    const btnId='cptf-f-'+id.replace('partiellement_payee','partiel').replace('en_retard','retard');
     const b=document.getElementById(btnId);
     if(b){b.style.background=f===id?'rgba(54,107,255,.15)':'';b.style.color=f===id?'var(--acc)':'';}
   });
@@ -19482,29 +19501,52 @@ function filterComptaFactures(f){
 function renderComptaFactures(){
   const el=document.getElementById('compta-real');if(!el)return;
   let list=_comptaFactData;
-  if(_comptaFactFilter!=='all')list=list.filter(p=>p.statut_financier===_comptaFactFilter);
+  if(_comptaFactFilter!=='all')list=list.filter(f=>f.statut===_comptaFactFilter);
   if(!list.length){el.innerHTML='<div style="padding:48px;text-align:center;color:var(--t3);font-size:13px">Aucune facture dans cette catégorie.</div>';return;}
-  const sf_cls={'payée':'ba','partiellement_payée':'bb','facturée':'bw','en_retard':'bl','annulée':'bn'};
-  const sf_lbl={'payée':'Payée','partiellement_payée':'Part. payée','facturée':'Facturée','en_retard':'En retard','annulée':'Annulée'};
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Référence</th><th>Client</th><th>Type</th><th>Date</th><th>Montant TTC</th><th>Statut</th><th></th></tr></thead><tbody>'+
-    list.map(p=>{
-      const canPayer=['facturée','partiellement_payée','en_retard'].includes(p.statut_financier);
-      const mailSuj=`Relance paiement — ${p.reference||'SportVision'}`;
-      const mailBody=`Bonjour,%0A%0ANotre prestation ${p.reference||''} (${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision`;
+  const sf_cls={'payee':'ba','partiellement_payee':'bb','emise':'bw','en_retard':'bl','annulee':'bn','brouillon':'bn','remboursee':'bn'};
+  const sf_lbl={'payee':'Payée','partiellement_payee':'Part. payée','emise':'Émise','en_retard':'En retard','annulee':'Annulée','brouillon':'Brouillon','remboursee':'Remboursée'};
+  el.innerHTML='<div class="tw"><table><thead><tr><th>N° facture</th><th>Client</th><th>Prestation</th><th>Émise le</th><th>Échéance</th><th>Montant TTC</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    list.map(f=>{
+      const canPayer=['emise','partiellement_payee','en_retard'].includes(f.statut);
+      const mailSuj=`Relance paiement — ${f.numero||'SportVision'}`;
+      const mailBody=`Bonjour,%0A%0AVotre facture ${f.numero||''} (${f.montant_ttc?f.montant_ttc.toLocaleString('fr-FR')+' €':''} TTC) est en attente de règlement.%0A%0AMerci de procéder au paiement.%0A%0ACordialement,%0AL'équipe SportVision`;
       return`<tr>
-        <td class="tm">${p.reference||'—'}</td>
-        <td class="tp">${esc(p.clients?.nom||'—')}</td>
-        <td>${p.type_prestation||'—'}</td>
-        <td>${p.date_prestation?new Date(p.date_prestation).toLocaleDateString('fr-FR'):'—'}</td>
-        <td class="tm" style="color:var(--t1);font-weight:600">${p.montant_ttc?p.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
-        <td><span class="bd ${sf_cls[p.statut_financier]||'bw'}"><span class="bd-d"></span>${sf_lbl[p.statut_financier]||p.statut_financier}</span></td>
+        <td class="tm">${esc(f.numero||'—')}</td>
+        <td class="tp">${esc(f.clients?.nom||'—')}</td>
+        <td>${esc(f.prestations?.reference||'—')}${f.prestations?.type_prestation?' — '+esc(f.prestations.type_prestation):''}</td>
+        <td>${f.date_emission?new Date(f.date_emission).toLocaleDateString('fr-FR'):'—'}</td>
+        <td>${f.date_echeance?new Date(f.date_echeance).toLocaleDateString('fr-FR'):'—'}</td>
+        <td class="tm" style="color:var(--t1);font-weight:600">${f.montant_ttc?f.montant_ttc.toLocaleString('fr-FR')+' €':'—'}</td>
+        <td><span class="bd ${sf_cls[f.statut]||'bw'}"><span class="bd-d"></span>${sf_lbl[f.statut]||f.statut}</span></td>
         <td><div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap">
-          ${canPayer?`<button onclick="majStatutFinancier('${p.id}','payée')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">✓ Payée</button>`:''}
-          ${canPayer&&p.clients?.email?`<a href="mailto:${esc(p.clients.email)}?subject=${mailSuj}&body=${mailBody}" style="padding:4px 8px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;text-decoration:none;white-space:nowrap">✉ Relancer</a>`:''}
-          <button class="btn bg2 bs" onclick="modalDetailById('${p.id}')">Ouvrir</button>
+          ${canPayer?`<button onclick="majStatutFacture('${f.id}','payee')" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap">✓ Payée</button>`:''}
+          ${canPayer&&f.clients?.email?`<a href="mailto:${esc(f.clients.email)}?subject=${mailSuj}&body=${mailBody}" style="padding:4px 8px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;text-decoration:none;white-space:nowrap">✉ Relancer</a>`:''}
+          ${f.prestation_id?`<button class="btn bg2 bs" onclick="modalDetailById('${f.prestation_id}')">Ouvrir</button>`:''}
         </div></td>
       </tr>`;
     }).join('')+'</tbody></table></div>';
+}
+// Équivalent de majStatutFinancier (qui écrit prestations.statut_financier) mais pour une
+// vraie ligne `factures` — répercute aussi sur prestations.statut_financier pour que
+// Dashboard/Rentabilité/Impayés (qui lisent ce champ, pas `factures`) restent synchronisés.
+async function majStatutFacture(id,statut){
+  try{
+    const r=await sbFetch('factures?id=eq.'+id,{method:'PATCH',body:{statut}});
+    if(sbErr(r)){toast('Erreur : '+(r.message||'Mise à jour impossible.'),'er');return;}
+    const row=Array.isArray(r)?r[0]:r;
+    if(statut==='payee'){
+      logFinancialAudit('encaissement','factures',id,null,row?.montant_ttc,{statut});
+      if(row?.prestation_id){
+        sbFetch('prestations?id=eq.'+row.prestation_id,{method:'PATCH',body:{statut_financier:'payée'}}).catch(()=>{});
+        dispatchSVEvent('payment.confirmed',{prestation_id:row.prestation_id});
+        creerTachesAuto('payment.confirmed',{source_type:'prestation',source_id:row.prestation_id}).catch(()=>{});
+      }
+    }
+    const lbl={emise:'Facture émise.',payee:'Paiement enregistré.'}[statut]||'Mis à jour.';
+    toast(lbl,'ok');
+    if(S.view==='factures')loadComptaFactures();
+    updateNavBadges(S.role);
+  }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
 // ── Kanban production ────────────────────────────────────────────────────────
@@ -20024,6 +20066,12 @@ async function majStatutFinancier(id,statut){
     if(statut==='payée'){
       logFinancialAudit('encaissement','prestations',id,null,r?.[0]?.montant_ttc,{statut_financier:statut});
       _syncFactureApresPaiementIntegral(id,r?.[0]?.montant_ttc,r?.[0]?.mode_paiement);
+      // Repris ici depuis avancerStatutPrestation() (correctif INC-021, 20/08) : le paiement se
+      // confirme maintenant uniquement via statut_financier/factures.statut, plus jamais via
+      // prestations.statut='payée' — l'événement doit donc partir d'ici, sinon les tâches auto
+      // "Paiement reçu" (sec/prod) ne se créeraient plus jamais.
+      dispatchSVEvent('payment.confirmed',{prestation_id:id});
+      creerTachesAuto('payment.confirmed',{source_type:'prestation',source_id:id}).catch(()=>{});
     }
     const lbl={facturée:'Prestation facturée.',payée:'Paiement enregistré.'}[statut]||'Mis à jour.';
     toast(lbl,'ok');
