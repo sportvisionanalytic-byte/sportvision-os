@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 export interface MessageData {
@@ -12,8 +13,43 @@ export interface MessageData {
   createdAt: string;
 }
 
-const ATTACHMENT_BUCKET = "portail-media";
+// Bucket PRIVÉ dédié (migration-storage-v95, 20/08) — portail-media (utilisé avant) est un bucket
+// PUBLIC : /object/public/... (ce que génère getPublicUrl()) ignore complètement la RLS dès que
+// bucket.public=true, donc une pièce jointe de message y était lisible par n'importe qui malgré
+// une policy d'écriture correctement scopée. Ce bucket est privé : la lecture passe uniquement par
+// une URL signée (temporaire, générée à l'affichage — voir loadSignedAttachmentUrl), jamais un lien
+// permanent stocké en base.
+const ATTACHMENT_BUCKET = "sportvision-media-prive";
+const ATTACHMENT_SIGN_TTL_SECONDS = 3600;
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+
+// Résout piece_jointe_path → URL signée temporaire pour une liste de lignes messages_client déjà
+// chargées (server ou client, le client Supabase passé porte la session/RLS dans les deux cas).
+// Un seul appel Storage groupé (createSignedUrls) plutôt qu'un par pièce jointe. Une ligne sans
+// accès RLS au chemin (ne devrait jamais arriver ici puisque la ligne messages_client elle-même
+// est déjà scopée par client_id, mais defensive) n'obtient simplement pas d'URL — pieceJointeUrl
+// reste null, pas d'erreur bloquante pour le reste du fil.
+export async function resolveMessageAttachments(
+  supabase: SupabaseClient,
+  rows: Array<{ id: string; auteur_type: string; contenu: string; piece_jointe_path: string | null; lu: boolean; created_at: string }>,
+): Promise<MessageData[]> {
+  const paths = rows.map((r) => r.piece_jointe_path).filter((p): p is string => !!p);
+  const urlByPath = new Map<string, string>();
+  if (paths.length) {
+    const { data: signedList } = await supabase.storage.from(ATTACHMENT_BUCKET).createSignedUrls(paths, ATTACHMENT_SIGN_TTL_SECONDS);
+    for (const s of signedList || []) {
+      if (s.signedUrl && !s.error) urlByPath.set(s.path ?? "", s.signedUrl);
+    }
+  }
+  return rows.map((row) => ({
+    id: row.id,
+    auteur: row.auteur_type === "staff" ? "staff" : "client",
+    contenu: row.contenu,
+    pieceJointeUrl: row.piece_jointe_path ? (urlByPath.get(row.piece_jointe_path) ?? null) : null,
+    lu: row.lu,
+    createdAt: row.created_at,
+  }));
+}
 
 function dayLabel(iso: string): string {
   const d = new Date(iso);
@@ -170,7 +206,17 @@ export function MessagesThread({
       return;
     }
 
-    const { data: publicUrl } = supabase.storage.from(ATTACHMENT_BUCKET).getPublicUrl(path);
+    // Bucket privé : on stocke le CHEMIN (piece_jointe_path), jamais une URL — une URL signée
+    // expire (ATTACHMENT_SIGN_TTL_SECONDS), en stocker une comme si elle était permanente casserait
+    // l'affichage dès l'expiration. piece_jointe_url (ancienne colonne) n'est plus écrite.
+    const { data: signed, error: signError } = await supabase.storage
+      .from(ATTACHMENT_BUCKET)
+      .createSignedUrl(path, ATTACHMENT_SIGN_TTL_SECONDS);
+    if (signError || !signed) {
+      setAttaching(false);
+      setError("Pièce jointe envoyée mais impossible de générer le lien d'affichage.");
+      return;
+    }
 
     let attempt = await supabase
       .from("messages_client")
@@ -179,9 +225,9 @@ export function MessagesThread({
         auteur_type: "client",
         auteur_client_id: user.id,
         contenu: `Pièce jointe : ${file.name}`,
-        piece_jointe_url: publicUrl.publicUrl,
+        piece_jointe_path: path,
       })
-      .select("id, auteur_type, contenu, piece_jointe_url, lu, created_at")
+      .select("id, auteur_type, contenu, piece_jointe_path, lu, created_at")
       .single();
 
     if (attempt.error?.code === "23503") {
@@ -192,9 +238,9 @@ export function MessagesThread({
           auteur_type: "client",
           auteur_client_id: null,
           contenu: `Pièce jointe : ${file.name}`,
-          piece_jointe_url: publicUrl.publicUrl,
+          piece_jointe_path: path,
         })
-        .select("id, auteur_type, contenu, piece_jointe_url, lu, created_at")
+        .select("id, auteur_type, contenu, piece_jointe_path, lu, created_at")
         .single();
     }
 
@@ -210,7 +256,9 @@ export function MessagesThread({
         id: row.id as string,
         auteur: "client",
         contenu: row.contenu as string,
-        pieceJointeUrl: (row.piece_jointe_url as string | null) ?? null,
+        // Signée à l'instant de l'upload ci-dessus (createSignedUrl), pas relue depuis une colonne
+        // stockée — l'URL affichée dans cette session reste valable ATTACHMENT_SIGN_TTL_SECONDS.
+        pieceJointeUrl: signed.signedUrl,
         lu: row.lu as boolean,
         createdAt: row.created_at as string,
       },

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { MessagesThread, type MessageData } from "@/app/(joueur)/messages/MessagesThread";
+import { MessagesThread, resolveMessageAttachments, type MessageData } from "@/app/(joueur)/messages/MessagesThread";
 import type { AthleteRow } from "@/lib/supabase/particulier";
 
 type Subject = { kind: "self" | "linked" | "managed"; id: string | null; label: string };
@@ -40,19 +40,15 @@ export function MessagesParticulierView({ firstName, athletes }: { firstName: st
       setClientId(resolvedId as string);
       const { data } = await supabase
         .from("messages_client")
-        .select("id, auteur_type, contenu, piece_jointe_url, lu, created_at")
+        .select("id, auteur_type, contenu, piece_jointe_path, lu, created_at")
         .eq("client_id", resolvedId)
         .order("created_at", { ascending: true });
       if (cancelled) return;
       setMessages(
-        (data || []).map((row) => ({
-          id: row.id as string,
-          auteur: row.auteur_type === "staff" ? "staff" : "client",
-          contenu: row.contenu as string,
-          pieceJointeUrl: (row.piece_jointe_url as string | null) ?? null,
-          lu: row.lu as boolean,
-          createdAt: row.created_at as string,
-        })),
+        await resolveMessageAttachments(
+          supabase,
+          (data || []) as Array<{ id: string; auteur_type: string; contenu: string; piece_jointe_path: string | null; lu: boolean; created_at: string }>,
+        ),
       );
       setLoading(false);
     })();
