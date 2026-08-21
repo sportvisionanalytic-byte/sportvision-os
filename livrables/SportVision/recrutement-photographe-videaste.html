@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Photographe / Vidéaste sportif freelance — SportVision recrute</title>
-<meta name="description" content="SportVision recrute des photographes et vidéastes sportifs freelance en Île-de-France, Côte-d'Or et Aube. Débutants acceptés, formation possible. Candidatez en ligne.">
+<title>Photographe &amp; Vidéaste sportif freelance — SportVision recrute</title>
+<meta name="description" content="SportVision recrute des freelances à la fois photographes ET vidéastes sportifs en Île-de-France, Côte-d'Or et Aube. Débutants acceptés, formation possible. Candidatez en ligne.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://sportvision-an.fr/recrutement-photographe-videaste">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
@@ -13,18 +13,18 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SportVision">
 <meta property="og:url" content="https://sportvision-an.fr/recrutement-photographe-videaste">
-<meta property="og:title" content="SportVision recrute — Photographe / Vidéaste sportif freelance">
+<meta property="og:title" content="SportVision recrute — Photographe &amp; Vidéaste sportif freelance">
 <meta property="og:description" content="Freelance, Île-de-France · Côte-d'Or · Aube. Débutants acceptés, formation possible.">
 <meta property="og:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="SportVision recrute — Photographe / Vidéaste sportif freelance">
+<meta name="twitter:title" content="SportVision recrute — Photographe &amp; Vidéaste sportif freelance">
 <meta name="twitter:description" content="Freelance, Île-de-France · Côte-d'Or · Aube. Débutants acceptés, formation possible.">
 <meta name="twitter:image" content="https://sportvision-an.fr/assets/og-image.jpg">
 <style>
 @font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url('assets/fonts/inter-variable-latin.woff2') format('woff2')}
 @font-face{font-family:'Manrope';font-style:normal;font-weight:500 800;font-display:swap;src:url('assets/fonts/manrope-variable-latin.woff2') format('woff2')}
 /* ============================================================
-   SportVision — page recrutement « Photographe / Vidéaste ».
+   SportVision — page recrutement « Photographe &amp; Vidéaste ».
    Header/footer/CMP copiés à l'identique de retractation.html.
    Classes de formulaire (.sv-field/.sv-honeypot/.sv-err/.sv-ok)
    également copiées à l'identique. Vanilla HTML/CSS/JS.
@@ -303,8 +303,8 @@ section{position:relative}
 <section class="recrut-hero">
   <div class="container">
     <span class="recrut-badge">SportVision recrute</span>
-    <h1>Photographes &amp; Vidéastes sportifs freelance</h1>
-    <p class="lead">Rejoignez le réseau SportVision et couvrez des matchs et événements pour nos clubs partenaires, selon vos disponibilités. Débutants acceptés — une formation est possible si vous n'avez pas encore d'expérience.</p>
+    <h1>Photographe &amp; Vidéaste sportif freelance</h1>
+    <p class="lead">Rejoignez le réseau SportVision et couvrez des matchs et événements pour nos clubs partenaires, à la fois en photo et en vidéo — c'est un poste combiné, pas une spécialisation au choix. Débutants acceptés, une formation est possible si vous n'avez pas encore d'expérience.</p>
     <div class="recrut-tags">
       <span>Freelance / indépendant</span>
       <span>Île-de-France</span>
@@ -324,12 +324,13 @@ section{position:relative}
   <div class="recrut-wrap">
 
     <h2>La mission</h2>
-    <p>Vous couvrez des matchs et événements sportifs pour le compte de SportVision : photo, vidéo, ou les deux selon votre profil. Missions ponctuelles, à la carte, selon vos disponibilités et notre planning dans votre zone.</p>
+    <p>Vous couvrez des matchs et événements sportifs pour le compte de SportVision, à la fois en photo et en vidéo : c'est un poste combiné, on ne recrute pas de profil spécialisé sur une seule des deux. Missions ponctuelles, à la carte, selon vos disponibilités et notre planning dans votre zone.</p>
 
     <div class="recrut-grid">
       <div class="recrut-card">
         <h3>Profil recherché</h3>
         <ul>
+          <li>À l'aise à la fois en photo et en vidéo (ou motivé pour se former aux deux)</li>
           <li>Expérimenté ou débutant motivé — une formation est possible</li>
           <li>Disponible le week-end (les matchs se jouent majoritairement le week-end)</li>
           <li>Rigueur et autonomie sur le terrain</li>
@@ -364,14 +365,7 @@ section{position:relative}
             <label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label>
           </div>
 
-          <div class="sv-field">
-            <label>Poste visé</label>
-            <div class="sv-radio-group">
-              <label><input type="radio" name="poste" value="photographe" required> Photographe</label>
-              <label><input type="radio" name="poste" value="videaste"> Vidéaste</label>
-              <label><input type="radio" name="poste" value="les_deux"> Les deux</label>
-            </div>
-          </div>
+          <input type="hidden" name="poste" value="les_deux">
 
           <div class="sv-row">
             <div class="sv-field"><label for="cd-prenom">Prénom</label><input id="cd-prenom" name="prenom" type="text" required autocomplete="given-name"></div>
@@ -412,6 +406,23 @@ section{position:relative}
               <label><input type="radio" name="materiel" value="oui"> Oui</label>
               <label><input type="radio" name="materiel" value="non"> Non</label>
               <label><input type="radio" name="materiel" value="partiel"> En partie</label>
+            </div>
+          </div>
+
+          <div class="sv-row">
+            <div class="sv-field">
+              <label>Permis B</label>
+              <div class="sv-radio-group">
+                <label><input type="radio" name="permis" value="oui"> Oui</label>
+                <label><input type="radio" name="permis" value="non"> Non</label>
+              </div>
+            </div>
+            <div class="sv-field">
+              <label>Véhiculé</label>
+              <div class="sv-radio-group">
+                <label><input type="radio" name="vehicule" value="oui"> Oui</label>
+                <label><input type="radio" name="vehicule" value="non"> Non</label>
+              </div>
             </div>
           </div>
 
@@ -615,6 +626,8 @@ document.getElementById('candidature-form').addEventListener('submit', async (e)
     ville: (fd.get('ville') || '').toString().trim() || null,
     experience_niveau: (fd.get('experience_niveau') || '').toString() || null,
     materiel: (fd.get('materiel') || '').toString() || null,
+    permis: (fd.get('permis') || '').toString() || null,
+    vehicule: (fd.get('vehicule') || '').toString() || null,
     disponibilites: (fd.get('disponibilites') || '').toString().trim() || null,
     portfolio_url: (fd.get('portfolio_url') || '').toString().trim() || null,
     message: (fd.get('message') || '').toString().trim() || null,

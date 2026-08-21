@@ -125,6 +125,7 @@ async function sendStaffNotification(admin: any, app: Record<string, unknown>) {
       <p>Zone : ${ZONE_LABELS[app.zone as string] || app.zone || "Non précisée"}${app.ville ? " (" + app.ville + ")" : ""}</p>
       <p>Expérience : ${EXPERIENCE_LABELS[app.experience_niveau as string] || app.experience_niveau || "Non précisée"}</p>
       <p>Matériel personnel : ${app.materiel || "Non précisé"}</p>
+      <p>Permis B : ${app.permis || "Non précisé"} — Véhiculé : ${app.vehicule || "Non précisé"}</p>
       <p>Disponibilités : ${app.disponibilites || "Non précisées"}</p>
       ${app.portfolio_url ? `<p>Portfolio : <a href="${app.portfolio_url}">${app.portfolio_url}</a></p>` : ""}
       <p>${cvLine}</p>
@@ -188,7 +189,7 @@ serve(async (req) => {
 
     const {
       poste, prenom, nom, email, telephone, zone, ville, experience_niveau,
-      materiel, disponibilites, portfolio_url, message,
+      materiel, permis, vehicule, disponibilites, portfolio_url, message,
       cv_base64, cv_filename, site_web,
     } = await req.json();
 
@@ -238,6 +239,8 @@ serve(async (req) => {
         ville: ville || null,
         experience_niveau: experience_niveau || null,
         materiel: materiel || null,
+        permis: permis || null,
+        vehicule: vehicule || null,
         disponibilites: disponibilites || null,
         portfolio_url: portfolio_url || null,
         message: message || null,
@@ -257,7 +260,7 @@ serve(async (req) => {
     try {
       await sendStaffNotification(admin, {
         poste, prenom, nom, email, telephone, zone, ville, experience_niveau,
-        materiel, disponibilites, portfolio_url, message, cv_path: cvPath,
+        materiel, permis, vehicule, disponibilites, portfolio_url, message, cv_path: cvPath,
       });
       await sendCandidateConfirmation(email, prenom);
     } catch (e) {
