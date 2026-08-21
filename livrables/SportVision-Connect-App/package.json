@@ -2,7 +2,7 @@
   "name": "sportvision-connect-app",
   "version": "1.0.0",
   "private": true,
-  "description": "Emballage Capacitor (iOS + Android) de SportVision Connect — ne contient aucun code applicatif : webDir pointe directement vers ../SportVision-Connect/app, la seule source de vérité. Toute modification de l'app web est reprise par `npx cap sync` sans rien dupliquer ici.",
+  "description": "Emballage Capacitor (iOS + Android) de SportVision Connect — ne contient aucun code applicatif : server.url (capacitor.config.json) charge directement https://connect.sportvision-an.fr, le vrai site app-connect déployé. Aucune copie locale du code à synchroniser.",
   "scripts": {
     "sync": "cap sync",
     "ios": "cap run ios",

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<!--
+  Placeholder local, jamais affiché en usage normal : capacitor.config.json déclare
+  server.url pointant vers https://connect.sportvision-an.fr, donc la webview Capacitor
+  navigue directement vers le vrai site (le "vrai" app-connect, celui déployé sur
+  Netlify) au démarrage — ce fichier ne s'affiche que si cette navigation initiale
+  échoue (pas de réseau au tout premier lancement, avant même le premier chargement).
+  Corrige INC-043 (webDir pointait vers l'ancienne app "vanilla" figée) : voir le
+  README de ce dossier pour le détail.
+-->
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>SportVision Connect</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b1330;color:#f2f4ff;font-family:-apple-system,sans-serif;text-align:center;padding:24px">
+  <p>Connexion à SportVision Connect… vérifiez votre connexion internet.</p>
+</body>
+</html>
