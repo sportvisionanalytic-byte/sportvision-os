@@ -167,7 +167,10 @@ serve(async (req) => {
       .maybeSingle();
     if (!claimed) return json({ error: STATUS_MESSAGES.used, status: "used" }, 409);
 
-    const plan: string = CREDITS_BY_PLAN[tokenRow.plan] ? tokenRow.plan : "club";
+    // hasOwnProperty, pas un test de vérité : CREDITS_BY_PLAN['free'] vaut 0, qui est falsy en JS
+    // — un test `CREDITS_BY_PLAN[tokenRow.plan] ?` faisait donc retomber tout token plan='free'
+    // sur "club" (10 crédits) silencieusement. Trouvé par l'audit pré-lancement du 21/08.
+    const plan: string = Object.prototype.hasOwnProperty.call(CREDITS_BY_PLAN, tokenRow.plan) ? tokenRow.plan : "club";
     const clubNom = clubNomSaisi || (tokenRow.club_nom_prefill || "").trim();
 
     // Libère le token si la suite échoue : sans cela, un incident réseau côté base
