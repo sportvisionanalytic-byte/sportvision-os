@@ -3374,6 +3374,7 @@ async function filtrerNotifsParPrefs(notifs,categorie){
 // Upload d'un fichier vers Supabase Storage (bucket public, écriture protégée par RLS storage.objects).
 // Retourne l'URL publique du fichier, ou null en cas d'échec.
 async function sbUpload(bucket, path, file){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return null;}
   const tok = localStorage.getItem('sv_tok') || '';
   const res = await fetch(SB_URL+'/storage/v1/object/'+bucket+'/'+path, {
     method: 'POST',

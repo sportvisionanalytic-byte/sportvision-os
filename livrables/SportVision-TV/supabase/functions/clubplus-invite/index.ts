@@ -72,6 +72,7 @@ function json(body: unknown, status = 200) {
 const VALID_ROLES = [
   "admin", "president", "secretaire", "comm", "cm_externe", "coach",
   "resp_equipe", "sponsor_mgr", "tresorier", "membre_bureau", "lecture_seule",
+  "directeur_sportif", "administratif",
 ];
 
 // 19/08/2026 — plafonds d'utilisateurs par plan (décision Fouka, ajout de Club+ Gratuit) :
