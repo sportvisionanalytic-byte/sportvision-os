@@ -231,7 +231,7 @@ export function ParticipateButton({
                   </div>
                   {mode === "especes" && (
                     <span className="text-[13px] leading-relaxed text-text-faint lg:text-[12px]">
-                      Votre participation sera comptée immédiatement. Remettez ce montant en espèces à l&apos;organisateur de la
+                      Votre participation sera comptée immédiatement. Remettez ce montant en espèces à l&apos;organisateur du
                       paiement collectif.
                     </span>
                   )}
