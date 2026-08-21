@@ -19093,7 +19093,7 @@ async function loadSecContrats(){
   const el=document.getElementById('sec-contrats-real');
   if(!el)return;
   try{
-    const data=await sbFetch('contrats?select=id,type_contrat,statut,montant_mensuel,date_debut,date_fin,renouvellement_auto,client_id,clients(nom)&order=created_at.desc&limit=100');
+    const data=await sbFetch('contrats?select=id,type_contrat,statut,signature_statut,montant_mensuel,date_debut,date_fin,renouvellement_auto,client_id,clients(nom)&order=created_at.desc&limit=100');
     const list=Array.isArray(data)?data:[];
     const kact=list.filter(c=>c.statut==='actif').length;
     const ksign=list.filter(c=>c.statut==='brouillon').length;
@@ -19102,7 +19102,7 @@ async function loadSecContrats(){
     set('cnt-kpi-act',kact);set('cnt-kpi-sign',ksign);set('cnt-kpi-exp',kexp);
     const SC2={'actif':'ba','brouillon':'bw','suspendu':'bb','résilié':'br','expiré':'bn'};
     const SL2={'actif':'Actif','brouillon':'Brouillon','suspendu':'Suspendu','résilié':'Résilié','expiré':'Expiré'};
-    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Type</th><th>Client</th><th>Mensuel</th><th>Début</th><th>Fin</th><th>Statut</th><th></th></tr></thead><tbody>'+
+    el.innerHTML=list.length?'<div class="tw"><table><thead><tr><th>Type</th><th>Client</th><th>Mensuel</th><th>Début</th><th>Fin</th><th>Statut</th><th>Signature</th><th></th></tr></thead><tbody>'+
       list.map(c=>`<tr>
         <td>${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—'}</td>
         <td class="tp">${esc(c.clients?.nom||'—')}</td>
@@ -19110,6 +19110,11 @@ async function loadSecContrats(){
         <td>${c.date_debut?new Date(c.date_debut).toLocaleDateString('fr-FR'):'—'}</td>
         <td>${c.date_fin?new Date(c.date_fin).toLocaleDateString('fr-FR'):'—'}</td>
         <td><span class="bd ${SC2[c.statut]||'bw'}"><span class="bd-d"></span>${SL2[c.statut]||c.statut}</span></td>
+        <td style="white-space:nowrap">
+          ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='resilie'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${esc(CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id)}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
+          ${c.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Yousign dès signature du client." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:6px;color:#F5A524;white-space:nowrap">⏳ Attente</span>`:''}
+          ${c.signature_statut&&c.signature_statut!=='non_demandee'&&c.signature_statut!=='demandee'?_sigBadge(c.signature_statut):''}
+        </td>
         <td><button class="btn bg2 bs" onclick="modalEditerContrat('${c.id}')">Ouvrir</button></td>
       </tr>`).join('')+'</tbody></table></div>':
       '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun contrat pour l\'instant.</div>';
