@@ -22496,17 +22496,24 @@ async function loadContrats(){
   if(!list.length){d.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--t3);font-size:13px">Aucun contrat. Cliquez sur "+ Nouveau contrat" pour commencer.</div>`;return;}
   const SC={actif:'var(--ok)',suspendu:'var(--wa)',résilié:'var(--er)',expiré:'var(--t3)',brouillon:'var(--t3)'};
   d.innerHTML=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-    <thead><tr style="border-bottom:1px solid var(--b1)">${['Client','Type','Statut','Début','Fin','Montant/mois','Renouvellement','Actions'].map(h=>`<th style="text-align:left;padding:10px 12px;font-size:11px;color:var(--t3);font-weight:600;white-space:nowrap">${h}</th>`).join('')}</tr></thead>
+    <thead><tr style="border-bottom:1px solid var(--b1)">${['Client','Type','Statut','Signature','Début','Fin','Montant/mois','Renouvellement','Actions'].map(h=>`<th style="text-align:left;padding:10px 12px;font-size:11px;color:var(--t3);font-weight:600;white-space:nowrap">${h}</th>`).join('')}</tr></thead>
     <tbody>${list.map(c=>`<tr style="border-bottom:1px solid rgba(255,255,255,.04)" onmouseover="this.style.background='rgba(255,255,255,.025)'" onmouseout="this.style.background=''">
       <td style="padding:10px 12px;font-weight:500;color:var(--t1)">${esc(c.clients?.nom||'—')}</td>
       <td style="padding:10px 12px;color:var(--t2)">${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—'}</td>
       <td style="padding:10px 12px"><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${(SC[c.statut]||'var(--t3)')}22;color:${SC[c.statut]||'var(--t3)'}">${c.statut||'—'}</span></td>
+      <td style="padding:10px 12px;white-space:nowrap">
+        ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='resilie'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${esc(CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id)}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
+        ${c.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Yousign dès signature du client." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:6px;color:#F5A524;white-space:nowrap">⏳ Attente</span>`:''}
+        ${c.signature_statut&&c.signature_statut!=='non_demandee'&&c.signature_statut!=='demandee'?_sigBadge(c.signature_statut):''}
+      </td>
       <td style="padding:10px 12px;color:var(--t3)">${c.date_debut?fd(c.date_debut):'—'}</td>
       <td style="padding:10px 12px;color:var(--t3)">${c.date_fin?fd(c.date_fin):'—'}</td>
       <td style="padding:10px 12px;font-weight:600;color:var(--t1);font-variant-numeric:tabular-nums">${c.montant_mensuel?fmt(c.montant_mensuel):'—'}</td>
       <td style="padding:10px 12px"><span style="font-size:11px;color:${c.renouvellement_auto?'var(--ok)':'var(--t3)'}">${c.renouvellement_auto?'Auto':'Manuel'}</span></td>
       <td style="padding:10px 12px"><div style="display:flex;gap:6px">
         <button onclick="modalEditerContrat('${c.id}')" class="btn bg2 bs">Modifier</button>
+        <button onclick="genererContratPDF('${c.id}')" class="btn bg2 bs" title="Aperçu / Imprimer">PDF</button>
+        <button onclick="envoyerContratParEmail('${c.id}')" class="btn bp bs" title="Envoyer au client par e-mail">✉</button>
       </div></td>
     </tr>`).join('')}</tbody>
   </table></div>`;
