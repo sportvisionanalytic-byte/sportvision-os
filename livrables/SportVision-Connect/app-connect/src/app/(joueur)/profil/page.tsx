@@ -14,7 +14,7 @@ import { SecuritySection } from "./SecuritySection";
 
 // Mon profil — voir design-connect-personnel-12-08/README.md § Mon profil. Header compact +
 // sections éditables en modale (Informations personnelles, Profil sportif, Notifications,
-// Sécurité), raccourcis réels vers Mes affiliations et Accès à mon profil, "Mes espaces"
+// Sécurité), raccourcis réels vers Mon affiliation et Accès à mon profil, "Mes espaces"
 // uniquement si un accès Club+ existe réellement (club_members, jamais un cadenas décoratif).
 export default async function ProfilPage() {
   const supabase = await createClient();
@@ -109,7 +109,7 @@ export default async function ProfilPage() {
 
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-3.5 rounded-sv-card border border-border bg-surface p-5">
-              <h2 className="font-sora text-[17px] font-semibold">Mes affiliations</h2>
+              <h2 className="font-sora text-[17px] font-semibold">Mon affiliation</h2>
               {player?.club ? (
                 <div className="flex items-center gap-3">
                   {player.club.logoUrl ? (
@@ -136,7 +136,7 @@ export default async function ProfilPage() {
                 href="/affiliations"
                 className="self-start rounded-sv border border-border-strong bg-white/[.03] px-3.5 py-2.5 font-sora text-[14px] font-semibold hover:bg-white/[.08] lg:text-[13px]"
               >
-                Gérer mes affiliations
+                Gérer mon affiliation
               </Link>
             </div>
 

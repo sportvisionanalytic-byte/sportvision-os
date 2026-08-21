@@ -29,7 +29,7 @@ export default function DemoProfilPage() {
           <Fact label="Sport" value="Football" />
           <Fact label="Poste" value="Milieu de terrain" />
         </Section>
-        <Section title="Mes affiliations">
+        <Section title="Mon affiliation">
           <Fact label="Club" value={DEMO_CLUB.nom} />
           <Fact label="Statut" value="Affilié" />
         </Section>

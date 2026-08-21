@@ -221,7 +221,7 @@ export function AddClubForm({
           </p>
         </div>
         <Button onClick={() => { router.push("/affiliations"); router.refresh(); }} className="w-full">
-          Retour à mes affiliations
+          Retour à mon affiliation
         </Button>
       </div>
     );

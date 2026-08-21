@@ -72,7 +72,7 @@ export function LeaveAffiliationButton({ clubName, refused = false }: { clubName
               </span>
               <span className="text-[14px] leading-relaxed text-text-tertiary">
                 {refused
-                  ? "Cette demande refusée sera retirée de votre profil. Vous pourrez ensuite ajouter le bon club depuis «Mes affiliations»."
+                  ? "Cette demande refusée sera retirée de votre profil. Vous pourrez ensuite ajouter le bon club depuis «Mon affiliation»."
                   : "Vous perdrez l'accès aux contenus et événements liés à cette structure. Votre compte Connect est conservé."}
               </span>
             </div>

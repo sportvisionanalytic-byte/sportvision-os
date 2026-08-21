@@ -255,7 +255,7 @@ export default function SignupClubPage() {
               icon="schedule"
               iconColor="#9A9AB8"
               label="Non / plus tard"
-              sub="Je l'ajouterai depuis Mes affiliations."
+              sub="Je l'ajouterai depuis Mon affiliation."
               onClick={() => { setChoice("none"); }}
             />
           </div>
@@ -389,7 +389,7 @@ export default function SignupClubPage() {
             <h1 className="font-sora text-[28px] font-bold tracking-tight">Aucun problème</h1>
             <p className="text-[15px] leading-relaxed text-text-tertiary">
               Vous pouvez utiliser SportVision Connect sans être affilié à un club. Vous pourrez
-              ajouter une structure à tout moment depuis Mes affiliations.
+              ajouter une structure à tout moment depuis Mon affiliation.
             </p>
           </div>
           {submitError && <ErrorBanner message={submitError} />}

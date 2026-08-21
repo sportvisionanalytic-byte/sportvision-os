@@ -26,7 +26,7 @@ const NAV_SECTIONS: { title: string | null; items: NavItem[] }[] = [
   {
     title: "Mon univers",
     items: [
-      { href: "/demo/affiliations", label: "Mes affiliations", icon: "shield", color: "#22D3EE" },
+      { href: "/demo/affiliations", label: "Mon affiliation", icon: "shield", color: "#22D3EE" },
       { href: "/demo/equipes", label: "Mes équipes", icon: "groups", color: "#22D3EE" },
     ],
   },
