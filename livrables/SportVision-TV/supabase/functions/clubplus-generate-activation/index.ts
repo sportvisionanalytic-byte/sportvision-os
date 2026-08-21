@@ -13,11 +13,15 @@
 // devis/prestations dans le Portail — à activer son espace Club+ pré-relié à cet
 // historique, sans repasser par l'inscription self-service publique.
 //
-// Renvoie un lien privé à transmettre au dirigeant du club (e-mail, WhatsApp, de vive
-// voix). Ce lien est un SECRET : quiconque le possède peut créer le compte admin du
-// club et lire ses devis/factures/contrats Portail. Il n'est donc jamais envoyé
-// automatiquement ici — le staff décide à qui il le transmet — et il expire au bout
-// de 30 jours (défaut de la table, cf. migration-clubplus-v26-activation-tokens.sql).
+// Génère un lien privé et l'envoie automatiquement (Resend) à l'adresse e-mail du
+// contact client (clients.email) — changement du 21/08/2026, sur demande de Fouka
+// (avant cela le staff devait le transmettre lui-même). Ce lien est un SECRET :
+// quiconque le possède peut créer le compte admin du club et lire ses devis/factures/
+// contrats Portail — il expire au bout de 30 jours (défaut de la table, cf.
+// migration-clubplus-v26-activation-tokens.sql). L'URL reste aussi renvoyée dans la
+// réponse (le staff peut la voir/recopier, ex. si l'e-mail échoue ou si aucune adresse
+// n'est enregistrée) — l'envoi automatique est best-effort et ne bloque jamais la
+// création du token.
 //
 // Sécurité : l'appelant doit avoir un `profiles.role` dans ('admin','sec','com')
 // — vérifié en service role, jamais depuis un rôle envoyé dans le body. Le token est
@@ -55,6 +59,60 @@ function json(body: unknown, status = 200) {
 
 const STAFF_ROLES = ["admin", "sec", "com"];
 const VALID_PLANS = ["free", "club", "performance"];
+
+const PLAN_LABELS: Record<string, string> = {
+  free: "Club+ Gratuit",
+  club: "Club+",
+  performance: "Club+ Performance",
+};
+
+async function sendActivationEmail(
+  to: string,
+  info: { contactPrenom: string | null; clubNom: string; activationUrl: string; plan: string; expiresAt: string },
+) {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) {
+    console.error("[clubplus-generate-activation] RESEND_API_KEY absent — e-mail non envoyé");
+    return false;
+  }
+  const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
+  const dateFmt = new Date(info.expiresAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  const greeting = info.contactPrenom ? `Bonjour ${info.contactPrenom},` : "Bonjour,";
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#06111F;font-family:Arial,sans-serif;color:#F7F9FC">
+  <div style="max-width:520px;margin:32px auto;background:#10243E;border-radius:14px;overflow:hidden">
+    <div style="background:#0B1B33;padding:26px 32px">
+      <div style="font-size:20px;font-weight:800;color:#fff">SPORTVISION</div>
+    </div>
+    <div style="padding:28px 32px">
+      <p style="font-size:15px;line-height:1.6">${greeting}</p>
+      <p style="font-size:14px;line-height:1.7;color:#9DAEC3">Votre espace <strong>${PLAN_LABELS[info.plan] || "Club+"}</strong> pour ${info.clubNom} est prêt. Activez-le en créant votre compte administrateur :</p>
+      <div style="text-align:center;margin:26px 0">
+        <a href="${info.activationUrl}" style="display:inline-block;background:#32D8E6;color:#06111F;font-weight:800;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px">Activer mon espace Club+</a>
+      </div>
+      <p style="font-size:12.5px;line-height:1.6;color:#6C7E93">Ce lien est personnel, ne le partagez pas. Il expire le ${dateFmt}. Si vous ne pouvez pas cliquer sur le bouton, copiez ce lien dans votre navigateur :<br><span style="word-break:break-all">${info.activationUrl}</span></p>
+    </div>
+  </div>
+</body></html>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: fromEmail,
+      to: [to],
+      subject: `Activez votre espace Club+ — ${info.clubNom}`,
+      html,
+    }),
+  });
+  if (!res.ok) {
+    console.error("[clubplus-generate-activation] échec Resend", res.status, await res.text());
+    return false;
+  }
+  return true;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -105,7 +163,7 @@ serve(async (req) => {
     // rattachement impossible, découvert seulement à l'activation.
     const { data: client } = await admin
       .from("clients")
-      .select("id, nom")
+      .select("id, nom, email, prenom_contact")
       .eq("id", clientId)
       .maybeSingle();
     if (!client) return json({ error: "Client introuvable." }, 404);
@@ -126,6 +184,24 @@ serve(async (req) => {
     if (insErr) return json({ error: insErr.message }, 500);
 
     const activationUrl = `${clubplusUrl}/clubplus/activation?token=${token}`;
+    const clubNomFinal = clubNomPrefill || client.nom || "votre club";
+
+    let emailSent = false;
+    if (client.email) {
+      try {
+        emailSent = await sendActivationEmail(client.email, {
+          contactPrenom: client.prenom_contact || null,
+          clubNom: clubNomFinal,
+          activationUrl,
+          plan,
+          expiresAt: created.expires_at,
+        });
+      } catch (e) {
+        // Best-effort : un échec d'envoi ne doit jamais faire échouer la génération
+        // du token, qui reste valide et consultable/retransmissible manuellement.
+        console.error("[clubplus-generate-activation] exception envoi e-mail", e instanceof Error ? e.message : String(e));
+      }
+    }
 
     return json({
       id: created.id,
@@ -133,7 +209,9 @@ serve(async (req) => {
       activation_url: activationUrl,
       expires_at: created.expires_at,
       plan,
-      club_nom_prefill: clubNomPrefill || client.nom || null,
+      club_nom_prefill: clubNomFinal,
+      email_sent: emailSent,
+      email: client.email || null,
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);

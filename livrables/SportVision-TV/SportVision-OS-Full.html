@@ -4774,14 +4774,14 @@ function modalInviterClubPlus(clientId,clientNom){
         </select>
       </div>
       <div style="font-size:11.5px;color:var(--t3);line-height:1.5;padding:10px 12px;background:var(--s2);border-radius:var(--rb);border:1px solid var(--b1)">
-        Le lien généré est privé et valable 30 jours. Il donne accès aux devis, factures et contrats de ce client : transmettez-le uniquement à son dirigeant. Aucun prélèvement n'est déclenché, le club est ouvert en accès pilote.
+        Le lien généré est privé et valable 30 jours. Il donne accès aux devis, factures et contrats de ce client. Il est envoyé automatiquement à l'e-mail du contact — vous pouvez aussi le copier pour le transmettre vous-même (WhatsApp, en main propre…). Aucun prélèvement n'est déclenché, le club est ouvert en accès pilote.
       </div>
       <div id="iac-res" style="display:none"></div>
       <div id="iac-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
     </div>
     <div class="mf">
       <button class="btn bg2" onclick="closeModal()">Fermer</button>
-      <button class="btn bp" id="iac-btn" onclick="genererLienActivationClubPlus('${escJs(clientId)}')">Générer le lien</button>
+      <button class="btn bp" id="iac-btn" onclick="genererLienActivationClubPlus('${escJs(clientId)}')">Générer et envoyer le lien</button>
     </div>`);
 }
 
@@ -4805,6 +4805,11 @@ async function genererLienActivationClubPlus(clientId){
     _lienActivationClubPlus=d.activation_url;
     const exp=d.expires_at?new Date(d.expires_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
     const res=document.getElementById('iac-res');
+    const statutEnvoi=d.email_sent
+      ? `<div style="font-size:11.5px;color:var(--ok);margin-top:6px">✓ E-mail envoyé à ${esc(d.email||'')}</div>`
+      : d.email
+        ? `<div style="font-size:11.5px;color:var(--er);margin-top:6px">⚠ Échec de l'envoi automatique à ${esc(d.email)} — copiez le lien pour le transmettre vous-même.</div>`
+        : `<div style="font-size:11.5px;color:var(--er);margin-top:6px">⚠ Aucun e-mail enregistré pour ce client — copiez le lien pour le transmettre vous-même.</div>`;
     if(res){
       res.style.display='block';
       res.innerHTML=`<div style="padding:12px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.25);border-radius:var(--rb)">
@@ -4814,10 +4819,11 @@ async function genererLienActivationClubPlus(clientId){
           <button class="btn bp" onclick="copier(_lienActivationClubPlus)">⎘ Copier le lien</button>
           <span style="font-size:11px;color:var(--t3)">Valable jusqu'au ${exp}</span>
         </div>
+        ${statutEnvoi}
       </div>`;
     }
     if(btn){btn.textContent='Générer un autre lien';}
-    toast('Lien d\'activation généré.','ok');
+    toast(d.email_sent?'Lien généré et envoyé par e-mail.':'Lien généré.','ok');
   }catch(e){
     if(err)err.textContent='Erreur réseau.';
   }finally{
