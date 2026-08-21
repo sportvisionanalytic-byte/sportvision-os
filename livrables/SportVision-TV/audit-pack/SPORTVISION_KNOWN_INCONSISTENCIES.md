@@ -301,13 +301,13 @@ Demande explicite de Fouka avant l'ouverture à de vrais clients payants (abonne
 - **Correctif** : `supprimerContrat`/`supprimerTache` passent maintenant par `confirmerAction()`. Garde de rôle explicite ajoutée sur les dispatches `documents` (admin/compta/expert_comptable) et `paiements` (admin/compta uniquement). CSS inline invalide corrigé au passage. Déduplication de `CM_NIVEAU_LBL`/`NCL`.
 - **Statut** : **CORRIGÉ**, déployé (21/08/2026).
 
-### INC-042 — Connect : aucune vérification d'âge dans tout le tunnel de signup joueur (HAUTE, À TRANCHER AVEC FOUKA)
+### INC-042 — Connect : aucune vérification d'âge dans tout le tunnel de signup joueur (HAUTE, ACCEPTÉ PAR FOUKA POUR LE MOMENT)
 
 - **Sévérité** : Haute — risque réglementaire (RGPD/CNIL, consentement parental requis pour un mineur de moins de 15 ans) et commercial (facturation sans consentement), pas une perte de données immédiate.
 - **Trouvé et testé en direct par l'agent Connect** : un compte peut être créé de façon totalement autonome par un "joueur" de tout âge (testé avec `dateNaissance` ≈12 ans), sans qu'aucune étape ne bloque, avertisse ou dérive vers le parcours prévu ("sportif géré" par un parent, `connect_create_managed_athlete`). Ce compte a pu réserver et générer une vraie session Stripe Checkout **LIVE**, prête à être payée par carte, sans qu'aucun adulte ne soit informé. Le code lui-même l'avoue : `ManagedAthleteForm.tsx:168-173` — *"La qualité de responsable légal doit être vérifiée avant toute mise en production"* — jamais fait.
 - **Fichiers concernés** : `src/app/signup/sport/page.tsx:59-65` (collecte la date de naissance sans jamais l'utiliser), `src/app/signup/page.tsx`, `supabase/functions/connect-player-onboarding/index.ts:200-244` (action `skip`, aucune vérification côté serveur non plus).
-- **Non corrigé cette nuit** : décision produit à trancher avec Fouka avant tout correctif — bloquer la création de compte autonome sous un certain âge et rediriger vers le parcours "profil géré", ou exiger une case de consentement explicite. Je n'ai pas tranché à sa place.
-- **Statut** : **NON FAIT — À TRANCHER**, risque réel et immédiat dès le premier mineur qui s'inscrit seul (cœur de cible du produit).
+- **Décision de Fouka (21/08)** : "mineur peut s'inscrire seul etc pour le moment" — accepté explicitement en l'état, pas de blocage/redirection/consentement ajouté pour l'instant. Aucun correctif appliqué, comportement inchangé volontairement.
+- **Statut** : **NON FAIT, ACCEPTÉ POUR LE MOMENT** — risque réglementaire/commercial toujours réel et non mitigé, gardé sciemment ouvert par décision produit. À reconsidérer si le volume de signups mineurs autonomes devient significatif ou avant une communication publique ciblant explicitement les jeunes sportifs.
 
 ### INC-043 — Capacitor (app mobile) empaquette l'ancienne app Connect "vanilla", pas `app-connect` (HAUTE, CORRIGÉ)
 
