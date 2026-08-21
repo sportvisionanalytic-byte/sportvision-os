@@ -25,9 +25,9 @@ export default async function AffiliationsPage() {
   return (
     <div className="flex flex-col gap-6 animate-sv-in">
         <div className="flex flex-col gap-2">
-          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Mes affiliations</h1>
+          <h1 className="font-sora text-[27px] font-bold tracking-tight lg:text-[33px]">Mon affiliation</h1>
           <p className="max-w-[560px] text-[15px] text-text-tertiary">
-            Retrouvez les clubs et structures sportives liés à votre profil.
+            Retrouvez la structure sportive actuellement liée à votre profil.
           </p>
         </div>
 
