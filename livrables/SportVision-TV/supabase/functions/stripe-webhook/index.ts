@@ -597,12 +597,23 @@ serve(async (req) => {
             } else {
               updates.statut_financier = "payée";
             }
-            const { data: prestation } = await admin
+            const { data: prestation, error: prestationUpdateError } = await admin
               .from("prestations")
               .update(updates)
               .eq("id", paiement.prestation_id)
               .select("reference")
               .maybeSingle();
+            if (prestationUpdateError) {
+              // Écriture critique : un paiement Stripe réussi doit toujours se refléter sur la
+              // prestation (voir INC-033 — cette même absence de vérification avait rendu un bug
+              // de trigger totalement silencieux). Ne bloque pas l'accusé de réception à Stripe,
+              // mais rend l'échec visible dans les logs Supabase au lieu de disparaître.
+              console.error(
+                "[stripe-webhook] échec critique : mise à jour prestations.statut_financier a échoué :",
+                prestationUpdateError,
+                { prestation_id: paiement.prestation_id, updates },
+              );
+            }
 
             // Best-effort : si une facture (générée côté OS) correspond à ce paiement,
             // la marquer payée aussi. Ne bloque jamais la confirmation du paiement en cas d'échec.
