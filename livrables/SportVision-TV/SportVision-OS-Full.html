@@ -10967,17 +10967,20 @@ function contratConditionsParticulieresHTML(type,x){
     `<div class="art-x" style="line-height:1.8">1. Le présent contrat prend effet à la date de signature par les deux parties.<br>2. Le paiement est dû selon la fréquence indiquée ci-dessus, par virement bancaire.<br>3. En cas de résiliation, un préavis de 30 jours est requis par lettre recommandée avec AR.<br>4. SportVision se réserve le droit de sous-traiter certaines prestations à des partenaires qualifiés.<br>5. Les droits sur les productions restent la propriété de SportVision jusqu'au paiement intégral.</div>`};
 }
 
-async function genererContratPDF(id){
-  try{
-    const cArr=await sbFetch(`contrats?id=eq.${id}&select=*,clients(*)`);
-    const c=cArr?.[0];
-    if(!c){toast('Contrat introuvable.');return;}
+// Construit le document HTML complet d'un contrat (clauses générales + conditions
+// particulières par type — la « Banque de contrats ») à partir d'une ligne `contrats`
+// déjà chargée avec ses clients(*). Utilisé à la fois par genererContratPDF (aperçu/
+// impression) et envoyerContratParEmail (envoi direct) : une seule source du texte
+// contractuel, jamais deux implémentations qui pourraient diverger silencieusement.
+// Retourne {numContrat, styleTag, pageHtml} — pageHtml est le contenu de <div class="page">,
+// sans la barre d'outils "Imprimer/Fermer" (non pertinente dans un e-mail).
+function _construireContratHTML(c){
     const cl=c.clients||{};
     const v=vContrat;
     const fmtN=n=>(Number(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
     const fmt=n=>fmtN(n)+' €';
     const fd=s=>s?new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'—';
-    const numContrat='CON-'+new Date().getFullYear()+'-'+id.substring(0,6).toUpperCase();
+    const numContrat='CON-'+new Date().getFullYear()+'-'+c.id.substring(0,6).toUpperCase();
     const stCl=CONTRAT_STATUTS[c.statut||'brouillon']||{lb:'Brouillon',cl:'#8891A8',bc:'rgba(136,145,168,.12)'};
     const SV=SV_IDENTITE_CONTRAT;
     const typeC=c.type_contrat||'autre';
@@ -11020,15 +11023,8 @@ async function genererContratPDF(id){
     };
     const cp=contratConditionsParticulieresHTML(typeC,x);
     const signe=c.validite_signature===true||c.signature_statut==='signee'||c.statut_signature==='signe';
-    const win=window.open('','_blank','width=900,height=800');
-    if(!win){toast('Autorisez les popups pour générer le contrat.');return;}
-    win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Contrat ${numContrat} — SportVision</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5}.page{max-width:800px;margin:0 auto;padding:48px}.sec{margin-bottom:30px}.sec-t{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:12px}.art{margin-bottom:12px}.art-t{font-size:11.5px;font-weight:700;color:#1a1a2e;margin-bottom:3px}.art-x{font-size:11.5px;color:#3d445c;line-height:1.65;text-align:justify}@media print{.np{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.art,.sig{break-inside:avoid;page-break-inside:avoid}}</style></head><body>
-<div class="page">
-<div class="np" style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #E8EBF4">
-  <button onclick="window.print()" style="padding:8px 18px;background:#7C4DFF;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer">Imprimer / PDF</button>
-  <button onclick="window.close()" style="padding:8px 14px;background:#F0F2F7;color:#555E73;border:none;border-radius:7px;font-size:13px;cursor:pointer">Fermer</button>
-</div>
-<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:24px;border-bottom:2px solid #7C4DFF">
+    const styleTag=`<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5}.page{max-width:800px;margin:0 auto;padding:48px}.sec{margin-bottom:30px}.sec-t{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#8891A8;margin-bottom:12px}.art{margin-bottom:12px}.art-t{font-size:11.5px;font-weight:700;color:#1a1a2e;margin-bottom:3px}.art-x{font-size:11.5px;color:#3d445c;line-height:1.65;text-align:justify}@media print{.np{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.art,.sig{break-inside:avoid;page-break-inside:avoid}}</style>`;
+    const pageHtml=`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:24px;border-bottom:2px solid #7C4DFF">
   <div>
     <div style="font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.02em">${esc(SV.nomCommercial)}</div>
     <div style="font-size:10.5px;color:#8891A8;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">${esc(SV.raisonSociale)}</div>
@@ -11085,10 +11081,101 @@ async function genererContratPDF(id){
     <div style="width:180px;border-bottom:1px solid #1a1a2e"></div>
     <div style="font-size:10px;color:#8891A8;margin-top:4px">Date :${signe&&c.signe_at?' '+fd(c.signe_at):''}</div>
     ${signe?`<div style="font-size:10px;color:#2ECC8A;margin-top:6px;font-weight:600">Signé électroniquement${c.signataire_nom?' par '+esc(c.signataire_nom):''}</div>`:''}</div>
+</div>`;
+    return {numContrat,styleTag,pageHtml};
+}
+
+async function genererContratPDF(id){
+  try{
+    const cArr=await sbFetch(`contrats?id=eq.${id}&select=*,clients(*)`);
+    const c=cArr?.[0];
+    if(!c){toast('Contrat introuvable.');return;}
+    const {numContrat,styleTag,pageHtml}=_construireContratHTML(c);
+    const win=window.open('','_blank','width=900,height=800');
+    if(!win){toast('Autorisez les popups pour générer le contrat.');return;}
+    win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Contrat ${numContrat} — SportVision</title>${styleTag}</head><body>
+<div class="page">
+<div class="np" style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #E8EBF4">
+  <button onclick="window.print()" style="padding:8px 18px;background:#7C4DFF;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer">Imprimer / PDF</button>
+  <button onclick="window.close()" style="padding:8px 14px;background:#F0F2F7;color:#555E73;border:none;border-radius:7px;font-size:13px;cursor:pointer">Fermer</button>
 </div>
+${pageHtml}
 </div></body></html>`);
     win.document.close();
   }catch(e){toast('Erreur génération contrat.');}
+}
+
+// Envoi du contrat par e-mail au client (même document que genererContratPDF, sans la
+// barre d'outils Imprimer/Fermer) — même patron que envoyerDevisParEmail/
+// envoyerFactureParEmail : modale de confirmation destinataire/objet, puis appel à
+// l'edge function send-contrat-email (le HTML est construit ici, jamais recalculé
+// côté serveur — voir commentaire de _construireContratHTML).
+async function envoyerContratParEmail(id){
+  try{
+    const cArr=await sbFetch(`contrats?id=eq.${id}&select=*,clients(id,nom,email,prenom_contact,nom_contact)`);
+    const c=cArr?.[0];
+    if(!c){toast('Contrat introuvable.');return;}
+    const cl=c.clients||{};
+    const typeLb=CONTRAT_TYPES_BANQUE_LB[c.type_contrat]||CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—';
+    const contact=esc([cl.prenom_contact,cl.nom_contact].filter(Boolean).join(' ')||cl.nom||'');
+    const msgDefaut=`${contact?'Bonjour '+contact+',':'Bonjour,'}\n\nVeuillez trouver ci-joint le contrat ${typeLb} entre SportVision et ${cl.nom||'votre structure'}.\n\nN'hésitez pas à me contacter pour toute question.\n\nBien cordialement,\nFouka\nSportVision`;
+    openModal(`<div class="mh"><div class="mt">Envoyer le contrat par email</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+      <div class="mb">
+        <div style="background:rgba(124,77,255,.07);border:1px solid rgba(124,77,255,.18);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:var(--t2);display:flex;gap:16px;flex-wrap:wrap">
+          <span><span style="color:var(--t3);font-size:11px">TYPE</span><br><span style="font-weight:700;color:#7C4DFF">${esc(typeLb)}</span></span>
+          <span><span style="color:var(--t3);font-size:11px">CLIENT</span><br><span style="font-weight:600">${esc(cl.nom||'—')}</span></span>
+        </div>
+        <div class="fg"><label class="fl">Destinataire *</label><input id="cem-to" class="fi" type="email" value="${esc(cl.email||'')}" placeholder="email@club.fr"></div>
+        <div class="fg"><label class="fl">Objet</label><input id="cem-subj" class="fi" type="text" value="Contrat ${esc(typeLb)} — SportVision"></div>
+        <div class="fg"><label class="fl">Message</label><textarea id="cem-msg" class="fi" rows="7" style="font-family:inherit;white-space:pre-wrap">${msgDefaut}</textarea></div>
+        <div id="cem-err" style="color:var(--er);font-size:12px;min-height:16px;margin-top:6px"></div>
+      </div>
+      <div class="mf">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="_sendContratEmailConfirm('${id}')">✉ Envoyer</button>
+      </div>`);
+  }catch(e){toast('Erreur: '+e.message);}
+}
+
+async function _sendContratEmailConfirm(id){
+  if(DEMO_MODE){toast('Action désactivée en mode démo.','ok');return;}
+  const to=(document.getElementById('cem-to')?.value||'').trim();
+  const subj=(document.getElementById('cem-subj')?.value||'').trim();
+  const msg=(document.getElementById('cem-msg')?.value||'').trim();
+  const errEl=document.getElementById('cem-err');
+  if(!to){if(errEl)errEl.textContent='Email destinataire requis.';return;}
+  if(!to.includes('@')||!to.includes('.')){if(errEl)errEl.textContent='Adresse email invalide.';return;}
+  if(errEl)errEl.textContent='';
+  const btn=document.querySelector('#sv-modal .mf .btn.bp');
+  if(btn){btn.disabled=true;btn.textContent='Envoi en cours…';}
+  try{
+    const cArr=await sbFetch(`contrats?id=eq.${id}&select=*,clients(*)`);
+    const c=cArr?.[0];
+    if(!c)throw new Error('Contrat introuvable.');
+    const {numContrat,styleTag,pageHtml}=_construireContratHTML(c);
+    const msgHtml=msg.split('\n').map(l=>`<p style="margin:0 0 8px 0">${esc(l)||'&nbsp;'}</p>`).join('');
+    const fullHtml=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Contrat ${numContrat} — SportVision</title>${styleTag}</head><body>
+<div style="max-width:800px;margin:0 auto;padding:24px 48px 0;font-size:13.5px;line-height:1.7;color:#1a1a2e">${msgHtml}</div>
+<div class="page">${pageHtml}</div></body></html>`;
+    const res=await fetch(SB_URL+'/functions/v1/send-contrat-email',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('sv_tok')||'')},
+      body:JSON.stringify({contrat_id:id,to,subject:subj||'Contrat — SportVision',html:fullHtml})
+    });
+    let json={};
+    try{json=await res.json();}catch(e2){}
+    if(!res.ok){
+      if(res.status===404)throw new Error('Edge Function non déployée. Voir instructions setup.');
+      throw new Error(json.error||json.message||('Erreur serveur ('+res.status+')'));
+    }
+    await logDocEvent('envoi',numContrat,'contrat','Contrat envoyé par e-mail à '+to);
+    closeModal();
+    toast('Contrat envoyé par email.','ok');
+  }catch(e){
+    if(errEl)errEl.textContent=e.message||'Erreur lors de l\'envoi.';
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='✉ Envoyer';}
+  }
 }
 
 // ── PDF Avoir ─────────────────────────────────────────────────────────────────
@@ -19115,7 +19202,11 @@ async function loadSecContrats(){
           ${c.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Yousign dès signature du client." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:6px;color:#F5A524;white-space:nowrap">⏳ Attente</span>`:''}
           ${c.signature_statut&&c.signature_statut!=='non_demandee'&&c.signature_statut!=='demandee'?_sigBadge(c.signature_statut):''}
         </td>
-        <td><button class="btn bg2 bs" onclick="modalEditerContrat('${c.id}')">Ouvrir</button></td>
+        <td style="white-space:nowrap;display:flex;gap:4px">
+          <button class="btn bg2 bs" onclick="modalEditerContrat('${c.id}')">Ouvrir</button>
+          <button class="btn bg2 bs" onclick="genererContratPDF('${c.id}')" title="Aperçu / Imprimer">PDF</button>
+          <button class="btn bp bs" onclick="envoyerContratParEmail('${c.id}')" title="Envoyer au client par e-mail">✉</button>
+        </td>
       </tr>`).join('')+'</tbody></table></div>':
       '<div style="padding:40px;text-align:center;color:var(--t3);font-size:13px">Aucun contrat pour l\'instant.</div>';
   }catch(e){el.innerHTML='<div style="padding:32px;text-align:center;color:var(--t3);font-size:13px">Table contrats non disponible (migration requise).</div>';console.error(e);}
