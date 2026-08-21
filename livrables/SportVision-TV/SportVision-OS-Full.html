@@ -3869,9 +3869,9 @@ async function loadViewData(role,view){
   if(role==='sec'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='com'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(['prod','admin','sec','photo','cm','compta','com'].includes(role)&&view==='msg') await loadMsg();
-  if(_isComptaLike&&view==='paiements') await loadPaiements();
+  if(['admin','compta'].includes(role)&&view==='paiements') await loadPaiements();
   if(role==='sec'&&view==='taches') await loadTaches();
-  if(view==='documents'||((role==='sec'||role==='admin'||_isComptaLike)&&view==='docs')) await loadDocuments(role);
+  if((['admin','compta','expert_comptable'].includes(role)&&view==='documents')||((role==='sec'||role==='admin'||_isComptaLike)&&view==='docs')) await loadDocuments(role);
   if(_isComptaLike&&view==='rapprochement') await loadRapprochement();
   if(view==='set') await loadSettings();
   if(role==='admin'&&view==='rapport'){_rapportOffset=0;await loadRapport();}
@@ -8665,7 +8665,7 @@ async function loadTaches(){
         <div style="font-size:13px;color:${t.lue?'var(--t3)':'var(--t1)'};text-decoration:${t.lue?'line-through':''}">${esc(t.titre)}</div>
         ${t.message?`<div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(t.message)}</div>`:''}
       </div>
-      <button onclick="supprimerTache('${t.id}')" aria-label="Supprimer cette tâche" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;opacity:.5;hover:opacity:1">✕</button>
+      <button onclick="supprimerTache('${t.id}')" aria-label="Supprimer cette tâche" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;opacity:.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">✕</button>
     </div>`;
     el.innerHTML=`
       ${open.length?`<div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">À faire</div><span class="bd bn">${open.length}</span></div>${open.map(renderTask).join('')}</div>`:''}
@@ -8709,12 +8709,14 @@ async function toggleTache(id,estFaite){
   }catch(e){toast('Erreur réseau : mise à jour impossible.','er');}
 }
 
-async function supprimerTache(id){
-  try{
-    const r=await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
-    if(sbErr(r)){toast('Erreur : '+(r.message||'Suppression impossible.'),'er');return;}
-    loadTaches();
-  }catch(e){toast('Erreur réseau : suppression impossible.','er');}
+function supprimerTache(id){
+  confirmerAction('Supprimer cette tâche ?',async()=>{
+    try{
+      const r=await sbFetch('notifications?id=eq.'+id,{method:'DELETE'});
+      if(sbErr(r)){toast('Erreur : '+(r.message||'Suppression impossible.'),'er');return;}
+      loadTaches();
+    }catch(e){toast('Erreur réseau : suppression impossible.','er');}
+  });
 }
 
 async function loadSettings(){
@@ -22698,10 +22700,12 @@ async function mettreAJourContrat(id){
   await loadContrats();
 }
 
-async function supprimerContrat(id){
-  const r=await sbFetch('contrats?id=eq.'+id,{method:'DELETE'});
-  if(sbErr(r)){toast('Erreur suppression','er');return;}
-  closeModal();toast('Contrat supprimé','ok');await loadContrats();
+function supprimerContrat(id){
+  confirmerAction('Supprimer ce contrat ? Cette action est irréversible.',async()=>{
+    const r=await sbFetch('contrats?id=eq.'+id,{method:'DELETE'});
+    if(sbErr(r)){toast('Erreur suppression','er');return;}
+    closeModal();toast('Contrat supprimé','ok');await loadContrats();
+  });
 }
 
 // ── UTILISATEURS & ACCÈS ────────────────────────────────────────────────────
@@ -22712,7 +22716,7 @@ async function loadUsers(){
   const list=Array.isArray(r)?r:[];
   const RL={admin:'Administrateur',sec:'Secrétaire',prod:'Resp. Production',photo:'Photo / Vidéaste',cm:'Community Manager',compta:'Comptable',com:'Commercial',expert_comptable:'Expert-comptable',auditeur:'Auditeur'};
   const RC={admin:'var(--gr)',sec:'#00B8D4',prod:'var(--ok)',photo:'#7C4DFF',cm:'var(--acc)',compta:'#FF6B35',com:'var(--er)',expert_comptable:'#0EA5FF',auditeur:'#8891A8'};
-  const NCL={cm_junior:'CM Junior',cm_confirme:'CM Confirmé',cm_full_communication:'CM Full Communication',cm_club_plus_studio:'CM Club+ / Studio',cm_evenement:'CM Événement',cm_interne:'CM SportVision interne',cm_lead:'Lead CM'};
+  const NCL=CM_NIVEAU_LBL;
   if(!list.length){d.innerHTML=`<div style="text-align:center;padding:60px;color:var(--t3);font-size:13px">Aucun utilisateur.</div>`;return;}
   d.innerHTML=`<div style="margin-bottom:14px;font-size:12px;color:var(--t3)">${list.length} membre${list.length>1?'s':''} dans l'équipe</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
