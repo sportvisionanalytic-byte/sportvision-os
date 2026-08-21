@@ -1,6 +1,19 @@
 [build]
   publish = "livrables/SportVision-TV"
 
+# Domaine privé, non annoncé (bc6m3cgdz.sportvision-an.fr) — voir netlify/edge-functions/
+# block-default-domain.js pour le blocage de sportvision-os.netlify.app.
+[[edge_functions]]
+  path = "/*"
+  function = "block-default-domain"
+
+# Défense en profondeur contre l'indexation (en plus du <meta name="robots"> dans le HTML et de
+# robots.txt) — s'applique aussi aux réponses non-HTML.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
 [[redirects]]
   from = "/demo"
   to = "/SportVision-OS-Full.html"
