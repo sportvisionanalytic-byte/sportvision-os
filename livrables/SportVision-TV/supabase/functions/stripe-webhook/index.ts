@@ -613,6 +613,16 @@ serve(async (req) => {
                 prestationUpdateError,
                 { prestation_id: paiement.prestation_id, updates },
               );
+              await sendCriticalAlertEmail(
+                "paiement reçu mais prestation non mise à jour",
+                `Un paiement Stripe a bien été confirmé (paiement ${paiementId}), mais l'écriture ` +
+                  `sur prestations.statut_financier a échoué.\n\n` +
+                  `prestation_id : ${paiement.prestation_id}\n` +
+                  `updates tentés : ${JSON.stringify(updates)}\n` +
+                  `erreur : ${JSON.stringify(prestationUpdateError)}\n\n` +
+                  `Ce client a payé mais sa prestation peut rester affichée non facturée dans l'OS ` +
+                  `— vérifier et corriger manuellement le statut_financier de cette prestation.`,
+              );
             }
 
             // Best-effort : si une facture (générée côté OS) correspond à ce paiement,
@@ -1202,6 +1212,13 @@ serve(async (req) => {
     // pour qu'un incident soit visible dans les logs Supabase et pas seulement dans le corps de la
     // réponse HTTP, que personne ne consulte en pratique.
     console.error(`[stripe-webhook] échec du traitement de l'événement ${event.id} (${event.type}) :`, e);
+    await sendCriticalAlertEmail(
+      "événement Stripe non traité",
+      `Le traitement de l'événement Stripe ${event.id} (${event.type}) a levé une exception ` +
+        `non rattrapée.\n\nerreur : ${e instanceof Error ? e.message + "\n" + (e.stack || "") : String(e)}\n\n` +
+        `L'événement a été retiré de stripe_events pour rester rejouable (renvoi manuel possible ` +
+        `depuis le dashboard Stripe), mais vérifier ce qui a réellement été appliqué ou non côté base.`,
+    );
     try {
       await admin.from("stripe_events").delete().eq("id", event.id);
     } catch (delErr) {
@@ -1216,6 +1233,35 @@ serve(async (req) => {
 
   return new Response(JSON.stringify({ received: true }), { status: 200 });
 });
+
+// Alerte critique par e-mail — trouvé par l'audit pré-lancement du 21/08 (INC-048) : aucun
+// monitoring/alerting n'existe sur ce projet, et c'est précisément l'absence de ce genre de
+// filet qui avait rendu INC-033 (paiement Stripe jamais reflété) invisible pendant un temps
+// indéterminé. Pas de Sentry (pas de compte configuré) : réutilise l'infrastructure Resend déjà
+// en place dans ce même fichier (sendPaymentReceiptEmail) pour prévenir Fouka directement,
+// best-effort — ne doit jamais faire échouer le traitement du webhook lui-même si l'envoi rate.
+async function sendCriticalAlertEmail(subject: string, detail: string) {
+  try {
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) return;
+    const fromEmail = Deno.env.get("FROM_EMAIL") || "SportVision <onboarding@resend.dev>";
+    const alertEmail = Deno.env.get("ALERT_EMAIL") || "elkanagroup0@gmail.com";
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [alertEmail],
+        subject: `⚠️ SportVision — ${subject}`,
+        html: `<pre style="font-family:monospace;white-space:pre-wrap;font-size:13px">${
+          detail.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] as string))
+        }</pre>`,
+      }),
+    });
+  } catch (_e) {
+    console.error("[stripe-webhook] échec de l'envoi de l'alerte critique elle-même :", _e);
+  }
+}
 
 async function sendPaymentReceiptEmail(
   to: string,
