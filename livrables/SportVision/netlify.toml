@@ -33,6 +33,11 @@
   status = 200
 
 [[redirects]]
+  from = "/recrutement-community-manager"
+  to = "/recrutement-community-manager.html"
+  status = 200
+
+[[redirects]]
   from = "/mentions-legales"
   to = "/mentions-legales.html"
   status = 200

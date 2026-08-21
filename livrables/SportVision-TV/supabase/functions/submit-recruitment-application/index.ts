@@ -58,6 +58,7 @@ const POSTE_LABELS: Record<string, string> = {
   photographe: "Photographe",
   videaste: "Vidéaste",
   les_deux: "Photographe & Vidéaste",
+  community_manager: "Community Manager",
 };
 const EXPERIENCE_LABELS: Record<string, string> = {
   debutant: "Débutant (formation possible)",
@@ -216,7 +217,7 @@ serve(async (req) => {
     if (portfolio_url && portfolio_url.length > 500) {
       return json({ error: "Lien portfolio trop long" }, 400);
     }
-    if (!["photographe", "videaste", "les_deux"].includes(poste)) {
+    if (!["photographe", "videaste", "les_deux", "community_manager"].includes(poste)) {
       return json({ error: "Poste visé invalide" }, 400);
     }
 
