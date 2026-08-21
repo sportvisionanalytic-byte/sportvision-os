@@ -180,6 +180,10 @@ serve(async (req) => {
     // — recalculé ci-dessous, jamais transmis par le client. N'affecte que le libellé Stripe
     // (transparence) : le montant lui-même est déjà recalculé avec la remise incluse.
     let appliedDiscountPct = 0;
+    // Libellé du type de remise réellement appliquée, pour le récapitulatif Stripe — "Agent" et
+    // "Club+" ne devraient jamais se recouvrir en pratique (comptes payeurs de nature différente),
+    // mais le tableau permet les deux sans se mentir sur l'étiquette si ça arrivait.
+    const discountLabels: string[] = [];
     // true seulement si la remise mensuelle Agent (-10%, palier Pro) a réellement été appliquée à
     // CE paiement — transporté jusqu'au webhook via les metadata Stripe pour que la consommation
     // (monthly_discount_used_at) ne soit écrite qu'après confirmation du paiement (jamais ici).
@@ -264,13 +268,37 @@ serve(async (req) => {
           if (d) {
             if (offre.slug === "montage-compilation" && d.montage_pct) {
               remisePct += Number(d.montage_pct);
+              discountLabels.push("Agent");
             }
             if (applyMonthlyDiscount && d.monthly_pct) {
               remisePct += Number(d.monthly_pct);
               monthlyDiscountApplied = true;
+              if (!discountLabels.includes("Agent")) discountLabels.push("Agent");
             }
           }
         }
+
+        // Remise Club+ Start/Performance sur les prestations ponctuelles (trouvé non tenu par
+        // l'audit pré-lancement du 21/08 — vitrine/club-plus.html §5/10% annoncée aux formules
+        // payantes, aucun mécanisme automatique n'existait, tout reposait sur un champ manuel de
+        // devis saisi par le staff). Ne s'applique qu'ici (chemin catalogue auto-chiffré, jamais
+        // sur une prestation déjà chiffrée manuellement par un devis) : un devis reste la
+        // décision du staff, pas question de la recalculer silencieusement en dessous. -5% pour
+        // le plan "club" (Start), -10% pour "performance", uniquement si l'abonnement Club+ du
+        // club est actif (subscription_status='actif' — jamais sur un abonnement impayé/annulé/
+        // formule gratuite). additif avec une éventuelle remise Agent ci-dessus, même si les deux
+        // cas ne devraient jamais se recouvrir en pratique (une prestation club n'a pas de compte
+        // connect_profile_settings.account_type='particulier' payeur).
+        const { data: clubPlan } = await admin
+          .from("clubs")
+          .select("plan, subscription_status")
+          .eq("portail_client_id", prestation.client_id)
+          .maybeSingle();
+        if (clubPlan?.subscription_status === "actif") {
+          if (clubPlan.plan === "club") { remisePct += 5; discountLabels.push("Club+ Start"); }
+          else if (clubPlan.plan === "performance") { remisePct += 10; discountLabels.push("Club+ Performance"); }
+        }
+
         appliedDiscountPct = remisePct;
 
         const baseHtRemise = Math.round(baseHt * (1 - remisePct / 100) * 100) / 100;
@@ -343,7 +371,7 @@ serve(async (req) => {
     });
 
     const label = `SportVision — ${type_paiement} ${prestation.reference || ""}`.trim()
-      + (appliedDiscountPct > 0 ? ` (remise Agent -${appliedDiscountPct}%)` : "");
+      + (appliedDiscountPct > 0 ? ` (remise ${discountLabels.join(" + ")} -${appliedDiscountPct}%)` : "");
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
