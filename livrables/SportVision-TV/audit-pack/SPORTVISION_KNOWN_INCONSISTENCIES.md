@@ -325,14 +325,15 @@ Demande explicite de Fouka avant l'ouverture à de vrais clients payants (abonne
 - **Décision de Fouka (21/08)** : upgrade vers le plan Supabase Pro accepté ("ok pour supabase je vais payé") — à réaliser par Fouka directement dans le dashboard Supabase (facturation, pas une action que je peux exécuter à sa place).
 - **Statut** : **ACCEPTÉ**, upgrade à faire par Fouka (facturation).
 
-### INC-045 — Stripe confirmé en mode LIVE, mais jamais validé de bout en bout avec un vrai paiement/webhook (HAUTE, BLOQUÉ — ACCÈS STRIPE MANQUANT)
+### INC-045 — Stripe confirmé en mode LIVE, mais jamais validé de bout en bout avec un vrai paiement/webhook (HAUTE, PARTIEL)
 
 - **Sévérité** : Haute.
-- **Constat croisé par 3 agents indépendants** (Connect, Club+, infra) : la clé Stripe configurée est bien une clé **LIVE** (sessions Checkout réelles avec préfixe `cs_live_...`). Aucune clé de test configurée : impossible de simuler un paiement réussi/échoué sans une vraie carte.
-- **Clarifié le 21/08** : je n'ai pas d'accès Stripe direct — `STRIPE_SECRET_KEY`/`STRIPE_PUBLISHABLE_KEY` sont vides dans `.env` local, et l'API Management Supabase ne renvoie qu'un hash SHA256 des secrets, jamais leur valeur en clair (vérifié explicitement). Je ne peux donc ni vérifier le dashboard Stripe, ni supprimer le client de test résiduel, ni déclencher/vérifier un vrai webhook.
-- **Action requise de Fouka** : soit faire personnellement le cycle complet (souscription carte réelle → vérifier crédits/statut → résiliation → vérifier `subscription_status='annule'`), soit me donner un accès Stripe (clé secrète, idéalement restreinte en lecture/webhooks) pour que je puisse vérifier le dashboard et faire le nettoyage moi-même.
-- **Résidu toujours en attente** : client Stripe LIVE résiduel `cus_V6u0f8pHigO8dt` (`audit-clubplus-21-08-admin@sportvision-test.fr`) — aucun encaissement, mais l'objet persiste. À supprimer depuis le dashboard Stripe → Clients, ou par moi si un accès est fourni.
-- **Statut** : **BLOQUÉ**, en attente d'un accès Stripe.
+- **Constat croisé par 3 agents indépendants** (Connect, Club+, infra) : la clé Stripe configurée est bien une clé **LIVE**. Aucune clé de test configurée : impossible de simuler un paiement réussi/échoué sans une vraie carte.
+- **Accès obtenu le 21/08** : Fouka a fourni une clé Stripe restreinte (`rk_live_...`, scopée Clients-écriture/Abonnements-lecture/Sessions-lecture/Webhooks-lecture/Événements-lecture). Utilisée pour :
+  1. Confirmer et **supprimer** le client Stripe LIVE résiduel `cus_V6u0f8pHigO8dt` (créé par le test de l'audit, `livemode:true` confirmé, aucun encaissement).
+  2. Lister les points de terminaison webhook réels : **un seul** configuré, pointant correctement vers `stripe-webhook` — confirmé qu'aucun webhook n'était resté pointé vers `clever-function` (la fonction fantôme supprimée en INC-037), le risque le plus grave envisagé par ce finding est donc écarté.
+- **Reste non fait** : la clé étant restreinte (pas d'accès Charges/PaymentIntents), je ne peux toujours pas déclencher/simuler un vrai cycle de paiement complet (`invoice.paid`, changement de crédits, résiliation) sans une vraie carte — ça reste une action que seul Fouka peut faire, ou nécessiterait une paire de clés TEST dédiée.
+- **Statut** : **PARTIEL** — résidu nettoyé et webhook vérifié sain ; cycle de paiement réel toujours non testé de bout en bout.
 
 ### INC-046 — `clubs` expose les champs financiers (Stripe, crédits, abonnement) à tout membre, y compris les rôles "zéro finance" (MOYENNE, CORRIGÉ)
 
@@ -360,14 +361,13 @@ Demande explicite de Fouka avant l'ouverture à de vrais clients payants (abonne
 - **Non fait** : couverture au-delà de `stripe-webhook` (autres edge functions critiques, un vrai outil de monitoring/APM type Sentry pour les erreurs frontend) — périmètre plus large, à décider séparément si besoin.
 - **Statut** : **PARTIEL** — alerte email en place sur le point le plus critique (paiements), couverture globale (Sentry/APM) toujours absente.
 
-### INC-049 — SPF de `sportvision-an.fr` n'inclut ni Brevo ni Resend (MOYENNE, NON FAIT — changement DNS)
+### INC-049 — SPF de `sportvision-an.fr` n'inclut ni Brevo ni Resend (MOYENNE, CORRIGÉ)
 
 - **Sévérité** : Moyenne — DKIM/DMARC corrects par ailleurs, donc pas de rejet direct attendu, mais un `-all` (hard fail) sur un SPF qui ne couvre que OVH peut dégrader la délivrabilité (boîte spam) pour les emails transactionnels envoyés via Brevo/Resend.
 - **Trouvé par l'agent infra** : `v=spf1 include:mx.ovh.com -all` — ne mentionne aucun des deux vrais expéditeurs transactionnels du projet.
-- **Non corrigé cette nuit** : c'est un enregistrement DNS chez le registrar/hébergeur DNS du domaine (probablement OVH, vu le SPF actuel `include:mx.ovh.com`), pas un fichier du repo.
-- **Clarifié le 21/08** : Fouka a proposé de donner "les API de Brevo" — précision faite en retour : Brevo ne gère pas le DNS de `sportvision-an.fr`, il faut un accès au DNS/zone du domaine (OVH ou l'hébergeur DNS réel) pour ajouter cet enregistrement TXT SPF, pas une clé API Brevo. En attente du bon accès.
-- **Recommandation** : ajouter `include:spf.brevo.com` (et l'include Resend applicable, généralement basé sur Amazon SES) au record SPF existant.
-- **Statut** : **NON FAIT**, en attente de l'accès DNS (OVH ou équivalent) de la part de Fouka.
+- **Correctif (21/08)** : Fouka a fourni un accès API OVH (`OVH_APPLICATION_KEY`/`SECRET`/`CONSUMER_KEY`, scopé à la zone DNS). Trouvé que le SPF racine est en réalité stocké par OVH comme un `fieldType: SPF` dédié (pas un `TXT` générique, invisible dans une recherche filtrée sur `fieldType=TXT` seule — piège de l'API OVH). Modifié en direct via l'API (`PUT /domain/zone/sportvision-an.fr/record/5428313565` puis `POST .../refresh`) : `v=spf1 include:mx.ovh.com include:spf.brevo.com include:amazonses.com -all`. Le sous-domaine `send.sportvision-an.fr` (utilisé par Resend pour son propre Return-Path) avait déjà son SPF correct au préalable (`include:amazonses.com`) — l'ajout sur le domaine racine est un filet de sécurité supplémentaire, pas un doublon fonctionnel.
+- **Vérifié après coup** : `dig TXT sportvision-an.fr` confirme la propagation réelle. Les deux `include` (`spf.brevo.com`, `amazonses.com`) résolvent chacun vers un enregistrement SPF valide (`ip4:...`) — total sous la limite de 10 lookups DNS imposée par la RFC SPF.
+- **Statut** : **CORRIGÉ**, vérifié en DNS réel (21/08/2026).
 
 ### INC-050 — `stripe-webhook` ne journalisait pas l'échec d'écriture sur `prestations.statut_financier` (HAUTE, CORRIGÉ)
 
