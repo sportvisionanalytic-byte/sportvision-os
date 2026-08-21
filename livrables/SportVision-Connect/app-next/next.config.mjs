@@ -1,6 +1,28 @@
+// Headers de sécurité définis ici plutôt que dans netlify.toml [[headers]] : vérifié en direct
+// après déploiement (audit pré-lancement du 21/08) que le bloc [[headers]] de netlify.toml
+// n'atteint pas les routes rendues par le Next Runtime (@netlify/plugin-nextjs) — seul next
+// config `headers()` est fiable pour du SSR sur Netlify. Pas de fonts.googleapis.com ici :
+// layout.tsx utilise next/font pour toutes ses polices, servies depuis le domaine propre au
+// build. Le paiement/abonnement Stripe est une redirection pleine page (window.location.href),
+// jamais un iframe/script embarqué — pas besoin d'autoriser de domaine Stripe ici.
+const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  {
+    key: "Content-Security-Policy",
+    value:
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'",
+  },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
   // 17/08/2026 — HANDOFF-CLUBPLUS.md § 5 préfixe toutes les routes conceptuelles en /clubplus/*
   // (ex. /clubplus/services). L'app est déjà servie sur son propre sous-domaine dédié
   // (clubplus.sportvision-an.fr) — le préfixe est donc redondant en pratique (clubplus.

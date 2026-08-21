@@ -21,18 +21,7 @@
 #   NEXT_PUBLIC_SUPABASE_URL
 #   NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-# Headers de sécurité navigateur — absents jusqu'ici (trouvé par l'audit pré-lancement du
-# 21/08, seule la Vitrine les avait). Repris du même patron déjà validé sur
-# livrables/SportVision/netlify.toml. Pas de fonts.googleapis.com ici : layout.tsx utilise
-# next/font pour toutes ses polices, servies depuis le domaine propre au build (voir son propre
-# commentaire) — inutile d'assouplir la CSP pour ça, contrairement à app-connect. Le paiement/
-# abonnement Stripe est une redirection pleine page (window.location.href), jamais un iframe/
-# script embarqué — pas besoin d'autoriser de domaine Stripe ici.
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-    X-Frame-Options = "SAMEORIGIN"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://lulgezzpvrlbftbykzrc.supabase.co; connect-src 'self' https://lulgezzpvrlbftbykzrc.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'"
+# Headers de sécurité navigateur : définis dans next.config.mjs (`headers()`), pas ici — vérifié
+# en direct (audit pré-lancement du 21/08) qu'un bloc [[headers]] dans ce fichier n'atteint pas
+# les routes rendues par le Next Runtime (@netlify/plugin-nextjs), contrairement à un site
+# statique classique comme la Vitrine.
