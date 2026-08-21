@@ -28,6 +28,11 @@
   status = 200
 
 [[redirects]]
+  from = "/recrutement-photographe-videaste"
+  to = "/recrutement-photographe-videaste.html"
+  status = 200
+
+[[redirects]]
   from = "/mentions-legales"
   to = "/mentions-legales.html"
   status = 200

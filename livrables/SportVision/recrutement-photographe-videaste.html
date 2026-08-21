@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Photographe / Vidéaste sportif freelance — SportVision recrute</title>
+<meta name="description" content="SportVision recrute des photographes et vidéastes sportifs freelance en Île-de-France, Côte-d'Or et Aube. Débutants acceptés, formation possible. Candidatez en ligne.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://sportvision-an.fr/recrutement-photographe-videaste">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SportVision">
+<meta property="og:url" content="https://sportvision-an.fr/recrutement-photographe-videaste">
+<meta property="og:title" content="SportVision recrute — Photographe / Vidéaste sportif freelance">
+<meta property="og:description" content="Freelance, Île-de-France · Côte-d'Or · Aube. Débutants acceptés, formation possible.">
+<meta property="og:image" content="https://sportvision-an.fr/assets/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SportVision recrute — Photographe / Vidéaste sportif freelance">
+<meta name="twitter:description" content="Freelance, Île-de-France · Côte-d'Or · Aube. Débutants acceptés, formation possible.">
+<meta name="twitter:image" content="https://sportvision-an.fr/assets/og-image.jpg">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url('assets/fonts/inter-variable-latin.woff2') format('woff2')}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:500 800;font-display:swap;src:url('assets/fonts/manrope-variable-latin.woff2') format('woff2')}
+/* ============================================================
+   SportVision — page recrutement « Photographe / Vidéaste ».
+   Header/footer/CMP copiés à l'identique de retractation.html.
+   Classes de formulaire (.sv-field/.sv-honeypot/.sv-err/.sv-ok)
+   également copiées à l'identique. Vanilla HTML/CSS/JS.
+   ============================================================ */
+:root{
+  --navy-900:#070A17; --navy-800:#10162F;
+  --blue:#2454FF; --blue-electric:#1686FF; --cyan:#00C7FF;
+  --violet:#832DFF; --violet-bright:#C337FF;
+  --white:#FFFFFF; --bg-light:#F5F7FC; --text-secondary:#98A2B3;
+  --success:#12B76A;
+  --grad-brand: linear-gradient(135deg, var(--blue) 0%, var(--cyan) 50%, var(--violet-bright) 100%);
+  --radius:16px; --radius-lg:24px;
+  --shadow-lg: 0 24px 60px rgba(7,10,23,.35);
+  --font-head:'Manrope',-apple-system,sans-serif;
+  --font-body:'Inter',-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important} }
+body{margin:0;font-family:var(--font-body);color:var(--navy-900);background:var(--white);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,h4{font-family:var(--font-head);font-weight:800;line-height:1.12;margin:0;letter-spacing:-.01em}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+button{font-family:inherit;cursor:pointer}
+.container{max-width:1240px;margin:0 auto;padding:0 24px}
+section{position:relative}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:14px 26px;font-weight:700;font-size:15px;border:none;white-space:nowrap;transition:transform .18s ease, box-shadow .18s ease, background .18s ease}
+.btn-grad{background:var(--grad-brand);color:#fff;box-shadow:0 10px 30px rgba(101,60,255,.35)}
+.btn-grad:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(101,60,255,.45)}
+.btn-ghost-dark{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.22)}
+.btn-ghost-dark:hover{background:rgba(255,255,255,.16)}
+.btn-ghost-light{background:transparent;color:var(--navy-900);border:1px solid #e4e7ef}
+.btn-ghost-light:hover{border-color:var(--blue)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none !important}
+
+.site-header{position:fixed;top:0;left:0;right:0;z-index:1000;padding:16px 0;transition:background .25s ease, box-shadow .25s ease, padding .25s ease;background:rgba(7,10,23,.86);backdrop-filter:blur(14px);box-shadow:0 1px 0 rgba(255,255,255,.06)}
+.site-header .container{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-head);font-weight:800;font-size:19px;color:#fff}
+.brand .mark{width:32px;height:32px;object-fit:contain;flex-shrink:0}
+.main-nav{display:flex;gap:30px}
+.main-nav a{font-size:14.5px;font-weight:600;color:rgba(255,255,255,.82);transition:color .15s}
+.main-nav a:hover{color:#fff}
+.header-actions{display:flex;align-items:center;gap:10px}
+.header-actions .btn-ghost-dark{padding:11px 18px;font-size:13.5px}
+.header-actions .btn-grad{padding:11px 20px;font-size:13.5px}
+.space-switch{position:relative}
+.space-switch:hover .nav-dropdown,.space-switch:focus-within .nav-dropdown{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(-50%) translateY(2px)}
+.space-switch>a{cursor:pointer}
+.space-switch:hover .nav-caret,.space-switch:focus-within .nav-caret{transform:rotate(180deg)}
+.nav-dropdown-sub{display:block;font-size:11px;font-weight:500;opacity:.6;margin-top:1px}
+.burger{display:none;background:none;border:none;color:#fff;width:38px;height:38px;align-items:center;justify-content:center}
+.burger span,.burger span::before,.burger span::after{content:'';display:block;width:20px;height:2px;background:#fff;position:relative;transition:.2s}
+.burger span::before{position:absolute;top:-6px}
+.burger span::after{position:absolute;top:6px}
+.mobile-nav{display:none;position:fixed;inset:0;z-index:999;background:var(--navy-900);padding:90px 24px 24px;flex-direction:column;gap:6px}
+.mobile-nav.on{display:flex}
+.mobile-nav>a{color:#fff;font-size:19px;font-weight:700;padding:14px 4px;border-bottom:1px solid rgba(255,255,255,.08)}
+.mobile-nav .mobile-ctas{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+
+/* ── Hero recrutement ── */
+.recrut-hero{position:relative;padding:168px 0 90px;background:linear-gradient(180deg,#070A17 0%,#0A1730 100%);overflow:hidden}
+.recrut-hero::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(900px 500px at 88% 0%,rgba(0,199,255,.22),transparent 60%),
+  radial-gradient(700px 600px at 5% 100%,rgba(131,45,255,.24),transparent 60%)}
+.recrut-hero .container{position:relative;z-index:2;max-width:820px}
+.recrut-badge{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#0A0E22;background:linear-gradient(90deg,#00C7FF,#C337FF);border-radius:999px;padding:8px 16px;margin-bottom:20px}
+.recrut-hero h1{font-size:clamp(32px,5vw,50px);color:#fff}
+.recrut-hero .lead{margin-top:18px;font-size:17px;line-height:1.65;color:rgba(255,255,255,.78);max-width:640px}
+.recrut-tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+.recrut-tags span{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:7px 14px}
+.recrut-cta{margin-top:32px}
+
+/* ── Contenu (profil / conditions) ── */
+.recrut-body{padding:70px 0 40px;background:var(--white)}
+.recrut-wrap{max-width:820px;margin:0 auto;padding:0 24px}
+.recrut-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:16px}
+.recrut-card{background:var(--bg-light);border:1px solid #e4e7ef;border-radius:var(--radius-lg);padding:26px 28px}
+.recrut-card h3{font-size:16px;color:var(--navy-900);margin-bottom:12px}
+.recrut-card ul{margin:0;padding-left:20px;color:#374151;font-size:14.5px;line-height:1.75}
+.recrut-card li{margin-bottom:6px}
+.recrut-body h2{font-family:var(--font-head);font-weight:800;font-size:22px;color:var(--navy-900);margin:44px 0 6px}
+.recrut-body h2:first-child{margin-top:0}
+.recrut-body>.recrut-wrap>p{color:#374151;font-size:15.5px;line-height:1.75}
+
+/* ── Formulaire ── */
+.recrut-form-section{padding:20px 0 110px;background:var(--white)}
+.recrut-card-form{max-width:640px;margin:0 auto;background:#fff;border:1px solid #e9ecf5;border-radius:var(--radius-lg);padding:32px;box-shadow:0 10px 30px rgba(7,10,23,.06)}
+.sv-field{margin-top:16px}
+.sv-field:first-of-type{margin-top:0}
+.sv-field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:#374151}
+.sv-field input,.sv-field select,.sv-field textarea{width:100%;padding:11px 12px;border:1px solid #e4e7ef;border-radius:10px;font-size:14.5px;font-family:inherit;box-sizing:border-box;background:#fff}
+.sv-field input:focus,.sv-field select:focus,.sv-field textarea:focus{outline:2px solid var(--blue);outline-offset:1px}
+.sv-field .hint{display:block;font-size:12px;color:#8891A8;margin-top:5px;font-weight:500}
+.sv-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sv-radio-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.sv-radio-group label{display:flex;align-items:center;gap:7px;border:1.5px solid #e4e7ef;border-radius:10px;padding:9px 14px;font-size:13.5px;font-weight:600;color:#374151;cursor:pointer}
+.sv-radio-group input{width:15px;height:15px}
+.sv-honeypot{position:absolute;left:-9999px;opacity:0}
+.sv-err{color:#e14b4b;font-size:13px;margin-top:10px;min-height:16px}
+.sv-ok{text-align:center;padding:10px 0}
+.sv-ok .check{width:56px;height:56px;border-radius:50%;background:rgba(18,183,106,.12);border:1px solid rgba(18,183,106,.35);color:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px}
+.file-drop{border:1.5px dashed #d7dbe8;border-radius:10px;padding:16px;text-align:center;font-size:13px;color:#6b7280;cursor:pointer;background:#fafbff}
+.file-drop.has-file{border-color:var(--blue);color:var(--navy-900);font-weight:600}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy-900);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:opacity .2s;z-index:3000}
+.toast.on{opacity:1}
+
+/* ── Footer ── */
+.site-footer{background:var(--navy-900);color:rgba(255,255,255,.6);padding:70px 0 30px;border-top:1px solid rgba(255,255,255,.06)}
+.footer-grid{display:grid;grid-template-columns:1.6fr repeat(5,1fr);gap:30px}
+.footer-brand p{font-size:13.5px;line-height:1.6;margin-top:14px;max-width:220px}
+.footer-col h5{font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.85);margin-bottom:16px}
+.footer-col ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.footer-col a{font-size:13.5px;color:rgba(255,255,255,.6)}
+.footer-col a:hover{color:#fff}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-top:1px solid rgba(255,255,255,.08);margin-top:54px;padding-top:24px;font-size:12.5px;color:rgba(255,255,255,.4)}
+.footer-legal{display:flex;gap:18px;flex-wrap:wrap}
+.footer-social{display:flex;gap:10px}
+.footer-social a{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:13px}
+
+@media (max-width:980px){
+  .main-nav,.header-actions{display:none}
+  .burger{display:flex}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .recrut-grid{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .recrut-hero{padding:140px 0 60px}
+  .recrut-form-section{padding:10px 0 70px}
+  .recrut-card-form{padding:22px}
+  .sv-row{grid-template-columns:1fr}
+  .footer-grid{grid-template-columns:1fr}
+}
+
+.cookie-banner{display:none;position:fixed;left:0;right:0;bottom:0;z-index:2500;background:var(--navy-900);border-top:1px solid rgba(255,255,255,.12);padding:18px 24px;box-shadow:0 -8px 24px rgba(0,0,0,.35);max-height:82vh;overflow-y:auto}
+.cookie-banner.on{display:flex;flex-direction:column}
+.cookie-banner-inner{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.cookie-banner-inner p{flex:1;min-width:240px;font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.6;margin:0}
+.cookie-banner-inner a{color:var(--cyan);text-decoration:underline}
+.cookie-banner-actions{display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.cookie-panel{display:none;max-width:1100px;margin:16px auto 0;width:100%;border-top:1px solid rgba(255,255,255,.12);padding-top:16px}
+.cookie-panel.on{display:block}
+.cookie-cat{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.cookie-cat:last-of-type{border-bottom:none}
+.cookie-cat-info b{display:block;font-size:13.5px;color:#fff;margin-bottom:3px}
+.cookie-cat-info span{display:block;font-size:12.5px;color:rgba(255,255,255,.6);line-height:1.5;max-width:60ch}
+.cookie-switch{position:relative;flex:none;width:40px;height:23px}
+.cookie-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.cookie-switch .track{position:absolute;inset:0;border-radius:999px;background:rgba(255,255,255,.18);transition:background .15s;pointer-events:none}
+.cookie-switch .dot{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .15s;pointer-events:none}
+.cookie-switch input:checked + .track{background:var(--cyan)}
+.cookie-switch input:checked ~ .dot{transform:translateX(17px)}
+.cookie-switch input:disabled + .track{opacity:.5}
+.cookie-panel-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+@media(max-width:640px){.cookie-banner-inner{flex-direction:column;align-items:stretch}.cookie-banner-actions{justify-content:flex-end}.cookie-cat{flex-wrap:wrap}}
+.nav-item{position:relative}
+.nav-item>a{display:flex;align-items:center;gap:5px}
+.nav-item>button{all:unset;display:flex;align-items:center;gap:5px;font-size:14px;font-weight:600;color:rgba(255,255,255,.82);cursor:pointer;transition:color .15s}
+.nav-item>button:hover,.nav-item>button.active{color:#fff}
+.nav-caret{font-size:9px;opacity:.55;transition:transform .15s}
+.nav-item:hover .nav-caret,.nav-item:focus-within .nav-caret{transform:rotate(180deg)}
+.nav-dropdown{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(6px);min-width:240px;background:rgba(7,10,23,.98);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px;box-shadow:0 24px 48px rgba(0,0,0,.45);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease, transform .15s ease;display:flex;flex-direction:column;gap:1px;z-index:1100}
+.nav-item:hover .nav-dropdown,.nav-item:focus-within .nav-dropdown{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(-50%) translateY(2px)}
+.nav-dropdown a{padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;color:rgba(255,255,255,.75);white-space:nowrap}
+.nav-dropdown a:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-dropdown-all{border-top:1px solid rgba(255,255,255,.1);margin-top:5px;padding-top:11px !important;color:var(--cyan) !important;font-weight:700 !important}
+.main-nav>a.active,.main-nav .nav-item>a.active{color:#fff}
+.mobile-nav-group{border-bottom:1px solid rgba(255,255,255,.08)}
+.mobile-nav-group summary{color:#fff;font-size:18px;font-weight:700;padding:13px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none}
+.mobile-nav-group summary::-webkit-details-marker{display:none}
+.mobile-nav-group summary::after{content:'+';font-weight:400;color:rgba(255,255,255,.5);font-size:20px}
+.mobile-nav-group[open] summary::after{content:'\2013'}
+.mobile-nav-group .sub-links{display:flex;flex-direction:column;padding:0 4px 14px 12px}
+.mobile-nav-group .sub-links a{font-size:15px;font-weight:600;padding:9px 0;color:rgba(255,255,255,.68)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="site-header" id="site-header">
+  <div class="container">
+    <a href="index.html" class="brand"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true">SportVision</a>
+    <nav class="main-nav">
+      <div class="nav-item">
+        <a href="prestations.html">Prestations <span class="nav-caret">▾</span></a>
+        <div class="nav-dropdown">
+          <a href="prestation-match-photo.html">Match photo</a>
+          <a href="prestation-match-video.html">Match vidéo</a>
+          <a href="prestation-pack-match.html">Pack Match Complet</a>
+          <a href="prestation-camera-isolee.html">Caméra isolée joueur</a>
+          <a href="prestation-montage-compilation.html">Montage &amp; compilation</a>
+          <a href="prestation-shooting-joueur.html">Shooting joueur</a>
+          <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
+          <a href="prestation-media-day.html">Media Day</a>
+          <a href="prestation-tournois.html">Tournois et stages</a>
+          <a href="prestation-creations.html">Créations graphiques</a>
+          <a href="prestation-coachs.html">Coachs et préparateurs</a>
+          <a href="prestations.html" class="nav-dropdown-all">Toutes les prestations →</a>
+        </div>
+      </div>
+      <div class="nav-item">
+        <button type="button">Solutions <span class="nav-caret">▾</span></button>
+        <div class="nav-dropdown">
+          <a href="club-plus.html">Club+</a>
+          <a href="full-communication.html">Full Communication</a>
+          <a href="accompagnements-academies.html">Académies</a>
+          <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
+          <a href="accompagnements-joueurs.html">Joueurs</a>
+          <a href="accompagnements-evenements.html">Tournois et événements</a>
+          <a href="accompagnements.html" class="nav-dropdown-all">Tous les accompagnements →</a>
+        </div>
+      </div>
+      <a href="realisations.html">Réalisations</a>
+      <a href="a-propos.html">À propos</a>
+    </nav>
+    <div class="header-actions">
+      <div class="space-switch">
+        <a href="https://connect.sportvision-an.fr/" class="btn btn-ghost-dark">Mon espace <span class="nav-caret">▾</span></a>
+        <div class="nav-dropdown">
+          <a href="https://connect.sportvision-an.fr/">SportVision Connect<span class="nav-dropdown-sub">Espace personnel</span></a>
+          <a href="https://clubplus.sportvision-an.fr/">SportVision Club+<span class="nav-dropdown-sub">Espace professionnel</span></a>
+        </div>
+      </div>
+      <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
+    </div>
+    <button class="burger" id="burger-btn" aria-label="Menu"><span></span></button>
+  </div>
+</header>
+
+<div class="mobile-nav" id="mobile-nav">
+  <details class="mobile-nav-group">
+    <summary>Prestations</summary>
+    <div class="sub-links">
+      <a href="prestation-match-photo.html">Match photo</a>
+      <a href="prestation-match-video.html">Match vidéo</a>
+      <a href="prestation-pack-match.html">Pack Match Complet</a>
+      <a href="prestation-camera-isolee.html">Caméra isolée joueur</a>
+      <a href="prestation-montage-compilation.html">Montage &amp; compilation</a>
+      <a href="prestation-shooting-joueur.html">Shooting joueur</a>
+      <a href="prestation-shooting-equipe.html">Shooting d'équipe</a>
+      <a href="prestation-media-day.html">Media Day</a>
+      <a href="prestation-tournois.html">Tournois et stages</a>
+      <a href="prestation-creations.html">Créations graphiques</a>
+      <a href="prestation-coachs.html">Coachs et préparateurs</a>
+      <a href="prestations.html">Toutes les prestations →</a>
+    </div>
+  </details>
+  <details class="mobile-nav-group">
+    <summary>Solutions</summary>
+    <div class="sub-links">
+      <a href="club-plus.html">Club+</a>
+      <a href="full-communication.html">Full Communication</a>
+      <a href="accompagnements-academies.html">Académies</a>
+      <a href="accompagnements-coachs.html">Coachs et préparateurs</a>
+      <a href="accompagnements-joueurs.html">Joueurs</a>
+      <a href="accompagnements-evenements.html">Tournois et événements</a>
+      <a href="accompagnements.html">Tous les accompagnements →</a>
+    </div>
+  </details>
+  <a href="realisations.html">Réalisations</a>
+  <a href="a-propos.html">À propos</a>
+  <details class="mobile-nav-group">
+    <summary>Mon espace</summary>
+    <div class="sub-links">
+      <a href="https://connect.sportvision-an.fr/">SportVision Connect — espace personnel</a>
+      <a href="https://clubplus.sportvision-an.fr/">SportVision Club+ — espace professionnel</a>
+    </div>
+  </details>
+  <div class="mobile-ctas">
+    <a href="reserver.html" class="btn btn-grad">Réserver une prestation</a>
+  </div>
+</div>
+
+<!-- ══════════════ HERO ══════════════ -->
+<section class="recrut-hero">
+  <div class="container">
+    <span class="recrut-badge">SportVision recrute</span>
+    <h1>Photographes &amp; Vidéastes sportifs freelance</h1>
+    <p class="lead">Rejoignez le réseau SportVision et couvrez des matchs et événements pour nos clubs partenaires, selon vos disponibilités. Débutants acceptés — une formation est possible si vous n'avez pas encore d'expérience.</p>
+    <div class="recrut-tags">
+      <span>Freelance / indépendant</span>
+      <span>Île-de-France</span>
+      <span>Côte-d'Or (Dijon)</span>
+      <span>Aube</span>
+      <span>Débutants bienvenus</span>
+    </div>
+    <div class="recrut-cta">
+      <a href="#candidature" class="btn btn-grad">Candidater →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CONTENU ══════════════ -->
+<main>
+<section class="recrut-body">
+  <div class="recrut-wrap">
+
+    <h2>La mission</h2>
+    <p>Vous couvrez des matchs et événements sportifs pour le compte de SportVision : photo, vidéo, ou les deux selon votre profil. Missions ponctuelles, à la carte, selon vos disponibilités et notre planning dans votre zone.</p>
+
+    <div class="recrut-grid">
+      <div class="recrut-card">
+        <h3>Profil recherché</h3>
+        <ul>
+          <li>Expérimenté ou débutant motivé — une formation est possible</li>
+          <li>Disponible le week-end (les matchs se jouent majoritairement le week-end)</li>
+          <li>Rigueur et autonomie sur le terrain</li>
+          <li>Matériel personnel apprécié, mais pas obligatoire selon les missions</li>
+        </ul>
+      </div>
+      <div class="recrut-card">
+        <h3>Ce que SportVision propose</h3>
+        <ul>
+          <li>Statut freelance / indépendant</li>
+          <li>Missions rémunérées à la prestation</li>
+          <li>Matériel fourni selon les missions</li>
+          <li>Formation possible pour les débutants</li>
+          <li>Un réseau en pleine croissance</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════ FORMULAIRE ══════════════ -->
+<section class="recrut-form-section" id="candidature">
+  <div class="recrut-wrap">
+    <h2 style="margin-top:0">Candidater</h2>
+    <p style="margin-bottom:24px">Remplissez le formulaire ci-dessous. CV et portfolio sont facultatifs mais bienvenus si vous en avez.</p>
+
+    <div class="recrut-card-form">
+      <div id="candidature-form-wrap">
+        <form id="candidature-form" novalidate>
+          <div class="sv-honeypot" aria-hidden="true">
+            <label>Site web<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label>
+          </div>
+
+          <div class="sv-field">
+            <label>Poste visé</label>
+            <div class="sv-radio-group">
+              <label><input type="radio" name="poste" value="photographe" required> Photographe</label>
+              <label><input type="radio" name="poste" value="videaste"> Vidéaste</label>
+              <label><input type="radio" name="poste" value="les_deux"> Les deux</label>
+            </div>
+          </div>
+
+          <div class="sv-row">
+            <div class="sv-field"><label for="cd-prenom">Prénom</label><input id="cd-prenom" name="prenom" type="text" required autocomplete="given-name"></div>
+            <div class="sv-field"><label for="cd-nom">Nom</label><input id="cd-nom" name="nom" type="text" required autocomplete="family-name"></div>
+          </div>
+          <div class="sv-row">
+            <div class="sv-field"><label for="cd-email">E-mail</label><input id="cd-email" name="email" type="email" required autocomplete="email"></div>
+            <div class="sv-field"><label for="cd-telephone">Téléphone</label><input id="cd-telephone" name="telephone" type="tel" autocomplete="tel"></div>
+          </div>
+
+          <div class="sv-row">
+            <div class="sv-field">
+              <label for="cd-zone">Zone géographique</label>
+              <select id="cd-zone" name="zone" required>
+                <option value="">Sélectionnez</option>
+                <option value="idf">Île-de-France</option>
+                <option value="cote_or">Côte-d'Or (Dijon)</option>
+                <option value="aube">Aube</option>
+                <option value="autre">Autre</option>
+              </select>
+            </div>
+            <div class="sv-field"><label for="cd-ville">Ville (facultatif)</label><input id="cd-ville" name="ville" type="text"></div>
+          </div>
+
+          <div class="sv-field">
+            <label for="cd-experience">Niveau d'expérience</label>
+            <select id="cd-experience" name="experience_niveau" required>
+              <option value="">Sélectionnez</option>
+              <option value="debutant">Débutant (formation possible)</option>
+              <option value="intermediaire">Intermédiaire</option>
+              <option value="confirme">Confirmé</option>
+            </select>
+          </div>
+
+          <div class="sv-field">
+            <label>Avez-vous votre propre matériel (appareil photo / caméra) ?</label>
+            <div class="sv-radio-group">
+              <label><input type="radio" name="materiel" value="oui"> Oui</label>
+              <label><input type="radio" name="materiel" value="non"> Non</label>
+              <label><input type="radio" name="materiel" value="partiel"> En partie</label>
+            </div>
+          </div>
+
+          <div class="sv-field">
+            <label for="cd-dispo">Disponibilités</label>
+            <input id="cd-dispo" name="disponibilites" type="text" placeholder="Ex. week-ends, certains soirs de semaine…">
+          </div>
+
+          <div class="sv-field">
+            <label for="cd-portfolio">Lien vers votre portfolio ou vos réseaux (facultatif)</label>
+            <input id="cd-portfolio" name="portfolio_url" type="url" placeholder="Instagram, site perso, Drive…">
+          </div>
+
+          <div class="sv-field">
+            <label for="cd-cv">CV (facultatif, PDF)</label>
+            <label class="file-drop" id="cd-cv-label" for="cd-cv">Cliquez pour joindre votre CV (PDF, 8 Mo max)</label>
+            <input id="cd-cv" name="cv" type="file" accept="application/pdf" style="display:none">
+          </div>
+
+          <div class="sv-field">
+            <label for="cd-message">Message (facultatif)</label>
+            <textarea id="cd-message" name="message" rows="4"></textarea>
+          </div>
+
+          <div class="sv-err" id="candidature-err" role="alert" aria-live="assertive"></div>
+          <button type="submit" class="btn btn-grad" style="width:100%;margin-top:18px" id="candidature-submit">Envoyer ma candidature</button>
+        </form>
+      </div>
+      <div id="candidature-ok-wrap" style="display:none" role="status" aria-live="polite">
+        <div class="sv-ok">
+          <div class="check">✓</div>
+          <h3 tabindex="-1" id="candidature-ok-title">Candidature envoyée</h3>
+          <p class="sub">Merci ! Nous avons bien reçu votre candidature. Notre équipe l'étudie et revient vers vous rapidement.</p>
+          <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+            <a href="index.html" class="btn btn-grad" style="flex:1">Retour à l'accueil</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="brand" style="font-size:18px"><img class="mark" src="assets/brand/logo-mark.png" alt="" aria-hidden="true" style="width:28px;height:28px;padding:4px">SportVision</a>
+        <p>Photo, vidéo et communication sportive — par ELKANA GROUP.</p>
+      </div>
+      <div class="footer-col"><h5>Prestations</h5><ul>
+        <li><a href="prestation-match-photo.html">Match photo</a></li>
+        <li><a href="prestation-match-video.html">Match vidéo</a></li>
+        <li><a href="prestation-shooting-joueur.html">Shootings</a></li>
+        <li><a href="prestation-tournois.html">Tournois &amp; stages</a></li>
+        <li><a href="prestations.html">Toutes les prestations</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Offres</h5><ul>
+        <li><a href="club-plus.html">Club+</a></li>
+        <li><a href="full-communication.html">Full Communication</a></li>
+        <li><a href="accompagnements-academies.html">Académies</a></li>
+        <li><a href="accompagnements-coachs.html">Coachs</a></li>
+        <li><a href="accompagnements-joueurs.html">Joueurs</a></li>
+        <li><a href="accompagnements-evenements.html">Tournois &amp; événements</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Connect</h5><ul>
+        <li><a href="connect.html">Fonctionnement</a></li>
+        <li><a href="https://connect.sportvision-an.fr/">Connexion</a></li>
+        <li><a href="demande-de-devis.html">Démonstration</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Ressources</h5><ul>
+        <li><a href="realisations.html">Réalisations</a></li>
+        <li><a href="index.html#faq">Centre d'aide</a></li>
+        <li><a href="index.html#faq">FAQ</a></li>
+      </ul></div>
+      <div class="footer-col"><h5>Entreprise</h5><ul>
+        <li><a href="a-propos.html">À propos</a></li>
+        <li><a href="recrutement-photographe-videaste.html">On recrute</a></li>
+        <li><a href="demande-de-devis.html">Contact</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="sv-year"></span> ELKANA GROUP — SportVision. Tous droits réservés.</span>
+            <div class="footer-legal">
+        <a href="mentions-legales.html">Mentions légales</a>
+        <a href="cgv.html">CGV</a>
+        <a href="confidentialite.html">Politique de confidentialité</a>
+        <a href="cookies.html">Politique cookies</a>
+        <a href="retractation.html">Rétractation / Renoncer à un contrat</a>
+        <a href="#" id="cookie-manage">Gérer mes cookies</a>
+      </div>
+      <div class="footer-social">
+        <a href="https://www.instagram.com/Sportvision_an/" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div class="cookie-banner" id="cookie-banner" role="dialog" aria-label="Gestion des cookies" aria-live="polite">
+  <div class="cookie-banner-inner">
+    <p>SportVision utilise des traceurs nécessaires au fonctionnement du site. Avec votre accord, nous pouvons également utiliser des traceurs de mesure d'audience, de fonctionnalités externes ou de marketing afin d'améliorer nos services. <a href="cookies.html">En savoir plus</a></p>
+    <div class="cookie-banner-actions">
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-refuse">Tout refuser</button>
+      <button type="button" class="btn btn-ghost-dark btn-sm" id="cookie-customize">Personnaliser</button>
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-accept">Tout accepter</button>
+    </div>
+  </div>
+  <div class="cookie-panel" id="cookie-panel">
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Nécessaires</b><span>Fonctionnement du site, mémorisation de vos choix, sécurité et session SportVision Connect. Toujours actifs.</span></div>
+      <label class="cookie-switch"><input type="checkbox" checked disabled aria-label="Cookies nécessaires, toujours actifs"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Mesure d'audience</b><span>Statistiques de fréquentation agrégées pour comprendre l'utilisation du site.</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-audience" aria-label="Cookies de mesure d'audience"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Fonctionnalités externes</b><span>Contenus intégrés provenant de plateformes tierces (réseaux sociaux, vidéo).</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-external" aria-label="Cookies de fonctionnalités externes"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-cat">
+      <div class="cookie-cat-info"><b>Marketing</b><span>Mesure de campagnes publicitaires et personnalisation, si activé.</span></div>
+      <label class="cookie-switch"><input type="checkbox" id="cat-marketing" aria-label="Cookies marketing"><span class="track"></span><span class="dot"></span></label>
+    </div>
+    <div class="cookie-panel-actions">
+      <button type="button" class="btn btn-grad btn-sm" id="cookie-save">Enregistrer mes choix</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   SportVision — page « Recrutement Photographe/Vidéaste ».
+   Vanilla JS. Envoi vers submit-recruitment-application (même
+   clé publique que les autres formulaires de la vitrine).
+   ============================================================ */
+const SB_URL = 'https://lulgezzpvrlbftbykzrc.supabase.co';
+const SB_KEY = 'sb_publishable_N_S7DxALGutAd6KlQmpaTw_h7cHNaE4';
+
+const burger = document.getElementById('burger-btn');
+const mobileNav = document.getElementById('mobile-nav');
+burger.addEventListener('click', () => mobileNav.classList.toggle('on'));
+mobileNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mobileNav.classList.remove('on')));
+
+document.getElementById('sv-year').textContent = new Date().getFullYear();
+
+/* ── CV : sélection de fichier ── */
+const cvInput = document.getElementById('cd-cv');
+const cvLabel = document.getElementById('cd-cv-label');
+cvInput.addEventListener('change', () => {
+  if (cvInput.files && cvInput.files[0]) {
+    cvLabel.textContent = cvInput.files[0].name;
+    cvLabel.classList.add('has-file');
+  } else {
+    cvLabel.textContent = 'Cliquez pour joindre votre CV (PDF, 8 Mo max)';
+    cvLabel.classList.remove('has-file');
+  }
+});
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ── Formulaire de candidature ────────────────────────────────
+   Même règle que retractation.html : jamais d'état de succès
+   affiché avant confirmation serveur (res.ok && !data.error). */
+function showCandidatureForm(){
+  document.getElementById('candidature-form-wrap').style.display = '';
+  document.getElementById('candidature-ok-wrap').style.display = 'none';
+  document.getElementById('candidature-err').textContent = '';
+}
+function showCandidatureSuccess(){
+  document.getElementById('candidature-form-wrap').style.display = 'none';
+  const okWrap = document.getElementById('candidature-ok-wrap');
+  okWrap.style.display = '';
+  document.getElementById('candidature-ok-title').focus();
+}
+
+document.getElementById('candidature-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const errEl = document.getElementById('candidature-err');
+  const btn = document.getElementById('candidature-submit');
+  errEl.textContent = '';
+
+  const fd = new FormData(form);
+  const body = {
+    poste: (fd.get('poste') || '').toString(),
+    prenom: (fd.get('prenom') || '').toString().trim(),
+    nom: (fd.get('nom') || '').toString().trim(),
+    email: (fd.get('email') || '').toString().trim(),
+    telephone: (fd.get('telephone') || '').toString().trim() || null,
+    zone: (fd.get('zone') || '').toString() || null,
+    ville: (fd.get('ville') || '').toString().trim() || null,
+    experience_niveau: (fd.get('experience_niveau') || '').toString() || null,
+    materiel: (fd.get('materiel') || '').toString() || null,
+    disponibilites: (fd.get('disponibilites') || '').toString().trim() || null,
+    portfolio_url: (fd.get('portfolio_url') || '').toString().trim() || null,
+    message: (fd.get('message') || '').toString().trim() || null,
+    site_web: fd.get('site_web'), // honeypot — doit rester vide
+  };
+
+  if (!body.poste || !body.prenom || !body.nom || !body.email || !body.zone || !body.experience_niveau){
+    errEl.textContent = 'Merci de remplir les champs obligatoires (poste, prénom, nom, e-mail, zone, expérience).';
+    return;
+  }
+
+  const cvFile = cvInput.files && cvInput.files[0];
+  if (cvFile && cvFile.size > 8 * 1024 * 1024){
+    errEl.textContent = 'Le CV dépasse 8 Mo, merci de choisir un fichier plus léger.';
+    return;
+  }
+  if (cvFile) {
+    try {
+      body.cv_base64 = await fileToBase64(cvFile);
+      body.cv_filename = cvFile.name;
+    } catch (err) {
+      errEl.textContent = "Impossible de lire le fichier CV, réessayez ou envoyez votre candidature sans CV joint.";
+      return;
+    }
+  }
+
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    const res = await fetch(SB_URL + '/functions/v1/submit-recruitment-application', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error){
+      errEl.textContent = data.error || "Une erreur est survenue, réessayez dans un instant.";
+      return;
+    }
+    showCandidatureSuccess();
+  }catch(err){
+    errEl.textContent = "Impossible d'envoyer votre candidature pour le moment. Réessayez dans un instant, ou écrivez-nous directement à contact@sportvision-an.fr.";
+  }finally{
+    btn.disabled = false; btn.textContent = 'Envoyer ma candidature';
+  }
+});
+
+/* ── Bandeau cookies (RGPD) ── */
+const COOKIE_CONSENT_KEY = 'sv_cookie_consent_v2';
+const COOKIE_CONSENT_MAX_AGE_MS = 183 * 24 * 60 * 60 * 1000;
+const cookieBanner = document.getElementById('cookie-banner');
+const cookiePanel = document.getElementById('cookie-panel');
+
+function readConsent(){
+  try{
+    const raw = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed.date || Date.now() - parsed.date > COOKIE_CONSENT_MAX_AGE_MS) return null;
+    return parsed;
+  }catch(e){ return null; }
+}
+function writeConsent(categories){
+  localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify({ date: Date.now(), categories }));
+}
+window.svCookieConsent = function(category){
+  const c = readConsent();
+  return !!(c && c.categories && c.categories[category]);
+};
+
+function showCookieBanner(openPanel){
+  cookieBanner.classList.add('on');
+  if (openPanel) cookiePanel.classList.add('on');
+  document.body.style.paddingBottom = cookieBanner.offsetHeight + 'px';
+}
+function hideCookieBanner(){
+  cookieBanner.classList.remove('on');
+  cookiePanel.classList.remove('on');
+  document.body.style.paddingBottom = '';
+}
+function applyStoredChoiceToPanel(){
+  const c = readConsent();
+  const cats = (c && c.categories) || {};
+  document.getElementById('cat-audience').checked = !!cats.audience;
+  document.getElementById('cat-external').checked = !!cats.external;
+  document.getElementById('cat-marketing').checked = !!cats.marketing;
+}
+
+if (!readConsent()) showCookieBanner();
+applyStoredChoiceToPanel();
+
+document.getElementById('cookie-accept').addEventListener('click', () => {
+  writeConsent({ necessary: true, audience: true, external: true, marketing: true });
+  hideCookieBanner();
+});
+document.getElementById('cookie-refuse').addEventListener('click', () => {
+  writeConsent({ necessary: true, audience: false, external: false, marketing: false });
+  hideCookieBanner();
+});
+document.getElementById('cookie-customize').addEventListener('click', () => {
+  applyStoredChoiceToPanel();
+  cookiePanel.classList.add('on');
+});
+document.getElementById('cookie-save').addEventListener('click', () => {
+  writeConsent({
+    necessary: true,
+    audience: document.getElementById('cat-audience').checked,
+    external: document.getElementById('cat-external').checked,
+    marketing: document.getElementById('cat-marketing').checked,
+  });
+  hideCookieBanner();
+});
+document.getElementById('cookie-manage').addEventListener('click', (e) => {
+  e.preventDefault();
+  applyStoredChoiceToPanel();
+  showCookieBanner(true);
+});
+</script>
+</body>
+</html>
