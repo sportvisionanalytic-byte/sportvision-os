@@ -309,60 +309,65 @@ Demande explicite de Fouka avant l'ouverture à de vrais clients payants (abonne
 - **Non corrigé cette nuit** : décision produit à trancher avec Fouka avant tout correctif — bloquer la création de compte autonome sous un certain âge et rediriger vers le parcours "profil géré", ou exiger une case de consentement explicite. Je n'ai pas tranché à sa place.
 - **Statut** : **NON FAIT — À TRANCHER**, risque réel et immédiat dès le premier mineur qui s'inscrit seul (cœur de cible du produit).
 
-### INC-043 — Capacitor (app mobile) empaquette l'ancienne app Connect "vanilla", pas `app-connect` (HAUTE, pas urgent)
+### INC-043 — Capacitor (app mobile) empaquette l'ancienne app Connect "vanilla", pas `app-connect` (HAUTE, CORRIGÉ)
 
-- **Sévérité** : Haute en soi, mais **inactive aujourd'hui** — aucune app n'est encore soumise aux stores (comptes développeur Apple/Google pas créés).
-- **Trouvé par l'agent Connect** : `SportVision-Connect-App/capacitor.config.json` pointe `webDir` vers `livrables/SportVision-Connect/app/` (ancienne app HTML/JS, dernier commit le 15/08), pas `app-connect/` (Next.js, dernier commit ce soir même). Le `README.md` du dossier affirme à tort que l'ancien chemin est "la seule source de vérité". Piège silencieux : quelqu'un qui build/soumet en suivant ce README livrerait une version de Connect antérieure à des semaines de correctifs (signup unifié, espace particulier, cotisations espèces, messagerie sécurisée...).
-- **Complexité non triviale** : `app-connect` est une app Next.js **SSR** (pas de `output:'export'`), donc ne peut pas simplement remplacer l'ancien `webDir` statique — nécessite soit une configuration `server.url` pointant vers le site déployé (`https://connect.sportvision-an.fr`), soit un export statique (probablement pas possible telle quelle si l'app utilise des fonctionnalités serveur). Décision d'architecture à prendre, pas un simple changement de chemin — non tenté cette nuit pour éviter de casser quelque chose à l'aveugle sur un scaffold jamais buildé en réel.
-- **Lié** : `window.location.origin` dans les liens auth/partage (reset mot de passe, invitations) casserait de toute façon en contexte natif Capacitor une fois ce point corrigé — même chantier, à traiter ensemble.
-- **Statut** : **NON FAIT** — à traiter avant toute tentative de build/soumission mobile, sans urgence tant que les stores ne sont pas engagés.
+- **Sévérité** : Haute en soi, était **inactive** au moment de la découverte — aucune app n'est encore soumise aux stores (comptes développeur Apple/Google pas créés).
+- **Trouvé par l'agent Connect** : `SportVision-Connect-App/capacitor.config.json` pointait `webDir` vers `livrables/SportVision-Connect/app/` (ancienne app HTML/JS, dernier commit le 15/08), pas `app-connect/` (Next.js, dernier commit ce soir même). Le `README.md` du dossier affirmait à tort que l'ancien chemin était "la seule source de vérité". Piège silencieux : quelqu'un qui aurait build/soumis en suivant ce README aurait livré une version de Connect antérieure à des semaines de correctifs.
+- **Correctif (21/08)** : `capacitor.config.json` bascule sur `server.url: "https://connect.sportvision-an.fr"` — la webview Capacitor charge directement le vrai site déployé, toujours à jour, sans jamais avoir besoin de resynchroniser un bundle local. `app-connect` étant une app Next.js **SSR**, elle ne pouvait de toute façon pas être copiée telle quelle dans un `webDir` statique. `www/index.html` ajouté comme simple repli local si la navigation initiale échoue (pas de réseau). README/package.json mis à jour, `npm run sync` exécuté pour propager la config aux projets natifs iOS/Android (fichiers générés, non versionnés).
+- **Bonus** : résout au passage le point lié `window.location.origin` (qui aurait valu `capacitor://localhost`) — la page tourne désormais à la vraie origine du domaine.
+- **Non testé en conditions réelles** : simulateur iOS/émulateur Android jamais installés sur cette machine — à valider sur un vrai appareil avant toute soumission.
+- **Statut** : **CORRIGÉ** (code), **non vérifié en conditions réelles** (pas d'appareil/simulateur disponible) — à tester avant toute soumission store.
 
-### INC-044 — Aucune sauvegarde de la base de données de production (CRITIQUE, À TRANCHER AVEC FOUKA)
+### INC-044 — Aucune sauvegarde de la base de données de production (CRITIQUE, ACCEPTÉ PAR FOUKA)
 
 - **Sévérité** : Critique.
-- **Trouvé par l'agent infra** : `GET /database/backups` → `backups: []`, `pitr_enabled: false`. Le projet Supabase est sur le plan **Free**, qui n'inclut aucune sauvegarde automatique (les backups quotidiens à 7 jours nécessitent le plan Pro, 25$/mois minimum ; le PITR est un add-on payant en plus).
-- **Impact** : avec de vrais clients payants et de vraies données (contrats, factures, paiements), une suppression accidentelle, une migration ratée ou un incident quelconque n'a aujourd'hui **aucun filet de sécurité** — pas de retour arrière possible, perte de données définitive.
-- **Non corrigé cette nuit** : décision de facturation (upgrade Supabase Pro, ~25$/mois), pas quelque chose que je dois trancher à la place de Fouka.
-- **Statut** : **NON FAIT — À TRANCHER**, recommandation impérative avant tout premier client payant.
+- **Trouvé par l'agent infra** : `GET /database/backups` → `backups: []`, `pitr_enabled: false`. Le projet Supabase est sur le plan **Free**, qui n'inclut aucune sauvegarde automatique.
+- **Décision de Fouka (21/08)** : upgrade vers le plan Supabase Pro accepté ("ok pour supabase je vais payé") — à réaliser par Fouka directement dans le dashboard Supabase (facturation, pas une action que je peux exécuter à sa place).
+- **Statut** : **ACCEPTÉ**, upgrade à faire par Fouka (facturation).
 
-### INC-045 — Stripe confirmé en mode LIVE, mais jamais validé de bout en bout avec un vrai paiement/webhook (HAUTE, ACTION REQUISE DE FOUKA)
+### INC-045 — Stripe confirmé en mode LIVE, mais jamais validé de bout en bout avec un vrai paiement/webhook (HAUTE, BLOQUÉ — ACCÈS STRIPE MANQUANT)
 
 - **Sévérité** : Haute.
-- **Constat croisé par 3 agents indépendants** (Connect, Club+, infra) : la clé Stripe configurée est bien une clé **LIVE** (sessions Checkout réelles avec préfixe `cs_live_...` obtenues pendant les tests de cette nuit, jamais `cs_test_...`) — contrairement à ce qu'un audit antérieur (17/08) laissait supposer ("jamais testé en clé live"). Il n'existe donc **aucune** clé de test configurée pour cette fonctionnalité : impossible de simuler un paiement réussi/échoué sans une vraie carte.
-- **Conséquence** : la création de session de paiement a été prouvée fonctionnelle en conditions réelles ce soir (admin-only, garde anti-double-abonnement confirmée), mais le webhook réel (`invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted/updated`) n'a **jamais été déclenché par un vrai événement Stripe** — seulement relu en code. Rien ne garantit aujourd'hui que la mise à jour de `clubs.plan`/`credits_balance`/`subscription_status` fonctionne réellement en production au-delà de la lecture de code.
-- **Action requise de Fouka avant le premier vrai club payant** : faire personnellement un vrai cycle complet (souscription carte réelle sur un club de test/pilote consentant → vérifier la mise à jour des crédits/statut → résiliation depuis le Portail Stripe → vérifier `subscription_status='annule'`), ou configurer une paire de clés Stripe TEST dédiée pour rendre ce test reproductible sans argent réel.
-- **Résidu à nettoyer manuellement par Fouka** : un client Stripe LIVE résiduel créé par le test de cette nuit, `cus_V6u0f8pHigO8dt` (email `audit-clubplus-21-08-admin@sportvision-test.fr`) — aucune carte saisie, aucun encaissement, mais l'objet persiste dans le vrai compte Stripe. À supprimer depuis le dashboard Stripe → Clients.
-- **Statut** : **ACTION REQUISE DE FOUKA**, pas un bug de code.
+- **Constat croisé par 3 agents indépendants** (Connect, Club+, infra) : la clé Stripe configurée est bien une clé **LIVE** (sessions Checkout réelles avec préfixe `cs_live_...`). Aucune clé de test configurée : impossible de simuler un paiement réussi/échoué sans une vraie carte.
+- **Clarifié le 21/08** : je n'ai pas d'accès Stripe direct — `STRIPE_SECRET_KEY`/`STRIPE_PUBLISHABLE_KEY` sont vides dans `.env` local, et l'API Management Supabase ne renvoie qu'un hash SHA256 des secrets, jamais leur valeur en clair (vérifié explicitement). Je ne peux donc ni vérifier le dashboard Stripe, ni supprimer le client de test résiduel, ni déclencher/vérifier un vrai webhook.
+- **Action requise de Fouka** : soit faire personnellement le cycle complet (souscription carte réelle → vérifier crédits/statut → résiliation → vérifier `subscription_status='annule'`), soit me donner un accès Stripe (clé secrète, idéalement restreinte en lecture/webhooks) pour que je puisse vérifier le dashboard et faire le nettoyage moi-même.
+- **Résidu toujours en attente** : client Stripe LIVE résiduel `cus_V6u0f8pHigO8dt` (`audit-clubplus-21-08-admin@sportvision-test.fr`) — aucun encaissement, mais l'objet persiste. À supprimer depuis le dashboard Stripe → Clients, ou par moi si un accès est fourni.
+- **Statut** : **BLOQUÉ**, en attente d'un accès Stripe.
 
-### INC-046 — `clubs` expose les champs financiers (Stripe, crédits, abonnement) à tout membre, y compris les rôles "zéro finance" (MOYENNE, NON FAIT)
+### INC-046 — `clubs` expose les champs financiers (Stripe, crédits, abonnement) à tout membre, y compris les rôles "zéro finance" (MOYENNE, CORRIGÉ)
 
 - **Sévérité** : Moyenne — fuite de confidentialité, pas de fraude possible (écriture déjà bloquée, testé).
-- **Trouvé par l'agent Club+** : la policy RLS `clubs_member_select` (`is_club_member(id)`) autorise la lecture de la ligne `clubs` entière — donc `stripe_customer_id`/`stripe_subscription_id`/`subscription_status`/`credits_balance`/`credits_reserved` — à **n'importe quel** membre actif, sans distinction de rôle. Testé et confirmé en direct : un `coach` (rôle "zéro finance" dans la Product Bible) et même un **CM externe délégué** scoppé à "contenus/demandes" uniquement (`cm_agency_club_access`) peuvent lire ces champs via un simple `GET` REST. Viole directement le principe produit "masquer un menu ne sécurise rien, le backend doit vérifier" énoncé ailleurs dans le même document produit.
-- **Non corrigé cette nuit** : RLS filtre des LIGNES, pas des colonnes — un vrai correctif nécessite soit une deuxième policy plus restrictive combinée à une vue publique filtrée (`club_public`) que le frontend utiliserait par défaut, soit une sécurité au niveau colonne. Trop risqué pour un correctif à l'aveugle en fin de nuit (nécessite de retoucher tous les points d'appel frontend qui lisent `clubs.*`) — documenté pour une passe dédiée.
-- **Statut** : **NON FAIT**, recommandé avant un usage large par des CM externes délégués.
+- **Trouvé par l'agent Club+** : la policy RLS `clubs_member_select` autorisait la lecture de la ligne `clubs` entière — donc `stripe_customer_id`/`stripe_subscription_id`/`subscription_status`/`credits_balance`/`credits_reserved`/`credits_monthly` — à n'importe quel membre actif, sans distinction de rôle (coach, CM externe délégué compris).
+- **Correctif (21/08, `migration-securite-v102-clubs-safe-view.sql`)** : nouvelle vue `clubs_safe` (`security_invoker=true`) qui masque ces 6 champs à `null` via `club_member_has_financial_view_access()` (déjà utilisée pour `client_contrats`/`client_factures`, exclut bien un CM externe délégué). N'altère pas `clubs` ni sa policy existante — zéro risque de régression sur les lectures déjà en place. Vérifié en réel : coach → champs financiers `null` sur `clubs_safe` (réels sur `clubs`, non touchée) ; admin → champs réels sur les deux. Résidu de test à zéro.
+- **Non fait** : bascule du frontend `app-next` de `clubs` vers `clubs_safe` pour les écrans qui n'ont pas besoin des champs financiers — nécessite d'auditer chaque point d'appel, risque de régression trop élevé pour un correctif à l'aveugle. La capacité existe, la migration des call sites reste à faire.
+- **Statut** : **CORRIGÉ côté backend** (la vue existe et fonctionne) — bascule frontend **NON FAITE**, sans urgence tant que `clubs` continue d'être lu directement.
 
-### INC-047 — Vitrine : remises Club+ Start (5%)/Performance (10%) promises, aucun mécanisme technique pour les tenir (HAUTE, À TRANCHER AVEC FOUKA)
+### INC-047 — Vitrine : remises Club+ Start (5%)/Performance (10%) promises, aucun mécanisme technique pour les tenir (HAUTE, CORRIGÉ)
 
 - **Sévérité** : Haute — engagement commercial chiffré affiché publiquement, sans filet technique.
-- **Trouvé par l'agent Vitrine** : `club-plus.html` promet ces remises comme avantage standard des formules payantes. Recherche exhaustive dans `create-checkout-session`, `stripe-webhook`, `entitlements.ts` (Club+) : aucune remise automatique liée au plan Club+ n'existe (la seule remise auto est la remise Agent, -10%, sans rapport). La seule mécanique de remise existante est un champ manuel en pourcentage sur un devis, saisi librement par le staff — et la formation interne du staff instruit même l'inverse ("Escalader à la direction toute remise... non confirmée dans le système").
-- **Non corrigé cette nuit** : décision produit — soit implémenter la remise automatiquement (lecture de `clubs.plan` au moment du checkout/devis), soit reformuler la vitrine. Je n'ai pas tranché à la place de Fouka.
-- **Statut** : **NON FAIT — À TRANCHER**, avant de signer un premier club sur une formule Start/Performance.
+- **Trouvé par l'agent Vitrine** : `club-plus.html` promet ces remises comme avantage standard des formules payantes, aucune remise automatique liée au plan Club+ n'existait dans le code.
+- **Décision de Fouka (21/08)** : implémenter directement.
+- **Correctif** : `create-checkout-session` applique désormais -5%/-10% (plan `club`/`performance`, `subscription_status='actif'` uniquement) sur le chemin catalogue auto-chiffré, en plus de la remise Agent existante — jamais sur une prestation déjà chiffrée manuellement par un devis (décision du staff, non recalculée). Libellé Stripe corrigé pour ne plus dire "remise Agent" à tort.
+- **Vérifié en réel** : club de test plan=performance/actif, prestation catalogue 100€HT/120€TTC → session Stripe créée avec `paiements.montant=108,00€` (100 × 0.9 × 1.2), conforme. Résidu de test supprimé.
+- **Statut** : **CORRIGÉ**, déployé et vérifié (21/08/2026).
 
-### INC-048 — Aucun dispositif de monitoring/alerting sur toute l'infrastructure (HAUTE, NON FAIT)
+### INC-048 — Aucun dispositif de monitoring/alerting sur toute l'infrastructure (HAUTE, PARTIEL)
 
 - **Sévérité** : Haute — ce risque s'est déjà matérialisé une fois concrètement (INC-033 est resté invisible un temps indéterminé faute d'alerte).
-- **Trouvé par l'agent infra** : recherche exhaustive (code, configs, docs, Log Drains Supabase) — aucun Sentry/Datadog/UptimeRobot/PagerDuty/Logflare/BetterUptime ni équivalent configuré nulle part.
-- **Aggravant trouvé la même nuit** : le code déployé de `stripe-webhook` ne vérifiait toujours pas l'erreur sur l'écriture `prestations.statut_financier` (seul le trigger DB, cause connue d'INC-033, avait été corrigé — pas l'observabilité applicative). **Corrigé cette nuit** (voir commit `70435d0`) : ajout d'un `console.error` explicite sur cette écriture précise, visible dans les logs Supabase même sans monitoring externe.
-- **Non fait cette nuit** : mise en place d'un vrai outil de monitoring/alerting (Sentry ou équivalent) — projet à part entière, pas engagé faute de temps/décision d'outillage à prendre avec Fouka (choix d'outil, budget).
-- **Statut** : **PARTIEL** — le point de code le plus critique (webhook Stripe) journalise désormais son échec ; l'absence de monitoring/alerting globale reste **NON FAIT**.
+- **Trouvé par l'agent infra** : recherche exhaustive — aucun Sentry/Datadog/UptimeRobot/PagerDuty/Logflare/BetterUptime ni équivalent configuré nulle part.
+- **Décision de Fouka (21/08)** : "règle ça". Pas de compte Sentry configuré (nécessiterait un nouveau signup/budget à trancher séparément) — solution pragmatique retenue : réutilisation de l'infrastructure Resend déjà en place et déjà payée. `stripe-webhook` envoie désormais un e-mail d'alerte direct à Fouka (`ALERT_EMAIL`, par défaut son adresse) sur les deux points les plus critiques : échec d'écriture `prestations.statut_financier` après un paiement confirmé, et toute exception non rattrapée dans le traitement d'un événement Stripe. Best-effort strict, ne bloque jamais le traitement.
+- **Non testé en conditions réelles** : nécessiterait de provoquer un vrai échec en prod, ou la clé `RESEND_API_KEY` en clair (je n'ai que son hash via l'API Management) — réutilise cependant un pattern d'envoi Resend déjà éprouvé et actif dans ce même fichier (`sendPaymentReceiptEmail`).
+- **Non fait** : couverture au-delà de `stripe-webhook` (autres edge functions critiques, un vrai outil de monitoring/APM type Sentry pour les erreurs frontend) — périmètre plus large, à décider séparément si besoin.
+- **Statut** : **PARTIEL** — alerte email en place sur le point le plus critique (paiements), couverture globale (Sentry/APM) toujours absente.
 
 ### INC-049 — SPF de `sportvision-an.fr` n'inclut ni Brevo ni Resend (MOYENNE, NON FAIT — changement DNS)
 
 - **Sévérité** : Moyenne — DKIM/DMARC corrects par ailleurs, donc pas de rejet direct attendu, mais un `-all` (hard fail) sur un SPF qui ne couvre que OVH peut dégrader la délivrabilité (boîte spam) pour les emails transactionnels envoyés via Brevo/Resend.
 - **Trouvé par l'agent infra** : `v=spf1 include:mx.ovh.com -all` — ne mentionne aucun des deux vrais expéditeurs transactionnels du projet.
-- **Non corrigé cette nuit** : c'est un enregistrement DNS chez le registrar/hébergeur DNS du domaine, pas un fichier du repo — je n'ai pas les accès pour le modifier moi-même, et une correction DNS de ce type mérite une confirmation avant modification (impact potentiel sur toute la délivrabilité email si mal fait).
+- **Non corrigé cette nuit** : c'est un enregistrement DNS chez le registrar/hébergeur DNS du domaine (probablement OVH, vu le SPF actuel `include:mx.ovh.com`), pas un fichier du repo.
+- **Clarifié le 21/08** : Fouka a proposé de donner "les API de Brevo" — précision faite en retour : Brevo ne gère pas le DNS de `sportvision-an.fr`, il faut un accès au DNS/zone du domaine (OVH ou l'hébergeur DNS réel) pour ajouter cet enregistrement TXT SPF, pas une clé API Brevo. En attente du bon accès.
 - **Recommandation** : ajouter `include:spf.brevo.com` (et l'include Resend applicable, généralement basé sur Amazon SES) au record SPF existant.
-- **Statut** : **NON FAIT**, action DNS à faire par Fouka (ou avec son accord explicite sur l'accès DNS).
+- **Statut** : **NON FAIT**, en attente de l'accès DNS (OVH ou équivalent) de la part de Fouka.
 
 ### INC-050 — `stripe-webhook` ne journalisait pas l'échec d'écriture sur `prestations.statut_financier` (HAUTE, CORRIGÉ)
 
