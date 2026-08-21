@@ -233,10 +233,9 @@ Complété au fur et à mesure de l'avancement du pack — voir aussi § 60/61 d
   1. **Vitrine → OS** : CERTIFIÉ. `create-guest-request` (edge function) crée bien une `prestations` avec `source='vitrine'`, visible dans l'Inbox unique (`loadSecDemandes`).
   2. **Connect → OS** (réservation perso + paiement collectif) : CERTIFIÉ. RPC `create_group_funding` + `contribute_funding_especes` fonctionnent, trigger `trg_fc_recompute` recalcule bien `montant_collecte`.
   3. **Club+ → OS** (demande de visuel + crédits) : CERTIFIÉ fonctionnel, MAIS a révélé une **faille critique** : `submit_club_request()` n'avait aucun garde-fou serveur contre une réservation de crédits dépassant le solde disponible (seul un contrôle côté client existait, contournable par un appel RPC direct). Reproduit en live (100 crédits réservés contre un solde de 10) puis **corrigé** le 20/08 (`migration-clubplus-v92-credits-guard.sql` : verrou de ligne + rejet serveur, E2E vérifié dans les deux sens).
-  4. **Visibilité de la livraison côté client** : **CASSÉE pour Connect (particuliers)**, **fonctionnelle pour Club+**. `app-next` lit déjà `client_media_livrables` (vue filtrée sur statut livré/consulté) — un club voit ses livrables. `app-connect` ne lit **jamais** `media_livrables` ni `media_liens` nulle part dans son code — quand le staff marque une livraison `statut='livre'` pour un client Connect individuel (joueur/famille), rien ne change dans Connect ; le seul signal que reçoit le client est un e-mail/message manuel envoyé à part par le staff. Écran "Mes contenus" lit `club_media` (RPC différente, une galerie de contenu éditorial, pas les livrables).
+  4. **Visibilité de la livraison côté client** : **CORRIGÉ pour Connect (particuliers)** depuis le 20/08 (`connect-player-prestations` action `get_order` lit désormais `media_liens`/`media_livrables`, `CommandeDetailView.tsx` affiche la section "Vos livrables"), **fonctionnelle pour Club+** depuis toujours. Re-testé en conditions réelles le 21/08 (audit pré-lancement, agent Connect) : insertion réelle d'un `media_liens`/`media_livrables` (statut='livre') lié à une prestation de test, appel réel de l'edge function avec le JWT du joueur → le livrable apparaît bien dans la réponse et dans le rendu frontend. **Confirmé déployé et fonctionnel, à ne plus re-tester.**
   5. **Note secondaire** : la "demande de visuel" Club+ (table `club_requests`) n'apparaît PAS dans l'Inbox unique (`sec.demandes`, qui agrège prestations + réservations club) — elle vit uniquement sur un écran CM dédié. Fonctionnellement correct mais incohérent avec le principe "un seul endroit pour tout voir" que l'Inbox unique visait à résoudre.
-- **Comportement attendu** : un client Connect individuel devrait voir/télécharger ses livrables directement dans l'app, comme un club le fait déjà.
-- **Statut** : point 3 (faille crédits) **CORRIGÉ**. Points 4 et 5 **NON FAITS** — le point 4 nécessite d'ajouter la lecture de `media_livrables`/`media_liens` côté `app-connect` (edge function `connect-player-prestations` + UI `CommandeDetailView.tsx`), une vraie fonctionnalité à construire dans une app pas encore touchée cette nuit, pas un simple correctif.
+- **Statut** : points 3 et 4 **CORRIGÉS** (point 4 re-vérifié en réel le 21/08). Point 5 **NON FAIT** — incohérence mineure de discoverability, pas un bug fonctionnel.
 
 ### INC-035 — `trg_sync_*_to_organization` ne gère jamais la suppression (organizations orphelines)
 
@@ -247,6 +246,132 @@ Complété au fur et à mesure de l'avancement du pack — voir aussi § 60/61 d
 - **Fait cette nuit** : les 10 lignes orphelines de test supprimées manuellement, résidu vérifié à zéro.
 - **Non fait** : ajouter un handler `ON DELETE` aux deux triggers (ou une policy de suppression en cascade) — pas engagé cette nuit, la table `clients`/`clubs` de l'OS n'a jamais de suppression réelle dans le produit actuel (toujours un `statut`/désactivation, jamais un DELETE), donc le risque n'est pas actif en usage normal. À corriger si un flux de suppression réelle est un jour ajouté à l'OS.
 - **Statut** : **NOTÉ**, résidu de test nettoyé, correctif du trigger non engagé (pas d'usage produit qui l'exercerait aujourd'hui).
+
+---
+
+## Audit pré-lancement "grand format" du 21/08/2026 — 6 agents en parallèle (OS/Connect/Club+/Vitrine/sécurité/infra)
+
+Demande explicite de Fouka avant l'ouverture à de vrais clients payants (abonnements réels) : un audit très approfondi de tout l'écosystème, avec un agent dédié à la recherche de failles. 6 agents lancés en parallèle, chacun avec tests en conditions réelles (comptes jetables, vrais JWT, vraies requêtes REST/RPC/edge functions sur la base de production, résidu vérifié à zéro à chaque fois). INC-036 à INC-050 ci-dessous, du plus au moins sévère.
+
+### INC-036 — 6 vues `client_*` auto-updatable permettaient de falsifier factures/contrats en écriture directe, en contournant RLS et Stripe (CRITIQUE, CORRIGÉ)
+
+- **Sévérité** : Critique — bloquant pour l'accueil de clubs payants, faille triviale à exploiter (un simple `fetch()`/Postman avec le token déjà présent dans le navigateur du club suffit).
+- **Systèmes impactés** : `client_factures`, `client_contrats`, `client_organisation`, `client_organisation_members`, `client_prestations`, `prestations_equipe_display`.
+- **Trouvé et reproduit en direct** (agent Club+) : ces 6 vues sont des vues à TABLE UNIQUE, donc automatiquement "updatable" par PostgreSQL (`information_schema.views.is_updatable = 'YES'`), possédées par `postgres` (`rolbypassrls = true`). Un `PATCH` REST dessus écrit directement la table de base **avec les droits du propriétaire de la vue**, jamais ceux de l'appelant — les policies RLS d'écriture des tables de base (`factures_staff`, `contrats_write_acces`, etc.) ne sont **jamais évaluées** sur ce chemin. Seule la clause `WHERE` de la vue (écrite pour filtrer la LECTURE) finissait par jouer le rôle de seul filtre d'écriture.
+- **Preuve concrète** : un compte jetable avec le rôle `tresorier` (lecture seule prévue) a pu, via `PATCH /rest/v1/client_factures`, faire passer une vraie facture à `statut='payee'` sans jamais payer, et via `PATCH /rest/v1/client_contrats`, suspendre unilatéralement son propre contrat. `anon` (pas seulement `authenticated`) avait les mêmes droits d'écriture sur les 6 vues — artefact d'un `GRANT ALL ON ALL TABLES IN SCHEMA public` générique jamais restreint.
+- **Root cause documentée dans le code lui-même** : `migration-clubplus-v41-secretaire-administratif-lecture-financiere.sql:126-128` affirme à tort que l'élargissement en lecture "ne change rien à l'écriture" — cette affirmation était fausse pour ces 2 vues précises, personne ne l'avait détecté avant ce soir.
+- **Correctif** (`migration-securite-v101-revoke-write-updatable-views.sql`) : `REVOKE INSERT, UPDATE, DELETE, TRUNCATE` sur les 6 vues pour `authenticated`/`anon` (`SELECT` inchangé) — aucune de ces vues n'a de raison légitime d'être écrite côté client, toute mutation métier passe déjà par des RPC `SECURITY DEFINER` dédiées ou par le staff (`service_role`).
+- **Vérifié après correctif** : reproduction exacte de l'attaque initiale (compte tresorier jetable, même scénario) → `403 permission denied for view`, ligne réelle inchangée. Lecture toujours fonctionnelle pour tous les rôles déjà validés sains. Résidu de test à zéro.
+- **Statut** : **CORRIGÉ** (21/08/2026).
+
+### INC-037 — 5 fonctions Edge "fantômes" exécutaient du code de paiement figé depuis fin juillet, jamais nettoyées (CRITIQUE, CORRIGÉ)
+
+- **Sévérité** : Critique.
+- **Trouvé indépendamment par 2 agents** (sécurité et infra) : `GET /functions` (API Management) listait 48 fonctions déployées contre 43 dossiers locaux. Les 5 fonctions sans dossier local correspondant, déployées sous des noms auto-générés par Supabase (`smart-action`, `dynamic-service`, `clever-function`, `smooth-handler`, `end-signature-request`) — signe d'un `supabase functions deploy` exécuté un jour sans argument de nom, ou d'un test fait depuis le dashboard — étaient en réalité des copies figées de `portal-onboarding` (feature retirée le 07/08), `create-checkout-session` (création de paiement Stripe), `stripe-webhook`, `create-guest-request` et `send-signature-request`, toutes `created_at == updated_at` (jamais retouchées depuis leur premier déploiement fin juillet/début août) — donc antérieures à la quasi-totalité des correctifs de tarification et **au correctif du bug critique INC-033** (paiement Stripe jamais reflété, corrigé seulement le 20/08).
+- **Testé en direct, exploitable, pas théorique** : `POST /functions/v1/dynamic-service` avec un JWT Connect valide a exécuté du vrai code (`{"error":"devis_id ou prestation_id requis"}`) — un second chemin de création de paiement Stripe vivant, avec la logique de prix d'avant tous les correctifs des 3 dernières semaines.
+- **Correctif** : les 5 fonctions supprimées (`supabase functions delete <slug>`, confirmé 43 déployées = 43 locales après coup, plus aucun écart).
+- **Action restante pour Fouka** : vérifier dans le dashboard Stripe (Webhooks → Endpoints) qu'aucun endpoint n'était enregistré vers l'URL `clever-function` — je n'ai pas accès aux clés Stripe pour le vérifier moi-même.
+- **Statut** : **CORRIGÉ** (21/08/2026), sous réserve de la vérification Stripe ci-dessus.
+
+### INC-038 — `clubplus-activate` : un club activé en formule gratuite recevait 10 crédits/mois au lieu de 0 (HAUTE, CORRIGÉ)
+
+- **Sévérité** : Haute — silencieux, touchait potentiellement chaque club onboardé en pilote gratuit par le staff.
+- **Trouvé en testant l'onboarding club E2E** (agent Club+) : `clubplus-activate/index.ts:170` testait `CREDITS_BY_PLAN[tokenRow.plan] ?` pour vérifier qu'une clé de plan existait — mais `CREDITS_BY_PLAN['free']` vaut `0`, qui est **falsy en JavaScript**, donc le test échouait à tort pour ce plan précis et retombait silencieusement sur `"club"` (10 crédits/mois). Le parcours self-service (`clubplus-onboarding`) n'a pas ce bug (plan posé en dur). Isolé au seul chemin d'activation par lien envoyé par le staff — justement le chemin normal pour un club en accès pilote/gratuit négocié manuellement.
+- **Correctif** : remplacé par `Object.prototype.hasOwnProperty.call(...)`, une vérification d'existence de clé plutôt que de vérité de valeur.
+- **Vérifié après correctif** : vrai token d'activation `plan='free'` → club créé avec `plan='free'`, `credits_monthly=0`, confirmé en base. Résidu de test à zéro.
+- **Statut** : **CORRIGÉ**, redéployé (21/08/2026).
+
+### INC-039 — Connect et Club+ n'avaient aucun header de sécurité navigateur (HAUTE, CORRIGÉ)
+
+- **Sévérité** : Haute.
+- **Trouvé par l'agent sécurité** : `connect.sportvision-an.fr`/`clubplus.sportvision-an.fr` (les 2 apps qui portent les comptes clients/clubs payants) n'avaient que HSTS + `X-Content-Type-Options`, aucun CSP/`X-Frame-Options`/`Referrer-Policy`/`Permissions-Policy` — contrairement à la Vitrine. Risque de clickjacking sur les écrans de connexion/paiement/acceptation de devis, aucune défense en profondeur XSS.
+- **Correctif** : bloc `[[headers]]` ajouté dans les deux `netlify.toml`, repris du patron déjà validé sur la Vitrine (INC-011). CSP adaptée par app (Material Symbols via Google Fonts pour `app-connect` uniquement ; `app-next` sert toutes ses polices en self-hosted via `next/font`, pas d'assouplissement nécessaire). Paiement Stripe = redirection pleine page (`window.location.href`), jamais un iframe/script embarqué, donc aucun domaine Stripe à autoriser.
+- **Statut** : **CORRIGÉ**, déployé (21/08/2026) — à surveiller au premier vrai usage que la CSP ne bloque rien d'inattendu (leçon d'INC-011).
+
+### INC-040 — Vitrine : prix Combo Drone+Photo faux (180€ affiché vs 160€ facturé) et lien CTA Club+ Gratuit cassé (404) (HAUTE, CORRIGÉ)
+
+- **Sévérité** : Haute — risque légal/réputationnel direct sur une prestation payante en self-service, et sur le point d'entrée self-service principal de Club+.
+- **Trouvé par l'agent Vitrine** : `prestations.html`/`reserver.html` affichaient encore 180€ pour le Combo Drone+Photo alors que `catalogue_offres` facture réellement 160€ depuis la décision de Fouka du 19/08 (`migration-connect-v77`) — régression accidentelle jamais propagée à la vitrine, confirmée par soumission réelle du formulaire. `club-plus.html` pointait le CTA "Créer mon compte Gratuit" vers `/signup-free` (404 vérifié en HTTP réel) au lieu de `/clubplus/signup-free` (le `basePath` Next.js réel de l'app, 200 vérifié).
+- **Statut** : **CORRIGÉ**, déployé (21/08/2026).
+
+### INC-041 — OS : suppression de contrat sans confirmation + dispatch `documents`/`paiements` sans garde de rôle (HAUTE/MOYENNE, CORRIGÉ)
+
+- **Sévérité** : Haute pour la suppression de contrat, Moyenne pour le gap de dispatch (non exploitable en pratique, RLS bloquait déjà la lecture réelle).
+- **Trouvé par l'agent OS** : `supprimerContrat` (bouton fiche contrat, admin) supprimait un contrat définitivement en un seul clic, contrairement à **tous** les autres flux de suppression du fichier (`supprimerClient`/`Devis`/`Contenu`/`Prestation`, qui passent tous par `confirmerAction()`) — un contrat client est un document engageant. Même défaut mineur sur `supprimerTache`. Par ailleurs, sur les ~90 branches de `loadViewData`, la branche `view==='documents'` était la seule sans aucun test de rôle — atteignable par n'importe quel rôle authentifié via `switchView('documents')` en console (RLS bloquait la lecture réelle donc pas de fuite constatée, mais gap de défense en profondeur). Même famille sur `paiements`, accessible à `expert_comptable`/`auditeur` qui ne devraient pas y avoir accès.
+- **Correctif** : `supprimerContrat`/`supprimerTache` passent maintenant par `confirmerAction()`. Garde de rôle explicite ajoutée sur les dispatches `documents` (admin/compta/expert_comptable) et `paiements` (admin/compta uniquement). CSS inline invalide corrigé au passage. Déduplication de `CM_NIVEAU_LBL`/`NCL`.
+- **Statut** : **CORRIGÉ**, déployé (21/08/2026).
+
+### INC-042 — Connect : aucune vérification d'âge dans tout le tunnel de signup joueur (HAUTE, À TRANCHER AVEC FOUKA)
+
+- **Sévérité** : Haute — risque réglementaire (RGPD/CNIL, consentement parental requis pour un mineur de moins de 15 ans) et commercial (facturation sans consentement), pas une perte de données immédiate.
+- **Trouvé et testé en direct par l'agent Connect** : un compte peut être créé de façon totalement autonome par un "joueur" de tout âge (testé avec `dateNaissance` ≈12 ans), sans qu'aucune étape ne bloque, avertisse ou dérive vers le parcours prévu ("sportif géré" par un parent, `connect_create_managed_athlete`). Ce compte a pu réserver et générer une vraie session Stripe Checkout **LIVE**, prête à être payée par carte, sans qu'aucun adulte ne soit informé. Le code lui-même l'avoue : `ManagedAthleteForm.tsx:168-173` — *"La qualité de responsable légal doit être vérifiée avant toute mise en production"* — jamais fait.
+- **Fichiers concernés** : `src/app/signup/sport/page.tsx:59-65` (collecte la date de naissance sans jamais l'utiliser), `src/app/signup/page.tsx`, `supabase/functions/connect-player-onboarding/index.ts:200-244` (action `skip`, aucune vérification côté serveur non plus).
+- **Non corrigé cette nuit** : décision produit à trancher avec Fouka avant tout correctif — bloquer la création de compte autonome sous un certain âge et rediriger vers le parcours "profil géré", ou exiger une case de consentement explicite. Je n'ai pas tranché à sa place.
+- **Statut** : **NON FAIT — À TRANCHER**, risque réel et immédiat dès le premier mineur qui s'inscrit seul (cœur de cible du produit).
+
+### INC-043 — Capacitor (app mobile) empaquette l'ancienne app Connect "vanilla", pas `app-connect` (HAUTE, pas urgent)
+
+- **Sévérité** : Haute en soi, mais **inactive aujourd'hui** — aucune app n'est encore soumise aux stores (comptes développeur Apple/Google pas créés).
+- **Trouvé par l'agent Connect** : `SportVision-Connect-App/capacitor.config.json` pointe `webDir` vers `livrables/SportVision-Connect/app/` (ancienne app HTML/JS, dernier commit le 15/08), pas `app-connect/` (Next.js, dernier commit ce soir même). Le `README.md` du dossier affirme à tort que l'ancien chemin est "la seule source de vérité". Piège silencieux : quelqu'un qui build/soumet en suivant ce README livrerait une version de Connect antérieure à des semaines de correctifs (signup unifié, espace particulier, cotisations espèces, messagerie sécurisée...).
+- **Complexité non triviale** : `app-connect` est une app Next.js **SSR** (pas de `output:'export'`), donc ne peut pas simplement remplacer l'ancien `webDir` statique — nécessite soit une configuration `server.url` pointant vers le site déployé (`https://connect.sportvision-an.fr`), soit un export statique (probablement pas possible telle quelle si l'app utilise des fonctionnalités serveur). Décision d'architecture à prendre, pas un simple changement de chemin — non tenté cette nuit pour éviter de casser quelque chose à l'aveugle sur un scaffold jamais buildé en réel.
+- **Lié** : `window.location.origin` dans les liens auth/partage (reset mot de passe, invitations) casserait de toute façon en contexte natif Capacitor une fois ce point corrigé — même chantier, à traiter ensemble.
+- **Statut** : **NON FAIT** — à traiter avant toute tentative de build/soumission mobile, sans urgence tant que les stores ne sont pas engagés.
+
+### INC-044 — Aucune sauvegarde de la base de données de production (CRITIQUE, À TRANCHER AVEC FOUKA)
+
+- **Sévérité** : Critique.
+- **Trouvé par l'agent infra** : `GET /database/backups` → `backups: []`, `pitr_enabled: false`. Le projet Supabase est sur le plan **Free**, qui n'inclut aucune sauvegarde automatique (les backups quotidiens à 7 jours nécessitent le plan Pro, 25$/mois minimum ; le PITR est un add-on payant en plus).
+- **Impact** : avec de vrais clients payants et de vraies données (contrats, factures, paiements), une suppression accidentelle, une migration ratée ou un incident quelconque n'a aujourd'hui **aucun filet de sécurité** — pas de retour arrière possible, perte de données définitive.
+- **Non corrigé cette nuit** : décision de facturation (upgrade Supabase Pro, ~25$/mois), pas quelque chose que je dois trancher à la place de Fouka.
+- **Statut** : **NON FAIT — À TRANCHER**, recommandation impérative avant tout premier client payant.
+
+### INC-045 — Stripe confirmé en mode LIVE, mais jamais validé de bout en bout avec un vrai paiement/webhook (HAUTE, ACTION REQUISE DE FOUKA)
+
+- **Sévérité** : Haute.
+- **Constat croisé par 3 agents indépendants** (Connect, Club+, infra) : la clé Stripe configurée est bien une clé **LIVE** (sessions Checkout réelles avec préfixe `cs_live_...` obtenues pendant les tests de cette nuit, jamais `cs_test_...`) — contrairement à ce qu'un audit antérieur (17/08) laissait supposer ("jamais testé en clé live"). Il n'existe donc **aucune** clé de test configurée pour cette fonctionnalité : impossible de simuler un paiement réussi/échoué sans une vraie carte.
+- **Conséquence** : la création de session de paiement a été prouvée fonctionnelle en conditions réelles ce soir (admin-only, garde anti-double-abonnement confirmée), mais le webhook réel (`invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted/updated`) n'a **jamais été déclenché par un vrai événement Stripe** — seulement relu en code. Rien ne garantit aujourd'hui que la mise à jour de `clubs.plan`/`credits_balance`/`subscription_status` fonctionne réellement en production au-delà de la lecture de code.
+- **Action requise de Fouka avant le premier vrai club payant** : faire personnellement un vrai cycle complet (souscription carte réelle sur un club de test/pilote consentant → vérifier la mise à jour des crédits/statut → résiliation depuis le Portail Stripe → vérifier `subscription_status='annule'`), ou configurer une paire de clés Stripe TEST dédiée pour rendre ce test reproductible sans argent réel.
+- **Résidu à nettoyer manuellement par Fouka** : un client Stripe LIVE résiduel créé par le test de cette nuit, `cus_V6u0f8pHigO8dt` (email `audit-clubplus-21-08-admin@sportvision-test.fr`) — aucune carte saisie, aucun encaissement, mais l'objet persiste dans le vrai compte Stripe. À supprimer depuis le dashboard Stripe → Clients.
+- **Statut** : **ACTION REQUISE DE FOUKA**, pas un bug de code.
+
+### INC-046 — `clubs` expose les champs financiers (Stripe, crédits, abonnement) à tout membre, y compris les rôles "zéro finance" (MOYENNE, NON FAIT)
+
+- **Sévérité** : Moyenne — fuite de confidentialité, pas de fraude possible (écriture déjà bloquée, testé).
+- **Trouvé par l'agent Club+** : la policy RLS `clubs_member_select` (`is_club_member(id)`) autorise la lecture de la ligne `clubs` entière — donc `stripe_customer_id`/`stripe_subscription_id`/`subscription_status`/`credits_balance`/`credits_reserved` — à **n'importe quel** membre actif, sans distinction de rôle. Testé et confirmé en direct : un `coach` (rôle "zéro finance" dans la Product Bible) et même un **CM externe délégué** scoppé à "contenus/demandes" uniquement (`cm_agency_club_access`) peuvent lire ces champs via un simple `GET` REST. Viole directement le principe produit "masquer un menu ne sécurise rien, le backend doit vérifier" énoncé ailleurs dans le même document produit.
+- **Non corrigé cette nuit** : RLS filtre des LIGNES, pas des colonnes — un vrai correctif nécessite soit une deuxième policy plus restrictive combinée à une vue publique filtrée (`club_public`) que le frontend utiliserait par défaut, soit une sécurité au niveau colonne. Trop risqué pour un correctif à l'aveugle en fin de nuit (nécessite de retoucher tous les points d'appel frontend qui lisent `clubs.*`) — documenté pour une passe dédiée.
+- **Statut** : **NON FAIT**, recommandé avant un usage large par des CM externes délégués.
+
+### INC-047 — Vitrine : remises Club+ Start (5%)/Performance (10%) promises, aucun mécanisme technique pour les tenir (HAUTE, À TRANCHER AVEC FOUKA)
+
+- **Sévérité** : Haute — engagement commercial chiffré affiché publiquement, sans filet technique.
+- **Trouvé par l'agent Vitrine** : `club-plus.html` promet ces remises comme avantage standard des formules payantes. Recherche exhaustive dans `create-checkout-session`, `stripe-webhook`, `entitlements.ts` (Club+) : aucune remise automatique liée au plan Club+ n'existe (la seule remise auto est la remise Agent, -10%, sans rapport). La seule mécanique de remise existante est un champ manuel en pourcentage sur un devis, saisi librement par le staff — et la formation interne du staff instruit même l'inverse ("Escalader à la direction toute remise... non confirmée dans le système").
+- **Non corrigé cette nuit** : décision produit — soit implémenter la remise automatiquement (lecture de `clubs.plan` au moment du checkout/devis), soit reformuler la vitrine. Je n'ai pas tranché à la place de Fouka.
+- **Statut** : **NON FAIT — À TRANCHER**, avant de signer un premier club sur une formule Start/Performance.
+
+### INC-048 — Aucun dispositif de monitoring/alerting sur toute l'infrastructure (HAUTE, NON FAIT)
+
+- **Sévérité** : Haute — ce risque s'est déjà matérialisé une fois concrètement (INC-033 est resté invisible un temps indéterminé faute d'alerte).
+- **Trouvé par l'agent infra** : recherche exhaustive (code, configs, docs, Log Drains Supabase) — aucun Sentry/Datadog/UptimeRobot/PagerDuty/Logflare/BetterUptime ni équivalent configuré nulle part.
+- **Aggravant trouvé la même nuit** : le code déployé de `stripe-webhook` ne vérifiait toujours pas l'erreur sur l'écriture `prestations.statut_financier` (seul le trigger DB, cause connue d'INC-033, avait été corrigé — pas l'observabilité applicative). **Corrigé cette nuit** (voir commit `70435d0`) : ajout d'un `console.error` explicite sur cette écriture précise, visible dans les logs Supabase même sans monitoring externe.
+- **Non fait cette nuit** : mise en place d'un vrai outil de monitoring/alerting (Sentry ou équivalent) — projet à part entière, pas engagé faute de temps/décision d'outillage à prendre avec Fouka (choix d'outil, budget).
+- **Statut** : **PARTIEL** — le point de code le plus critique (webhook Stripe) journalise désormais son échec ; l'absence de monitoring/alerting globale reste **NON FAIT**.
+
+### INC-049 — SPF de `sportvision-an.fr` n'inclut ni Brevo ni Resend (MOYENNE, NON FAIT — changement DNS)
+
+- **Sévérité** : Moyenne — DKIM/DMARC corrects par ailleurs, donc pas de rejet direct attendu, mais un `-all` (hard fail) sur un SPF qui ne couvre que OVH peut dégrader la délivrabilité (boîte spam) pour les emails transactionnels envoyés via Brevo/Resend.
+- **Trouvé par l'agent infra** : `v=spf1 include:mx.ovh.com -all` — ne mentionne aucun des deux vrais expéditeurs transactionnels du projet.
+- **Non corrigé cette nuit** : c'est un enregistrement DNS chez le registrar/hébergeur DNS du domaine, pas un fichier du repo — je n'ai pas les accès pour le modifier moi-même, et une correction DNS de ce type mérite une confirmation avant modification (impact potentiel sur toute la délivrabilité email si mal fait).
+- **Recommandation** : ajouter `include:spf.brevo.com` (et l'include Resend applicable, généralement basé sur Amazon SES) au record SPF existant.
+- **Statut** : **NON FAIT**, action DNS à faire par Fouka (ou avec son accord explicite sur l'accès DNS).
+
+### INC-050 — `stripe-webhook` ne journalisait pas l'échec d'écriture sur `prestations.statut_financier` (HAUTE, CORRIGÉ)
+
+- **Sévérité** : Haute — c'est le point de code exact qui avait rendu INC-033 totalement silencieux.
+- **Trouvé par l'agent infra** : le correctif d'INC-033 (20/08) a réparé la CAUSE connue (trigger sans bypass `service_role`) mais le code applicatif n'avait jamais été durci — `admin.from("prestations").update(updates).eq(...).select(...).maybeSingle()` ne déstructurait toujours jamais `error`. Si une NOUVELLE cause de rejet apparaissait un jour (policy RLS, contrainte, incident Postgres), l'échec redeviendrait totalement invisible, exactement comme avant.
+- **Correctif** : ajout de la vérification d'erreur + `console.error` explicite sur cette écriture précise. N'affecte pas le flux (pas de `throw`, l'accusé de réception à Stripe et les effets de bord suivants restent inchangés).
+- **Statut** : **CORRIGÉ**, redéployé (21/08/2026).
+
+---
 
 ### INC-034 — Pipeline éditorial Full Communication (brief→publication→rapport) : E2E complet, tout certifié (21/08)
 
