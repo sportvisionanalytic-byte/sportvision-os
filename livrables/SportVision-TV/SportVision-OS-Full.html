@@ -4358,18 +4358,26 @@ function renderClientsTable(){
   const relClr={prospect:'bw',client:'ba',partenaire:'ba',inactif:'bn',bloque:'br'};
   const etpLb={qualification:'Qualification',devis_envoye:'Devis envoyé',negociation:'Négociation',gagne:'Gagné',perdu:'Perdu'};
   // Colonne "Offre" (ajoutée 22/08, simplification demandée par Fouka : impossible jusqu'ici de
-  // voir depuis le CRM si un client est Full Communication / Club+ / Connect / ponctuel sans
-  // ouvrir l'écran Contrats séparément — cf. audit du 21/08). Un client peut avoir plusieurs
-  // lignes contrats (historique) : on affiche le contrat actif le plus récent, sinon le plus
-  // récent tout statut confondu (brouillon en cours de signature, etc.), jamais un résilié/expiré
-  // s'il existe une alternative plus pertinente.
-  const OFFRE_STATUT_CLR={actif:'ba',brouillon:'bw',suspendu:'bb',résilié:'br',expiré:'bn'};
+  // voir depuis le CRM si un client est Full Communication / Club+ / Connect sans ouvrir l'écran
+  // Contrats séparément — cf. audit du 21/08). Simplifiée le 22/08 (2e passe, sur demande
+  // explicite de Fouka) en exactement 3 valeurs pour bien différencier au premier coup d'œil :
+  // "Full Communication" et "Club+" si un contrat de ce type existe (le plus récent, actif en
+  // priorité), "Connect" par défaut pour tout le reste (prestation ponctuelle, particulier,
+  // aucun contrat...) — un client sans offre club structurée relève par défaut du produit
+  // personnel Connect.
+  const OFFRE_CATS={
+    full_communication:{lb:'Full Communication',clr:'bb'},
+    club_plus:{lb:'Club+',clr:'ba'},
+    connect:{lb:'Connect',clr:'bn'},
+  };
   function _offreDuClient(c){
     const contrats=Array.isArray(c.contrats)?c.contrats:[];
-    if(!contrats.length)return null;
     const actifs=contrats.filter(k=>k.statut==='actif');
     const pool=actifs.length?actifs:contrats;
-    return pool.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0];
+    const best=pool.length?pool.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0]:null;
+    if(best&&best.type_contrat==='full_communication')return'full_communication';
+    if(best&&best.type_contrat==='club_plus')return'club_plus';
+    return'connect';
   }
   el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px">
     <input id="crm-search" type="text" class="l-inp" placeholder="Rechercher nom, ville, sport, email…" value="${_crmFiltre}" oninput="_crmFiltre=this.value;renderClientsTable()" style="height:34px;flex:1;max-width:320px">
@@ -4385,8 +4393,8 @@ function renderClientsTable(){
       const emailBtn=c.email?`<span onclick="copier('${escJs(c.email)}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${esc(c.email)}</span>`:'—';
       const telBtn=c.telephone?`<span onclick="copier('${escJs(c.telephone)}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${esc(c.telephone)}</span>`:'';
       const crmNext={'prospect':{lb:'✓ Qualifier',st:'qualifié',clr:'var(--ok)'},'qualifié':{lb:'→ Devis',st:'devis_envoyé',clr:'var(--acc)'},'devis_envoyé':{lb:'→ Négo',st:'négociation',clr:'var(--wa)'},'négociation':{lb:'✓ Partenaire',st:'partenaire',clr:'var(--ok)'}}[c.statut];
-      const offre=_offreDuClient(c);
-      const offreCell=offre?`<span class="bd ${OFFRE_STATUT_CLR[offre.statut]||'bw'}"><span class="bd-d"></span>${CONTRAT_TYPES_LB[offre.type_contrat]||offre.type_contrat}</span>`:'<span style="color:var(--t3);font-size:11px">Aucune</span>';
+      const offreCat=_offreDuClient(c);
+      const offreCell=`<span class="bd ${OFFRE_CATS[offreCat].clr}"><span class="bd-d"></span>${OFFRE_CATS[offreCat].lb}</span>`;
       return`<tr>
         <td class="tp" style="cursor:pointer" onclick="modalModifierClient(${i})">${esc(c.nom)}</td>
         <td>${offreCell}</td>
@@ -4426,12 +4434,20 @@ function _ccFmtD(d){return d?new Date(d).toLocaleDateString('fr-FR',{day:'2-digi
 async function loadConnectComptes(){
   const el=document.getElementById('connectcomptes-real');
   if(!el)return;
+  // 22/08 : cette page a affiché "Erreur de chargement" de façon récurrente sans qu'on
+  // puisse reproduire le bug (la fonction connect_os_accounts_list() et is_staff()
+  // vérifiées saines côté base pour le compte admin réel). Affiche désormais le vrai
+  // message d'erreur PostgREST (code/message/hint) au lieu d'un texte générique, pour
+  // diagnostiquer immédiatement la prochaine occurrence plutôt que de deviner.
   try{
     const data=await sbFetch('rpc/connect_os_accounts_list',{method:'POST',body:{}});
-    if(sbErr(data)){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';return;}
+    if(sbErr(data)){
+      el.innerHTML=`<div style="padding:20px;color:var(--er)">Erreur de chargement.<div style="margin-top:8px;font-size:11px;color:var(--t3);font-family:monospace;white-space:pre-wrap">${esc(data.message||data.hint||data.details||JSON.stringify(data))}</div></div>`;
+      return;
+    }
     _connectComptesCache=Array.isArray(data)?data:[];
     renderConnectComptes();
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+  }catch(e){el.innerHTML=`<div style="padding:20px;color:var(--er)">Erreur de chargement.<div style="margin-top:8px;font-size:11px;color:var(--t3);font-family:monospace">${esc(e.message||String(e))}</div></div>`;}
 }
 
 function setConnectComptesTab(tab){
