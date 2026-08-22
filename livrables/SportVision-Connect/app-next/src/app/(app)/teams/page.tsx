@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/Button";
 import { LockedModule } from "@/components/ui/LockedModule";
 import { TeamCard } from "@/components/teams/TeamCard";
 import { CreateTeamModal } from "@/components/teams/CreateTeamModal";
+import { InviteFamilyModal } from "@/components/teams/InviteFamilyModal";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { createClubTeam, fetchClubTeams } from "@/lib/data/club/teams";
+import { inviteFamilyMember, type FamilyInviteTargetType } from "@/lib/data/club/family-invites";
 import { fetchAcademieGroups } from "@/lib/data/academie/groups";
 import { fetchCoachPlayers, type CoachPlayer } from "@/lib/data/coach/players";
 import { fetchDelegatedClubAccess, type DelegatedClubAccess } from "@/lib/data/shared/cm-agency-access";
@@ -35,9 +37,14 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [inviteTarget, setInviteTarget] = useState<FamilyInviteTargetType | null>(null);
   const isAcademy = ctx.organization.type === "academy";
   const isCoach = ctx.organization.type === "coach";
   const isCmAgency = ctx.organization.type === "cm_agency";
+  // Un club "réel" au sens de cet écran couvre aussi un CM délégué (bascule d'espace
+  // delegated_club, session.ts buildDelegatedClubActiveContext) : ctx.organization.type est déjà
+  // forcé à "club" pour lui — même écran, mêmes boutons, jamais de logique de rôle séparée ici.
+  const isClub = !isAcademy && !isCoach && !isCmAgency;
 
   // Coach/Directeur sportif de club (Bible §7/§8, 17/08/2026) : à ne pas confondre avec `isCoach`
   // ci-dessus, qui teste le TYPE d'organisation "Coach indépendant" (KD Performance), pas le RÔLE
@@ -106,12 +113,24 @@ export default function TeamsPage() {
         </div>
         {/* academie_groups n'a pas encore d'équivalent createClubTeam — bouton réservé au club
             (club_teams), pas de promesse pour l'académie. */}
-        {!isAcademy && (
-          <Button className="h-10 gap-1.5 px-4 text-[13px]" onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Créer une équipe
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {isClub && (
+            <>
+              <Button variant="secondary" className="h-10 gap-1.5 px-4 text-[13px]" onClick={() => setInviteTarget("parent")}>
+                + Inviter un parent
+              </Button>
+              <Button className="h-10 gap-1.5 px-4 text-[13px]" onClick={() => setInviteTarget("joueur")}>
+                + Inviter un joueur
+              </Button>
+            </>
+          )}
+          {!isAcademy && (
+            <Button className="h-10 gap-1.5 px-4 text-[13px]" onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4" aria-hidden />
+              Créer une équipe
+            </Button>
+          )}
+        </div>
       </div>
 
       {showCreate && (
@@ -119,6 +138,25 @@ export default function TeamsPage() {
           clubId={ctx.organization.id}
           onClose={() => setShowCreate(false)}
           onCreate={(input) => createClubTeam(createClient(), ctx.organization.id, input).then(() => loadTeams())}
+        />
+      )}
+
+      {inviteTarget && (
+        <InviteFamilyModal
+          targetType={inviteTarget}
+          teams={teams ?? []}
+          onClose={() => setInviteTarget(null)}
+          onInvite={(input) =>
+            inviteFamilyMember(createClient(), {
+              targetType: inviteTarget,
+              email: input.email,
+              firstName: input.firstName,
+              lastName: input.lastName,
+              clubId: ctx.organization.id,
+              teamId: input.teamId,
+              dateNaissance: input.dateNaissance,
+            })
+          }
         />
       )}
 
