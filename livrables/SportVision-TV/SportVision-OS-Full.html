@@ -4295,6 +4295,7 @@ let _clientsCache=[];
 let _clientsNP=[];
 let _crmFiltre='';
 let _crmStFiltre='';
+let _crmOffreTab='tous';
 let _pipData={clients:[],lastPre:{},lastCon:{},devisMap:{}};
 
 // ── Comptes Connect (lecture seule) ─────────────────────────────────────
@@ -4337,16 +4338,43 @@ async function loadClients(){
     renderClientsTable();
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
 }
+// Colonne + sections "Offre" (ajoutées 22/08, simplification demandée par Fouka : impossible
+// jusqu'ici de voir depuis le CRM si un client est Full Communication / Club+ / Connect sans
+// ouvrir l'écran Contrats séparément — cf. audit du 21/08). Exactement 3 valeurs pour bien
+// différencier au premier coup d'œil : "Full Communication" et "Club+" si un contrat de ce type
+// existe (le plus récent, actif en priorité), "Connect" par défaut pour tout le reste (prestation
+// ponctuelle, particulier, aucun contrat...) — un client sans offre club structurée relève par
+// défaut du produit personnel Connect. Sortie du corps de renderClientsTable (2e passe, sur
+// demande explicite de Fouka de 3 vraies sections filtrables) pour être réutilisable par le filtre
+// d'onglet _crmOffreTab en plus de l'affichage de la colonne.
+const OFFRE_CATS={
+  full_communication:{lb:'Full Communication',clr:'bb'},
+  club_plus:{lb:'Club+',clr:'ba'},
+  connect:{lb:'Connect',clr:'bn'},
+};
+function _offreDuClient(c){
+  const contrats=Array.isArray(c.contrats)?c.contrats:[];
+  const actifs=contrats.filter(k=>k.statut==='actif');
+  const pool=actifs.length?actifs:contrats;
+  const best=pool.length?pool.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0]:null;
+  if(best&&best.type_contrat==='full_communication')return'full_communication';
+  if(best&&best.type_contrat==='club_plus')return'club_plus';
+  return'connect';
+}
 function renderClientsTable(){
   const el=document.getElementById('crm-real');
   if(!el)return;
   const q=(_crmFiltre||'').toLowerCase();
   const sf=_crmStFiltre||'';
-  const list=_clientsCache.filter(c=>{
+  const ot=_crmOffreTab||'tous';
+  const listAll=_clientsCache.filter(c=>{
     const matchQ=!q||[c.nom,c.ville,c.sport,c.email,c.telephone,c.prenom_contact,c.nom_contact].some(v=>(v||'').toLowerCase().includes(q));
     const matchSt=!sf||c.statut===sf;
     return matchQ&&matchSt;
   });
+  const counts={full_communication:0,club_plus:0,connect:0};
+  listAll.forEach(c=>{const o=_offreDuClient(c);if(counts[o]!==undefined)counts[o]++;});
+  const list=ot==='tous'?listAll:listAll.filter(c=>_offreDuClient(c)===ot);
   const sc={'prospect':'bw','qualifié':'bb','devis_envoyé':'bl','négociation':'bw','partenaire':'ba','client':'ba','inactif':'bn','bloqué':'br','perdu':'br'};
   const scLb={'prospect':'Prospect','qualifié':'Qualifié','devis_envoyé':'Devis envoyé','négociation':'Négociation','partenaire':'Partenaire','client':'Client','inactif':'Inactif','bloqué':'Bloqué','perdu':'Perdu'};
   // statut_relation/etape_pipeline (migration-crm-v91, 20/08) séparent la relation commerciale
@@ -4357,29 +4385,11 @@ function renderClientsTable(){
   const relLb={prospect:'Prospect',client:'Client',partenaire:'Partenaire',inactif:'Inactif',bloque:'Bloqué'};
   const relClr={prospect:'bw',client:'ba',partenaire:'ba',inactif:'bn',bloque:'br'};
   const etpLb={qualification:'Qualification',devis_envoye:'Devis envoyé',negociation:'Négociation',gagne:'Gagné',perdu:'Perdu'};
-  // Colonne "Offre" (ajoutée 22/08, simplification demandée par Fouka : impossible jusqu'ici de
-  // voir depuis le CRM si un client est Full Communication / Club+ / Connect sans ouvrir l'écran
-  // Contrats séparément — cf. audit du 21/08). Simplifiée le 22/08 (2e passe, sur demande
-  // explicite de Fouka) en exactement 3 valeurs pour bien différencier au premier coup d'œil :
-  // "Full Communication" et "Club+" si un contrat de ce type existe (le plus récent, actif en
-  // priorité), "Connect" par défaut pour tout le reste (prestation ponctuelle, particulier,
-  // aucun contrat...) — un client sans offre club structurée relève par défaut du produit
-  // personnel Connect.
-  const OFFRE_CATS={
-    full_communication:{lb:'Full Communication',clr:'bb'},
-    club_plus:{lb:'Club+',clr:'ba'},
-    connect:{lb:'Connect',clr:'bn'},
-  };
-  function _offreDuClient(c){
-    const contrats=Array.isArray(c.contrats)?c.contrats:[];
-    const actifs=contrats.filter(k=>k.statut==='actif');
-    const pool=actifs.length?actifs:contrats;
-    const best=pool.length?pool.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0]:null;
-    if(best&&best.type_contrat==='full_communication')return'full_communication';
-    if(best&&best.type_contrat==='club_plus')return'club_plus';
-    return'connect';
-  }
-  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px">
+  const OFFRE_TABS=[['tous','Tous',listAll.length],['full_communication','Full Communication',counts.full_communication],['club_plus','Club+',counts.club_plus],['connect','Connect',counts.connect]];
+  el.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+    ${OFFRE_TABS.map(([id,lb,n])=>`<button onclick="_crmOffreTab='${id}';renderClientsTable()" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${ot===id?'var(--acc)':'var(--b1)'};background:${ot===id?'var(--acc)':'var(--s2)'};color:${ot===id?'#fff':'var(--t2)'}">${lb} <span style="opacity:.75">(${n})</span></button>`).join('')}
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px">
     <input id="crm-search" type="text" class="l-inp" placeholder="Rechercher nom, ville, sport, email…" value="${_crmFiltre}" oninput="_crmFiltre=this.value;renderClientsTable()" style="height:34px;flex:1;max-width:320px">
     <select id="crm-st-filter" class="l-inp" style="height:34px;max-width:180px" onchange="_crmStFiltre=this.value;renderClientsTable()">
       <option value="">Tous les statuts</option>
@@ -4577,6 +4587,16 @@ function modalModifierClient(idx){
     <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">Modifier le client</div>
     <div style="font-size:12px;color:var(--t3);margin-bottom:16px">${esc(c.nom)}</div>
     <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div id="fce-logo-preview" style="width:64px;height:64px;border-radius:12px;background:var(--s2);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+          ${c.logo_url?`<img src="${esc(c.logo_url)}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:22px;color:var(--t3)">🛡️</span>`}
+        </div>
+        <div>
+          <label style="${lbl}">Logo du club</label>
+          ${canEdit?`<label class="btn bg2 bs" style="cursor:pointer;display:inline-flex">Changer<input id="fce-logo-input" type="file" accept="image/*" style="display:none" onchange="uploaderLogoClient('${c.id}')"></label>`:''}
+          <span id="fce-logo-status" style="font-size:11px;color:var(--t3);margin-left:8px"></span>
+        </div>
+      </div>
       ${canAssignCm?`<div><label style="${lbl}">CM assigné</label><div id="fce-cmassign" style="font-size:12px;color:var(--t3)">Chargement…</div></div>`:''}
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px">
         <div><label style="${lbl}">Nom *</label>
@@ -4620,6 +4640,14 @@ function modalModifierClient(idx){
           <input id="fce-division" type="text" class="l-inp" value="${c.division||''}" placeholder="R1, Dept…" style="height:38px" ${ro}>
         </div>
       </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
+        <div><label style="${lbl}">Adresse</label>
+          <input id="fce-adresse" type="text" class="l-inp" value="${esc(c.adresse||'')}" placeholder="N° et rue" style="height:38px" ${ro}>
+        </div>
+        <div><label style="${lbl}">Code postal</label>
+          <input id="fce-cp" type="text" class="l-inp" value="${esc(c.code_postal||'')}" style="height:38px" ${ro}>
+        </div>
+      </div>
       <div><label style="${lbl}">Notes internes</label>
         <textarea id="fce-notes" class="l-inp" style="height:72px;resize:vertical;padding-top:8px" ${ro}>${esc(c.notes||'')}</textarea>
       </div>
@@ -4634,6 +4662,7 @@ function modalModifierClient(idx){
         <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
           <button id="fce-tab-pres" onclick="fceShowTab('pres')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Prestations</button>
           <button id="fce-tab-contrats" onclick="fceShowTab('contrats')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Contrats</button>
+          <button id="fce-tab-organigramme" onclick="fceShowTab('organigramme')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Organigramme</button>
           <button id="fce-tab-medias" onclick="fceShowTab('medias')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Médias</button>
           <button id="fce-tab-rel" onclick="fceShowTab('rel')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Suivi contacts</button>
           <button id="fce-tab-tl" onclick="fceShowTab('tl')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Historique</button>
@@ -4644,6 +4673,9 @@ function modalModifierClient(idx){
         </div>
         <div id="fce-panel-contrats" style="display:none">
           <div id="fce-contrats-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+        </div>
+        <div id="fce-panel-organigramme" style="display:none">
+          <div id="fce-organigramme-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
         </div>
         <div id="fce-panel-medias" style="display:none">
           <div id="fce-medias-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
@@ -4882,6 +4914,8 @@ async function modifierClient(id){
       sport:document.getElementById('fce-sport').value||null,
       ville:document.getElementById('fce-ville').value||null,
       division:document.getElementById('fce-division')?.value||null,
+      adresse:document.getElementById('fce-adresse')?.value.trim()||null,
+      code_postal:document.getElementById('fce-cp')?.value.trim()||null,
       notes:document.getElementById('fce-notes').value.trim()||null,
     }});
     if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Modification impossible.');return;}
@@ -4890,6 +4924,84 @@ async function modifierClient(id){
     loadViewData(S.role,S.view);
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur lors de la modification.';}
+}
+
+// ── Logo du client (fiche client détaillée, 22/08) — réutilise le bucket public
+// club-logos déjà utilisé par Club+, sous un préfixe clients/ dédié (voir migration-
+// crm-fiche-client-detaillee.sql). sbUpload() retourne directement l'URL publique.
+async function uploaderLogoClient(clientId){
+  const input=document.getElementById('fce-logo-input');
+  const statusEl=document.getElementById('fce-logo-status');
+  const file=input?.files?.[0];
+  if(!file)return;
+  if(statusEl)statusEl.textContent='Envoi…';
+  try{
+    const url=await sbUpload('club-logos','clients/'+sbUploadSafePath(file),file);
+    if(!url){if(statusEl)statusEl.textContent='Échec de l\'envoi.';return;}
+    const r=await sbFetch('clients?id=eq.'+clientId,{method:'PATCH',body:{logo_url:url}});
+    if(sbErr(r)){if(statusEl)statusEl.textContent='Erreur : '+(r.message||'enregistrement impossible.');return;}
+    const idx=_clientsCache.findIndex(c=>c.id===clientId);
+    if(idx>=0)_clientsCache[idx].logo_url=url;
+    const preview=document.getElementById('fce-logo-preview');
+    if(preview)preview.innerHTML=`<img src="${esc(url)}" style="width:100%;height:100%;object-fit:cover">`;
+    if(statusEl)statusEl.textContent='Logo mis à jour.';
+    toast('Logo mis à jour.','ok');
+  }catch(e){if(statusEl)statusEl.textContent='Erreur lors de l\'envoi.';}
+}
+
+// ── Organigramme du club (fiche client détaillée, 22/08) — annuaire de personnes
+// (rôle/nom/contact), distinct de client_contacts qui est un journal d'interactions
+// (appels/emails), pas un annuaire. Aucune structure équivalente n'existait avant —
+// voir migration-crm-fiche-client-detaillee.sql pour la table.
+async function loadClientOrganigramme(clientId){
+  const el=document.getElementById('fce-organigramme-list');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  try{
+    const data=await sbFetch('client_organigramme?select=id,role,prenom,nom,email,telephone&client_id=eq.'+clientId+'&order=created_at.asc');
+    const list=Array.isArray(data)?data:[];
+    const rows=list.length?list.map(p=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;background:var(--s2);border-radius:8px;margin-bottom:6px">
+        <div style="font-size:12px">
+          <span style="font-weight:600;color:var(--t1)">${esc(p.role)}</span>
+          <span style="color:var(--t3)"> · ${esc([p.prenom,p.nom].filter(Boolean).join(' ')||'—')}${p.email?' · '+esc(p.email):''}${p.telephone?' · '+esc(p.telephone):''}</span>
+        </div>
+        <button class="btn bg2 bs" onclick="supprimerOrganigrammeEntry('${p.id}','${clientId}')">Retirer</button>
+      </div>`).join(''):'<div style="font-size:12px;color:var(--t3);margin-bottom:8px">Aucune personne enregistrée pour ce club.</div>';
+    el.innerHTML=rows+`
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:6px;margin-top:10px">
+        <input id="corg-role" class="l-inp" style="height:34px" placeholder="Rôle (Président…)">
+        <input id="corg-prenom" class="l-inp" style="height:34px" placeholder="Prénom">
+        <input id="corg-nom" class="l-inp" style="height:34px" placeholder="Nom">
+        <input id="corg-email" class="l-inp" style="height:34px" placeholder="Email">
+        <input id="corg-tel" class="l-inp" style="height:34px" placeholder="Téléphone">
+        <button class="btn bp bs" onclick="ajouterOrganigrammeEntry('${clientId}')">Ajouter</button>
+      </div>
+      <div id="corg-err" style="font-size:11px;color:var(--er);min-height:14px;margin-top:4px"></div>`;
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+async function ajouterOrganigrammeEntry(clientId){
+  const role=document.getElementById('corg-role')?.value.trim();
+  const errEl=document.getElementById('corg-err');
+  if(!role){if(errEl)errEl.textContent='Le rôle est obligatoire.';return;}
+  const r=await sbFetch('client_organigramme',{method:'POST',body:{
+    client_id:clientId,
+    role,
+    prenom:document.getElementById('corg-prenom')?.value.trim()||null,
+    nom:document.getElementById('corg-nom')?.value.trim()||null,
+    email:document.getElementById('corg-email')?.value.trim()||null,
+    telephone:document.getElementById('corg-tel')?.value.trim()||null,
+    created_by:S.uid,
+  }});
+  if(sbErr(r)){if(errEl)errEl.textContent=r.message||'Erreur lors de l\'ajout.';return;}
+  loadClientOrganigramme(clientId);
+}
+
+async function supprimerOrganigrammeEntry(id,clientId){
+  const r=await sbFetch('client_organigramme?id=eq.'+id,{method:'DELETE'});
+  if(sbErr(r)){toast('Erreur lors du retrait.','er');return;}
+  loadClientOrganigramme(clientId);
 }
 
 // ── Invitation Club+ (lien d'activation privé) ──────────────────────────────
@@ -5562,7 +5674,7 @@ async function chargerPresByClient(clientId){
 function fceShowTab(tab){
   const on='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
   const off='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
-  ['pres','contrats','medias','rel','tl','equipe'].forEach(t=>{
+  ['pres','contrats','organigramme','medias','rel','tl','equipe'].forEach(t=>{
     const b=document.getElementById('fce-tab-'+t);const p=document.getElementById('fce-panel-'+t);
     if(b)b.style.cssText=t===tab?on:off;
     if(p)p.style.display=t===tab?'':'none';
@@ -5572,6 +5684,7 @@ function fceShowTab(tab){
   if(tab==='medias'&&window._fceClientId)loadClientMedias(window._fceClientId);
   if(tab==='equipe'&&window._fceClientId)loadClientEquipe(window._fceClientId);
   if(tab==='contrats'&&window._fceClientId)loadClientContrats(window._fceClientId);
+  if(tab==='organigramme'&&window._fceClientId)loadClientOrganigramme(window._fceClientId);
 }
 
 // Onglet Équipe : rôster client_affiliations pour ce client — lecture seule
