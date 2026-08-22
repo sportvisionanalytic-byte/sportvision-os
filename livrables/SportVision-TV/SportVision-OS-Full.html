@@ -4298,7 +4298,7 @@ async function loadClients(){
   const el=document.getElementById('crm-real');
   if(!el)return;
   try{
-    const data=await sbFetch('clients?select=id,nom,statut,statut_relation,etape_pipeline,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect,cm_id&order=created_at.desc&limit=100');
+    const data=await sbFetch('clients?select=id,nom,statut,statut_relation,etape_pipeline,type_client,sport,ville,email,telephone,prenom_contact,nom_contact,notes,origine_prospect,cm_id,contrats(type_contrat,statut,created_at)&order=created_at.desc&limit=100');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun client. Créez le premier prospect.</div></div>';return;}
     _clientsCache=data;
     renderClientsTable();
@@ -4324,6 +4324,20 @@ function renderClientsTable(){
   const relLb={prospect:'Prospect',client:'Client',partenaire:'Partenaire',inactif:'Inactif',bloque:'Bloqué'};
   const relClr={prospect:'bw',client:'ba',partenaire:'ba',inactif:'bn',bloque:'br'};
   const etpLb={qualification:'Qualification',devis_envoye:'Devis envoyé',negociation:'Négociation',gagne:'Gagné',perdu:'Perdu'};
+  // Colonne "Offre" (ajoutée 22/08, simplification demandée par Fouka : impossible jusqu'ici de
+  // voir depuis le CRM si un client est Full Communication / Club+ / Connect / ponctuel sans
+  // ouvrir l'écran Contrats séparément — cf. audit du 21/08). Un client peut avoir plusieurs
+  // lignes contrats (historique) : on affiche le contrat actif le plus récent, sinon le plus
+  // récent tout statut confondu (brouillon en cours de signature, etc.), jamais un résilié/expiré
+  // s'il existe une alternative plus pertinente.
+  const OFFRE_STATUT_CLR={actif:'ba',brouillon:'bw',suspendu:'bb',résilié:'br',expiré:'bn'};
+  function _offreDuClient(c){
+    const contrats=Array.isArray(c.contrats)?c.contrats:[];
+    if(!contrats.length)return null;
+    const actifs=contrats.filter(k=>k.statut==='actif');
+    const pool=actifs.length?actifs:contrats;
+    return pool.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0];
+  }
   el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px 0 12px">
     <input id="crm-search" type="text" class="l-inp" placeholder="Rechercher nom, ville, sport, email…" value="${_crmFiltre}" oninput="_crmFiltre=this.value;renderClientsTable()" style="height:34px;flex:1;max-width:320px">
     <select id="crm-st-filter" class="l-inp" style="height:34px;max-width:180px" onchange="_crmStFiltre=this.value;renderClientsTable()">
@@ -4332,14 +4346,17 @@ function renderClientsTable(){
     </select>
     <span style="font-size:11px;color:var(--t3);white-space:nowrap">${list.length} / ${_clientsCache.length}</span>
   </div>
-  ${list.length?'<div class="tw"><table><thead><tr><th>Nom</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Email / Tél.</th><th>Relation</th><th>Étape pipeline</th><th></th></tr></thead><tbody>'+
+  ${list.length?'<div class="tw"><table><thead><tr><th>Nom</th><th>Offre</th><th>Type</th><th>Sport</th><th>Ville</th><th>Contact</th><th>Email / Tél.</th><th>Relation</th><th>Étape pipeline</th><th></th></tr></thead><tbody>'+
     list.map(c=>{const i=_clientsCache.indexOf(c);
       const ct=esc([c.prenom_contact,c.nom_contact].filter(Boolean).join(' ')||'—');
       const emailBtn=c.email?`<span onclick="copier('${escJs(c.email)}')" style="cursor:pointer;color:var(--acc)" title="Copier email">${esc(c.email)}</span>`:'—';
       const telBtn=c.telephone?`<span onclick="copier('${escJs(c.telephone)}')" style="cursor:pointer;color:var(--acc)" title="Copier téléphone"> · ${esc(c.telephone)}</span>`:'';
       const crmNext={'prospect':{lb:'✓ Qualifier',st:'qualifié',clr:'var(--ok)'},'qualifié':{lb:'→ Devis',st:'devis_envoyé',clr:'var(--acc)'},'devis_envoyé':{lb:'→ Négo',st:'négociation',clr:'var(--wa)'},'négociation':{lb:'✓ Partenaire',st:'partenaire',clr:'var(--ok)'}}[c.statut];
+      const offre=_offreDuClient(c);
+      const offreCell=offre?`<span class="bd ${OFFRE_STATUT_CLR[offre.statut]||'bw'}"><span class="bd-d"></span>${CONTRAT_TYPES_LB[offre.type_contrat]||offre.type_contrat}</span>`:'<span style="color:var(--t3);font-size:11px">Aucune</span>';
       return`<tr>
         <td class="tp" style="cursor:pointer" onclick="modalModifierClient(${i})">${esc(c.nom)}</td>
+        <td>${offreCell}</td>
         <td>${c.type_client||'—'}</td>
         <td>${esc(c.sport||'—')}</td>
         <td>${esc(c.ville||'—')}</td>
