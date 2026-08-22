@@ -87,6 +87,45 @@ export async function fetchClubJoinRequests(supabase: SupabaseClient, clubId: st
   }));
 }
 
+export interface CmAgencyJoinRequest extends TeamJoinRequest {
+  clubName: string | null;
+}
+
+interface RequestRowWithClub extends RequestRow {
+  clubs: { nom: string } | null;
+}
+
+/** Demandes d'adhésion agrégées sur TOUS les clubs accessibles à un CM SportVision (délégation
+ * cm_agency_club_access ou accès total cm_super_access) — 22/08/2026, demande Fouka. Aucun filtre
+ * club_id ici, volontairement : mr_admin_select (RLS, is_club_admin(club_id)) fait tout le travail
+ * de périmètre, exactement comme fetchClubJoinRequests ci-dessus le fait pour un seul club — un CM
+ * qui n'a accès à aucun club ne reçoit simplement aucune ligne. */
+export async function fetchCmAgencyJoinRequests(supabase: SupabaseClient): Promise<CmAgencyJoinRequest[]> {
+  const { data, error } = await supabase
+    .from("membership_requests")
+    .select(`${SELECT}, clubs(nom)`)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return ((data ?? []) as unknown as RequestRowWithClub[]).map((row) => ({
+    id: row.id,
+    clubId: row.club_id,
+    clubName: row.clubs?.nom ?? null,
+    teamId: row.team_id,
+    teamName: row.club_teams?.name ?? null,
+    playerId: row.player_id,
+    playerFirstName: row.player_profiles?.prenom ?? null,
+    playerLastName: row.player_profiles?.nom ?? null,
+    source: row.source,
+    statut: row.statut,
+    validationMode: row.validation_mode,
+    educateurConfirmeAt: row.educateur_confirme_at,
+    adminValideAt: row.admin_valide_at,
+    refusMotif: row.refus_motif,
+    createdAt: row.created_at,
+  }));
+}
+
 /** Étape 1 (mode double) : l'éducateur confirme l'identité/l'équipe. */
 export async function confirmRequestEducateur(supabase: SupabaseClient, requestId: string): Promise<void> {
   const { error } = await supabase.rpc("confirm_request_educateur", { p_request_id: requestId });

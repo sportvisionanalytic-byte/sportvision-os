@@ -56,6 +56,7 @@ interface MembershipRow {
   organization_id: string;
   role: string;
   status: string;
+  cm_super_access: boolean;
   organizations: { id: string; nom: string; organization_type: string; statut: string } | null;
 }
 
@@ -79,7 +80,7 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
     // qu'un espace `status === "active"`, jamais un espace invité/suspendu.
     supabase
       .from("memberships")
-      .select("id, organization_id, role, status, organizations(id, nom, organization_type, statut)")
+      .select("id, organization_id, role, status, cm_super_access, organizations(id, nom, organization_type, statut)")
       .eq("user_id", userId),
   ]);
 
@@ -130,6 +131,8 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
     .filter((row) => row.organizations?.organization_type === "cm_agency" && row.status === "actif")
     .map((row) => row.organization_id);
 
+  const delegatedClubIds = new Set<string>();
+
   if (cmAgencyOrgIds.length > 0) {
     const { data: delegatedRows } = await supabase
       .from("cm_agency_club_access")
@@ -151,6 +154,31 @@ export async function getSpaces(supabase: SupabaseClient, userId: string): Promi
         clickable: true,
         organizationType: "club",
       });
+      delegatedClubIds.add(row.club_id);
+    }
+  }
+
+  // "CM responsable" (22/08/2026, demande Fouka) : un membre actif d'une organisation cm_agency
+  // avec memberships.cm_super_access=true voit TOUS les clubs, pas seulement ceux délégués via
+  // cm_agency_club_access — voir migration-cm-agency-super-access-staff.sql et le même bloc dans
+  // is_club_member/is_club_admin/is_team_educateur (RLS). Dédoublonné avec les délégations
+  // explicites ci-dessus (un club peut avoir les deux, la délégation explicite garde son libellé).
+  const hasSuperAccess = ((orgRes.data ?? []) as unknown as MembershipRow[]).some(
+    (row) => row.organizations?.organization_type === "cm_agency" && row.status === "actif" && row.cm_super_access,
+  );
+  if (hasSuperAccess) {
+    const { data: allClubs } = await supabase.from("clubs").select("id, nom").order("nom");
+    for (const c of (allClubs ?? []) as { id: string; nom: string }[]) {
+      if (delegatedClubIds.has(c.id)) continue;
+      spaces.push({
+        kind: "delegated_club",
+        id: c.id,
+        name: c.nom,
+        subtitle: "Accès total (CM SportVision)",
+        clickable: true,
+        organizationType: "club",
+      });
+      delegatedClubIds.add(c.id);
     }
   }
 
@@ -351,23 +379,43 @@ export async function buildDelegatedClubActiveContext(
       .select("id, ville, discipline, plan, engagement, credits_balance, credits_monthly, credits_reserved, portail_client_id")
       .eq("id", space.id)
       .maybeSingle(),
-    supabase.from("memberships").select("organization_id").eq("user_id", authUser.id).eq("status", "actif"),
+    supabase
+      .from("memberships")
+      .select("organization_id, cm_super_access, organizations(organization_type)")
+      .eq("user_id", authUser.id)
+      .eq("status", "actif"),
   ]);
 
   const club = clubRes.data as ClubRow | null;
   if (!club) return null;
 
-  const myOrgIds = ((myMembershipsRes.data ?? []) as { organization_id: string }[]).map((m) => m.organization_id);
+  const myMemberships = (myMembershipsRes.data ?? []) as unknown as {
+    organization_id: string;
+    cm_super_access: boolean;
+    organizations: { organization_type: string } | null;
+  }[];
+  const myOrgIds = myMemberships.map((m) => m.organization_id);
   if (myOrgIds.length === 0) return null;
 
-  const { data: delegation } = await supabase
-    .from("cm_agency_club_access")
-    .select("id, expires_at")
-    .eq("club_id", space.id)
-    .in("cm_agency_org_id", myOrgIds)
-    .maybeSingle();
-  if (!delegation) return null;
-  if (delegation.expires_at && delegation.expires_at < new Date().toISOString().slice(0, 10)) return null;
+  // "CM responsable" (22/08/2026) : un accès total (cm_super_access sur une organisation
+  // cm_agency) dispense de la ligne cm_agency_club_access par club — même garde-fou que getSpaces()
+  // ci-dessus. Toujours revérifié en direct ici, jamais confiance dans le Space déjà résolu.
+  const hasSuperAccess = myMemberships.some((m) => m.cm_super_access && m.organizations?.organization_type === "cm_agency");
+
+  // Identifiant stable pour membership.id ci-dessous : celui de la ligne cm_agency_club_access
+  // réelle quand elle existe, un tag fixe "super" sinon (accès total, aucune ligne par club).
+  let delegationMembershipId = "super";
+  if (!hasSuperAccess) {
+    const { data: delegation } = await supabase
+      .from("cm_agency_club_access")
+      .select("id, expires_at")
+      .eq("club_id", space.id)
+      .in("cm_agency_org_id", myOrgIds)
+      .maybeSingle();
+    if (!delegation) return null;
+    if (delegation.expires_at && delegation.expires_at < new Date().toISOString().slice(0, 10)) return null;
+    delegationMembershipId = delegation.id;
+  }
 
   const { data: org } = await supabase.from("organizations").select("id, nom, created_at").eq("id", space.id).maybeSingle();
   if (!org) return null;
@@ -394,7 +442,7 @@ export async function buildDelegatedClubActiveContext(
       createdAt: org.created_at,
     },
     membership: {
-      id: `delegated-${delegation.id}`,
+      id: `delegated-${delegationMembershipId}`,
       userId: authUser.id,
       organizationId: org.id,
       role: "external_cm",

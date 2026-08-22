@@ -153,6 +153,23 @@ serve(async (req) => {
       }
     }
 
+    // "CM responsable" (22/08/2026, migration-cm-agency-super-access-staff.sql) : un membre actif
+    // d'une organisation cm_agency avec cm_super_access=true a accès à TOUS les clubs, sans ligne
+    // cm_agency_club_access par club — même garde-fou que is_club_admin()/is_team_educateur() côté
+    // SQL et buildDelegatedClubActiveContext() côté app-next.
+    if (!isDelegatedCm && (!callerMember || callerMember.role !== "admin")) {
+      const { data: superMemberships } = await admin
+        .from("memberships")
+        .select("organization_id")
+        .eq("user_id", caller.id)
+        .eq("status", "actif")
+        .eq("cm_super_access", true);
+      for (const sm of superMemberships || []) {
+        const { data: org } = await admin.from("organizations").select("organization_type").eq("id", sm.organization_id).maybeSingle();
+        if (org?.organization_type === "cm_agency") { isDelegatedCm = true; break; }
+      }
+    }
+
     if (!callerMember && !isDelegatedCm) return json({ error: "Non autorisé sur ce club." }, 403);
 
     if (!isDelegatedCm && callerMember!.role !== "admin") {

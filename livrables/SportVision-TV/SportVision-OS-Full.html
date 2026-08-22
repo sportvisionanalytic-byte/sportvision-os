@@ -5454,6 +5454,8 @@ let _cmAgencyOrgs=[];
 let _cmAgencyClubsCache=[];
 let _cmAgencySelectedId='';
 let _cmAgencyAccessCache=[];
+let _cmAgencyMembersCache=[];
+let _cmAgencyStaffComCache=[];
 
 function _cmAgencyAccessView(){
   return`<div class="sh"><div class="sh-t">Accès délégués agences CM</div></div>
@@ -5464,7 +5466,14 @@ function _cmAgencyAccessView(){
     </select>
     <button class="btn bp bs" id="cma-add-btn" style="display:none" onclick="modalAjouterAccesCmAgency()">+ Déléguer un club</button>
   </div>
-  <div id="cma-real" style="min-height:160px"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+  <div id="cma-real" style="min-height:160px"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
+
+  <div class="sh" style="margin-top:28px"><div class="sh-t">Membres de l'agence</div></div>
+  <div style="font-size:12px;color:var(--t3);margin-bottom:14px;max-width:680px">Les comptes qui ont accès à cette agence dans Club+. « Accès total » donne accès à TOUS les clubs sans délégation club par club (ex. un CM SportVision responsable) ; sans cette case, la personne ne voit que les clubs délégués ci-dessus.</div>
+  <div style="margin-bottom:14px">
+    <button class="btn bp bs" id="cma-member-add-btn" style="display:none" onclick="modalAjouterMembreCmAgency()">+ Ajouter un CM interne</button>
+  </div>
+  <div id="cma-members-real" style="min-height:100px"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
 }
 
 async function loadCmAgencyAccess(){
@@ -5489,7 +5498,7 @@ async function loadCmAgencyAccess(){
     _cmAgencySelectedId=_cmAgencyOrgs[0].id;
     sel.value=_cmAgencySelectedId;
     if(addBtn)addBtn.style.display='';
-    await renderCmAgencyAccessTable();
+    await Promise.all([renderCmAgencyAccessTable(),renderCmAgencyMembersTable()]);
   }catch(e){
     real.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
   }
@@ -5497,7 +5506,7 @@ async function loadCmAgencyAccess(){
 
 async function changerAgenceCmAccess(agencyId){
   _cmAgencySelectedId=agencyId;
-  await renderCmAgencyAccessTable();
+  await Promise.all([renderCmAgencyAccessTable(),renderCmAgencyMembersTable()]);
 }
 
 async function renderCmAgencyAccessTable(){
@@ -5604,6 +5613,123 @@ function revoquerAccesCmAgency(id,clubNom){
     toast('Accès révoqué.','ok');
     await renderCmAgencyAccessTable();
   });
+}
+
+// ── Membres de l'agence CM (22/08/2026, demande Fouka « chaque CM SportVision doit avoir un
+// compte Club+ ») — gère memberships pour l'organisation cm_agency sélectionnée ci-dessus. Un
+// membre est en général un compte staff SportVision (profiles.role='com', voir migration-cm-
+// agency-super-access-staff.sql — is_staff() a été corrigée pour tolérer cette adhésion cm_agency
+// sans faire perdre l'accès OS). cm_super_access (colonne memberships) donne l'accès à TOUS les
+// clubs sans délégation par club ci-dessus ; un membre externe (agence tierce déjà existante) n'a
+// aucune ligne `profiles` (populations disjointes, voir migration-cm-agency-club-access.sql) donc
+// s'affiche sans nom/email plutôt que d'en inventer un.
+async function renderCmAgencyMembersTable(){
+  const real=document.getElementById('cma-members-real');
+  const addBtn=document.getElementById('cma-member-add-btn');
+  if(!real)return;
+  if(!_cmAgencySelectedId){real.innerHTML='';if(addBtn)addBtn.style.display='none';return;}
+  real.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const rows=await sbFetch('memberships?organization_id=eq.'+_cmAgencySelectedId+'&select=id,user_id,role,status,cm_super_access,created_at&order=created_at.asc');
+    if(sbErr(rows)){real.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';return;}
+    _cmAgencyMembersCache=Array.isArray(rows)?rows:[];
+    const userIds=_cmAgencyMembersCache.map(m=>m.user_id);
+    let profilesById={};
+    if(userIds.length){
+      const profs=await sbFetch('profiles?id=in.('+userIds.join(',')+')&select=id,prenom,nom,email');
+      (Array.isArray(profs)?profs:[]).forEach(p=>{profilesById[p.id]=p;});
+    }
+    if(addBtn)addBtn.style.display='';
+    if(!_cmAgencyMembersCache.length){
+      real.innerHTML='<div style="padding:30px;text-align:center;color:var(--t3);font-size:13px">Aucun membre pour cette agence pour le moment.</div>';
+      return;
+    }
+    real.innerHTML='<div class="tw"><table><thead><tr><th>Personne</th><th>Statut</th><th>Accès total (tous les clubs)</th><th></th></tr></thead><tbody>'+
+      _cmAgencyMembersCache.map(m=>{
+        const p=profilesById[m.user_id];
+        const nom=p?((p.prenom||'')+' '+(p.nom||'')).trim()||p.email||'—':'Membre externe';
+        const sousLigne=p?(p.email||''):('uid '+m.user_id.slice(0,8)+'…');
+        return`<tr>
+          <td class="tp">${esc(nom)}<div style="font-size:11px;color:var(--t3)">${esc(sousLigne)}</div></td>
+          <td style="font-size:12px">${esc(m.status)}</td>
+          <td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px"><input type="checkbox" ${m.cm_super_access?'checked':''} onchange="toggleCmSuperAccess('${m.id}',this.checked)"> Accès total</label></td>
+          <td><button onclick="retirerMembreCmAgency('${m.id}','${escJs(nom)}')" style="padding:4px 8px;font-size:11px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Retirer</button></td>
+        </tr>`;
+      }).join('')+
+    '</tbody></table></div>';
+  }catch(e){
+    real.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';
+  }
+}
+
+async function toggleCmSuperAccess(membershipId,checked){
+  const r=await sbFetch('memberships?id=eq.'+membershipId,{method:'PATCH',body:{cm_super_access:checked}});
+  if(sbErr(r)){toast('Erreur : modification impossible.','er');await renderCmAgencyMembersTable();return;}
+  toast(checked?'Accès total activé.':'Accès total désactivé.','ok');
+}
+
+function retirerMembreCmAgency(membershipId,nom){
+  confirmerAction('Retirer '+esc(nom)+' de cette agence ? La personne perdra immédiatement tout accès Club+ lié à cette agence.',async()=>{
+    const r=await sbFetch('memberships?id=eq.'+membershipId,{method:'DELETE'});
+    if(sbErr(r)){toast('Erreur : suppression impossible.','er');return;}
+    toast('Membre retiré.','ok');
+    await renderCmAgencyMembersTable();
+  });
+}
+
+async function modalAjouterMembreCmAgency(){
+  if(!_cmAgencySelectedId){toast('Sélectionnez une agence d’abord.','er');return;}
+  const agency=_cmAgencyOrgs.find(o=>o.id===_cmAgencySelectedId);
+  const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const staff=await sbFetch('profiles?role=eq.com&select=id,prenom,nom,email&order=prenom.asc');
+  _cmAgencyStaffComCache=Array.isArray(staff)?staff:[];
+  const alreadyIds=new Set(_cmAgencyMembersCache.map(m=>m.user_id));
+  const available=_cmAgencyStaffComCache.filter(p=>!alreadyIds.has(p.id));
+  openModal(`<div class="mh"><div class="mt">Ajouter un CM interne à ${esc(agency?agency.nom:'')}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:12px;color:var(--t3)">Liste des comptes staff SportVision avec le rôle Communication (profiles.role='com'), pas encore membres de cette agence.</div>
+      <div><label style="${lbl}">Personne</label>
+        <select id="cma-member-select" class="l-inp" style="height:38px">
+          ${available.length?available.map(p=>`<option value="${p.id}">${esc(((p.prenom||'')+' '+(p.nom||'')).trim()||p.email)}</option>`).join(''):'<option value="">Aucun compte disponible</option>'}
+        </select>
+        ${!available.length?'<div style="font-size:11px;color:var(--t3);margin-top:4px">Tous les comptes staff « com » sont déjà membres de cette agence.</div>':''}
+      </div>
+      <div id="cma-member-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bg2" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" id="cma-member-btn" onclick="creerMembreCmAgency()">Ajouter</button>
+    </div>`);
+}
+
+async function creerMembreCmAgency(){
+  const err=document.getElementById('cma-member-err');
+  const btn=document.getElementById('cma-member-btn');
+  const userId=document.getElementById('cma-member-select')?.value||'';
+  if(!userId){if(err)err.textContent='Choisissez une personne.';return;}
+  if(err)err.textContent='';
+  if(btn){btn.disabled=true;btn.textContent='Ajout…';}
+  try{
+    const r=await sbFetch('memberships',{method:'POST',body:{
+      user_id:userId,
+      organization_id:_cmAgencySelectedId,
+      role:'collaborateur',
+      status:'actif',
+      source:'staff_manuel',
+      cm_super_access:false,
+    }});
+    if(sbErr(r)){
+      if(err)err.textContent=r.code==='23505'?'Cette personne est déjà membre de cette agence.':'Erreur : '+(r.message||'Ajout impossible.');
+      if(btn){btn.disabled=false;btn.textContent='Ajouter';}
+      return;
+    }
+    closeModal();
+    toast('Membre ajouté.','ok');
+    await renderCmAgencyMembersTable();
+  }catch(e){
+    if(err)err.textContent='Erreur réseau.';
+    if(btn){btn.disabled=false;btn.textContent='Ajouter';}
+  }
 }
 
 function supprimerClient(id){

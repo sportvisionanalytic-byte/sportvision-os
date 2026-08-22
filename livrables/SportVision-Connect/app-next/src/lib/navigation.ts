@@ -239,6 +239,11 @@ const NAV_CM_AGENCY: NavEntry[] = [
   item("content", "Contenus", "content"),
   item("calendar", "Calendrier", "calendar"),
   item("teams", "Clubs suivis", "teams"),
+  // Demandes d'adhésion joueur/parent, agrégées sur tous les clubs délégués (ou tous les clubs si
+  // accès total, memberships.cm_super_access) — 22/08/2026, demande Fouka "chaque CM SportVision
+  // doit pouvoir voir les demandes des clubs qu'il gère". Réutilise /team-requests (déjà l'écran
+  // dirigeant/éducateur pour un club), étendu pour ctx.organization.type === "cm_agency".
+  item("teams", "Demandes d'adhésion", "team-requests"),
   item("services", "Prestations", "services"),
   item("accompagnement", "Mes accès", "accompagnement"),
   item("documents", "Documents", "documents"),

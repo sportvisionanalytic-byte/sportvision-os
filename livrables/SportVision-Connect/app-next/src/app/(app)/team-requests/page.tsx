@@ -13,11 +13,13 @@ import {
   confirmRequestEducateur,
   deriveStage,
   fetchClubJoinRequests,
+  fetchCmAgencyJoinRequests,
   rejectTeamMembership,
   requestMembershipInfo,
   STAGE_LABEL,
   STAGE_TONE,
   validateTeamMembership,
+  type CmAgencyJoinRequest,
   type TeamJoinRequest,
 } from "@/lib/data/club/team-requests";
 import { fetchJoinableTeams, fetchMyJoinRequests, requestTeamMembershipAsPlayer } from "@/lib/data/player/team-requests";
@@ -79,6 +81,9 @@ export default function TeamRequestsPage() {
 
   if (ctx.organization.type === "club") {
     return <ClubValidationView clubId={ctx.organization.id} role={ctx.membership.role} />;
+  }
+  if (ctx.organization.type === "cm_agency") {
+    return <CmAgencyRequestsView />;
   }
   if (ctx.organization.type === "player" && ctx.organization.parentOrganizationId) {
     return <PlayerRequestView playerId={ctx.organization.id} clubId={ctx.organization.parentOrganizationId} />;
@@ -336,6 +341,203 @@ function ClubValidationView({ clubId, role }: { clubId: string; role: string }) 
               <Card key={req.id} className="flex items-center justify-between gap-3 px-4.5 py-3">
                 <span className="text-[13px] font-semibold">
                   {req.playerFirstName} {req.playerLastName} · {req.teamName ?? "—"}
+                </span>
+                <Badge tone={req.statut === "validee" ? "success" : "danger"}>{req.statut === "validee" ? "Validée" : "Refusée"}</Badge>
+              </Card>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+// ── CM SportVision (délégué ou accès total) ─────────────────────────────────
+
+// Vue transversale (22/08/2026, demande Fouka) : un CM SportVision (organisation cm_agency, voir
+// migration-cm-agency-super-access-staff.sql) voit ici les demandes d'affiliation de TOUS les
+// clubs auxquels il a accès — délégation cm_agency_club_access par club, ou accès total
+// (cm_super_access). Contrairement à ClubValidationView, aucun rôle club_members à interpréter :
+// is_club_admin() et is_team_educateur() reconnaissent déjà ce chemin (RLS), donc les actions
+// "Confirmer"/"Valider"/"Refuser" sont proposées sans distinction — le serveur retranche lui-même
+// ce qui n'est pas autorisé (ex. valider avant confirmation éducateur en mode double).
+function CmAgencyRequestsView() {
+  const [requests, setRequests] = useState<CmAgencyJoinRequest[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [motif, setMotif] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  async function reload() {
+    try {
+      setRequests(await fetchCmAgencyJoinRequests(createClient()));
+    } catch {
+      setLoadError(true);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadError(false);
+    fetchCmAgencyJoinRequests(createClient())
+      .then((rows) => {
+        if (!cancelled) setRequests(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function runAction(action: () => Promise<void>, requestId: string) {
+    setBusyId(requestId);
+    setActionError(null);
+    try {
+      await action();
+      await reload();
+      setRejectingId(null);
+      setMotif("");
+    } catch (err) {
+      setActionError(extractErrorMessage(err, "Action impossible."));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (loadError) {
+    return (
+      <Card className="p-8 text-center text-[13.5px] font-semibold text-danger-fg">
+        Impossible de charger les demandes d&apos;affiliation. Réessayez plus tard.
+      </Card>
+    );
+  }
+
+  if (requests === null) {
+    return <div className="py-16 text-center text-[13px] text-text-soft">Chargement…</div>;
+  }
+
+  const pending = requests.filter((r) => r.statut !== "validee" && r.statut !== "refusee");
+  const done = requests.filter((r) => r.statut === "validee" || r.statut === "refusee");
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <div className="text-[12px] font-bold text-text-soft">Clubs suivis</div>
+        <h1 className="mt-1.5 text-[29px] font-extrabold leading-tight tracking-tight">
+          {pending.length} demande{pending.length > 1 ? "s" : ""} d&apos;affiliation en attente
+        </h1>
+        <p className="mt-1.5 max-w-xl text-[13.5px] text-text-soft">
+          Toutes les demandes des clubs auxquels vous avez accès, tous clubs confondus.
+        </p>
+      </div>
+
+      {actionError && (
+        <Card className="border-danger-fg/20 bg-danger-bg px-5 py-3.5 text-[13px] font-semibold text-danger-fg">{actionError}</Card>
+      )}
+
+      {pending.length === 0 ? (
+        <Card className="p-8 text-center text-[13.5px] text-text-soft">Aucune demande en attente.</Card>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {pending.map((req) => {
+            const stage = deriveStage(req);
+            const busy = busyId === req.id;
+            const canConfirm = stage === "attente_educateur";
+            const canValidate = stage === "attente_dirigeant";
+
+            return (
+              <Card key={req.id} className="p-4.5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[14.5px] font-extrabold tracking-tight">
+                      {req.playerFirstName ?? "—"} {req.playerLastName ?? ""}
+                    </div>
+                    <div className="mt-0.5 text-[12.5px] text-text-soft">
+                      {req.clubName ?? "Club"} · {req.teamName ?? "Équipe non renseignée"} · demandé le{" "}
+                      {new Date(req.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long" })}
+                    </div>
+                  </div>
+                  <Badge tone={STAGE_TONE[stage]}>{STAGE_LABEL[stage]}</Badge>
+                </div>
+
+                {rejectingId === req.id ? (
+                  <div className="mt-3.5 flex flex-col gap-2 border-t border-divider pt-3.5">
+                    <input
+                      value={motif}
+                      onChange={(e) => setMotif(e.target.value)}
+                      placeholder="Motif du refus (optionnel)"
+                      className="h-10 rounded-sv border border-border-strong bg-input-bg px-3 text-[13px] outline-none focus-visible:border-brand-blue"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="danger"
+                        className="h-9 px-3.5 text-[12.5px]"
+                        disabled={busy}
+                        loading={busy}
+                        onClick={() => runAction(() => rejectTeamMembership(createClient(), req.id, motif || undefined), req.id)}
+                      >
+                        Confirmer le refus
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="h-9 px-3.5 text-[12.5px]"
+                        onClick={() => {
+                          setRejectingId(null);
+                          setMotif("");
+                        }}
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-divider pt-3.5">
+                    {canConfirm && (
+                      <Button
+                        variant="primary"
+                        className="h-9 px-3.5 text-[12.5px]"
+                        disabled={busy}
+                        loading={busy}
+                        onClick={() => runAction(() => confirmRequestEducateur(createClient(), req.id), req.id)}
+                      >
+                        Confirmer (éducateur)
+                      </Button>
+                    )}
+                    {canValidate && (
+                      <Button
+                        variant="primary"
+                        className="h-9 px-3.5 text-[12.5px]"
+                        disabled={busy}
+                        loading={busy}
+                        onClick={() => runAction(() => validateTeamMembership(createClient(), req.id), req.id)}
+                      >
+                        Valider l&apos;affiliation
+                      </Button>
+                    )}
+                    <Button variant="secondary" className="h-9 px-3.5 text-[12.5px]" onClick={() => setRejectingId(req.id)}>
+                      Refuser
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {done.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-[12.5px] font-bold text-text-soft">
+            {done.length} demande{done.length > 1 ? "s" : ""} déjà traitée{done.length > 1 ? "s" : ""}
+          </summary>
+          <div className="mt-3 flex flex-col gap-2">
+            {done.map((req) => (
+              <Card key={req.id} className="flex items-center justify-between gap-3 px-4.5 py-3">
+                <span className="text-[13px] font-semibold">
+                  {req.playerFirstName} {req.playerLastName} · {req.clubName ?? "—"} · {req.teamName ?? "—"}
                 </span>
                 <Badge tone={req.statut === "validee" ? "success" : "danger"}>{req.statut === "validee" ? "Validée" : "Refusée"}</Badge>
               </Card>
