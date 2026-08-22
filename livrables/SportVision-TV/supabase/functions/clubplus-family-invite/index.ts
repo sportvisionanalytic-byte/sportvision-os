@@ -25,6 +25,11 @@
 // coach/resp_equipe ACTIF restreint aux équipes listées dans son propre
 // club_members.teams (jamais de confiance dans un rôle/équipe envoyé par le
 // client — vérifié ici via une requête service-role sur club_members).
+// Un CM délégué (cm_agency_club_access, migration-connect-v80) a aussi accès
+// complet (toute équipe, comme un admin) — décision Fouka du 22/08/2026,
+// même niveau que is_club_admin()/is_team_educateur() étendus côté SQL
+// (migration-cm-delegation-droits-etendus.sql). Un CM délégué n'a en général
+// aucune ligne club_members, donc vérifié indépendamment.
 // Idempotent : une invitation 'envoyee' déjà existante pour le même
 // club+email(+équipe pour un joueur) est renvoyée telle quelle.
 //
@@ -125,15 +130,38 @@ serve(async (req) => {
       .eq("club_id", clubId)
       .eq("status", "actif")
       .maybeSingle();
-    if (!callerMember) return json({ error: "Non autorisé sur ce club." }, 403);
 
-    if (callerMember.role !== "admin") {
-      if (!["coach", "resp_equipe"].includes(callerMember.role)) {
+    // CM délégué (cm_agency_club_access) : accès complet équivalent admin, toute équipe.
+    // Vérifié indépendamment de club_members (un CM délégué n'y a généralement pas de ligne).
+    let isDelegatedCm = false;
+    if (!callerMember || callerMember.role !== "admin") {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: delegations } = await admin
+        .from("cm_agency_club_access")
+        .select("cm_agency_org_id, expires_at")
+        .eq("club_id", clubId);
+      for (const d of delegations || []) {
+        if (d.expires_at && d.expires_at < today) continue;
+        const { data: membership } = await admin
+          .from("memberships")
+          .select("id")
+          .eq("organization_id", d.cm_agency_org_id)
+          .eq("user_id", caller.id)
+          .eq("status", "actif")
+          .maybeSingle();
+        if (membership) { isDelegatedCm = true; break; }
+      }
+    }
+
+    if (!callerMember && !isDelegatedCm) return json({ error: "Non autorisé sur ce club." }, 403);
+
+    if (!isDelegatedCm && callerMember!.role !== "admin") {
+      if (!["coach", "resp_equipe"].includes(callerMember!.role)) {
         return json({ error: "Seuls un administrateur ou un éducateur/responsable d'équipe peuvent inviter." }, 403);
       }
       if (!teamId) return json({ error: "Équipe obligatoire pour un éducateur." }, 400);
       const { data: team } = await admin.from("club_teams").select("name, club_id").eq("id", teamId).maybeSingle();
-      const callerTeams: string[] = Array.isArray(callerMember.teams) ? callerMember.teams : [];
+      const callerTeams: string[] = Array.isArray(callerMember!.teams) ? callerMember!.teams : [];
       if (!team || team.club_id !== clubId || !callerTeams.includes(team.name)) {
         return json({ error: "Vous ne pouvez inviter que pour vos propres équipes." }, 403);
       }
