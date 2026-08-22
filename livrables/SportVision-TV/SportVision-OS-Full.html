@@ -729,28 +729,28 @@ const NAV={
     {id:'incidents',lb:'Incidents',ic:'alert'},
     {type:'sep',lb:'Finances & Documents'},
     {id:'fin',lb:'Finances',ic:'fin'},
-    {id:'resultat',lb:'Compte de résultat',ic:'fin'},
-    {id:'rentabilite',lb:'Rentabilité',ic:'fin'},
-    {id:'commissions',lb:'Commissions',ic:'fin'},
-    {id:'immobilisations',lb:'Immobilisations',ic:'kits'},
-    {id:'budgets',lb:'Budgets & prévisions',ic:'fin'},
-    {id:'tva',lb:'TVA & provisions',ic:'fin'},
-    {id:'rapprochement',lb:'Rapprochement',ic:'check'},
-    {id:'factures',lb:'Factures',ic:'doc'},
-    {id:'acomptes',lb:'Acomptes',ic:'fin'},
-    {id:'impayes',lb:'Impayés',ic:'alert'},
-    {id:'avoirs',lb:'Avoirs & remises',ic:'doc'},
-    {id:'encaissements',lb:'Encaissements Stripe',ic:'fin'},
-    {id:'depenses',lb:'Dépenses',ic:'fin'},
-    {id:'frais',lb:'Frais & km',ic:'fin'},
-    {id:'paiements',lb:'Paiements équipe',ic:'fin'},
-    {id:'rem',lb:'Rémunérations',ic:'col'},
-    {id:'clotures',lb:'Clôtures mensuelles',ic:'check'},
-    {id:'export',lb:'Exports comptables',ic:'export'},
-    {id:'fec',lb:'Export FEC',ic:'export'},
-    {id:'audit',lb:"Journal d'audit",ic:'check'},
-    {id:'rapport',lb:'Rapport mensuel',ic:'fin'},
-    {id:'documents',lb:'Centre documentaire',ic:'doc'},
+    {id:'resultat',lb:'Compte de résultat',ic:'fin',hidden:true},
+    {id:'rentabilite',lb:'Rentabilité',ic:'fin',hidden:true},
+    {id:'commissions',lb:'Commissions',ic:'fin',hidden:true},
+    {id:'immobilisations',lb:'Immobilisations',ic:'kits',hidden:true},
+    {id:'budgets',lb:'Budgets & prévisions',ic:'fin',hidden:true},
+    {id:'tva',lb:'TVA & provisions',ic:'fin',hidden:true},
+    {id:'rapprochement',lb:'Rapprochement',ic:'check',hidden:true},
+    {id:'factures',lb:'Factures',ic:'doc',hidden:true},
+    {id:'acomptes',lb:'Acomptes',ic:'fin',hidden:true},
+    {id:'impayes',lb:'Impayés',ic:'alert',hidden:true},
+    {id:'avoirs',lb:'Avoirs & remises',ic:'doc',hidden:true},
+    {id:'encaissements',lb:'Encaissements Stripe',ic:'fin',hidden:true},
+    {id:'depenses',lb:'Dépenses',ic:'fin',hidden:true},
+    {id:'frais',lb:'Frais & km',ic:'fin',hidden:true},
+    {id:'paiements',lb:'Paiements équipe',ic:'fin',hidden:true},
+    {id:'rem',lb:'Rémunérations',ic:'col',hidden:true},
+    {id:'clotures',lb:'Clôtures mensuelles',ic:'check',hidden:true},
+    {id:'export',lb:'Exports comptables',ic:'export',hidden:true},
+    {id:'fec',lb:'Export FEC',ic:'export',hidden:true},
+    {id:'audit',lb:"Journal d'audit",ic:'check',hidden:true},
+    {id:'rapport',lb:'Rapport mensuel',ic:'fin',hidden:true},
+    {id:'documents',lb:'Centre documentaire',ic:'doc',hidden:true},
     {type:'sep',lb:'Équipe & Espace'},
     {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
     {id:'equipe',lb:'Mon équipe',ic:'col'},
@@ -965,6 +965,37 @@ const NAV={
     {id:'set',lb:'Paramètres',ic:'set'},
   ],
 };
+
+// ── Regroupement menu Finances (22/08, simplification demandée par Fouka) ──
+// Le groupe "Finances & Documents" comptait 23 items visibles directement dans le menu
+// (sur 47 au total pour le rôle admin) — de loin le plus chargé (audit du 21/08). Plutôt
+// que de les supprimer, ils passent en `hidden:true` (voir NAV admin ci-dessus) : ils
+// restent des entrées valides de NAV (titre de page, CTA, badges continuent de
+// fonctionner exactement comme avant si on y accède), simplement renderSidebarNav() ne
+// les affiche plus comme boutons. Le seul point d'entrée visible redevient l'écran
+// "Finances" (id 'fin'), dont le template ci-dessus a été complété avec cette grille de
+// raccourcis groupée par thème — un clic appelle switchView() normalement, donc l'écran
+// cible se comporte à l'identique de son ancien accès direct depuis le menu.
+const FIN_HUB_GROUPES=[
+  {titre:'Facturation & paiements',items:[['factures','Factures'],['acomptes','Acomptes'],['impayes','Impayés'],['avoirs','Avoirs & remises'],['encaissements','Encaissements Stripe']]},
+  {titre:'Dépenses & paie',items:[['depenses','Dépenses'],['frais','Frais & km'],['paiements','Paiements équipe'],['rem','Rémunérations']]},
+  {titre:'Analyse',items:[['resultat','Compte de résultat'],['rentabilite','Rentabilité'],['commissions','Commissions'],['budgets','Budgets & prévisions'],['tva','TVA & provisions']]},
+  {titre:'Clôtures & exports',items:[['rapprochement','Rapprochement'],['clotures','Clôtures mensuelles'],['export','Exports comptables'],['fec','Export FEC'],['audit',"Journal d'audit"]]},
+  {titre:'Autres',items:[['immobilisations','Immobilisations'],['rapport','Rapport mensuel'],['documents','Centre documentaire']]},
+];
+function finHubRaccourcisHTML(){
+  return `<div class="cd" style="margin-bottom:13px"><div class="cd-h"><div class="cd-t">Accès rapide</div></div>
+    <div style="padding:14px 18px;display:flex;flex-direction:column;gap:14px">
+      ${FIN_HUB_GROUPES.map(g=>`
+        <div>
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:7px">${g.titre}</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            ${g.items.map(([id,lb])=>`<button class="btn bg2 bs" onclick="switchView('${id}')">${lb}</button>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
 
 // ── HELPERS ──────────────────────────────
 function finBars(id,h){
@@ -1198,6 +1229,7 @@ const VIEWS={
       <div class="fs"><div class="fs-l">CA total facturé</div><div class="fs-v" id="fin-ca-total">—</div></div>
       <div class="fs"><div class="fs-l">En attente paiement</div><div class="fs-v" id="fin-en-attente" style="color:var(--wa)">—</div></div>
     </div>
+    ${finHubRaccourcisHTML()}
     <div class="cd"><div class="cd-h"><div class="cd-t">Prestations avec montant</div></div>
       <div id="fin-real"><div style="display:flex;align-items:center;justify-content:center;height:160px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>`,
@@ -21266,11 +21298,15 @@ function renderSidebarNav(role,activeId){
         </button>
         <div class="nav-grp-items">`;
       inGroup=true;
-    }else{
+    }else if(!item.hidden){
       // item.modal (ex. demandesclub) : ouvre une modale directement au lieu de switchView —
       // pour un écran de traitement qui n'a pas besoin d'occuper tout l'espace de contenu
       // (suit le patron des modaux existants type modalInviterClubPlus), voir demandesclub
       // ci-dessous. Jamais marqué "on" (aucune vue associée à activer/désactiver).
+      // item.hidden (22/08, regroupement Finances) : l'entrée reste dans NAV — titre de page,
+      // CTA (VIEW_CTA) et badges continuent de fonctionner normalement si on y accède via
+      // finHubRaccourcisHTML() — seul le bouton de sidebar n'est pas rendu, pour désencombrer
+      // le menu sans dupliquer ni supprimer aucun écran existant.
       const action=item.modal?`${item.modal}()`:`switchView('${item.id}')`;
       html+=`<button class="ni${item.id===activeId?' on':''}" data-id="${item.id}" onclick="${action}">
         <span class="ni-ic">${IC[item.ic]||''}</span>
