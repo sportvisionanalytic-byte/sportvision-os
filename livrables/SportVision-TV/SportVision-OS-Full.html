@@ -4694,7 +4694,7 @@ function modalModifierClient(idx){
         ${canEdit?`<button onclick="supprimerClient('${c.id}')" style="padding:7px 14px;font-size:12px;background:rgba(240,68,94,.1);border:1px solid rgba(240,68,94,.25);border-radius:var(--rp);color:var(--er);cursor:pointer">Supprimer</button>`:'<div></div>'}
         <div style="display:flex;gap:10px">
           <button class="btn bg2" onclick="closeModal()">Annuler</button>
-          ${['admin','sec','com'].includes(S.role)?`<button class="btn bg2" onclick="modalInviterClubPlus('${c.id}','${escJs(c.nom)}')" title="Générer un lien privé d'activation Club+ pré-relié à ce client">Inviter à activer Club+</button>`:''}
+          ${['admin','sec','com'].includes(S.role)?(()=>{const isFC=_offreDuClient(c)==='full_communication';return`<button class="btn bg2" onclick="modalInviterClubPlus('${c.id}','${escJs(c.nom)}',${isFC})" title="${isFC?'Club+ est inclus dans le contrat Full Communication de ce client, sans coût supplémentaire':'Générer un lien privé d’activation Club+ pré-relié à ce client'}">${isFC?'Activer Club+ (inclus)':'Inviter à activer Club+'}</button>`;})():''}
           ${['admin','sec','com'].includes(S.role)?`<button class="btn bg2" onclick="modalCreerOrgEventCmAgency('${c.id}','${escJs(c.nom)}')" title="Générer un lien privé de création d'espace Connect événement ou agence CM, pré-relié à ce client">Créer espace événement/agence</button>`:''}
           ${['admin','sec','com'].includes(S.role)?`<button class="btn bg2" onclick="modalChecklistEvenement('${c.id}','${escJs(c.nom)}')" title="Cocher/décocher la checklist avant/jour J/après de l'espace événement relié à ce client">Checklist événement</button>`:''}
           ${canEdit?`<button class="btn bg2" onclick="closeModal();modalNouvellePrestation('${c.id}')" title="Créer une prestation pour ce client">+ Prestation</button>
@@ -4729,7 +4729,7 @@ async function chargerParcoursClient(clientId){
   try{
     const [devisR,contratsR,clubR]=await Promise.all([
       sbFetch('devis?select=id&client_id=eq.'+clientId+'&limit=1').catch(()=>[]),
-      sbFetch('contrats?select=id,statut,signature_statut&client_id=eq.'+clientId+'&order=created_at.desc').catch(()=>[]),
+      sbFetch('contrats?select=id,statut,signature_statut,type_contrat&client_id=eq.'+clientId+'&order=created_at.desc').catch(()=>[]),
       sbFetch('clubs?select=id&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>[]),
     ]);
     const contrats=Array.isArray(contratsR)?contratsR:[];
@@ -4737,6 +4737,7 @@ async function chargerParcoursClient(clientId){
     const hasContrat=contrats.length>0;
     const isSigne=contrats.some(k=>k.statut==='actif'||k.signature_statut==='signee');
     const hasCompte=Array.isArray(clubR)&&clubR.length>0;
+    const isFullCom=contrats.some(k=>k.type_contrat==='full_communication');
     const done={devis:hasDevis,contrat:hasContrat,signe:isSigne,compte:hasCompte};
     // Priorité au contrat s'il existe déjà (un contrat peut être créé directement sans devis
     // préalable, comme V340 SC — sinon la suggestion "Créer un devis" resterait affichée à tort
@@ -4744,7 +4745,7 @@ async function chargerParcoursClient(clientId){
     let nextLabel=null,nextFn=null;
     if(hasContrat){
       if(!isSigne){nextLabel='→ Envoyer en signature';const c0=contrats[0];nextFn=c0?`demanderSignatureDoc('contrat','${c0.id}','Contrat')`:null;}
-      else if(!hasCompte){nextLabel='→ Activer Club+';const nom=(document.getElementById('fce-nom')?.value||'').replace(/'/g,"\\'");nextFn=`modalInviterClubPlus('${clientId}','${nom}')`;}
+      else if(!hasCompte){nextLabel=isFullCom?'→ Activer Club+ (inclus)':'→ Activer Club+';const nom=(document.getElementById('fce-nom')?.value||'').replace(/'/g,"\\'");nextFn=`modalInviterClubPlus('${clientId}','${nom}',${isFullCom})`;}
     }else if(hasDevis){nextLabel='→ Créer le contrat';nextFn=`closeModal();modalNouveauContrat('${clientId}')`;}
     else{nextLabel='→ Créer un devis';nextFn=`closeModal();modalNouveauDevis('${clientId}')`;}
     el.innerHTML=`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:${nextLabel?'10px':'0'}">
@@ -5018,23 +5019,30 @@ async function supprimerOrganigrammeEntry(id,clientId){
 // Aucun paiement n'est déclenché par l'activation : le club arrive en pilot_mode
 // (accès offert décidé ici), la souscription payante reste un acte distinct.
 let _lienActivationClubPlus='';
-function modalInviterClubPlus(clientId,clientNom){
+// isFullCom (ajouté 22/08) : pour un client Full Communication, Club+ est inclus sans coût
+// supplémentaire (décision Fouka, cf. commit "Club+ inclus dans Full Communication") — le
+// libellé générique "Inviter à activer Club+" laissait penser à tort qu'il fallait choisir/payer
+// une formule. Verrouille la formule sur Gratuit et le dit explicitement plutôt que de laisser
+// le staff choisir une formule payante en double-emploi avec un contrat déjà facturé.
+function modalInviterClubPlus(clientId,clientNom,isFullCom){
   _lienActivationClubPlus='';
   const lbl='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
-  openModal(`<div class="mh"><div class="mt">Inviter à activer Club+</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+  openModal(`<div class="mh"><div class="mt">${isFullCom?'Activer l\'accès Club+ (inclus)':'Inviter à activer Club+'}</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
     <div class="mb" style="display:flex;flex-direction:column;gap:12px">
       <div style="font-size:12px;color:var(--t3)">Client : <b style="color:var(--t1)">${esc(clientNom)}</b></div>
+      ${isFullCom?`<div style="font-size:11.5px;color:var(--ok);line-height:1.5;padding:10px 12px;background:rgba(46,204,138,.08);border-radius:var(--rb);border:1px solid rgba(46,204,138,.25)">Inclus dans le contrat Full Communication de ce client, sans coût supplémentaire — la formule Club+ Gratuit est appliquée automatiquement.</div>`:''}
       <div><label style="${lbl}">Nom du club pré-rempli</label>
         <input id="iac-nom" type="text" class="l-inp" style="height:38px" value="${esc(clientNom)}">
         <div style="font-size:11px;color:var(--t3);margin-top:4px">Le club pourra le corriger au moment de l'activation.</div>
       </div>
+      ${isFullCom?`<input type="hidden" id="iac-plan" value="free">`:`
       <div><label style="${lbl}">Formule ouverte</label>
         <select id="iac-plan" class="l-inp" style="height:38px">
           <option value="free">Club+ Gratuit — 0 crédit / mois</option>
           <option value="club">Club+ Start — 49 €/mois (10 crédits)</option>
           <option value="performance">Club+ Performance — 129 €/mois (40 crédits)</option>
         </select>
-      </div>
+      </div>`}
       <div style="font-size:11.5px;color:var(--t3);line-height:1.5;padding:10px 12px;background:var(--s2);border-radius:var(--rb);border:1px solid var(--b1)">
         Le lien généré est privé et valable 30 jours. Il donne accès aux devis, factures et contrats de ce client. Il est envoyé automatiquement à l'e-mail du contact — vous pouvez aussi le copier pour le transmettre vous-même (WhatsApp, en main propre…). Aucun prélèvement n'est déclenché, le club est ouvert en accès pilote.
       </div>
