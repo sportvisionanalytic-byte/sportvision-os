@@ -4578,9 +4578,13 @@ function modalModifierClient(idx){
         <div id="fce-credits" style="font-size:11.5px;color:var(--t3)">Chargement…</div>
       </div>
       <div id="fce-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div id="fce-parcours" style="border-top:1px solid var(--b1);padding-top:14px;margin-top:2px">
+        <div style="font-size:12px;color:var(--t3)">Chargement du parcours…</div>
+      </div>
       <div id="fce-tabs" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
         <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
           <button id="fce-tab-pres" onclick="fceShowTab('pres')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Prestations</button>
+          <button id="fce-tab-contrats" onclick="fceShowTab('contrats')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Contrats</button>
           <button id="fce-tab-medias" onclick="fceShowTab('medias')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Médias</button>
           <button id="fce-tab-rel" onclick="fceShowTab('rel')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Suivi contacts</button>
           <button id="fce-tab-tl" onclick="fceShowTab('tl')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Historique</button>
@@ -4588,6 +4592,9 @@ function modalModifierClient(idx){
         </div>
         <div id="fce-panel-pres">
           <div id="fce-hist"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+        </div>
+        <div id="fce-panel-contrats" style="display:none">
+          <div id="fce-contrats-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
         </div>
         <div id="fce-panel-medias" style="display:none">
           <div id="fce-medias-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
@@ -4618,6 +4625,83 @@ function modalModifierClient(idx){
   if(canAssignCm)chargerCmAssignSelect(c.id,c.cm_id);
   chargerCreditsProjetClient(c.id);
   window._fceClientId=c.id;
+  chargerParcoursClient(c.id);
+}
+
+// ── Frise de parcours client (ajouté 22/08, simplification demandée par Fouka) ──
+// Avant ceci, savoir où en est UN client précis (devis envoyé ? contrat créé ? signé ?
+// compte Club+ activé ?) obligeait à naviguer entre 4 écrans séparés (Devis, Contrats,
+// suivi Yousign, Comptes Club+/Connect) sans aucun résumé au même endroit. Lecture
+// seule + un seul CTA vers la prochaine étape logique — "Activer Club+" reste toujours
+// accessible dans le pied de la fiche (décision Fouka : certains clubs l'activent avant
+// même d'avoir un contrat formalisé, ex. Club+ Gratuit), donc cette frise ne bloque rien,
+// elle guide seulement.
+const PARCOURS_ETAPES=[
+  {k:'devis',lb:'Devis'},
+  {k:'contrat',lb:'Contrat'},
+  {k:'signe',lb:'Signé'},
+  {k:'compte',lb:'Compte activé'},
+];
+async function chargerParcoursClient(clientId){
+  const el=document.getElementById('fce-parcours');
+  if(!el)return;
+  try{
+    const [devisR,contratsR,clubR]=await Promise.all([
+      sbFetch('devis?select=id&client_id=eq.'+clientId+'&limit=1').catch(()=>[]),
+      sbFetch('contrats?select=id,statut,signature_statut&client_id=eq.'+clientId+'&order=created_at.desc').catch(()=>[]),
+      sbFetch('clubs?select=id&portail_client_id=eq.'+clientId+'&limit=1').catch(()=>[]),
+    ]);
+    const contrats=Array.isArray(contratsR)?contratsR:[];
+    const hasDevis=Array.isArray(devisR)&&devisR.length>0;
+    const hasContrat=contrats.length>0;
+    const isSigne=contrats.some(k=>k.statut==='actif'||k.signature_statut==='signee');
+    const hasCompte=Array.isArray(clubR)&&clubR.length>0;
+    const done={devis:hasDevis,contrat:hasContrat,signe:isSigne,compte:hasCompte};
+    // Priorité au contrat s'il existe déjà (un contrat peut être créé directement sans devis
+    // préalable, comme V340 SC — sinon la suggestion "Créer un devis" resterait affichée à tort
+    // même une fois le contrat déjà en place).
+    let nextLabel=null,nextFn=null;
+    if(hasContrat){
+      if(!isSigne){nextLabel='→ Envoyer en signature';const c0=contrats[0];nextFn=c0?`demanderSignatureDoc('contrat','${c0.id}','Contrat')`:null;}
+      else if(!hasCompte){nextLabel='→ Activer Club+';const nom=(document.getElementById('fce-nom')?.value||'').replace(/'/g,"\\'");nextFn=`modalInviterClubPlus('${clientId}','${nom}')`;}
+    }else if(hasDevis){nextLabel='→ Créer le contrat';nextFn=`closeModal();modalNouveauContrat('${clientId}')`;}
+    else{nextLabel='→ Créer un devis';nextFn=`closeModal();modalNouveauDevis('${clientId}')`;}
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:${nextLabel?'10px':'0'}">
+      ${PARCOURS_ETAPES.map((e,i)=>`
+        <span style="display:flex;align-items:center;gap:6px">
+          <span style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;background:${done[e.k]?'rgba(46,204,138,.12)':'rgba(255,255,255,.05)'};color:${done[e.k]?'var(--ok)':'var(--t3)'};border:1px solid ${done[e.k]?'rgba(46,204,138,.3)':'var(--b1)'}">${done[e.k]?'✓':'○'} ${e.lb}</span>
+          ${i<PARCOURS_ETAPES.length-1?`<span style="color:var(--b1);font-size:11px">→</span>`:''}
+        </span>`).join('')}
+    </div>
+    ${nextLabel&&nextFn?`<button class="btn bp bs" onclick="${nextFn}">${nextLabel}</button>`:`<div style="font-size:11.5px;color:var(--ok);font-weight:600">✓ Parcours complet</div>`}`;
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Parcours indisponible.</div>';}
+}
+
+// Onglet Contrats de la fiche client — liste + création directe préremplie (fini l'aller-
+// retour vers l'écran Contrats séparé pour un contrat qu'on vient déjà d'ouvrir ici).
+async function loadClientContrats(clientId){
+  const el=document.getElementById('fce-contrats-list');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  try{
+    const data=await sbFetch('contrats?select=id,type_contrat,statut,signature_statut,montant_mensuel,date_debut,date_fin&client_id=eq.'+clientId+'&order=created_at.desc');
+    const list=Array.isArray(data)?data:[];
+    const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+    const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+    const rows=list.length?list.map(c=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;background:var(--s2);border-radius:8px;margin-bottom:6px">
+        <div style="font-size:12px">
+          <span style="font-weight:600;color:var(--t1)">${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat}</span>
+          <span style="color:var(--t3)"> · ${c.statut||'—'}${c.montant_mensuel?' · '+fmt(c.montant_mensuel)+'/mois':''} · ${fd(c.date_debut)} → ${c.date_fin?fd(c.date_fin):'sans échéance'}</span>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          <button class="btn bg2 bs" onclick="genererContratPDF('${c.id}')">PDF</button>
+          <button class="btn bg2 bs" onclick="envoyerContratParEmail('${c.id}')">✉</button>
+          <button class="btn bg2 bs" onclick="modalEditerContrat('${c.id}')">Ouvrir</button>
+        </div>
+      </div>`).join(''):'<div style="font-size:12px;color:var(--t3);margin-bottom:8px">Aucun contrat pour ce client.</div>';
+    el.innerHTML=rows+`<button class="btn bp bs" style="margin-top:6px" onclick="closeModal();modalNouveauContrat('${clientId}')">+ Nouveau contrat</button>`;
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
 // Crédits Connect d'un espace Projet (organizations.credits_balance/credits_reserved,
@@ -5429,7 +5513,7 @@ async function chargerPresByClient(clientId){
 function fceShowTab(tab){
   const on='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
   const off='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
-  ['pres','medias','rel','tl','equipe'].forEach(t=>{
+  ['pres','contrats','medias','rel','tl','equipe'].forEach(t=>{
     const b=document.getElementById('fce-tab-'+t);const p=document.getElementById('fce-panel-'+t);
     if(b)b.style.cssText=t===tab?on:off;
     if(p)p.style.display=t===tab?'':'none';
@@ -5438,6 +5522,7 @@ function fceShowTab(tab){
   if(tab==='rel'&&window._fceClientId)loadClientContacts(window._fceClientId);
   if(tab==='medias'&&window._fceClientId)loadClientMedias(window._fceClientId);
   if(tab==='equipe'&&window._fceClientId)loadClientEquipe(window._fceClientId);
+  if(tab==='contrats'&&window._fceClientId)loadClientContrats(window._fceClientId);
 }
 
 // Onglet Équipe : rôster client_affiliations pour ce client — lecture seule
@@ -11453,10 +11538,10 @@ function dvEditorHTML(tvaPct,remisePct){
 }
 function dvOpenWide(){const w=document.querySelector('#sv-modal > div');if(w)w.style.width='min(680px,calc(100vw - 24px))';}
 
-function modalNouveauDevis(){
+function modalNouveauDevis(prefilClientId){
   sbFetch('clients?select=id,nom,promo_bienvenue_disponible&order=nom.asc').then(clients=>{
     window._dvClientsPromoMap=Object.fromEntries((clients||[]).map(c=>[c.id,!!c.promo_bienvenue_disponible]));
-    const opts=(clients||[]).map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+    const opts=(clients||[]).map(c=>`<option value="${c.id}"${prefilClientId&&c.id===prefilClientId?' selected':''}>${esc(c.nom)}</option>`).join('');
     const today=ymdLocal();
     _dvLignes=[{libelle:'',details:'',qte:1,pu:0}];
     openModal(`<div class="mh"><div class="mt">Nouveau devis</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
@@ -22536,7 +22621,9 @@ async function loadContrats(){
   </table></div>`;
 }
 
-function modalNouveauContrat(){
+function modalNouveauContrat(prefilClientId){
+  const today=ymdLocal();
+  const fin1an=(()=>{const d=new Date();d.setFullYear(d.getFullYear()+1);return ymdLocal(d);})();
   openModal(`<div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:20px">Nouveau contrat</div>
     <div id="ncf-err" style="display:none;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);padding:10px;font-size:12px;color:var(--er);margin-bottom:12px"></div>
     <div style="display:flex;flex-direction:column;gap:10px">
@@ -22566,9 +22653,9 @@ function modalNouveauContrat(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">DATE DÉBUT</label>
-          <input id="nc-debut" type="date" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box"></div>
+          <input id="nc-debut" type="date" value="${today}" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box"></div>
         <div><label style="font-size:11px;font-weight:600;color:var(--t3);display:block;margin-bottom:4px">DATE FIN</label>
-          <input id="nc-fin" type="date" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box"></div>
+          <input id="nc-fin" type="date" value="${fin1an}" style="width:100%;height:38px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t1);padding:0 10px;font-size:13px;box-sizing:border-box"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <input type="checkbox" id="nc-auto" style="width:15px;height:15px;accent-color:var(--acc)">
@@ -22594,7 +22681,7 @@ function modalNouveauContrat(){
   sbFetch('clients?select=id,nom&order=nom.asc').then(r=>{
     const sel=document.getElementById('nc-client');if(!sel)return;
     const list=Array.isArray(r)?r:[];
-    sel.innerHTML=`<option value="">Sélectionner un client...</option>${list.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('')}`;
+    sel.innerHTML=`<option value="">Sélectionner un client...</option>${list.map(c=>`<option value="${c.id}"${prefilClientId&&c.id===prefilClientId?' selected':''}>${esc(c.nom)}</option>`).join('')}`;
   });
 }
 
