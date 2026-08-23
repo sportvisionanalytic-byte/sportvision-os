@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
@@ -123,9 +124,9 @@ export default function ResetPasswordPage() {
               <AlertCircle className="mt-0.5 h-4 w-4 flex-none text-danger-fg" aria-hidden />
               <p className="text-[13px] font-semibold leading-relaxed text-danger-fg">{linkError}</p>
             </div>
-            <a href="/auth/forgot" className="text-[13px] font-bold text-brand-blue-electric hover:underline">
+            <Link href="/auth/forgot" className="text-[13px] font-bold text-brand-blue-electric hover:underline">
               Demander un nouveau lien →
-            </a>
+            </Link>
           </div>
         )}
 
