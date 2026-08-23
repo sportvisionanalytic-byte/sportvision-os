@@ -10,9 +10,17 @@ import { createClient } from "@/lib/supabase/client";
 // Le client Supabase navigateur (createBrowserClient) détecte automatiquement la session de
 // récupération dans l'URL au chargement (code PKCE ou #access_token, comportement par défaut de
 // @supabase/ssr) et déclenche l'évènement PASSWORD_RECOVERY — pas de token à lire manuellement.
+//
+// 23/08/2026, bug signalé par Fouka (capture d'écran) : un lien expiré/déjà utilisé fait revenir
+// Supabase avec `#error=access_denied&error_code=otp_expired&error_description=...` dans le hash
+// — ni PASSWORD_RECOVERY ni une session ne se déclenchent alors, donc `ready` restait bloqué à
+// false pour toujours : la page affichait "Vérification du lien…" à l'infini, sans jamais dire à
+// l'utilisateur que son lien était mort. Le hash est maintenant lu explicitement au montage pour
+// distinguer ce cas et proposer un vrai message + un lien pour en redemander un.
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -20,6 +28,17 @@ export default function ResetPasswordPage() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const hashError = hash.get("error_description") || hash.get("error");
+    if (hashError) {
+      setLinkError(
+        hash.get("error_code") === "otp_expired"
+          ? "Ce lien a expiré. Demandez-en un nouveau ci-dessous."
+          : "Ce lien n'est plus valide. Demandez-en un nouveau ci-dessous.",
+      );
+      return;
+    }
+
     const supabase = createClient();
     const {
       data: { subscription },
@@ -75,7 +94,19 @@ export default function ResetPasswordPage() {
           Ce lien est à usage unique, valable une durée limitée.
         </p>
 
-        {!ready && !done && (
+        {linkError && (
+          <div className="mt-5 flex flex-col gap-3">
+            <div className="flex gap-2.5 rounded-xl border border-[#FDA29B] bg-danger-bg px-3.5 py-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-none text-danger-fg" aria-hidden />
+              <p className="text-[13px] font-semibold leading-relaxed text-danger-fg">{linkError}</p>
+            </div>
+            <a href="/auth/forgot" className="text-[13px] font-bold text-brand-blue-electric hover:underline">
+              Demander un nouveau lien →
+            </a>
+          </div>
+        )}
+
+        {!ready && !done && !linkError && (
           <p className="mt-5 text-[13.5px] text-text-soft">Vérification du lien…</p>
         )}
 
