@@ -80,9 +80,13 @@ serve(async (req) => {
       p_event_type: "password.reset.requested",
       p_template_key: "auth.password_reset",
       p_channel: "EMAIL",
-      // idempotency incluant l'heure (arrondie) : autorise une nouvelle demande
-      // plus tard, mais pas un doublon si le webhook/l'appel est rejoué aussitôt.
-      p_idempotency_key: "auth.password_reset:v1:" + linkData.user.id + ":" + new Date().toISOString().slice(0, 13),
+      // Bug réel trouvé le 23/08/2026 (Fouka, 340sportingclub@gmail.com "pas de mail reçu") :
+      // arrondi à l'HEURE entière bloquait toute 2e demande légitime dans la même heure
+      // (17:14 puis 17:27 UTC → même clé, `on conflict do nothing` dans enqueue_notification,
+      // donc silencieusement AUCUN e-mail envoyé pour la 2e demande, alors que l'écran affichait
+      // quand même "e-mail envoyé"). Fenêtre ramenée à 30s : assez pour absorber un vrai doublon
+      // (double clic, retry réseau immédiat) sans jamais bloquer une nouvelle demande sincère.
+      p_idempotency_key: "auth.password_reset:v1:" + linkData.user.id + ":" + Math.floor(Date.now() / 30000),
       p_recipient_email: email,
       p_recipient_user_id: linkData.user.id,
       p_entity_type: "collaborateur_ou_client",
