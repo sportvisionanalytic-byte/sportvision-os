@@ -89,7 +89,7 @@ export default function NotificationPreferencesPage() {
       </div>
 
       <p className="text-[12.5px] text-text-soft">
-        Le détail par catégorie ci-dessous n&apos;est pas encore modifiable depuis Connect (affiché à titre indicatif).
+        Le détail par catégorie ci-dessous n&apos;est pas encore modifiable depuis Club+ (affiché à titre indicatif).
         Les heures calmes, elles, sont réellement enregistrées.
       </p>
 

@@ -331,7 +331,7 @@ function OrganizationForm() {
         </p>
       )}
       <p className="text-[12.5px] text-text-soft">
-        Le nom du club n&apos;est pas modifiable depuis Connect. Contactez votre conseiller SportVision pour le mettre à jour.
+        Le nom du club n&apos;est pas modifiable depuis Club+. Contactez votre conseiller SportVision pour le mettre à jour.
       </p>
     </div>
   );

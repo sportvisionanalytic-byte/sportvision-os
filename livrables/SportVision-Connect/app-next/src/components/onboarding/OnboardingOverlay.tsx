@@ -64,7 +64,7 @@ const CLUB_PLUS_STEPS: StepContent[] = [
   { icon: Palette, title: "Logo et couleurs", body: "Vos couleurs de club habillent automatiquement vos créations Studio." },
   { icon: Users, title: "Vos équipes", body: "Ajoutez vos équipes pour retrouver leurs effectifs, calendriers et contenus au même endroit." },
   { icon: UserPlus, title: "Votre staff", body: "Invitez coachs et responsables : chacun ne voit que son périmètre." },
-  { icon: Award, title: "Vos sponsors", body: "Suivez leurs livrables et leur visibilité directement depuis Connect." },
+  { icon: Award, title: "Vos sponsors", body: "Suivez leurs livrables et leur visibilité directement depuis Club+." },
   { icon: ImageIcon, title: "Votre brand kit", body: "Le Studio préremplit vos créations avec votre logo, vos couleurs et vos sponsors." },
   { icon: PartyPopper, title: "Tout est prêt", body: "Votre espace Club+ est configuré. Lancez votre première demande depuis le Studio." },
 ];
@@ -93,7 +93,7 @@ function useOnboardingVariant() {
   ) {
     return { steps: CLUB_PLUS_STEPS, heading: "Onboarding Club+" };
   }
-  return { steps: GENERIC_STEPS, heading: "Bienvenue sur Connect" };
+  return { steps: GENERIC_STEPS, heading: "Bienvenue sur Club+" };
 }
 
 export function OnboardingOverlay() {

@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
             SV
           </span>
           <span className="text-[17px] font-extrabold tracking-tight">
-            SportVision<span className="font-medium text-brand-blue-pale"> Connect</span>
+            SportVision<span className="font-medium text-brand-blue-pale"> Club+</span>
           </span>
         </div>
 
