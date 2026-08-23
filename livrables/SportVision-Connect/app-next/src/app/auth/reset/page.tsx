@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 
 // /auth/reset — cible de redirect_url envoyée par request-password-reset (voir /auth/forgot).
-// Le client Supabase navigateur (createBrowserClient) détecte automatiquement la session de
-// récupération dans l'URL au chargement (code PKCE ou #access_token, comportement par défaut de
-// @supabase/ssr) et déclenche l'évènement PASSWORD_RECOVERY — pas de token à lire manuellement.
+// Le client Supabase navigateur (createBrowserClient) est censé détecter automatiquement la
+// session de récupération dans l'URL au chargement (détection basée sur #access_token) et
+// déclencher l'évènement PASSWORD_RECOVERY.
 //
 // 23/08/2026, bug signalé par Fouka (capture d'écran) : un lien expiré/déjà utilisé fait revenir
 // Supabase avec `#error=access_denied&error_code=otp_expired&error_description=...` dans le hash
@@ -17,6 +17,15 @@ import { createClient } from "@/lib/supabase/client";
 // false pour toujours : la page affichait "Vérification du lien…" à l'infini, sans jamais dire à
 // l'utilisateur que son lien était mort. Le hash est maintenant lu explicitement au montage pour
 // distinguer ce cas et proposer un vrai message + un lien pour en redemander un.
+//
+// Second bug trouvé juste après (même capture, lien cette fois valide et frais) : la page restait
+// QUAND MÊME bloquée sur "Vérification du lien…" — la détection automatique de
+// createBrowserClient ne se déclenchait pas de façon fiable (course possible entre le traitement
+// interne du hash et l'abonnement à onAuthStateChange, qui arrive une ligne après). Plutôt que de
+// dépendre de ce timing, access_token/refresh_token sont désormais lus directement dans le hash et
+// passés à supabase.auth.setSession() — chemin explicite et déterministe, l'ancien listener/
+// getSession restant en repli si jamais le hash ne contient pas ces deux champs (autre variante de
+// lien possible côté Supabase).
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -40,6 +49,20 @@ export default function ResetPasswordPage() {
     }
 
     const supabase = createClient();
+    const accessToken = hash.get("access_token");
+    const refreshToken = hash.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error: sessionError }) => {
+        if (sessionError) {
+          setLinkError("Ce lien n'est plus valide. Demandez-en un nouveau ci-dessous.");
+        } else {
+          setReady(true);
+        }
+      });
+      return;
+    }
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
