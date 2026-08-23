@@ -1,19 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
 import type { MembershipRole } from "@/lib/types";
 import { ROLE_LABELS } from "@/lib/types/settings";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
+// Résultat renvoyé par onInvite — inviteClubMember (data/club/users.ts) renvoie un mot de passe
+// en mode "direct" ; les autres types d'organisation (non branchés sur une vraie edge function
+// encore, voir users/page.tsx) ne renvoient rien, undefined reste géré comme un cas normal.
+export interface InviteResult {
+  password?: string | null;
+  accountAlreadyExisted?: boolean;
+  alreadyMember?: boolean;
+}
+
 // Modale « Inviter un utilisateur » — voir ACTIONS.md § 5 (action rapide « Inviter un
 // utilisateur ») et README.md § Sécurité (rôle attribué à l'invitation, non modifiable par
 // l'invité — voir DATA_MODEL.md § Membership).
+//
+// `allowDirectMode` (23/08/2026, demande Fouka) : seul un club a une edge function qui sait
+// vraiment créer un compte sans e-mail (clubplus-invite, mode "direct") — les autres types
+// d'organisation restent en mode e-mail uniquement, le toggle n'apparaît donc que pour eux.
 interface InviteUserModalProps {
   roles: MembershipRole[];
+  allowDirectMode?: boolean;
   onClose: () => void;
-  onInvite: (input: { email: string; firstName: string; lastName: string; role: MembershipRole; team?: string }) => Promise<unknown>;
+  onInvite: (input: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: MembershipRole;
+    team?: string;
+    mode?: "email" | "direct";
+  }) => Promise<InviteResult | unknown>;
 }
 
 // Rôles pour qui l'équipe/catégorie a un sens réel (§7.1 : "équipe/catégorie facultative" dans le
@@ -21,26 +42,82 @@ interface InviteUserModalProps {
 // l'éducateur). Affiché aussi pour le responsable d'équipe, cohérent avec son rôle.
 const TEAM_AWARE_ROLES = new Set<MembershipRole>(["coach", "team_manager"]);
 
-export function InviteUserModal({ roles, onClose, onInvite }: InviteUserModalProps) {
+export function InviteUserModal({ roles, allowDirectMode, onClose, onInvite }: InviteUserModalProps) {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<MembershipRole>(roles[0] ?? "viewer");
   const [team, setTeam] = useState("");
+  const [mode, setMode] = useState<"email" | "direct">("email");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [credentials, setCredentials] = useState<{ password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const canSubmit = /\S+@\S+\.\S+/.test(email) && firstName.trim().length > 0 && lastName.trim().length > 0;
 
   function handleSubmit() {
     setSubmitting(true);
     setError(null);
-    onInvite({ email, firstName, lastName, role, team: TEAM_AWARE_ROLES.has(role) ? team : undefined })
-      .then(() => onClose())
+    onInvite({ email, firstName, lastName, role, team: TEAM_AWARE_ROLES.has(role) ? team : undefined, mode })
+      .then((result) => {
+        const password = (result as InviteResult | undefined)?.password;
+        if (mode === "direct" && password) {
+          setCredentials({ password });
+          setSubmitting(false);
+        } else {
+          onClose();
+        }
+      })
       .catch((err) => {
         setSubmitting(false);
         setError(err instanceof Error ? err.message : "Envoi de l'invitation impossible, réessayez.");
       });
+  }
+
+  function handleCopy() {
+    if (!credentials) return;
+    navigator.clipboard.writeText(`${email} / ${credentials.password}`).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  if (credentials) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(7,10,23,.65)] p-4">
+        <Card className="animate-svfade relative flex w-full max-w-[420px] flex-col gap-4 rounded-sv-modal p-6 shadow-sv-modal">
+          <button
+            aria-label="Fermer"
+            onClick={onClose}
+            className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-text-faint hover:bg-surface-sunken hover:text-text"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+          <h2 className="text-[19px] font-extrabold tracking-tight">Compte créé</h2>
+          <p className="text-[12.5px] text-text-soft">
+            Communiquez ces identifiants vous-même — ils ne seront plus affichés après la fermeture de cette fenêtre.
+          </p>
+          <div className="flex flex-col gap-2 rounded-xl bg-surface-sunken px-3.5 py-3 text-[13px]">
+            <div>
+              <span className="font-bold text-text-soft">E-mail : </span>
+              {email}
+            </div>
+            <div>
+              <span className="font-bold text-text-soft">Mot de passe : </span>
+              <span className="font-mono tracking-[.04em]">{credentials.password}</span>
+            </div>
+          </div>
+          <Button variant="secondary" onClick={handleCopy} className="gap-2">
+            {copied ? <Check className="h-4 w-4" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
+            {copied ? "Copié" : "Copier e-mail + mot de passe"}
+          </Button>
+          <div className="mt-1 flex justify-end">
+            <Button onClick={onClose}>Fermer</Button>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -55,7 +132,30 @@ export function InviteUserModal({ roles, onClose, onInvite }: InviteUserModalPro
         </button>
 
         <h2 className="text-[19px] font-extrabold tracking-tight">Inviter un utilisateur</h2>
-        <p className="text-[12.5px] text-text-soft">L&apos;invitation est valable 7 jours. Le rôle n&apos;est pas modifiable par l&apos;invité.</p>
+        <p className="text-[12.5px] text-text-soft">
+          {mode === "direct"
+            ? "Le compte est créé immédiatement, un mot de passe vous est communiqué à transmettre vous-même."
+            : "L'invitation est valable 7 jours. Le rôle n'est pas modifiable par l'invité."}
+        </p>
+
+        {allowDirectMode && (
+          <div className="flex gap-2 rounded-xl bg-surface-sunken p-1">
+            <button
+              type="button"
+              onClick={() => setMode("email")}
+              className={`flex-1 rounded-lg py-2 text-[12.5px] font-bold transition-colors ${mode === "email" ? "bg-brand-blue-electric text-white" : "text-text-soft"}`}
+            >
+              Inviter par e-mail
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("direct")}
+              className={`flex-1 rounded-lg py-2 text-[12.5px] font-bold transition-colors ${mode === "direct" ? "bg-brand-blue-electric text-white" : "text-text-soft"}`}
+            >
+              Créer directement
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
@@ -121,7 +221,7 @@ export function InviteUserModal({ roles, onClose, onInvite }: InviteUserModalPro
 
         <div className="mt-1 flex justify-end">
           <Button disabled={!canSubmit || submitting} loading={submitting} onClick={handleSubmit}>
-            Envoyer l&apos;invitation
+            {mode === "direct" ? "Créer le compte" : "Envoyer l'invitation"}
           </Button>
         </div>
       </Card>

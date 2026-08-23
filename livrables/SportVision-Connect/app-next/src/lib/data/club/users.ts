@@ -57,12 +57,19 @@ export async function fetchClubMembers(supabase: SupabaseClient, clubId: string)
  * l'edge function acceptait déjà un tableau `teams` (voir clubplus-invite/index.ts) mais rien côté
  * Connect ne l'envoyait jusqu'ici : club_members.teams restait toujours '[]', rendant impossible
  * tout filtrage "lecture ciblée" pour un éducateur (§14). Un seul texte libre en V1 (pas de
- * multi-sélection, pas de table `teams` normalisée à ce jour côté club_bookings.team non plus). */
+ * multi-sélection, pas de table `teams` normalisée à ce jour côté club_bookings.team non plus).
+ *
+ * `mode` (23/08/2026, demande Fouka) : "email" (défaut, historique) envoie une invitation par
+ * e-mail — l'invité choisit son mot de passe en cliquant le lien. "direct" crée le compte
+ * immédiatement avec un mot de passe généré, sans e-mail (l'edge function le renvoie une seule
+ * fois dans `password`, jamais stocké ni relogué ensuite) — utile quand l'e-mail est peu fiable
+ * (lien d'invitation prescanné/consommé par le fournisseur avant le clic, même classe de problème
+ * que l'incident de reset password du 23/08). */
 export async function inviteClubMember(
   supabase: SupabaseClient,
   clubId: string,
-  input: { email: string; firstName: string; lastName: string; role: MembershipRole; team?: string },
-): Promise<void> {
+  input: { email: string; firstName: string; lastName: string; role: MembershipRole; team?: string; mode?: "email" | "direct" },
+): Promise<{ password: string | null; accountAlreadyExisted: boolean; alreadyMember: boolean }> {
   const { data, error } = await supabase.functions.invoke("clubplus-invite", {
     body: {
       email: input.email,
@@ -71,10 +78,16 @@ export async function inviteClubMember(
       club_id: clubId,
       role: mapClubRoleToReal(input.role),
       teams: input.team?.trim() ? [input.team.trim()] : [],
+      mode: input.mode === "direct" ? "direct" : "email",
     },
   });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
+  return {
+    password: data?.password ?? null,
+    accountAlreadyExisted: Boolean(data?.account_already_existed),
+    alreadyMember: Boolean(data?.already_invited),
+  };
 }
 
 /** Un admin peut suspendre/réactiver un autre membre (jamais lui-même) — écriture directe

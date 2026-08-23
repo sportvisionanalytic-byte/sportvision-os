@@ -91,9 +91,23 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         )}
       >
         <div className="flex items-center gap-3 px-5 pb-3.5 pt-5">
-          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[13px] font-extrabold text-white">
-            SV
-          </span>
+          {/* Logo du club (23/08/2026, retour Fouka) : ctx.organization.logoUrl est peuplé côté
+              session (buildClubActiveContext) depuis clubs.logo_url dès qu'un logo a été
+              uploadé (Paramètres > Organisation) mais n'était affiché nulle part dans l'app —
+              remplace le badge "SV" générique par le vrai logo pour un espace club, avec ce
+              même badge en repli tant qu'aucun logo n'est encore renseigné. */}
+          {!isPersonalSpace && ctx.organization.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={ctx.organization.logoUrl}
+              alt={`Logo ${ctx.organization.name}`}
+              className="h-9 w-9 flex-none rounded-xl object-cover"
+            />
+          ) : (
+            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-brand-blue-electric to-brand-violet text-[13px] font-extrabold text-white">
+              SV
+            </span>
+          )}
           <span className="leading-tight text-white">
             <span className="block text-[14.5px] font-extrabold tracking-tight">SportVision</span>
             <span className="block text-[11px] font-medium uppercase tracking-[.06em] text-brand-blue-pale">

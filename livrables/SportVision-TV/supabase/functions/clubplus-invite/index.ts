@@ -75,6 +75,19 @@ const VALID_ROLES = [
   "directeur_sportif", "administratif",
 ];
 
+// Génère un mot de passe temporaire lisible pour le mode "direct" (23/08/2026, demande Fouka :
+// pouvoir créer un compte immédiatement sans dépendre de l'e-mail d'invitation — utile quand
+// l'e-mail est prescanné/consommé par le fournisseur avant que la personne ne clique, cf.
+// incident 340sportingclub@gmail.com du même jour). Pas de caractères ambigus (0/O, 1/l/I).
+function generateTempPassword(): string {
+  const alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(10);
+  crypto.getRandomValues(bytes);
+  let out = "";
+  for (const b of bytes) out += alphabet[b % alphabet.length];
+  return `SV-${out}`;
+}
+
 // 19/08/2026 — plafonds d'utilisateurs par plan (décision Fouka, ajout de Club+ Gratuit) :
 // null = illimité. Reste ici plutôt qu'importé de plans.ts côté app-next (aucun partage de code
 // entre l'app Next.js et les Edge Functions Deno sur ce projet — même limite déjà acceptée pour
@@ -110,6 +123,10 @@ serve(async (req) => {
     const clubId: string = body.club_id || "";
     const role: string = VALID_ROLES.includes(body.role) ? body.role : "coach";
     const teams: string[] = Array.isArray(body.teams) ? body.teams : [];
+    // "direct" (23/08/2026) : crée le compte avec un mot de passe défini immédiatement, aucun
+    // e-mail envoyé — l'admin communique lui-même l'identifiant/mot de passe. "email" (défaut,
+    // comportement historique inchangé) : invitation par e-mail, mot de passe choisi par l'invité.
+    const mode: "email" | "direct" = body.mode === "direct" ? "direct" : "email";
 
     if (!email || !clubId) return json({ error: "E-mail et club sont obligatoires." }, 400);
 
@@ -134,9 +151,26 @@ serve(async (req) => {
 
     // 19/08/2026 — plafond d'utilisateurs par plan (Club+ Gratuit : 1, Start : 5, Performance :
     // illimité). Vérifié ici, service-role, avant d'envoyer une invitation — jamais côté client.
-    const { data: clubRow } = await admin.from("clubs").select("plan").eq("id", clubId).maybeSingle();
+    // 23/08/2026 — bug réel trouvé en testant contre V340 SC (Full Communication actif) : ce
+    // plafond lit `clubs.plan`, qui reste 'free' pour un club Full Communication (contrat
+    // commercial, jamais un plan Club+ vendu par abonnement — même trou que
+    // check_club_teams_limit, déjà corrigé côté SQL). Bypass ici aussi si un contrat Full
+    // Communication est actif pour ce club.
+    const { data: clubRow } = await admin.from("clubs").select("plan, portail_client_id").eq("id", clubId).maybeSingle();
     const clubPlan: string = (clubRow as { plan?: string } | null)?.plan || "club";
-    const maxUsers = MAX_USERS_BY_PLAN[clubPlan] ?? MAX_USERS_BY_PLAN.club;
+    const portailClientId: string | null = (clubRow as { portail_client_id?: string } | null)?.portail_client_id ?? null;
+    let isFullComm = false;
+    if (portailClientId) {
+      const { data: contratRow } = await admin
+        .from("contrats")
+        .select("id")
+        .eq("client_id", portailClientId)
+        .eq("type_contrat", "full_communication")
+        .eq("statut", "actif")
+        .maybeSingle();
+      isFullComm = !!contratRow;
+    }
+    const maxUsers = isFullComm ? null : (MAX_USERS_BY_PLAN[clubPlan] ?? MAX_USERS_BY_PLAN.club);
     if (maxUsers !== null) {
       const { count: memberCount } = await admin
         .from("club_members")
@@ -151,29 +185,46 @@ serve(async (req) => {
       }
     }
 
-    // Idempotence : déjà membre de CE club → renvoie la ligne existante.
-    const { data: existingUserRes } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
-    // listUsers ne filtre pas par email nativement sur toutes les versions ; on
-    // tente plutôt l'invite directement et on gère le cas "déjà inscrit" via l'erreur,
-    // plus fiable. (existingUserRes non utilisé, gardé hors chemin critique.)
-    void existingUserRes;
+    let invitedUserId: string | null = null;
+    let tempPassword: string | null = null;
+    let accountAlreadyExisted = false;
 
-    const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${connectUrl}/`,
-      data: { prenom, nom, telephone },
-    });
-
-    let invitedUserId: string | null = invited?.user?.id ?? null;
-
-    if (inviteErr) {
-      // "already been registered" : l'e-mail a déjà un compte Supabase Auth
-      // (autre club, ou invitation précédente). On le retrouve pour lier ce club.
-      const msg = inviteErr.message || "";
-      if (!/already/i.test(msg)) return json({ error: msg }, 500);
-      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      const match = list?.users?.find((u) => (u.email || "").toLowerCase() === email);
-      if (!match) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
-      invitedUserId = match.id;
+    if (mode === "direct") {
+      tempPassword = generateTempPassword();
+      const { data: createdUser, error: createErr } = await admin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { prenom, nom, telephone },
+      });
+      invitedUserId = createdUser?.user?.id ?? null;
+      if (createErr) {
+        const msg = createErr.message || "";
+        if (!/already|registered|exists/i.test(msg)) return json({ error: msg }, 500);
+        const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+        const match = list?.users?.find((u) => (u.email || "").toLowerCase() === email);
+        if (!match) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
+        invitedUserId = match.id;
+        tempPassword = null; // compte déjà existant : son mot de passe n'est jamais modifié ici.
+        accountAlreadyExisted = true;
+      }
+    } else {
+      const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: `${connectUrl}/`,
+        data: { prenom, nom, telephone },
+      });
+      invitedUserId = invited?.user?.id ?? null;
+      if (inviteErr) {
+        // "already been registered" : l'e-mail a déjà un compte Supabase Auth
+        // (autre club, ou invitation précédente). On le retrouve pour lier ce club.
+        const msg = inviteErr.message || "";
+        if (!/already/i.test(msg)) return json({ error: msg }, 500);
+        const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+        const match = list?.users?.find((u) => (u.email || "").toLowerCase() === email);
+        if (!match) return json({ error: "Cet e-mail est déjà utilisé mais introuvable." }, 500);
+        invitedUserId = match.id;
+        accountAlreadyExisted = true;
+      }
     }
 
     if (!invitedUserId) return json({ error: "Échec de la création du compte invité." }, 500);
@@ -188,6 +239,11 @@ serve(async (req) => {
       return json({ id: existingMember.id, already_invited: true });
     }
 
+    // En mode direct, le compte est immédiatement actif (mot de passe déjà connu, pas d'étape
+    // d'acceptation d'invitation) — sauf si le compte existait déjà avant cet appel, auquel cas
+    // on ne préjuge pas de son état et on garde le comportement "invitation" historique.
+    const status = mode === "direct" && !accountAlreadyExisted ? "actif" : "invitation";
+
     const { data: created, error: cmErr } = await admin
       .from("club_members")
       .insert({
@@ -198,13 +254,13 @@ serve(async (req) => {
         nom: nom || null,
         telephone: telephone || null,
         teams,
-        status: "invitation",
+        status,
       })
       .select("id")
       .single();
     if (cmErr) return json({ error: cmErr.message }, 500);
 
-    return json({ id: created.id, already_invited: false });
+    return json({ id: created.id, already_invited: false, password: tempPassword, account_already_existed: accountAlreadyExisted });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }

@@ -67,6 +67,11 @@ const NAV_CLUB_FULLCOM: NavEntry[] = [
   item("teams", "Équipes", "teams"),
   item("teams", "Affiliations", "team-requests"),
   item("sponsors", "Sponsors", "sponsors"),
+  // "Membres & accès" (23/08/2026, retour Fouka) : absente de NAV_CLUB_FULLCOM alors que
+  // NAV_CLUB_PLUS et NAV_ACADEMY_FULLCOM l'ont toutes les deux — un club Full Communication
+  // n'avait donc AUCUN moyen d'inviter coach/secrétaire/trésorier/etc., malgré /users et
+  // clubplus-invite déjà pleinement fonctionnels pour un club Club+ classique.
+  item("users", "Membres & accès", "users"),
   section("SportVision"),
   item("mycm", "Mon Community Manager", "mycm"),
   item("messages", "Messages", "messages"),

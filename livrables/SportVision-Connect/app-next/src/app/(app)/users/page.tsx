@@ -111,15 +111,19 @@ export default function UsersPage() {
 
   const availableRoles = ROLES_BY_ORG_TYPE[ctx.organization.type] ?? ["viewer"];
 
-  function handleInvite(input: { email: string; firstName: string; lastName: string; role: MembershipRole; team?: string }) {
+  function handleInvite(input: { email: string; firstName: string; lastName: string; role: MembershipRole; team?: string; mode?: "email" | "direct" }) {
     if (isClub) {
-      // clubplus-invite (edge function réelle) : crée le compte auth.users, envoie l'e-mail
-      // d'invitation Supabase, insère la ligne club_members. On recharge la liste plutôt que
-      // d'ajouter une ligne locale fabriquée, pour refléter l'id réel attribué par la base.
+      // clubplus-invite (edge function réelle) : crée le compte auth.users (par e-mail ou
+      // directement selon `mode`, voir InviteUserModal), insère la ligne club_members. On
+      // recharge la liste plutôt que d'ajouter une ligne locale fabriquée, pour refléter l'id
+      // réel attribué par la base. Le résultat (mot de passe en mode direct) remonte tel quel à
+      // la modale, qui décide de l'afficher.
       const supabase = createClient();
-      return inviteClubMember(supabase, ctx.organization.id, input)
-        .then(() => fetchClubMembers(supabase, ctx.organization.id).then(setUsers))
-        .catch(() => showToast("Invitation impossible, réessayez.", "error"));
+      return inviteClubMember(supabase, ctx.organization.id, input).then((result) =>
+        fetchClubMembers(supabase, ctx.organization.id)
+          .then(setUsers)
+          .then(() => result),
+      );
     }
     // Pas d'edge function d'invitation branchée pour ce type d'organisation dans cette phase
     // (org-invite existe pour coach/académie/sponsor, pas encore vérifiée/branchée ici) — reste
@@ -236,7 +240,12 @@ export default function UsersPage() {
       </Card>
 
       {inviteOpen && (
-        <InviteUserModal roles={availableRoles} onClose={() => setInviteOpen(false)} onInvite={handleInvite} />
+        <InviteUserModal
+          roles={availableRoles}
+          allowDirectMode={isClub}
+          onClose={() => setInviteOpen(false)}
+          onInvite={handleInvite}
+        />
       )}
 
       <Toast message={toastMessage} tone={toastTone} />
