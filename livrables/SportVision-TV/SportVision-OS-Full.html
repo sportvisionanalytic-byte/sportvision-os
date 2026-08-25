@@ -10921,7 +10921,7 @@ function docsRenderDevis(){
       <td>${_docsBadge(d.statut||'brouillon',DEVIS_STATUTS)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
         ${d.statut==='brouillon'?`<button onclick="envoyerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(54,107,255,.1);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:#366BFF;cursor:pointer">Envoyer</button>`:''}
-        ${(d.statut==='envoyé'||d.statut==='en_attente')&&(!d.signature_statut||d.signature_statut==='non_demandee')?`<button onclick="demanderSignatureDoc('devis','${d.id}','${d.numero||d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
+        ${(d.statut==='envoyé'||d.statut==='en_attente')&&(!d.signature_statut||d.signature_statut==='non_demandee')?`<button onclick="demanderSignatureDoc('devis','${d.id}','${d.numero||d.id}')" title="Signature électronique désactivée (Yousign pas encore en production) — enregistre un rappel pour signer par un autre moyen (papier)." style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig. (manuel)</button>`:''}
         ${d.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Yousign dès signature du client — aucune action manuelle possible ici." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:#F5A524;white-space:nowrap">⏳ Attente Yousign</span>`:''}
         <button onclick="imprimerDevis('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:#2ECC8A;cursor:pointer">PDF</button>
         <button onclick="envoyerDevisParEmail('${d.id}')" style="padding:3px 9px;font-size:11px;background:rgba(139,43,255,.08);border:1px solid rgba(139,43,255,.2);border-radius:var(--rp);color:var(--acc2);cursor:pointer" title="Envoyer par email">✉</button>
@@ -10944,9 +10944,9 @@ function docsRenderContrats(){
       <td style="color:var(--t3);font-size:11.5px">${fd(c.date_fin)||'—'}</td>
       <td>${_docsBadge(c.statut||'brouillon',CONTRAT_STATUTS)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
-        ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='resilie'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
+        ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='résilié'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id}')" title="Signature électronique désactivée (Yousign pas encore en production) — enregistre un rappel pour signer par un autre moyen (papier)." style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig. (manuel)</button>`:''}
         ${c.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Yousign dès signature du client — aucune action manuelle possible ici." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:#F5A524;white-space:nowrap">⏳ Attente Yousign</span>`:''}
-        ${c.signature_statut?_sigBadge(c.signature_statut):''}
+        ${c.signature_statut&&c.signature_statut!=='non_demandee'&&c.signature_statut!=='demandee'?_sigBadge(c.signature_statut):''}
         <button onclick="genererContratPDF('${c.id}')" style="padding:3px 9px;font-size:11px;background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.2);border-radius:var(--rp);color:#7C4DFF;cursor:pointer">PDF</button>
       </td>
     </tr>`).join('')}
@@ -11184,7 +11184,7 @@ async function docsRenderSignatures(){
       <td class="tm">${d._ref}</td><td class="tp">${d._client}</td>
       <td style="font-weight:600;font-variant-numeric:tabular-nums">${fmt(d._montant)}</td>
       <td>${d._type==='devis'?_docsBadge(d.statut||'brouillon',DEVIS_STATUTS):_docsBadge(d.statut||'brouillon',CONTRAT_STATUTS)}</td>
-      <td><button onclick="demanderSignatureDoc('${d._type}','${d.id}','${d._ref}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Demander</button></td>
+      <td><button onclick="demanderSignatureDoc('${d._type}','${d.id}','${d._ref}')" title="Signature électronique désactivée (Yousign pas encore en production) — enregistre un rappel pour signer par un autre moyen (papier)." style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap">✉ Demander (manuel)</button></td>
     </tr>`).join('')}
     </tbody></table></div></div>`;
   }
@@ -19596,7 +19596,7 @@ async function loadSecContrats(){
         <td>${c.date_fin?new Date(c.date_fin).toLocaleDateString('fr-FR'):'—'}</td>
         <td><span class="bd ${SC2[c.statut]||'bw'}"><span class="bd-d"></span>${SL2[c.statut]||c.statut}</span></td>
         <td style="white-space:nowrap">
-          ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='resilie'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${esc(CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id)}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
+          ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='résilié'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${esc(CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id)}')" title="Signature électronique désactivée (Yousign pas encore en production) — enregistre un rappel pour signer par un autre moyen (papier)." style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig. (manuel)</button>`:''}
           ${c.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Yousign dès signature du client." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:6px;color:#F5A524;white-space:nowrap">⏳ Attente</span>`:''}
           ${c.signature_statut&&c.signature_statut!=='non_demandee'&&c.signature_statut!=='demandee'?_sigBadge(c.signature_statut):''}
         </td>
@@ -22904,7 +22904,7 @@ async function loadContrats(){
       <td style="padding:10px 12px;color:var(--t2)">${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||'—'}</td>
       <td style="padding:10px 12px"><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${(SC[c.statut]||'var(--t3)')}22;color:${SC[c.statut]||'var(--t3)'}">${c.statut||'—'}</span></td>
       <td style="padding:10px 12px;white-space:nowrap">
-        ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='resilie'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${esc(CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id)}')" style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig.</button>`:''}
+        ${(!c.signature_statut||c.signature_statut==='non_demandee')&&c.statut!=='résilié'?`<button onclick="demanderSignatureDoc('contrat','${c.id}','${esc(CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||c.id)}')" title="Signature électronique désactivée (Yousign pas encore en production) — enregistre un rappel pour signer par un autre moyen (papier)." style="padding:3px 9px;font-size:11px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.25);border-radius:6px;color:var(--acc);cursor:pointer;white-space:nowrap">✉ Sig. (manuel)</button>`:''}
         ${c.signature_statut==='demandee'?`<span title="Confirmée automatiquement par Yousign dès signature du client." style="padding:3px 9px;font-size:11px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:6px;color:#F5A524;white-space:nowrap">⏳ Attente</span>`:''}
         ${c.signature_statut&&c.signature_statut!=='non_demandee'&&c.signature_statut!=='demandee'?_sigBadge(c.signature_statut):''}
       </td>
