@@ -45,15 +45,17 @@ function json(body: unknown, status = 200) {
 
 // deno-lint-ignore no-explicit-any
 async function checkRateLimit(admin: any, identifiant: string) {
-  const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
-  const { count } = await admin
-    .from("guest_rate_limits")
-    .select("id", { count: "exact", head: true })
-    .eq("identifiant", identifiant)
-    .gte("created_at", since);
-  if ((count || 0) >= RATE_LIMIT_MAX) return false;
-  await admin.from("guest_rate_limits").insert({ identifiant });
-  return true;
+  // Fonction atomique (migration-audit-25-08-corrections-batch1.sql, 25/08/2026) : l'ancien
+  // motif COUNT puis INSERT séparés laissait une fenêtre de course entre deux appels concurrents
+  // (répété tel quel dans ~20 edge functions) — verrou transactionnel scopé à l'identifiant côté
+  // Postgres, plus de race condition possible.
+  const { data, error } = await admin.rpc("check_and_record_rate_limit", {
+    p_identifiant: identifiant,
+    p_max: RATE_LIMIT_MAX,
+    p_window_seconds: RATE_LIMIT_WINDOW_MS / 1000,
+  });
+  if (error) return false;
+  return data === true;
 }
 
 function validEmail(v: string) {
