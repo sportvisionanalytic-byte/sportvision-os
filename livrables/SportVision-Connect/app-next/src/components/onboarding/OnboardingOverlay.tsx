@@ -51,7 +51,11 @@ const GENERIC_STEPS: StepContent[] = [
   { icon: Building2, title: "Votre organisation", body: "Nom, adresse et réseaux sociaux — ces informations personnalisent vos contenus." },
   { icon: CreditCard, title: "Votre abonnement", body: "Retrouvez à tout moment votre offre, vos quotas et votre facturation depuis « Gérer mon offre »." },
   { icon: ImageIcon, title: "Votre logo", body: "Ajoutez votre logo pour qu'il apparaisse automatiquement dans vos créations Studio." },
-  { icon: UserPlus, title: "Invitez votre équipe", body: "Ajoutez les personnes qui géreront le compte avec vous depuis « Utilisateurs »." },
+  // 25/08/2026, audit complet : "depuis « Utilisateurs »" retiré — /users reste verrouillé pour
+  // tout type d'organisation hors club (READY_MODULES), ce parcours générique s'adressant aussi
+  // à coach/académie/sponsor/tournoi/stage promettait donc un lien mort. Reformulé sans pointer
+  // vers un écran inatteignable, en attendant que ce module soit ouvert pour ces types.
+  { icon: UserPlus, title: "Votre équipe", body: "Votre interlocuteur SportVision peut ajouter d'autres personnes à votre espace si besoin." },
   { icon: Share2, title: "Vos réseaux", body: "Connectez Instagram, TikTok ou Meta Business depuis Paramètres → Intégrations." },
   { icon: LayoutDashboard, title: "Votre tableau de bord", body: "Il regroupe ce qui attend votre attention : validations, échéances, dernières créations." },
   { icon: Sparkles, title: "Votre première demande", body: "Lancez votre première demande de visuel depuis le Studio ou le bouton « Nouvelle demande »." },

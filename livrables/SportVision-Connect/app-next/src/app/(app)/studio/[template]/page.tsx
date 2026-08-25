@@ -57,7 +57,12 @@ function StudioTemplateContent() {
   // Même routage que requests/new/page.tsx : Coach/Académie/Sponsor ET Projet/"generic" n'ont pas
   // de ligne `clubs`, submitClubRequest y échoue toujours (is_club_member ne trouve jamais de
   // club pour leur organization.id).
-  const usesGenericRequestsTable = ["coach", "academy", "sponsor", "generic"].includes(ctx.organization.type);
+  // tournament_organizer/camp ajoutés (25/08/2026, audit complet) : même correctif que
+  // requests/new/page.tsx — ces deux types n'ont jamais de ligne `clubs`, submitClubRequest()
+  // échouait donc systématiquement à "Accès refusé" pour eux.
+  const usesGenericRequestsTable = ["coach", "academy", "sponsor", "generic", "tournament_organizer", "camp"].includes(
+    ctx.organization.type,
+  );
   // Contrairement au routage ci-dessus, Projet EST exclu ici : depuis la v24, il a un vrai solde
   // de crédits (session.ts) et doit afficher "X crédit(s) réservé(s)" comme un club — seuls
   // coach/académie/sponsor n'ont aucun solde réel suivi.

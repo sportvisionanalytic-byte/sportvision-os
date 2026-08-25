@@ -68,7 +68,13 @@ function NewRequestContent() {
   // v24-projet-credits.sql) — aucun des 4 n'a de ligne `clubs`, submitClubRequest y échouerait
   // (is_club_member(organization.id) ne trouve jamais de club). Distinct de noCreditSystemOrg
   // ci-dessous : Projet a un vrai solde suivi contrairement à coach/académie/sponsor.
-  const usesGenericRequestsTable = ["coach", "academy", "sponsor", "generic"].includes(ctx.organization.type);
+  // tournament_organizer/camp ajoutés (25/08/2026, audit complet) : ces deux types n'ont jamais
+  // de ligne dans `clubs` (ils vivent dans `organizations`) — sans ça, submitClubRequest() tombe
+  // sur is_club_member() qui ne trouve aucun club correspondant et échoue à "Accès refusé", pour
+  // un type de client à qui l'onboarding promet pourtant explicitement Studio et les demandes.
+  const usesGenericRequestsTable = ["coach", "academy", "sponsor", "generic", "tournament_organizer", "camp"].includes(
+    ctx.organization.type,
+  );
   // coach/académie/sponsor n'ont aucun système de crédits réel suivi (plan "one_off",
   // creditsRemaining toujours à 0 côté session.ts) : bloquer l'envoi sur ce quota qui
   // n'existe pas pour eux rendrait le bouton définitivement inactif. Projet EXCLU de cette

@@ -78,8 +78,11 @@ export default function ResetPasswordPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
-    if (password.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères.");
+    if (password.length < 8) {
+      // 8, pas 6 (25/08/2026, audit complet) : password_min_length=8 côté serveur — un mot de
+      // passe de 6-7 caractères validé ici se faisait rejeter par updateUser() avec un message
+      // trompeur ("le lien a peut-être expiré") qui masquait la vraie cause.
+      setError("Le mot de passe doit contenir au moins 8 caractères.");
       return;
     }
     if (password !== confirmPassword) {

@@ -2,14 +2,13 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LifeBuoy, PlayCircle, Search, Send } from "lucide-react";
+import { LifeBuoy, PlayCircle, Search } from "lucide-react";
 import { useSession } from "@/lib/session-context";
 import { canAccess } from "@/lib/permissions";
 import { mockSupportTopics } from "@/lib/mock/settings";
 import type { SupportTicket, SupportTicketCategory, SupportTicketPriority, SupportTicketStatus } from "@/lib/types/settings";
 import { fetchClubSupportTickets, createClubSupportTicket } from "@/lib/data/club/support";
 import { createClient } from "@/lib/supabase/client";
-import { mockThreads, mockMessages } from "@/lib/mock/messaging";
 import { resetOnboardingProgress } from "@/components/onboarding/onboarding-storage";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -114,8 +113,6 @@ function SupportPageContent() {
   // "one-off" — tournoi ET stage/camp partageaient déjà NAV_ONE_OFF (aujourd'hui
   // NAV_TOURNAMENT_ONE_OFF/NAV_CAMP_ONE_OFF) avant la bascule.
   const isOneOffClient = ctx.organization.type === "tournament_organizer" || ctx.organization.type === "camp";
-  const supportThread = (mockThreads[ctx.organization.id] ?? []).find((t) => t.contextType === "support");
-  const supportMessages = supportThread ? mockMessages[supportThread.id] ?? [] : [];
 
   function handleReplayOnboarding() {
     resetOnboardingProgress();
@@ -180,36 +177,18 @@ function SupportPageContent() {
       </div>
 
       {isOneOffClient ? (
-        <Card className="flex flex-col">
-          <div className="border-b border-divider px-5 py-4 text-[15px] font-extrabold tracking-tight">
-            Votre échange avec SportVision
-          </div>
-          <div className="flex flex-col gap-3 px-5 py-4">
-            {supportMessages.length === 0 && (
-              <p className="text-[13px] text-text-soft">Aucun message pour le moment. Envoyez-nous votre demande.</p>
-            )}
-            {supportMessages.map((m) => (
-              <div key={m.id} className="flex items-start gap-2.5">
-                <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-gradient-to-br from-brand-violet to-brand-blue-electric text-[10.5px] font-extrabold text-white">
-                  {m.authorInitials}
-                </span>
-                <div>
-                  <div className="text-[12.5px] font-bold">{m.authorName}</div>
-                  <div className="text-[13px] text-text-soft">{m.body}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-2.5 border-t border-divider px-5 py-3.5">
-            <input
-              placeholder="Écrire un message…"
-              className="h-10 flex-1 rounded-xl border border-border-strong bg-input-bg px-3.5 text-[13.5px] outline-none focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-[rgba(36,84,255,.12)]"
-            />
-            <Button className="h-10 px-3.5">
-              <Send className="h-4 w-4" aria-hidden />
-              Envoyer
-            </Button>
-          </div>
+        // 25/08/2026, audit complet : l'ancien fil de messages ici était entièrement factice
+        // (mockThreads/mockMessages, jamais réel) avec un bouton "Envoyer" sans onClick — une
+        // coquille vide qui donnait l'illusion d'un canal fonctionnel. useClientId() (data/shared/
+        // use-client-id.ts) traite délibérément tournament_organizer/camp comme "aucune donnée
+        // réelle possible pour ces types à ce jour" — cohérent avec cette limite plutôt que de
+        // construire un vrai fil de discussion en dehors de ce périmètre déjà décidé.
+        <Card className="flex flex-col items-center gap-2 px-5 py-10 text-center">
+          <div className="text-[15px] font-extrabold tracking-tight">Votre échange avec SportVision</div>
+          <p className="max-w-sm text-[13px] text-text-soft">
+            Pour toute question, contactez directement votre interlocuteur SportVision par e-mail — la messagerie en ligne
+            n&apos;est pas encore disponible pour ce type d&apos;espace.
+          </p>
         </Card>
       ) : (
         <Card>
