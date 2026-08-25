@@ -7,6 +7,12 @@ import { Field } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
 
 // /auth/forgot — port de l'écran "Mot de passe oublié" du design de référence.
+//
+// 25/08/2026, audit complet : appelait resetPasswordForEmail() nativement (e-mail générique
+// Supabase, pas de branding SportVision, pas de rate-limit dédié) au lieu de passer par la même
+// edge function que Club+ (request-password-reset — e-mail brandé via le Communication Hub,
+// rate-limit par e-mail+IP, et la fenêtre anti-doublon 30s corrigée le 23/08). Harmonisé ici pour
+// que les deux apps partagent le même comportement.
 export default function ForgotPage() {
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
@@ -23,10 +29,10 @@ export default function ForgotPage() {
     if (!validEmail(email)) return;
     setBusy(true);
     const supabase = createClient();
-    // Ne jamais révéler si le compte existe — resetPasswordForEmail ne renvoie pas cette info,
-    // on affiche toujours le même écran de confirmation ensuite (cf. README design § note sécurité).
-    await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset`,
+    // Ne jamais révéler si le compte existe — réponse toujours identique (cf. README design §
+    // note sécurité), c'est déjà le comportement de request-password-reset lui-même.
+    await supabase.functions.invoke("request-password-reset", {
+      body: { email, redirect_url: `${window.location.origin}/auth/reset` },
     });
     setBusy(false);
     setSent(true);
