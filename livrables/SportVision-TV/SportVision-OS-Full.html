@@ -721,6 +721,7 @@ const NAV={
     {id:'connectcomptes',lb:'Comptes Club+ / Connect',ic:'cli'},
     {type:'sep',lb:'Équipe & RH'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
+    {id:'candidatures',lb:'Candidatures',ic:'col',modal:'modalCandidatures'},
     {id:'users',lb:'Utilisateurs & accès',ic:'col'},
     {id:'grades',lb:'Grades & XP',ic:'target'},
     {id:'form',lb:'Centre de formation',ic:'form'},
@@ -3425,6 +3426,23 @@ async function sbUpload(bucket, path, file){
 function sbUploadSafePath(file){
   return Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_');
 }
+// URL signée temporaire pour un fichier d'un bucket privé (ex. sportvision-media-prive) —
+// policy storage dédiée (ex. sv_media_prive_recrutement_select, is_staff()) fait le contrôle
+// d'accès réel côté serveur, ce helper ne fait qu'appeler l'endpoint de signature.
+async function sbSignedUrl(bucket, path, expiresIn){
+  if(DEMO_MODE)return null;
+  const tok=localStorage.getItem('sv_tok')||'';
+  try{
+    const res=await fetch(SB_URL+'/storage/v1/object/sign/'+bucket+'/'+path,{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+      body:JSON.stringify({expiresIn:expiresIn||3600}),
+    });
+    if(!res.ok)return null;
+    const d=await res.json();
+    return d.signedURL?SB_URL+'/storage/v1'+d.signedURL:null;
+  }catch(e){return null;}
+}
 
 // ── MODAL ────────────────────────────────
 function openModal(html){
@@ -5253,6 +5271,83 @@ async function ccsrReloadList(){
   }catch(e){
     body.innerHTML='<div style="color:var(--er);font-size:12px;padding:8px">Erreur de chargement.</div>';
   }
+}
+
+// ── Candidatures de recrutement (28/08/2026) — recruitment_applications
+// n'avait aucune interface OS jusqu'ici (staff notifié par e-mail
+// uniquement, cf. commentaire d'en-tête de submit-recruitment-application).
+// Même patron que modalDemandesClubConnect ci-dessus : modale simple,
+// rechargée après chaque action, pas un écran dédié complet.
+const CAND_POSTE_LB={
+  les_deux:'Photo + Vidéo', photographe:'Photographe', videaste:'Vidéaste',
+  community_manager:'Community Manager',
+};
+const CAND_ZONE_LB={idf:'Île-de-France',autre:'Autre région'};
+function modalCandidatures(){
+  openModal(`<div class="mh"><div class="mt">Candidatures</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" id="cand-body" style="display:flex;flex-direction:column;gap:10px;min-height:120px;max-height:70vh;overflow:auto">
+      <div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+  candReloadList();
+}
+async function candReloadList(){
+  const body=document.getElementById('cand-body');
+  if(!body)return;
+  body.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>';
+  try{
+    const data=await sbFetch('recruitment_applications?statut=eq.nouveau&select=id,poste,prenom,nom,email,telephone,ville,zone,experience_niveau,materiel,permis,vehicule,disponibilites,portfolio_url,cv_path,message,created_at&order=created_at.desc');
+    if(sbErr(data)){body.innerHTML='<div style="color:var(--er);font-size:12px;padding:8px">Erreur de chargement.</div>';return;}
+    if(!data||!data.length){
+      body.innerHTML='<div style="text-align:center;padding:36px;color:var(--t3);font-size:13px"><div style="font-size:28px;margin-bottom:8px;opacity:.3">📭</div>Aucune candidature à examiner.</div>';
+      return;
+    }
+    body.innerHTML=data.map(c=>{
+      const posteLb=CAND_POSTE_LB[c.poste]||c.poste||'—';
+      const zoneLb=c.ville?esc(c.ville):(CAND_ZONE_LB[c.zone]||c.zone||'—');
+      const tags=[
+        c.experience_niveau?esc(c.experience_niveau):null,
+        c.materiel==='oui'?'Matériel pro':null,
+        c.permis==='oui'?'Permis':null,
+        c.vehicule==='oui'?'Véhiculé':null,
+      ].filter(Boolean).map(t=>`<span style="font-size:10.5px;padding:2px 8px;border-radius:99px;background:var(--s2);border:1px solid var(--b1);color:var(--t2)">${t}</span>`).join(' ');
+      return `<div style="border:1px solid var(--b1);border-radius:var(--rb);padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(c.prenom)} ${esc(c.nom)}</div>
+              <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--s2);border:1px solid var(--b1);color:var(--acc)">${esc(posteLb)}</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--t3)">${zoneLb}${c.disponibilites?' · '+esc(c.disponibilites):''}</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--t2)">${esc(c.email)} · ${esc(c.telephone||'—')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${tags}</div>
+        ${c.message?`<div style="font-size:11.5px;color:var(--t3);background:var(--s2);border-radius:8px;padding:6px 10px;max-height:80px;overflow:auto">${esc(c.message)}</div>`:''}
+        <div style="font-size:10.5px;color:var(--t3)">Reçue le ${new Date(c.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:2px">
+          ${c.portfolio_url?`<a href="${c.portfolio_url.startsWith('http')?esc(c.portfolio_url):'https://'+esc(c.portfolio_url)}" target="_blank" rel="noopener" class="btn bg2 bs">Portfolio ↗</a>`:''}
+          ${c.cv_path?`<button class="btn bg2 bs" onclick="candVoirCv('${escJs(c.cv_path)}')">Voir le CV</button>`:''}
+          <button class="btn bp bs" onclick="candTraiter('${escJs(c.id)}','retenu')">Retenir</button>
+          <button class="btn bg2 bs" style="color:var(--er)" onclick="candTraiter('${escJs(c.id)}','rejete')">Rejeter</button>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML='<div style="color:var(--er);font-size:12px;padding:8px">Erreur de chargement.</div>';
+  }
+}
+async function candVoirCv(cvPath){
+  const url=await sbSignedUrl('sportvision-media-prive',cvPath,3600);
+  if(!url){toast('Impossible de générer le lien du CV.','er');return;}
+  window.open(url,'_blank','noopener');
+}
+async function candTraiter(id,statut){
+  const r=await sbFetch('recruitment_applications?id=eq.'+id,{method:'PATCH',body:{statut}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
+  toast(statut==='retenu'?'Candidat retenu.':'Candidature rejetée.','ok');
+  await candReloadList();
+  if(typeof updateNavBadges==='function')updateNavBadges(S.role);
 }
 
 let _lienValidationDemandeClub='';
