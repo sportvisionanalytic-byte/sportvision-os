@@ -1012,71 +1012,66 @@ function finBars(id,h){
 // ── VIEW RENDERERS ────────────────────────
 const VIEWS={
   'admin.dash':()=>`
-    <div id="dash-welcome" style="margin-bottom:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
-      <div>
-        <div style="font-size:22px;font-weight:700;color:var(--t1)" id="dash-bonjour">Bonjour</div>
-        <div style="font-size:13px;color:var(--t3);margin-top:2px" id="dash-subtitle">Voici ce qui mérite votre attention aujourd'hui.</div>
+    <div id="dash-banner" style="margin-bottom:16px;border-radius:12px;padding:20px 24px;background:linear-gradient(135deg,rgba(54,107,255,.12),rgba(54,107,255,.02));border:1px solid rgba(54,107,255,.18)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.09em;color:var(--acc);text-transform:uppercase">SportVision — Aujourd'hui</div>
+          <div style="font-size:20px;font-weight:700;color:var(--t1);margin-top:4px" id="dash-bonjour">Bonjour</div>
+          <div style="font-size:13px;color:var(--t3);margin-top:2px" id="dash-subtitle">Voici ce qui mérite votre attention aujourd'hui.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;padding-top:4px">
+          <button class="btn bg2 bs" onclick="modalNouveauClient()">+ Club</button>
+          <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;flex-shrink:0;padding-top:4px">
-        <button class="btn bg2 bs" onclick="modalNouveauClient()">+ Client</button>
-        <button class="btn bp bs" onclick="modalNouvellePrestation()">+ Prestation</button>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+        <div style="cursor:pointer" onclick="switchView('crm')">
+          <div style="font-size:26px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums" id="bnr-clubs">—</div>
+          <div style="font-size:11px;color:var(--t3)">Clubs actifs <span style="color:var(--t3)">/ objectif 5</span></div>
+        </div>
+        <div style="cursor:pointer" onclick="switchView('resultat')">
+          <div style="font-size:26px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums" id="bnr-ca">—</div>
+          <div style="font-size:11px;color:var(--t3)">CA HT ce mois</div>
+        </div>
+        <div style="cursor:pointer" onclick="_preFiltre='';_preStatutsFiltre=null;_preDateFiltre='week';switchView('pre')">
+          <div style="font-size:26px;font-weight:700;color:var(--t1);font-variant-numeric:tabular-nums" id="bnr-semaine">—</div>
+          <div style="font-size:11px;color:var(--t3)">Missions cette semaine</div>
+        </div>
+        <div>
+          <div style="font-size:26px;font-weight:700;color:var(--er);font-variant-numeric:tabular-nums" id="bnr-traiter">—</div>
+          <div style="font-size:11px;color:var(--t3)">Actions à traiter</div>
+        </div>
       </div>
     </div>
     <div class="cd" style="margin-bottom:16px;border-color:rgba(240,68,94,.2)">
       <div class="cd-h"><div class="cd-t">⚡ À traiter</div><span id="dash-traiter-nb" class="bd bn">—</span></div>
       <div id="dash-traiter"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
     </div>
-    <div class="kpi-g" style="grid-template-columns:repeat(6,1fr);margin-bottom:16px">
-      <div class="kpi" style="--kl:#F5A524;cursor:pointer" onclick="switchView('planning')"><div class="kpi-ey">Prestations du jour</div><div class="kpi-v" id="kpi-jour">—</div><span class="kpi-d dnt" id="kpi-jour-s">aujourd'hui</span></div>
-      <div class="kpi" style="--kl:#2ECC8A;cursor:pointer" onclick="switchView('fin')"><div class="kpi-ey">CA du mois</div><div class="kpi-v" id="kpi-ca-m" style="font-size:18px">—</div><span class="kpi-d dnt">TTC payé</span></div>
-      <div class="kpi" style="--kl:#F0445E;cursor:pointer" onclick="switchView('fin')"><div class="kpi-ey">À encaisser</div><div class="kpi-v" id="kpi-enc" style="font-size:18px">—</div><span class="kpi-d dnt" id="kpi-enc-s">factures</span></div>
-      <div class="kpi" style="--kl:#E85D75;cursor:pointer" onclick="switchView('depenses')"><div class="kpi-ey">Dépenses du mois</div><div class="kpi-v" id="kpi-dep-m" style="font-size:18px">—</div><span class="kpi-d dnt">charges</span></div>
-      <div class="kpi" style="--kl:#366BFF;cursor:pointer" onclick="switchView('crm')"><div class="kpi-ey">Clients actifs</div><div class="kpi-v" id="kpi-cli-v">—</div><span class="kpi-d dnt">partenaires</span></div>
-      <div class="kpi" style="--kl:#7C4DFF;cursor:pointer" onclick="switchView('incidents')"><div class="kpi-ey">Incidents ouverts</div><div class="kpi-v" id="kpi-inc-v">—</div><span class="kpi-d dnt">à traiter</span></div>
-    </div>
-    <div class="cd" style="margin-bottom:14px;padding:18px 20px">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px">
-        <div>
-          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3)">Objectif prioritaire</div>
-          <div style="font-size:16px;font-weight:700;color:var(--t1);margin-top:3px">5 clubs partenaires <span id="obj-clubs-count" style="font-size:16px;font-weight:800;color:var(--acc)">—</span><span style="font-size:12px;font-weight:500;color:var(--t3)">/5</span></div>
-        </div>
-        <button onclick="switchView('pipeline')" style="padding:6px 12px;font-size:11px;font-weight:600;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap;flex-shrink:0">Pipeline →</button>
-      </div>
-      <div id="obj-clubs-slots" style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:12px"></div>
-      <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden;margin-bottom:10px">
-        <div id="obj-clubs-bar" style="height:100%;width:0%;background:var(--gr);border-radius:3px;transition:width .9s cubic-bezier(.4,0,.2,1)"></div>
-      </div>
-      <div id="obj-clubs-funnel" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
-    </div>
     <div class="g32">
       <div style="display:flex;flex-direction:column;gap:13px">
-        <div class="cd"><div class="cd-h"><div class="cd-t">Planning du jour</div><button class="btn bg2 bs" onclick="switchView('planning')">Voir tout</button></div>
-          <div id="dash-today"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
+        <div class="cd" style="padding:18px 20px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px">
+            <div>
+              <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t3)">Objectif prioritaire</div>
+              <div style="font-size:16px;font-weight:700;color:var(--t1);margin-top:3px">5 clubs partenaires <span id="obj-clubs-count" style="font-size:16px;font-weight:800;color:var(--acc)">—</span><span style="font-size:12px;font-weight:500;color:var(--t3)">/5</span></div>
+            </div>
+            <button onclick="switchView('pipeline')" style="padding:6px 12px;font-size:11px;font-weight:600;background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer;white-space:nowrap;flex-shrink:0">Pipeline →</button>
+          </div>
+          <div id="obj-clubs-slots" style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:12px"></div>
+          <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden;margin-bottom:10px">
+            <div id="obj-clubs-bar" style="height:100%;width:0%;background:var(--gr);border-radius:3px;transition:width .9s cubic-bezier(.4,0,.2,1)"></div>
+          </div>
+          <div id="obj-clubs-funnel" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
         </div>
-        <div class="cd"><div class="cd-h"><div class="cd-t">Kits utilisés</div><button class="btn bg2 bs" onclick="switchView('kits')">Inventaire</button></div>
-          <div id="dash-kits-live"><div style="padding:16px;color:var(--t3);font-size:13px;text-align:center">Chargement…</div></div>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:13px">
-        <div class="cd"><div class="cd-h"><div class="cd-t">Suivi de production</div><button class="btn bg2 bs" onclick="switchView('pre')">Pipeline</button></div>
-          <div id="dash-prod" style="padding:12px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
-        </div>
-        <div class="cd"><div class="cd-h"><div class="cd-t">CA facturé</div></div><div class="cd-b">
-          <div style="font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:3px" id="dash-ca">—&thinsp;<span style="font-size:13px;color:var(--t2);font-weight:600">€</span></div>
-          <div style="font-size:11px;color:var(--t3);margin-bottom:12px">Prestations payées</div>
-          <div class="fb" id="mc" style="height:70px"></div>
-        </div></div>
-      </div>
-    </div>
-    <div class="cd" style="margin-top:13px">
-      <div class="cd-h">
-        <div class="cd-t">Clubs cibles</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn bg2 bs" onclick="switchView('pipeline')">Pipeline</button>
-          <button class="btn bp bs" onclick="modalNouveauClient()">+ Club</button>
+        <div class="cd">
+          <div class="cd-h"><div class="cd-t">📅 Cette semaine</div><button class="btn bg2 bs" onclick="switchView('planning')">Planning →</button></div>
+          <div id="dash-semaine" style="padding:14px 16px"><div style="display:flex;align-items:center;justify-content:center;height:70px;color:var(--t3);font-size:13px">Chargement…</div></div>
         </div>
       </div>
-      <div id="dash-clubs-cibles"><div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      <div class="cd">
+        <div class="cd-h"><div class="cd-t">🕒 Activité</div></div>
+        <div id="dash-activite"><div style="display:flex;align-items:center;justify-content:center;height:100px;color:var(--t3);font-size:13px">Chargement…</div></div>
+      </div>
     </div>`,
 
   'admin.planning':()=>`
@@ -4019,6 +4014,8 @@ function renderPreTable(){
       ):_prestationsCache);
   if(_preDateFiltre==='today')list=list.filter(p=>p.date_prestation===today);
   else if(_preDateFiltre==='week')list=list.filter(p=>p.date_prestation&&p.date_prestation>=today&&p.date_prestation<=in7s);
+  // Valeur brute (ex. depuis le calendrier "Cette semaine" de l'Accueil) : filtre sur cette date exacte.
+  else if(_preDateFiltre)list=list.filter(p=>p.date_prestation===_preDateFiltre);
   if(_preSourceFiltre)list=list.filter(p=>p.source===_preSourceFiltre);
   if(_preHideNonQualifiees)list=list.filter(p=>!PRE_STATUTS_NON_QUALIFIES.includes(p.statut));
   const SF_CLS={'payée':'ba','partiellement_payée':'bw','facturée':'bw','en_retard':'bl','non_facturée':'bn'};
@@ -6102,7 +6099,15 @@ async function modalModifierClientById(id){
 async function loadAdminDash(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const today=ymdLocal();
+  const now=new Date();
   const mStart=today.slice(0,7)+'-01';
+  const mNext=ymdLocal(new Date(now.getFullYear(),now.getMonth()+1,1));
+  const dow=now.getDay()||7;
+  const lun=new Date(now);lun.setDate(now.getDate()-(dow-1));
+  const dim=new Date(lun);dim.setDate(lun.getDate()+6);
+  const weekStart=ymdLocal(lun);
+  const weekEnd=ymdLocal(dim);
+  const in7=new Date(now);in7.setDate(in7.getDate()+6);const in7s=ymdLocal(in7);
 
   // Bonjour header
   const bj=document.getElementById('dash-bonjour');
@@ -6112,71 +6117,81 @@ async function loadAdminDash(){
   }
 
   // Fetch all data in parallel
-  let allPre=[],allCli=[],allKits=[],allInc=[],todayPre=[],allDep=[];
+  let semainePre=[],allInc=[],rentabMois=[],activite=[];
   try{
-    [allPre,allCli,allKits,allInc,todayPre,allDep]=await Promise.all([
-      sbFetch('prestations?select=id,statut,statut_financier,montant_ttc,date_prestation,heure_debut,heure_fin,reference,type_prestation,clients(nom)&order=date_prestation.asc&limit=500'),
-      sbFetch('clients?select=id,statut'),
-      sbFetch('kits?select=id,nom,statut&order=nom.asc'),
+    [semainePre,allInc,rentabMois,activite]=await Promise.all([
+      sbFetch('prestations?select=id,reference,statut,date_prestation,heure_debut,type_prestation,clients(nom)&date_prestation=gte.'+weekStart+'&date_prestation=lte.'+weekEnd+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc,heure_debut.asc'),
       sbFetch('incidents?select=id&cloture=eq.false'),
-      sbFetch('prestations?select=id,reference,heure_debut,heure_fin,lieu,type_prestation,statut,clients(nom)&date_prestation=eq.'+today+'&order=heure_debut.asc'),
-      sbFetch('expenses?select=montant_ttc,date_depense&date_depense=gte.'+mStart).catch(()=>[]),
+      // CA HT du mois — même vue et même calcul que le compte de résultat
+      // officiel (loadComptaResultat), pas une approximation TTC locale.
+      sbFetch('v_rentabilite_missions?select=revenu_ht&date_prestation=gte.'+mStart+'&date_prestation=lt.'+mNext),
+      sbFetch('activity_log?select=id,categorie,titre,description,created_at&order=created_at.desc&limit=5').catch(()=>[]),
     ]);
   }catch(e){}
 
-  // KPIs
-  const prestJour=(todayPre||[]).length;
-  const cliActifs=(allCli||[]).filter(c=>['client','partenaire'].includes(c.statut)).length;
+  const semaine=Array.isArray(semainePre)?semainePre:[];
   const incOuverts=(allInc||[]).length;
-  set('kpi-jour',prestJour);
-  set('kpi-jour-s',prestJour>1?'prestations':'prestation');
-  set('kpi-cli-v',cliActifs);
-  set('kpi-inc-v',incOuverts);
 
-  // CA du mois (prestations payées/partiellement payées ce mois)
-  const caM=(allPre||[]).filter(p=>p.date_prestation&&p.date_prestation>=mStart&&['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
-  set('kpi-ca-m',caM.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €');
+  // CA HT du mois
+  const caM=(Array.isArray(rentabMois)?rentabMois:[]).reduce((s,p)=>s+(p.revenu_ht||0),0);
+  set('bnr-ca',caM.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €');
 
-  // À encaisser (facturées + partiellement payées + en retard)
-  const aEnc=(allPre||[]).filter(p=>['facturée','partiellement_payée','en_retard'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
-  set('kpi-enc',aEnc.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €');
-  const nbEnc=(allPre||[]).filter(p=>['facturée','partiellement_payée','en_retard'].includes(p.statut_financier)).length;
-  set('kpi-enc-s',nbEnc+' facture'+(nbEnc>1?'s':''));
+  // Missions cette semaine
+  set('bnr-semaine',semaine.length);
 
-  // Dépenses du mois (table expenses — mêmes données que la page Dépenses,
-  // absente jusqu'ici du tableau de bord alors que c'est la première chose
-  // demandée par un propriétaire d'entreprise : "combien je dépense ce mois-ci")
-  const depM=(Array.isArray(allDep)?allDep:[]).reduce((s,d)=>s+(d.montant_ttc||0),0);
-  set('kpi-dep-m',depM.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €');
+  // Cette semaine — calendrier compact (Lun→Dim)
+  const elSem=document.getElementById('dash-semaine');
+  if(elSem){
+    const byDay={};
+    semaine.forEach(p=>{if(p.date_prestation)(byDay[p.date_prestation]=byDay[p.date_prestation]||[]).push(p);});
+    const jours=Array.from({length:7},(_,i)=>{const d=new Date(lun);d.setDate(lun.getDate()+i);return ymdLocal(d);});
+    const JL=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+    elSem.innerHTML='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">'+jours.map((j,i)=>{
+      const n=(byDay[j]||[]).length;
+      const isToday=j===today;
+      return`<div onclick="_preFiltre='';_preStatutsFiltre=null;_preDateFiltre='${j}';switchView('pre')" style="cursor:pointer;text-align:center;padding:8px 4px;border-radius:8px;background:${isToday?'rgba(54,107,255,.1)':'var(--c2)'};border:1px solid ${isToday?'rgba(54,107,255,.3)':'var(--b1)'}">
+        <div style="font-size:9.5px;color:var(--t3);text-transform:uppercase;font-weight:600">${JL[i]}</div>
+        <div style="font-size:12px;color:${isToday?'var(--acc)':'var(--t2)'};font-weight:${isToday?700:500};margin:2px 0">${new Date(j).getDate()}</div>
+        <div style="font-size:15px;font-weight:700;color:${n>0?'var(--t1)':'var(--t3)'}">${n||'–'}</div>
+      </div>`;
+    }).join('')+'</div>';
+  }
 
-  // CA facturé total (pour le graphique)
-  const caTotal=(allPre||[]).filter(p=>['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0);
-  set('dash-ca',caTotal.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0}));
-
-  // Planning du jour
-  const elToday=document.getElementById('dash-today');
-  if(elToday){
-    if(!todayPre||!todayPre.length){
-      elToday.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune prestation planifiée aujourd\'hui.</div>';
+  // Activité — dernières actions (activity_log, alimenté automatiquement par
+  // fan-out depuis financial_audit_log/document_events/club_credit_transactions/
+  // plannings_hebdo/recruitment_applications — voir migration-os-v2-plannings-
+  // hebdo-activity-log.sql)
+  const elAct=document.getElementById('dash-activite');
+  if(elAct){
+    const list=Array.isArray(activite)?activite:[];
+    if(!list.length){
+      elAct.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucune activité récente.</div>';
     } else {
-      const sCl={'confirmée':'ba','planifiée':'ba','prête':'ba','production_démarrée':'bl','livrée':'bg','annulée':'bb'};
-      elToday.innerHTML='<div style="padding:0 0 4px">'+todayPre.map(p=>{
-        const h=p.heure_debut?p.heure_debut.slice(0,5):'--:--';
-        const hf=p.heure_fin?p.heure_fin.slice(0,5):'';
-        return`<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--bd)">
-          <div style="min-width:52px;font-size:12px;font-weight:600;color:var(--ac);font-variant-numeric:tabular-nums">${h}${hf?' - '+hf:''}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.clients?.nom||'—')}</div>
-            <div style="font-size:11px;color:var(--t3)">${p.type_prestation||''}</div>
-          </div>
-          <span class="bd ${sCl[p.statut]||'bw'}" style="white-space:nowrap"><span class="bd-d"></span>${SL[p.statut]||p.statut}</span>
-          <button class="btn bg2" style="padding:3px 8px;font-size:11px" onclick="modalDetailById('${p.id}')">Ouvrir</button>
-        </div>`;
-      }).join('')+'</div>';
+      const CAT_ICON={finance:'💰',communication:'📣',equipe:'👥',recrutement:'🎯',signature:'✍️'};
+      // recrutement pointe vers modalCandidatures() et non switchView : 'candidatures'
+      // est un item NAV modal-only (modal:'modalCandidatures'), pas une vraie vue —
+      // switchView('candidatures') afficherait un fallbackView vide (VIEWS['admin.candidatures']
+      // n'existe pas).
+      const CAT_ACTION={finance:"switchView('resultat')",communication:"switchView('planning')",equipe:"switchView('col')",recrutement:'modalCandidatures()',signature:"switchView('contrats')"};
+      const relT=d=>{
+        const diff=Math.floor((Date.now()-new Date(d))/60000);
+        if(diff<1)return'à l\'instant';if(diff<60)return'il y a '+diff+'min';
+        const h=Math.floor(diff/60);if(h<24)return'il y a '+h+'h';
+        const days=Math.floor(h/24);if(days<7)return'il y a '+days+'j';
+        return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+      };
+      elAct.innerHTML=list.map(a=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 16px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="${CAT_ACTION[a.categorie]||"switchView('dash')"}">
+        <span style="font-size:15px;flex-shrink:0">${CAT_ICON[a.categorie]||'•'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.titre||'')}</div>
+          ${a.description?`<div style="font-size:11px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.description)}</div>`:''}
+        </div>
+        <span style="font-size:10.5px;color:var(--t3);flex-shrink:0;white-space:nowrap">${relT(a.created_at)}</span>
+      </div>`).join('');
     }
   }
 
-  // Tracker 5 clubs partenaires — objectif visuel
+  // Tracker 5 clubs partenaires — objectif visuel (logique inchangée, déjà confirmée)
   try{
     const pipRaw=await sbFetch('clients?select=id,nom,statut,sport,ville,score_priorite,prochaine_action,date_prochaine_action&statut=in.(client,partenaire,négociation,devis_envoyé,qualifié,prospect)&order=score_priorite.desc.nullslast,created_at.asc&limit=300');
     const pip=Array.isArray(pipRaw)?pipRaw:[];
@@ -6226,37 +6241,9 @@ async function loadAdminDash(){
       }).join('');
       if(n>=5)objFunnel.innerHTML='<span style="font-size:12px;font-weight:700;color:var(--ok)">Objectif atteint !</span>';
     }
-    // Màj KPI clients actifs (inclure partenaire)
-    set('kpi-cli-v',n);
+    // Màj bannière clubs actifs (inclure partenaire)
+    set('bnr-clubs',n);
   }catch(e){}
-
-  // Suivi de production
-  const elProd=document.getElementById('dash-prod');
-  if(elProd&&allPre){
-    const stages=[
-      {lb:'À tourner',col:'#366BFF',sts:['confirmée','planifiée','équipe_affectée','prête','équipe_en_route','arrivée_sur_place','production_démarrée']},
-      {lb:'En tri',col:'#00B8D4',sts:['production_terminée','médias_à_transférer','médias_complets']},
-      {lb:'En retouche',col:'#F5A524',sts:['à_monter']},
-      {lb:'En montage',col:'#7C4DFF',sts:['montage_en_cours']},
-      {lb:'À valider',col:'#FF6B35',sts:['prêt_validation','à_valider_client']},
-      {lb:'À livrer',col:'#2ECC8A',sts:['prête_à_livrer']},
-    ];
-    elProd.innerHTML=stages.map(s=>{
-      const n=allPre.filter(p=>s.sts.includes(p.statut)).length;
-      // Bug corrigé (audit pré-lancement 11/08) : cette carte compte
-      // PLUSIEURS statuts (ex. "À tourner" = 7 statuts), mais le clic ne
-      // filtrait auparavant que sur le premier de la liste (_preFiltre en
-      // recherche texte ne peut représenter qu'une valeur) — le nombre
-      // affiché et le résultat du filtre divergeaient silencieusement.
-      // _preStatutsFiltre (tableau, voir renderPreTable) filtre désormais
-      // sur l'ensemble exact des statuts du groupe.
-      const stsJson=escJs(JSON.stringify(s.sts));
-      return`<div style="background:var(--c2);border-radius:8px;padding:10px 12px;text-align:center;border-top:2px solid ${s.col};cursor:${n>0?'pointer':'default'}" onclick="${n>0?`_preFiltre='';_preStatutsFiltre=JSON.parse('${stsJson}');switchView('pre')`:''}">
-        <div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:${n>0?s.col:'var(--t3)'}">${n}</div>
-        <div style="font-size:10px;color:var(--t3);margin-top:3px;white-space:nowrap">${s.lb}</div>
-      </div>`;
-    }).join('');
-  }
 
   // À traiter
   const elTraiter=document.getElementById('dash-traiter');
@@ -6264,13 +6251,14 @@ async function loadAdminDash(){
   if(elTraiter){
     const items=[];
     // Factures en retard
-    const enRetard=(allPre||[]).filter(p=>p.statut_financier==='en_retard');
-    enRetard.forEach(p=>items.push({ic:'🔴',txt:`Facture en retard — ${esc(p.clients?.nom||p.reference||'?')}`,act:`modalDetailById('${p.id}')`}));
+    try{
+      const enRetard=await sbFetch('prestations?select=id,reference,clients(nom)&statut_financier=eq.en_retard&limit=10');
+      (enRetard||[]).forEach(p=>items.push({ic:'🔴',txt:`Facture en retard — ${esc(p.clients?.nom||p.reference||'?')}`,act:`modalDetailById('${p.id}')`}));
+    }catch(e){}
     // Incidents ouverts
     if(incOuverts>0) items.push({ic:'⚠️',txt:`${incOuverts} incident${incOuverts>1?'s':''} ouvert${incOuverts>1?'s':''}`,act:`switchView('incidents')`});
     // Devis arrivant à expiration
     try{
-      const in7=new Date(today);in7.setDate(in7.getDate()+7);const in7s=ymdLocal(in7);
       const devisExp=await sbFetch(`devis?select=id,numero,date_expiration,clients(nom)&statut=in.(envoyé,en_attente)&date_expiration=lte.${in7s}&order=date_expiration.asc&limit=5`);
       (devisExp||[]).forEach(d=>{
         const exp=d.date_expiration?new Date(d.date_expiration).toLocaleDateString('fr-FR'):'?';
@@ -6278,19 +6266,32 @@ async function loadAdminDash(){
         items.push({ic:'📋',txt:`Devis ${isExpired?'expiré':'expire le '+exp} — ${esc(d.clients?.nom||d.numero||'?')}`,act:`switchView('devis')`});
       });
     }catch(e){}
-    // Prestations confirmées sans équipe
+    // Prestations confirmées cette semaine sans équipe (fenêtre 7 jours,
+    // plus utile qu'un simple "aujourd'hui" — on veut anticiper, pas subir)
     try{
-      const sansEquipe=await sbFetch('prestations?select=id,reference,clients(nom)&statut=in.(confirmée,planifiée)&order=date_prestation.asc&limit=20');
+      const sansEquipe=await sbFetch('prestations?select=id,reference,clients(nom)&statut=in.(confirmée,planifiée)&date_prestation=gte.'+today+'&date_prestation=lte.'+in7s+'&order=date_prestation.asc&limit=20');
       if(sansEquipe&&sansEquipe.length){
-        // On vérifie lesquelles n'ont vraiment pas d'équipe
         const equipeIds=await sbFetch('prestations_equipe_display?select=prestation_id');
         const withTeam=new Set((equipeIds||[]).map(e=>e.prestation_id));
         sansEquipe.filter(p=>!withTeam.has(p.id)).slice(0,3).forEach(p=>{
-          items.push({ic:'👥',txt:`Sans équipe — ${esc(p.clients?.nom||p.reference||'?')}`,act:`modalDetailById('${p.id}')`});
+          items.push({ic:'👥',txt:`Sans équipe cette semaine — ${esc(p.clients?.nom||p.reference||'?')}`,act:`modalDetailById('${p.id}')`});
         });
       }
     }catch(e){}
+    // Plannings CM soumis à valider
+    try{
+      const planSoumis=await sbFetch('plannings_hebdo?select=id&statut=eq.soumis');
+      const nPh=(planSoumis||[]).length;
+      if(nPh>0) items.push({ic:'📝',txt:`${nPh} planning${nPh>1?'s':''} CM à valider`,act:`modalPlanningsAValider()`});
+    }catch(e){}
+    // Candidatures à examiner
+    try{
+      const candNouveaux=await sbFetch('recruitment_applications?select=id&statut=eq.nouveau');
+      const nCand=(candNouveaux||[]).length;
+      if(nCand>0) items.push({ic:'🎯',txt:`${nCand} candidature${nCand>1?'s':''} à examiner`,act:`modalCandidatures()`});
+    }catch(e){}
     if(elNb) elNb.textContent=items.length||'0';
+    set('bnr-traiter',items.length||0);
     if(!items.length){
       elTraiter.innerHTML='<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Rien à traiter pour l\'instant.</div>';
     } else {
@@ -6300,92 +6301,6 @@ async function loadAdminDash(){
         <span style="font-size:11px;color:var(--ac)">›</span>
       </div>`).join('');
     }
-  }
-
-  // Kits utilisés
-  const elKits=document.getElementById('dash-kits-live');
-  if(elKits){
-    const kitsUses=(allKits||[]).filter(k=>k.statut!=='disponible');
-    if(!kitsUses.length){
-      elKits.innerHTML='<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Tous les kits sont disponibles.</div>';
-    } else {
-      const sc={'sorti':'#F5A524','en_prestation':'#F0445E','pré_réservé':'#366BFF','réservé':'#7C4DFF','en_maintenance':'#FF6B35','endommagé':'#F0445E','indisponible':'#888'};
-      elKits.innerHTML=kitsUses.map(k=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--bd)">
-        <div style="width:8px;height:8px;border-radius:50%;background:${sc[k.statut]||'#888'};flex-shrink:0"></div>
-        <div style="flex:1;font-size:13px">${esc(k.nom)}</div>
-        <span style="font-size:11px;color:var(--t3)">${k.statut}</span>
-      </div>`).join('');
-    }
-  }
-
-  // Mini bar chart CA (6 derniers mois)
-  const mc=document.getElementById('mc');
-  if(mc&&allPre){
-    const months=[];
-    for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
-    const vals=months.map(m=>(allPre||[]).filter(p=>p.date_prestation&&p.date_prestation.slice(0,7)===m&&['payée','partiellement_payée'].includes(p.statut_financier)).reduce((s,p)=>s+(p.montant_ttc||0),0));
-    const mx=Math.max(...vals,1);
-    mc.style.cssText='display:flex;align-items:flex-end;gap:4px;height:70px';
-    mc.innerHTML=vals.map((v,i)=>{
-      const pct=Math.round((v/mx)*100);
-      const isCur=i===5;
-      return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
-        <div style="width:100%;background:${isCur?'var(--ac)':'rgba(54,107,255,.3)'};border-radius:3px 3px 0 0;height:${pct}%;min-height:2px;transition:height .3s"></div>
-        <div style="font-size:9px;color:var(--t3)">${months[i].slice(5)}</div>
-      </div>`;
-    }).join('');
-  }
-
-  // Clubs cibles (prospects + qualifiés prioritaires)
-  const elCC=document.getElementById('dash-clubs-cibles');
-  if(elCC){
-    try{
-      const [prospects,presAll]=await Promise.all([
-        sbFetch('clients?select=id,nom,type_client,sport,ville,email,telephone,statut,prochaine_action,date_prochaine_action,score_priorite&statut=in.(prospect,qualifié,devis_envoyé,négociation)&order=score_priorite.desc.nullslast,created_at.desc&limit=8'),
-        sbFetch('prestations?select=client_id,date_prestation&statut=not.in.(annulée,refusée)&order=date_prestation.desc&limit=200'),
-      ]);
-      const list=Array.isArray(prospects)?prospects:[];
-      const lastPre={};
-      (Array.isArray(presAll)?presAll:[]).forEach(p=>{if(p.client_id&&!lastPre[p.client_id])lastPre[p.client_id]=p.date_prestation;});
-      const today=ymdLocal();
-      if(!list.length){
-        elCC.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun prospect en cours. <button onclick="modalNouveauClient()" class="btn bp bs" style="margin-left:8px;font-size:11px">+ Ajouter un club</button></div>';
-      } else {
-        const SCL={prospect:'Prospect',qualifié:'Qualifié',devis_envoyé:'Devis envoyé',négociation:'Négociation'};
-        const SCC={prospect:'bw',qualifié:'bb',devis_envoyé:'bl',négociation:'br'};
-        elCC.innerHTML='<div style="display:flex;flex-direction:column">'+list.map((c,i)=>{
-          const lp=lastPre[c.id];
-          const lpStr=lp?new Date(lp).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'—';
-          const meta=[c.sport,c.ville].filter(Boolean).join(' · ');
-          let nextAct='';
-          if(c.prochaine_action){
-            let actClr='var(--t3)';let dateTxt='';
-            if(c.date_prochaine_action){
-              if(c.date_prochaine_action<today){actClr='var(--er)';dateTxt=' · RETARD';}
-              else if(c.date_prochaine_action===today){actClr='var(--wa)';dateTxt=' · Auj.';}
-              else{actClr='var(--acc)';const d=new Date(c.date_prochaine_action);dateTxt=' · '+d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});}
-            }
-            nextAct=`<div style="font-size:10px;color:${actClr};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">⚡ ${esc(c.prochaine_action)}${dateTxt}</div>`;
-          }
-          return`<div style="display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid var(--b1)${i===list.length-1?';border-bottom:none':''}">
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;gap:6px">
-                <span style="font-size:13px;font-weight:600;color:var(--t1)">${esc(c.nom)}</span>
-                <span class="bd ${SCC[c.statut]||'bw'}" style="flex-shrink:0"><span class="bd-d"></span>${SCL[c.statut]||c.statut}</span>
-              </div>
-              <div style="font-size:10.5px;color:var(--t3);margin-top:1px">${meta||'—'}</div>
-              ${nextAct}
-            </div>
-            <div style="display:flex;gap:5px;flex-shrink:0">
-              ${c.email?`<a href="mailto:${esc(c.email)}?subject=Partenariat SportVision" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);text-decoration:none">✉</a>`:''}
-              ${c.telephone?`<a href="tel:${esc(c.telephone)}" style="padding:4px 8px;font-size:11px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);text-decoration:none">📞</a>`:''}
-              <button onclick="modalCreerDevisRapide('${c.id}','${escJs(c.nom||'')}')" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.2);border-radius:var(--rp);color:var(--wa);cursor:pointer">Devis</button>
-              <button onclick="modalAjouterContact('${c.id}')" style="padding:4px 8px;font-size:11px;font-weight:600;background:rgba(54,107,255,.08);border:1px solid rgba(54,107,255,.2);border-radius:var(--rp);color:var(--acc);cursor:pointer">+ Contact</button>
-            </div>
-          </div>`;
-        }).join('')+'</div>';
-      }
-    }catch(e){if(elCC)elCC.innerHTML='<div style="padding:20px;color:var(--t3);font-size:12px">Erreur de chargement.</div>';}
   }
 }
 
