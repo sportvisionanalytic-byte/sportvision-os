@@ -16866,7 +16866,7 @@ async function loadCmCal(){
   try{
     const [pre,contenus,pubMois]=await Promise.all([
       sbFetch('prestations?select=id,reference,date_prestation,clients(nom)&date_prestation=gte.'+start+'&date_prestation=lte.'+end+'&statut=not.in.(annulée,refusée)&order=date_prestation.asc'),
-      sbFetch('contenus?select=id,titre,statut,plateforme,date_prevue&date_prevue=gte.'+start+'&date_prevue=lte.'+end),
+      sbFetch('contenus?select=id,titre,statut,plateforme,date_prevue,client_id,planning_hebdo_id,clients(nom)&date_prevue=gte.'+start+'&date_prevue=lte.'+end),
       sbFetch('contenus?select=id&statut=eq.publie&date_publication=gte.'+mStart),
     ]);
     _contenuCache=contenus||[];
@@ -16875,7 +16875,38 @@ async function loadCmCal(){
     set('cal-kpi-pre',preWeek);set('cal-kpi-prog',prog);set('cal-kpi-pub',(pubMois||[]).length);
     const JOURS=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
     const today=ymdLocal();
-    el.innerHTML=`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div style="display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px;min-width:600px">
+    // Soumission hebdomadaire par club (28/08/2026) : un CM soumet la semaine
+    // d'un club en un geste plutôt que de faire valider chaque contenu un par
+    // un — voir migration-os-v2-plannings-hebdo-activity-log.sql. N'affecte
+    // pas le cycle de vie individuel de chaque contenu (toujours brouillon→
+    // …→publié), c'est un checkpoint plus grossier au-dessus.
+    const clientsSemaine=[...new Map(_contenuCache.filter(c=>c.client_id).map(c=>[c.client_id,c.clients?.nom||'Club'])).entries()];
+    let planningsBlock='';
+    if(clientsSemaine.length){
+      const planIds=[...new Set(_contenuCache.map(c=>c.planning_hebdo_id).filter(Boolean))];
+      const plannings=planIds.length?await sbFetch('plannings_hebdo?id=in.('+planIds.join(',')+')&select=id,client_id,statut,motif_refus'):[];
+      _planningsSemaineCache=Array.isArray(plannings)?plannings:[];
+      planningsBlock=`<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+        ${clientsSemaine.map(([cid,nom])=>{
+          const contPlanId=_contenuCache.find(c=>c.client_id===cid)?.planning_hebdo_id;
+          const planning=_planningsSemaineCache.find(p=>p.client_id===cid && p.id===contPlanId);
+          let action;
+          if(!planning||planning.statut==='brouillon'||planning.statut==='refuse'){
+            action=`<button class="btn bp bs" onclick="cmSoumettreSemaine('${escJs(cid)}')">${planning?.statut==='refuse'?'Corriger et resoumettre':'Soumettre la semaine'}</button>`;
+          }else if(planning.statut==='soumis'){
+            action=`<span class="bd bw" style="font-size:10.5px"><span class="bd-d"></span>En attente de validation</span>`;
+          }else{
+            action=`<span class="bd ba" style="font-size:10.5px"><span class="bd-d"></span>✓ Validé</span>`;
+          }
+          const motif=planning?.statut==='refuse'&&planning.motif_refus?`<div style="font-size:10.5px;color:var(--er);margin-top:2px">Refusé : ${esc(planning.motif_refus)}</div>`:'';
+          return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--s2);border-radius:8px;padding:8px 12px">
+            <div><div style="font-size:12.5px;font-weight:600;color:var(--t1)">${esc(nom)}</div>${motif}</div>
+            ${action}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+    el.innerHTML=`${planningsBlock}<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div style="display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px;min-width:600px">
       ${days.map((d,i)=>{
         const ds=ymdLocal(d);
         const isToday=ds===today;
@@ -16890,6 +16921,88 @@ async function loadCmCal(){
       }).join('')}
     </div></div>`;
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+let _planningsSemaineCache=[];
+async function cmSoumettreSemaine(clientId){
+  const days=getWeekDates(_calWeekOffset);
+  const monday=ymdLocal(days[0]);
+  const sunday=ymdLocal(days[6]);
+  const uid=localStorage.getItem('sv_uid');
+  try{
+    let planning=(await sbFetch('plannings_hebdo?client_id=eq.'+clientId+'&semaine_debut=eq.'+monday))?.[0];
+    if(!planning){
+      const created=await sbFetch('plannings_hebdo',{method:'POST',body:{client_id:clientId,cm_id:uid,semaine_debut:monday}});
+      if(sbErr(created)){toast('Erreur : '+(created.message||'création impossible.'),'er');return;}
+      planning=created[0];
+    }
+    if(planning.statut==='refuse'){
+      const back=await sbFetch('plannings_hebdo?id=eq.'+planning.id,{method:'PATCH',body:{statut:'brouillon'}});
+      if(sbErr(back)){toast('Erreur : '+(back.message||'action impossible.'),'er');return;}
+    }
+    await sbFetch('contenus?client_id=eq.'+clientId+'&date_prevue=gte.'+monday+'&date_prevue=lte.'+sunday,{method:'PATCH',body:{planning_hebdo_id:planning.id}});
+    const sub=await sbFetch('plannings_hebdo?id=eq.'+planning.id,{method:'PATCH',body:{statut:'soumis'}});
+    if(sbErr(sub)){toast('Erreur : '+(sub.message||'soumission impossible.'),'er');return;}
+    toast('Semaine soumise pour validation.','ok');
+    loadCmCal();
+  }catch(e){toast('Erreur lors de la soumission.','er');}
+}
+
+// ── Admin/CM lead — validation des plannings hebdo soumis ─────────────────
+function modalPlanningsAValider(){
+  openModal(`<div class="mh"><div class="mt">Plannings à valider</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+    <div class="mb" id="ph-body" style="display:flex;flex-direction:column;gap:10px;min-height:120px">
+      <div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>
+    </div>
+    <div class="mf"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
+  phReloadList();
+}
+async function phReloadList(){
+  const body=document.getElementById('ph-body');
+  if(!body)return;
+  body.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px 0">Chargement…</div>';
+  try{
+    const data=await sbFetch('plannings_hebdo?statut=eq.soumis&select=id,client_id,cm_id,semaine_debut,soumis_at&order=soumis_at.asc');
+    if(sbErr(data)){body.innerHTML='<div style="color:var(--er);font-size:12px;padding:8px">Erreur de chargement.</div>';return;}
+    if(!data||!data.length){
+      body.innerHTML='<div style="text-align:center;padding:36px;color:var(--t3);font-size:13px"><div style="font-size:28px;margin-bottom:8px;opacity:.3">📅</div>Aucun planning en attente de validation.</div>';
+      return;
+    }
+    const clientIds=[...new Set(data.map(p=>p.client_id))];
+    const cmIds=[...new Set(data.map(p=>p.cm_id))];
+    const [clientsD,cmsD]=await Promise.all([
+      sbFetch('clients?id=in.('+clientIds.join(',')+')&select=id,nom'),
+      sbFetch('profiles?id=in.('+cmIds.join(',')+')&select=id,prenom,nom'),
+    ]);
+    const clientById=Object.fromEntries((clientsD||[]).map(c=>[c.id,c.nom]));
+    const cmById=Object.fromEntries((cmsD||[]).map(c=>[c.id,((c.prenom||'')+' '+(c.nom||'')).trim()]));
+    body.innerHTML=data.map(p=>{
+      const semaine=new Date(p.semaine_debut).toLocaleDateString('fr-FR',{day:'2-digit',month:'long'});
+      return `<div style="border:1px solid var(--b1);border-radius:var(--rb);padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(clientById[p.client_id]||'Club')}</div>
+        <div style="font-size:12px;color:var(--t2)">Semaine du ${semaine} · CM : ${esc(cmById[p.cm_id]||'—')}</div>
+        <div style="font-size:10.5px;color:var(--t3)">Soumis le ${p.soumis_at?new Date(p.soumis_at).toLocaleDateString('fr-FR'):'—'}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:2px">
+          <button class="btn bp bs" onclick="phTraiter('${escJs(p.id)}','valide')">Valider</button>
+          <button class="btn bg2 bs" style="color:var(--er)" onclick="phDemanderMotifRefus('${escJs(p.id)}')">Refuser</button>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML='<div style="color:var(--er);font-size:12px;padding:8px">Erreur de chargement.</div>';
+  }
+}
+async function phTraiter(id,statut,motif){
+  const body={statut};
+  if(motif)body.motif_refus=motif;
+  const r=await sbFetch('plannings_hebdo?id=eq.'+id,{method:'PATCH',body});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'action impossible.'),'er');return;}
+  toast(statut==='valide'?'Planning validé.':'Planning refusé.','ok');
+  await phReloadList();
+}
+function phDemanderMotifRefus(id){
+  const motif=prompt('Motif du refus (obligatoire) :');
+  if(!motif||!motif.trim()){toast('Un motif est requis.','wa');return;}
+  phTraiter(id,'refuse',motif.trim());
 }
 
 // ── Audit — journal d'actions ────────────────────────────────────────────
