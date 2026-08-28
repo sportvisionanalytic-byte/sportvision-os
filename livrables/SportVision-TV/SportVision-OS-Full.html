@@ -9894,9 +9894,30 @@ async function modalEquipePrestation(prestationId,ref){
     <div id="eq-err" style="font-size:12px;color:var(--er);margin-top:8px;min-height:14px"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn bg2" onclick="closeModal()">Fermer</button></div>`);
   await chargerEquipe(prestationId,ref);
-  sbFetch('profiles?select=id,prenom,nom,role&order=nom.asc').then(data=>{
+  // Charge (missions acceptées à venir, 30 prochains jours) affichée à côté
+  // de chaque nom — "attribution fluide" (28/08/2026, demande Fouka) : avant,
+  // affecter quelqu'un exigeait de deviner ou vérifier ailleurs qui était
+  // déjà chargé. Tri photo/cm (rôles terrain) en tête, moins chargé d'abord.
+  Promise.all([
+    sbFetch('profiles?select=id,prenom,nom,role&order=nom.asc'),
+    sbFetch('prestations_equipe_display?select=collaborateur_id,prestations!inner(date_prestation,statut)&statut=eq.acceptée&prestations.date_prestation=gte.'+ymdLocal()+'&prestations.statut=not.in.(annulée,refusée)').catch(()=>[]),
+  ]).then(([data,chargeRaw])=>{
     const sel=document.getElementById('eq-col');
-    if(sel&&data)data.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=[p.prenom,p.nom].filter(Boolean).join(' ')||p.role;sel.appendChild(o);});
+    if(!sel||!data)return;
+    const charge={};
+    (Array.isArray(chargeRaw)?chargeRaw:[]).forEach(c=>{charge[c.collaborateur_id]=(charge[c.collaborateur_id]||0)+1;});
+    const rolePoids={photo:0,cm:0};
+    const sorted=[...data].sort((a,b)=>{
+      const pa=rolePoids[a.role]??1,pb=rolePoids[b.role]??1;
+      if(pa!==pb)return pa-pb;
+      return (charge[a.id]||0)-(charge[b.id]||0);
+    });
+    sorted.forEach(p=>{
+      const o=document.createElement('option');o.value=p.id;
+      const n=charge[p.id]||0;
+      o.textContent=([p.prenom,p.nom].filter(Boolean).join(' ')||p.role)+' — '+(p.role||'')+' · '+n+' mission'+(n>1?'s':'')+' à venir';
+      sel.appendChild(o);
+    });
   });
 }
 async function chargerEquipe(prestationId,ref){
