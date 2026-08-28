@@ -719,6 +719,8 @@ const NAV={
     {id:'cotisations',lb:'Paiement collectif',ic:'target'},
     {id:'demandesclub',lb:'Demandes Club+',ic:'cli',modal:'modalDemandesClubConnect'},
     {id:'connectcomptes',lb:'Comptes Club+ / Connect',ic:'cli'},
+    {type:'sep',lb:'Communication'},
+    {id:'commhub',lb:'Communication',ic:'msg'},
     {type:'sep',lb:'Équipe & RH'},
     {id:'col',lb:'Collaborateurs',ic:'col'},
     {id:'candidatures',lb:'Candidatures',ic:'col',modal:'modalCandidatures'},
@@ -1296,6 +1298,24 @@ const VIEWS={
   'admin.connectcomptes':()=>_connectComptesView(),
   'sec.connectcomptes':()=>_connectComptesView(),
   'com.connectcomptes':()=>_connectComptesView(),
+
+  // Vue command-center Admin V2 : santé communication/contenu tous clubs
+  // (jusqu'ici uniquement visible côté CM sur son propre portefeuille via
+  // loadCmCal, plus l'inbox de validation modalPlanningsAValider déjà
+  // existante — aucune vue transverse admin n'existait avant ceci).
+  'admin.commhub':()=>`
+  <div class="cd" style="margin-bottom:16px;border-color:rgba(240,68,94,.2)">
+    <div class="cd-h"><div class="cd-t">📝 Plannings à valider</div><span id="commhub-ph-nb" class="bd bn">—</span></div>
+    <div id="commhub-ph" style="padding:14px 18px"><button class="btn bp bs" onclick="modalPlanningsAValider()">Ouvrir la validation</button></div>
+  </div>
+  <div class="cd" style="margin-bottom:16px">
+    <div class="cd-h"><div class="cd-t">Pipeline de contenu (tous clubs)</div></div>
+    <div id="commhub-pipeline" style="padding:12px 18px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+  </div>
+  <div class="cd">
+    <div class="cd-h"><div class="cd-t">Structures</div></div>
+    <div id="commhub-structures"><div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div></div>
+  </div>`,
 
   'sec.planning':()=>`
     <div class="sh">
@@ -3819,6 +3839,7 @@ async function loadViewData(role,view){
   if((role==='admin'||role==='sec'||role==='com')&&view==='crm') await loadClients();
   if((role==='admin'||role==='sec'||role==='com')&&view==='connectcomptes') await loadConnectComptes();
   if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
+  if(role==='admin'&&view==='commhub') await loadCommHub();
   if(role==='admin'&&view==='col') await loadCollaborateurs();
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';await loadKits();}
   if(role==='admin'&&view==='dash') await loadAdminDash();
@@ -17057,6 +17078,88 @@ function phDemanderMotifRefus(id){
   const motif=prompt('Motif du refus (obligatoire) :');
   if(!motif||!motif.trim()){toast('Un motif est requis.','wa');return;}
   phTraiter(id,'refuse',motif.trim());
+}
+
+// ── Communication (Admin V2, command-center tous clubs) ──────────────────
+// Ouvre la fiche club directement sur son onglet Communication (onglet
+// ajouté dans cf1b0e1 — loadClientCommunication y est déjà branché via
+// fceShowTab, on ne duplique rien ici, on y navigue seulement).
+async function ouvrirFicheClubCommunication(clientId){
+  await modalModifierClientById(clientId);
+  setTimeout(()=>fceShowTab('comm'),50);
+}
+async function loadCommHub(){
+  // Callout plannings à valider — réutilise modalPlanningsAValider, on
+  // affiche seulement le compteur ici.
+  try{
+    const ph=await sbFetch('plannings_hebdo?select=id&statut=eq.soumis').catch(()=>[]);
+    const nPh=(Array.isArray(ph)?ph:[]).length;
+    const badge=document.getElementById('commhub-ph-nb');if(badge)badge.textContent=nPh||'0';
+  }catch(e){}
+
+  // Pipeline de contenu — enum réel contenus.statut (migration-contenus.sql) :
+  // brouillon/a_valider_interne/a_valider_client/corrections/valide/
+  // programme/publie/archive. 4 buckets visibles, archive exclu (terminal,
+  // hors pipeline actif).
+  const elPipe=document.getElementById('commhub-pipeline');
+  if(elPipe){
+    try{
+      const contenus=await sbFetch('contenus?select=id,statut&statut=neq.archive&limit=1000').catch(()=>[]);
+      const list=Array.isArray(contenus)?contenus:[];
+      const buckets=[
+        {lb:'À créer',col:'#366BFF',sts:['brouillon']},
+        {lb:'À valider',col:'#F5A524',sts:['a_valider_interne','a_valider_client','corrections']},
+        {lb:'Programmé',col:'#7C4DFF',sts:['valide','programme']},
+        {lb:'Publié',col:'#2ECC8A',sts:['publie']},
+      ];
+      elPipe.innerHTML=buckets.map(b=>{
+        const n=list.filter(c=>b.sts.includes(c.statut)).length;
+        return`<div style="background:var(--c2);border-radius:8px;padding:10px 12px;text-align:center;border-top:2px solid ${b.col}">
+          <div style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:${n>0?b.col:'var(--t3)'}">${n}</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:3px;white-space:nowrap">${b.lb}</div>
+        </div>`;
+      }).join('');
+    }catch(e){elPipe.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+  }
+
+  // Structures — CM assigné + statut du planning de la semaine en cours,
+  // par club. Résolution des noms CM via un second appel profiles?id=in.(...)
+  // (même pattern que cmById dans phReloadList/loadClientCommunication,
+  // pas d'embed PostgREST profiles(...) sans FK nommée confirmée).
+  const elStruct=document.getElementById('commhub-structures');
+  if(elStruct){
+    elStruct.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
+    try{
+      const clients=await sbFetch('clients?select=id,nom,cm_id&statut=in.(client,partenaire)&order=nom.asc');
+      const list=Array.isArray(clients)?clients:[];
+      if(!list.length){elStruct.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun club actif.</div>';return;}
+      const cmIds=[...new Set(list.map(c=>c.cm_id).filter(Boolean))];
+      let cmById={};
+      if(cmIds.length){
+        const cms=await sbFetch('profiles?id=in.('+cmIds.join(',')+')&select=id,prenom,nom').catch(()=>[]);
+        cmById=Object.fromEntries((Array.isArray(cms)?cms:[]).map(c=>[c.id,[c.prenom,c.nom].filter(Boolean).join(' ')]));
+      }
+      // Lundi de la semaine en cours — même calcul que loadAdminDash.
+      const now=new Date();
+      const dow=now.getDay()||7;
+      const lun=new Date(now);lun.setDate(now.getDate()-(dow-1));
+      const weekStart=ymdLocal(lun);
+      const plannings=await sbFetch('plannings_hebdo?select=client_id,statut&semaine_debut=eq.'+weekStart).catch(()=>[]);
+      const phByClient=Object.fromEntries((Array.isArray(plannings)?plannings:[]).map(p=>[p.client_id,p.statut]));
+      const PH_LB={brouillon:'Brouillon',soumis:'Soumis',valide:'Validé',refuse:'Refusé'};
+      const PH_CLS={brouillon:'bn',soumis:'bw',valide:'ba',refuse:'br'};
+      elStruct.innerHTML=list.map(c=>{
+        const cmLabel=c.cm_id?esc(cmById[c.cm_id]||'—'):'<span style="color:var(--wa)">— Non affecté</span>';
+        const st=phByClient[c.id];
+        const stHtml=st?`<span class="bd ${PH_CLS[st]||'bn'}"><span class="bd-d"></span>${PH_LB[st]||st}</span>`:'<span class="bd bn"><span class="bd-d"></span>Aucun</span>';
+        return`<div style="display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="ouvrirFicheClubCommunication('${escJs(c.id)}')">
+          <div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.nom||'—')}</div>
+          <div style="width:180px;flex-shrink:0;font-size:12px;color:var(--t2)">${cmLabel}</div>
+          <div style="width:110px;flex-shrink:0">${stHtml}</div>
+        </div>`;
+      }).join('');
+    }catch(e){elStruct.innerHTML='<div style="padding:20px;text-align:center;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
+  }
 }
 
 // ── Audit — journal d'actions ────────────────────────────────────────────
