@@ -8230,7 +8230,7 @@ async function validerLivrable(id){
   }catch(e){toast('Erreur','er');}
 }
 
-function modalCreerLivrable(){
+function modalCreerLivrable(prefillRef){
   const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
   const TYPES=[['galerie_photo','Galerie photo'],['photos_finales','Photos finales'],['video_finale','Vidéo finale'],['highlight','Highlight'],['aftermovie','Aftermovie'],['interview','Interview'],['reels','Reels'],['tiktok','TikTok'],['story','Story'],['affiche','Affiche'],['carrousel','Carrousel'],['miniature','Miniature'],['dossier_complet','Dossier complet'],['autre','Autre']];
   openModal(`
@@ -8242,7 +8242,7 @@ function modalCreerLivrable(){
         <div><label style="${L}">Type</label>
           <select id="lv-type" class="l-inp" style="height:38px">${TYPES.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></div>
         <div><label style="${L}">Prestation (ref.)</label>
-          <input id="lv-pre" type="text" class="l-inp" style="height:38px" placeholder="SPV-2024-001…"></div>
+          <input id="lv-pre" type="text" class="l-inp" style="height:38px" placeholder="SPV-2024-001…" value="${esc(prefillRef||'')}"></div>
       </div>
       <div><label style="${L}">Lien final (URL) *</label>
         <input id="lv-url" type="url" class="l-inp" style="height:38px" placeholder="https://…"></div>
@@ -8301,16 +8301,55 @@ async function sauvegarderLivrable(){
   }catch(e){err.textContent='Erreur lors de la création.';}
 }
 
-function modalPrepLivraison(livrableId){
+// Rendue async (28/08/2026, demande Fouka) pour préremplir le destinataire
+// et détecter le cas Full Communication : jusqu'ici, "envoyer au client" et
+// "envoyer au CM d'un club Full Com" n'étaient pas distingués nulle part
+// dans ce flux — la livraison partait toujours au contact générique du
+// club, jamais au CM qui gère réellement sa communication.
+async function modalPrepLivraison(livrableId){
   const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  let prefillNom='',prefillEmail='',cmBanner='',cmId=null;
+  try{
+    const lv=await sbFetch('media_livrables?select=prestation_id&id=eq.'+livrableId);
+    const presId=lv?.[0]?.prestation_id;
+    if(presId){
+      const pres=await sbFetch('prestations?select=client_id&id=eq.'+presId);
+      const clientId=pres?.[0]?.client_id;
+      if(clientId){
+        const [cl,ct]=await Promise.all([
+          sbFetch('clients?select=id,nom,prenom_contact,nom_contact,email,cm_id&id=eq.'+clientId),
+          sbFetch('contrats?select=type_contrat&client_id=eq.'+clientId+'&statut=eq.actif&type_contrat=eq.full_communication&limit=1').catch(()=>[]),
+        ]);
+        const c=cl?.[0];
+        if(c){
+          prefillNom=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ');
+          prefillEmail=c.email||'';
+          if(Array.isArray(ct)&&ct.length){
+            if(c.cm_id){
+              const cm=await sbFetch('profiles?select=id,prenom,nom&id=eq.'+c.cm_id);
+              const cmNom=cm?.[0]?[cm[0].prenom,cm[0].nom].filter(Boolean).join(' ').trim():null;
+              if(cmNom){
+                cmId=c.cm_id;
+                cmBanner=`<div style="font-size:11.5px;color:var(--acc);line-height:1.5;padding:10px 12px;background:rgba(14,165,255,.08);border-radius:var(--rb);border:1px solid rgba(14,165,255,.25)">Club en Full Communication — <b>${esc(cmNom)}</b> (CM affecté) sera notifié automatiquement pour gérer la publication, en plus de cet envoi.</div>`;
+              }
+            }else{
+              cmBanner=`<div style="font-size:11.5px;color:var(--wa);line-height:1.5;padding:10px 12px;background:rgba(245,165,36,.08);border-radius:var(--rb);border:1px solid rgba(245,165,36,.25)">Club en Full Communication, mais aucun CM n'est affecté — personne ne sera notifié pour la publication.</div>`;
+            }
+          }
+        }
+      }
+    }
+  }catch(e){}
   openModal(`
     <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">📤 Préparer la livraison</div>
     <div style="display:flex;flex-direction:column;gap:11px">
+      ${cmBanner}
+      <input type="hidden" id="liv-cmid" value="${cmId||''}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Nom du destinataire</label>
-          <input id="liv-nom" type="text" class="l-inp" style="height:38px" placeholder="Prénom Nom"></div>
+          <input id="liv-nom" type="text" class="l-inp" style="height:38px" placeholder="Prénom Nom" value="${esc(prefillNom)}"></div>
         <div><label style="${L}">Email destinataire *</label>
-          <input id="liv-email" type="email" class="l-inp" style="height:38px" placeholder="contact@club.fr"></div>
+          <input id="liv-email" type="email" class="l-inp" style="height:38px" placeholder="contact@club.fr" value="${esc(prefillEmail)}"></div>
       </div>
       <div><label style="${L}">Message personnalisé</label>
         <textarea id="liv-msg" class="l-inp" style="height:80px;padding-top:10px;resize:none" placeholder="Bonjour,\nVeuillez trouver vos photos et vidéos de la prestation…\n\nMerci de confirmer la bonne réception."></textarea></div>
@@ -8358,6 +8397,8 @@ async function confirmerLivraison(livrableId){
     const rStatut=await sbFetch('media_livrables?id=eq.'+livrableId,{method:'PATCH',body:{statut:'livre'}}).catch(()=>({code:'network_error'}));
     if(sbErr(rStatut))console.error('MAJ statut livrable échouée',rStatut);
     if(lv?.prestation_id) await logMediaHistory(lv.prestation_id,S.uid,'Livraison effectuée','livraison',null,null,email);
+    const cmId=document.getElementById('liv-cmid')?.value;
+    if(cmId)await creerNotifSiActive(cmId,'taches',{type:'livraison_full_com',titre:'Contenu livré — '+(lv?.nom||'à publier'),message:'Le contenu vient d\'être livré au club. À vous de gérer la publication (Full Communication).',lue:false,prestation_id:lv?.prestation_id||null}).catch(()=>{});
     closeModal();
     toast(sbErr(rStatut)?'Livraison enregistrée, mais le statut du livrable n\'a pas pu être synchronisé.':'Livraison enregistrée','ok');
     loadProdLivrables();
@@ -9234,6 +9275,23 @@ async function repondreInvitation(equipeId,statut,motif){
     const r=await sbFetch('prestations_equipe?id=eq.'+equipeId,{method:'PATCH',body});
     if(sbErr(r)){toast('Erreur : '+(r.message||'Réponse impossible.'),'er');return;}
     toast(statut==='acceptée'?'Mission acceptée !':'Mission refusée.', statut==='acceptée'?'ok':'warn');
+    // Avancement automatique (28/08/2026, demande Fouka — "il reçoit, il
+    // accepte" doit faire avancer le déroulé sans clic manuel séparé) :
+    // seule la transition planifiée→équipe_affectée est légale ici (trigger
+    // validate_prestation_statut_transition) — best-effort, on ignore
+    // silencieusement si la prestation n'est plus/pas encore dans cet état
+    // exact (ex. déjà avancée manuellement, ou plusieurs opérateurs pas tous
+    // encore répondus).
+    if(statut==='acceptée'){
+      try{
+        const pe=await sbFetch('prestations_equipe?id=eq.'+equipeId+'&select=prestation_id,prestations(statut)');
+        const pres=pe?.[0]?.prestations;
+        const presId=pe?.[0]?.prestation_id;
+        if(presId&&pres?.statut==='planifiée'){
+          await sbFetch('prestations?id=eq.'+presId,{method:'PATCH',body:{statut:'équipe_affectée'}}).catch(()=>{});
+        }
+      }catch(e){}
+    }
     if(S.view==='pre') loadPhotoMesPrestations();
     else loadPhotoDash();
     updateNavBadges(S.role);
@@ -20638,11 +20696,32 @@ async function secConfirmerPaye(id){
   }catch(e){toast('Erreur lors de l\'enregistrement.','er');}
 }
 
+// Corrigé (28/08/2026, demande Fouka) : ce bouton se contentait de passer
+// prestations.statut='livrée', ce qui déclenche déjà une notification client
+// "vos contenus sont livrés" (trg_notify_prestation_stage) — mais c'est
+// media_livrables.statut='livre' (workflow Centre Médias : modalCreerLivrable
+// → validerLivrable → modalPrepLivraison → confirmerLivraison) qui fait
+// réellement apparaître le contenu dans Connect (client_media_livrables /
+// connect-player-prestations). Les deux étant des machines à état totalement
+// indépendantes, le client pouvait être notifié "livré" avec un Connect
+// vide. On avertit désormais clairement si aucun livrable réel n'existe.
 async function secMarquerLivre(id){
   try{
     const r=await sbFetch('prestations?id=eq.'+id,{method:'PATCH',body:{statut:'livrée'}});
     if(sbErr(r)){toast('Erreur : '+(r.message||'mise à jour impossible.'),'er');return;}
-    toast('Prestation marquée livrée.','ok');loadSecLivraisons();
+    loadSecLivraisons();
+    const liv=await sbFetch('media_livrables?select=id&prestation_id=eq.'+id+'&statut=eq.livre&limit=1').catch(()=>[]);
+    if(Array.isArray(liv)&&liv.length){toast('Prestation marquée livrée.','ok');return;}
+    const pres=await sbFetch('prestations?select=reference&id=eq.'+id).catch(()=>[]);
+    const ref=pres?.[0]?.reference||'';
+    openModal(`<div class="mh"><div class="mt">⚠️ Prestation marquée livrée</div><button class="mc" onclick="closeModal()" aria-label="Fermer">✕</button></div>
+      <div class="mb" style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:13px;color:var(--t2);line-height:1.5">Le client a été notifié que ses contenus sont livrés, mais <b style="color:var(--er)">aucun livrable réel n'a été transmis</b> — son espace Connect restera vide tant qu'un livrable n'est pas créé et confirmé depuis le Centre Médias.</div>
+      </div>
+      <div class="mf">
+        <button class="btn bg2" onclick="closeModal()">Plus tard</button>
+        <button class="btn bp" onclick="closeModal();modalCreerLivrable('${escJs(ref)}')">Créer le livrable maintenant</button>
+      </div>`);
   }catch(e){toast('Erreur.','er');}
 }
 
