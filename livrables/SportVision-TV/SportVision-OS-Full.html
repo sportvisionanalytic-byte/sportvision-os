@@ -721,6 +721,7 @@ const NAV={
     {id:'connectcomptes',lb:'Comptes Club+ / Connect',ic:'cli'},
     {type:'sep',lb:'Communication'},
     {id:'commhub',lb:'Communication',ic:'msg'},
+    {id:'mediabank',lb:'Media Bank',ic:'med'},
     {type:'sep',lb:'Équipe & RH'},
     {id:'equipehub',lb:'Équipe',ic:'col'},
     {id:'candidatures',lb:'Candidatures',ic:'col',modal:'modalCandidatures'},
@@ -846,6 +847,7 @@ const NAV={
     {id:'briefs',lb:'Briefs production',ic:'pre'},
     {id:'cal',lb:'Calendrier éditorial',ic:'cal'},
     {id:'contenus',lb:'Contenus',ic:'pre'},
+    {id:'mediabank',lb:'Media Bank',ic:'med'},
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
     {id:'charge',lb:'Ma charge',ic:'col'},
@@ -4012,6 +4014,11 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='charge') await loadCmCharge();
   if(role==='cm'&&view==='rapports') await loadCmRapports();
   if(role==='cm'&&view==='publications') await loadCmPublications();
+  // Media Bank : accessible au CM (cross-club, cf. migration-media-bank.sql)
+  // et à l'admin (même mécanisme que VIEWS['admin.mediabank']=tplMediaBank
+  // plus bas — admin a accès en lecture à toute la banque, comme les autres
+  // écrans CM déjà consultables depuis 'Communication').
+  if((role==='cm'||role==='admin')&&view==='mediabank') await loadCmMediaBank();
   if(role==='photo'&&view==='medias') await loadPhotoMedias();
   if(role==='photo'&&view==='kits') await loadPhotoKits();
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
@@ -7336,7 +7343,7 @@ async function loadProdMedias(){
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
   try{
-    const all=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,date_expiration,transfert_confirme,prestation_id,ajouteur:profiles!ajouteur_id(prenom,nom),prestations(reference,clients(nom))&order=created_at.desc&limit=200').catch(()=>null);
+    const all=await sbFetch('media_liens?select=id,nom,url,categorie,type_media,fournisseur,statut,date_expiration,transfert_confirme,prestation_id,is_media_bank,media_bank_sport,media_bank_category,ajouteur:profiles!ajouteur_id(prenom,nom),prestations(reference,clients(nom))&order=created_at.desc&limit=200').catch(()=>null);
     if(all===null){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">🔗</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Table media_liens requise</div><div style="font-size:12px;text-align:center;max-width:300px">Exécutez <span style="font-family:monospace;color:var(--acc)">migration-medias.sql</span> dans Supabase → SQL Editor pour activer ce module.</div></div>';return;}
     _mediaLiens=Array.isArray(all)?all:[];
     const now=new Date();
@@ -7360,6 +7367,7 @@ function renderMediaLiensList(liens){
     el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🔗</div><div style="font-size:13px">Aucun lien enregistré. Ajoutez le premier lien.</div></div>';
     return;
   }
+  const isProdAdmin=['admin','prod'].includes(S.role);
   el.innerHTML='<div class="cd" style="padding:0;overflow:hidden">'+liens.map((l,i)=>{
     const clr=ML_STATUT_CLR[l.statut]||'var(--t3)';
     const lb=ML_STATUT[l.statut]||l.statut;
@@ -7381,6 +7389,7 @@ function renderMediaLiensList(liens){
       <div style="flex-shrink:0;display:flex;gap:5px">
         <button onclick="event.stopPropagation();ouvrirLien('${encodeURIComponent(l.url)}')" aria-label="Ouvrir le lien" style="padding:5px 9px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗</button>
         <button onclick="event.stopPropagation();copierLien('${encodeURIComponent(l.url)}')" aria-label="Copier le lien" style="padding:5px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">⎘</button>
+        ${isProdAdmin&&l.statut==='valide'?`<button onclick="event.stopPropagation();modalTagMediaBank('${l.id}')" aria-label="${l.is_media_bank?'Gérer le tag Media Bank':'Ajouter à la Media Bank'}" title="${l.is_media_bank?'Dans la Media Bank':'Ajouter à la Media Bank'}" style="padding:5px 9px;background:${l.is_media_bank?'rgba(245,165,36,.15)':'var(--s2)'};border:1px solid ${l.is_media_bank?'rgba(245,165,36,.4)':'var(--b1)'};border-radius:var(--rp);color:${l.is_media_bank?'var(--wa)':'var(--t2)'};font-size:11px;cursor:pointer">★</button>`:''}
       </div>
     </div>`;
   }).join('')+'</div>';
@@ -7512,6 +7521,65 @@ async function logMediaHistory(prestationId,auteurId,action,cibleType,cibleId,an
   try{
     await sbFetch('media_historique',{method:'POST',body:{prestation_id:prestationId||null,auteur_id:auteurId,action,cible_type:cibleType,cible_id:cibleId||null,ancienne_valeur:ancVal||null,nouvelle_valeur:nouvVal||null}});
   }catch(e){}
+}
+
+// ─── Media Bank SportVision — tag/retag d'un lien validé (prod/admin) ────────
+// Suggestions de la spec (football, exemple donné) : gardées en <datalist>
+// pour ne pas verrouiller un enum rigide en base — chaque sport aura ses
+// propres catégories, le champ reste du texte libre.
+const MEDIA_BANK_SPORTS=['Football','Basketball','Handball','Volleyball','Rugby','Tennis','Natation','Athlétisme','Autre'];
+const MEDIA_BANK_CATEGORIES_SUGGESTIONS=['Buts','Dribbles','Tacles/Duels','Arrêts','Célébrations','Émotions','Ambiance','Supporters','Coachs','Détails/Inserts','Coulisses'];
+
+async function modalTagMediaBank(id){
+  let l=(_mediaLiens||[]).find(x=>x.id===id);
+  if(!l){
+    const d=await sbFetch('media_liens?select=id,nom,is_media_bank,media_bank_sport,media_bank_category&id=eq.'+id).catch(()=>null);
+    l=d&&d[0];
+  }
+  if(!l){toast('Lien introuvable','er');return;}
+  const tagged=!!l.is_media_bank;
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  openModal(`
+    <div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">★ Media Bank</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:14px">${esc(l.nom)}</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="${L}">Sport *</label>
+        <input id="mb-sport" list="mb-sport-list" type="text" class="l-inp" style="height:38px" value="${esc(l.media_bank_sport||'')}" placeholder="Football, Basketball…">
+        <datalist id="mb-sport-list">${MEDIA_BANK_SPORTS.map(s=>`<option value="${esc(s)}">`).join('')}</datalist>
+      </div>
+      <div><label style="${L}">Catégorie *</label>
+        <input id="mb-cat" list="mb-cat-list" type="text" class="l-inp" style="height:38px" value="${esc(l.media_bank_category||'')}" placeholder="Buts, Dribbles, Ambiance…">
+        <datalist id="mb-cat-list">${MEDIA_BANK_CATEGORIES_SUGGESTIONS.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+      </div>
+      <div id="mb-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:${tagged?'space-between':'flex-end'};flex-wrap:wrap">
+        ${tagged?`<button class="btn bb" onclick="retirerMediaBank('${id}')">Retirer de la Media Bank</button>`:''}
+        <div style="display:flex;gap:10px">
+          <button class="btn bg2" onclick="closeModal()">Annuler</button>
+          <button class="btn bp" onclick="taguerMediaBank('${id}')">${tagged?'Mettre à jour':'Ajouter à la Media Bank'}</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+async function taguerMediaBank(id){
+  const err=document.getElementById('mb-err');
+  const sport=(document.getElementById('mb-sport')?.value||'').trim();
+  const cat=(document.getElementById('mb-cat')?.value||'').trim();
+  if(!sport||!cat){if(err)err.textContent='Sport et catégorie sont obligatoires.';return;}
+  const r=await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{is_media_bank:true,media_bank_sport:sport,media_bank_category:cat,updated_at:new Date().toISOString()}});
+  if(sbErr(r)){if(err)err.textContent='Erreur : '+(r.message||'opération impossible.');return;}
+  closeModal();
+  toast('Ajouté à la Media Bank','ok');
+  loadProdMedias();
+}
+
+async function retirerMediaBank(id){
+  const r=await sbFetch('media_liens?id=eq.'+id,{method:'PATCH',body:{is_media_bank:false,media_bank_sport:null,media_bank_category:null,updated_at:new Date().toISOString()}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'opération impossible.'),'er');return;}
+  closeModal();
+  toast('Retiré de la Media Bank','ok');
+  loadProdMedias();
 }
 
 // ─── Modal — Ajouter un lien ──────────────────────────────────────────────────
@@ -7650,6 +7718,7 @@ async function modalFicheLien(id){
         <button onclick="copierLien('${encodeURIComponent(l.url)}')" style="padding:7px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer">⎘ Copier</button>
         ${isProdAdmin&&l.statut==='a_verifier'?`<button onclick="validerLienMedia('${l.id}');closeModal()" style="padding:7px 14px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:12px;font-weight:700;cursor:pointer">✓ Valider</button>`:''}
         ${isProdAdmin?`<button onclick="modalRemplacerLien('${l.id}')" style="padding:7px 14px;background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.25);border-radius:var(--rp);color:var(--wa);font-size:12px;font-weight:600;cursor:pointer">↺ Remplacer</button>`:''}
+        ${isProdAdmin&&l.statut==='valide'?`<button onclick="closeModal();modalTagMediaBank('${l.id}')" style="padding:7px 14px;background:${l.is_media_bank?'rgba(245,165,36,.15)':'rgba(124,77,255,.1)'};border:1px solid ${l.is_media_bank?'rgba(245,165,36,.4)':'rgba(124,77,255,.25)'};border-radius:var(--rp);color:${l.is_media_bank?'var(--wa)':'#7C4DFF'};font-size:12px;font-weight:700;cursor:pointer">★ ${l.is_media_bank?'Media Bank':'Ajouter à la Media Bank'}</button>`:''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
         <div class="cd" style="margin-bottom:0;padding:12px 14px">
@@ -17696,6 +17765,82 @@ async function avancerContenu(id,statut){
   loadViewData(S.role,S.view);
 }
 
+// ─── Media Bank SportVision — page CM (+ admin) ──────────────────────────────
+// Liste tous les media_liens où is_media_bank=true, cross-club (c'est le
+// principe même de la Media Bank) — la policy ml_read (is_staff()) donne déjà
+// au rôle cm un accès en lecture à toute la table media_liens, cf.
+// migration-media-bank.sql.
+let _mediaBankCache=[];
+async function loadCmMediaBank(){
+  const el=document.getElementById('mediabank-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const data=await sbFetch('media_liens?select=id,nom,url,media_bank_sport,media_bank_category,type_media,created_at,prestations(reference,clients(nom))&is_media_bank=eq.true&order=media_bank_sport.asc,media_bank_category.asc,created_at.desc&limit=300').catch(()=>null);
+    _mediaBankCache=Array.isArray(data)?data:[];
+    populateMediaBankFilters(_mediaBankCache);
+    renderMediaBankCards(_mediaBankCache);
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function populateMediaBankFilters(items){
+  const sportSel=document.getElementById('mb-filter-sport');
+  const catSel=document.getElementById('mb-filter-cat');
+  if(!sportSel||!catSel)return;
+  const sports=[...new Set(items.map(i=>i.media_bank_sport).filter(Boolean))].sort();
+  const cats=[...new Set(items.map(i=>i.media_bank_category).filter(Boolean))].sort();
+  const curSport=sportSel.value,curCat=catSel.value;
+  sportSel.innerHTML='<option value="">Tous les sports</option>'+sports.map(s=>`<option value="${esc(s)}"${s===curSport?' selected':''}>${esc(s)}</option>`).join('');
+  catSel.innerHTML='<option value="">Toutes les catégories</option>'+cats.map(c=>`<option value="${esc(c)}"${c===curCat?' selected':''}>${esc(c)}</option>`).join('');
+}
+
+function filterMediaBank(){
+  const q=(document.getElementById('mb-search')?.value||'').toLowerCase().trim();
+  const sport=document.getElementById('mb-filter-sport')?.value||'';
+  const cat=document.getElementById('mb-filter-cat')?.value||'';
+  const filtered=_mediaBankCache.filter(i=>
+    (!q||(i.nom||'').toLowerCase().includes(q))&&
+    (!sport||i.media_bank_sport===sport)&&
+    (!cat||i.media_bank_category===cat)
+  );
+  renderMediaBankCards(filtered);
+}
+
+function renderMediaBankCards(items){
+  const el=document.getElementById('mediabank-real');
+  if(!el)return;
+  if(!items.length){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">⭐</div><div style="font-size:13px">Aucun média dans la Media Bank pour ce filtre.</div></div>';
+    return;
+  }
+  const groups={};
+  items.forEach(i=>{
+    const sport=i.media_bank_sport||'Sport non précisé';
+    if(!groups[sport])groups[sport]=[];
+    groups[sport].push(i);
+  });
+  el.innerHTML=Object.entries(groups).map(([sport,list])=>`
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--acc);margin:14px 0 8px">${esc(sport)} · ${list.length}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+      ${list.map(i=>`
+        <div class="cd" style="margin-bottom:0;padding:13px">
+          <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.nom)}</div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">${esc(i.media_bank_category||'—')}</div>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:10px">${i.prestations?.clients?.nom?esc(i.prestations.clients.nom)+' · ':''}${new Date(i.created_at).toLocaleDateString('fr-FR')}</div>
+          <div style="display:flex;gap:6px">
+            <button onclick="ouvrirLien('${encodeURIComponent(i.url)}')" style="flex:1;padding:6px 10px;background:rgba(14,165,255,.1);border:1px solid rgba(14,165,255,.2);border-radius:var(--rp);color:var(--acc);font-size:11px;font-weight:600;cursor:pointer">↗ Ouvrir</button>
+            <button onclick="creerContenuDepuisMediaBank('${i.id}')" style="flex:1;padding:6px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;font-weight:600;cursor:pointer">+ Créer un contenu</button>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function creerContenuDepuisMediaBank(id){
+  const item=_mediaBankCache.find(i=>i.id===id);
+  if(!item)return;
+  modalNouveauContenu(null,null,{titre:item.nom,hook:'Source Media Bank : '+(item.media_bank_sport||'—')+' — '+(item.media_bank_category||'—')});
+}
+
 async function modalNouveauContenu(statutInit,dateInit,prefill){
   const d=dateInit||'';
   const pf=prefill||{};
@@ -17713,7 +17858,7 @@ async function modalNouveauContenu(statutInit,dateInit,prefill){
       </div>
       <div class="fg"><label class="fl">Date prévue</label><input type="date" id="ct-dt" class="fi" value="${d}"></div>
       <div class="g2">
-        <div class="fg"><label class="fl">Hook</label><input type="text" id="ct-hook" class="fi" placeholder="Accroche"></div>
+        <div class="fg"><label class="fl">Hook</label><input type="text" id="ct-hook" class="fi" placeholder="Accroche" value="${esc(pf.hook||'')}"></div>
         <div class="fg"><label class="fl">CTA</label><input type="text" id="ct-cta" class="fi" placeholder="Appel à l'action"></div>
       </div>
       <div class="fg"><label class="fl">Légende</label><textarea id="ct-leg" class="fi" style="height:60px"></textarea></div>
@@ -22953,6 +23098,18 @@ _navInsertBeforeSettings('com',[{type:'sep',lb:'Connect'},{id:'avisclients',lb:'
 // portefeuille via mc_cm_acces (migration-cm-messages.sql), pas de filtre
 // JS supplémentaire nécessaire.
 
+function tplMediaBank(){
+  return `<div class="sh"><div class="sh-t">Media Bank</div></div>
+    <div style="font-size:11.5px;color:var(--t3);margin:-6px 0 12px">Les meilleures séquences validées par la production, tous clubs confondus — réutilisables pour la communication SportVision.</div>
+    <div class="cd" style="margin-bottom:14px;padding:14px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:2;min-width:180px"><label class="fl">Recherche</label><input id="mb-search" type="text" class="fi" placeholder="Nom du média…" oninput="filterMediaBank()"></div>
+        <div style="flex:1;min-width:140px"><label class="fl">Sport</label><select id="mb-filter-sport" class="fi" onchange="filterMediaBank()"><option value="">Tous les sports</option></select></div>
+        <div style="flex:1;min-width:140px"><label class="fl">Catégorie</label><select id="mb-filter-cat" class="fi" onchange="filterMediaBank()"><option value="">Toutes les catégories</option></select></div>
+      </div>
+    </div>
+    <div id="mediabank-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`;
+}
 function tplMsgClients(){
   return `<div class="sh"><div class="sh-t">Messages clients</div></div>
     <div id="msgcl-list" class="cd"><div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Chargement…</div></div>`;
@@ -22976,6 +23133,10 @@ VIEWS['admin.comptesportail']=tplComptesPortail;
   if(NAV[role]) VIEWS[role+'.avisclients']=tplAvisClients;
 });
 if(NAV['cm']) VIEWS['cm.msgclients']=tplMsgClients;
+// Media Bank : même page pour cm et admin (admin a aussi accès en lecture aux
+// écrans CM de Communication, cf. NAV.admin 'mediabank' juste après 'commhub').
+if(NAV['cm']) VIEWS['cm.mediabank']=tplMediaBank;
+if(NAV['admin']) VIEWS['admin.mediabank']=tplMediaBank;
 // Tableau de bord dédié à l'expert-comptable : quelqu'un qui vient
 // ponctuellement vérifier/exporter, pas au quotidien — donc pas le dashboard
 // générique de compta (loadComptaDash), mais une vraie vue de synthèse :
@@ -26393,7 +26554,7 @@ const MOB_MORE_ITEMS={
   prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
   photo:[{id:'pre',lb:'Mes prestations',ic:'📋',sub:'Missions assignées'},{id:'planning',lb:'Mon planning',ic:'📅',sub:'Vue semaine'},{id:'kits',lb:'Mes kits',ic:'🎒',sub:'Matériel assigné'},{id:'revenus',lb:'Mes revenus',ic:'💰',sub:'Rémunérations'},{id:'form',lb:'Formation',ic:'🎓',sub:'Progression & XP'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe & production'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'}],
-  cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
+  cm:[{id:'demandes',lb:'Demandes reçues',ic:'📥',sub:'Depuis Connect'},{id:'briefs',lb:'Briefs production',ic:'🎬',sub:'Vers la prod'},{id:'cal',lb:'Calendrier',ic:'📅',sub:'Éditorial'},{id:'contenus',lb:'Contenus',ic:'✍️',sub:'À créer'},{id:'mediabank',lb:'Media Bank',ic:'⭐',sub:'Pépites réutilisables'},{id:'publications',lb:'Publications',ic:'📤',sub:'À poster'},{id:'analytics',lb:'Analytics',ic:'📊',sub:'Performances'},{id:'charge',lb:'Ma charge',ic:'⚖️',sub:'Capacité'},{id:'rapports',lb:'Rapports clients',ic:'📄',sub:'Résumé mensuel'},{id:'clients',lb:'Mes clients',ic:'🏟️',sub:'Portefeuille'},{id:'msgclients',lb:'Messages clients',ic:'💬',sub:'Relation client'},{id:'annuaire',lb:'Annuaire',ic:'👥',sub:'Équipe SportVision'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'},{id:'centre',lb:'Centre SportVision',ic:'ℹ️',sub:'Procédures & guides'},{id:'set',lb:'Paramètres',ic:'⚙️',sub:'Compte'}],
   com:[{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM complet'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'objectifs',lb:'Objectifs',ic:'🎯',sub:'Suivi'},{id:'commissions',lb:'Commissions',ic:'💸',sub:'Mes gains'},{id:'msg',lb:'Messagerie',ic:'💬',sub:'Équipe'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
 };
 function openMobMore(){
