@@ -710,7 +710,7 @@ const NAV={
     {id:'planning',lb:'Planning',ic:'cal'},
     {id:'pre',lb:'Prestations',ic:'pre'},
     {type:'sep',lb:'Clients & Ventes'},
-    {id:'crm',lb:'Clients',ic:'cli'},
+    {id:'crm',lb:'Clubs',ic:'cli'},
     {id:'pipeline',lb:'Prospection',ic:'pipe'},
     {id:'devis',lb:'Devis',ic:'doc'},
     {id:'contrats',lb:'Contrats',ic:'doc'},
@@ -4666,43 +4666,46 @@ function modalModifierClient(idx){
       <div><label style="${lbl}">Notes internes</label>
         <textarea id="fce-notes" class="l-inp" style="height:72px;resize:vertical;padding-top:8px" ${ro}>${esc(c.notes||'')}</textarea>
       </div>
-      <div><label style="${lbl}">Crédits Connect (Projet)</label>
-        <div id="fce-credits" style="font-size:11.5px;color:var(--t3)">Chargement…</div>
-      </div>
       <div id="fce-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
       <div id="fce-parcours" style="border-top:1px solid var(--b1);padding-top:14px;margin-top:2px">
         <div style="font-size:12px;color:var(--t3)">Chargement du parcours…</div>
       </div>
       <div id="fce-tabs" style="border-top:1px solid var(--b1);padding-top:12px;margin-top:4px">
         <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-          <button id="fce-tab-pres" onclick="fceShowTab('pres')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Prestations</button>
-          <button id="fce-tab-contrats" onclick="fceShowTab('contrats')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Contrats</button>
-          <button id="fce-tab-organigramme" onclick="fceShowTab('organigramme')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Organigramme</button>
-          <button id="fce-tab-medias" onclick="fceShowTab('medias')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Médias</button>
-          <button id="fce-tab-rel" onclick="fceShowTab('rel')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Suivi contacts</button>
-          <button id="fce-tab-tl" onclick="fceShowTab('tl')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Historique</button>
-          <button id="fce-tab-equipe" onclick="fceShowTab('equipe')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Équipe</button>
+          <button id="fce-tab-resume" onclick="fceShowTab('resume')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Résumé</button>
+          <button id="fce-tab-comm" onclick="fceShowTab('comm')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Communication</button>
+          <button id="fce-tab-pres" onclick="fceShowTab('pres')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Production</button>
+          <button id="fce-tab-finance" onclick="fceShowTab('finance')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Finance</button>
+          <button id="fce-tab-docs" onclick="fceShowTab('docs')" style="padding:5px 14px;border-radius:var(--rp);border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--ff)">Documents</button>
+        </div>
+        <div id="fce-panel-resume" style="display:none">
+          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Organigramme</div>
+          <div id="fce-organigramme-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Suivi contacts</div>
+          <div id="fce-contacts-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Équipe affectée</div>
+          <div id="fce-equipe-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+        </div>
+        <div id="fce-panel-comm" style="display:none">
+          <div id="fce-comm-content"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
         </div>
         <div id="fce-panel-pres">
           <div id="fce-hist"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
+          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Médias</div>
+          <div id="fce-medias-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
         </div>
-        <div id="fce-panel-contrats" style="display:none">
+        <div id="fce-panel-finance" style="display:none">
+          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Contrats</div>
           <div id="fce-contrats-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Devis</div>
+          <div id="fce-devis-finance-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Rentabilité</div>
+          <div id="fce-rentabilite"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+          <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Crédits Connect / Club+</div>
+          <div id="fce-credits" style="font-size:11.5px;color:var(--t3)">Chargement…</div>
         </div>
-        <div id="fce-panel-organigramme" style="display:none">
-          <div id="fce-organigramme-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
-        </div>
-        <div id="fce-panel-medias" style="display:none">
-          <div id="fce-medias-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
-        </div>
-        <div id="fce-panel-rel" style="display:none">
-          <div id="fce-contacts-list"><div style="font-size:12px;color:var(--t3)">Chargement…</div></div>
-        </div>
-        <div id="fce-panel-tl" style="display:none">
-          <div id="client-timeline"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
-        </div>
-        <div id="fce-panel-equipe" style="display:none">
-          <div id="fce-equipe-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
+        <div id="fce-panel-docs" style="display:none">
+          <div id="fce-docs-list"><div style="font-size:12px;color:var(--t3)">Cliquez pour charger…</div></div>
         </div>
       </div>
       <div style="display:flex;gap:10px;justify-content:space-between;margin-top:12px">
@@ -4718,6 +4721,7 @@ function modalModifierClient(idx){
       </div>
     </div>`);
   chargerPresByClient(c.id);
+  loadClientMedias(c.id);
   if(canAssignCm)chargerCmAssignSelect(c.id,c.cm_id);
   chargerCreditsProjetClient(c.id);
   window._fceClientId=c.id;
@@ -4798,6 +4802,135 @@ async function loadClientContrats(clientId){
         </div>
       </div>`).join(''):'<div style="font-size:12px;color:var(--t3);margin-bottom:8px">Aucun contrat pour ce client.</div>';
     el.innerHTML=rows+`<button class="btn bp bs" style="margin-top:6px" onclick="closeModal();modalNouveauContrat('${clientId}')">+ Nouveau contrat</button>`;
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// Onglet Finance de la fiche club — devis (montants) en complément des contrats
+// déjà chargés par loadClientContrats ci-dessus.
+async function loadClientDevisFinance(clientId){
+  const el=document.getElementById('fce-devis-finance-list');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  try{
+    const data=await sbFetch('devis?select=id,numero,statut,total_ttc,created_at&client_id=eq.'+clientId+'&order=created_at.desc&limit=20');
+    const list=Array.isArray(data)?data:[];
+    const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+    const DV_CLS={brouillon:'bn',envoyé:'bw',en_attente:'bw',accepté:'ba',refusé:'br',expiré:'br'};
+    el.innerHTML=list.length?list.map(d=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;background:var(--s2);border-radius:8px;margin-bottom:6px;font-size:12px">
+        <span><span style="font-weight:600;color:var(--t1)">${d.numero||'—'}</span> <span style="color:var(--t3)">· ${fmt(d.total_ttc)} · créé le ${new Date(d.created_at).toLocaleDateString('fr-FR')}</span></span>
+        <span class="bd ${DV_CLS[d.statut]||'bn'}"><span class="bd-d"></span>${(d.statut||'').replace(/_/g,' ')}</span>
+      </div>`).join(''):'<div style="font-size:12px;color:var(--t3)">Aucun devis pour ce client.</div>';
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// Onglet Finance — rentabilité réelle du club (v_rentabilite_missions, même
+// vue et même calcul HT que le compte de résultat officiel — voir loadComptaResultat).
+async function loadClientRentabilite(clientId){
+  const el=document.getElementById('fce-rentabilite');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  try{
+    const data=await sbFetch('v_rentabilite_missions?select=revenu_ht,marge_nette&client_id=eq.'+clientId+'&limit=500');
+    const list=Array.isArray(data)?data:[];
+    const fmt=n=>(n||0).toLocaleString('fr-FR')+' €';
+    if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Aucune mission chiffrée pour ce client.</div>';return;}
+    const revenu=list.reduce((s,p)=>s+(p.revenu_ht||0),0);
+    const marge=list.reduce((s,p)=>s+(p.marge_nette||0),0);
+    const taux=revenu>0?Math.round((marge/revenu)*100):0;
+    el.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap">
+      <div><div style="font-size:18px;font-weight:700;color:var(--t1)">${fmt(revenu)}</div><div style="font-size:10.5px;color:var(--t3)">CA HT (${list.length} mission${list.length>1?'s':''})</div></div>
+      <div><div style="font-size:18px;font-weight:700;color:${marge>=0?'var(--ok)':'var(--er)'}">${fmt(marge)}</div><div style="font-size:10.5px;color:var(--t3)">Marge nette</div></div>
+      <div><div style="font-size:18px;font-weight:700;color:var(--t1)">${taux}%</div><div style="font-size:10.5px;color:var(--t3)">Taux de marge</div></div>
+    </div>`;
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// Onglet Documents — vue orientée statut/signature (contrats+devis+avoirs),
+// complémentaire du montant-first de l'onglet Finance ci-dessus.
+async function loadClientDocuments(clientId){
+  const el=document.getElementById('fce-docs-list');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  try{
+    const [contratsD,devisD,avoirsD]=await Promise.all([
+      sbFetch('contrats?select=id,type_contrat,statut,signature_statut,created_at&client_id=eq.'+clientId+'&order=created_at.desc').catch(()=>[]),
+      sbFetch('devis?select=id,numero,statut,created_at&client_id=eq.'+clientId+'&order=created_at.desc&limit=20').catch(()=>[]),
+      sbFetch('avoirs?select=id,numero,statut,montant_ttc,created_at&client_id=eq.'+clientId+'&order=created_at.desc&limit=20').catch(()=>[]),
+    ]);
+    const fd=s=>s?new Date(s).toLocaleDateString('fr-FR'):'—';
+    const SIG_LB={signee:'Signé',en_attente:'En attente de signature'};
+    const rows=[];
+    (Array.isArray(contratsD)?contratsD:[]).forEach(c=>rows.push({
+      ic:'📄',lb:`Contrat ${CONTRAT_TYPES_LB[c.type_contrat]||c.type_contrat||''}`,
+      st:c.signature_statut?(SIG_LB[c.signature_statut]||c.signature_statut):(c.statut||'—'),
+      cls:c.signature_statut==='signee'?'ba':(c.signature_statut==='en_attente'?'bw':'bn'),
+      d:fd(c.created_at),
+    }));
+    (Array.isArray(devisD)?devisD:[]).forEach(d=>rows.push({
+      ic:'📋',lb:`Devis ${d.numero||''}`,
+      st:(d.statut||'—').replace(/_/g,' '),
+      cls:d.statut==='accepté'?'ba':(['envoyé','en_attente'].includes(d.statut)?'bw':'bn'),
+      d:fd(d.created_at),
+    }));
+    (Array.isArray(avoirsD)?avoirsD:[]).forEach(a=>rows.push({
+      ic:'🧾',lb:`Avoir ${a.numero||''} — ${(a.montant_ttc||0).toLocaleString('fr-FR')} €`,
+      st:a.statut||'—',
+      cls:a.statut==='rembourse'?'ba':'bn',
+      d:fd(a.created_at),
+    }));
+    if(!rows.length){el.innerHTML='<div style="font-size:12px;color:var(--t3)">Aucun document pour ce client.</div>';return;}
+    el.innerHTML=rows.map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:8px;margin-bottom:6px;font-size:12px">
+      <span>${r.ic}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.lb)}</span>
+      <span style="color:var(--t3);white-space:nowrap">${r.d}</span>
+      <span class="bd ${r.cls}"><span class="bd-d"></span>${esc(r.st)}</span>
+    </div>`).join('');
+  }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// Onglet Communication — plannings hebdomadaires + contenus récents de ce club
+// (client_id existe déjà sur les deux tables, migration-os-v2-plannings-hebdo-
+// activity-log.sql ; aucune vue admin scopée à UN club n'existait avant ceci,
+// seule la vue CM sur son propre portefeuille — loadCmCal — existait).
+async function loadClientCommunication(clientId){
+  const el=document.getElementById('fce-comm-content');
+  if(!el)return;
+  el.innerHTML='<div style="font-size:12px;color:var(--t3)">Chargement…</div>';
+  try{
+    const [plannings,contenus]=await Promise.all([
+      sbFetch('plannings_hebdo?select=id,semaine_debut,statut,cm_id&client_id=eq.'+clientId+'&order=semaine_debut.desc&limit=8'),
+      sbFetch('contenus?select=id,titre,statut,plateforme,date_prevue&client_id=eq.'+clientId+'&order=date_prevue.desc.nullslast&limit=15').catch(()=>[]),
+    ]);
+    const plans=Array.isArray(plannings)?plannings:[];
+    const cmIds=[...new Set(plans.map(p=>p.cm_id).filter(Boolean))];
+    let cmById={};
+    if(cmIds.length){
+      const cms=await sbFetch('profiles?id=in.('+cmIds.join(',')+')&select=id,prenom,nom').catch(()=>[]);
+      cmById=Object.fromEntries((Array.isArray(cms)?cms:[]).map(c=>[c.id,[c.prenom,c.nom].filter(Boolean).join(' ')]));
+    }
+    const PH_LB={brouillon:'Brouillon',soumis:'Soumis',valide:'Validé',refuse:'Refusé'};
+    const PH_CLS={brouillon:'bn',soumis:'bw',valide:'ba',refuse:'br'};
+    const plansHtml=plans.length?plans.map(p=>{
+      const s=new Date(p.semaine_debut).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+      return`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--s2);border-radius:8px;margin-bottom:5px;font-size:12px">
+        <span>Semaine du ${s} · ${esc(cmById[p.cm_id]||'—')}</span>
+        <span class="bd ${PH_CLS[p.statut]||'bn'}"><span class="bd-d"></span>${PH_LB[p.statut]||p.statut}</span>
+      </div>`;
+    }).join(''):'<div style="font-size:12px;color:var(--t3);margin-bottom:8px">Aucun planning hebdomadaire pour ce club.</div>';
+    const list=Array.isArray(contenus)?contenus:[];
+    const contenusHtml=list.length?list.map(c=>{
+      const d=c.date_prevue?new Date(c.date_prevue).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—';
+      const stLb=(c.statut||'').replace(/_/g,' ');
+      const cls=['publie','publié','valide','validé'].includes(c.statut)?'ba':(['refuse','refusé'].includes(c.statut)?'br':(['programme','programmé'].includes(c.statut)?'bb':'bn'));
+      return`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;font-size:12px;margin-bottom:4px">
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.titre||'—')}</span>
+        <span style="color:var(--t3);white-space:nowrap">${c.plateforme||''} · ${d}</span>
+        <span class="bd ${cls}"><span class="bd-d"></span>${stLb}</span>
+      </div>`;
+    }).join(''):'<div style="font-size:12px;color:var(--t3)">Aucun contenu pour ce club.</div>';
+    el.innerHTML=`<div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:8px">Plannings hebdomadaires</div>${plansHtml}
+      <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin:16px 0 8px">Contenus récents</div>${contenusHtml}`;
   }catch(e){el.innerHTML='<div style="font-size:12px;color:var(--er)">Erreur de chargement.</div>';}
 }
 
@@ -5900,17 +6033,18 @@ async function chargerPresByClient(clientId){
 function fceShowTab(tab){
   const on='border:1px solid var(--acc);background:rgba(14,165,255,.12);color:var(--acc)';
   const off='border:1px solid var(--b1);background:rgba(255,255,255,.04);color:var(--t3)';
-  ['pres','contrats','organigramme','medias','rel','tl','equipe'].forEach(t=>{
+  ['resume','comm','pres','finance','docs'].forEach(t=>{
     const b=document.getElementById('fce-tab-'+t);const p=document.getElementById('fce-panel-'+t);
     if(b)b.style.cssText=t===tab?on:off;
     if(p)p.style.display=t===tab?'':'none';
   });
-  if(tab==='tl'&&window._fceClientId)loadClientTimeline(window._fceClientId);
-  if(tab==='rel'&&window._fceClientId)loadClientContacts(window._fceClientId);
-  if(tab==='medias'&&window._fceClientId)loadClientMedias(window._fceClientId);
-  if(tab==='equipe'&&window._fceClientId)loadClientEquipe(window._fceClientId);
-  if(tab==='contrats'&&window._fceClientId)loadClientContrats(window._fceClientId);
-  if(tab==='organigramme'&&window._fceClientId)loadClientOrganigramme(window._fceClientId);
+  if(!window._fceClientId)return;
+  const id=window._fceClientId;
+  if(tab==='resume'){loadClientOrganigramme(id);loadClientContacts(id);loadClientEquipe(id);}
+  if(tab==='comm')loadClientCommunication(id);
+  if(tab==='pres')loadClientMedias(id);
+  if(tab==='finance'){loadClientContrats(id);loadClientDevisFinance(id);loadClientRentabilite(id);chargerCreditsProjetClient(id);}
+  if(tab==='docs')loadClientDocuments(id);
 }
 
 // Onglet Équipe : rôster client_affiliations pour ce client — lecture seule
@@ -25538,74 +25672,6 @@ async function dispatchSVEvent(type, data){
   }
 }
 
-// ── Timeline client ───────────────────────────────────────────────────────
-async function loadClientTimeline(clientId){
-  const el=document.getElementById('client-timeline');
-  if(!el)return;
-  el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Chargement de l\'historique…</div>';
-  try{
-    const [pres,devis,notifs]=await Promise.all([
-      sbFetch('prestations?select=id,reference,statut,type_prestation,date_prestation,montant_ttc,created_at&client_id=eq.'+clientId+'&order=date_prestation.desc&limit=50').catch(()=>[]),
-      sbFetch('devis?select=id,numero,statut,total_ttc,created_at&client_id=eq.'+clientId+'&order=created_at.desc&limit=20').catch(()=>[]),
-      sbFetch('notifications?select=id,titre,message,created_at,type&lien_client_id=eq.'+clientId+'&order=created_at.desc&limit=30').catch(()=>[]),
-    ]);
-    // Fusionner et trier chronologiquement
-    const events=[];
-    (pres||[]).forEach(p=>events.push({date:p.date_prestation||p.created_at,type:'prestation',data:p}));
-    (devis||[]).forEach(d=>events.push({date:d.created_at,type:'devis',data:d}));
-    (notifs||[]).forEach(n=>events.push({date:n.created_at,type:'notif',data:n}));
-    events.sort((a,b)=>new Date(b.date)-new Date(a.date));
-    if(!events.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Aucun historique disponible.</div>';return;}
-    el.innerHTML='<div style="display:flex;flex-direction:column;gap:0">'+events.map((ev,i)=>{
-      const date=ev.date?new Date(ev.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
-      let ic='📌',label='',sub='',cls='ba';
-      if(ev.type==='prestation'){
-        ic='📅';label=ev.data.type_prestation||ev.data.reference||'Prestation';
-        sub=ev.data.statut?SL[ev.data.statut]||ev.data.statut:'';
-        cls=SC[ev.data.statut]||'bw';
-      } else if(ev.type==='devis'){
-        ic='📋';label='Devis '+(ev.data.numero||ev.data.id?.slice(0,8));
-        sub=ev.data.statut||'';
-        const montant=ev.data.total_ttc?ev.data.total_ttc.toLocaleString('fr-FR')+' €':'';
-        if(montant)sub=(sub?sub+' · ':'')+montant;
-      } else if(ev.type==='notif'){
-        ic='🔔';label=esc(ev.data.titre)||'Notification';sub=esc(ev.data.message)||'';
-      }
-      return`<div style="display:flex;gap:14px;${i<events.length-1?'border-bottom:1px solid rgba(255,255,255,.04)':''}">
-        <div style="display:flex;flex-direction:column;align-items:center;padding-top:16px;width:20px;flex-shrink:0">
-          <div style="width:10px;height:10px;border-radius:50%;background:var(--acc);flex-shrink:0;border:2px solid var(--bg)"></div>
-          ${i<events.length-1?`<div style="flex:1;width:1px;background:var(--b1);margin-top:3px"></div>`:''}
-        </div>
-        <div style="flex:1;padding:14px 0">
-          <div style="font-size:10px;color:var(--t3);margin-bottom:4px;font-weight:500">${date}</div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="font-size:14px">${ic}</span>
-            <span style="font-size:14px;font-weight:600;color:var(--t1)">${label}</span>
-            ${sub?`<span class="bd ${cls}" style="font-size:10px"><span class="bd-d"></span>${sub}</span>`:''}
-          </div>
-        </div>
-      </div>`;
-    }).join('')+'</div>';
-  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er);font-size:13px">Erreur de chargement.</div>';}
-}
-
-// Ajouter un onglet Timeline dans la modale client
-function addClientTimelineTab(clientId){
-  const tabs=document.getElementById('client-modal-tabs');
-  if(!tabs||tabs.querySelector('[data-tab="timeline"]'))return;
-  const btn=document.createElement('button');
-  btn.className='tab-btn';btn.setAttribute('data-tab','timeline');
-  btn.textContent='Historique';
-  btn.onclick=()=>{
-    tabs.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
-    btn.classList.add('on');
-    document.querySelectorAll('[data-tab-panel]').forEach(p=>p.style.display='none');
-    const panel=document.getElementById('client-timeline-panel');
-    if(panel){panel.style.display='block';loadClientTimeline(clientId);}
-  };
-  tabs.appendChild(btn);
-}
-
 // ════════════════════════════════════════════════════════════════
 // SPORTVISION OS — MOBILE LAYER
 // Interface terrain native pour smartphone
@@ -25704,7 +25770,7 @@ function closeMobFilter(){
 
 // ── More Menu ─────────────────────────────────────────────────────────────
 const MOB_MORE_ITEMS={
-  admin:[{id:'crm',lb:'Clients',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'col',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
+  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'col',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
