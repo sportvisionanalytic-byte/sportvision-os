@@ -1570,6 +1570,7 @@ const VIEWS={
       <button onclick="setMediaTab('prestations')" class="btn bg2 bs" id="mtab-prestations" style="flex-shrink:0;font-size:11px">Par prestation</button>
       <button onclick="setMediaTab('expirants')" class="btn bg2 bs" id="mtab-expirants" style="flex-shrink:0;font-size:11px">⚠ Expirants</button>
       <button onclick="setMediaTab('bibliotheque')" class="btn bg2 bs" id="mtab-bibliotheque" style="flex-shrink:0;font-size:11px">Bibliothèque</button>
+      <button onclick="setMediaTab('albums')" class="btn bg2 bs" id="mtab-albums" style="flex-shrink:0;font-size:11px">📸 Pass Photo</button>
     </div>
     <div id="prod-media-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
@@ -7321,7 +7322,7 @@ let _mediaLivrables=[];
 // ─── Onglets Centre Médias (prod) ─────────────────────────────────────────────
 function setMediaTab(tab){
   _mediaTab=tab;
-  ['liens','prestations','expirants','bibliotheque'].forEach(t=>{
+  ['liens','prestations','expirants','bibliotheque','albums'].forEach(t=>{
     const b=document.getElementById('mtab-'+t);
     if(b)b.className='btn '+(t===tab?'bp':'bg2')+' bs';
     if(b)b.style.fontSize='11px';
@@ -7350,7 +7351,178 @@ async function loadProdMedias(){
     else if(_mediaTab==='prestations') renderMediaParPrestation(_mediaLiens);
     else if(_mediaTab==='expirants') renderMediaExpirants(_mediaLiens,in7);
     else if(_mediaTab==='bibliotheque') loadMediaBibliotheque(el);
+    else if(_mediaTab==='albums') loadPhotoAlbums(el);
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+// ─── Pass Photo — albums (migration-connect-pass-photo-v1.sql, 28/08/2026) ────────────────────
+// Onglet séparé dans Centre Médias (pas une page dédiée — reste minimal, cf. brief) : un
+// prod/admin crée un album (club + équipe + saison texte libre), le publie, et l'app Connect
+// (Espace joueur) le propose en Pass Photo payant aux familles de cette équipe/saison. Écriture
+// protégée côté base par la policy photo_albums_staff_all (admin/prod uniquement) — ce module ne
+// fait que refléter ce que RLS autorise déjà, jamais une confiance côté client seul.
+const PA_STATUT_LB={draft:'Brouillon',published:'Publié',archived:'Archivé'};
+const PA_STATUT_CLR={draft:'var(--t3)',published:'var(--ok)',archived:'var(--t3)'};
+let _photoAlbums=[];
+
+async function loadPhotoAlbums(el){
+  el=el||document.getElementById('prod-media-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:120px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const rows=await sbFetch('photo_albums?select=id,title,event_date,club_id,team_id,season_id,cover_preview_url,photo_count,status,secure_collection_ref,published_at,mission_id,clubs(nom),club_teams(name)&order=created_at.desc&limit=200');
+    if(sbErr(rows)){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:28px;opacity:.3">📸</div><div style="font-size:13px;font-weight:600;color:var(--t2)">Table photo_albums requise</div><div style="font-size:12px;text-align:center;max-width:320px">Exécutez <span style="font-family:monospace;color:var(--acc)">migration-connect-pass-photo-v1.sql</span> dans Supabase → SQL Editor pour activer ce module.</div></div>';return;}
+    _photoAlbums=Array.isArray(rows)?rows:[];
+    renderPhotoAlbumsList(_photoAlbums);
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';}
+}
+
+function renderPhotoAlbumsList(albums){
+  const el=document.getElementById('prod-media-real');
+  if(!el)return;
+  const header=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn bp bs" onclick="modalCreerAlbum()">+ Album</button></div>`;
+  if(!albums.length){
+    el.innerHTML=header+'<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">📸</div><div style="font-size:13px">Aucun album créé. Créez le premier album Pass Photo.</div></div>';
+    return;
+  }
+  el.innerHTML=header+'<div class="cd" style="padding:0;overflow:hidden">'+albums.map((a,i)=>{
+    const clr=PA_STATUT_CLR[a.status]||'var(--t3)';
+    const lb=PA_STATUT_LB[a.status]||a.status;
+    const clubNom=esc(a.clubs?.nom||'—');
+    const teamNom=esc(a.club_teams?.name||'—');
+    const dt=a.event_date?new Date(a.event_date).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+    return`<div style="display:flex;align-items:center;${i<albums.length-1?'border-bottom:1px solid var(--b1)':''};cursor:pointer;padding:11px 14px;gap:10px" onclick="modalCreerAlbum('${a.id}')" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+      <div style="width:3px;height:40px;background:${clr};border-radius:2px;flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.title)}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${clubNom} · ${teamNom} · ${esc(a.season_id)} · ${dt} · ${a.photo_count||0} photo${(a.photo_count||0)>1?'s':''}</div>
+      </div>
+      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;background:${clr}22;border:1px solid ${clr}55;border-radius:20px;color:${clr};white-space:nowrap">${lb}</span>
+      </div>
+      <div style="flex-shrink:0;display:flex;gap:5px">
+        ${a.status==='published'
+          ?`<button onclick="event.stopPropagation();depublierAlbum('${a.id}')" aria-label="Dépublier l'album" style="padding:5px 9px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);font-size:11px;cursor:pointer">Dépublier</button>`
+          :`<button onclick="event.stopPropagation();publierAlbum('${a.id}')" aria-label="Publier l'album" style="padding:5px 9px;background:rgba(46,204,138,.12);border:1px solid rgba(46,204,138,.3);border-radius:var(--rp);color:var(--ok);font-size:11px;font-weight:600;cursor:pointer">Publier</button>`}
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function modalCreerAlbum(albumId){
+  const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
+  const existing=albumId?_photoAlbums.find(a=>a.id===albumId):null;
+  openModal(`
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">📸 ${existing?"Modifier l'album":'Créer un album'}</div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div><label style="${L}">Titre de l'album *</label>
+        <input id="pa-title" type="text" class="l-inp" style="height:38px" placeholder="Match vs Brunoy FC — U18" value="${esc(existing?.title||'')}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Club *</label>
+          <select id="pa-club" class="l-inp" style="height:38px" onchange="_paLoadTeams(this.value)"><option value="">Chargement…</option></select></div>
+        <div><label style="${L}">Équipe *</label>
+          <select id="pa-team" class="l-inp" style="height:38px"><option value="">Choisissez d'abord un club</option></select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Saison *</label>
+          <input id="pa-season" type="text" class="l-inp" style="height:38px" placeholder="2026-2027" value="${esc(existing?.season_id||'')}"></div>
+        <div><label style="${L}">Date de l'événement</label>
+          <input id="pa-date" type="date" class="l-inp" style="height:38px" value="${esc(existing?.event_date||'')}"></div>
+      </div>
+      <div><label style="${L}">Prestation liée (référence, optionnel)</label>
+        <input id="pa-mission" type="text" class="l-inp" style="height:38px" placeholder="SPV-2026-001…"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="${L}">Preview (URL image, optionnel)</label>
+          <input id="pa-cover" type="url" class="l-inp" style="height:38px" placeholder="https://…" value="${esc(existing?.cover_preview_url||'')}"></div>
+        <div><label style="${L}">Nombre de photos</label>
+          <input id="pa-count" type="number" min="0" class="l-inp" style="height:38px" value="${existing?.photo_count||0}"></div>
+      </div>
+      <div><label style="${L}">Référence collection sécurisée (optionnel, V1)</label>
+        <input id="pa-ref" type="text" class="l-inp" style="height:38px" placeholder="Lien ou référence transmis une fois le Pass acheté" value="${esc(existing?.secure_collection_ref||'')}"></div>
+      <div id="pa-err" style="font-size:12px;color:var(--er);min-height:14px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn bg2" onclick="closeModal()">Annuler</button>
+        <button class="btn bp" onclick="sauvegarderAlbum('${albumId||''}')">${existing?'Enregistrer':'Créer'}</button>
+      </div>
+    </div>`);
+  _paLoadClubs(existing?.club_id||'',existing?.team_id||'');
+}
+
+async function _paLoadClubs(selectedClubId,selectedTeamId){
+  const sel=document.getElementById('pa-club');
+  if(!sel)return;
+  try{
+    const clubs=await sbFetch('clubs?select=id,nom&order=nom.asc');
+    sel.innerHTML='<option value="">Choisir…</option>'+(Array.isArray(clubs)?clubs:[]).map(c=>`<option value="${c.id}" ${c.id===selectedClubId?'selected':''}>${esc(c.nom)}</option>`).join('');
+    if(selectedClubId) await _paLoadTeams(selectedClubId,selectedTeamId);
+  }catch(e){sel.innerHTML='<option value="">Erreur de chargement</option>';}
+}
+
+async function _paLoadTeams(clubId,selectedTeamId){
+  const sel=document.getElementById('pa-team');
+  if(!sel)return;
+  if(!clubId){sel.innerHTML="<option value=\"\">Choisissez d'abord un club</option>";return;}
+  sel.innerHTML='<option value="">Chargement…</option>';
+  try{
+    const teams=await sbFetch('club_teams?select=id,name&club_id=eq.'+clubId+'&order=name.asc');
+    sel.innerHTML='<option value="">Choisir…</option>'+(Array.isArray(teams)?teams:[]).map(t=>`<option value="${t.id}" ${t.id===selectedTeamId?'selected':''}>${esc(t.name)}</option>`).join('');
+  }catch(e){sel.innerHTML='<option value="">Erreur de chargement</option>';}
+}
+
+async function sauvegarderAlbum(albumId){
+  const err=document.getElementById('pa-err');
+  const title=document.getElementById('pa-title')?.value?.trim();
+  const clubId=document.getElementById('pa-club')?.value;
+  const teamId=document.getElementById('pa-team')?.value;
+  const season=document.getElementById('pa-season')?.value?.trim();
+  const missionRef=document.getElementById('pa-mission')?.value?.trim();
+  if(!title){err.textContent='Titre obligatoire.';return;}
+  if(!clubId||!teamId){err.textContent='Club et équipe obligatoires.';return;}
+  if(!season){err.textContent='Saison obligatoire.';return;}
+  err.textContent='Enregistrement…';
+  try{
+    let missionId=null;
+    if(missionRef){
+      const pres=await sbFetch('prestations?select=id&reference=ilike.%25'+encodeURIComponent(missionRef)+'%25&limit=1');
+      missionId=pres?.[0]?.id||null;
+    }
+    const body={
+      title,
+      club_id:clubId,
+      team_id:teamId,
+      season_id:season,
+      event_date:document.getElementById('pa-date')?.value||null,
+      cover_preview_url:document.getElementById('pa-cover')?.value?.trim()||null,
+      photo_count:parseInt(document.getElementById('pa-count')?.value||'0',10)||0,
+      secure_collection_ref:document.getElementById('pa-ref')?.value?.trim()||null,
+      mission_id:missionId,
+    };
+    let r;
+    if(albumId){
+      r=await sbFetch('photo_albums?id=eq.'+albumId,{method:'PATCH',body});
+    }else{
+      body.created_by=S.uid;
+      r=await sbFetch('photo_albums',{method:'POST',body});
+    }
+    if(sbErr(r)){err.textContent='Erreur : '+(r.message||'Enregistrement impossible.');return;}
+    closeModal();
+    toast(albumId?'Album mis à jour':'Album créé — encore en brouillon','ok');
+    loadPhotoAlbums();
+  }catch(e){err.textContent="Erreur lors de l'enregistrement.";}
+}
+
+async function publierAlbum(id){
+  const r=await sbFetch('photo_albums?id=eq.'+id,{method:'PATCH',body:{status:'published',published_at:new Date().toISOString()}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Publication impossible.'),'error');return;}
+  toast('Album publié — visible dans le Pass Photo Connect','ok');
+  loadPhotoAlbums();
+}
+
+async function depublierAlbum(id){
+  const r=await sbFetch('photo_albums?id=eq.'+id,{method:'PATCH',body:{status:'draft'}});
+  if(sbErr(r)){toast('Erreur : '+(r.message||'Dépublication impossible.'),'error');return;}
+  toast('Album repassé en brouillon','ok');
+  loadPhotoAlbums();
 }
 
 function renderMediaLiensList(liens){

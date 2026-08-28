@@ -33,6 +33,11 @@
 //             (donc sans déclencher payment_intent.payment_failed) laisse sa ligne paiements/
 //             team_project_contributions/funding_contributions bloquée à 'en_attente' pour
 //             toujours. Voir le commentaire du handler plus bas pour le détail.
+// AJOUT 28/08/2026 (migration-connect-pass-photo-v1.sql) : nouvelle branche checkout.session.
+//             completed pour le Pass Photo (Espace joueur, achat ponctuel, mode 'payment',
+//             metadata.product = 'pass_photo') — écrit photo_pass_entitlements. Aucun nouvel
+//             événement Stripe à ajouter côté dashboard, checkout.session.completed est déjà
+//             écouté.
 // Secrets requis : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
 //                  PENNYLANE_API_KEY (pour l'avoir automatique sur remboursement — optionnel : si
 //                  absente, le remboursement est quand même resynchronisé, seul l'avoir Pennylane
@@ -337,16 +342,30 @@ serve(async (req) => {
       const agentUserId = (session.mode === "subscription" && session.metadata?.user_id && session.metadata?.tier)
         ? (session.metadata.user_id as string)
         : null;
-      const contributionId = (abonnementClubId || agentUserId) ? null : ((session.metadata?.contribution_id as string) || null);
+      // Pass Photo (Espace joueur, mode 'payment', migration-connect-pass-photo-v1.sql) — même
+      // branchement EN PREMIER que abonnementClubId/agentUserId ci-dessus et pour la même raison :
+      // cette session renseigne elle aussi client_reference_id (= user_id), qui serait sinon
+      // interprété à tort comme un paiement_id Portail par le repli de paiementId plus bas.
+      // Distingué par metadata.product = 'pass_photo' (mode 'payment', comme un paiement de
+      // prestation classique — pas de champ Stripe natif pour le différencier autrement).
+      const passPhotoMeta = session.metadata?.product === "pass_photo"
+        ? {
+          userId: session.metadata.user_id as string,
+          clubId: session.metadata.club_id as string,
+          teamId: session.metadata.team_id as string,
+          seasonId: session.metadata.season_id as string,
+        }
+        : null;
+      const contributionId = (abonnementClubId || agentUserId || passPhotoMeta) ? null : ((session.metadata?.contribution_id as string) || null);
       // Cotisation personnelle Connect (group_fundings / funding_contributions,
       // migration-connect-v50) — même principe de branchement AVANT le repli sur
       // paiementId que contributionId ci-dessus, avec une clé de metadata distincte
       // ("funding_contribution_id") pour ne jamais être confondue avec une
       // contribution à un projet collectif Club+ (contributionId, team_project_contributions).
-      const fundingContributionId = (abonnementClubId || agentUserId || contributionId)
+      const fundingContributionId = (abonnementClubId || agentUserId || passPhotoMeta || contributionId)
         ? null
         : ((session.metadata?.funding_contribution_id as string) || null);
-      const paiementId = (abonnementClubId || agentUserId || contributionId || fundingContributionId)
+      const paiementId = (abonnementClubId || agentUserId || passPhotoMeta || contributionId || fundingContributionId)
         ? null
         : ((session.metadata?.paiement_id as string) || (session.client_reference_id as string) || null);
 
@@ -467,6 +486,43 @@ serve(async (req) => {
           } catch (_e) {
             console.error("[stripe-webhook] notification activation abonnement Agent a échoué :", _e);
           }
+        }
+      }
+
+      // Activation Pass Photo (Espace joueur, mode 'payment', migration-connect-pass-photo-v1.sql)
+      // — écrit photo_pass_entitlements UNIQUEMENT ici, jamais dans create-pass-photo-checkout
+      // (MASTER-CONNECT-V1.md §25, même principe que l'abonnement Agent ci-dessus et le paiement
+      // de prestation ci-dessous). Upsert sur la clé naturelle (user_id, club_id, team_id,
+      // season_id) — un second paiement pour la même combinaison prolonge/réactive l'entitlement
+      // existant plutôt que d'en créer un doublon (contrainte unique posée par la migration).
+      // expires_at laissé NULL (pas de date de fin de saison calculable simplement dans ce
+      // projet — season_id est un texte libre, pas une plage de dates réelle) ; order_id laissé
+      // NULL (aucune ligne `paiements` créée pour ce produit, voir le commentaire de tête de la
+      // migration §2 sur pourquoi).
+      if (passPhotoMeta && passPhotoMeta.userId && passPhotoMeta.clubId && passPhotoMeta.teamId && passPhotoMeta.seasonId) {
+        try {
+          await admin.from("photo_pass_entitlements").upsert(
+            {
+              user_id: passPhotoMeta.userId,
+              club_id: passPhotoMeta.clubId,
+              team_id: passPhotoMeta.teamId,
+              season_id: passPhotoMeta.seasonId,
+              status: "active",
+              purchased_at: new Date().toISOString(),
+              expires_at: null,
+            },
+            { onConflict: "user_id,club_id,team_id,season_id" },
+          );
+
+          await admin.from("member_notifications").insert({
+            user_id: passPhotoMeta.userId,
+            category: "payments",
+            title: "Pass Photo activé",
+            body: "Votre Pass Photo est actif — les albums de cette équipe et cette saison sont maintenant déverrouillés.",
+            target_href: "/photos",
+          });
+        } catch (_e) {
+          console.error("[stripe-webhook] activation Pass Photo a échoué :", _e);
         }
       }
 
