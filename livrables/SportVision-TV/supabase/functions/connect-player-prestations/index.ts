@@ -279,7 +279,7 @@ serve(async (req) => {
           // que cette vue (livre/consulte uniquement — jamais un livrable pas encore validé côté
           // staff). orderId est déjà scopé au client_id de l'appelant via la requête prestations
           // ci-dessus, donc pas de vérif d'accès supplémentaire nécessaire ici.
-          admin.from("media_livrables").select("id, nom, statut, date_validation, created_at, lien_id").eq("prestation_id", orderId).in("statut", ["livre", "consulte"]),
+          admin.from("media_livrables").select("id, nom, statut, date_validation, date_expiration, created_at, lien_id").eq("prestation_id", orderId).in("statut", ["livre", "consulte"]),
         ]);
         const livrables = livrablesRaw || [];
         const lienIds = Array.from(new Set(livrables.map((l: { lien_id: string | null }) => l.lien_id).filter(Boolean))) as string[];
@@ -297,9 +297,9 @@ serve(async (req) => {
             ...(paiements || []).map((p: { id: string; statut: string; montant: number; type_paiement: string; created_at: string }) => ({
               kind: "paiement", id: p.id, reference: p.type_paiement, statut: p.statut, montant: p.montant, date: p.created_at,
             })),
-            ...livrables.map((l: { id: string; nom: string; statut: string; date_validation: string | null; created_at: string; lien_id: string | null }) => ({
+            ...livrables.map((l: { id: string; nom: string; statut: string; date_validation: string | null; date_expiration: string | null; created_at: string; lien_id: string | null }) => ({
               kind: "livrable", id: l.id, reference: l.nom, statut: l.statut, montant: null, date: l.date_validation || l.created_at,
-              pdfUrl: l.lien_id ? lienUrlById.get(l.lien_id) ?? null : null,
+              pdfUrl: l.lien_id ? lienUrlById.get(l.lien_id) ?? null : null, expiresAt: l.date_expiration,
             })),
           ],
         });
@@ -712,7 +712,7 @@ serve(async (req) => {
           // raison — audit E2E du 20/08).
           admin
             .from("media_livrables")
-            .select("id, nom, statut, date_validation, created_at, lien_id")
+            .select("id, nom, statut, date_validation, date_expiration, created_at, lien_id")
             .eq("prestation_id", orderId)
             .in("statut", ["livre", "consulte"]),
         ]);
@@ -743,7 +743,7 @@ serve(async (req) => {
               montant: p.montant,
               date: p.created_at,
             })),
-            ...livrables.map((l: { id: string; nom: string; statut: string; date_validation: string | null; created_at: string; lien_id: string | null }) => ({
+            ...livrables.map((l: { id: string; nom: string; statut: string; date_validation: string | null; date_expiration: string | null; created_at: string; lien_id: string | null }) => ({
               kind: "livrable",
               id: l.id,
               reference: l.nom,
@@ -751,6 +751,7 @@ serve(async (req) => {
               montant: null,
               date: l.date_validation || l.created_at,
               pdfUrl: l.lien_id ? lienUrlById.get(l.lien_id) ?? null : null,
+              expiresAt: l.date_expiration,
             })),
           ],
         });

@@ -39,6 +39,9 @@ export interface PlayerOrderDocument {
   montant: number | null;
   date: string | null;
   pdfUrl?: string | null;
+  // Règle spec Médias §14 (28/08/2026) : accès garanti 90 jours après mise à disposition
+  // pour une prestation classique. Uniquement renseigné pour kind="livrable".
+  expiresAt?: string | null;
 }
 
 export interface PlayerInvoice {

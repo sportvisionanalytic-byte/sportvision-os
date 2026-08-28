@@ -8365,7 +8365,7 @@ async function sauvegarderLivrable(){
 // club, jamais au CM qui gère réellement sa communication.
 async function modalPrepLivraison(livrableId){
   const L='font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block;margin-bottom:5px';
-  let prefillNom='',prefillEmail='',cmBanner='',cmId=null;
+  let prefillNom='',prefillEmail='',cmBanner='',cmId=null,prefillTypeClient='';
   try{
     const lv=await sbFetch('media_livrables?select=prestation_id&id=eq.'+livrableId);
     const presId=lv?.[0]?.prestation_id;
@@ -8374,13 +8374,14 @@ async function modalPrepLivraison(livrableId){
       const clientId=pres?.[0]?.client_id;
       if(clientId){
         const [cl,ct]=await Promise.all([
-          sbFetch('clients?select=id,nom,prenom_contact,nom_contact,email,cm_id&id=eq.'+clientId),
+          sbFetch('clients?select=id,nom,prenom_contact,nom_contact,email,cm_id,type_client&id=eq.'+clientId),
           sbFetch('contrats?select=type_contrat&client_id=eq.'+clientId+'&statut=eq.actif&type_contrat=eq.full_communication&limit=1').catch(()=>[]),
         ]);
         const c=cl?.[0];
         if(c){
           prefillNom=[c.prenom_contact,c.nom_contact].filter(Boolean).join(' ');
           prefillEmail=c.email||'';
+          prefillTypeClient=c.type_client||'';
           if(Array.isArray(ct)&&ct.length){
             if(c.cm_id){
               const cm=await sbFetch('profiles?select=id,prenom,nom&id=eq.'+c.cm_id);
@@ -8402,6 +8403,7 @@ async function modalPrepLivraison(livrableId){
     <div style="display:flex;flex-direction:column;gap:11px">
       ${cmBanner}
       <input type="hidden" id="liv-cmid" value="${cmId||''}">
+      <input type="hidden" id="liv-clienttype" value="${esc(prefillTypeClient||'')}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label style="${L}">Nom du destinataire</label>
           <input id="liv-nom" type="text" class="l-inp" style="height:38px" placeholder="Prénom Nom" value="${esc(prefillNom)}"></div>
@@ -8433,7 +8435,7 @@ async function confirmerLivraison(livrableId){
   if(!email){err.textContent='Email obligatoire.';return;}
   err.textContent='Enregistrement…';
   try{
-    const lvData=await sbFetch('media_livrables?select=prestation_id,nom&id=eq.'+livrableId);
+    const lvData=await sbFetch('media_livrables?select=prestation_id,nom,date_expiration&id=eq.'+livrableId);
     const lv=lvData?.[0];
     const rEnvoi=await sbFetch('media_livraisons',{method:'POST',body:{
       prestation_id:lv?.prestation_id||null,
@@ -8451,7 +8453,19 @@ async function confirmerLivraison(livrableId){
     // ci-dessus, le client a déjà reçu son fichier) — cette écriture ne doit
     // pas bloquer, mais si elle échoue en silence le livrable reste "à
     // livrer" dans les listes/dashboards alors qu'il a réellement été livré.
-    const rStatut=await sbFetch('media_livrables?id=eq.'+livrableId,{method:'PATCH',body:{statut:'livre'}}).catch(()=>({code:'network_error'}));
+    // Règle spec Médias §14 : une prestation classique particulière garde un
+    // accès Connect garanti 90 jours après mise à disposition. Uniquement si
+    // aucune expiration n'a déjà été saisie à la main (jamais écraser un choix
+    // explicite) et seulement pour un client particulier — un club Full Com
+    // passe par le CM (cmBanner/cmId ci-dessus), pas par cette règle de
+    // rétention individuelle.
+    const clientType=document.getElementById('liv-clienttype')?.value;
+    const patchLivrable={statut:'livre'};
+    if(!lv?.date_expiration&&clientType&&clientType!=='club'){
+      const exp=new Date();exp.setDate(exp.getDate()+90);
+      patchLivrable.date_expiration=exp.toISOString();
+    }
+    const rStatut=await sbFetch('media_livrables?id=eq.'+livrableId,{method:'PATCH',body:patchLivrable}).catch(()=>({code:'network_error'}));
     if(sbErr(rStatut))console.error('MAJ statut livrable échouée',rStatut);
     if(lv?.prestation_id) await logMediaHistory(lv.prestation_id,S.uid,'Livraison effectuée','livraison',null,null,email);
     // Pont Full Communication (28/08/2026, demande Fouka) : prépare un

@@ -264,6 +264,9 @@ export function CommandeDetailView({ id, multi = false, backHref = "/commandes" 
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate text-[14px] font-medium text-text lg:text-[13.5px]">{doc.reference}</span>
                 <span className="text-[12px] text-text-tertiary">{formatDateLong(doc.date)} · {doc.statut === "consulte" ? "Consulté" : "Livré"}</span>
+                {doc.expiresAt && (
+                  <span className="text-[12px] text-text-tertiary">Disponible jusqu&apos;au {formatDateLong(doc.expiresAt)}</span>
+                )}
               </div>
               {doc.pdfUrl && (
                 <a href={doc.pdfUrl} target="_blank" rel="noreferrer" className="flex-none text-[#8CA9FF]">

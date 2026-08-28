@@ -26,6 +26,34 @@ const MEDIA_TYPE_MAP: Record<string, MediaAssetKind> = {
   creation: "poster",
 };
 
+// type_livrable (media_livrables, SportVision-OS-Full.html modalCreerLivrable TYPES) -> MediaAssetKind
+const LIVRABLE_TYPE_MAP: Record<string, MediaAssetKind> = {
+  galerie_photo: "photo",
+  photos_finales: "photo",
+  video_finale: "video",
+  aftermovie: "video",
+  interview: "video",
+  highlight: "highlight",
+  reels: "reel",
+  tiktok: "reel",
+  story: "story",
+  affiche: "poster",
+  carrousel: "poster",
+  miniature: "poster",
+  dossier_complet: "document",
+  autre: "document",
+};
+
+interface ClubLivrableRow {
+  id: string;
+  prestation_id: string;
+  nom: string;
+  type_livrable: string | null;
+  date_validation: string | null;
+  created_at: string;
+  lien_url: string | null;
+}
+
 interface ClubMediaRow {
   id: string;
   title: string;
@@ -78,7 +106,7 @@ async function fetchVisibilityByRef(supabase: SupabaseClient, organizationId: st
 }
 
 export async function fetchClubMediaAssets(supabase: SupabaseClient, organizationId: string): Promise<MediaAsset[]> {
-  const [mediaRes, creationsRes, visibilityByRef] = await Promise.all([
+  const [mediaRes, creationsRes, livrablesRes, visibilityByRef] = await Promise.all([
     supabase
       .from("club_media")
       .select("id, title, type, team, source, link, tags, author_name, created_at")
@@ -88,6 +116,15 @@ export async function fetchClubMediaAssets(supabase: SupabaseClient, organizatio
       .from("club_creations")
       .select("id, title, type, team, status, sponsor, created_at")
       .eq("club_id", organizationId)
+      .order("created_at", { ascending: false }),
+    // club_media_livrables (migration-clubplus-v49) : pont vers le pipeline de production
+    // SportVision (media_liens/media_livrables, gate réel réservé prod/admin) — distinct de
+    // club_media ci-dessus (tableau libre-service du club, sans validation SportVision). La vue
+    // elle-même filtre déjà sur statut livré/consulté + is_club_member(club_id) : tout ce qui en
+    // sort est par construction final et déjà validé, jamais un brouillon.
+    supabase
+      .from("club_media_livrables")
+      .select("id, prestation_id, nom, type_livrable, date_validation, created_at, lien_url")
       .order("created_at", { ascending: false }),
     fetchVisibilityByRef(supabase, organizationId),
   ]);
@@ -145,7 +182,34 @@ export async function fetchClubMediaAssets(supabase: SupabaseClient, organizatio
     versions: [],
   }));
 
-  return [...fromMedia, ...fromCreations];
+  const fromLivrables: MediaAsset[] = ((livrablesRes.data ?? []) as ClubLivrableRow[]).map((row) => ({
+    id: `livrable-${row.id}`,
+    organizationId,
+    name: row.nom,
+    kind: LIVRABLE_TYPE_MAP[row.type_livrable ?? ""] ?? "document",
+    mimeType: "",
+    fileUrl: row.lien_url ?? "",
+    thumbnailUrl: row.lien_url ?? "",
+    sizeBytes: 0,
+    aspectRatio: "4:3",
+    storageOrigin: "sportvision_delivered",
+    usageRights: "",
+    // Pas de granularité équipe/joueur sur media_livrables aujourd'hui (V1 simple, voir spec
+    // Médias §7) : visible à tout le club, cohérent avec "finals autorisés" (§8).
+    visibility: "organization",
+    downloadAllowed: true,
+    version: 1,
+    isFinalVersion: true,
+    status: "validated",
+    tags: [],
+    createdAt: row.date_validation || row.created_at,
+    revisionCount: 0,
+    chapters: [],
+    comments: [],
+    versions: [],
+  }));
+
+  return [...fromMedia, ...fromCreations, ...fromLivrables];
 }
 
 // ── Édition de la visibilité (Bible §17) ────────────────────────────────────────────────────
