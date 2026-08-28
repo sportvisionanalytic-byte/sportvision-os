@@ -722,11 +722,8 @@ const NAV={
     {type:'sep',lb:'Communication'},
     {id:'commhub',lb:'Communication',ic:'msg'},
     {type:'sep',lb:'Équipe & RH'},
-    {id:'col',lb:'Collaborateurs',ic:'col'},
+    {id:'equipehub',lb:'Équipe',ic:'col'},
     {id:'candidatures',lb:'Candidatures',ic:'col',modal:'modalCandidatures'},
-    {id:'users',lb:'Utilisateurs & accès',ic:'col'},
-    {id:'grades',lb:'Grades & XP',ic:'target'},
-    {id:'form',lb:'Centre de formation',ic:'form'},
     {type:'sep',lb:'Production'},
     {id:'prodhub',lb:'Production',ic:'pre'},
     {id:'kits',lb:'Kits',ic:'kits'},
@@ -755,9 +752,7 @@ const NAV={
     {id:'audit',lb:"Journal d'audit",ic:'check',hidden:true},
     {id:'rapport',lb:'Rapport mensuel',ic:'fin',hidden:true},
     {id:'documents',lb:'Centre documentaire',ic:'doc',hidden:true},
-    {type:'sep',lb:'Équipe & Espace'},
-    {id:'annuaire',lb:'Annuaire équipe',ic:'col'},
-    {id:'equipe',lb:'Mon équipe',ic:'col'},
+    {type:'sep',lb:'Espace'},
     {id:'integrations',lb:'Intégrations',ic:'set'},
     {id:'msg',lb:'Messagerie',ic:'msg'},
     {type:'sep',lb:'Ressources'},
@@ -1237,9 +1232,48 @@ const VIEWS={
     <div class="sh"><div class="sh-t">Prestations</div><button class="btn bp bs" onclick="modalNouvellePrestation()">+ Nouvelle prestation</button></div>
     <div id="pre-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
-  'admin.col':()=>`
-    <div class="sh"><div class="sh-t">Collaborateurs</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Inviter</button></div>
-    <div id="col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+  // Équipe (Admin V2) — fusionne Collaborateurs+Utilisateurs&accès (rôle/accès
+  // désormais dans modalModifierCollaborateur, voir ce commit) en un onglet,
+  // et regroupe Annuaire/Mon équipe/Grades & XP/Centre de formation en tabs
+  // au lieu de 6 entrées NAV séparées. _annuaireView()/loadAnnuaire() et
+  // _equipeEnDirectView()/loadEquipeEnDirect() restent PARTAGÉS avec
+  // sec/prod/photo/cm/compta/com (leurs propres entrées NAV/VIEWS existent
+  // indépendamment, inchangées) — on ne fait que les réutiliser ici tels
+  // quels pour l'admin, jamais les modifier. loadGrades()/loadAdminForm()
+  // et leurs sous-fonctions restent également inchangées, seuls leurs
+  // conteneurs (#grades-real, #admin-form-real) changent de page d'accueil.
+  'admin.equipehub':()=>`
+    <div class="sh"><div class="sh-t">Équipe</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Inviter</button></div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      <button id="eqhub-tab-roster" onclick="eqhubTab('roster')" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);border:1px solid var(--acc);background:var(--acc);color:#fff">Équipe</button>
+      <button id="eqhub-tab-annuaire" onclick="eqhubTab('annuaire')" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Annuaire</button>
+      <button id="eqhub-tab-dispo" onclick="eqhubTab('dispo')" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Disponibilité</button>
+      <button id="eqhub-tab-grades" onclick="eqhubTab('grades')" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Grades & XP</button>
+      <button id="eqhub-tab-form" onclick="eqhubTab('form')" style="padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Formation</button>
+    </div>
+    <div id="eqhub-panel-roster">
+      <div id="col-real" style="min-height:200px"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div id="eqhub-panel-annuaire" style="display:none">${_annuaireView()}</div>
+    <div id="eqhub-panel-dispo" style="display:none">${_equipeEnDirectView()}</div>
+    <div id="eqhub-panel-grades" style="display:none">
+      <div id="grades-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>
+    <div id="eqhub-panel-form" style="display:none">
+      <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+        <div class="kpi" style="--kl:var(--acc)"><div class="kpi-ey">Formations actives</div><div class="kpi-v" id="af-kpi-tot">—</div></div>
+        <div class="kpi" style="--kl:var(--ok)"><div class="kpi-ey">Completions</div><div class="kpi-v" id="af-kpi-done" style="color:var(--ok)">—</div></div>
+        <div class="kpi" style="--kl:var(--wa)"><div class="kpi-ey">En cours</div><div class="kpi-v" id="af-kpi-enc" style="color:var(--wa)">—</div></div>
+        <div class="kpi" style="--kl:#9C6FFF"><div class="kpi-ey">XP distribués</div><div class="kpi-v" id="af-kpi-xp" style="color:#9C6FFF">—</div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button id="af-tab-stats" onclick="afTab('stats')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--acc);background:var(--acc);color:#fff">Statistiques</button>
+        <button id="af-tab-sessions" onclick="afTab('sessions')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Sessions</button>
+        <button id="af-tab-certifs" onclick="afTab('certifs')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Certifications</button>
+        <button id="af-tab-catalogue" onclick="afTab('catalogue')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Gérer le catalogue</button>
+      </div>
+      <div id="admin-form-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>
+    </div>`,
 
   'admin.kits':()=>_kitsViewShell('admin'),
 
@@ -2522,34 +2556,6 @@ const VIEWS={
 
   'admin.documents':()=>_documentsView('admin'),
 
-  // ── UTILISATEURS & ACCÈS ─────────────────
-  'admin.users':()=>`
-    <div class="sh"><div class="sh-t">Utilisateurs & accès</div><button class="btn bp bs" onclick="modalInviterCollaborateur()">+ Ajouter un membre</button></div>
-    <div id="users-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
-
-  // ── ADMIN : CENTRE DE FORMATION ──────────
-  'admin.form':()=>`<div class="sh">
-    <div class="sh-t">Centre de formation</div>
-    <div style="font-size:12px;color:var(--t3)">Pilotage formations — Administrateur</div>
-  </div>
-  <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
-    <div class="kpi" style="--kl:var(--acc)"><div class="kpi-ey">Formations actives</div><div class="kpi-v" id="af-kpi-tot">—</div></div>
-    <div class="kpi" style="--kl:var(--ok)"><div class="kpi-ey">Completions</div><div class="kpi-v" id="af-kpi-done" style="color:var(--ok)">—</div></div>
-    <div class="kpi" style="--kl:var(--wa)"><div class="kpi-ey">En cours</div><div class="kpi-v" id="af-kpi-enc" style="color:var(--wa)">—</div></div>
-    <div class="kpi" style="--kl:#9C6FFF"><div class="kpi-ey">XP distribués</div><div class="kpi-v" id="af-kpi-xp" style="color:#9C6FFF">—</div></div>
-  </div>
-  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-    <button id="af-tab-stats" onclick="afTab('stats')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--acc);background:var(--acc);color:#fff">Statistiques</button>
-    <button id="af-tab-sessions" onclick="afTab('sessions')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Sessions</button>
-    <button id="af-tab-certifs" onclick="afTab('certifs')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Certifications</button>
-    <button id="af-tab-catalogue" onclick="afTab('catalogue')" style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--b1);background:var(--s2);color:var(--t2)">Gérer le catalogue</button>
-  </div>
-  <div id="admin-form-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
-
-  // ── GRADES & XP ──────────────────────────
-  'admin.grades':()=>`
-    <div class="sh"><div class="sh-t">Grades & XP</div><div style="font-size:12px;color:var(--t3)">Système de progression de l'équipe</div></div>
-    <div id="grades-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   // ── ANNUAIRE (tous rôles) ───────────────
   'admin.centre':()=>_centreView(),
@@ -3848,8 +3854,7 @@ async function creerCollaborateur(){
     if(!r.ok||d.error){err.textContent=d.error||'Erreur.';return;}
     closeModal();
     toast('Invitation envoyée par e-mail.','ok');
-    if(document.getElementById('users-real')) await loadUsers();
-    else if(document.getElementById('col-real')) loadCollaborateurs();
+    if(document.getElementById('col-real')) loadCollaborateurs();
     updateNavBadges(S.role);
   }catch(e){err.textContent='Erreur réseau.';}
 }
@@ -3862,7 +3867,7 @@ async function loadViewData(role,view){
   if(role==='admin'&&view==='prodhub') await loadProdHub();
   if((role==='admin'||role==='sec')&&view==='cmagency') await loadCmAgencyAccess();
   if(role==='admin'&&view==='commhub') await loadCommHub();
-  if(role==='admin'&&view==='col') await loadCollaborateurs();
+  if(role==='admin'&&view==='equipehub') await loadEquipeHub();
   if((role==='admin'||role==='prod')&&view==='kits'){window._kitsTypeF='Tous';window._kitsStatF='Tous';await loadKits();}
   if(role==='admin'&&view==='dash') await loadAdminDash();
   if(role==='admin'&&view==='planning'){_planningDate=new Date();await loadPlanning();}
@@ -3959,7 +3964,6 @@ async function loadViewData(role,view){
   if(role==='photo'&&view==='medias') await loadPhotoMedias();
   if(role==='photo'&&view==='kits') await loadPhotoKits();
   if(role==='photo'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
-  if(role==='admin'&&view==='form') await loadAdminForm();
   if(role==='prod'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='cm'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
   if(role==='sec'&&view==='form'){_formTab='dashboard';window._formCatFilter='Toutes';await loadForm();}
@@ -3972,8 +3976,6 @@ async function loadViewData(role,view){
   if(view==='set') await loadSettings();
   if(role==='admin'&&view==='rapport'){_rapportOffset=0;await loadRapport();}
   if(role==='admin'&&view==='contrats') await loadContrats();
-  if(role==='admin'&&view==='users') await loadUsers();
-  if(role==='admin'&&view==='grades') await loadGrades();
   if(view==='centre'){_centreSection='accueil';await loadCentre(role);}
   if(view==='annuaire') await loadAnnuaire(role);
   if((role==='admin'||role==='prod')&&view==='equipe') await loadEquipeEnDirect();
@@ -6354,7 +6356,7 @@ async function loadAdminDash(){
       // est un item NAV modal-only (modal:'modalCandidatures'), pas une vraie vue —
       // switchView('candidatures') afficherait un fallbackView vide (VIEWS['admin.candidatures']
       // n'existe pas).
-      const CAT_ACTION={finance:"switchView('resultat')",communication:"switchView('planning')",equipe:"switchView('col')",recrutement:'modalCandidatures()',signature:"switchView('contrats')"};
+      const CAT_ACTION={finance:"switchView('resultat')",communication:"switchView('planning')",equipe:"switchView('equipehub')",recrutement:'modalCandidatures()',signature:"switchView('contrats')"};
       const relT=d=>{
         const diff=Math.floor((Date.now()-new Date(d))/60000);
         if(diff<1)return'à l\'instant';if(diff<60)return'il y a '+diff+'min';
@@ -21413,13 +21415,39 @@ async function majStatutFinancier(id,statut){
   }catch(e){toast('Erreur lors de la mise à jour.');}
 }
 
+// ── Équipe (Admin V2, page 6/N) — bascule d'onglet + chargement paresseux,
+// même patron que fceShowTab (fiche club, cf1b0e1). Les 5 onglets réutilisent
+// des écrans/fonctions déjà existants et inchangés (loadCollaborateurs,
+// _annuaireView/loadAnnuaire, _equipeEnDirectView/loadEquipeEnDirect,
+// loadGrades, loadAdminForm) — cette page ne fait que les regrouper sous un
+// même NAV id au lieu de 6.
+let _eqHubTab='roster';
+function eqhubTab(tab){
+  const on='border:1px solid var(--acc);background:var(--acc);color:#fff';
+  const off='border:1px solid var(--b1);background:var(--s2);color:var(--t2)';
+  _eqHubTab=tab;
+  ['roster','annuaire','dispo','grades','form'].forEach(t=>{
+    const b=document.getElementById('eqhub-tab-'+t);const p=document.getElementById('eqhub-panel-'+t);
+    if(b)b.style.cssText='padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ff);'+(t===tab?on:off);
+    if(p)p.style.display=t===tab?'':'none';
+  });
+  if(tab==='roster')loadCollaborateurs();
+  if(tab==='annuaire')loadAnnuaire('admin');
+  if(tab==='dispo')loadEquipeEnDirect();
+  if(tab==='grades')loadGrades();
+  if(tab==='form')loadAdminForm();
+}
+async function loadEquipeHub(){
+  eqhubTab(_eqHubTab||'roster');
+}
+
 async function loadCollaborateurs(){
   const el=document.getElementById('col-real');
   if(!el)return;
   try{
     const _colRole=localStorage.getItem('sv_role');
     const _colFilter=_colRole==='prod'?'&role=in.(photo,cm)':'';
-    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif'+_colFilter+'&order=role.asc,nom.asc');
+    const data=await sbFetch('profiles?select=id,role,prenom,nom,telephone,adresse,ville,code_postal,type_contrat,actif,niveau_cm'+_colFilter+'&order=role.asc,nom.asc');
     if(!data||data.length===0){el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">👥</div><div>Aucun collaborateur trouvé.</div></div>';return;}
     _colsCache=data;
     const rColors={'admin':'#366BFF','sec':'#00B8D4','prod':'#2ECC8A','photo':'#7C4DFF','cm':'#F5A524','compta':'#FF6B35','com':'#F0445E'};
@@ -21468,7 +21496,29 @@ async function modalModifierCollaborateur(idx){
         <div><label style="${lbl}">Ville</label><input id="fco-ville" class="l-inp" value="${esc(t.ville||'')}" placeholder="Ville" style="height:38px"></div>
         <div><label style="${lbl}">Code postal</label><input id="fco-cp" class="l-inp" value="${esc(t.code_postal||'')}" placeholder="75000" style="height:38px"></div>
       </div>
-      <div style="font-size:11px;color:var(--t3);background:rgba(255,255,255,.03);border:1px solid var(--b1);border-radius:8px;padding:8px 10px">Le rôle se change depuis <strong>Utilisateurs & accès</strong>.</div>
+      ${t.id!==S.uid?(()=>{
+        const ROLE_LABELS_FULL={admin:'Administrateur',sec:'Secrétaire',prod:'Resp. Production',photo:'Photo / Vidéaste',cm:'Community Manager',compta:'Comptable',com:'Commercial',expert_comptable:'Expert-comptable',auditeur:'Auditeur'};
+        const isInactif=t.actif===false;
+        return`<div style="border-top:1px solid var(--b1);padding-top:12px;margin-top:2px">
+          <div style="font-size:12px;font-weight:650;color:var(--t1);margin-bottom:10px">Rôle &amp; accès</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label style="${lbl}">Rôle</label>
+              <select id="fco-role" class="l-inp" style="height:38px" onchange="changerRoleUser('${t.id}',this.value);document.getElementById('fco-niveaucm-wrap').style.display=this.value==='cm'?'block':'none'">
+                ${Object.entries(ROLE_LABELS_FULL).map(([k,v])=>`<option value="${k}"${t.role===k?' selected':''}>${v}</option>`).join('')}
+              </select>
+            </div>
+            <div id="fco-niveaucm-wrap" style="display:${t.role==='cm'?'block':'none'}"><label style="${lbl}">Palier CM</label>
+              <select class="l-inp" style="height:38px" onchange="changerNiveauCmUser('${t.id}',this.value)">
+                <option value=""${!t.niveau_cm?' selected':''}>Non classé</option>
+                ${Object.entries(CM_NIVEAU_LBL).map(([k,v])=>`<option value="${k}"${t.niveau_cm===k?' selected':''}>${v}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            ${isInactif?`<button class="btn bg2 bs" onclick="reactiverUser('${t.id}')">↺ Réactiver l'accès</button>`:`<button class="btn bg2 bs" style="color:var(--er)" onclick="confirmerDesactiverUser('${t.id}','${escJs(t.prenom||'')}','${escJs(t.nom||'')}')">⛔ Désactiver l'accès</button>`}
+          </div>
+        </div>`;
+      })():'<div style="font-size:11px;color:var(--t3);font-style:italic">Votre compte — rôle et accès non modifiables ici.</div>'}
       ${canSeePaie?`
       <div style="border-top:1px solid var(--b1);padding-top:12px;margin-top:2px">
         <div style="font-size:12px;font-weight:650;color:var(--t1);margin-bottom:10px">Paie & contrat <span style="font-weight:400;color:var(--t3);font-size:11px">(visible admin/comptable uniquement)</span></div>
@@ -23105,14 +23155,13 @@ const VIEW_CTA={
   'admin.pre':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'admin.planning':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
   'admin.crm':{t:'+ Nouveau client',fn:'modalNouveauClient'},
-  'admin.col':{t:'+ Inviter',fn:'modalInviterCollaborateur'},
+  'admin.equipehub':{t:'+ Inviter',fn:'modalInviterCollaborateur'},
   'admin.kits':{t:'+ Nouveau kit',fn:'modalNouveauKit'},
   'admin.devis':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'admin.contrats':{t:'+ Nouveau contrat',fn:'modalNouveauContrat'},
   'admin.documents':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'sec.docs':{t:'+ Nouveau devis',fn:'modalNouveauDevis'},
   'compta.documents':{t:'+ Avoir',fn:'docsModalNouvelAvoir'},
-  'admin.users':{t:'+ Ajouter un membre',fn:'modalInviterCollaborateur'},
   'admin.pipeline':{t:'+ Nouveau prospect',fn:'modalNouveauClient'},
   'admin.incidents':{t:'+ Signaler incident',fn:'modalSignalerIncident'},
   'sec.dash':{t:'+ Nouvelle prestation',fn:'modalNouvellePrestation'},
@@ -23746,48 +23795,6 @@ function supprimerContrat(id){
   });
 }
 
-// ── UTILISATEURS & ACCÈS ────────────────────────────────────────────────────
-async function loadUsers(){
-  const d=document.getElementById('users-real');
-  const r=await sbFetch('profiles?select=*&order=created_at.asc');
-  if(sbErr(r)){d.innerHTML=`<div style="padding:40px;text-align:center;color:var(--er);font-size:13px">Erreur: ${r.message||'Impossible de charger les utilisateurs'}</div>`;return;}
-  const list=Array.isArray(r)?r:[];
-  const RL={admin:'Administrateur',sec:'Secrétaire',prod:'Resp. Production',photo:'Photo / Vidéaste',cm:'Community Manager',compta:'Comptable',com:'Commercial',expert_comptable:'Expert-comptable',auditeur:'Auditeur'};
-  const RC={admin:'var(--gr)',sec:'#00B8D4',prod:'var(--ok)',photo:'#7C4DFF',cm:'var(--acc)',compta:'#FF6B35',com:'var(--er)',expert_comptable:'#0EA5FF',auditeur:'#8891A8'};
-  const NCL=CM_NIVEAU_LBL;
-  if(!list.length){d.innerHTML=`<div style="text-align:center;padding:60px;color:var(--t3);font-size:13px">Aucun utilisateur.</div>`;return;}
-  d.innerHTML=`<div style="margin-bottom:14px;font-size:12px;color:var(--t3)">${list.length} membre${list.length>1?'s':''} dans l'équipe</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
-      ${list.map(u=>{
-        const isMe=u.id===S.uid;const rc=RC[u.role]||'var(--t3)';const rl=RL[u.role]||u.role;
-        const isInactif=u.actif===false;
-        return `<div style="background:var(--s1);border:1px solid ${isMe?'rgba(54,107,255,.3)':'var(--b1)'};border-radius:var(--r);padding:16px;position:relative${isInactif?';opacity:.6':''}">
-          ${isMe?`<div style="position:absolute;top:10px;right:10px;font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(54,107,255,.12);color:var(--acc);font-weight:600">Vous</div>`:isInactif?`<div style="position:absolute;top:10px;right:10px;font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(240,68,94,.12);color:var(--er);font-weight:600">Désactivé</div>`:''}
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <div style="width:40px;height:40px;border-radius:50%;background:${u.avatar_url?`url(${u.avatar_url}) center/cover no-repeat`:rc+'22'};border:1px solid ${rc}44;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:${rc};flex-shrink:0">${esc(u.avatar_url?'':(u.prenom||'?')[0].toUpperCase())}</div>
-            <div style="min-width:0">
-              <div style="font-size:14px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.prenom||'')} ${esc(u.nom||'')}</div>
-              <span style="display:inline-block;margin-top:2px;font-size:11px;padding:1px 8px;border-radius:20px;font-weight:600;background:${rc}22;color:${rc}">${rl}</span>
-            </div>
-          </div>
-          <div style="font-size:11px;color:var(--t3);margin-bottom:12px">${esc(u.telephone||'Pas de téléphone')}</div>
-          ${!isMe?`<div style="display:flex;gap:6px">
-            <select onchange="changerRoleUser('${u.id}',this.value)" style="flex:1;height:30px;font-size:11px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);padding:0 8px">
-              ${Object.entries(RL).map(([k,v])=>`<option value="${k}"${u.role===k?' selected':''}>${v}</option>`).join('')}
-            </select>
-            ${isInactif
-              ?`<button onclick="reactiverUser('${u.id}')" style="padding:0 10px;height:30px;font-size:11px;background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.2);border-radius:var(--rp);color:var(--ok);cursor:pointer;white-space:nowrap" title="Réactiver">↺</button>`
-              :`<button onclick="confirmerDesactiverUser('${u.id}','${escJs(u.prenom||'')}','${escJs(u.nom||'')}')" style="padding:0 10px;height:30px;font-size:11px;background:rgba(240,68,94,.08);border:1px solid rgba(240,68,94,.2);border-radius:var(--rp);color:var(--er);cursor:pointer" title="Désactiver">⛔</button>`}
-          </div>
-          ${u.role==='cm'?`<select onchange="changerNiveauCmUser('${u.id}',this.value)" style="margin-top:6px;width:100%;height:30px;font-size:11px;background:var(--bg);border:1px solid var(--b1);border-radius:var(--rp);color:var(--t2);padding:0 8px">
-              <option value=""${!u.niveau_cm?' selected':''}>Palier CM — non classé</option>
-              ${Object.entries(NCL).map(([k,v])=>`<option value="${k}"${u.niveau_cm===k?' selected':''}>${v}</option>`).join('')}
-            </select>`:''}`:`<div style="font-size:11px;color:var(--t3);font-style:italic">Votre compte — non modifiable ici</div>`}
-        </div>`;
-      }).join('')}
-    </div>`;
-}
-
 async function changerRoleUser(id,role){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{role}});
   if(sbErr(r)){toast('Erreur changement de rôle','er');return;}
@@ -23824,14 +23831,13 @@ function confirmerDesactiverUser(id,prenom,nom){
   </div>`);
 }
 
-// Appelées depuis 2 écrans (Utilisateurs & accès et fiche Collaborateurs) :
-// on ne rafraîchit que la liste réellement affichée, sinon loadUsers()
-// plante sur un getElementById('users-real') introuvable depuis l'autre écran.
+// Appelées depuis la fiche Collaborateurs (modalModifierCollaborateur) —
+// rôle/accès fusionnés dans cette fiche depuis la refonte Équipe (Admin V2),
+// l'ancien écran séparé "Utilisateurs & accès" n'existe plus.
 async function desactiverUser(id){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{actif:false}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'désactivation impossible.'),'er');return;}
   closeModal();toast('Utilisateur désactivé.','ok');
-  if(document.getElementById('users-real'))await loadUsers();
   if(document.getElementById('col-real'))await loadCollaborateurs();
 }
 
@@ -23839,7 +23845,6 @@ async function reactiverUser(id){
   const r=await sbFetch('profiles?id=eq.'+id,{method:'PATCH',body:{actif:true}});
   if(sbErr(r)){toast('Erreur : '+(r.message||'réactivation impossible.'),'er');return;}
   toast('Utilisateur réactivé.','ok');
-  if(document.getElementById('users-real'))await loadUsers();
   if(document.getElementById('col-real'))await loadCollaborateurs();
 }
 
@@ -26036,7 +26041,7 @@ function closeMobFilter(){
 
 // ── More Menu ─────────────────────────────────────────────────────────────
 const MOB_MORE_ITEMS={
-  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'col',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
+  admin:[{id:'crm',lb:'Clubs',ic:'👥',sub:'CRM'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Matériel'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'equipehub',lb:'Équipes',ic:'🏃',sub:'Collabs'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue semaine'},{id:'fin',lb:'Finance',ic:'💰',sub:'Rapports'},{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Fournisseurs'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'}],
   sec:[{id:'contrats',lb:'Contrats',ic:'📄',sub:'Abonnements'},{id:'devis',lb:'Devis',ic:'📋',sub:'Propositions'},{id:'livraisons',lb:'Livraisons',ic:'📦',sub:'À envoyer'},{id:'taches',lb:'Tâches',ic:'✅',sub:'Mes tâches'},{id:'crm',lb:'Tous clients',ic:'👥',sub:'CRM'},{id:'planning',lb:'Planning',ic:'📅',sub:'Vue mois'},{id:'form',lb:'Formation',ic:'🎓',sub:'Catalogue'}],
   prod:[{id:'equipe',lb:'Mon équipe',ic:'🏃',sub:'Collabs'},{id:'kits',lb:'Kits',ic:'🎒',sub:'Inventaire'},{id:'kanban',lb:'Kanban',ic:'📌',sub:'Vue globale'},{id:'incidents',lb:'Incidents',ic:'⚠️',sub:'Signalements'},{id:'media',lb:'Médias',ic:'🎬',sub:'Transferts'},{id:'form',lb:'Formation',ic:'🎓',sub:'Équipe'},{id:'budget',lb:'Budget',ic:'📊',sub:'Suivi'}],
   compta:[{id:'resultat',lb:'Résultat',ic:'📊',sub:'Vue globale'},{id:'rem',lb:'Rémunérations',ic:'💸',sub:'Contrôle'},{id:'depenses',lb:'Dépenses',ic:'🛒',sub:'Frais'},{id:'rentabilite',lb:'Rentabilité',ic:'📈',sub:'Marges'},{id:'commissions',lb:'Commissions',ic:'🤝',sub:'Équipe commerciale'},{id:'clotures',lb:'Clôtures',ic:'🔒',sub:'Mensuel'},{id:'avoirs',lb:'Avoirs',ic:'📝',sub:'Partiels/annulés'},{id:'rapprochement',lb:'Rapprochement',ic:'🔍',sub:'Bancaire'}],
@@ -26624,7 +26629,7 @@ async function loadMobileAdminDash(ct){
     html+=`<div class="ms-head"><div class="ms-title">Navigation rapide</div></div>
     <div class="mob-actions">
       <button class="mob-action-btn" onclick="switchView('pre')"><div class="mob-action-btn-ic">📅</div><div><div class="mob-action-btn-t">Prestations</div><div class="mob-action-btn-s">${list.filter(p=>!['annulée','refusée','clôturée'].includes(p.statut)).length} actives</div></div></button>
-      <button class="mob-action-btn" onclick="switchView('col')"><div class="mob-action-btn-ic">👥</div><div><div class="mob-action-btn-t">Équipe</div><div class="mob-action-btn-s">Collaborateurs</div></div></button>
+      <button class="mob-action-btn" onclick="switchView('equipehub')"><div class="mob-action-btn-ic">👥</div><div><div class="mob-action-btn-t">Équipe</div><div class="mob-action-btn-s">Collaborateurs</div></div></button>
       <button class="mob-action-btn" onclick="switchView('incidents')"><div class="mob-action-btn-ic">⚠️</div><div><div class="mob-action-btn-t">Incidents</div><div class="mob-action-btn-s">${(inc||[]).length} ouverts</div></div></button>
       <button class="mob-action-btn" onclick="switchView('fin')"><div class="mob-action-btn-ic">💰</div><div><div class="mob-action-btn-t">Finance</div><div class="mob-action-btn-s">Rapports</div></div></button>
     </div>`;
