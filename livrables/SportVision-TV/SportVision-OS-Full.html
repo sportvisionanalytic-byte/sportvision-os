@@ -849,6 +849,7 @@ const NAV={
     {id:'planningmensuel',lb:'Planning mensuel',ic:'cal'},
     {id:'contenus',lb:'Contenus',ic:'pre'},
     {id:'mediabank',lb:'Media Bank',ic:'med'},
+    {id:'videoscm',lb:'Vidéos à valider',ic:'prod'},
     {id:'publications',lb:'Publications',ic:'pub'},
     {id:'analytics',lb:'Analytics',ic:'fin'},
     {id:'charge',lb:'Ma charge',ic:'col'},
@@ -1954,6 +1955,11 @@ const VIEWS={
       <div class="fs"><div class="fs-l">Publiés</div><div class="fs-v" id="cnt-kpi-pub" style="color:var(--ok)">—</div></div>
     </div>
     <div id="contenus-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
+
+  'cm.videoscm':()=>`
+    <div class="sh"><div class="sh-t">Vidéos à valider</div></div>
+    <div style="font-size:11.5px;color:var(--t3);margin:-6px 0 12px">Montages vidéo de vos clients Full Communication en attente de validation client. Vous pouvez consulter la dernière version et déposer une seule demande de modification par vidéo.</div>
+    <div id="cmvid-real"><div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div></div>`,
 
   'cm.analytics':()=>`
     <div class="sh"><div class="sh-t">Analytics</div><button class="btn bg2 bs" onclick="modalSaisirStats()">Saisir stats</button></div>
@@ -4034,6 +4040,7 @@ async function loadViewData(role,view){
   if(role==='cm'&&view==='cal') await loadCmCal();
   if(role==='cm'&&view==='planningmensuel') await loadCmPlanningMensuel();
   if(role==='cm'&&view==='contenus') await loadCmContenus();
+  if(role==='cm'&&view==='videoscm') await loadCmVideosAValider();
   if(role==='cm'&&view==='analytics') await loadCmAnalytics();
   if(role==='cm'&&view==='charge') await loadCmCharge();
   if(role==='cm'&&view==='rapports') await loadCmRapports();
@@ -18157,6 +18164,113 @@ async function loadCmContenus(){
         </tr>`;
       }).join('')+'</tbody></table></div></div>';
   }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';console.error(e);}
+}
+
+// ─── Vidéos à valider (CM) ──────────────────────────────────────────────────
+// Écran séparé de modalPostprodDetail/modalAjouterCorrection (réservés à
+// prod/admin, cf. migration-cm-revision-video-fullcom.sql) : un CM consulte
+// ici la dernière version soumise des montages de ses clients Full
+// Communication (clients.cm_id = S.uid) qui attendent une validation client,
+// et peut déposer EXACTEMENT UNE demande de modification par livrable. La
+// garde UX (formulaire masqué si une correction existe déjà) double la garde
+// serveur (trigger trg_mc_cm_single_correction) — les deux sont nécessaires.
+const CM_VIDEO_TYPES=['montage_video','highlight','aftermovie','interview','tiktok','reel','teaser','bande_annonce'];
+const CM_CORR_STATUT_LB={nouvelle:'Nouvelle',a_traiter:'À traiter',en_cours:'En cours',terminee:'Terminée',a_verifier:'À vérifier',validee:'Validée',refusee:'Refusée',annulee:'Annulée'};
+
+async function loadCmVideosAValider(){
+  const el=document.getElementById('cmvid-real');
+  if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--t3);font-size:13px">Chargement…</div>';
+  try{
+    const clients=await sbFetch('clients?select=id,nom&cm_id=eq.'+S.uid);
+    const clientRows=Array.isArray(clients)?clients:[];
+    if(!clientRows.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🎬</div><div>Aucun client Full Communication ne vous est affecté pour l\'instant.</div></div>';
+      return;
+    }
+    const clientIds=clientRows.map(c=>c.id);
+    const clientNomById={};clientRows.forEach(c=>clientNomById[c.id]=c.nom);
+    const pres=await sbFetch('prestations?select=id,reference,client_id&client_id=in.('+clientIds.join(',')+')');
+    const presRows=Array.isArray(pres)?pres:[];
+    if(!presRows.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🎬</div><div>Aucune vidéo en attente de validation pour l\'instant.</div></div>';
+      return;
+    }
+    const presById={};presRows.forEach(p=>presById[p.id]=p);
+    const presIds=presRows.map(p=>p.id);
+    const pp=await sbFetch('media_postproductions?select=id,prestation_id,type_travail,statut,responsable_id,delai&prestation_id=in.('+presIds.join(',')+')&statut=eq.a_valider_client&type_travail=in.('+CM_VIDEO_TYPES.join(',')+')&order=delai.asc.nullslast');
+    const ppRows=Array.isArray(pp)?pp:[];
+    if(!ppRows.length){
+      el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;padding:48px;gap:10px;color:var(--t3)"><div style="font-size:36px;opacity:.2">🎬</div><div>Aucune vidéo en attente de validation pour l\'instant.</div></div>';
+      return;
+    }
+    const ppIds=ppRows.map(p=>p.id);
+    const [vers,corrs]=await Promise.all([
+      sbFetch('media_versions?select=id,postproduction_id,numero,created_at,lien:media_liens(nom,url)&postproduction_id=in.('+ppIds.join(',')+')&order=numero.desc'),
+      sbFetch('media_corrections?select=id,postproduction_id,statut,created_at&postproduction_id=in.('+ppIds.join(',')+')&auteur_id=eq.'+S.uid)
+    ]);
+    const versRows=Array.isArray(vers)?vers:[];
+    const corrRows=Array.isArray(corrs)?corrs:[];
+    const lastVersByPp={};
+    versRows.forEach(v=>{if(!lastVersByPp[v.postproduction_id])lastVersByPp[v.postproduction_id]=v;}); // déjà trié numero.desc
+    const corrByPp={};
+    corrRows.forEach(c=>corrByPp[c.postproduction_id]=c);
+    el.innerHTML=ppRows.map(p=>{
+      const pres=presById[p.prestation_id]||{};
+      const clientNom=clientNomById[pres.client_id]||'—';
+      const v=lastVersByPp[p.id];
+      const existingCorr=corrByPp[p.id];
+      const lienBtn=v?.lien?.url?`<button class="btn bg2 bs" onclick="ouvrirLien('${encodeURIComponent(v.lien.url)}')">↗ Ouvrir la dernière version${v.numero?' (V'+v.numero+')':''}</button>`:'<span style="font-size:12px;color:var(--t3)">Aucune version soumise.</span>';
+      const formOuEtat=existingCorr
+        ?`<div style="margin-top:10px;padding:10px 12px;background:var(--s2);border-radius:8px;font-size:12px;color:var(--t2)">Demande déjà envoyée le ${new Date(existingCorr.created_at).toLocaleDateString('fr-FR')} — <strong>${CM_CORR_STATUT_LB[existingCorr.statut]||existingCorr.statut}</strong></div>`
+        :`<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+            <textarea id="cmvid-desc-${p.id}" class="l-inp" style="height:56px;padding:8px 10px;resize:none" placeholder="Ex: Remplacer le plan à 00:14…"></textarea>
+            <div id="cmvid-err-${p.id}" style="font-size:11.5px;color:var(--er);min-height:14px"></div>
+            <button class="btn bp bs" style="align-self:flex-end" onclick="envoyerCorrectionCmVideo('${p.id}')">Envoyer la demande de modification</button>
+          </div>`;
+      return`<div class="cd" style="margin-bottom:12px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--t1)">${esc(pres.reference||'—')}</div>
+            <div style="font-size:12px;color:var(--t3)">${esc(clientNom)} · ${esc(p.type_travail||'')}</div>
+          </div>
+          ${lienBtn}
+        </div>
+        ${formOuEtat}
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="padding:20px;color:var(--er)">Erreur de chargement.</div>';console.error(e);}
+}
+
+async function envoyerCorrectionCmVideo(postprodId){
+  const errEl=document.getElementById('cmvid-err-'+postprodId);
+  const desc=document.getElementById('cmvid-desc-'+postprodId)?.value?.trim();
+  if(!desc){if(errEl)errEl.textContent='Description obligatoire.';return;}
+  if(errEl)errEl.textContent='Envoi…';
+  try{
+    const ppData=await sbFetch('media_postproductions?select=prestation_id,responsable_id&id=eq.'+postprodId);
+    const pp=ppData?.[0];
+    const rCor=await sbFetch('media_corrections',{method:'POST',body:{
+      postproduction_id:postprodId,
+      auteur_id:S.uid,
+      type_correction:'autre',
+      priorite:'normale',
+      description:desc,
+      statut:'nouvelle'
+    }});
+    if(sbErr(rCor)){if(errEl)errEl.textContent='Erreur : '+(rCor.message||'Envoi impossible.');return;}
+    if(pp?.responsable_id){
+      await creerNotifSiActive(pp.responsable_id,'taches',{
+        type:'correction_cm_video',
+        titre:'Demande de modification (CM)',
+        message:desc.slice(0,140),
+        lue:false,
+        prestation_id:pp.prestation_id||null
+      }).catch(()=>{});
+    }
+    toast('Demande de modification envoyée','ok');
+    loadCmVideosAValider();
+  }catch(e){if(errEl)errEl.textContent='Erreur lors de l\'envoi.';}
 }
 
 async function avancerContenu(id,statut){
